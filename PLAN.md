@@ -59,6 +59,13 @@ ordered by dependency (§11), not split into versions.
   with no session or co-author trailers.
   Build output goes to `/mnt/data/cargo/<lane>-temor`. Tests never touch the real system
   (private bus, scratch HOME, harness jail). Never write `~/.config` or `/etc`.
+- **OS-specific code lives at the edges, and the owner writes the non-Linux parts.**
+  - Anything that differs by OS sits behind a small trait in the crate's `platform/` edge module:
+    process info, the trial sandbox, the keymap's primary modifier, bitmap emoji, shell paths.
+  - The Linux implementation is written; other OSes get a stub returning a typed `Unsupported` or
+    absent value, marked `// TODO(platform:<os>)` and listed in `FOLLOWUPS.md` under "Platform (owner)".
+  - No `cfg(target_os)` outside `platform/` modules. The owner implements and tests the stubs on
+    macOS and other machines.
 - Licences are permissive only. GPL code (mpv, ffmpeg, cosmic-term, cmux) is read for facts, never
   linked and never pasted.
 
