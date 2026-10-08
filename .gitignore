@@ -1,0 +1,5 @@
+/target
+# Spikes keep only their write-ups in git; code, tools and logs stay local.
+/spikes/**
+!/spikes/*/
+!/spikes/*/SPIKE.md
