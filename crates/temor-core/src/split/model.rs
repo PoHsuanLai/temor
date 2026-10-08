@@ -86,8 +86,9 @@ pub struct Share(u32);
 impl Share {
     /// All of the parent.
     pub const WHOLE: u32 = 1_000_000;
-    /// The least either child takes: one percent.
-    pub const LEAST: u32 = 10_000;
+    /// The least either child takes: half a percent. Below `1 / MOST_PANES`, so equalizing any
+    /// tree a tab can hold (at worst 1 pane against 127) is never clamped.
+    pub const LEAST: u32 = 5_000;
     /// An even split.
     pub const HALF: Share = Share(Share::WHOLE / 2);
 

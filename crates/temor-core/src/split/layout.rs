@@ -6,8 +6,11 @@ use super::model::{Axis, Handle, Node, SplitTree};
 use crate::vocab::ids::PaneId;
 use ds_core::geometry::units::{Point, Px, Rect, Size};
 
-/// The side of the normalised square, in spatial units. Large, so deep trees keep distinct
-/// slots; small enough that squared distances fit an `i128` with room to spare.
+/// The side of the normalised square, in spatial units. Far more than [`MOST_PANES`] units, so
+/// every pane keeps a slot of its own however deep the tree (see `slots`); small enough that
+/// squared distances fit an `i128` with room to spare.
+///
+/// [`MOST_PANES`]: super::MOST_PANES
 pub const SPATIAL_UNIT: u64 = 1 << 30;
 
 /// A length in whole pixels. Panes snap to whole pixels (and the renderer then to whole cells),
@@ -105,7 +108,12 @@ impl SplitTree {
 
     /// Every node's place in a `width` by `height` area, indexed like the node array. The array is
     /// in pre-order, so a parent's slot is always filled before its children's.
+    ///
+    /// A share is a wish, not a promise: each child keeps at least one unit per pane it lays out
+    /// along the split's axis, so while the area has room for every pane (at least
+    /// [`MOST_PANES`](super::MOST_PANES) units each way) no pane is ever squeezed to nothing.
     fn slots(&self, width: u64, height: u64) -> Vec<Slot> {
+        let least = self.least();
         let mut slots = vec![Slot::default(); self.nodes.len()];
         if let Some(root) = slots.first_mut() {
             *root = Slot {
@@ -123,16 +131,69 @@ impl SplitTree {
                 second,
             } = *node
             {
-                let (a, b) = divide(
-                    slots[index],
-                    axis,
+                let part = first_part(
                     ratio.first_part(along(slots[index], axis)),
+                    along(slots[index], axis),
+                    along(least[first.index()], axis),
+                    along(least[second.index()], axis),
                 );
+                let (a, b) = divide(slots[index], axis, part);
                 place(&mut slots, first, a);
                 place(&mut slots, second, b);
             }
         }
         slots
+    }
+}
+
+impl SplitTree {
+    /// The least each node needs to show every pane under it: one unit per pane side by side,
+    /// as Ghostty's `dimensions` counts them. Children follow their parent in pre-order, so a
+    /// walk from the end fills children first.
+    fn least(&self) -> Vec<Slot> {
+        let mut least = vec![Slot::default(); self.nodes.len()];
+        for (index, node) in self.nodes.iter().enumerate().rev() {
+            least[index] = match *node {
+                Node::Leaf(_) => Slot {
+                    width: 1,
+                    height: 1,
+                    ..Slot::default()
+                },
+                Node::Split {
+                    axis,
+                    first,
+                    second,
+                    ..
+                } => {
+                    let (a, b) = (least[first.index()], least[second.index()]);
+                    match axis {
+                        Axis::Row => Slot {
+                            width: a.width + b.width,
+                            height: a.height.max(b.height),
+                            ..a
+                        },
+                        Axis::Column => Slot {
+                            width: a.width.max(b.width),
+                            height: a.height + b.height,
+                            ..a
+                        },
+                    }
+                }
+            };
+        }
+        least
+    }
+}
+
+/// The first child's length: what its share asks for, held so that each child keeps the least
+/// its panes need when `extent` has room for both, and else at least one unit each.
+fn first_part(wanted: u64, extent: u64, need_first: u64, need_second: u64) -> u64 {
+    if extent >= need_first + need_second {
+        wanted.clamp(need_first, extent - need_second)
+    } else if extent >= 2 {
+        wanted.clamp(1, extent - 1)
+    } else {
+        wanted
     }
 }
 

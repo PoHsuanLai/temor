@@ -110,13 +110,14 @@ pub fn tree_step(state: TreeState, input: TreeIn) -> (TreeAfter, Vec<TreeOut>) {
             ),
             None => unchanged(state),
         },
-        TreeIn::Focus(pane) if state.tree.contains(pane) => move_focus(
-            state.focus,
-            TreeState {
-                focus: pane,
-                ..state
-            },
-        ),
+        TreeIn::Focus(pane) if state.tree.contains(pane) && pane != state.focus => {
+            // Keys must never go to a pane the zoom hides.
+            let tree = match state.tree.zoomed() {
+                Some(zoomed) if zoomed != pane => state.tree.unzoom(),
+                _ => state.tree,
+            };
+            focused(TreeState { tree, focus: pane })
+        }
         TreeIn::Focus(_) => unchanged(state),
     }
 }

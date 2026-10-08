@@ -165,9 +165,6 @@ proptest! {
             strip = strip.split(pane, PaneId(n as u64 + 1), forward).unwrap();
             strip = strip.resize(pane, axis, WindowDelta(*delta)).unwrap();
         }
-        // Where the geometry allows: a pane squeezed to nothing shares its corner with the next.
-        let unit = WholePx(1 << 30);
-        prop_assume!(strip.layout(unit, unit).iter().all(|(_, r)| r.width.0 > 0 && r.height.0 > 0));
         let panes = strip.panes();
         for (i, pane) in panes.iter().enumerate() {
             let next = panes[(i + 1) % panes.len()];
@@ -204,6 +201,13 @@ proptest! {
                     || a.y.0 + a.height.0 <= b.y.0 || b.y.0 + b.height.0 <= a.y.0;
                 prop_assert!(apart, "{:?} overlaps {:?}", a, b);
             }
+        }
+    }
+
+    #[test]
+    fn every_rectangle_is_non_empty_when_the_tab_has_room(tree in tree(), width in 128u32..5000, height in 128u32..5000) {
+        for (pane, rect) in tree.layout(WholePx(width), WholePx(height)) {
+            prop_assert!(rect.width.0 > 0 && rect.height.0 > 0, "{:?} {:?}", pane, rect);
         }
     }
 

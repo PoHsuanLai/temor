@@ -12,6 +12,8 @@ mod model;
 mod ops;
 mod step;
 #[cfg(test)]
+mod step_tests;
+#[cfg(test)]
 mod tests;
 mod wire;
 

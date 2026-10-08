@@ -95,10 +95,12 @@ impl SplitTree {
                     ..
                 } => {
                     let (a, b) = (self.weight(first, axis), self.weight(second, axis));
-                    let whole = i64::from(Share::WHOLE);
+                    let even = a * i64::from(Share::WHOLE) / (a + b).max(1);
+                    // At most MOST_PANES panes keeps every even share inside Share's range.
+                    debug_assert_eq!(i64::from(Share::new(even).millionths()), even);
                     Node::Split {
                         axis,
-                        ratio: Share::new(a * whole / (a + b).max(1)),
+                        ratio: Share::new(even),
                         first,
                         second,
                     }
