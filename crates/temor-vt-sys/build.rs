@@ -1,7 +1,9 @@
 // Adapted from libghostty-rs `crates/libghostty-vt-sys/build.rs` (master 8953a74).
 // Copyright (c) 2026 Uzair Aftab, Leah Amelia Chen. MIT licence; see NOTICE.
 //
-// Changes for temor: the Ghostty source must come from GHOSTTY_SOURCE_DIR (no network clone),
+// Changes for temor: the Ghostty source must come from GHOSTTY_SOURCE_DIR (no network clone)
+// at the pinned commit, Zig's packages from GHOSTTY_ZIG_SYSTEM_DIR (no fetching) unless
+// explicitly allowed, the optimize mode follows OPT_LEVEL only,
 // static linking only, ZIG_GLOBAL_CACHE_DIR is honoured and never defaults to ~/.cache, the
 // pkg-config / dynamic / iOS paths are dropped, and bindgen never runs here (src/bindings.rs is
 // checked in; scripts/gen-bindings.sh regenerates it).
@@ -22,8 +24,9 @@ fn main() {
         "GHOSTTY_ZIG_SYSTEM_DIR",
         "ZIG_GLOBAL_CACHE_DIR",
         "LIBGHOSTTY_VT_SYS_CPU",
-        "LIBGHOSTTY_VT_SYS_OPTIMIZE",
-        "DEBUG",
+        "TEMOR_GHOSTTY_OPTIMIZE",
+        "TEMOR_GHOSTTY_ALLOW_UNPINNED",
+        "TEMOR_GHOSTTY_ALLOW_FETCH",
         "OPT_LEVEL",
     ] {
         println!("cargo:rerun-if-env-changed={var}");
@@ -81,6 +84,18 @@ fn main() {
             dir.display()
         );
         build.arg("--system").arg(&dir);
+    } else if env::var("TEMOR_GHOSTTY_ALLOW_FETCH").as_deref() == Ok("1") {
+        println!(
+            "cargo:warning=GHOSTTY_ZIG_SYSTEM_DIR is not set; Zig may fetch packages from the \
+             network (allowed by TEMOR_GHOSTTY_ALLOW_FETCH=1)"
+        );
+    } else {
+        panic!(
+            "\n\ntemor-vt-sys: GHOSTTY_ZIG_SYSTEM_DIR is not set, so Zig would fetch Ghostty's \
+             packages from the network.\nPoint it at the store crates/temor-vt-sys/scripts/\
+             fetch-ghostty.sh fills (<dest>/zig-store/p), or set TEMOR_GHOSTTY_ALLOW_FETCH=1 to \
+             let Zig fetch.\n"
+        );
     }
 
     if target != host {
@@ -136,22 +151,44 @@ fn ghostty_source_dir() -> PathBuf {
         "GHOSTTY_SOURCE_DIR does not contain build.zig: {}",
         dir.display()
     );
-    if let Some(head) = git_head(&dir)
-        && head != GHOSTTY_COMMIT
-    {
-        println!(
-            "cargo:warning=GHOSTTY_SOURCE_DIR is at {head}, temor pins {GHOSTTY_COMMIT}; \
-                 bindings may not match"
-        );
-    }
+    check_pin(&dir);
     dir
 }
 
-fn git_head(dir: &Path) -> Option<String> {
+/// The bindings in src/bindings.rs are generated from the pinned headers, so building against
+/// any other tree can silently mismatch the C ABI. A tree at another commit, or one that is not
+/// a git checkout at all, fails the build unless `TEMOR_GHOSTTY_ALLOW_UNPINNED=1`.
+fn check_pin(dir: &Path) {
+    if let Some(git_dir) = git(dir, &["rev-parse", "--absolute-git-dir"]) {
+        // A checkout of another commit rewrites HEAD; rebuild then.
+        println!("cargo:rerun-if-changed={git_dir}/HEAD");
+    }
+    let problem = match git(dir, &["rev-parse", "HEAD"]) {
+        Some(head) if head == GHOSTTY_COMMIT => return,
+        Some(head) => format!("is at {head}"),
+        None => "is not a git checkout, so its commit cannot be checked".to_owned(),
+    };
+    if env::var("TEMOR_GHOSTTY_ALLOW_UNPINNED").as_deref() == Ok("1") {
+        println!(
+            "cargo:warning=GHOSTTY_SOURCE_DIR {problem}; temor pins {GHOSTTY_COMMIT} \
+             (allowed by TEMOR_GHOSTTY_ALLOW_UNPINNED=1, the bindings may not match)"
+        );
+        return;
+    }
+    panic!(
+        "\n\ntemor-vt-sys: GHOSTTY_SOURCE_DIR ({}) {problem}, but the checked-in bindings are \
+         for {GHOSTTY_COMMIT}.\nFetch the pinned tree with crates/temor-vt-sys/scripts/\
+         fetch-ghostty.sh, or set TEMOR_GHOSTTY_ALLOW_UNPINNED=1 to build anyway (for a pin \
+         bump, before regenerating the bindings).\n",
+        dir.display()
+    );
+}
+
+fn git(dir: &Path, args: &[&str]) -> Option<String> {
     let out = Command::new("git")
         .arg("-C")
         .arg(dir)
-        .args(["rev-parse", "HEAD"])
+        .args(args)
         .output()
         .ok()?;
     out.status
@@ -174,27 +211,25 @@ fn check_zig() {
     );
 }
 
-/// `LIBGHOSTTY_VT_SYS_OPTIMIZE` overrides; otherwise Debug for `DEBUG=true`, ReleaseSmall for
-/// opt-level s/z and ReleaseFast for everything else.
+/// Zig's optimize mode, from `OPT_LEVEL` and never from `DEBUG`: a Debug libghostty runs
+/// `vt_write` thousands of times slower and reflow spends minutes in integrity checks, which
+/// makes even dev builds and tests unusable. ReleaseSafe (checked, fast) for `opt-level = 0`,
+/// ReleaseFast otherwise. `TEMOR_GHOSTTY_OPTIMIZE=Debug|ReleaseSafe|ReleaseFast` overrides.
 fn zig_optimize_mode() -> &'static str {
-    if let Ok(mode) = env::var("LIBGHOSTTY_VT_SYS_OPTIMIZE") {
+    if let Ok(mode) = env::var("TEMOR_GHOSTTY_OPTIMIZE") {
         return match mode.as_str() {
             "Debug" => "Debug",
             "ReleaseSafe" => "ReleaseSafe",
             "ReleaseFast" => "ReleaseFast",
-            "ReleaseSmall" => "ReleaseSmall",
             other => panic!(
-                "LIBGHOSTTY_VT_SYS_OPTIMIZE must be one of Debug, ReleaseSafe, ReleaseFast, \
-                 ReleaseSmall (got '{other}')"
+                "TEMOR_GHOSTTY_OPTIMIZE must be one of Debug, ReleaseSafe, ReleaseFast \
+                 (got '{other}')"
             ),
         };
     }
-    if env::var("DEBUG").as_deref() == Ok("true") {
-        return "Debug";
-    }
     match env::var("OPT_LEVEL").as_deref() {
-        Ok("s") | Ok("z") => "ReleaseSmall",
-        _ => "ReleaseFast",
+        Ok("0") | Err(_) => "ReleaseSafe",
+        Ok(_) => "ReleaseFast",
     }
 }
 
