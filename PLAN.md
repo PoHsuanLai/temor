@@ -52,6 +52,9 @@ ordered by dependency (§11), not split into versions.
   colours, durations, fonts or radii; quire components only; anything missing goes to quire
   first; motion only through quire timers. Look: Mac-native (design/27).
 - No developer words in the UI: never "ACP", "MCP", "OSC", "PTY" or "CLI".
+- Tooltips: quire `Button { title }` for every icon-only or terse button, and `Tooltip`/`HoverTarget`
+  for everything else; never hand-rolled, never raw `title` attributes. Short Mac wording, no trailing
+  period.
 - Commit identity comes from env vars (author and committer Po Hsuan Lai <pohsuanlai0208@gmail.com>),
   with no session or co-author trailers.
   Build output goes to `/mnt/data/cargo/<lane>-temor`. Tests never touch the real system
