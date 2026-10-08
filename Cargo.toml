@@ -25,6 +25,10 @@ ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97e
 ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+proptest = "1"
 
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
