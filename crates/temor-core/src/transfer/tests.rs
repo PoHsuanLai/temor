@@ -21,6 +21,9 @@ fn an_offer_is_accepted_refused_or_asked_by_origin_and_consent() {
         ("an allowed host is accepted", remote.clone(), Grant::Allowed, receiving, vec![TransferOut::Accept]),
         ("a refused host is refused", remote.clone(), Grant::Refused, Transfer::Refused, vec![TransferOut::Refuse]),
         ("an unasked host asks", remote, Grant::Ask, Transfer::Offered, vec![TransferOut::AskPerson]),
+        ("a local program's stream asks", Origin::LocalStream { tab: TabId(1) }, Grant::Ask, Transfer::Offered, vec![TransferOut::AskPerson]),
+        ("a refused local stream is refused", Origin::LocalStream { tab: TabId(1) }, Grant::Refused, Transfer::Refused, vec![TransferOut::Refuse]),
+        ("an allowed local stream is accepted", Origin::LocalStream { tab: TabId(1) }, Grant::Allowed, receiving, vec![TransferOut::Accept]),
     ];
     for (name, origin, consent, want, outs) in cases {
         assert_eq!(offer(&origin, consent), (want, outs), "{name}");

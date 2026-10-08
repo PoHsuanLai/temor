@@ -33,7 +33,14 @@ pub enum Origin {
         /// The tab.
         tab: TabId,
     },
-    /// Saved from this computer: "Save output", a screenshot, `temor save`.
+    /// Sent over the terminal stream of a pane on this computer (a file transfer sequence in a
+    /// program's output). Any file a program prints can carry one, so it asks like a host's.
+    LocalStream {
+        /// The tab.
+        tab: TabId,
+    },
+    /// Saved by the person on this computer: "Save output", a screenshot, `temor save`. Never
+    /// a sequence in a program's output; that is [`Origin::LocalStream`].
     Local {
         /// The tab.
         tab: TabId,

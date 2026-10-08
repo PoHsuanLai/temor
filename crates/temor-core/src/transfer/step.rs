@@ -37,19 +37,23 @@ pub enum TransferOut {
     Discard,
 }
 
-/// A new transfer from `origin`. Files from this computer are accepted; a host's are accepted,
-/// refused or put to the person by its remembered `consent`.
+/// A new transfer from `origin`. What the person saved or piped is accepted; what arrives over a
+/// terminal stream, from a host or from a local program's output, is accepted, refused or put
+/// to the person by the remembered `consent`.
 pub fn offer(origin: &Origin, consent: Grant) -> (Transfer, Vec<TransferOut>) {
     let receiving = (
         Transfer::Receiving { received: Bytes(0) },
         vec![TransferOut::Accept],
     );
     match (origin, consent) {
-        (Origin::Local { .. } | Origin::Pipe, _) | (Origin::Remote { .. }, Grant::Allowed) => {
-            receiving
+        (Origin::Local { .. } | Origin::Pipe, _) => receiving,
+        (Origin::Remote { .. } | Origin::LocalStream { .. }, Grant::Allowed) => receiving,
+        (Origin::Remote { .. } | Origin::LocalStream { .. }, Grant::Refused) => {
+            (Transfer::Refused, vec![TransferOut::Refuse])
         }
-        (Origin::Remote { .. }, Grant::Refused) => (Transfer::Refused, vec![TransferOut::Refuse]),
-        (Origin::Remote { .. }, Grant::Ask) => (Transfer::Offered, vec![TransferOut::AskPerson]),
+        (Origin::Remote { .. } | Origin::LocalStream { .. }, Grant::Ask) => {
+            (Transfer::Offered, vec![TransferOut::AskPerson])
+        }
     }
 }
 
