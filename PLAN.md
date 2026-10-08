@@ -225,6 +225,15 @@ shell would get.
 - **Clipboard:** OSC 52 through `ds_blitz::clipboard`; a read asks once per tab.
 - **Keyboard profile:** the desktop file says `Categories=TerminalEmulator` so keycap applies its
   terminal profile, and ⌘ is never remapped to Ctrl in temor.
+- **Spike P0(c) findings:**
+  - libghostty's encoder plus real fcitx5 IME (text-input-v3) work in a v0.2.30 window.
+  - temor currently carries copies of quire's private IME machine and focus helper; these are asked
+    upstream.
+  - The unshifted key comes from a US table until the Blitz fork passes winit's
+    `key_without_modifiers`.
+  - temor corrects the modifier lag in its own keymap.
+  - Keys are **configurable** (ds-settings). On KDE, KWin takes Meta+T/W/D/V globally; the desktop's
+    reserved chords have been asked of whopper.
 - **Default keys:**
   - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split; ⌘⌥ arrows move focus; ⌘⇧↩ zoom; ⌃⌘= equalize
   - ⌘1–9 tabs; ⌃1–9 Spaces (quire `SwitchChord`); ⌘⇧U jumps to the waiting agent
