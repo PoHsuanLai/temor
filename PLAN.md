@@ -373,8 +373,13 @@ The ranking rules:
   - temor's Spaces are its own. Each one can be linked to a desktop-wide Space through quire's kit
     (v0.2.31: an opaque link per Space and a "Link to…" menu item). Only linked Spaces share memory
     and consent with other apps.
-  - Every request and `context()` carry the `porter_core::SpaceId` that porter's helper returns
-    (`Desktop(id) | App { app, local }`). temor never builds one itself.
+  - Every request and `context()` carry
+    `porter_core::SpaceId::for_app(&AppName, LocalSpace(space.0), space.link.as_deref())`
+    (porter `209aaaf`, on the desktop in batch 8). temor never formats the u64 itself.
+  - The desktop Spaces available for linking come from `org.quire.Spaces1` on accountd, through
+    porter-client `DbusTransport::spaces()` (`list`, `create`, `watch`). This is a desktop extra in
+    `temor-desktop`.
+  - When a linked desktop Space is removed, temor clears the link and falls back to its own Space.
 - **Companion @tab:** the companion can take any tab's blocks as `ContextChip`s. What isn't shown
   isn't sent.
 
