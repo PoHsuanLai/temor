@@ -16,6 +16,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 ds-core = { workspace = true, features = ["testing"] }
+icu_properties = { workspace = true }
 proptest = { workspace = true }
 serde_json = { workspace = true }
 

@@ -1,5 +1,5 @@
 use super::sanitise::{CharClass, Sanitised, sanitise};
-use CharClass::{Bidi, Control, EscapeSequence, Invisible, Newline, Tab};
+use CharClass::{Bidi, Control, EscapeSequence, Invisible, Newline, Space, Tab};
 
 #[test]
 fn sanitise_removes_each_unsafe_class_and_reports_it() {
@@ -40,6 +40,15 @@ fn sanitise_removes_each_unsafe_class_and_reports_it() {
         ("soft hyphen",                      "c\u{ad}at",                 "cat", &[Invisible]),
         ("tag characters smuggling text",    "ls\u{e0072}\u{e006d}",      "ls", &[Invisible]),
         ("variation selectors",              "a\u{fe0f}b\u{e0100}",       "ab", &[Invisible]),
+        ("Hangul fillers",                   "r\u{3164}m\u{115f}\u{1160} x\u{ffa0}", "rm x", &[Invisible]),
+        ("combining grapheme joiner",        "l\u{34f}s",                  "ls", &[Invisible]),
+        ("Mongolian selectors and separator", "a\u{180b}\u{180e}\u{180f}b", "ab", &[Invisible]),
+        ("deprecated format controls",       "a\u{206a}\u{206f}b",         "ab", &[Invisible]),
+        ("musical formatting",               "a\u{1d173}\u{1d17a}b",       "ab", &[Invisible]),
+        ("interlinear annotation",           "a\u{fff9}b\u{fffb}",         "ab", &[Invisible]),
+        ("no-break space becomes a space",   "rm\u{a0}-rf",                 "rm -rf", &[Space]),
+        ("wide and thin spaces",             "a\u{3000}b\u{2009}c\u{2000}d\u{200a}e", "a b c d e", &[Space]),
+        ("other Zs spaces",                  "a\u{1680}b\u{202f}c\u{205f}d", "a b c d", &[Space]),
         ("classes reported once, in order",  "\u{202e}a\nb\u{1b}[0m\nc\u{202e}\t", "abc", &[Bidi, Newline, EscapeSequence, Tab]),
         ("an escape string swallows newlines inside it", "\u{1b}]0;a\nb\u{07}ok", "ok", &[EscapeSequence]),
     ];

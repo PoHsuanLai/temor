@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 0f594fa3b7ed95c67fac359bf8d1c4d477301a3836a5a5859360ec84d7113011 # shrinks to columns = 3, rows = 1
+cc ce8862eb79195418c1d0dc4e43cf5c46b9b18fd924f90b3f23efddb521637e13 # shrinks to ops = [(0, -32145), (329593538509172888, -139864), (9981678226525509477, -46092), (1855699479379493836, 461), (10297843795718214426, 5), (24218245046547026, 0), (3041930898276210789, 0), (3189840233410098274, -1)], row = false

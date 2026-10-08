@@ -1,6 +1,6 @@
 //! A command proposal (§8.3) and its trial verdict.
 
-use super::sanitise::SanitisedLine;
+use super::sanitise::{Sanitised, SanitisedLine};
 use crate::block::Taint;
 use crate::vocab::ids::{ExitCode, TurnRef};
 use crate::vocab::text::{ErrorLine, RelPath};
@@ -87,4 +87,74 @@ pub enum ChangeKind {
     Modified,
     /// Deleted it.
     Removed,
+}
+
+/// Whether the model has already seen one failed trial for this ask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+pub enum TrialAttempt {
+    /// The first answer.
+    First,
+    /// The answer after a failed trial; a second failure is shown as it is.
+    AfterFailure,
+}
+
+/// Which trial a result belongs to: the ask and the answer within it. A result whose id is not
+/// the trial under way is dropped, so a late result can never be shown with a newer command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TrialId {
+    /// The ask.
+    pub turn: TurnRef,
+    /// Which answer.
+    pub attempt: TrialAttempt,
+}
+
+/// A proposal and what cleaning removed from it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cleaned {
+    /// The proposal.
+    pub proposal: Proposal,
+    /// What cleaning removed.
+    pub sanitised: Sanitised,
+}
+
+/// Where the proposal flow stands, and the proposal last typed into the prompt.
+///
+/// The typed proposal is kept apart from the flow: the person may ask again, or AI may be
+/// switched off, while it still sits in their prompt, and running it must still be logged.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProposalState {
+    /// The flow.
+    pub phase: ProposalPhase,
+    /// The proposal waiting in the prompt for the person's Enter.
+    pub typed: Option<Cleaned>,
+}
+
+impl ProposalState {
+    /// Nothing asked and nothing typed.
+    pub const OFF: ProposalState = ProposalState {
+        phase: ProposalPhase::Off,
+        typed: None,
+    };
+}
+
+/// The proposal flow.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProposalPhase {
+    /// Nothing asked.
+    Off,
+    /// Waiting for the model.
+    Asking(TrialId),
+    /// The answer is being trial-run.
+    Trialling {
+        /// The trial.
+        id: TrialId,
+        /// The cleaned answer.
+        line: SanitisedLine,
+        /// What cleaning removed.
+        sanitised: Sanitised,
+        /// Whether the turn read untrusted text.
+        taint: Taint,
+    },
+    /// The chip shows the proposal and its verdict.
+    Shown(Cleaned),
 }

@@ -6,9 +6,12 @@
 //! (CSI, OSC and the other string sequences, two-character escapes), in both their 7-bit and
 //! 8-bit forms, so `ESC [ 201 ~` cannot close the paste early and leaves no `[201~` behind;
 //! other C0 and C1 controls and DEL; bidirectional controls, which can make the shown text
-//! differ from what runs; and invisible characters (zero-width, tags, variation selectors), which
-//! can carry text the person never sees.
+//! differ from what runs; and every Default_Ignorable_Code_Point (zero-width characters, fillers,
+//! tags, variation selectors), which can carry text the person never sees. Look-alike spaces
+//! (General_Category Zs other than U+0020) become a plain space, so what the person reads as two
+//! words is two words to the shell. The Unicode tables are generated (`ucd_tables.rs`).
 
+use super::ucd_tables::{DEFAULT_IGNORABLE, SPACE_SEPARATORS};
 use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +34,8 @@ pub enum CharClass {
     Bidi,
     /// A character that draws nothing.
     Invisible,
+    /// A space that is not U+0020, replaced by one.
+    Space,
 }
 
 /// Whether sanitising changed the text, and what it took out.
@@ -76,31 +81,41 @@ impl From<SanitisedLine> for String {
     }
 }
 
-/// `raw` with every unsafe character removed, and a report of what was.
+/// `raw` with every unsafe character removed (or a look-alike space made plain), and a report of
+/// what was.
 pub fn sanitise(raw: &str) -> (SanitisedLine, Sanitised) {
     let mut kept = String::with_capacity(raw.len());
     let mut removed: Vec<CharClass> = Vec::new();
     let mut chars = raw.chars().peekable();
     while let Some(c) = chars.next() {
-        let class = match c {
+        let fate = match c {
             '\u{1b}' => {
                 skip_escape(&mut chars);
-                Some(CharClass::EscapeSequence)
+                Fate::Remove(CharClass::EscapeSequence)
             }
             '\u{9b}' => {
                 skip_csi_body(&mut chars);
-                Some(CharClass::EscapeSequence)
+                Fate::Remove(CharClass::EscapeSequence)
             }
             '\u{90}' | '\u{98}' | '\u{9d}' | '\u{9e}' | '\u{9f}' => {
                 skip_string(&mut chars);
-                Some(CharClass::EscapeSequence)
+                Fate::Remove(CharClass::EscapeSequence)
             }
-            other => class_of(other),
+            other => fate_of(other),
         };
-        match class {
-            Some(class) if !removed.contains(&class) => removed.push(class),
-            Some(_) => {}
-            None => kept.push(c),
+        let class = match fate {
+            Fate::Keep => {
+                kept.push(c);
+                continue;
+            }
+            Fate::Remove(class) => class,
+            Fate::Plain(class) => {
+                kept.push(' ');
+                class
+            }
+        };
+        if !removed.contains(&class) {
+            removed.push(class);
         }
     }
     let report = if removed.is_empty() {
@@ -111,30 +126,42 @@ pub fn sanitise(raw: &str) -> (SanitisedLine, Sanitised) {
     (SanitisedLine(kept), report)
 }
 
-/// The class of a character outside any sequence, or none for one that is kept.
-fn class_of(c: char) -> Option<CharClass> {
+/// What happens to one character outside any sequence.
+enum Fate {
+    Keep,
+    Remove(CharClass),
+    /// Replaced by U+0020.
+    Plain(CharClass),
+}
+
+/// The fate of a character outside any sequence. Bidi controls are default-ignorable too, and
+/// are named apart because they are the ones that reorder what is shown.
+fn fate_of(c: char) -> Fate {
     match c {
         '\n' | '\r' | '\u{0b}' | '\u{0c}' | '\u{85}' | '\u{2028}' | '\u{2029}' => {
-            Some(CharClass::Newline)
+            Fate::Remove(CharClass::Newline)
         }
-        '\t' => Some(CharClass::Tab),
-        '\u{00}'..='\u{1f}' | '\u{7f}'..='\u{9f}' => Some(CharClass::Control),
+        '\t' => Fate::Remove(CharClass::Tab),
+        '\u{00}'..='\u{1f}' | '\u{7f}'..='\u{9f}' => Fate::Remove(CharClass::Control),
         '\u{061c}'
         | '\u{200e}'
         | '\u{200f}'
         | '\u{202a}'..='\u{202e}'
-        | '\u{2066}'..='\u{2069}' => Some(CharClass::Bidi),
-        '\u{00ad}'
-        | '\u{180e}'
-        | '\u{200b}'..='\u{200d}'
-        | '\u{2060}'..='\u{2064}'
-        | '\u{fe00}'..='\u{fe0f}'
-        | '\u{feff}'
-        | '\u{fff9}'..='\u{fffb}'
-        | '\u{e0000}'..='\u{e007f}'
-        | '\u{e0100}'..='\u{e01ef}' => Some(CharClass::Invisible),
-        _ => None,
+        | '\u{2066}'..='\u{2069}' => Fate::Remove(CharClass::Bidi),
+        // Interlinear annotation marks hide the text between them, and are not default-ignorable.
+        '\u{fff9}'..='\u{fffb}' => Fate::Remove(CharClass::Invisible),
+        ' ' => Fate::Keep,
+        c if within(c, DEFAULT_IGNORABLE) => Fate::Remove(CharClass::Invisible),
+        c if within(c, SPACE_SEPARATORS) => Fate::Plain(CharClass::Space),
+        _ => Fate::Keep,
     }
+}
+
+fn within(c: char, ranges: &[(u32, u32)]) -> bool {
+    let code = u32::from(c);
+    ranges
+        .iter()
+        .any(|&(first, last)| (first..=last).contains(&code))
 }
 
 type Chars<'a> = std::iter::Peekable<std::str::Chars<'a>>;
