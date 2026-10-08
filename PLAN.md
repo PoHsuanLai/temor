@@ -234,10 +234,19 @@ shell would get.
   - temor corrects the modifier lag in its own keymap.
   - Keys are **configurable** (ds-settings). On KDE, KWin takes Meta+T/W/D/V globally; the desktop's
     reserved chords have been asked of whopper.
-- **Default keys:**
-  - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split; ⌘⌥ arrows move focus; ⌘⇧↩ zoom; ⌃⌘= equalize
+- **The desktop key rule** (whopper):
+  - Apps never bind Super. Super chords belong to the shell and compositor (⌘Space, ⌘Tab, ⌘`,
+    screenshots).
+  - keycap's `terminal` profile (picked through `Categories=TerminalEmulator`; sill's keyboard source
+    maps that category) delivers the physical ⌘ + letter as **Ctrl+Shift + letter**, so ⌘C is never an
+    interrupt. temor binds Ctrl+Shift chords and the UI shows them as ⌘ chords.
+  - Ctrl+Space stays with the input method everywhere.
+- **Default keys** (shown with ⌘; bound as the Ctrl+Shift equivalent):
+  - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split (Ctrl+Shift+D, and Ctrl+Shift+Alt+D for down); ⌘⌥ arrows move
+    focus
+  - ⌘⇧↩ zoom; ⌃⌘= equalize; ⌘C/⌘V copy/paste; ⌘F searches the scrollback; ⌘↑/↓ move between prompts
   - ⌘1–9 tabs; ⌃1–9 Spaces (quire `SwitchChord`); ⌘⇧U jumps to the waiting agent
-  - ⌘↑/↓ move between prompts; ⌘F searches the scrollback
+  - Every binding is configurable; the defaults never use Super or Ctrl+Space.
 
 ## 7. Browser-like structure
 
