@@ -26,7 +26,7 @@ fn placed(name: &str, id: u32) {
     let p = placements[0];
     assert_eq!(p.image.id, ImageId(id));
     assert_eq!(
-        (p.image.width, p.image.height, p.image.format),
+        (p.image.width.0, p.image.height.0, p.image.format),
         (2, 2, KittyPixelFormat::Rgba)
     );
     assert_eq!(p.image.pixels, KittyPixels::Ready(&PIXELS), "{name}");

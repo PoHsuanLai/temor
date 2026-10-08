@@ -3,16 +3,26 @@
 use std::sync::mpsc;
 
 use temor_vt::{
-    CellStyle, CellWidth, GridSize, Hyperlink, RenderView, Rgb, RowFilter, SemanticMark, Terminal,
-    TerminalConfig, VtEvent,
+    CellStyle, CellWidth, GridSize, Hyperlink, RenderView, Rgb, Row, RowFilter, SemanticMark,
+    Terminal, TerminalConfig, VtEvent,
 };
 
-/// A `cols` x `rows` terminal and the receiving end of its events.
+/// A `cols` x `rows` terminal and the receiving end of its events (replies are discarded).
 pub fn term(cols: u16, rows: u16) -> (Terminal, mpsc::Receiver<VtEvent>) {
-    let (tx, rx) = mpsc::channel();
-    let term = Terminal::new(TerminalConfig::new(GridSize::new(cols, rows)), Box::new(tx))
-        .expect("terminal");
-    (term, rx)
+    let (term, events, _replies) = term_with_replies(cols, rows);
+    (term, events)
+}
+
+/// A `cols` x `rows` terminal with receivers for its events and its replies.
+pub fn term_with_replies(
+    cols: u16,
+    rows: u16,
+) -> (Terminal, mpsc::Receiver<VtEvent>, mpsc::Receiver<Vec<u8>>) {
+    let (tx, events) = mpsc::channel();
+    let (reply_tx, replies) = mpsc::channel();
+    let config = TerminalConfig::new(GridSize::new(cols, rows));
+    let term = Terminal::new(config, Box::new(tx), Box::new(reply_tx)).expect("terminal");
+    (term, events, replies)
 }
 
 /// The bytes of `tests/fixtures/<name>`.
@@ -45,7 +55,7 @@ pub fn row_cells(term: &mut Terminal, row: u16) -> Vec<Cell> {
     let mut cells = Vec::new();
     frame
         .rows(RowFilter::All, |r| {
-            if r.row() == row {
+            if r.row() == Row(row) {
                 r.cells(|c| {
                     cells.push(Cell {
                         text: c.text.to_owned(),

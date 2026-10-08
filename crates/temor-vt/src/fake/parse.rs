@@ -14,6 +14,8 @@ pub(super) enum Action {
     },
     /// Everything between `ESC ]` and BEL/ST.
     Osc(Vec<u8>),
+    /// `ESC c` (RIS).
+    FullReset,
 }
 
 /// Whether a CSI carried the `?` private marker.
@@ -62,6 +64,7 @@ impl Parser {
                     *self = Parser::Osc(Vec::new());
                     None
                 }
+                b'c' => Some(Action::FullReset),
                 _ => None,
             },
             Parser::Csi(mut body) => {

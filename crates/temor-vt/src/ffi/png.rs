@@ -1,32 +1,52 @@
 //! The PNG decoder libghostty calls for kitty images sent as PNG (`f=100`).
 
 use std::ffi::c_void;
+use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::Once;
 
 use temor_vt_sys as sys;
 
-/// Installs temor's PNG decoder (the `png` crate) for kitty images.
+use super::callbacks::fn_ptr;
+
+/// Installs temor's PNG decoder (the `png` crate) for kitty images, which libghostty decodes
+/// inside `write`; without a decoder PNG images are dropped without a word.
 ///
-/// **Treat the decoder as thread-local: call this on each I/O thread before its first `write`.**
-/// libghostty decodes PNGs inside `write`, on the writing thread, and without a decoder PNG
-/// images are dropped without a word. `Terminal::new` and `Terminal::restore` call it on the
-/// creating thread; an I/O thread that writes a terminal it did not create calls it itself.
-/// (libghostty's hook is currently process-wide and this decoder keeps no state, so one call
-/// covers every thread today; the per-thread rule keeps callers right if that changes, as it
-/// already differs in libghostty-rs.) Installing again is harmless.
+/// The hook is **process-wide**: libghostty keeps it in one global, read by every terminal on
+/// every thread. `Terminal::new` and `Terminal::restore` call this, so callers rarely need to.
+/// The global is not atomic, so the store happens exactly once per process (guarded by a
+/// `Once`); later calls return immediately and are safe from any thread.
 pub fn install_png_decoder() {
-    // SAFETY: DECODE_PNG takes a `GhosttySysDecodePngFn`; `decode_png` has that signature, keeps
-    // no state and so is valid for the life of the process.
-    unsafe {
-        sys::ghostty_sys_set(
-            sys::SysOption::GHOSTTY_SYS_OPT_DECODE_PNG,
-            decode_png as *const c_void,
-        );
-    }
+    static INSTALL: Once = Once::new();
+    INSTALL.call_once(|| {
+        let decode: sys::SysDecodePngFn = Some(decode_png);
+        // SAFETY: DECODE_PNG takes a `GhosttySysDecodePngFn`, which `decode` is bound to;
+        // `decode_png` keeps no state and so is valid for the life of the process. `Once` makes
+        // this the only write to libghostty's global, before any terminal can read it.
+        unsafe {
+            sys::ghostty_sys_set(sys::SysOption::GHOSTTY_SYS_OPT_DECODE_PNG, fn_ptr(decode));
+        }
+    });
 }
 
 /// Decodes `data` into 8-bit RGBA allocated with libghostty's `allocator`.
 unsafe extern "C" fn decode_png(
     _userdata: *mut c_void,
+    allocator: *const sys::Allocator,
+    data: *const u8,
+    len: usize,
+    out: *mut sys::SysImage,
+) -> bool {
+    // A panic must not unwind into C; a failed decode just rejects the image.
+    catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: as documented on each block in `decode_into`.
+        unsafe { decode_into(allocator, data, len, out) }
+    }))
+    .unwrap_or(false)
+}
+
+/// # Safety
+/// The arguments are those libghostty passes to the decode callback.
+unsafe fn decode_into(
     allocator: *const sys::Allocator,
     data: *const u8,
     len: usize,

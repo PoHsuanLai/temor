@@ -2,7 +2,7 @@
 
 use ds_core::word::Word;
 
-use super::{Col, Rgb};
+use super::{Col, Rgb, Row};
 
 /// How much of the frame changed since it was last marked drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
@@ -158,7 +158,7 @@ pub enum CursorCell {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CursorView {
     pub col: Col,
-    pub row: u16,
+    pub row: Row,
     pub shape: CursorShape,
     pub blink: CursorBlink,
     pub cell: CursorCell,

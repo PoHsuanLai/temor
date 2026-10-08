@@ -66,12 +66,12 @@ fn two_phase_update_reports_only_changed_rows() {
     assert_eq!(frame.dirty(), FrameDirty::Partial);
     let mut dirty = Vec::new();
     frame
-        .rows(RowFilter::Dirty, |r| dirty.push(r.row()))
+        .rows(RowFilter::Dirty, |r| dirty.push(r.row().0))
         .expect("rows");
     assert!(dirty.contains(&4), "the edited row is dirty: {dirty:?}");
     assert!(!dirty.contains(&0), "untouched rows stay clean: {dirty:?}");
     let cursor = frame.cursor().expect("cursor shown");
-    assert_eq!((cursor.col.0, cursor.row), (4, 4));
+    assert_eq!((cursor.col.0, cursor.row.0), (4, 4));
 }
 
 #[test]

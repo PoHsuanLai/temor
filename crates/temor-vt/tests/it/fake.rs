@@ -12,7 +12,12 @@ fn drive(vt: &mut dyn Vt) -> String {
 #[test]
 fn fake_runs_behind_the_trait() {
     let (tx, rx) = mpsc::channel();
-    let mut fake = FakeVt::new(TerminalConfig::new(GridSize::new(20, 5)), Box::new(tx));
+    let (replies, _) = mpsc::channel::<Vec<u8>>();
+    let mut fake = FakeVt::new(
+        TerminalConfig::new(GridSize::new(20, 5)),
+        Box::new(tx),
+        Box::new(replies),
+    );
     assert_eq!(drive(&mut fake), "$ ls\nfile");
     assert_eq!(
         rx.try_iter().collect::<Vec<_>>(),
@@ -26,7 +31,12 @@ fn fake_runs_behind_the_trait() {
 #[test]
 fn real_and_fake_agree_on_plain_text() {
     let (tx, _rx) = mpsc::channel();
-    let mut fake = FakeVt::new(TerminalConfig::new(GridSize::new(20, 5)), Box::new(tx));
+    let (replies, _) = mpsc::channel::<Vec<u8>>();
+    let mut fake = FakeVt::new(
+        TerminalConfig::new(GridSize::new(20, 5)),
+        Box::new(tx),
+        Box::new(replies),
+    );
     let (mut real, _rx2) = crate::support::term(20, 5);
     assert_eq!(drive(&mut real), drive(&mut fake));
 }

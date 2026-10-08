@@ -4,8 +4,8 @@ use temor_vt_sys as sys;
 
 use super::convert::{check, rgb};
 use crate::{
-    CellStyle, CellView, CellWidth, Col, Hyperlink, Rgb, RowDirty, RowId, Selected, SemanticMark,
-    StyleFlags, Underline, VtError,
+    CellStyle, CellView, CellWidth, Col, Hyperlink, Rgb, Row, RowDirty, RowId, Selected,
+    SemanticMark, StyleFlags, Underline, VtError,
 };
 
 /// One row of a [`crate::Frame`], valid during the row walk.
@@ -40,7 +40,7 @@ impl<'a> RowView<'a> {
     }
 
     /// The row's position from the top of the viewport.
-    pub fn row(&self) -> u16 {
+    pub fn row(&self) -> Row {
         let mut y: i32 = 0;
         // SAFETY: the iterator is positioned on a row; VIEWPORT_Y writes an `int32_t`.
         unsafe {
@@ -50,7 +50,7 @@ impl<'a> RowView<'a> {
                 (&raw mut y).cast(),
             )
         };
-        u16::try_from(y).unwrap_or(0)
+        Row(u16::try_from(y).unwrap_or(0))
     }
 
     /// Whether the row changed since the frame was last marked drawn.
@@ -140,7 +140,12 @@ fn read_cell<'t>(
                 == sys::Result::SUCCESS,
         )
     };
-    read_text(cells, text)?;
+    // A grapheme libghostty cannot hand over shows as a replacement character; the rest of
+    // the row still draws.
+    if read_text(cells, text).is_err() {
+        text.clear();
+        text.extend_from_slice("\u{fffd}".as_bytes());
+    }
     Ok(CellView {
         col,
         text: std::str::from_utf8(text).unwrap_or("\u{fffd}"),

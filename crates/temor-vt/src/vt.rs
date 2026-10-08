@@ -2,13 +2,14 @@
 
 use crate::{CellPx, GridSize, ModeState, TerminalMode, ViewportScroll, VtError};
 
-/// A terminal emulator: bytes in, events out (through the sink it was created with), state to
-/// read back. `Terminal` is the real one; `FakeVt` (feature `fake`) is a small stand-in.
+/// A terminal emulator: bytes in, events and replies out (through the sinks it was created
+/// with), state to read back. `Terminal` is the real one; `FakeVt` (feature `fake`) is a small stand-in.
 pub trait Vt: Send {
     /// Feeds program output. Events for what it contained go to the sink before this returns.
     fn write(&mut self, bytes: &[u8]);
 
-    /// Changes the grid size, reflowing soft-wrapped lines.
+    /// Changes the grid size, reflowing soft-wrapped lines. Like `write`, it may send events
+    /// (the end of a render hold) and replies (in-band size reports).
     fn resize(&mut self, size: GridSize, cell: CellPx) -> Result<(), VtError>;
 
     /// Moves the viewport over the scrollback.

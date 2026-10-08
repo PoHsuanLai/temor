@@ -5,6 +5,7 @@
 mod callbacks;
 mod convert;
 mod format;
+mod frame;
 mod key;
 mod key_code;
 mod kitty;
@@ -13,17 +14,19 @@ mod png;
 mod render;
 mod reports;
 mod row;
+mod signals;
 mod snapshot;
 mod terminal;
 mod terminal_read;
 mod vt_impl;
 
 pub use format::Formatter;
+pub use frame::Frame;
 pub use key::KeyEncoder;
 pub use kitty::{KittyImage, KittyImages, KittyPixels, KittyPlacement};
 pub use mouse::MouseEncoder;
 pub use png::install_png_decoder;
-pub use render::{Frame, PendingFrame, RenderView};
+pub use render::{PendingFrame, RenderView};
 pub use row::RowView;
 pub use snapshot::Snapshot;
 pub use terminal::Terminal;

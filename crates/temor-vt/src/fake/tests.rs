@@ -2,16 +2,15 @@ use std::sync::mpsc;
 
 use super::FakeVt;
 use crate::{
-    ExitStatus, GridSize, ModeState, PromptEvent, TerminalConfig, TerminalMode, UnknownKind, Vt,
-    VtEvent,
+    ExitCode, ExitStatus, GridSize, ModeState, PromptEvent, TerminalConfig, TerminalMode,
+    UnknownKind, Vt, VtEvent,
 };
 
 fn fake(cols: u16, rows: u16) -> (FakeVt, mpsc::Receiver<VtEvent>) {
     let (tx, rx) = mpsc::channel();
-    (
-        FakeVt::new(TerminalConfig::new(GridSize::new(cols, rows)), Box::new(tx)),
-        rx,
-    )
+    let (replies, _) = mpsc::channel::<Vec<u8>>();
+    let config = TerminalConfig::new(GridSize::new(cols, rows));
+    (FakeVt::new(config, Box::new(tx), Box::new(replies)), rx)
 }
 
 #[test]
@@ -24,18 +23,19 @@ fn text_wraps_scrolls_and_reads_back() {
 #[test]
 fn osc_title_cwd_and_prompt_marks_become_events() {
     let (mut vt, rx) = fake(20, 4);
-    vt.write(b"\x1b]2;hi\x07\x1b]7;file://h/tmp\x1b\\\x1b]133;D;3\x07\x07");
+    vt.write(b"\x1b]2;one\x07\x1b]7;file://h/tmp\x1b\\\x1b]133;D;3\x07\x1b]2;hi\x07\x07");
     let got: Vec<VtEvent> = rx.try_iter().collect();
+    // Titles are merged and sent once the write is done, as libghostty forces on the real one.
     assert_eq!(
         got,
         [
-            VtEvent::Title("hi".into()),
             VtEvent::Cwd("file://h/tmp".into()),
             VtEvent::Prompt(PromptEvent::CommandEnd {
-                exit: ExitStatus::Code(3),
+                exit: ExitStatus::Code(ExitCode(3)),
                 error: String::new()
             }),
             VtEvent::Bell,
+            VtEvent::Title("hi".into()),
         ]
     );
     assert_eq!(vt.title(), "hi");
@@ -66,4 +66,19 @@ fn dec_modes_toggle() {
     assert_eq!(vt.mode(TerminalMode::BracketedPaste), Ok(ModeState::Set));
     vt.write(b"\x1b[?2027l");
     assert_eq!(vt.mode(TerminalMode::GraphemeCluster), Ok(ModeState::Reset));
+}
+
+#[test]
+fn full_reset_clears_title_and_reports_reset() {
+    let (mut vt, rx) = fake(20, 4);
+    vt.write(b"\x1b]2;t\x07\x1b]7;file://h/x\x07");
+    vt.write(b"abc\x1b]2;late\x07\x1bc");
+    let got: Vec<VtEvent> = rx.try_iter().collect();
+    assert_eq!(got.last(), Some(&VtEvent::Reset));
+    assert!(
+        !got.contains(&VtEvent::Title("late".into())),
+        "a reset drops a pending title"
+    );
+    assert_eq!((vt.title(), vt.pwd()), (String::new(), String::new()));
+    assert_eq!(vt.plain_text().as_deref(), Ok(""));
 }

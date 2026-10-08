@@ -5,14 +5,16 @@ use ds_core::word::Word;
 use super::ProgramStatus;
 
 /// Something the program in the terminal did that the host must act on. Events are sent from
-/// inside `write`, on the thread that called it, in the order the bytes produced them.
+/// inside `write` (and `resize`, which can end a render hold), on the thread that called it, in
+/// the order the bytes produced them. Replies to the program do not travel here: they go to the
+/// terminal's [`crate::ReplySink`], which `write` and `resize` may also call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VtEvent {
-    /// Bytes to send back to the program (device reports, mode reports, XTVERSION, ...).
-    Reply(Vec<u8>),
     /// BEL.
     Bell,
-    /// The window title changed (OSC 0/2); the new title.
+    /// The window title changed (OSC 0/2); the new title. libghostty only lets the title be read
+    /// once a write has returned, so this is sent once, after the write's other events, with the
+    /// final title: several title changes in one write merge into one event.
     Title(String),
     /// The working directory changed (OSC 7 and friends), as the raw `file://host/path` URL.
     Cwd(String),
@@ -27,6 +29,10 @@ pub enum VtEvent {
     ProgramStatus(ProgramStatus),
     /// A shell integration mark (OSC 133 A/B/C/D).
     Prompt(PromptEvent),
+    /// The program fully reset the terminal (RIS, `ESC c`). The title, working directory,
+    /// modes, screen and scrollback are cleared without `Title` or `Cwd` events; forget what is
+    /// known about the running command.
+    Reset,
     /// The program held or released screen updates (synchronized output, mode 2026).
     RenderHold(RenderHold),
     /// The program asked for the colour scheme (CSI ? 996 n); it was answered with the
@@ -168,11 +174,15 @@ pub enum PromptKind {
     Secondary,
 }
 
+/// A command's exit code as the shell reported it (negative codes exist, on Windows say).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExitCode(pub i32);
+
 /// How a command ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExitStatus {
     /// The shell reported this exit code.
-    Code(i32),
+    Code(ExitCode),
     /// The shell did not say.
     Unreported,
 }

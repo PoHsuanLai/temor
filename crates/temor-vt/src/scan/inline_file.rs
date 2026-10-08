@@ -56,8 +56,12 @@ impl InlineFileScanner {
         }
     }
 
-    /// Splits `input` into pass-through bytes and complete inline files, in order. Bytes that
-    /// may start a sequence are held until a later chunk decides.
+    /// Splits `input` into pass-through bytes and complete inline files, in order.
+    ///
+    /// Bytes that may start a sequence are held back, not passed on: a chunk ending in a lone
+    /// ESC, or in any prefix of `ESC ] 1337 ; File=`, reaches libghostty only when a later chunk
+    /// shows it is not an inline file. A program that stops right there (an ESC as the very last
+    /// byte it ever writes) leaves those few bytes unprocessed until more output arrives.
     pub(crate) fn feed<'a>(&mut self, input: &'a [u8], mut out: impl FnMut(Scanned<'a>)) {
         let mut run_start = 0;
         let mut i = 0;
@@ -109,6 +113,7 @@ impl InlineFileScanner {
                             ESC => self.state = State::PayloadEsc,
                             // CAN and SUB cancel the sequence; nothing is reported.
                             _ => {
+                                self.cancel();
                                 self.state = State::Ground;
                                 run_start = i;
                             }
@@ -124,6 +129,7 @@ impl InlineFileScanner {
                     } else {
                         // ESC not followed by `\` cancels the sequence and starts a new one,
                         // which may itself be an inline file.
+                        self.cancel();
                         self.state = State::Prefix(1);
                     }
                 }
@@ -132,6 +138,17 @@ impl InlineFileScanner {
         if self.state == State::Ground && run_start < input.len() {
             out(Scanned::Bytes(&input[run_start..]));
         }
+    }
+
+    /// Drops a cancelled payload, releasing its memory (it can be large).
+    fn cancel(&mut self) {
+        self.payload = Vec::new();
+    }
+
+    /// How many payload bytes are held.
+    #[cfg(test)]
+    pub(crate) fn held_payload(&self) -> usize {
+        self.payload.len()
     }
 
     fn start_payload(&mut self) {

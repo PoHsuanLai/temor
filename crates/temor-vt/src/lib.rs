@@ -22,9 +22,10 @@ mod ffi;
 
 pub use error::VtError;
 pub use event::{
-    ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardWrite, EventSink, ExitStatus,
-    Notification, Percent, ProgramState, ProgramStatus, ProgramWait, Progress, ProgressState,
-    PromptEvent, PromptKind, RenderHold, Truncation, UnknownKind, VtEvent,
+    ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardWrite, EventSink, ExitCode,
+    ExitStatus, Notification, Percent, ProgramState, ProgramStatus, ProgramWait, Progress,
+    ProgressState, PromptEvent, PromptKind, RenderHold, ReplySink, Truncation, UnknownKind,
+    VtEvent,
 };
 pub use input::{
     Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,
@@ -34,9 +35,9 @@ pub use model::{
     ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorScheme, Cols, CursorBlink,
     CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation, GridPoint, GridSize,
     Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState, PlacementId,
-    PlacementKind, PlacementRender, PointSpace, Px, Rgb, RowCount, RowDelta, RowDirty, RowFilter,
-    RowId, Rows, Scrollbar, Selected, SemanticMark, StyleFlags, TerminalConfig, TerminalMode,
-    TextFormat, TextSpan, Underline, ViewportScroll, Visibility,
+    PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta, RowDirty,
+    RowFilter, RowId, Rows, Scrollbar, Selected, SemanticMark, StyleFlags, TerminalConfig,
+    TerminalMode, TextFormat, TextSpan, Underline, ViewportScroll, Visibility, ZIndex,
 };
 pub use vt::Vt;
 

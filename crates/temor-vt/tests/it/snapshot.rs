@@ -33,6 +33,7 @@ fn snapshot_restores_text_styles_cursor_title_and_modes() {
         &stored,
         TerminalConfig::new(GridSize::new(1, 1)),
         Box::new(tx),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
     )
     .expect("restore");
     assert_eq!(back.size(), GridSize::new(60, 8));
@@ -64,6 +65,7 @@ fn corrupt_snapshot_is_rejected() {
         &junk,
         TerminalConfig::new(GridSize::new(10, 4)),
         Box::new(tx),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
     );
     assert_eq!(got.err(), Some(VtError::SnapshotRejected));
 }

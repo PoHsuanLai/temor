@@ -4,8 +4,9 @@ use super::parse::{Action, Parser, Private};
 use super::screen::Screen;
 use crate::scan::{InlineFileScanner, Scanned};
 use crate::{
-    CellPx, EventSink, ExitStatus, GridSize, ModeState, PromptEvent, PromptKind, TerminalConfig,
-    TerminalMode, Truncation, UnknownKind, ViewportScroll, Vt, VtError, VtEvent,
+    CellPx, EventSink, ExitCode, ExitStatus, GridSize, ModeState, PromptEvent, PromptKind,
+    ReplySink, TerminalConfig, TerminalMode, Truncation, UnknownKind, ViewportScroll, Vt, VtError,
+    VtEvent,
 };
 
 /// A stand-in for `Terminal` that needs no Zig: see the module docs for what it understands.
@@ -16,8 +17,24 @@ pub struct FakeVt {
     modes: Vec<TerminalMode>,
     title: String,
     pwd: String,
+    /// Set when OSC 0/2 changed the title; the event goes out once the write is done, as in
+    /// the real terminal.
+    title_changed: TitleChange,
     sink: Box<dyn EventSink>,
+    replies: Box<dyn ReplySink>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TitleChange {
+    Unchanged,
+    Changed,
+}
+
+const DEFAULT_MODES: [TerminalMode; 3] = [
+    TerminalMode::GraphemeCluster,
+    TerminalMode::Wraparound,
+    TerminalMode::CursorVisible,
+];
 
 impl std::fmt::Debug for FakeVt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,21 +45,23 @@ impl std::fmt::Debug for FakeVt {
 }
 
 impl FakeVt {
-    /// A blank fake of `config.size` sending its events to `sink`. Mode 2027 starts on, as in
-    /// the real terminal.
-    pub fn new(config: TerminalConfig, sink: Box<dyn EventSink>) -> Self {
+    /// A blank fake of `config.size` sending its events to `sink` and replies to `replies`.
+    /// Mode 2027 starts on, as in the real terminal.
+    pub fn new(
+        config: TerminalConfig,
+        sink: Box<dyn EventSink>,
+        replies: Box<dyn ReplySink>,
+    ) -> Self {
         Self {
             screen: Screen::new(config.size),
             parser: Parser::default(),
             scanner: InlineFileScanner::new(config.inline_file_max),
-            modes: vec![
-                TerminalMode::GraphemeCluster,
-                TerminalMode::Wraparound,
-                TerminalMode::CursorVisible,
-            ],
+            modes: DEFAULT_MODES.to_vec(),
             title: String::new(),
             pwd: String::new(),
+            title_changed: TitleChange::Unchanged,
             sink,
+            replies,
         }
     }
 
@@ -61,7 +80,17 @@ impl FakeVt {
                 last,
             } => self.csi(private, &params, last),
             Action::Osc(body) => self.osc(body),
+            Action::FullReset => self.full_reset(),
         }
+    }
+
+    fn full_reset(&mut self) {
+        self.screen = Screen::new(self.screen.size);
+        self.modes = DEFAULT_MODES.to_vec();
+        self.title.clear();
+        self.pwd.clear();
+        self.title_changed = TitleChange::Unchanged;
+        self.sink.send(VtEvent::Reset);
     }
 
     fn csi(&mut self, private: Private, params: &[u16], last: u8) {
@@ -73,9 +102,7 @@ impl FakeVt {
                 self.screen.goto(row, col);
             }
             (Private::Ansi, b'J') if first == 2 => self.screen.erase_display(),
-            (Private::Ansi, b'c') if first == 0 => {
-                self.sink.send(VtEvent::Reply(b"\x1b[?62;22c".to_vec()))
-            }
+            (Private::Ansi, b'c') if first == 0 => self.replies.reply(b"\x1b[?62;22c"),
             (Private::Dec, b'h' | b'l') => {
                 let state = if last == b'h' {
                     ModeState::Set
@@ -105,7 +132,7 @@ impl FakeVt {
         match number {
             "0" | "2" => {
                 self.title = rest.to_owned();
-                self.sink.send(VtEvent::Title(self.title.clone()));
+                self.title_changed = TitleChange::Changed;
             }
             "7" => {
                 self.pwd = rest.to_owned();
@@ -155,7 +182,7 @@ fn prompt(rest: &str) -> Option<PromptEvent> {
             exit: parts
                 .next()
                 .and_then(|c| c.parse().ok())
-                .map_or(ExitStatus::Unreported, ExitStatus::Code),
+                .map_or(ExitStatus::Unreported, |c| ExitStatus::Code(ExitCode(c))),
             error: String::new(),
         },
         _ => return None,
@@ -192,6 +219,11 @@ impl Vt for FakeVt {
         }
         for (_, event) in files {
             self.sink.send(event);
+        }
+        if std::mem::replace(&mut self.title_changed, TitleChange::Unchanged)
+            == TitleChange::Changed
+        {
+            self.sink.send(VtEvent::Title(self.title.clone()));
         }
     }
 

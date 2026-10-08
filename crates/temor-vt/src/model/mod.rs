@@ -16,12 +16,12 @@ pub use colour::{ColorScheme, Rgb};
 pub use config::TerminalConfig;
 pub use media::{
     Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementKind, PlacementRender,
-    TextFormat, TextSpan, Visibility,
+    TextFormat, TextSpan, Visibility, ZIndex,
 };
 #[cfg(feature = "ghostty")]
 pub(crate) use mode::ModeFamily;
 pub use mode::{ModeState, TerminalMode};
 pub use size::{
-    ByteCount, CellPx, Col, Cols, GridPoint, GridSize, LineCount, PointSpace, Px, RowCount,
+    ByteCount, CellPx, Col, Cols, GridPoint, GridSize, LineCount, PointSpace, Px, Row, RowCount,
     RowDelta, Rows, Scrollbar, ViewportScroll,
 };

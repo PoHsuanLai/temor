@@ -12,13 +12,14 @@ use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
 use crate::scan::{InlineFileScanner, Scanned};
 use crate::{
-    CellPx, EventSink, GridSize, ModeState, TerminalConfig, TerminalMode, UnknownKind,
+    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode, UnknownKind,
     ViewportScroll, VtError, VtEvent,
 };
 
 /// A terminal emulator backed by libghostty-vt. Feed it program output with
-/// [`Terminal::write`]; what the output asks of the host arrives as [`VtEvent`]s on the sink
-/// given at creation. Mode 2027 (grapheme clusters) is on by default.
+/// [`Terminal::write`]; what the output asks of the host arrives as [`VtEvent`]s on the event
+/// sink, and the terminal's answers to the program go to the [`ReplySink`], both given at
+/// creation. Mode 2027 (grapheme clusters) is on by default.
 ///
 /// Share it between the I/O thread and the renderer as `Mutex<Terminal>`: it is `Send`, and
 /// [`crate::RenderView`] only needs the lock for `begin`.
@@ -34,7 +35,8 @@ pub struct Terminal {
 //   src/terminal, src/unicode or src/simd), and only requires that calls do not overlap, which
 //   `&`/`&mut` (and the caller's `Mutex`) guarantee since `Terminal` is not `Sync`;
 // - every callback runs on the thread that calls `write`, and only touches `Callbacks`, whose
-//   fields are `Send`: the sink is `Box<dyn EventSink>` with `EventSink: Send`, and the `Cell`s
+//   fields are `Send`: the sinks are `Box<dyn EventSink>`/`Box<dyn ReplySink>`, both traits
+//   requiring `Send`, and the `Cell`s
 //   hold `Copy` values. No callback can be registered except through this module, so no
 //   non-`Send` closure ever reaches libghostty;
 // - the PNG decoder hook is a stateless function.
@@ -49,8 +51,13 @@ impl std::fmt::Debug for Terminal {
 }
 
 impl Terminal {
-    /// A blank terminal of `config.size` sending its events to `sink`.
-    pub fn new(config: TerminalConfig, sink: Box<dyn EventSink>) -> Result<Self, VtError> {
+    /// A blank terminal of `config.size` sending its events to `sink` and its replies to
+    /// `replies`.
+    pub fn new(
+        config: TerminalConfig,
+        sink: Box<dyn EventSink>,
+        replies: Box<dyn ReplySink>,
+    ) -> Result<Self, VtError> {
         let mut raw = std::ptr::null_mut();
         let (cols, rows) = (config.size.cols.0, config.size.rows.0);
         // SAFETY: `raw` is a valid out-pointer; a null allocator selects the default one.
@@ -58,23 +65,25 @@ impl Terminal {
             unsafe { sys::ghostty_terminal_new(std::ptr::null(), &mut raw, cols, rows) },
             "size",
         )?;
-        let term = Self::adopt(raw, config, sink)?;
+        let term = Self::adopt(raw, config, sink, replies)?;
         term.set_mode_default(TerminalMode::GraphemeCluster, ModeState::Set)?;
         Ok(term)
     }
 
     /// A terminal restored from `snapshot`, with its screen, scrollback, modes, cursor and title,
-    /// sending its events to `sink`. `config.size` is ignored: the snapshot's size wins.
+    /// sending its events to `sink` and replies to `replies`. `config.size` is ignored: the
+    /// snapshot's size wins.
     pub fn restore(
         snapshot: &Snapshot,
         config: TerminalConfig,
         sink: Box<dyn EventSink>,
+        replies: Box<dyn ReplySink>,
     ) -> Result<Self, VtError> {
         let raw = snapshot.decode()?;
         let mut config = config;
         // SAFETY: `raw` is a live terminal the decoder just handed over.
         config.size = unsafe { raw_size(raw) };
-        let term = Self::adopt(raw, config, sink)?;
+        let term = Self::adopt(raw, config, sink, replies)?;
         // Keep grapheme clusters as the reset default without changing what the program chose.
         let current = term.mode(TerminalMode::GraphemeCluster)?;
         term.set_mode_default(TerminalMode::GraphemeCluster, ModeState::Set)?;
@@ -87,10 +96,13 @@ impl Terminal {
         raw: sys::Terminal,
         config: TerminalConfig,
         sink: Box<dyn EventSink>,
+        replies: Box<dyn ReplySink>,
     ) -> Result<Self, VtError> {
         let raw = NonNull::new(raw).ok_or(VtError::OutOfMemory)?;
         let callbacks = Box::new(Callbacks {
             sink,
+            replies,
+            dropped: Cell::new(0),
             color_scheme: Cell::new(config.color_scheme),
             size: Cell::new((config.size, config.cell_px)),
             title: Cell::new(TitleChange::Unchanged),
@@ -174,8 +186,11 @@ impl Terminal {
         }
     }
 
-    /// Changes the grid and cell size, reflowing soft-wrapped lines.
+    /// Changes the grid and cell size, reflowing soft-wrapped lines. Like `write`, it can send
+    /// events (a resize ends a render hold) and replies (in-band size reports, mode 2048).
     pub fn resize(&mut self, size: GridSize, cell: CellPx) -> Result<(), VtError> {
+        // Size reports sent from inside the resize must already see the new size.
+        let before = self.callbacks().size.replace((size, cell));
         // SAFETY: the terminal is live.
         check(
             unsafe {
@@ -188,9 +203,8 @@ impl Terminal {
                 )
             },
             "size",
-        )?;
-        self.callbacks().size.set((size, cell));
-        Ok(())
+        )
+        .inspect_err(|_| self.callbacks().size.set(before))
     }
 
     /// Moves the viewport over the scrollback.

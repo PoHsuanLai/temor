@@ -141,3 +141,14 @@ fn payload_over_the_limit_is_cut_and_marked() {
     );
     assert_eq!(got.passed, b"");
 }
+
+#[test]
+fn cancelling_drops_the_held_payload() {
+    for cancel in [&b"\x18"[..], b"\x1a", b"\x1bx"] {
+        let mut scanner = InlineFileScanner::new(ByteCount(1 << 20));
+        scanner.feed(b"\x1b]1337;File=:0123456789", |_| {});
+        assert!(scanner.held_payload() > 0);
+        scanner.feed(cancel, |_| {});
+        assert_eq!(scanner.held_payload(), 0, "cancel {cancel:?}");
+    }
+}

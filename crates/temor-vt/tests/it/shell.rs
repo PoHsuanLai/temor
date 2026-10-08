@@ -1,9 +1,9 @@
 //! `shell.bin`: OSC 7, 133 A/B/C/D with an exit code, 0, 7501, 9, 777, 9;4, 52 and 8, then BEL.
 
 use temor_vt::{
-    ClipboardGrant, ClipboardLocation, ExitStatus, GridPoint, Hyperlink, Notification, Percent,
-    PointSpace, ProgramState, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind,
-    SemanticMark, VtEvent,
+    ClipboardGrant, ClipboardLocation, ExitCode, ExitStatus, GridPoint, Hyperlink, Notification,
+    Percent, PointSpace, ProgramState, ProgramWait, Progress, ProgressState, PromptEvent,
+    PromptKind, SemanticMark, VtEvent,
 };
 
 use crate::support::{drain, fixture, row_cells, term};
@@ -30,7 +30,7 @@ fn shell_integration_and_reports_arrive_as_typed_events_in_order() {
     assert_eq!(
         next(),
         VtEvent::Prompt(PromptEvent::CommandEnd {
-            exit: ExitStatus::Code(1),
+            exit: ExitStatus::Code(ExitCode(1)),
             error: String::new()
         })
     );

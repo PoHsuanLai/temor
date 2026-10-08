@@ -11,9 +11,10 @@ const FRAMES: usize = 300;
 
 #[test]
 fn concurrent_writes_and_renders_lose_nothing() {
-    let (tx, rx) = mpsc::channel::<VtEvent>();
-    let term =
-        Terminal::new(TerminalConfig::new(GridSize::new(80, 24)), Box::new(tx)).expect("terminal");
+    let (tx, _events) = mpsc::channel::<VtEvent>();
+    let (reply_tx, rx) = mpsc::channel::<Vec<u8>>();
+    let config = TerminalConfig::new(GridSize::new(80, 24));
+    let term = Terminal::new(config, Box::new(tx), Box::new(reply_tx)).expect("terminal");
     let term = Arc::new(Mutex::new(term));
 
     let writer = {
@@ -49,10 +50,7 @@ fn concurrent_writes_and_renders_lose_nothing() {
     writer.join().expect("writer");
     assert_eq!(renderer.join().expect("renderer"), FRAMES);
 
-    let replies = rx
-        .try_iter()
-        .filter(|e| *e == VtEvent::Reply(b"\x1b[0n".to_vec()))
-        .count();
+    let replies = rx.try_iter().filter(|r| r.as_slice() == b"\x1b[0n").count();
     assert_eq!(replies, WRITES);
     let mut t = term.lock().expect("lock");
     assert_eq!(

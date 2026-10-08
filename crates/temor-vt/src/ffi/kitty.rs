@@ -6,7 +6,7 @@ use super::convert::check;
 use super::terminal::Terminal;
 use crate::{
     Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementKind, PlacementRender,
-    Visibility, VtError,
+    Px, Visibility, VtError, ZIndex,
 };
 
 /// The kitty image storage of a terminal's active screen, borrowed until the terminal is next
@@ -21,8 +21,8 @@ pub struct KittyImages<'t> {
 #[derive(Debug, Clone, Copy)]
 pub struct KittyImage<'t> {
     pub id: ImageId,
-    pub width: u32,
-    pub height: u32,
+    pub width: Px,
+    pub height: Px,
     pub format: KittyPixelFormat,
     /// Changes whenever the pixels may have changed; key texture caches on it.
     pub generation: Generation,
@@ -42,7 +42,7 @@ pub enum KittyPixels<'t> {
 pub struct KittyPlacement<'t> {
     pub placement: PlacementId,
     pub kind: PlacementKind,
-    pub z: i32,
+    pub z: ZIndex,
     pub render: PlacementRender,
     pub image: KittyImage<'t>,
 }
@@ -173,7 +173,7 @@ impl<'t> KittyImages<'t> {
             } else {
                 PlacementKind::Direct
             },
-            z,
+            z: ZIndex(z),
             render: PlacementRender {
                 pixel_width: info.pixel_width,
                 pixel_height: info.pixel_height,
@@ -230,8 +230,8 @@ unsafe fn read_image<'t>(image: sys::KittyGraphicsImage) -> KittyImage<'t> {
     };
     KittyImage {
         id: ImageId(id),
-        width,
-        height,
+        width: Px(width),
+        height: Px(height),
         format,
         generation: Generation(generation),
         pixels,

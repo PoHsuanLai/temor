@@ -74,6 +74,11 @@ impl Terminal {
         KittyKeyFlags::from_bits(flags)
     }
 
+    /// How many events were dropped because a callback (usually a sink) panicked.
+    pub fn dropped_events(&self) -> u64 {
+        self.callbacks().dropped.get()
+    }
+
     /// The scheme reported to programs that ask (CSI ? 996 n).
     pub fn set_color_scheme(&mut self, scheme: ColorScheme) {
         self.callbacks().color_scheme.set(scheme);
@@ -87,8 +92,13 @@ impl Terminal {
         let code = unsafe {
             sys::ghostty_grid_ref_hyperlink_uri(&gref, std::ptr::null_mut(), 0, &mut len)
         };
-        if code == sys::Result::SUCCESS || len == 0 {
-            return Ok(None);
+        // SUCCESS with a null buffer means there is no link; OUT_OF_SPACE gives the length; any
+        // other code is a real failure.
+        match code {
+            sys::Result::SUCCESS => return Ok(None),
+            sys::Result::OUT_OF_SPACE if len > 0 => {}
+            sys::Result::OUT_OF_SPACE => return Ok(None),
+            other => check(other, "hyperlink")?,
         }
         let mut buf = vec![0u8; len];
         // SAFETY: `buf` holds `len` writable bytes.

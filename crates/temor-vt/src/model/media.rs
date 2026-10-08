@@ -33,6 +33,11 @@ pub struct ImageId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PlacementId(pub u32);
 
+/// A placement's stacking order (`z=`): negative draws under text, below -1,073,741,824 under
+/// cell backgrounds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ZIndex(pub i32);
+
 /// A change stamp. Stamps grow monotonically across the process: an unchanged stamp means
 /// unchanged content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
