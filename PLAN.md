@@ -195,25 +195,46 @@ shell would get.
 
 ## 5. Rendering (temor-render)
 
-- **Pipeline:**
-  - fontique finds the fonts; the default is quire's code face, and the font can be set
-  - swash shapes and rasterises
-  - glyphs are kept in an atlas texture (an alpha mask plus colour emoji)
-  - an instanced cell pass draws the background and glyphs
-  - underline, strike and cursor are drawn
-  - kitty images are drawn in three passes by z-layer (`BELOW_BG`, `BELOW_TEXT`, `ABOVE_TEXT`), from
-    `ghostty_kitty_graphics_placement_render_info`, with textures cached per image `generation`
-- **Output:** each terminal pane paints into its own quire `TextureLayer` (`Rgba8Unorm`, premultiplied)
-  on the window's device from `use_gpu()`.
-  Grid colours come from quire tokens, through a terminal palette token set we request from quire, so
-  light/dark and the Space's theme apply.
-- **Sizing:** panes snap to whole cells, and the leftover pixels are padding. Fractional scale comes
-  from winit.
+Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each in its own
+`TextureLayer`, run in one real window with no conflicts. Both strategies below were measured.
+
+- **Two renderers behind one `Renderer` trait:**
+  - **CPU (the default until quire's render hook lands):**
+    - swash glyphs go into an in-memory atlas
+    - only dirty rows are composed into a premultiplied RGBA buffer, then `TextureLayer` uploads it
+    - measured p50 2–3 ms per pane per frame and about 0.1 ms from a key to a ready texture
+    - costs 35–49% of one core while both panes scroll at 60 Hz
+  - **GPU (the target):**
+    - one instanced WGSL pass over glyph atlases, with images by z-layer, into a texture registered
+      on the window's device (`use_gpu`, `handle.replace`/`register`, `redraw`)
+    - 13–22% CPU, and 82–408 KB uploaded per frame instead of about 5 MB
+    - **Never `queue.submit` from a pane thread:** it stalls up to one refresh against the window's
+      present. It turns on when quire ships a render hook that encodes into the layer's texture on the
+      window's render thread before its submit.
+- **Fonts:**
+  - fontique finds the fonts; the default is the system `monospace` until quire adds a terminal
+    code-face token (Space Mono has no box drawing, CJK or emoji, and a line height of about 1.5).
+  - Box drawing and block elements are drawn procedurally.
+  - **Colour emoji:** Fedora's Noto Color Emoji is COLRv1 only, which swash can't draw. Rasterise
+    COLRv1 through skrifa's colour paint with vello_cpu (already in quire's tree) into the colour atlas.
+    Fall back to monochrome.
+- **Kitty images:**
+  - read `placement_render_info` in the locked begin phase, since it needs `&Terminal`
+  - textures cached per image `generation`, drawn by z-layer (`BELOW_BG`, `BELOW_TEXT`, `ABOVE_TEXT`)
+  - an image's anchor after reflow follows libghostty
+- **Grid colours** come from quire's terminal palette tokens (v0.2.31), so light/dark and the Space
+  theme apply.
+- **Sizing:**
+  - panes snap to whole cells, and the leftover pixels are padding
+  - fractional scale comes from winit (checked crisp at 1.5x and 2x)
+  - the app's container sets full height itself until quire's root fills the window
+- **Build:** temor-vt-sys chooses Zig's optimize mode from `OPT_LEVEL`, never from `DEBUG`. A Debug
+  libghostty makes `vt_write` about 8000x slower.
 - **Known limits:**
-  - `AppConfig` cannot request wgpu features.
-  - `TextureLayer` was never verified painting a real window, let alone several of them.
-  - Clicks on custom widgets are lost until quire v0.2.31, so each pane's input is caught on the
-    element that contains it, and the drawn grid gets `pointer-events: none`.
+  - `AppConfig` cannot request wgpu features (no timestamp queries), and there is no presented-frame
+    signal; both are asked of quire.
+  - Clicks on custom widgets are lost until v0.2.31, so each pane's input is caught on the containing
+    element, and the drawn grid gets `pointer-events: none` (verified in the harness).
 
 ## 6. Input
 
@@ -610,7 +631,7 @@ P3 to P5 can run alongside P6 and P9 once P2 lands.
 |---|---|
 | Shells with integration | bash, zsh and fish in P2; nushell later |
 | Font | quire's code face; any installed monospace font can be chosen |
-| Zig in packaging | Zig 0.16 pinned together with Ghostty; offline builds need the full Zig package store (Ghostty's `fetch-zig-cache.sh`, about 25 packages / 339 MB) through `GHOSTTY_ZIG_SYSTEM_DIR` |
+| Zig in packaging | Zig 0.16 pinned together with Ghostty; offline builds need the full Zig package store (Ghostty's `fetch-zig-cache.sh`, 39 packages / about 540 MB with Zig 0.16, which extracts into `zig-pkg/`; temor-vt-sys's `scripts/fetch-ghostty.sh` builds the store) through `GHOSTTY_ZIG_SYSTEM_DIR` |
 | cargo-deny allow list | quire's list plus `bzip2-1.0.6` (copied from anyview's deny.toml) |
 | Trial limits | 2 s, 256 processes, 1 GiB file size; settings under R13 "at your own risk" |
 | Remote transfer consent | ask once per host, remembered per Space |
