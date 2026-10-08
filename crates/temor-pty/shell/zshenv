@@ -1,0 +1,18 @@
+# temor's zsh startup shim, found through ZDOTDIR. It puts your ZDOTDIR back, runs your own
+# .zshenv, then loads temor's shell integration; zsh then reads the rest of your startup files
+# from your own ZDOTDIR as usual. Nothing here writes to your home directory.
+
+typeset -g _temor_zsh_dir=${${(%):-%x}:A:h}
+if (( ${+TEMOR_ZSH_ZDOTDIR} )); then
+    export ZDOTDIR=$TEMOR_ZSH_ZDOTDIR
+    unset TEMOR_ZSH_ZDOTDIR
+else
+    unset ZDOTDIR
+fi
+
+[[ -r ${ZDOTDIR:-$HOME}/.zshenv ]] && source "${ZDOTDIR:-$HOME}/.zshenv"
+
+if [[ -o interactive && ${TEMOR_SHELL_INTEGRATION-} != 0 ]]; then
+    source "$_temor_zsh_dir/temor.zsh"
+fi
+unset _temor_zsh_dir

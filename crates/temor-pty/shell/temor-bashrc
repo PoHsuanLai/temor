@@ -1,0 +1,18 @@
+# temor's bash startup wrapper, passed with --rcfile. It runs your own startup files exactly as
+# bash would, then temor's shell integration. Nothing here writes to your home directory.
+
+if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
+    unset TEMOR_BASH_LOGIN
+    [[ -r /etc/profile ]] && . /etc/profile
+    for _temor_file in ~/.bash_profile ~/.bash_login ~/.profile; do
+        if [[ -r $_temor_file ]]; then
+            . "$_temor_file"
+            break
+        fi
+    done
+    unset _temor_file
+else
+    [[ -r ~/.bashrc ]] && . ~/.bashrc
+fi
+
+. "${BASH_SOURCE[0]%/*}/temor.bash"
