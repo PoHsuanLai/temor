@@ -645,6 +645,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-pty"
+version = "0.1.0"
+dependencies = [
+ "ds-core",
+ "rustix",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "temor-vt"
 version = "0.1.0"
 dependencies = [

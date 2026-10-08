@@ -1,0 +1,30 @@
+[package]
+name = "temor-pty"
+description = "temor's pseudo-terminals: spawn, resize, process groups, the child environment and shell integration."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+ds-core = { workspace = true }
+thiserror = { workspace = true }
+tempfile = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true }
+
+[[bin]]
+# The portable session-leader trampoline (setsid, TIOCSCTTY, exec) for systems without
+# util-linux `setsid`; temor's own binary can call `run_session_leader` instead.
+name = "temor-pty-exec"
+path = "src/bin/temor-pty-exec.rs"
+test = false
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true
