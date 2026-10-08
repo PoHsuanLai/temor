@@ -35,6 +35,16 @@ png = "0.18"
 # temor-vt (lane vt).
 temor-vt-sys = { path = "crates/temor-vt-sys", default-features = false }
 temor-vt = { path = "crates/temor-vt", default-features = false }
+# temor-render (lane render). Versions are the ones quire's tree resolves at the pin above:
+# fontique as parley 0.11 uses it, swash on the same skrifa (0.44) as vello's glifo, vello_cpu 0.1
+# (the patched fork below; no second vello), wgpu 29 as quire's render stack.
+fontique = "0.11"
+swash = "0.2"
+vello_cpu = { version = "0.1", default-features = false, features = ["std", "text", "u8_pipeline"] }
+wgpu = "29"
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+temor-render = { path = "crates/temor-render", default-features = false }
 
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }

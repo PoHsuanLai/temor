@@ -1,0 +1,34 @@
+[package]
+name = "temor-render"
+description = "temor's terminal renderer: fonts, glyph atlases and a CPU (default) or GPU pass that turns a libghostty frame into pane pixels."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = ["ghostty"]
+# `FrameCapture`: reading frames out of a real `temor_vt::Terminal` (needs Zig; see temor-vt-sys).
+ghostty = ["temor-vt/ghostty"]
+# The instanced wgpu renderer. Off by default: its frames must be submitted on the window's
+# render thread, which waits for quire's render hook (v0.2.32).
+gpu = ["dep:wgpu", "dep:bytemuck"]
+
+[dependencies]
+ds-core = { workspace = true }
+thiserror = { workspace = true }
+temor-vt = { workspace = true }
+fontique = { workspace = true }
+swash = { workspace = true }
+vello_cpu = { workspace = true }
+icu_properties = { workspace = true }
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+
+[dev-dependencies]
+png = { workspace = true }
+pollster = { workspace = true }
+
+[lints]
+workspace = true
