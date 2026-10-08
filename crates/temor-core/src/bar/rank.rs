@@ -47,7 +47,7 @@ fn run_row(query: &str, resolver: &dyn PathResolver) -> Option<BarRow> {
     resolver.resolves(program).then(|| BarRow {
         key: RowKey("run".to_string()),
         group: RowGroup::Run,
-        title: format!("Run {query} in a new tab"),
+        title: format!("Run `{query}` in a new tab"),
         action: BarAction::Run(CommandText(query.to_string())),
     })
 }

@@ -7,6 +7,7 @@
 use super::model::{BarRow, Candidate, PathResolver, PluginRow, RowKey};
 use super::rank::rank;
 use crate::vocab::ai::AiSwitch;
+use ds_core::word::Word;
 
 /// The bar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,7 +34,7 @@ pub struct OpenBar {
 }
 
 /// A key in the bar's field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
 pub enum BarKey {
     /// Up arrow.
     Up,
@@ -112,13 +113,16 @@ pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState,
             let bar = reranked(OpenBar::default(), cx);
             (BarState::Open(bar), vec![BarOut::Refreshed])
         }
-        (BarState::Open(bar), BarIn::Typed(query)) => {
+        (BarState::Open(_), BarIn::Typed(query)) => {
+            // A new query is a new list: the highlight goes to its top row, so Enter never
+            // picks a row the person had moved to under an older query.
             let ask = BarOut::AskProviders(query.clone());
             let bar = reranked(
                 OpenBar {
                     query,
                     plugins: Vec::new(),
-                    ..bar
+                    rows: Vec::new(),
+                    highlighted: None,
                 },
                 cx,
             );
@@ -145,7 +149,8 @@ pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState,
     }
 }
 
-/// `bar` with its rows ranked afresh, keeping the highlight if that row is still there.
+/// `bar` with its rows ranked afresh, keeping the highlight if that row is still there (a plugin
+/// refresh under the same query), else on the top row.
 fn reranked(bar: OpenBar, cx: BarContext<'_>) -> OpenBar {
     let rows = rank(&bar.query, cx.candidates, &bar.plugins, cx.resolver, cx.ai);
     let highlighted = bar

@@ -102,7 +102,7 @@ fn a_run_row_tops_the_list_only_when_the_first_word_is_on_path() {
         &OnPath(&["top"]),
         AiSwitch::Off,
     );
-    assert_eq!(on[0].title, "Run top -d 2 in a new tab");
+    assert_eq!(on[0].title, "Run `top -d 2` in a new tab");
     assert_eq!(on[0].action, BarAction::Run(CommandText("top -d 2".into())));
     assert_eq!(
         groups(&on).iter().filter(|g| **g == RowGroup::Run).count(),

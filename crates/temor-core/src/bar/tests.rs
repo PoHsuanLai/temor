@@ -138,3 +138,32 @@ fn provider_rows_for_an_old_query_are_dropped_and_the_highlight_survives() {
         Some("logs branch")
     );
 }
+
+struct Xclip;
+impl PathResolver for Xclip {
+    fn resolves(&self, program: &str) -> bool {
+        program == "xclip"
+    }
+}
+
+#[test]
+fn typing_resets_the_highlight_to_the_new_top_row() {
+    let cx = BarContext {
+        candidates: &[],
+        resolver: &Xclip,
+        ai: AiSwitch::On,
+    };
+    let (state, _) = bar_step(BarState::Closed, BarIn::Toggle, cx);
+    let (state, _) = bar_step(state, BarIn::Typed("x".into()), cx);
+    assert_eq!(highlighted(&state), Some("ai:suggest"));
+    let (state, _) = bar_step(state, BarIn::Typed("xclip -o".into()), cx);
+    assert_eq!(
+        highlighted(&state),
+        Some("run"),
+        "the Run row on top takes the highlight"
+    );
+    let (_, out) = bar_step(state, BarIn::Key(BarKey::Enter), cx);
+    assert!(
+        matches!(out.as_slice(), [BarOut::Run(row)] if matches!(row.action, BarAction::Run(_)))
+    );
+}
