@@ -1,7 +1,54 @@
-[package]
-name = "temor"
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
+rust-version = "1.92"
 
-[dependencies]
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.dependencies]
+# quire, pinned the desktop-wide way (.git + full rev; the tag is a comment). Batch 7: v0.2.30.
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653", features = ["dioxus"] }  # v0.2.30
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "366dcd97ebc26003f466d20fa12123f783180653" }  # v0.2.30
+# Copied from quire/docs/workspace-deps.toml at the rev above.
+dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
+
+# Patches apply only at a workspace root, so this root repeats quire's block verbatim.
+# vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
+# quire-filters): the colour matrix filter, multi-threaded filter layers and CSS filter lists, so
+# every CSS `filter` function paints on both backends. Move back to crates.io once upstream has
+# them (blitz-kit docs/blitz-gaps.md tracks the PRs).
+[patch.crates-io]
+vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "1722f6234e10b95d574d2252698a6cc7cdcadb82" }
+vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "1722f6234e10b95d574d2252698a6cc7cdcadb82" }
+vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "1722f6234e10b95d574d2252698a6cc7cdcadb82" }
+vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "1722f6234e10b95d574d2252698a6cc7cdcadb82" }
+glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "1722f6234e10b95d574d2252698a6cc7cdcadb82" }
+anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a0825ebfc0443f3ef0830c0e09f2d85df3da632b" }
+anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a0825ebfc0443f3ef0830c0e09f2d85df3da632b" }
+anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a0825ebfc0443f3ef0830c0e09f2d85df3da632b" }
+wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a0825ebfc0443f3ef0830c0e09f2d85df3da632b" }
+pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a0825ebfc0443f3ef0830c0e09f2d85df3da632b" }
+# dioxus-core 0.7.10 can spin forever in VirtualDom::wait_for_work: a task woken and then cancelled
+# before it is polled (a use_resource restart) leaves an empty entry in the dirty-task queue that
+# pop_task never removes. Fixed upstream in DioxusLabs/dioxus#5554 (0.8-alpha only); this fork
+# (github.com/PoHsuanLai/dioxus, branch quire-0.7) backports it onto 0.7.10. Remove when quire
+# moves to dioxus 0.8.
+dioxus-core = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
+dioxus-core-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
+generational-box = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
+subsecond = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
+subsecond-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
