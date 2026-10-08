@@ -28,7 +28,7 @@ ordered by dependency (§11), not split into versions.
 ### Decisions
 | # | Decision |
 |---|---|
-| D1 | Terminal core: **libghostty-vt** through the `libghostty-vt` crate (Uzaaft/libghostty-rs, MIT). It is pinned to one Ghostty commit and wrapped behind our own `temor-vt` boundary. Ghostty's full embedded API is macOS/iOS only, so we render ourselves. |
+| D1 | Terminal core: **libghostty-vt**, at **Ghostty main pinned by commit** (spike P0(a): `7ec9e26`, with Zig 0.16). The crates.io `libghostty-vt` 0.2.2 pins a July commit that lacks the notification, progress, 7501, unknown-sequence, OSC 133-with-exit-code and render-hold callbacks and the snapshot API. temor owns its FFI: a `temor-vt-sys` crate (bindgen output generated from the pinned headers and checked in; build.rs adapted from libghostty-rs's `-sys`, MIT, with attribution; offline through `GHOSTTY_SOURCE_DIR`, `GHOSTTY_ZIG_SYSTEM_DIR` and `ZIG_GLOBAL_CACHE_DIR`). The safe API is our own `temor-vt`, whose single `ffi` module is the only `unsafe` and includes the `Send` wrapper. Ghostty's full embedded API is macOS/iOS only, so we render ourselves. Fixes go upstream (libghostty-rs, Ghostty) only with the owner's OK. |
 | D2 | **Spaces** use quire's kit (`ds_style::space::list::Spaces<P,R>`, `SpacesSource::Local`). A Space is a project and a mode switch: the sidebar shows only its tabs, and ⌃1–9 switches between Spaces. |
 | D3 | **Tabs persist** until closed. They can be pinned or grouped in folders. "Recently closed" keeps their scrollback. |
 | D4 | **Nested splits.** The tree is ported from Ghostty's `split_tree.zig` (MIT) and owned by temor. Dividers come from quire `SplitView`, extended with an axis, share-based sizes, nesting and an unfocused-dim token (whopper has queued this). |
@@ -79,6 +79,7 @@ temor/
   crates/
     temor-core/       pure: vocabulary, split tree, tabs, space payload, blocks, presence,
                       command-bar ranking, proposal sanitising, every step machine
+    temor-vt-sys/     bindgen output (checked in) plus a build.rs that builds the pinned Ghostty with Zig
     temor-vt/         the only libghostty-vt user: Terminal, RenderState, encoders, callbacks
                       → typed events. Trait `Vt` so tests run on a fake.
     temor-pty/        openpty and spawn, shell integration scripts (bash, zsh, fish), profile env
@@ -100,8 +101,8 @@ temor/
 
 **Boundary rules** (checked by `check-boundary.sh` and quire's `check-portable.sh`):
 - `temor-core` has no I/O, no Dioxus, and no FFI.
-- Only `temor-vt` names libghostty. The FFI's `unsafe` lives in the `-sys` crate; temor's own
-  workspace keeps `unsafe_code = "deny"`.
+- Only `temor-vt` names libghostty (through `temor-vt-sys`). `unsafe` is allowed only in `temor-vt-sys`
+  and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.
 - Only `temor-desktop` names zbus or docket. Nothing in the core reaches `desktop/`.
 
 ## 3. Core types (temor-core, pure)
@@ -379,6 +380,8 @@ The ranking rules:
 
 ## 9. Transfers and the downloads shelf
 - **Receive:**
+  - OSC 1337 `File=` is swallowed by Ghostty's parser, so `temor-vt` pre-scans PTY bytes for it before
+    `vt_write`
   - kitty file transfer (OSC 5113, including directories), iTerm2 `File=` (OSC 1337), and a tiny
     `temor get <file>` shipped for hosts with neither
   - libghostty passes these sequences through `UNKNOWN_SEQUENCE`
@@ -584,7 +587,7 @@ P3 to P5 can run alongside P6 and P9 once P2 lands.
 |---|---|
 | Shells with integration | bash, zsh and fish in P2; nushell later |
 | Font | quire's code face; any installed monospace font can be chosen |
-| Zig in packaging | build from a pinned Ghostty source tree; distro packages use `GHOSTTY_ZIG_SYSTEM_DIR` |
+| Zig in packaging | Zig 0.16 pinned together with Ghostty; offline builds need the full Zig package store (Ghostty's `fetch-zig-cache.sh`, about 25 packages / 339 MB) through `GHOSTTY_ZIG_SYSTEM_DIR` |
 | cargo-deny allow list | quire's list plus `bzip2-1.0.6` (copied from anyview's deny.toml) |
 | Trial limits | 2 s, 256 processes, 1 GiB file size; settings under R13 "at your own risk" |
 | Remote transfer consent | ask once per host, remembered per Space |
