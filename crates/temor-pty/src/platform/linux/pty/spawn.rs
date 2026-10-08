@@ -5,7 +5,7 @@ use std::process::{Child, Command, Stdio};
 
 use rustix::fs::{Mode, OFlags};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
-use rustix::termios::{Winsize, tcsetwinsize};
+use rustix::termios::{InputModes, OptionalActions, Winsize, tcgetattr, tcsetattr, tcsetwinsize};
 
 use super::io::PtyIo;
 use crate::error::PtyError;
@@ -22,7 +22,7 @@ pub(super) enum ChildState {
 }
 
 /// A pseudo-terminal with a program running on it as a session leader. Dropping it hangs up
-/// and kills the program's process group, then reaps the program.
+/// the program's process group and closes the terminal, without waiting (see `Drop`).
 #[derive(Debug)]
 pub struct Pty {
     pub(super) master: OwnedFd,
@@ -36,6 +36,7 @@ impl Pty {
     pub fn spawn(spec: &SpawnSpec, launcher: &SessionLauncher) -> Result<Self, PtyError> {
         let (master, slave) = open_pair().map_err(PtyError::Open)?;
         set_size(&master, spec.size).map_err(PtyError::Open)?;
+        set_utf8(&master).map_err(PtyError::Open)?;
         let mut command = launch_command(spec, launcher);
         command
             .env_clear()
@@ -92,6 +93,15 @@ fn open_master() -> std::io::Result<OwnedFd> {
     Ok(openpt(
         OpenptFlags::RDWR | OpenptFlags::NOCTTY | OpenptFlags::CLOEXEC,
     )?)
+}
+
+/// Tells the line discipline input is UTF-8 (`IUTF8`), so backspace in canonical mode erases a
+/// whole character rather than one byte of it.
+fn set_utf8(master: &OwnedFd) -> std::io::Result<()> {
+    let mut termios = tcgetattr(master)?;
+    termios.input_modes.insert(InputModes::IUTF8);
+    tcsetattr(master, OptionalActions::Now, &termios)?;
+    Ok(())
 }
 
 fn launch_command(spec: &SpawnSpec, launcher: &SessionLauncher) -> Command {

@@ -10,12 +10,10 @@ publish = false
 [dependencies]
 ds-core = { workspace = true }
 thiserror = { workspace = true }
+tempfile = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { workspace = true }
-
-[dev-dependencies]
-tempfile = { workspace = true }
 
 [[bin]]
 # The portable session-leader trampoline (setsid, TIOCSCTTY, exec) for systems without

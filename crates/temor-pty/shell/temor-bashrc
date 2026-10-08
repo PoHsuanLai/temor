@@ -1,8 +1,17 @@
-# temor's bash startup wrapper, passed with --rcfile. It runs your own startup files exactly as
-# bash would, then temor's shell integration. Nothing here writes to your home directory.
+# temor's bash startup wrapper, passed with --rcfile. It runs your own startup files as bash
+# would, then temor's shell integration. Nothing here writes to your home directory.
+#
+# bash ignores --rcfile in a login shell, so temor starts bash as a plain interactive shell and
+# sets TEMOR_BASH_LOGIN when it wants a login start; this wrapper then reads the login files
+# itself and runs ~/.bash_logout on exit, as a login shell would.
+#
+# Debian and Ubuntu build bash to read /etc/bash.bashrc before any rc file, --rcfile included,
+# so it is not sourced here. In the login case their /etc/profile sources it as well, so it runs
+# twice there (a real login bash would run it once); it is written to be harmless twice.
 
 if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
     unset TEMOR_BASH_LOGIN
+    trap '[[ -r ~/.bash_logout ]] && . ~/.bash_logout' EXIT
     [[ -r /etc/profile ]] && . /etc/profile
     for _temor_file in ~/.bash_profile ~/.bash_login ~/.profile; do
         if [[ -r $_temor_file ]]; then

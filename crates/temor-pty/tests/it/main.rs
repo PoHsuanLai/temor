@@ -1,15 +1,14 @@
 //! temor-pty's integration tests: real terminals, real shells, scratch HOME and runtime
-//! directories (never the real ones).
-
-// Only Linux has a real terminal yet; elsewhere `Pty::spawn` is `Unsupported` (see the
-// crate's `platform` module), so there is nothing here to run.
-#![cfg(target_os = "linux")]
+//! directories (never the real ones). Where the platform has no terminal yet, each test
+//! prints a skip note and passes.
 
 mod dotfiles;
 mod env_contract;
+mod fish_env;
 mod foreground;
 mod integration;
 mod kill;
+mod line_discipline;
 mod opt_out;
 mod resize;
 mod support;

@@ -6,6 +6,9 @@ use crate::support::{Scratch, Term, program, setsid, size};
 
 #[test]
 fn opt_out_injects_nothing() {
+    if crate::support::pty_unsupported("opt_out_injects_nothing") {
+        return;
+    }
     let scratch = Scratch::new();
     std::fs::write(scratch.home.join(".bashrc"), "PS1='$ '\n").expect(".bashrc");
     let profile: ChildEnv = [("TEMOR_SHELL_INTEGRATION", "0")].into_iter().collect();

@@ -69,10 +69,16 @@ fn run(start: ShellStart, check: &str) {
 
 #[test]
 fn bash_shim_sources_bashrc_first() {
+    if crate::support::pty_unsupported("bash_shim_sources_bashrc_first") {
+        return;
+    }
     run(ShellStart::Interactive, "rc-value");
 }
 
 #[test]
 fn bash_login_shim_sources_bash_profile_first() {
+    if crate::support::pty_unsupported("bash_login_shim_sources_bash_profile_first") {
+        return;
+    }
     run(ShellStart::Login, "profile-value");
 }

@@ -3,6 +3,8 @@
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
+use crate::platform::{Current, Os};
+
 /// The exec step that runs `setsid` and `TIOCSCTTY` in the child before the program starts
 /// (the workspace denies `unsafe`, so there is no `pre_exec` hook).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,11 +20,10 @@ pub enum SessionLauncher {
     },
 }
 
-/// The first file named `name` in the colon-separated `path` (a `PATH` value).
+/// The first executable file named `name` in the `PATH`-style list `path`.
 pub fn find_program(name: &str, path: &OsStr) -> Option<PathBuf> {
-    path.to_string_lossy()
-        .split(':')
-        .filter(|dir| !dir.is_empty())
-        .map(|dir| PathBuf::from(dir).join(name))
-        .find(|candidate| candidate.is_file())
+    std::env::split_paths(path)
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .map(|dir| dir.join(name))
+        .find(|candidate| <Current as Os>::is_executable(candidate))
 }

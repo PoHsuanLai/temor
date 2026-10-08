@@ -11,6 +11,9 @@ use crate::support::{Scratch, Term, program, size, trampoline};
 
 #[test]
 fn env_holds_the_contract_and_nothing_inherited() {
+    if crate::support::pty_unsupported("env_holds_the_contract_and_nothing_inherited") {
+        return;
+    }
     let scratch = Scratch::new();
     let terminfo = scratch.home.join("terminfo");
     std::fs::create_dir_all(terminfo.join("x")).expect("terminfo dir");

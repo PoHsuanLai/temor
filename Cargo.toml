@@ -38,7 +38,6 @@ temor-vt = { path = "crates/temor-vt", default-features = false }
 
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
-thiserror = "2"
 tempfile = "3"
 
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.

@@ -1,7 +1,7 @@
 //! Writing the shims, and the one-call path from a shell to a [`SpawnSpec`].
 
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use super::plan::{ShellStart, ShimFile, plan_integration};
@@ -33,10 +33,10 @@ fn write_one(file: &ShimFile) -> io::Result<()> {
     }
     let dir = file.path.parent().unwrap_or(Path::new("."));
     fs::create_dir_all(dir)?;
-    let name = file.path.file_name().unwrap_or_default().to_string_lossy();
-    let temp = dir.join(format!(".{name}.{}.tmp", std::process::id()));
-    fs::write(&temp, file.contents)?;
-    fs::rename(&temp, &file.path)
+    let mut temp = tempfile::NamedTempFile::new_in(dir)?;
+    temp.write_all(file.contents.as_bytes())?;
+    temp.persist(&file.path).map_err(|error| error.error)?;
+    Ok(())
 }
 
 /// Plans the integration for `shell`, writes its shims under `runtime_dir`, and returns what

@@ -6,6 +6,9 @@ use crate::support::{Scratch, Term, bash_interactive, setsid};
 
 #[test]
 fn stty_sees_the_new_size() {
+    if crate::support::pty_unsupported("stty_sees_the_new_size") {
+        return;
+    }
     let scratch = Scratch::new();
     let mut term = Term::spawn(&bash_interactive(&scratch), &setsid());
     assert!(term.read_until_has(0, "$ "), "no prompt: {:?}", term.text());

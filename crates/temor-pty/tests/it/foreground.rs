@@ -19,6 +19,9 @@ fn wait_for(term: &Term, proc: &ProcRoot, want: impl Fn(&Foreground) -> bool) ->
 
 #[test]
 fn foreground_follows_sleep() {
+    if crate::support::pty_unsupported("foreground_follows_sleep") {
+        return;
+    }
     let scratch = Scratch::new();
     let proc = ProcRoot("/proc".into());
     let mut term = Term::spawn(&bash_interactive(&scratch), &setsid());

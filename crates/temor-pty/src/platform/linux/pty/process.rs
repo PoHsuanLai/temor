@@ -45,7 +45,15 @@ impl Pty {
         }
     }
 
-    /// Kills the program's process group and reaps the program.
+    /// Sends `SIGHUP` to the program's process group, as closing the terminal would; a shell
+    /// passes it on to its jobs. Poll [`Pty::try_exit`] afterwards, and [`Pty::kill`] after a
+    /// grace period if the program is still running.
+    pub fn hang_up(&self) -> Result<(), PtyError> {
+        self.signal_group(SignalKind::Hangup)
+    }
+
+    /// Kills the program's process group and reaps the program (blocking briefly, since the
+    /// kill cannot be ignored).
     pub fn kill(&mut self) -> Result<ChildExit, PtyError> {
         match self.signal_group(SignalKind::Kill) {
             Ok(()) | Err(PtyError::Reaped) => self.wait_exit(),
@@ -73,12 +81,13 @@ fn rustix_signal(signal: SignalKind) -> Signal {
     }
 }
 
+/// Dropping hangs up (as closing a terminal window does) and closes the master; it never
+/// kills or blocks. To leave no zombie, the app hangs up with [`Pty::hang_up`], reaps with
+/// [`Pty::try_exit`], and after a grace period escalates with [`Pty::kill`], before dropping.
 impl Drop for Pty {
     fn drop(&mut self) {
         if let ChildState::Running = self.state {
-            // Best effort: a shell passes the hangup on to its jobs; then make sure.
-            let _ = self.signal_group(SignalKind::Hangup);
-            let _ = self.kill();
+            let _ = self.hang_up();
         }
     }
 }

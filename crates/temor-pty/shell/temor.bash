@@ -44,13 +44,16 @@ _temor_prompt() {
     printf '\e]133;A\e\\'
     # Startup files and prompt frameworks may rewrite PS1 and PS0 at any time, so the marks
     # are put back before every prompt.
-    [[ $PS1 == *'\e]133;B'* ]] || PS1+='\[\e]133;B\e\\\]'
-    [[ $PS0 == *'_temor_executing=1'* ]] || PS0+='${_temor_mark[_temor_executing=1]}\e]133;C\e\\'
+    # Every expansion has a default, so this stays quiet under `set -u`.
+    [[ ${PS1-} == *'\e]133;B'* ]] || PS1="${PS1-}"'\[\e]133;B\e\\\]'
+    [[ ${PS0-} == *'_temor_executing=1'* ]] ||
+        PS0="${PS0-}"'${_temor_mark[_temor_executing=1]-}\e]133;C\e\\'
     return "$_temor_status"
 }
 
 if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == 'declare -a'* ]]; then
     PROMPT_COMMAND=(_temor_save_status "${PROMPT_COMMAND[@]}" _temor_prompt)
 else
-    PROMPT_COMMAND="_temor_save_status${PROMPT_COMMAND:+; $PROMPT_COMMAND}; _temor_prompt"
+    # Joined with newlines, not "; ": a value ending in ";" or a newline stays valid.
+    PROMPT_COMMAND=$'_temor_save_status\n'"${PROMPT_COMMAND-}"$'\n_temor_prompt'
 fi

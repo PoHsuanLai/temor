@@ -106,7 +106,8 @@ pub use pty::{
     Ready, SessionLauncher, SignalKind, SpawnSpec, WriteOutcome, find_program, run_session_leader,
 };
 pub use shell::{
-    IntegrationPlan, IntegrationState, Shell, ShellKind, ShellStart, ShimFile, UserId,
-    passwd_login_shell, plan_integration, prepare_shell, resolve_shell, write_shims,
+    IntegrationPlan, IntegrationState, Shell, ShellKind, ShellScript, ShellStart, ShimFile, UserId,
+    integration_scripts, passwd_login_shell, plan_integration, prepare_shell, resolve_shell,
+    write_shims,
 };
 pub use size::{Cols, GridSize, Px, Rows};

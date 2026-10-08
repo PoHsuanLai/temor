@@ -80,7 +80,8 @@ impl PtyIo {
         };
         Ok(Readiness {
             read,
-            write: ready(revents, PollFlags::OUT),
+            // A hangup makes the next write report `Closed` rather than block.
+            write: ready(revents, PollFlags::OUT | PollFlags::HUP | PollFlags::ERR),
         })
     }
 }

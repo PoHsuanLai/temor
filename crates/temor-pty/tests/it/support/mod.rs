@@ -82,9 +82,32 @@ pub fn program_or_skip(name: &str, test: &str) -> Option<PathBuf> {
     found
 }
 
-/// util-linux `setsid`, the Linux launcher.
+/// util-linux `setsid` where installed (Linux), else this crate's trampoline.
 pub fn setsid() -> SessionLauncher {
-    SessionLauncher::Setsid(program("setsid").expect("util-linux setsid on PATH"))
+    program("setsid").map_or_else(trampoline, SessionLauncher::Setsid)
+}
+
+/// Whether this platform has no terminal yet; if so, prints a skip note for `test`.
+pub fn pty_unsupported(test: &str) -> bool {
+    let spec = temor_pty::SpawnSpec {
+        program: env!("CARGO_BIN_EXE_temor-pty-exec").into(),
+        args: Vec::new(),
+        cwd: std::env::temp_dir(),
+        env: ChildEnv::new(),
+        size: size(),
+    };
+    match temor_pty::Pty::spawn(&spec, &trampoline()) {
+        Err(temor_pty::PtyError::Unsupported) => {
+            println!("note: {test} skipped: no terminal support on this platform yet");
+            true
+        }
+        Ok(mut pty) => {
+            // The trampoline with no program exits at once; reap it.
+            let _ = pty.wait_exit();
+            false
+        }
+        Err(_) => false,
+    }
 }
 
 /// This crate's trampoline, the portable launcher.

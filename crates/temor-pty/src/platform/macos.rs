@@ -1,7 +1,7 @@
 //! `MacOs`: stubs. temor has no pseudo-terminal here yet; `Pty::spawn` returns
 //! `PtyError::Unsupported` (see `unsupported.rs`).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::platform::Os;
 use crate::pty::{ProcRoot, ProcessId};
@@ -25,5 +25,10 @@ impl Os for MacOs {
     // TODO(platform:macos): the current user, for the passwd lookup.
     fn current_user() -> Option<UserId> {
         None
+    }
+
+    // TODO(platform:macos): the executable check; any file counts for now.
+    fn is_executable(path: &Path) -> bool {
+        path.is_file()
     }
 }

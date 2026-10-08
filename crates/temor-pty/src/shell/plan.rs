@@ -5,6 +5,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 use super::resolve::{Shell, ShellKind};
+use super::scripts::{BASH_RC, BASH_SCRIPT, FISH_SCRIPT, ZSH_ENV, ZSH_SCRIPT};
 use crate::env::ChildEnv;
 
 /// How the shell starts.
@@ -49,12 +50,6 @@ pub struct IntegrationPlan {
     pub env: ChildEnv,
     pub files: Vec<ShimFile>,
 }
-
-const BASH_SCRIPT: &str = include_str!("../../shell/temor.bash");
-const BASH_RC: &str = include_str!("../../shell/temor-bashrc");
-const ZSH_SCRIPT: &str = include_str!("../../shell/temor.zsh");
-const ZSH_ENV: &str = include_str!("../../shell/zshenv");
-const FISH_SCRIPT: &str = include_str!("../../shell/temor.fish");
 
 /// Where `XDG_DATA_DIRS` points when it is unset (the XDG base directory default).
 const XDG_DATA_DIRS_DEFAULT: &str = "/usr/local/share:/usr/share";
@@ -107,11 +102,11 @@ fn bash(shell: &Shell, start: ShellStart, mut env: ChildEnv, dir: &Path) -> Inte
         files: vec![
             ShimFile {
                 path: rc,
-                contents: BASH_RC,
+                contents: BASH_RC.contents,
             },
             ShimFile {
                 path: dir.join("temor.bash"),
-                contents: BASH_SCRIPT,
+                contents: BASH_SCRIPT.contents,
             },
         ],
     }
@@ -131,11 +126,11 @@ fn zsh(shell: &Shell, start: ShellStart, mut env: ChildEnv, dir: &Path) -> Integ
         files: vec![
             ShimFile {
                 path: dir.join(".zshenv"),
-                contents: ZSH_ENV,
+                contents: ZSH_ENV.contents,
             },
             ShimFile {
                 path: dir.join("temor.zsh"),
-                contents: ZSH_SCRIPT,
+                contents: ZSH_SCRIPT.contents,
             },
         ],
     }
@@ -158,7 +153,7 @@ fn fish(shell: &Shell, start: ShellStart, mut env: ChildEnv, dir: &Path) -> Inte
         env,
         files: vec![ShimFile {
             path: dir.join("fish").join("vendor_conf.d").join("temor.fish"),
-            contents: FISH_SCRIPT,
+            contents: FISH_SCRIPT.contents,
         }],
     }
 }

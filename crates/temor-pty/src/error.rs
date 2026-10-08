@@ -6,7 +6,8 @@ use std::path::PathBuf;
 /// What went wrong, shaped so the caller can act on it.
 #[derive(Debug, thiserror::Error)]
 pub enum PtyError {
-    /// This platform has no pseudo-terminal support in temor yet (Windows).
+    /// This platform has no pseudo-terminal support in temor yet (macOS, Windows and every OS
+    /// other than Linux).
     #[error("terminals are not supported on this platform yet")]
     Unsupported,
     /// The pseudo-terminal pair could not be opened or set up.

@@ -6,13 +6,24 @@
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
 # there this file only tidies the environment.
 
-# Put XDG_DATA_DIRS back as it was, so programs started from this shell never see temor's entry.
-if set -q TEMOR_FISH_XDG_DATA_DIRS
-    set -gx XDG_DATA_DIRS $TEMOR_FISH_XDG_DATA_DIRS
-    set -e TEMOR_FISH_XDG_DATA_DIRS
-else
-    set -e XDG_DATA_DIRS
+# Take temor's entry back out of XDG_DATA_DIRS, so programs started from this shell never see
+# it. Only that entry goes: conf.d snippets that ran before this one may have added their own.
+set -l _temor_entry (string replace -r '/fish/vendor_conf\.d/[^/]*$' '' -- (status filename))
+set -l _temor_dirs (string split : -- "$XDG_DATA_DIRS")
+if set -l _temor_at (contains -i -- $_temor_entry $_temor_dirs)
+    set -e _temor_dirs[$_temor_at]
 end
+if set -q TEMOR_FISH_XDG_DATA_DIRS
+    # It was set before temor started fish.
+    set -e TEMOR_FISH_XDG_DATA_DIRS
+    set -gx XDG_DATA_DIRS (string join : -- $_temor_dirs)
+else if test "$_temor_dirs" = "/usr/local/share /usr/share"
+    # It was unset, and nothing but temor's stand-in for the default is left.
+    set -e XDG_DATA_DIRS
+else
+    set -gx XDG_DATA_DIRS (string join : -- $_temor_dirs)
+end
+set -e _temor_entry _temor_dirs _temor_at
 
 status is-interactive; or exit 0
 test "$TEMOR_SHELL_INTEGRATION" = 0; and exit 0

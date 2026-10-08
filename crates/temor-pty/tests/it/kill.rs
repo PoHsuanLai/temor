@@ -8,6 +8,9 @@ use crate::support::{Scratch, Term, bash, proc_alive, setsid};
 
 #[test]
 fn kill_reaps_the_leader_and_ends_the_group() {
+    if crate::support::pty_unsupported("kill_reaps_the_leader_and_ends_the_group") {
+        return;
+    }
     let scratch = Scratch::new();
     let spec = bash(&scratch, &["-c", "sleep 100 & echo \"job=$!.\"; wait"]);
     let mut term = Term::spawn(&spec, &setsid());
@@ -44,6 +47,9 @@ fn kill_reaps_the_leader_and_ends_the_group() {
 
 #[test]
 fn exit_status_is_reported() {
+    if crate::support::pty_unsupported("exit_status_is_reported") {
+        return;
+    }
     let scratch = Scratch::new();
     let mut term = Term::spawn(&bash(&scratch, &["-c", "exit 7"]), &setsid());
     assert!(term.read_to_close());

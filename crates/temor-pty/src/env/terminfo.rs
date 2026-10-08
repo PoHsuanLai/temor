@@ -1,6 +1,5 @@
 //! Picking `TERM`: `xterm-ghostty` when its terminfo entry can be found, without `infocmp`.
 
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use super::model::ChildEnv;
@@ -42,7 +41,7 @@ pub fn terminfo_dirs(env: &ChildEnv, system: &[&str]) -> Vec<PathBuf> {
     }
     match env.get("TERMINFO_DIRS") {
         Some(list) => {
-            for entry in split_paths(list) {
+            for entry in std::env::split_paths(list) {
                 if entry.as_os_str().is_empty() {
                     dirs.extend(system_dirs());
                 } else {
@@ -53,13 +52,6 @@ pub fn terminfo_dirs(env: &ChildEnv, system: &[&str]) -> Vec<PathBuf> {
         None => dirs.extend(system_dirs()),
     }
     dirs
-}
-
-fn split_paths(list: &OsStr) -> Vec<PathBuf> {
-    list.to_string_lossy()
-        .split(':')
-        .map(PathBuf::from)
-        .collect()
 }
 
 /// `xterm-ghostty` if any of `dirs` holds its entry (`x/xterm-ghostty`, or macOS's hashed

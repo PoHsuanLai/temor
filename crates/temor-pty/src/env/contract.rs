@@ -39,6 +39,11 @@ const DROPPED: &[&str] = &[
     "TMUX",
     "TMUX_PANE",
     "STY",
+    "DESKTOP_STARTUP_ID",
+    "XDG_ACTIVATION_TOKEN",
+    "OLDPWD",
+    "LC_TERMINAL",
+    "LC_TERMINAL_VERSION",
 ];
 
 /// Prefixes of other terminals' variable families.
@@ -80,13 +85,24 @@ fn kept(key: &OsStr) -> bool {
     !DROPPED.contains(&key) && !DROPPED_PREFIXES.iter().any(|p| key.starts_with(p))
 }
 
+/// temor's own variables, which only temor sets (the opt-out is the person's to set).
+fn temor_internal(key: &OsStr) -> bool {
+    key.to_str()
+        .is_some_and(|key| key.starts_with("TEMOR_") && !KEPT.contains(&key))
+}
+
 /// The child's environment: `base`, then `TERM` and `COLORTERM`, then the Space `profile`,
-/// then the identity variables, which the profile cannot override.
+/// then the identity variables, which the profile cannot override. `TEMOR_*` variables in the
+/// profile are dropped, except `TEMOR_SHELL_INTEGRATION`.
 pub fn child_env(base: ChildEnv, profile: &ChildEnv, contract: &EnvContract) -> ChildEnv {
     let mut env = base;
     env.set("TERM", contract.term.slug());
     env.set("COLORTERM", "truecolor");
-    let mut env = env.overlay(profile);
+    let profile: ChildEnv = profile
+        .iter()
+        .filter(|(key, _)| !temor_internal(key))
+        .collect();
+    let mut env = env.overlay(&profile);
     env.set("TERM_PROGRAM", "temor");
     env.set("TERM_PROGRAM_VERSION", &contract.version.0);
     env.set("TEMOR_PANE_ID", &contract.pane.0);

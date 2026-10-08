@@ -73,10 +73,17 @@ fn marks_around_true_and_false(shell: PathBuf, prepare: impl Fn(&Scratch)) {
             "{command}: order {out:?}"
         );
     }
+    let text = term.text();
+    for complaint in ["syntax error", "unbound variable", "command not found"] {
+        assert!(!text.contains(complaint), "the shell complained: {text:?}");
+    }
 }
 
 #[test]
 fn bash_marks_true_and_false() {
+    if crate::support::pty_unsupported("bash_marks_true_and_false") {
+        return;
+    }
     let Some(bash) = program_or_skip("bash", "bash_marks_true_and_false") else {
         return;
     };
@@ -85,6 +92,9 @@ fn bash_marks_true_and_false() {
 
 #[test]
 fn zsh_marks_true_and_false() {
+    if crate::support::pty_unsupported("zsh_marks_true_and_false") {
+        return;
+    }
     let Some(zsh) = program_or_skip("zsh", "zsh_marks_true_and_false") else {
         return;
     };
@@ -96,8 +106,50 @@ fn zsh_marks_true_and_false() {
 
 #[test]
 fn fish_marks_true_and_false() {
+    if crate::support::pty_unsupported("fish_marks_true_and_false") {
+        return;
+    }
     let Some(fish) = program_or_skip("fish", "fish_marks_true_and_false") else {
         return;
     };
     marks_around_true_and_false(fish, |_| {});
+}
+
+/// Why: joining with "; " turned `history -a;` into `history -a;; _temor_prompt`, a syntax
+/// error at every prompt. Also runs the integration under `set -u`.
+#[test]
+fn bash_keeps_a_prompt_command_ending_in_a_semicolon() {
+    let test = "bash_keeps_a_prompt_command_ending_in_a_semicolon";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(bash) = program_or_skip("bash", test) else {
+        return;
+    };
+    marks_around_true_and_false(bash, |scratch| {
+        std::fs::write(
+            scratch.home.join(".bashrc"),
+            "PROMPT_COMMAND=\"history -a;\"\nset -u\n",
+        )
+        .expect(".bashrc");
+    });
+}
+
+/// Why: themes rebuild PS1 in their own precmd hook, after ours, and dropped the B mark.
+#[test]
+fn zsh_keeps_the_mark_under_a_theme_that_rebuilds_ps1() {
+    let test = "zsh_keeps_the_mark_under_a_theme_that_rebuilds_ps1";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(zsh) = program_or_skip("zsh", test) else {
+        return;
+    };
+    marks_around_true_and_false(zsh, |scratch| {
+        std::fs::write(
+            scratch.home.join(".zshrc"),
+            "autoload -Uz add-zsh-hook\n_theme() { PS1='theme%# ' }\nadd-zsh-hook precmd _theme\n",
+        )
+        .expect(".zshrc");
+    });
 }
