@@ -68,7 +68,7 @@ ordered by dependency (§11), not split into versions.
 | ghostty | libghostty-vt source, through the `libghostty-vt` crate (`GHOSTTY_SOURCE_DIR` for offline builds) | one commit, bumped by hand behind `temor-vt` tests |
 | docket | `docket-dbus` proxies (Intents1, Confirm1, Companion1, IntentProvider1), `docket-ds`, docket-launch profiles | batch protocol |
 | **bulkhead** (public; split from `docket/crates/docket-shell` by the agent session) | bwrap runner: `AgentRun`, `Overlay`, plus our new trial module | batch protocol |
-| bayonet (new, public) | plugin envelope, discovery, framing, process handling | once extracted |
+| bayonet (public) | plugin envelope, discovery, framing, process handling. temor implements `manifest::Provides` and `run::Protocol`, then uses `discover::<P>(&Search::new("temor", …))`, `registry.serving(cap, fit)` and `Runner::new("temor", Timeouts::default()).open(..)`. The process side is Unix-only. Start from `docs/capabilities.md`, `examples/shapes/mod.rs` and `examples/demo_plugin.rs` | v0.1.0, rev `592eea9b69aea9bb9e4d6694d09322595f8e8e0a` |
 | anyview | `anyview-peek`, `anyview-core::Sequence`, later the embeddable viewer pane | batch protocol |
 | porter | `prov::{SpaceId, Actor, Effect}` types (through docket) | through docket |
 
@@ -557,7 +557,7 @@ P3 to P5 can run alongside P6 and P9 once P2 lands.
 | docket → bulkhead | split out `docket-shell`, keeping `Overlay{from,to}`, `resolver_binds()` and `AgentRun` stable; temor adds the trial module there | agent session splitting; trial module after it lands |
 | anyview | `anyview-pane` (`ViewerPane`); `SequenceOrigin::Output` for block output; the resume store safe across two processes | approved; after anyview's bug-fix lane |
 | quire | generic palette machine (anyview writes the quire patch), shared by temor's palette and ⌘T bar | queued, v0.2.31 |
-| anyview → bayonet | extract the plugin crate; shape `open.provider` to match sill's launcher providers | approved; anyview extracts |
+| anyview → bayonet | extract the plugin crate; shape `open.provider` to match sill's launcher providers | done: v0.1.0, with temor's four capabilities in its examples |
 | docket | remote workspaces: a remote performer in docket-acp, `Site` on `Call`, profiles that deny local tools, a canary smoke flow, `JudgeToolCall` with `Site` (fallback) | shape agreed; after batch 7 and agy |
 | bulkhead | the trial module plus the path check, output limits and redaction build for musl and run inside `temor-remote` | with the trial module |
 | detent | Extensions page | queued after bayonet |
