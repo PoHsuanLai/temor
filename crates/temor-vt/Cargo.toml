@@ -1,0 +1,28 @@
+[package]
+name = "temor-vt"
+description = "temor's terminal core: a safe libghostty-vt wrapper with typed events, plus a fake for tests."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = ["ghostty"]
+# The real terminal on libghostty-vt (needs Zig and GHOSTTY_SOURCE_DIR; see temor-vt-sys).
+ghostty = ["dep:temor-vt-sys", "temor-vt-sys/native", "dep:png"]
+# `FakeVt`: a tiny in-Rust terminal implementing `Vt`, for other crates' tests without Zig.
+fake = []
+
+[dependencies]
+ds-core = { workspace = true }
+thiserror = { workspace = true }
+png = { workspace = true, optional = true }
+temor-vt-sys = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Turns on `fake` for this crate's own tests.
+temor-vt = { workspace = true, features = ["fake"] }
+
+[lints]
+workspace = true

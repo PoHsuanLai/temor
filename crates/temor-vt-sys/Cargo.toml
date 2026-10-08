@@ -1,0 +1,22 @@
+[package]
+name = "temor-vt-sys"
+description = "Raw bindings to libghostty-vt at temor's pinned Ghostty commit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+links = "ghostty-vt"
+build = "build.rs"
+publish = false
+
+[lib]
+doctest = false
+
+[features]
+default = ["native"]
+# Build libghostty-vt with Zig and link it. Without it the crate only type-checks (bindings are
+# checked in), which is what `cargo check --no-default-features` uses.
+native = []
+
+[lints]
+workspace = true

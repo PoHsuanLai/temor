@@ -1,0 +1,14 @@
+# Regenerates ../../src/bindings.rs from the pinned Ghostty headers. Not a workspace member and
+# never built by the workspace; run it through scripts/gen-bindings.sh.
+[package]
+name = "temor-vt-sys-gen-bindings"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace]
+
+[dependencies]
+bindgen = "0.72.1"
+heck = "0.5"

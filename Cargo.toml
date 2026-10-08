@@ -31,6 +31,10 @@ thiserror = "2"
 proptest = "1"
 # The Unicode property oracle in temor-core's sanitising tests (dev only).
 icu_properties = "2"
+png = "0.18"
+# temor-vt (lane vt).
+temor-vt-sys = { path = "crates/temor-vt-sys", default-features = false }
+temor-vt = { path = "crates/temor-vt", default-features = false }
 
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
