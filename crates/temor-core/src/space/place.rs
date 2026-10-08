@@ -3,22 +3,45 @@
 
 use crate::split::SplitTree;
 use crate::vocab::ids::{FolderId, TabId};
-use crate::vocab::lenient::lenient_list;
+use crate::vocab::lenient::{lenient_list, lenient_or_default};
 use crate::vocab::text::{Relaunch, TabTitle};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A Space's tabs as it was left. The default (a Space never opened) has none.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+///
+/// Reading never fails: the kit reads every Space's place as one map, so one place that does not
+/// parse would cost them all. A field that does not parse takes its default, and a place that is
+/// not a map at all reads as the default place.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct Place {
     /// The tabs, in sidebar order. A tab whose stored form is damaged is dropped alone.
-    #[serde(default, deserialize_with = "lenient_list")]
     pub tabs: Vec<Tab>,
     /// The sidebar's folders.
-    #[serde(default, deserialize_with = "lenient_list")]
     pub folders: Vec<Folder>,
     /// The tab in front; none when there are no tabs.
-    #[serde(default)]
     pub focused: Option<TabId>,
+}
+
+/// [`Place`] as it is read, each field on its own.
+#[derive(Default, Deserialize)]
+struct PlaceRead {
+    #[serde(default, deserialize_with = "lenient_list")]
+    tabs: Vec<Tab>,
+    #[serde(default, deserialize_with = "lenient_list")]
+    folders: Vec<Folder>,
+    #[serde(default, deserialize_with = "lenient_or_default")]
+    focused: Option<TabId>,
+}
+
+impl<'de> Deserialize<'de> for Place {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Place, D::Error> {
+        let read: PlaceRead = lenient_or_default(deserializer)?;
+        Ok(Place {
+            tabs: read.tabs,
+            folders: read.folders,
+            focused: read.focused,
+        })
+    }
 }
 
 /// A tab: it stays until it is closed (D3).
@@ -29,10 +52,10 @@ pub struct Tab {
     /// What the sidebar row says.
     pub title: TabTitle,
     /// Whether it is pinned.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub pin: Pin,
     /// The folder it is grouped in.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub folder: Option<FolderId>,
     /// Its panes.
     pub tree: SplitTree,

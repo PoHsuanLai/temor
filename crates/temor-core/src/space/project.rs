@@ -2,19 +2,19 @@
 //! start with, and the routes that send new sessions to it. Written flat beside the Space's look,
 //! so no key here may be `id`, `name`, `dots`, `grain`, `theme` or `card_accent`.
 
-use crate::vocab::lenient::lenient_list;
+use crate::vocab::lenient::{lenient_list, lenient_or_default};
 use crate::vocab::text::{EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// A Space's project. Every key defaults, so a Space the kit made before temor wrote anything
-/// reads as an empty project.
+/// reads as an empty project, and a key that does not parse reads as its default.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Project {
     /// The folder new tabs open in; none means the person's home folder.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub root: Option<ProjectRoot>,
     /// What new shells in this Space start with.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub profile: Profile,
     /// Which new sessions open in this Space.
     #[serde(default, deserialize_with = "lenient_list")]
@@ -29,10 +29,10 @@ pub struct Profile {
     #[serde(default, deserialize_with = "lenient_env")]
     pub env: Vec<(EnvKey, EnvValue)>,
     /// The key the Space's own SSH agent holds.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub ssh_identity: Option<KeyPath>,
     /// A dotenv file under the project root, read into new shells.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_or_default")]
     pub dotenv: Option<RelPath>,
 }
 

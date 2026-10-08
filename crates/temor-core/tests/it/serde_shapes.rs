@@ -199,6 +199,7 @@ fn every_stored_type_round_trips() {
             Transfer::Saved,
         ),
         (Origin::Pipe, Transfer::Broken),
+        (Origin::LocalStream { tab: TabId(2) }, Transfer::Offered),
     ] {
         round_trips(&Download {
             id: DownloadId(1),
@@ -257,4 +258,36 @@ fn stored_forms_are_read_leniently() {
     let titles: Vec<&str> = place.tabs.iter().map(|tab| tab.title.as_str()).collect();
     assert_eq!(titles, vec!["ok"], "a damaged tab costs only itself");
     assert_eq!(place.tabs[0].pin, Pin::Loose);
+}
+
+#[test]
+fn one_bad_field_costs_only_itself() {
+    let file = json!({
+        "spaces": [
+            {"id": 0, "name": "Work", "root": 5, "profile": {"ssh_identity": [], "dotenv": ".env"}},
+            {"id": 1, "name": "Home", "profile": 7, "routes": [{"pattern": "ssh h-*"}]}
+        ],
+        "current": 0,
+        "recall": {
+            "0": {"tabs": [{"id": 1, "title": "ok", "pin": 3, "folder": "x",
+                            "tree": {"nodes": [{"kind": "leaf", "v": 1}]}}], "focused": "x"},
+            "1": 5
+        }
+    });
+    let spaces: TemorSpaces = serde_json::from_value(file).unwrap();
+    let work = &spaces.list()[0].payload;
+    assert_eq!(work.root, None);
+    assert_eq!(work.profile.ssh_identity, None);
+    assert_eq!(work.profile.dotenv, Some(RelPath(".env".into())));
+    let home = &spaces.list()[1].payload;
+    assert_eq!(home.profile, Profile::default());
+    assert_eq!(home.routes.len(), 1);
+    let place = spaces.recall().of(SpaceId(0));
+    assert_eq!(place.focused, None);
+    assert_eq!(place.tabs.len(), 1, "a bad focused keeps the tabs");
+    assert_eq!(
+        (place.tabs[0].pin.clone(), place.tabs[0].folder),
+        (Pin::Loose, None)
+    );
+    assert_eq!(spaces.recall().of(SpaceId(1)), Place::default());
 }

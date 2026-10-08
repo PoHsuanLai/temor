@@ -1,5 +1,5 @@
-//! Reading lists from stored files one item at a time: an item that does not parse costs only
-//! itself, never the list it sits in.
+//! Reading stored files leniently: a list item or a field that does not parse costs only itself,
+//! never the list, the struct or the file it sits in.
 
 use serde::de::IgnoredAny;
 use serde::{Deserialize, Deserializer};
@@ -25,4 +25,16 @@ where
             Item::Dropped(_) => None,
         })
         .collect())
+}
+
+/// A stored value, or its default when it does not parse: one bad field costs only itself.
+pub(crate) fn lenient_or_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(match Item::<T>::deserialize(deserializer)? {
+        Item::Kept(value) => value,
+        Item::Dropped(_) => T::default(),
+    })
 }
