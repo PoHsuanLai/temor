@@ -1,0 +1,24 @@
+[package]
+name = "temor-core"
+description = "temor's pure core: vocabulary, the split tree, the step machines, the command-bar ranking and proposal sanitising. No I/O, no threads, no UI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+ds-core = { workspace = true }
+# Only the Spaces kit's plain data (`Spaces<P, R>`, `SpaceId`); the `dioxus` feature stays off.
+ds-style = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+ds-core = { workspace = true, features = ["testing"] }
+icu_properties = { workspace = true }
+proptest = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
