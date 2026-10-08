@@ -23,16 +23,28 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       UNKNOWN_SEQUENCE; a per-cell hyperlink id; libghostty-rs taking the `Send` and new-callback
       wrappers. D1
 
+## temor-pty (lane/pty, reviewed at 0f49c7b)
+- [ ] The app owns reaping: poll `try_exit` after `hang_up()` and escalate with `kill()` after a grace
+      period, or children stay zombies. §4b
+- [ ] nushell (the owner's shell) and other shells get no integration. nushell can emit the marks
+      itself (`shell_integration` config); turn that on. §6
+- [ ] fish 3 marks path untested (fish 4+ emits marks natively); bash 3.2 has no PS0, so no C/D marks.
+- [ ] A person's own `trap … EXIT` replaces the emulated-login `.bash_logout` trap; an old-style
+      `zle -N zle-line-init` drops zsh's first-prompt B fallback under themes.
+- [ ] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7
+- [ ] Send `integration_scripts()` with the SSH Tier A bootstrap. §9b
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift). §6
 - [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); add a bitmap glyph path to temor-render. §5
-- [ ] macOS process info: the foreground process's cwd and name through `proc_pidinfo`
-      (Linux uses /proc). temor-pty
+- [ ] macOS pty: `Pty::spawn` and `run_session_leader` (platform/unsupported.rs); process name, cwd,
+      current user and `is_executable` (platform/macos.rs) through `proc_pidinfo`. temor-pty
 - [ ] macOS trial sandbox: none (bwrap is Linux-only), so proposals say "not checked". Decide whether
       anything replaces it. §8.3
 - [ ] Ubuntu 24.04+: unprivileged user namespaces are restricted by AppArmor; detect this, report
       `NoSandbox`, and document the profile. §8.3
 - [ ] macOS: verify quire windows and IME (winit) and fontique's CoreText path; consider a
       `cargo check --target aarch64-apple-darwin` CI job (Zig can cross-build libghostty).
-- [ ] Windows: PTY (ConPTY) and the plugin process side are unsupported today.
+- [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
+      side are unsupported today.
