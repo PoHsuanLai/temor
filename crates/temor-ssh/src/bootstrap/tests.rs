@@ -1,22 +1,13 @@
-//! The bootstrap's text: quoting, heredocs and the placement of the integration files. The
-//! script's behaviour is tested by running it, in `tests/it`.
+//! The bootstrap's text: heredocs, the placement of the integration files and the transport.
+//! The script's behaviour is tested by running it, in `tests/it`.
 
 use temor_pty::integration_scripts;
 
 use super::BootstrapScript;
 use super::files::remote_path;
-use super::quote::{heredoc_write, sh_single_quote};
+use super::quote::heredoc_write;
+use super::{MAX_REMOTE_COMMAND_BYTES, wrap_script};
 use crate::error::SshError;
-
-#[test]
-fn single_quoting_survives_every_metacharacter() {
-    assert_eq!(sh_single_quote("a'b"), "'a'\\''b'");
-    assert_eq!(
-        sh_single_quote("$(id) `x` \"q\"\nline"),
-        "'$(id) `x` \"q\"\nline'"
-    );
-    assert_eq!(sh_single_quote(""), "''");
-}
 
 #[test]
 fn heredoc_bodies_cannot_end_early() {
@@ -55,13 +46,25 @@ fn built_script_places_every_file_and_no_marks_remain() {
             "missing {target}"
         );
     }
-    assert!(text.len() < 96 * 1024);
 }
 
 #[test]
-fn remote_command_is_one_quoted_sh_invocation() {
+fn remote_command_is_plain_ascii_with_no_quote_or_backslash_inside() {
     let script = BootstrapScript::build(&integration_scripts()).expect("build");
-    let remote = super::bootstrap_remote_command(&script);
-    assert!(remote.as_str().starts_with("sh -c '"));
-    assert!(remote.as_str().ends_with('\''));
+    let remote = super::bootstrap_remote_command(&script).expect("fits");
+    let text = remote.as_str();
+    assert!(text.is_ascii());
+    assert!(text.starts_with("sh -c 'eval \""));
+    assert!(text.ends_with("; })\"'"), "{text}");
+    let inside = &text["sh -c '".len()..text.len() - 1];
+    assert!(!inside.contains('\''), "a quote inside the quoted part");
+    assert!(!inside.contains('\\'), "a backslash inside the quoted part");
+    assert!(text.len() <= MAX_REMOTE_COMMAND_BYTES);
+}
+
+#[test]
+fn oversize_payloads_are_refused_at_the_argv_level() {
+    let big = "x".repeat(MAX_REMOTE_COMMAND_BYTES);
+    let err = wrap_script(&big).expect_err("too big");
+    assert!(matches!(err, SshError::ScriptTooLarge { .. }), "{err}");
 }

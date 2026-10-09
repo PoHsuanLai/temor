@@ -6,13 +6,17 @@ use std::path::{Path, PathBuf};
 
 use super::glob::{glob_match, is_wild};
 
-/// The reads the config parser needs. The app implements it over the real filesystem; tests
-/// use an in-memory copy.
+/// The reads the config parser needs. The app uses [`super::FsConfigFiles`]; tests use an
+/// in-memory copy.
+///
+/// Contract: `read` returns only regular files, and a read is capped (an implementation must
+/// fail, not stream, a huge file). A FIFO, a device or a directory must come back as an error,
+/// never block. A missing file is `NotFound`, which is not reported.
 pub trait ConfigFiles {
-    /// The file's text. A missing file is an error of kind `NotFound`, which is not reported.
+    /// The file's text.
     fn read(&self, path: &Path) -> io::Result<String>;
-    /// The entries of a directory, sorted by name. A missing directory is an error of kind
-    /// `NotFound`, which is treated as empty.
+    /// The entries of a directory, sorted by name. A missing directory is `NotFound`, which is
+    /// treated as empty.
     fn list(&self, dir: &Path) -> io::Result<Vec<PathBuf>>;
 }
 

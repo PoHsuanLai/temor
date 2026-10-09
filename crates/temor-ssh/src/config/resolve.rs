@@ -1,6 +1,8 @@
 //! Blocks into host rows: every concrete `Host` name, with the settings OpenSSH would use for
 //! it.
 
+use std::collections::HashSet;
+
 use super::include::{ConfigFiles, ConfigPaths};
 use super::model::{ConfigIssue, HostAlias, HostEntry, HostList, HostName, IssueReason};
 use super::parse::{Block, Setting, Walker};
@@ -23,6 +25,7 @@ pub fn load_host_list(files: &dyn ConfigFiles, paths: &ConfigPaths) -> HostList 
 /// Concrete names from the `Host` lines, deduplicated case-insensitively in first-seen order.
 fn collect_aliases(blocks: &[Block], issues: &mut Vec<ConfigIssue>) -> Vec<HostAlias> {
     let mut aliases: Vec<HostAlias> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
     for block in blocks {
         let Scope::Hosts(patterns) = &block.scope else {
             continue;
@@ -30,10 +33,7 @@ fn collect_aliases(blocks: &[Block], issues: &mut Vec<ConfigIssue>) -> Vec<HostA
         for name in patterns.iter().filter_map(|pattern| pattern.concrete()) {
             match HostAlias::new(name) {
                 Ok(alias) => {
-                    let seen = aliases
-                        .iter()
-                        .any(|known| known.as_str().eq_ignore_ascii_case(alias.as_str()));
-                    if !seen {
+                    if seen.insert(alias.as_str().to_ascii_lowercase()) {
                         aliases.push(alias);
                     }
                 }

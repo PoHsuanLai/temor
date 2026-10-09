@@ -82,7 +82,7 @@ fn control_commands_use_only_the_control_path() {
 
 #[test]
 fn forwards_add_and_cancel_on_the_running_master() {
-    let target = alias("user@prod:2222");
+    let target = alias("user@prod");
     assert_eq!(
         forward_argv(&target, &layout(), &forward()),
         strings(&[
@@ -93,7 +93,7 @@ fn forwards_add_and_cancel_on_the_running_master() {
             "-L",
             "127.0.0.1:8080:localhost:3000",
             "--",
-            "user@prod:2222",
+            "user@prod",
         ])
     );
     let cancel = cancel_forward_argv(&target, &layout(), &forward());
@@ -107,7 +107,7 @@ fn forwards_add_and_cancel_on_the_running_master() {
             "-L",
             "127.0.0.1:8080:localhost:3000",
             "--",
-            "user@prod:2222",
+            "user@prod",
         ])
     );
 }
@@ -191,4 +191,14 @@ fn forward_hosts_reject_spaces_and_shell_text() {
     assert!(RemoteHost::new("local host").is_err());
     assert!(RemoteHost::new("$(id)").is_err());
     assert!(BindAddress::new("").is_err());
+}
+
+#[test]
+fn a_port_inside_the_alias_is_rejected() {
+    // ssh would read `:2222` as part of the host, so the port must be passed separately.
+    assert!(matches!(
+        HostAlias::new("prod:2222"),
+        Err(SshError::InvalidAlias(_))
+    ));
+    assert!(HostAlias::new("user@prod").is_ok());
 }

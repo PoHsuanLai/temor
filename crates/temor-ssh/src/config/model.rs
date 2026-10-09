@@ -17,14 +17,17 @@ fn plain_word(text: &str) -> bool {
         })
 }
 
-/// A concrete `Host` name from the config, or a destination typed in ⌘T.
+/// A concrete `Host` name from the config, or a destination typed in ⌘T. Only a bare name or
+/// `user@name`: ssh reads `:port` and `[addr]` as part of the host, so a port must be given
+/// separately (`-p`), not inside the destination.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct HostAlias(String);
 
 impl HostAlias {
     /// Validates `text` as a destination.
     pub fn new(text: &str) -> Result<Self, SshError> {
-        match plain_word(text) {
+        let bare = !text.contains([':', '[', ']']);
+        match plain_word(text) && bare {
             true => Ok(Self(text.to_owned())),
             false => Err(SshError::InvalidAlias(text.to_owned())),
         }
@@ -93,6 +96,8 @@ impl Port {
 }
 
 /// An `IdentityFile` value, kept as written (`~` is expanded by [`IdentityFile::expanded`]).
+/// Only length and control characters are checked here. A builder that passes it to `ssh -i`
+/// must validate it first (a value starting with `-` is an option to ssh).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdentityFile(String);
 
@@ -119,7 +124,8 @@ impl IdentityFile {
     }
 }
 
-/// A `ProxyJump` value (one or more hops, comma-separated), kept as written.
+/// A `ProxyJump` value (one or more hops, comma-separated), kept as written. Only control
+/// characters are checked here; a builder that passes it to `ssh -J` must validate it first.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProxyJump(String);
 
@@ -175,8 +181,11 @@ pub enum IssueReason {
     MatchSkipped,
     /// Includes nested deeper than OpenSSH allows (16), so the rest is ignored.
     IncludeTooDeep,
-    /// An included file that exists but cannot be read.
+    /// An included file that exists but cannot be read (a FIFO, a device, an oversize file).
     IncludeUnreadable { path: PathBuf },
+    /// Too many include reads or too many bytes for one config (256 files, 1 MiB); the rest is
+    /// ignored.
+    IncludeBudgetExceeded,
 }
 
 /// The result of loading the config: the concrete hosts in file order, and what was ignored.

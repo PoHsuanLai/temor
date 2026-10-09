@@ -42,8 +42,8 @@ pub enum SshError {
         #[source]
         source: io::Error,
     },
-    /// The assembled bootstrap is too large to send as one command argument.
-    #[error("the bootstrap script is {bytes} bytes, more than the {limit} allowed")]
+    /// The remote command is too large to send as one command argument.
+    #[error("the remote command is {bytes} bytes, more than the {limit} allowed")]
     ScriptTooLarge { bytes: usize, limit: usize },
     /// The platform has no private-directory support yet.
     #[error("this platform cannot {0} yet")]

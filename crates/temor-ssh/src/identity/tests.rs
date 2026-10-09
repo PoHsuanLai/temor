@@ -54,3 +54,21 @@ fn host_id_pairs_the_fingerprint_with_the_shown_name() {
     assert!(ShownName::new("   ").is_none());
     assert!(ShownName::new("a\nb").is_none());
 }
+
+#[test]
+fn same_machine_compares_fingerprints_only() {
+    const OTHER: &str = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    let fp = Fingerprint::new(FP).expect("fingerprint");
+    let prod = HostId::new(fp.clone(), ShownName::new("prod").expect("name"));
+    let alias = HostId::new(fp, ShownName::new("bastion").expect("name"));
+    let elsewhere = HostId::new(
+        Fingerprint::new(OTHER).expect("fingerprint"),
+        ShownName::new("prod").expect("name"),
+    );
+    assert!(prod.same_machine(&alias));
+    assert!(!prod.same_machine(&elsewhere));
+    assert_ne!(
+        prod, alias,
+        "the shown name still distinguishes the entries"
+    );
+}

@@ -13,6 +13,11 @@ use super::pattern::{HostPattern, Scope};
 
 /// OpenSSH stops following includes 16 levels deep.
 const MAX_INCLUDE_DEPTH: usize = 16;
+/// Total file reads for one config, across every include, so a glob that includes itself
+/// cannot fan out.
+const MAX_INCLUDE_READS: usize = 256;
+/// Total bytes read for one config.
+const MAX_INCLUDE_BYTES: usize = 1024 * 1024;
 
 /// Where a block's `Host` or `Match` line was.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +52,8 @@ pub(super) struct Walker<'a> {
     blocks: Vec<Block>,
     issues: Vec<ConfigIssue>,
     current: usize,
+    reads: usize,
+    bytes: usize,
 }
 
 impl<'a> Walker<'a> {
@@ -65,6 +72,8 @@ impl<'a> Walker<'a> {
             blocks: vec![global],
             issues: Vec::new(),
             current: 0,
+            reads: 0,
+            bytes: 0,
         }
     }
 
@@ -74,8 +83,20 @@ impl<'a> Walker<'a> {
 
     /// Reads and walks one file. A missing file is silent; an unreadable one is an issue.
     pub(super) fn load_file(&mut self, path: &Path, depth: usize) {
+        if self.reads >= MAX_INCLUDE_READS {
+            self.issue(path, LineNo(0), IssueReason::IncludeBudgetExceeded);
+            return;
+        }
+        self.reads += 1;
         match self.files.read(path) {
-            Ok(text) => self.walk(&text, path, depth),
+            Ok(text) => {
+                self.bytes = self.bytes.saturating_add(text.len());
+                if self.bytes > MAX_INCLUDE_BYTES {
+                    self.issue(path, LineNo(0), IssueReason::IncludeBudgetExceeded);
+                    return;
+                }
+                self.walk(&text, path, depth);
+            }
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => self.issue(
                 path,
@@ -144,6 +165,11 @@ impl<'a> Walker<'a> {
         }
         for arg in args {
             for included in expand_include(self.paths, self.files, arg) {
+                if self.reads >= MAX_INCLUDE_READS || self.bytes > MAX_INCLUDE_BYTES {
+                    // Reported once here, not once per remaining glob match.
+                    self.issue(path, line_no, IssueReason::IncludeBudgetExceeded);
+                    return;
+                }
                 self.load_file(&included, depth + 1);
             }
         }

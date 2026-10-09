@@ -3,8 +3,9 @@
 
 use temor_pty::ShellScript;
 
+use super::base64;
 use super::files::{TERMINFO_SOURCE, remote_path};
-use super::quote::{heredoc_write, sh_single_quote};
+use super::quote::heredoc_write;
 use crate::argv::RemoteCommand;
 use crate::error::SshError;
 
@@ -13,11 +14,11 @@ const TEMPLATE: &str = include_str!("../../sh/bootstrap.sh");
 const INTEGRATION_MARK: &str = "#@INTEGRATION@";
 const TERMINFO_MARK: &str = "#@TERMINFO@";
 
-/// Linux refuses a single exec argument over 128 KiB, and the script travels as one `sh -c`
-/// argument, so the bootstrap must stay well under that.
-const MAX_SCRIPT_BYTES: usize = 96 * 1024;
+/// Linux refuses one exec argument over 128 KiB (MAX_ARG_STRLEN, NUL included). The remote
+/// command reaches the login shell as one argument, so the whole command must stay under that.
+pub const MAX_REMOTE_COMMAND_BYTES: usize = 120 * 1024;
 
-/// The complete POSIX `sh` script, ready to be quoted into a remote command.
+/// The complete POSIX `sh` script, before it is encoded for the wire.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BootstrapScript(String);
 
@@ -46,13 +47,7 @@ impl BootstrapScript {
                 }
             }
         }
-        match script.len() <= MAX_SCRIPT_BYTES {
-            true => Ok(Self(script)),
-            false => Err(SshError::ScriptTooLarge {
-                bytes: script.len(),
-                limit: MAX_SCRIPT_BYTES,
-            }),
-        }
+        Ok(Self(script))
     }
 
     /// The script text.
@@ -61,8 +56,27 @@ impl BootstrapScript {
     }
 }
 
-/// `sh -c '<script>'`, with the script quoted so nothing in it reaches the login shell's own
-/// parsing. The login shell only has to understand single quotes.
-pub fn bootstrap_remote_command(script: &BootstrapScript) -> RemoteCommand {
-    RemoteCommand::new(format!("sh -c {}", sh_single_quote(script.as_str())))
+/// The remote command for `script`. The login shell only sees plain ASCII: the script travels
+/// base64-encoded and `sh` decodes it, so nu, fish, zsh and POSIX shells all pass it through
+/// unchanged. Fails when the final command would not fit one exec argument.
+pub fn bootstrap_remote_command(script: &BootstrapScript) -> Result<RemoteCommand, SshError> {
+    wrap_script(script.as_str())
+}
+
+/// The transport on its own: `script` as a remote command that decodes and runs it with `sh`.
+/// The bootstrap uses it, and tests use it to check the transport with a known payload.
+pub fn wrap_script(script: &str) -> Result<RemoteCommand, SshError> {
+    let encoded = base64::encode(script.as_bytes());
+    // Only base64 characters sit between the quotes. The decoder falls back to openssl for
+    // hosts without GNU or BusyBox base64 (`openssl base64 -d -A`).
+    let text = format!(
+        "sh -c 'eval \"$(printf %s {encoded} | {{ base64 -d 2>/dev/null || openssl base64 -d -A; }})\"'"
+    );
+    match text.len() <= MAX_REMOTE_COMMAND_BYTES {
+        true => Ok(RemoteCommand::new(text)),
+        false => Err(SshError::ScriptTooLarge {
+            bytes: text.len(),
+            limit: MAX_REMOTE_COMMAND_BYTES,
+        }),
+    }
 }

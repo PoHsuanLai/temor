@@ -6,6 +6,10 @@
 #[cfg(unix)]
 mod bootstrap_run;
 #[cfg(unix)]
+mod edges;
+#[cfg(unix)]
 mod harness;
+#[cfg(unix)]
+mod shells;
 #[cfg(unix)]
 mod ssh_parse;

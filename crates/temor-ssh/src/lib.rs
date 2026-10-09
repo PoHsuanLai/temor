@@ -21,10 +21,12 @@ pub use argv::{
     BindAddress, ControlLayout, ControlPersist, Forward, ForwardSpec, RemoteCommand, RemoteHost,
     RuntimeDir, Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,
 };
-pub use bootstrap::{BootstrapScript, bootstrap_remote_command};
+pub use bootstrap::{
+    BootstrapScript, MAX_REMOTE_COMMAND_BYTES, bootstrap_remote_command, wrap_script,
+};
 pub use config::{
-    ConfigFiles, ConfigIssue, ConfigPaths, HostAlias, HostEntry, HostList, HostName, IdentityFile,
-    IssueReason, LineNo, Port, ProxyJump, UserName, known_host_names, load_host_list,
+    ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
+    IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, known_host_names, load_host_list,
 };
 pub use error::SshError;
 pub use identity::{Fingerprint, HostId, ShownName, fingerprint_from_keygen};

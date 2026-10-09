@@ -8,7 +8,9 @@ use std::process::Command;
 use temor_pty::integration_scripts;
 use temor_ssh::BootstrapScript;
 
-use crate::harness::{contains, make_bin, run, scratch, snapshot, system_path, tool, write};
+use crate::harness::{
+    contains, make_bin, require, run, scratch, snapshot, system_path, tool, write,
+};
 
 const PRINT_TERM: &str = "echo \"T=$TERM P=$FROM_PROFILE\"\n";
 
@@ -88,7 +90,8 @@ fn terminfo_is_compiled_into_the_home_when_the_host_lacks_it() {
     make_bin(
         &s.bin,
         &[
-            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "uname", "hostname", "tic", "printf",
+            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "cp", "rmdir", "uname", "hostname",
+            "base64", "tic", "printf",
         ],
         &[("infocmp", "#!/bin/sh\nexit 1\n")],
     );
@@ -108,7 +111,8 @@ fn without_tic_the_term_falls_back_and_nothing_is_written() {
     make_bin(
         &s.bin,
         &[
-            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "uname", "hostname", "printf",
+            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "cp", "rmdir", "uname", "hostname",
+            "base64", "printf",
         ],
         &[("infocmp", "#!/bin/sh\nexit 1\n")],
     );
@@ -127,7 +131,7 @@ fn a_hostile_host_name_stays_data() {
     make_bin(
         &s.bin,
         &[
-            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "uname", "printf",
+            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "cp", "rmdir", "uname", "printf",
         ],
         &[(
             "hostname",
@@ -157,8 +161,7 @@ fn zsh_and_fish_load_their_shims_when_installed() {
         ("zsh", "print -r -- \"Z=$ZDOTDIR\"\nexit\n"),
         ("fish", "echo F=$XDG_DATA_DIRS\nexit\n"),
     ] {
-        let Some(shell) = tool(name) else {
-            eprintln!("skipping {name}: not installed on this machine");
+        let Some(shell) = require(name) else {
             continue;
         };
         let s = scratch();

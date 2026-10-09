@@ -1,19 +1,40 @@
-# temor's SSH bootstrap (PLAN §9b, Tier A). The local ssh sends this as `sh -c` with each
-# connection, and nothing is installed on the host. Everything it writes lives in a temp directory
-# that is removed when the shell exits. Your dotfiles are never touched.
+# temor's SSH bootstrap (PLAN §9b, Tier A). The local ssh sends this, base64-encoded and run by
+# `sh`, with each connection, and nothing is installed on the host. Everything it writes lives in a
+# temp directory that is removed when the shell exits. Your dotfiles are never touched.
 
+temor_base=${TMPDIR:-/tmp}
+case $temor_base in
+    *:*)
+        # XDG_DATA_DIRS separates entries with ':', so the fish shim cannot live under such a path.
+        echo "temor: TMPDIR must not contain ':'" >&2
+        exit 1 ;;
+esac
+temor_umask=$(umask)
 umask 077
-temor_tmp=$(mktemp -d "${TMPDIR:-/tmp}/temor.XXXXXXXX") || exit 1
+
+# Removes temp directories of sessions that have ended. A directory is removed only when it is a
+# real directory owned by this user and its recorded pid is gone.
+for temor_old in "$temor_base"/temor.*; do
+    [ -d "$temor_old" ] && [ ! -L "$temor_old" ] && [ -O "$temor_old" ] || continue
+    temor_old_pid=$(cat "$temor_old/pid" 2>/dev/null)
+    case $temor_old_pid in
+        ''|*[!0-9]*) continue ;;
+    esac
+    kill -0 "$temor_old_pid" 2>/dev/null || rm -rf "$temor_old"
+done
+
+temor_tmp=$(mktemp -d "$temor_base/temor.XXXXXXXX") || exit 1
 trap 'rm -rf "$temor_tmp"' EXIT
 # The shell we start handles these signals itself. This wrapper must outlive it to clean up.
 trap : HUP INT QUIT TERM
+printf '%s\n' "$$" > "$temor_tmp/pid"
 
 mkdir -p "$temor_tmp/bash" "$temor_tmp/zsh" "$temor_tmp/fish/fish/vendor_conf.d" || exit 1
 #@INTEGRATION@
 
-# Sets temor_enc_out to $1 percent-encoded for a file:// URL, byte by byte.
+# Sets temor_enc_out to $1 percent-encoded for a file:// URL, byte by byte. Callers run it in a
+# subshell with LC_ALL=C, so a multibyte character is encoded as its bytes.
 temor_encode() {
-    LC_ALL=C
     temor_enc_in=$1
     temor_enc_out=
     while [ -n "$temor_enc_in" ]; do
@@ -40,29 +61,35 @@ temor_have_ghostty() {
 }
 
 # Ghostty's terminfo when the host has it or takes it into ~/.terminfo, else xterm-256color.
+# ~/.terminfo is created only once the compiled entry is in hand, and taken back if that fails.
 temor_term=xterm-256color
 if temor_have_ghostty; then
     temor_term=xterm-ghostty
-elif command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ] && mkdir -p "$HOME/.terminfo" 2>/dev/null; then
+elif command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
 #@TERMINFO@
-    if tic -x -o "$HOME/.terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1; then
+    if tic -x -o "$temor_tmp/terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1 \
+        && mkdir -p "$HOME/.terminfo/x" 2>/dev/null \
+        && cp "$temor_tmp/terminfo/x/xterm-ghostty" "$HOME/.terminfo/x/xterm-ghostty" 2>/dev/null; then
         temor_term=xterm-ghostty
+    else
+        rmdir "$HOME/.terminfo/x" "$HOME/.terminfo" 2>/dev/null
     fi
 fi
 export TERM=$temor_term COLORTERM=truecolor
 
 # OSC 7 with this host's name, so temor knows where the pane is before the first prompt.
 temor_host=$(hostname 2>/dev/null || uname -n 2>/dev/null)
-temor_encode "$temor_host"
-temor_host_enc=$temor_enc_out
-temor_encode "$PWD"
-printf '\033]7;file://%s%s\033\\' "$temor_host_enc" "$temor_enc_out"
+temor_host_enc=$(LC_ALL=C; temor_encode "$temor_host"; printf '%s' "$temor_enc_out")
+temor_pwd_enc=$(LC_ALL=C; temor_encode "$PWD"; printf '%s' "$temor_enc_out")
+printf '\033]7;file://%s%s\033\\' "$temor_host_enc" "$temor_pwd_enc"
 
 # The login shell, with temor's integration loaded after the person's own startup files.
 temor_shell=${SHELL:-}
 if [ -z "$temor_shell" ] || [ ! -x "$temor_shell" ]; then
     temor_shell=/bin/sh
 fi
+# The person's shell starts with the umask they had before the bootstrap.
+umask "$temor_umask"
 case ${temor_shell##*/} in
     bash)
         TEMOR_BASH_LOGIN=1 "$temor_shell" --rcfile "$temor_tmp/bash/temor-bashrc" -i ;;

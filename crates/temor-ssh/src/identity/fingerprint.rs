@@ -1,5 +1,5 @@
 //! Host-key fingerprints from `ssh-keygen` output. The fingerprint is the identity; the shown
-//! name is what the person typed or picked.
+//! name is what the person typed or picked (PLAN §9b).
 
 use crate::error::SshError;
 
@@ -48,8 +48,13 @@ impl ShownName {
     }
 }
 
-/// The identity of a host: its key fingerprint and the name shown for it. Two entries with
-/// the same fingerprint are the same machine, whatever they are called.
+/// The identity of a host (PLAN §9b): its SSH host-key fingerprint plus the name shown for it.
+/// Two entries with the same fingerprint are the same machine, whatever they are called, so
+/// identity checks use [`HostId::same_machine`] and never compare the shown names.
+///
+/// The fingerprint must come from the host key the live connection verified (for example from
+/// `ssh-keygen -l` on the key the handshake presented), never from a config file or from a
+/// `known_hosts` line that was merely looked up by name.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HostId {
     fingerprint: Fingerprint,
@@ -70,6 +75,11 @@ impl HostId {
     /// The shown name.
     pub fn shown(&self) -> &ShownName {
         &self.shown
+    }
+
+    /// Whether `other` is the same machine: equal fingerprints. Shown names are ignored.
+    pub fn same_machine(&self, other: &HostId) -> bool {
+        self.fingerprint == other.fingerprint
     }
 }
 
