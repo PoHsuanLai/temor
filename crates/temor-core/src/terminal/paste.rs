@@ -25,6 +25,8 @@ pub enum UnsafeReason {
     Newline,
     /// The text contains the end of a bracketed paste, so it could leave the frame.
     EndOfFrame,
+    /// The text has control bytes, which the program would get as spaces.
+    ControlCharacters,
 }
 
 /// What libghostty's own check (`temor_vt::paste_is_safe`) said about the text.
@@ -49,10 +51,15 @@ pub fn check(text: &str, mode: PasteMode, vt: VtVerdict) -> PasteCheck {
     if line_break {
         return PasteCheck::NeedsConfirmation(UnsafeReason::Newline);
     }
-    match vt {
-        VtVerdict::Flagged => PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame),
-        VtVerdict::Clean => PasteCheck::Safe,
+    if vt == VtVerdict::Flagged {
+        return PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame);
     }
+    // Control bytes would be replaced with spaces before the program sees them: the person
+    // must agree to that, so nothing is changed silently.
+    if text.chars().any(|c| strip(c) != c) {
+        return PasteCheck::NeedsConfirmation(UnsafeReason::ControlCharacters);
+    }
+    PasteCheck::Safe
 }
 
 /// The bytes to write to the program for `text`: control bytes that could drive the line

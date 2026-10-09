@@ -6,6 +6,7 @@ pub mod chord;
 pub mod keymap;
 pub mod link;
 pub mod paste;
+pub mod row;
 pub mod search;
 pub mod selection;
 pub mod settings;

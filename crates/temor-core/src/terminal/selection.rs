@@ -1,9 +1,10 @@
 //! The selection model (PLAN §6): an anchor and a head in screen rows and columns, extended by
-//! drag, snapped to words or lines, linear or rectangular. Pure: it reads the text of a line
-//! only through the `&str` it is handed. Columns count characters, not cells (wide glyphs are a
-//! known gap, noted in the app's report).
+//! drag, snapped to words or lines, linear or rectangular. Columns are cell columns: a wide
+//! character covers two. Pure: it reads a row only through the `RowText` it is handed.
 
 use ds_core::word::Word;
+
+use super::row::{RowText, Span};
 
 /// A cell in the screen space: row 0 is the oldest kept line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -54,7 +55,7 @@ struct Endpoint {
 impl Selection {
     /// A selection that starts at `at`, on `line` (the text of that row), growing by
     /// `granularity`.
-    pub fn begin(at: CellPos, line: &str, granularity: Granularity, shape: Shape) -> Self {
+    pub fn begin(at: CellPos, line: &RowText, granularity: Granularity, shape: Shape) -> Self {
         let end = Endpoint::at(at, line, granularity);
         Self {
             anchor: end,
@@ -65,7 +66,7 @@ impl Selection {
     }
 
     /// Moves the head to `at`, on `line`, snapping to whole words or lines.
-    pub fn extend(&mut self, at: CellPos, line: &str) {
+    pub fn extend(&mut self, at: CellPos, line: &RowText) {
         self.head = Endpoint::at(at, line, self.granularity);
     }
 
@@ -97,16 +98,15 @@ impl Selection {
         }
     }
 
-    /// The selected text. `line_of` gives a screen row's text and whether the row continues on
-    /// the next one (a soft wrap). Soft-wrapped rows join without a line break; other rows are
-    /// separated by `\n`. Trailing blanks of a hard-broken row are dropped.
+    /// The selected text. `line_of` gives a screen row. Soft-wrapped rows join the next row
+    /// without a line break; other rows are separated by `\n`. Each row contributes its cells
+    /// between the two ends; a hard-broken row's trailing blanks are dropped.
     pub fn text(&self, line_of: impl Fn(u32) -> RowText) -> String {
         let (start, end) = self.ends();
         let mut out = String::new();
         let mut previous_wraps = false;
         for row in start.row..=end.row {
             let line = line_of(row);
-            let chars: Vec<char> = line.text.chars().collect();
             let (from, to) = match self.shape {
                 Shape::Linear => {
                     let from = if row == start.row {
@@ -117,7 +117,7 @@ impl Selection {
                     let to = if row == end.row {
                         end.col as usize + 1
                     } else {
-                        chars.len()
+                        line.cells.len()
                     };
                     (from, to)
                 }
@@ -126,11 +126,14 @@ impl Selection {
                     (c0 as usize, c1 as usize + 1)
                 }
             };
-            let from = from.min(chars.len());
-            let to = to.min(chars.len()).max(from);
-            let piece: String = chars[from..to].iter().collect();
-            let joined = row != start.row && previous_wraps && self.shape == Shape::Linear;
-            if row != start.row && !joined {
+            let from = from.min(line.cells.len());
+            let to = to.min(line.cells.len()).max(from);
+            let piece: String = line.cells[from..to]
+                .iter()
+                .map(|c| c.text.as_str())
+                .collect();
+            let joins = row != start.row && previous_wraps && self.shape == Shape::Linear;
+            if row != start.row && !joins {
                 out.push('\n');
             }
             match line.wraps && self.shape == Shape::Linear {
@@ -143,15 +146,8 @@ impl Selection {
     }
 }
 
-/// One screen row's text, and whether the row continues on the next one.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct RowText {
-    pub text: String,
-    pub wraps: bool,
-}
-
 impl Endpoint {
-    fn at(pos: CellPos, line: &str, granularity: Granularity) -> Self {
+    fn at(pos: CellPos, line: &RowText, granularity: Granularity) -> Self {
         Self {
             pos,
             span: snap(granularity, line, pos.col),
@@ -180,32 +176,36 @@ impl CellPos {
 }
 
 /// The inclusive column span a granularity covers at `col` on `line`.
-pub fn snap(granularity: Granularity, line: &str, col: u16) -> (u16, u16) {
+pub fn snap(granularity: Granularity, line: &RowText, col: u16) -> (u16, u16) {
     match granularity {
         Granularity::Cells => (col, col),
         Granularity::Words => word_span(line, col),
         Granularity::Lines => {
-            let last = line.chars().count().saturating_sub(1);
+            let last = line.cells.len().saturating_sub(1);
             (0, u16::try_from(last).unwrap_or(u16::MAX))
         }
     }
 }
 
-/// The run of one character class around `col`: word characters (letters, digits, `_`),
-/// blanks, or anything else. Past the end of the line, the cell itself.
-pub fn word_span(line: &str, col: u16) -> (u16, u16) {
-    let chars: Vec<char> = line.chars().collect();
+/// The run of one character class around `col` (in cells): word characters (letters, digits and
+/// `_`), blanks, or anything else. A wide character's spacer is part of the character before it.
+/// Past the end of the row, the cell itself.
+pub fn word_span(line: &RowText, col: u16) -> (u16, u16) {
     let at = col as usize;
-    if at >= chars.len() {
+    if at >= line.cells.len() {
         return (col, col);
     }
-    let class = class_of(chars[at]);
+    let class = line.first_char_at(at).map(class_of).unwrap_or(Class::Blank);
+    let same = |i: usize| {
+        line.cells[i].span == Span::Spacer
+            || line.first_char_at(i).map(class_of).unwrap_or(Class::Blank) == class
+    };
     let mut from = at;
-    while from > 0 && class_of(chars[from - 1]) == class {
+    while from > 0 && same(from - 1) {
         from -= 1;
     }
     let mut to = at;
-    while to + 1 < chars.len() && class_of(chars[to + 1]) == class {
+    while to + 1 < line.cells.len() && same(to + 1) {
         to += 1;
     }
     (from as u16, to as u16)

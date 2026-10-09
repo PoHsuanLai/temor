@@ -1,10 +1,11 @@
 //! Scrollback search (PLAN §6, ⌘F): every match of a query in the screen rows, case-insensitive,
-//! and a cursor that steps through them and wraps. Pure: the caller reads the rows' text.
+//! and a cursor that steps through them and wraps. Pure: the caller reads the rows as cells.
 
 use super::chord::fold;
+use super::row::RowText;
 use super::selection::CellPos;
 
-/// One match: a row, the first column and its length in characters.
+/// One match: a row, the first column and its length in columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Match {
     pub row: u32,
@@ -27,28 +28,58 @@ impl Match {
     }
 }
 
-/// Every match of `query` in `rows` (screen row, text), left to right, non-overlapping within a
-/// row. An empty query matches nothing.
-pub fn find_all<'a>(rows: impl IntoIterator<Item = (u32, &'a str)>, query: &str) -> Vec<Match> {
+/// Every match of `query` in `rows` (screen row, cells), left to right, non-overlapping within a
+/// row. Matches are in cell columns: a wide character is two columns. An empty query matches
+/// nothing.
+pub fn find_all<'a>(rows: impl IntoIterator<Item = (u32, &'a RowText)>, query: &str) -> Vec<Match> {
     let needle: Vec<char> = query.chars().map(fold).collect();
     if needle.is_empty() {
         return Vec::new();
     }
     let mut out = Vec::new();
-    for (row, text) in rows {
-        let hay: Vec<char> = text.chars().map(fold).collect();
+    for (row, line) in rows {
+        let hay = characters(line);
         let mut at = 0;
         while at + needle.len() <= hay.len() {
-            if hay[at..at + needle.len()] == needle[..] {
+            let window = &hay[at..at + needle.len()];
+            if window.iter().map(|h| h.ch).eq(needle.iter().copied()) {
+                let first = window[0].col;
+                let last = window[window.len() - 1];
+                let end = last.col + last.columns;
                 out.push(Match {
                     row,
-                    col: u16::try_from(at).unwrap_or(u16::MAX),
-                    len: u16::try_from(needle.len()).unwrap_or(u16::MAX),
+                    col: first,
+                    len: end - first,
                 });
                 at += needle.len();
             } else {
                 at += 1;
             }
+        }
+    }
+    out
+}
+
+/// A character of a row, folded for matching, with the column its cell starts at and the
+/// columns that cell covers.
+#[derive(Clone, Copy)]
+struct Hay {
+    ch: char,
+    col: u16,
+    columns: u16,
+}
+
+fn characters(line: &RowText) -> Vec<Hay> {
+    let mut out = Vec::new();
+    for (index, cell) in line.cells.iter().enumerate() {
+        let col = u16::try_from(index).unwrap_or(u16::MAX);
+        let columns = cell.span.columns();
+        for ch in cell.text.chars() {
+            out.push(Hay {
+                ch: fold(ch),
+                col,
+                columns: columns.max(1),
+            });
         }
     }
     out
