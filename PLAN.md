@@ -48,6 +48,7 @@ ordered by dependency (§11), not split into versions.
 | D19 | **Agent worktrees are temor's, not the agent's.** Starting an agent offers "on a new branch" (first, the default) or "in this checkout"; nothing guesses. temor creates the worktree in its own data dir, sets it up from project facts (an include list for ignored files, the Space's setup command), pins the agent's workspace to it through the gate, warns early about overlapping changes between agents with a `git merge-tree` dry run, and owns review and merge (default **Squash**). It separates files, not processes or ports, and says so. §8.2 |
 | D20 | **Every agent pane shows its approval mode,** as two fixed facts read from the actual launch profile and gate session, never inferred: **Sandbox** (on/off) and **Asks** (everything / writes / nothing). A mode changes only by an explicit action on that pane and never carries over silently to other panes or windows. §8.2 |
 | D21 | **Nothing goes to a model unseen.** Every AI request temor makes (a proposal, a ⌘T AI row, "Ask about @tab") first shows exactly what it will send, as removable chips with sizes, and the sent list is kept with the request's log record. Nothing is attached implicitly. §8.3 |
+| D22 | **Tailscale through porter.** temor never talks to tailscaled. porter's accountd publishes `Tailnet1.Machines()`/`Changed` (typed reader in porter-client); the person's tailnet computers appear as SSH hosts in ⌘T ("Your computers", deduped against `~/.ssh/config`, offline ones dimmed). Connecting is still the system `ssh` to the MagicDNS name with the same sharing, bootstrap and helper; Tailscale SSH hosts need no keys, and its browser check shows as a running row with Open (never auto-opened). Tailnet ports open directly at `name:port` before offering a forward. Design: `~/rs-wt/accounts/tailnet-temor.md`. §9b |
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
@@ -108,7 +109,8 @@ temor/
                       daemon, a libghostty-vt per remote session, ports, files, trial, agent relay
     temor-desktop/    feature `quire-desktop`: IntentProvider1, docket and companion clients,
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
-    temor/            lib + thin main; dist/ (desktop file, D-Bus service, systemd unit,
+    temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service, systemd unit
+                      `org.quire.Temor.service`,
                       intents manifest, skills, shell integration)
 ```
 
@@ -520,6 +522,15 @@ The ranking rules:
   - the path is configurable (`ds-settings`), defaulting to temor's own data dir
 
 ## 9b. SSH
+- **Tailscale (D22):** tailnet machines come from porter's `Tailnet1.Machines()` (node id, name,
+  MagicDNS name, addresses, online/last seen, Tailscale SSH on/off, host keys, owner) and its
+  `Changed()` signal. They join the ⌘T host list as "Your computers"; an ssh_config alias whose
+  HostName is a machine's MagicDNS name or 100.x address is shown once (the person's alias wins).
+  The `HostId` also carries the node id, so a renamed machine keeps its pins and consent. Tailscale
+  SSH needs no key or identity picker; the check-mode `https://login.tailscale.com/…` line in the
+  pre-shell output becomes a "Confirm it's you in your browser" row with Open. Tier B ports offer
+  "Open at <name>:<port>" before "Forward port…". With no Tailscale account, the group is absent.
+  Tests use a fake `Tailnet1` on a private bus and the throwaway sshd printing the check URL.
 
 ### Tier A: nothing installed on the host
 - **Hosts.** They come from `~/.ssh/config` (`Host` blocks, `Include`, `ProxyJump`) into ⌘T rows,
@@ -656,8 +667,8 @@ The ranking rules:
 | **P9 Transfers and shelf** | OSC 5113/1337, `temor get/save/view`, shelf UI, upload by drop | P2 |
 | **P10 Viewers** | peek, Sequence, viewer pane | P2; anyview pane API |
 | **P11 Plugins** | bayonet; `block.lens`, `open.provider`, `agent.adapter`, `row.facts`; the built-in adapters (Claude Code status and hook bridge, git facts) written as plugins | P5, P7; bayonet |
-| **P13 SSH Tier A** | host list, connection sharing, bootstrap (integration, terminfo, `temor get/open`), splits on the same host, remote files and write-back, forwards, consent per host | P2, P3, P9 |
-| **P14 SSH Tier B** | `temor-wire`, `temor-remote` (session daemon with libghostty-vt, snapshot and reattach, `link_step`), port detection, the file service, remote trial, remote workspaces for local agents (plus the on-host CLI fallback) | P13; bulkhead; docket's `JudgeToolCall` |
+| **P13 SSH Tier A** | host list (plus tailnet machines from porter, D22), connection sharing, bootstrap (integration, terminfo, `temor get/open`), splits on the same host, remote files and write-back, forwards, consent per host | P2, P3, P9 |
+| **P14 SSH Tier B** | `temor-wire`, `temor-remote` (session daemon with libghostty-vt, snapshot and reattach, `link_step`), port detection (direct tailnet open first), the file service, remote trial, remote workspaces for local agents (plus the on-host CLI fallback) | P13; bulkhead; docket's `JudgeToolCall` |
 | **P12 Companion context** | @tab chips, `context()` scopes, the ⌘T "Ask about" row with the context card (D21) | P6; companion |
 
 P3 to P5 can run alongside P6 and P9 once P2 lands.

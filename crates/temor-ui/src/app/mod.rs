@@ -7,7 +7,7 @@ pub use shell::shell_pane;
 use crate::view::{App, Launch};
 
 /// The desktop's identity for this app (its desktop file is `dist/<id>.desktop`).
-pub const APP_ID: &str = "app.temor.Terminal";
+pub const APP_ID: &str = "org.quire.Temor";
 
 /// Opens temor's window and runs until it closes.
 pub fn run(launch: Launch) {

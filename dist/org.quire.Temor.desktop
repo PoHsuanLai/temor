@@ -7,5 +7,5 @@ Exec=temor
 Icon=utilities-terminal
 Terminal=false
 Categories=TerminalEmulator;System;
-StartupWMClass=app.temor.Terminal
+StartupWMClass=org.quire.Temor
 StartupNotify=true
