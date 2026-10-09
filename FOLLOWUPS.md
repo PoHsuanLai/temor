@@ -34,6 +34,14 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7
 - [ ] Send `integration_scripts()` with the SSH Tier A bootstrap. §9b
 
+## temor-wire (lane/wire, reviewed at 5e2ffd8)
+- [ ] Callers (temor-ssh, temor-remote) must check the first frame is `Hello`, answer
+      `UnknownRequest`/`UnreadableRequest`, surface `UnreadableEvent`, and add request timeouts. §9b, §4b
+- [ ] `Unknown` catch-alls on wire enums and the `u32::MAX` no-payload marker are additions to §3;
+      a request carrying a nested newer enum is answered `Unreadable` (safe, not precise).
+- [ ] Tune snapshot and file-size limits and the retry policy (1 s base, 60 s cap, 30 tries) against
+      real hosts. §9b, §14
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift). §6
