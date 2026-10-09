@@ -46,6 +46,8 @@ ordered by dependency (§11), not split into versions.
 | D17 | **SSH, Tier A (nothing installed on the host):** hosts are first-class (⌘T, per-Space pins, `host:path` in tabs). Shell integration and terminfo are sent with every connection, as kitty's ssh kitten does. One shared connection per host, so a split or new tab opens instantly in the same remote folder. Remote files support peek, view, and edit-locally-then-write-back, plus upload by drop. Port forwarding from the running row. Consent per host. |
 | D18 | **SSH, Tier B (`temor-remote`, an optional helper uploaded to the host):** sessions survive disconnects and reattach with the exact screen; listening ports are detected and forwarded; remote file service for live viewer panes; trial runs on the host; local agents working on remote workspaces (the agent stays local, its file and terminal calls go to the host). Installed after consent per host; the version is pinned by hash, so it updates itself. Hosts that can't run it fall back to Tier A. |
 | D19 | **Agent worktrees are temor's, not the agent's.** Starting an agent offers "on a new branch" (first, the default) or "in this checkout"; nothing guesses. temor creates the worktree in its own data dir, sets it up from project facts (an include list for ignored files, the Space's setup command), pins the agent's workspace to it through the gate, warns early about overlapping changes between agents with a `git merge-tree` dry run, and owns review and merge (default **Squash**). It separates files, not processes or ports, and says so. §8.2 |
+| D20 | **Every agent pane shows its approval mode,** as two fixed facts read from the actual launch profile and gate session, never inferred: **Sandbox** (on/off) and **Asks** (everything / writes / nothing). A mode changes only by an explicit action on that pane and never carries over silently to other panes or windows. §8.2 |
+| D21 | **Nothing goes to a model unseen.** Every AI request temor makes (a proposal, a ⌘T AI row, "Ask about @tab") first shows exactly what it will send, as removable chips with sizes, and the sent list is kept with the request's log record. Nothing is attached implicitly. §8.3 |
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
@@ -372,6 +374,16 @@ The ranking rules:
     - The adapter must set the CLI's own permissions to "ask for everything", since pre-allowed
       tools bypass hooks.
     - docket builds its side after the agy lane, once the adapter's shape is fixed.
+- **Approval mode, always visible (D20):**
+  - Every agent pane (agent view and CLI pane) has a mode line in its header with two facts:
+    - **Sandbox:** On (docket-launch bwrap) or Off.
+    - **Asks:** Everything, Writes, or Nothing, from the gate's session for that agent.
+  - Both come from the launch profile and docket's session, never from what the agent says. If temor
+    can't read them (an unbridged CLI), the line says **Not gated**.
+  - Changing a mode is an explicit action on that pane (a menu on the mode line, with the
+    consequence spelled out). It applies to that pane only; a new agent starts from the Space's
+    default, never from the last pane's choice.
+  - The same two facts appear on the radar row and in the tab's tooltip.
 - **Checkpoints (D9):**
   - Before an agent's first write in a Space, temor snapshots tracked and untracked files to a hidden
     ref (`refs/temor/checkpoints/<n>`), never a branch, and never in the person's index or stash.
@@ -418,6 +430,11 @@ The ranking rules:
     review view. No per-agent rules: any agent just gets a cwd.
 
 ### 8.3 Proposals in your prompt
+- **What's sent, shown first (D21):** before any model call (a proposal, a ⌘T AI row, "Ask about
+  @tab"), a context card lists exactly what will be sent as chips: the request text, cwd, the last
+  block's command and its last N output lines, the selection, file names. Each chip shows its size and
+  can be removed. Defaults are fixed per entry point (no guessing what's relevant). The sent list is
+  stored with the request's log record, so "what did the model see?" always has an answer.
 - **Asked for, never offered by itself.** Two entry points:
   - the "Explain · Fix" chip on a failed block (it does not retry by itself)
   - the ⌘T row "Suggest a command for: …"
@@ -624,14 +641,14 @@ The ranking rules:
 | **P4 Spaces** | kit integration, `Project` payload, profiles (env, ssh-agent, dotenv), routes, ⌃1–9 | P3 |
 | **P5 Command bar and quick terminal** | providers, fixed ranking, Run row, quick terminal | P4 |
 | **P6 Desktop integration** | intents manifest, `IntentProvider1`, `context()`, D-Bus activation and systemd unit, dock badge, `quire-desktop` boundary gate | P2 |
-| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), agent worktrees (D19; spike first: `git merge-tree` overlap detection across sibling worktrees on a real repo, timing and false-positive check) | P3, P6, P10 (review view); docket |
-| **P8 Proposals** | the trial module in bulkhead, sanitising, the model call, the verdict UI, the Fix chip, the taint marker, the log record | P2, P6; bulkhead split |
+| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), the approval mode line (D20), agent worktrees (D19; spike first: `git merge-tree` overlap detection across sibling worktrees on a real repo, timing and false-positive check) | P3, P6, P10 (review view); docket |
+| **P8 Proposals** | the context card (D21), the trial module in bulkhead, sanitising, the model call, the verdict UI, the Fix chip, the taint marker, the log record | P2, P6; bulkhead split |
 | **P9 Transfers and shelf** | OSC 5113/1337, `temor get/save/view`, shelf UI, upload by drop | P2 |
 | **P10 Viewers** | peek, Sequence, viewer pane | P2; anyview pane API |
 | **P11 Plugins** | bayonet; `block.lens`, `open.provider`, `agent.adapter`, `row.facts`; the built-in adapters (Claude Code status and hook bridge, git facts) written as plugins | P5, P7; bayonet |
 | **P13 SSH Tier A** | host list, connection sharing, bootstrap (integration, terminfo, `temor get/open`), splits on the same host, remote files and write-back, forwards, consent per host | P2, P3, P9 |
 | **P14 SSH Tier B** | `temor-wire`, `temor-remote` (session daemon with libghostty-vt, snapshot and reattach, `link_step`), port detection, the file service, remote trial, remote workspaces for local agents (plus the on-host CLI fallback) | P13; bulkhead; docket's `JudgeToolCall` |
-| **P12 Companion context** | @tab chips, `context()` scopes, the ⌘T "Ask about" row | P6; companion |
+| **P12 Companion context** | @tab chips, `context()` scopes, the ⌘T "Ask about" row with the context card (D21) | P6; companion |
 
 P3 to P5 can run alongside P6 and P9 once P2 lands.
 
