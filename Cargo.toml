@@ -55,6 +55,9 @@ temor-ui = { path = "crates/temor-ui" }
 # temor-transfer (lane blocks): the downloads shelf's store, for "Save output".
 temor-transfer = { path = "crates/temor-transfer" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
+# temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
+temor-wire = { path = "crates/temor-wire" }
+sha2 = "0.10"
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket and prov/porter-core sit at the revs anyview uses (docket abbb62c pins porter 55d1ade, so
