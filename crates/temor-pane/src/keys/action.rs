@@ -39,6 +39,8 @@ pub enum Action {
     ToggleZoom,
     /// Even out the splits of the tab (⌃⌘=).
     Equalize,
+    /// Bring back the tab closed last (⌘⇧T).
+    ReopenTab,
     /// Select the tab at this sidebar position, 1 to 9 (⌘1 to ⌘9). Not in [`Action::ALL`]: the
     /// digits are fixed defaults, not settings.
     SelectTab(u8),
@@ -69,6 +71,7 @@ impl Action {
         Self::FocusDown,
         Self::ToggleZoom,
         Self::Equalize,
+        Self::ReopenTab,
     ];
 
     /// The action written as `slug` in settings text (`find_next`), or `None`.
@@ -100,6 +103,7 @@ impl Action {
             Self::FocusDown => "focus_down",
             Self::ToggleZoom => "toggle_zoom",
             Self::Equalize => "equalize",
+            Self::ReopenTab => "reopen_tab",
             Self::SelectTab(_) => "select_tab",
             Self::SelectSpace(_) => "select_space",
         }
@@ -126,6 +130,7 @@ impl Action {
             Self::FocusDown => "Focus down",
             Self::ToggleZoom => "Zoom",
             Self::Equalize => "Equalize",
+            Self::ReopenTab => "Reopen tab",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

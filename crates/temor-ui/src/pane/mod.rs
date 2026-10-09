@@ -3,4 +3,4 @@
 
 mod sink;
 
-pub use sink::UiSink;
+pub use sink::{TaggedSink, UiSink};

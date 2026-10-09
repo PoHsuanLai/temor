@@ -35,8 +35,50 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
         ime,
     };
     Some(Stroke {
-        chord: chord_of(&raw.key, mods),
+        chord: chord_of(&chord_key(raw), mods),
         key,
+    })
+}
+
+/// The key a chord is made from: the layout's key with no modifier held, so Ctrl+Shift+1 is the
+/// chord `1` with Shift in the modifiers, not `!`. When the platform reports no unshifted key, a
+/// digit or punctuation key under Shift falls back to its US base character by physical code.
+fn chord_key(raw: &RawKey) -> Key {
+    if let Some(unshifted) = &raw.unshifted {
+        return unshifted.clone();
+    }
+    let shifted = raw.modifiers.contains(HeldMods::SHIFT);
+    match (&raw.key, shifted, code_char(&raw.code)) {
+        (Key::Character(_), true, Some(base)) => Key::Character(base.to_string()),
+        _ => raw.key.clone(),
+    }
+}
+
+/// The unshifted US character of a digit or punctuation key.
+fn code_char(code: &Code) -> Option<char> {
+    Some(match code {
+        Code::Digit0 => '0',
+        Code::Digit1 => '1',
+        Code::Digit2 => '2',
+        Code::Digit3 => '3',
+        Code::Digit4 => '4',
+        Code::Digit5 => '5',
+        Code::Digit6 => '6',
+        Code::Digit7 => '7',
+        Code::Digit8 => '8',
+        Code::Digit9 => '9',
+        Code::Minus => '-',
+        Code::Equal => '=',
+        Code::BracketLeft => '[',
+        Code::BracketRight => ']',
+        Code::Backslash => '\\',
+        Code::Semicolon => ';',
+        Code::Quote => '\'',
+        Code::Comma => ',',
+        Code::Period => '.',
+        Code::Slash => '/',
+        Code::Backquote => '`',
+        _ => return None,
     })
 }
 

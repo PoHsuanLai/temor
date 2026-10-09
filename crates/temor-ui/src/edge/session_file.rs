@@ -35,35 +35,51 @@ pub enum Startup {
     Fresh(FreshWhy),
 }
 
-/// Reads the session in `dir`. A damaged file is renamed to `session.json.bad`; a newer one is
-/// kept as it is, so a downgrade never destroys it.
+/// Reads the session in `dir`. A damaged file (not JSON, not valid text, no version) is renamed
+/// to `session.json.bad`; a newer one is kept as it is, so a downgrade never destroys it.
 pub fn load(dir: &Path, keep: KeepClosed) -> Result<Startup, UiError> {
     let path = dir.join(FILE_NAME);
-    let text = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
+    let bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
         Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(Startup::NoFile),
         Err(source) => return Err(UiError::Session(source)),
     };
-    match decode(&text, keep) {
+    // Bytes that are not text cannot be a session file: they are damaged like any other.
+    let decoded = match String::from_utf8(bytes) {
+        Ok(text) => decode(&text, keep),
+        Err(_) => Restored::Fresh(FreshWhy::Damaged),
+    };
+    match decoded {
         Restored::Loaded(ws) => Ok(Startup::Restored(ws)),
         Restored::Fresh(FreshWhy::NewerVersion(v)) => Ok(Startup::Fresh(FreshWhy::NewerVersion(v))),
         Restored::Fresh(FreshWhy::Damaged) => {
-            // Setting it aside keeps the evidence and lets the next save write a clean file.
-            let _ = std::fs::rename(&path, dir.join(format!("{FILE_NAME}.bad")));
+            set_aside(&path);
             Ok(Startup::Fresh(FreshWhy::Damaged))
         }
     }
 }
 
+/// Renames a damaged file to `session.json.bad`: it keeps the evidence and lets the next save
+/// write a clean file.
+fn set_aside(path: &Path) {
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::rename(path, dir.join(format!("{FILE_NAME}.bad")));
+    }
+}
+
 /// Writes `ws` to the session file in `dir`, creating the directory (owner-only) first. A
-/// file this build cannot read is never overwritten: a newer one is refused here.
+/// file written by a newer build is never overwritten; a damaged one is set aside first.
 pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
     ensure_private_dir(dir).map_err(UiError::Session)?;
     let path = dir.join(FILE_NAME);
-    if let Ok(existing) = std::fs::read_to_string(&path) {
-        let keep = KeepClosed::DEFAULT;
-        if let Restored::Fresh(FreshWhy::NewerVersion(_)) = decode(&existing, keep) {
-            return Ok(());
+    if let Ok(existing) = std::fs::read(&path) {
+        match String::from_utf8(existing) {
+            Ok(text) => match decode(&text, KeepClosed::DEFAULT) {
+                Restored::Fresh(FreshWhy::NewerVersion(_)) => return Ok(()),
+                Restored::Fresh(FreshWhy::Damaged) => set_aside(&path),
+                Restored::Loaded(_) => {}
+            },
+            Err(_) => set_aside(&path),
         }
     }
     let text = encode(ws).map_err(|e| UiError::Session(io::Error::other(e.to_string())))?;

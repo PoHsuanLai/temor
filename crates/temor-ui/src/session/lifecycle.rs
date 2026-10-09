@@ -15,7 +15,8 @@ use super::model::{Lifetime, Notice, PADDING_LOGICAL, SessionParts};
 use crate::error::UiError;
 use crate::paint::{PaintView, Painter};
 use crate::pane::UiSink;
-use temor_pane::{Hold, PaneEvent, start};
+use temor_pane::{EventSink, Hold, PaneEvent, start, start_restored};
+use temor_vt::Snapshot;
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
@@ -23,8 +24,21 @@ pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400)
 impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
     pub fn open(parts: SessionParts, events: UnboundedSender<PaneEvent>) -> Result<Self, UiError> {
+        Self::open_with(parts, Arc::new(UiSink(events)), None)
+    }
+
+    /// Starts the program and its session, its events going to `sink`. With a `snapshot` the
+    /// terminal begins as that closed pane's screen and scrollback, the new program writing below.
+    pub fn open_with(
+        parts: SessionParts,
+        sink: Arc<dyn EventSink>,
+        snapshot: Option<&Snapshot>,
+    ) -> Result<Self, UiError> {
         let painter = Painter::new(parts.fonts, parts.spec.palette)?;
-        let (pane, runner) = start(parts.spec, Arc::new(UiSink(events)))?;
+        let (pane, runner) = match snapshot {
+            Some(snapshot) => start_restored(parts.spec, snapshot, sink)?,
+            None => start(parts.spec, sink)?,
+        };
         std::thread::Builder::new()
             .name("temor-pane-io".to_owned())
             .spawn(move || runner.run())
@@ -61,6 +75,7 @@ impl Session {
             clock: parts.clock,
             bell_until: None,
             shelf_dir: parts.shelf_dir,
+            asked: None,
         })
     }
 
@@ -137,7 +152,10 @@ impl Session {
             pixels: self.pixels,
             scale: self.scale,
             padding_logical: PADDING_LOGICAL,
-            focus: PaneFocus::Focused,
+            focus: match self.focus {
+                Focus::Focused => PaneFocus::Focused,
+                Focus::Unfocused => PaneFocus::Unfocused,
+            },
             selection: None,
         };
         if self.hold == Hold::Held {
@@ -177,7 +195,10 @@ impl Session {
             PaneEvent::Cwd(url) => {
                 // The path is shown, so it is cleaned and bounded first (it came from the shell).
                 self.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
-                Notice::Chrome
+                match &self.cwd {
+                    Some(path) => Notice::Cwd(path.clone()),
+                    None => Notice::Chrome,
+                }
             }
             PaneEvent::Progress(progress) => {
                 self.progress = match progress.state {
@@ -222,6 +243,20 @@ impl Session {
             .is_some_and(|until| self.clock.now() < until)
     }
 
+    /// The pane's screen and scrollback encoded, to start a pane from later. `None` for a pane on
+    /// the alternate screen (a full-screen program's screen is not worth keeping), and when the
+    /// encoding is refused or is larger than [`SNAPSHOT_LIMIT`] bytes (the encoding is one block
+    /// that cannot be cut to its newest part).
+    pub fn snapshot(&self) -> Option<Snapshot> {
+        let snapshot = self
+            .pane
+            .with_term(|term| match term.on_alternate_screen() {
+                true => None,
+                false => term.snapshot().ok(),
+            })?;
+        (snapshot.as_bytes().len() <= SNAPSHOT_LIMIT).then_some(snapshot)
+    }
+
     /// The working directory the shell reported, if any.
     pub fn cwd(&self) -> Option<&str> {
         self.cwd.as_deref()
@@ -232,6 +267,9 @@ impl Session {
         self.progress
     }
 }
+
+/// The most bytes a stored snapshot may have (4 MiB).
+pub const SNAPSHOT_LIMIT: usize = 4 * 1024 * 1024;
 
 /// Longest title kept; a program's title is shown, so it is bounded.
 const TITLE_MAX_CHARS: usize = 200;

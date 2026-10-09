@@ -60,8 +60,7 @@ impl Session {
             }
             Action::PreviousPrompt => self.jump_prompt(PromptStep::Previous),
             Action::NextPrompt => self.jump_prompt(PromptStep::Next),
-            // Tabs and splits belong to the window, which runs them through the workspace step;
-            // one pane has nothing to do with them.
+            // Tabs and splits belong to the window: the action waits here for it to take.
             Action::NewTab
             | Action::ClosePane
             | Action::SplitRight
@@ -72,7 +71,16 @@ impl Session {
             | Action::FocusDown
             | Action::ToggleZoom
             | Action::Equalize
-            | Action::SelectTab(_) => Ok(()),
+            | Action::ReopenTab
+            | Action::SelectTab(_) => {
+                self.asked = Some(action);
+                Ok(())
+            }
         }
+    }
+
+    /// The tab or split action the last key asked for, if one is waiting; taking it clears it.
+    pub fn take_asked(&mut self) -> Option<Action> {
+        self.asked.take()
     }
 }

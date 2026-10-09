@@ -10,6 +10,11 @@ fn ctrl_shift(c: char) -> Chord {
     Chord::of_char(c, Mods::CTRL.with(Mods::SHIFT))
 }
 
+/// ⌃⌘= is the one default with Ctrl and Super together (see `Keymap::defaults`).
+fn is_ctrl_super(chord: &Chord) -> bool {
+    *chord == Chord::of_char('=', Mods::CTRL.with(Mods::SUPER))
+}
+
 #[test]
 fn chords_parse_in_any_case_and_order_of_modifiers() {
     let parsed = Chord::parse("Shift+Ctrl+C").expect("valid chord");
@@ -78,11 +83,9 @@ fn defaults_bind_each_action_in_both_command_forms_and_nothing_reserved() {
             "{action:?} has one Ctrl+Shift and one Super form"
         );
         for chord in chords {
-            // ⌃⌘= is the one chord with Ctrl and Super together (see `Keymap::defaults`).
             assert!(
-                chord.is_command_form()
-                    || chord.is_ctrl_shift_form()
-                    || *action == Action::Equalize
+                chord.is_command_form() || chord.is_ctrl_shift_form() || is_ctrl_super(chord),
+                "{action:?} {chord:?}"
             );
             assert!(!chord.is_reserved());
             assert_eq!(keymap.action_for(chord), Some(*action));
@@ -210,6 +213,8 @@ fn workspace_chords_run_their_actions_in_the_right_forms() {
         ("ctrl+shift+alt+left", Some(Action::FocusLeft)),
         ("super+alt+up", Some(Action::FocusUp)),
         ("super+shift+enter", Some(Action::ToggleZoom)),
+        ("super+shift+t", Some(Action::ReopenTab)),
+        ("ctrl+shift+alt+t", Some(Action::ReopenTab)),
         ("ctrl+shift+=", Some(Action::Equalize)),
         ("ctrl+super+=", Some(Action::Equalize)),
         ("ctrl+shift+1", Some(Action::SelectTab(1))),

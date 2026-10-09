@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use temor_pty::{Cols, Pty, Px as PtyPx, Rows, SessionLauncher, SpawnSpec};
 use temor_render::Palette;
-use temor_vt::{CellPx, GridSize, LineCount};
+use temor_vt::{CellPx, GridSize, LineCount, Snapshot};
 
 use super::event::PaneEvent;
 use super::handle::PaneHandle;
@@ -53,17 +53,44 @@ pub fn start(
     spec: PaneSpec,
     events: Arc<dyn EventSink>,
 ) -> Result<(PaneHandle, PaneRunner), PaneError> {
+    start_from(spec, None, events)
+}
+
+/// Like [`start`], but the terminal begins as `snapshot` (a closed pane's screen and
+/// scrollback), with the new program writing below it.
+pub fn start_restored(
+    spec: PaneSpec,
+    snapshot: &Snapshot,
+    events: Arc<dyn EventSink>,
+) -> Result<(PaneHandle, PaneRunner), PaneError> {
+    start_from(spec, Some(snapshot), events)
+}
+
+fn start_from(
+    spec: PaneSpec,
+    snapshot: Option<&Snapshot>,
+    events: Arc<dyn EventSink>,
+) -> Result<(PaneHandle, PaneRunner), PaneError> {
     let size = pty_size(spec.grid, spec.cell);
     let spawn = SpawnSpec { size, ..spec.spawn };
     let pty = Pty::spawn(&spawn, &spec.launcher)?;
     let port = pty.io()?;
-    let term = Term::new(
-        spec.grid,
-        spec.cell,
-        spec.scrollback,
-        spec.cursor,
-        &spec.palette,
-    )?;
+    let term = match snapshot {
+        Some(snapshot) => Term::restored(
+            snapshot,
+            spec.cell,
+            spec.scrollback,
+            spec.cursor,
+            &spec.palette,
+        )?,
+        None => Term::new(
+            spec.grid,
+            spec.cell,
+            spec.scrollback,
+            spec.cursor,
+            &spec.palette,
+        )?,
+    };
     let term = Arc::new(Mutex::new(term));
     let outbox = Arc::new(Outbox::new(port));
     let (commands_tx, commands) = channel();

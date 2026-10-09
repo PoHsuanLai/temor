@@ -10,8 +10,8 @@ use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
     AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
     KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, PointSpace,
-    ReplySink, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan,
-    ViewportScroll, VtEvent,
+    ReplySink, Snapshot, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection,
+    TextSpan, ViewportScroll, VtEvent,
 };
 
 use crate::error::PaneError;
@@ -43,6 +43,49 @@ impl Term {
         cursor: CursorShape,
         palette: &Palette,
     ) -> Result<Self, PaneError> {
+        Self::assemble(
+            size,
+            cell,
+            scrollback,
+            cursor,
+            palette,
+            |config, sink, reply| Terminal::new(config, sink, reply),
+        )
+    }
+
+    /// A terminal restored from `snapshot` (its screen, scrollback, modes and cursor), with the
+    /// same settings as [`Term::new`]. The snapshot's size wins over the grid until the window
+    /// lays the pane out.
+    pub fn restored(
+        snapshot: &Snapshot,
+        cell: CellPx,
+        scrollback: LineCount,
+        cursor: CursorShape,
+        palette: &Palette,
+    ) -> Result<Self, PaneError> {
+        let size = GridSize::new(80, 24);
+        Self::assemble(
+            size,
+            cell,
+            scrollback,
+            cursor,
+            palette,
+            |config, sink, reply| Terminal::restore(snapshot, config, sink, reply),
+        )
+    }
+
+    fn assemble(
+        size: GridSize,
+        cell: CellPx,
+        scrollback: LineCount,
+        cursor: CursorShape,
+        palette: &Palette,
+        make: impl FnOnce(
+            TerminalConfig,
+            Box<dyn EventSink>,
+            Box<dyn ReplySink>,
+        ) -> Result<Terminal, temor_vt::VtError>,
+    ) -> Result<Self, PaneError> {
         let (event_tx, events) = channel();
         let (reply_tx, replies) = channel();
         let mut config = TerminalConfig::new(size);
@@ -50,7 +93,7 @@ impl Term {
         config.scrollback = scrollback;
         let sink: Box<dyn EventSink> = Box::new(event_tx);
         let reply: Box<dyn ReplySink> = Box::new(reply_tx);
-        let mut terminal = Terminal::new(config, sink, reply)?;
+        let mut terminal = make(config, sink, reply)?;
         palette.apply(&mut terminal)?;
         terminal.set_default_cursor_shape(Some(cursor))?;
         Ok(Self {
@@ -60,6 +103,11 @@ impl Term {
             events,
             replies,
         })
+    }
+
+    /// The whole terminal encoded, to start a pane from later.
+    pub fn snapshot(&self) -> Result<Snapshot, PaneError> {
+        Ok(self.terminal.snapshot()?)
     }
 
     /// Feeds program output and collects what it caused.

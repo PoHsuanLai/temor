@@ -36,6 +36,10 @@ pub enum Notice {
     Title(String),
     /// The bell rang.
     Bell,
+    /// The shell reported a new working directory.
+    Cwd(String),
+    /// A command finished (a block ended).
+    CommandDone,
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
@@ -88,6 +92,8 @@ pub struct Session {
     /// Until when the bell's visual mark stays up.
     pub(super) bell_until: Option<Stamp>,
     pub(super) shelf_dir: PathBuf,
+    /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
+    pub(super) asked: Option<temor_pane::keys::Action>,
 }
 
 /// A find query typed but not yet run, and when it was last typed.

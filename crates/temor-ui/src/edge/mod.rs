@@ -8,6 +8,7 @@ pub mod notify;
 mod save_pace;
 mod session_file;
 mod settings_file;
+pub mod sidecar;
 
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};

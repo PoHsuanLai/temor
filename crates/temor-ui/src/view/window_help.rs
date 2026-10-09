@@ -108,9 +108,11 @@ pub(super) fn device_at(
     device_point(p.x, p.y, scale_of(signals.as_ref()))
 }
 
-/// Tells the session whether the pane has the keyboard (a notice goes out only when it does not).
+/// Tells the session whether the pane has the keyboard (a notice goes out only when it does not),
+/// and draws the cursor as the pane's focus says.
 pub(super) fn set_focus(slot: &RefCell<Slot>, focus: Focus) {
     if let Some(s) = slot.borrow_mut().session.as_mut() {
         s.set_focus(focus);
     }
+    repaint(slot);
 }

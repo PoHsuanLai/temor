@@ -45,6 +45,8 @@ pub(super) struct BlockLog {
     pub(super) next_id: u64,
     /// How many primary prompts the shell has marked.
     pub(super) prompts: usize,
+    /// How many commands have finished.
+    pub(super) finished: usize,
 }
 
 impl Default for BlockLog {
@@ -60,6 +62,7 @@ impl Default for BlockLog {
             input: None,
             next_id: 1,
             prompts: 0,
+            finished: 0,
         }
     }
 }
