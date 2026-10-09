@@ -111,14 +111,9 @@ impl Keymap {
                 Chord::of_char(digit, Mods::CTRL.with(Mods::SHIFT)),
             ));
         }
-        // ⌃1 to ⌃9 switch Space (quire's `SwitchChord::Control`). One form only: plain Ctrl, as
-        // the keys arrive from any keyboard; Super+digit is the desktop's and Ctrl+Shift+digit
-        // is the tab chord above. This is the one default that is a bare Ctrl chord, which a
-        // person's settings may not bind (`Keymap::bind`) but the defaults may.
-        for n in 1..=9u8 {
-            let digit = char::from(b'0' + n);
-            bindings.push((Action::SelectSpace(n), Chord::of_char(digit, Mods::CTRL)));
-        }
+        // The Space switch (`Action::SelectSpace`) has no default chord yet: quire leaves Ctrl+digit
+        // to the desktop's workspace switch, and Super+digit belongs to the shell (PLAN §6). The
+        // desktop rule decides which chord it gets; until then a person may bind one in settings.
         // Escape is the find bar's own key, not a ⌘ chord.
         bindings.push((Action::CloseFind, ch_named(NamedKey::Escape, Mods::NONE)));
         Self { bindings }

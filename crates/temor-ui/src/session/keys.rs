@@ -76,6 +76,9 @@ impl Session {
                 self.asked = Some(action);
                 Ok(())
             }
+            // TODO(P4): the Space switch waits for the window's Spaces; held so it never reaches
+            // the program.
+            Action::SelectSpace(_) => Ok(()),
         }
     }
 

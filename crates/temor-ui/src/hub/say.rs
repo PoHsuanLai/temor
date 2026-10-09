@@ -14,5 +14,9 @@ pub fn refusal_text(why: &RefuseWhy) -> String {
         RefuseWhy::OnlyPane(_) => "This is the only pane in its tab".to_owned(),
         RefuseWhy::NothingClosed => "There is no closed tab to reopen".to_owned(),
         RefuseWhy::UseCloseTab => "Close the tab to remove it".to_owned(),
+        RefuseWhy::IdsExhausted => {
+            "temor has opened too many panes; restart it to go on".to_owned()
+        }
+        _ => "temor can't do that here".to_owned(),
     }
 }

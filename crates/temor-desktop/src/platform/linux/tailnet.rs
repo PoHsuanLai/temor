@@ -99,7 +99,10 @@ pub(super) fn host_of(machine: &Machine) -> Option<TailnetHost> {
         } else {
             Presence::Offline
         },
-        last_seen: machine.last_seen.map(|at| UnixSeconds(at.0)),
+        last_seen: machine
+            .last_seen
+            .and_then(|at| u64::try_from(at.0).ok())
+            .map(UnixSeconds),
         ssh: if machine.ssh {
             TailscaleSsh::On
         } else {

@@ -47,6 +47,8 @@ impl Hub {
             WorkspaceOut::Tab(_) => {}
             WorkspaceOut::Refused(why) => self.notices.push(refusal_text(&why)),
             WorkspaceOut::Changed => self.pace.changed(),
+            // An output a later core adds has nothing for the window to do yet.
+            _ => {}
         }
     }
 

@@ -39,6 +39,7 @@ toml = { workspace = true, optional = true }
 zbus = { workspace = true, optional = true }
 
 [dev-dependencies]
+serde = { workspace = true }
 futures-util = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros", "time"] }

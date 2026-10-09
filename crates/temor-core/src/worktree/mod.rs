@@ -1,7 +1,7 @@
 //! Agent worktrees (D19, PLAN §8.2): temor's own worktrees on a new branch, set up from project
 //! facts, with a deterministic early overlap check and a review-and-merge flow. The model and
 //! the step functions are pure; every effect goes through the [`Git`] trait, whose process
-//! implementation ([`ProcessGit`]) takes the git binary's path from the caller.
+//! implementation (temor-ui's `edge::git::ProcessGit`) takes the git binary's path from the caller.
 
 mod create;
 mod git;
@@ -9,7 +9,6 @@ mod life;
 mod merge;
 mod model;
 pub mod overlap;
-mod process;
 mod setup;
 mod snapshot;
 #[cfg(test)]
@@ -22,6 +21,5 @@ pub use merge::{MergeOutcome, merge, undo_ref};
 pub use model::{
     AgentWorktree, CloseChoice, MergeMethod, Oid, Placement, WorktreeName, placement_rows,
 };
-pub use process::ProcessGit;
 pub use setup::{INCLUDE_FILE, IncludeList, SetupPlan};
 pub use snapshot::{Snapshot, snapshot, snapshot_index_path};

@@ -4887,6 +4887,7 @@ dependencies = [
  "porter-client",
  "porter-core",
  "prov",
+ "serde",
  "serde_json",
  "temor-ssh",
  "tempfile",

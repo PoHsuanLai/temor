@@ -5,7 +5,6 @@ mod bar_rank;
 mod sanitise_props;
 mod serde_shapes;
 mod split_props;
-mod worktree_git;
 
 #[test]
 fn every_module_in_this_directory_is_declared() {

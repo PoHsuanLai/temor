@@ -10,9 +10,10 @@ use temor_core::vocab::ids::{CheckpointRef, TabId};
 use temor_core::vocab::text::RelPath;
 use temor_core::worktree::overlap::{probe_base, probe_pair};
 use temor_core::worktree::{
-    AgentWorktree, CreateParams, Git, GitCommand, MergeMethod, MergeOutcome, ProcessGit,
-    WorktreeName, create, merge, remove, resolve_commit, run_ok, snapshot,
+    AgentWorktree, CreateParams, Git, GitCommand, MergeMethod, MergeOutcome, WorktreeName, create,
+    merge, remove, resolve_commit, run_ok, snapshot,
 };
+use temor_ui::edge::git::ProcessGit;
 
 struct Scratch {
     git: ProcessGit,

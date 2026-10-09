@@ -52,7 +52,8 @@ pub fn load(dir: &Path, keep: KeepClosed) -> Result<Startup, UiError> {
     match decoded {
         Restored::Loaded(ws) => Ok(Startup::Restored(ws)),
         Restored::Fresh(FreshWhy::NewerVersion(v)) => Ok(Startup::Fresh(FreshWhy::NewerVersion(v))),
-        Restored::Fresh(FreshWhy::Damaged) => {
+        // Damaged, or any reason a later build adds: keep the evidence and start fresh.
+        _ => {
             set_aside(&path);
             Ok(Startup::Fresh(FreshWhy::Damaged))
         }
@@ -78,6 +79,7 @@ pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
                 Restored::Fresh(FreshWhy::NewerVersion(_)) => return Ok(()),
                 Restored::Fresh(FreshWhy::Damaged) => set_aside(&path),
                 Restored::Loaded(_) => {}
+                _ => set_aside(&path),
             },
             Err(_) => set_aside(&path),
         }

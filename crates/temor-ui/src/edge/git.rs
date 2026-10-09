@@ -1,11 +1,11 @@
-//! The edge: git as a child process, from a binary path the caller injects (found on `PATH` by
-//! the app, never here). This is the only code in the core that starts a process.
+//! Git as a child process, from a binary path the caller injects (found on `PATH` by the app),
+//! behind temor-core's `Git` trait: the core stays free of I/O (PLAN §2, L2).
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use super::git::{Git, GitCommand, GitOutput};
-use crate::error::CoreError;
+use temor_core::error::CoreError;
+use temor_core::worktree::{Git, GitCommand, GitOutput};
 
 /// Runs the git at `binary`. Terminal prompts are off and the language is `C`, so output is
 /// readable and a missing credential fails instead of waiting.

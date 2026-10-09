@@ -30,6 +30,8 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::FindPrevious
         | Action::CloseFind
         | Action::PreviousPrompt
-        | Action::NextPrompt => return None,
+        | Action::NextPrompt
+        // TODO(P4): Spaces switch through the kit once the window shows Spaces.
+        | Action::SelectSpace(_) => return None,
     })
 }

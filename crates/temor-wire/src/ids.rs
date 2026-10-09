@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct RequestId(pub u64);
 
 /// One remote session: a shell (or other program) on the host with its own screen state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SessionId(pub u64);
 

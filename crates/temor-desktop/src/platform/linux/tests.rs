@@ -11,7 +11,7 @@ use docket_core::{Here, Selection};
 use porter_client::Machine;
 use porter_core::AppName;
 use prov::{Effect, Integrity};
-use temor_ssh::{Reach, TailnetOwner, TailscaleSsh, UnixSeconds};
+use temor_ssh::{Presence, TailnetOwner, TailscaleSsh, UnixSeconds};
 use zbus::zvariant::Value;
 
 #[test]
@@ -104,7 +104,7 @@ fn a_machine_maps_to_a_plain_host() {
         "addresses": ["100.64.0.7"], "os": "linux", "online": true, "last_seen": null,
         "ssh": true, "ssh_host_keys": ["ssh-ed25519 AAAA"], "owner": "mine",
     }));
-    let host = host_of(&online);
+    let host = host_of(&online).expect("a usable node id");
     assert_eq!(host.node.as_str(), "nPXS7a2CNTRL");
     assert_eq!(host.dns, "box.tail1.ts.net");
     assert_eq!(
@@ -112,8 +112,8 @@ fn a_machine_maps_to_a_plain_host() {
         vec!["100.64.0.7".parse::<std::net::IpAddr>().unwrap()]
     );
     assert_eq!(
-        (host.reach, host.last_seen, host.ssh, host.owner),
-        (Reach::Online, None, TailscaleSsh::On, TailnetOwner::Mine)
+        (host.online, host.last_seen, host.ssh, host.owner),
+        (Presence::Online, None, TailscaleSsh::On, TailnetOwner::Mine)
     );
 
     let away = machine(serde_json::json!({
@@ -121,11 +121,11 @@ fn a_machine_maps_to_a_plain_host() {
         "os": "", "online": false, "last_seen": 1_700_000_000, "ssh": false,
         "ssh_host_keys": [], "owner": "tagged",
     }));
-    let host = host_of(&away);
+    let host = host_of(&away).expect("a usable node id");
     assert_eq!(
-        (host.reach, host.last_seen, host.ssh, host.owner),
+        (host.online, host.last_seen, host.ssh, host.owner),
         (
-            Reach::Offline,
+            Presence::Offline,
             Some(UnixSeconds(1_700_000_000)),
             TailscaleSsh::Off,
             TailnetOwner::Tagged
