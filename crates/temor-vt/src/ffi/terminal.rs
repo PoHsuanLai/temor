@@ -5,15 +5,16 @@ use std::ptr::NonNull;
 
 use temor_vt_sys as sys;
 
+use super::anchor::Anchors;
 use super::callbacks::{self, Callbacks, TitleChange};
 use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
-use crate::scan::{InlineFileScanner, Scanned};
+use crate::scan::{InlineFileScanner, MarkCuts};
 use crate::{
-    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode, UnknownKind,
-    ViewportScroll, VtError, VtEvent,
+    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode,
+    ViewportScroll, VtError,
 };
 
 /// A terminal emulator backed by libghostty-vt. Feed it program output with
@@ -27,7 +28,12 @@ pub struct Terminal {
     raw: NonNull<sys::TerminalImpl>,
     /// Boxed so `userdata` stays valid; freed in `Drop` after the terminal.
     callbacks: NonNull<Callbacks>,
-    scanner: InlineFileScanner,
+    pub(super) scanner: InlineFileScanner,
+    /// Where OSC 133 marks end, carried across writes.
+    pub(super) marks: MarkCuts,
+    /// The number of the last mark cut (see `VtEvent::MarkBegin`).
+    pub(super) mark_seq: u64,
+    pub(super) anchors: Anchors,
 }
 
 // SAFETY: a `Terminal` may move to another thread because
@@ -112,6 +118,9 @@ impl Terminal {
             raw,
             callbacks,
             scanner: InlineFileScanner::new(config.inline_file_max),
+            marks: MarkCuts::new(),
+            mark_seq: 0,
+            anchors: Anchors::default(),
         };
         install_png_decoder();
         // SAFETY: the terminal is live and `callbacks` is boxed, never moves, and is freed only
@@ -155,35 +164,12 @@ impl Terminal {
         )
     }
 
-    /// Feeds program output. Inline files (OSC 1337 `File=`) are taken out first and reported as
-    /// [`UnknownKind::Osc1337File`]; everything else goes to libghostty, whose callbacks send
-    /// their events before this returns.
-    pub fn write(&mut self, bytes: &[u8]) {
-        let raw = self.raw();
-        let cb = self.callbacks;
-        self.scanner.feed(bytes, |seg| match seg {
-            // SAFETY: the terminal is live and `b` is readable for the call. Callbacks may run;
-            // they only use `Callbacks` through shared refs.
-            Scanned::Bytes(b) => unsafe {
-                sys::ghostty_terminal_vt_write(raw, b.as_ptr(), b.len())
-            },
-            Scanned::File {
-                payload,
-                truncation,
-            } => {
-                // SAFETY: as in `callbacks()`.
-                let cb = unsafe { cb.as_ref() };
-                cb.sink.send(VtEvent::Unknown {
-                    kind: UnknownKind::Osc1337File,
-                    payload,
-                    truncation,
-                });
-            }
-        });
-        if self.callbacks().title.replace(TitleChange::Unchanged) == TitleChange::Changed {
-            let title = self.title();
-            self.callbacks().sink.send(VtEvent::Title(title));
-        }
+    pub(super) fn anchors(&self) -> &Anchors {
+        &self.anchors
+    }
+
+    pub(super) fn anchors_mut(&mut self) -> &mut Anchors {
+        &mut self.anchors
     }
 
     /// Changes the grid and cell size, reflowing soft-wrapped lines. Like `write`, it can send
@@ -292,6 +278,8 @@ impl Drop for Terminal {
         // SAFETY: the terminal is freed first, so no callback can run afterwards; then the
         // callbacks box, leaked in `adopt`, is reclaimed exactly once.
         unsafe {
+            // The tracked references go first: they belong to this terminal.
+            self.anchors.free_all();
             sys::ghostty_terminal_free(self.raw());
             drop(Box::from_raw(self.callbacks.as_ptr()));
         }

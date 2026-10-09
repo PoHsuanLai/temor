@@ -15,7 +15,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use super::launch::{Launch, open_session};
 use super::probe::Probe;
 use crate::pane::{Hold, PaneEvent};
-use crate::session::{Notice, Session};
+use crate::session::{BELL_MARK, Notice, Session};
 
 /// What the window keeps between renders that is not a signal.
 #[derive(Default)]
@@ -133,6 +133,8 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
             }
             let mut paint = false;
             let mut ended = false;
+            let mut chrome = false;
+            let mut bell = false;
             let mut held_since: Option<u64> = None;
             {
                 let mut s = slot.borrow_mut();
@@ -154,7 +156,9 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
                             session.release_hold();
                             paint = true;
                         }
-                        Notice::Title(_) | Notice::Bell | Notice::Quiet => {}
+                        Notice::Chrome | Notice::Title(_) => chrome = true,
+                        Notice::Bell => bell = true,
+                        Notice::Quiet => {}
                     }
                 }
             }
@@ -164,8 +168,17 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
             if paint {
                 repaint(&slot);
             }
-            if ended {
+            if ended || chrome {
                 ui += 1;
+            }
+            if bell {
+                ui += 1;
+                // The bell's mark goes away on its own: a timer redraws once it has passed.
+                let mut ui = ui;
+                spawn(async move {
+                    sleep(BELL_MARK).await;
+                    ui += 1;
+                });
             }
         }
     });

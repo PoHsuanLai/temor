@@ -7,7 +7,11 @@
 //! (PLAN §9).
 
 mod inline_file;
+#[cfg(feature = "ghostty")]
+mod marks;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use inline_file::{InlineFileScanner, Scanned};
+#[cfg(feature = "ghostty")]
+pub(crate) use marks::MarkCuts;

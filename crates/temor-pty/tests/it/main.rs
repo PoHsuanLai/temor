@@ -9,6 +9,7 @@ mod foreground;
 mod integration;
 mod kill;
 mod line_discipline;
+mod nushell_env;
 mod opt_out;
 mod resize;
 mod support;

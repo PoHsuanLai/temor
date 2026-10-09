@@ -112,13 +112,17 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
         VtEvent::Cwd(url) => PaneEvent::Cwd(url),
         VtEvent::Clipboard { write } => PaneEvent::Clipboard(write),
         VtEvent::Notification(note) => PaneEvent::Notification(note),
+        VtEvent::MarkBegin { seq } => PaneEvent::MarkBegin { seq },
         VtEvent::Prompt(mark) => PaneEvent::Prompt(mark),
+        VtEvent::Anchor { seq, anchor } => PaneEvent::Anchor { seq, anchor },
+        VtEvent::Progress(progress) => PaneEvent::Progress(progress),
+        VtEvent::Reset => PaneEvent::Reset,
         VtEvent::RenderHold(RenderHold::Held) => PaneEvent::RenderHold(super::event::Hold::Held),
         VtEvent::RenderHold(RenderHold::Released) => {
             PaneEvent::RenderHold(super::event::Hold::Released)
         }
-        // Progress, program status, resets, colour-scheme queries and unknown sequences have no
-        // UI yet (PLAN §4b, §9); they are dropped here, in one place.
+        // Program status, colour-scheme queries, clipboard reads and unknown sequences have no
+        // UI yet (PLAN §4b, §8.1, §9); they are dropped here, in one place.
         _ => return None,
     })
 }

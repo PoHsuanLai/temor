@@ -26,4 +26,7 @@ pub enum UiError {
     /// The pane's background work could not start.
     #[error("the terminal could not start its background work: {0}")]
     Thread(#[source] std::io::Error),
+    /// The output could not be saved to the downloads shelf.
+    #[error("the output could not be saved: {0}")]
+    Save(String),
 }

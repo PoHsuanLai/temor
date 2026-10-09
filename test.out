@@ -1,0 +1,603 @@
+   Compiling temor-vt v0.1.0 (/home/pohsuanlai/rs-wt/temor-blocks/crates/temor-vt)
+   Compiling temor-render v0.1.0 (/home/pohsuanlai/rs-wt/temor-blocks/crates/temor-render)
+   Compiling temor-ui v0.1.0 (/home/pohsuanlai/rs-wt/temor-blocks/crates/temor-ui)
+   Compiling temor v0.1.0 (/home/pohsuanlai/rs-wt/temor-blocks/crates/temor)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.48s
+     Running unittests src/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor-84926ac1df9091c0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_core-7dc0718e6fa04f87)
+
+running 86 tests
+test bar::tests::enter_and_click_pick_a_row ... ok
+test bar::tests::provider_rows_for_an_old_query_are_dropped_and_the_highlight_survives ... ok
+test block::elapsed::tests::durations_read_in_the_largest_fitting_units ... ok
+test block::store_tests::a_full_store_drops_the_oldest_finished_block_before_a_running_one ... ok
+test bar::tests::toggle_opens_and_closes_and_escape_closes ... ok
+test bar::tests::typing_reranks_asks_providers_and_highlights_the_top_row ... ok
+test bar::tests::typing_resets_the_highlight_to_the_new_top_row ... ok
+test bar::tests::selection_stops_at_the_ends ... ok
+test block::store_tests::a_missing_d_is_closed_by_the_next_prompt_as_unreported ... ok
+test block::store_tests::a_full_store_of_running_blocks_drops_the_oldest ... ok
+test block::store_tests::a_missing_b_still_makes_a_block_and_a_failure_keeps_its_code ... ok
+test block::store_tests::a_nested_shell_keeps_the_outer_block_open_until_the_inner_one_is_done ... ok
+test block::store_tests::a_normal_command_makes_one_block_with_its_exit_and_time ... ok
+test block::store_tests::a_reset_mid_command_ends_it_unreported_and_the_next_prompt_starts_cleanly ... ok
+test block::store_tests::a_shell_exit_mid_command_closes_the_block_and_nothing_follows ... ok
+test block::store_tests::a_stray_d_after_the_block_is_closed_is_ignored ... ok
+test block::store_tests::an_empty_line_or_ctrl_c_at_the_prompt_makes_no_block ... ok
+test block::store_tests::marks_after_a_clear_screen_keep_their_blocks ... ok
+test block::store_tests::the_store_drops_the_oldest_finished_block_when_full ... ok
+test block::store_tests::trimmed_scrollback_takes_its_blocks_with_it ... ok
+test block::tests::osc_133_marks_make_blocks ... ok
+test notify::tests::a_long_command_notifies_only_while_the_pane_is_unfocused ... ok
+test checkpoint::tests::checkpoints_are_taken_per_block_and_restored ... ok
+test notify::tests::an_unknown_status_still_notifies_as_unreported ... ok
+test notify::tests::off_never_notifies_and_a_running_block_is_not_finished ... ok
+test notify::tests::program_notices_and_the_bell_follow_focus ... ok
+test notify::tests::the_limiter_lets_one_notice_through_per_gap_on_a_fake_clock ... ok
+test notify::tests::the_threshold_is_inclusive_and_short_commands_stay_quiet ... ok
+test presence::tests::a_report_records_its_sequence ... ok
+test presence::tests::agent_states_map_to_the_companion_orb_and_the_unread_dot ... ok
+test proposal::sanitise_tests::a_stored_line_is_sanitised_again_as_it_is_read ... ok
+test presence::tests::presence_follows_reports_focus_prompts_and_exit ... ok
+test proposal::sanitise_tests::every_c0_and_c1_control_is_removed ... ok
+test proposal::tests::a_stale_trial_result_is_never_shown_with_a_newer_command ... ok
+test proposal::tests::a_tainted_answer_keeps_its_taint ... ok
+test proposal::sanitise_tests::sanitise_removes_each_unsafe_class_and_reports_it ... ok
+test proposal::tests::a_proposal_goes_from_ask_to_trial_to_prompt ... ok
+test proposal::tests::a_typed_proposal_is_still_logged_after_a_new_ask_or_with_ai_off ... ok
+test proposal::tests::with_ai_off_nothing_reaches_a_model ... ok
+test remote::tests::a_dropped_link_runs_to_lost_on_its_timers_alone ... ok
+test proposal::tests::escape_and_ctrl_c_always_reach_the_shell ... ok
+test remote::tests::a_link_reconnects_with_backoff_and_reattaches ... ok
+test remote::tests::the_helper_installs_only_where_it_fits_and_is_allowed ... ok
+test split::step_tests::focusing_another_pane_while_zoomed_unzooms ... ok
+test split::step_tests::tree_step_moves_focus_with_the_commands ... ok
+test split::tests::a_stored_tree_must_be_one_tree_over_distinct_panes ... ok
+test split::tests::equalize_weighs_children_along_the_split_axis ... ok
+test split::tests::goto_moves_in_reading_order_and_on_screen ... ok
+test split::tests::layout_gives_whole_pixel_rects_that_tile ... ok
+test split::tests::removing_a_pane_promotes_its_sibling ... ok
+test split::tests::resize_scales_a_window_delta_to_the_split_and_clamps ... ok
+test split::tests::split_places_the_new_pane_on_the_side_asked ... ok
+test split::tests::split_refuses_unknown_and_duplicate_panes ... ok
+test split::tests::zoom_needs_a_split_and_goes_with_its_pane ... ok
+test terminal::cwd::tests::a_file_url_gives_its_path_decoded ... ok
+test terminal::link::tests::malformed_targets_are_refused ... ok
+test terminal::cwd::tests::other_urls_and_broken_escapes_give_nothing ... ok
+test terminal::link::tests::other_schemes_are_refused_with_the_scheme_named ... ok
+test terminal::link::tests::web_and_mail_links_open ... ok
+test terminal::paste_tests::a_carriage_return_is_a_line_break_in_either_mode ... ok
+test terminal::paste_tests::a_newline_is_unsafe_only_when_the_paste_is_not_bracketed ... ok
+test terminal::paste_tests::paste_frames_and_cleans_bytes ... ok
+test terminal::paste_tests::what_libghostty_flags_is_confirmed_in_every_mode ... ok
+test terminal::selection_tests::a_soft_wrapped_row_joins_the_next_without_a_line_break ... ok
+test terminal::selection_tests::block_selection_takes_a_rectangle ... ok
+test terminal::selection_tests::selection_drags_in_both_directions ... ok
+test terminal::selection_tests::search_is_case_insensitive_and_steps_with_wrap ... ok
+test terminal::selection_tests::selection_spans_rows_and_drops_trailing_blanks ... ok
+test terminal::selection_tests::wide_characters_are_two_columns_in_selection_and_search ... ok
+test terminal::selection_tests::word_and_line_selection_snap_to_their_runs ... ok
+test terminal::tests::chord_labels_show_the_command_key_for_ctrl_shift ... ok
+test terminal::tests::chords_parse_in_any_case_and_order_of_modifiers ... ok
+test terminal::tests::defaults_bind_each_action_once_and_never_use_super ... ok
+test terminal::tests::notify_after_reads_seconds_and_off ... ok
+test terminal::tests::prompt_jumps_are_bound_to_ctrl_shift_arrows_and_settable ... ok
+test terminal::tests::rebinding_moves_an_action_and_refuses_clashes ... ok
+test terminal::tests::settings_text_applies_good_lines_and_reports_bad_ones ... ok
+test terminal::tests::settings_values_have_limits ... ok
+test terminal::tests::super_and_ctrl_space_are_reserved ... ok
+test transfer::tests::a_transfer_runs_to_the_shelf_or_breaks ... ok
+test transfer::tests::an_offer_is_accepted_refused_or_asked_by_origin_and_consent ... ok
+test vocab::text::tests::a_line_break_refuses_the_command ... ok
+test vocab::text::tests::display_text_drops_controls_and_bidi_and_is_bounded ... ok
+test vocab::text::tests::other_control_characters_are_dropped_and_blanks_trimmed ... ok
+test split::step_tests::goto_unzooms_and_a_full_tab_refuses_a_split ... ok
+test split::tests::equalize_stays_exact_at_the_most_panes ... ok
+
+test result: ok. 86 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-396c320a08a26c0c)
+
+running 24 tests
+test bar_rank::a_run_row_tops_the_list_only_when_the_first_word_is_on_path ... ok
+test bar_rank::ai_rows_are_always_last_and_absent_when_ai_is_off ... ok
+test bar_rank::equally_good_folders_rank_by_frecency ... ok
+test bar_rank::matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_kind ... ok
+test bar_rank::plugin_rows_follow_local_matches_in_their_own_order ... ok
+test serde_shapes::closed_sets_serialise_as_their_slugs ... ok
+test serde_shapes::enums_with_data_are_adjacently_tagged ... ok
+test serde_shapes::a_project_sits_flat_beside_the_look_in_the_spaces_file ... ok
+test serde_shapes::stored_forms_are_read_leniently ... ok
+test serde_shapes::one_bad_field_costs_only_itself ... ok
+test serde_shapes::every_stored_type_round_trips ... ok
+test split_props::spatial_goto_is_symmetric_in_a_strip ... ok
+test split_props::every_rectangle_is_non_empty_when_the_tab_has_room ... ok
+test split_props::every_leaf_is_reachable_from_the_root ... ok
+test split_props::equalize_is_idempotent ... ok
+test split_props::resize_stays_clamped ... ok
+test split_props::split_then_remove_gives_back_the_original ... ok
+test split_props::the_rectangles_tile_the_area_exactly ... ok
+test split_props::a_tree_round_trips_through_its_stored_form ... ok
+test split_props::spatial_goto_is_symmetric_in_an_even_grid ... ok
+test sanitise_props::every_unicode_suspect_is_removed_or_made_plain ... ok
+test sanitise_props::sanitising_twice_changes_nothing_more ... ok
+test sanitise_props::the_result_is_one_line_with_nothing_unsafe ... ok
+test sanitise_props::unchanged_means_the_text_is_kept_whole ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_pty-79df307c619ce36a)
+
+running 12 tests
+test env::tests::base_env_drops_other_terminals_and_keeps_the_rest ... ok
+test env::tests::term_slugs_are_the_terminfo_names ... ok
+test env::tests::profile_overrides_term_but_not_identity ... ok
+test env::tests::terminfo_dirs_follow_ncurses_order ... ok
+test shell::tests::fish_plan_prepends_a_data_dir ... ok
+test shell::tests::opt_out_and_other_shells_start_plainly ... ok
+test shell::tests::passwd_lookup_finds_the_users_shell ... ok
+test shell::tests::bash_plan_uses_an_rcfile_under_the_runtime_dir ... ok
+test shell::tests::shell_kind_reads_the_file_name ... ok
+test shell::tests::resolve_prefers_passwd_then_shell_var_then_sh ... ok
+test env::tests::find_term_falls_back_without_an_entry ... ok
+test shell::tests::zsh_plan_keeps_the_real_zdotdir ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-ed294ff6b288530e)
+
+running 17 tests
+test kill::exit_status_is_reported ... ok
+test env_contract::env_holds_the_contract_and_nothing_inherited ... ok
+test opt_out::opt_out_injects_nothing ... ok
+test line_discipline::input_is_marked_utf8 ... ok
+test integration::bash_keeps_a_prompt_command_ending_in_a_semicolon ... ok
+test integration::bash_marks_true_and_false ... ok
+test resize::stty_sees_the_new_size ... ok
+test integration::zsh_marks_true_and_false ... ok
+test integration::zsh_keeps_the_mark_under_a_theme_that_rebuilds_ps1 ... ok
+test dotfiles::bash_shim_sources_bashrc_first ... ok
+test kill::kill_reaps_the_leader_and_ends_the_group ... ok
+test dotfiles::bash_login_shim_sources_bash_profile_first ... ok
+test nushell_env::nushell_marks_its_commands_and_gives_xdg_data_dirs_back_unchanged ... ok
+test foreground::foreground_follows_sleep ... ok
+test fish_env::fish_restores_an_unset_xdg_data_dirs ... ok
+test fish_env::fish_keeps_what_an_earlier_snippet_added ... ok
+test integration::fish_marks_true_and_false ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.21s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_render-b7652718410a8bc6)
+
+running 21 tests
+test font::boxdraw::tests::a_double_corner_leaves_its_inside_open ... ok
+test font::boxdraw::tests::blocks_tile_their_fractions ... ok
+test font::boxdraw::tests::horizontal_and_vertical_lines_reach_the_cell_edges ... ok
+test font::tests::fallbacks_cover_cjk_and_colour_emoji ... ok
+test metrics::tests::a_tiny_pane_still_holds_one_cell ... ok
+test metrics::tests::pixels_map_to_cells_and_back ... ok
+test font::tests::the_named_family_gives_four_cuts_with_synthetic_italic ... ok
+test metrics::tests::points_outside_clamp_to_the_nearest_cell ... ok
+test metrics::tests::scale_snaps_to_device_pixels_and_rejects_nonsense ... ok
+test metrics::tests::the_mouse_surface_carries_the_padding ... ok
+test metrics::tests::whole_cells_fit_and_leftover_goes_right_and_bottom ... ok
+test font::boxdraw::tests::every_character_in_the_ranges_draws_something ... ok
+test scene::tests::a_cursor_on_a_wide_blank_cell_spans_both_columns ... ok
+test font::tests::metrics_are_whole_pixels_and_scale_up ... ok
+test scene::tests::inverse_swaps_and_selection_and_cursor_win ... ok
+test scene::tests::true_colour_cells_keep_their_colour ... ok
+test scene::tests::every_cursor_style_draws ... ok
+test scene::tests::a_row_puts_backgrounds_under_text_and_decorations ... ok
+test font::tests::runs_are_cached_and_emoji_are_colour ... ok
+test font::tests::a_full_atlas_clears_and_moves_the_epoch ... ok
+test cpu::tests::a_frame_drawn_through_atlas_clears_matches_one_drawn_with_room ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-b8009663ff78d7d6)
+
+running 13 tests
+test bench::frame_time ... ignored, benchmark; run with --ignored --nocapture
+test dirty::a_program_background_change_redraws_the_padding_too ... ok
+test dirty::losing_focus_redraws_with_a_hollow_cursor ... ok
+test palette::already_drawn_cells_follow_a_new_palette ... ok
+test dirty::moving_the_cursor_recomposes_its_old_and_new_rows ... ok
+test dirty::a_change_on_one_row_recomposes_only_that_row ... ok
+test golden::kitty_images_on_each_layer ... ok
+test golden::every_cursor_shape ... ok
+test golden::colours ... ok
+test golden::text_and_styles ... ok
+test golden::box_drawing ... ok
+test golden::one_frame_at_each_scale ... ok
+test golden::wide_characters_and_emoji ... ok
+
+test result: ok. 12 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_transfer-7f9b267b6e680b29)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-7ce8c37b0c4dfd40)
+
+running 85 tests
+test kitty_receive::an_offer_asks_for_consent_from_its_origin_and_writes_nothing ... ok
+test kitty_receive::a_regular_file_is_created_appended_finished_and_saved ... ok
+test kitty_receive::chunks_arrive_in_pieces_before_the_last ... ok
+test kitty_receive::a_folder_and_its_children_land_under_it ... ok
+test kitty_receive::frames_before_consent_are_held_back ... ok
+test kitty_receive::refusal_replies_with_permission_denied_and_ends_without_writes ... ok
+test kitty_receive::an_unknown_parent_is_refused ... ok
+test kitty_receive::links_are_refused_and_nothing_is_created ... ok
+test kitty_receive::traversal_names_are_refused_and_never_written ... ok
+test kitty_receive_limits::a_failed_write_for_no_open_file_ends_the_transfer ... ok
+test kitty_receive_limits::a_size_that_does_not_match_the_announcement_fails_the_file ... ok
+test kitty_receive_limits::a_failed_write_cancels_that_file_and_the_transfer_goes_on ... ok
+test kitty_receive_limits::an_announced_size_over_the_limit_is_refused_before_any_write ... ok
+test kitty_receive_limits::an_aborted_stream_discards_open_files_and_ends_quietly ... ok
+test kitty_receive_limits::cancel_discards_open_files_and_says_so ... ok
+test kitty_receive_limits::data_for_an_unknown_file_gets_a_reply_and_no_write ... ok
+test kitty_receive_limits::data_past_the_limit_fails_the_session_and_discards_partial_files ... ok
+test kitty_receive_limits::only_the_simple_transmission_type_is_offered_to_the_person ... ok
+test kitty_receive_limits::going_over_the_entry_cap_replies_and_discards_open_files ... ok
+test kitty_receive_limits::too_many_files_open_at_once_ends_the_transfer ... ok
+test kitty_receive_names::a_failed_create_cancels_that_file_without_discarding_anything ... ok
+test kitty_receive_names::a_frame_that_did_not_parse_is_answered_for_its_transfer ... ok
+test kitty_receive_names::a_failed_finish_discards_only_its_own_file_and_reports_it ... ok
+test kitty_receive_names::a_malformed_frame_after_the_transfer_ended_is_ignored ... ok
+test kitty_receive_names::a_malformed_frame_with_another_id_is_ignored ... ok
+test kitty_receive_names::a_malformed_middle_chunk_leaves_no_saved_file ... ok
+test kitty_receive_names::a_name_already_used_by_a_folder_is_refused_too ... ok
+test kitty_receive_names::a_saved_file_is_not_saved_again_when_a_later_finish_fails ... ok
+test kitty_receive_names::a_second_file_with_the_same_name_is_refused_and_the_first_stays_intact ... ok
+test kitty_receive_names::an_unknown_transmission_type_is_refused_with_a_reply ... ok
+test kitty_receive_names::an_unreadable_offer_before_any_transfer_is_answered ... ok
+test kitty_wire::a_frame_that_does_not_parse_keeps_its_readable_id ... ok
+test kitty_wire::a_missing_action_or_id_is_malformed ... ok
+test kitty_wire::an_oversized_payload_is_refused_before_it_is_read ... ok
+test kitty_wire::a_message_round_trips_through_the_wire ... ok
+test kitty_wire::an_unknown_action_parses_as_unknown ... ok
+test kitty_wire::an_unknown_transmission_word_is_kept_for_a_reply ... ok
+test kitty_wire::both_finish_spellings_are_accepted ... ok
+test kitty_wire::data_over_the_limit_is_too_large ... ok
+test kitty_wire::ids_must_be_safe_strings ... ok
+test kitty_wire::replies_carry_their_status_in_base64 ... ok
+test kitty_wire::the_transmission_type_is_read ... ok
+test kitty_wire::short_and_long_keys_mean_the_same_and_unknown_keys_are_ignored ... ok
+test osc1337::a_cut_sequence_is_refused_whatever_it_holds ... ok
+test osc1337::a_non_transfer_sequence_is_refused ... ok
+test osc1337::a_payload_over_the_limit_is_too_large ... ok
+test kitty_writes::applying_writes_creates_files_under_the_root ... ok
+test osc1337::a_size_that_disagrees_with_the_data_is_refused ... ok
+test osc1337::a_refused_offer_yields_no_data ... ok
+test osc1337::a_whole_offer_decodes_with_its_name_and_data ... ok
+test osc1337::a_payload_over_the_raw_cap_is_refused_before_decoding ... ok
+test kitty_writes::a_folder_swapped_for_a_link_between_writes_is_refused ... ok
+test kitty_writes::a_symlink_planted_between_create_and_append_is_refused ... ok
+test osc1337::bad_base64_and_bad_values_are_typed_errors ... ok
+test kitty_writes::folders_cannot_be_made_through_a_link_already_on_disk ... ok
+test osc1337::inline_one_is_an_image_with_its_dimensions ... ok
+test osc1337::hostile_names_are_cleaned_never_used_as_paths ... ok
+test kitty_writes::discarding_a_link_removes_the_link_and_not_its_target ... ok
+test osc1337::inline_zero_is_an_offer_and_auto_is_the_default_size ... ok
+test osc1337::multipart_order_errors_reset_the_reader ... ok
+test osc1337::multipart_pieces_join_in_order_and_end_the_file ... ok
+test osc1337::unknown_keys_are_ignored ... ok
+test osc1337::multipart_text_over_the_cap_is_too_large ... ok
+test paths::an_ordinary_name_is_kept_as_it_is ... ok
+test paths::absolute_empty_dot_and_dotdot_paths_are_refused ... ok
+test paths::components_starting_with_a_dot_are_refused ... ok
+test paths::file_names_are_always_safe_to_create ... ok
+test paths::long_names_are_cut_on_a_character_boundary ... ok
+test paths::relative_paths_parse_component_by_component ... ok
+test shelf::collisions_are_numbered_before_the_extension ... ok
+test shelf::a_missing_index_is_an_empty_shelf ... ok
+test shelf::a_consented_offer_is_placed_and_never_overwrites ... ok
+test shelf::the_shelf_is_newest_first_and_ids_are_not_reused ... ok
+test shelf::the_system_clock_reads_a_plausible_time ... ok
+test shelf::an_unreadable_index_is_set_aside_so_a_save_cannot_destroy_it ... ok
+test paths::the_protocol_length_limits_hold ... ok
+test shelf::the_index_round_trips_and_leaves_no_temporary_file ... ok
+test shelf::placing_a_file_never_overwrites_and_moves_the_source ... ok
+test kitty_receive_limits::ten_thousand_empty_files_stop_at_the_entry_cap ... ok
+test fuzz::random_text_cleans_to_a_safe_name ... ok
+test fuzz::a_relative_path_that_parses_has_only_real_components ... ok
+test fuzz::random_bytes_never_panic_the_osc1337_reader ... ok
+test fuzz::random_bytes_never_panic_the_kitty_parser ... ok
+test fuzz::random_tails_after_the_osc1337_prefixes_never_panic ... ok
+test fuzz::random_kitty_frames_never_escape_the_receive_machine ... ok
+
+test result: ok. 85 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_ui-51b23a0d3d509a1a)
+
+running 15 tests
+test input::route::tests::composing_keys_belong_to_the_input_method ... ok
+test input::route::tests::copy_and_paste_are_actions_and_never_reach_the_program ... ok
+test input::route::tests::ctrl_c_is_the_programs_interrupt ... ok
+test input::route::tests::escape_is_the_shell_s_unless_the_find_bar_is_open ... ok
+test input::route::tests::plain_keys_go_to_the_program ... ok
+test input::tests::a_preedit_starts_a_composition_and_its_commit_ends_it ... ok
+test input::tests::a_slow_press_or_another_cell_starts_again ... ok
+test input::tests::an_unidentified_key_is_not_sent_as_a_space ... ok
+test input::tests::quick_presses_at_one_cell_count_up_then_wrap ... ok
+test pane::outbox::tests::partial_writes_resume_where_they_stopped ... ok
+test pane::reap::tests::the_program_gets_the_whole_grace_period_before_a_kill ... ok
+test session::marks::tests::output_names_come_from_the_command_or_a_fallback ... ok
+test pane::outbox::tests::replies_beyond_the_cap_are_dropped_and_counted_but_input_is_not ... ok
+test pane::outbox::tests::reply_room_comes_back_once_the_reply_is_written ... ok
+test pane::outbox::tests::a_five_mebibyte_paste_is_queued_whole_and_leaves_in_order ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-8d97e949a3bfccc8)
+
+running 36 tests
+test ambient::the_runtime_folder_follows_xdg_runtime_dir_when_set ... ok
+test ambient::without_xdg_runtime_dir_the_folder_is_under_the_cache_and_never_shared_tmp ... ok
+test session::the_find_keys_belong_to_the_bar_only_while_it_is_open ... ok
+test pane_engine::the_screen_reads_back_as_text ... ok
+test pane_engine::a_typed_command_runs_and_its_output_reaches_the_screen ... ok
+test pane_engine::bracketed_paste_is_framed_when_the_program_asks_for_it ... ok
+test pane_engine::the_program_is_reaped_when_the_pane_is_dropped ... ok
+test blocks::shells::zsh_right_prompt_is_not_part_of_the_command ... FAILED
+test blocks::marks::a_missed_anchor_does_not_pair_with_the_next_marks_event ... ok
+test session::a_find_query_runs_only_after_typing_pauses ... ok
+test blocks::notify::program_notifications_and_the_bell_reach_the_edge_rate_limited ... ok
+test blocks::marks::a_full_screen_program_hides_the_gutter_and_its_hits ... ok
+test blocks::marks::ignored_marks_keep_no_anchors ... ok
+test session::a_tab_copies_as_blanks_and_search_finds_the_blanks ... ok
+test blocks::gutter::a_gutter_press_selects_the_block_output_and_copies_it ... ok
+test blocks::actions::copy_command_puts_the_typed_command_on_the_clipboard ... ok
+test session::wide_characters_copy_and_select_by_cells ... ok
+test session::selecting_a_word_and_copying_puts_it_on_the_clipboard ... ok
+test session::typing_reaches_the_program_and_its_output_is_drawn ... ok
+test session::a_paste_over_the_limit_is_refused_with_a_notice_and_never_cut ... ok
+test blocks::gutter::control_shift_up_and_down_move_between_prompts ... ok
+test session::a_paste_is_framed_and_an_unsafe_one_waits_for_the_person ... ok
+test session::the_find_bar_finds_and_steps_through_matches ... ok
+test blocks::notify::a_long_command_notifies_once_when_the_pane_is_unfocused ... ok
+test pane_engine::a_resize_changes_the_grid_and_the_program_size ... ok
+test pane_engine::a_flood_of_output_costs_a_bounded_number_of_events ... ok
+test session::the_pane_paints_its_text_into_pixels ... ok
+test blocks::notify::a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet ... ok
+test session::a_resize_refits_the_grid_and_the_program_size ... ok
+test window::the_window_starts_a_shell_and_takes_typing ... ok
+test blocks::marks::a_command_payload_with_a_line_break_is_refused_on_rerun_and_others_are_cleaned ... ok
+test session::a_five_mebibyte_paste_arrives_intact ... ok
+test window::a_click_reports_its_release_to_the_program_once ... ok
+test window::a_right_click_reports_one_press_and_one_release_with_the_right_button ... ok
+test blocks::actions::save_output_places_the_output_in_downloads_under_its_command ... ok
+test blocks::shells::real_shells_make_one_block_per_command_with_its_output_and_status ... ok
+
+failures:
+
+---- blocks::shells::zsh_right_prompt_is_not_part_of_the_command stdout ----
+
+thread 'blocks::shells::zsh_right_prompt_is_not_part_of_the_command' (3075226) panicked at crates/temor-ui/tests/it/blocks/shells.rs:77:5:
+assertion `left == right` failed
+  left: Some("e")
+ right: Some("echo rp-test")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    blocks::shells::zsh_right_prompt_is_not_part_of_the_command
+
+test result: FAILED. 35 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.29s
+
+error: test failed, to rerun pass `-p temor-ui --test it`
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_vt-3e149af1ecebe244)
+
+running 20 tests
+test fake::tests::dec_modes_toggle ... ok
+test fake::tests::osc_title_cwd_and_prompt_marks_become_events ... ok
+test fake::tests::full_reset_clears_title_and_reports_reset ... ok
+test fake::tests::inline_files_are_taken_out_in_order ... ok
+test fake::tests::text_wraps_scrolls_and_reads_back ... ok
+test scan::tests::a_held_prefix_at_the_end_is_released_by_the_next_chunk ... ok
+test scan::tests::cancelling_drops_the_held_payload ... ok
+test scan::tests::byte_at_a_time_matches_the_whole ... ok
+test scan::tests::marks::a_bel_terminated_mark_is_cut_after_the_bel ... ok
+test scan::tests::marks::an_escape_inside_a_mark_ends_it_and_starts_the_next_sequence ... ok
+test scan::tests::marks::an_st_terminated_mark_is_cut_after_its_escape ... ok
+test scan::tests::marks::c1_forms_of_osc_and_st_are_recognised ... ok
+test scan::tests::marks::marks_inside_apc_payloads_are_not_marks_but_an_escape_inside_one_starts_a_mark ... ok
+test scan::tests::marks::marks_inside_dcs_payloads_are_not_marks ... ok
+test scan::tests::marks::marks_split_at_every_offset_are_found_once ... ok
+test scan::tests::marks::other_osc_sequences_and_plain_text_make_no_cuts ... ok
+test scan::tests::every_two_way_split_matches_the_whole ... ok
+test scan::tests::marks::several_marks_in_one_chunk_each_cut ... ok
+test scan::tests::payload_over_the_limit_is_cut_and_marked ... ok
+test scan::tests::whole_chunks_split_files_from_text ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-189d573299d1ff95)
+
+running 47 tests
+test anchors::a_non_mark_osc_is_not_announced ... ok
+test anchors::a_mark_split_across_writes_is_anchored_once_it_completes ... ok
+test anchors::a_released_anchor_has_no_point_and_releasing_twice_is_harmless ... ok
+test anchors::an_anchor_follows_its_cell_as_output_scrolls ... ok
+test anchors::each_mark_is_announced_then_anchored_at_the_cursor_after_its_events ... ok
+test anchors::anchor_cursor_works_without_a_mark_and_is_counted ... ok
+test cells::a_tab_leaves_blank_cells_that_read_as_spaces ... ok
+test fake::fake_runs_behind_the_trait ... ok
+test cells::the_default_cursor_shape_can_be_set ... ok
+test cells::a_wide_character_takes_two_cells_with_a_spacer ... ok
+test colors::a_host_selection_marks_cells ... ok
+test colors::default_colours_apply_and_programs_override_them ... ok
+test colors::placements_carry_their_pixel_offsets ... ok
+test colors::the_default_palette_colours_cells ... ok
+test fake::real_and_fake_agree_on_plain_text ... ok
+test graphemes::grapheme_cluster_mode_is_on_by_default ... ok
+test anchors::the_alternate_screen_is_reported_while_a_full_screen_program_runs ... ok
+test keys::kitty_keyboard_protocol_encodes_after_the_program_asks ... ok
+test keys::application_cursor_keys_follow_the_terminal ... ok
+test graphemes::without_mode_2027_a_skin_tone_splits_off ... ok
+test graphemes::wide_chars_and_emoji_take_one_wide_cell_each ... ok
+test replies::paste_safety_is_libghostty_s_check ... ok
+test keys::legacy_keys_encode ... ok
+test kitty::layers_filter_placements ... ok
+test kitty::rgba_image_is_placed_byte_exact ... ok
+test kitty::png_image_is_decoded_and_placed ... ok
+test mouse::sgr_mouse_reports_press_and_release ... ok
+test snapshot::corrupt_snapshot_is_rejected ... ok
+test replies::an_osc_52_clipboard_query_gets_no_reply_with_clipboard_data ... ok
+test replies::a_burst_of_queries_loses_no_reply ... ok
+test replies::a_soft_wrapped_row_is_reported_as_wrapped ... ok
+test replies::device_queries_reply_in_order ... ok
+test replies::a_panicking_sink_drops_the_event_and_the_terminal_carries_on ... ok
+test screen::viewport_scrolls_over_scrollback ... ok
+test replies::full_reset_is_reported_and_clears_title_and_cwd ... ok
+test screen::synchronized_output_holds_and_releases_rendering ... ok
+test screen::ranges_export_as_plain_and_html ... ok
+test screen::two_phase_update_reports_only_changed_rows ... ok
+test replies::unknown_osc_and_apc_are_reported_with_their_payload ... ok
+test sgr::sgr_attributes_and_colours_resolve_per_cell ... ok
+test shell::prompt_marks_and_hyperlinks_show_on_cells ... ok
+test shell::shell_integration_and_reports_arrive_as_typed_events_in_order ... ok
+test screen::resize_reflows_soft_wrapped_lines ... ok
+test snapshot::snapshot_restores_text_styles_cursor_title_and_modes ... ok
+test inline_file::inline_files_are_held_back_across_chunk_boundaries ... ok
+test anchors::scrollback_pruning_ends_the_anchor ... ok
+test threads::concurrent_writes_and_renders_lose_nothing ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_vt_sys-135fb1b1e8d5f477)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/mnt/data/cargo/blocks-temor/debug/deps/temor_wire-0a1b05b996aa74b1)
+
+running 30 tests
+test frame::tests::a_limit_of_u32_max_neither_overflows_nor_buffers_a_frame_it_cannot_finish ... ok
+test frame::tests::a_frame_without_payload_round_trips_and_marks_its_payload_word_absent ... ok
+test frame::tests::a_payload_carrying_frame_round_trips_its_bytes_including_empty_ones ... ok
+test frame::tests::a_payload_is_bound_to_its_message_in_both_directions_when_decoding ... ok
+test frame::tests::a_payload_is_bound_to_its_message_in_both_directions_when_encoding ... ok
+test frame::tests::a_payload_over_the_limit_is_refused_from_its_header_alone ... ok
+test frame::tests::a_payload_of_exactly_u32_max_bytes_is_unencodable_not_oversize ... ok
+test frame::tests::a_stream_cut_mid_frame_is_truncated_at_finish ... ok
+test frame::tests::encoding_refuses_a_frame_over_the_limit ... ok
+test frame::tests::a_range_read_frame_round_trips ... ok
+test frame::tests::the_frame_size_is_exact_past_u32 ... ok
+test frame::tests::json_that_is_not_a_message_is_malformed_and_spends_the_decoder ... ok
+test hello::tests::an_inverted_peer_range_is_refused_even_when_it_would_overlap ... ok
+test hello::tests::an_unknown_capability_is_never_agreed ... ok
+test hello::tests::capabilities_are_the_sorted_intersection_and_both_ends_agree_on_the_order ... ok
+test hello::tests::disjoint_ranges_are_incompatible_in_both_directions ... ok
+test hello::tests::equal_single_versions_agree_on_that_version ... ok
+test hello::tests::overlapping_ranges_agree_on_the_newest_common_version ... ok
+test hello::tests::the_agreement_carries_the_peers_helper_identity ... ok
+test hello::tests::touching_ranges_agree_on_the_shared_edge ... ok
+test link::tests::a_huge_attempt_number_does_not_overflow ... ok
+test link::tests::a_link_that_keeps_failing_walks_the_whole_schedule_then_gives_up ... ok
+test link::tests::the_retry_delays_double_from_the_base_and_stop_at_the_cap ... ok
+test link::tests::the_transition_table ... ok
+test message::tests::the_event_names_match_the_event_enum ... ok
+test message::tests::the_error_names_match_the_remote_error_enum ... ok
+test message::tests::the_message_names_match_the_message_enum ... ok
+test message::tests::the_request_names_match_the_request_enum ... ok
+test frame::tests::back_to_back_frames_are_cut_apart_and_the_buffer_is_reclaimed ... ok
+test message::tests::the_reply_names_match_the_reply_enum ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/it/main.rs (/mnt/data/cargo/blocks-temor/debug/deps/it-9d970ffd133d930f)
+
+running 35 tests
+test future::a_request_without_an_id_cannot_be_answered_so_it_is_malformed ... ok
+test future::a_known_response_with_a_newer_nested_reply_fails_its_request_by_id ... ok
+test decoder::one_byte_at_a_time_yields_each_frame_only_when_its_last_byte_arrives ... ok
+test future::a_known_request_with_a_newer_nested_enum_is_unreadable_not_unknown ... ok
+test future::a_known_request_with_a_broken_field_is_unreadable_and_answerable_by_id ... ok
+test future::a_newer_greeting_is_read_with_its_unknown_capability_as_unknown ... ok
+test future::an_exit_with_a_newer_status_is_surfaced_as_unreadable_not_ignored ... ok
+test future::an_unknown_event_is_skipped_and_the_frames_after_it_still_arrive ... ok
+test future::an_unknown_entry_kind_inside_a_known_reply_reads_as_unknown ... ok
+test future::an_unknown_error_under_a_response_fails_that_request_by_id ... ok
+test future::an_unknown_message_kind_is_skipped ... ok
+test future::an_unknown_refusal_in_an_error_reads_as_unknown_not_a_failure ... ok
+test future::an_unknown_reply_under_a_response_fails_that_request_by_id ... ok
+test future::an_unknown_request_is_reported_with_its_id_so_it_can_be_answered ... ok
+test future::an_unknown_top_level_event_tag_is_ignored ... ok
+test garbage::a_frame_exactly_at_the_limit_is_accepted_and_one_byte_over_is_not ... ok
+test garbage::a_header_claiming_the_maximum_is_refused_before_anything_is_buffered ... ok
+test future::newer_messages_never_end_the_stream_so_the_frames_after_them_still_arrive ... ok
+test golden::a_request_with_fields_names_them ... ok
+test golden::an_event_names_its_session ... ok
+test golden::a_request_with_no_fields_is_its_name ... ok
+test golden::an_ok_reply_and_an_error_are_under_their_outcome_key ... ok
+test golden::close_is_a_request_for_a_session ... ok
+test golden::the_greeting_pins_its_fields_and_the_helper_hash ... ok
+test golden::trial_verdicts_read_as_plan_three_names ... ok
+test link::the_default_policy_is_immediate_then_doubles_to_its_cap ... ok
+test garbage::arbitrary_headers_over_arbitrary_bodies_never_panic ... ok
+test negotiate::both_ends_agree_the_same_way ... ok
+test negotiate::an_agreed_version_lies_inside_both_ranges ... ok
+test garbage::valid_json_with_no_message_tag_is_malformed_not_a_panic ... ok
+test garbage::arbitrary_bytes_never_panic ... ok
+test roundtrip::every_message_round_trips_with_its_payload ... ok
+test decoder::any_split_of_a_stream_gives_the_same_frames ... ok
+test link::waits_stay_within_the_cap_and_dials_within_the_policy ... ok
+test roundtrip::a_stream_of_messages_comes_back_in_order ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+   Doc-tests temor_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests temor_pty
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests temor_render
+
+running 1 test
+test crates/temor-render/src/frame/capture.rs - frame::capture::FrameCapture (line 14) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.14s; merged doctests compilation took 0.14s
+   Doc-tests temor_transfer
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests temor_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests temor_vt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests temor_wire
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 1 target failed:
+    `-p temor-ui --test it`

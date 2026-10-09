@@ -1,5 +1,6 @@
 //! The plain values the terminal API speaks in: sizes, points, modes, colours and the config.
 
+mod anchor;
 mod cell;
 mod colour;
 mod config;
@@ -8,6 +9,7 @@ mod mode;
 mod selection;
 mod size;
 
+pub use anchor::AnchorId;
 pub use cell::{
     CellStyle, CellView, CellWidth, CursorBlink, CursorCell, CursorShape, CursorView, FrameColors,
     FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, Selected, SemanticMark, StyleFlags,

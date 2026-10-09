@@ -3,6 +3,7 @@
 
 pub mod action;
 pub mod chord;
+pub mod cwd;
 pub mod keymap;
 pub mod link;
 pub mod paste;
@@ -14,3 +15,8 @@ pub mod settings_value;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod paste_tests;
+#[cfg(test)]
+mod selection_tests;

@@ -2,6 +2,7 @@
 //! every block carries a `SAFETY` comment. The safe types defined here are re-exported at the
 //! crate root.
 
+mod anchor;
 mod callbacks;
 mod cells;
 mod colors;
@@ -21,6 +22,7 @@ mod signals;
 mod snapshot;
 mod terminal;
 mod terminal_read;
+mod terminal_write;
 mod vt_impl;
 mod wrap;
 

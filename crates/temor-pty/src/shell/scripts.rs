@@ -28,9 +28,20 @@ pub(crate) const FISH_SCRIPT: ShellScript = ShellScript {
     name: "temor.fish",
     contents: include_str!("../../shell/temor.fish"),
 };
+pub(crate) const NU_SCRIPT: ShellScript = ShellScript {
+    name: "temor.nu",
+    contents: include_str!("../../shell/temor.nu"),
+};
 
 /// Every integration script and shim, for callers that ship them elsewhere (the SSH bootstrap
 /// sends them with each connection).
-pub fn integration_scripts() -> [ShellScript; 5] {
-    [BASH_SCRIPT, BASH_RC, ZSH_SCRIPT, ZSH_ENV, FISH_SCRIPT]
+pub fn integration_scripts() -> [ShellScript; 6] {
+    [
+        BASH_SCRIPT,
+        BASH_RC,
+        ZSH_SCRIPT,
+        ZSH_ENV,
+        FISH_SCRIPT,
+        NU_SCRIPT,
+    ]
 }

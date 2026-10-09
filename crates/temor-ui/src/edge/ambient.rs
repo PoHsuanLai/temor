@@ -58,4 +58,15 @@ impl Ambient {
     pub fn settings_path(&self) -> PathBuf {
         self.config_dir.join("terminal.conf")
     }
+
+    /// Where the downloads shelf keeps its files: temor's own data directory, never the home
+    /// folder (PLAN §9).
+    pub fn shelf_dir(&self) -> PathBuf {
+        let data_home = self
+            .env
+            .get("XDG_DATA_HOME")
+            .filter(|d| !d.is_empty())
+            .map_or_else(|| self.home.join(".local").join("share"), PathBuf::from);
+        data_home.join("temor").join("shelf")
+    }
 }

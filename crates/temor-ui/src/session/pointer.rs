@@ -28,6 +28,8 @@ impl Session {
         let Some(fit) = self.fit else {
             return Ok(());
         };
+        // A press anywhere else leaves the block the gutter had selected.
+        self.selected_block = None;
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
         let shift = mods.contains(Modifiers::SHIFT);
         if tracking && !shift {

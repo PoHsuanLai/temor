@@ -1,8 +1,13 @@
-//! The app's reads from outside: the process environment, the settings file. Everything here is
-//! read once, at start, and handed to the rest of the app as values.
+//! The app's reads from outside: the process environment, the settings file, the desktop's
+//! notifications and the clock. Everything here is read once, at start, and handed to the rest
+//! of the app as values or trait objects.
 
 mod ambient;
+pub mod clock;
+pub mod notify;
 mod settings_file;
 
 pub use ambient::Ambient;
+pub use clock::{Clock, FakeClock, SystemClock};
+pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use settings_file::load_settings;

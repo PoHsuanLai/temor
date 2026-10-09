@@ -64,8 +64,8 @@ fn osc_133_marks_make_blocks() {
     let cases: Vec<(&str, BlockState, BlockIn, BlockState, Vec<BlockOut>)> = vec![
         ("A starts a prompt", BlockState::Idle, a(1), prompting.clone(), vec![BlockOut::PromptShown]),
         ("B starts typing", prompting.clone(), b(1), typing.clone(), vec![]),
-        ("C runs the command", typing.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(BlockId(7))]),
-        ("C without B still runs", prompting.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(BlockId(7))]),
+        ("C runs the command", typing.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(running())]),
+        ("C without B still runs", prompting.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(running())]),
         ("D finishes with its exit", run.clone(), d(5, Some(1)),
             BlockState::Finished(done(Some(1), 5, 200)), vec![BlockOut::BlockDone(done(Some(1), 5, 200))]),
         ("D without C ran nothing", typing.clone(), d(1, Some(130)), BlockState::Idle, vec![]),
@@ -79,6 +79,10 @@ fn osc_133_marks_make_blocks() {
         ("nothing after exit", BlockState::Exited, a(1), BlockState::Exited, vec![]),
         ("a stray D is ignored", BlockState::Idle, d(1, Some(0)), BlockState::Idle, vec![]),
         ("a stray C is ignored", BlockState::Idle, c(1), BlockState::Idle, vec![]),
+        ("a reset ends a running block unknown", run.clone(), BlockIn::Reset { at: Stamp(250) },
+            BlockState::Idle, vec![BlockOut::BlockDone(done(None, 2, 250))]),
+        ("a reset at a prompt changes nothing", typing.clone(), BlockIn::Reset { at: Stamp(250) },
+            BlockState::Idle, vec![]),
     ];
     for (name, from, input, want, outs) in cases {
         let (state, out) = block_step(from, input);

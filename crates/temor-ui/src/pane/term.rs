@@ -8,10 +8,10 @@ use temor_core::terminal::paste::PasteMode;
 use temor_core::terminal::row::{RowCell, RowText, Span};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
-    CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
-    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, ReplySink,
-    Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, ViewportScroll,
-    VtEvent,
+    AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
+    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, PointSpace,
+    ReplySink, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan,
+    ViewportScroll, VtEvent,
 };
 
 use crate::error::UiError;
@@ -169,6 +169,31 @@ impl Term {
     /// The title the program set.
     pub fn title(&self) -> String {
         self.terminal.title()
+    }
+
+    /// Where an anchor is now, in `space`; `None` once the scrollback has dropped it.
+    pub fn anchor_point(&self, id: AnchorId, space: PointSpace) -> Option<GridPoint> {
+        self.terminal.anchor_point(id, space)
+    }
+
+    /// Anchors the cursor's cell now (a command's end, for example).
+    pub fn anchor_cursor(&mut self) -> Option<AnchorId> {
+        self.terminal.anchor_cursor()
+    }
+
+    /// How many anchors are live.
+    pub fn anchor_count(&self) -> usize {
+        self.terminal.anchor_count()
+    }
+
+    /// Whether a full-screen program holds the alternate screen (no shell marks show there).
+    pub fn on_alternate_screen(&self) -> bool {
+        self.terminal.on_alternate_screen()
+    }
+
+    /// Frees an anchor the window no longer needs.
+    pub fn release_anchor(&mut self, id: AnchorId) {
+        self.terminal.release_anchor(id);
     }
 
     /// The hyperlink (OSC 8) under a grid point, if any.

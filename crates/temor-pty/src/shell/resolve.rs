@@ -12,6 +12,7 @@ pub enum ShellKind {
     Bash,
     Zsh,
     Fish,
+    Nushell,
     Other,
 }
 
@@ -27,6 +28,7 @@ impl ShellKind {
             "bash" => Self::Bash,
             "zsh" => Self::Zsh,
             "fish" => Self::Fish,
+            "nu" | "nushell" => Self::Nushell,
             _ => Self::Other,
         }
     }

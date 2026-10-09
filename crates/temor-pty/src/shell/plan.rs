@@ -5,7 +5,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 use super::resolve::{Shell, ShellKind};
-use super::scripts::{BASH_RC, BASH_SCRIPT, FISH_SCRIPT, ZSH_ENV, ZSH_SCRIPT};
+use super::scripts::{BASH_RC, BASH_SCRIPT, FISH_SCRIPT, NU_SCRIPT, ZSH_ENV, ZSH_SCRIPT};
 use crate::env::ChildEnv;
 
 /// How the shell starts.
@@ -68,6 +68,9 @@ pub fn plan_integration(
         (IntegrationState::On, ShellKind::Bash) => bash(shell, start, env, &root.join("bash")),
         (IntegrationState::On, ShellKind::Zsh) => zsh(shell, start, env, &root.join("zsh")),
         (IntegrationState::On, ShellKind::Fish) => fish(shell, start, env, &root.join("fish")),
+        (IntegrationState::On, ShellKind::Nushell) => {
+            nushell(shell, start, env, &root.join("nushell"))
+        }
         (IntegrationState::Off, _) | (_, ShellKind::Other) => plain(shell, start, env),
     }
 }
@@ -154,6 +157,33 @@ fn fish(shell: &Shell, start: ShellStart, mut env: ChildEnv, dir: &Path) -> Inte
         files: vec![ShimFile {
             path: dir.join("fish").join("vendor_conf.d").join("temor.fish"),
             contents: FISH_SCRIPT.contents,
+        }],
+    }
+}
+
+/// nushell finds vendor autoload files under `XDG_DATA_DIRS/nushell/vendor/autoload`. The
+/// integration file there switches on nushell's own marks; the entry this adds is taken back out
+/// by that file, as fish's is.
+fn nushell(shell: &Shell, start: ShellStart, mut env: ChildEnv, dir: &Path) -> IntegrationPlan {
+    let real = env.get("XDG_DATA_DIRS").map(OsStr::to_os_string);
+    let mut dirs = OsString::from(dir);
+    dirs.push(":");
+    dirs.push(real.as_deref().unwrap_or(OsStr::new(XDG_DATA_DIRS_DEFAULT)));
+    if let Some(real) = real {
+        env.set("TEMOR_NU_XDG_DATA_DIRS", real);
+    }
+    env.set("XDG_DATA_DIRS", dirs);
+    IntegrationPlan {
+        program: shell.path.clone(),
+        args: login_flag(start),
+        env,
+        files: vec![ShimFile {
+            path: dir
+                .join("nushell")
+                .join("vendor")
+                .join("autoload")
+                .join("temor.nu"),
+            contents: NU_SCRIPT.contents,
         }],
     }
 }

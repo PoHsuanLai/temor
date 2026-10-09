@@ -8,9 +8,10 @@ use super::chord::Chord;
 use super::keymap::Keymap;
 use super::settings_value::{
     CursorStyle, FontChoice, FontPoints, ScrollbackLines, ShellChoice, cursor, font_family,
-    font_points, scrollback, shell,
+    font_points, notify_after, scrollback, shell,
 };
 use crate::error::CoreError;
+use crate::notify::NotifyAfter;
 
 /// Everything the pane reads from its settings.
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +22,8 @@ pub struct TerminalSettings {
     pub cursor: CursorStyle,
     pub shell: ShellChoice,
     pub keymap: Keymap,
+    /// When a finished command is worth a notice while the pane is unfocused (PLAN §8.1).
+    pub notify_after: NotifyAfter,
 }
 
 impl Default for TerminalSettings {
@@ -32,6 +35,7 @@ impl Default for TerminalSettings {
             cursor: CursorStyle::default(),
             shell: ShellChoice::default(),
             keymap: Keymap::defaults(),
+            notify_after: NotifyAfter::DEFAULT,
         }
     }
 }
@@ -71,6 +75,7 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), CoreErr
         "scrollback.lines" => settings.scrollback = scrollback(key, value)?,
         "cursor.style" => settings.cursor = cursor(key, value)?,
         "shell.program" => settings.shell = shell(key, value)?,
+        "notify.after" => settings.notify_after = notify_after(key, value)?,
         _ => {
             let action = key
                 .strip_prefix("keys.")

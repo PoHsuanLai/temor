@@ -12,7 +12,11 @@ use crate::support::{drain, fixture, row_cells, term};
 fn shell_integration_and_reports_arrive_as_typed_events_in_order() {
     let (mut t, rx) = term(80, 10);
     t.write(&fixture("shell.bin"));
-    let mut events = drain(&rx).into_iter();
+    let mut events = drain(&rx)
+        .into_iter()
+        .filter(|e| !matches!(e, VtEvent::Anchor { .. } | VtEvent::MarkBegin { .. }))
+        .collect::<Vec<_>>()
+        .into_iter();
     let mut next = || events.next().expect("another event");
 
     assert_eq!(next(), VtEvent::Cwd("file://host/home/me".into()));
