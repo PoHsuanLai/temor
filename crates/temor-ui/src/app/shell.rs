@@ -1,20 +1,16 @@
-//! Starting the person's shell (PLAN §6, temor-pty): the shell from the settings or the login
-//! shell, its integration written under the runtime directory, and the complete environment.
+//! Starting the person's shell at the app's edge: the environment, the login shell and the runtime
+//! folder are read here, and temor-pane plans the spec from them.
 
 use std::path::{Path, PathBuf};
 
-use temor_pane::settings::ShellChoice;
-use temor_pane::settings::TerminalSettings;
-use temor_pty::{
-    EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, SessionLauncher, base_env,
-    child_env, find_term, prepare_shell, terminfo_dirs,
-};
-use temor_shell::{ChildEnv, Shell, ShellStart, passwd_login_shell, resolve_shell};
-use temor_vt::{CellPx, GridSize, LineCount};
+use temor_pane::PaneSpec;
+use temor_pane::settings::{ShellChoice, TerminalSettings};
+use temor_pty::{ProgramVersion, SessionLauncher, current_user};
+use temor_shell::passwd_login_shell;
+use temor_vt::{CellPx, GridSize};
 
 use crate::edge::Ambient;
 use crate::error::UiError;
-use temor_pane::PaneSpec;
 
 /// The version temor tells children (`TERM_PROGRAM_VERSION`).
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -29,60 +25,30 @@ pub fn shell_pane(
     palette: temor_render::Palette,
     launcher: SessionLauncher,
 ) -> Result<PaneSpec, UiError> {
-    let base = base_env(
-        ambient
-            .env
-            .iter()
-            .map(|(k, v)| (k.to_os_string(), v.to_os_string())),
-    );
-    let dirs = terminfo_dirs(&ambient.env, SYSTEM_TERMINFO_DIRS);
-    let contract = EnvContract {
-        term: find_term(&dirs),
-        version: ProgramVersion(VERSION.to_owned()),
-        pane: PaneId(pane.to_string()),
-        socket: None,
+    // The passwd file is read only when the login shell is asked for.
+    let passwd_shell = match settings.shell {
+        ShellChoice::Login => login_shell_from_passwd(),
+        ShellChoice::Program(_) => None,
     };
-    let env = child_env(base, &ChildEnv::new(), &contract);
-    let shell = pick_shell(settings, &env);
-    let spawn = prepare_shell(
-        &shell,
-        ShellStart::Login,
-        env,
-        &ambient.runtime_dir,
-        ambient.home.clone(),
-        temor_pty::GridSize::cells(temor_pty::Cols(grid.cols.0), temor_pty::Rows(grid.rows.0)),
-    )?;
-    Ok(PaneSpec {
-        spawn,
-        launcher,
+    let input = temor_pane::ShellPaneInput {
+        inherited: ambient.env.clone(),
+        settings: settings.clone(),
+        passwd_shell,
+        runtime_dir: ambient.runtime_dir.clone(),
+        home: ambient.home.clone(),
+        version: ProgramVersion(VERSION.to_owned()),
+        pane,
         grid,
         cell,
-        scrollback: LineCount(settings.scrollback.lines() as usize),
         palette,
-        cursor: cursor_shape(settings.cursor),
-    })
+        launcher,
+    };
+    Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)
 }
 
-/// The settings' shell, or the person's login shell, or the environment's `SHELL`.
-fn pick_shell(settings: &TerminalSettings, env: &ChildEnv) -> Shell {
-    match &settings.shell {
-        ShellChoice::Program(program) => Shell::at(PathBuf::from(program)),
-        ShellChoice::Login => {
-            let passwd = temor_pty::current_user().and_then(|uid| {
-                let text = std::fs::read_to_string("/etc/passwd").ok()?;
-                passwd_login_shell(&text, uid)
-            });
-            resolve_shell(passwd, env, |path: &Path| path.is_file())
-        }
-    }
-}
-
-/// The shape a settings cursor style means for the terminal.
-pub fn cursor_shape(style: temor_pane::settings::CursorStyle) -> temor_vt::CursorShape {
-    use temor_pane::settings::CursorStyle;
-    match style {
-        CursorStyle::Block => temor_vt::CursorShape::Block,
-        CursorStyle::Bar => temor_vt::CursorShape::Bar,
-        CursorStyle::Underline => temor_vt::CursorShape::Underline,
-    }
+/// The person's login shell from `/etc/passwd`, when the passwd lookup finds it.
+fn login_shell_from_passwd() -> Option<PathBuf> {
+    let uid = current_user()?;
+    let text = std::fs::read_to_string("/etc/passwd").ok()?;
+    passwd_login_shell(&text, uid)
 }

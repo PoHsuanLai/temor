@@ -10,8 +10,10 @@ pub mod text;
 
 mod engine;
 mod error;
+mod shell;
 
 pub use engine::{
     EventSink, Hold, Output, PaneEvent, PaneHandle, PaneRunner, PaneSpec, Term, start,
 };
 pub use error::{PaneError, SettingsError};
+pub use shell::{ShellPaneInput, shell_pane};

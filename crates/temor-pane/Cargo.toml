@@ -9,12 +9,10 @@ publish = false
 
 [dependencies]
 temor-pty = { workspace = true }
+temor-shell = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }
 temor-vt = { workspace = true, features = ["ghostty"] }
 thiserror = { workspace = true }
-
-[dev-dependencies]
-temor-shell = { workspace = true }
 
 [[test]]
 name = "it"
