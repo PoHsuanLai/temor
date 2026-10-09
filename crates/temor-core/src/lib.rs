@@ -12,6 +12,7 @@ pub mod pane;
 pub mod presence;
 pub mod proposal;
 pub mod remote;
+pub mod shelf;
 pub mod space;
 pub mod split;
 pub mod transfer;
