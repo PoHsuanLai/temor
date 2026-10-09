@@ -42,6 +42,10 @@ pub enum Action {
     /// Select the tab at this sidebar position, 1 to 9 (⌘1 to ⌘9). Not in [`Action::ALL`]: the
     /// digits are fixed defaults, not settings.
     SelectTab(u8),
+    /// Switch to the Space at this position, 1 to 9 (⌃1 to ⌃9). Not in [`Action::ALL`]: the
+    /// digits are fixed defaults, not settings. Plain Ctrl with a digit is the only form:
+    /// Super with a digit belongs to the desktop, and Ctrl+Shift with a digit selects a tab.
+    SelectSpace(u8),
 }
 
 impl Action {
@@ -97,6 +101,7 @@ impl Action {
             Self::ToggleZoom => "toggle_zoom",
             Self::Equalize => "equalize",
             Self::SelectTab(_) => "select_tab",
+            Self::SelectSpace(_) => "select_space",
         }
     }
 
@@ -122,6 +127,7 @@ impl Action {
             Self::ToggleZoom => "Zoom",
             Self::Equalize => "Equalize",
             Self::SelectTab(_) => "Select tab",
+            Self::SelectSpace(_) => "Select Space",
         }
     }
 }

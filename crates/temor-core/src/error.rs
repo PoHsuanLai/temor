@@ -25,6 +25,23 @@ pub enum CoreError {
     /// The tab's only pane cannot be torn off; closing the tab is the way to remove it.
     #[error("a tab's only pane cannot be torn off")]
     LastPane,
+    /// An account reference was not an account id (lowercase letters, digits, `.`, `_`, `-`,
+    /// at most 64 bytes, starting with a letter or digit); the credential entry is dropped.
+    #[error("not an account id: {0:?}")]
+    BadAccountRef(String),
+    /// A Space's SSH agent socket would not fit in a socket address; the agent is not started
+    /// and the Space opens without one.
+    #[error("the SSH agent socket path is {len} bytes, past the {max} a socket allows")]
+    SocketPathTooLong {
+        /// The path's length in bytes.
+        len: usize,
+        /// The longest a socket path may be.
+        max: usize,
+    },
+    /// The dotenv file named by a profile is not under the project root (absolute, or with `..`);
+    /// it is not read.
+    #[error("the dotenv path leaves the project folder: {0:?}")]
+    BadDotenvPath(String),
     /// The session could not be written as text (a value the format cannot hold).
     #[error("the session could not be written: {0}")]
     SessionEncode(String),
