@@ -120,3 +120,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       (macOS, Windows). §9b
 - [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
       side are unsupported today.
+
+## App icon (in dist/, wire up when packaging)
+- Linux: `dist/icons/hicolor/<N>x<N>/apps/org.quire.Temor.png` (16–512) installs under `$prefix/share/icons/hicolor/`; the desktop entry already says `Icon=org.quire.Temor`. Window icon at runtime: set from the 256/512 PNG once quire exposes a window-icon setting (ask quire if it doesn't).
+- macOS (owner): build `.icns` from `dist/icons/source/org.quire.Temor-1024.png`.
+- Windows (owner): `dist/windows/temor.ico` (6 sizes) into the exe resources.
