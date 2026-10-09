@@ -49,4 +49,5 @@ pub use fake::FakeVt;
 pub use ffi::{
     Formatter, Frame, KeyEncoder, KittyImage, KittyImages, KittyPixels, KittyPlacement,
     MouseEncoder, PendingFrame, RenderView, RowView, Snapshot, Terminal, install_png_decoder,
+    paste_is_safe,
 };

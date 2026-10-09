@@ -119,3 +119,44 @@ fn unknown_osc_and_apc_are_reported_with_their_payload() {
         ]
     );
 }
+
+#[test]
+fn an_osc_52_clipboard_query_gets_no_reply_with_clipboard_data() {
+    // A program may ask to read the clipboard (OSC 52 `?`). Without a grant the terminal must
+    // not answer with clipboard contents: nothing may come back on the reply channel.
+    let replies = Collect::default();
+    let (tx, _events) = std::sync::mpsc::channel::<VtEvent>();
+    let config = TerminalConfig::new(GridSize::new(80, 24));
+    let mut t = Terminal::new(config, Box::new(tx), Box::new(replies.clone())).expect("terminal");
+    t.write(b"\x1b]52;c;SGVsbG8=\x07");
+    t.write(b"\x1b]52;c;?\x07");
+    t.write(b"\x1b]52;c;?\x1b\\");
+    let got = replies.0.lock().expect("lock");
+    assert!(
+        got.iter()
+            .all(|reply| !reply.windows(5).any(|w| w == b"Hello" || w == b"SGVsb")),
+        "clipboard contents were answered: {got:?}"
+    );
+}
+
+#[test]
+fn paste_safety_is_libghostty_s_check() {
+    use temor_vt::paste_is_safe;
+    assert!(paste_is_safe(b"echo hi"));
+    assert!(!paste_is_safe(b"rm -rf x\n"));
+    assert!(!paste_is_safe(b"a\x1b[201~b"));
+}
+
+#[test]
+fn a_soft_wrapped_row_is_reported_as_wrapped() {
+    let (mut t, _events) = term(10, 4);
+    t.write(b"abcdefghijklmno\r\nxyz");
+    assert!(
+        t.row_wraps(0).expect("row 0"),
+        "the first row continues on the second"
+    );
+    assert!(
+        !t.row_wraps(1).expect("row 1"),
+        "the second row ends with a hard break"
+    );
+}
