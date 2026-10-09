@@ -37,7 +37,8 @@ trap : HUP INT QUIT TERM
 printf '%s\n' "$$" > "$temor_tmp/pid"
 : > "$temor_tmp/temor-bootstrap"
 
-mkdir -p "$temor_tmp/bash" "$temor_tmp/zsh" "$temor_tmp/fish/fish/vendor_conf.d" || exit 1
+mkdir -p "$temor_tmp/bash" "$temor_tmp/zsh" "$temor_tmp/fish/fish/vendor_conf.d" \
+    "$temor_tmp/nu/nushell/vendor/autoload" || exit 1
 #@INTEGRATION@
 
 # Sets temor_enc_out to $1 percent-encoded for a file:// URL, byte by byte. Callers run it in a

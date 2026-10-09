@@ -97,6 +97,7 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] P13 wiring: host list in ⌘T (plus tailnet machines, D22), opening panes through the shared
       master, consent per host, `HostId::same_machine` for the gate. §9b
 - [ ] HostAlias rejects `:`, `[`, `]`: IPv6 literals need a HostName in ssh_config; say so in the UI.
+- [ ] Nushell on the host: the bootstrap places `temor.nu` under `nu/nushell/vendor/autoload`; P13 adds the `nu` case that starts nushell with `XDG_DATA_DIRS` pointing there (same as temor-pty's local plan). §9b
 - [ ] IdentityFile and ProxyJump values must be validated before any `-i`/`-J` builder uses them.
 - [ ] fish 4.9 prints no marks on piped stdin, so fish marks over SSH aren't asserted; no real sshd
       test yet (only `ssh -G`); csh/tcsh login shells untested. §13
@@ -130,3 +131,10 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - Linux: `dist/icons/hicolor/<N>x<N>/apps/org.quire.Temor.png` (16–512) installs under `$prefix/share/icons/hicolor/`; the desktop entry already says `Icon=org.quire.Temor`. Window icon at runtime: set from the 256/512 PNG once quire lands its window-icon setter (queued: launch-config field plus `WindowHost::set_icon`).
 - macOS (owner): build `.icns` from `dist/icons/source/org.quire.Temor-1024.png`.
 - Windows (owner): `dist/windows/temor.ico` (6 sizes) into the exe resources.
+
+## Blocks (lane/blocks, P2, reviewed at 08c5ce2 plus orchestrator fixes)
+- [ ] Mark cuts: libghostty reports an OSC 133 mark when it reads the ESC that ends it; the cut
+      sits right after that ESC (scan/marks.rs). If a Ghostty bump changes where it dispatches,
+      the blocks tests time out at "the first prompt"; check `marks_split_at_every_offset`.
+- [ ] Nushell marks are tested through the env only; a real nu block test once nu is on the gate PATH.
+- [ ] view/window.rs is near 300 lines; P3's split tree replaces most of it.

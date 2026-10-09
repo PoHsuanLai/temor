@@ -16,6 +16,8 @@ pub(super) fn remote_path(script: &ShellScript) -> Option<&'static str> {
         "zshenv" => Some("zsh/.zshenv"),
         "temor.zsh" => Some("zsh/temor.zsh"),
         "temor.fish" => Some("fish/fish/vendor_conf.d/temor.fish"),
+        // Placed now; starting nushell on the host with it is P13 (FOLLOWUPS "temor-ssh").
+        "temor.nu" => Some("nu/nushell/vendor/autoload/temor.nu"),
         _ => None,
     }
 }
