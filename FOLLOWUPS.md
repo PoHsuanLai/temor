@@ -50,10 +50,21 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9
 - [ ] A malformed frame with no open files only replies; the transfer continues.
 
+## temor-render (lane/render, reviewed at f4ead2c)
+- [ ] The app must call `Palette::apply` on every new terminal before its first frame and on theme
+      change; grid colours from quire's terminal tokens once v0.2.31 is tagged. §5
+- [ ] GPU path waits for quire's render hook (v0.2.32); no device-level tests for atlas retries or
+      the oversize-image skip. §5
+- [ ] A capture error after a resize leaves the new size applied; harmless while libghostty reports
+      Full after resize. §5
+- [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
+      whole pane; CPU clips glyph overhang to the row, GPU does not. §5
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift). §6
-- [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); add a bitmap glyph path to temor-render. §5
+- [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); implement `SystemBitmapEmoji` in
+      temor-render platform/other.rs. §5
 - [ ] macOS pty: `Pty::spawn` and `run_session_leader` (platform/unsupported.rs); process name, cwd,
       current user and `is_executable` (platform/macos.rs) through `proc_pidinfo`. temor-pty
 - [ ] macOS trial sandbox: none (bwrap is Linux-only), so proposals say "not checked". Decide whether
