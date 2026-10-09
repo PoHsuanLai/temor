@@ -8,8 +8,8 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::host::signals::HostSignals;
-use temor_core::terminal::action::Action;
 use temor_core::vocab::ids::BlockId;
+use temor_pane::keys::Action;
 
 use super::find_bar::StepDirection;
 use super::slot::{Slot, repaint};

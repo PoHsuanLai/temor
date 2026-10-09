@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 use ds::components::overlays::alert_model::{AlertButton, AlertRole};
 use ds::prelude::*;
-use temor_core::terminal::paste::UnsafeReason;
+use temor_pane::paste::UnsafeReason;
 
 /// Why a paste needs confirming, in the person's words.
 pub fn reason_text(reason: UnsafeReason) -> &'static str {

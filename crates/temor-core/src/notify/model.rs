@@ -12,27 +12,6 @@ pub enum Focus {
     Unfocused,
 }
 
-/// How long a command must run before its finish is worth a notice. `Off` never notifies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum NotifyAfter {
-    Off,
-    /// A command running at least this many seconds.
-    Seconds(u32),
-}
-
-impl NotifyAfter {
-    /// The threshold when the settings say nothing: ten seconds (PLAN §6, the notify setting).
-    pub const DEFAULT: Self = Self::Seconds(10);
-
-    /// The threshold in milliseconds; `None` when off.
-    pub fn threshold_ms(self) -> Option<u64> {
-        match self {
-            Self::Off => None,
-            Self::Seconds(s) => Some(u64::from(s) * 1000),
-        }
-    }
-}
-
 /// What the person can be told.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Notice {

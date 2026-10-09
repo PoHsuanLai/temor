@@ -3,8 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
-use temor_core::terminal::settings::TerminalSettings;
-use temor_core::terminal::settings_value::ShellChoice;
+use temor_pane::settings::ShellChoice;
+use temor_pane::settings::TerminalSettings;
 use temor_pty::{
     EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, SessionLauncher, base_env,
     child_env, find_term, prepare_shell, terminfo_dirs,
@@ -78,10 +78,8 @@ fn pick_shell(settings: &TerminalSettings, env: &ChildEnv) -> Shell {
 }
 
 /// The shape a settings cursor style means for the terminal.
-pub fn cursor_shape(
-    style: temor_core::terminal::settings_value::CursorStyle,
-) -> temor_vt::CursorShape {
-    use temor_core::terminal::settings_value::CursorStyle;
+pub fn cursor_shape(style: temor_pane::settings::CursorStyle) -> temor_vt::CursorShape {
+    use temor_pane::settings::CursorStyle;
     match style {
         CursorStyle::Block => temor_vt::CursorShape::Block,
         CursorStyle::Bar => temor_vt::CursorShape::Bar,

@@ -7,5 +7,5 @@ mod policy;
 #[cfg(test)]
 mod tests;
 
-pub use model::{Focus, Notice, NotifyAfter};
+pub use model::{Focus, Notice};
 pub use policy::{Limiter, bell_notice, finished_notice, program_notice};

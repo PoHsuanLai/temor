@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use temor_core::terminal::settings::{ParsedSettings, parse_settings};
+use temor_pane::settings::{ParsedSettings, parse_settings};
 
 use crate::error::UiError;
 

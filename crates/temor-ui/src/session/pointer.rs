@@ -4,9 +4,9 @@
 
 use std::time::Duration;
 
-use temor_core::terminal::link::{LinkVerdict, check_link};
-use temor_core::terminal::row::RowText;
-use temor_core::terminal::selection::{CellPos, Granularity, Selection, Shape};
+use temor_pane::text::RowText;
+use temor_pane::text::{CellPos, Granularity, Selection, Shape};
+use temor_pane::text::{LinkVerdict, check_link};
 use temor_vt::{
     GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,

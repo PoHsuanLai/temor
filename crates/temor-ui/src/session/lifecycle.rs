@@ -2,8 +2,8 @@
 //! the program sends.
 
 use temor_core::notify::{Focus, Limiter};
-use temor_core::terminal::cwd::cwd_from_url;
 use temor_core::vocab::text::display_text;
+use temor_pane::text::cwd_from_url;
 use temor_render::{PaneFocus, PixelSize, Scale};
 use tokio::sync::mpsc::UnboundedSender;
 

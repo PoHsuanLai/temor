@@ -1,12 +1,10 @@
 //! Unit tests for the pane's pure parts.
 
-use ds_core::word::Word;
-
 use super::action::Action;
 use super::chord::{Chord, ChordKey, Mods, NamedKey};
 use super::keymap::Keymap;
-use super::settings::{TerminalSettings, parse_settings};
-use crate::error::CoreError;
+use crate::error::SettingsError;
+use crate::settings::{TerminalSettings, parse_settings};
 
 fn ctrl_shift(c: char) -> Chord {
     Chord::of_char(c, Mods::CTRL.with(Mods::SHIFT))
@@ -20,12 +18,15 @@ fn chords_parse_in_any_case_and_order_of_modifiers() {
         Chord::parse("alt+enter").map(|c| c.key),
         Ok(ChordKey::Named(NamedKey::Enter))
     );
-    assert!(matches!(Chord::parse(""), Err(CoreError::BadChord(_))));
+    assert!(matches!(Chord::parse(""), Err(SettingsError::BadChord(_))));
     assert!(matches!(
         Chord::parse("hyper+c"),
-        Err(CoreError::BadChord(_))
+        Err(SettingsError::BadChord(_))
     ));
-    assert!(matches!(Chord::parse("ctrl+"), Err(CoreError::BadChord(_))));
+    assert!(matches!(
+        Chord::parse("ctrl+"),
+        Err(SettingsError::BadChord(_))
+    ));
 }
 
 #[test]
@@ -69,9 +70,9 @@ fn rebinding_moves_an_action_and_refuses_clashes() {
     assert_eq!(keymap.action_for(&alt_c), Some(Action::Copy));
     assert_eq!(keymap.action_for(&ctrl_shift('c')), None);
     let clash = keymap.bind(Action::Paste, alt_c);
-    assert!(matches!(clash, Err(CoreError::ChordInUse { .. })));
+    assert!(matches!(clash, Err(SettingsError::ChordInUse { .. })));
     let reserved = keymap.bind(Action::Paste, Chord::parse("super+v").expect("valid"));
-    assert!(matches!(reserved, Err(CoreError::ReservedChord(_))));
+    assert!(matches!(reserved, Err(SettingsError::ReservedChord(_))));
 }
 
 #[test]
@@ -114,7 +115,7 @@ fn prompt_jumps_are_bound_to_ctrl_shift_arrows_and_settable() {
 
 #[test]
 fn notify_after_reads_seconds_and_off() {
-    use crate::notify::NotifyAfter;
+    use crate::settings::NotifyAfter;
     assert_eq!(
         TerminalSettings::default().notify_after,
         NotifyAfter::Seconds(10)

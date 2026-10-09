@@ -1,6 +1,6 @@
 //! Paste rules: what is unsafe to paste, and how the bytes are framed.
 
-use super::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
+use super::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
 
 #[test]
 fn a_newline_is_unsafe_only_when_the_paste_is_not_bracketed() {

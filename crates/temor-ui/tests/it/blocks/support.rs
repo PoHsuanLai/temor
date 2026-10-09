@@ -7,10 +7,10 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use temor_core::block::Outcome;
-use temor_core::notify::NotifyAfter;
-use temor_core::terminal::keymap::Keymap;
-use temor_core::terminal::settings::TerminalSettings;
-use temor_core::terminal::settings_value::ShellChoice;
+use temor_pane::keys::Keymap;
+use temor_pane::settings::NotifyAfter;
+use temor_pane::settings::ShellChoice;
+use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
@@ -41,7 +41,7 @@ impl Clipboard for MemoryClipboard {
 pub(super) struct NoOpener;
 
 impl Opener for NoOpener {
-    fn open(&self, _target: &temor_core::terminal::link::LinkTarget) -> Result<(), OpenError> {
+    fn open(&self, _target: &temor_pane::text::LinkTarget) -> Result<(), OpenError> {
         Ok(())
     }
 }

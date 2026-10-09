@@ -2,8 +2,6 @@
 //! drag, snapped to words or lines, linear or rectangular. Columns are cell columns: a wide
 //! character covers two. Pure: it reads a row only through the `RowText` it is handed.
 
-use ds_core::word::Word;
-
 use super::row::{RowText, Span, Wrap};
 
 /// A cell in the screen space: row 0 is the oldest kept line.
@@ -14,8 +12,7 @@ pub struct CellPos {
 }
 
 /// How a press grows the selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Granularity {
     /// Single cells (a drag).
     Cells,
@@ -26,8 +23,7 @@ pub enum Granularity {
 }
 
 /// Which cells a selection covers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Shape {
     /// Reading order from the start to the end.
     Linear,

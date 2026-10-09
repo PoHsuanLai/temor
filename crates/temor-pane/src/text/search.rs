@@ -1,9 +1,9 @@
 //! Scrollback search (PLAN §6, ⌘F): every match of a query in the screen rows, case-insensitive,
 //! and a cursor that steps through them and wraps. Pure: the caller reads the rows as cells.
 
-use super::chord::fold;
 use super::row::RowText;
 use super::selection::CellPos;
+use crate::keys::fold;
 
 /// One match: a row, the first column and its length in columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

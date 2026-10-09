@@ -2,9 +2,9 @@
 //! encoded for the program, unless the input method is composing, which owns the keys until it
 //! is done. Pure: no window, no terminal.
 
-use temor_core::terminal::action::Action;
-use temor_core::terminal::chord::Chord;
-use temor_core::terminal::keymap::Keymap;
+use temor_pane::keys::Action;
+use temor_pane::keys::Chord;
+use temor_pane::keys::Keymap;
 use temor_vt::{Ime, KeyAction, KeyInput};
 
 /// A key as the window heard it: its chord (when it has one) and what the program would get.
@@ -52,7 +52,7 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
 
 #[cfg(test)]
 mod tests {
-    use temor_core::terminal::chord::{Chord, Mods};
+    use temor_pane::keys::{Chord, Mods};
     use temor_vt::{KeyCode, Modifiers};
 
     use super::*;

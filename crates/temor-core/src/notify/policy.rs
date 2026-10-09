@@ -2,8 +2,9 @@
 
 use ds_core::time::stamp::Stamp;
 
-use super::model::{Focus, Notice, NotifyAfter};
+use super::model::{Focus, Notice};
 use crate::block::{Block, Outcome};
+use temor_pane::settings::NotifyAfter;
 
 /// The notice for a finished block, when it is worth one: the pane is unfocused, the setting is
 /// on, and the command ran at least the threshold. `None` for a block that has not finished.

@@ -4,22 +4,18 @@
 //! are framed for the program. Pure: libghostty's own check arrives as a [`VtVerdict`] from the
 //! app edge. The byte cleaning in [`encode`] follows Ghostty's `input/paste.zig` (MIT, see NOTICE).
 
-use ds_core::word::Word;
-
 const START_FRAME: &str = "\x1b[200~";
 const END_FRAME: &str = "\x1b[201~";
 
 /// Whether the program turned on bracketed paste (mode 2004).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PasteMode {
     Bracketed,
     Plain,
 }
 
 /// Why pasted text needs the person's confirmation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnsafeReason {
     /// A newline in a paste that is not framed: the shell would run it.
     Newline,

@@ -1,8 +1,8 @@
 //! What the window is given at start, and how a session is opened from it: the settings, the
 //! environment, the fonts, and the desktop's clipboard.
 
-use temor_core::terminal::settings::TerminalSettings;
-use temor_core::terminal::settings_value::FontChoice;
+use temor_pane::settings::FontChoice;
+use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_vt::{CellPx, GridSize};

@@ -3,8 +3,7 @@
 
 use super::action::Action;
 use super::chord::{Chord, ChordKey, Mods, NamedKey};
-use crate::error::CoreError;
-use ds_core::word::Word;
+use crate::error::SettingsError;
 
 /// Each action with its one chord. Looked up both ways, so a binding is never ambiguous.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,16 +68,16 @@ impl Keymap {
 
     /// Binds `action` to `chord`, replacing its old chord. Refused when the chord is reserved
     /// or another action already uses it (binding an action to its own chord is allowed).
-    pub fn bind(&mut self, action: Action, chord: Chord) -> Result<(), CoreError> {
+    pub fn bind(&mut self, action: Action, chord: Chord) -> Result<(), SettingsError> {
         if chord.is_reserved() {
-            return Err(CoreError::ReservedChord(chord.label()));
+            return Err(SettingsError::ReservedChord(chord.label()));
         }
         if let Some((by, _)) = self
             .bindings
             .iter()
             .find(|(a, c)| *c == chord && *a != action)
         {
-            return Err(CoreError::ChordInUse {
+            return Err(SettingsError::ChordInUse {
                 chord: chord.label(),
                 by: by.label().to_owned(),
             });

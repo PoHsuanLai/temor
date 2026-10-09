@@ -5,9 +5,9 @@
 
 use std::time::Duration;
 
-use temor_core::terminal::row::RowText;
-use temor_core::terminal::search::{Finder, Match, find_all};
-use temor_core::terminal::selection::{Granularity, Selection, Shape};
+use temor_pane::text::RowText;
+use temor_pane::text::{Finder, Match, find_all};
+use temor_pane::text::{Granularity, Selection, Shape};
 
 use super::Session;
 use super::model::PendingQuery;

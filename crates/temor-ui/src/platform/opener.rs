@@ -1,7 +1,7 @@
 //! Opening a link in the desktop's own handler (PLAN §6: ⌘-click on a hyperlink). The caller
-//! checks the link first (`temor_core::terminal::link`); this only hands it over.
+//! checks the link first (`temor_pane::link`); this only hands it over.
 
-use temor_core::terminal::link::LinkTarget;
+use temor_pane::text::LinkTarget;
 use thiserror::Error;
 
 /// Why a link could not be opened.
@@ -25,7 +25,7 @@ pub trait Opener {
 mod linux {
     use std::process::{Child, Command, Stdio};
 
-    use temor_core::terminal::link::LinkTarget;
+    use temor_pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
@@ -58,7 +58,7 @@ mod linux {
 
 #[cfg(not(target_os = "linux"))]
 mod other {
-    use temor_core::terminal::link::LinkTarget;
+    use temor_pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 

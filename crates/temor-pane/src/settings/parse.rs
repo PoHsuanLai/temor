@@ -1,17 +1,12 @@
 //! The pane's settings file text: one `key = value` per line, `#` lines are comments. A bad
 //! line is reported and skipped, so one typo never costs the rest of the file (PLAN §14).
 
-use ds_core::word::Word;
-
-use super::action::Action;
-use super::chord::Chord;
-use super::keymap::Keymap;
-use super::settings_value::{
-    CursorStyle, FontChoice, FontPoints, ScrollbackLines, ShellChoice, cursor, font_family,
-    font_points, notify_after, scrollback, shell,
+use super::value::{
+    CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice, cursor,
+    font_family, font_points, notify_after, scrollback, shell,
 };
-use crate::error::CoreError;
-use crate::notify::NotifyAfter;
+use crate::error::SettingsError;
+use crate::keys::{Action, Chord, Keymap};
 
 /// Everything the pane reads from its settings.
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +39,7 @@ impl Default for TerminalSettings {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedSettings {
     pub settings: TerminalSettings,
-    pub issues: Vec<(usize, CoreError)>,
+    pub issues: Vec<(usize, SettingsError)>,
 }
 
 /// Reads settings text over the defaults. Every problem is kept in `issues`; the rest applies.
@@ -63,10 +58,10 @@ pub fn parse_settings(text: &str) -> ParsedSettings {
     ParsedSettings { settings, issues }
 }
 
-fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), CoreError> {
+fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), SettingsError> {
     let (key, raw) = line
         .split_once('=')
-        .ok_or_else(|| CoreError::UnknownSetting(line.to_owned()))?;
+        .ok_or_else(|| SettingsError::UnknownSetting(line.to_owned()))?;
     let key = key.trim();
     let value = unquote(raw.trim());
     match key {
@@ -80,7 +75,7 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), CoreErr
             let action = key
                 .strip_prefix("keys.")
                 .and_then(Action::parse)
-                .ok_or_else(|| CoreError::UnknownSetting(key.to_owned()))?;
+                .ok_or_else(|| SettingsError::UnknownSetting(key.to_owned()))?;
             let chord = Chord::parse(value)?;
             settings.keymap.bind(action, chord)?;
         }

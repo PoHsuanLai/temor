@@ -1,9 +1,7 @@
 //! Key chords: a key and the modifiers held with it, parsed from settings text ("ctrl+shift+c")
 //! and labelled for the person (the desktop key rule, PLAN §6: keycap delivers ⌘ as Ctrl+Shift).
 
-use ds_core::word::Word;
-
-use crate::error::CoreError;
+use crate::error::SettingsError;
 
 /// Held modifiers as a bit set. Not a struct of bools (CONVENTIONS §4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -28,7 +26,7 @@ impl Mods {
 }
 
 /// The named keys a chord may use.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NamedKey {
     Enter,
     Tab,
@@ -73,8 +71,8 @@ impl Chord {
 
     /// Parses `ctrl+shift+c` style text. Modifier names: ctrl, shift, alt (option), super
     /// (cmd, meta). The last part is the key. Names are case-insensitive.
-    pub fn parse(text: &str) -> Result<Self, CoreError> {
-        let bad = || CoreError::BadChord(text.to_owned());
+    pub fn parse(text: &str) -> Result<Self, SettingsError> {
+        let bad = || SettingsError::BadChord(text.to_owned());
         let parts: Vec<String> = text.split('+').map(|p| p.trim().to_lowercase()).collect();
         let (key_part, mod_parts) = parts.split_last().ok_or_else(bad)?;
         let mut mods = Mods::NONE;

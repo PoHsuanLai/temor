@@ -3,7 +3,7 @@
 
 use std::time::{Duration, Instant};
 
-use temor_core::terminal::paste::{PasteMode, encode};
+use temor_pane::paste::{PasteMode, encode};
 use temor_vt::{GridSize, KeyCode, KeyInput, Modifiers};
 
 use super::support::{count_events, scratch, screen, spawn_bash, wait_for};

@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use temor_core::terminal::selection::CellPos;
+use temor_pane::text::CellPos;
 
 /// How close in time two presses must be to count as one multi-click.
 pub const MULTI_CLICK: Duration = Duration::from_millis(500);

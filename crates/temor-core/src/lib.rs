@@ -14,6 +14,5 @@ pub mod proposal;
 pub mod remote;
 pub mod space;
 pub mod split;
-pub mod terminal;
 pub mod transfer;
 pub mod vocab;

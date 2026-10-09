@@ -1,9 +1,9 @@
 //! The gutter, the prompt jumps and the block actions, driven by direct calls on a real shell.
 
 use temor_core::block::Outcome;
-use temor_core::terminal::action::Action;
-use temor_core::terminal::chord::Chord;
 use temor_core::vocab::ids::BlockId;
+use temor_pane::keys::Action;
+use temor_pane::keys::Chord;
 use temor_ui::input::Stroke;
 use temor_ui::session::Session;
 use temor_vt::{KeyCode, KeyInput, Modifiers};

@@ -2,10 +2,11 @@
 
 use ds_core::time::stamp::Stamp;
 
-use super::{Focus, Limiter, Notice, NotifyAfter, bell_notice, finished_notice, program_notice};
+use super::{Focus, Limiter, Notice, bell_notice, finished_notice, program_notice};
 use crate::block::{Author, Block, Outcome};
 use crate::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};
 use crate::vocab::text::CommandText;
+use temor_pane::settings::NotifyAfter;
 
 fn block(ran_ms: u64, exit: Option<i32>) -> Block {
     let span = GridSpan::row(GridRow(1));

@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use temor_core::terminal::selection::CellPos;
+use temor_pane::text::CellPos;
 
 use super::click::{Click, MULTI_CLICK, next_click};
 use super::ime::{Composing, on_ime};

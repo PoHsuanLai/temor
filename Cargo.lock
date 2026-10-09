@@ -4324,6 +4324,14 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-pane",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "temor-pane"
+version = "0.1.0"
+dependencies = [
  "thiserror 2.0.21",
 ]
 
@@ -4395,6 +4403,7 @@ dependencies = [
  "ds-harness",
  "rustix",
  "temor-core",
+ "temor-pane",
  "temor-pty",
  "temor-render",
  "temor-shell",
