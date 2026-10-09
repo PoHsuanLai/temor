@@ -2,7 +2,6 @@
 
 use super::policy::Attempt;
 use crate::ids::SessionId;
-use ds_core::word::Word;
 
 /// A point on the caller's monotonic clock, in milliseconds since whatever origin the caller
 /// picked. The step never reads a clock itself.
@@ -50,7 +49,7 @@ pub enum LinkState {
 }
 
 /// Why the link stopped reconnecting.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GoneReason {
     /// The person closed the connection.
     Closed,

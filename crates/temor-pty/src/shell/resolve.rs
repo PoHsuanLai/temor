@@ -4,10 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::env::ChildEnv;
 use crate::platform::{Current, Os};
-use ds_core::word::Word;
 
 /// The shells temor has integration for, and everything else.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShellKind {
     Bash,
     Zsh,

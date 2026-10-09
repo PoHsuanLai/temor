@@ -1,11 +1,9 @@
 //! What a renderer reads per frame, row and cell.
 
-use ds_core::word::Word;
-
 use super::{Col, Rgb, Row};
 
 /// How much of the frame changed since it was last marked drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FrameDirty {
     /// Nothing; drawing can be skipped.
     Clean,
@@ -16,14 +14,14 @@ pub enum FrameDirty {
 }
 
 /// Which rows a walk visits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RowFilter {
     All,
     Dirty,
 }
 
 /// Whether a row changed since the frame was last marked drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RowDirty {
     Dirty,
     Clean,
@@ -34,7 +32,7 @@ pub enum RowDirty {
 pub struct RowId(pub [u64; 2]);
 
 /// How wide a cell is drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CellWidth {
     Narrow,
     /// The first of two columns.
@@ -46,7 +44,7 @@ pub enum CellWidth {
 }
 
 /// What shell integration (OSC 133) says a cell is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SemanticMark {
     Output,
     Input,
@@ -55,21 +53,21 @@ pub enum SemanticMark {
 
 /// Whether a cell is part of an OSC 8 hyperlink. The address is read with
 /// `Terminal::hyperlink_at`, because libghostty keeps link targets per page, not per cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Hyperlink {
     None,
     Linked,
 }
 
 /// Whether a cell is inside the selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Selected {
     No,
     Yes,
 }
 
 /// Underline shapes (SGR 4:x).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Underline {
     #[default]
     None,
@@ -132,7 +130,7 @@ pub struct CellView<'a> {
 }
 
 /// The cursor's shape.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CursorShape {
     Bar,
     Block,
@@ -141,14 +139,14 @@ pub enum CursorShape {
 }
 
 /// Whether the cursor blinks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CursorBlink {
     Steady,
     Blinking,
 }
 
 /// Whether the cursor sits on the right half of a wide cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CursorCell {
     Normal,
     WideTail,

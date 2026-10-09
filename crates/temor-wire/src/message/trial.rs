@@ -6,7 +6,6 @@
 
 use super::files::RemotePath;
 use crate::units::ExitCode;
-use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// A command to trial, and the folder it would run in.
@@ -29,7 +28,7 @@ pub struct RelPath(pub String);
 pub struct ErrorLine(pub String);
 
 /// How a trial changed a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ChangeKind {
     /// Made it.
     Created,
@@ -79,7 +78,7 @@ pub enum TrialVerdict {
 }
 
 /// Why a trial could not be judged.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UncheckedWhy {
     /// It ran past the time limit.
     TimedOut,

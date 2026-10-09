@@ -1,7 +1,5 @@
 //! The event enum and the payloads it carries.
 
-use ds_core::word::Word;
-
 use super::ProgramStatus;
 use crate::model::AnchorId;
 
@@ -56,7 +54,7 @@ pub enum VtEvent {
 }
 
 /// Which kind of sequence an [`VtEvent::Unknown`] carries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum UnknownKind {
     /// An application program command (`ESC _ ... ST`).
@@ -68,7 +66,7 @@ pub enum UnknownKind {
 }
 
 /// Whether a payload is whole or was cut at the configured limit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Truncation {
     Complete,
@@ -76,7 +74,7 @@ pub enum Truncation {
 }
 
 /// Whether the screen is held for a synchronized update.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum RenderHold {
     /// Keep showing the last frame; the program is drawing the next one.
@@ -86,7 +84,7 @@ pub enum RenderHold {
 }
 
 /// Which clipboard a write goes to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ClipboardLocation {
     Standard,
@@ -95,7 +93,7 @@ pub enum ClipboardLocation {
 }
 
 /// Whether the terminal already holds the person's permission for this program's writes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ClipboardGrant {
     /// Write without asking.
@@ -155,7 +153,7 @@ impl Percent {
 }
 
 /// What a progress report says.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ProgressState {
     /// Hide the progress.
@@ -179,7 +177,7 @@ pub struct Progress {
 }
 
 /// Which prompt an OSC 133 A starts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum PromptKind {
     Primary,

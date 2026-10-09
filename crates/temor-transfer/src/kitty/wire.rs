@@ -1,8 +1,6 @@
 //! The wire format: `ESC ] 5113 ; key=value ; ... ST`. Keys may be written in short or long
 //! form; unknown keys are ignored, as the protocol asks.
 
-use ds_core::word::Word;
-
 use super::model::{
     Action, Compression, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
     Transmission, UnixNanos,
@@ -50,8 +48,10 @@ fn optional<T>(
     find(pairs, names).map(parse).transpose()
 }
 
-fn word<W: Word>(value: &[u8], key: &'static str) -> Result<W, TransferError> {
-    W::parse(ascii(value, key)?).ok_or_else(|| Malformed::BadValue { key }.into())
+fn word<W: std::str::FromStr>(value: &[u8], key: &'static str) -> Result<W, TransferError> {
+    ascii(value, key)?
+        .parse()
+        .map_err(|_| Malformed::BadValue { key }.into())
 }
 
 fn number<T: std::str::FromStr>(value: &[u8], key: &'static str) -> Result<T, TransferError> {
@@ -133,7 +133,7 @@ pub fn readable_header(payload: &[u8], limits: Limits) -> Option<KittyId> {
 /// Encodes a message as a complete OSC sequence. Used to build sender-side frames and in tests.
 pub fn encode_message(message: &Message) -> Vec<u8> {
     let mut fields = vec![
-        format!("ac={}", message.action.slug()),
+        format!("ac={}", message.action),
         format!("id={}", message.id.as_str()),
     ];
     if let Some(file) = &message.file {
@@ -146,7 +146,7 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
         fields.push(format!("n={}", base64::encode(name.as_bytes())));
     }
     if let Some(file_type) = message.file_type {
-        fields.push(format!("ft={}", file_type.slug()));
+        fields.push(format!("ft={file_type}"));
     }
     if let Some(size) = message.size {
         fields.push(format!("sz={}", size.get()));
@@ -158,7 +158,7 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
         fields.push(format!("prm={}", mode.get()));
     }
     if let Some(compression) = message.compression {
-        fields.push(format!("zip={}", compression.slug()));
+        fields.push(format!("zip={compression}"));
     }
     if let Some(transmission) = &message.transmission {
         fields.push(format!("tt={}", transmission.word()));
@@ -178,7 +178,7 @@ pub fn encode_reply(reply: &Reply) -> Vec<u8> {
         ReplyStatus::Failed { code, message } => format!("{}:{message}", code.code()),
     };
     let mut fields = vec![
-        format!("ac={}", Action::Status.slug()),
+        format!("ac={}", Action::Status),
         format!("id={}", reply.id.as_str()),
     ];
     if let Some(file) = &reply.file {

@@ -6,8 +6,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ds_core::word::Word;
-
 use crate::consent::Consent;
 use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Reply, UnixNanos, WriteKind};
 use crate::name::RelPath;
@@ -72,7 +70,7 @@ pub struct SavedFile {
 }
 
 /// How a session ended.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum EndWhy {
     Finished,

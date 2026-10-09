@@ -1,6 +1,5 @@
 //! The `Renderer` seam: what a pane is drawn for, and what comes back.
 
-use ds_core::word::Word;
 use temor_vt::Px;
 
 use crate::error::RenderError;
@@ -9,14 +8,14 @@ use crate::metrics::{CellMetrics, CellPos, Padding, PixelSize, Scale};
 use crate::palette::Palette;
 
 /// Whether the pane has keyboard focus; an unfocused pane shows a hollow cursor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PaneFocus {
     Focused,
     Unfocused,
 }
 
 /// How a selection covers cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SelectionShape {
     /// Reading order from `start` to `end`.
     Linear,

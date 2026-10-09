@@ -1,7 +1,5 @@
 //! Colours as the terminal resolves them.
 
-use ds_core::word::Word;
-
 /// A 24-bit colour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Rgb {
@@ -18,7 +16,7 @@ impl Rgb {
 }
 
 /// Whether the person's appearance is light or dark; programs may ask (CSI ? 996 n).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ColorScheme {
     Light,
     #[default]

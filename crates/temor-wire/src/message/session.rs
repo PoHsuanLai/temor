@@ -3,7 +3,6 @@
 use super::files::RemotePath;
 use crate::ids::SessionId;
 use crate::units::{ExitCode, Seconds, Size};
-use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// One environment variable for a session or a relayed command.
@@ -38,7 +37,7 @@ pub struct OpenSession {
 }
 
 /// Whether a session has a client on it right now.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SessionState {
     /// A client is attached and receives output.
     Attached,

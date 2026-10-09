@@ -4,10 +4,9 @@ use super::header::{HEADER, Lengths, read, total};
 use super::limit::FrameLimit;
 use crate::WireError;
 use crate::message::Incoming;
-use ds_core::word::Word;
 
 /// Whether the decoder can still take bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Health {
     Sound,
     Spent,

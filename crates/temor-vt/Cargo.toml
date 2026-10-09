@@ -15,7 +15,6 @@ ghostty = ["dep:temor-vt-sys", "temor-vt-sys/native", "dep:png"]
 testing = []
 
 [dependencies]
-ds-core = { workspace = true }
 thiserror = { workspace = true }
 png = { workspace = true, optional = true }
 temor-vt-sys = { workspace = true, optional = true }

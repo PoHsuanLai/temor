@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use super::model::ChildEnv;
 use super::terminfo::TermName;
-use ds_core::word::Word;
 
 /// The pane this child runs in, as `TEMOR_PANE_ID` carries it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -96,7 +95,7 @@ fn temor_internal(key: &OsStr) -> bool {
 /// profile are dropped, except `TEMOR_SHELL_INTEGRATION`.
 pub fn child_env(base: ChildEnv, profile: &ChildEnv, contract: &EnvContract) -> ChildEnv {
     let mut env = base;
-    env.set("TERM", contract.term.slug());
+    env.set("TERM", contract.term.to_string());
     env.set("COLORTERM", "truecolor");
     let profile: ChildEnv = profile
         .iter()

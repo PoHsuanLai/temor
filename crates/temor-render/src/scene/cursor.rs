@@ -1,6 +1,5 @@
 //! Where and how the cursor is drawn this frame.
 
-use ds_core::word::Word;
 use temor_vt::{Col, CursorCell, CursorShape, CursorView, Rgb, Row};
 
 use crate::frame::{CellDraw, TermColors};
@@ -8,7 +7,7 @@ use crate::palette::Palette;
 use crate::renderer::PaneFocus;
 
 /// The drawn form of the cursor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum CursorStyle {
     Block,
     Bar,

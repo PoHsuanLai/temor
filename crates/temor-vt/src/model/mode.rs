@@ -1,9 +1,7 @@
 //! Terminal modes (ANSI SM/RM and DEC private DECSET/DECRST).
 
-use ds_core::word::Word;
-
 /// Whether a mode is on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModeState {
     Set,
     Reset,
@@ -25,7 +23,7 @@ pub(crate) enum ModeFamily {
 }
 
 /// The modes temor reads or sets. Each maps to one ANSI or DEC private mode number.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TerminalMode {
     /// ANSI 4: insert mode.
     Insert,

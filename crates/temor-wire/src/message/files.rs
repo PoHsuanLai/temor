@@ -2,7 +2,6 @@
 
 use crate::digest::ContentHash;
 use crate::units::{ByteCount, UnixMillis};
-use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// A path on the host, as UTF-8. Paths that are not UTF-8 are refused by the helper rather than
@@ -33,7 +32,7 @@ pub enum WriteCheck {
 }
 
 /// What kind of entry a path is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EntryKind {
     /// A regular file.
     File,
@@ -73,7 +72,7 @@ pub struct DirEntry {
 }
 
 /// How a watched path changed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WatchChange {
     /// Something appeared.
     Created,

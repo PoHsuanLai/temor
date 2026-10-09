@@ -1,11 +1,9 @@
 //! A selection the host sets on the terminal.
 
-use ds_core::word::Word;
-
 use super::GridPoint;
 
 /// How a selection's two ends cover cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SelectionShape {
     /// Reading order from one end to the other.
     Linear,
