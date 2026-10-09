@@ -49,6 +49,7 @@ ordered by dependency (§11), not split into versions.
 | D20 | **Every agent pane shows its approval mode,** as two fixed facts read from the actual launch profile and gate session, never inferred: **Sandbox** (on/off) and **Asks** (everything / writes / nothing). A mode changes only by an explicit action on that pane and never carries over silently to other panes or windows. §8.2 |
 | D21 | **Nothing goes to a model unseen.** Every AI request temor makes (a proposal, a ⌘T AI row, "Ask about @tab") first shows exactly what it will send, as removable chips with sizes, and the sent list is kept with the request's log record. Nothing is attached implicitly. §8.3 |
 | D22 | **Tailscale through porter.** temor never talks to tailscaled. porter's accountd publishes `Tailnet1.Machines()`/`Changed` (typed reader in porter-client); the person's tailnet computers appear as SSH hosts in ⌘T ("Your computers", deduped against `~/.ssh/config`, offline ones dimmed). Connecting is still the system `ssh` to the MagicDNS name with the same sharing, bootstrap and helper; Tailscale SSH hosts need no keys, and its browser check shows as a running row with Open (never auto-opened). Tailnet ports open directly at `name:port` before offering a forward. Design: `~/rs-wt/accounts/tailnet-temor.md`. §9b |
+| D23 | **Layered crates, each a proper library.** L0 standalone libraries (vt, pty, shell, wire, transfer, ssh), L1 headless engines (render, term), L2 the pure app model (core), L3 the app (ui, desktop, remote, bin). Dependencies point down only, checked in the gate. L0/L1 don't depend on quire: closed sets use plain `FromStr`/`Display`/serde instead of `ds-core`'s `Word` (a deliberate exception to quire's rule, for the library layers only). Each library has a small root API, crate docs with a runnable example, `#[non_exhaustive]` on growable enums, the standard traits, builders for wide constructors, injected defaults, and documented `Send`/`Sync`. §2 |
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
@@ -88,33 +89,46 @@ ordered by dependency (§11), not split into versions.
 
 ## 2. Workspace layout
 
+Crates are layered; every crate is a usable library for the layers above it, with idiomatic Rust
+APIs (D23). Dependencies point downward only.
+
 ```
 temor/
   crates/
-    temor-core/       pure: vocabulary, split tree, tabs, space payload, blocks, presence,
-                      command-bar ranking, proposal sanitising, every step machine
+    # L0: standalone libraries (no temor deps outside L0, no quire deps)
     temor-vt-sys/     bindgen output (checked in) plus a build.rs that builds the pinned Ghostty with Zig
     temor-vt/         the only libghostty-vt user: Terminal, RenderState, encoders, callbacks
-                      → typed events. Trait `Vt` so tests run on a fake.
-    temor-pty/        openpty and spawn, shell integration scripts (bash, zsh, fish), profile env
-    temor-render/     fonts (fontique discovery, swash raster), glyph atlas, cell and image
-                      passes on wgpu, painted into a quire TextureLayer
+                      → typed events
+    temor-pty/        openpty and spawn, shell resolution, the child env contract
+    temor-shell/      the shell integration scripts (bash, zsh, fish, nu) and their injection plan;
+                      used by temor-pty locally and temor-ssh remotely
+    temor-wire/       pure: the versioned temor <-> temor-remote protocol (frames, messages)
     temor-transfer/   OSC 5113 / OSC 1337 File= decoding, the shelf store
+    temor-ssh/        Tier A: host list (ssh_config), connection sharing (ControlMaster) argv,
+                      bootstrap, host identity
+    # L1: engines (headless, usable without any UI)
+    temor-render/     fonts (fontique discovery, swash raster), glyph atlas, CPU and GPU renderers
+    temor-term/       a headless terminal session: PTY + terminal + I/O pump (the caller owns the
+                      thread), replies, reaping, paste queue, blocks, selection, search, keymap and
+                      terminal settings. Used by temor-ui, temor-remote and tests.
+    # L2: app model (pure)
+    temor-core/       vocabulary, Spaces and projects, split tree, tabs, presence, command-bar
+                      ranking, proposal sanitising, checkpoints, worktrees, their step machines
+    # L3: app (the only layer that names quire)
     temor-ui/         Dioxus views: window, sidebar (tabs, split minis, foot), panes, blocks,
                       command bar, shelf, proposal chip
-    temor-ssh/        Tier A: host list (ssh_config), connection sharing (ControlMaster),
-                      bootstrap injection, remote file edit-and-sync, forwards
-    temor-wire/       pure: the versioned temor <-> temor-remote protocol (frames, messages)
-    temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
-                      daemon, a libghostty-vt per remote session, ports, files, trial, agent relay
     temor-desktop/    feature `quire-desktop`: IntentProvider1, docket and companion clients,
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
-    temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service, systemd unit
-                      `org.quire.Temor.service`,
-                      intents manifest, skills, shell integration)
+    temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
+                      daemon on temor-term, ports, files, trial, agent relay
+    temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service,
+                      systemd unit `org.quire.Temor.service`, intents manifest, skills)
 ```
 
-**Boundary rules** (checked by `check-boundary.sh` and quire's `check-portable.sh`):
+**Boundary rules** (checked by `scripts/check-layers.sh` from `cargo metadata`, and quire's
+`check-portable.sh`):
+- A crate depends only on crates in its own or lower layers. L0 and L1 never depend on quire
+  (`ds-*`), Dioxus or docket. Only L3 names quire.
 - `temor-core` has no I/O, no Dioxus, and no FFI.
 - Only `temor-vt` names libghostty (through `temor-vt-sys`). `unsafe` is allowed only in `temor-vt-sys`
   and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.
@@ -669,7 +683,8 @@ The ranking rules:
 | **P0 Spikes** | (a) build: Zig 0.16 plus the `libghostty-vt` crate pinned, offline through `GHOSTTY_SOURCE_DIR`, in the lane's build dir. (b) render: two panes side by side, libghostty output plus a kitty image in two `TextureLayer`s, with an `anyview-peek` texture beside them in one window. (c) input: IME plus the key encoder through an `EditSurface`-style host. (d) measure what `anyview-peek` actually adds to the build. | quire v0.2.29 |
 | **P1 Single terminal** | PTY, `temor-vt`, renderer, keys/mouse/paste/clipboard, scrollback, search, selection, hyperlinks, fonts, settings, desktop file, keycap profile | P0 |
 | **P2 Shell integration and blocks** | bash/zsh/fish scripts (OSC 133/7), blocks and their actions, jump between prompts, exit marks, command-finished notifications, progress | P1 |
-| **P3 Window structure** | sidebar tabs (persistent, pinned, folders), split tree plus `SplitView`, split miniatures, drag to split and tear off, recently closed through snapshots, session restore | P1; quire `SplitView` batch |
+| **R1 Layers** | D23: extract `temor-term` (from temor-ui's pane/session and temor-core's terminal/block code) and `temor-shell` (from temor-pty); drop `ds-core`/`ds-style` from L0/L1 and from temor-core; library API pass on every L0/L1 crate (root API, docs with examples, `#[non_exhaustive]`, traits, builders); `scripts/check-layers.sh` in the gate. No behaviour change; the full suite stays green | P2 |
+| **P3 Window structure** | quire v0.2.34 bump and the §6 two-path ⌘ keys first; sidebar tabs (persistent, pinned, folders), split tree plus `SplitView`, split miniatures, drag to split and tear off, recently closed through snapshots, session restore | P1; quire `SplitView` batch |
 | **P4 Spaces** | kit integration, `Project` payload, profiles (env, ssh-agent, dotenv), routes, ⌃1–9 | P3 |
 | **P5 Command bar and quick terminal** | providers, fixed ranking, Run row, quick terminal | P4 |
 | **P6 Desktop integration** | intents manifest, `IntentProvider1`, `context()`, D-Bus activation and systemd unit, dock badge, `quire-desktop` boundary gate | P2 |
