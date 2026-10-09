@@ -20,7 +20,10 @@ impl Match {
 
     /// The last cell of the match (inclusive).
     pub fn end(&self) -> CellPos {
-        CellPos::new(self.row, self.col + self.len.saturating_sub(1))
+        CellPos::new(
+            self.row,
+            self.col.saturating_add(self.len.saturating_sub(1)),
+        )
     }
 }
 

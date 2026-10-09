@@ -1,10 +1,13 @@
-//! Paste rules, after Ghostty's `input/paste.zig` (MIT): what makes pasted text unsafe, and how
-//! the bytes are framed for the program. Pure; the app asks the person before an unsafe paste.
+// The cleaning table in `encode` is taken from Ghostty's `src/input/paste.zig`:
+// Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors. MIT licence (see NOTICE).
+//! Paste rules (PLAN §6): what makes pasted text need the person's confirmation, and how the bytes
+//! are framed for the program. Pure: libghostty's own check arrives as a [`VtVerdict`] from the
+//! app edge. The byte cleaning in [`encode`] follows Ghostty's `input/paste.zig` (MIT, see NOTICE).
 
 use ds_core::word::Word;
 
-const END_FRAME: &str = "\x1b[201~";
 const START_FRAME: &str = "\x1b[200~";
+const END_FRAME: &str = "\x1b[201~";
 
 /// Whether the program turned on bracketed paste (mode 2004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
@@ -24,6 +27,13 @@ pub enum UnsafeReason {
     EndOfFrame,
 }
 
+/// What libghostty's own check (`temor_vt::paste_is_safe`) said about the text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VtVerdict {
+    Clean,
+    Flagged,
+}
+
 /// The verdict on a paste.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PasteCheck {
@@ -31,18 +41,17 @@ pub enum PasteCheck {
     NeedsConfirmation(UnsafeReason),
 }
 
-/// Checks text against the paste rules for `mode`. The end-of-frame marker is unsafe in every
-/// mode, as in Ghostty; a newline is unsafe only when the paste is not bracketed.
-pub fn check(text: &str, mode: PasteMode) -> PasteCheck {
-    if text.contains(END_FRAME) {
-        return PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame);
+/// Checks text for `mode`. A carriage return is a line break for the shell, in either mode, so
+/// it is always confirmed (libghostty does not check it). A newline is confirmed when the paste
+/// is not bracketed. Whatever libghostty flagged (the end of a frame) is confirmed in every mode.
+pub fn check(text: &str, mode: PasteMode, vt: VtVerdict) -> PasteCheck {
+    let line_break = text.contains('\r') || (mode == PasteMode::Plain && text.contains('\n'));
+    if line_break {
+        return PasteCheck::NeedsConfirmation(UnsafeReason::Newline);
     }
-    match mode {
-        PasteMode::Bracketed => PasteCheck::Safe,
-        PasteMode::Plain if text.contains('\n') => {
-            PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
-        }
-        PasteMode::Plain => PasteCheck::Safe,
+    match vt {
+        VtVerdict::Flagged => PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame),
+        VtVerdict::Clean => PasteCheck::Safe,
     }
 }
 

@@ -97,13 +97,16 @@ impl Selection {
         }
     }
 
-    /// The selected text. `line_of` gives the text of a screen row (empty when unknown); rows
-    /// are joined with `\n`, and trailing blanks of each row are dropped.
-    pub fn text(&self, line_of: impl Fn(u32) -> String) -> String {
+    /// The selected text. `line_of` gives a screen row's text and whether the row continues on
+    /// the next one (a soft wrap). Soft-wrapped rows join without a line break; other rows are
+    /// separated by `\n`. Trailing blanks of a hard-broken row are dropped.
+    pub fn text(&self, line_of: impl Fn(u32) -> RowText) -> String {
         let (start, end) = self.ends();
-        let mut out = Vec::new();
+        let mut out = String::new();
+        let mut previous_wraps = false;
         for row in start.row..=end.row {
-            let chars: Vec<char> = line_of(row).chars().collect();
+            let line = line_of(row);
+            let chars: Vec<char> = line.text.chars().collect();
             let (from, to) = match self.shape {
                 Shape::Linear => {
                     let from = if row == start.row {
@@ -126,10 +129,25 @@ impl Selection {
             let from = from.min(chars.len());
             let to = to.min(chars.len()).max(from);
             let piece: String = chars[from..to].iter().collect();
-            out.push(piece.trim_end().to_owned());
+            let joined = row != start.row && previous_wraps && self.shape == Shape::Linear;
+            if row != start.row && !joined {
+                out.push('\n');
+            }
+            match line.wraps && self.shape == Shape::Linear {
+                true => out.push_str(&piece),
+                false => out.push_str(piece.trim_end()),
+            }
+            previous_wraps = line.wraps;
         }
-        out.join("\n")
+        out
     }
+}
+
+/// One screen row's text, and whether the row continues on the next one.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RowText {
+    pub text: String,
+    pub wraps: bool,
 }
 
 impl Endpoint {

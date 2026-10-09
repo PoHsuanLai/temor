@@ -5,9 +5,9 @@ use ds_core::word::Word;
 use super::action::Action;
 use super::chord::{Chord, ChordKey, Mods, NamedKey};
 use super::keymap::Keymap;
-use super::paste::{PasteCheck, PasteMode, UnsafeReason, check, encode};
+use super::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
 use super::search::{Finder, find_all};
-use super::selection::{CellPos, Granularity, Selection, Shape, word_span};
+use super::selection::{CellPos, Granularity, RowText, Selection, Shape, word_span};
 use super::settings::parse_settings;
 use crate::error::CoreError;
 
@@ -100,16 +100,43 @@ fn settings_values_have_limits() {
 }
 
 #[test]
-fn paste_is_unsafe_with_a_newline_only_when_not_bracketed() {
+fn a_newline_is_unsafe_only_when_the_paste_is_not_bracketed() {
     assert_eq!(
-        check("ls\n", PasteMode::Plain),
+        check("ls\n", PasteMode::Plain, VtVerdict::Clean),
         PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
     );
-    assert_eq!(check("ls\n", PasteMode::Bracketed), PasteCheck::Safe);
-    let escape = "x\x1b[201~rm -rf ~\n";
     assert_eq!(
-        check(escape, PasteMode::Bracketed),
+        check("ls\n", PasteMode::Bracketed, VtVerdict::Clean),
+        PasteCheck::Safe
+    );
+}
+
+#[test]
+fn a_carriage_return_is_a_line_break_in_either_mode() {
+    for mode in [PasteMode::Plain, PasteMode::Bracketed] {
+        assert_eq!(
+            check("rm -rf x\r", mode, VtVerdict::Clean),
+            PasteCheck::NeedsConfirmation(UnsafeReason::Newline),
+            "{mode:?}"
+        );
+        assert_eq!(
+            check("a\r\nb", mode, VtVerdict::Clean),
+            PasteCheck::NeedsConfirmation(UnsafeReason::Newline),
+            "{mode:?}"
+        );
+    }
+}
+
+#[test]
+fn what_libghostty_flags_is_confirmed_in_every_mode() {
+    let flagged = check("a\x1b[201~b", PasteMode::Bracketed, VtVerdict::Flagged);
+    assert_eq!(
+        flagged,
         PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame)
+    );
+    assert_eq!(
+        check("echo hi", PasteMode::Plain, VtVerdict::Clean),
+        PasteCheck::Safe
     );
 }
 
@@ -130,7 +157,7 @@ fn selection_drags_in_both_directions() {
     assert_eq!(sel.ends(), (CellPos::new(2, 1), CellPos::new(2, 4)));
     assert!(sel.contains(CellPos::new(2, 2)));
     assert!(!sel.contains(CellPos::new(2, 5)));
-    assert_eq!(sel.text(|_| line.to_owned()), "ello");
+    assert_eq!(sel.text(|_| row(line)), "ello");
 }
 
 #[test]
@@ -143,7 +170,7 @@ fn selection_spans_rows_and_drops_trailing_blanks() {
         Shape::Linear,
     );
     sel.extend(CellPos::new(2, 1), rows[2]);
-    let text = sel.text(|row| rows[row as usize].to_owned());
+    let text = sel.text(|row| row_of(rows[row as usize]));
     assert_eq!(text, "st\nsecond\nth");
 }
 
@@ -154,11 +181,11 @@ fn word_and_line_selection_snap_to_their_runs() {
     assert_eq!(word_span("a.b", 1), (1, 1));
     let line = "run ls -la now";
     let mut sel = Selection::begin(CellPos::new(0, 4), line, Granularity::Words, Shape::Linear);
-    assert_eq!(sel.text(|_| line.to_owned()), "ls");
+    assert_eq!(sel.text(|_| row(line)), "ls");
     sel.extend(CellPos::new(0, 9), line);
-    assert_eq!(sel.text(|_| line.to_owned()), "ls -la");
+    assert_eq!(sel.text(|_| row(line)), "ls -la");
     let lines = Selection::begin(CellPos::new(0, 1), line, Granularity::Lines, Shape::Linear);
-    assert_eq!(lines.text(|_| line.to_owned()), line);
+    assert_eq!(lines.text(|_| row(line)), line);
 }
 
 #[test]
@@ -171,7 +198,7 @@ fn block_selection_takes_a_rectangle() {
         Shape::Block,
     );
     sel.extend(CellPos::new(1, 3), rows[1]);
-    assert_eq!(sel.text(|row| rows[row as usize].to_owned()), "bcd\nhij");
+    assert_eq!(sel.text(|row| row_of(rows[row as usize])), "bcd\nhij");
 }
 
 #[test]
@@ -187,4 +214,46 @@ fn search_is_case_insensitive_and_steps_with_wrap() {
     finder.next();
     assert_eq!(finder.position(), Some((1, 3)));
     assert!(find_all([(0, "x")], "").is_empty());
+}
+
+fn row(text: &str) -> RowText {
+    RowText {
+        text: text.to_owned(),
+        wraps: false,
+    }
+}
+
+fn row_of(text: &str) -> RowText {
+    row(text)
+}
+
+#[test]
+fn a_soft_wrapped_row_joins_the_next_without_a_line_break() {
+    // "abcdefghij" wrapped at ten columns, then "klmno" on its own row: one line when copied.
+    let rows = [
+        RowText {
+            text: "abcdefghij".to_owned(),
+            wraps: true,
+        },
+        RowText {
+            text: "klmno".to_owned(),
+            wraps: false,
+        },
+        RowText {
+            text: "next".to_owned(),
+            wraps: false,
+        },
+    ];
+    let sel = Selection::begin(
+        CellPos::new(0, 0),
+        &rows[0].text,
+        Granularity::Cells,
+        Shape::Linear,
+    );
+    let mut sel = sel;
+    sel.extend(CellPos::new(2, 3), &rows[2].text);
+    assert_eq!(
+        sel.text(|r| rows[r as usize].clone()),
+        "abcdefghijklmno\nnext"
+    );
 }
