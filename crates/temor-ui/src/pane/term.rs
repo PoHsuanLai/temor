@@ -5,12 +5,13 @@
 use std::sync::mpsc::{Receiver, channel};
 
 use temor_core::terminal::paste::PasteMode;
-use temor_core::terminal::selection::RowText;
-use temor_render::{FrameCapture, Palette, PaneFrame};
+use temor_core::terminal::row::{RowCell, RowText, Span};
+use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
-    CellPx, EventSink, Formatter, GridPoint, GridSize, KeyEncoder, KeyInput, LineCount, ModeState,
-    MouseEncoder, MouseInput, MouseSurface, PointSpace, ReplySink, Terminal, TerminalConfig,
-    TerminalMode, TextFormat, TextSelection, TextSpan, ViewportScroll, VtEvent,
+    CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
+    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, ReplySink,
+    Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, ViewportScroll,
+    VtEvent,
 };
 
 use crate::error::UiError;
@@ -28,7 +29,6 @@ pub struct Term {
     terminal: Terminal,
     keys: KeyEncoder,
     mouse: MouseEncoder,
-    capture: FrameCapture,
     events: Receiver<VtEvent>,
     replies: Receiver<Vec<u8>>,
 }
@@ -40,6 +40,7 @@ impl Term {
         size: GridSize,
         cell: CellPx,
         scrollback: LineCount,
+        cursor: CursorShape,
         palette: &Palette,
     ) -> Result<Self, UiError> {
         let (event_tx, events) = channel();
@@ -51,11 +52,11 @@ impl Term {
         let reply: Box<dyn ReplySink> = Box::new(reply_tx);
         let mut terminal = Terminal::new(config, sink, reply)?;
         palette.apply(&mut terminal)?;
+        terminal.set_default_cursor_shape(Some(cursor))?;
         Ok(Self {
             terminal,
             keys: KeyEncoder::new()?,
             mouse: MouseEncoder::new()?,
-            capture: FrameCapture::new()?,
             events,
             replies,
         })
@@ -130,16 +131,16 @@ impl Term {
             .format(&self.terminal, TextSpan::Range { start, end })?)
     }
 
-    /// The text of one screen row, from its first to its last column, and whether the row is
-    /// soft-wrapped into the next.
+    /// One screen row, cell by cell, and whether it continues on the next (soft wrap).
     pub fn row_text(&self, row: u32) -> Result<RowText, UiError> {
-        let last = self.terminal.size().cols.0.saturating_sub(1);
-        let text = self.text(
-            GridPoint::new(PointSpace::Screen, 0, row),
-            GridPoint::new(PointSpace::Screen, last, row),
-        )?;
+        let cells = self
+            .terminal
+            .row_cells(row)?
+            .into_iter()
+            .map(row_cell)
+            .collect();
         Ok(RowText {
-            text,
+            cells,
             wraps: self.terminal.row_wraps(row)?,
         })
     }
@@ -156,11 +157,13 @@ impl Term {
         Ok(u32::try_from(self.terminal.scrollbar()?.total.0).unwrap_or(u32::MAX))
     }
 
-    /// Draws what changed into `frame`, under the caller's lock.
-    pub fn capture(&mut self, frame: &mut PaneFrame) -> Result<(), UiError> {
-        let captured = self.capture.begin(&mut self.terminal)?;
-        captured.finish(frame)?;
-        Ok(())
+    /// Phase one of a frame, under the caller's lock: libghostty's update and the kitty
+    /// placements. The returned frame is finished after the lock is released (PLAN §4b).
+    pub fn begin_frame<'c>(
+        &mut self,
+        capture: &'c mut FrameCapture,
+    ) -> Result<CapturedFrame<'c>, UiError> {
+        Ok(capture.begin(&mut self.terminal)?)
     }
 
     /// The title the program set.
@@ -183,5 +186,18 @@ impl Term {
             events: self.events.try_iter().collect(),
             replies: self.replies.try_iter().collect(),
         }
+    }
+}
+
+/// A terminal cell as the pane reads it: text and span.
+fn row_cell(cell: GridCell) -> RowCell {
+    let span = match cell.width {
+        CellWidth::Wide => Span::Double,
+        CellWidth::SpacerTail | CellWidth::SpacerHead => Span::Spacer,
+        CellWidth::Narrow => Span::Single,
+    };
+    RowCell {
+        text: cell.text,
+        span,
     }
 }

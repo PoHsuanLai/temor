@@ -88,7 +88,7 @@ fn finish(io: &mut Io) {
 fn deliver(io: &mut Io, bytes: &[u8]) {
     let output = lock_term(&io.term).write(bytes);
     for reply in output.replies {
-        io.outbox.push(&reply);
+        let _ = io.outbox.push_reply(&reply);
     }
     for event in output.events {
         if let Some(event) = map_event(event) {

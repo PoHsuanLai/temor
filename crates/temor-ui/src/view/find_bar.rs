@@ -27,7 +27,8 @@ pub fn FindBar(
         None => "No matches".to_owned(),
     };
     rsx! {
-        div { style: "display:flex; align-items:center; gap:8px; padding:8px",
+        // TODO(quire 0.2.31): a toolbar or row layout component; v0.2.30 offers none for this bar.
+        div { style: "display:flex; align-items:center",
             TextField {
                 label: "Find in terminal".to_owned(),
                 value: query,
@@ -40,7 +41,7 @@ pub fn FindBar(
                     }
                 },
             }
-            span { "{status}" }
+            Label { text: status }
             Button {
                 label: "Previous".to_owned(),
                 title: Some("Previous match".to_owned()),

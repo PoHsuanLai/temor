@@ -195,6 +195,8 @@ pub fn App() -> Element {
         "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
     rsx! {
         Ds { appearance: Appearance::default(), material: Material::Window, extent: RootExtent::Viewport,
+            // TODO(quire 0.2.31): a full-height root (RootExtent::Window) and a layout component for
+            // this column; v0.2.30 has neither, so the flex column stays a plain element.
             div { style: "display:flex; flex-direction:column; width:100%; height:100vh",
                 if let Some((query, position)) = find {
                     FindBar {
@@ -286,25 +288,34 @@ pub fn App() -> Element {
                     }
                 }
                 if ended {
-                    div { style: "padding:8px", "The shell has ended." }
-                    Button {
-                        label: "Restart".to_owned(),
-                        title: Some("Start a new shell".to_owned()),
-                        onclick: {
-                            let slot = Rc::clone(&slot);
-                            move |_| {
-                                // The old session shuts its program down when it is dropped.
-                                let mut s = slot.borrow_mut();
-                                s.session = None;
-                                s.events = None;
-                                drop(s);
-                                ui += 1;
+                    InlineBanner {
+                        severity: Severity::Warn,
+                        text: "The shell has ended.".to_owned(),
+                        actions: rsx! {
+                            Button {
+                                label: "Restart".to_owned(),
+                                title: Some("Start a new shell".to_owned()),
+                                onclick: {
+                                    let slot = Rc::clone(&slot);
+                                    move |_| {
+                                        // The old session shuts its program down when it is dropped.
+                                        let mut s = slot.borrow_mut();
+                                        s.session = None;
+                                        s.events = None;
+                                        drop(s);
+                                        ui += 1;
+                                    }
+                                },
                             }
                         },
                     }
                 }
                 if let Some(text) = message {
-                    div { style: "padding:8px", "{text}" }
+                    InlineBanner {
+                        severity: Severity::Warn,
+                        text,
+                        onclose: move |_| notice.set(None),
+                    }
                 }
             }
         }

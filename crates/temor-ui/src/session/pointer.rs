@@ -5,7 +5,8 @@
 use std::time::Duration;
 
 use temor_core::terminal::link::{LinkVerdict, check_link};
-use temor_core::terminal::selection::{CellPos, Granularity, RowText, Selection, Shape};
+use temor_core::terminal::row::RowText;
+use temor_core::terminal::selection::{CellPos, Granularity, Selection, Shape};
 use temor_vt::{
     GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
@@ -61,7 +62,7 @@ impl Session {
             true => Shape::Block,
             false => Shape::Linear,
         };
-        self.selection = Some(Selection::begin(cell, &line.text, granularity, shape));
+        self.selection = Some(Selection::begin(cell, &line, granularity, shape));
         self.drag = Some(Drag { granularity, shape });
         self.mirror_selection()
     }
@@ -79,7 +80,7 @@ impl Session {
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
         let line = self.line(cell.row)?;
         if let Some(selection) = self.selection.as_mut() {
-            selection.extend(cell, &line.text);
+            selection.extend(cell, &line);
         }
         self.mirror_selection()
     }

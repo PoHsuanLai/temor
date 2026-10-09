@@ -65,6 +65,7 @@ fn fixture(name: &str) -> Fixture {
             ("HOME", home.as_os_str()),
             ("PATH", std::ffi::OsStr::new("/usr/bin:/bin")),
             ("LANG", std::ffi::OsStr::new("C.UTF-8")),
+            ("XDG_RUNTIME_DIR", home.join("xdg-runtime").as_os_str()),
         ]
         .into_iter()
         .map(|(k, v)| (std::ffi::OsString::from(k), v.to_os_string()))
@@ -491,4 +492,118 @@ fn a_find_query_runs_only_after_typing_pauses() {
     assert!(ran);
     assert_eq!(f.session.find_text(), "prompt2");
     assert!(f.session.finder().is_some());
+}
+
+#[test]
+fn a_paste_over_the_limit_is_refused_with_a_notice_and_never_cut() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-paste-limit");
+    *f.clipboard.0.borrow_mut() = "x".repeat(temor_ui::session::PASTE_LIMIT + 1);
+    f.session.run(Action::Paste).expect("paste");
+    let notice = f
+        .session
+        .take_notice()
+        .expect("a notice explains the refusal");
+    assert!(notice.contains("not pasted"), "{notice}");
+    assert!(
+        f.session.pending_paste().is_none(),
+        "nothing is queued to send"
+    );
+}
+
+#[test]
+fn a_five_mebibyte_paste_arrives_intact() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-big-paste");
+    // Raw mode lets dd take every byte; it counts the bytes and the bytes outside the alphabet.
+    type_text(
+        &mut f.session,
+        "stty raw -echo; echo READY; dd of=out bs=65536 count=80 iflag=fullblock 2>/dev/null; echo $(wc -c < out) $(tr -d '0-9a-z' < out | wc -c)",
+    );
+    press_enter(&mut f.session);
+    wait_until("the reader is ready", || {
+        has_line(&f.session.screen_text(), "READY")
+    });
+    wait_until("plain paste", || {
+        f.session.pane().with_term(|t| t.paste_mode())
+            == temor_core::terminal::paste::PasteMode::Plain
+    });
+    let alphabet = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let data: String = (0..5 * 1024 * 1024)
+        .map(|i| char::from(alphabet[i % alphabet.len()]))
+        .collect();
+    *f.clipboard.0.borrow_mut() = data;
+    f.session.run(Action::Paste).expect("paste");
+    wait_until("five mebibytes and no stray bytes", || {
+        has_line(&f.session.screen_text(), "5242880 0")
+    });
+}
+
+#[test]
+fn wide_characters_copy_and_select_by_cells() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-cjk");
+    f.session.pane().send("echo 中文ab\r".as_bytes());
+    wait_until("the output", || {
+        has_line(&f.session.screen_text(), "中文ab")
+    });
+    let row = f
+        .session
+        .screen_text()
+        .lines()
+        .position(|l| l.trim_end() == "中文ab")
+        .expect("the output row") as u16;
+    // Cells 0 to 3 hold 中 and 文 (two columns each).
+    let mods = Modifiers::NONE;
+    let start = point_at(&f.session, row, 0);
+    f.session
+        .press(
+            start,
+            temor_vt::MouseButton::Left,
+            mods,
+            Duration::from_secs(1),
+        )
+        .expect("press");
+    f.session
+        .drag_to(point_at(&f.session, row, 3))
+        .expect("drag");
+    f.session
+        .release(
+            point_at(&f.session, row, 3),
+            temor_vt::MouseButton::Left,
+            mods,
+        )
+        .expect("release");
+    f.session.run(Action::Copy).expect("copy");
+    assert_eq!(*f.clipboard.0.borrow(), "中文");
+    // Double-clicking the a (cell 4) selects its word. Ideographs are letters, so the word runs
+    // back over the two wide characters: the copy is the whole run, cell by cell.
+    let at = point_at(&f.session, row, 4);
+    f.session
+        .press(
+            at,
+            temor_vt::MouseButton::Left,
+            mods,
+            Duration::from_secs(2),
+        )
+        .expect("press");
+    f.session
+        .press(
+            at,
+            temor_vt::MouseButton::Left,
+            mods,
+            Duration::from_millis(2100),
+        )
+        .expect("double");
+    f.session
+        .release(at, temor_vt::MouseButton::Left, mods)
+        .expect("release");
+    f.session.run(Action::Copy).expect("copy");
+    assert_eq!(*f.clipboard.0.borrow(), "中文ab");
 }

@@ -25,6 +25,7 @@ fn harness(name: &str, probe: &Probe) -> Harness {
             ("HOME", home.as_os_str()),
             ("PATH", std::ffi::OsStr::new("/usr/bin:/bin")),
             ("LANG", std::ffi::OsStr::new("C.UTF-8")),
+            ("XDG_RUNTIME_DIR", home.join("xdg-runtime").as_os_str()),
             ("PS1", std::ffi::OsStr::new("$ ")),
         ]
         .into_iter()
@@ -93,4 +94,64 @@ fn the_window_starts_a_shell_and_takes_typing() {
     wait_until(&mut h, &probe, "the command's output", |s| {
         s.lines().any(|l| l.trim_end() == "window-ok")
     });
+}
+
+/// The mouse reports on the screen, as `(terminator, text)` for each `^[[<` report cat -v shows.
+fn mouse_reports(screen: &str) -> Vec<char> {
+    let mut out = Vec::new();
+    for line in screen.lines() {
+        let mut rest = line;
+        while let Some(at) = rest.find("^[[<") {
+            let after = &rest[at + 4..];
+            if let Some(end) = after.find(['M', 'm']) {
+                out.push(after[end..].chars().next().unwrap_or('?'));
+                rest = &after[end + 1..];
+            } else {
+                break;
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn a_click_reports_its_release_to_the_program_once() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-release", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    // Turn on mouse reporting (SGR) and show what the program receives, raw.
+    let command = "stty raw -echo; printf '\\033[?1000h\\033[?1006h'; cat -v";
+    for c in command.chars() {
+        let key = match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        };
+        h.send(Input::key(key));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(500));
+    // One click: a press and its release, each reported once.
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(500));
+    let reports = mouse_reports(&probe.screen());
+    let presses = reports.iter().filter(|c| **c == 'M').count();
+    let releases = reports.iter().filter(|c| **c == 'm').count();
+    assert_eq!(
+        releases,
+        1,
+        "one release report, got {reports:?}:\n{}",
+        probe.screen()
+    );
+    assert_eq!(presses, 1, "one press report, got {reports:?}");
 }

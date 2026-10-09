@@ -48,6 +48,7 @@ pub fn bash_spec(home: &Path, grid: GridSize, cell: CellPx) -> PaneSpec {
         cell,
         scrollback: LineCount(1000),
         palette: Palette::default(),
+        cursor: temor_vt::CursorShape::Block,
     }
 }
 
@@ -69,7 +70,11 @@ pub fn screen(pane: &PaneHandle) -> String {
     pane.with_term(|term| {
         let rows = term.screen_rows().unwrap_or(0);
         (0..rows)
-            .map(|row| term.row_text(row).map(|line| line.text).unwrap_or_default())
+            .map(|row| {
+                term.row_text(row)
+                    .map(|line| line.text())
+                    .unwrap_or_default()
+            })
             .collect::<Vec<_>>()
             .join("\n")
     })

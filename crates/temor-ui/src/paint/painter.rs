@@ -1,29 +1,42 @@
-//! Painting one pane (PLAN §5): the terminal's frame through the CPU renderer into premultiplied
-//! pixels, handed to the pane's texture. The renderer keeps its glyph atlases between frames.
+//! Painting one pane (PLAN §5, §4b): the terminal's frame through the CPU renderer into
+//! premultiplied pixels, handed to the pane's texture. The lock is held only for the first phase
+//! of the capture; the rows are copied and drawn after it is released.
 
 use temor_render::{
-    CellMetrics, CpuRenderer, FontSet, GridFit, Padding, Palette, PaneFocus, PaneFrame, PaneView,
-    PixelSize, Renderer, Scale, SelectionOverlay, fit_grid,
+    CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit, Padding, Palette, PaneFocus,
+    PaneFrame, PaneView, PixelSize, Renderer, Scale, SelectionOverlay, fit_grid,
 };
 
 use crate::error::UiError;
-use crate::pane::Term;
+use crate::pane::PaneHandle;
 
-/// One pane's renderer and its frame buffer.
+/// What one paint is for: the pane's pixels, scale, focus and selection.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PaintView {
+    pub pixels: PixelSize,
+    pub scale: Scale,
+    pub padding_logical: f32,
+    pub focus: PaneFocus,
+    pub selection: Option<SelectionOverlay>,
+}
+
+/// One pane's renderer, its capture state and its frame buffer.
 #[derive(Debug)]
 pub struct Painter {
     renderer: CpuRenderer,
+    capture: FrameCapture,
     frame: PaneFrame,
     palette: Palette,
 }
 
 impl Painter {
-    pub fn new(fonts: FontSet, palette: Palette) -> Self {
-        Self {
+    pub fn new(fonts: FontSet, palette: Palette) -> Result<Self, UiError> {
+        Ok(Self {
             renderer: CpuRenderer::new(fonts),
+            capture: FrameCapture::new()?,
             frame: PaneFrame::new(),
             palette,
-        }
+        })
     }
 
     /// The palette the grid is drawn with.
@@ -37,7 +50,7 @@ impl Painter {
     }
 
     /// The cursor's cell as of the last paint, when the cursor is shown.
-    pub fn cursor_cell(&self) -> Option<temor_render::CellPos> {
+    pub fn cursor_cell(&self) -> Option<CellPos> {
         self.frame.cursor_cell()
     }
 
@@ -53,34 +66,32 @@ impl Painter {
     }
 
     /// Draws what changed in the terminal since the last frame and hands the whole pane's
-    /// premultiplied RGBA8 pixels, with their size, to `show`.
+    /// premultiplied RGBA8 pixels, with their size, to `show`. The terminal is locked only while
+    /// libghostty begins the frame.
     pub fn paint(
         &mut self,
-        term: &mut Term,
+        pane: &PaneHandle,
         view: PaintView,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
-        term.capture(&mut self.frame)?;
-        let pane = PaneView {
+        let Painter {
+            renderer,
+            capture,
+            frame,
+            palette,
+        } = self;
+        let captured = pane.with_term(|term| term.begin_frame(capture))?;
+        captured.finish(frame)?;
+        let pane_view = PaneView {
             size: view.pixels,
             scale: view.scale,
             padding: Padding::logical(view.padding_logical, view.scale),
-            palette: &self.palette,
+            palette,
             focus: view.focus,
             selection: view.selection,
         };
-        let frame = self.renderer.render(&mut self.frame, &pane)?;
-        show(frame.pixels, frame.size);
+        let drawn = renderer.render(frame, &pane_view)?;
+        show(drawn.pixels, drawn.size);
         Ok(())
     }
-}
-
-/// What one paint is for: the pane's pixels, scale, focus and selection.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PaintView {
-    pub pixels: PixelSize,
-    pub scale: Scale,
-    pub padding_logical: f32,
-    pub focus: PaneFocus,
-    pub selection: Option<SelectionOverlay>,
 }

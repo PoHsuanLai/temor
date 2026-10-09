@@ -51,7 +51,7 @@ impl PaneHandle {
     /// Sends program input (keys, paste, a mouse report) in order.
     pub fn send(&self, bytes: &[u8]) {
         if !bytes.is_empty() {
-            self.outbox.push(bytes);
+            self.outbox.push_input(bytes);
         }
     }
 
@@ -68,7 +68,7 @@ impl PaneHandle {
         let _ = self.commands.send(Command::Resize(pty_size(grid, cell)));
         let output = self.with_term(|term| term.resize(grid, cell))?;
         for reply in output.replies {
-            self.outbox.push(&reply);
+            let _ = self.outbox.push_reply(&reply);
         }
         for event in output.events.into_iter().filter_map(map_event) {
             let _ = self.events.send(event);

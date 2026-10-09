@@ -5,10 +5,12 @@
 
 use std::time::Duration;
 
+use temor_core::terminal::row::RowText;
 use temor_core::terminal::search::{Finder, Match, find_all};
 use temor_core::terminal::selection::{Granularity, Selection, Shape};
 
-use super::{PendingQuery, Session};
+use super::Session;
+use super::model::PendingQuery;
 use crate::error::UiError;
 
 /// How many screen rows are read per lock.
@@ -59,20 +61,19 @@ impl Session {
     /// current. An empty query has no matches.
     pub fn set_query(&mut self, query: &str) -> Result<(), UiError> {
         let rows = self.pane.with_term(|term| term.screen_rows())?;
-        let mut lines: Vec<(u32, String)> = Vec::with_capacity(usize::try_from(rows).unwrap_or(0));
+        let mut lines: Vec<(u32, RowText)> = Vec::with_capacity(usize::try_from(rows).unwrap_or(0));
         let mut first = 0;
         while first < rows {
             let end = first.saturating_add(ROWS_PER_LOCK).min(rows);
             let chunk = self.pane.with_term(|term| {
                 (first..end)
-                    .map(|row| term.row_text(row).map(|line| (row, line.text)))
+                    .map(|row| term.row_text(row).map(|line| (row, line)))
                     .collect::<Result<Vec<_>, _>>()
             })?;
             lines.extend(chunk);
             first = end;
         }
-        let matches: Vec<Match> =
-            find_all(lines.iter().map(|(row, text)| (*row, text.as_str())), query);
+        let matches: Vec<Match> = find_all(lines.iter().map(|(row, line)| (*row, line)), query);
         self.find_text = query.to_owned();
         self.finder = Some(Finder::new(query, matches));
         self.reveal_current()
@@ -98,8 +99,8 @@ impl Session {
         };
         let line = self.line(found.row)?;
         let mut selection =
-            Selection::begin(found.start(), &line.text, Granularity::Cells, Shape::Linear);
-        selection.extend(found.end(), &line.text);
+            Selection::begin(found.start(), &line, Granularity::Cells, Shape::Linear);
+        selection.extend(found.end(), &line);
         self.selection = Some(selection);
         self.mirror_selection()?;
         let (top, len) = self.pane.with_term(|term| term.viewport())?;

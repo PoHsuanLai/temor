@@ -29,6 +29,8 @@ pub struct PaneSpec {
     pub cell: CellPx,
     pub scrollback: LineCount,
     pub palette: Palette,
+    /// The cursor shape a plain reset (`CSI 0 q`) restores.
+    pub cursor: temor_vt::CursorShape,
 }
 
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
@@ -51,7 +53,13 @@ pub fn start(spec: PaneSpec, events: UnboundedSender<PaneEvent>) -> Result<PaneH
     let spawn = SpawnSpec { size, ..spec.spawn };
     let pty = Pty::spawn(&spawn, &spec.launcher)?;
     let port = pty.io()?;
-    let term = Term::new(spec.grid, spec.cell, spec.scrollback, &spec.palette)?;
+    let term = Term::new(
+        spec.grid,
+        spec.cell,
+        spec.scrollback,
+        spec.cursor,
+        &spec.palette,
+    )?;
     let term = Arc::new(Mutex::new(term));
     let outbox = Arc::new(Outbox::new(port));
     let (commands_tx, commands) = channel();

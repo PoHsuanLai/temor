@@ -6,6 +6,9 @@ use temor_core::terminal::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict
 use super::Session;
 use crate::error::UiError;
 
+/// The largest paste the pane sends (8 MiB). Larger ones are refused, not truncated.
+pub const PASTE_LIMIT: usize = 8 * 1024 * 1024;
+
 /// A paste that needs the person's confirmation, and why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PendingPaste {
@@ -30,12 +33,20 @@ impl Session {
         Ok(())
     }
 
-    /// Pastes the clipboard. An unsafe paste waits for [`Session::confirm_paste`].
+    /// Pastes the clipboard. An unsafe paste waits for [`Session::confirm_paste`]. A paste over
+    /// [`PASTE_LIMIT`] is refused with a notice: it is never cut short.
     pub fn paste(&mut self) -> Result<(), UiError> {
         let Ok(text) = self.clipboard.read() else {
             return Ok(());
         };
         if text.is_empty() {
+            return Ok(());
+        }
+        if text.len() > PASTE_LIMIT {
+            self.notice = Some(format!(
+                "That paste is over {} MiB, so it was not pasted. Copy a smaller part.",
+                PASTE_LIMIT / (1024 * 1024)
+            ));
             return Ok(());
         }
         let mode = self.pane.with_term(|term| term.paste_mode());

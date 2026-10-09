@@ -59,6 +59,7 @@ pub fn shell_pane(
         cell,
         scrollback: LineCount(settings.scrollback.lines() as usize),
         palette,
+        cursor: cursor_shape(settings.cursor),
     })
 }
 
@@ -73,5 +74,17 @@ fn pick_shell(settings: &TerminalSettings, env: &ChildEnv) -> Shell {
             });
             resolve_shell(passwd, env, |path: &Path| path.is_file())
         }
+    }
+}
+
+/// The shape a settings cursor style means for the terminal.
+pub fn cursor_shape(
+    style: temor_core::terminal::settings_value::CursorStyle,
+) -> temor_vt::CursorShape {
+    use temor_core::terminal::settings_value::CursorStyle;
+    match style {
+        CursorStyle::Block => temor_vt::CursorShape::Block,
+        CursorStyle::Bar => temor_vt::CursorShape::Bar,
+        CursorStyle::Underline => temor_vt::CursorShape::Underline,
     }
 }

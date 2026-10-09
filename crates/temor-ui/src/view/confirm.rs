@@ -11,6 +11,9 @@ pub fn reason_text(reason: UnsafeReason) -> &'static str {
     match reason {
         UnsafeReason::Newline => "It has a line break, so it would run as soon as it lands.",
         UnsafeReason::EndOfFrame => "It has a hidden marker that could end the paste early.",
+        UnsafeReason::ControlCharacters => {
+            "It has control characters, which would be sent as spaces."
+        }
     }
 }
 
