@@ -23,6 +23,11 @@ impl Mods {
     pub const fn contains(self, other: Self) -> bool {
         self.0 & other.0 == other.0
     }
+
+    /// These modifiers without `other`.
+    pub const fn without(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
 }
 
 /// The named keys a chord may use.
@@ -89,34 +94,74 @@ impl Chord {
         Ok(Self { key, mods })
     }
 
-    /// The label the person sees (PLAN §6): Ctrl+Shift+letter is shown as ⌘ + letter, the
-    /// chord the desktop delivers for ⌘; other chords use the Mac symbols in ⌃⌥⇧⌘ order.
+    /// The label the person sees (PLAN §6): a ⌘ chord is the Ctrl+Shift form the desktop
+    /// delivers for ⌘ or the Super form that arrives unremapped; both show ⌘. Other chords use
+    /// the Mac symbols in ⌃⌥⇧⌘ order.
     pub fn label(&self) -> String {
-        let key = key_label(self.key);
-        if self.mods == Mods::CTRL.with(Mods::SHIFT) {
-            return format!("⌘{key}");
-        }
+        // The Ctrl+Shift table form stands for ⌘ alone; a Super chord keeps its real Shift.
+        let (command, mods) = match self.is_ctrl_shift_form() {
+            true => (true, self.mods.without(Mods::CTRL).without(Mods::SHIFT)),
+            false => (
+                self.mods.contains(Mods::SUPER),
+                self.mods.without(Mods::SUPER),
+            ),
+        };
         let mut out = String::new();
-        for (flag, symbol) in [
-            (Mods::CTRL, "⌃"),
-            (Mods::ALT, "⌥"),
-            (Mods::SHIFT, "⇧"),
-            (Mods::SUPER, "⌘"),
-        ] {
-            if self.mods.contains(flag) {
+        for (flag, symbol) in [(Mods::CTRL, "⌃"), (Mods::ALT, "⌥"), (Mods::SHIFT, "⇧")] {
+            if mods.contains(flag) {
                 out.push_str(symbol);
             }
         }
-        out.push_str(&key);
+        if command {
+            out.push('⌘');
+        }
+        out.push_str(&key_label(self.key));
         out
     }
 
-    /// Chords the desktop keeps (PLAN §6): anything with Super (the shell and compositor's),
-    /// and Ctrl+Space (the input method's). A person's keymap may not bind them.
+    /// A ⌘ chord as the Super key sends it: Super without Ctrl (PLAN §6, the terminal rule).
+    /// Never quire's `is_command`, which is true for a plain Ctrl chord too.
+    pub fn is_command_form(&self) -> bool {
+        self.mods.contains(Mods::SUPER) && !self.mods.contains(Mods::CTRL)
+    }
+
+    /// The Ctrl+Shift form of a ⌘ chord, the one keycap sends for ⌘ (PLAN §6).
+    pub fn is_ctrl_shift_form(&self) -> bool {
+        self.mods.contains(Mods::CTRL.with(Mods::SHIFT))
+    }
+
+    /// The refusal for a bare Ctrl chord (Ctrl with a letter, digit or punctuation, and no Shift or
+    /// Alt): it belongs to the program, and the refusal names the ⌘ forms to bind instead.
+    pub fn bare_ctrl_refusal(&self) -> Option<SettingsError> {
+        let bare = self.mods == Mods::CTRL;
+        match self.key {
+            ChordKey::Char(c) if bare => {
+                let key = c.to_uppercase().collect::<String>();
+                Some(SettingsError::ProgramChord {
+                    chord: format!("Ctrl+{key}"),
+                    ctrl_shift: format!("Ctrl+Shift+{key}"),
+                    command: format!("⌘{key}"),
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// Chords the desktop keeps (PLAN §6): Super with Space, Tab or a digit (the shell's and
+    /// compositor's), and Ctrl+Space (the input method's). Other Super chords are the app's ⌘
+    /// chords, and a person's keymap may bind them.
     pub fn is_reserved(&self) -> bool {
-        self.mods.contains(Mods::SUPER)
-            || (self.mods.contains(Mods::CTRL) && self.key == ChordKey::Named(NamedKey::Space))
-            || (self.mods.contains(Mods::CTRL) && self.key == ChordKey::Char(' '))
+        let ctrl_space = self.mods.contains(Mods::CTRL)
+            && matches!(
+                self.key,
+                ChordKey::Named(NamedKey::Space) | ChordKey::Char(' ')
+            );
+        let shell_super = self.mods.contains(Mods::SUPER)
+            && matches!(
+                self.key,
+                ChordKey::Named(NamedKey::Space | NamedKey::Tab) | ChordKey::Char('0'..='9')
+            );
+        ctrl_space || shell_super
     }
 }
 

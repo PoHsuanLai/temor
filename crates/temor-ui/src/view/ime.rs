@@ -1,8 +1,8 @@
 //! The input method's glue: the IME listener on the terminal region, the cursor area it places
-//! its candidates at, and the composition steps the keys wait for. It follows quire's
-//! `EditSurface` through the host seams (`DocumentHost::edit()`), retrying while the document is
-//! busy. quire's own helpers are crate-private at v0.2.30 (asks in the report).
-// TODO(quire 0.2.31): focus_soon_told and the public composition machine replace these copies.
+//! its candidates at, the composition state the keys wait for, and the keyboard focus. The
+//! composition machine and the focus write are quire's (`ds::edit::composition`,
+//! `ds::focus::soon`); the IME host seams are retried here while the document is busy, since
+//! quire's `write_soon` is crate-private at v0.3.1 (an ask in the report).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -10,15 +10,20 @@ use std::rc::Rc;
 use dioxus::prelude::*;
 use ds::base::time::FRAME_SLACK;
 use ds::base::time::clock::sleep;
-use ds::edit::input::EditInput;
+use ds::edit::composition::{Composing, on_ime, settle};
+use ds::edit::input::{Composition, EditInput};
+use ds::focus::select::Select;
+use ds::focus::soon::focus_soon_told;
 use ds::host::document::DocumentHost;
-use ds::host::focused::Focused;
 use ds::host::ime::{ImeEvent, ImeListener, ImeSwitch};
 use ds::host::parts::EditHost;
 use ds::host::probe::Probe;
 use ds::prelude::Rect;
 
-use crate::input::{Composing, on_ime, settle};
+use super::slot::Slot;
+use super::window_help::{send_text, set_focus};
+use ds::edit::pointer::EditFocus;
+use temor_core::notify::Focus;
 
 /// The region's IME state, shared by its handlers.
 #[derive(Clone)]
@@ -71,26 +76,62 @@ impl ImeGlue {
         let _ = with_edit(&self.host, |e| e.ime().cursor_area(&el, area)).await;
     }
 
-    /// Gives the region the keyboard through the host, retrying while the document is busy.
-    /// Blitz sends no focus event for this, so the caller turns the input method on itself.
-    pub async fn take_focus(&self) -> bool {
-        let Some(el) = self.element.borrow().clone() else {
-            return false;
-        };
-        for _ in 0..16 {
-            match self.host.focus().focus(&el) {
-                Focused::Done => return true,
-                Focused::Busy => sleep(FRAME_SLACK).await,
-                Focused::Unknown => return false,
-            }
+    /// Gives the region the keyboard, a frame later while the document is busy (quire's
+    /// `focus_soon_told`). `told` is called once the focus has moved: a focus the app asks for
+    /// sends no focus event to the region's own handler.
+    pub fn take_focus(&self, told: EventHandler<()>) {
+        if let Some(el) = self.element.borrow().clone() {
+            focus_soon_told(el, Select::None, told);
         }
-        false
     }
 
     /// Registers the region for IME events.
     pub async fn listen(&self, element: Rc<MountedData>, heard: EventHandler<ImeEvent>) {
         let listener = with_edit(&self.host, |e| e.ime().listen(&element, heard)).await;
         *self.listener.borrow_mut() = listener;
+    }
+}
+
+/// Where the input method's composed text goes: the program, and the preedit line the window
+/// draws while a composition is under way.
+pub fn composed_sink(
+    slot: Rc<RefCell<Slot>>,
+    preedit: Signal<Option<String>>,
+) -> impl Fn(EditInput) + Clone + 'static {
+    move |input: EditInput| {
+        let mut preedit = preedit;
+        match input {
+            EditInput::Text(text) => send_text(&slot, &text),
+            EditInput::Composition(Composition::Update { text, .. }) => {
+                preedit.set((!text.is_empty()).then_some(text));
+            }
+            EditInput::Composition(Composition::End { text }) => {
+                preedit.set(None);
+                send_text(&slot, &text);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The region's focus: the keyboard in (`gained`), or out, when the composition ends and the
+/// input method turns off.
+pub fn focus_handler(
+    slot: Rc<RefCell<Slot>>,
+    ime: ImeGlue,
+    apply: impl Fn(EditInput) + Clone + 'static,
+    gained: impl Fn() + Clone + 'static,
+) -> impl FnMut(EditFocus) + 'static {
+    move |focus: EditFocus| match focus {
+        EditFocus::In => gained(),
+        EditFocus::Out => {
+            set_focus(&slot, Focus::Unfocused);
+            ime.settle(&apply);
+            let ime = ime.clone();
+            spawn(async move {
+                ime.switch(ImeSwitch::Off).await;
+            });
+        }
     }
 }
 

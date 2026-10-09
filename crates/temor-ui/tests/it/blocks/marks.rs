@@ -8,7 +8,8 @@ use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::support::tools_present;
-use super::support::{Live, pump, shell_path, start};
+use super::support::{Live, pump, settle, shell_path, start};
+use std::time::Duration;
 
 /// Sends one whole mark: its number, its event, and its anchor at the cursor.
 fn mark(live: &mut Live, seq: u64, event: PromptEvent) {
@@ -35,6 +36,7 @@ fn at_prompt(name: &str) -> Option<Live> {
     pump(&mut live, "the input mark", |s| {
         s.pane().with_term(|term| term.anchor_count()) >= 2
     });
+    settle(&mut live, Duration::from_millis(400));
     Some(live)
 }
 

@@ -14,4 +14,5 @@ pub mod view;
 
 pub use app::run;
 pub use view::launch::LauncherChoice;
+pub use view::theme::AppearanceSource;
 pub use view::{Launch, SESSION_LEADER_ARG};

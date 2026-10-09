@@ -22,6 +22,7 @@ ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9b9c03bf
 ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5" }  # v0.3.1
 ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5" }  # v0.3.1
 ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5" }  # v0.3.1
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5" }  # v0.3.1
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }

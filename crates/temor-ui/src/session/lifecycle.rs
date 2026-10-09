@@ -5,7 +5,7 @@ use std::sync::Arc;
 use temor_core::notify::{Focus, Limiter};
 use temor_core::vocab::text::display_text;
 use temor_pane::text::cwd_from_url;
-use temor_render::{PaneFocus, PixelSize, Scale};
+use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -118,6 +118,14 @@ impl Session {
             self.fit = Some(fit);
         }
         Ok(changed)
+    }
+
+    /// Makes `palette` the grid's colours: the terminal's defaults (so a program that reads them
+    /// sees the new ones) and the painter's. The next paint redraws the whole grid.
+    pub fn set_palette(&mut self, palette: Palette) -> Result<(), UiError> {
+        self.pane.with_term(|term| term.set_palette(&palette))?;
+        self.painter.set_palette(palette);
+        Ok(())
     }
 
     /// Draws the pane when it has a size, handing its pixels to `show`.

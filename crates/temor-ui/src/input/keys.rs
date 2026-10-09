@@ -1,61 +1,52 @@
-//! Dioxus keyboard events as a [`Stroke`]: the physical key (from `Code`, falling back to the
+//! quire's raw key events as a [`Stroke`]: the physical key (from `Code`, falling back to the
 //! logical key on a US layout), the held modifiers, and the text the layout produced.
 
 use dioxus::html::{Code, Key, Modifiers as HeldMods};
+use ds::edit::raw_key::{KeyPhase, RawKey};
 use temor_pane::keys::{Chord, ChordKey, Mods, NamedKey, fold};
 use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::route::Stroke;
 
-/// The window's key facts, read off one Dioxus event.
-#[derive(Debug)]
-pub struct RawKey<'a> {
-    pub key: &'a Key,
-    pub code: &'a Code,
-    pub held: HeldMods,
-    /// Press or release, as the window heard it; a repeat is a press with `repeating` set.
-    pub action: KeyAction,
-    /// Whether the platform repeats this key (a held key's repeats).
-    pub repeating: Repeat,
-    /// Whether an input method is composing while the key arrives.
-    pub ime: Ime,
-}
-
-/// Whether a press repeats a key held down.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Repeat {
-    First,
-    Again,
-}
-
-/// Builds the stroke for one event.
-/// `None` for a key with no physical or known logical identity (a dead or unidentified key):
-/// it is ignored rather than sent to the program as something else.
-pub fn stroke(raw: &RawKey<'_>) -> Option<Stroke> {
-    let mods = core_mods(raw.held);
-    let vt_mods = vt_mods(raw.held);
-    let code = code_key(raw.code).or_else(|| logical_key(raw.key))?;
-    let text = match raw.key {
-        Key::Character(s) if !raw.held.contains(HeldMods::CONTROL) => s.clone(),
-        _ => String::new(),
+/// Builds the stroke for one key event from quire's raw key (the window's `RawKeySurface`),
+/// with the input method's state for it. `None` for a key with no physical or known logical
+/// identity (a dead or unidentified key): it is ignored rather than sent to the program as
+/// something else.
+pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
+    let mods = core_mods(raw.modifiers);
+    let code = code_key(&raw.code).or_else(|| logical_key(&raw.key))?;
+    let action = match raw.phase {
+        KeyPhase::Press => KeyAction::Press,
+        KeyPhase::Repeat => KeyAction::Repeat,
+        KeyPhase::Release => KeyAction::Release,
     };
-    let unshifted = logical_char(raw.key).map(fold);
-    let action = match (raw.action, raw.repeating) {
-        (KeyAction::Press, Repeat::Again) => KeyAction::Repeat,
-        (action, _) => action,
-    };
+    let unshifted = raw
+        .unshifted
+        .as_ref()
+        .or(Some(&raw.key))
+        .and_then(logical_char)
+        .map(fold);
     let key = KeyInput {
         code,
         action,
-        mods: vt_mods,
-        text,
+        mods: vt_mods(raw.modifiers),
+        text: raw.text.clone().unwrap_or_default(),
         unshifted,
-        ime: raw.ime,
+        ime,
     };
     Some(Stroke {
-        chord: chord_of(raw.key, mods),
+        chord: chord_of(&raw.key, mods),
         key,
     })
+}
+
+/// Whether a key is a typed character from AltGr: a press with Ctrl and Alt both held that the
+/// layout typed text for. The program gets that text; encoding Ctrl+Alt+key would send a control
+/// character instead (AltGr's "@" would be lost).
+pub fn is_altgr_text(key: &KeyInput) -> bool {
+    matches!(key.action, KeyAction::Press | KeyAction::Repeat)
+        && key.mods.contains(Modifiers::CTRL.with(Modifiers::ALT))
+        && !key.text.is_empty()
 }
 
 /// The held modifiers as the keymap sees them. Meta counts as Super (PLAN §6).

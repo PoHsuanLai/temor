@@ -24,9 +24,18 @@ pub enum PaneError {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum SettingsError {
-    /// The chord belongs to the desktop (Super, or Ctrl+Space); a keymap may not bind it.
+    /// The chord belongs to the desktop (Super with Space, Tab or a digit, or Ctrl+Space); a
+    /// keymap may not bind it.
     #[error("{0} belongs to the desktop")]
     ReservedChord(String),
+    /// A bare Ctrl chord (Ctrl with a letter, digit or punctuation, no Shift or Alt) belongs to the
+    /// program (its interrupt, its end-of-file); the message names the ⌘ forms to use instead.
+    #[error("{chord} belongs to the program; use {ctrl_shift} or {command}")]
+    ProgramChord {
+        chord: String,
+        ctrl_shift: String,
+        command: String,
+    },
     /// The chord already runs another action.
     #[error("{chord} is already used by {by}")]
     ChordInUse { chord: String, by: String },

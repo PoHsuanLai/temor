@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
+use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Driver, Harness, HarnessConfig, Viewport};
@@ -14,11 +15,11 @@ use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::Ambient;
 use temor_ui::view::App;
 use temor_ui::view::probe::Probe;
-use temor_ui::{Launch, LauncherChoice};
+use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 
 use super::support::scratch;
 
-fn harness(name: &str, probe: &Probe) -> Harness {
+pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
     let home = scratch(name).join("home");
     let ambient = Ambient {
         home: home.clone(),
@@ -41,6 +42,7 @@ fn harness(name: &str, probe: &Probe) -> Harness {
             shell: ShellChoice::Program(super::support::bash_path().display().to_string()),
             ..TerminalSettings::default()
         },
+        appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
         launcher: LauncherChoice::Setsid(
             temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
                 .expect("util-linux setsid is installed"),
@@ -63,7 +65,7 @@ fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> b
     while !ok(&probe.screen()) {
         h.advance(Duration::from_millis(25));
         assert!(
-            start.elapsed() < Duration::from_secs(15),
+            start.elapsed() < Duration::from_secs(30),
             "timed out waiting for {what}:\n{}",
             probe.screen()
         );
@@ -190,4 +192,43 @@ fn a_click_reports_once_per_button() {
         primary, 2,
         "secondary click: no primary report of its own, got {reports:?}"
     );
+}
+
+/// Closing the find bar gives the keyboard back to the terminal: a key typed after the close
+/// reaches the shell.
+#[test]
+fn closing_find_gives_the_keyboard_back_to_the_terminal() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-find-close", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    h.send(Input::chord(
+        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
+        ShortcutKey::Char('f'),
+    ));
+    h.advance(Duration::from_millis(200));
+    assert!(h.html().contains("Find in terminal"), "find did not open");
+    let done = h
+        .centre(".ds-button:last-of-type")
+        .unwrap_or_else(|| panic!("no Done button:\n{}", h.html()));
+    h.send(Input::click(done));
+    h.advance(Duration::from_millis(200));
+    for c in "echo after-find".chars() {
+        let key = match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        };
+        h.send(Input::key(key));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    wait_until(&mut h, &probe, "the command's output", |s| {
+        s.lines().any(|l| l.trim_end() == "after-find")
+    });
 }

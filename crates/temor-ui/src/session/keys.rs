@@ -6,7 +6,7 @@ use temor_vt::{KeyAction, KeyCode};
 
 use super::{FindStep, PromptStep, Session};
 use crate::error::UiError;
-use crate::input::{FindBar, Routed, Stroke, route};
+use crate::input::{FindBar, Routed, Stroke, is_altgr_text, route};
 
 impl Session {
     /// Routes one key event.
@@ -24,6 +24,10 @@ impl Session {
                 if key.action != KeyAction::Release {
                     self.pane
                         .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));
+                }
+                if is_altgr_text(&key) {
+                    self.pane.send(key.text.as_bytes());
+                    return Ok(());
                 }
                 Ok(self.pane.key(&key)?)
             }

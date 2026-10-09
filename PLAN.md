@@ -309,6 +309,8 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
   - ⌘⇧↩ zoom; ⌃⌘= equalize; ⌘C/⌘V copy/paste; ⌘F searches the scrollback; ⌘↑/↓ move between prompts
   - ⌘1–9 tabs; ⌃1–9 Spaces (quire `SwitchChord`); ⌘⇧U jumps to the waiting agent
   - Every binding is configurable; the defaults never claim the shell's Super chords or Ctrl+Space.
+    A setting for an action replaces both of its default forms, which gives a chord back to the program;
+    a bare Ctrl chord (Ctrl with a letter, digit or punctuation, no Shift or Alt) is refused.
 
 ## 7. Browser-like structure
 

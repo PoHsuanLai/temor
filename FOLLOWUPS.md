@@ -61,30 +61,32 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       whole pane; CPU clips glyph overhang to the row, GPU does not. §5
 
 ## quire v0.3.1 (b9b9c03b) — bump in R1, features in P3
-- [ ] Bump the pin to `rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"  # v0.3.1` (v0.3.0 was breaking; v0.3.1 additive; `SignInFault` now non_exhaustive: `launch`
-      returns a Result, seams behind `ds-blitz/testing`, settings setters; v0.2.31 shipped
-      SplitView axis, RawKey/RawKeySurface, terminal palette tokens, public `focus_soon_told` /
-      `focus_landing_told`, RootExtent::Window, IME composition). Drop temor's IME machine copy.
-- [ ] IME candidate area: `ImeHost::cursor_area(surface, Rect)` via the document host's `.ime()`
-      with the grid's MountedData and caret cell rect; repro to whopper if it doesn't move. §6
-- [ ] Theme: re-apply the palette in an effect on `ds_settings::use_environment(..)`; follow the Space look
-      with `use_space_look()`/`use_space_frame()` (ds::prelude; tracks the app's own Space until sill
-      publishes per-workspace looks). Window title: `ds::window::host::use_window_title(title)` (the
-      pane title / cwd). §5
-- [ ] IME on the pane's TextureLayer: `ime().switch(.., On)` first, then `cursor_area` with the caret
-      in window-logical px (layer origin + caret), retrying on `Probe::Busy` (EditSurface's retry is
-      private, so the pane needs its own). quire's proof: ds-blitz `tests/it/ime_texture_layer.rs`. §6
-- [ ] Add quire's coherence test (examples/consumer/tests/it/coherence.rs).
-- [ ] Keys (PLAN §6, answered by whopper): bind each ⌘ action to both Ctrl+Shift+key and Super+key;
-      ⌘ chord = `command_keys(mods)` has META without CONTROL, never `is_command` in a pane. Tests:
-      Ctrl+Shift+T and Super+T open a tab, Ctrl+C reaches the PTY. temor-core terminal/chord.rs and
-      keymap.rs.
+- [x] Bump the pin to `rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"  # v0.3.1` (done in R1a; the
+      IME machine copy is dropped in 5f852bf, now `ds::edit::composition` and `RawKeySurface`).
+- [x] IME candidate area: `ime().switch(On)` then `cursor_area` with the layer origin plus the caret
+      cell, through the host seam with a Busy retry (5f852bf; `view/window_help.rs`, `view/ime.rs`).
+      Not seen on a real fcitx5 yet, and ds-harness has no IME host to test it (leftover below).
+- [x] Theme: the palette is re-applied on each `use_environment` change and on a Space look change
+      (5bccf7d; `view/theme.rs`; the follower is `view/palette.rs`, a child inside the `Ds` root that
+      reads `use_space_look()` there). `use_space_frame()` is not followed: its frame
+      variables are sidebar ink, and P3a has no sidebar (P3b). Window title: `use_window_title` (fefac1e).
+- [x] IME on the pane's TextureLayer: `switch(On)` first, `cursor_area` with the caret in window-logical
+      px, Busy retried (5f852bf). quire's `EditSurface` retry is private, so `view/ime.rs` keeps its own.
+- [x] Add quire's coherence test (examples/consumer/tests/it/coherence.rs), adapted (e318913).
+- [x] Keys (PLAN §6, answered by whopper): every ⌘ action is bound to Ctrl+Shift+key and Super+key;
+      a pane chord is ⌘ by its form, never `is_command` (2f9cf18). Tests at input level:
+      Ctrl+Shift+C and Super+C copy (New Tab does not exist yet, so Copy stands in), Ctrl+C and an
+      unbound Ctrl+Shift combo reach the program, Super alone and Super+Space match no binding.
+      The keymap is in temor-pane `keys`, routing in temor-ui `input/`.
 
 ## temor-ui / temor (lane/app, P1, reviewed at f783a2a)
 - [ ] quire v0.2.31: replace plain layout divs and the 100vh root with quire layout components and
       `RootExtent::Window`; terminal palette tokens; re-apply the palette on theme change. §5
-- [ ] quire asks (whopper offline; saved in /mnt/data/cargo/temor-lanes/pending-quire-asks.md): IME
-      cursor area API, runtime window title, theme-change signal, consumer coherence test. §6
+      (partly: `RootExtent::Window` and quire's terminal tokens in 91eaf50, the theme change in 5bccf7d.
+      The column is still a flex element: quire v0.3.1 has no column component, asked.)
+- [x] quire asks (whopper offline; saved in /mnt/data/cargo/temor-lanes/pending-quire-asks.md): IME
+      cursor area API, runtime window title, theme-change signal, consumer coherence test. Now in
+      quire v0.3.1 and used (5f852bf, fefac1e, 5bccf7d, e318913). §6
 - [ ] Bell, OSC 0/2 title, OSC 52 writes, notifications, cwd and progress are received but not shown
       (P2/P3). Hyperlink hover target preview not built. §6, §7
 - [ ] Settings are temor's own typed file at $XDG_CONFIG_HOME/temor/terminal.conf; move to
@@ -150,3 +152,26 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] Blocks stay in temor-core (L2) because they use `vocab` ids and quire's `Stamp`. An embedder of
       temor-pane gets raw OSC 133 events (`MarkBegin`/`Prompt`/`Anchor`) but no block model. Move the
       block machine into temor-pane with its own id/time types once an embedder (anyview, sill) needs it.
+
+## P3a (lane/p3a: keys, layout and tokens, theme, title, IME, coherence)
+- [ ] quire asks: (1) a column or stack layout component (v0.3.1 has only SplitView); (2)
+      `focus_landing_told` is `pub(crate)` at v0.3.1 (the v0.3.1 notes say public); (3) EditSurface's
+      Busy retry (`write_soon`) is private, so `view/ime.rs` keeps its own 16-try loop; (4)
+      `RawKeySurface` takes no style, pointer or wheel handlers and sizes nothing: the grid needs an
+      inner element and a sheet rule for the surface's class (`view/window.rs` `WINDOW_CSS`); (5)
+      `.ds-texture-layer` has no rule in quire's sheet (the coherence test allows that one class). §6
+- [x] A keymap setting replaces both command forms of its action, which gives the chord back to the
+      program; a bare Ctrl chord is refused with the ⌘ forms named (review fixes). §6
+- [ ] Unbound Super+letter reaches the program as text (as before P3a). Ghostty drops unbound ⌘ keys;
+      decide the same here. §6
+- [ ] KWin takes Meta+T/W/D/V globally on KDE, so those Super forms never reach temor there; the
+      desktop's reserved chords are with whopper. §6
+- [ ] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
+      real check. §6
+- [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
+- [ ] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
+- [ ] The palette follows the Space look (read inside `Ds`, `view/palette.rs`) but not
+      `use_space_frame()` (the sidebar's ink; P3b). The look itself is `SpaceLook::default()` until
+      sill publishes per-workspace looks, so no change reaches it yet. §5
+- [ ] `real_shells_*` and `a_five_mebibyte_paste_arrives_intact` time out under a parallel
+      `cargo test -p temor-ui` (fish startup, a 15 s wait); they pass alone. §13

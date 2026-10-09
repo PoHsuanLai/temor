@@ -4,11 +4,12 @@
 use temor_pane::settings::FontChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
-use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
+use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
 use temor_vt::{CellPx, GridSize};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::probe::Probe;
+use super::theme::AppearanceSource;
 use crate::app::shell_pane;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
@@ -34,6 +35,8 @@ pub struct Launch {
     pub ambient: Ambient,
     pub settings: TerminalSettings,
     pub launcher: LauncherChoice,
+    /// Where the window's look (theme, accent, Space look, desktop preferences) is read from.
+    pub appearance: AppearanceSource,
     /// Where the screen's text is published after each repaint, for tests that cannot see the
     /// terminal's pixels. `None` in the app.
     pub probe: Option<Probe>,
@@ -56,8 +59,7 @@ impl Clipboard for DesktopClipboard {
 /// Opens a session for the window: a shell at 80 by 24 cells, which the first layout refits.
 pub fn open_session(
     launch: &Launch,
-    _pixels: PixelSize,
-    _scale: Scale,
+    palette: Palette,
 ) -> Result<(Session, UnboundedReceiver<PaneEvent>), UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
@@ -81,17 +83,7 @@ pub fn open_session(
     };
     let grid = GridSize::new(80, 24);
     let cell = CellPx::new(8, 16);
-    let spec = shell_pane(
-        &launch.ambient,
-        settings,
-        1,
-        grid,
-        cell,
-        // TODO(quire 0.2.31): the terminal palette from quire's tokens, and re-applied on theme
-        // change (Painter::set_palette and Term::set_palette). v0.2.30 exposes no theme change.
-        temor_render::Palette::default(),
-        launcher,
-    )?;
+    let spec = shell_pane(&launch.ambient, settings, 1, grid, cell, palette, launcher)?;
     let (events_tx, events) = unbounded_channel();
     let session = Session::open(
         SessionParts {

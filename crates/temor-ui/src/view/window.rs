@@ -4,17 +4,23 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
-use ds::edit::input::{Composition, EditInput};
+use ds::base::spawner::Spawner;
+use ds::edit::composition::Composing;
+use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::host::document::use_document_host;
-use ds::host::ime::{ImeEvent, ImeSwitch};
+use ds::host::ime::ImeEvent;
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
-use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
-use temor_vt::{Ime, KeyAction};
+use ds::root::pass_through::ExtraClass;
+use ds::window::host::use_window_title;
+use ds_blitz::{Sampling, TextureFit, TextureLayer, TokioSpawner, use_gpu};
+use ds_settings::use_environment;
+use temor_vt::Ime;
 
 use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
 use super::confirm::PasteConfirm;
@@ -24,15 +30,16 @@ use super::handlers::{
     bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
     find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_shell,
 };
-use super::ime::ImeGlue;
+use super::ime::{ImeGlue, composed_sink, focus_handler};
 use super::launch::Launch;
+use super::palette::{PaletteFollow, SlotRef};
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use super::status::StatusLine;
-use super::window_help::{
-    device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
-};
-use crate::input::{Composing, RawKey, Repeat, stroke};
+use super::title::window_title;
+use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
+use super::window_style::WINDOW_CSS;
+use crate::input::stroke;
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::BlockId;
 
@@ -48,6 +55,14 @@ pub fn App() -> Element {
     let texture = use_hook(|| gpu.handle());
     let ime = use_hook(|| ImeGlue::new(Rc::clone(&host)));
     let started = use_hook(Instant::now);
+    let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
+    // The person's look and the desktop's preferences, live: a change re-themes the window.
+    let env = use_environment(
+        launch.appearance.store.clone(),
+        launch.appearance.system.clone(),
+        spawner,
+    );
+    let look = SpaceLook::default();
     let mut ui = use_signal(|| 0u32);
     let preedit = use_signal(|| None::<String>);
     let mut notice = use_signal(|| None::<String>);
@@ -78,61 +93,31 @@ pub fn App() -> Element {
         });
     }
 
-    // Composed text and the preedit line, from the input method.
-    let apply = {
-        let slot = Rc::clone(&slot);
-        move |input: EditInput| {
-            let mut preedit = preedit;
-            match input {
-                EditInput::Text(text) => send_text(&slot, &text),
-                EditInput::Composition(Composition::Update { text, .. }) => {
-                    preedit.set((!text.is_empty()).then_some(text));
-                }
-                EditInput::Composition(Composition::End { text }) => {
-                    preedit.set(None);
-                    send_text(&slot, &text);
-                }
-                _ => {}
-            }
-        }
-    };
+    let apply = composed_sink(Rc::clone(&slot), preedit);
     let heard = {
         let ime = ime.clone();
         let apply = apply.clone();
         use_callback(move |event: ImeEvent| ime.event(event, &apply))
     };
 
+    // Every key the region hears (a press, a repeat, a release) as quire's raw key.
     let on_key = {
         let slot = Rc::clone(&slot);
         let ime = ime.clone();
         let apply = apply.clone();
-        move |event: KeyboardEvent, action: KeyAction| {
-            let key = event.key();
-            let code = event.code();
+        move |raw: RawKey| {
             let composing = match ime.composing.get() {
                 Composing::Active => Ime::Composing,
                 Composing::Idle | Composing::Cleared => Ime::Idle,
             };
-            let raw = RawKey {
-                key: &key,
-                code: &code,
-                held: event.modifiers(),
-                action,
-                repeating: match event.is_auto_repeating() {
-                    true => Repeat::Again,
-                    false => Repeat::First,
-                },
-                ime: composing,
-            };
-            if action != KeyAction::Release {
-                event.prevent_default();
+            if raw.phase != KeyPhase::Release {
                 ime.settle(&apply);
             }
             if composing == Ime::Composing {
                 return;
             }
             // An unidentified key is ignored; the rest go to the session.
-            let outcome = match stroke(&raw) {
+            let outcome = match stroke(&raw, composing) {
                 Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
                 None => None,
             };
@@ -147,46 +132,39 @@ pub fn App() -> Element {
             place_cursor(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let (mut key_down, mut key_up) = (on_key.clone(), on_key);
 
     let mouse = use_pane_mouse(Rc::clone(&slot), rect, signals, notice, started);
 
-    let on_focus = {
+    // The region has the keyboard: the session knows, and the input method is on and placed.
+    let gained = {
         let ime = ime.clone();
         let slot = Rc::clone(&slot);
-        move |_: FocusEvent| {
+        move || {
             set_focus(&slot, Focus::Focused);
-            focus_in(ime.clone(), Rc::clone(&slot), rect)
+            focus_in(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let on_blur = {
-        let ime = ime.clone();
-        let apply = apply.clone();
-        let slot = Rc::clone(&slot);
-        move |_: FocusEvent| {
-            set_focus(&slot, Focus::Unfocused);
-            ime.settle(&apply);
-            let ime = ime.clone();
-            spawn(async move {
-                ime.switch(ImeSwitch::Off).await;
-            });
-        }
-    };
+    let on_focus = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
+
+    // The region's element: rect and input method hear it; the first layout gives it the keyboard,
+    // as a person's click would.
+    // Where the keyboard goes back to when the find bar closes (its field leaves the page).
+    let regain = EventHandler::new({
+        let gained = gained.clone();
+        move |()| gained()
+    });
 
     let on_mounted = {
-        let ime = ime.clone();
-        let slot = Rc::clone(&slot);
+        let (ime, gained) = (ime.clone(), gained.clone());
         move |event: MountedEvent| {
             rect.on_mounted(event.clone());
             let element = event.data();
             ime.element.replace(Some(Rc::clone(&element)));
-            let (ime, slot) = (ime.clone(), Rc::clone(&slot));
+            let (ime, heard, gained) = (ime.clone(), heard, gained.clone());
+            let told = EventHandler::new(move |()| gained());
             spawn(async move {
                 ime.listen(element, heard).await;
-                // The first layout gives the pane the keyboard, as a person's click would.
-                if ime.take_focus().await {
-                    focus_in(ime, slot, rect);
-                }
+                ime.take_focus(told);
             });
         }
     };
@@ -206,49 +184,59 @@ pub fn App() -> Element {
         .as_ref()
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
     let message = notice();
-    // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
-    // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
-    let pane_style =
-        "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
+    use_window_title(window_title(&chrome.title, chrome.cwd.as_deref()));
+    let now = env();
     rsx! {
-        Ds { appearance: Appearance::default(), material: Material::Window, extent: RootExtent::Viewport,
-            // TODO(quire 0.2.31): a full-height root (RootExtent::Window) and a layout component for
-            // this column; v0.2.30 has neither, so the flex column stays a plain element.
-            div { style: "display:flex; flex-direction:column; width:100%; height:100vh",
+        Ds {
+            appearance: now.settings.appearance.appearance(),
+            system: now.system,
+            tint_alpha: Some(now.tint_alpha()),
+            stack: Some(now.material_stack()),
+            typeface: Some(now.settings.appearance.typeface()),
+            look: look.clone(),
+            material: Material::Window,
+            extent: RootExtent::Window,
+            // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
+            // window's column is a plain flex element in the window-high root (see `WINDOW_CSS`).
+            style { {WINDOW_CSS} }
+            PaletteFollow {
+                slot: SlotRef(Rc::clone(&slot)),
+                env,
+                notice,
+            }
+            div { class: "temor-window",
                 if let Some((query, position)) = find {
                     FindBar {
                         query,
                         position,
                         on_query:find_query(Rc::clone(&slot), ui, started),
                         on_step:find_step(Rc::clone(&slot), ui),
-                        on_close:find_close(Rc::clone(&slot), ui),
+                        on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
                     }
                 }
-                div {
-                    class: "temor-pane",
-                    tabindex: "0",
-                    role: "application",
-                    "aria-label": "Terminal",
-                    "data-keys": "capture",
-                    "data-wheel": "capture",
-                    style: "{pane_style}",
-                    onmounted: move |e| {
-                        mouse.capture.on_mounted(e.clone());
-                        on_mounted(e);
+                RawKeySurface {
+                    on_key: EventHandler::new(on_key),
+                    on_focus: EventHandler::new(on_focus),
+                    common: Common {
+                        aria_label: Some("Terminal".to_owned()),
+                        extra_class: ExtraClass::parse("temor-keys").ok(),
+                        mounted: Some(EventHandler::new(on_mounted)),
+                        ..Common::default()
                     },
-                    onkeydown: move |e| key_down(e, KeyAction::Press),
-                    onkeyup: move |e| key_up(e, KeyAction::Release),
-                    onfocus: on_focus,
-                    onblur: on_blur,
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
-                    onpointerup: move |e| (mouse.up)(e),
-                    onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
-                    onwheel: move |e| (mouse.wheel)(e),
-                    TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
-                    if let Some(text) = preedit() {
-                        div { style: "position:absolute; left:0; bottom:0; white-space:pre; text-decoration:underline", "{text}" }
+                    div {
+                        class: "temor-grid",
+                        "data-wheel": "capture",
+                        onmounted: move |e| mouse.capture.on_mounted(e),
+                        onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
+                        onpointerup: move |e| (mouse.up)(e),
+                        onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
+                        onwheel: move |e| (mouse.wheel)(e),
+                        TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
+                        if let Some(text) = preedit() {
+                            div { class: "temor-preedit", "{text}" }
+                        }
+                        GutterMarks { marks: chrome.marks.clone() }
                     }
-                    GutterMarks { marks: chrome.marks.clone() }
                 }
                 if let Some(bar) = chrome.bar.clone() {
                     BlockBar {

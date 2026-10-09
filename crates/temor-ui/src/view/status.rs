@@ -1,5 +1,5 @@
 //! The status line under the pane (PLAN §7): the working directory the shell reported, the
-//! program's title (the window's own title waits for quire v0.2.31), its progress and the bell's
+//! program's title (the window's own title is set from it, see `title`), its progress and the bell's
 //! brief mark.
 
 use dioxus::prelude::*;
@@ -36,9 +36,7 @@ pub fn progress_line(progress: Progress) -> Option<ProgressLine> {
     }
 }
 
-/// The status line's content. The window's own title waits for quire v0.2.31 (a runtime window
-/// title), so the program's title is shown here.
-// TODO(quire 0.2.31): set the window title from the program's title (OSC 0/2) when quire can.
+/// The status line's content: the program's title is shown here as well as the window's.
 #[component]
 #[allow(non_snake_case)]
 pub fn StatusLine(

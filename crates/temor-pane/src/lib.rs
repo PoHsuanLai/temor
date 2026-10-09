@@ -11,11 +11,11 @@
 //! use temor_pane::keys::{Action, Chord};
 //! use temor_pane::settings::parse_settings;
 //!
-//! let parsed = parse_settings("keys.find_next = ctrl+g\nfont.size = huge\n");
+//! let parsed = parse_settings("keys.find_next = ctrl+alt+g\nfont.size = huge\n");
 //! assert_eq!(parsed.issues.len(), 1);
 //! assert_eq!(
 //!     parsed.settings.keymap.chord_for(Action::FindNext),
-//!     Some(&Chord::parse("ctrl+g").expect("a chord")),
+//!     Some(&Chord::parse("ctrl+alt+g").expect("a chord")),
 //! );
 //! ```
 
