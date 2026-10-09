@@ -26,3 +26,19 @@ Additions for temor:
 - Commits: author and committer `Po Hsuan Lai <pohsuanlai0208@gmail.com>` through `GIT_*` env vars,
   with no session, co-author or URL trailers.
 - Tests never touch the real system: private bus, scratch `HOME`, no real `~/.config`.
+
+## Tests (desktop test-cut rule, owner 2026-10-10: `~/rs-wt/test-cut/RUBRIC.md`)
+- A test earns its place only if it can catch a real regression no other test catches.
+- One integration binary per crate: `tests/it/main.rs` with `mod topic;`, plus a guard test that
+  fails if a `tests/*.rs` or `tests/it/*.rs` file isn't included. A test that needs its own
+  process (process-global state, fork, clean env) keeps its own binary, with a one-line comment
+  saying why.
+- Before adding a test, look for a table or scenario that covers the behaviour, and add a row or a
+  step instead.
+- A change that adds tests also deletes the tests it made redundant.
+- Reviewers reject tautologies (T1), compiler guarantees (T2), tests of a dependency (T3) and wide
+  assertions (T6).
+- Never delete: bug regressions, safety/consent/isolation, wire contracts, the only test of a
+  behaviour, or goldens that are the contract (K1–K5).
+- A golden or table row that changes means behaviour changed. Don't re-bless it to make the gate
+  pass; stop and report.
