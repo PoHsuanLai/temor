@@ -88,7 +88,7 @@ pub fn App() -> Element {
             let palette = resolved_palette(
                 now.settings.appearance.appearance(),
                 &look,
-                now.system.clone(),
+                now.system,
             );
             if let Some(text) = slot.borrow_mut().set_palette(palette) {
                 notice.set(Some(text));
@@ -247,7 +247,7 @@ pub fn App() -> Element {
     rsx! {
         Ds {
             appearance: now.settings.appearance.appearance(),
-            system: now.system.clone(),
+            system: now.system,
             tint_alpha: Some(now.tint_alpha()),
             stack: Some(now.material_stack()),
             typeface: Some(now.settings.appearance.typeface()),
