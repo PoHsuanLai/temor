@@ -60,8 +60,9 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
       whole pane; CPU clips glyph overhang to the row, GPU does not. §5
 
-## quire v0.2.34 (11b174ae) — first step of P3
-- [ ] Bump the pin to `rev = "11b174ae2262b29dfd336e714e5d4e92b0643a7e"  # v0.2.34` (v0.2.31 shipped
+## quire v0.3.0 (960ac8fa) — bump in R1, features in P3
+- [ ] Bump the pin to `rev = "960ac8faa0166eba83f5f09a72ba063f79d35c06"  # v0.3.0` (breaking: `launch`
+      returns a Result, seams behind `ds-blitz/testing`, settings setters; v0.2.31 shipped
       SplitView axis, RawKey/RawKeySurface, terminal palette tokens, public `focus_soon_told` /
       `focus_landing_told`, RootExtent::Window, IME composition). Drop temor's IME machine copy.
 - [ ] IME candidate area: `ImeHost::cursor_area(surface, Rect)` via the document host's `.ime()`
