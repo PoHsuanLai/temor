@@ -1,9 +1,21 @@
-//! The window's own sheet: the column and the terminal region's sizing. quire has no column
-//! component at v0.3.1, and a `RawKeySurface` takes no style of its own. Colours and type come
-//! from quire's tokens and the pane's palette, so this sheet has no design values.
+//! The window's own sheet: the layout of the shell, the pane and the sidebar's rows. quire has no
+//! column component at v0.3.1, and a `RawKeySurface` takes no style of its own. Colours and type
+//! come from quire's tokens and the pane's palette, so this sheet has no design values.
 
 pub const WINDOW_CSS: &str = "\
+.temor-shell { width: 100%; height: 100%; }\
 .temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
+.temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
+.temor-pane { display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; }\
-.temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }";
+.temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\
+.temor-side-box { width: 100%; height: 100%; }\
+.temor-side { width: 100%; height: 100%; }\
+.temor-tab { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }\
+.temor-tab-words { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }\
+.temor-mini { position: relative; width: 100%; aspect-ratio: 16 / 9; }\
+.temor-tile-slot { position: absolute; box-sizing: border-box; }\
+.temor-tile-slot > .ds-hover-target { display: block; width: 100%; height: 100%; }\
+.temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--line); }\
+.temor-tile[data-selected] { border-color: var(--accent); }";

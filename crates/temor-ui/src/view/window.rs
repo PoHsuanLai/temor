@@ -1,6 +1,7 @@
-//! The window (PLAN §2, temor-ui): one terminal pane with its find bar and paste confirmation.
-//! The component wires Dioxus events to the session and the session's state to elements; the
-//! session does the work (see `slot` for the state and `convert` for the event values).
+//! The window (PLAN §2, §7): the sidebar of tabs beside the tab in front. The window owns the
+//! hub (its panes and workspace), starts the loops that hear the panes and save the session, and
+//! draws the look: the root, the palette, the title and the message bar. The panes are
+//! `pane_view`, the tab's tree is `tree_view`, the sidebar is `tab_sidebar`.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,51 +10,32 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
-use ds::edit::composition::Composing;
-use ds::edit::raw_key::{KeyPhase, RawKey};
-use ds::host::document::use_document_host;
-use ds::host::ime::ImeEvent;
+use ds::base::vocab::Shown;
+use ds::components::chrome::split_view::model::{PaneSpec, SplitPane};
+use ds::components::chrome::split_view::view::SplitView;
+use ds::components::overlays::drag_ghost::DragGhost;
 use ds::host::measure::use_rect;
-use ds::host::signals::HostSignals;
+use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
-use ds::root::pass_through::ExtraClass;
 use ds::window::host::use_window_title;
-use ds_blitz::{Sampling, TextureFit, TextureLayer, TokioSpawner, use_gpu};
+use ds_blitz::TokioSpawner;
 use ds_settings::use_environment;
-use temor_vt::Ime;
+use temor_core::split::Direction;
+use temor_core::workspace::WorkspaceIn;
 
-use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
-use super::confirm::PasteConfirm;
-use super::convert::scale_of;
-use super::find_bar::FindBar;
-use super::handlers::{
-    bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
-    find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_shell,
-};
-use super::ime::{ImeGlue, composed_sink, focus_handler};
+use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
-use super::palette::{PaletteFollow, SlotRef};
-use super::pointer::use_pane_mouse;
-use super::slot::{Device, Slot, layout, repaint};
-use super::status::StatusLine;
+use super::palette::PaletteFollow;
+use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
-use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
+use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
-use crate::input::stroke;
-use temor_core::notify::Focus;
-use temor_core::vocab::ids::BlockId;
+use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
 
 /// The window's root component.
 #[allow(non_snake_case)]
 pub fn App() -> Element {
     let launch = use_hook(consume_context::<Launch>);
-    let host = use_hook(use_document_host);
-    let gpu = use_gpu();
-    let rect = use_rect();
-    let signals = use_hook(try_consume_context::<HostSignals>);
-    let slot = use_hook(|| Rc::new(RefCell::new(Slot::default())));
-    let texture = use_hook(|| gpu.handle());
-    let ime = use_hook(|| ImeGlue::new(Rc::clone(&host)));
     let started = use_hook(Instant::now);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
     // The person's look and the desktop's preferences, live: a change re-themes the window.
@@ -63,129 +45,110 @@ pub fn App() -> Element {
         spawner,
     );
     let look = SpaceLook::default();
-    let mut ui = use_signal(|| 0u32);
-    let preedit = use_signal(|| None::<String>);
-    let mut notice = use_signal(|| None::<String>);
-    let hovered = use_signal(|| None::<BlockId>);
-
-    // Every change of the pane's size, scale or device lays it out again.
-    {
-        let (slot, texture, launch, signals, gpu) = (
-            Rc::clone(&slot),
-            texture.clone(),
-            launch.clone(),
-            signals,
-            gpu.clone(),
-        );
-        use_effect(move || {
-            // Also re-run when the window asks for a new shell (after the program ended).
-            let _ = ui();
-            let scale = scale_of(signals.as_ref());
-            let Some(logical) = rect.rect() else { return };
-            let pixels = device_pixels(logical.size.width.0, logical.size.height.0, scale);
-            let device = match gpu.device().is_some() {
-                true => Device::Ready,
-                false => Device::NotYet,
-            };
-            if let Some(text) = layout(&slot, ui, &launch, &texture, pixels, scale, device) {
-                notice.set(Some(text));
-            }
-        });
-    }
-
-    let apply = composed_sink(Rc::clone(&slot), preedit);
-    let heard = {
-        let ime = ime.clone();
-        let apply = apply.clone();
-        use_callback(move |event: ImeEvent| ime.event(event, &apply))
+    let hub = use_hook({
+        let launch = launch.clone();
+        move || {
+            let mut hub = Hub::new(launch);
+            hub.start();
+            HubRef(Rc::new(RefCell::new(hub)))
+        }
+    });
+    let ui = use_signal(|| 0u32);
+    let mut notice = use_signal({
+        let hub = hub.clone();
+        move || hub.0.borrow_mut().take_notice()
+    });
+    let desk = Desk {
+        hub: hub.clone(),
+        ui,
+        notice,
+    };
+    use_hook({
+        let desk = desk.clone();
+        move || {
+            spawn_event_loop(desk.clone());
+            spawn_save_loop(desk.hub);
+        }
+    });
+    let mut sidebar = use_signal(|| Shown::Visible);
+    let side = use_rect();
+    let dnd = Dnd {
+        drag: use_drag::<DragKey>(DRAG_THRESHOLD),
+        rects: use_hook(RowRects::default),
+        over: use_signal(|| None),
+        click: use_hook(ClickCell::default),
     };
 
-    // Every key the region hears (a press, a repeat, a release) as quire's raw key.
-    let on_key = {
-        let slot = Rc::clone(&slot);
-        let ime = ime.clone();
-        let apply = apply.clone();
-        move |raw: RawKey| {
-            let composing = match ime.composing.get() {
-                Composing::Active => Ime::Composing,
-                Composing::Idle | Composing::Cleared => Ime::Idle,
-            };
-            if raw.phase != KeyPhase::Release {
-                ime.settle(&apply);
+    // A release: a tab joins the tab it is over, a tile past the sidebar's edge tears off.
+    let release = {
+        let (dnd, desk) = (dnd.clone(), desk.clone());
+        use_callback(move |(): ()| {
+            let phase = dnd.drag.phase();
+            let mut over = dnd.over;
+            let target = *over.peek();
+            over.set(None);
+            dnd.drag.up();
+            if matches!(phase, DragPhase::Live { .. }) {
+                dnd.click.swallow();
             }
-            if composing == Ime::Composing {
+            let edge = side.rect().map(|r| r.right());
+            match resolve(&phase, target, edge) {
+                Dropped::Join { from, onto } => {
+                    if let Some(pane) = desk.hub.focus_pane_of(onto) {
+                        desk.act(WorkspaceIn::DropTab {
+                            from,
+                            onto: pane,
+                            towards: Direction::Right,
+                        });
+                    }
+                }
+                Dropped::Tear(pane) => desk.act(WorkspaceIn::Tear(pane)),
+                Dropped::Nothing => {}
+            }
+        })
+    };
+    // The pointer left the window with the drag in its hand: it is let go, and nothing happens.
+    let cancel = {
+        let dnd = dnd.clone();
+        use_callback(move |(): ()| {
+            let mut over = dnd.over;
+            over.set(None);
+            dnd.drag.up();
+        })
+    };
+    let moved = {
+        let dnd = dnd.clone();
+        move |event: PointerEvent| {
+            if matches!(dnd.drag.phase(), DragPhase::Idle) {
                 return;
             }
-            // An unidentified key is ignored; the rest go to the session.
-            let outcome = match stroke(&raw, composing) {
-                Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
-                None => None,
-            };
-            if let Some(Err(err)) = outcome {
-                notice.set(Some(err.to_string()));
+            let at = point_of(&event);
+            dnd.drag.moved(at);
+            let under = dnd.rects.at(at);
+            let mut over = dnd.over;
+            if *over.peek() != under {
+                over.set(under);
             }
-            if let Some(message) = take_notice(&slot) {
-                notice.set(Some(message));
-            }
-            ui += 1;
-            repaint(&slot);
-            place_cursor(ime.clone(), Rc::clone(&slot), rect);
-        }
-    };
-
-    let mouse = use_pane_mouse(Rc::clone(&slot), rect, signals, notice, started);
-
-    // The region has the keyboard: the session knows, and the input method is on and placed.
-    let gained = {
-        let ime = ime.clone();
-        let slot = Rc::clone(&slot);
-        move || {
-            set_focus(&slot, Focus::Focused);
-            focus_in(ime.clone(), Rc::clone(&slot), rect);
-        }
-    };
-    let on_focus = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
-
-    // The region's element: rect and input method hear it; the first layout gives it the keyboard,
-    // as a person's click would.
-    // Where the keyboard goes back to when the find bar closes (its field leaves the page).
-    let regain = EventHandler::new({
-        let gained = gained.clone();
-        move |()| gained()
-    });
-
-    let on_mounted = {
-        let (ime, gained) = (ime.clone(), gained.clone());
-        move |event: MountedEvent| {
-            rect.on_mounted(event.clone());
-            let element = event.data();
-            ime.element.replace(Some(Rc::clone(&element)));
-            let (ime, heard, gained) = (ime.clone(), heard, gained.clone());
-            let told = EventHandler::new(move |()| gained());
-            spawn(async move {
-                ime.listen(element, heard).await;
-                ime.take_focus(told);
-            });
         }
     };
 
     let _ = ui();
-    let view = slot.borrow().session.as_ref().map(|s| {
-        (
-            s.finder().map(|f| (s.find_text().to_owned(), f.position())),
-            s.pending_paste().map(|p| p.reason),
-            s.ended(),
-        )
-    });
-    let (find, pending, ended) = view.unwrap_or((None, None, false));
-    let chrome = slot
-        .borrow()
-        .session
-        .as_ref()
-        .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
-    let message = notice();
-    use_window_title(window_title(&chrome.title, chrome.cwd.as_deref()));
+    let data = hub.sidebar();
+    let front = hub.front();
+    let (title, cwd) = hub.window_parts();
+    use_window_title(window_title(&title, cwd.as_deref()));
+    let ghost = match dnd.drag.phase() {
+        DragPhase::Live { key, at, .. } => Some((ghost_text(&data, key), at)),
+        DragPhase::Idle | DragPhase::Pending { .. } => None,
+    };
     let now = env();
+    let sidebar_body = rsx! {
+        div {
+            class: "temor-side-box",
+            onmounted: move |event: MountedEvent| side.on_mounted(event),
+            TabSidebar { data: data.clone(), desk: desk.clone(), dnd: dnd.clone() }
+        }
+    };
     rsx! {
         Ds {
             appearance: now.settings.appearance.appearance(),
@@ -196,92 +159,64 @@ pub fn App() -> Element {
             look: look.clone(),
             material: Material::Window,
             extent: RootExtent::Window,
-            // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
-            // window's column is a plain flex element in the window-high root (see `WINDOW_CSS`).
             style { {WINDOW_CSS} }
             PaletteFollow {
-                slot: SlotRef(Rc::clone(&slot)),
+                hub: hub.clone(),
                 env,
                 notice,
             }
-            div { class: "temor-window",
-                if let Some((query, position)) = find {
-                    FindBar {
-                        query,
-                        position,
-                        on_query:find_query(Rc::clone(&slot), ui, started),
-                        on_step:find_step(Rc::clone(&slot), ui),
-                        on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
-                    }
-                }
-                RawKeySurface {
-                    on_key: EventHandler::new(on_key),
-                    on_focus: EventHandler::new(on_focus),
-                    common: Common {
-                        aria_label: Some("Terminal".to_owned()),
-                        extra_class: ExtraClass::parse("temor-keys").ok(),
-                        mounted: Some(EventHandler::new(on_mounted)),
-                        ..Common::default()
-                    },
-                    div {
-                        class: "temor-grid",
-                        "data-wheel": "capture",
-                        onmounted: move |e| mouse.capture.on_mounted(e),
-                        onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
-                        onpointerup: move |e| (mouse.up)(e),
-                        onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
-                        onwheel: move |e| (mouse.wheel)(e),
-                        TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
-                        if let Some(text) = preedit() {
-                            div { class: "temor-preedit", "{text}" }
-                        }
-                        GutterMarks { marks: chrome.marks.clone() }
-                    }
-                }
-                if let Some(bar) = chrome.bar.clone() {
-                    BlockBar {
-                        bar,
-                        on_copy_command:bar_copy_command(Rc::clone(&slot), ui),
-                        on_copy_output:bar_copy_output(Rc::clone(&slot), ui),
-                        on_save:bar_save(Rc::clone(&slot), ui, notice),
-                        on_rerun:bar_rerun(Rc::clone(&slot), ui),
-                        on_close:bar_close(Rc::clone(&slot), ui),
-                    }
-                }
-                StatusLine {
-                    cwd: chrome.cwd.clone(),
-                    title: chrome.title.clone(),
-                    progress: chrome.progress,
-                    bell: chrome.bell,
-                }
-                if let Some(reason) = pending {
-                    PasteConfirm {
-                        reason,
-                        on_paste:paste_confirm(Rc::clone(&slot), ui),
-                        on_cancel:paste_cancel(Rc::clone(&slot), ui),
-                    }
-                }
-                if ended {
-                    InlineBanner {
-                        severity: Severity::Warn,
-                        text: "The shell has ended.".to_owned(),
-                        actions: rsx! {
-                            Button {
-                                label: "Restart".to_owned(),
-                                title: Some("Start a new shell".to_owned()),
-                                onclick:restart_shell(Rc::clone(&slot), ui),
+            div {
+                class: "temor-shell",
+                onpointermove: moved,
+                onpointerup: move |_| release.call(()),
+                onpointerleave: move |_| cancel.call(()),
+                SplitView {
+                    label: "Window",
+                    panes: vec![
+                        SplitPane::new(PaneSpec::SIDEBAR, sidebar_body).shown(sidebar()),
+                    ],
+                    on_shown: move |(_, shown): (usize, Shown)| sidebar.set(shown),
+                    div { class: "temor-window",
+                        if let Some(text) = notice() {
+                            InlineBanner {
+                                severity: Severity::Warn,
+                                text,
+                                onclose: move |_| notice.set(None),
                             }
-                        },
-                    }
-                }
-                if let Some(text) = message {
-                    InlineBanner {
-                        severity: Severity::Warn,
-                        text,
-                        onclose: move |_| notice.set(None),
+                        }
+                        div { class: "temor-content",
+                            if let Some((tab, tree, focus)) = front {
+                                TreeView { key: "{tab.0}", tree, focus, desk: desk.clone(), started }
+                            }
+                        }
                     }
                 }
             }
+            if let Some(((name, sub), at)) = ghost {
+                DragGhost { title: name, sub, at }
+            }
         }
+    }
+}
+
+/// What the drag ghost says: the tab's title and folder, or the tile's pane.
+fn ghost_text(data: &SidebarData, key: DragKey) -> (String, String) {
+    let rows = data
+        .pinned
+        .iter()
+        .chain(data.folders.iter().flat_map(|(_, rows)| rows))
+        .chain(&data.loose);
+    match key {
+        DragKey::Tab(tab) => rows
+            .filter(|row| row.id == tab)
+            .map(|row| (row.title.clone(), row.cwd.clone().unwrap_or_default()))
+            .next()
+            .unwrap_or_default(),
+        DragKey::Tile(pane) => rows
+            .flat_map(|row| row.tiles.iter().map(move |tile| (row, tile)))
+            .filter(|(_, tile)| tile.pane == pane)
+            .map(|(row, tile)| (tile.title.clone(), row.title.clone()))
+            .next()
+            .unwrap_or_default(),
     }
 }

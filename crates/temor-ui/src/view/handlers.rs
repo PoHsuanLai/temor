@@ -7,11 +7,14 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
+use ds::base::time::FRAME_SLACK;
+use ds::base::time::clock::sleep;
 use ds::host::signals::HostSignals;
-use temor_core::vocab::ids::BlockId;
+use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::keys::Action;
 
 use super::find_bar::StepDirection;
+use crate::hub::Desk;
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
@@ -199,16 +202,15 @@ pub fn paste_cancel(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(
     }
 }
 
-/// The ended shell's restart: the old session shuts its program down when it is dropped.
-pub fn restart_shell<T: 'static>(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
-) -> impl FnMut(T) + 'static {
+/// The ended shell's restart. The new shell starts a frame after the press: the button the
+/// person pressed (and the banner it sits in) must not leave the page in the middle of the
+/// press, with the pointer still over it.
+pub fn restart_pane<T: 'static>(desk: Desk, pane: PaneId) -> impl FnMut(T) + 'static {
     move |_: T| {
-        let mut s = slot.borrow_mut();
-        s.session = None;
-        s.events = None;
-        drop(s);
-        ui += 1;
+        let desk = desk.clone();
+        spawn(async move {
+            sleep(FRAME_SLACK).await;
+            desk.restart(pane);
+        });
     }
 }

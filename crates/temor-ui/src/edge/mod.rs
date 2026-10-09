@@ -5,6 +5,7 @@
 mod ambient;
 pub mod clock;
 pub mod notify;
+pub mod sidecar;
 mod save_pace;
 mod session_file;
 mod settings_file;

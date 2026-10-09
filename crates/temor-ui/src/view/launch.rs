@@ -1,18 +1,25 @@
 //! What the window is given at start, and how a session is opened from it: the settings, the
 //! environment, the fonts, and the desktop's clipboard.
 
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use temor_core::vocab::ids::PaneId;
+use temor_core::vocab::text::Cwd;
 use temor_pane::settings::FontChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
 use temor_vt::{CellPx, GridSize};
-use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use temor_vt::Snapshot;
+use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;
 use super::theme::AppearanceSource;
 use crate::app::shell_pane;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
+use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use temor_pane::PaneEvent;
@@ -40,6 +47,9 @@ pub struct Launch {
     /// Where the screen's text is published after each repaint, for tests that cannot see the
     /// terminal's pixels. `None` in the app.
     pub probe: Option<Probe>,
+    /// Where the session file and its snapshots are kept (see `edge::resolve_state_dir`); `None`
+    /// saves and restores nothing.
+    pub state_dir: Option<PathBuf>,
 }
 
 /// The desktop's clipboard, through the window toolkit's clipboard.
@@ -56,11 +66,17 @@ impl Clipboard for DesktopClipboard {
     }
 }
 
-/// Opens a session for the window: a shell at 80 by 24 cells, which the first layout refits.
+/// Opens a session for pane `pane`: a shell at 80 by 24 cells (the first layout refits it) in
+/// `cwd` when that is a folder, else the home folder. With a `snapshot` the terminal begins as
+/// that closed pane's screen and scrollback. The pane's events go to `events`, tagged with it.
 pub fn open_session(
     launch: &Launch,
     palette: Palette,
-) -> Result<(Session, UnboundedReceiver<PaneEvent>), UiError> {
+    pane: PaneId,
+    cwd: Option<&Cwd>,
+    snapshot: Option<&Snapshot>,
+    events: UnboundedSender<(PaneId, PaneEvent)>,
+) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
     let family = match &settings.font {
@@ -83,9 +99,16 @@ pub fn open_session(
     };
     let grid = GridSize::new(80, 24);
     let cell = CellPx::new(8, 16);
-    let spec = shell_pane(&launch.ambient, settings, 1, grid, cell, palette, launcher)?;
-    let (events_tx, events) = unbounded_channel();
-    let session = Session::open(
+    // The shell starts in the pane's folder when it is still there.
+    let mut ambient = launch.ambient.clone();
+    if let Some(dir) = cwd
+        .map(|c| PathBuf::from(c.as_str()))
+        .filter(|p| p.is_absolute() && p.is_dir())
+    {
+        ambient.home = dir;
+    }
+    let spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    Session::open_with(
         SessionParts {
             spec,
             fonts,
@@ -98,7 +121,7 @@ pub fn open_session(
             clock: Box::new(SystemClock::new()),
             shelf_dir: launch.ambient.shelf_dir(),
         },
-        events_tx,
-    )?;
-    Ok((session, events))
+        Arc::new(TaggedSink::new(pane, events)),
+        snapshot,
+    )
 }

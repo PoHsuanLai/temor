@@ -44,6 +44,7 @@ impl Session {
         };
         let row = GridRow(u64::from(row));
         let at = self.clock.now();
+        let finished_before = self.blocks.finished;
         match mark {
             PromptEvent::PromptStart(PromptKind::Primary) => {
                 if self.step(BlockIn::PromptStart { row, at }) {
@@ -92,7 +93,10 @@ impl Session {
             _ => self.drop_anchor(id),
         }
         self.sweep();
-        Notice::Chrome
+        match self.blocks.finished > finished_before {
+            true => Notice::CommandDone,
+            false => Notice::Chrome,
+        }
     }
 
     /// The command started: its block keeps the prompt, input and output anchors, if accepted.
@@ -177,6 +181,7 @@ impl Session {
         self.blocks.machine = next;
         for out in &outs {
             if let BlockOut::BlockDone(block) = out {
+                self.blocks.finished += 1;
                 self.notify_finished(block);
             }
             let gone = self.blocks.store.apply(out);

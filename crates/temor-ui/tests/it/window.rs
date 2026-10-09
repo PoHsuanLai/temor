@@ -48,6 +48,7 @@ pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
                 .expect("util-linux setsid is installed"),
         ),
         probe: Some(probe.clone()),
+        state_dir: None,
     };
     let config = HarnessConfig::new(Viewport {
         width: 760,
