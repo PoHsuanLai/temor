@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.quire.Temor
+Exec=/usr/bin/temor
+SystemdService=org.quire.Temor.service

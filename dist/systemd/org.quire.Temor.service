@@ -1,0 +1,23 @@
+# temor as a systemd user unit. Installed to /usr/lib/systemd/user/org.quire.Temor.service; the D-Bus
+# activation files (dist/org.quire.Temor.service and dist/org.quire.Temor1.service, installed to
+# /usr/share/dbus-1/services/) name this unit with SystemdService=, so a call to either bus name
+# while temor is not running starts it here, and porter's account service knows the process by
+# this unit (its callers file gives the terminal role to unit org.quire.Temor.service).
+#
+# org.quire.Temor is the name docket's router calls (agents), org.quire.Temor1 the one a second
+# launch calls (single instance). The unit is ready once temor owns org.quire.Temor1.
+#
+# temor is a window with a shell in it, so the unit carries no sandbox: a terminal runs whatever
+# the person types, as the person.
+[Unit]
+Description=temor, the desktop's terminal
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.quire.Temor1
+ExecStart=/usr/bin/temor
+Slice=app.slice
+# A closed window is a finished program, not a failure to restart.
+Restart=no
