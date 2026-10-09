@@ -86,6 +86,16 @@ fn no_file_means_no_session_and_a_damaged_one_is_set_aside() {
     );
     assert!(dir.path().join("session.json.bad").exists());
     assert!(!dir.path().join("session.json").exists());
+    // Bytes that are not text are damaged too, and are set aside rather than overwritten.
+    std::fs::write(dir.path().join("session.json"), [0xff, 0xfe, 0x00]).unwrap();
+    assert_eq!(
+        load_session(dir.path(), KeepClosed::DEFAULT).unwrap(),
+        Startup::Fresh(FreshWhy::Damaged)
+    );
+    assert_eq!(
+        std::fs::read(dir.path().join("session.json.bad")).unwrap(),
+        [0xff, 0xfe, 0x00]
+    );
 }
 
 #[test]
