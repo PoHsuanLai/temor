@@ -124,7 +124,7 @@ fn deliver(io: &mut Io, bytes: &[u8]) {
 /// Tells the window the screen changed, unless it has not repainted the last such signal yet.
 pub(super) fn signal_dirty(io: &Io) {
     if !io.dirty.swap(true, Ordering::AcqRel) {
-        let _ = io.events.send(PaneEvent::Dirty);
+        io.events.send(PaneEvent::Dirty);
     }
 }
 
