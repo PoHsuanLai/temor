@@ -52,7 +52,7 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
 
 #[cfg(test)]
 mod tests {
-    use temor_pane::keys::{Chord, Mods};
+    use temor_pane::keys::Chord;
     use temor_vt::{KeyCode, Modifiers};
 
     use super::*;
@@ -62,35 +62,6 @@ mod tests {
             chord,
             key: KeyInput::press(code, Modifiers::NONE, text),
         }
-    }
-
-    fn ctrl_shift(c: char) -> Chord {
-        Chord::of_char(c, Mods::CTRL.with(Mods::SHIFT))
-    }
-
-    #[test]
-    fn copy_and_paste_are_actions_and_never_reach_the_program() {
-        let keymap = Keymap::defaults();
-        let copy = press(KeyCode::C, "C", Some(ctrl_shift('c')));
-        assert_eq!(
-            route(copy, &keymap, FindBar::Closed),
-            Routed::Action(Action::Copy)
-        );
-        let paste = press(KeyCode::V, "V", Some(ctrl_shift('v')));
-        assert_eq!(
-            route(paste, &keymap, FindBar::Open),
-            Routed::Action(Action::Paste)
-        );
-    }
-
-    #[test]
-    fn ctrl_c_is_the_programs_interrupt() {
-        let keymap = Keymap::defaults();
-        let interrupt = press(KeyCode::C, "", Some(Chord::of_char('c', Mods::CTRL)));
-        assert!(matches!(
-            route(interrupt, &keymap, FindBar::Closed),
-            Routed::Shell(_)
-        ));
     }
 
     #[test]

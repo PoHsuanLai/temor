@@ -30,8 +30,17 @@ fn chords_parse_in_any_case_and_order_of_modifiers() {
 }
 
 #[test]
-fn chord_labels_show_the_command_key_for_ctrl_shift() {
+fn chord_labels_show_the_command_key_for_both_command_forms() {
     assert_eq!(ctrl_shift('c').label(), "⌘C");
+    assert_eq!(Chord::of_char('c', Mods::SUPER).label(), "⌘C");
+    assert_eq!(
+        Chord::parse("ctrl+shift+alt+g").map(|c| c.label()),
+        Ok("⌥⌘G".to_owned())
+    );
+    assert_eq!(
+        Chord::parse("super+shift+enter").map(|c| c.label()),
+        Ok("⇧⌘↩".to_owned())
+    );
     assert_eq!(
         Chord::parse("ctrl+alt+g").map(|c| c.label()),
         Ok("⌃⌥G".to_owned())
@@ -43,22 +52,39 @@ fn chord_labels_show_the_command_key_for_ctrl_shift() {
 }
 
 #[test]
-fn super_and_ctrl_space_are_reserved() {
-    assert!(Chord::parse("super+c").is_ok_and(|c| c.is_reserved()));
-    assert!(Chord::parse("ctrl+space").is_ok_and(|c| c.is_reserved()));
-    assert!(!ctrl_shift('c').is_reserved());
+fn the_shells_chords_and_ctrl_space_are_reserved_and_app_super_chords_are_not() {
+    for reserved in ["super+space", "super+tab", "super+1", "ctrl+space"] {
+        assert!(
+            Chord::parse(reserved).is_ok_and(|c| c.is_reserved()),
+            "{reserved}"
+        );
+    }
+    for allowed in ["super+c", "super+alt+g", "ctrl+shift+c"] {
+        assert!(
+            Chord::parse(allowed).is_ok_and(|c| !c.is_reserved()),
+            "{allowed}"
+        );
+    }
 }
 
 #[test]
-fn defaults_bind_each_action_once_and_never_use_super() {
+fn defaults_bind_each_action_in_both_command_forms_and_nothing_reserved() {
     let keymap = Keymap::defaults();
-    for action in Action::ALL {
-        let chord = keymap
-            .chord_for(*action)
-            .expect("every action has a default");
-        assert_eq!(keymap.action_for(chord), Some(*action));
-        assert!(!chord.is_reserved());
+    for action in Action::ALL.iter().filter(|a| **a != Action::CloseFind) {
+        let chords: Vec<&Chord> = keymap.chords_for(*action).collect();
+        assert_eq!(
+            chords.len(),
+            2,
+            "{action:?} has one Ctrl+Shift and one Super form"
+        );
+        for chord in chords {
+            assert!(chord.is_command_form() || chord.is_ctrl_shift_form());
+            assert!(!chord.is_reserved());
+            assert_eq!(keymap.action_for(chord), Some(*action));
+        }
     }
+    let copy_super = Chord::of_char('c', Mods::SUPER);
+    assert_eq!(keymap.action_for(&copy_super), Some(Action::Copy));
     assert_eq!(keymap.action_for(&ctrl_shift('c')), Some(Action::Copy));
 }
 
@@ -71,7 +97,7 @@ fn rebinding_moves_an_action_and_refuses_clashes() {
     assert_eq!(keymap.action_for(&ctrl_shift('c')), None);
     let clash = keymap.bind(Action::Paste, alt_c);
     assert!(matches!(clash, Err(SettingsError::ChordInUse { .. })));
-    let reserved = keymap.bind(Action::Paste, Chord::parse("super+v").expect("valid"));
+    let reserved = keymap.bind(Action::Paste, Chord::parse("super+tab").expect("valid"));
     assert!(matches!(reserved, Err(SettingsError::ReservedChord(_))));
 }
 
@@ -79,7 +105,7 @@ fn rebinding_moves_an_action_and_refuses_clashes() {
 fn settings_text_applies_good_lines_and_reports_bad_ones() {
     let text = "# comment\nfont.size = 15\nscrollback.lines = 500\ncursor.style = bar\n\
                 font.family = \"Iosevka\"\nshell.program = fish\nkeys.copy = ctrl+alt+c\n\
-                font.size = huge\nkeys.paste = super+v\nbogus = 1\n";
+                font.size = huge\nkeys.paste = super+space\nbogus = 1\n";
     let parsed = parse_settings(text);
     assert_eq!(parsed.settings.font_size.points(), 15.0);
     assert_eq!(parsed.settings.scrollback.lines(), 500);
