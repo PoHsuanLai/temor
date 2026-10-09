@@ -46,8 +46,18 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
         (Some(Action::CloseFind), FindBar::Closed) => Routed::Shell(stroke.key),
         (Some(Action::FindNext | Action::FindPrevious), FindBar::Closed) => Routed::Ignored,
         (Some(action), _) => Routed::Action(action),
+        // An unbound ⌘ letter is dropped, never typed into the program (PLAN §6; Ghostty does the
+        // same). Super with Ctrl is not a ⌘ chord and goes to the program as before.
+        (None, _) if stroke.chord.as_ref().is_some_and(is_unbound_command_letter) => {
+            Routed::Ignored
+        }
         (None, _) => Routed::Shell(stroke.key),
     }
+}
+
+/// A ⌘ chord (Super, without Ctrl) on a letter or digit that no binding uses.
+fn is_unbound_command_letter(chord: &Chord) -> bool {
+    chord.is_command_form() && matches!(chord.key, temor_pane::keys::ChordKey::Char(_))
 }
 
 #[cfg(test)]
@@ -87,6 +97,32 @@ mod tests {
         let mut stroke = press(KeyCode::A, "a", None);
         stroke.key.ime = Ime::Composing;
         assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
+    }
+
+    #[test]
+    fn an_unbound_command_letter_is_dropped_and_control_chords_still_reach_the_program() {
+        let keymap = Keymap::defaults();
+        #[rustfmt::skip]
+        let rows: &[(&str, bool)] = &[
+            ("super+z", true),
+            ("super+5", true),
+            ("super+space", false),
+            ("ctrl+z", false),
+            ("ctrl+shift+z", false),
+        ];
+        for (text, dropped) in rows {
+            let chord = Chord::parse(text).expect("valid");
+            let stroke = Stroke {
+                chord: Some(chord),
+                key: KeyInput::press(KeyCode::A, Modifiers::NONE, "z"),
+            };
+            let got = route(stroke.clone(), &keymap, FindBar::Closed);
+            if *dropped {
+                assert_eq!(got, Routed::Ignored, "{text}");
+            } else {
+                assert!(matches!(got, Routed::Shell(_)), "{text}: {got:?}");
+            }
+        }
     }
 
     #[test]
