@@ -9,5 +9,6 @@ mod script;
 mod tests;
 
 pub use script::{
-    BootstrapScript, MAX_REMOTE_COMMAND_BYTES, bootstrap_remote_command, wrap_script,
+    BootstrapOptions, BootstrapScript, MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy,
+    bootstrap_remote_command, wrap_script,
 };

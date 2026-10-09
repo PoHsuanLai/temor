@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use super::argv::{FileTools, fetch_argv, stat_argv, store_argv};
-use super::path::{RemoteFilePath, RemoteState, RemoteStat, parse_stat};
+use super::path::{RemoteFilePath, RemoteStat, RemoteState, parse_stat};
 use crate::argv::ControlLayout;
 use crate::config::HostAlias;
 use crate::error::SshError;
@@ -52,8 +52,7 @@ pub trait RemoteFiles {
     /// The file's modified time and size, or that it is gone.
     fn stat(&self, host: &HostAlias, path: &RemoteFilePath) -> Result<RemoteState, SshError>;
     /// Copies the host's file to the absolute `local` path.
-    fn fetch(&self, host: &HostAlias, path: &RemoteFilePath, local: &Path)
-    -> Result<(), SshError>;
+    fn fetch(&self, host: &HostAlias, path: &RemoteFilePath, local: &Path) -> Result<(), SshError>;
     /// Copies the absolute `local` file over the host's file.
     fn store(&self, host: &HostAlias, local: &Path, path: &RemoteFilePath) -> Result<(), SshError>;
 
@@ -100,10 +99,13 @@ impl<R: CommandRunner> SshRemoteFiles<R> {
         what: &'static str,
         args: &[String],
     ) -> Result<CommandOutput, SshError> {
-        let out = self.runner.run(program, args).map_err(|source| SshError::Spawn {
-            program: program.display().to_string(),
-            source,
-        })?;
+        let out = self
+            .runner
+            .run(program, args)
+            .map_err(|source| SshError::Spawn {
+                program: program.display().to_string(),
+                source,
+            })?;
         match out.code {
             Some(0) => Ok(out),
             code => Err(SshError::RemoteFile {
@@ -122,12 +124,7 @@ impl<R: CommandRunner> RemoteFiles for SshRemoteFiles<R> {
         parse_stat(&String::from_utf8_lossy(&out.stdout))
     }
 
-    fn fetch(
-        &self,
-        host: &HostAlias,
-        path: &RemoteFilePath,
-        local: &Path,
-    ) -> Result<(), SshError> {
+    fn fetch(&self, host: &HostAlias, path: &RemoteFilePath, local: &Path) -> Result<(), SshError> {
         let argv = fetch_argv(host, &self.layout, path, local)?;
         self.run(&self.tools.scp, "copying the file from the computer", &argv)
             .map(drop)

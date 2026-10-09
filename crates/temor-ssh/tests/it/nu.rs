@@ -53,6 +53,9 @@ fn nushell_starts_as_a_login_shell_with_temors_folder_first_in_the_data_dirs() {
         assert!(x.starts_with(&format!("{tmp}/temor.")), "{name}: {x}");
         assert!(x.ends_with(&format!("/nu{tail}")), "{name}: {x}");
         assert_eq!(line(&text, "R="), restore, "{name}");
-        assert!(text.contains("temor.nu\n"), "{name}: no autoload file: {text}");
+        assert!(
+            text.contains("temor.nu\n"),
+            "{name}: no autoload file: {text}"
+        );
     }
 }

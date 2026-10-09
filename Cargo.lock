@@ -4711,6 +4711,7 @@ dependencies = [
  "serde",
  "serde_json",
  "temor-pane",
+ "temor-ssh",
  "thiserror 2.0.21",
 ]
 

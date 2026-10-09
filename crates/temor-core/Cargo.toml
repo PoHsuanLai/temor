@@ -9,6 +9,8 @@ publish = false
 
 [dependencies]
 temor-pane = { workspace = true, default-features = false }
+# Host identity, forwards and remote file signatures (L0, pure data).
+temor-ssh = { workspace = true }
 ds-core = { workspace = true }
 # Only the Spaces kit's plain data (`Spaces<P, R>`, `SpaceId`); the `dioxus` feature stays off.
 ds-style = { workspace = true }

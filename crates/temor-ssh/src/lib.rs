@@ -45,6 +45,7 @@ mod error;
 mod files;
 mod hosts;
 mod identity;
+mod master;
 mod platform;
 mod tailnet;
 
@@ -57,19 +58,21 @@ pub use argv::{
     RuntimeDir, Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,
 };
 pub use bootstrap::{
-    BootstrapScript, MAX_REMOTE_COMMAND_BYTES, bootstrap_remote_command, wrap_script,
+    BootstrapOptions, BootstrapScript, MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy,
+    bootstrap_remote_command, wrap_script,
 };
+pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use config::{
     ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
     IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, known_host_names, load_host_list,
 };
-pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use error::SshError;
 pub use files::{
-    ByteCount, CommandOutput, CommandRunner, FileTools, RemoteFilePath, RemoteFiles, RemoteState,
-    RemoteStat, SshRemoteFiles, StdRunner, fetch_argv, parse_stat, stat_argv, store_argv,
+    ByteCount, CommandOutput, CommandRunner, FileTools, RemoteFilePath, RemoteFiles, RemoteStat,
+    RemoteState, SshRemoteFiles, StdRunner, fetch_argv, parse_stat, stat_argv, store_argv,
 };
 pub use hosts::{HostGroup, HostRow, merge_hosts};
 pub use identity::{Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen};
+pub use master::{MasterProbe, prepare_control_dirs, probe_master};
 pub use platform::ensure_private_dir;
 pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};

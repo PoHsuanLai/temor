@@ -2,6 +2,9 @@
 # `sh`, with each connection, and nothing is installed on the host. Everything it writes lives in a
 # temp directory that is removed when the shell exits. Your dotfiles are never touched.
 
+# Whether this bootstrap may add a terminal description to ~/.terminfo (install or skip).
+#@OPTIONS@
+
 temor_base=${TMPDIR:-/tmp}
 case $temor_base in
     *:*)
@@ -74,7 +77,7 @@ temor_have_ghostty() {
 temor_term=xterm-256color
 if temor_have_ghostty; then
     temor_term=xterm-ghostty
-elif command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
+elif [ "$temor_terminfo" = install ] && command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
 #@TERMINFO@
     if tic -x -o "$temor_tmp/terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1 \
         && mkdir -p "$HOME/.terminfo/x" 2>/dev/null \

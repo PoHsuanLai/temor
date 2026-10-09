@@ -21,7 +21,10 @@ impl CheckUrl {
         let rest = text.strip_prefix(PREFIX)?;
         let url_char = |c: char| {
             c.is_ascii_alphanumeric()
-                || matches!(c, '-' | '.' | '_' | '~' | '/' | '?' | '&' | '=' | '%' | '+' | '#')
+                || matches!(
+                    c,
+                    '-' | '.' | '_' | '~' | '/' | '?' | '&' | '=' | '%' | '+' | '#'
+                )
         };
         let valid = text.len() <= MAX_URL_BYTES && !rest.is_empty() && rest.chars().all(url_char);
         valid.then(|| Self(text.to_owned()))
@@ -187,7 +190,10 @@ mod tests {
             scan.feed(b"go to https://login.tailscale.com/a/tail");
             scan.finish()
         });
-        assert_eq!(last_line_unfinished, vec!["https://login.tailscale.com/a/tail"]);
+        assert_eq!(
+            last_line_unfinished,
+            vec!["https://login.tailscale.com/a/tail"]
+        );
     }
 
     #[test]

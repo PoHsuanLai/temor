@@ -20,10 +20,34 @@ fn machine(node: &str, name: &str, dns: &str, addr: &str, online: Presence) -> T
 
 fn fleet() -> Vec<TailnetHost> {
     vec![
-        machine("n1", "laptop", "laptop.tail1.ts.net", "100.64.0.1", Presence::Online),
-        machine("n2", "nas", "nas.tail1.ts.net", "100.64.0.7", Presence::Offline),
-        machine("n3", "phone", "phone.tail1.ts.net", "100.64.0.3", Presence::Online),
-        machine("n4", "Desk", "desk.tail1.ts.net", "100.64.0.4", Presence::Offline),
+        machine(
+            "n1",
+            "laptop",
+            "laptop.tail1.ts.net",
+            "100.64.0.1",
+            Presence::Online,
+        ),
+        machine(
+            "n2",
+            "nas",
+            "nas.tail1.ts.net",
+            "100.64.0.7",
+            Presence::Offline,
+        ),
+        machine(
+            "n3",
+            "phone",
+            "phone.tail1.ts.net",
+            "100.64.0.3",
+            Presence::Online,
+        ),
+        machine(
+            "n4",
+            "Desk",
+            "desk.tail1.ts.net",
+            "100.64.0.4",
+            Presence::Offline,
+        ),
     ]
 }
 
@@ -70,11 +94,17 @@ fn a_computer_without_an_alias_connects_by_its_magic_dns_name() {
 
 #[test]
 fn only_an_online_machine_has_a_direct_host() {
-    let rows = merge_hosts(&load(&[("config", "Host nas\n  HostName 100.64.0.7\n")]), &fleet());
+    let rows = merge_hosts(
+        &load(&[("config", "Host nas\n  HostName 100.64.0.7\n")]),
+        &fleet(),
+    );
     assert_eq!(rows[0].direct_host(), None, "offline nas");
     let phone = rows.iter().find(|r| r.shown() == "phone").expect("phone");
     assert_eq!(
-        phone.direct_host().map(|h| h.as_str().to_owned()).as_deref(),
+        phone
+            .direct_host()
+            .map(|h| h.as_str().to_owned())
+            .as_deref(),
         Some("phone.tail1.ts.net")
     );
 }
@@ -82,7 +112,13 @@ fn only_an_online_machine_has_a_direct_host() {
 #[test]
 fn a_node_id_listed_twice_counts_once() {
     let mut machines = fleet();
-    machines.push(machine("n3", "phone-again", "p2.tail1.ts.net", "100.64.0.99", Presence::Online));
+    machines.push(machine(
+        "n3",
+        "phone-again",
+        "p2.tail1.ts.net",
+        "100.64.0.99",
+        Presence::Online,
+    ));
     let rows = merge_hosts(&load(&[("config", "")]), &machines);
     assert_eq!(rows.len(), 4);
 }

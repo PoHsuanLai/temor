@@ -63,7 +63,10 @@ impl HostKey {
     /// Parts both have keep this key's value.
     pub fn merged(&self, other: &HostKey) -> HostKey {
         HostKey {
-            fingerprint: self.fingerprint.clone().or_else(|| other.fingerprint.clone()),
+            fingerprint: self
+                .fingerprint
+                .clone()
+                .or_else(|| other.fingerprint.clone()),
             node: self.node.clone().or_else(|| other.node.clone()),
         }
     }

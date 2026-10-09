@@ -12,6 +12,8 @@ mod files;
 #[cfg(unix)]
 mod harness;
 #[cfg(unix)]
+mod master;
+#[cfg(unix)]
 mod nu;
 #[cfg(unix)]
 mod shells;

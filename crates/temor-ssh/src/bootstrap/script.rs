@@ -13,6 +13,35 @@ use crate::error::SshError;
 const TEMPLATE: &str = include_str!("../../sh/bootstrap.sh");
 const INTEGRATION_MARK: &str = "#@INTEGRATION@";
 const TERMINFO_MARK: &str = "#@TERMINFO@";
+const OPTIONS_MARK: &str = "#@OPTIONS@";
+
+/// Whether the bootstrap may add Ghostty's terminal description to the host's `~/.terminfo`
+/// when the host lacks it. Without it the host gets `xterm-256color`. This is the one change
+/// the bootstrap makes outside its temporary folder, so it is asked for (see temor-core's
+/// host consent).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum TerminfoPolicy {
+    /// Install it when `tic` is there and the host lacks it.
+    #[default]
+    Install,
+    /// Never write to the host's home folder.
+    Skip,
+}
+
+/// What the bootstrap is allowed to do on the host beyond its temporary folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub struct BootstrapOptions {
+    pub terminfo: TerminfoPolicy,
+}
+
+impl BootstrapOptions {
+    /// Options with the given terminfo policy.
+    pub fn with_terminfo(terminfo: TerminfoPolicy) -> Self {
+        Self { terminfo }
+    }
+}
 
 /// Linux refuses one exec argument over 128 KiB (MAX_ARG_STRLEN, NUL included). The remote
 /// command reaches the login shell as one argument, so the whole command must stay under that.
@@ -26,6 +55,14 @@ impl BootstrapScript {
     /// Builds the script with `integration` (from `temor_shell::integration_scripts()`) written
     /// to the temp directory. Scripts this bootstrap does not place are left out.
     pub fn build(integration: &[ShellScript]) -> Result<Self, SshError> {
+        Self::build_with(integration, BootstrapOptions::default())
+    }
+
+    /// [`BootstrapScript::build`] with `options` saying what the script may change on the host.
+    pub fn build_with(
+        integration: &[ShellScript],
+        options: BootstrapOptions,
+    ) -> Result<Self, SshError> {
         let mut placed = String::new();
         for script in integration {
             if let Some(rel) = remote_path(script) {
@@ -35,12 +72,20 @@ impl BootstrapScript {
                 )?);
             }
         }
-        let terminfo = heredoc_write("\"$temor_tmp/xterm-ghostty.src\"", TERMINFO_SOURCE)?;
+        let (terminfo, policy) = match options.terminfo {
+            TerminfoPolicy::Install => (
+                heredoc_write("\"$temor_tmp/xterm-ghostty.src\"", TERMINFO_SOURCE)?,
+                "install",
+            ),
+            TerminfoPolicy::Skip => (String::new(), "skip"),
+        };
+        let options_line = format!("temor_terminfo={policy}\n");
         let mut script = String::with_capacity(TEMPLATE.len() + placed.len() + terminfo.len());
         for line in TEMPLATE.lines() {
             match line.trim() {
                 INTEGRATION_MARK => script.push_str(&placed),
                 TERMINFO_MARK => script.push_str(&terminfo),
+                OPTIONS_MARK => script.push_str(&options_line),
                 _ => {
                     script.push_str(line);
                     script.push('\n');

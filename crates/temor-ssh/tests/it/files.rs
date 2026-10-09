@@ -8,7 +8,7 @@ use std::path::Path;
 
 use temor_ssh::{
     ByteCount, ControlLayout, ControlPersist, FileTools, HostAlias, RemoteFilePath, RemoteFiles,
-    RemoteState, RemoteStat, RuntimeDir, SshRemoteFiles, StdRunner, UnixSeconds,
+    RemoteStat, RemoteState, RuntimeDir, SshRemoteFiles, StdRunner, UnixSeconds,
 };
 
 use crate::harness::{make_bin, scratch, write};
@@ -60,13 +60,21 @@ fn an_awkward_path_is_fetched_edited_and_written_back() {
         size: ByteCount(meta.len()),
     };
     let local = s.tmp.join("copy.txt");
-    let opened = files.download(&host, &remote_path, &local).expect("download");
+    let opened = files
+        .download(&host, &remote_path, &local)
+        .expect("download");
     assert_eq!(opened, Some(want));
-    assert_eq!(fs::read_to_string(&local).expect("local copy"), "remote v1\n");
+    assert_eq!(
+        fs::read_to_string(&local).expect("local copy"),
+        "remote v1\n"
+    );
 
     write(&local, "edited locally\n");
     files.store(&host, &local, &remote_path).expect("store");
-    assert_eq!(fs::read_to_string(&remote).expect("remote"), "edited locally\n");
+    assert_eq!(
+        fs::read_to_string(&remote).expect("remote"),
+        "edited locally\n"
+    );
     let after = files.stat(&host, &remote_path).expect("stat");
     assert!(
         matches!(after, RemoteState::Present(stat) if stat.size == ByteCount(15)),
@@ -74,5 +82,8 @@ fn an_awkward_path_is_fetched_edited_and_written_back() {
     );
 
     fs::remove_file(&remote).expect("remove");
-    assert_eq!(files.stat(&host, &remote_path).expect("stat"), RemoteState::Missing);
+    assert_eq!(
+        files.stat(&host, &remote_path).expect("stat"),
+        RemoteState::Missing
+    );
 }

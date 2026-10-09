@@ -86,6 +86,11 @@ impl ControlLayout {
         }
     }
 
+    /// The runtime directory the sockets live under.
+    pub fn runtime_dir(&self) -> &Path {
+        self.runtime.path()
+    }
+
     /// The directory that holds the sockets; create it with
     /// [`crate::ensure_private_dir`] before any ssh runs.
     pub fn socket_dir(&self) -> PathBuf {

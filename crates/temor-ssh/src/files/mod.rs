@@ -11,4 +11,4 @@ mod tests;
 
 pub use argv::{FileTools, fetch_argv, stat_argv, store_argv};
 pub use edge::{CommandOutput, CommandRunner, RemoteFiles, SshRemoteFiles, StdRunner};
-pub use path::{ByteCount, RemoteFilePath, RemoteState, RemoteStat, parse_stat};
+pub use path::{ByteCount, RemoteFilePath, RemoteStat, RemoteState, parse_stat};
