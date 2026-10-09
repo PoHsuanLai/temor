@@ -1,0 +1,25 @@
+[package]
+name = "temor-transfer"
+description = "temor's file transfers: OSC 1337 File= and kitty OSC 5113 decoding, the receive machine, and the downloads shelf store."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+ds-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

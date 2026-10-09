@@ -1,0 +1,132 @@
+use temor_transfer::kitty::{
+    Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
+    UnixNanos, encode_message, encode_reply, parse_message,
+};
+use temor_transfer::{Malformed, TransferError};
+
+use crate::support::limits;
+
+fn id() -> KittyId {
+    KittyId::parse("tx1").expect("valid id")
+}
+
+#[test]
+fn a_message_round_trips_through_the_wire() {
+    let message = Message {
+        file: Some(FileId::parse("7").expect("fid")),
+        parent: Some(FileId::parse("2").expect("pr")),
+        name: Some("dir/a b.txt".to_owned()),
+        file_type: Some(FileType::Regular),
+        size: Some(temor_transfer::Bytes::new(5)),
+        mtime: Some(UnixNanos(-42)),
+        permissions: Some(Mode(0o644)),
+        compression: Some(Compression::None),
+        data: b"hello".to_vec(),
+        ..Message::new(Action::EndData, id())
+    };
+    let wire = encode_message(&message);
+    assert!(wire.starts_with(b"\x1b]5113;"));
+    assert!(wire.ends_with(b"\x1b\\"));
+    let payload = &wire[2..wire.len() - 2];
+    assert_eq!(parse_message(payload, limits(64)).expect("parses"), message);
+}
+
+#[test]
+fn short_and_long_keys_mean_the_same_and_unknown_keys_are_ignored() {
+    let payload = b"5113;ac=file;id=tx1;fid=3;ft=directory;future=1;n=ZA==";
+    let short = parse_message(payload, limits(64)).expect("short form");
+    let long = parse_message(
+        b"5113;action=file;id=tx1;file_id=3;file_type=directory;n=ZA==",
+        limits(64),
+    )
+    .expect("long form");
+    assert_eq!(short, long);
+    assert_eq!(short.action, Action::File);
+    assert_eq!(short.file_type, Some(FileType::Directory));
+}
+
+#[test]
+fn a_missing_action_or_id_is_malformed() {
+    assert!(matches!(
+        parse_message(b"5113;id=tx1", limits(64)),
+        Err(TransferError::Malformed(Malformed::MissingField {
+            key: "ac"
+        }))
+    ));
+    assert!(matches!(
+        parse_message(b"5113;ac=send", limits(64)),
+        Err(TransferError::Malformed(Malformed::MissingField {
+            key: "id"
+        }))
+    ));
+    assert!(matches!(
+        parse_message(b"1337;File=", limits(64)),
+        Err(TransferError::Malformed(Malformed::NotATransfer))
+    ));
+}
+
+#[test]
+fn an_unknown_action_parses_as_unknown() {
+    let message = parse_message(b"5113;ac=frobnicate;id=tx1", limits(64)).expect("parses");
+    assert_eq!(message.action, Action::Unknown);
+}
+
+#[test]
+fn ids_must_be_safe_strings() {
+    assert!(KittyId::parse("a b").is_err());
+    assert!(KittyId::parse("").is_err());
+    assert!(KittyId::parse(&"x".repeat(129)).is_err());
+    assert!(FileId::parse("ok_1:2/3@4-5.6").is_ok());
+    assert!(parse_message(b"5113;ac=send;id=a;b", limits(64)).is_ok());
+}
+
+#[test]
+fn data_over_the_limit_is_too_large() {
+    let message = Message {
+        data: vec![7; 40],
+        ..Message::new(Action::Data, id())
+    };
+    let wire = encode_message(&message);
+    let payload = &wire[2..wire.len() - 2];
+    assert!(matches!(
+        parse_message(payload, limits(8)),
+        Err(TransferError::TooLarge { .. })
+    ));
+}
+
+#[test]
+fn replies_carry_their_status_in_base64() {
+    let refused = Reply {
+        id: id(),
+        file: None,
+        status: ReplyStatus::Failed {
+            code: ErrorCode::Eperm,
+            message: "User refused the transfer".to_owned(),
+        },
+    };
+    let wire = String::from_utf8(encode_reply(&refused)).expect("ascii");
+    assert!(wire.starts_with("\x1b]5113;ac=status;id=tx1;st="));
+    assert!(wire.ends_with("\x1b\\"));
+    let ok = encode_reply(&Reply {
+        id: id(),
+        file: Some(FileId::parse("4").expect("fid")),
+        status: ReplyStatus::Ok,
+    });
+    assert!(
+        String::from_utf8(ok)
+            .expect("ascii")
+            .contains("fid=4;st=T0s=")
+    );
+}
+
+#[test]
+fn both_finish_spellings_are_accepted() {
+    assert_eq!(Action::from_wire("finish"), Action::Finish);
+    assert_eq!(Action::from_wire("finished"), Action::Finish);
+    let message = parse_message(
+        b"5113;ac=file;id=t;fid=1;ftype=directory;n=ZA==",
+        limits(64),
+    )
+    .expect("parses");
+    assert_eq!(message.file_type, Some(FileType::Directory));
+}
