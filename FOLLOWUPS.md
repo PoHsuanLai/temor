@@ -60,6 +60,19 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
       whole pane; CPU clips glyph overhang to the row, GPU does not. §5
 
+## quire v0.2.34 (11b174ae) — first step of P3
+- [ ] Bump the pin to `rev = "11b174ae2262b29dfd336e714e5d4e92b0643a7e"  # v0.2.34` (v0.2.31 shipped
+      SplitView axis, RawKey/RawKeySurface, terminal palette tokens, public `focus_soon_told` /
+      `focus_landing_told`, RootExtent::Window, IME composition). Drop temor's IME machine copy.
+- [ ] IME candidate area: `ImeHost::cursor_area(surface, Rect)` via the document host's `.ime()`
+      with the grid's MountedData and caret cell rect; repro to whopper if it doesn't move. §6
+- [ ] Theme: re-apply the palette in an effect on `ds_settings::use_environment(..)`; Space theme and
+      runtime window title are queued in quire. §5
+- [ ] Add quire's coherence test (examples/consumer/tests/it/coherence.rs).
+- [ ] Keys: since v0.2.31 Cmd arrives as SUPER and apps read command chords via
+      `ds::prelude::is_command`/`command_keys`; asked whopper how this squares with keycap's
+      terminal profile (Ctrl+Shift). Update PLAN §6 and the keymap to the answer.
+
 ## temor-ui / temor (lane/app, P1, reviewed at f783a2a)
 - [ ] quire v0.2.31: replace plain layout divs and the 100vh root with quire layout components and
       `RootExtent::Window`; terminal palette tokens; re-apply the palette on theme change. §5
