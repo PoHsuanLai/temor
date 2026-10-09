@@ -98,7 +98,7 @@ pub fn closed_step(mut state: ClosedState, input: ClosedIn) -> (ClosedState, Vec
     let out = match input {
         ClosedIn::Push { tab, focus } => {
             let seq = Seq(state.next_seq);
-            state.next_seq += 1;
+            state.next_seq = state.next_seq.saturating_add(1);
             state.tabs.push(ClosedTab { tab, focus, seq });
             let mut evicted = Vec::new();
             while state.tabs.len() > state.keep.get() {

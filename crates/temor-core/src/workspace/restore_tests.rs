@@ -71,7 +71,7 @@ fn damaged_or_unversioned_files_start_fresh() {
 }
 
 #[test]
-fn a_damaged_tab_is_dropped_alone_and_stale_references_are_ignored() {
+fn a_duplicate_tab_is_dropped_and_stale_references_are_ignored() {
     let text = encode(&built()).unwrap();
     let mut value: serde_json::Value = serde_json::from_str(&text).unwrap();
     // A second tab that reuses the first tab's pane: it is dropped, the first stays.
@@ -101,8 +101,45 @@ fn the_id_counters_move_past_every_id_in_use() {
     value["next_tab"] = serde_json::json!(0);
     value["next_pane"] = serde_json::json!(1);
     let ws = loaded(&value.to_string());
-    assert!(ws.next_tab > 2);
-    assert!(ws.next_pane > 3);
+    assert_eq!(ws.next_tab, 3);
+    assert_eq!(ws.next_pane, 4);
+}
+
+#[test]
+fn a_malformed_tab_is_dropped_alone() {
+    let text = encode(&built()).unwrap();
+    let mut value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    value["place"]["tabs"][1] = serde_json::json!({"id": "two"});
+    let ws = loaded(&value.to_string());
+    let ids: Vec<TabId> = ws.tabs.place.tabs.iter().map(|t| t.id).collect();
+    assert_eq!(ids, vec![TabId(1)]);
+    assert_eq!(ws.focus.keys().copied().collect::<Vec<_>>(), vec![TabId(1)]);
+}
+
+#[test]
+fn a_place_that_is_not_a_place_or_cannot_count_on_is_damaged() {
+    let max = serde_json::json!(u64::MAX);
+    let base: serde_json::Value = serde_json::from_str(&encode(&built()).unwrap()).unwrap();
+    #[rustfmt::skip]
+    let edits: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
+        ("place is a number", Box::new(|v: &mut serde_json::Value| v["place"] = serde_json::json!(5))),
+        ("place is null", Box::new(|v: &mut serde_json::Value| v["place"] = serde_json::Value::Null)),
+        ("place is a list", Box::new(|v: &mut serde_json::Value| v["place"] = serde_json::json!([]))),
+        ("tabs is text", Box::new(|v: &mut serde_json::Value| v["place"]["tabs"] = serde_json::json!("x"))),
+        ("folders is a map", Box::new(|v: &mut serde_json::Value| v["place"]["folders"] = serde_json::json!({}))),
+        ("a tab id at the top", Box::new({ let m = max.clone(); move |v: &mut serde_json::Value| v["place"]["tabs"][1]["id"] = m.clone() })),
+        ("a pane id at the top", Box::new({ let m = max.clone(); move |v: &mut serde_json::Value| v["place"]["tabs"][1]["tree"]["nodes"][0]["v"] = m.clone() })),
+        ("a folder id at the top", Box::new({ let m = max.clone(); move |v: &mut serde_json::Value| v["place"]["folders"] = serde_json::json!([{"id": m, "title": "f"}]) })),
+    ];
+    for (name, edit) in edits {
+        let mut value = base.clone();
+        edit(&mut value);
+        assert_eq!(
+            decode(&value.to_string(), KeepClosed::DEFAULT),
+            Restored::Fresh(FreshWhy::Damaged),
+            "{name}"
+        );
+    }
 }
 
 #[test]
