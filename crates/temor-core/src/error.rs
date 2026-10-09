@@ -22,4 +22,7 @@ pub enum CoreError {
     /// The tab already holds the most panes it can; open a new tab instead.
     #[error("this tab cannot be split further")]
     TreeFull,
+    /// The tab's only pane cannot be torn off; closing the tab is the way to remove it.
+    #[error("a tab's only pane cannot be torn off")]
+    LastPane,
 }

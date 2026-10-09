@@ -7,6 +7,9 @@
 //! zoom names a pane, so trees compare and store exactly.
 
 mod goto;
+mod graft;
+#[cfg(test)]
+mod graft_tests;
 mod layout;
 mod model;
 mod ops;
