@@ -27,6 +27,17 @@ Additions for temor:
   with no session, co-author or URL trailers.
 - Tests never touch the real system: private bus, scratch `HOME`, no real `~/.config`.
 
+## Gate
+Run from the repo root with `TEMOR_REQUIRE_TOOLS=1` and the shells on `PATH`:
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace --no-fail-fast`
+- `cargo check --workspace --no-default-features`
+- `cargo deny check licenses`
+- `bash scripts/check-fork-patches.sh`: temor's `[patch.crates-io]` block equals quire's canonical
+  `docs/fork-patches.toml` at the rev in `Cargo.toml` (run from quire's cargo checkout, or `git show`
+  of the rev; nothing is vendored).
+
 ## Tests (desktop test-cut rule, owner 2026-10-10: `~/rs-wt/test-cut/RUBRIC.md`)
 - A test earns its place only if it can catch a real regression no other test catches.
 - One integration binary per crate: `tests/it/main.rs` with `mod topic;`, plus a guard test that
