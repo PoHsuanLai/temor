@@ -13,6 +13,7 @@ pub mod pointer;
 pub mod probe;
 pub mod slot;
 pub mod status;
+pub mod theme;
 pub mod window;
 pub mod window_help;
 

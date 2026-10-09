@@ -211,10 +211,10 @@ pub fn App() -> Element {
     let pane_style =
         "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
     rsx! {
-        Ds { appearance: Appearance::default(), material: Material::Window, extent: RootExtent::Viewport,
-            // TODO(quire 0.2.31): a full-height root (RootExtent::Window) and a layout component for
-            // this column; v0.2.30 has neither, so the flex column stays a plain element.
-            div { style: "display:flex; flex-direction:column; width:100%; height:100vh",
+        Ds { appearance: Appearance::default(), material: Material::Window, extent: RootExtent::Window,
+            // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
+            // window's column stays a plain flex element inside the window-high root (asked).
+            div { style: "display:flex; flex-direction:column; width:100%; height:100%",
                 if let Some((query, position)) = find {
                     FindBar {
                         query,

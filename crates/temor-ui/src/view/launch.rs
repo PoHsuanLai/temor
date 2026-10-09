@@ -1,6 +1,7 @@
 //! What the window is given at start, and how a session is opened from it: the settings, the
 //! environment, the fonts, and the desktop's clipboard.
 
+use ds::prelude::{Appearance, SpaceLook, SystemPrefs};
 use temor_pane::settings::FontChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
@@ -9,6 +10,7 @@ use temor_vt::{CellPx, GridSize};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::probe::Probe;
+use super::theme::resolved_palette;
 use crate::app::shell_pane;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
@@ -87,9 +89,11 @@ pub fn open_session(
         1,
         grid,
         cell,
-        // TODO(quire 0.2.31): the terminal palette from quire's tokens, and re-applied on theme
-        // change (Painter::set_palette and Term::set_palette). v0.2.30 exposes no theme change.
-        temor_render::Palette::default(),
+        resolved_palette(
+            Appearance::default(),
+            &SpaceLook::default(),
+            SystemPrefs::default(),
+        ),
         launcher,
     )?;
     let (events_tx, events) = unbounded_channel();
