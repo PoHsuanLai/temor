@@ -214,6 +214,10 @@ fn workspace_chords_run_their_actions_in_the_right_forms() {
         ("ctrl+super+=", Some(Action::Equalize)),
         ("ctrl+shift+1", Some(Action::SelectTab(1))),
         ("ctrl+shift+9", Some(Action::SelectTab(9))),
+        ("ctrl+1", Some(Action::SelectSpace(1))),
+        ("ctrl+9", Some(Action::SelectSpace(9))),
+        ("ctrl+0", None),
+        ("ctrl+alt+1", None),
         ("super+1", None),
         ("super+shift+z", None),
     ];

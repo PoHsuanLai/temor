@@ -2,7 +2,7 @@
 //! the window is told. Table rows cover the refusals.
 
 use super::{
-    ClosedState, KeepClosed, RefuseWhy, Spawn, Start, TabSel, TabsIn, TabsOut, Workspace,
+    ClosedState, KeepClosed, NthTab, RefuseWhy, Spawn, Start, TabSel, TabsIn, TabsOut, Workspace,
     WorkspaceIn, WorkspaceOut, workspace_step,
 };
 use crate::space::Pin;
@@ -10,11 +10,11 @@ use crate::split::Direction;
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch};
 
-fn fresh() -> Workspace {
+pub(super) fn fresh() -> Workspace {
     Workspace::new(ClosedState::new(KeepClosed::DEFAULT))
 }
 
-fn run(ws: Workspace, inputs: Vec<WorkspaceIn>) -> (Workspace, Vec<WorkspaceOut>) {
+pub(super) fn run(ws: Workspace, inputs: Vec<WorkspaceIn>) -> (Workspace, Vec<WorkspaceOut>) {
     inputs
         .into_iter()
         .fold((ws, Vec::new()), |(ws, mut all), input| {
@@ -24,7 +24,7 @@ fn run(ws: Workspace, inputs: Vec<WorkspaceIn>) -> (Workspace, Vec<WorkspaceOut>
         })
 }
 
-fn one_tab() -> (Workspace, PaneId) {
+pub(super) fn one_tab() -> (Workspace, PaneId) {
     let (ws, out) = run(
         fresh(),
         vec![WorkspaceIn::NewTab {
@@ -38,7 +38,7 @@ fn one_tab() -> (Workspace, PaneId) {
     (ws, pane)
 }
 
-fn spawns(out: &[WorkspaceOut]) -> Vec<Spawn> {
+pub(super) fn spawns(out: &[WorkspaceOut]) -> Vec<Spawn> {
     out.iter()
         .filter_map(|o| match o {
             WorkspaceOut::Spawn(s) => Some(s.clone()),
@@ -193,32 +193,6 @@ fn dropping_a_tab_onto_a_pane_merges_it_and_keeps_its_focus() {
 }
 
 #[test]
-fn tab_drops_and_tears_refuse_the_bad_cases() {
-    let (ws, first) = one_tab();
-    let (ws, _) = run(ws, vec![WorkspaceIn::NewTab { cwd: None }]);
-    let (ws, _) = run(
-        ws,
-        vec![WorkspaceIn::Tabs(TabsIn::Pin {
-            tab: TabId(2),
-            relaunch: Relaunch("x".into()),
-        })],
-    );
-    #[rustfmt::skip]
-    let cases: Vec<(&str, WorkspaceIn, RefuseWhy)> = vec![
-        ("onto its own pane", WorkspaceIn::DropTab { from: TabId(1), onto: first, towards: Direction::Right }, RefuseWhy::SameTab),
-        ("a pinned tab keeps its pin", WorkspaceIn::DropTab { from: TabId(2), onto: first, towards: Direction::Right }, RefuseWhy::PinnedTab(TabId(2))),
-        ("tear the only pane", WorkspaceIn::Tear(first), RefuseWhy::OnlyPane(first)),
-        ("focus an unknown pane", WorkspaceIn::Focus(PaneId(77)), RefuseWhy::NoSuchPane(PaneId(77))),
-        ("remove through the tab list", WorkspaceIn::Tabs(TabsIn::Remove(TabId(1))), RefuseWhy::UseCloseTab),
-    ];
-    for (name, input, why) in cases {
-        let (after, out) = run(ws.clone(), vec![input]);
-        assert!(out.contains(&WorkspaceOut::Refused(why)), "{name}: {out:?}");
-        assert_eq!(after, ws, "{name}: a refused request changes nothing");
-    }
-}
-
-#[test]
 fn tearing_a_pane_makes_its_own_tab_and_focuses_it() {
     let (ws, first) = one_tab();
     let (ws, _) = run(
@@ -248,11 +222,12 @@ fn a_command_ending_in_a_background_tab_marks_it_unread() {
         vec![WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(TabId(1))))],
     );
     assert!(!ws.tabs.unread.contains(&TabId(1)));
-    assert!(
-        out.contains(&WorkspaceOut::Focused(first))
-            || out
-                .iter()
-                .any(|o| matches!(o, WorkspaceOut::Tab(TabsOut::Focused(TabId(1)))))
+    assert_eq!(
+        out,
+        vec![
+            WorkspaceOut::Tab(TabsOut::Focused(TabId(1))),
+            WorkspaceOut::Changed
+        ]
     );
     let (_, out) = run(ws, vec![WorkspaceIn::Activity(first)]);
     assert!(out.is_empty(), "an ignored change is not a change");
@@ -281,43 +256,38 @@ fn zoom_toggles_and_a_split_needs_a_tab_in_front() {
 }
 
 #[test]
-fn a_full_tab_refuses_another_split() {
-    let (mut ws, _) = one_tab();
-    let mut out = Vec::new();
-    for _ in 0..200 {
-        let (next, o) = workspace_step(
-            ws,
-            WorkspaceIn::Split {
-                towards: Direction::Right,
-            },
-        );
-        ws = next;
-        out = o;
-    }
-    assert_eq!(out, vec![WorkspaceOut::Refused(RefuseWhy::TabFull)]);
-}
-
-#[test]
-fn selecting_tabs_by_number_follows_the_sidebar() {
+fn selecting_tabs_through_the_workspace_follows_the_sidebar() {
     let (ws, _) = one_tab();
     let (ws, _) = run(
         ws,
         vec![
             WorkspaceIn::NewTab { cwd: None },
             WorkspaceIn::NewTab { cwd: None },
+            WorkspaceIn::Tabs(TabsIn::Pin {
+                tab: TabId(3),
+                relaunch: Relaunch("x".into()),
+            }),
         ],
     );
-    let (ws, _) = run(
-        ws,
-        vec![WorkspaceIn::Tabs(TabsIn::Pin {
-            tab: TabId(3),
-            relaunch: Relaunch("x".into()),
-        })],
-    );
-    let (ws, out) = run(ws, vec![WorkspaceIn::Tabs(TabsIn::Select(TabSel::Next))]);
-    assert_eq!(ws.front(), Some(TabId(1)));
-    assert!(
-        out.iter()
-            .any(|o| matches!(o, WorkspaceOut::Tab(TabsOut::Focused(_))))
-    );
+    // The sidebar reads 3 (pinned), 1, 2, and tab 3 is in front.
+    let nth = |n| TabSel::Nth(NthTab::new(n).unwrap());
+    #[rustfmt::skip]
+    let cases = [
+        ("the second row", nth(2), TabId(1)),
+        ("the third row", nth(3), TabId(2)),
+        ("next", TabSel::Next, TabId(1)),
+        ("previous wraps to the last row", TabSel::Previous, TabId(2)),
+    ];
+    for (name, sel, want) in cases {
+        let (after, out) = run(ws.clone(), vec![WorkspaceIn::Tabs(TabsIn::Select(sel))]);
+        assert_eq!(after.front(), Some(want), "{name}");
+        assert_eq!(
+            out,
+            vec![
+                WorkspaceOut::Tab(TabsOut::Focused(want)),
+                WorkspaceOut::Changed
+            ],
+            "{name}"
+        );
+    }
 }

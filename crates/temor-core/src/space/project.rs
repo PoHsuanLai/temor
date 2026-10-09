@@ -2,6 +2,7 @@
 //! start with, and the routes that send new sessions to it. Written flat beside the Space's look,
 //! so no key here may be `id`, `name`, `dots`, `grain`, `theme` or `card_accent`.
 
+use super::credential::Credential;
 use crate::vocab::lenient::{lenient_list, lenient_or_default};
 use crate::vocab::text::{EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -34,6 +35,14 @@ pub struct Profile {
     /// A dotenv file under the project root, read into new shells.
     #[serde(default, deserialize_with = "lenient_or_default")]
     pub dotenv: Option<RelPath>,
+    /// Secrets new shells get from the account store, each as a reference to an account and
+    /// the variable it fills. Never a value.
+    #[serde(
+        default,
+        deserialize_with = "lenient_list",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub credentials: Vec<Credential>,
 }
 
 /// A rule that opens matching new sessions in this Space, such as `ssh prod-*`.

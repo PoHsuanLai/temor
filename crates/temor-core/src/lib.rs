@@ -11,6 +11,7 @@ pub mod notify;
 pub mod pane;
 pub mod presence;
 pub mod proposal;
+pub mod quick;
 pub mod remote;
 pub mod space;
 pub mod split;
