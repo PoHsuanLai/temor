@@ -9,6 +9,27 @@
 //! argv built here. Inputs (the config files, the runtime directory, `$HOME`) are injected, and
 //! the library spawns no threads. The only edge is the private runtime directory, which lives in
 //! the private `platform` module with TODO stubs for the other OSes.
+//!
+//! # Example
+//!
+//! The argv that asks whether a shared connection is up. The crate builds it; the app runs `ssh`:
+//!
+//! ```
+//! use std::path::Path;
+//! use temor_ssh::{
+//!     ControlLayout, ControlPersist, HostAlias, RuntimeDir, Seconds, SshError, check_argv,
+//! };
+//!
+//! # fn main() -> Result<(), SshError> {
+//! let runtime = RuntimeDir::new(Path::new("/run/user/1000/temor"))?;
+//! let persist = ControlPersist::Idle(Seconds::new(600).expect("600 is a positive number"));
+//! let layout = ControlLayout::new(runtime, persist)?;
+//! let argv = check_argv(&HostAlias::new("prod")?, &layout);
+//! assert!(argv.iter().any(|arg| arg == "check"));
+//! assert_eq!(argv.last().map(String::as_str), Some("prod"));
+//! # Ok(())
+//! # }
+//! ```
 
 mod argv;
 mod bootstrap;

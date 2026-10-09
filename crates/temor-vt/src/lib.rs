@@ -4,6 +4,29 @@
 //! [`FakeVt`] (feature `fake`) standing in when Zig is not available.
 //!
 //! The only `unsafe` in this crate is in the `ffi` module.
+//!
+//! # Example
+//!
+//! Feed bytes to a terminal and read its state back:
+//!
+//! ```
+//! use std::sync::mpsc::channel;
+//! use temor_vt::{GridSize, Terminal, TerminalConfig, Vt, VtError};
+//!
+//! # fn main() -> Result<(), VtError> {
+//! let (events, _event_rx) = channel();
+//! let (replies, _reply_rx) = channel();
+//! let mut term = Terminal::new(
+//!     TerminalConfig::new(GridSize::new(20, 2)),
+//!     Box::new(events),
+//!     Box::new(replies),
+//! )?;
+//! term.write(b"\x1b]2;build\x07hello");
+//! assert_eq!(term.title(), "build");
+//! assert_eq!(term.plain_text()?.lines().next(), Some("hello"));
+//! # Ok(())
+//! # }
+//! ```
 
 mod error;
 mod event;
