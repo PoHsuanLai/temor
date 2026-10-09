@@ -14,6 +14,9 @@ use super::fallback::{Presentation, needs, presentation, script_of};
 use crate::error::RenderError;
 use crate::metrics::FontSize;
 
+/// Most entries the per-grapheme face cache keeps before it starts again (text is unbounded).
+const CHOSEN_CAP: usize = 4096;
+
 /// Where a `FontSet` looks for fallbacks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Lookup {
@@ -92,7 +95,7 @@ impl FontSet {
         };
         for style in FaceStyle::ALL {
             let face = set.cut(&family, style).ok_or_else(not_found)?;
-            set.primary[style.index()] = set.push(face);
+            set.primary[style.index()] = set.push(face).ok_or_else(not_found)?;
         }
         Ok(set)
     }
@@ -102,8 +105,8 @@ impl FontSet {
     }
 
     pub(crate) fn face(&self, id: FaceId) -> &Face {
-        // Ids only come from `push`, so they index `faces`; the first primary cut is the floor.
-        &self.faces[usize::from(id.0).min(self.faces.len() - 1)]
+        // Ids come only from `push`, which stores the face first, so the index is in range.
+        &self.faces[usize::from(id.0)]
     }
 
     pub(crate) fn primary(&self, style: FaceStyle) -> FaceId {
@@ -126,6 +129,9 @@ impl FontSet {
             .into_iter()
             .find(|&id| self.covers(id, text))
             .unwrap_or(own);
+        if self.chosen.len() >= CHOSEN_CAP {
+            self.chosen.clear();
+        }
         self.chosen.insert(key, found);
         found
     }
@@ -190,7 +196,7 @@ impl FontSet {
                 let blob = info.load(Some(&mut self.cache))?;
                 Face::load(blob, info.index(), FaceRole::Fallback)
             })
-            .map(|face| self.push(face));
+            .and_then(|face| self.push(face));
         self.families.insert(id, face);
         face
     }
@@ -231,9 +237,12 @@ impl FontSet {
         Some(face)
     }
 
-    fn push(&mut self, face: Face) -> FaceId {
+    /// Stores `face` and returns its id, or `None` when ids are used up (`u16` many faces).
+    /// Nothing is stored in that case, so an id never names the wrong face.
+    fn push(&mut self, face: Face) -> Option<FaceId> {
+        let id = u16::try_from(self.faces.len()).ok()?;
         self.faces.push(face);
-        FaceId(u16::try_from(self.faces.len() - 1).unwrap_or(u16::MAX))
+        Some(FaceId(id))
     }
 }
 

@@ -69,16 +69,26 @@ impl CapturedFrame<'_> {
             } else {
                 RowFilter::Dirty
             };
+            let mut failure = None;
             f.rows(filter, |row| {
                 let mut cells = Vec::new();
-                // A row whose cells cannot be read draws empty; the next frame retries it.
-                let _ = row.cells(|c| {
+                match row.cells(|c| {
                     if let Some(cell) = drawable(c) {
                         cells.push(cell);
                     }
-                });
-                frame.set_row(row.row(), cells);
+                }) {
+                    Ok(()) => frame.set_row(row.row(), cells),
+                    // The row keeps its old cells; the first error is kept and reported below.
+                    Err(e) => {
+                        failure.get_or_insert(e);
+                    }
+                }
             })?;
+            if let Some(e) = failure {
+                // Not marking the frame drawn keeps libghostty's dirty flags, so the next
+                // capture reads these rows again.
+                return Err(e.into());
+            }
         }
         frame.images = self.images;
         f.mark_drawn()?;
@@ -86,13 +96,21 @@ impl CapturedFrame<'_> {
     }
 }
 
-/// The cell as the renderer keeps it, or `None` for spacers and blank default cells.
+/// Kitty's unicode placeholder: a cell that stands for part of an image placed virtually. The
+/// image is drawn by the placement, so the cell itself draws nothing.
+const KITTY_PLACEHOLDER: char = '\u{10EEEE}';
+
+/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders and blank
+/// narrow default cells. Blank wide cells are kept, so a cursor on one spans both columns.
 fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
     let span = match c.width {
         CellWidth::Narrow => 1,
         CellWidth::Wide => 2,
         CellWidth::SpacerTail | CellWidth::SpacerHead => return None,
     };
+    if c.text.starts_with(KITTY_PLACEHOLDER) {
+        return None;
+    }
     let text = CellText::new(c.text);
     let flags = c.style.flags;
     let marked = c.bg.is_some()
@@ -101,7 +119,7 @@ fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
         || flags.contains(StyleFlags::INVERSE)
         || flags.contains(StyleFlags::STRIKETHROUGH)
         || flags.contains(StyleFlags::OVERLINE);
-    if text.is_blank() && !marked {
+    if text.is_blank() && !marked && span == 1 {
         return None;
     }
     Some(CellDraw {

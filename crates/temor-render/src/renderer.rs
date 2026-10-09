@@ -80,6 +80,9 @@ pub struct RenderStats {
     pub rows_composed: u32,
     /// Glyph-atlas clears this frame (the atlas filled up).
     pub atlas_resets: u32,
+    /// Kitty images not drawn this frame: empty, or larger than the device's texture limit
+    /// (GPU only; the CPU path has no such limit).
+    pub images_skipped: u32,
 }
 
 /// Turns a [`PaneFrame`] into pixels for a pane. Two implementations: [`crate::CpuRenderer`]

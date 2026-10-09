@@ -138,22 +138,42 @@ fn vertical(canvas: &mut Canvas, [up, down]: [u8; 2], [left, right]: [u8; 2], t:
     }
 }
 
-/// Dashed lines (U+2504–250B, 254C–254F): `(vertical, weight, dashes)`.
-pub(crate) fn dashes(c: char) -> Option<(bool, u8, u32)> {
-    Some(match c as u32 {
-        0x2504 => (false, L, 3),
-        0x2505 => (false, H, 3),
-        0x2506 => (true, L, 3),
-        0x2507 => (true, H, 3),
-        0x2508 => (false, L, 4),
-        0x2509 => (false, H, 4),
-        0x250A => (true, L, 4),
-        0x250B => (true, H, 4),
-        0x254C => (false, L, 2),
-        0x254D => (false, H, 2),
-        0x254E => (true, L, 2),
-        0x254F => (true, H, 2),
+/// Which way a line runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Axis {
+    Horizontal,
+    Vertical,
+}
+
+/// A dashed line: its axis, stroke weight and number of dashes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Dashes {
+    pub axis: Axis,
+    pub weight: u8,
+    pub count: u32,
+}
+
+/// Dashed lines (U+2504–250B, 254C–254F).
+pub(crate) fn dashes(c: char) -> Option<Dashes> {
+    let (axis, weight, count) = match c as u32 {
+        0x2504 => (Axis::Horizontal, L, 3),
+        0x2505 => (Axis::Horizontal, H, 3),
+        0x2506 => (Axis::Vertical, L, 3),
+        0x2507 => (Axis::Vertical, H, 3),
+        0x2508 => (Axis::Horizontal, L, 4),
+        0x2509 => (Axis::Horizontal, H, 4),
+        0x250A => (Axis::Vertical, L, 4),
+        0x250B => (Axis::Vertical, H, 4),
+        0x254C => (Axis::Horizontal, L, 2),
+        0x254D => (Axis::Horizontal, H, 2),
+        0x254E => (Axis::Vertical, L, 2),
+        0x254F => (Axis::Vertical, H, 2),
         _ => return None,
+    };
+    Some(Dashes {
+        axis,
+        weight,
+        count,
     })
 }
 

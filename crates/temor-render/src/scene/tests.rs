@@ -1,15 +1,16 @@
 use temor_vt::{CellStyle, Col, Rgb, Row, Selected, StyleFlags, Underline};
 
+use super::SceneInput;
+use super::build::build_row;
 use super::colors::{UnderCursor, cell_colors};
-use super::cursor::{CursorDraw, CursorStyle};
+use super::cursor::{CursorDraw, CursorStyle, resolve_cursor};
 use super::model::{QuadPaint, RowScene};
-use super::{SceneInput, build_row};
 use crate::font::GlyphCache;
 use crate::font::testing::fonts;
 use crate::frame::{CellDraw, CellText, TermColors};
 use crate::metrics::{CellPos, Scale};
 use crate::palette::Palette;
-use crate::renderer::{SelectionOverlay, SelectionShape};
+use crate::renderer::{PaneFocus, SelectionOverlay, SelectionShape};
 
 fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
     CellDraw {
@@ -132,4 +133,25 @@ fn every_cursor_style_draws() {
         let scene = build(&[], Some(cursor));
         assert_eq!((scene.bg.len(), scene.fg.len()), (bg, fg), "{style:?}");
     }
+}
+
+#[test]
+fn a_cursor_on_a_wide_blank_cell_spans_both_columns() {
+    use temor_vt::{CursorBlink, CursorCell, CursorShape, CursorView};
+    let view = CursorView {
+        col: Col(3),
+        row: Row(0),
+        shape: CursorShape::Block,
+        blink: CursorBlink::Steady,
+        cell: CursorCell::Normal,
+    };
+    // The row's spans as the frame holds them: a narrow cell, then a blank wide one.
+    let cursor = resolve_cursor(
+        Some(view),
+        |_| Some(vec![(Col(2), 1), (Col(3), 2)]),
+        PaneFocus::Focused,
+        &Palette::default(),
+        &term_colors(),
+    );
+    assert_eq!(cursor.map(|c| c.span), Some(2));
 }

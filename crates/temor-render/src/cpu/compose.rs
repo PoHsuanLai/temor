@@ -5,11 +5,13 @@
 use temor_vt::{KittyLayer, Row};
 
 use super::pixels::Target;
+use crate::error::RenderError;
 use crate::font::GlyphCache;
 use crate::frame::{CellDraw, ImagePlacement};
-use crate::scene::{Premul, RowScene, SceneInput, build_row};
+use crate::scene::{Premul, RowScene, SceneInput, build_row_settled};
 
-/// Repaints the band of `row` (the full width, padding included).
+/// Repaints the band of `row` (the full width, padding included). Fails when the row's glyphs
+/// do not fit the atlases.
 pub(crate) fn compose_row(
     target: &mut Target<'_>,
     input: &SceneInput<'_>,
@@ -18,17 +20,14 @@ pub(crate) fn compose_row(
     images: &[ImagePlacement],
     glyphs: &mut GlyphCache,
     scene: &mut RowScene,
-) {
+) -> Result<(), RenderError> {
     let ch = input.metrics.height() as i32;
     let y0 = input.origin.1 + i32::from(row.0) * ch;
     target.band = (y0, y0 + ch);
     target.clear_band(Premul::opaque(input.colors.background));
     draw_images(target, input, images, KittyLayer::BelowBackground);
-    let epoch = glyphs.epoch();
-    build_row(input, row, cells, glyphs, scene);
-    if glyphs.epoch() != epoch {
-        // The atlas was cleared while building: glyphs placed before that are gone.
-        build_row(input, row, cells, glyphs, scene);
+    if !build_row_settled(input, row, cells, glyphs, scene) {
+        return Err(RenderError::GlyphsDoNotFit);
     }
     for q in &scene.bg {
         target.quad(q, &glyphs.alpha, &glyphs.color);
@@ -38,6 +37,7 @@ pub(crate) fn compose_row(
         target.quad(q, &glyphs.alpha, &glyphs.color);
     }
     draw_images(target, input, images, KittyLayer::AboveText);
+    Ok(())
 }
 
 fn draw_images(

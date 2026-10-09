@@ -45,6 +45,22 @@ pub(crate) enum Compose {
     Rows(Vec<Row>),
 }
 
+/// What a damage report covers: the whole pane, or only the rows composed this frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Reach {
+    Pane,
+    Rows,
+}
+
+impl Compose {
+    pub fn reach(&self) -> Reach {
+        match self {
+            Compose::All => Reach::Pane,
+            Compose::Rows(_) => Reach::Rows,
+        }
+    }
+}
+
 /// What was drawn last time, to tell what changed.
 #[derive(Debug, Default)]
 pub(crate) struct ChangeTracker {
@@ -95,10 +111,13 @@ impl ChangeTracker {
 }
 
 fn image_key(p: &ImagePlacement, ch: i32) -> ImageKey {
-    let span = (p.height.0 as i32 + ch - 1) / ch;
+    // Widened: a placement's height is a u32 and may be far taller than the grid.
+    let ch = i64::from(ch);
+    let span = (i64::from(p.height.0) + ch - 1) / ch;
+    let last = i64::from(p.row) + span.max(1) - 1;
     ImageKey {
         first_row: p.row,
-        last_row: p.row + span.max(1) - 1,
+        last_row: i32::try_from(last).unwrap_or(i32::MAX),
         layer: match p.layer {
             KittyLayer::BelowBackground => 0,
             KittyLayer::BelowText => 1,
@@ -114,9 +133,14 @@ fn image_key(p: &ImagePlacement, ch: i32) -> ImageKey {
 
 /// The damaged rectangles: the whole pane, or each run of adjacent composed rows as a
 /// full-width band clipped to the pane.
-pub(crate) fn damage(full: bool, rows: &[Row], m: &CellMetrics, fit: &GridFit) -> Vec<DamageRect> {
+pub(crate) fn damage(
+    reach: Reach,
+    rows: &[Row],
+    m: &CellMetrics,
+    fit: &GridFit,
+) -> Vec<DamageRect> {
     let size = fit.pane;
-    if full {
+    if reach == Reach::Pane {
         return vec![DamageRect {
             x: Px(0),
             y: Px(0),

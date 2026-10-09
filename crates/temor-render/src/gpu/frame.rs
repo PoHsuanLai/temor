@@ -7,6 +7,7 @@ use super::device::ensure_image;
 use super::pipeline::{ALPHA, COLOR, IMAGE, Inst, SOLID, texture};
 use super::{GpuFrame, GpuRenderer};
 use crate::error::RenderError;
+use crate::font::BUILD_ATTEMPTS;
 use crate::frame::{ImagePlacement, PaneFrame};
 use crate::metrics::{CellMetrics, Scale, fit_grid};
 use crate::renderer::{PaneView, RenderStats, Renderer};
@@ -117,7 +118,7 @@ impl Renderer for GpuRenderer {
             .tracker
             .plan(key, frame.take_dirty(), cursor, &frame.images);
         let all: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
-        let full = plan == Compose::All;
+        let reach = plan.reach();
         let mut rows = match plan {
             Compose::All => all.clone(),
             Compose::Rows(rows) => rows,
@@ -135,10 +136,13 @@ impl Renderer for GpuRenderer {
             cursor,
             selection: view.selection,
         };
-        // An atlas clear while building invalidates rows built earlier: build them all again.
-        for attempt in 0..2 {
-            let epoch = self.glyphs.epoch();
-            for &row in if attempt == 0 { &rows } else { &all } {
+        // An atlas clear while building invalidates the glyphs of rows built before it: build
+        // again, every row this time, until a build finishes without a clear.
+        let mut settled = false;
+        for attempt in 0..BUILD_ATTEMPTS {
+            let before = self.glyphs.epoch();
+            let todo = if attempt == 0 { &rows } else { &all };
+            for &row in todo {
                 let cells = frame.rows.get(usize::from(row.0)).map_or(&[][..], |c| c);
                 build_row(&input, row, cells, &mut self.glyphs, &mut self.scene);
                 if let Some(slot) = self.rows.get_mut(usize::from(row.0)) {
@@ -146,17 +150,20 @@ impl Renderer for GpuRenderer {
                     slot.1 = self.scene.fg.iter().map(inst).collect();
                 }
             }
-            self.epoch = self.glyphs.epoch();
-            if self.epoch == epoch {
+            if self.glyphs.epoch() == before {
+                self.epoch = before;
+                settled = true;
                 break;
             }
         }
-        let commands = self.record(frame, input.origin, &metrics)?;
-        self.damage = damage(full, &rows, &metrics, &fit);
-        let texture = self.target.as_ref().ok_or(RenderError::PaneTooLarge {
-            width: w,
-            height: h,
-        })?;
+        if !settled {
+            // The plan took the dirty rows: the next frame draws everything.
+            self.tracker.invalidate();
+            return Err(RenderError::GlyphsDoNotFit);
+        }
+        let (commands, images_skipped) = self.record(frame, input.origin, &metrics)?;
+        self.damage = damage(reach, &rows, &metrics, &fit);
+        let texture = self.target.as_ref().ok_or(RenderError::NoRenderTarget)?;
         Ok(GpuFrame {
             texture,
             commands,
@@ -165,6 +172,7 @@ impl Renderer for GpuRenderer {
             stats: RenderStats {
                 rows_composed: rows.len() as u32,
                 atlas_resets: (self.glyphs.epoch() - resets) as u32,
+                images_skipped,
             },
         })
     }
@@ -177,14 +185,28 @@ impl GpuRenderer {
         frame: &PaneFrame,
         origin: (i32, i32),
         m: &CellMetrics,
-    ) -> Result<wgpu::CommandBuffer, RenderError> {
+    ) -> Result<(wgpu::CommandBuffer, u32), RenderError> {
         let mut all: Vec<Inst> = self.rows.iter().flat_map(|r| r.0.iter().copied()).collect();
         let bg_end = all.len() as u32;
         all.extend(self.rows.iter().flat_map(|r| r.1.iter().copied()));
         let fg_end = all.len() as u32;
         let mut draws: Vec<(KittyLayer, temor_vt::ImageId, u32)> = Vec::new();
+        let mut images_skipped = 0;
+        let limit = self.device.limits().max_texture_dimension_2d;
         for p in &frame.images {
-            ensure_image(&mut self.images, &self.device, &self.queue, &self.pipe, p);
+            let uploaded = ensure_image(
+                &mut self.images,
+                &self.device,
+                &self.queue,
+                &self.pipe,
+                p,
+                limit,
+            );
+            if uploaded.is_err() {
+                // Not drawn; counted in the stats.
+                images_skipped += 1;
+                continue;
+            }
             draws.push((p.layer, p.image.id, all.len() as u32));
             all.push(image_inst(p, origin, m));
         }
@@ -203,10 +225,7 @@ impl GpuRenderer {
             }));
         }
         let (Some(buf), Some(target)) = (self.instances.as_ref(), self.target.as_ref()) else {
-            return Err(RenderError::PaneTooLarge {
-                width: 0,
-                height: 0,
-            });
+            return Err(RenderError::NoRenderTarget);
         };
         if !bytes.is_empty() {
             self.queue.write_buffer(buf, 0, bytes);
@@ -261,6 +280,6 @@ impl GpuRenderer {
             }
             draw_layer(&mut pass, KittyLayer::AboveText);
         }
-        Ok(enc.finish())
+        Ok((enc.finish(), images_skipped))
     }
 }

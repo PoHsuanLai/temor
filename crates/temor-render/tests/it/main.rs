@@ -8,4 +8,5 @@ mod dirty;
 mod golden;
 #[cfg(feature = "gpu")]
 mod gpu;
+mod palette;
 mod support;

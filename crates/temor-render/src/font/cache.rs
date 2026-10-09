@@ -86,8 +86,24 @@ impl std::fmt::Debug for GlyphCache {
 const ALPHA_ATLAS: (u32, u32, u32) = (1024, 256, 4096);
 const COLOR_ATLAS: (u32, u32, u32) = (1024, 256, 2048);
 
+/// How many times a glyph run, row or frame is built again when an atlas clears while it is
+/// built (its glyphs would point at cleared texels). A build that still clears after that many
+/// tries is abandoned, so the work is bounded even when the glyphs cannot fit the atlas.
+pub(crate) const BUILD_ATTEMPTS: usize = 3;
+
 impl GlyphCache {
     pub fn new(fonts: FontSet, scale: Scale) -> Self {
+        Self::with_max_heights(fonts, scale, ALPHA_ATLAS.2, COLOR_ATLAS.2)
+    }
+
+    /// As [`GlyphCache::new`], with the atlases capped at the given heights (texel rows). The
+    /// caps are the only knob tests need to force atlas clears.
+    pub(crate) fn with_max_heights(
+        fonts: FontSet,
+        scale: Scale,
+        alpha_max: u32,
+        color_max: u32,
+    ) -> Self {
         let px = fonts.size().device(scale);
         let metrics = cell_metrics(fonts.face(fonts.primary(FaceStyle::REGULAR)), px);
         Self {
@@ -95,18 +111,8 @@ impl GlyphCache {
             px,
             scale,
             metrics,
-            alpha: Atlas::new(
-                AtlasFormat::Alpha,
-                ALPHA_ATLAS.0,
-                ALPHA_ATLAS.1,
-                ALPHA_ATLAS.2,
-            ),
-            color: Atlas::new(
-                AtlasFormat::Color,
-                COLOR_ATLAS.0,
-                COLOR_ATLAS.1,
-                COLOR_ATLAS.2,
-            ),
+            alpha: Atlas::new(AtlasFormat::Alpha, ALPHA_ATLAS.0, ALPHA_ATLAS.1, alpha_max),
+            color: Atlas::new(AtlasFormat::Color, COLOR_ATLAS.0, COLOR_ATLAS.1, color_max),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
             bitmaps: SystemBitmapEmoji::default(),
@@ -153,18 +159,23 @@ impl GlyphCache {
         if let Some(run) = self.runs.get(&(style, span)).and_then(|m| m.get(text)) {
             return run.clone();
         }
-        let epoch = self.epoch;
-        let mut glyphs = self.build_run(text, style, span);
-        if self.epoch != epoch {
-            // An atlas filled up part-way: build again into the emptied atlases.
-            glyphs = self.build_run(text, style, span);
+        // An atlas can fill up part-way through a run; the glyphs placed before the clear are
+        // then gone, so the run is built again into the emptied atlases. A run that still
+        // clears after `BUILD_ATTEMPTS` is handed out uncached: the caller sees the epoch move
+        // and builds its row again.
+        let mut glyphs: Arc<[RunGlyph]> = Arc::from(Vec::new());
+        for _ in 0..BUILD_ATTEMPTS {
+            let epoch = self.epoch;
+            glyphs = self.build_run(text, style, span).into();
+            if self.epoch == epoch {
+                self.runs
+                    .entry((style, span))
+                    .or_default()
+                    .insert(text.into(), glyphs.clone());
+                return glyphs;
+            }
         }
-        let run: Arc<[RunGlyph]> = glyphs.into();
-        self.runs
-            .entry((style, span))
-            .or_default()
-            .insert(text.into(), run.clone());
-        run
+        glyphs
     }
 
     /// The mask for an underline style, one cell wide.

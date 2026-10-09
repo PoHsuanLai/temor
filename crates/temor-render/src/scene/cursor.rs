@@ -29,7 +29,7 @@ pub(crate) struct CursorDraw {
 impl CursorDraw {
     /// Whether the cursor covers column `col` of its row.
     pub fn covers(&self, col: Col) -> bool {
-        col.0 >= self.col.0 && col.0 < self.col.0 + u16::from(self.span)
+        col.0 >= self.col.0 && u32::from(col.0) < u32::from(self.col.0) + u32::from(self.span)
     }
 }
 

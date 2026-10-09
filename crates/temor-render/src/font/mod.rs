@@ -20,7 +20,7 @@ mod tests;
 #[cfg(feature = "gpu")]
 pub(crate) use atlas::AtlasFormat;
 pub(crate) use atlas::{Atlas, Slot};
-pub(crate) use cache::{GlyphCache, GlyphKind, RunGlyph};
+pub(crate) use cache::{BUILD_ATTEMPTS, GlyphCache, GlyphKind, RunGlyph};
 pub(crate) use config::{FaceStyle, Slant, Weight};
 pub use config::{FontConfig, FontFamily, FontSource};
 pub(crate) use decor::Decoration;

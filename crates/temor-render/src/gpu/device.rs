@@ -152,23 +152,41 @@ pub(super) struct DeviceImage {
     pub bind: wgpu::BindGroup,
 }
 
-/// Uploads `p`'s image unless the same generation is there already.
+/// Why a kitty image is not drawn on the device.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ImageSkip {
+    /// The image has no pixels.
+    Empty,
+    /// The image is wider or taller than the device's texture limit.
+    TooLarge { width: u32, height: u32, limit: u32 },
+}
+
+/// Uploads `p`'s image unless the same generation is there already. An image the device cannot
+/// hold is skipped, with the reason, rather than failing the frame.
 pub(super) fn ensure_image(
     images: &mut HashMap<ImageId, DeviceImage>,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     pipe: &Pipeline,
     p: &ImagePlacement,
-) {
+    limit: u32,
+) -> Result<(), ImageSkip> {
     let img = &p.image;
     if img.width == 0 || img.height == 0 {
-        return;
+        return Err(ImageSkip::Empty);
+    }
+    if img.width > limit || img.height > limit {
+        return Err(ImageSkip::TooLarge {
+            width: img.width,
+            height: img.height,
+            limit,
+        });
     }
     if images
         .get(&img.id)
         .is_some_and(|d| d.generation == img.generation)
     {
-        return;
+        return Ok(());
     }
     let tex = texture(
         device,
@@ -211,4 +229,5 @@ pub(super) fn ensure_image(
             bind,
         },
     );
+    Ok(())
 }
