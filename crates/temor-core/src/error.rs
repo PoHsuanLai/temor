@@ -19,6 +19,9 @@ pub enum CoreError {
     /// The new pane's id is already in the tree; the caller must allocate a fresh one.
     #[error("pane {0} is already in this tab")]
     DuplicatePane(u64),
+    /// A tab or pane counter has no id left to hand out; nothing was changed.
+    #[error("no ids are left to hand out")]
+    IdsExhausted,
     /// The tab already holds the most panes it can; open a new tab instead.
     #[error("this tab cannot be split further")]
     TreeFull,
