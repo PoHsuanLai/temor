@@ -10,7 +10,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::probe::Probe;
 use crate::app::shell_pane;
-use crate::edge::Ambient;
+use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
 use crate::pane::PaneEvent;
 use crate::platform::{default_opener, ensure_private_dir};
@@ -100,6 +100,11 @@ pub fn open_session(
             keymap: settings.keymap.clone(),
             clipboard: Box::new(DesktopClipboard),
             opener: default_opener(),
+            notify_after: settings.notify_after,
+            // TODO(quire-desktop): the desktop's notification service (quire v0.2.30 has none).
+            notifier: Box::new(NoopNotifier),
+            clock: Box::new(SystemClock::new()),
+            shelf_dir: launch.ambient.shelf_dir(),
         },
         events_tx,
     )?;

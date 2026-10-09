@@ -4,7 +4,7 @@
 use temor_core::terminal::action::Action;
 use temor_vt::KeyAction;
 
-use super::{FindStep, Session};
+use super::{FindStep, PromptStep, Session};
 use crate::error::UiError;
 use crate::input::{FindBar, Routed, Stroke, route};
 
@@ -51,6 +51,8 @@ impl Session {
                 self.finder = None;
                 Ok(())
             }
+            Action::PreviousPrompt => self.jump_prompt(PromptStep::Previous),
+            Action::NextPrompt => self.jump_prompt(PromptStep::Next),
         }
     }
 }

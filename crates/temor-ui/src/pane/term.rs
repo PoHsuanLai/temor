@@ -8,10 +8,10 @@ use temor_core::terminal::paste::PasteMode;
 use temor_core::terminal::row::{RowCell, RowText, Span};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
-    CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
-    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, ReplySink,
-    Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, ViewportScroll,
-    VtEvent,
+    AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
+    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, PointSpace,
+    ReplySink, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan,
+    ViewportScroll, VtEvent,
 };
 
 use crate::error::UiError;
@@ -169,6 +169,16 @@ impl Term {
     /// The title the program set.
     pub fn title(&self) -> String {
         self.terminal.title()
+    }
+
+    /// Where an anchor is now, in `space`; `None` once the scrollback has dropped it.
+    pub fn anchor_point(&self, id: AnchorId, space: PointSpace) -> Option<GridPoint> {
+        self.terminal.anchor_point(id, space)
+    }
+
+    /// Frees an anchor the window no longer needs.
+    pub fn release_anchor(&mut self, id: AnchorId) {
+        self.terminal.release_anchor(id);
     }
 
     /// The hyperlink (OSC 8) under a grid point, if any.

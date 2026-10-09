@@ -2,11 +2,13 @@
 //! bar and the paste confirmation. The window sends it events and reads back what to show; it
 //! never touches the terminal or the PTY itself. Dioxus is not used here.
 
+mod blocks;
 mod clip;
 mod clipboard;
 mod find;
 mod keys;
 mod lifecycle;
+mod marks;
 mod model;
 mod pointer;
 mod read;
@@ -14,6 +16,7 @@ mod read;
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
-pub use lifecycle::sanitise_title;
+pub use lifecycle::{BELL_MARK, sanitise_title};
+pub use marks::{BlockMark, PromptStep, desktop_note};
 pub use model::{Drag, Notice, PADDING_LOGICAL, Session, SessionParts};
 pub use pointer::WheelDirection;

@@ -20,15 +20,19 @@ use temor_vt::{Ime, KeyAction};
 
 use ds::base::time::clock::sleep;
 
+use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
 use super::confirm::PasteConfirm;
-use super::convert::scale_of;
+use super::convert::{device_point, scale_of};
 use super::find_bar::{FindBar, StepDirection};
 use super::ime::ImeGlue;
 use super::launch::Launch;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
+use super::status::StatusLine;
 use crate::input::{Composing, RawKey, Repeat, stroke};
 use crate::session::QUERY_DEBOUNCE;
+use temor_core::notify::Focus;
+use temor_core::vocab::ids::BlockId;
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -45,6 +49,7 @@ pub fn App() -> Element {
     let mut ui = use_signal(|| 0u32);
     let preedit = use_signal(|| None::<String>);
     let mut notice = use_signal(|| None::<String>);
+    let mut hovered = use_signal(|| None::<BlockId>);
 
     // Every change of the pane's size, scale or device lays it out again.
     {
@@ -147,12 +152,17 @@ pub fn App() -> Element {
     let on_focus = {
         let ime = ime.clone();
         let slot = Rc::clone(&slot);
-        move |_: FocusEvent| focus_in(ime.clone(), Rc::clone(&slot), rect)
+        move |_: FocusEvent| {
+            set_focus(&slot, Focus::Focused);
+            focus_in(ime.clone(), Rc::clone(&slot), rect)
+        }
     };
     let on_blur = {
         let ime = ime.clone();
         let apply = apply.clone();
+        let slot = Rc::clone(&slot);
         move |_: FocusEvent| {
+            set_focus(&slot, Focus::Unfocused);
             ime.settle(&apply);
             let ime = ime.clone();
             spawn(async move {
@@ -188,6 +198,11 @@ pub fn App() -> Element {
         )
     });
     let (find, pending, ended) = view.unwrap_or((None, None, false));
+    let chrome = slot
+        .borrow()
+        .session
+        .as_ref()
+        .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
     let message = notice();
     // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
     // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
@@ -255,13 +270,107 @@ pub fn App() -> Element {
                     onkeyup: move |e| key_up(e, KeyAction::Release),
                     onfocus: on_focus,
                     onblur: on_blur,
-                    onpointerdown: move |e| (mouse.down)(e),
+                    onpointerdown: {
+                        let slot = Rc::clone(&slot);
+                        let mouse_down = mouse.down.clone();
+                        move |e: PointerEvent| {
+                            // A press in the gutter selects a block; anything else is the grid's.
+                            let at = device_at(&e, signals);
+                            let mut notice = notice;
+                            let gutter = match slot.borrow_mut().session.as_mut() {
+                                Some(s) => s.gutter_press(at),
+                                None => Ok(false),
+                            };
+                            match gutter {
+                                Ok(true) => {
+                                    ui += 1;
+                                    repaint(&slot);
+                                }
+                                Ok(false) => mouse_down(e),
+                                Err(err) => notice.set(Some(err.to_string())),
+                            }
+                        }
+                    },
                     onpointerup: move |e| (mouse.up)(e),
+                    onpointermove: {
+                        let slot = Rc::clone(&slot);
+                        move |e: PointerEvent| {
+                            let at = device_at(&e, signals);
+                            let over = slot.borrow().session.as_ref().and_then(|s| s.gutter_block(at));
+                            if over != hovered() {
+                                hovered.set(over);
+                            }
+                        }
+                    },
                     onwheel: move |e| (mouse.wheel)(e),
                     TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
                     if let Some(text) = preedit() {
                         div { style: "position:absolute; left:0; bottom:0; white-space:pre; text-decoration:underline", "{text}" }
                     }
+                    GutterMarks { marks: chrome.marks.clone() }
+                }
+                if let Some(bar) = chrome.bar.clone() {
+                    BlockBar {
+                        bar,
+                        on_copy_command: {
+                            let slot = Rc::clone(&slot);
+                            move |id: BlockId| {
+                                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                                    s.copy_command(id);
+                                }
+                                ui += 1;
+                            }
+                        },
+                        on_copy_output: {
+                            let slot = Rc::clone(&slot);
+                            move |id: BlockId| {
+                                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                                    s.copy_output(id);
+                                }
+                                ui += 1;
+                            }
+                        },
+                        on_save: {
+                            let slot = Rc::clone(&slot);
+                            move |id: BlockId| {
+                                let mut notice = notice;
+                                let saved = slot
+                                    .borrow_mut()
+                                    .session
+                                    .as_mut()
+                                    .map(|s| s.save_output(id));
+                                if let Some(Err(err)) = saved {
+                                    notice.set(Some(err.to_string()));
+                                }
+                                ui += 1;
+                            }
+                        },
+                        on_rerun: {
+                            let slot = Rc::clone(&slot);
+                            move |id: BlockId| {
+                                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                                    s.rerun(id);
+                                }
+                                ui += 1;
+                                repaint(&slot);
+                            }
+                        },
+                        on_close: {
+                            let slot = Rc::clone(&slot);
+                            move |_: ()| {
+                                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                                    s.clear_block_selection();
+                                }
+                                ui += 1;
+                            }
+                        },
+                    }
+                }
+                StatusLine {
+                    cwd: chrome.cwd.clone(),
+                    title: chrome.title.clone(),
+                    progress: chrome.progress,
+                    bell: chrome.bell,
                 }
                 if let Some(reason) = pending {
                     PasteConfirm {
@@ -400,4 +509,17 @@ fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant) {
             repaint(&slot);
         }
     });
+}
+
+/// A pointer event's place in the pane, in device pixels.
+fn device_at(event: &PointerEvent, signals: Option<HostSignals>) -> temor_vt::SurfacePoint {
+    let p = event.element_coordinates();
+    device_point(p.x, p.y, scale_of(signals.as_ref()))
+}
+
+/// Tells the session whether the pane has the keyboard (a notice goes out only when it does not).
+fn set_focus(slot: &RefCell<Slot>, focus: Focus) {
+    if let Some(s) = slot.borrow_mut().session.as_mut() {
+        s.set_focus(focus);
+    }
 }

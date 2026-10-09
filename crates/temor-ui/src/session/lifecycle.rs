@@ -1,14 +1,20 @@
 //! The session's lifecycle: opening the program, fitting and painting, and taking the events
 //! the program sends.
 
+use temor_core::notify::{Focus, Limiter};
+use temor_core::terminal::cwd::cwd_from_url;
 use temor_render::{PaneFocus, PixelSize, Scale};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
+use super::blocks::BlockLog;
 use super::model::{Lifetime, Notice, PADDING_LOGICAL, SessionParts};
 use crate::error::UiError;
 use crate::paint::{PaintView, Painter};
 use crate::pane::{Hold, PaneEvent, start};
+
+/// How long the bell's visual mark stays up.
+pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
 
 impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
@@ -36,6 +42,17 @@ impl Session {
             hold_generation: 0,
             find_text: String::new(),
             pending_query: None,
+            blocks: BlockLog::default(),
+            selected_block: None,
+            cwd: None,
+            progress: None,
+            focus: Focus::Focused,
+            notify_after: parts.notify_after,
+            limiter: Limiter::default(),
+            notifier: parts.notifier,
+            clock: parts.clock,
+            bell_until: None,
+            shelf_dir: parts.shelf_dir,
         })
     }
 
@@ -128,19 +145,68 @@ impl Session {
                 self.title = title.clone();
                 Notice::Title(title)
             }
-            PaneEvent::Bell => Notice::Bell,
+            PaneEvent::Bell => {
+                let now = self.clock.now();
+                self.bell_until = Some(now.after_span(BELL_MARK));
+                if let Some(note) = temor_core::notify::bell_notice(self.focus) {
+                    self.announce(note);
+                }
+                Notice::Bell
+            }
             PaneEvent::Exited(exit) => {
+                self.shell_gone();
                 self.lifetime = Lifetime::Ended(exit);
                 Notice::Ended(exit)
             }
-            PaneEvent::Cwd(_)
-            | PaneEvent::Clipboard(_)
-            | PaneEvent::Notification(_)
-            | PaneEvent::Prompt(_) => {
-                // TODO(P2/P9): blocks, the working directory, OSC 52 writes and notifications.
+            PaneEvent::Cwd(url) => {
+                self.cwd = cwd_from_url(&url);
+                Notice::Chrome
+            }
+            PaneEvent::Progress(progress) => {
+                self.progress = match progress.state {
+                    temor_vt::ProgressState::Remove => None,
+                    _ => Some(progress),
+                };
+                Notice::Chrome
+            }
+            PaneEvent::Prompt(mark) => {
+                self.mark(mark);
+                Notice::Quiet
+            }
+            PaneEvent::Anchor(id) => self.anchored(id),
+            PaneEvent::Reset => {
+                self.terminal_reset();
+                Notice::Repaint
+            }
+            PaneEvent::Notification(note) => {
+                let title = sanitise_title(&note.title);
+                let body = sanitise_title(&note.body);
+                if let Some(desk) = temor_core::notify::program_notice(&title, &body, self.focus) {
+                    self.announce(desk);
+                }
+                Notice::Quiet
+            }
+            PaneEvent::Clipboard(_) => {
+                // TODO(P9): OSC 52 writes need the clipboard's permission, which the pane asks for.
                 Notice::Quiet
             }
         }
+    }
+
+    /// The bell's visual mark, while it is up.
+    pub fn bell_showing(&self) -> bool {
+        self.bell_until
+            .is_some_and(|until| self.clock.now() < until)
+    }
+
+    /// The working directory the shell reported, if any.
+    pub fn cwd(&self) -> Option<&str> {
+        self.cwd.as_deref()
+    }
+
+    /// The progress the program reported (OSC 9;4), while it is shown.
+    pub fn progress(&self) -> Option<temor_vt::Progress> {
+        self.progress
     }
 }
 

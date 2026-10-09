@@ -106,6 +106,10 @@ fn fixture(name: &str) -> Fixture {
             keymap: Keymap::defaults(),
             clipboard: Box::new(clipboard.clone()),
             opener: Box::new(NoOpener),
+            notify_after: TerminalSettings::default().notify_after,
+            notifier: Box::new(temor_ui::edge::NoopNotifier),
+            clock: Box::new(temor_ui::edge::SystemClock::new()),
+            shelf_dir: home.join("shelf"),
         },
         tx,
     )

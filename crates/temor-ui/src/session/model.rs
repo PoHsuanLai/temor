@@ -2,14 +2,22 @@
 //! gives the window, and the drag and query records. Fields are visible to the session's
 //! children only.
 
+use std::path::PathBuf;
+
+use ds_core::time::stamp::Stamp;
+use temor_core::notify::{Focus, Limiter, NotifyAfter};
 use temor_core::terminal::keymap::Keymap;
 use temor_core::terminal::search::Finder;
 use temor_core::terminal::selection::Selection;
+use temor_core::vocab::ids::BlockId;
 use temor_pty::ChildExit;
 use temor_render::{FontSet, GridFit, PixelSize, Scale};
+use temor_vt::Progress;
 
+use super::blocks::BlockLog;
 use super::clip::PendingPaste;
 use super::clipboard::Clipboard;
+use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::Painter;
 use crate::pane::{Hold, PaneHandle, PaneSpec};
@@ -20,6 +28,9 @@ use crate::platform::Opener;
 pub enum Notice {
     /// The screen changed: repaint.
     Repaint,
+    /// Something outside the grid changed (a block, the working directory, progress, the
+    /// title): redraw the window's chrome.
+    Chrome,
     /// The program set the title.
     Title(String),
     /// The bell rang.
@@ -64,6 +75,18 @@ pub struct Session {
     pub(super) hold_generation: u64,
     pub(super) find_text: String,
     pub(super) pending_query: Option<PendingQuery>,
+    pub(super) blocks: BlockLog,
+    pub(super) selected_block: Option<BlockId>,
+    pub(super) cwd: Option<String>,
+    pub(super) progress: Option<Progress>,
+    pub(super) focus: Focus,
+    pub(super) notify_after: NotifyAfter,
+    pub(super) limiter: Limiter,
+    pub(super) notifier: Box<dyn Notifier>,
+    pub(super) clock: Box<dyn Clock>,
+    /// Until when the bell's visual mark stays up.
+    pub(super) bell_until: Option<Stamp>,
+    pub(super) shelf_dir: PathBuf,
 }
 
 /// A find query typed but not yet run, and when it was last typed.
@@ -97,6 +120,12 @@ pub struct SessionParts {
     pub keymap: Keymap,
     pub clipboard: Box<dyn Clipboard>,
     pub opener: Box<dyn Opener>,
+    /// When a finished command is worth a notice.
+    pub notify_after: NotifyAfter,
+    pub notifier: Box<dyn Notifier>,
+    pub clock: Box<dyn Clock>,
+    /// Where "Save output" places files (the downloads shelf).
+    pub shelf_dir: PathBuf,
 }
 
 impl std::fmt::Debug for SessionParts {
