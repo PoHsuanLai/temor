@@ -12,6 +12,7 @@ dioxus = { workspace = true }
 ds = { workspace = true }
 ds-blitz = { workspace = true }
 ds-core = { workspace = true }
+rustix = { workspace = true }
 temor-core = { workspace = true }
 temor-pty = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }

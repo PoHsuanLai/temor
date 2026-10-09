@@ -27,7 +27,7 @@ pub fn bash_spec(home: &Path, grid: GridSize, cell: CellPx) -> PaneSpec {
     env.set("PS1", "$ ");
     env.set("HISTFILE", home.join("history"));
     let spawn = SpawnSpec {
-        program: PathBuf::from("/usr/bin/bash"),
+        program: bash_path(),
         args: ["--norc", "--noprofile", "-i"]
             .into_iter()
             .map(Into::into)
@@ -69,7 +69,7 @@ pub fn screen(pane: &PaneHandle) -> String {
     pane.with_term(|term| {
         let rows = term.screen_rows().unwrap_or(0);
         (0..rows)
-            .map(|row| term.row_text(row).unwrap_or_default())
+            .map(|row| term.row_text(row).map(|line| line.text).unwrap_or_default())
             .collect::<Vec<_>>()
             .join("\n")
     })
@@ -98,4 +98,32 @@ pub fn drain(events: &mut UnboundedReceiver<PaneEvent>) -> bool {
         dirty |= matches!(event, PaneEvent::Dirty);
     }
     dirty
+}
+
+/// Whether the tools these tests drive are present: bash, util-linux `setsid`, and `/proc`.
+/// Where one is missing the test returns early (with a note) instead of failing.
+pub fn tools_present() -> bool {
+    let path = std::ffi::OsStr::new("/usr/bin:/bin");
+    let found = temor_pty::find_program("bash", path).is_some()
+        && temor_pty::find_program("setsid", path).is_some()
+        && std::path::Path::new("/proc/self").exists();
+    if !found {
+        eprintln!("skipped: needs bash, setsid and /proc");
+    }
+    found
+}
+
+/// Counts the events waiting on the channel, consuming them.
+pub fn count_events(events: &mut UnboundedReceiver<PaneEvent>) -> usize {
+    let mut count = 0;
+    while events.try_recv().is_ok() {
+        count += 1;
+    }
+    count
+}
+
+/// Where bash is, from the standard places (the tests skip when it is not there).
+pub fn bash_path() -> PathBuf {
+    temor_pty::find_program("bash", std::ffi::OsStr::new("/usr/bin:/bin"))
+        .unwrap_or_else(|| PathBuf::from("/usr/bin/bash"))
 }

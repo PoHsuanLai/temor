@@ -9,7 +9,7 @@ mod reap;
 mod spawn;
 mod term;
 
-pub use event::PaneEvent;
+pub use event::{Hold, PaneEvent};
 pub use handle::PaneHandle;
 pub use reap::{ReapStep, reap_step};
 pub use spawn::{PaneSpec, start};

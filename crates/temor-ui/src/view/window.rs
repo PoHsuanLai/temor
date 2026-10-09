@@ -10,13 +10,15 @@ use dioxus::prelude::*;
 use ds::edit::input::{Composition, EditInput};
 use ds::host::document::use_document_host;
 use ds::host::ime::{ImeEvent, ImeSwitch};
-use ds::host::measure::use_rect;
+use ds::host::measure::{RectProbe, use_rect};
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::terminal::action::Action;
 use temor_render::{PixelSize, Scale};
 use temor_vt::{Ime, KeyAction};
+
+use ds::base::time::clock::sleep;
 
 use super::confirm::PasteConfirm;
 use super::convert::scale_of;
@@ -26,6 +28,7 @@ use super::launch::Launch;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use crate::input::{Composing, RawKey, Repeat, stroke};
+use crate::session::QUERY_DEBOUNCE;
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -53,6 +56,8 @@ pub fn App() -> Element {
             gpu.clone(),
         );
         use_effect(move || {
+            // Also re-run when the window asks for a new shell (after the program ended).
+            let _ = ui();
             let scale = scale_of(signals.as_ref());
             let Some(logical) = rect.rect() else { return };
             let pixels = device_pixels(logical.size.width.0, logical.size.height.0, scale);
@@ -119,16 +124,20 @@ pub fn App() -> Element {
             if composing == Ime::Composing {
                 return;
             }
-            let outcome = slot
-                .borrow_mut()
-                .session
-                .as_mut()
-                .map(|s| s.key(stroke(&raw)));
+            // An unidentified key is ignored; the rest go to the session.
+            let outcome = match stroke(&raw) {
+                Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
+                None => None,
+            };
             if let Some(Err(err)) = outcome {
                 notice.set(Some(err.to_string()));
             }
+            if let Some(message) = take_notice(&slot) {
+                notice.set(Some(message));
+            }
             ui += 1;
             repaint(&slot);
+            place_cursor(ime.clone(), Rc::clone(&slot), rect);
         }
     };
     let (mut key_down, mut key_up) = (on_key.clone(), on_key);
@@ -138,7 +147,7 @@ pub fn App() -> Element {
     let on_focus = {
         let ime = ime.clone();
         let slot = Rc::clone(&slot);
-        move |_: FocusEvent| focus_in(ime.clone(), Rc::clone(&slot))
+        move |_: FocusEvent| focus_in(ime.clone(), Rc::clone(&slot), rect)
     };
     let on_blur = {
         let ime = ime.clone();
@@ -164,7 +173,7 @@ pub fn App() -> Element {
                 ime.listen(element, heard).await;
                 // The first layout gives the pane the keyboard, as a person's click would.
                 if ime.take_focus().await {
-                    focus_in(ime, slot);
+                    focus_in(ime, slot, rect);
                 }
             });
         }
@@ -173,13 +182,15 @@ pub fn App() -> Element {
     let _ = ui();
     let view = slot.borrow().session.as_ref().map(|s| {
         (
-            s.finder().map(|f| (f.query().to_owned(), f.position())),
+            s.finder().map(|f| (s.find_text().to_owned(), f.position())),
             s.pending_paste().map(|p| p.reason),
             s.ended(),
         )
     });
     let (find, pending, ended) = view.unwrap_or((None, None, false));
     let message = notice();
+    // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
+    // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
     let pane_style =
         "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
     rsx! {
@@ -193,10 +204,11 @@ pub fn App() -> Element {
                             let slot = Rc::clone(&slot);
                             move |text: String| {
                                 if let Some(s) = slot.borrow_mut().session.as_mut() {
-                                    let _ = s.set_query(&text);
+                                    s.queue_query(&text, started.elapsed());
                                 }
+                                // The search runs once typing pauses (see `run_query_later`).
+                                run_query_later(Rc::clone(&slot), started);
                                 ui += 1;
-                                repaint(&slot);
                             }
                         },
                         on_step: {
@@ -275,6 +287,21 @@ pub fn App() -> Element {
                 }
                 if ended {
                     div { style: "padding:8px", "The shell has ended." }
+                    Button {
+                        label: "Restart".to_owned(),
+                        title: Some("Start a new shell".to_owned()),
+                        onclick: {
+                            let slot = Rc::clone(&slot);
+                            move |_| {
+                                // The old session shuts its program down when it is dropped.
+                                let mut s = slot.borrow_mut();
+                                s.session = None;
+                                s.events = None;
+                                drop(s);
+                                ui += 1;
+                            }
+                        },
+                    }
                 }
                 if let Some(text) = message {
                     div { style: "padding:8px", "{text}" }
@@ -304,24 +331,62 @@ fn send_text(slot: &RefCell<Slot>, text: &str) {
 }
 
 /// The pane has the keyboard: the input method is on and placed at the cursor.
-fn focus_in(ime: ImeGlue, slot: Rc<RefCell<Slot>>) {
+fn focus_in(ime: ImeGlue, slot: Rc<RefCell<Slot>>, rect: RectProbe) {
     spawn(async move {
         ime.switch(ImeSwitch::On).await;
-        ime.cursor_area(cursor_rect(&slot)).await;
+        ime.cursor_area(cursor_rect(&slot, rect)).await;
     });
 }
 
-/// The cursor's cell in window logical pixels, for the input method's candidates.
-fn cursor_rect(_slot: &RefCell<Slot>) -> Rect {
-    // TODO(quire 0.2.31): the cursor's cell, from the terminal's cursor view.
+/// Puts the input method's candidates at the cursor after the screen changed.
+fn place_cursor(ime: ImeGlue, slot: Rc<RefCell<Slot>>, rect: RectProbe) {
+    spawn(async move {
+        ime.cursor_area(cursor_rect(&slot, rect)).await;
+    });
+}
+
+/// The cursor's cell in window logical pixels (zero until the pane is laid out and shown).
+fn cursor_rect(slot: &RefCell<Slot>, rect: RectProbe) -> Rect {
+    let origin = rect
+        .rect()
+        .map_or((0.0, 0.0), |r| (r.origin.x.0, r.origin.y.0));
+    let cell = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|s| s.cursor_logical())
+        .unwrap_or([0.0; 4]);
     Rect {
         origin: Point {
-            x: Px(0.0),
-            y: Px(0.0),
+            x: Px(origin.0 + cell[0]),
+            y: Px(origin.1 + cell[1]),
         },
         size: Size {
-            width: Px(0.0),
-            height: Px(0.0),
+            width: Px(cell[2]),
+            height: Px(cell[3]),
         },
     }
+}
+
+/// The message the session has for the person, if any; taking it clears it.
+fn take_notice(slot: &RefCell<Slot>) -> Option<String> {
+    slot.borrow_mut()
+        .session
+        .as_mut()
+        .and_then(|s| s.take_notice())
+}
+
+/// Runs the find query once the person has paused typing for [`QUERY_DEBOUNCE`].
+fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant) {
+    spawn(async move {
+        sleep(QUERY_DEBOUNCE).await;
+        let ran = slot
+            .borrow_mut()
+            .session
+            .as_mut()
+            .map(|s| s.run_due_query(started.elapsed()));
+        if matches!(ran, Some(Ok(true))) {
+            repaint(&slot);
+        }
+    });
 }

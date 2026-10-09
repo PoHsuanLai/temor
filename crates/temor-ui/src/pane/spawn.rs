@@ -1,6 +1,7 @@
 //! Starting a pane: the program on a new terminal, the emulator for it, and the I/O thread that
 //! joins them. The caller builds the program's spawn spec and launcher at the app's edge.
 
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
@@ -54,18 +55,22 @@ pub fn start(spec: PaneSpec, events: UnboundedSender<PaneEvent>) -> Result<PaneH
     let term = Arc::new(Mutex::new(term));
     let outbox = Arc::new(Outbox::new(port));
     let (commands_tx, commands) = channel();
+    let dirty = Arc::new(AtomicBool::new(false));
     let io = Io {
         term: Arc::clone(&term),
         outbox: Arc::clone(&outbox),
         pty,
         commands,
         events: events.clone(),
+        dirty: Arc::clone(&dirty),
+        last_title: None,
     };
     std::thread::Builder::new()
         .name("temor-pane-io".to_owned())
         .spawn(move || run(io))
         .map_err(UiError::Thread)?;
     // The first frame is always due.
+    let _ = dirty.swap(true, std::sync::atomic::Ordering::AcqRel);
     let _ = events.send(PaneEvent::Dirty);
-    Ok(PaneHandle::new(term, outbox, commands_tx, events))
+    Ok(PaneHandle::new(term, outbox, commands_tx, events, dirty))
 }

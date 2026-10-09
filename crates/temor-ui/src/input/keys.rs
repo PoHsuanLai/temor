@@ -29,12 +29,12 @@ pub enum Repeat {
 }
 
 /// Builds the stroke for one event.
-pub fn stroke(raw: &RawKey<'_>) -> Stroke {
+/// `None` for a key with no physical or known logical identity (a dead or unidentified key):
+/// it is ignored rather than sent to the program as something else.
+pub fn stroke(raw: &RawKey<'_>) -> Option<Stroke> {
     let mods = core_mods(raw.held);
     let vt_mods = vt_mods(raw.held);
-    let code = code_key(raw.code)
-        .or_else(|| logical_key(raw.key))
-        .unwrap_or(KeyCode::Space);
+    let code = code_key(raw.code).or_else(|| logical_key(raw.key))?;
     let text = match raw.key {
         Key::Character(s) if !raw.held.contains(HeldMods::CONTROL) => s.clone(),
         _ => String::new(),
@@ -52,10 +52,10 @@ pub fn stroke(raw: &RawKey<'_>) -> Stroke {
         unshifted,
         ime: raw.ime,
     };
-    Stroke {
+    Some(Stroke {
         chord: chord_of(raw.key, mods),
         key,
-    }
+    })
 }
 
 /// The held modifiers as the keymap sees them. Meta counts as Super (PLAN §6).

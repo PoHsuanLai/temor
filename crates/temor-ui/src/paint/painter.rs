@@ -36,6 +36,11 @@ impl Painter {
         self.palette = palette;
     }
 
+    /// The cursor's cell as of the last paint, when the cursor is shown.
+    pub fn cursor_cell(&self) -> Option<temor_render::CellPos> {
+        self.frame.cursor_cell()
+    }
+
     /// The cell at `scale`.
     pub fn metrics(&mut self, scale: Scale) -> CellMetrics {
         self.renderer.cell_metrics(scale)

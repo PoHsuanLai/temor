@@ -27,10 +27,11 @@ impl Outbox {
         &self.port
     }
 
-    /// Queues `bytes` after what is waiting and writes as much as the terminal takes.
+    /// Queues `bytes` after what is waiting and writes as much as the terminal takes. Beyond
+    /// [`QUEUE_CAP`] the bytes are dropped, so a program that stops reading cannot grow the queue.
     pub fn push(&self, bytes: &[u8]) {
         let mut queue = self.lock();
-        queue.extend(bytes.iter().copied());
+        enqueue(&mut queue, bytes);
         flush(&self.port, &mut queue);
     }
 
@@ -55,6 +56,17 @@ impl Outbox {
     }
 }
 
+/// The most bytes that may wait for the program (1 MiB). Replies and pastes beyond it are dropped.
+pub const QUEUE_CAP: usize = 1 << 20;
+
+/// Appends as much of `bytes` as the cap leaves room for; returns how many bytes were dropped.
+pub fn enqueue(queue: &mut VecDeque<u8>, bytes: &[u8]) -> usize {
+    let room = QUEUE_CAP.saturating_sub(queue.len());
+    let taken = bytes.len().min(room);
+    queue.extend(bytes[..taken].iter().copied());
+    bytes.len() - taken
+}
+
 fn flush(port: &PtyIo, queue: &mut VecDeque<u8>) {
     while !queue.is_empty() {
         let chunk: Vec<u8> = queue.iter().copied().take(4096).collect();
@@ -69,5 +81,23 @@ fn flush(port: &PtyIo, queue: &mut VecDeque<u8>) {
             // Would block, wrote nothing, or failed: the I/O thread retries or reaps.
             _ => return,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_queue_takes_no_more_than_its_cap() {
+        let mut queue = VecDeque::new();
+        let big = vec![7u8; QUEUE_CAP + 10];
+        assert_eq!(enqueue(&mut queue, &big), 10);
+        assert_eq!(queue.len(), QUEUE_CAP);
+        assert_eq!(
+            enqueue(&mut queue, b"more"),
+            4,
+            "a full queue takes nothing more"
+        );
     }
 }

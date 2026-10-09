@@ -22,4 +22,15 @@ pub enum PaneEvent {
     Prompt(PromptEvent),
     /// The program ended and was reaped; `None` when its status could no longer be read.
     Exited(Option<ChildExit>),
+    /// The program holds the screen (synchronized output) or released it.
+    RenderHold(Hold),
+}
+
+/// Whether the program is holding the screen for a synchronized update.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Hold {
+    /// Keep showing the last frame until the program releases it (or the window's timeout).
+    Held,
+    /// Draw again.
+    Released,
 }

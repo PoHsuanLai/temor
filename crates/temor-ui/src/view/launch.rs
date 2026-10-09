@@ -13,7 +13,7 @@ use crate::app::shell_pane;
 use crate::edge::Ambient;
 use crate::error::UiError;
 use crate::pane::PaneEvent;
-use crate::platform::default_opener;
+use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 
 /// Given to the session's own process as its first argument: the program becomes the session
@@ -59,6 +59,7 @@ pub fn open_session(
     _pixels: PixelSize,
     _scale: Scale,
 ) -> Result<(Session, UnboundedReceiver<PaneEvent>), UiError> {
+    ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
     let family = match &settings.font {
         FontChoice::SystemMonospace => FontFamily::Monospace,
@@ -86,6 +87,8 @@ pub fn open_session(
         1,
         grid,
         cell,
+        // TODO(quire 0.2.31): the terminal palette from quire's tokens, and re-applied on theme
+        // change (Painter::set_palette and Term::set_palette). v0.2.30 exposes no theme change.
         temor_render::Palette::default(),
         launcher,
     )?;

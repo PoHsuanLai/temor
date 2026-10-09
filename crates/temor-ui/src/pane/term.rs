@@ -5,6 +5,7 @@
 use std::sync::mpsc::{Receiver, channel};
 
 use temor_core::terminal::paste::PasteMode;
+use temor_core::terminal::selection::RowText;
 use temor_render::{FrameCapture, Palette, PaneFrame};
 use temor_vt::{
     CellPx, EventSink, Formatter, GridPoint, GridSize, KeyEncoder, KeyInput, LineCount, ModeState,
@@ -129,13 +130,18 @@ impl Term {
             .format(&self.terminal, TextSpan::Range { start, end })?)
     }
 
-    /// The text of one screen row, from its first to its last column.
-    pub fn row_text(&self, row: u32) -> Result<String, UiError> {
+    /// The text of one screen row, from its first to its last column, and whether the row is
+    /// soft-wrapped into the next.
+    pub fn row_text(&self, row: u32) -> Result<RowText, UiError> {
         let last = self.terminal.size().cols.0.saturating_sub(1);
-        self.text(
+        let text = self.text(
             GridPoint::new(PointSpace::Screen, 0, row),
             GridPoint::new(PointSpace::Screen, last, row),
-        )
+        )?;
+        Ok(RowText {
+            text,
+            wraps: self.terminal.row_wraps(row)?,
+        })
     }
 
     /// The viewport's place: its first screen row, and the rows it shows.

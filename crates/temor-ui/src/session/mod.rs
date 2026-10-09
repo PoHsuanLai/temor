@@ -10,6 +10,8 @@ mod pointer;
 
 pub use clip::PendingPaste;
 pub use clipboard::{Clipboard, ClipboardFailed};
+pub use find::{FindStep, QUERY_DEBOUNCE};
+pub use pointer::WheelDirection;
 
 use temor_core::terminal::keymap::Keymap;
 use temor_core::terminal::search::Finder;
@@ -21,7 +23,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::error::UiError;
 use crate::input::ClickState;
 use crate::paint::{PaintView, Painter};
-use crate::pane::{PaneEvent, PaneHandle, PaneSpec, start};
+use crate::pane::{Hold, PaneEvent, PaneHandle, PaneSpec, start};
 use crate::platform::Opener;
 
 /// Logical padding around the grid (PLAN §5: panes snap to whole cells, leftovers are padding).
@@ -38,6 +40,8 @@ pub enum Notice {
     Bell,
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
+    /// The program is holding (or released) the screen.
+    Hold(crate::pane::Hold),
     /// Nothing for the window.
     Quiet,
 }
@@ -66,6 +70,17 @@ pub struct Session {
     pending: Option<PendingPaste>,
     title: String,
     lifetime: Lifetime,
+    notice: Option<String>,
+    hold: Hold,
+    find_text: String,
+    pending_query: Option<PendingQuery>,
+}
+
+/// A find query typed but not yet run, and when it was last typed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingQuery {
+    text: String,
+    at: std::time::Duration,
 }
 
 /// Whether the program is still running, and how it ended if not.
@@ -123,6 +138,10 @@ impl Session {
             pending: None,
             title: String::new(),
             lifetime: Lifetime::Running,
+            notice: None,
+            hold: Hold::Released,
+            find_text: String::new(),
+            pending_query: None,
         })
     }
 
@@ -136,15 +155,40 @@ impl Session {
         self.fit
     }
 
+    /// The cursor's cell in pane-relative logical pixels `[x, y, width, height]`, when shown.
+    pub fn cursor_logical(&self) -> Option<[f32; 4]> {
+        let fit = self.fit?;
+        let pos = self.painter.cursor_cell()?;
+        let (x, y) = fit.cell_origin(pos);
+        let factor = self.scale.factor();
+        Some([
+            x.0 as f32 / factor,
+            y.0 as f32 / factor,
+            fit.cell.width.0 as f32 / factor,
+            fit.cell.height.0 as f32 / factor,
+        ])
+    }
+
     /// The screen's text, row by row, as the terminal holds it (for tests and the probe).
     pub fn screen_text(&self) -> String {
         self.pane.with_term(|term| {
             let rows = term.screen_rows().unwrap_or(0);
             (0..rows)
-                .map(|row| term.row_text(row).unwrap_or_default())
+                .map(|row| term.row_text(row).map(|line| line.text).unwrap_or_default())
                 .collect::<Vec<_>>()
                 .join("\n")
         })
+    }
+
+    /// Whether the program holds the screen. The window sets this from the program's hold events
+    /// and its own timeout (PLAN §4b): a hold never lasts past the window's timer.
+    pub fn set_hold(&mut self, hold: Hold) {
+        self.hold = hold;
+    }
+
+    /// A message for the person from the last action, if one is waiting; taking it clears it.
+    pub fn take_notice(&mut self) -> Option<String> {
+        self.notice.take()
     }
 
     /// The window's title as the program last set it.
@@ -182,9 +226,10 @@ impl Session {
         }
         let fit = self.painter.fit(pixels, scale, PADDING_LOGICAL);
         let changed = self.fit.map(|f| (f.grid, f.cell)) != Some((fit.grid, fit.cell));
-        self.fit = Some(fit);
         if changed {
+            // Recorded only once the terminal and the program have the new size.
             self.pane.resize(fit.grid, fit.cell)?;
+            self.fit = Some(fit);
         }
         Ok(changed)
     }
@@ -201,6 +246,10 @@ impl Session {
             focus: PaneFocus::Focused,
             selection: None,
         };
+        if self.hold == Hold::Held {
+            // The program is holding the screen: keep showing the last frame.
+            return Ok(());
+        }
         let painter = &mut self.painter;
         self.pane.with_term(|term| painter.paint(term, view, show))
     }
@@ -208,8 +257,14 @@ impl Session {
     /// What one event from the pane means for the window. Output is never blocked on it.
     pub fn absorb(&mut self, event: PaneEvent) -> Notice {
         match event {
-            PaneEvent::Dirty => Notice::Repaint,
+            PaneEvent::Dirty => {
+                // Cleared first: output that arrives while the window paints signals again.
+                self.pane.clear_dirty();
+                Notice::Repaint
+            }
+            PaneEvent::RenderHold(hold) => Notice::Hold(hold),
             PaneEvent::Title(title) => {
+                let title = sanitise_title(&title);
                 self.title = title.clone();
                 Notice::Title(title)
             }
@@ -232,4 +287,15 @@ impl Session {
     fn viewport_top(&self) -> Result<u32, UiError> {
         Ok(self.pane.with_term(|term| term.viewport())?.0)
     }
+}
+
+/// Longest title kept; a program's title is shown, so it is bounded.
+const TITLE_MAX_CHARS: usize = 200;
+
+/// A program's title with control characters removed and its length bounded.
+pub fn sanitise_title(raw: &str) -> String {
+    raw.chars()
+        .filter(|c| !c.is_control())
+        .take(TITLE_MAX_CHARS)
+        .collect()
 }

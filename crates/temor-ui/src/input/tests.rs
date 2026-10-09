@@ -46,3 +46,19 @@ fn a_preedit_starts_a_composition_and_its_commit_ends_it() {
     assert_eq!(state, Composing::Idle);
     assert_eq!(steps.len(), 1);
 }
+
+#[test]
+fn an_unidentified_key_is_not_sent_as_a_space() {
+    use super::keys::{RawKey, Repeat, stroke};
+    use dioxus::html::{Code, Key};
+    use temor_vt::Ime;
+    let raw = RawKey {
+        key: &Key::Unidentified,
+        code: &Code::Unidentified,
+        held: dioxus::html::Modifiers::empty(),
+        action: temor_vt::KeyAction::Press,
+        repeating: Repeat::First,
+        ime: Ime::Idle,
+    };
+    assert!(stroke(&raw).is_none());
+}

@@ -4,7 +4,7 @@
 use temor_core::terminal::action::Action;
 use temor_vt::KeyAction;
 
-use super::Session;
+use super::{FindStep, Session};
 use crate::error::UiError;
 use crate::input::{FindBar, Routed, Stroke, route};
 
@@ -40,11 +40,11 @@ impl Session {
                 Ok(())
             }
             Action::FindNext => {
-                self.step_find(true);
+                self.step_find(FindStep::Next);
                 Ok(())
             }
             Action::FindPrevious => {
-                self.step_find(false);
+                self.step_find(FindStep::Previous);
                 Ok(())
             }
             Action::CloseFind => {

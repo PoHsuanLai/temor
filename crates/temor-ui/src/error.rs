@@ -18,9 +18,12 @@ pub enum UiError {
     #[error("the settings file could not be read: {0}")]
     SettingsRead(#[source] std::io::Error),
     /// This program's own path is not known, so the shell cannot be started through it.
-    #[error("the shell's launcher could not be found: {0}")]
+    #[error("the shell could not be started: this program's location is unknown ({0})")]
     Launcher(#[source] std::io::Error),
-    /// The pane's I/O thread could not start.
-    #[error("the pane could not start its thread: {0}")]
+    /// The folder for shell integration is missing, or is not private to this user.
+    #[error("the folder for shell setup is not private to you: {0}")]
+    RuntimeDir(#[source] std::io::Error),
+    /// The pane's background work could not start.
+    #[error("the terminal could not start its background work: {0}")]
     Thread(#[source] std::io::Error),
 }

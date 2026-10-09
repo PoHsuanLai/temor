@@ -35,13 +35,20 @@ impl Ambient {
             .get("XDG_CONFIG_HOME")
             .filter(|d| !d.is_empty())
             .map_or_else(|| home.join(".config"), PathBuf::from);
-        let runtime_base = env
-            .get("XDG_RUNTIME_DIR")
-            .filter(|d| !d.is_empty())
-            .map_or_else(std::env::temp_dir, PathBuf::from);
+        // Never the shared temporary directory: shims written there could be planted by others.
+        // Without a runtime directory, temor keeps its own under the cache directory.
+        let runtime_dir = match env.get("XDG_RUNTIME_DIR").filter(|d| !d.is_empty()) {
+            Some(runtime) => PathBuf::from(runtime).join("temor"),
+            None => env
+                .get("XDG_CACHE_HOME")
+                .filter(|d| !d.is_empty())
+                .map_or_else(|| home.join(".cache"), PathBuf::from)
+                .join("temor")
+                .join("run"),
+        };
         Some(Self {
             config_dir: config_home.join("temor"),
-            runtime_dir: runtime_base.join("temor"),
+            runtime_dir,
             home,
             env,
         })

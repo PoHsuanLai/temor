@@ -4345,6 +4345,7 @@ dependencies = [
  "ds-blitz",
  "ds-core",
  "ds-harness",
+ "rustix",
  "temor-core",
  "temor-pty",
  "temor-render",

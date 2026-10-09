@@ -2,14 +2,14 @@
 //! that leaves the pane is followed by pointer capture. Called from the window's component, so
 //! its hooks run in the component's order.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::host::captured::{CapturedPointer, PointerPhase};
 use ds::host::measure::RectProbe;
-use ds::host::pointer_capture::{PointerCapture, use_pointer_capture};
+use ds::host::pointer_capture::{PointerCapture, PointerHold, use_pointer_capture};
 use ds::host::signals::HostSignals;
 use temor_vt::MouseButton as VtButton;
 
@@ -68,16 +68,20 @@ pub fn use_pane_mouse(
         })
     };
 
+    // Whether the host routes this press's release to the capture (so `up` must not report it).
+    let host_releases = Rc::new(Cell::new(false));
     let down = {
-        let (slot, signals, notice) = (Rc::clone(&slot), signals, notice);
+        let (slot, signals, notice, host_releases) =
+            (Rc::clone(&slot), signals, notice, Rc::clone(&host_releases));
         move |event: PointerEvent| {
-            capture.begin();
+            // Back and forward buttons do not select or report anything here.
+            let Some(button) = event.trigger_button().and_then(vt_button) else {
+                return;
+            };
+            let hold = capture.begin();
+            host_releases.set(hold == PointerHold::Captured);
             let p = event.element_coordinates();
             let scale = scale_of(signals.as_ref());
-            let button = event
-                .trigger_button()
-                .and_then(vt_button)
-                .unwrap_or(VtButton::Left);
             let result = slot.borrow_mut().session.as_mut().map(|s| {
                 s.press(
                     device_point(p.x, p.y, scale),
@@ -95,20 +99,28 @@ pub fn use_pane_mouse(
     };
 
     let up = {
-        let (slot, signals) = (Rc::clone(&slot), signals);
+        let (slot, signals, notice, host_releases) =
+            (Rc::clone(&slot), signals, notice, Rc::clone(&host_releases));
         move |event: PointerEvent| {
+            let Some(button) = event.trigger_button().and_then(vt_button) else {
+                return;
+            };
+            // One source for the release: the host's capture if it has this press, else this.
+            if host_releases.replace(false) {
+                return;
+            }
             let p = event.element_coordinates();
             let scale = scale_of(signals.as_ref());
-            let button = event
-                .trigger_button()
-                .and_then(vt_button)
-                .unwrap_or(VtButton::Left);
-            if let Some(s) = slot.borrow_mut().session.as_mut() {
-                let _ = s.release(
+            let mut notice = notice;
+            let released = slot.borrow_mut().session.as_mut().map(|s| {
+                s.release(
                     device_point(p.x, p.y, scale),
                     button,
                     vt_mods(event.modifiers()),
-                );
+                )
+            });
+            if let Some(Err(err)) = released {
+                notice.set(Some(err.to_string()));
             }
             repaint(&slot);
         }
@@ -120,10 +132,10 @@ pub fn use_pane_mouse(
             event.prevent_default();
             let p = event.element_coordinates();
             let scale = scale_of(signals.as_ref());
-            let (up, lines) = wheel_lines(event.delta());
+            let (direction, lines) = wheel_lines(event.delta());
             let at = device_point(p.x, p.y, scale);
             if let Some(s) = slot.borrow_mut().session.as_mut() {
-                let _ = s.wheel(at, up, lines, vt_mods(event.modifiers()));
+                let _ = s.wheel(at, direction, lines, vt_mods(event.modifiers()));
             }
             repaint(&slot);
         }

@@ -1,0 +1,6 @@
+temor includes code adapted from the following projects.
+
+Ghostty (MIT License), https://github.com/ghostty-org/ghostty
+  Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
+  Used: the byte cleaning list of input/paste.zig (crates/temor-core/src/terminal/paste.rs).
+  The libghostty-vt sources and bindings are covered by crates/temor-vt-sys/NOTICE.

@@ -46,7 +46,7 @@ impl Clipboard for MemoryClipboard {
 struct NoOpener;
 
 impl Opener for NoOpener {
-    fn open(&self, _target: &str) -> Result<(), OpenError> {
+    fn open(&self, _target: &temor_core::terminal::link::LinkTarget) -> Result<(), OpenError> {
         Ok(())
     }
 }
@@ -73,7 +73,7 @@ fn fixture(name: &str) -> Fixture {
         runtime_dir: home.join("runtime"),
     };
     let settings = TerminalSettings {
-        shell: ShellChoice::Program("/usr/bin/bash".to_owned()),
+        shell: ShellChoice::Program(super::support::bash_path().display().to_string()),
         ..TerminalSettings::default()
     };
     let setsid =
@@ -209,6 +209,9 @@ fn point_at(session: &Session, row: u16, col: u16) -> SurfacePoint {
 
 #[test]
 fn typing_reaches_the_program_and_its_output_is_drawn() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-typing");
     type_text(&mut f.session, "echo typed-ok");
     press_enter(&mut f.session);
@@ -219,6 +222,9 @@ fn typing_reaches_the_program_and_its_output_is_drawn() {
 
 #[test]
 fn a_resize_refits_the_grid_and_the_program_size() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-resize");
     let first = f.session.fit().expect("fitted");
     let first_want = format!("{} {}", first.grid.rows.0, first.grid.cols.0);
@@ -234,9 +240,21 @@ fn a_resize_refits_the_grid_and_the_program_size() {
     assert!(changed, "a bigger pane changes the grid");
     let fit = f.session.fit().expect("fitted");
     let want = format!("{} {}", fit.grid.rows.0, fit.grid.cols.0);
-    type_text(&mut f.session, "stty size");
-    press_enter(&mut f.session);
-    wait_until("the new size", || has_line(&f.session.screen_text(), &want));
+    // The program learns its size on the I/O thread, a moment after the layout; ask until the
+    // answer shows it.
+    let start = Instant::now();
+    loop {
+        type_text(&mut f.session, "stty size");
+        press_enter(&mut f.session);
+        std::thread::sleep(Duration::from_millis(200));
+        if has_line(&f.session.screen_text(), &want) {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(8),
+            "the program never saw {want}"
+        );
+    }
     assert!(
         f.session
             .layout(PixelSize::new(1200, 720), Scale::new(1.0))
@@ -246,6 +264,9 @@ fn a_resize_refits_the_grid_and_the_program_size() {
 
 #[test]
 fn selecting_a_word_and_copying_puts_it_on_the_clipboard() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-copy");
     type_text(&mut f.session, "echo copied-word");
     press_enter(&mut f.session);
@@ -286,6 +307,9 @@ fn selecting_a_word_and_copying_puts_it_on_the_clipboard() {
 
 #[test]
 fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-paste");
     type_text(&mut f.session, "echo bracketed");
     press_enter(&mut f.session);
@@ -320,8 +344,11 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     f.session.cancel_paste();
     assert!(f.session.pending_paste().is_none());
     // A plain paste (no bracketed paste) with a line break waits too.
-    let plain =
-        temor_core::terminal::paste::check("a\nb", temor_core::terminal::paste::PasteMode::Plain);
+    let plain = temor_core::terminal::paste::check(
+        "a\nb",
+        temor_core::terminal::paste::PasteMode::Plain,
+        temor_core::terminal::paste::VtVerdict::Clean,
+    );
     assert_eq!(
         plain,
         temor_core::terminal::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
@@ -330,6 +357,9 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
 
 #[test]
 fn the_find_bar_finds_and_steps_through_matches() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-find");
     type_text(&mut f.session, "echo needle; echo needle");
     press_enter(&mut f.session);
@@ -369,6 +399,9 @@ fn the_find_bar_finds_and_steps_through_matches() {
 
 #[test]
 fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
+    if !super::support::tools_present() {
+        return;
+    }
     let keymap = Keymap::defaults();
     let next = Chord::parse("ctrl+shift+g").expect("valid");
     assert_eq!(keymap.action_for(&next), Some(Action::FindNext));
@@ -397,6 +430,9 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
 
 #[test]
 fn the_pane_paints_its_text_into_pixels() {
+    if !super::support::tools_present() {
+        return;
+    }
     let mut f = ready("session-paint");
     type_text(&mut f.session, "echo painted");
     press_enter(&mut f.session);
@@ -423,4 +459,36 @@ fn the_pane_paints_its_text_into_pixels() {
     );
     // Glyph edges antialias, so more than the background and the ink colours appear.
     assert!(colours > 2, "text was drawn: {colours} distinct colours");
+}
+
+#[test]
+fn a_find_query_runs_only_after_typing_pauses() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-debounce");
+    f.session.queue_query("prompt", Duration::from_millis(0));
+    let early = f
+        .session
+        .run_due_query(Duration::from_millis(100))
+        .expect("check");
+    assert!(!early, "no search ran while typing");
+    assert!(f.session.finder().is_none());
+    // The newest keystroke restarts the quiet period.
+    f.session.queue_query("prompt2", Duration::from_millis(120));
+    let restarted = f
+        .session
+        .run_due_query(Duration::from_millis(200))
+        .expect("check");
+    assert!(
+        !restarted,
+        "the quiet period restarted at the last keystroke"
+    );
+    let ran = f
+        .session
+        .run_due_query(Duration::from_millis(300))
+        .expect("check");
+    assert!(ran);
+    assert_eq!(f.session.find_text(), "prompt2");
+    assert!(f.session.finder().is_some());
 }

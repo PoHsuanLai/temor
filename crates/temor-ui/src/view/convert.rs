@@ -9,6 +9,8 @@ use ds::host::signals::HostSignals;
 use temor_render::Scale;
 use temor_vt::{Modifiers, MouseButton as VtButton, SurfacePoint};
 
+use crate::session::WheelDirection;
+
 /// The device scale the host reports, or 1x before it does.
 pub fn scale_of(signals: Option<&HostSignals>) -> Scale {
     signals.map_or(Scale::new(1.0), |s| {
@@ -25,15 +27,24 @@ pub fn device_point(x: f64, y: f64, scale: Scale) -> SurfacePoint {
     }
 }
 
-/// Whether a wheel turn goes up, and how many lines it scrolls: a line delta is three lines per
-/// unit, a pixel delta one line per 20 logical pixels, and at least one line either way.
-pub fn wheel_lines(delta: WheelDelta) -> (bool, u32) {
+/// Which way a wheel turn goes, and how many lines it scrolls: a line delta is three lines per
+/// unit, a pixel delta one line per 20 logical pixels, and at least one line for any movement.
+/// No movement is no lines.
+pub fn wheel_lines(delta: WheelDelta) -> (WheelDirection, u32) {
     let dy = match delta {
         WheelDelta::Pixels(v) => v.y / 20.0,
         WheelDelta::Lines(v) => v.y * 3.0,
         WheelDelta::Pages(v) => v.y * 24.0,
     };
-    (dy < 0.0, dy.abs().round().max(1.0) as u32)
+    let direction = match dy < 0.0 {
+        true => WheelDirection::Up,
+        false => WheelDirection::Down,
+    };
+    let lines = match dy == 0.0 {
+        true => 0,
+        false => dy.abs().round().max(1.0) as u32,
+    };
+    (direction, lines)
 }
 
 pub fn vt_mods(held: HeldMods) -> Modifiers {

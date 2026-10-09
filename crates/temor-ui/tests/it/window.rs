@@ -36,7 +36,7 @@ fn harness(name: &str, probe: &Probe) -> Harness {
     let launch = Launch {
         ambient,
         settings: TerminalSettings {
-            shell: ShellChoice::Program("/usr/bin/bash".to_owned()),
+            shell: ShellChoice::Program(super::support::bash_path().display().to_string()),
             ..TerminalSettings::default()
         },
         launcher: LauncherChoice::Setsid(
@@ -70,6 +70,9 @@ fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> b
 
 #[test]
 fn the_window_starts_a_shell_and_takes_typing() {
+    if !super::support::tools_present() {
+        return;
+    }
     let probe = Probe::new();
     let mut h = harness("window-typing", &probe);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));

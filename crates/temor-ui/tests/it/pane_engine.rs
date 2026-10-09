@@ -6,10 +6,13 @@ use std::time::{Duration, Instant};
 use temor_core::terminal::paste::{PasteMode, encode};
 use temor_vt::{GridSize, KeyCode, KeyInput, Modifiers};
 
-use super::support::{scratch, screen, spawn_bash, wait_for};
+use super::support::{count_events, scratch, screen, spawn_bash, wait_for};
 
 #[test]
 fn a_typed_command_runs_and_its_output_reaches_the_screen() {
+    if !super::support::tools_present() {
+        return;
+    }
     let home = scratch("typing").join("home");
     let mut shell = spawn_bash(&home, 80, 24);
     wait_for(&mut shell, "the prompt", |s| s.contains("$"));
@@ -29,6 +32,9 @@ fn a_typed_command_runs_and_its_output_reaches_the_screen() {
 
 #[test]
 fn a_resize_changes_the_grid_and_the_program_size() {
+    if !super::support::tools_present() {
+        return;
+    }
     let home = scratch("resize").join("home");
     let mut shell = spawn_bash(&home, 80, 24);
     wait_for(&mut shell, "the prompt", |s| s.contains("$"));
@@ -39,14 +45,27 @@ fn a_resize_changes_the_grid_and_the_program_size() {
         .resize(GridSize::new(100, 30), temor_vt::CellPx::new(8, 16))
         .expect("resize");
     assert_eq!(shell.pane.with_term(|t| t.size()), GridSize::new(100, 30));
-    shell.pane.send(b"stty size\r");
-    wait_for(&mut shell, "the new size", |s| {
-        s.lines().any(|l| l == "30 100")
-    });
+    // The program learns its size on the I/O thread, a moment after `resize` returns; ask again
+    // until its answer shows the new size.
+    let start = Instant::now();
+    loop {
+        shell.pane.send(b"stty size\r");
+        std::thread::sleep(Duration::from_millis(200));
+        if screen(&shell.pane).lines().any(|l| l == "30 100") {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(8),
+            "the program never saw 30 100"
+        );
+    }
 }
 
 #[test]
 fn bracketed_paste_is_framed_when_the_program_asks_for_it() {
+    if !super::support::tools_present() {
+        return;
+    }
     let home = scratch("paste").join("home");
     let mut shell = spawn_bash(&home, 80, 24);
     wait_for(&mut shell, "the prompt", |s| s.contains("$"));
@@ -69,6 +88,9 @@ fn bracketed_paste_is_framed_when_the_program_asks_for_it() {
 
 #[test]
 fn the_program_is_reaped_when_the_pane_is_dropped() {
+    if !super::support::tools_present() {
+        return;
+    }
     let home = scratch("reap").join("home");
     let shell = spawn_bash(&home, 80, 24);
     let pid_file = home.join("pid");
@@ -99,6 +121,9 @@ fn the_program_is_reaped_when_the_pane_is_dropped() {
 
 #[test]
 fn the_screen_reads_back_as_text() {
+    if !super::support::tools_present() {
+        return;
+    }
     let home = scratch("screen").join("home");
     let mut shell = spawn_bash(&home, 40, 6);
     wait_for(&mut shell, "the prompt", |s| s.contains("$"));
@@ -127,4 +152,34 @@ fn key_code(c: char) -> KeyCode {
         '-' => KeyCode::Minus,
         _ => KeyCode::Space,
     }
+}
+
+#[test]
+fn a_flood_of_output_costs_a_bounded_number_of_events() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let home = scratch("flood").join("home");
+    let mut shell = spawn_bash(&home, 80, 24);
+    wait_for(&mut shell, "the prompt", |s| s.contains("$"));
+    count_events(&mut shell.events);
+    shell.pane.send(b"seq 1 200000\r");
+    // Count every event while the output streams; `wait_for` would consume them.
+    let start = Instant::now();
+    let mut events = 0;
+    loop {
+        events += count_events(&mut shell.events);
+        if screen(&shell.pane).lines().any(|l| l == "200000") {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(20),
+            "the flood never finished"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    events += count_events(&mut shell.events);
+    // Nothing repaints in this test, so at most one repaint request is in flight: two hundred
+    // thousand lines of output are a handful of events, not one per read.
+    assert!(events <= 5, "{events} events for a flood");
 }

@@ -2,6 +2,7 @@
 //! send, and the resize. Dropping the handle shuts the pane down (the I/O thread reaps the
 //! program).
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
@@ -15,9 +16,6 @@ use super::spawn::pty_size;
 use super::term::Term;
 use crate::error::UiError;
 
-/// How long a resize waits for the I/O thread to tell the program (it polls every 20 ms).
-const RESIZE_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
-
 /// A running pane, as the window holds it.
 #[derive(Debug)]
 pub struct PaneHandle {
@@ -25,6 +23,7 @@ pub struct PaneHandle {
     outbox: Arc<Outbox>,
     commands: Sender<Command>,
     events: UnboundedSender<PaneEvent>,
+    dirty: Arc<AtomicBool>,
 }
 
 impl PaneHandle {
@@ -33,12 +32,14 @@ impl PaneHandle {
         outbox: Arc<Outbox>,
         commands: Sender<Command>,
         events: UnboundedSender<PaneEvent>,
+        dirty: Arc<AtomicBool>,
     ) -> Self {
         Self {
             term,
             outbox,
             commands,
             events,
+            dirty,
         }
     }
 
@@ -61,9 +62,10 @@ impl PaneHandle {
         Ok(())
     }
 
-    /// Changes the grid: the terminal reflows, the program is told its new size, and the
-    /// window repaints.
+    /// Changes the grid. The program is told the new size first (by the I/O thread, which does
+    /// not block this call); then the terminal reflows and the window is asked to repaint.
     pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), UiError> {
+        let _ = self.commands.send(Command::Resize(pty_size(grid, cell)));
         let output = self.with_term(|term| term.resize(grid, cell))?;
         for reply in output.replies {
             self.outbox.push(&reply);
@@ -71,21 +73,20 @@ impl PaneHandle {
         for event in output.events.into_iter().filter_map(map_event) {
             let _ = self.events.send(event);
         }
-        let _ = self.events.send(PaneEvent::Dirty);
-        // The program is told its new size before this returns, so its next output is at the new
-        // size. A closed I/O thread has already reaped the program; there is nothing to wait for.
-        let (done, applied) = std::sync::mpsc::sync_channel(1);
-        if self
-            .commands
-            .send(Command::Resize {
-                size: pty_size(grid, cell),
-                done,
-            })
-            .is_ok()
-        {
-            let _ = applied.recv_timeout(RESIZE_WAIT);
-        }
+        self.request_repaint();
         Ok(())
+    }
+
+    /// Asks the window for a repaint, unless one is already on its way.
+    pub fn request_repaint(&self) {
+        if !self.dirty.swap(true, Ordering::AcqRel) {
+            let _ = self.events.send(PaneEvent::Dirty);
+        }
+    }
+
+    /// The window has repainted: the next change may signal again.
+    pub fn clear_dirty(&self) {
+        self.dirty.store(false, Ordering::Release);
     }
 }
 

@@ -4,7 +4,8 @@
 
 use std::time::Duration;
 
-use temor_core::terminal::selection::{CellPos, Granularity, Selection, Shape};
+use temor_core::terminal::link::{LinkVerdict, check_link};
+use temor_core::terminal::selection::{CellPos, Granularity, RowText, Selection, Shape};
 use temor_vt::{
     GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
@@ -60,7 +61,7 @@ impl Session {
             true => Shape::Block,
             false => Shape::Linear,
         };
-        self.selection = Some(Selection::begin(cell, &line, granularity, shape));
+        self.selection = Some(Selection::begin(cell, &line.text, granularity, shape));
         self.drag = Some(Drag { granularity, shape });
         self.mirror_selection()
     }
@@ -78,7 +79,7 @@ impl Session {
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
         let line = self.line(cell.row)?;
         if let Some(selection) = self.selection.as_mut() {
-            selection.extend(cell, &line);
+            selection.extend(cell, &line.text);
         }
         self.mirror_selection()
     }
@@ -115,18 +116,21 @@ impl Session {
     pub fn wheel(
         &mut self,
         at: SurfacePoint,
-        up: bool,
+        direction: WheelDirection,
         lines: u32,
         mods: Modifiers,
     ) -> Result<(), UiError> {
+        if lines == 0 {
+            return Ok(());
+        }
         let Some(fit) = self.fit else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
         if tracking && !mods.contains(Modifiers::SHIFT) {
-            let button = match up {
-                true => MouseButton::WheelUp,
-                false => MouseButton::WheelDown,
+            let button = match direction {
+                WheelDirection::Up => MouseButton::WheelUp,
+                WheelDirection::Down => MouseButton::WheelDown,
             };
             let surface = fit.mouse_surface();
             let input = MouseInput {
@@ -144,7 +148,10 @@ impl Session {
             return Ok(());
         }
         let rows = isize::try_from(lines).unwrap_or(isize::MAX);
-        let delta = if up { -rows } else { rows };
+        let delta = match direction {
+            WheelDirection::Up => -rows,
+            WheelDirection::Down => rows,
+        };
         self.pane
             .with_term(|term| term.scroll(ViewportScroll::Delta(RowDelta(delta))));
         Ok(())
@@ -157,7 +164,7 @@ impl Session {
     }
 
     /// The text of a screen row.
-    pub(super) fn line(&self, row: u32) -> Result<String, UiError> {
+    pub(super) fn line(&self, row: u32) -> Result<RowText, UiError> {
         self.pane.with_term(|term| term.row_text(row))
     }
 
@@ -166,12 +173,30 @@ impl Session {
             let point = GridPoint::new(PointSpace::Screen, cell.col, cell.row);
             term.hyperlink_at(point)
         });
-        if let Some(target) = link {
-            // A refused open is the desktop's to show; the pane carries on.
-            let _ = self.opener.open(&target);
+        let Some(target) = link else {
+            return Ok(());
+        };
+        match check_link(&target) {
+            LinkVerdict::Open(link) => {
+                if self.opener.open(&link).is_err() {
+                    self.notice = Some("That link could not be opened.".to_owned());
+                }
+            }
+            LinkVerdict::Refused(_) => {
+                self.notice = Some("This pane only opens web and email links.".to_owned());
+            }
         }
         Ok(())
     }
+}
+
+/// Which way the wheel turned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WheelDirection {
+    /// Towards older output.
+    Up,
+    /// Towards the live screen.
+    Down,
 }
 
 /// A viewport cell as a screen cell (the viewport starts at screen row `top`).
