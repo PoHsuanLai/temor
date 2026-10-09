@@ -60,15 +60,20 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
       whole pane; CPU clips glyph overhang to the row, GPU does not. §5
 
-## quire v0.3.0 (960ac8fa) — bump in R1, features in P3
-- [ ] Bump the pin to `rev = "960ac8faa0166eba83f5f09a72ba063f79d35c06"  # v0.3.0` (breaking: `launch`
+## quire v0.3.1 (b9b9c03b) — bump in R1, features in P3
+- [ ] Bump the pin to `rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"  # v0.3.1` (v0.3.0 was breaking; v0.3.1 additive; `SignInFault` now non_exhaustive: `launch`
       returns a Result, seams behind `ds-blitz/testing`, settings setters; v0.2.31 shipped
       SplitView axis, RawKey/RawKeySurface, terminal palette tokens, public `focus_soon_told` /
       `focus_landing_told`, RootExtent::Window, IME composition). Drop temor's IME machine copy.
 - [ ] IME candidate area: `ImeHost::cursor_area(surface, Rect)` via the document host's `.ime()`
       with the grid's MountedData and caret cell rect; repro to whopper if it doesn't move. §6
-- [ ] Theme: re-apply the palette in an effect on `ds_settings::use_environment(..)`; Space theme and
-      runtime window title are queued in quire. §5
+- [ ] Theme: re-apply the palette in an effect on `ds_settings::use_environment(..)`; follow the Space look
+      with `use_space_look()`/`use_space_frame()` (ds::prelude; tracks the app's own Space until sill
+      publishes per-workspace looks). Window title: `ds::window::host::use_window_title(title)` (the
+      pane title / cwd). §5
+- [ ] IME on the pane's TextureLayer: `ime().switch(.., On)` first, then `cursor_area` with the caret
+      in window-logical px (layer origin + caret), retrying on `Probe::Busy` (EditSurface's retry is
+      private, so the pane needs its own). quire's proof: ds-blitz `tests/it/ime_texture_layer.rs`. §6
 - [ ] Add quire's coherence test (examples/consumer/tests/it/coherence.rs).
 - [ ] Keys (PLAN §6, answered by whopper): bind each ⌘ action to both Ctrl+Shift+key and Super+key;
       ⌘ chord = `command_keys(mods)` has META without CONTROL, never `is_command` in a pane. Tests:
