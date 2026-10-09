@@ -46,7 +46,7 @@ of the source tree into `zig-store/p`.
 The `native` feature (on by default) builds and links the library. Without it the crate only
 type-checks against the checked-in bindings, so `cargo check --workspace --no-default-features`
 needs neither Zig nor `GHOSTTY_SOURCE_DIR`. CI machines without the Ghostty tree run that check
-plus the tests of crates that use `temor-vt`'s `FakeVt` (feature `fake`); anything that links
+plus the tests of crates that use `temor-vt`'s `FakeVt` (feature `testing`); anything that links
 libghostty needs the variables above.
 
 ## Bumping the pin

@@ -1,7 +1,7 @@
 //! temor's terminal core. `Terminal` wraps libghostty-vt (feature `ghostty`, on by default):
 //! bytes in, a typed [`VtEvent`] stream out through a caller-supplied [`EventSink`], and a
 //! two-phase [`RenderView`] for the renderer. [`Vt`] is the seam other crates test through, with
-//! [`FakeVt`] (feature `fake`) standing in when Zig is not available.
+//! [`FakeVt`] (feature `testing`) standing in when Zig is not available.
 //!
 //! The only `unsafe` in this crate is in the `ffi` module.
 //!
@@ -32,11 +32,11 @@ mod error;
 mod event;
 mod input;
 mod model;
-#[cfg(any(feature = "ghostty", feature = "fake"))]
+#[cfg(any(feature = "ghostty", feature = "testing"))]
 mod scan;
 mod vt;
 
-#[cfg(feature = "fake")]
+#[cfg(feature = "testing")]
 mod fake;
 
 #[cfg(feature = "ghostty")]
@@ -65,7 +65,7 @@ pub use model::{
 };
 pub use vt::Vt;
 
-#[cfg(feature = "fake")]
+#[cfg(feature = "testing")]
 pub use fake::FakeVt;
 
 #[cfg(feature = "ghostty")]

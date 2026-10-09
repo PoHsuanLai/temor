@@ -38,6 +38,10 @@ mod error;
 mod identity;
 mod platform;
 
+/// In-memory config fixtures for tests; built with the `testing` feature.
+#[cfg(feature = "testing")]
+pub use config::support as testing;
+
 pub use argv::{
     BindAddress, ControlLayout, ControlPersist, Forward, ForwardSpec, RemoteCommand, RemoteHost,
     RuntimeDir, Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,

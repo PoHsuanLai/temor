@@ -7,6 +7,10 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+# In-memory `~/.ssh/config` fixtures (`testing::load`) for tests here and in other crates.
+testing = []
+
 [dependencies]
 temor-pty = { path = "../temor-pty" }
 thiserror = { workspace = true }
@@ -15,6 +19,7 @@ thiserror = { workspace = true }
 rustix = { workspace = true }
 
 [dev-dependencies]
+temor-ssh = { workspace = true, features = ["testing"] }
 tempfile = { workspace = true }
 
 [[test]]
