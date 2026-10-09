@@ -334,6 +334,11 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     wait_until("the pasted command's output", || {
         has_line(&f.session.screen_text(), "pasted-ok")
     });
+    // bash turns bracketed paste off while a command runs and back on at its next prompt.
+    wait_until("bracketed paste again", || {
+        f.session.pane().with_term(|t| t.paste_mode())
+            == temor_core::terminal::paste::PasteMode::Bracketed
+    });
 
     // Bash has bracketed paste on, so a line break is framed and safe: no confirmation.
     *f.clipboard.0.borrow_mut() = "echo framed-lines\necho framed-2".to_owned();
