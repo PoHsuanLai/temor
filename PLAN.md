@@ -108,7 +108,7 @@ temor/
                       bootstrap, host identity
     # L1: engines (headless, usable without any UI)
     temor-render/     fonts (fontique discovery, swash raster), glyph atlas, CPU and GPU renderers
-    temor-term/       a headless terminal session: PTY + terminal + I/O pump (the caller owns the
+    temor-pane/       a headless terminal session: PTY + terminal + I/O pump (the caller owns the
                       thread), replies, reaping, paste queue, blocks, selection, search, keymap and
                       terminal settings. Used by temor-ui, temor-remote and tests.
     # L2: app model (pure)
@@ -120,7 +120,7 @@ temor/
     temor-desktop/    feature `quire-desktop`: IntentProvider1, docket and companion clients,
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
     temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
-                      daemon on temor-term, ports, files, trial, agent relay
+                      daemon on temor-pane, ports, files, trial, agent relay
     temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service,
                       systemd unit `org.quire.Temor.service`, intents manifest, skills)
 ```
@@ -683,7 +683,7 @@ The ranking rules:
 | **P0 Spikes** | (a) build: Zig 0.16 plus the `libghostty-vt` crate pinned, offline through `GHOSTTY_SOURCE_DIR`, in the lane's build dir. (b) render: two panes side by side, libghostty output plus a kitty image in two `TextureLayer`s, with an `anyview-peek` texture beside them in one window. (c) input: IME plus the key encoder through an `EditSurface`-style host. (d) measure what `anyview-peek` actually adds to the build. | quire v0.2.29 |
 | **P1 Single terminal** | PTY, `temor-vt`, renderer, keys/mouse/paste/clipboard, scrollback, search, selection, hyperlinks, fonts, settings, desktop file, keycap profile | P0 |
 | **P2 Shell integration and blocks** | bash/zsh/fish scripts (OSC 133/7), blocks and their actions, jump between prompts, exit marks, command-finished notifications, progress | P1 |
-| **R1 Layers** | D23: extract `temor-term` (from temor-ui's pane/session and temor-core's terminal/block code) and `temor-shell` (from temor-pty); drop `ds-core` from L0/L1 and `ds-style` from temor-core (it keeps `ds-core`'s `Word`, per L2 rules); library API pass on every L0/L1 crate (root API, docs with examples, `#[non_exhaustive]`, traits, builders); `scripts/check-layers.sh` in the gate. No behaviour change; the full suite stays green | P2 |
+| **R1 Layers** | D23 plus the desktop layering audit (`~/rs-wt/layering-audit/temor.md`): extract `temor-pane` (the pane engine: `PaneSpec`, start, `PaneHandle`, the PTY I/O thread, `Term` under one lock, reaping, the paste queue, blocks, selection, search, keymap and terminal settings, `shell_pane`; from temor-ui's pane/session and temor-core's terminal/block code) with **no Dioxus and no tokio** (events through `std::sync::mpsc` or a caller-supplied sink trait), so anyview or sill can embed a terminal pane; extract `temor-shell` from temor-pty; drop `ds-core` from L0/L1 and `ds-style` from temor-core (it keeps `Word`, per L2 rules); `#[non_exhaustive]` on public types that will grow (wire messages and events, `VtEvent`, error enums, transfer events); doctests for every library's main entry point; fakes behind a `testing` feature, not `cfg(test)`; `Wrap` enum for `row.rs` `wraps: bool`; workspace deps only (temor-ssh's `path` dep); drop the unused `ds-settings` entry; document in temor-render that consumers need quire's fork `[patch]` block; git revs only; local sibling overrides only in a git-ignored `.cargo/local.toml` used through `cargo --config .cargo/local.toml` (the tracked `.cargo/config.toml` keeps only build settings), and a guard that temor's fork `[patch]` block matches quire's canonical one; `scripts/check-layers.sh` in the gate. No behaviour change; the full suite stays green | P2 |
 | **P3 Window structure** | quire v0.2.34 bump and the §6 two-path ⌘ keys first; sidebar tabs (persistent, pinned, folders), split tree plus `SplitView`, split miniatures, drag to split and tear off, recently closed through snapshots, session restore | P1; quire `SplitView` batch |
 | **P4 Spaces** | kit integration, `Project` payload, profiles (env, ssh-agent, dotenv), routes, ⌃1–9 | P3 |
 | **P5 Command bar and quick terminal** | providers, fixed ranking, Run row, quick terminal | P4 |
