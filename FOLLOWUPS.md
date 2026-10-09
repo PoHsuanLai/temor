@@ -60,9 +60,25 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
       whole pane; CPU clips glyph overhang to the row, GPU does not. §5
 
+## temor-ui / temor (lane/app, P1, reviewed at f783a2a)
+- [ ] quire v0.2.31: replace plain layout divs and the 100vh root with quire layout components and
+      `RootExtent::Window`; terminal palette tokens; re-apply the palette on theme change. §5
+- [ ] quire asks (whopper offline; saved in /mnt/data/cargo/temor-lanes/pending-quire-asks.md): IME
+      cursor area API, runtime window title, theme-change signal, consumer coherence test. §6
+- [ ] Bell, OSC 0/2 title, OSC 52 writes, notifications, cwd and progress are received but not shown
+      (P2/P3). Hyperlink hover target preview not built. §6, §7
+- [ ] Settings are temor's own typed file at $XDG_CONFIG_HOME/temor/terminal.conf; move to
+      ds-settings when quire provides it. §6
+- [ ] Per-cell text reads cost ~3 FFI calls per cell: measure search on a large scrollback. §5
+- [ ] Output read just before a resize may be parsed at the new size (the usual SIGWINCH window).
+- [ ] Without XDG_RUNTIME_DIR the runtime folder is ~/.cache/temor/run (0700, owner checked).
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
-- [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift). §6
+- [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift);
+      temor-core terminal/chord.rs and keymap.rs defaults. §6
+- [ ] Link opener and private runtime dir: temor-ui platform/opener.rs and private_dir non-unix
+      stubs. §6
 - [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); implement `SystemBitmapEmoji` in
       temor-render platform/other.rs. §5
 - [ ] macOS pty: `Pty::spawn` and `run_session_leader` (platform/unsupported.rs); process name, cwd,
