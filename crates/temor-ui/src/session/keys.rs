@@ -60,6 +60,19 @@ impl Session {
             }
             Action::PreviousPrompt => self.jump_prompt(PromptStep::Previous),
             Action::NextPrompt => self.jump_prompt(PromptStep::Next),
+            // Tabs and splits belong to the window, which runs them through the workspace step;
+            // one pane has nothing to do with them.
+            Action::NewTab
+            | Action::ClosePane
+            | Action::SplitRight
+            | Action::SplitDown
+            | Action::FocusLeft
+            | Action::FocusRight
+            | Action::FocusUp
+            | Action::FocusDown
+            | Action::ToggleZoom
+            | Action::Equalize
+            | Action::SelectTab(_) => Ok(()),
         }
     }
 }

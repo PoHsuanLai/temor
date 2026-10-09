@@ -19,6 +19,29 @@ pub enum Action {
     PreviousPrompt,
     /// Bring the next command's prompt into view (⌘↓).
     NextPrompt,
+    /// Open a new tab (⌘T).
+    NewTab,
+    /// Close the focused pane; the last pane closes its tab (⌘W).
+    ClosePane,
+    /// Split the focused pane, the new one on its right (⌘D).
+    SplitRight,
+    /// Split the focused pane, the new one below it (⌘⇧D).
+    SplitDown,
+    /// Move focus to the pane on the left (⌘⌥←).
+    FocusLeft,
+    /// Move focus to the pane on the right (⌘⌥→).
+    FocusRight,
+    /// Move focus to the pane above (⌘⌥↑).
+    FocusUp,
+    /// Move focus to the pane below (⌘⌥↓).
+    FocusDown,
+    /// Show the focused pane over its whole tab, or back to the split (⌘⇧↩).
+    ToggleZoom,
+    /// Even out the splits of the tab (⌃⌘=).
+    Equalize,
+    /// Select the tab at this sidebar position, 1 to 9 (⌘1 to ⌘9). Not in [`Action::ALL`]: the
+    /// digits are fixed defaults, not settings.
+    SelectTab(u8),
 }
 
 impl Action {
@@ -32,6 +55,16 @@ impl Action {
         Self::CloseFind,
         Self::PreviousPrompt,
         Self::NextPrompt,
+        Self::NewTab,
+        Self::ClosePane,
+        Self::SplitRight,
+        Self::SplitDown,
+        Self::FocusLeft,
+        Self::FocusRight,
+        Self::FocusUp,
+        Self::FocusDown,
+        Self::ToggleZoom,
+        Self::Equalize,
     ];
 
     /// The action written as `slug` in settings text (`find_next`), or `None`.
@@ -53,6 +86,17 @@ impl Action {
             Self::CloseFind => "close_find",
             Self::PreviousPrompt => "previous_prompt",
             Self::NextPrompt => "next_prompt",
+            Self::NewTab => "new_tab",
+            Self::ClosePane => "close_pane",
+            Self::SplitRight => "split_right",
+            Self::SplitDown => "split_down",
+            Self::FocusLeft => "focus_left",
+            Self::FocusRight => "focus_right",
+            Self::FocusUp => "focus_up",
+            Self::FocusDown => "focus_down",
+            Self::ToggleZoom => "toggle_zoom",
+            Self::Equalize => "equalize",
+            Self::SelectTab(_) => "select_tab",
         }
     }
 
@@ -67,6 +111,17 @@ impl Action {
             Self::CloseFind => "Close find",
             Self::PreviousPrompt => "Previous prompt",
             Self::NextPrompt => "Next prompt",
+            Self::NewTab => "New tab",
+            Self::ClosePane => "Close pane",
+            Self::SplitRight => "Split right",
+            Self::SplitDown => "Split down",
+            Self::FocusLeft => "Focus left",
+            Self::FocusRight => "Focus right",
+            Self::FocusUp => "Focus up",
+            Self::FocusDown => "Focus down",
+            Self::ToggleZoom => "Zoom",
+            Self::Equalize => "Equalize",
+            Self::SelectTab(_) => "Select tab",
         }
     }
 }

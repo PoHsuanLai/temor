@@ -78,7 +78,12 @@ fn defaults_bind_each_action_in_both_command_forms_and_nothing_reserved() {
             "{action:?} has one Ctrl+Shift and one Super form"
         );
         for chord in chords {
-            assert!(chord.is_command_form() || chord.is_ctrl_shift_form());
+            // ⌃⌘= is the one chord with Ctrl and Super together (see `Keymap::defaults`).
+            assert!(
+                chord.is_command_form()
+                    || chord.is_ctrl_shift_form()
+                    || *action == Action::Equalize
+            );
             assert!(!chord.is_reserved());
             assert_eq!(keymap.action_for(chord), Some(*action));
         }
@@ -188,5 +193,32 @@ fn a_bare_ctrl_chord_is_refused_and_the_message_names_the_command_forms() {
             .err()
             .map(|e| e.to_string());
         assert_eq!(got.as_deref(), *want, "{text}");
+    }
+}
+
+#[test]
+fn workspace_chords_run_their_actions_in_the_right_forms() {
+    let keymap = Keymap::defaults();
+    #[rustfmt::skip]
+    let rows: &[(&str, Option<Action>)] = &[
+        ("ctrl+shift+t", Some(Action::NewTab)),
+        ("super+t", Some(Action::NewTab)),
+        ("ctrl+shift+w", Some(Action::ClosePane)),
+        ("super+d", Some(Action::SplitRight)),
+        ("ctrl+shift+alt+d", Some(Action::SplitDown)),
+        ("super+shift+d", Some(Action::SplitDown)),
+        ("ctrl+shift+alt+left", Some(Action::FocusLeft)),
+        ("super+alt+up", Some(Action::FocusUp)),
+        ("super+shift+enter", Some(Action::ToggleZoom)),
+        ("ctrl+shift+=", Some(Action::Equalize)),
+        ("ctrl+super+=", Some(Action::Equalize)),
+        ("ctrl+shift+1", Some(Action::SelectTab(1))),
+        ("ctrl+shift+9", Some(Action::SelectTab(9))),
+        ("super+1", None),
+        ("super+shift+z", None),
+    ];
+    for (text, want) in rows {
+        let chord = Chord::parse(text).expect("a valid chord");
+        assert_eq!(keymap.action_for(&chord), *want, "{text}");
     }
 }
