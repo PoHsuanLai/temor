@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=temor
+Comment=The desktop's terminal
+Exec=temor
+Icon=utilities-terminal
+Terminal=false
+Categories=TerminalEmulator;System;
+StartupWMClass=app.temor.Terminal
+StartupNotify=true
