@@ -17,37 +17,39 @@ fn agreed(result: Negotiation) -> Agreement {
     }
 }
 
-#[test]
-fn equal_single_versions_agree_on_that_version() {
-    let ours = hello(3, 3, &[Capability::Sessions]);
-    let theirs = hello(3, 3, &[Capability::Sessions]);
-    let agreement = agreed(negotiate(&ours, &theirs));
-    assert_eq!(agreement.protocol, ProtocolVersion(3));
-    assert_eq!(agreement.caps, [Capability::Sessions]);
-}
+/// Each row: (name, ours (newest, oldest), theirs (newest, oldest), capabilities both ends
+/// offer, the agreed version). Each row is checked in both directions.
+type AgreedCase = (
+    &'static str,
+    (u16, u16),
+    (u16, u16),
+    &'static [Capability],
+    u16,
+);
+
+const AGREED_CASES: &[AgreedCase] = &[
+    (
+        "equal single versions",
+        (3, 3),
+        (3, 3),
+        &[Capability::Sessions],
+        3,
+    ),
+    ("overlapping ranges", (5, 2), (4, 3), &[], 4),
+    ("touching ranges share the edge", (4, 4), (9, 4), &[], 4),
+];
 
 #[test]
-fn overlapping_ranges_agree_on_the_newest_common_version() {
-    let ours = hello(5, 2, &[]);
-    let theirs = hello(4, 3, &[]);
-    assert_eq!(
-        agreed(negotiate(&ours, &theirs)).protocol,
-        ProtocolVersion(4)
-    );
-    assert_eq!(
-        agreed(negotiate(&theirs, &ours)).protocol,
-        ProtocolVersion(4)
-    );
-}
-
-#[test]
-fn touching_ranges_agree_on_the_shared_edge() {
-    let ours = hello(4, 4, &[]);
-    let theirs = hello(9, 4, &[]);
-    assert_eq!(
-        agreed(negotiate(&ours, &theirs)).protocol,
-        ProtocolVersion(4)
-    );
+fn the_agreed_version_is_the_newest_common() {
+    for &(name, ours, theirs, caps, want) in AGREED_CASES {
+        let ours = hello(ours.0, ours.1, caps);
+        let theirs = hello(theirs.0, theirs.1, caps);
+        for (a, b) in [(&ours, &theirs), (&theirs, &ours)] {
+            let agreement = agreed(negotiate(a, b));
+            assert_eq!(agreement.protocol, ProtocolVersion(want), "{name}");
+            assert_eq!(agreement.caps, caps, "{name}");
+        }
+    }
 }
 
 #[test]

@@ -136,24 +136,23 @@ fn start_raw_mouse_echo(h: &mut Harness) {
 }
 
 #[test]
-fn a_click_reports_its_release_to_the_program_once() {
+fn a_click_reports_once_per_button() {
     if !super::support::tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-release", &probe);
+    let mut h = harness("window-click", &probe);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
+    let at = Point {
         x: Px(300.0),
         y: Px(200.0),
-    }));
+    };
+    h.send(Input::click(at));
     h.advance(Duration::from_millis(100));
     start_raw_mouse_echo(&mut h);
-    // One click: a press and its release, each reported once.
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
+
+    // Step 1, a primary click: one press and its release, each reported once.
+    h.send(Input::click(at));
     h.advance(Duration::from_millis(500));
     let reports = mouse_reports(&probe.screen());
     let presses = reports.iter().filter(|(c, t)| *c == 0 && *t == 'M').count();
@@ -161,30 +160,15 @@ fn a_click_reports_its_release_to_the_program_once() {
     assert_eq!(
         releases,
         1,
-        "one primary release report, got {reports:?}:\n{}",
+        "primary click: one primary release report, got {reports:?}:\n{}",
         probe.screen()
     );
-    assert_eq!(presses, 1, "one primary press report, got {reports:?}");
-}
+    assert_eq!(
+        presses, 1,
+        "primary click: one primary press report, got {reports:?}"
+    );
 
-#[test]
-fn a_right_click_reports_one_press_and_one_release_with_the_right_button() {
-    if !super::support::tools_present() {
-        return;
-    }
-    let probe = Probe::new();
-    let mut h = harness("window-right", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
-    start_raw_mouse_echo(&mut h);
-    let at = Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    };
+    // Step 2, a secondary click: one right press and release, and no new primary report.
     h.send(Input::button_down(at, PointerButton::Secondary));
     h.send(Input::button_up(at, PointerButton::Secondary));
     h.advance(Duration::from_millis(500));
@@ -194,12 +178,16 @@ fn a_right_click_reports_one_press_and_one_release_with_the_right_button() {
     assert_eq!(
         presses,
         1,
-        "one right press report, got {reports:?}:\n{}",
+        "secondary click: one right press report, got {reports:?}:\n{}",
         probe.screen()
     );
-    assert_eq!(releases, 1, "one right release report, got {reports:?}");
-    assert!(
-        !reports.iter().any(|(c, _)| *c == 0),
-        "no primary report for a right click"
+    assert_eq!(
+        releases, 1,
+        "secondary click: one right release report, got {reports:?}"
+    );
+    let primary = reports.iter().filter(|(c, _)| *c == 0).count();
+    assert_eq!(
+        primary, 2,
+        "secondary click: no primary report of its own, got {reports:?}"
     );
 }

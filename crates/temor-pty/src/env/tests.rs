@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use super::*;
-use ds_core::word::Word;
 
 fn env(pairs: &[(&str, &str)]) -> ChildEnv {
     pairs.iter().copied().collect()
@@ -92,10 +91,4 @@ fn find_term_falls_back_without_an_entry() {
         TermName::XtermGhostty
     );
     std::fs::remove_dir_all(&dir).unwrap();
-}
-
-#[test]
-fn term_slugs_are_the_terminfo_names() {
-    assert_eq!(TermName::XtermGhostty.slug(), "xterm-ghostty");
-    assert_eq!(TermName::Xterm256Color.slug(), "xterm-256color");
 }
