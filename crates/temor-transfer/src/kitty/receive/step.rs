@@ -125,9 +125,22 @@ fn on_write_done(
     (next, effects)
 }
 
-/// A frame that did not parse but whose id was readable: answered for its transfer.
+/// A frame that did not parse but whose id was readable. It is answered only for the transfer it
+/// belongs to. If files are open or finishing, the frame may have been a chunk, so the transfer
+/// is closed rather than saved with a gap: the open files are discarded. A frame whose id is not
+/// this transfer's is ignored. After the session is done, the Done arm ignores every input.
 fn malformed(session: ReceiveSession, id: &KittyId) -> (ReceiveSession, Vec<Effect>) {
     let status = failed(ErrorCode::Einval, "the frame could not be read");
+    let owner = match &session.phase {
+        Phase::Asking(own) | Phase::Receiving(own) => Some(own),
+        Phase::Idle | Phase::Done => None,
+    };
+    if owner != Some(id) {
+        return (session, Vec::new());
+    }
+    if !session.open.is_empty() || !session.finishing.is_empty() {
+        return close(session, id, status, EndWhy::Failed);
+    }
     (session, vec![reply(id, None, status)])
 }
 

@@ -55,6 +55,9 @@ pub(super) fn on_file(
         Ok(path) => path,
         Err((code, why)) => return refuse(session, id, Some(file_id), code, why),
     };
+    // TODO(platform:macos) / TODO(platform:windows): those file systems are case-insensitive or
+    // normalise names, so `Report.txt` and `report.txt` collide there. The claim must then be
+    // keyed by a case-folded, normalised form of the path; until then, only exact matches are seen.
     if session.claimed.contains(&path) {
         return refuse(
             session,

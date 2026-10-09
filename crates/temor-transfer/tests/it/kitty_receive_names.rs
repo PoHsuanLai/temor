@@ -165,3 +165,52 @@ fn an_unknown_transmission_type_is_refused_with_a_reply() {
     assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
     assert_eq!(codes(&effects), vec!["EPERM".to_owned()]);
 }
+
+#[test]
+fn a_malformed_middle_chunk_leaves_no_saved_file() {
+    let s = allowed(1024);
+    let (s, _) = s.step(file("m.bin", "1", FileType::Regular, None));
+    let (s, _) = s.step(Input::Frame(Message {
+        file: Some(fid("1")),
+        data: b"ab".to_vec(),
+        ..msg(Action::Data)
+    }));
+    let (s, effects) = s.step(Input::Malformed {
+        id: temor_transfer::kitty::KittyId::parse("tx1").expect("id"),
+    });
+    assert_eq!(
+        writes(&effects),
+        vec![WriteOp::Discard(RelPath::parse("m.bin").expect("p"))]
+    );
+    assert_eq!(codes(&effects), vec!["EINVAL".to_owned()]);
+    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(!saved(&effects));
+    // The rest of the file arrives, but the transfer is over: nothing is saved.
+    let (s, rest) = s.step(Input::Frame(Message {
+        file: Some(fid("1")),
+        data: b"cd".to_vec(),
+        ..msg(Action::EndData)
+    }));
+    assert!(rest.is_empty());
+    let (_, done) = s.step(Input::WriteDone { fid: fid("1") });
+    assert!(!saved(&done));
+}
+
+#[test]
+fn a_malformed_frame_with_another_id_is_ignored() {
+    let s = allowed(1024);
+    let (_, effects) = s.step(Input::Malformed {
+        id: temor_transfer::kitty::KittyId::parse("other").expect("id"),
+    });
+    assert!(effects.is_empty());
+}
+
+#[test]
+fn a_malformed_frame_after_the_transfer_ended_is_ignored() {
+    let s = allowed(1024);
+    let (s, _) = s.step(Input::Frame(msg(Action::Finish)));
+    let (_, effects) = s.step(Input::Malformed {
+        id: temor_transfer::kitty::KittyId::parse("tx1").expect("id"),
+    });
+    assert!(effects.is_empty());
+}
