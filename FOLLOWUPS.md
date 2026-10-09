@@ -138,3 +138,10 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       the blocks tests time out at "the first prompt"; check `marks_split_at_every_offset`.
 - [ ] Nushell marks are tested through the env only; a real nu block test once nu is on the gate PATH.
 - [ ] view/window.rs is near 300 lines; P3's split tree replaces most of it.
+
+## R1a (lane/r1a)
+- [ ] temor-vt-sys: generated bindings carry indented C doc comments that rustdoc runs as ~100 failing
+      doctests. Have `scripts/gen-bindings.sh` fence them as `text` (or set `doctest = false` on the
+      -sys lib), then add a crate-root example.
+- [ ] temor-vt `row_wraps` still returns `bool` (temor-vt can't see temor-core's `Wrap`); give temor-vt
+      its own two-variant enum when R1b touches rows.
