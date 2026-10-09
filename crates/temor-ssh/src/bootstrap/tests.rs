@@ -3,9 +3,9 @@
 
 use temor_shell::integration_scripts;
 
-use super::BootstrapScript;
 use super::files::remote_path;
 use super::quote::heredoc_write;
+use super::{BootstrapOptions, BootstrapScript, TerminfoPolicy};
 use super::{MAX_REMOTE_COMMAND_BYTES, wrap_script};
 use crate::error::SshError;
 
@@ -33,6 +33,8 @@ fn built_script_places_every_file_and_no_marks_remain() {
     let text = script.as_str();
     assert!(!text.contains("#@INTEGRATION@"));
     assert!(!text.contains("#@TERMINFO@"));
+    assert!(!text.contains("#@OPTIONS@"));
+    assert!(text.contains("\ntemor_terminfo=install\n"));
     for target in [
         "\"$temor_tmp/bash/temor-bashrc\"",
         "\"$temor_tmp/bash/temor.bash\"",
@@ -68,4 +70,13 @@ fn oversize_payloads_are_refused_at_the_argv_level() {
     let big = "x".repeat(MAX_REMOTE_COMMAND_BYTES);
     let err = wrap_script(&big).expect_err("too big");
     assert!(matches!(err, SshError::ScriptTooLarge { .. }), "{err}");
+}
+
+#[test]
+fn skipping_terminfo_leaves_out_the_source_and_says_so() {
+    let options = BootstrapOptions::with_terminfo(TerminfoPolicy::Skip);
+    let script = BootstrapScript::build_with(&integration_scripts(), options).expect("build");
+    let text = script.as_str();
+    assert!(text.contains("\ntemor_terminfo=skip\n"));
+    assert!(!text.contains("xterm-ghostty.src\" <<"));
 }

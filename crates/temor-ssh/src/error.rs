@@ -46,6 +46,31 @@ pub enum SshError {
     /// The remote command is too large to send as one command argument.
     #[error("the remote command is {bytes} bytes, more than the {limit} allowed")]
     ScriptTooLarge { bytes: usize, limit: usize },
+    /// A remote file path ssh and scp could not take as written: not absolute, or holding
+    /// control or wildcard characters.
+    #[error("`{0}` cannot be used as a remote file path")]
+    BadRemotePath(String),
+    /// A local file path that cannot be handed to scp: not absolute, or holding control characters.
+    #[error("`{0}` cannot be used as a local file path here")]
+    BadLocalPath(String),
+    /// `ssh` or `scp` could not be started.
+    #[error("cannot run {program}: {source}")]
+    Spawn {
+        program: String,
+        #[source]
+        source: io::Error,
+    },
+    /// A remote file operation ran and failed (no shared connection, no access, no space).
+    /// `detail` is the first line the program printed, with control characters removed.
+    #[error("{what} failed (exit {code:?}): {detail}")]
+    RemoteFile {
+        what: &'static str,
+        code: Option<i32>,
+        detail: String,
+    },
+    /// The host's answer to a file-details request was not a modified time and a size.
+    #[error("the host's file details were not understood: {0}")]
+    BadStat(String),
     /// The platform has no private-directory support yet.
     #[error("this platform cannot {0} yet")]
     Unsupported(&'static str),

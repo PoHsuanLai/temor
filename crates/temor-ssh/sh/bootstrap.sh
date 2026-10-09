@@ -2,6 +2,9 @@
 # `sh`, with each connection, and nothing is installed on the host. Everything it writes lives in a
 # temp directory that is removed when the shell exits. Your dotfiles are never touched.
 
+# Whether this bootstrap may add a terminal description to ~/.terminfo (install or skip).
+#@OPTIONS@
+
 temor_base=${TMPDIR:-/tmp}
 case $temor_base in
     *:*)
@@ -74,7 +77,7 @@ temor_have_ghostty() {
 temor_term=xterm-256color
 if temor_have_ghostty; then
     temor_term=xterm-ghostty
-elif command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
+elif [ "$temor_terminfo" = install ] && command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
 #@TERMINFO@
     if tic -x -o "$temor_tmp/terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1 \
         && mkdir -p "$HOME/.terminfo/x" 2>/dev/null \
@@ -115,6 +118,15 @@ case ${temor_shell##*/} in
         fi
         XDG_DATA_DIRS="$temor_tmp/fish:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
             "$temor_shell" -l -i ;;
+    nu|nushell)
+        # nushell reads vendor autoload files from XDG_DATA_DIRS; temor.nu takes this entry back
+        # out, and puts back the value found here (TEMOR_NU_XDG_DATA_DIRS), once it has run.
+        if [ "${XDG_DATA_DIRS+set}" = set ]; then
+            TEMOR_NU_XDG_DATA_DIRS=$XDG_DATA_DIRS
+            export TEMOR_NU_XDG_DATA_DIRS
+        fi
+        XDG_DATA_DIRS="$temor_tmp/nu:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
+            "$temor_shell" -l ;;
     *)
         "$temor_shell" ;;
 esac

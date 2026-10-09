@@ -48,41 +48,6 @@ impl ShownName {
     }
 }
 
-/// The identity of a host (PLAN §9b): its SSH host-key fingerprint plus the name shown for it.
-/// Two entries with the same fingerprint are the same machine, whatever they are called, so
-/// identity checks use [`HostId::same_machine`] and never compare the shown names.
-///
-/// The fingerprint must come from the host key the live connection verified (for example from
-/// `ssh-keygen -l` on the key the handshake presented), never from a config file or from a
-/// `known_hosts` line that was merely looked up by name.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct HostId {
-    fingerprint: Fingerprint,
-    shown: ShownName,
-}
-
-impl HostId {
-    /// Pairs a fingerprint with the name shown for it.
-    pub fn new(fingerprint: Fingerprint, shown: ShownName) -> Self {
-        Self { fingerprint, shown }
-    }
-
-    /// The host-key fingerprint.
-    pub fn fingerprint(&self) -> &Fingerprint {
-        &self.fingerprint
-    }
-
-    /// The shown name.
-    pub fn shown(&self) -> &ShownName {
-        &self.shown
-    }
-
-    /// Whether `other` is the same machine: equal fingerprints. Shown names are ignored.
-    pub fn same_machine(&self, other: &HostId) -> bool {
-        self.fingerprint == other.fingerprint
-    }
-}
-
 /// The first `SHA256:` fingerprint in `ssh-keygen -l` output, such as
 /// `256 SHA256:… host (ED25519)`. Comment lines (`# Host … found`, from `ssh-keygen -F`) are
 /// skipped. A fingerprint that is present but malformed is an error, not a skip.
