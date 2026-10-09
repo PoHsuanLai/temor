@@ -15,6 +15,7 @@ use ds::host::ime::{ImeEvent, ImeSwitch};
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
+use ds::window::host::use_window_title;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, TokioSpawner, use_gpu};
 use ds_settings::use_environment;
 use temor_vt::{Ime, KeyAction};
@@ -33,6 +34,7 @@ use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use super::status::StatusLine;
 use super::theme::resolved_palette;
+use super::title::window_title;
 use super::window_help::{
     device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
 };
@@ -235,6 +237,7 @@ pub fn App() -> Element {
         .as_ref()
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
     let message = notice();
+    use_window_title(window_title(&chrome.title, chrome.cwd.as_deref()));
     // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
     // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
     let pane_style =
