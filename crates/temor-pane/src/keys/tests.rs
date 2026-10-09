@@ -213,6 +213,8 @@ fn workspace_chords_run_their_actions_in_the_right_forms() {
         ("ctrl+shift+alt+left", Some(Action::FocusLeft)),
         ("super+alt+up", Some(Action::FocusUp)),
         ("super+shift+enter", Some(Action::ToggleZoom)),
+        ("super+shift+t", Some(Action::ReopenTab)),
+        ("ctrl+shift+alt+t", Some(Action::ReopenTab)),
         ("ctrl+shift+=", Some(Action::Equalize)),
         ("ctrl+super+=", Some(Action::Equalize)),
         ("ctrl+shift+1", Some(Action::SelectTab(1))),

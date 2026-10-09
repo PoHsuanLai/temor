@@ -62,6 +62,7 @@ fn each_tab_and_split_action_makes_its_request_and_the_others_make_none() {
         (Action::FocusDown, Some(WorkspaceIn::Goto(Goto::Spatial(Direction::Down)))),
         (Action::ToggleZoom, Some(WorkspaceIn::ToggleZoom)),
         (Action::Equalize, Some(WorkspaceIn::Equalize)),
+        (Action::ReopenTab, Some(WorkspaceIn::Reopen)),
         (Action::SelectTab(3), Some(nth(3))),
         (Action::SelectTab(0), None),
         (Action::Copy, None),

@@ -4,6 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use temor_core::notify::Focus;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut, workspace_step};
 use temor_vt::Snapshot;
@@ -22,6 +23,10 @@ impl Hub {
         self.ws = ws;
         for out in outs {
             self.carry_out(out);
+        }
+        // Closing the last tab leaves the window with a fresh one, as a browser does.
+        if self.ws.tabs.place.tabs.is_empty() {
+            self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }
 
@@ -66,7 +71,13 @@ impl Hub {
             ..Slot::default()
         };
         match opened {
-            Ok(session) => {
+            Ok(mut session) => {
+                // Only the pane that has the keyboard counts as focused (a long command that
+                // finishes in another pane is worth a notice).
+                session.set_focus(match self.keyboard_pane() == Some(spawn.pane) {
+                    true => Focus::Focused,
+                    false => Focus::Unfocused,
+                });
                 if let Some(command) = &spawn.relaunch {
                     type_command(&session, command.as_str());
                 }

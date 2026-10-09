@@ -94,6 +94,15 @@ impl Keymap {
             Action::Equalize,
             Chord::of_char('=', Mods::CTRL.with(Mods::SUPER)),
         ));
+        // ⌘⇧T, like ⌘⇧D: Alt stands in for the second Shift in the Ctrl+Shift form.
+        bindings.push((
+            Action::ReopenTab,
+            Chord::of_char('t', Mods::CTRL.with(Mods::SHIFT).with(Mods::ALT)),
+        ));
+        bindings.push((
+            Action::ReopenTab,
+            Chord::of_char('t', Mods::SUPER.with(Mods::SHIFT)),
+        ));
         // ⌘1 to ⌘9 are Ctrl+Shift only: the Super digits belong to the shell (reserved).
         for n in 1..=9u8 {
             let digit = char::from(b'0' + n);
