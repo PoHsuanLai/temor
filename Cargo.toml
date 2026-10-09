@@ -56,6 +56,22 @@ temor-ui = { path = "crates/temor-ui" }
 temor-transfer = { path = "crates/temor-transfer" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
 
+# temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
+# docket and prov/porter-core sit at the revs anyview uses (docket abbb62c pins porter 55d1ade, so
+# its types are one copy); porter-client is the Tailnet1 reader at porter master a7c11d2 (feature
+# `dbus` only: no inference, no stoker). temor never names porter-core types from that copy.
+temor-desktop = { path = "crates/temor-desktop", default-features = false }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "abbb62ccae1d988dfaf04b50176e7e943bf43b5a", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "abbb62ccae1d988dfaf04b50176e7e943bf43b5a" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "55d1ade9e4135e68cb0ca7d38c0fe526b4b54be7" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "55d1ade9e4135e68cb0ca7d38c0fe526b4b54be7" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "a7c11d2a48919c1ffa6766dcc98b9b3ca43c4ad2", default-features = false, features = ["dbus"] }
+# zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
+zbus = { version = "5.19", default-features = false, features = ["tokio"] }
+toml = "1"
+# The tests of temor-desktop read bus signals as streams.
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
 tempfile = "3"

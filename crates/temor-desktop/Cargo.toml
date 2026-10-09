@@ -1,0 +1,51 @@
+[package]
+name = "temor-desktop"
+description = "temor's desktop integration: its actions for agents (IntentProvider1), single instance and activation over the session bus, the dock badge, and the Tailscale computers list."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+# The Linux desktop's services (PLAN D15, §2). Off, the crate is the portable half: plain types
+# and absent services, with no zbus, docket or porter in the build. `--no-default-features` is
+# that build; scripts/check-layers.sh holds every such dependency to this feature.
+default = ["quire-desktop"]
+quire-desktop = [
+  "dep:docket-client",
+  "dep:docket-core",
+  "dep:prov",
+  "dep:porter-core",
+  "dep:porter-client",
+  "dep:zbus",
+  "dep:toml",
+]
+
+[dependencies]
+serde_json = { workspace = true }
+temor-ssh = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+# Only a Linux build has a session bus; `quire-desktop` names these.
+[target.'cfg(target_os = "linux")'.dependencies]
+docket-client = { workspace = true, optional = true }
+docket-core = { workspace = true, optional = true }
+porter-client = { workspace = true, optional = true }
+porter-core = { workspace = true, optional = true }
+prov = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+zbus = { workspace = true, optional = true }
+
+[dev-dependencies]
+futures-util = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

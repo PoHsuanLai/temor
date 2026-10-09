@@ -3,7 +3,10 @@
 #   - an L0 crate depends only on L0 workspace crates;
 #   - an L1 crate depends only on L0 or L1 workspace crates;
 #   - no L0 or L1 crate depends on ds-*, dioxus, docket, zbus or tokio;
-#   - every workspace crate is in the table below (a new crate must be placed in a layer).
+#   - every workspace crate is in the table below (a new crate must be placed in a layer);
+#   - the quire-desktop boundary (PLAN §2, D15): only temor-desktop names zbus, docket or porter
+#     crates, and there each such dependency is optional and listed in its `quire-desktop` feature,
+#     so `--no-default-features` builds with none of them.
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
 # `crate -> dep (rule)` and exits 1 when there is any.
@@ -41,6 +44,9 @@ for line in sys.stdin.read().split("\n"):
         layers[parts[0]] = int(parts[1])
 
 banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
+desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
+DESKTOP = "temor-desktop"
+FEATURE = "quire-desktop"
 meta = json.loads(sys.argv[1])
 violations = []
 seen = set()
@@ -54,10 +60,22 @@ for pkg in meta["packages"]:
         continue
     seen.add(name)
     layer = layers[name]
+    gated = set()
+    if name == DESKTOP:
+        gated = {
+            item[len("dep:"):]
+            for item in pkg["features"].get(FEATURE, [])
+            if item.startswith("dep:")
+        }
     for dep in pkg["dependencies"]:
         dname = dep["name"]
         if dname == name:
             continue
+        if desktop_only.match(dname) and dep.get("kind") != "dev":
+            if name != DESKTOP:
+                violations.append(f"{name} -> {dname} (only {DESKTOP} names zbus, docket or porter)")
+            elif not dep.get("optional") or dname not in gated:
+                violations.append(f"{name} -> {dname} (must be optional and in feature {FEATURE})")
         if layer <= 1 and banned.match(dname):
             violations.append(f"{name} -> {dname} (L{layer} never depends on quire, dioxus, docket or zbus)")
             continue
