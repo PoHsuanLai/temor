@@ -3,6 +3,7 @@
 
 use temor_core::notify::{Focus, Limiter};
 use temor_core::terminal::cwd::cwd_from_url;
+use temor_core::vocab::text::display_text;
 use temor_render::{PaneFocus, PixelSize, Scale};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -159,7 +160,8 @@ impl Session {
                 Notice::Ended(exit)
             }
             PaneEvent::Cwd(url) => {
-                self.cwd = cwd_from_url(&url);
+                // The path is shown, so it is cleaned and bounded first (it came from the shell).
+                self.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
                 Notice::Chrome
             }
             PaneEvent::Progress(progress) => {
@@ -169,11 +171,15 @@ impl Session {
                 };
                 Notice::Chrome
             }
-            PaneEvent::Prompt(mark) => {
-                self.mark(mark);
+            PaneEvent::MarkBegin { seq } => {
+                self.mark_begin(seq);
                 Notice::Quiet
             }
-            PaneEvent::Anchor(id) => self.anchored(id),
+            PaneEvent::Prompt(mark) => {
+                self.mark_event(mark);
+                Notice::Quiet
+            }
+            PaneEvent::Anchor { seq, anchor } => self.anchored(seq, anchor),
             PaneEvent::Reset => {
                 self.terminal_reset();
                 Notice::Repaint
@@ -212,11 +218,10 @@ impl Session {
 
 /// Longest title kept; a program's title is shown, so it is bounded.
 const TITLE_MAX_CHARS: usize = 200;
+/// Longest working directory shown.
+const CWD_MAX_CHARS: usize = 512;
 
 /// A program's title with control characters removed and its length bounded.
 pub fn sanitise_title(raw: &str) -> String {
-    raw.chars()
-        .filter(|c| !c.is_control())
-        .take(TITLE_MAX_CHARS)
-        .collect()
+    display_text(raw, TITLE_MAX_CHARS)
 }

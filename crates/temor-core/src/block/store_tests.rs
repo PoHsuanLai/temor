@@ -1,7 +1,7 @@
 //! The block machine and the store together: marks in odd orders, nested prompts, a reset,
 //! scrollback trimming and the bound on the store.
 
-use super::{Author, BlockIn, BlockState, BlockStore, Outcome, block_step};
+use super::{Author, Block, BlockIn, BlockOut, BlockState, BlockStore, Outcome, block_step};
 use crate::vocab::ids::{BlockId, ExitCode, GridRow};
 use crate::vocab::text::CommandText;
 use ds_core::time::stamp::Stamp;
@@ -226,4 +226,40 @@ fn a_shell_exit_mid_command_closes_the_block_and_nothing_follows() {
     assert_eq!(sh.outcomes(), vec![Outcome::Unreported]);
     sh.prompt(0);
     assert_eq!(sh.state, BlockState::Exited);
+}
+
+#[test]
+fn a_full_store_drops_the_oldest_finished_block_before_a_running_one() {
+    let mut sh = Shell::new(2);
+    sh.prompt(0);
+    sh.typed(0);
+    let running = sh.run(1, "sleep");
+    sh.prompt(2);
+    sh.typed(2);
+    sh.run(3, "a");
+    sh.finish(3, Some(0));
+    // The third block evicts the finished one, not the older running one.
+    sh.prompt(4);
+    sh.typed(4);
+    sh.run(5, "b");
+    assert!(sh.store.get(running).is_some(), "the running block is kept");
+    assert_eq!(sh.store.len(), 2);
+}
+
+#[test]
+fn a_full_store_of_running_blocks_drops_the_oldest() {
+    let mut store = BlockStore::with_cap(1);
+    let mut sh = Shell::new(1);
+    sh.prompt(0);
+    sh.typed(0);
+    let first = sh.run(1, "one");
+    let gone = {
+        let block = sh.store.get(first).expect("block").clone();
+        store.apply(&BlockOut::CommandStarted(block.clone()));
+        store.apply(&BlockOut::CommandStarted(Block {
+            id: BlockId(9),
+            ..block
+        }))
+    };
+    assert_eq!(gone, vec![first]);
 }

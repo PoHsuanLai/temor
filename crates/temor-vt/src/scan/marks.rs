@@ -1,24 +1,46 @@
-//! Where OSC 133 shell marks end, across chunk boundaries. The terminal cuts its input right
-//! after each whole mark so that the cursor can be anchored where the mark stood: an OSC moves
-//! nothing, so the cursor after the mark is the cursor at the mark (PLAN §8.1, §9 blocks).
+//! Where OSC 133 shell marks end, across chunk boundaries. The terminal cuts its input at each
+//! mark's terminator, so the cursor can be anchored where the mark stood: an OSC moves nothing.
+//! The rules follow libghostty's parse table (PLAN §8.1, §9): an OSC ends at BEL, ST (ESC \ or
+//! the C1 byte 0x9C), CAN, SUB or any ESC, and a C1 0x9D starts one anywhere. DCS, SOS, PM and
+//! APC payloads are ignored up to their end, and an ESC inside one aborts it.
 
-/// The introducer's text after `ESC ]`: a mark is `133;` and then its payload.
+/// Introducer text after `ESC ]` (or C1 0x9D) that makes an OSC a shell mark.
 const MARK: &[u8] = b"133;";
 const BEL: u8 = 0x07;
-const ESC: u8 = 0x1b;
+const CAN: u8 = 0x18;
+const SUB: u8 = 0x1A;
+const ESC: u8 = 0x1B;
+const C1_DCS: u8 = 0x90;
+const C1_SOS: u8 = 0x98;
+const C1_ST: u8 = 0x9C;
+const C1_OSC: u8 = 0x9D;
+const C1_PM: u8 = 0x9E;
+const C1_APC: u8 = 0x9F;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
     /// Ordinary text.
     Text,
-    /// After an ESC: `]` opens an OSC.
+    /// After an ESC.
     Esc,
-    /// After `ESC ]`, with this many bytes of `133;` matched so far.
+    /// After the OSC introducer, with this many bytes of `133;` matched.
     Osc(usize),
-    /// Inside an OSC that is not a mark. `esc` is set right after an ESC (the start of ST).
-    Other { esc: bool },
-    /// Inside a mark. `esc` is set right after an ESC (the start of ST).
-    Mark { esc: bool },
+    /// Inside an OSC that is not a mark.
+    Other,
+    /// Inside a mark.
+    Mark,
+    /// Inside a DCS payload (ignored until ESC, CAN or SUB).
+    DcsPayload,
+    /// Inside an SOS, PM or APC payload (ignored until ST, CAN, SUB or ESC).
+    StringPayload,
+}
+
+/// Where a mark's cut falls: before the byte (an ESC that ends the mark is the next sequence) or
+/// after it (BEL or ST, which the mark includes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Edge {
+    Before,
+    After,
 }
 
 /// The cut-point scanner's state between chunks.
@@ -32,43 +54,92 @@ impl MarkCuts {
         Self { state: State::Text }
     }
 
-    /// The exclusive end offsets in `input` of each OSC 133 sequence that finishes in it, in
-    /// order. A sequence split across chunks finishes in the chunk holding its terminator.
+    /// The offsets in `input` at which a mark's bytes end, in order: the piece before each offset
+    /// holds one whole mark. A mark split across chunks ends in the chunk holding its terminator.
     pub(crate) fn feed(&mut self, input: &[u8]) -> Vec<usize> {
         let mut cuts = Vec::new();
-        for (i, &b) in input.iter().enumerate() {
-            self.state = match self.state {
-                State::Text if b == ESC => State::Esc,
-                State::Text => State::Text,
-                State::Esc if b == b']' => State::Osc(0),
-                State::Esc if b == ESC => State::Esc,
-                State::Esc => State::Text,
-                State::Osc(n) if n < MARK.len() && b == MARK[n] => {
-                    if n + 1 == MARK.len() {
-                        State::Mark { esc: false }
-                    } else {
-                        State::Osc(n + 1)
-                    }
+        let mut i = 0;
+        while i < input.len() {
+            if self.state == State::Text {
+                // Fast path: nothing changes in text until one of these bytes.
+                match input[i..].iter().position(|&b| starts_sequence(b)) {
+                    Some(at) => i += at,
+                    None => break,
                 }
-                State::Osc(_) if b == BEL => State::Text,
-                State::Osc(_) if b == ESC => State::Other { esc: true },
-                State::Osc(_) => State::Other { esc: false },
-                State::Other { esc: true } if b == b'\\' => State::Text,
-                State::Other { .. } if b == BEL => State::Text,
-                State::Other { .. } if b == ESC => State::Other { esc: true },
-                State::Other { .. } => State::Other { esc: false },
-                State::Mark { esc: true } if b == b'\\' => {
-                    cuts.push(i + 1);
-                    State::Text
-                }
-                State::Mark { .. } if b == BEL => {
-                    cuts.push(i + 1);
-                    State::Text
-                }
-                State::Mark { .. } if b == ESC => State::Mark { esc: true },
-                State::Mark { .. } => State::Mark { esc: false },
-            };
+            }
+            self.byte(i, input[i], &mut cuts);
+            i += 1;
         }
         cuts
+    }
+
+    fn byte(&mut self, at: usize, b: u8, cuts: &mut Vec<usize>) {
+        let (next, edge) = step(self.state, b);
+        match edge {
+            Some(Edge::Before) => cuts.push(at),
+            Some(Edge::After) => cuts.push(at + 1),
+            None => {}
+        }
+        self.state = next;
+    }
+}
+
+/// Bytes that leave the text state.
+fn starts_sequence(b: u8) -> bool {
+    matches!(b, ESC | C1_OSC | C1_DCS | C1_SOS | C1_PM | C1_APC)
+}
+
+/// One byte: the state after it, and a cut if a mark ended.
+fn step(state: State, b: u8) -> (State, Option<Edge>) {
+    use State::*;
+    let plain = |s| (s, None);
+    match state {
+        Text => match b {
+            ESC => plain(Esc),
+            C1_OSC => plain(Osc(0)),
+            C1_DCS => plain(DcsPayload),
+            C1_SOS | C1_PM | C1_APC => plain(StringPayload),
+            _ => plain(Text),
+        },
+        Esc => match b {
+            b']' => plain(Osc(0)),
+            b'P' => plain(DcsPayload),
+            b'X' | b'^' | b'_' => plain(StringPayload),
+            ESC => plain(Esc),
+            _ => plain(Text),
+        },
+        Osc(n) if n < MARK.len() && b == MARK[n] => plain(if n + 1 == MARK.len() {
+            Mark
+        } else {
+            Osc(n + 1)
+        }),
+        Osc(_) | Other => osc_byte(b),
+        Mark => match b {
+            BEL | C1_ST | CAN | SUB => (Text, Some(Edge::After)),
+            ESC => (Esc, Some(Edge::Before)),
+            C1_OSC => (Osc(0), Some(Edge::Before)),
+            _ => plain(Mark),
+        },
+        DcsPayload => match b {
+            ESC => plain(Esc),
+            CAN | SUB => plain(Text),
+            _ => plain(DcsPayload),
+        },
+        StringPayload => match b {
+            ESC => plain(Esc),
+            C1_ST | CAN | SUB => plain(Text),
+            C1_OSC => plain(Osc(0)),
+            _ => plain(StringPayload),
+        },
+    }
+}
+
+/// A byte inside an OSC that is not a mark.
+fn osc_byte(b: u8) -> (State, Option<Edge>) {
+    match b {
+        BEL | C1_ST | CAN | SUB => (State::Text, None),
+        ESC => (State::Esc, None),
+        C1_OSC => (State::Osc(0), None),
+        _ => (State::Other, None),
     }
 }

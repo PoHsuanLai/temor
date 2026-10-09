@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use super::model::Block;
+use super::model::{Block, Outcome};
 use super::step::BlockOut;
 use crate::vocab::ids::BlockId;
 
@@ -49,7 +49,16 @@ impl BlockStore {
         }
         let mut evicted = Vec::new();
         while self.blocks.len() > self.cap {
-            if let Some(old) = self.blocks.pop_front() {
+            // The oldest finished block goes first; a running one only when nothing has finished.
+            let finished = self
+                .blocks
+                .iter()
+                .position(|b| b.outcome() != Outcome::Running);
+            let old = match finished {
+                Some(at) => self.blocks.remove(at),
+                None => self.blocks.pop_front(),
+            };
+            if let Some(old) = old {
                 evicted.push(old.id);
             }
         }

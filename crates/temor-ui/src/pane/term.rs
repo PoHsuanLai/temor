@@ -176,6 +176,21 @@ impl Term {
         self.terminal.anchor_point(id, space)
     }
 
+    /// Anchors the cursor's cell now (a command's end, for example).
+    pub fn anchor_cursor(&mut self) -> Option<AnchorId> {
+        self.terminal.anchor_cursor()
+    }
+
+    /// How many anchors are live.
+    pub fn anchor_count(&self) -> usize {
+        self.terminal.anchor_count()
+    }
+
+    /// Whether a full-screen program holds the alternate screen (no shell marks show there).
+    pub fn on_alternate_screen(&self) -> bool {
+        self.terminal.on_alternate_screen()
+    }
+
     /// Frees an anchor the window no longer needs.
     pub fn release_anchor(&mut self, id: AnchorId) {
         self.terminal.release_anchor(id);

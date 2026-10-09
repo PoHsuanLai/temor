@@ -2,7 +2,7 @@
 //! terminal's modes. Typing returns the view to the live screen.
 
 use temor_core::terminal::action::Action;
-use temor_vt::KeyAction;
+use temor_vt::{KeyAction, KeyCode};
 
 use super::{FindStep, PromptStep, Session};
 use crate::error::UiError;
@@ -18,6 +18,9 @@ impl Session {
         match route(stroke, &self.keymap, find) {
             Routed::Action(action) => self.run(action),
             Routed::Shell(key) => {
+                if key.action == KeyAction::Press && key.code == KeyCode::Enter {
+                    self.note_enter();
+                }
                 if key.action != KeyAction::Release {
                     self.pane
                         .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));

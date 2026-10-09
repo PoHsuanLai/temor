@@ -22,6 +22,7 @@ mod signals;
 mod snapshot;
 mod terminal;
 mod terminal_read;
+mod terminal_write;
 mod vt_impl;
 mod wrap;
 

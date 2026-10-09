@@ -7,6 +7,7 @@ use ds::components::content::label::LabelStyle;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
+use ds::components::overlays::tooltip::Tooltip;
 use ds::prelude::*;
 use temor_vt::{Progress, ProgressState};
 
@@ -66,7 +67,9 @@ pub fn StatusLine(
                 Label { text: "Failed", style: LabelStyle::Caption }
             }
             if bell {
-                Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
+                Tooltip { text: "The bell rang", shown: None,
+                    Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
+                }
             }
         }
     }

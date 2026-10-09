@@ -11,10 +11,10 @@ use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
-use crate::scan::{InlineFileScanner, MarkCuts, Scanned};
+use crate::scan::{InlineFileScanner, MarkCuts};
 use crate::{
-    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode, UnknownKind,
-    ViewportScroll, VtError, VtEvent,
+    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode,
+    ViewportScroll, VtError,
 };
 
 /// A terminal emulator backed by libghostty-vt. Feed it program output with
@@ -28,10 +28,12 @@ pub struct Terminal {
     raw: NonNull<sys::TerminalImpl>,
     /// Boxed so `userdata` stays valid; freed in `Drop` after the terminal.
     callbacks: NonNull<Callbacks>,
-    scanner: InlineFileScanner,
+    pub(super) scanner: InlineFileScanner,
     /// Where OSC 133 marks end, carried across writes.
-    marks: MarkCuts,
-    anchors: Anchors,
+    pub(super) marks: MarkCuts,
+    /// The number of the last mark cut (see `VtEvent::MarkBegin`).
+    pub(super) mark_seq: u64,
+    pub(super) anchors: Anchors,
 }
 
 // SAFETY: a `Terminal` may move to another thread because
@@ -117,6 +119,7 @@ impl Terminal {
             callbacks,
             scanner: InlineFileScanner::new(config.inline_file_max),
             marks: MarkCuts::new(),
+            mark_seq: 0,
             anchors: Anchors::default(),
         };
         install_png_decoder();
@@ -159,51 +162,6 @@ impl Terminal {
             unsafe { sys::ghostty_terminal_set(self.raw(), option, (&raw const value).cast()) },
             "limit",
         )
-    }
-
-    /// Feeds program output. Inline files (OSC 1337 `File=`) are taken out first and reported as
-    /// [`UnknownKind::Osc1337File`]; everything else goes to libghostty, whose callbacks send
-    /// their events before this returns.
-    pub fn write(&mut self, bytes: &[u8]) {
-        let mut segments = Vec::new();
-        self.scanner.feed(bytes, |seg| segments.push(seg));
-        for seg in segments {
-            match seg {
-                Scanned::Bytes(b) => self.write_marked(b),
-                Scanned::File {
-                    payload,
-                    truncation,
-                } => self.callbacks().send(VtEvent::Unknown {
-                    kind: UnknownKind::Osc1337File,
-                    payload,
-                    truncation,
-                }),
-            }
-        }
-        if self.callbacks().title.replace(TitleChange::Unchanged) == TitleChange::Changed {
-            let title = self.title();
-            self.callbacks().sink.send(VtEvent::Title(title));
-        }
-    }
-
-    /// Hands bytes to libghostty, cutting them after each OSC 133 mark so the cursor is anchored
-    /// where the mark stood (see `anchor_cursor`); the anchor's event follows the mark's own.
-    fn write_marked(&mut self, bytes: &[u8]) {
-        let mut start = 0;
-        for end in self.marks.feed(bytes) {
-            self.vt_write(&bytes[start..end]);
-            if let Some(id) = self.anchor_cursor() {
-                self.callbacks().send(VtEvent::Anchor(id));
-            }
-            start = end;
-        }
-        self.vt_write(&bytes[start..]);
-    }
-
-    fn vt_write(&mut self, bytes: &[u8]) {
-        // SAFETY: the terminal is live and `bytes` is readable for the call. Callbacks may run;
-        // they only use `Callbacks` through shared refs.
-        unsafe { sys::ghostty_terminal_vt_write(self.raw(), bytes.as_ptr(), bytes.len()) };
     }
 
     pub(super) fn anchors(&self) -> &Anchors {

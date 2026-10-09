@@ -14,7 +14,7 @@ fn shell_integration_and_reports_arrive_as_typed_events_in_order() {
     t.write(&fixture("shell.bin"));
     let mut events = drain(&rx)
         .into_iter()
-        .filter(|e| !matches!(e, VtEvent::Anchor(_)))
+        .filter(|e| !matches!(e, VtEvent::Anchor { .. } | VtEvent::MarkBegin { .. }))
         .collect::<Vec<_>>()
         .into_iter();
     let mut next = || events.next().expect("another event");

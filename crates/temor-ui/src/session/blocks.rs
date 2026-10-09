@@ -32,8 +32,12 @@ pub(super) struct BlockLog {
     pub(super) machine: BlockState,
     pub(super) store: BlockStore,
     pub(super) anchors: BTreeMap<BlockId, BlockAnchors>,
-    /// A mark whose anchor has not arrived yet (the anchor event follows its mark).
+    /// The number of the mark in progress (see `temor_vt::VtEvent::MarkBegin`).
+    pub(super) pending_seq: Option<u64>,
+    /// The mark's own event, waiting for its anchor.
     pub(super) pending: Option<PromptEvent>,
+    /// The cursor where the person last pressed Enter: the end of the typed command.
+    pub(super) enter: Option<AnchorId>,
     /// The prompt and typed-command anchors of the block being typed, before its id exists.
     pub(super) prompt: Option<AnchorId>,
     pub(super) input: Option<AnchorId>,
@@ -49,7 +53,9 @@ impl Default for BlockLog {
             machine: BlockState::Idle,
             store: BlockStore::default(),
             anchors: BTreeMap::new(),
+            pending_seq: None,
             pending: None,
+            enter: None,
             prompt: None,
             input: None,
             next_id: 1,
@@ -59,13 +65,6 @@ impl Default for BlockLog {
 }
 
 impl BlockLog {
-    /// The id for the next command, and the count moved past it.
-    pub(super) fn allocate(&mut self) -> BlockId {
-        let id = BlockId(self.next_id);
-        self.next_id += 1;
-        id
-    }
-
     /// Forgets the anchors of blocks the store no longer holds, returning them to release.
     pub(super) fn drop_anchors(&mut self, gone: &[BlockId]) -> Vec<AnchorId> {
         gone.iter()

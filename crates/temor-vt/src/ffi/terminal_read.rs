@@ -84,6 +84,20 @@ impl Terminal {
         self.callbacks().color_scheme.set(scheme);
     }
 
+    /// Whether the alternate screen (a full-screen program's) is the active one.
+    pub fn on_alternate_screen(&self) -> bool {
+        let mut screen: sys::TerminalScreen::Type = sys::TerminalScreen::PRIMARY;
+        // SAFETY: ACTIVE_SCREEN writes a `GhosttyTerminalScreen`, which is a C int.
+        let code = unsafe {
+            sys::ghostty_terminal_get(
+                self.raw(),
+                sys::TerminalData::ACTIVE_SCREEN,
+                (&raw mut screen).cast(),
+            )
+        };
+        code == sys::Result::SUCCESS && screen == sys::TerminalScreen::ALTERNATE
+    }
+
     /// The OSC 8 hyperlink address of the cell at `at`, if it has one.
     pub fn hyperlink_at(&self, at: GridPoint) -> Result<Option<String>, VtError> {
         let gref = self.grid_ref(at)?;

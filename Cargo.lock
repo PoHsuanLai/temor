@@ -4351,6 +4351,7 @@ dependencies = [
  "temor-render",
  "temor-transfer",
  "temor-vt",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
 ]

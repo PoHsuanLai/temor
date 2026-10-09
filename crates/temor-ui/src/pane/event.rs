@@ -18,10 +18,12 @@ pub enum PaneEvent {
     Clipboard(ClipboardWrite),
     /// A desktop notification from the program (OSC 9, OSC 777).
     Notification(Notification),
-    /// A shell integration mark (OSC 133). The cursor's anchor for it follows as `Anchor`.
+    /// A shell integration mark (OSC 133) starts, numbered `seq`. Its own event follows.
+    MarkBegin { seq: u64 },
+    /// A shell integration mark (OSC 133). Its anchor follows as `Anchor` with the same number.
     Prompt(PromptEvent),
-    /// The cursor was anchored right after the mark before it (see `temor_vt::AnchorId`).
-    Anchor(AnchorId),
+    /// The cursor, where mark `seq` stood, anchored.
+    Anchor { seq: u64, anchor: AnchorId },
     /// A progress report (OSC 9;4).
     Progress(Progress),
     /// The terminal was reset (RIS): a running command is no longer on screen.

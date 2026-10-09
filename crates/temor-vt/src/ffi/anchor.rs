@@ -103,6 +103,11 @@ impl Terminal {
         })
     }
 
+    /// How many anchors are live.
+    pub fn anchor_count(&self) -> usize {
+        self.anchors().live.len()
+    }
+
     /// Frees an anchor. Releasing one twice, or one that never existed, does nothing.
     pub fn release_anchor(&mut self, id: AnchorId) {
         self.anchors_mut().release(id);

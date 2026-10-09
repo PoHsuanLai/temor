@@ -15,3 +15,8 @@ pub mod settings_value;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod paste_tests;
+#[cfg(test)]
+mod selection_tests;

@@ -157,7 +157,7 @@ fn cancelling_drops_the_held_payload() {
 mod marks {
     use super::super::MarkCuts;
 
-    /// The cut ends over `chunks`, as absolute offsets into their concatenation.
+    /// The cut offsets over `chunks`, as absolute offsets into their concatenation.
     fn cuts(chunks: &[&[u8]]) -> Vec<usize> {
         let mut scanner = MarkCuts::new();
         let mut at = 0;
@@ -169,30 +169,88 @@ mod marks {
         out
     }
 
-    #[test]
-    fn a_bel_or_st_terminated_mark_ends_after_its_terminator() {
-        assert_eq!(cuts(&[b"ab\x1b]133;A\x07cd"]), vec![2 + 8]);
-        assert_eq!(cuts(&[b"ab\x1b]133;D;0\x1b\\cd"]), vec![2 + 11]);
+    /// The offset of the first `needle` in `text`.
+    fn find(text: &[u8], needle: &[u8]) -> usize {
+        text.windows(needle.len())
+            .position(|w| w == needle)
+            .expect("needle present")
     }
 
     #[test]
-    fn marks_split_anywhere_are_found_once_complete() {
-        let whole = b"x\x1b]133;C\x1b\\y";
-        for split in 0..=whole.len() {
-            let (a, b) = whole.split_at(split);
-            assert_eq!(cuts(&[a, b]), vec![whole.len() - 1], "split at {split}");
-        }
+    fn a_bel_terminated_mark_is_cut_after_the_bel() {
+        let text = b"ab\x1b]133;A\x07cd";
+        assert_eq!(cuts(&[text]), vec![find(text, b"cd")]);
     }
 
     #[test]
-    fn other_osc_sequences_and_text_are_not_marks() {
+    fn an_st_terminated_mark_is_cut_before_its_escape() {
+        // The ESC of ST ends the OSC (libghostty dispatches it there), so the cut is before it.
+        let text = b"ab\x1b]133;D;0\x1b\\cd";
+        assert_eq!(cuts(&[text]), vec![find(text, b"\x1b\\")]);
+    }
+
+    #[test]
+    fn an_escape_inside_a_mark_ends_it_and_starts_the_next_sequence() {
+        // ESC [0m ends the first mark (no BEL), and the second mark is cut after its BEL.
+        let text = b"\x1b]133;A\x1b[0mx\x1b]133;B\x07";
+        assert_eq!(
+            cuts(&[text]),
+            vec![find(text, b"\x1b[0m"), find(text, b"\x1b]133;B") + 8]
+        );
+    }
+
+    #[test]
+    fn marks_inside_dcs_payloads_are_not_marks() {
+        assert!(cuts(&[b"\x1bP133;A\x1b\\"]).is_empty());
+        assert!(cuts(&[b"\x1bP133;A\x9c133;B\x07\x1b\\"]).is_empty());
+        assert!(
+            cuts(&[b"\x1bP\x9d133;A\x9c"]).is_empty(),
+            "C1 bytes are payload in DCS"
+        );
+    }
+
+    #[test]
+    fn marks_inside_apc_payloads_are_not_marks_but_an_escape_inside_one_starts_a_mark() {
+        assert!(cuts(&[b"\x1b_133;A\x07\x1b\\"]).is_empty());
+        // ESC aborts the APC, and the OSC it starts is a real mark (as libghostty reads it).
+        let text = b"\x1b_\x1b]133;A\x07\x1b\\";
+        assert_eq!(cuts(&[text]), vec![find(text, b"\x1b]133;A\x07") + 8]);
+    }
+
+    #[test]
+    fn c1_forms_of_osc_and_st_are_recognised() {
+        assert_eq!(cuts(&[b"\x9d133;A\x9c"]), vec![7]);
+        assert_eq!(cuts(&[b"\x9d133;A\x07"]), vec![7]);
+    }
+
+    #[test]
+    fn other_osc_sequences_and_plain_text_make_no_cuts() {
         assert!(cuts(&[b"\x1b]0;133;A\x07"]).is_empty());
         assert!(cuts(&[b"\x1b]1337;File=x\x07 133;A\x07"]).is_empty());
-        assert!(cuts(&[b"133;A\x07 \x1b[0m"]).is_empty());
+        assert!(cuts(&[b"133;A\x07 \x1b[0m plain text"]).is_empty());
     }
 
     #[test]
     fn several_marks_in_one_chunk_each_cut() {
         assert_eq!(cuts(&[b"\x1b]133;A\x07\x1b]133;B\x07"]), vec![8, 16]);
+    }
+
+    #[test]
+    fn marks_split_at_every_offset_are_found_once() {
+        let whole = b"x\x1b]133;C\x07y";
+        let expected = vec![find(whole, b"y")];
+        for split in 0..=whole.len() {
+            let (a, b) = whole.split_at(split);
+            assert_eq!(cuts(&[a, b]), expected, "split at {split}");
+        }
+        let st = b"x\x1b]133;C\x1b\\y";
+        for split in 0..=st.len() {
+            let (a, b) = st.split_at(split);
+            assert_eq!(
+                cuts(&[a, b]),
+                vec![find(st, b"\x1b\\")],
+                "st split at {split}"
+            );
+        }
     }
 }

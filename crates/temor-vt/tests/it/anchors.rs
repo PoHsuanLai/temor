@@ -1,5 +1,6 @@
-//! Anchors (PLAN §8.1, §9): the cursor is anchored right after each OSC 133 mark, the anchor
-//! follows its cell, and the scrollback dropping the cell ends the anchor.
+//! Anchors (PLAN §8.1, §9): each OSC 133 mark is announced with its number, its own events
+//! follow, then its anchor at the cursor. The anchor follows its cell, and the scrollback dropping
+//! the cell ends the anchor.
 
 use std::sync::mpsc;
 
@@ -23,44 +24,52 @@ fn term_with_scrollback(
     (term, events)
 }
 
-/// The anchors the events carried, in order.
-fn anchors(events: &[VtEvent]) -> Vec<AnchorId> {
+/// The anchors the events carried, in order, with their mark numbers.
+fn anchors(events: &[VtEvent]) -> Vec<(u64, AnchorId)> {
     events
         .iter()
         .filter_map(|e| match e {
-            VtEvent::Anchor(id) => Some(*id),
+            VtEvent::Anchor { seq, anchor } => Some((*seq, *anchor)),
             _ => None,
         })
         .collect()
 }
 
 #[test]
-fn each_mark_is_anchored_at_the_cursor_after_the_prompt_event() {
+fn each_mark_is_announced_then_anchored_at_the_cursor_after_its_events() {
     let (mut t, rx) = term_with_scrollback(20, 5, 100);
     t.write(b"ab\x1b]133;A\x07cd\x1b]133;B\x07");
     let events = drain(&rx);
+    let ids = anchors(&events);
+    assert_eq!(
+        ids.iter().map(|(seq, _)| *seq).collect::<Vec<_>>(),
+        vec![1, 2]
+    );
     assert_eq!(
         events,
         vec![
+            VtEvent::MarkBegin { seq: 1 },
             VtEvent::Prompt(PromptEvent::PromptStart(PromptKind::Primary)),
-            VtEvent::Anchor(anchors(&events)[0]),
+            VtEvent::Anchor {
+                seq: 1,
+                anchor: ids[0].1
+            },
+            VtEvent::MarkBegin { seq: 2 },
             VtEvent::Prompt(PromptEvent::InputStart),
-            VtEvent::Anchor(anchors(&events)[1]),
+            VtEvent::Anchor {
+                seq: 2,
+                anchor: ids[1].1
+            },
         ]
     );
-    let ids = anchors(&events);
     // OSC 133 A starts on a fresh line (libghostty's fresh-line), so its anchor is column 0 of
     // the next row; B is where the typed text now ends.
-    assert_eq!(
-        t.anchor_point(ids[0], PointSpace::Active)
-            .map(|p| (p.col.0, p.row)),
-        Some((0, 1))
-    );
-    assert_eq!(
-        t.anchor_point(ids[1], PointSpace::Active)
-            .map(|p| (p.col.0, p.row)),
-        Some((2, 1))
-    );
+    let at = |id: AnchorId| {
+        t.anchor_point(id, PointSpace::Active)
+            .map(|p| (p.col.0, p.row))
+    };
+    assert_eq!(at(ids[0].1), Some((0, 1)));
+    assert_eq!(at(ids[1].1), Some((2, 1)));
 }
 
 #[test]
@@ -75,23 +84,27 @@ fn a_mark_split_across_writes_is_anchored_once_it_completes() {
     let events = drain(&rx);
     assert_eq!(anchors(&events).len(), 1);
     let at = t
-        .anchor_point(anchors(&events)[0], PointSpace::Active)
+        .anchor_point(anchors(&events)[0].1, PointSpace::Active)
         .expect("anchored");
     assert_eq!((at.col.0, at.row), (1, 0));
 }
 
 #[test]
-fn a_non_mark_osc_is_not_anchored() {
+fn a_non_mark_osc_is_not_announced() {
     let (mut t, rx) = term_with_scrollback(20, 5, 100);
     t.write(b"\x1b]0;title\x07\x1b]7;file://h/tmp\x1b\\");
-    assert!(anchors(&drain(&rx)).is_empty());
+    assert!(
+        drain(&rx)
+            .iter()
+            .all(|e| !matches!(e, VtEvent::MarkBegin { .. } | VtEvent::Anchor { .. }))
+    );
 }
 
 #[test]
 fn an_anchor_follows_its_cell_as_output_scrolls() {
     let (mut t, rx) = term_with_scrollback(20, 3, 100);
     t.write(b"top\x1b]133;A\x07\r\n");
-    let id = anchors(&drain(&rx))[0];
+    let id = anchors(&drain(&rx))[0].1;
     let before = t.anchor_point(id, PointSpace::Screen).expect("anchored");
     t.write(b"l1\r\nl2\r\nl3\r\nl4\r\n");
     let after = t
@@ -112,7 +125,7 @@ fn an_anchor_follows_its_cell_as_output_scrolls() {
 fn scrollback_pruning_ends_the_anchor() {
     let (mut t, rx) = term_with_scrollback(20, 2, 4);
     t.write(b"first\x1b]133;A\x07\r\n");
-    let id = anchors(&drain(&rx))[0];
+    let id = anchors(&drain(&rx))[0].1;
     assert!(t.anchor_point(id, PointSpace::Screen).is_some());
     // Scrollback is kept in pages, so only a long run of output drops the anchored row.
     for i in 0..20_000 {
@@ -128,17 +141,31 @@ fn scrollback_pruning_ends_the_anchor() {
 fn a_released_anchor_has_no_point_and_releasing_twice_is_harmless() {
     let (mut t, rx) = term_with_scrollback(20, 5, 100);
     t.write(b"a\x1b]133;A\x07");
-    let id = anchors(&drain(&rx))[0];
+    let id = anchors(&drain(&rx))[0].1;
     t.release_anchor(id);
     assert!(t.anchor_point(id, PointSpace::Active).is_none());
     t.release_anchor(id);
 }
 
 #[test]
-fn anchor_cursor_works_without_a_mark() {
+fn anchor_cursor_works_without_a_mark_and_is_counted() {
     let (mut t, _rx) = term_with_scrollback(20, 5, 100);
     t.write(b"hello");
+    assert_eq!(t.anchor_count(), 0);
     let id = t.anchor_cursor().expect("anchored");
+    assert_eq!(t.anchor_count(), 1);
     let at = t.anchor_point(id, PointSpace::Active).expect("point");
     assert_eq!((at.col.0, at.row), (5, 0));
+    t.release_anchor(id);
+    assert_eq!(t.anchor_count(), 0);
+}
+
+#[test]
+fn the_alternate_screen_is_reported_while_a_full_screen_program_runs() {
+    let (mut t, _rx) = term_with_scrollback(20, 5, 100);
+    assert!(!t.on_alternate_screen());
+    t.write(b"\x1b[?1049h");
+    assert!(t.on_alternate_screen());
+    t.write(b"\x1b[?1049l");
+    assert!(!t.on_alternate_screen());
 }
