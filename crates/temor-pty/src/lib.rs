@@ -96,7 +96,8 @@
 //!
 //! ```
 //! use std::ffi::OsStr;
-//! use temor_pty::{ChildEnv, EnvContract, PaneId, ProgramVersion, TermName, base_env, child_env};
+//! use temor_pty::{EnvContract, PaneId, ProgramVersion, TermName, base_env, child_env};
+//! use temor_shell::ChildEnv;
 //!
 //! let host = base_env([("HOME", "/home/me"), ("TERM", "xterm-kitty"), ("PATH", "/usr/bin")]);
 //! let contract = EnvContract {
@@ -116,21 +117,16 @@ mod env;
 mod error;
 mod platform;
 mod pty;
-mod shell;
 mod size;
 
 pub use env::{
-    ChildEnv, EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, TermName, base_env,
-    child_env, find_term, terminfo_dirs,
+    EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, TermName, base_env, child_env,
+    find_term, terminfo_dirs,
 };
 pub use error::PtyError;
 pub use pty::{
     ChildExit, Foreground, Interest, ProcRoot, ProcessId, Pty, PtyIo, ReadOutcome, Readiness,
     Ready, SessionLauncher, SignalKind, SpawnSpec, WriteOutcome, find_program, run_session_leader,
 };
-pub use shell::{
-    IntegrationPlan, IntegrationState, Shell, ShellKind, ShellScript, ShellStart, ShimFile, UserId,
-    integration_scripts, passwd_login_shell, plan_integration, prepare_shell, resolve_shell,
-    write_shims,
-};
+pub use pty::{current_user, prepare_shell};
 pub use size::{Cols, GridSize, Px, Rows};

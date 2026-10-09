@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::model::ChildEnv;
+use temor_shell::ChildEnv;
 
 /// The `TERM` values temor sets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

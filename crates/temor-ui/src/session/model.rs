@@ -5,11 +5,12 @@
 use std::path::PathBuf;
 
 use ds_core::time::stamp::Stamp;
-use temor_core::notify::{Focus, Limiter, NotifyAfter};
-use temor_core::terminal::keymap::Keymap;
-use temor_core::terminal::search::Finder;
-use temor_core::terminal::selection::Selection;
+use temor_core::notify::{Focus, Limiter};
 use temor_core::vocab::ids::BlockId;
+use temor_pane::keys::Keymap;
+use temor_pane::settings::NotifyAfter;
+use temor_pane::text::Finder;
+use temor_pane::text::Selection;
 use temor_pty::ChildExit;
 use temor_render::{FontSet, GridFit, PixelSize, Scale};
 use temor_vt::Progress;
@@ -20,8 +21,8 @@ use super::clipboard::Clipboard;
 use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::Painter;
-use crate::pane::{Hold, PaneHandle, PaneSpec};
 use crate::platform::Opener;
+use temor_pane::{Hold, PaneHandle, PaneSpec};
 
 /// What the window should do about an event from the pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +39,7 @@ pub enum Notice {
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
-    Hold(crate::pane::Hold),
+    Hold(temor_pane::Hold),
     /// Nothing for the window.
     Quiet,
 }
@@ -46,8 +47,8 @@ pub enum Notice {
 /// The drag in progress: how the selection grows from the press.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Drag {
-    pub granularity: temor_core::terminal::selection::Granularity,
-    pub shape: temor_core::terminal::selection::Shape,
+    pub granularity: temor_pane::text::Granularity,
+    pub shape: temor_pane::text::Shape,
 }
 
 /// One pane's state as the window needs it.

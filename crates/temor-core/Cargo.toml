@@ -8,6 +8,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+temor-pane = { workspace = true, default-features = false }
 ds-core = { workspace = true }
 # Only the Spaces kit's plain data (`Spaces<P, R>`, `SpaceId`); the `dioxus` feature stays off.
 ds-style = { workspace = true }

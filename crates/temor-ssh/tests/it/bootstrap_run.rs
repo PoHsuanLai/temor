@@ -5,7 +5,7 @@
 use std::fs;
 use std::process::Command;
 
-use temor_pty::integration_scripts;
+use temor_shell::integration_scripts;
 use temor_ssh::BootstrapScript;
 
 use crate::harness::{

@@ -4324,6 +4324,18 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-pane",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "temor-pane"
+version = "0.1.0"
+dependencies = [
+ "temor-pty",
+ "temor-render",
+ "temor-shell",
+ "temor-vt",
  "thiserror 2.0.21",
 ]
 
@@ -4332,6 +4344,7 @@ name = "temor-pty"
 version = "0.1.0"
 dependencies = [
  "rustix",
+ "temor-shell",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -4353,11 +4366,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-shell"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "temor-ssh"
 version = "0.1.0"
 dependencies = [
  "rustix",
- "temor-pty",
+ "temor-shell",
  "temor-ssh",
  "tempfile",
  "thiserror 2.0.21",
@@ -4386,8 +4407,10 @@ dependencies = [
  "ds-harness",
  "rustix",
  "temor-core",
+ "temor-pane",
  "temor-pty",
  "temor-render",
+ "temor-shell",
  "temor-transfer",
  "temor-vt",
  "tempfile",

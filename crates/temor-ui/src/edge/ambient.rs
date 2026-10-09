@@ -5,7 +5,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use temor_pty::ChildEnv;
+use temor_shell::ChildEnv;
 
 /// What the app needs from its surroundings.
 #[derive(Debug, Clone, PartialEq)]

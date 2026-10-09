@@ -1,10 +1,12 @@
 //! The session's lifecycle: opening the program, fitting and painting, and taking the events
 //! the program sends.
 
+use std::sync::Arc;
 use temor_core::notify::{Focus, Limiter};
-use temor_core::terminal::cwd::cwd_from_url;
 use temor_core::vocab::text::display_text;
+use temor_pane::text::cwd_from_url;
 use temor_render::{PaneFocus, PixelSize, Scale};
+
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
@@ -12,7 +14,8 @@ use super::blocks::BlockLog;
 use super::model::{Lifetime, Notice, PADDING_LOGICAL, SessionParts};
 use crate::error::UiError;
 use crate::paint::{PaintView, Painter};
-use crate::pane::{Hold, PaneEvent, start};
+use crate::pane::UiSink;
+use temor_pane::{Hold, PaneEvent, start};
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
@@ -21,7 +24,11 @@ impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
     pub fn open(parts: SessionParts, events: UnboundedSender<PaneEvent>) -> Result<Self, UiError> {
         let painter = Painter::new(parts.fonts, parts.spec.palette)?;
-        let pane = start(parts.spec, events)?;
+        let (pane, runner) = start(parts.spec, Arc::new(UiSink(events)))?;
+        std::thread::Builder::new()
+            .name("temor-pane-io".to_owned())
+            .spawn(move || runner.run())
+            .map_err(UiError::Thread)?;
         Ok(Self {
             pane,
             painter,
@@ -196,6 +203,8 @@ impl Session {
                 // TODO(P9): OSC 52 writes need the clipboard's permission, which the pane asks for.
                 Notice::Quiet
             }
+            // A variant this window does not draw yet: nothing to show.
+            _ => Notice::Quiet,
         }
     }
 

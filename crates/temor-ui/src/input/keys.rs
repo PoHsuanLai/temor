@@ -2,7 +2,7 @@
 //! logical key on a US layout), the held modifiers, and the text the layout produced.
 
 use dioxus::html::{Code, Key, Modifiers as HeldMods};
-use temor_core::terminal::chord::{Chord, ChordKey, Mods, NamedKey, fold};
+use temor_pane::keys::{Chord, ChordKey, Mods, NamedKey, fold};
 use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::route::Stroke;

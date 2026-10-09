@@ -6,21 +6,21 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use temor_core::terminal::action::Action;
-use temor_core::terminal::chord::ChordKey;
-use temor_core::terminal::chord::{Chord, Mods};
-use temor_core::terminal::keymap::Keymap;
-use temor_core::terminal::paste::UnsafeReason;
-use temor_core::terminal::selection::CellPos;
-use temor_core::terminal::settings::TerminalSettings;
-use temor_core::terminal::settings_value::ShellChoice;
+use temor_pane::PaneEvent;
+use temor_pane::keys::Action;
+use temor_pane::keys::ChordKey;
+use temor_pane::keys::Keymap;
+use temor_pane::keys::{Chord, Mods};
+use temor_pane::paste::UnsafeReason;
+use temor_pane::settings::ShellChoice;
+use temor_pane::settings::TerminalSettings;
+use temor_pane::text::CellPos;
 use temor_pty::SessionLauncher;
 use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
 use temor_ui::edge::Ambient;
 use temor_ui::input::{FindBar, Stroke, route};
-use temor_ui::pane::PaneEvent;
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
@@ -46,7 +46,7 @@ impl Clipboard for MemoryClipboard {
 struct NoOpener;
 
 impl Opener for NoOpener {
-    fn open(&self, _target: &temor_core::terminal::link::LinkTarget) -> Result<(), OpenError> {
+    fn open(&self, _target: &temor_pane::text::LinkTarget) -> Result<(), OpenError> {
         Ok(())
     }
 }
@@ -325,8 +325,7 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     });
     // bash turns bracketed paste on at its prompt.
     wait_until("bracketed paste", || {
-        f.session.pane().with_term(|t| t.paste_mode())
-            == temor_core::terminal::paste::PasteMode::Bracketed
+        f.session.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
     });
     *f.clipboard.0.borrow_mut() = "echo pasted-ok".to_owned();
     f.session.run(Action::Paste).expect("paste");
@@ -336,8 +335,7 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     });
     // bash turns bracketed paste off while a command runs and back on at its next prompt.
     wait_until("bracketed paste again", || {
-        f.session.pane().with_term(|t| t.paste_mode())
-            == temor_core::terminal::paste::PasteMode::Bracketed
+        f.session.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
     });
 
     // Bash has bracketed paste on, so a line break is framed and safe: no confirmation.
@@ -356,14 +354,14 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     f.session.cancel_paste();
     assert!(f.session.pending_paste().is_none());
     // A plain paste (no bracketed paste) with a line break waits too.
-    let plain = temor_core::terminal::paste::check(
+    let plain = temor_pane::paste::check(
         "a\nb",
-        temor_core::terminal::paste::PasteMode::Plain,
-        temor_core::terminal::paste::VtVerdict::Clean,
+        temor_pane::paste::PasteMode::Plain,
+        temor_pane::paste::VtVerdict::Clean,
     );
     assert_eq!(
         plain,
-        temor_core::terminal::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
+        temor_pane::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
     );
 }
 
@@ -540,8 +538,7 @@ fn a_five_mebibyte_paste_arrives_intact() {
         has_line(&f.session.screen_text(), "READY")
     });
     wait_until("plain paste", || {
-        f.session.pane().with_term(|t| t.paste_mode())
-            == temor_core::terminal::paste::PasteMode::Plain
+        f.session.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Plain
     });
     let alphabet = b"0123456789abcdefghijklmnopqrstuvwxyz";
     let data: String = (0..5 * 1024 * 1024)

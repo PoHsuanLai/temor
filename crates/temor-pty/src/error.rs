@@ -37,12 +37,8 @@ pub enum PtyError {
     #[error("could not read the foreground process: {0}")]
     Foreground(#[source] io::Error),
     /// The shell integration files could not be written into the runtime directory.
-    #[error("could not write shell integration files to {dir}: {source}")]
-    Shims {
-        dir: PathBuf,
-        #[source]
-        source: io::Error,
-    },
+    #[error(transparent)]
+    Shell(#[from] temor_shell::ShellError),
     /// The session-leader trampoline was called without a program to run.
     #[error("the session launcher was given no program")]
     NoProgram,

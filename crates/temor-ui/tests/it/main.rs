@@ -4,7 +4,6 @@
 
 mod ambient;
 mod blocks;
-mod pane_engine;
 mod session;
 mod support;
 mod window;

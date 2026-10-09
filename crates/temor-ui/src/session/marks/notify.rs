@@ -2,7 +2,8 @@
 //! bell. Each goes through the same rate limit to the notifier edge.
 
 use temor_core::block::{Block, format_elapsed};
-use temor_core::notify::{Focus, Notice as Desk, NotifyAfter, finished_notice};
+use temor_core::notify::{Focus, Notice as Desk, finished_notice};
+use temor_pane::settings::NotifyAfter;
 
 use super::super::Session;
 use crate::edge::DesktopNote;

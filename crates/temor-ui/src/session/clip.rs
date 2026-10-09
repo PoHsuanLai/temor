@@ -1,7 +1,7 @@
 //! Copy and paste (PLAN §6): copy writes the selection's text; paste frames the clipboard for
 //! the program, and asks the person first when the text is unsafe to paste as it is.
 
-use temor_core::terminal::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
+use temor_pane::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
 
 use super::Session;
 use crate::error::UiError;

@@ -1,14 +1,14 @@
 //! What the window and the tests read from a session: the pane, the grid, the cursor, the
 //! screen's text, the find bar and the paste waiting for an answer.
 
-use temor_core::terminal::keymap::Keymap;
-use temor_core::terminal::search::Finder;
+use temor_pane::keys::Keymap;
+use temor_pane::text::Finder;
 use temor_render::GridFit;
 
 use super::Session;
 use super::clip::PendingPaste;
 use crate::error::UiError;
-use crate::pane::PaneHandle;
+use temor_pane::PaneHandle;
 
 impl Session {
     /// The pane's engine handle, for the window's painting loop and tests.

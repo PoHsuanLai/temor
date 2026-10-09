@@ -2,7 +2,8 @@
 
 use std::path::PathBuf;
 
-use temor_pty::{ChildEnv, Shell, ShellStart, prepare_shell};
+use temor_pty::prepare_shell;
+use temor_shell::{ChildEnv, Shell, ShellStart};
 
 use crate::support::{Scratch, Term, find, program_or_skip, setsid, size, url_path};
 

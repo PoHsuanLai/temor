@@ -2,8 +2,8 @@
 //! gutter or a jump does to the view. Nothing here is drawn; the views decide how to show it.
 
 use temor_core::block::{Outcome, format_elapsed, next_prompt, previous_prompt};
-use temor_core::terminal::selection::{CellPos, Granularity, Selection, Shape};
 use temor_core::vocab::ids::{BlockId, GridRow};
+use temor_pane::text::{CellPos, Granularity, Selection, Shape};
 use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
 
 use super::super::Session;

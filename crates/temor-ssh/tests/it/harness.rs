@@ -6,7 +6,7 @@ use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
-use temor_pty::integration_scripts;
+use temor_shell::integration_scripts;
 use temor_ssh::{BootstrapScript, RemoteCommand, bootstrap_remote_command};
 
 /// One test's directories. Dropped with the temp root.

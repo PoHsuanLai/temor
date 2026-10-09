@@ -1,16 +1,6 @@
-//! One terminal pane's engine (PLAN §4b): the terminal and its encoders under one lock, the PTY
-//! and its I/O thread, and the events the window hears. The window never touches the PTY.
+//! The window's side of the pane engine: the channel its events arrive on. The engine itself is
+//! `temor-pane`; the window only says where the events go.
 
-mod event;
-mod handle;
-mod io;
-mod outbox;
-mod reap;
-mod spawn;
-mod term;
+mod sink;
 
-pub use event::{Hold, PaneEvent};
-pub use handle::PaneHandle;
-pub use reap::{ReapStep, reap_step};
-pub use spawn::{PaneSpec, start};
-pub use term::{Output, Term};
+pub use sink::UiSink;

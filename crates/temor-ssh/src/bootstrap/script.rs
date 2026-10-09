@@ -1,7 +1,7 @@
 //! Assembles the bootstrap from the embedded template and the integration scripts, and wraps
 //! it as the remote command.
 
-use temor_pty::ShellScript;
+use temor_shell::ShellScript;
 
 use super::base64;
 use super::files::{TERMINFO_SOURCE, remote_path};
@@ -23,7 +23,7 @@ pub const MAX_REMOTE_COMMAND_BYTES: usize = 120 * 1024;
 pub struct BootstrapScript(String);
 
 impl BootstrapScript {
-    /// Builds the script with `integration` (from `temor_pty::integration_scripts()`) written
+    /// Builds the script with `integration` (from `temor_shell::integration_scripts()`) written
     /// to the temp directory. Scripts this bootstrap does not place are left out.
     pub fn build(integration: &[ShellScript]) -> Result<Self, SshError> {
         let mut placed = String::new();

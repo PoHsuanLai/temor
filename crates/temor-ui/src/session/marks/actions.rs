@@ -4,9 +4,9 @@
 use std::io::Write;
 use std::path::Path;
 
-use temor_core::terminal::paste;
 use temor_core::vocab::ids::BlockId;
 use temor_core::vocab::text::CommandText;
+use temor_pane::paste;
 use temor_transfer::FileName;
 use temor_transfer::shelf::ShelfStore;
 use temor_vt::ViewportScroll;

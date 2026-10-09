@@ -1,7 +1,7 @@
 //! Keys (PLAN §6): a routed key runs its action, or goes to the program encoded by the
 //! terminal's modes. Typing returns the view to the live screen.
 
-use temor_core::terminal::action::Action;
+use temor_pane::keys::Action;
 use temor_vt::{KeyAction, KeyCode};
 
 use super::{FindStep, PromptStep, Session};
@@ -25,7 +25,7 @@ impl Session {
                     self.pane
                         .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));
                 }
-                self.pane.key(&key)
+                Ok(self.pane.key(&key)?)
             }
             Routed::Ignored => Ok(()),
         }
@@ -38,7 +38,7 @@ impl Session {
             Action::Paste => self.paste(),
             Action::Find => {
                 if self.finder.is_none() {
-                    self.finder = Some(temor_core::terminal::search::Finder::new("", Vec::new()));
+                    self.finder = Some(temor_pane::text::Finder::new("", Vec::new()));
                 }
                 Ok(())
             }

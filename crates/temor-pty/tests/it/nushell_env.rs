@@ -2,7 +2,8 @@
 //! folder, and that folder is taken back out of `XDG_DATA_DIRS` once nushell has read it, so the
 //! value a program sees is the value the person's environment had.
 
-use temor_pty::{ChildEnv, Shell, ShellStart, prepare_shell};
+use temor_pty::prepare_shell;
+use temor_shell::{ChildEnv, Shell, ShellStart};
 
 use crate::support::{Scratch, Term, program_or_skip, pty_unsupported, setsid, size};
 
