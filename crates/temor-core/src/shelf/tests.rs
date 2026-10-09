@@ -235,3 +235,53 @@ fn sizes_read_plainly() {
         );
     }
 }
+
+fn dropped(paths: &[&str], support: ReceiveSupport, site: PaneSite) -> Dropped {
+    Dropped {
+        paths: paths.iter().map(|p| (*p).to_owned()).collect(),
+        support,
+        site,
+        quoting: Quoting::Posix,
+    }
+}
+
+#[test]
+fn a_drop_is_sent_pasted_or_explained() {
+    use DropAction as A;
+    use PaneSite::{Local, Remote};
+    use ReceiveSupport::{Announced, Unknown};
+    let send = |p: &[&str]| A::Send(p.iter().map(|s| (*s).to_owned()).collect());
+    #[rustfmt::skip]
+    let cases = vec![
+        ("nothing dropped", dropped(&[], Announced, Local), A::Nothing),
+        ("a program that takes files gets them", dropped(&["/a/b.txt", "/c d.txt"], Announced, Local), send(&["/a/b.txt", "/c d.txt"])),
+        ("a remote program that takes files too", dropped(&["/a/b.txt"], Announced, Remote), send(&["/a/b.txt"])),
+        ("a plain local shell gets quoted paths", dropped(&["/a/b c.txt", "/it's.txt"], Unknown, Local),
+            A::Paste("'/a/b c.txt' '/it'\\''s.txt' ".into())),
+        ("a plain remote shell cannot use a local path", dropped(&["/a/b.txt"], Unknown, Remote),
+            A::Tell("This program can't receive dropped files")),
+        ("a newline in a name is never pasted", dropped(&["/a\nb"], Unknown, Local),
+            A::Tell("That file's name can't be typed into a terminal")),
+        ("other names still paste", dropped(&["/a\nb", "/ok"], Unknown, Local), A::Paste("'/ok' ".into())),
+    ];
+    for (name, input, want) in cases {
+        assert_eq!(drop_action(&input), want, "{name}");
+    }
+}
+
+#[test]
+fn quoting_follows_the_shell() {
+    #[rustfmt::skip]
+    let cases = [
+        ("posix plain", Quoting::Posix, "a b", "'a b'"),
+        ("posix quote", Quoting::Posix, "it's", "'it'\\''s'"),
+        ("posix keeps dollars and globs", Quoting::Posix, "$HOME/*", "'$HOME/*'"),
+        ("fish escapes", Quoting::Fish, "a\\b'c", "'a\\\\b\\'c'"),
+        ("nu plain", Quoting::Nushell, "a b", "'a b'"),
+        ("nu with a quote", Quoting::Nushell, "it's", "`it's`"),
+        ("nu with both", Quoting::Nushell, "it's `x`\"", "\"it's `x`\\\"\""),
+    ];
+    for (name, shell, text, want) in cases {
+        assert_eq!(quote(text, shell), want, "{name}");
+    }
+}
