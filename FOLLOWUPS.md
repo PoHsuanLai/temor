@@ -175,3 +175,26 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       sill publishes per-workspace looks, so no change reaches it yet. §5
 - [ ] `real_shells_*` and `a_five_mebibyte_paste_arrives_intact` time out under a parallel
       `cargo test -p temor-ui` (fish startup, a 15 s wait); they pass alone. §13
+
+## P3b (lane/p3b: tabs, splits, session restore)
+- [ ] Window integration is not done: the window still shows one session. The workspace model
+      (temor-core `workspace`) is not driven by the window yet, and the sidebar (quire `Sidebar`
+      with tab rows), the split miniature, the `SplitView` tree, drag to split and tear, and the
+      `use_space_frame()` sidebar ink are not built. §7
+- [ ] The session file (`temor-ui::edge::session_file`) is written and read, but the window does
+      not load or save it yet, so nothing is restored on launch. Saves are paced (once a second,
+      plus one on quit). §7
+- [ ] Restoring scrollback needs a temor-pane entry point that starts a pane from a
+      `temor_vt::Snapshot`. temor-vt's `Terminal::restore` exists and nothing calls it. Until then
+      no snapshot sidecars are written. When added: the state dir is 0700, files 0600, each
+      snapshot is capped at 4 MiB, a pane on the alternate screen is never snapshotted, and a
+      tab's sidecars are deleted when it is forgotten. §7
+- [ ] ⌘T opens a plain new tab for now (the ⌘T bar is P5). §6
+- [ ] The pane ignores the workspace actions (`Session::run` no-op) until the window routes them
+      to the workspace step. §6
+- [ ] quire asks: `SplitView` needs a starting share and a finished-drag report, so the tree's
+      ratio round-trips (if absent, the tree keeps its ratio and the screen uses equal shares,
+      and quire gets this ask). The unread dot has no named component at v0.3.1 (a token-styled
+      dot is the fallback). Check both at window integration.
+- [ ] ⌃⌘= is bound to Ctrl+Shift+= and Ctrl+Super+=. The Ctrl+Super form is not a ⌘ chord under
+      the terminal rule (it has Ctrl), so the owner should confirm this binding. §6

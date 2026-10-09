@@ -33,3 +33,32 @@ pub fn ensure_private_dir(dir: &Path) -> io::Result<()> {
         fs::create_dir_all(dir)
     }
 }
+
+/// Writes `bytes` to `path` so that a reader sees the old file or the new one, never a part:
+/// a temporary file beside it, made owner-only (0600), synced, then renamed over `path`.
+// TODO(platform:macos), TODO(platform:windows): owner-only file creation on those systems.
+pub fn write_private_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    use std::io::Write;
+    let tmp = path.with_extension("json.tmp");
+    let mut file = create_private(&tmp)?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    drop(file);
+    fs::rename(&tmp, path)
+}
+
+#[cfg(unix)]
+fn create_private(path: &Path) -> io::Result<fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn create_private(path: &Path) -> io::Result<fs::File> {
+    fs::File::create(path)
+}

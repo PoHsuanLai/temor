@@ -16,3 +16,4 @@ pub mod space;
 pub mod split;
 pub mod transfer;
 pub mod vocab;
+pub mod workspace;

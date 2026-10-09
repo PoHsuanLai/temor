@@ -5,4 +5,4 @@ mod opener;
 mod private_dir;
 
 pub use opener::{OpenError, Opener, default_opener};
-pub use private_dir::ensure_private_dir;
+pub use private_dir::{ensure_private_dir, write_private_file};
