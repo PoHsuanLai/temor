@@ -9,3 +9,4 @@ Terminal=false
 Categories=TerminalEmulator;System;
 StartupWMClass=org.quire.Temor
 StartupNotify=true
+DBusActivatable=true
