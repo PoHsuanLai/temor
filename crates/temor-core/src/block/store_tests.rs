@@ -230,19 +230,28 @@ fn a_shell_exit_mid_command_closes_the_block_and_nothing_follows() {
 
 #[test]
 fn a_full_store_drops_the_oldest_finished_block_before_a_running_one() {
+    // A new prompt closes the command before it, so the running block is always the newest.
     let mut sh = Shell::new(2);
     sh.prompt(0);
     sh.typed(0);
-    let running = sh.run(1, "sleep");
+    let first = sh.run(1, "a");
+    sh.finish(1, Some(0));
     sh.prompt(2);
     sh.typed(2);
-    sh.run(3, "a");
+    let second = sh.run(3, "b");
     sh.finish(3, Some(0));
-    // The third block evicts the finished one, not the older running one.
     sh.prompt(4);
     sh.typed(4);
-    sh.run(5, "b");
-    assert!(sh.store.get(running).is_some(), "the running block is kept");
+    let running = sh.run(5, "sleep");
+    assert!(
+        sh.store.get(first).is_none(),
+        "the oldest finished block went"
+    );
+    assert!(sh.store.get(second).is_some());
+    assert_eq!(
+        sh.store.get(running).map(|b| b.outcome()),
+        Some(Outcome::Running)
+    );
     assert_eq!(sh.store.len(), 2);
 }
 

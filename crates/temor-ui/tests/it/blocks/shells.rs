@@ -9,7 +9,7 @@ use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 #[test]
 fn real_shells_make_one_block_per_command_with_its_output_and_status() {
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     for (name, shell) in shells() {
@@ -43,27 +43,39 @@ fn real_shells_make_one_block_per_command_with_its_output_and_status() {
     }
 }
 
-
 #[test]
 fn zsh_right_prompt_is_not_part_of_the_command() {
     if !tools_present() {
         return;
     }
     let Some(zsh) = shell_path("zsh") else {
-        println!("note: zsh right prompt skipped: zsh is not installed");
+        assert!(
+            !std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1"),
+            "zsh is required for the right-prompt test (TEMOR_REQUIRE_TOOLS=1)"
+        );
+        println!("SKIPPED: zsh right prompt needs zsh (set TEMOR_REQUIRE_TOOLS=1 to fail instead)");
         return;
     };
     let mut live = start_with("blocks-rprompt", &zsh, |home| {
         std::fs::write(home.join(".zshrc"), "RPROMPT='RIGHT-PROMPT'\n").expect("zshrc");
     });
     live.session.pane().send(b"echo rp-test");
+    // Enter comes once the typing is on screen, as it does for a person.
+    pump(&mut live, "the typed line", |s| {
+        s.screen_text().contains("echo rp-test")
+    });
     // Enter is the person's key: it goes through the session, which notes where the line ends.
     let enter = KeyInput::press(KeyCode::Enter, Modifiers::NONE, "");
     live.session
-        .key(Stroke { chord: None, key: enter })
+        .key(Stroke {
+            chord: None,
+            key: enter,
+        })
         .expect("enter");
     pump(&mut live, "the block", |s| {
-        s.block_outcomes().first().is_some_and(|b| b.1 != Outcome::Running)
+        s.block_outcomes()
+            .first()
+            .is_some_and(|b| b.1 != Outcome::Running)
     });
     let id = live.session.block_outcomes()[0].0;
     assert_eq!(live.session.block_command(id), Some("echo rp-test"));

@@ -1,7 +1,8 @@
 //! Where OSC 133 shell marks end, across chunk boundaries. The terminal cuts its input at each
 //! mark's terminator, so the cursor can be anchored where the mark stood: an OSC moves nothing.
 //! The rules follow libghostty's parse table (PLAN §8.1, §9): an OSC ends at BEL, ST (ESC \ or
-//! the C1 byte 0x9C), CAN, SUB or any ESC, and a C1 0x9D starts one anywhere. DCS, SOS, PM and
+//! the C1 byte 0x9C), CAN, SUB or any ESC, and a C1 0x9D starts one anywhere. A mark is cut
+//! right after the byte that ends it, which is when libghostty reports it. DCS, SOS, PM and
 //! APC payloads are ignored up to their end, and an ESC inside one aborts it.
 
 /// Introducer text after `ESC ]` (or C1 0x9D) that makes an OSC a shell mark.
@@ -35,13 +36,9 @@ enum State {
     StringPayload,
 }
 
-/// Where a mark's cut falls: before the byte (an ESC that ends the mark is the next sequence) or
-/// after it (BEL or ST, which the mark includes).
+/// A mark ended at this byte: the cut falls right after it, which is where libghostty reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Edge {
-    Before,
-    After,
-}
+struct Cut;
 
 /// The cut-point scanner's state between chunks.
 #[derive(Debug, Clone, Copy)]
@@ -74,11 +71,9 @@ impl MarkCuts {
     }
 
     fn byte(&mut self, at: usize, b: u8, cuts: &mut Vec<usize>) {
-        let (next, edge) = step(self.state, b);
-        match edge {
-            Some(Edge::Before) => cuts.push(at),
-            Some(Edge::After) => cuts.push(at + 1),
-            None => {}
+        let (next, cut) = step(self.state, b);
+        if cut.is_some() {
+            cuts.push(at + 1);
         }
         self.state = next;
     }
@@ -90,7 +85,7 @@ fn starts_sequence(b: u8) -> bool {
 }
 
 /// One byte: the state after it, and a cut if a mark ended.
-fn step(state: State, b: u8) -> (State, Option<Edge>) {
+fn step(state: State, b: u8) -> (State, Option<Cut>) {
     use State::*;
     let plain = |s| (s, None);
     match state {
@@ -115,9 +110,11 @@ fn step(state: State, b: u8) -> (State, Option<Edge>) {
         }),
         Osc(_) | Other => osc_byte(b),
         Mark => match b {
-            BEL | C1_ST | CAN | SUB => (Text, Some(Edge::After)),
-            ESC => (Esc, Some(Edge::Before)),
-            C1_OSC => (Osc(0), Some(Edge::Before)),
+            BEL | C1_ST | CAN | SUB => (Text, Some(Cut)),
+            // libghostty reports the mark when it reads the ESC (of ST, or of whatever follows),
+            // so the ESC goes with the mark and the rest of the sequence with the next piece.
+            ESC => (Esc, Some(Cut)),
+            C1_OSC => (Osc(0), Some(Cut)),
             _ => plain(Mark),
         },
         DcsPayload => match b {
@@ -135,7 +132,7 @@ fn step(state: State, b: u8) -> (State, Option<Edge>) {
 }
 
 /// A byte inside an OSC that is not a mark.
-fn osc_byte(b: u8) -> (State, Option<Edge>) {
+fn osc_byte(b: u8) -> (State, Option<Cut>) {
     match b {
         BEL | C1_ST | CAN | SUB => (State::Text, None),
         ESC => (State::Esc, None),

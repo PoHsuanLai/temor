@@ -4,15 +4,16 @@ use temor_core::block::Outcome;
 use temor_core::terminal::action::Action;
 use temor_core::terminal::chord::Chord;
 use temor_core::vocab::ids::BlockId;
-use temor_vt::{KeyCode, KeyInput, Modifiers, SurfacePoint};
 use temor_ui::input::Stroke;
+use temor_ui::session::Session;
+use temor_vt::{KeyCode, KeyInput, Modifiers};
 
-use super::support::{pump, run_line, shell_path, start};
 use super::super::support::tools_present;
+use super::support::{pump, run_line, shell_path, start};
 
 #[test]
 fn a_gutter_press_selects_the_block_output_and_copies_it() {
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     let shell = shell_path("bash").expect("bash");
@@ -56,7 +57,7 @@ fn a_gutter_press_selects_the_block_output_and_copies_it() {
 
 #[test]
 fn control_shift_up_and_down_move_between_prompts() {
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     let shell = shell_path("bash").expect("bash");
@@ -101,4 +102,3 @@ fn control_shift_up_and_down_move_between_prompts() {
     live.session.key(down).expect("down");
     assert_eq!(prompt_top(&live.session), Some(ids[2]));
 }
-

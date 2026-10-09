@@ -183,19 +183,25 @@ mod marks {
     }
 
     #[test]
-    fn an_st_terminated_mark_is_cut_before_its_escape() {
-        // The ESC of ST ends the OSC (libghostty dispatches it there), so the cut is before it.
+    fn an_st_terminated_mark_is_cut_after_its_escape() {
+        // libghostty reports the mark when it reads the ESC of ST, so the ESC stays with the mark.
+        // Regression: a cut before the ESC sent each bash mark's event after its anchor.
         let text = b"ab\x1b]133;D;0\x1b\\cd";
-        assert_eq!(cuts(&[text]), vec![find(text, b"\x1b\\")]);
+        assert_eq!(cuts(&[text]), vec![find(text, b"\\cd")]);
+        // A chunk that starts with the ESC cuts right after it, never before it.
+        let mut scanner = MarkCuts::new();
+        assert!(scanner.feed(b"ab\x1b]133;D;0").is_empty());
+        assert_eq!(scanner.feed(b"\x1b"), vec![1]);
     }
 
     #[test]
     fn an_escape_inside_a_mark_ends_it_and_starts_the_next_sequence() {
-        // ESC [0m ends the first mark (no BEL), and the second mark is cut after its BEL.
+        // ESC [0m ends the first mark (no BEL): the cut falls after the ESC, before the `[`. The
+        // second mark is cut after its BEL.
         let text = b"\x1b]133;A\x1b[0mx\x1b]133;B\x07";
         assert_eq!(
             cuts(&[text]),
-            vec![find(text, b"\x1b[0m"), find(text, b"\x1b]133;B") + 8]
+            vec![find(text, b"[0m"), find(text, b"\x1b]133;B") + 8]
         );
     }
 
@@ -248,7 +254,7 @@ mod marks {
             let (a, b) = st.split_at(split);
             assert_eq!(
                 cuts(&[a, b]),
-                vec![find(st, b"\x1b\\")],
+                vec![find(st, b"\x1b\\") + 1],
                 "st split at {split}"
             );
         }

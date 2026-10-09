@@ -10,20 +10,16 @@ use dioxus::prelude::*;
 use ds::edit::input::{Composition, EditInput};
 use ds::host::document::use_document_host;
 use ds::host::ime::{ImeEvent, ImeSwitch};
-use ds::host::measure::{RectProbe, use_rect};
+use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
-use temor_core::terminal::action::Action;
-use temor_render::{PixelSize, Scale};
 use temor_vt::{Ime, KeyAction};
-
-use ds::base::time::clock::sleep;
 
 use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
 use super::confirm::PasteConfirm;
-use super::convert::{device_point, scale_of};
-use super::find_bar::{FindBar, StepDirection};
+use super::convert::scale_of;
+use super::find_bar::FindBar;
 use super::handlers::{
     bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
     find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_shell,
@@ -34,11 +30,9 @@ use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use super::status::StatusLine;
 use super::window_help::{
-    cursor_rect, device_at, device_pixels, focus_in, place_cursor, run_query_later, send_text,
-    set_focus, take_notice,
+    device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
 };
 use crate::input::{Composing, RawKey, Repeat, stroke};
-use crate::session::QUERY_DEBOUNCE;
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::BlockId;
 
@@ -57,7 +51,7 @@ pub fn App() -> Element {
     let mut ui = use_signal(|| 0u32);
     let preedit = use_signal(|| None::<String>);
     let mut notice = use_signal(|| None::<String>);
-    let mut hovered = use_signal(|| None::<BlockId>);
+    let hovered = use_signal(|| None::<BlockId>);
 
     // Every change of the pane's size, scale or device lays it out again.
     {
@@ -225,9 +219,9 @@ pub fn App() -> Element {
                     FindBar {
                         query,
                         position,
-                        on_query:find_query(Rc::clone(&slot), ui, started),,
-                        on_step:find_step(Rc::clone(&slot), ui),,
-                        on_close:find_close(Rc::clone(&slot), ui),,
+                        on_query:find_query(Rc::clone(&slot), ui, started),
+                        on_step:find_step(Rc::clone(&slot), ui),
+                        on_close:find_close(Rc::clone(&slot), ui),
                     }
                 }
                 div {
@@ -246,9 +240,9 @@ pub fn App() -> Element {
                     onkeyup: move |e| key_up(e, KeyAction::Release),
                     onfocus: on_focus,
                     onblur: on_blur,
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),,
+                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
                     onpointerup: move |e| (mouse.up)(e),
-                    onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),,
+                    onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
                     onwheel: move |e| (mouse.wheel)(e),
                     TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
                     if let Some(text) = preedit() {
@@ -259,11 +253,11 @@ pub fn App() -> Element {
                 if let Some(bar) = chrome.bar.clone() {
                     BlockBar {
                         bar,
-                        on_copy_command:bar_copy_command(Rc::clone(&slot), ui),,
-                        on_copy_output:bar_copy_output(Rc::clone(&slot), ui),,
-                        on_save:bar_save(Rc::clone(&slot), ui, notice),,
-                        on_rerun:bar_rerun(Rc::clone(&slot), ui),,
-                        on_close:bar_close(Rc::clone(&slot), ui),,
+                        on_copy_command:bar_copy_command(Rc::clone(&slot), ui),
+                        on_copy_output:bar_copy_output(Rc::clone(&slot), ui),
+                        on_save:bar_save(Rc::clone(&slot), ui, notice),
+                        on_rerun:bar_rerun(Rc::clone(&slot), ui),
+                        on_close:bar_close(Rc::clone(&slot), ui),
                     }
                 }
                 StatusLine {
@@ -275,8 +269,8 @@ pub fn App() -> Element {
                 if let Some(reason) = pending {
                     PasteConfirm {
                         reason,
-                        on_paste:paste_confirm(Rc::clone(&slot), ui),,
-                        on_cancel:paste_cancel(Rc::clone(&slot), ui),,
+                        on_paste:paste_confirm(Rc::clone(&slot), ui),
+                        on_cancel:paste_cancel(Rc::clone(&slot), ui),
                     }
                 }
                 if ended {
@@ -287,7 +281,7 @@ pub fn App() -> Element {
                             Button {
                                 label: "Restart".to_owned(),
                                 title: Some("Start a new shell".to_owned()),
-                                onclick:restart_shell(Rc::clone(&slot), ui),,
+                                onclick:restart_shell(Rc::clone(&slot), ui),
                             }
                         },
                     }

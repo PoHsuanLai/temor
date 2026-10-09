@@ -2,18 +2,17 @@
 
 use std::path::PathBuf;
 
-use temor_core::notify::Focus;
 use temor_core::block::Outcome;
-use temor_ui::edge::DesktopNote;
+use temor_core::notify::Focus;
 use temor_ui::pane::PaneEvent;
 use temor_vt::Notification;
 
-use super::support::{hold, pump, run_line, shell_path, start};
 use super::super::support::tools_present;
+use super::support::{hold, pump, shell_path, start};
 
 #[test]
 fn a_long_command_notifies_once_when_the_pane_is_unfocused() {
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     let shell = shell_path("bash").expect("bash");
@@ -45,7 +44,7 @@ fn a_long_command_notifies_once_when_the_pane_is_unfocused() {
 
 #[test]
 fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     let shell = shell_path("bash").expect("bash");
@@ -84,7 +83,7 @@ fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
 #[test]
 fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
     let shell = shell_path("bash").unwrap_or_else(|| PathBuf::from("/usr/bin/bash"));
-    if !super::support::tools_present() {
+    if !tools_present() {
         return;
     }
     let mut live = start("blocks-program", &shell);
@@ -109,5 +108,4 @@ fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
     assert!(live.session.bell_showing(), "the bell's mark is up");
     live.clock.advance(1_000);
     assert!(!live.session.bell_showing(), "and goes down on its own");
-    let _ = Stamp(0);
 }

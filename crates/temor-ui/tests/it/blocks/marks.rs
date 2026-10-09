@@ -4,11 +4,11 @@
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::BlockId;
-use temor_vt::{PromptEvent, PromptKind, ExitStatus, ExitCode};
 use temor_ui::pane::PaneEvent;
+use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
-use super::support::{Live, shell_path, start};
 use super::super::support::tools_present;
+use super::support::{Live, pump, shell_path, start};
 
 /// Sends one whole mark: its number, its event, and its anchor at the cursor.
 fn mark(live: &mut Live, seq: u64, event: PromptEvent) {
@@ -34,26 +34,40 @@ fn at_prompt(name: &str) -> Option<Live> {
 
 #[test]
 fn a_missed_anchor_does_not_pair_with_the_next_marks_event() {
-    let Some(mut live) = at_prompt("blocks-pair") else { return };
+    let Some(mut live) = at_prompt("blocks-pair") else {
+        return;
+    };
     let prompts = live.session.prompts_seen();
     let before = anchors(&live);
     // The first mark's anchor never arrives.
     live.session.absorb(PaneEvent::MarkBegin { seq: 1000 });
     live.session
-        .absorb(PaneEvent::Prompt(PromptEvent::PromptStart(PromptKind::Primary)));
+        .absorb(PaneEvent::Prompt(PromptEvent::PromptStart(
+            PromptKind::Primary,
+        )));
     // The next mark is whole. Its anchor must not be paired with the missed prompt.
     mark(&mut live, 1001, PromptEvent::InputStart);
-    assert_eq!(live.session.prompts_seen(), prompts, "the missed prompt was not taken");
+    assert_eq!(
+        live.session.prompts_seen(),
+        prompts,
+        "the missed prompt was not taken"
+    );
     assert_eq!(anchors(&live), before, "nothing is left behind");
 }
 
 #[test]
 fn ignored_marks_keep_no_anchors() {
-    let Some(mut live) = at_prompt("blocks-ignored") else { return };
+    let Some(mut live) = at_prompt("blocks-ignored") else {
+        return;
+    };
     let before = anchors(&live);
     // The shell is typing already: a second input start changes nothing.
     mark(&mut live, 2000, PromptEvent::InputStart);
-    assert_eq!(anchors(&live), before, "an ignored input start keeps no anchor");
+    assert_eq!(
+        anchors(&live),
+        before,
+        "an ignored input start keeps no anchor"
+    );
     // An end with no command running makes no block, so its anchor goes back too.
     mark(
         &mut live,
@@ -63,7 +77,11 @@ fn ignored_marks_keep_no_anchors() {
             error: String::new(),
         },
     );
-    assert_eq!(anchors(&live), before, "an end with no command keeps no anchor");
+    assert_eq!(
+        anchors(&live),
+        before,
+        "an end with no command keeps no anchor"
+    );
     assert!(live.session.block_outcomes().is_empty());
 }
 
@@ -90,26 +108,59 @@ fn command_block(live: &mut Live, seq: u64, command: &str) {
 
 #[test]
 fn a_command_payload_with_a_line_break_is_refused_on_rerun_and_others_are_cleaned() {
-    let Some(mut live) = at_prompt("blocks-payload") else { return };
+    let Some(mut live) = at_prompt("blocks-payload") else {
+        return;
+    };
     // The person's typed text, as the terminal holds it.
     live.session.pane().with_term(|term| term.write(b"ls"));
     // The payload carries a line break: it would submit `rm` if typed as a line.
     command_block(&mut live, 3000, "ls\nrm -rf /tmp/never");
-    // The payload carries an end-of-file control: it is dropped, and `ls` is safe to type.
-    command_block(&mut live, 3010, "\u{4}ls");
-    let ids: Vec<BlockId> = live.session.block_outcomes().into_iter().map(|b| b.0).collect();
+    // The payload carries an end-of-file control: it is dropped, and the rest is safe to type.
+    command_block(&mut live, 3010, "\u{4}echo typed-not-run");
+    let ids: Vec<BlockId> = live
+        .session
+        .block_outcomes()
+        .into_iter()
+        .map(|b| b.0)
+        .collect();
     assert_eq!(ids.len(), 2, "both commands were accepted");
 
-    assert_eq!(live.session.block_command(ids[0]), Some(""), "a line break refuses the text");
+    assert_eq!(
+        live.session.block_command(ids[0]),
+        Some(""),
+        "a line break refuses the text"
+    );
     live.session.rerun(ids[0]);
     assert_eq!(
         live.session.take_notice().as_deref(),
         Some("This command cannot be typed again.")
     );
 
-    assert_eq!(live.session.block_command(ids[1]), Some("ls"));
+    assert_eq!(
+        live.session.block_command(ids[1]),
+        Some("echo typed-not-run")
+    );
     live.session.rerun(ids[1]);
     assert_eq!(live.session.take_notice(), None, "a safe command is typed");
+    // The shell echoes what reached it, and nothing presses Enter: the command never runs.
+    pump(&mut live, "the typed command", |s| {
+        s.screen_text().contains("echo typed-not-run")
+    });
+    let settle = std::time::Instant::now();
+    while settle.elapsed() < std::time::Duration::from_millis(500) {
+        pump(&mut live, "events", |_| true);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let screen = live.session.screen_text();
+    assert!(
+        !screen.lines().any(|line| line.trim() == "typed-not-run"),
+        "the command was submitted:\n{screen}"
+    );
+    assert_eq!(
+        live.session.block_outcomes().len(),
+        2,
+        "no new block: nothing ran"
+    );
     assert_eq!(
         live.session.block_outcomes()[1].1,
         Outcome::Succeeded,
@@ -119,13 +170,31 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_and_others_are_cleane
 
 #[test]
 fn a_full_screen_program_hides_the_gutter_and_its_hits() {
-    let Some(mut live) = at_prompt("blocks-alt") else { return };
+    let Some(mut live) = at_prompt("blocks-alt") else {
+        return;
+    };
     command_block(&mut live, 4000, "vim");
     let id = live.session.block_outcomes()[0].0;
-    assert!(!live.session.block_marks().is_empty(), "the prompt is on screen");
-    live.session.pane().with_term(|term| term.write(b"\x1b[?1049h"));
-    assert!(live.session.block_marks().is_empty(), "no marks on the alternate screen");
-    assert!(live.session.block_summary(id).is_some(), "the summary still reads while hidden");
-    live.session.pane().with_term(|term| term.write(b"\x1b[?1049l"));
-    assert!(!live.session.block_marks().is_empty(), "the marks return with the shell's screen");
+    assert!(
+        !live.session.block_marks().is_empty(),
+        "the prompt is on screen"
+    );
+    live.session
+        .pane()
+        .with_term(|term| term.write(b"\x1b[?1049h"));
+    assert!(
+        live.session.block_marks().is_empty(),
+        "no marks on the alternate screen"
+    );
+    assert!(
+        live.session.block_summary(id).is_some(),
+        "the summary still reads while hidden"
+    );
+    live.session
+        .pane()
+        .with_term(|term| term.write(b"\x1b[?1049l"));
+    assert!(
+        !live.session.block_marks().is_empty(),
+        "the marks return with the shell's screen"
+    );
 }

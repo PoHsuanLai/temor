@@ -8,7 +8,6 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::host::signals::HostSignals;
-use ds::prelude::*;
 use temor_core::terminal::action::Action;
 use temor_core::vocab::ids::BlockId;
 

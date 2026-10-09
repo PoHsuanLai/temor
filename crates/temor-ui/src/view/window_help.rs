@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
+use ds::host::ime::ImeSwitch;
 use ds::host::measure::RectProbe;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;

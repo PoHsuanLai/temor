@@ -5,10 +5,6 @@ use ds_core::word::Word;
 use super::action::Action;
 use super::chord::{Chord, ChordKey, Mods, NamedKey};
 use super::keymap::Keymap;
-use super::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
-use super::row::RowText;
-use super::search::{Finder, find_all};
-use super::selection::{CellPos, Granularity, Selection, Shape, word_span};
 use super::settings::{TerminalSettings, parse_settings};
 use crate::error::CoreError;
 

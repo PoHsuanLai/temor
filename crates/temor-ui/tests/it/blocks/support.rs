@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use temor_core::block::Outcome;
-use temor_core::notify::{Focus, NotifyAfter};
+use temor_core::notify::NotifyAfter;
 use temor_core::terminal::keymap::Keymap;
 use temor_core::terminal::settings::TerminalSettings;
 use temor_core::terminal::settings_value::ShellChoice;
@@ -73,7 +73,11 @@ pub(super) fn start(name: &str, shell: &std::path::Path) -> Live {
 }
 
 /// Starts a session like `start`, after `setup` has written the scratch home.
-pub(super) fn start_with(name: &str, shell: &std::path::Path, setup: impl FnOnce(&std::path::Path)) -> Live {
+pub(super) fn start_with(
+    name: &str,
+    shell: &std::path::Path,
+    setup: impl FnOnce(&std::path::Path),
+) -> Live {
     // One scratch call per test: a second one would remove the shell's own working folder.
     let base = scratch(name);
     let home = base.join("home");
@@ -223,4 +227,3 @@ pub(super) fn shells() -> Vec<(&'static str, PathBuf)> {
         })
         .collect()
 }
-
