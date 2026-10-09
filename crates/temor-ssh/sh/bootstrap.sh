@@ -115,6 +115,15 @@ case ${temor_shell##*/} in
         fi
         XDG_DATA_DIRS="$temor_tmp/fish:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
             "$temor_shell" -l -i ;;
+    nu|nushell)
+        # nushell reads vendor autoload files from XDG_DATA_DIRS; temor.nu takes this entry back
+        # out, and puts back the value found here (TEMOR_NU_XDG_DATA_DIRS), once it has run.
+        if [ "${XDG_DATA_DIRS+set}" = set ]; then
+            TEMOR_NU_XDG_DATA_DIRS=$XDG_DATA_DIRS
+            export TEMOR_NU_XDG_DATA_DIRS
+        fi
+        XDG_DATA_DIRS="$temor_tmp/nu:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
+            "$temor_shell" -l ;;
     *)
         "$temor_shell" ;;
 esac

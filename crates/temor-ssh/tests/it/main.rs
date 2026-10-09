@@ -8,7 +8,11 @@ mod bootstrap_run;
 #[cfg(unix)]
 mod edges;
 #[cfg(unix)]
+mod files;
+#[cfg(unix)]
 mod harness;
+#[cfg(unix)]
+mod nu;
 #[cfg(unix)]
 mod shells;
 #[cfg(unix)]

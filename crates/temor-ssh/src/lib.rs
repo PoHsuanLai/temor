@@ -5,10 +5,16 @@
 //! the POSIX bootstrap that is sent as the remote command: shell integration, a terminfo
 //! fallback and an OSC 7 cwd. It derives a host's identity from its key fingerprint.
 //!
-//! The crate never runs `ssh` and never opens a network connection; the app does that with the
-//! argv built here. Inputs (the config files, the runtime directory, `$HOME`) are injected, and
-//! the library spawns no threads. The only edge is the private runtime directory, which lives in
-//! the private `platform` module with TODO stubs for the other OSes.
+//! The crate opens no network connection itself. The app runs `ssh` with the argv built here;
+//! the one exception is [`SshRemoteFiles`], which runs `ssh` and `scp` through an injected
+//! [`CommandRunner`] when the app asks it to move a file. Inputs (the config files, the runtime
+//! directory, `$HOME`) are injected, and the library spawns no threads. Its OS edge is the
+//! private runtime directory, in the private `platform` module with TODO stubs for the other
+//! OSes.
+//!
+//! Beyond the host list it also merges in the person's tailnet machines ([`merge_hosts`]),
+//! recognises Tailscale's browser check ([`CheckScan`]), and reads and writes remote files
+//! through the shared connection ([`RemoteFiles`]).
 //!
 //! # Example
 //!
@@ -33,10 +39,14 @@
 
 mod argv;
 mod bootstrap;
+mod check_mode;
 mod config;
 mod error;
+mod files;
+mod hosts;
 mod identity;
 mod platform;
+mod tailnet;
 
 /// In-memory config fixtures for tests; built with the `testing` feature.
 #[cfg(feature = "testing")]
@@ -53,6 +63,13 @@ pub use config::{
     ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
     IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, known_host_names, load_host_list,
 };
+pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use error::SshError;
-pub use identity::{Fingerprint, HostId, ShownName, fingerprint_from_keygen};
+pub use files::{
+    ByteCount, CommandOutput, CommandRunner, FileTools, RemoteFilePath, RemoteFiles, RemoteState,
+    RemoteStat, SshRemoteFiles, StdRunner, fetch_argv, parse_stat, stat_argv, store_argv,
+};
+pub use hosts::{HostGroup, HostRow, merge_hosts};
+pub use identity::{Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen};
 pub use platform::ensure_private_dir;
+pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
