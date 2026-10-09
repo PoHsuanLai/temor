@@ -4,6 +4,7 @@
 
 use std::time::{Duration, Instant};
 
+use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
@@ -96,22 +97,42 @@ fn the_window_starts_a_shell_and_takes_typing() {
     });
 }
 
-/// The mouse reports on the screen, as `(terminator, text)` for each `^[[<` report cat -v shows.
-fn mouse_reports(screen: &str) -> Vec<char> {
+/// The mouse reports on the screen, as `(button code, terminator)` for each `^[[<` report
+/// cat -v shows. The button code is SGR's: 0 primary, 1 middle, 2 secondary.
+fn mouse_reports(screen: &str) -> Vec<(u8, char)> {
     let mut out = Vec::new();
     for line in screen.lines() {
         let mut rest = line;
         while let Some(at) = rest.find("^[[<") {
             let after = &rest[at + 4..];
-            if let Some(end) = after.find(['M', 'm']) {
-                out.push(after[end..].chars().next().unwrap_or('?'));
-                rest = &after[end + 1..];
-            } else {
+            let Some(end) = after.find(['M', 'm']) else {
                 break;
-            }
+            };
+            let fields = &after[..end];
+            let code = fields
+                .split(';')
+                .next()
+                .and_then(|c| c.parse::<u8>().ok())
+                .unwrap_or(u8::MAX);
+            out.push((code, after[end..].chars().next().unwrap_or('?')));
+            rest = &after[end + 1..];
         }
     }
     out
+}
+
+/// Turns on SGR mouse reporting and shows what the program receives, raw.
+fn start_raw_mouse_echo(h: &mut Harness) {
+    let command = "stty raw -echo; printf '\\033[?1000h\\033[?1006h'; cat -v";
+    for c in command.chars() {
+        let key = match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        };
+        h.send(Input::key(key));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(500));
 }
 
 #[test]
@@ -127,17 +148,7 @@ fn a_click_reports_its_release_to_the_program_once() {
         y: Px(200.0),
     }));
     h.advance(Duration::from_millis(100));
-    // Turn on mouse reporting (SGR) and show what the program receives, raw.
-    let command = "stty raw -echo; printf '\\033[?1000h\\033[?1006h'; cat -v";
-    for c in command.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-    h.advance(Duration::from_millis(500));
+    start_raw_mouse_echo(&mut h);
     // One click: a press and its release, each reported once.
     h.send(Input::click(Point {
         x: Px(300.0),
@@ -145,13 +156,50 @@ fn a_click_reports_its_release_to_the_program_once() {
     }));
     h.advance(Duration::from_millis(500));
     let reports = mouse_reports(&probe.screen());
-    let presses = reports.iter().filter(|c| **c == 'M').count();
-    let releases = reports.iter().filter(|c| **c == 'm').count();
+    let presses = reports.iter().filter(|(c, t)| *c == 0 && *t == 'M').count();
+    let releases = reports.iter().filter(|(c, t)| *c == 0 && *t == 'm').count();
     assert_eq!(
         releases,
         1,
-        "one release report, got {reports:?}:\n{}",
+        "one primary release report, got {reports:?}:\n{}",
         probe.screen()
     );
-    assert_eq!(presses, 1, "one press report, got {reports:?}");
+    assert_eq!(presses, 1, "one primary press report, got {reports:?}");
+}
+
+#[test]
+fn a_right_click_reports_one_press_and_one_release_with_the_right_button() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-right", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    start_raw_mouse_echo(&mut h);
+    let at = Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    };
+    h.send(Input::button_down(at, PointerButton::Secondary));
+    h.send(Input::button_up(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(500));
+    let reports = mouse_reports(&probe.screen());
+    let presses = reports.iter().filter(|(c, t)| *c == 2 && *t == 'M').count();
+    let releases = reports.iter().filter(|(c, t)| *c == 2 && *t == 'm').count();
+    assert_eq!(
+        presses,
+        1,
+        "one right press report, got {reports:?}:\n{}",
+        probe.screen()
+    );
+    assert_eq!(releases, 1, "one right release report, got {reports:?}");
+    assert!(
+        !reports.iter().any(|(c, _)| *c == 0),
+        "no primary report for a right click"
+    );
 }

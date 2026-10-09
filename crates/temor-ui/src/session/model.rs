@@ -61,6 +61,7 @@ pub struct Session {
     pub(super) lifetime: Lifetime,
     pub(super) notice: Option<String>,
     pub(super) hold: Hold,
+    pub(super) hold_generation: u64,
     pub(super) find_text: String,
     pub(super) pending_query: Option<PendingQuery>,
 }

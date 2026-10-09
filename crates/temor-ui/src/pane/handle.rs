@@ -62,11 +62,18 @@ impl PaneHandle {
         Ok(())
     }
 
-    /// Changes the grid. The program is told the new size first (by the I/O thread, which does
-    /// not block this call); then the terminal reflows and the window is asked to repaint.
+    /// Changes the grid. The terminal reflows and the program's size changes inside one hold of
+    /// the pane's lock, so the I/O thread never parses output against a half-changed pane. Output
+    /// the program wrote before the size change but read from the PTY just before it may still be
+    /// parsed at the new size; that one read is the same window every terminal has on SIGWINCH.
     pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), UiError> {
-        let _ = self.commands.send(Command::Resize(pty_size(grid, cell)));
-        let output = self.with_term(|term| term.resize(grid, cell))?;
+        let size = pty_size(grid, cell);
+        let output = self.with_term(|term| {
+            let output = term.resize(grid, cell)?;
+            // A failed size change leaves the program at its old size; the grid is still right.
+            let _ = self.outbox.port().resize(size);
+            Ok::<_, UiError>(output)
+        })?;
         for reply in output.replies {
             let _ = self.outbox.push_reply(&reply);
         }

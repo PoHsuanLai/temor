@@ -129,7 +129,9 @@ fn wait_until(what: &str, mut ok: impl FnMut() -> bool) {
 }
 
 fn has_line(text: &str, line: &str) -> bool {
-    text.lines().any(|l| l.trim_end() == line)
+    // Blank cells before a line's text are spaces now, and a raw terminal's cursor may start a
+    // line part way along, so the match ignores the blanks at both ends.
+    text.lines().any(|l| l.trim() == line.trim())
 }
 
 fn type_text(session: &mut Session, text: &str) {
@@ -606,4 +608,52 @@ fn wide_characters_copy_and_select_by_cells() {
         .expect("release");
     f.session.run(Action::Copy).expect("copy");
     assert_eq!(*f.clipboard.0.borrow(), "中文ab");
+}
+
+#[test]
+fn a_tab_copies_as_blanks_and_search_finds_the_blanks() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-tab");
+    // Write straight into the terminal: cursor home, clear the line, then "a", a tab, "b".
+    f.session.pane().with_term(|t| {
+        let _ = t.write(b"\x1b[H\x1b[2Ka\tb");
+    });
+    wait_until("the row", || {
+        f.session
+            .screen_text()
+            .lines()
+            .next()
+            .is_some_and(|l| l.starts_with("a"))
+    });
+    // A tab from column 1 reaches column 8: 'b' sits in column 8, after seven blank cells.
+    let at = point_at(&f.session, 0, 0);
+    let mods = Modifiers::NONE;
+    f.session
+        .press(
+            at,
+            temor_vt::MouseButton::Left,
+            mods,
+            Duration::from_secs(1),
+        )
+        .expect("press");
+    f.session.drag_to(point_at(&f.session, 0, 8)).expect("drag");
+    f.session
+        .release(
+            point_at(&f.session, 0, 8),
+            temor_vt::MouseButton::Left,
+            mods,
+        )
+        .expect("release");
+    f.session.run(Action::Copy).expect("copy");
+    assert_eq!(*f.clipboard.0.borrow(), "a       b");
+    // Searching for the same run finds it; two literal blanks are text too.
+    f.session.set_query("a       b").expect("search");
+    assert_eq!(f.session.finder().map(|f| f.matches().len()), Some(1));
+    f.session.pane().with_term(|t| {
+        let _ = t.write(b"\x1b[2;1H\x1b[2Ka  b");
+    });
+    f.session.set_query("a  b").expect("search");
+    assert_eq!(f.session.finder().map(|f| f.matches().len()), Some(1));
 }

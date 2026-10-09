@@ -133,7 +133,7 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
             }
             let mut paint = false;
             let mut ended = false;
-            let mut held = false;
+            let mut held_since: Option<u64> = None;
             {
                 let mut s = slot.borrow_mut();
                 let Some(session) = s.session.as_mut() else {
@@ -146,17 +146,20 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
                             ended = true;
                             paint = true;
                         }
-                        Notice::Hold(hold) => {
-                            session.set_hold(hold);
-                            held |= hold == Hold::Held;
-                            paint |= hold == Hold::Released;
+                        Notice::Hold(Hold::Held) => {
+                            // Each hold has its own generation: a stale timer cannot end a newer one.
+                            held_since = Some(session.start_hold());
+                        }
+                        Notice::Hold(Hold::Released) => {
+                            session.release_hold();
+                            paint = true;
                         }
                         Notice::Title(_) | Notice::Bell | Notice::Quiet => {}
                     }
                 }
             }
-            if held {
-                release_hold_later(Rc::clone(&slot));
+            if let Some(generation) = held_since {
+                release_hold_later(Rc::clone(&slot), generation);
             }
             if paint {
                 repaint(&slot);
@@ -168,13 +171,18 @@ fn spawn_event_loop(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) {
     });
 }
 
-/// Releases a hold once [`HOLD_TIMEOUT`] has passed, then draws the latest frame.
-fn release_hold_later(slot: Rc<RefCell<Slot>>) {
+/// Releases the hold with this generation once [`HOLD_TIMEOUT`] has passed, then draws the latest
+/// frame. A newer hold has a newer generation and is left alone.
+fn release_hold_later(slot: Rc<RefCell<Slot>>, generation: u64) {
     spawn(async move {
         sleep(HOLD_TIMEOUT).await;
-        if let Some(session) = slot.borrow_mut().session.as_mut() {
-            session.set_hold(Hold::Released);
+        let ended = slot
+            .borrow_mut()
+            .session
+            .as_mut()
+            .is_some_and(|session| session.end_hold(generation));
+        if ended {
+            repaint(&slot);
         }
-        repaint(&slot);
     });
 }

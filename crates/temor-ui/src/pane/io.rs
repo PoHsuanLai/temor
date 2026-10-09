@@ -22,8 +22,6 @@ use super::term::Term;
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
 pub(super) enum Command {
-    /// The grid changed: tell the program its new size.
-    Resize(temor_pty::GridSize),
     /// The window is gone: hang up and reap.
     Shutdown,
 }
@@ -45,14 +43,9 @@ pub(super) struct Io {
 pub(super) fn run(mut io: Io) {
     let mut buf = vec![0u8; 64 * 1024];
     loop {
-        while let Ok(command) = io.commands.try_recv() {
-            match command {
-                // A failed resize leaves the program at its old size; nothing better to do.
-                Command::Resize(size) => {
-                    let _ = io.pty.resize(size);
-                }
-                Command::Shutdown => return finish(&mut io),
-            }
+        // The only command is Shutdown (the window dropped the pane).
+        if let Ok(Command::Shutdown) = io.commands.try_recv() {
+            return finish(&mut io);
         }
         let interest = if io.outbox.is_waiting() {
             temor_pty::Interest::ReadWrite

@@ -33,15 +33,33 @@ impl Session {
             lifetime: Lifetime::Running,
             notice: None,
             hold: Hold::Released,
+            hold_generation: 0,
             find_text: String::new(),
             pending_query: None,
         })
     }
 
-    /// Whether the program holds the screen. The window sets this from the program's hold events
-    /// and its own timeout (PLAN §4b): a hold never lasts past the window's timer.
-    pub fn set_hold(&mut self, hold: Hold) {
-        self.hold = hold;
+    /// The program started holding the screen. Returns the hold's generation, which its timer
+    /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b).
+    pub fn start_hold(&mut self) -> u64 {
+        self.hold_generation += 1;
+        self.hold = Hold::Held;
+        self.hold_generation
+    }
+
+    /// The program released the screen.
+    pub fn release_hold(&mut self) {
+        self.hold = Hold::Released;
+    }
+
+    /// The timer of hold `generation` ran out: releases the hold if it is still the current one.
+    /// Returns whether it released anything.
+    pub fn end_hold(&mut self, generation: u64) -> bool {
+        if self.hold == Hold::Held && self.hold_generation == generation {
+            self.hold = Hold::Released;
+            return true;
+        }
+        false
     }
 
     /// A message for the person from the last action, if one is waiting; taking it clears it.

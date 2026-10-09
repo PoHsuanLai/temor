@@ -42,7 +42,7 @@ impl Session {
             (0..rows)
                 .map(|row| {
                     term.row_text(row)
-                        .map(|line| line.text())
+                        .map(|line| line.text().trim_end().to_owned())
                         .unwrap_or_default()
                 })
                 .collect::<Vec<_>>()

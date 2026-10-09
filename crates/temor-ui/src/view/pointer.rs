@@ -31,6 +31,15 @@ impl std::fmt::Debug for PaneMouse {
     }
 }
 
+/// Which path reports a press's release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReleaseOwner {
+    /// The host's pointer capture, which follows a primary press.
+    Host,
+    /// The element's own release handler.
+    Element,
+}
+
 /// Builds the pane's pointer handlers for this component.
 pub fn use_pane_mouse(
     slot: Rc<RefCell<Slot>>,
@@ -39,8 +48,13 @@ pub fn use_pane_mouse(
     notice: Signal<Option<String>>,
     started: Instant,
 ) -> PaneMouse {
+    // Who reports the release of the press in progress. The host's capture only follows a primary
+    // press, so a primary press it captures is released through the capture, and every other press
+    // is released through the element (PLAN §6). Exactly one of them reports.
+    let owner = Rc::new(Cell::new(ReleaseOwner::Element));
     let capture = {
-        let (slot, signals, mut notice) = (Rc::clone(&slot), signals, notice);
+        let (slot, signals, mut notice, owner) =
+            (Rc::clone(&slot), signals, notice, Rc::clone(&owner));
         use_pointer_capture(move |captured: CapturedPointer| {
             let scale = scale_of(signals.as_ref());
             let origin = rect
@@ -52,14 +66,17 @@ pub fn use_pane_mouse(
                 scale,
             );
             let mods = vt_mods(captured.modifiers);
+            // The host only captures primary presses, so its release is the primary button's.
             let result = slot
                 .borrow_mut()
                 .session
                 .as_mut()
                 .map(|s| match captured.phase {
                     PointerPhase::Drag => s.drag_to(point),
-                    PointerPhase::Release => s.release(point, VtButton::Left, mods),
-                    PointerPhase::Press => Ok(()),
+                    PointerPhase::Release if owner.get() == ReleaseOwner::Host => {
+                        s.release(point, VtButton::Left, mods)
+                    }
+                    PointerPhase::Release | PointerPhase::Press => Ok(()),
                 });
             if let Some(Err(err)) = result {
                 notice.set(Some(err.to_string()));
@@ -68,18 +85,20 @@ pub fn use_pane_mouse(
         })
     };
 
-    // Whether the host routes this press's release to the capture (so `up` must not report it).
-    let host_releases = Rc::new(Cell::new(false));
     let down = {
-        let (slot, signals, notice, host_releases) =
-            (Rc::clone(&slot), signals, notice, Rc::clone(&host_releases));
+        let (slot, signals, notice, owner) = (Rc::clone(&slot), signals, notice, Rc::clone(&owner));
         move |event: PointerEvent| {
             // Back and forward buttons do not select or report anything here.
             let Some(button) = event.trigger_button().and_then(vt_button) else {
                 return;
             };
-            let hold = capture.begin();
-            host_releases.set(hold == PointerHold::Captured);
+            owner.set(match button {
+                VtButton::Left => match capture.begin() {
+                    PointerHold::Captured => ReleaseOwner::Host,
+                    PointerHold::Local => ReleaseOwner::Element,
+                },
+                _ => ReleaseOwner::Element,
+            });
             let p = event.element_coordinates();
             let scale = scale_of(signals.as_ref());
             let result = slot.borrow_mut().session.as_mut().map(|s| {
@@ -99,14 +118,13 @@ pub fn use_pane_mouse(
     };
 
     let up = {
-        let (slot, signals, notice, host_releases) =
-            (Rc::clone(&slot), signals, notice, Rc::clone(&host_releases));
+        let (slot, signals, notice, owner) = (Rc::clone(&slot), signals, notice, Rc::clone(&owner));
         move |event: PointerEvent| {
             let Some(button) = event.trigger_button().and_then(vt_button) else {
                 return;
             };
-            // One source for the release: the host's capture if it has this press, else this.
-            if host_releases.replace(false) {
+            // One source for the release: the host's capture if it owns this press.
+            if owner.get() == ReleaseOwner::Host {
                 return;
             }
             let p = event.element_coordinates();
