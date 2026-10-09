@@ -59,6 +59,22 @@ fn inline_files_are_taken_out_in_order() {
 }
 
 #[test]
+fn program_status_becomes_an_event_and_a_bad_report_none() {
+    let (mut vt, rx) = fake(20, 4);
+    vt.write(
+        b"\x1b]7501;state=working:progress=30:app=cargo\x07\x1b]7501;state=nope\x07\x1b]7501;?\x07",
+    );
+    let got: Vec<VtEvent> = rx.try_iter().collect();
+    let [VtEvent::ProgramStatus(status)] = got.as_slice() else {
+        panic!("expected one status, got {got:?}");
+    };
+    assert_eq!(
+        (status.state, status.app.as_str()),
+        (crate::ProgramState::Working, "cargo")
+    );
+}
+
+#[test]
 fn dec_modes_toggle() {
     let (mut vt, _rx) = fake(20, 4);
     assert_eq!(vt.mode(TerminalMode::BracketedPaste), Ok(ModeState::Reset));

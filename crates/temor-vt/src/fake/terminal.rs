@@ -2,7 +2,7 @@
 
 use super::parse::{Action, Parser, Private};
 use super::screen::Screen;
-use crate::scan::{InlineFileScanner, Scanned};
+use crate::scan::{InlineFileScanner, Scanned, parse_program_status};
 use crate::{
     CellPx, EventSink, ExitCode, ExitStatus, GridSize, ModeState, PromptEvent, PromptKind,
     ReplySink, TerminalConfig, TerminalMode, Truncation, UnknownKind, ViewportScroll, Vt, VtError,
@@ -141,6 +141,12 @@ impl FakeVt {
             "133" => {
                 if let Some(event) = prompt(rest) {
                     self.sink.send(VtEvent::Prompt(event));
+                }
+            }
+            "7501" => {
+                // A refused report, or the support query, produces no event.
+                if let Some(status) = parse_program_status(&body) {
+                    self.sink.send(VtEvent::ProgramStatus(status));
                 }
             }
             _ => self.sink.send(VtEvent::Unknown {
