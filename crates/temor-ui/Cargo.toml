@@ -1,0 +1,30 @@
+[package]
+name = "temor-ui"
+description = "temor's window: the terminal pane, its input, and the app's edges (PTY I/O thread, settings file, opener)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+ds = { workspace = true }
+ds-blitz = { workspace = true }
+ds-core = { workspace = true }
+temor-core = { workspace = true }
+temor-pty = { workspace = true }
+temor-render = { workspace = true, features = ["ghostty"] }
+temor-vt = { workspace = true, features = ["ghostty"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+ds-harness = { workspace = true }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true
