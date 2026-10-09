@@ -8,9 +8,11 @@ use thiserror::Error;
 #[non_exhaustive]
 pub enum PaneError {
     /// The terminal emulator refused (a libghostty call failed, or it could not start).
+    #[cfg(feature = "ghostty")]
     #[error("the terminal could not start: {0}")]
     Terminal(#[from] temor_vt::VtError),
     /// The fonts or the renderer refused.
+    #[cfg(feature = "ghostty")]
     #[error("drawing the terminal failed: {0}")]
     Render(#[from] temor_render::RenderError),
     /// The program could not be started on a terminal, or the terminal failed.

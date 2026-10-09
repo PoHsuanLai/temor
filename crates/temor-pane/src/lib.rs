@@ -24,12 +24,16 @@ pub mod paste;
 pub mod settings;
 pub mod text;
 
+#[cfg(feature = "ghostty")]
 mod engine;
 mod error;
+#[cfg(feature = "ghostty")]
 mod shell;
 
+#[cfg(feature = "ghostty")]
 pub use engine::{
     EventSink, Hold, Output, PaneEvent, PaneHandle, PaneRunner, PaneSpec, Term, start,
 };
 pub use error::{PaneError, SettingsError};
+#[cfg(feature = "ghostty")]
 pub use shell::{ShellPaneInput, shell_pane};

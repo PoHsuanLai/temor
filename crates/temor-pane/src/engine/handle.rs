@@ -17,7 +17,6 @@ use super::spawn::pty_size;
 use super::term::Term;
 use crate::error::PaneError;
 
-/// A running pane, as the window holds it.
 /// A running pane, as the window holds it. `Send` and `Sync`: the window may hold it on any thread;
 /// the terminal is locked for each read or encode.
 pub struct PaneHandle {

@@ -30,19 +30,18 @@ pub fn shell_pane(
         ShellChoice::Login => login_shell_from_passwd(),
         ShellChoice::Program(_) => None,
     };
-    let input = temor_pane::ShellPaneInput {
-        inherited: ambient.env.clone(),
-        settings: settings.clone(),
-        passwd_shell,
-        runtime_dir: ambient.runtime_dir.clone(),
-        home: ambient.home.clone(),
-        version: ProgramVersion(VERSION.to_owned()),
-        pane,
-        grid,
-        cell,
-        palette,
+    let input = temor_pane::ShellPaneInput::new(
+        ambient.runtime_dir.clone(),
+        ambient.home.clone(),
         launcher,
-    };
+    )
+    .inherited(ambient.env.clone())
+    .settings(settings.clone())
+    .passwd_shell(passwd_shell)
+    .version(ProgramVersion(VERSION.to_owned()))
+    .pane(pane)
+    .grid(grid, cell)
+    .palette(palette);
     Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)
 }
 

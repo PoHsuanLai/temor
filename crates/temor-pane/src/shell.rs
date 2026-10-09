@@ -16,58 +16,116 @@ use crate::PaneSpec;
 use crate::error::PaneError;
 use crate::settings::{CursorStyle, ShellChoice, TerminalSettings};
 
-/// What a shell pane is planned from. Every field is a value the caller has already read.
+/// What a shell pane is planned from. Every value is one the caller has already read. Build it
+/// with [`ShellPaneInput::new`] and the setters; the defaults are the ones the window uses.
 ///
 /// ```
 /// use std::path::PathBuf;
 /// use temor_pane::settings::{ShellChoice, TerminalSettings};
 /// use temor_pane::{ShellPaneInput, shell_pane};
 /// use temor_pty::{ProgramVersion, SessionLauncher};
-/// use temor_render::Palette;
-/// use temor_shell::ChildEnv;
-/// use temor_vt::{CellPx, GridSize, LineCount};
+/// use temor_vt::LineCount;
 ///
 /// let mut settings = TerminalSettings::default();
 /// settings.shell = ShellChoice::Program("/bin/sh".to_owned());
-/// let input = ShellPaneInput {
-///     inherited: ChildEnv::new(),
-///     settings,
-///     passwd_shell: None,
-///     runtime_dir: PathBuf::from("/tmp/temor-runtime"),
-///     home: PathBuf::from("/tmp"),
-///     version: ProgramVersion("0.0.0".to_owned()),
-///     pane: 1,
-///     grid: GridSize::new(80, 24),
-///     cell: CellPx::new(8, 16),
-///     palette: Palette::default(),
-///     launcher: SessionLauncher::Setsid(PathBuf::from("/usr/bin/setsid")),
-/// };
+/// let input = ShellPaneInput::new(
+///     PathBuf::from("/tmp/temor-runtime"),
+///     PathBuf::from("/tmp"),
+///     SessionLauncher::Setsid(PathBuf::from("/usr/bin/setsid")),
+/// )
+/// .settings(settings)
+/// .version(ProgramVersion("0.0.0".to_owned()));
 /// let spec = shell_pane(input, |_| true).expect("the shell is planned");
 /// assert_eq!(spec.scrollback, LineCount(10_000));
 /// ```
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ShellPaneInput {
+    inherited: ChildEnv,
+    settings: TerminalSettings,
+    passwd_shell: Option<PathBuf>,
+    runtime_dir: PathBuf,
+    home: PathBuf,
+    version: ProgramVersion,
+    pane: u64,
+    grid: GridSize,
+    cell: CellPx,
+    palette: Palette,
+    launcher: SessionLauncher,
+}
+
+impl ShellPaneInput {
+    /// The input with the three values that have no sensible default: where shell integration
+    /// is written (private to the person), the directory the shell starts in, and how the program
+    /// becomes a session leader. The rest start at their defaults: an empty inherited environment,
+    /// the default settings, no passwd shell, pane 0, an 80 by 24 grid of 8 by 16 pixel cells, the
+    /// default palette, and this crate's version.
+    pub fn new(runtime_dir: PathBuf, home: PathBuf, launcher: SessionLauncher) -> Self {
+        Self {
+            inherited: ChildEnv::new(),
+            settings: TerminalSettings::default(),
+            passwd_shell: None,
+            runtime_dir,
+            home,
+            version: ProgramVersion(env!("CARGO_PKG_VERSION").to_owned()),
+            pane: 0,
+            grid: GridSize::new(80, 24),
+            cell: CellPx::new(8, 16),
+            palette: Palette::default(),
+            launcher,
+        }
+    }
+
     /// The app's own environment. The child gets it minus what describes another terminal.
-    pub inherited: ChildEnv,
+    #[must_use]
+    pub fn inherited(mut self, inherited: ChildEnv) -> Self {
+        self.inherited = inherited;
+        self
+    }
+
     /// The settings the pane reads (the shell and the cursor among them).
-    pub settings: TerminalSettings,
+    #[must_use]
+    pub fn settings(mut self, settings: TerminalSettings) -> Self {
+        self.settings = settings;
+        self
+    }
+
     /// The person's login shell from the passwd entry, when the caller read it. Only the login
     /// choice uses it.
-    pub passwd_shell: Option<PathBuf>,
-    /// Where shell integration files are written. It must be private to the person.
-    pub runtime_dir: PathBuf,
-    /// The directory the shell starts in.
-    pub home: PathBuf,
+    #[must_use]
+    pub fn passwd_shell(mut self, passwd_shell: Option<PathBuf>) -> Self {
+        self.passwd_shell = passwd_shell;
+        self
+    }
+
     /// The app's version, as the child's `TERM_PROGRAM_VERSION` carries it.
-    pub version: ProgramVersion,
+    #[must_use]
+    pub fn version(mut self, version: ProgramVersion) -> Self {
+        self.version = version;
+        self
+    }
+
     /// The pane's id, so a program can address its own pane.
-    pub pane: u64,
+    #[must_use]
+    pub fn pane(mut self, pane: u64) -> Self {
+        self.pane = pane;
+        self
+    }
+
     /// The grid in cells, and one cell in device pixels.
-    pub grid: GridSize,
-    pub cell: CellPx,
-    pub palette: Palette,
-    /// How the program becomes a session leader.
-    pub launcher: SessionLauncher,
+    #[must_use]
+    pub fn grid(mut self, grid: GridSize, cell: CellPx) -> Self {
+        self.grid = grid;
+        self.cell = cell;
+        self
+    }
+
+    /// The colours the pane starts with.
+    #[must_use]
+    pub fn palette(mut self, palette: Palette) -> Self {
+        self.palette = palette;
+        self
+    }
 }
 
 /// Plans the spec for a new shell pane. `is_file` says whether a candidate program exists; it is

@@ -1,12 +1,14 @@
 //! The pane engine on a real PTY and bash: input reaches the program, output reaches the screen,
 //! a resize changes the grid and the program's size, replies go back, and the program is reaped.
 
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use temor_pane::paste::{PasteMode, encode};
-use temor_vt::{GridSize, KeyCode, KeyInput, Modifiers};
+use temor_vt::{CellPx, GridSize, KeyCode, KeyInput, Modifiers};
 
-use super::support::{count_events, scratch, screen, spawn_bash, wait_for};
+use super::support::{bash_spec, count_events, scratch, screen, spawn_bash, wait_for};
 
 #[test]
 fn a_typed_command_runs_and_its_output_reaches_the_screen() {
@@ -182,4 +184,42 @@ fn a_flood_of_output_costs_a_bounded_number_of_events() {
     // Nothing repaints in this test, so at most one repaint request is in flight: two hundred
     // thousand lines of output are a handful of events, not one per read.
     assert!(events <= 5, "{events} events for a flood");
+}
+
+#[test]
+fn a_runner_dropped_before_it_runs_reaps_the_program() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let home = scratch("runner-unrun").join("home");
+    let pidfile = home.join("pid");
+    let mut spec = bash_spec(&home, GridSize::new(80, 24), CellPx::new(8, 16));
+    // A program that records its own pid, then becomes sleep: the pid is the program's (the
+    // launcher execs it), so /proc/<pid> shows whether it was reaped.
+    spec.spawn.program = PathBuf::from("/bin/sh");
+    spec.spawn.args = vec![
+        "-c".into(),
+        format!("echo $$ > '{}'; exec sleep 30", pidfile.display()).into(),
+    ];
+    let (tx, _events) = std::sync::mpsc::channel();
+    let (handle, runner) = temor_pane::start(spec, Arc::new(tx)).expect("pane starts");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let pid = loop {
+        if let Some(pid) = std::fs::read_to_string(&pidfile)
+            .ok()
+            .and_then(|text| text.trim().parse::<u32>().ok())
+        {
+            break pid;
+        }
+        assert!(Instant::now() < deadline, "the program never wrote its pid");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    // Dropping the runner unrun hangs up and reaps; by the time drop returns the pid is gone
+    // (not even a zombie left in the process table).
+    drop(runner);
+    assert!(
+        !std::path::Path::new(&format!("/proc/{pid}")).exists(),
+        "the program was left behind"
+    );
+    drop(handle);
 }

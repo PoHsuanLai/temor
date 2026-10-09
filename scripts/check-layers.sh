@@ -2,7 +2,7 @@
 # Checks temor's layer rules (PLAN §2, D23) from `cargo metadata --no-deps`:
 #   - an L0 crate depends only on L0 workspace crates;
 #   - an L1 crate depends only on L0 or L1 workspace crates;
-#   - no L0 or L1 crate depends on ds-*, dioxus, docket or zbus;
+#   - no L0 or L1 crate depends on ds-*, dioxus, docket, zbus or tokio;
 #   - every workspace crate is in the table below (a new crate must be placed in a layer).
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
@@ -31,7 +31,7 @@ temor 3
 
 metadata=$(cd "$root" && cargo metadata --format-version 1 --no-deps)
 
-printf '%s\n' "$LAYERS" | python3 -I -c '
+if printf '%s\n' "$LAYERS" | python3 -I -c '
 import json, re, sys
 
 layers = {}
@@ -40,7 +40,7 @@ for line in sys.stdin.read().split("\n"):
     if len(parts) == 2:
         layers[parts[0]] = int(parts[1])
 
-banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*)$")
+banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 meta = json.loads(sys.argv[1])
 violations = []
 seen = set()
@@ -67,9 +67,8 @@ for pkg in meta["packages"]:
 for v in violations:
     print(v)
 sys.exit(1 if violations else 0)
-' "$metadata"
-status=$?
-if [ "$status" -eq 0 ]; then
+' "$metadata"; then
   echo "check-layers: ok"
+  exit 0
 fi
-exit "$status"
+exit 1

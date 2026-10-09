@@ -2,7 +2,9 @@
 //! calls. Where bash, setsid or /proc is missing the tests skip (a failure under
 //! TEMOR_REQUIRE_TOOLS=1).
 
+#[cfg(feature = "ghostty")]
 mod engine;
+#[cfg(feature = "ghostty")]
 mod support;
 
 #[test]

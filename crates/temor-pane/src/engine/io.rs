@@ -39,10 +39,10 @@ pub(super) struct Io {
     pub last_title: Option<String>,
 }
 
-/// The pane's I/O loop, made by [`start`](super::start). Run it on a thread of the caller's own.
-/// The pane's I/O loop. `Send`: it moves to the thread the caller starts it on.
+/// The pane's I/O loop, made by [`start`](super::start). `Send`: it moves to the thread the caller
+/// starts it on. Dropped without [`run`](Self::run), it still hangs up and reaps the program.
 pub struct PaneRunner {
-    io: Io,
+    io: Option<Io>,
 }
 
 impl std::fmt::Debug for PaneRunner {
@@ -53,13 +53,25 @@ impl std::fmt::Debug for PaneRunner {
 
 impl PaneRunner {
     pub(super) fn new(io: Io) -> Self {
-        Self { io }
+        Self { io: Some(io) }
     }
 
     /// Runs until the program is reaped (or the pane is dropped). Blocks: call it on the pane's
     /// own thread, which the caller starts.
-    pub fn run(self) {
-        pump(self.io);
+    pub fn run(mut self) {
+        if let Some(io) = self.io.take() {
+            pump(io);
+        }
+    }
+}
+
+impl Drop for PaneRunner {
+    fn drop(&mut self) {
+        // Never run (the thread could not start, say): the program is still hung up and reaped,
+        // so it does not outlive the pane as a zombie.
+        if let Some(mut io) = self.io.take() {
+            finish(&mut io);
+        }
     }
 }
 

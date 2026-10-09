@@ -7,11 +7,17 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+default = ["ghostty"]
+# The engine and the shell pane: they run libghostty (through temor-vt) and draw with temor-render's
+# palette. Without it the pure key, settings, text and paste rules still build.
+ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render/ghostty"]
+
 [dependencies]
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
-temor-render = { workspace = true, features = ["ghostty"] }
-temor-vt = { workspace = true, features = ["ghostty"] }
+temor-render = { workspace = true, optional = true }
+temor-vt = { workspace = true, optional = true }
 thiserror = { workspace = true }
 
 [[test]]
