@@ -29,7 +29,13 @@ fn at_prompt(name: &str) -> Option<Live> {
         return None;
     }
     let shell = shell_path("bash").expect("bash");
-    Some(start(name, &shell))
+    let mut live = start(name, &shell);
+    // The prompt's own mark and the input mark after it: both anchors are held before a test
+    // counts anchors, so a late input mark cannot land in the middle of the count.
+    pump(&mut live, "the input mark", |s| {
+        s.pane().with_term(|term| term.anchor_count()) >= 2
+    });
+    Some(live)
 }
 
 #[test]
