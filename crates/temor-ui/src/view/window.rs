@@ -9,16 +9,20 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
+use ds::edit::composition::Composing;
 use ds::edit::input::{Composition, EditInput};
+use ds::edit::pointer::EditFocus;
+use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::host::document::use_document_host;
 use ds::host::ime::{ImeEvent, ImeSwitch};
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
+use ds::root::pass_through::ExtraClass;
 use ds::window::host::use_window_title;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, TokioSpawner, use_gpu};
 use ds_settings::use_environment;
-use temor_vt::{Ime, KeyAction};
+use temor_vt::Ime;
 
 use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
 use super::confirm::PasteConfirm;
@@ -38,9 +42,18 @@ use super::title::window_title;
 use super::window_help::{
     device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
 };
-use crate::input::{Composing, RawKey, Repeat, stroke};
+use crate::input::stroke;
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::BlockId;
+
+/// The window's column and the terminal region's sizing (quire has no column component at v0.3.1,
+/// and a `RawKeySurface` takes no style of its own). Colours and type come from quire's tokens
+/// and the pane's palette, so this sheet has no design values.
+const WINDOW_CSS: &str = "\
+.temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
+.temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
+.temor-grid { position: relative; width: 100%; height: 100%; }\
+.temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }";
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -133,37 +146,24 @@ pub fn App() -> Element {
         use_callback(move |event: ImeEvent| ime.event(event, &apply))
     };
 
+    // Every key the region hears (a press, a repeat, a release) as quire's raw key.
     let on_key = {
         let slot = Rc::clone(&slot);
         let ime = ime.clone();
         let apply = apply.clone();
-        move |event: KeyboardEvent, action: KeyAction| {
-            let key = event.key();
-            let code = event.code();
+        move |raw: RawKey| {
             let composing = match ime.composing.get() {
                 Composing::Active => Ime::Composing,
                 Composing::Idle | Composing::Cleared => Ime::Idle,
             };
-            let raw = RawKey {
-                key: &key,
-                code: &code,
-                held: event.modifiers(),
-                action,
-                repeating: match event.is_auto_repeating() {
-                    true => Repeat::Again,
-                    false => Repeat::First,
-                },
-                ime: composing,
-            };
-            if action != KeyAction::Release {
-                event.prevent_default();
+            if raw.phase != KeyPhase::Release {
                 ime.settle(&apply);
             }
             if composing == Ime::Composing {
                 return;
             }
             // An unidentified key is ignored; the rest go to the session.
-            let outcome = match stroke(&raw) {
+            let outcome = match stroke(&raw, composing) {
                 Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
                 None => None,
             };
@@ -178,46 +178,49 @@ pub fn App() -> Element {
             place_cursor(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let (mut key_down, mut key_up) = (on_key.clone(), on_key);
 
     let mouse = use_pane_mouse(Rc::clone(&slot), rect, signals, notice, started);
 
-    let on_focus = {
+    // The region has the keyboard: the session knows, and the input method is on and placed.
+    let gained = {
         let ime = ime.clone();
         let slot = Rc::clone(&slot);
-        move |_: FocusEvent| {
+        move || {
             set_focus(&slot, Focus::Focused);
-            focus_in(ime.clone(), Rc::clone(&slot), rect)
+            focus_in(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let on_blur = {
+    let on_focus = {
         let ime = ime.clone();
         let apply = apply.clone();
         let slot = Rc::clone(&slot);
-        move |_: FocusEvent| {
-            set_focus(&slot, Focus::Unfocused);
-            ime.settle(&apply);
-            let ime = ime.clone();
-            spawn(async move {
-                ime.switch(ImeSwitch::Off).await;
-            });
+        let gained = gained.clone();
+        move |focus: EditFocus| match focus {
+            EditFocus::In => gained(),
+            EditFocus::Out => {
+                set_focus(&slot, Focus::Unfocused);
+                ime.settle(&apply);
+                let ime = ime.clone();
+                spawn(async move {
+                    ime.switch(ImeSwitch::Off).await;
+                });
+            }
         }
     };
 
+    // The region's element: rect and input method hear it; the first layout gives it the keyboard,
+    // as a person's click would.
     let on_mounted = {
-        let ime = ime.clone();
-        let slot = Rc::clone(&slot);
+        let (ime, gained) = (ime.clone(), gained.clone());
         move |event: MountedEvent| {
             rect.on_mounted(event.clone());
             let element = event.data();
             ime.element.replace(Some(Rc::clone(&element)));
-            let (ime, slot) = (ime.clone(), Rc::clone(&slot));
+            let (ime, heard, gained) = (ime.clone(), heard, gained.clone());
+            let told = EventHandler::new(move |()| gained());
             spawn(async move {
                 ime.listen(element, heard).await;
-                // The first layout gives the pane the keyboard, as a person's click would.
-                if ime.take_focus().await {
-                    focus_in(ime, slot, rect);
-                }
+                ime.take_focus(told);
             });
         }
     };
@@ -240,8 +243,6 @@ pub fn App() -> Element {
     use_window_title(window_title(&chrome.title, chrome.cwd.as_deref()));
     // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
     // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
-    let pane_style =
-        "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
     let now = env();
     rsx! {
         Ds {
@@ -254,8 +255,9 @@ pub fn App() -> Element {
             material: Material::Window,
             extent: RootExtent::Window,
             // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
-            // window's column stays a plain flex element inside the window-high root (asked).
-            div { style: "display:flex; flex-direction:column; width:100%; height:100%",
+            // window's column is a plain flex element in the window-high root (see `WINDOW_CSS`).
+            style { {WINDOW_CSS} }
+            div { class: "temor-window",
                 if let Some((query, position)) = find {
                     FindBar {
                         query,
@@ -265,31 +267,29 @@ pub fn App() -> Element {
                         on_close:find_close(Rc::clone(&slot), ui),
                     }
                 }
-                div {
-                    class: "temor-pane",
-                    tabindex: "0",
-                    role: "application",
-                    "aria-label": "Terminal",
-                    "data-keys": "capture",
-                    "data-wheel": "capture",
-                    style: "{pane_style}",
-                    onmounted: move |e| {
-                        mouse.capture.on_mounted(e.clone());
-                        on_mounted(e);
+                RawKeySurface {
+                    on_key: EventHandler::new(on_key),
+                    on_focus: EventHandler::new(on_focus),
+                    common: Common {
+                        aria_label: Some("Terminal".to_owned()),
+                        extra_class: ExtraClass::parse("temor-keys").ok(),
+                        mounted: Some(EventHandler::new(on_mounted)),
+                        ..Common::default()
                     },
-                    onkeydown: move |e| key_down(e, KeyAction::Press),
-                    onkeyup: move |e| key_up(e, KeyAction::Release),
-                    onfocus: on_focus,
-                    onblur: on_blur,
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
-                    onpointerup: move |e| (mouse.up)(e),
-                    onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
-                    onwheel: move |e| (mouse.wheel)(e),
-                    TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
-                    if let Some(text) = preedit() {
-                        div { style: "position:absolute; left:0; bottom:0; white-space:pre; text-decoration:underline", "{text}" }
+                    div {
+                        class: "temor-grid",
+                        "data-wheel": "capture",
+                        onmounted: move |e| mouse.capture.on_mounted(e),
+                        onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, notice, mouse.down.clone()),
+                        onpointerup: move |e| (mouse.up)(e),
+                        onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
+                        onwheel: move |e| (mouse.wheel)(e),
+                        TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
+                        if let Some(text) = preedit() {
+                            div { class: "temor-preedit", "{text}" }
+                        }
+                        GutterMarks { marks: chrome.marks.clone() }
                     }
-                    GutterMarks { marks: chrome.marks.clone() }
                 }
                 if let Some(bar) = chrome.bar.clone() {
                     BlockBar {

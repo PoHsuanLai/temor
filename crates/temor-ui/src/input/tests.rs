@@ -1,12 +1,10 @@
-//! Unit tests for click counting and the IME steps.
+//! Unit tests for click counting and the key stroke.
 
 use std::time::Duration;
 
 use temor_pane::text::CellPos;
 
 use super::click::{Click, MULTI_CLICK, next_click};
-use super::ime::{Composing, on_ime};
-use ds::host::ime::ImeEvent;
 
 #[test]
 fn quick_presses_at_one_cell_count_up_then_wrap() {
@@ -32,49 +30,34 @@ fn a_slow_press_or_another_cell_starts_again() {
 }
 
 #[test]
-fn a_preedit_starts_a_composition_and_its_commit_ends_it() {
-    let (state, steps) = on_ime(
-        Composing::Idle,
-        ImeEvent::Preedit {
-            text: "ni".into(),
-            cursor: None,
-        },
-    );
-    assert_eq!(state, Composing::Active);
-    assert_eq!(steps.len(), 2);
-    let (state, steps) = on_ime(state, ImeEvent::Commit("你".into()));
-    assert_eq!(state, Composing::Idle);
-    assert_eq!(steps.len(), 1);
-}
-
-#[test]
 fn an_unidentified_key_is_not_sent_as_a_space() {
-    use super::keys::{RawKey, Repeat, stroke};
-    use dioxus::html::{Code, Key};
+    use dioxus::html::{Code, Key, Location, Modifiers};
+    use ds::edit::raw_key::{KeyPhase, RawKey};
     use temor_vt::Ime;
+
+    use super::keys::stroke;
     let raw = RawKey {
-        key: &Key::Unidentified,
-        code: &Code::Unidentified,
-        held: dioxus::html::Modifiers::empty(),
-        action: temor_vt::KeyAction::Press,
-        repeating: Repeat::First,
-        ime: Ime::Idle,
+        phase: KeyPhase::Press,
+        key: Key::Unidentified,
+        code: Code::Unidentified,
+        modifiers: Modifiers::empty(),
+        location: Location::Standard,
+        text: None,
+        unshifted: None,
     };
-    assert!(stroke(&raw).is_none());
+    assert!(stroke(&raw, Ime::Idle).is_none());
 }
 
 /// The window's key events as the desktop delivers them, through the stroke and the router: a
 /// ⌘ chord (Ctrl+Shift or Super form) runs its action, and everything else reaches the program.
 #[test]
 fn keys_as_the_desktop_sends_them_reach_the_action_or_the_program() {
-    use dioxus::html::{Code, Key, Modifiers as Held};
-    use temor_pane::keys::Keymap;
+    use dioxus::html::{Code, Key, Location, Modifiers as Held};
+    use ds::edit::raw_key::{KeyPhase, RawKey};
+    use temor_pane::keys::{Action, Keymap};
     use temor_vt::Ime;
 
-    use temor_pane::keys::Action;
-    use temor_vt::KeyAction;
-
-    use super::keys::{RawKey, Repeat, stroke};
+    use super::keys::stroke;
     use crate::input::{FindBar, Routed, route};
 
     let keymap = Keymap::defaults();
@@ -142,14 +125,15 @@ fn keys_as_the_desktop_sends_them_reach_the_action_or_the_program() {
     ];
     for (name, key, code, held, want) in rows {
         let raw = RawKey {
-            key,
-            code,
-            held: *held,
-            action: KeyAction::Press,
-            repeating: Repeat::First,
-            ime: Ime::Idle,
+            phase: KeyPhase::Press,
+            key: key.clone(),
+            code: *code,
+            modifiers: *held,
+            location: Location::Standard,
+            text: None,
+            unshifted: None,
         };
-        let stroke = stroke(&raw).unwrap_or_else(|| panic!("{name}: no stroke"));
+        let stroke = stroke(&raw, Ime::Idle).unwrap_or_else(|| panic!("{name}: no stroke"));
         // The find bar is open, so the find chords run (with it closed they do nothing).
         let got = match route(stroke, &keymap, FindBar::Open) {
             Routed::Action(action) => Some(action),
