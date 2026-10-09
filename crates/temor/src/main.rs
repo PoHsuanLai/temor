@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use std::process::ExitCode;
 
 use temor_ui::edge::{Ambient, load_settings};
-use temor_ui::{Launch, LauncherChoice, SESSION_LEADER_ARG};
+use temor_ui::{AppearanceSource, Launch, LauncherChoice, SESSION_LEADER_ARG};
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
@@ -33,6 +33,7 @@ fn main() -> ExitCode {
         ambient,
         settings: parsed.settings,
         launcher: LauncherChoice::ThisProgram,
+        appearance: AppearanceSource::desktop(),
         probe: None,
     });
     match launched {

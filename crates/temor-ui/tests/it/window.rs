@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
+use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Driver, Harness, HarnessConfig, Viewport};
@@ -14,7 +15,7 @@ use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::Ambient;
 use temor_ui::view::App;
 use temor_ui::view::probe::Probe;
-use temor_ui::{Launch, LauncherChoice};
+use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 
 use super::support::scratch;
 
@@ -41,6 +42,7 @@ fn harness(name: &str, probe: &Probe) -> Harness {
             shell: ShellChoice::Program(super::support::bash_path().display().to_string()),
             ..TerminalSettings::default()
         },
+        appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
         launcher: LauncherChoice::Setsid(
             temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
                 .expect("util-linux setsid is installed"),

@@ -5,8 +5,35 @@
 use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, resolve};
 use ds::style::tokens::hex::{Colour, Hex};
 use ds::style::tokens::terminal::TerminalColour;
+use ds_settings::{AppName, ConfigRoot, Store, SystemPrefsSource};
 use temor_render::Palette;
 use temor_vt::Rgb;
+
+/// Where the look comes from: the design system's own settings (`appearance.toml`, the person's
+/// theme, accent and motion) and the desktop's preferences. The window follows both live.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppearanceSource {
+    pub store: Store,
+    pub system: SystemPrefsSource,
+}
+
+impl AppearanceSource {
+    /// The person's: `$XDG_CONFIG_HOME/quire/appearance.toml` and the desktop's portal.
+    pub fn desktop() -> Self {
+        Self {
+            store: Store::new(ConfigRoot::Xdg, AppName::QUIRE),
+            system: SystemPrefsSource::Portal,
+        }
+    }
+
+    /// A scratch config tree and fixed preferences, for tests and headless runs.
+    pub fn scratch(config_dir: std::path::PathBuf, system: SystemPrefs) -> Self {
+        Self {
+            store: Store::new(ConfigRoot::Scratch(config_dir), AppName::QUIRE),
+            system: SystemPrefsSource::Fixed(system),
+        }
+    }
+}
 
 /// The palette the root with `appearance`, `look` and `system` resolves to.
 pub fn resolved_palette(appearance: Appearance, look: &SpaceLook, system: SystemPrefs) -> Palette {

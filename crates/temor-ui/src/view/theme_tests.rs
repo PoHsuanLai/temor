@@ -1,10 +1,10 @@
 //! The palette a root resolves to: its ground reads as its scheme, and the ANSI slots are the
 //! colours their names say, in both schemes.
 
-use ds::prelude::{Accent, Scheme};
+use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, Theme};
 use temor_vt::Rgb;
 
-use super::palette_of;
+use super::{palette_of, resolved_palette};
 
 fn luma(c: Rgb) -> u32 {
     u32::from(c.r) * 3 + u32::from(c.g) * 6 + u32::from(c.b)
@@ -26,4 +26,15 @@ fn ansi_red_is_red_and_the_selection_differs_from_the_ground_in_both_schemes() {
         assert!(red.r > red.g && red.r > red.b, "{scheme:?}: {red:?}");
         assert_ne!(palette.selection, palette.background, "{scheme:?}");
     }
+}
+
+#[test]
+fn the_space_look_theme_wins_over_the_desktop_scheme() {
+    let look = SpaceLook {
+        theme: Theme::Dark,
+        ..SpaceLook::default()
+    };
+    let light_desktop = SystemPrefs::default().with_scheme(Scheme::Light);
+    let palette = resolved_palette(Appearance::default(), &look, light_desktop);
+    assert_eq!(palette, palette_of(Scheme::Dark, Accent::default()));
 }

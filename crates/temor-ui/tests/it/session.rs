@@ -471,6 +471,44 @@ fn the_pane_paints_its_text_into_pixels() {
     assert!(colours > 2, "text was drawn: {colours} distinct colours");
 }
 
+/// The colour of the pane's top-left pixel after a paint (premultiplied RGBA, opaque ground).
+fn corner_colour(session: &mut Session) -> [u8; 3] {
+    let mut corner = None;
+    session
+        .paint(|bytes, _size| corner = Some([bytes[0], bytes[1], bytes[2]]))
+        .expect("paint");
+    corner.expect("the pane has a size, so it paints")
+}
+
+#[test]
+fn a_theme_change_repaints_the_grid_in_the_new_ground() {
+    if !super::support::tools_present() {
+        return;
+    }
+    use ds::prelude::{Accent, Scheme};
+    use temor_ui::view::theme::palette_of;
+    let mut f = ready("session-theme");
+    let dark = palette_of(Scheme::Dark, Accent::default());
+    let light = palette_of(Scheme::Light, Accent::default());
+    f.session
+        .set_palette(dark)
+        .expect("the dark palette applies");
+    let before = corner_colour(&mut f.session);
+    assert_eq!(
+        before,
+        [dark.background.r, dark.background.g, dark.background.b]
+    );
+    f.session
+        .set_palette(light)
+        .expect("the light palette applies");
+    let after = corner_colour(&mut f.session);
+    assert_eq!(
+        after,
+        [light.background.r, light.background.g, light.background.b]
+    );
+    assert_ne!(before, after, "the grid was repainted in the new ground");
+}
+
 #[test]
 fn a_find_query_runs_only_after_typing_pauses() {
     if !super::support::tools_present() {

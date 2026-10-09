@@ -9,7 +9,7 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds_blitz::{PixelFormat, Pixels, TextureHandle};
-use temor_render::{PixelSize, Scale};
+use temor_render::{Palette, PixelSize, Scale};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::launch::{Launch, open_session};
@@ -27,6 +27,8 @@ pub struct Slot {
     pub device: Device,
     /// Where the screen's text is published for tests (see [`Launch::probe`]).
     pub probe: Option<Probe>,
+    /// The grid's colours: the session opens with them, and a running one is re-coloured.
+    pub palette: Palette,
 }
 
 impl std::fmt::Debug for Slot {
@@ -77,6 +79,17 @@ pub fn repaint(slot: &RefCell<Slot>) {
     }
 }
 
+impl Slot {
+    /// Makes `palette` the grid's colours from now on, and re-colours the session if it is open.
+    pub fn set_palette(&mut self, palette: Palette) -> Option<String> {
+        self.palette = palette;
+        self.session
+            .as_mut()
+            .and_then(|session| session.set_palette(palette).err())
+            .map(|err| err.to_string())
+    }
+}
+
 /// The layout step, run whenever the pane's size, scale or device changes. The first layout
 /// starts the session and its event loop; later ones refit its grid. Failures come back as text
 /// for the window to show.
@@ -91,7 +104,7 @@ pub fn layout(
 ) -> Option<String> {
     slot.borrow_mut().device = device;
     if slot.borrow().session.is_none() {
-        let (session, events) = match open_session(launch, pixels, scale) {
+        let (session, events) = match open_session(launch, slot.borrow().palette) {
             Ok(pair) => pair,
             Err(err) => return Some(err.to_string()),
         };

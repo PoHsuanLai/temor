@@ -12,6 +12,7 @@ dioxus = { workspace = true }
 ds = { workspace = true }
 ds-blitz = { workspace = true }
 ds-core = { workspace = true }
+ds-settings = { workspace = true, features = ["dioxus"] }
 rustix = { workspace = true }
 temor-core = { workspace = true }
 temor-pty = { workspace = true }

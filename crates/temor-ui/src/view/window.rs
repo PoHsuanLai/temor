@@ -4,16 +4,19 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
+use ds::base::spawner::Spawner;
 use ds::edit::input::{Composition, EditInput};
 use ds::host::document::use_document_host;
 use ds::host::ime::{ImeEvent, ImeSwitch};
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
-use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
+use ds_blitz::{Sampling, TextureFit, TextureLayer, TokioSpawner, use_gpu};
+use ds_settings::use_environment;
 use temor_vt::{Ime, KeyAction};
 
 use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
@@ -29,6 +32,7 @@ use super::launch::Launch;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use super::status::StatusLine;
+use super::theme::resolved_palette;
 use super::window_help::{
     device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
 };
@@ -48,10 +52,35 @@ pub fn App() -> Element {
     let texture = use_hook(|| gpu.handle());
     let ime = use_hook(|| ImeGlue::new(Rc::clone(&host)));
     let started = use_hook(Instant::now);
+    let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
+    // The person's look and the desktop's preferences, live: a change re-themes the window.
+    let env = use_environment(
+        launch.appearance.store.clone(),
+        launch.appearance.system.clone(),
+        spawner,
+    );
+    let look = SpaceLook::default();
     let mut ui = use_signal(|| 0u32);
     let preedit = use_signal(|| None::<String>);
     let mut notice = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
+
+    // The grid's colours follow the look and the environment, re-applied when either changes.
+    {
+        let (slot, look) = (Rc::clone(&slot), look.clone());
+        use_effect(use_reactive!(|look| {
+            let now = env();
+            let palette = resolved_palette(
+                now.settings.appearance.appearance(),
+                &look,
+                now.system.clone(),
+            );
+            if let Some(text) = slot.borrow_mut().set_palette(palette) {
+                notice.set(Some(text));
+            }
+            repaint(&slot);
+        }));
+    }
 
     // Every change of the pane's size, scale or device lays it out again.
     {
@@ -210,8 +239,17 @@ pub fn App() -> Element {
     // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
     let pane_style =
         "position:relative; flex:1 1 auto; min-height:0; width:100%; outline:none; overflow:hidden";
+    let now = env();
     rsx! {
-        Ds { appearance: Appearance::default(), material: Material::Window, extent: RootExtent::Window,
+        Ds {
+            appearance: now.settings.appearance.appearance(),
+            system: now.system.clone(),
+            tint_alpha: Some(now.tint_alpha()),
+            stack: Some(now.material_stack()),
+            typeface: Some(now.settings.appearance.typeface()),
+            look: look.clone(),
+            material: Material::Window,
+            extent: RootExtent::Window,
             // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
             // window's column stays a plain flex element inside the window-high root (asked).
             div { style: "display:flex; flex-direction:column; width:100%; height:100%",
