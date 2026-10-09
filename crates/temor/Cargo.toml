@@ -9,7 +9,12 @@ publish = false
 
 [dependencies]
 temor-pty = { workspace = true }
+temor-transfer = { workspace = true }
 temor-ui = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true }
 
 [lints]
 workspace = true

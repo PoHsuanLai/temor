@@ -1,0 +1,102 @@
+//! Linux: the controlling terminal at `/dev/tty` in raw mode, and `xdg-open`.
+
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::time::Duration;
+
+use rustix::event::{PollFd, PollFlags, Timespec, poll};
+use rustix::io::Errno;
+use rustix::termios::{LocalModes, OptionalActions, Termios, tcgetattr, tcsetattr};
+use temor_transfer::kitty::Link;
+
+use crate::cli::error::CliError;
+use crate::cli::opener::Opener;
+
+/// The controlling terminal in raw mode, so replies are read byte for byte and nothing echoes.
+/// Interrupt (Ctrl+C) still works. The old settings come back when this is dropped. One thread
+/// uses it.
+#[derive(Debug)]
+pub struct Tty {
+    file: File,
+    saved: Termios,
+}
+
+/// Opens `/dev/tty`, which is the terminal the command was typed in even when its output is
+/// piped, and over SSH.
+pub fn open_tty() -> Result<Tty, CliError> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/tty")
+        .map_err(|_| CliError::NoTerminal)?;
+    let saved = tcgetattr(&file).map_err(|errno| CliError::Terminal(errno.into()))?;
+    let mut raw = saved.clone();
+    raw.make_raw();
+    raw.local_modes.insert(LocalModes::ISIG);
+    tcsetattr(&file, OptionalActions::Flush, &raw)
+        .map_err(|errno| CliError::Terminal(errno.into()))?;
+    Ok(Tty { file, saved })
+}
+
+impl Drop for Tty {
+    fn drop(&mut self) {
+        // Nothing to do if this fails: the shell resets the terminal at its next prompt.
+        let _ = tcsetattr(&self.file, OptionalActions::Drain, &self.saved);
+    }
+}
+
+impl Link for Tty {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<()> {
+        self.file.write_all(bytes)?;
+        self.file.flush()
+    }
+
+    fn read(&mut self, timeout: Duration) -> io::Result<Option<Vec<u8>>> {
+        let limit = Timespec {
+            tv_sec: timeout.as_secs().try_into().unwrap_or(i64::MAX),
+            tv_nsec: timeout.subsec_nanos().into(),
+        };
+        let mut fds = [PollFd::new(&self.file, PollFlags::IN)];
+        match poll(&mut fds, Some(&limit)) {
+            Ok(_) => {}
+            Err(Errno::INTR) => return Ok(None),
+            Err(errno) => return Err(errno.into()),
+        }
+        let ready = PollFlags::IN | PollFlags::HUP | PollFlags::ERR;
+        if !fds[0].revents().intersects(ready) {
+            return Ok(None);
+        }
+        let mut buf = [0_u8; 8192];
+        match self.file.read(&mut buf)? {
+            0 => Err(io::ErrorKind::UnexpectedEof.into()),
+            n => Ok(Some(buf[..n].to_vec())),
+        }
+    }
+}
+
+/// Opens files with `xdg-open`.
+#[derive(Debug, Clone, Copy)]
+pub struct SystemOpener;
+
+impl Opener for SystemOpener {
+    fn open(&self, path: &Path) -> Result<(), CliError> {
+        let started = Command::new("xdg-open")
+            .arg(path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn();
+        match started {
+            Ok(_child) => Ok(()),
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                Err(CliError::NoOpener(path.to_path_buf()))
+            }
+            Err(source) => Err(CliError::Open {
+                path: path.to_path_buf(),
+                source,
+            }),
+        }
+    }
+}

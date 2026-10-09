@@ -1,6 +1,8 @@
 //! temor's entry point: a thin `main` over `temor-ui`. The same binary is the session leader
 //! that starts a shell (`--temor-session-leader`, see temor-pty's trampoline).
 
+mod cli;
+
 use std::ffi::OsString;
 use std::process::ExitCode;
 
@@ -14,6 +16,9 @@ fn main() -> ExitCode {
         let error = temor_pty::run_session_leader(args.into_iter().skip(2));
         eprintln!("temor: {error}");
         return ExitCode::from(127);
+    }
+    if let Some(code) = cli::dispatch(&args) {
+        return code;
     }
     let Some(ambient) = Ambient::from_process() else {
         eprintln!("temor: there is no home directory to start in");
