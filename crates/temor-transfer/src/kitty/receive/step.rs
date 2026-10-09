@@ -63,7 +63,7 @@ fn on_frame(
         Action::EndData => on_data(session, id, message, Chunk::Last),
         Action::Finish => close(session, id, ReplyStatus::Ok, EndWhy::Finished),
         Action::Cancel => close(session, id, ReplyStatus::Cancelled, EndWhy::Cancelled),
-        Action::Send | Action::Status | Action::Unknown => {
+        Action::Send | Action::Receive | Action::Status | Action::Unknown => {
             let refusal = failed(ErrorCode::Einval, "unexpected action");
             (session, vec![reply(id, None, refusal)])
         }

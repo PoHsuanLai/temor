@@ -85,8 +85,9 @@ impl ShelfStore {
     }
 
     /// Moves a local file into the folder under `name`, or the next free name, and returns the
-    /// final path. Only for local origins (a file a program in a local pane produced). Never pass
-    /// remote data here: remote files go through the consent flow and `place_consented`. The
+    /// final path. Only for local origins (a file a program in a local pane produced). Also for the
+    /// scratch folder of a kitty transfer the person allowed (`receive_saved`). Never pass other
+    /// remote data here: a whole OSC 1337 file goes through `place_consented`. The
     /// source is removed only after the copy is complete. If the removal fails, the copy is taken
     /// back out and the error is returned, so no duplicate is left behind.
     pub fn place(&self, source: &Path, name: &FileName) -> Result<PathBuf, TransferError> {
