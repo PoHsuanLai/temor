@@ -12,6 +12,14 @@ pub struct Keymap {
     bindings: Vec<(Action, Chord)>,
 }
 
+/// A named key with modifiers, for a default chord.
+fn ch_named(key: NamedKey, mods: Mods) -> Chord {
+    Chord {
+        key: ChordKey::Named(key),
+        mods,
+    }
+}
+
 impl Keymap {
     /// The defaults. Every chord is the Ctrl+Shift form of the ⌘ chord the person sees.
     pub fn defaults() -> Self {
@@ -24,6 +32,14 @@ impl Keymap {
                 (Action::Find, ch('f', ctrl_shift)),
                 (Action::FindNext, ch('g', ctrl_shift)),
                 (Action::FindPrevious, ch('g', ctrl_shift.with(Mods::ALT))),
+                (
+                    Action::PreviousPrompt,
+                    ch_named(NamedKey::ArrowUp, ctrl_shift),
+                ),
+                (
+                    Action::NextPrompt,
+                    ch_named(NamedKey::ArrowDown, ctrl_shift),
+                ),
                 (
                     Action::CloseFind,
                     Chord {

@@ -4,6 +4,7 @@
 use ds_core::word::Word;
 
 use crate::error::CoreError;
+use crate::notify::NotifyAfter;
 
 /// Font size in points (the logical size the renderer scales).
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -96,6 +97,22 @@ pub fn scrollback(key: &str, value: &str) -> Result<ScrollbackLines, CoreError> 
 pub fn cursor(key: &str, value: &str) -> Result<CursorStyle, CoreError> {
     CursorStyle::parse(value).ok_or_else(|| bad(key, value))
 }
+
+/// Reads how long a command must run before its finish is notified: a number of seconds, where
+/// 0 or "off" turns the notices off.
+pub fn notify_after(key: &str, value: &str) -> Result<NotifyAfter, CoreError> {
+    match value.trim() {
+        "off" => Ok(NotifyAfter::Off),
+        text => match text.parse::<u32>() {
+            Ok(0) => Ok(NotifyAfter::Off),
+            Ok(seconds) if seconds <= NOTIFY_AFTER_MAX_SECONDS => Ok(NotifyAfter::Seconds(seconds)),
+            _ => Err(bad(key, value)),
+        },
+    }
+}
+
+/// The longest threshold a setting may name: a day.
+const NOTIFY_AFTER_MAX_SECONDS: u32 = 86_400;
 
 /// Reads a font family: "system" or a family name.
 pub fn font_family(key: &str, value: &str) -> Result<FontChoice, CoreError> {

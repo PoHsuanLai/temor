@@ -3,6 +3,7 @@
 
 pub mod action;
 pub mod chord;
+pub mod cwd;
 pub mod keymap;
 pub mod link;
 pub mod paste;

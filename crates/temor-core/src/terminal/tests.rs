@@ -9,7 +9,7 @@ use super::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode
 use super::row::RowText;
 use super::search::{Finder, find_all};
 use super::selection::{CellPos, Granularity, Selection, Shape, word_span};
-use super::settings::parse_settings;
+use super::settings::{TerminalSettings, parse_settings};
 use crate::error::CoreError;
 
 fn ctrl_shift(c: char) -> Chord {
@@ -291,4 +291,40 @@ fn wide_characters_are_two_columns_in_selection_and_search() {
     assert_eq!(found[0].len, 2, "a wide match covers its two columns");
     let ab = find_all([(0, &row)], "ab");
     assert_eq!((ab[0].col, ab[0].len), (5, 2));
+}
+
+#[test]
+fn prompt_jumps_are_bound_to_ctrl_shift_arrows_and_settable() {
+    let keymap = Keymap::defaults();
+    let up = Chord::parse("ctrl+shift+up").expect("valid");
+    let down = Chord::parse("ctrl+shift+down").expect("valid");
+    assert_eq!(keymap.action_for(&up), Some(Action::PreviousPrompt));
+    assert_eq!(keymap.action_for(&down), Some(Action::NextPrompt));
+    assert_eq!(up.label(), "⌘↑");
+    let parsed = parse_settings("keys.next_prompt = alt+down");
+    assert!(parsed.issues.is_empty(), "{:?}", parsed.issues);
+    assert_eq!(
+        parsed.settings.keymap.chord_for(Action::NextPrompt),
+        Some(&Chord::parse("alt+down").expect("valid"))
+    );
+}
+
+#[test]
+fn notify_after_reads_seconds_and_off() {
+    use crate::notify::NotifyAfter;
+    assert_eq!(
+        TerminalSettings::default().notify_after,
+        NotifyAfter::Seconds(10)
+    );
+    let parsed = parse_settings("notify.after = 30\n");
+    assert_eq!(parsed.settings.notify_after, NotifyAfter::Seconds(30));
+    assert_eq!(
+        parse_settings("notify.after = off").settings.notify_after,
+        NotifyAfter::Off
+    );
+    assert_eq!(
+        parse_settings("notify.after = 0").settings.notify_after,
+        NotifyAfter::Off
+    );
+    assert_eq!(parse_settings("notify.after = soon").issues.len(), 1);
 }

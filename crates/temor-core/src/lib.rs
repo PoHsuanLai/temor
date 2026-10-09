@@ -7,6 +7,7 @@ pub mod block;
 pub mod checkpoint;
 pub mod error;
 pub mod key;
+pub mod notify;
 pub mod pane;
 pub mod presence;
 pub mod proposal;

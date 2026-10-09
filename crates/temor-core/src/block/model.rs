@@ -29,6 +29,36 @@ pub struct Block {
     pub ended: Option<Stamp>,
 }
 
+/// How a block stands, as the person sees it (the gutter mark's meaning).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Outcome {
+    /// The command has not finished.
+    Running,
+    /// It exited with status 0.
+    Succeeded,
+    /// It exited with another status.
+    Failed(ExitCode),
+    /// It ended, and the shell did not say how.
+    Unreported,
+}
+
+impl Block {
+    /// How the block stands.
+    pub fn outcome(&self) -> Outcome {
+        match (self.ended, self.exit) {
+            (None, _) => Outcome::Running,
+            (Some(_), Some(code)) if code.succeeded() => Outcome::Succeeded,
+            (Some(_), Some(code)) => Outcome::Failed(code),
+            (Some(_), None) => Outcome::Unreported,
+        }
+    }
+
+    /// Milliseconds from start to end; `None` while it runs.
+    pub fn elapsed_ms(&self) -> Option<u64> {
+        self.ended.map(|end| end.since(self.started))
+    }
+}
+
 /// Who wrote a block's command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "v", rename_all = "snake_case")]

@@ -75,6 +75,12 @@ pub enum BlockIn {
         /// When.
         at: Stamp,
     },
+    /// The terminal was reset (RIS): a running command is no longer on screen, so it ends with
+    /// no exit status.
+    Reset {
+        /// When.
+        at: Stamp,
+    },
 }
 
 /// What follows from a mark.
@@ -82,8 +88,8 @@ pub enum BlockIn {
 pub enum BlockOut {
     /// A new prompt is up: presence clears Working and Waiting, a typed proposal is gone.
     PromptShown,
-    /// The shell left the prompt to run this command.
-    CommandStarted(BlockId),
+    /// The shell left the prompt to run this command. The block is in its running state.
+    CommandStarted(Block),
     /// A block is complete.
     BlockDone(Block),
     /// The shell is gone.
@@ -100,6 +106,7 @@ pub fn block_step(state: BlockState, input: BlockIn) -> (BlockState, Vec<BlockOu
             out.push(BlockOut::ShellGone);
             (S::Exited, out)
         }
+        (state, BlockIn::Reset { at }) => (S::Idle, ended(state, None, at)),
         (state, BlockIn::PromptStart { row, at }) => {
             let mut out = ended(state, None, at);
             out.push(BlockOut::PromptShown);
@@ -136,7 +143,8 @@ pub fn block_step(state: BlockState, input: BlockIn) -> (BlockState, Vec<BlockOu
                 started: at,
                 ended: None,
             };
-            (S::Running(block), vec![BlockOut::CommandStarted(id)])
+            let running = block.clone();
+            (S::Running(block), vec![BlockOut::CommandStarted(running)])
         }
         (S::Typing { .. } | S::Prompting { .. }, BlockIn::Finished { .. }) => (S::Idle, vec![]),
         (S::Running(block), BlockIn::Finished { row, exit, at }) => {

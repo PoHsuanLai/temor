@@ -18,4 +18,8 @@ pub enum Action {
     FindPrevious,
     /// Close the find bar.
     CloseFind,
+    /// Bring the previous command's prompt into view (⌘↑).
+    PreviousPrompt,
+    /// Bring the next command's prompt into view (⌘↓).
+    NextPrompt,
 }
