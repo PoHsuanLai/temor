@@ -29,10 +29,12 @@ impl Terminal {
                 "cell",
             )?;
             let width = width_of(cell);
-            let text = if has_text(cell) {
-                graphemes(&gref)?
-            } else {
-                String::new()
+            // A blank narrow cell is a space: a tab or a cursor move leaves blank cells that copy
+            // and search must see. A wide character's spacer stays empty.
+            let text = match (has_text(cell), width) {
+                (true, _) => graphemes(&gref)?,
+                (false, CellWidth::Narrow) => " ".to_owned(),
+                (false, _) => String::new(),
             };
             out.push(GridCell { text, width });
         }

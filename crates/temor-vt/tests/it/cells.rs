@@ -25,6 +25,25 @@ fn a_wide_character_takes_two_cells_with_a_spacer() {
 }
 
 #[test]
+fn a_tab_leaves_blank_cells_that_read_as_spaces() {
+    let (mut t, _events) = term(12, 2);
+    t.write(b"a\tb");
+    let texts: Vec<String> = t
+        .row_cells(0)
+        .expect("cells")
+        .into_iter()
+        .map(|c| c.text)
+        .collect();
+    assert_eq!(texts[0], "a");
+    assert_eq!(
+        texts[1..8].concat(),
+        "       ",
+        "seven blank cells up to the tab stop"
+    );
+    assert_eq!(texts[8], "b");
+}
+
+#[test]
 fn the_default_cursor_shape_can_be_set() {
     let (mut t, _events) = term(10, 2);
     t.set_default_cursor_shape(Some(CursorShape::Bar))
