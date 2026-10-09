@@ -32,11 +32,24 @@ fn write_one(file: &ShimFile) -> io::Result<()> {
         return Ok(());
     }
     let dir = file.path.parent().unwrap_or(Path::new("."));
-    fs::create_dir_all(dir)?;
+    create_private_dir(dir)?;
     let mut temp = tempfile::NamedTempFile::new_in(dir)?;
     temp.write_all(file.contents.as_bytes())?;
     temp.persist(&file.path).map_err(|error| error.error)?;
     Ok(())
+}
+
+/// Creates `dir` and its parents for this user alone: mode 0700 on Unix, so no other user can
+/// plant a shim in it. A directory that exists keeps its mode.
+fn create_private_dir(dir: &Path) -> io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
 }
 
 /// Plans the integration for `shell`, writes its shims under `runtime_dir`, and returns what
