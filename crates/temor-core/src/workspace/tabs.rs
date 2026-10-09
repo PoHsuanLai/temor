@@ -9,7 +9,7 @@ use crate::vocab::ids::{FolderId, PaneId, TabId};
 use crate::vocab::text::{Relaunch, TabTitle};
 
 /// The tab list as a Space keeps it, plus what the sidebar shows beside it.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TabsState {
     /// The tabs, folders and the tab in front.
     pub place: Place,
@@ -17,6 +17,12 @@ pub struct TabsState {
     pub unread: BTreeSet<TabId>,
     /// The id the next folder takes.
     pub next_folder: u64,
+}
+
+impl Default for TabsState {
+    fn default() -> Self {
+        TabsState::from_place(Place::default())
+    }
 }
 
 impl TabsState {

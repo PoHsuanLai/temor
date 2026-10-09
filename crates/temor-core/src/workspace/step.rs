@@ -225,7 +225,7 @@ fn mint_tab(ws: &mut Workspace) -> TabId {
 }
 
 /// The relaunch command for a pane: a pinned tab's first pane runs its command again.
-fn relaunch_for(tab: &Tab, pane: PaneId) -> Option<Relaunch> {
+pub(super) fn relaunch_for(tab: &Tab, pane: PaneId) -> Option<Relaunch> {
     match &tab.pin {
         Pin::Pinned { relaunch } if tab.tree.panes().first() == Some(&pane) => {
             Some(relaunch.clone())

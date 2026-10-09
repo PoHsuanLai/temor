@@ -4,6 +4,9 @@
 
 mod closed;
 mod model;
+pub mod restore;
+#[cfg(test)]
+mod restore_tests;
 mod sidebar;
 mod step;
 #[cfg(test)]
