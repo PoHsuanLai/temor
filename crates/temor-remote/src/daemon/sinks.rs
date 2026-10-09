@@ -1,0 +1,30 @@
+//! What the screen state sends its events and replies to.
+
+use std::sync::{Arc, Mutex};
+
+use temor_vt::{EventSink, ReplySink, VtEvent};
+
+use super::cwd::parse_cwd_url;
+use super::input::Input;
+
+/// Keeps the latest working directory the program reported.
+pub(super) struct CwdSink(pub(super) Arc<Mutex<String>>);
+
+impl EventSink for CwdSink {
+    fn send(&self, event: VtEvent) {
+        if let VtEvent::Cwd(url) = event
+            && let Some(path) = parse_cwd_url(&url)
+        {
+            *self.0.lock().unwrap_or_else(|p| p.into_inner()) = path;
+        }
+    }
+}
+
+/// Sends the screen state's replies (device reports and the like) to the program.
+pub(super) struct Replies(pub(super) Arc<Input>);
+
+impl ReplySink for Replies {
+    fn reply(&self, bytes: &[u8]) {
+        self.0.reply(bytes);
+    }
+}
