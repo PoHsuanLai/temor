@@ -72,7 +72,9 @@ impl Pane {
         let (reply_tx, _replies) = mpsc::channel::<Vec<u8>>();
         let mut config = TerminalConfig::new(GridSize::new(cols, rows));
         config.cell_px = m.cell;
-        let term = Terminal::new(config, Box::new(tx), Box::new(reply_tx)).expect("terminal");
+        let mut term = Terminal::new(config, Box::new(tx), Box::new(reply_tx)).expect("terminal");
+        let palette = Palette::default();
+        palette.apply(&mut term).expect("palette");
         Self {
             term,
             _events: events,
@@ -81,7 +83,7 @@ impl Pane {
             renderer,
             size,
             scale,
-            palette: Palette::default(),
+            palette,
         }
     }
 

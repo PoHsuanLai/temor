@@ -8,6 +8,8 @@ use temor_vt::{
 };
 
 /// A cell's grapheme cluster.
+// Built only by `FrameCapture` (feature `ghostty`) and tests.
+#[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum CellText {
     Blank,
@@ -15,6 +17,7 @@ pub(crate) enum CellText {
     Cluster(Box<str>),
 }
 
+#[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
 impl CellText {
     pub fn new(text: &str) -> Self {
         let mut chars = text.chars();
@@ -58,15 +61,14 @@ pub(crate) struct CellDraw {
     pub selected: Selected,
 }
 
-/// The terminal's own default colours and its first 16 palette entries, as libghostty resolved
-/// them; the renderer maps them onto the UI's [`crate::Palette`].
+/// The terminal's current default colours: the host's (see [`crate::Palette::apply`]) unless the
+/// program overrode them (OSC 10, 11, 12).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct TermColors {
     pub foreground: Rgb,
     pub background: Rgb,
     /// Set by the program (OSC 12).
     pub cursor: Option<Rgb>,
-    pub ansi: [Rgb; 16],
 }
 
 /// A kitty image's pixels, premultiplied RGBA8, copied once per generation.
@@ -86,6 +88,8 @@ pub(crate) struct ImagePlacement {
     pub image: Arc<ImagePixels>,
     pub col: i32,
     pub row: i32,
+    /// Pixel offset inside the top-left cell.
+    pub offset: (u32, u32),
     pub width: Px,
     pub height: Px,
     /// The source rectangle in image pixels: x, y, width, height.
@@ -138,6 +142,7 @@ impl PaneFrame {
             .collect()
     }
 
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn resize(&mut self, size: GridSize) {
         if size != self.size {
             self.size = size;
@@ -146,6 +151,7 @@ impl PaneFrame {
         }
     }
 
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn set_row(&mut self, row: Row, cells: Vec<CellDraw>) {
         let y = usize::from(row.0);
         if let (Some(slot), Some(dirty)) = (self.rows.get_mut(y), self.dirty.get_mut(y)) {
@@ -154,10 +160,12 @@ impl PaneFrame {
         }
     }
 
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn mark_all_dirty(&mut self) {
         self.dirty.fill(RowDirty::Dirty);
     }
 
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn set_colors(&mut self, colors: TermColors) {
         if colors != self.colors {
             self.colors = colors;

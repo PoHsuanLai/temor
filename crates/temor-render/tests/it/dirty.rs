@@ -76,3 +76,19 @@ fn losing_focus_redraws_with_a_hollow_cursor() {
     let unfocused = pane.render(PaneFocus::Unfocused);
     assert_ne!(focused.rgba, unfocused.rgba);
 }
+
+#[test]
+fn a_program_background_change_redraws_the_padding_too() {
+    let mut pane = Pane::new(10, 3, 1.0, 14.0);
+    pane.write(b"x");
+    let before = pane.render(PaneFocus::Focused);
+    assert_eq!(&before.rgba[..3], &rgb(pane.palette.background));
+    pane.write(b"\x1b]11;rgb:20/40/60\x1b\\");
+    let after = pane.render(PaneFocus::Focused);
+    assert_eq!(after.damage.len(), 1, "everything");
+    assert_eq!(&after.rgba[..3], &[0x20, 0x40, 0x60]);
+}
+
+fn rgb(c: temor_vt::Rgb) -> [u8; 3] {
+    [c.r, c.g, c.b]
+}

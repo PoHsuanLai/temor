@@ -1,8 +1,8 @@
 //! Reading a frame out of a real terminal in the two phases of PLAN §4b.
 
 use temor_vt::{
-    CellView, CellWidth, FrameDirty, PendingFrame, RenderView, Rgb, RowFilter, StyleFlags,
-    Terminal, Underline,
+    CellView, CellWidth, FrameDirty, PendingFrame, RenderView, RowFilter, StyleFlags, Terminal,
+    Underline,
 };
 
 use super::images::ImageCache;
@@ -56,15 +56,10 @@ impl CapturedFrame<'_> {
         let resized = size != frame.size;
         frame.resize(size);
         let colors = f.colors();
-        let mut ansi = [Rgb::default(); 16];
-        for (slot, c) in ansi.iter_mut().zip(&colors.palette) {
-            *slot = *c;
-        }
         frame.set_colors(TermColors {
             foreground: colors.foreground,
             background: colors.background,
             cursor: colors.cursor,
-            ansi,
         });
         frame.cursor = f.cursor();
         let dirty = f.dirty();

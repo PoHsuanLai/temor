@@ -50,6 +50,7 @@ impl ImageCache {
                     image,
                     col: r.viewport_col,
                     row: r.viewport_row,
+                    offset: (r.x_offset, r.y_offset),
                     width: temor_vt::Px(r.pixel_width),
                     height: temor_vt::Px(r.pixel_height),
                     source: [r.source_x, r.source_y, r.source_width, r.source_height],

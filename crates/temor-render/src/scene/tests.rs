@@ -1,6 +1,6 @@
 use temor_vt::{CellStyle, Col, Rgb, Row, Selected, StyleFlags, Underline};
 
-use super::colors::{UnderCursor, cell_colors, remap};
+use super::colors::{UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle};
 use super::model::{QuadPaint, RowScene};
 use super::{SceneInput, build_row};
@@ -27,27 +27,38 @@ fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
 }
 
 fn term_colors() -> TermColors {
-    let mut ansi = [Rgb::default(); 16];
-    for (i, c) in ansi.iter_mut().enumerate() {
-        *c = Rgb::new(i as u8, 0, 0);
-    }
     TermColors {
         foreground: Rgb::new(200, 200, 200),
         background: Rgb::new(0, 0, 0),
         cursor: None,
-        ansi,
     }
 }
 
 #[test]
-fn ansi_colours_map_onto_the_palette_and_others_stay() {
+fn true_colour_cells_keep_their_colour() {
     let palette = Palette::default();
     let colors = term_colors();
-    assert_eq!(remap(Rgb::new(1, 0, 0), &colors, &palette), palette.ansi[1]);
-    assert_eq!(
-        remap(Rgb::new(1, 2, 3), &colors, &palette),
-        Rgb::new(1, 2, 3)
+    let mut c = cell(0, "x", StyleFlags::default());
+    c.fg = Some(palette.ansi[1]);
+    let got = cell_colors(
+        &c,
+        CellPos::new(0, 0),
+        &colors,
+        &palette,
+        None,
+        UnderCursor::No,
     );
+    assert_eq!(got.fg, palette.ansi[1]);
+    let plain = cell(0, "x", StyleFlags::default());
+    let got = cell_colors(
+        &plain,
+        CellPos::new(0, 0),
+        &colors,
+        &palette,
+        None,
+        UnderCursor::No,
+    );
+    assert_eq!((got.fg, got.bg), (colors.foreground, None));
 }
 
 #[test]
@@ -59,7 +70,7 @@ fn inverse_swaps_and_selection_and_cursor_win() {
     let inv = cell_colors(&c, at, &colors, &palette, None, UnderCursor::No);
     assert_eq!(
         (inv.fg, inv.bg),
-        (palette.background, Some(palette.foreground))
+        (colors.background, Some(colors.foreground))
     );
     let sel = SelectionOverlay {
         start: at,
@@ -70,7 +81,7 @@ fn inverse_swaps_and_selection_and_cursor_win() {
     assert_eq!(selected.bg, Some(palette.selection));
     let plain = cell(0, "x", StyleFlags::default());
     let under = cell_colors(&plain, at, &colors, &palette, None, UnderCursor::Block);
-    assert_eq!(under.fg, palette.background);
+    assert_eq!(under.fg, colors.background);
 }
 
 fn build(cells: &[CellDraw], cursor: Option<CursorDraw>) -> RowScene {

@@ -2,13 +2,15 @@
 //! this plain struct (v0.2.31), so light/dark and the Space theme apply.
 
 use temor_vt::Rgb;
+#[cfg(feature = "ghostty")]
+use temor_vt::Terminal;
 
-/// The colours the renderer draws with.
-///
-/// libghostty resolves every cell colour to RGB with its own palette. Until temor-vt can set the
-/// terminal's default colours (PLAN §5, upstream ask), the renderer maps them here: a cell
-/// colour equal to one of the terminal's 16 ANSI entries draws as the matching entry of `ansi`,
-/// and the default foreground and background draw as `foreground` and `background`.
+#[cfg(feature = "ghostty")]
+use crate::error::RenderError;
+
+/// The grid's colours. [`Palette::apply`] makes them the terminal's defaults, so libghostty
+/// resolves every cell with them and a program's own overrides (OSC 4, 10, 11, 12) still win.
+/// The renderer itself only reads `selection` (and `cursor` when the terminal has none).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Palette {
     /// Black, red, green, yellow, blue, magenta, cyan, white, then their bright forms.
@@ -51,5 +53,33 @@ impl Default for Palette {
             cursor: c(0xe8e8e8),
             selection: c(0x3a4a5c),
         }
+    }
+}
+
+impl Palette {
+    /// The full 256-colour palette: `ansi`, then xterm's 6x6x6 cube and grey ramp.
+    pub fn table(&self) -> [Rgb; 256] {
+        let mut out = [Rgb::default(); 256];
+        out[..16].copy_from_slice(&self.ansi);
+        let level = |v: usize| if v == 0 { 0 } else { (55 + v * 40) as u8 };
+        for i in 0..216 {
+            out[16 + i] = Rgb::new(level(i / 36), level(i / 6 % 6), level(i % 6));
+        }
+        for i in 0..24 {
+            let v = (8 + i * 10) as u8;
+            out[232 + i] = Rgb::new(v, v, v);
+        }
+        out
+    }
+
+    /// Makes these the terminal's default colours. Call it once per terminal and whenever the
+    /// theme changes; the next captured frame is redrawn whole.
+    #[cfg(feature = "ghostty")]
+    pub fn apply(&self, term: &mut Terminal) -> Result<(), RenderError> {
+        term.set_default_palette(Some(&self.table()))?;
+        term.set_default_foreground(Some(self.foreground))?;
+        term.set_default_background(Some(self.background))?;
+        term.set_default_cursor(Some(self.cursor))?;
+        Ok(())
     }
 }

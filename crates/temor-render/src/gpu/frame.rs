@@ -43,8 +43,8 @@ fn image_inst(p: &ImagePlacement, origin: (i32, i32), m: &CellMetrics) -> Inst {
     let [sx, sy, sw, sh] = p.source.map(|v| v as f32);
     Inst {
         rect: [
-            (origin.0 + p.col * m.width() as i32) as f32,
-            (origin.1 + p.row * m.height() as i32) as f32,
+            (origin.0 + p.col * m.width() as i32 + p.offset.0 as i32) as f32,
+            (origin.1 + p.row * m.height() as i32 + p.offset.1 as i32) as f32,
             p.width.0 as f32,
             p.height.0 as f32,
         ],
@@ -109,6 +109,7 @@ impl Renderer for GpuRenderer {
             padding: fit.padding,
             grid: frame.size,
             palette: *view.palette,
+            colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
         };
@@ -150,7 +151,7 @@ impl Renderer for GpuRenderer {
                 break;
             }
         }
-        let commands = self.record(frame, input.origin, &metrics, view)?;
+        let commands = self.record(frame, input.origin, &metrics)?;
         self.damage = damage(full, &rows, &metrics, &fit);
         let texture = self.target.as_ref().ok_or(RenderError::PaneTooLarge {
             width: w,
@@ -176,7 +177,6 @@ impl GpuRenderer {
         frame: &PaneFrame,
         origin: (i32, i32),
         m: &CellMetrics,
-        view: &PaneView<'_>,
     ) -> Result<wgpu::CommandBuffer, RenderError> {
         let mut all: Vec<Inst> = self.rows.iter().flat_map(|r| r.0.iter().copied()).collect();
         let bg_end = all.len() as u32;
@@ -214,7 +214,7 @@ impl GpuRenderer {
         let target_view = target.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());
         {
-            let bg = view.palette.background;
+            let bg = frame.colors.background;
             let c = |v: u8| f64::from(v) / 255.0;
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("temor cells"),

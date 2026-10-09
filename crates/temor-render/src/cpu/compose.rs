@@ -22,7 +22,7 @@ pub(crate) fn compose_row(
     let ch = input.metrics.height() as i32;
     let y0 = input.origin.1 + i32::from(row.0) * ch;
     target.band = (y0, y0 + ch);
-    target.clear_band(Premul::opaque(input.palette.background));
+    target.clear_band(Premul::opaque(input.colors.background));
     draw_images(target, input, images, KittyLayer::BelowBackground);
     let epoch = glyphs.epoch();
     build_row(input, row, cells, glyphs, scene);
@@ -48,6 +48,10 @@ fn draw_images(
 ) {
     let (cw, ch) = (input.metrics.width() as i32, input.metrics.height() as i32);
     for p in images.iter().filter(|p| p.layer == layer) {
-        target.image(p, input.origin.0 + p.col * cw, input.origin.1 + p.row * ch);
+        target.image(
+            p,
+            input.origin.0 + p.col * cw + p.offset.0 as i32,
+            input.origin.1 + p.row * ch + p.offset.1 as i32,
+        );
     }
 }

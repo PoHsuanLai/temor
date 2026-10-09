@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use temor_vt::{Generation, GridSize, ImageId, KittyLayer, Px, Row};
 
-use crate::frame::ImagePlacement;
+use crate::frame::{ImagePlacement, TermColors};
 use crate::metrics::{CellMetrics, GridFit, Padding, PixelSize, Scale};
 use crate::palette::Palette;
 use crate::renderer::{DamageRect, PaneFocus, SelectionOverlay};
@@ -20,6 +20,7 @@ pub(crate) struct ViewKey {
     pub padding: Padding,
     pub grid: GridSize,
     pub palette: Palette,
+    pub colors: TermColors,
     pub focus: PaneFocus,
     pub selection: Option<SelectionOverlay>,
 }

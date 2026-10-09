@@ -101,6 +101,7 @@ impl Renderer for CpuRenderer {
             padding: fit.padding,
             grid: frame.size,
             palette: *view.palette,
+            colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
         };
@@ -125,7 +126,7 @@ impl Renderer for CpuRenderer {
         let full = plan == Compose::All;
         let rows: Vec<Row> = match plan {
             Compose::All => {
-                target.clear_band(Premul::opaque(view.palette.background));
+                target.clear_band(Premul::opaque(frame.colors.background));
                 (0..frame.size.rows.0).map(Row).collect()
             }
             Compose::Rows(rows) => rows,
