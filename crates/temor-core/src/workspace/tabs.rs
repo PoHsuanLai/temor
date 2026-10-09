@@ -216,10 +216,10 @@ fn edit_tab(state: &mut TabsState, id: TabId, edit: impl FnOnce(&mut Tab)) -> Ve
 }
 
 fn move_to_folder(state: &mut TabsState, id: TabId, folder: Option<FolderId>) -> Vec<TabsOut> {
-    if let Some(wanted) = folder {
-        if !state.place.folders.iter().any(|f| f.id == wanted) {
-            return refuse(TabRefusal::NoSuchFolder(wanted));
-        }
+    if let Some(wanted) =
+        folder.filter(|wanted| !state.place.folders.iter().any(|f| f.id == *wanted))
+    {
+        return refuse(TabRefusal::NoSuchFolder(wanted));
     }
     edit_tab(state, id, |t| t.folder = folder)
 }

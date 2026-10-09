@@ -55,9 +55,11 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
     }
 }
 
-/// A ⌘ chord (Super, without Ctrl) on a letter or digit that no binding uses.
+/// A ⌘ chord (Super, without Ctrl) on a letter that no binding uses. Super digits and
+/// Super+Space are the shell's (PLAN §6), so they keep their old route.
 fn is_unbound_command_letter(chord: &Chord) -> bool {
-    chord.is_command_form() && matches!(chord.key, temor_pane::keys::ChordKey::Char(_))
+    chord.is_command_form()
+        && matches!(chord.key, temor_pane::keys::ChordKey::Char(c) if c.is_alphabetic())
 }
 
 #[cfg(test)]
@@ -105,7 +107,7 @@ mod tests {
         #[rustfmt::skip]
         let rows: &[(&str, bool)] = &[
             ("super+z", true),
-            ("super+5", true),
+            ("super+5", false),
             ("super+space", false),
             ("ctrl+z", false),
             ("ctrl+shift+z", false),

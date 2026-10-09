@@ -9,12 +9,48 @@ fn single(n: u64) -> SplitTree {
 #[test]
 fn graft_puts_the_other_tree_on_the_side_asked() {
     #[rustfmt::skip]
-    let cases: &[(&str, SplitTree, u64, Direction, &[u64], Axis)] = &[
-        ("right of 1",  single(1), 1, Direction::Right, &[1, 2], Axis::Row),
-        ("left of 1",   single(1), 1, Direction::Left,  &[2, 1], Axis::Row),
-        ("down of 1",   single(1), 1, Direction::Down,  &[1, 2], Axis::Column),
-        ("up of 1",     single(1), 1, Direction::Up,    &[2, 1], Axis::Column),
-        ("right of 2 in an L", l_shape(), 2, Direction::Right, &[1, 2, 4, 3], Axis::Column),
+    type Case = (&'static str, SplitTree, u64, Direction, &'static [u64], Axis);
+    let cases: &[Case] = &[
+        (
+            "right of 1",
+            single(1),
+            1,
+            Direction::Right,
+            &[1, 2],
+            Axis::Row,
+        ),
+        (
+            "left of 1",
+            single(1),
+            1,
+            Direction::Left,
+            &[2, 1],
+            Axis::Row,
+        ),
+        (
+            "down of 1",
+            single(1),
+            1,
+            Direction::Down,
+            &[1, 2],
+            Axis::Column,
+        ),
+        (
+            "up of 1",
+            single(1),
+            1,
+            Direction::Up,
+            &[2, 1],
+            Axis::Column,
+        ),
+        (
+            "right of 2 in an L",
+            l_shape(),
+            2,
+            Direction::Right,
+            &[1, 2, 4, 3],
+            Axis::Column,
+        ),
     ];
     for (name, host, at, towards, order, axis) in cases {
         let other = if *name == "right of 2 in an L" {
@@ -54,7 +90,7 @@ fn graft_refusals_name_the_cause() {
     });
     #[rustfmt::skip]
     let cases: Vec<(&str, Result<SplitTree, CoreError>)> = vec![
-        ("unknown host pane", l_shape().graft(p(99), &single(7), Direction::Right).map(|t| t)),
+        ("unknown host pane", l_shape().graft(p(99), &single(7), Direction::Right)),
         ("onto itself", l_shape().graft(p(1), &l_shape(), Direction::Right)),
         ("shares one pane", l_shape().graft(p(1), &single(3), Direction::Right)),
         ("past the pane limit", full.graft(p(1), &single(200), Direction::Right)),
