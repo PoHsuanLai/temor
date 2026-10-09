@@ -271,19 +271,30 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
   - temor corrects the modifier lag in its own keymap.
   - Keys are **configurable** (ds-settings). On KDE, KWin takes Meta+T/W/D/V globally; the desktop's
     reserved chords have been asked of whopper.
-- **The desktop key rule** (whopper):
-  - Apps never bind Super. Super chords belong to the shell and compositor (⌘Space, ⌘Tab, ⌘`,
-    screenshots).
-  - keycap's `terminal` profile (picked through `Categories=TerminalEmulator`; sill's keyboard source
-    maps that category) delivers the physical ⌘ + letter as **Ctrl+Shift + letter**, so ⌘C is never an
-    interrupt. temor binds Ctrl+Shift chords and the UI shows them as ⌘ chords.
+- **The desktop key rule** (whopper, restated for quire ≥ v0.2.31):
+  - Apps never claim the **shell's** Super chords: Super alone, Super+Space, Super+Tab, Super+number,
+    and anything the shell or compositor lists. An app's own ⌘ chords (⌘T, ⌘W, ⌘C…) may be read
+    when they arrive as Super.
+  - **Two paths reach temor, and both must work:**
+    - With keycap (or Toshy) running and the window matched as `Categories=TerminalEmulator`,
+      physical ⌘ + letter arrives as **Ctrl+Shift + letter**.
+    - With no remapper, or a window it didn't match, physical ⌘ arrives as **Super**.
+    - So every ⌘ action is bound to both Ctrl+Shift+key and Super+key.
+  - **Terminal rule:** never use quire's `is_command` in a pane (it is true for plain Ctrl and would
+    steal Ctrl+C, Ctrl+D…). A chord is a ⌘ chord when
+    `let m = command_keys(mods); m.contains(Modifiers::META) && !m.contains(Modifiers::CONTROL)`
+    (Super folded to Meta, without Ctrl), or when it is in temor's Ctrl+Shift table. Everything else,
+    including plain Ctrl combos and unbound Ctrl+Shift combos, goes to the program. Chords are shown
+    as ⌘. (GUI parts of temor outside a pane, such as dialogs, may use `is_command`.)
   - Ctrl+Space stays with the input method everywhere.
-- **Default keys** (shown with ⌘; bound as the Ctrl+Shift equivalent):
+  - **Test:** Ctrl+Shift+T and Super+T both open a tab; Ctrl+C reaches the PTY; an unbound
+    Ctrl+Shift combo reaches the program; Super alone and Super+Space never reach temor's bindings.
+- **Default keys** (shown with ⌘; each bound as Ctrl+Shift+key and Super+key):
   - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split (Ctrl+Shift+D, and Ctrl+Shift+Alt+D for down); ⌘⌥ arrows move
     focus
   - ⌘⇧↩ zoom; ⌃⌘= equalize; ⌘C/⌘V copy/paste; ⌘F searches the scrollback; ⌘↑/↓ move between prompts
   - ⌘1–9 tabs; ⌃1–9 Spaces (quire `SwitchChord`); ⌘⇧U jumps to the waiting agent
-  - Every binding is configurable; the defaults never use Super or Ctrl+Space.
+  - Every binding is configurable; the defaults never claim the shell's Super chords or Ctrl+Space.
 
 ## 7. Browser-like structure
 

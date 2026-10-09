@@ -69,9 +69,10 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Theme: re-apply the palette in an effect on `ds_settings::use_environment(..)`; Space theme and
       runtime window title are queued in quire. §5
 - [ ] Add quire's coherence test (examples/consumer/tests/it/coherence.rs).
-- [ ] Keys: since v0.2.31 Cmd arrives as SUPER and apps read command chords via
-      `ds::prelude::is_command`/`command_keys`; asked whopper how this squares with keycap's
-      terminal profile (Ctrl+Shift). Update PLAN §6 and the keymap to the answer.
+- [ ] Keys (PLAN §6, answered by whopper): bind each ⌘ action to both Ctrl+Shift+key and Super+key;
+      ⌘ chord = `command_keys(mods)` has META without CONTROL, never `is_command` in a pane. Tests:
+      Ctrl+Shift+T and Super+T open a tab, Ctrl+C reaches the PTY. temor-core terminal/chord.rs and
+      keymap.rs.
 
 ## temor-ui / temor (lane/app, P1, reviewed at f783a2a)
 - [ ] quire v0.2.31: replace plain layout divs and the 100vh root with quire layout components and
