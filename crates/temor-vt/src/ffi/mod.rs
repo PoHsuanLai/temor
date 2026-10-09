@@ -3,6 +3,7 @@
 //! crate root.
 
 mod callbacks;
+mod colors;
 mod convert;
 mod format;
 mod frame;
