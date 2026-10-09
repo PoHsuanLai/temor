@@ -47,7 +47,7 @@ pub use fake::FakeVt;
 
 #[cfg(feature = "ghostty")]
 pub use ffi::{
-    Formatter, Frame, KeyEncoder, KittyImage, KittyImages, KittyPixels, KittyPlacement,
+    Formatter, Frame, GridCell, KeyEncoder, KittyImage, KittyImages, KittyPixels, KittyPlacement,
     MouseEncoder, PendingFrame, RenderView, RowView, Snapshot, Terminal, install_png_decoder,
     paste_is_safe,
 };

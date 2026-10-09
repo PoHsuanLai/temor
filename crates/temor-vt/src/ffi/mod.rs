@@ -3,6 +3,7 @@
 //! crate root.
 
 mod callbacks;
+mod cells;
 mod colors;
 mod convert;
 mod format;
@@ -23,6 +24,7 @@ mod terminal_read;
 mod vt_impl;
 mod wrap;
 
+pub use cells::GridCell;
 pub use format::Formatter;
 pub use frame::Frame;
 pub use key::KeyEncoder;

@@ -7,6 +7,7 @@ mod fake;
 mod support;
 
 #[cfg(feature = "ghostty")]
+mod cells;
 mod colors;
 #[cfg(feature = "ghostty")]
 mod graphemes;

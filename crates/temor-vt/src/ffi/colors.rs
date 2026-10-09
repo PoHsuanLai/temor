@@ -31,6 +31,37 @@ impl Terminal {
         self.set_color(sys::TerminalOption::COLOR_CURSOR, color)
     }
 
+    /// The cursor shape a plain cursor-style reset (`CSI 0 q`) restores; `None` restores the
+    /// built-in block. Programs can still change the shape with DECSCUSR.
+    pub fn set_default_cursor_shape(
+        &mut self,
+        shape: Option<crate::CursorShape>,
+    ) -> Result<(), VtError> {
+        let style = match shape {
+            None => None,
+            Some(crate::CursorShape::Bar) => Some(sys::TerminalCursorStyle::BAR),
+            Some(crate::CursorShape::Block) => Some(sys::TerminalCursorStyle::BLOCK),
+            Some(crate::CursorShape::Underline) => Some(sys::TerminalCursorStyle::UNDERLINE),
+            Some(crate::CursorShape::BlockHollow) => Some(sys::TerminalCursorStyle::BLOCK_HOLLOW),
+        };
+        let value: Option<sys::TerminalCursorStyle::Type> = style;
+        let ptr = value.as_ref().map_or(std::ptr::null(), |v| {
+            std::ptr::from_ref(v).cast::<std::ffi::c_void>()
+        });
+        // SAFETY: DEFAULT_CURSOR_STYLE takes a `GhosttyTerminalCursorStyle*` (or null to reset),
+        // read during the call; `value` outlives it.
+        check(
+            unsafe {
+                sys::ghostty_terminal_set(
+                    self.raw(),
+                    sys::TerminalOption::DEFAULT_CURSOR_STYLE,
+                    ptr,
+                )
+            },
+            "cursor style",
+        )
+    }
+
     /// The default 256-colour palette; OSC 4 overrides single entries. `None` restores
     /// libghostty's built-in palette.
     pub fn set_default_palette(&mut self, palette: Option<&[Rgb; 256]>) -> Result<(), VtError> {
