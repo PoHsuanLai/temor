@@ -73,7 +73,10 @@ fn a_client_reports_through_the_pump_and_bad_input_is_answered() {
     let dir = tempfile::tempdir().expect("tempdir");
     let key = PaneKey::new("p-12").expect("key");
     let mut socket = PaneSocket::bind(dir.path(), key, SocketLimits::default()).expect("bind");
-    let mode = std::fs::metadata(socket.path()).expect("meta").permissions().mode();
+    let mode = std::fs::metadata(socket.path())
+        .expect("meta")
+        .permissions()
+        .mode();
     assert_eq!(mode & 0o077, 0, "the socket is private");
 
     // Status before hello is refused but the connection stays.
@@ -82,7 +85,12 @@ fn a_client_reports_through_the_pump_and_bad_input_is_answered() {
         app: Some("claude".into()),
         ..status(1, ReportState::Working)
     };
-    let script = format!("{}{}{}", encode_status(&report), encode_hello(), encode_status(&report));
+    let script = format!(
+        "{}{}{}",
+        encode_status(&report),
+        encode_hello(),
+        encode_status(&report)
+    );
     a.write_all(script.as_bytes()).expect("write");
     assert_eq!(socket.pump(), vec![report.clone()]);
     assert_eq!(read_some(&mut a), "err need_hello\nok 1\nok 1\n");
@@ -114,8 +122,15 @@ fn a_client_reports_through_the_pump_and_bad_input_is_answered() {
 
 #[test]
 fn pane_keys_cannot_leave_the_directory() {
-    for bad in ["", "../x", "a/b", "a b", &"x".repeat(33)] {
-        assert!(PaneKey::new(bad).is_err(), "{bad:?}");
+    let bad = [
+        String::new(),
+        "../x".into(),
+        "a/b".into(),
+        "a b".into(),
+        "x".repeat(33),
+    ];
+    for bad in bad {
+        assert!(PaneKey::new(&bad).is_err(), "{bad:?}");
     }
     assert!(PaneKey::new("pane_7-a").is_ok());
 }

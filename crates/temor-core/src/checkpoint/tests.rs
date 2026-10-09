@@ -49,3 +49,19 @@ fn checkpoints_are_taken_per_block_and_restored() {
         assert_eq!(out, outs, "{name}: outputs");
     }
 }
+
+#[test]
+fn restore_plans_split_files_made_since_from_files_to_write_back() {
+    use super::{RestorePlan, parse_restore, ref_name};
+    use crate::vocab::text::RelPath;
+    let plan = parse_restore(b"M\0src/a.rs\0D\0new.txt\0A\0gone.txt\0");
+    assert_eq!(
+        plan,
+        RestorePlan {
+            write: vec![RelPath("src/a.rs".into()), RelPath("gone.txt".into())],
+            delete: vec![RelPath("new.txt".into())],
+        }
+    );
+    assert_eq!(parse_restore(b""), RestorePlan::default());
+    assert_eq!(ref_name(CheckpointRef(7)), "refs/temor/checkpoints/7");
+}

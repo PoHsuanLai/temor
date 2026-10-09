@@ -7,9 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 
-use super::protocol::{
-    MAX_LINE, ReportRefusal, Request, StatusLine, VERSION, parse_request,
-};
+use super::protocol::{MAX_LINE, ReportRefusal, Request, StatusLine, VERSION, parse_request};
 use crate::error::PaneError;
 use crate::platform;
 
@@ -135,10 +133,11 @@ impl PaneSocket {
         self.accept();
         let mut reports = Vec::new();
         let per_pump = self.limits.lines_per_pump;
-        self.clients.retain_mut(|client| match read_client(client, per_pump, &mut reports) {
-            Fate::Keep => true,
-            Fate::Drop => false,
-        });
+        self.clients
+            .retain_mut(|client| match read_client(client, per_pump, &mut reports) {
+                Fate::Keep => true,
+                Fate::Drop => false,
+            });
         reports
     }
 

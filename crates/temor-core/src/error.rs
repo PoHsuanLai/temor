@@ -28,4 +28,19 @@ pub enum CoreError {
     /// The session could not be written as text (a value the format cannot hold).
     #[error("the session could not be written: {0}")]
     SessionEncode(String),
+    /// git could not be started (the binary path is wrong or not executable).
+    #[error("git could not be run: {0}")]
+    GitNotRun(String),
+    /// git ran and refused. `what` is the command's first words; `stderr` its message, cut short.
+    #[error("git {what} failed: {stderr}")]
+    GitFailed { what: String, stderr: String },
+    /// git printed something this code does not know how to read.
+    #[error("unexpected output from git {what}")]
+    GitOutput { what: String },
+    /// A ref or object id did not name a commit in the repository.
+    #[error("not a commit: {0}")]
+    NotACommit(String),
+    /// A worktree name was empty after cleaning, or a path would leave temor's folder.
+    #[error("not a usable worktree name: {0:?}")]
+    BadWorktreeName(String),
 }

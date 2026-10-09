@@ -9,7 +9,10 @@ use std::os::unix::net::UnixStream;
 use std::path::Path;
 
 fn unsupported() -> io::Error {
-    io::Error::new(io::ErrorKind::Unsupported, "not supported on this system yet")
+    io::Error::new(
+        io::ErrorKind::Unsupported,
+        "not supported on this system yet",
+    )
 }
 
 pub(crate) fn ensure_private_dir(_path: &Path) -> io::Result<()> {
