@@ -1,13 +1,13 @@
 //! Where each integration script goes on the host, and the terminfo source the bootstrap can
-//! compile. The layout matches `temor_pty`'s local shims, so the same scripts run in both.
+//! compile. The layout matches `temor_shell`'s local shims, so the same scripts run in both.
 
-use temor_pty::ShellScript;
+use temor_shell::ShellScript;
 
 /// The terminfo source for `xterm-ghostty` (`infocmp -x` output), compiled with `tic` only when
 /// the host lacks the entry.
 pub(super) const TERMINFO_SOURCE: &str = include_str!("../../terminfo/xterm-ghostty.src");
 
-/// The path under the temp directory for an integration script, by its `temor_pty` name, or
+/// The path under the temp directory for an integration script, by its `temor_shell` name, or
 /// `None` for a script this bootstrap does not place.
 pub(super) fn remote_path(script: &ShellScript) -> Option<&'static str> {
     match script.name {

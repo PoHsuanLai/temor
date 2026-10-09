@@ -15,6 +15,7 @@ ds-core = { workspace = true }
 rustix = { workspace = true }
 temor-core = { workspace = true }
 temor-pty = { workspace = true }
+temor-shell = { workspace = true }
 temor-transfer = { workspace = true }
 tempfile = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }

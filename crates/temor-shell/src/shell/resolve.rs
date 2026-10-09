@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 use crate::env::ChildEnv;
-use crate::platform::{Current, Os};
 
 /// The shells temor has integration for, and everything else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -79,13 +78,6 @@ fn usable(path: &Path) -> bool {
 /// A numeric user id, as passwd lists it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UserId(pub u32);
-
-impl UserId {
-    /// The real user id of this process, where the OS has one temor can read.
-    pub fn current() -> Option<Self> {
-        <Current as Os>::current_user()
-    }
-}
 
 /// The login shell of user `uid` in passwd-format `text` (`name:pw:uid:gid:gecos:home:shell`),
 /// for callers that read `/etc/passwd` or `getent passwd` output at their edge.

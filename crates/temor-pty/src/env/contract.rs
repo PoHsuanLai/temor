@@ -3,8 +3,8 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use super::model::ChildEnv;
 use super::terminfo::TermName;
+use temor_shell::ChildEnv;
 
 /// The pane this child runs in, as `TEMOR_PANE_ID` carries it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

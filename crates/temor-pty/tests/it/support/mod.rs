@@ -7,9 +7,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use temor_pty::{
-    ChildEnv, Cols, EnvContract, GridSize, PaneId, ProgramVersion, Rows, SessionLauncher, TermName,
+    Cols, EnvContract, GridSize, PaneId, ProgramVersion, Rows, SessionLauncher, TermName,
     child_env, find_program,
 };
+use temor_shell::ChildEnv;
 use tempfile::TempDir;
 
 pub use plain::{bash, bash_interactive, proc_alive};

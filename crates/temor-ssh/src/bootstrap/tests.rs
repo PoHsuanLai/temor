@@ -1,7 +1,7 @@
 //! The bootstrap's text: heredocs, the placement of the integration files and the transport.
 //! The script's behaviour is tested by running it, in `tests/it`.
 
-use temor_pty::integration_scripts;
+use temor_shell::integration_scripts;
 
 use super::BootstrapScript;
 use super::files::remote_path;

@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::pty::{ProcRoot, ProcessId};
-use crate::shell::UserId;
+use temor_shell::UserId;
 
 /// The process and file facts temor reads from the OS for tab titles, the running row, shell
 /// resolution and program lookup. Each OS module implements it; `Current` is this build's.

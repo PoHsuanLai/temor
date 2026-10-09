@@ -1,0 +1,15 @@
+[package]
+name = "temor-shell"
+description = "temor's shell: shell resolution, the child environment, and the shell integration scripts and plan."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

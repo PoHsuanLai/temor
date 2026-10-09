@@ -3,9 +3,10 @@
 use std::collections::BTreeSet;
 
 use temor_pty::{
-    ChildEnv, EnvContract, PaneId, ProgramVersion, SpawnSpec, TermName, base_env, child_env,
-    find_term, terminfo_dirs,
+    EnvContract, PaneId, ProgramVersion, SpawnSpec, TermName, base_env, child_env, find_term,
+    terminfo_dirs,
 };
+use temor_shell::ChildEnv;
 
 use crate::support::{Scratch, Term, program, size, trampoline};
 

@@ -4332,6 +4332,7 @@ name = "temor-pty"
 version = "0.1.0"
 dependencies = [
  "rustix",
+ "temor-shell",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -4353,11 +4354,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-shell"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "temor-ssh"
 version = "0.1.0"
 dependencies = [
  "rustix",
- "temor-pty",
+ "temor-shell",
  "temor-ssh",
  "tempfile",
  "thiserror 2.0.21",
@@ -4388,6 +4397,7 @@ dependencies = [
  "temor-core",
  "temor-pty",
  "temor-render",
+ "temor-shell",
  "temor-transfer",
  "temor-vt",
  "tempfile",

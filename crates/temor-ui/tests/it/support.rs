@@ -3,8 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use temor_pty::{ChildEnv, SessionLauncher, SpawnSpec, find_program};
+use temor_pty::{SessionLauncher, SpawnSpec, find_program};
 use temor_render::Palette;
+use temor_shell::ChildEnv;
 use temor_ui::pane::{PaneEvent, PaneHandle, PaneSpec, start};
 use temor_vt::{CellPx, GridSize, LineCount};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};

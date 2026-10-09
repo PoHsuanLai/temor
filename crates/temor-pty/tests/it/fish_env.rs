@@ -1,6 +1,7 @@
 //! The fish shim takes only its own entry back out of `XDG_DATA_DIRS`.
 
-use temor_pty::{ChildEnv, Shell, ShellStart, prepare_shell};
+use temor_pty::prepare_shell;
+use temor_shell::{ChildEnv, Shell, ShellStart};
 
 use crate::support::{Scratch, Term, program_or_skip, setsid, size};
 

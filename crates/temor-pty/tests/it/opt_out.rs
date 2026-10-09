@@ -1,6 +1,7 @@
 //! `TEMOR_SHELL_INTEGRATION=0` starts the shell plainly, with no marks and no shims.
 
-use temor_pty::{ChildEnv, Shell, ShellStart, prepare_shell};
+use temor_pty::prepare_shell;
+use temor_shell::{ChildEnv, Shell, ShellStart};
 
 use crate::support::{Scratch, Term, program, setsid, size};
 

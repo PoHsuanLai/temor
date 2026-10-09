@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::platform::Os;
 use crate::pty::{ProcRoot, ProcessId};
-use crate::shell::UserId;
+use temor_shell::UserId;
 
 /// This OS.
 #[derive(Debug)]

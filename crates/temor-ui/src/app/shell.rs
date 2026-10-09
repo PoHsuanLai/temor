@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use temor_core::terminal::settings::TerminalSettings;
 use temor_core::terminal::settings_value::ShellChoice;
 use temor_pty::{
-    ChildEnv, EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, SessionLauncher, Shell,
-    ShellStart, UserId, base_env, child_env, find_term, passwd_login_shell, prepare_shell,
-    resolve_shell, terminfo_dirs,
+    EnvContract, PaneId, ProgramVersion, SYSTEM_TERMINFO_DIRS, SessionLauncher, base_env,
+    child_env, find_term, prepare_shell, terminfo_dirs,
 };
+use temor_shell::{ChildEnv, Shell, ShellStart, passwd_login_shell, resolve_shell};
 use temor_vt::{CellPx, GridSize, LineCount};
 
 use crate::edge::Ambient;
@@ -68,7 +68,7 @@ fn pick_shell(settings: &TerminalSettings, env: &ChildEnv) -> Shell {
     match &settings.shell {
         ShellChoice::Program(program) => Shell::at(PathBuf::from(program)),
         ShellChoice::Login => {
-            let passwd = UserId::current().and_then(|uid| {
+            let passwd = temor_pty::current_user().and_then(|uid| {
                 let text = std::fs::read_to_string("/etc/passwd").ok()?;
                 passwd_login_shell(&text, uid)
             });
