@@ -73,6 +73,12 @@ pub enum RemoteError {
         /// Why.
         reason: UncheckedWhy,
     },
+    /// The request names a kind this helper knows, but a field inside it is one this helper cannot
+    /// read (it comes from a newer temor). The request was not run.
+    Unreadable {
+        /// What was not understood, for a log.
+        detail: String,
+    },
     /// The request was well formed JSON but not something the helper can do.
     BadRequest {
         /// What was wrong, for a log.

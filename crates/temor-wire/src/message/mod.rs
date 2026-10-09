@@ -9,6 +9,7 @@ mod envelope;
 mod event;
 mod files;
 mod incoming;
+mod kinds;
 mod ports;
 mod relay;
 mod remote_error;
@@ -31,3 +32,6 @@ pub use trial::{
     ChangeKind, ErrorLine, FileChange, FileChanges, RelPath, TrialRequest, TrialVerdict,
     UncheckedWhy,
 };
+
+#[cfg(test)]
+mod tests;

@@ -80,8 +80,10 @@ impl Decoder {
         };
         // The header is judged before any body is waited for.
         let lengths: Lengths = read(header, self.limit)?;
-        let Some(size) = total(lengths) else {
-            return Err(self.limit.refuse(u64::MAX));
+        // The real size is reported when this target cannot address it, never a made-up one.
+        let real = total(lengths);
+        let Ok(size) = usize::try_from(real) else {
+            return Err(self.limit.refuse(real));
         };
         let Some(whole) = pending.get(..size) else {
             return Ok(None);

@@ -46,8 +46,9 @@ proptest! {
     }
 
     #[test]
-    fn valid_json_of_the_wrong_shape_is_malformed_not_a_panic(text in "\\PC{0,64}") {
-        let json = format!("\"{}\"", text.replace(['\\', '"'], ""));
+    fn valid_json_with_no_message_tag_is_malformed_not_a_panic(text in "\\PC{0,64}") {
+        // An array names no kind at all, so it is not a message; a string would be a unit tag.
+        let json = format!("[\"{}\"]", text.replace(['\\', '"'], ""));
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&(json.len() as u32).to_le_bytes());
         bytes.extend_from_slice(&u32::MAX.to_le_bytes());
@@ -71,7 +72,7 @@ fn a_header_claiming_the_maximum_is_refused_before_anything_is_buffered() {
 
 #[test]
 fn a_frame_exactly_at_the_limit_is_accepted_and_one_byte_over_is_not() {
-    let json = b"\"x\"";
+    let json = b"[1]";
     let make = |payload: usize| {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&(json.len() as u32).to_le_bytes());
@@ -81,7 +82,7 @@ fn a_frame_exactly_at_the_limit_is_accepted_and_one_byte_over_is_not() {
         bytes
     };
     let limit = FrameLimit(100);
-    // The body is valid JSON for a string, not a message, so the frame is read and refused as
+    // The body is valid JSON but names no message kind, so the frame is read and refused as
     // Malformed: the limit let it through.
     let at_limit = make(100 - json.len());
     let mut decoder = Decoder::new(limit);

@@ -45,11 +45,22 @@ impl Message {
         )
     }
 
-    /// The answer to a request this build cannot read: a typed error under the same id.
+    /// The answer to a request whose kind this build does not know: a typed error under its id.
     pub fn unknown_request(id: RequestId) -> Self {
         Message::Response {
             id,
             outcome: Err(RemoteError::UnknownRequest),
+        }
+    }
+
+    /// The answer to a request whose kind this build knows but whose body it cannot read in full:
+    /// a typed error under its id, so the request is not left hanging.
+    pub fn unreadable_request(id: RequestId) -> Self {
+        Message::Response {
+            id,
+            outcome: Err(RemoteError::Unreadable {
+                detail: "this build cannot read the request, so it was not run".to_string(),
+            }),
         }
     }
 }

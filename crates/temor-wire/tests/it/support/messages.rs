@@ -170,6 +170,7 @@ pub fn remote_error() -> impl Strategy<Value = RemoteError> {
         refusal().prop_map(|reason| RemoteError::HostRefused { reason }),
         capability().prop_map(|capability| RemoteError::Unsupported { capability }),
         unchecked_why().prop_map(|reason| RemoteError::TrialUnavailable { reason }),
+        text().prop_map(|detail| RemoteError::Unreadable { detail }),
         text().prop_map(|detail| RemoteError::BadRequest { detail }),
         text().prop_map(|detail| RemoteError::Io { detail }),
     ]

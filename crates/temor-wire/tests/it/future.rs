@@ -139,12 +139,80 @@ fn an_unknown_entry_kind_inside_a_known_reply_reads_as_unknown() {
 }
 
 #[test]
-fn a_known_request_with_a_broken_field_is_malformed_not_unknown() {
+fn a_known_request_with_a_broken_field_is_unreadable_and_answerable_by_id() {
     let json = r#"{"Request":{"id":1,"body":{"SendInput":{"session":"x"}}}}"#;
-    assert!(matches!(
+    assert_eq!(
         one(json, Some(b"")),
-        Err(WireError::Malformed { .. })
+        Ok(Incoming::UnreadableRequest { id: RequestId(1) })
+    );
+}
+
+#[test]
+fn a_known_request_with_a_newer_nested_enum_is_unreadable_not_unknown() {
+    // WriteFile is known; its `check` is a kind from a newer temor.
+    let json = r#"{"Request":{"id":3,"body":{"WriteFile":{"path":"/a","check":"Frobnicate"}}}}"#;
+    assert_eq!(
+        one(json, Some(b"x")),
+        Ok(Incoming::UnreadableRequest { id: RequestId(3) })
+    );
+    let answer = serde_json::to_string(&Message::unreadable_request(RequestId(3))).unwrap();
+    assert!(answer.contains(r#""id":3"#) && answer.contains("Unreadable"));
+    assert!(!answer.contains("UnknownRequest"));
+}
+
+#[test]
+fn an_exit_with_a_newer_status_is_surfaced_as_unreadable_not_ignored() {
+    // ExitStatus is a newer enum here, nested inside a known event.
+    let json = r#"{"Event":{"Exited":{"session":1,"status":{"Vaporised":{}}}}}"#;
+    assert_eq!(
+        one(json, None),
+        Ok(Incoming::UnreadableEvent {
+            kind: "Exited".to_string()
+        })
+    );
+}
+
+#[test]
+fn an_unknown_top_level_event_tag_is_ignored() {
+    let json = r#"{"Event":{"Hologram":{"x":1}}}"#;
+    assert_eq!(one(json, None), Ok(Incoming::Ignored));
+}
+
+#[test]
+fn a_known_response_with_a_newer_nested_reply_fails_its_request_by_id() {
+    let json = r#"{"Response":{"id":5,"outcome":{"Ok":{"Verdict":{"Teleported":{}}}}}}"#;
+    assert_eq!(
+        one(json, None),
+        Ok(Incoming::UnknownResponse { id: RequestId(5) })
+    );
+}
+
+#[test]
+fn newer_messages_never_end_the_stream_so_the_frames_after_them_still_arrive() {
+    let mut wire = frame(
+        r#"{"Event":{"Exited":{"session":1,"status":{"Vaporised":{}}}}}"#,
+        None,
+    );
+    wire.extend(frame(
+        r#"{"Request":{"id":3,"body":{"Teleport":{}}}}"#,
+        None,
     ));
+    wire.extend(frame(
+        r#"{"Request":{"id":4,"body":{"WriteFile":{"path":"/a","check":"Frobnicate"}}}}"#,
+        Some(b"x"),
+    ));
+    wire.extend(frame(r#"{"Event":{"Output":{"session":2}}}"#, Some(b"out")));
+    let got = read_all(&wire);
+    assert_eq!(got.len(), 4);
+    assert_eq!(
+        got[0],
+        Ok(Incoming::UnreadableEvent {
+            kind: "Exited".to_string()
+        })
+    );
+    assert_eq!(got[1], Ok(Incoming::UnknownRequest { id: RequestId(3) }));
+    assert_eq!(got[2], Ok(Incoming::UnreadableRequest { id: RequestId(4) }));
+    assert!(matches!(&got[3], Ok(Incoming::Frame(_))));
 }
 
 #[test]

@@ -46,8 +46,8 @@ pub(crate) fn check(
     })
 }
 
-/// The whole frame's size in bytes, header included. Checked, so a pair of lengths can never wrap.
-pub(crate) fn total(lengths: Lengths) -> Option<usize> {
-    let body = lengths.json.checked_add(lengths.payload.unwrap_or(0))?;
-    HEADER.checked_add(body)
+/// The whole frame's size in bytes, header included, computed in `u64`. Two u32 words and a header
+/// cannot overflow it, so the answer is exact on every target, 32-bit ones included.
+pub(crate) fn total(lengths: Lengths) -> u64 {
+    HEADER as u64 + lengths.json as u64 + lengths.payload.unwrap_or(0) as u64
 }

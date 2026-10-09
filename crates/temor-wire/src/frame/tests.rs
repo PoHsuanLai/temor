@@ -205,3 +205,27 @@ fn a_range_read_frame_round_trips() {
     decoder.push(&bytes);
     assert_eq!(frame(decoder.next_message().unwrap().unwrap()).0, message);
 }
+
+#[test]
+fn a_payload_of_exactly_u32_max_bytes_is_unencodable_not_oversize() {
+    // Only the length is passed, so no 4 GiB buffer is allocated.
+    let result = super::encode::payload_word(u32::MAX as usize, FrameLimit(u32::MAX));
+    assert!(
+        matches!(result, Err(WireError::Unencodable { .. })),
+        "{result:?}"
+    );
+    // One byte less is an ordinary length.
+    assert_eq!(
+        super::encode::payload_word(u32::MAX as usize - 1, FrameLimit(u32::MAX)),
+        Ok(u32::MAX - 1)
+    );
+}
+
+#[test]
+fn the_frame_size_is_exact_past_u32() {
+    let lengths = super::header::Lengths {
+        json: u32::MAX as usize,
+        payload: Some(u32::MAX as usize),
+    };
+    assert_eq!(super::header::total(lengths), 8 + 2 * u64::from(u32::MAX));
+}
