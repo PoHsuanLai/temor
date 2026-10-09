@@ -81,19 +81,40 @@ fn back_to_back_frames_are_cut_apart_and_the_buffer_is_reclaimed() {
     assert!(decoder.finish().is_ok());
 }
 
+/// Each row: (name, JSON word, payload word, limit, the body length the error reports). The
+/// header alone decides, so nothing after it is pushed.
+const HEADER_REFUSALS: &[(&str, u32, u32, FrameLimit, u64)] = &[
+    (
+        "a 2 GiB payload word over a 1 KiB limit",
+        2,
+        1 << 31,
+        FrameLimit(1024),
+        (1u64 << 31) + 2,
+    ),
+    (
+        "the maximum words, which is no payload, over the default limit",
+        u32::MAX,
+        u32::MAX,
+        FrameLimit::DEFAULT,
+        u32::MAX as u64,
+    ),
+];
+
 #[test]
-fn a_payload_over_the_limit_is_refused_from_its_header_alone() {
-    let bytes = raw(2, 1 << 31, &[]);
-    let mut decoder = Decoder::new(FrameLimit(1024));
-    decoder.push(&bytes);
-    assert_eq!(
-        decoder.next_message(),
-        Err(WireError::Oversize {
-            len: (1u64 << 31) + 2,
-            limit: 1024,
-        })
-    );
-    assert_eq!(decoder.next_message(), Err(WireError::Spent));
+fn a_frame_over_the_limit_is_refused_from_its_header_alone() {
+    for &(name, json, payload, limit, len) in HEADER_REFUSALS {
+        let mut decoder = Decoder::new(limit);
+        decoder.push(&raw(json, payload, &[]));
+        assert_eq!(
+            decoder.next_message(),
+            Err(WireError::Oversize {
+                len,
+                limit: u64::from(limit.0),
+            }),
+            "{name}"
+        );
+        assert_eq!(decoder.next_message(), Err(WireError::Spent), "{name}");
+    }
 }
 
 #[test]
@@ -106,20 +127,23 @@ fn encoding_refuses_a_frame_over_the_limit() {
 }
 
 #[test]
-fn a_payload_is_bound_to_its_message_in_both_directions_when_encoding() {
-    assert!(matches!(
-        encode(&list(1), Some(&[1]), FrameLimit::DEFAULT),
-        Err(WireError::Unencodable { .. })
-    ));
-    assert!(matches!(
-        encode(&input(1), None, FrameLimit::DEFAULT),
-        Err(WireError::Unencodable { .. })
-    ));
-}
-
-#[test]
-fn a_payload_is_bound_to_its_message_in_both_directions_when_decoding() {
-    // A message that carries no payload, sent with one.
+fn a_payload_is_bound_to_its_message_in_both_directions() {
+    // encode: a message with no payload field refuses one, and a payload field refuses none.
+    assert!(
+        matches!(
+            encode(&list(1), Some(&[1]), FrameLimit::DEFAULT),
+            Err(WireError::Unencodable { .. })
+        ),
+        "encode: a payload with a message that has none"
+    );
+    assert!(
+        matches!(
+            encode(&input(1), None, FrameLimit::DEFAULT),
+            Err(WireError::Unencodable { .. })
+        ),
+        "encode: no payload with a message that needs one"
+    );
+    // decode, a message that carries no payload, sent with one.
     let json = serde_json::to_vec(&list(1)).unwrap();
     let mut decoder = Decoder::new(FrameLimit::DEFAULT);
     decoder.push(&raw(
@@ -127,18 +151,18 @@ fn a_payload_is_bound_to_its_message_in_both_directions_when_decoding() {
         2,
         &[json.as_slice(), b"hi"].concat(),
     ));
-    assert!(matches!(
-        decoder.next_message(),
-        Err(WireError::Malformed { .. })
-    ));
-    // A message that carries a payload, sent without one.
+    assert!(
+        matches!(decoder.next_message(), Err(WireError::Malformed { .. })),
+        "decode: a payload sent with a message that has none"
+    );
+    // decode, a message that carries a payload, sent without one.
     let json = serde_json::to_vec(&input(1)).unwrap();
     let mut decoder = Decoder::new(FrameLimit::DEFAULT);
     decoder.push(&raw(json.len() as u32, u32::MAX, &json));
-    assert!(matches!(
-        decoder.next_message(),
-        Err(WireError::Malformed { .. })
-    ));
+    assert!(
+        matches!(decoder.next_message(), Err(WireError::Malformed { .. })),
+        "decode: no payload sent with a message that needs one"
+    );
 }
 
 #[test]

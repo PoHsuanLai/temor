@@ -60,17 +60,6 @@ proptest! {
 }
 
 #[test]
-fn a_header_claiming_the_maximum_is_refused_before_anything_is_buffered() {
-    let mut bytes = Vec::new();
-    bytes.extend_from_slice(&u32::MAX.to_le_bytes());
-    bytes.extend_from_slice(&u32::MAX.to_le_bytes());
-    assert!(matches!(
-        feed(&bytes, FrameLimit::DEFAULT),
-        Err(WireError::Oversize { .. })
-    ));
-}
-
-#[test]
 fn a_frame_exactly_at_the_limit_is_accepted_and_one_byte_over_is_not() {
     let json = b"[1]";
     let make = |payload: usize| {

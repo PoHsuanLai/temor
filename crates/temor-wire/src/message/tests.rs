@@ -277,44 +277,42 @@ fn tag<T: serde::Serialize>(value: &T) -> String {
 }
 
 /// Holds one name list to its samples: every sample's serde tag is its name, every name is listed,
-/// and every listed name is produced by some sample.
-fn check<T: serde::Serialize>(list: &[&str], samples: &[T], name: fn(&T) -> &'static str) {
+/// and every listed name is produced by some sample. `label` names the list in a failure.
+fn check<T: serde::Serialize>(
+    label: &str,
+    list: &[&str],
+    samples: &[T],
+    name: fn(&T) -> &'static str,
+) {
     let listed: BTreeSet<&str> = list.iter().copied().collect();
-    assert_eq!(listed.len(), list.len(), "duplicate name in the list");
+    assert_eq!(
+        listed.len(),
+        list.len(),
+        "{label}: duplicate name in the list"
+    );
     let mut produced = BTreeSet::new();
     for sample in samples {
         let kind = name(sample);
-        assert_eq!(tag(sample), kind, "serde tag differs from its name");
+        assert_eq!(
+            tag(sample),
+            kind,
+            "{label}: serde tag differs from its name"
+        );
         produced.insert(kind);
     }
-    assert_eq!(produced, listed, "the list and the enum disagree");
+    assert_eq!(produced, listed, "{label}: the list and the enum disagree");
 }
 
 #[test]
-fn the_request_names_match_the_request_enum() {
-    check(REQUEST_KINDS, &request_samples(), request_kind);
-}
-
-#[test]
-fn the_event_names_match_the_event_enum() {
-    check(EVENT_KINDS, &event_samples(), event_kind);
-}
-
-#[test]
-fn the_reply_names_match_the_reply_enum() {
-    check(REPLY_KINDS, &reply_samples(), reply_kind);
-}
-
-#[test]
-fn the_error_names_match_the_remote_error_enum() {
+fn the_name_lists_match_their_enums() {
+    check("requests", REQUEST_KINDS, &request_samples(), request_kind);
+    check("events", EVENT_KINDS, &event_samples(), event_kind);
+    check("replies", REPLY_KINDS, &reply_samples(), reply_kind);
     check(
+        "errors",
         REMOTE_ERROR_KINDS,
         &remote_error_samples(),
         remote_error_kind,
     );
-}
-
-#[test]
-fn the_message_names_match_the_message_enum() {
-    check(MESSAGE_KINDS, &message_samples(), message_kind);
+    check("messages", MESSAGE_KINDS, &message_samples(), message_kind);
 }

@@ -100,24 +100,18 @@ fn whole_chunks_split_files_from_text() {
 }
 
 #[test]
-fn every_two_way_split_matches_the_whole() {
+fn every_split_matches_the_whole() {
     for (name, input, _, _) in CASES {
         let whole = run(&[input.as_bytes()], 1 << 20);
         for at in 0..=input.len() {
             let (a, b) = input.as_bytes().split_at(at);
             assert_eq!(run(&[a, b], 1 << 20), whole, "case {name}, split at {at}");
         }
-    }
-}
-
-#[test]
-fn byte_at_a_time_matches_the_whole() {
-    for (name, input, _, _) in CASES {
         let chunks: Vec<&[u8]> = input.as_bytes().chunks(1).collect();
         assert_eq!(
             run(&chunks, 1 << 20),
-            run(&[input.as_bytes()], 1 << 20),
-            "case {name}"
+            whole,
+            "case {name}, one byte a chunk"
         );
     }
 }

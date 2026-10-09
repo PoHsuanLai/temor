@@ -197,22 +197,17 @@ fn a_malformed_middle_chunk_leaves_no_saved_file() {
 }
 
 #[test]
-fn a_malformed_frame_with_another_id_is_ignored() {
+fn a_malformed_frame_is_ignored_unless_it_names_the_live_transfer() {
     let s = allowed(1024);
-    let (_, effects) = s.step(Input::Malformed {
+    let (s, effects) = s.step(Input::Malformed {
         id: temor_transfer::kitty::KittyId::parse("other").expect("id"),
     });
-    assert!(effects.is_empty());
-}
-
-#[test]
-fn a_malformed_frame_after_the_transfer_ended_is_ignored() {
-    let s = allowed(1024);
+    assert!(effects.is_empty(), "another id, while live: ignored");
     let (s, _) = s.step(Input::Frame(msg(Action::Finish)));
     let (_, effects) = s.step(Input::Malformed {
         id: temor_transfer::kitty::KittyId::parse("tx1").expect("id"),
     });
-    assert!(effects.is_empty());
+    assert!(effects.is_empty(), "the live id, after Finish: ignored");
 }
 
 #[test]
