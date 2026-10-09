@@ -45,6 +45,7 @@ ordered by dependency (§11), not split into versions.
 | D15 | **Portable core** (design/36): every desktop extra sits behind the `quire-desktop` feature, and `--no-default-features` must build and pass. Off our desktop the trial says "not checked". |
 | D17 | **SSH, Tier A (nothing installed on the host):** hosts are first-class (⌘T, per-Space pins, `host:path` in tabs). Shell integration and terminfo are sent with every connection, as kitty's ssh kitten does. One shared connection per host, so a split or new tab opens instantly in the same remote folder. Remote files support peek, view, and edit-locally-then-write-back, plus upload by drop. Port forwarding from the running row. Consent per host. |
 | D18 | **SSH, Tier B (`temor-remote`, an optional helper uploaded to the host):** sessions survive disconnects and reattach with the exact screen; listening ports are detected and forwarded; remote file service for live viewer panes; trial runs on the host; local agents working on remote workspaces (the agent stays local, its file and terminal calls go to the host). Installed after consent per host; the version is pinned by hash, so it updates itself. Hosts that can't run it fall back to Tier A. |
+| D19 | **Agent worktrees are temor's, not the agent's.** Starting an agent offers "on a new branch" (first, the default) or "in this checkout"; nothing guesses. temor creates the worktree in its own data dir, sets it up from project facts (an include list for ignored files, the Space's setup command), pins the agent's workspace to it through the gate, warns early about overlapping changes between agents with a `git merge-tree` dry run, and owns review and merge (default **Squash**). It separates files, not processes or ports, and says so. §8.2 |
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
@@ -186,6 +187,7 @@ id is a newtype.
 | `link_step` | Connecting → Attached → Detached → Reattaching → Attached / Lost | the ssh process exiting, network change, wake from sleep, the backoff timer, the helper's Hello and snapshot |
 | `helper_step` | Absent → Offered → Uploading → Ready(hash) / Refused / Unsupported | the host probe (`uname`, writable cache dir, not mounted noexec), person's consent, upload result, hash mismatch |
 | `checkpoint_step` | None → Taken(ref) → RestoredTo(ref) | AgentWillWrite, UndoAll, UndoTo(block) |
+| `worktree_step` | Creating → SettingUp → Working(status) → Reviewing → Merging → Merged / Conflicted / Kept / Discarded | add and setup results, a command finishing (re-check), the dry-run merge result, Review, Merge(style), the merge result, CloseTab(choice), Discard |
 
 `Escape` and Ctrl-C keep their shell meaning in every state. A machine never takes a key the
 shell would get.
@@ -375,6 +377,45 @@ The ranking rules:
     ref (`refs/temor/checkpoints/<n>`), never a branch, and never in the person's index or stash.
   - Every agent block offers "Undo to here", and the run offers "Undo all".
   - Ignored files are labelled as not covered.
+- **Agent worktrees (D19).** temor owns them; agents never decide where they work.
+  - **Choosing:** ⌘T "New agent" offers two rows, "on a new branch" (first) and "in this checkout".
+    A Space setting can put "in this checkout" first. The tab shows the choice.
+  - **Creating:**
+    - `git worktree add <data>/worktrees/<space>/<name> -b agent/<name> <base>`. The base commit is
+      recorded. `<data>` is temor's data dir, outside the repo, so the person's editor, watchers and
+      builds never see it, and `git clean` can't touch it.
+    - The name is a short slug from the task, editable at creation.
+    - Over SSH (Tier B), the same steps run on the host through temor-remote; Tier A hosts get
+      "in this checkout" only.
+  - **Setting up (project facts, not agent decisions):**
+    - Ignored files the project needs (`.env`, local config) are copied from a gitignore-style
+      include list in the repo. If Claude Code's desktop app really reads a `.worktreeinclude` file
+      (unverified), temor reads the same file name.
+    - Then the Space profile's optional setup command runs (for example `pnpm install`) as a block in
+      a pane, so its output and exit are visible.
+  - **Pinning:** the agent's pane cwd and its workspace root are the worktree. docket's workspace
+    path check then refuses or asks for writes outside it, including an agent that tries to make its
+    own worktree elsewhere. The CLI pane gets the cwd only; the agent view is told its root. Processes
+    and ports stay shared, and the tab's details say so ("separate files, shared ports").
+  - **Early overlap warnings (deterministic, no AI):**
+    - After each command finishes in an agent worktree, temor runs `git merge-tree --write-tree`
+      (git ≥ 2.38; a dry-run merge that touches no checkout) against the base and against every
+      sibling agent worktree in the Space.
+    - The tab shows ahead/behind, files changed, and "overlaps with <tab> in <file>" while both
+      agents are still working.
+  - **Review and merge:**
+    - "Review" opens the diff against the base in the viewer pane (§10), with accept or reject per
+      file.
+    - Buttons: **Squash** (default), **Merge**, **Rebase onto base**, **Open pull request** (through
+      the host's tool when present). temor runs git itself.
+    - A conflict is never resolved silently: temor opens a shell split in that worktree with the
+      conflicted files listed.
+    - After a merge, the worktree and branch are removed, and a checkpoint ref is kept so the merge
+      can be undone (same hidden-ref rule as checkpoints).
+  - **Lifecycle:** worktrees persist with their tab. Closing the tab asks Keep / Merge / Discard.
+    Kept worktrees with no tab are listed in the Space ("Leftover branches") for cleanup.
+  - **Maintenance budget:** one git module (worktree add/remove, merge-tree, diff, merge) and one
+    review view. No per-agent rules: any agent just gets a cwd.
 
 ### 8.3 Proposals in your prompt
 - **Asked for, never offered by itself.** Two entry points:
@@ -583,7 +624,7 @@ The ranking rules:
 | **P4 Spaces** | kit integration, `Project` payload, profiles (env, ssh-agent, dotenv), routes, ⌃1–9 | P3 |
 | **P5 Command bar and quick terminal** | providers, fixed ranking, Run row, quick terminal | P4 |
 | **P6 Desktop integration** | intents manifest, `IntentProvider1`, `context()`, D-Bus activation and systemd unit, dock badge, `quire-desktop` boundary gate | P2 |
-| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket) | P3, P6; docket |
+| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), agent worktrees (D19; spike first: `git merge-tree` overlap detection across sibling worktrees on a real repo, timing and false-positive check) | P3, P6, P10 (review view); docket |
 | **P8 Proposals** | the trial module in bulkhead, sanitising, the model call, the verdict UI, the Fix chip, the taint marker, the log record | P2, P6; bulkhead split |
 | **P9 Transfers and shelf** | OSC 5113/1337, `temor get/save/view`, shelf UI, upload by drop | P2 |
 | **P10 Viewers** | peek, Sequence, viewer pane | P2; anyview pane API |
@@ -650,3 +691,4 @@ P3 to P5 can run alongside P6 and P9 once P2 lands.
 | Detached remote session lifetime | 7 days idle, a setting |
 | Automatic port forwarding | off; detected ports are offered in the running row |
 | Hook bridge for agents other than Claude Code | when an agent exposes pre-tool hooks |
+| Agent worktree defaults | "on a new branch" first; worktrees in temor's data dir; Squash merge; Tier A hosts in-checkout only |
