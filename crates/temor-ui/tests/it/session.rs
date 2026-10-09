@@ -394,3 +394,33 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
         PathBuf::new(),
     );
 }
+
+#[test]
+fn the_pane_paints_its_text_into_pixels() {
+    let mut f = ready("session-paint");
+    type_text(&mut f.session, "echo painted");
+    press_enter(&mut f.session);
+    wait_until("the output", || {
+        has_line(&f.session.screen_text(), "painted")
+    });
+    let mut painted = None;
+    f.session
+        .paint(|bytes, size| {
+            let colours: std::collections::HashSet<&[u8]> = bytes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|px| px.as_slice())
+                .collect();
+            painted = Some((bytes.len(), size.width.0, size.height.0, colours.len()));
+        })
+        .expect("paint");
+    let (len, width, height, colours) = painted.expect("the pane has a size, so it paints");
+    assert_eq!(
+        len,
+        width as usize * height as usize * 4,
+        "premultiplied RGBA8, one row after another"
+    );
+    // Glyph edges antialias, so more than the background and the ink colours appear.
+    assert!(colours > 2, "text was drawn: {colours} distinct colours");
+}
