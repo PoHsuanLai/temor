@@ -14,10 +14,10 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::keys::Action;
 
 use super::find_bar::StepDirection;
-use crate::hub::Desk;
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
+use crate::hub::Desk;
 
 /// The find bar's query, run once typing pauses.
 pub fn find_query(

@@ -93,7 +93,9 @@ impl Hub {
     fn rename_for(&self, pane: PaneId, title: &str) -> Option<WorkspaceIn> {
         let tab = self.ws.tab_of(pane)?;
         let current = self.ws.tabs.tab(tab)?;
-        (self.ws.focus_of(tab) == Some(pane) && !title.is_empty() && current.title.as_str() != title)
+        (self.ws.focus_of(tab) == Some(pane)
+            && !title.is_empty()
+            && current.title.as_str() != title)
             .then(|| {
                 WorkspaceIn::Tabs(TabsIn::Rename {
                     tab,

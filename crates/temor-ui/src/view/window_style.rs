@@ -14,7 +14,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-side { width: 100%; height: 100%; }\
 .temor-tab { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }\
 .temor-tab-words { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }\
-.temor-mini { position: relative; width: 100%; aspect-ratio: 16 / 9; }\
+.temor-mini { position: relative; width: 100%; aspect-ratio: 16 / 9; min-height: calc(var(--s-5) * 5); }\
 .temor-tile-slot { position: absolute; box-sizing: border-box; }\
 .temor-tile-slot > .ds-hover-target { display: block; width: 100%; height: 100%; }\
 .temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--line); }\

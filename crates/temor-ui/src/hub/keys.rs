@@ -21,9 +21,7 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         Action::FocusDown => WorkspaceIn::Goto(Goto::Spatial(Direction::Down)),
         Action::ToggleZoom => WorkspaceIn::ToggleZoom,
         Action::Equalize => WorkspaceIn::Equalize,
-        Action::SelectTab(n) => {
-            WorkspaceIn::Tabs(TabsIn::Select(TabSel::Nth(NthTab::new(n)?)))
-        }
+        Action::SelectTab(n) => WorkspaceIn::Tabs(TabsIn::Select(TabSel::Nth(NthTab::new(n)?))),
         Action::Copy
         | Action::Paste
         | Action::Find

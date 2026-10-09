@@ -26,8 +26,8 @@ fn file(state_dir: &Path, pane: PaneId) -> PathBuf {
     folder(state_dir).join(format!("{}.bin", pane.0))
 }
 
-/// Stores `snapshot` for `pane`. A snapshot over the limit is not stored (and `Ok(false)` is not
-/// an error: there is just nothing to keep).
+/// Stores `snapshot` for `pane`. A snapshot over the limit is not stored, which is not an error:
+/// there is just nothing to keep ([`Stored::TooLarge`]).
 pub fn write(state_dir: &Path, pane: PaneId, snapshot: &Snapshot) -> io::Result<Stored> {
     let bytes = snapshot.as_bytes();
     if bytes.len() > SNAPSHOT_LIMIT {

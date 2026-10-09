@@ -248,10 +248,12 @@ impl Session {
     /// encoding is refused or is larger than [`SNAPSHOT_LIMIT`] bytes (the encoding is one block
     /// that cannot be cut to its newest part).
     pub fn snapshot(&self) -> Option<Snapshot> {
-        let snapshot = self.pane.with_term(|term| match term.on_alternate_screen() {
-            true => None,
-            false => term.snapshot().ok(),
-        })?;
+        let snapshot = self
+            .pane
+            .with_term(|term| match term.on_alternate_screen() {
+                true => None,
+                false => term.snapshot().ok(),
+            })?;
         (snapshot.as_bytes().len() <= SNAPSHOT_LIMIT).then_some(snapshot)
     }
 

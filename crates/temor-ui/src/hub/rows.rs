@@ -162,7 +162,9 @@ impl Hub {
 
     /// What a pane is called: its program's title, else the last part of its folder, else "Shell".
     fn pane_name(&self, pane: PaneId) -> String {
-        let title = self.live(pane, |s| s.title().to_owned()).unwrap_or_default();
+        let title = self
+            .live(pane, |s| s.title().to_owned())
+            .unwrap_or_default();
         if !title.is_empty() {
             return title;
         }
@@ -185,14 +187,16 @@ impl Hub {
         let Some(pane) = self.keyboard_pane() else {
             return (String::new(), None);
         };
-        let title = self.live(pane, |s| s.title().to_owned()).unwrap_or_default();
+        let title = self
+            .live(pane, |s| s.title().to_owned())
+            .unwrap_or_default();
         let cwd = self.live(pane, |s| s.cwd().map(str::to_owned)).flatten();
         (title, cwd)
     }
 }
 
 /// A folder as the sidebar shows it: the home folder written as `~`.
-fn tidy(path: &str, home: &std::path::Path) -> String {
+pub(super) fn tidy(path: &str, home: &std::path::Path) -> String {
     let home = home.to_string_lossy();
     match path.strip_prefix(home.as_ref()) {
         Some("") => "~".to_owned(),

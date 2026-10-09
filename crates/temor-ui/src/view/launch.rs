@@ -10,8 +10,8 @@ use temor_pane::settings::FontChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
-use temor_vt::{CellPx, GridSize};
 use temor_vt::Snapshot;
+use temor_vt::{CellPx, GridSize};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;

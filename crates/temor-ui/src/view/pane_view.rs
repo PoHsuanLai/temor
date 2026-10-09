@@ -10,6 +10,7 @@ use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::edit::composition::Composing;
+use ds::edit::pointer::EditFocus;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::host::document::use_document_host;
 use ds::host::ime::ImeEvent;
@@ -107,12 +108,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
 
     // Every key the region hears (a press, a repeat, a release) as quire's raw key.
     let on_key = {
-        let (slot, ime, apply, desk) = (
-            Rc::clone(&slot),
-            ime.clone(),
-            apply.clone(),
-            desk.clone(),
-        );
+        let (slot, ime, apply, desk) = (Rc::clone(&slot), ime.clone(), apply.clone(), desk.clone());
         move |raw: RawKey| {
             let composing = match ime.composing.get() {
                 Composing::Active => Ime::Composing,
@@ -136,7 +132,11 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 desk.say(message);
             }
             // A tab or split chord is the window's: the workspace carries it out.
-            let asked = slot.borrow_mut().session.as_mut().and_then(|s| s.take_asked());
+            let asked = slot
+                .borrow_mut()
+                .session
+                .as_mut()
+                .and_then(|s| s.take_asked());
             if let Some(input) = asked.and_then(workspace_input) {
                 desk.act(input);
                 return;
@@ -161,7 +161,18 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             focus_in(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let on_focus = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
+    let on_focus = {
+        let mut inner = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
+        let had = Rc::clone(&had_keyboard);
+        move |focus: EditFocus| {
+            // The keyboard left the page region (the sidebar took it, say): the pane takes it
+            // back the next time the window is told it is the keyboard pane.
+            if matches!(focus, EditFocus::Out) {
+                had.set(false);
+            }
+            inner(focus);
+        }
+    };
 
     // Where the keyboard goes back to when the find bar closes (its field leaves the page).
     let regain = EventHandler::new({

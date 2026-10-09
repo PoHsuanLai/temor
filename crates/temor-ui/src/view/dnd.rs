@@ -121,7 +121,11 @@ pub enum Dropped {
 /// What releasing a drag in `phase` means, with `over` the row under the pointer and
 /// `sidebar_right` the sidebar's right edge (when it is known). A tab dropped on another row
 /// joins it; a tile dropped on no row and past the sidebar's edge tears off.
-pub fn resolve(phase: &DragPhase<DragKey>, over: Option<TabId>, sidebar_right: Option<Px>) -> Dropped {
+pub fn resolve(
+    phase: &DragPhase<DragKey>,
+    over: Option<TabId>,
+    sidebar_right: Option<Px>,
+) -> Dropped {
     match phase {
         DragPhase::Live {
             key: DragKey::Tab(from),
@@ -154,4 +158,67 @@ pub fn point_of(event: &PointerEvent) -> Point {
 /// Whether the press is the primary button's (the only one that drags).
 pub fn is_primary(event: &PointerEvent) -> bool {
     matches!(event.trigger_button(), None | Some(MouseButton::Primary))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn live(key: DragKey, x: f32) -> DragPhase<DragKey> {
+        DragPhase::Live {
+            key,
+            at: Point {
+                x: Px(x),
+                y: Px(10.0),
+            },
+            target: None,
+        }
+    }
+
+    #[test]
+    fn a_release_joins_tears_or_does_nothing() {
+        let (a, b) = (TabId(1), TabId(2));
+        let pane = PaneId(7);
+        let edge = Some(Px(200.0));
+        #[rustfmt::skip]
+        let rows: &[(&str, DragPhase<DragKey>, Option<TabId>, Option<Px>, Dropped)] = &[
+            ("a tab over another row", live(DragKey::Tab(a), 50.0), Some(b), edge, Dropped::Join { from: a, onto: b }),
+            ("a tab over its own row", live(DragKey::Tab(a), 50.0), Some(a), edge, Dropped::Nothing),
+            ("a tab over no row", live(DragKey::Tab(a), 50.0), None, edge, Dropped::Nothing),
+            ("a tile past the sidebar", live(DragKey::Tile(pane), 300.0), None, edge, Dropped::Tear(pane)),
+            ("a tile inside the sidebar", live(DragKey::Tile(pane), 100.0), None, edge, Dropped::Nothing),
+            ("a tile over a row", live(DragKey::Tile(pane), 300.0), Some(b), edge, Dropped::Nothing),
+            ("a tile when the sidebar is not measured", live(DragKey::Tile(pane), 300.0), None, None, Dropped::Nothing),
+            ("a press that never became a drag", DragPhase::Pending { key: DragKey::Tab(a), from: Point { x: Px(0.0), y: Px(0.0) } }, Some(b), edge, Dropped::Nothing),
+        ];
+        for (name, phase, over, edge, want) in rows {
+            assert_eq!(resolve(phase, *over, *edge), *want, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_row_under_a_point_is_found_and_a_row_that_left_is_forgotten() {
+        let rects = RowRects::default();
+        let rect = |top: f32| Rect {
+            origin: Point {
+                x: Px(0.0),
+                y: Px(top),
+            },
+            size: ds::prelude::Size {
+                width: Px(100.0),
+                height: Px(20.0),
+            },
+        };
+        rects.set(TabId(1), rect(0.0));
+        rects.set(TabId(2), rect(20.0));
+        let at = |y: f32| Point {
+            x: Px(5.0),
+            y: Px(y),
+        };
+        assert_eq!(rects.at(at(5.0)), Some(TabId(1)));
+        assert_eq!(rects.at(at(20.0)), Some(TabId(2)));
+        assert_eq!(rects.at(at(45.0)), None);
+        rects.forget(TabId(2));
+        assert_eq!(rects.at(at(25.0)), None);
+    }
 }

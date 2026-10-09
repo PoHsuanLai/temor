@@ -74,8 +74,7 @@ impl Hub {
             }
             Err(err) => self.notices.push(err.to_string()),
         }
-        self.slots
-            .insert(spawn.pane, Rc::new(RefCell::new(slot)));
+        self.slots.insert(spawn.pane, Rc::new(RefCell::new(slot)));
     }
 
     /// Takes the scrollback of a pane that is about to end, for a reopen.

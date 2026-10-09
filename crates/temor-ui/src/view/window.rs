@@ -18,7 +18,7 @@ use ds::host::measure::use_rect;
 use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
 use ds::window::host::use_window_title;
-use ds_blitz::TokioSpawner;
+use ds_blitz::{TokioSpawner, use_gpu};
 use ds_settings::use_environment;
 use temor_core::split::Direction;
 use temor_core::workspace::WorkspaceIn;
@@ -36,6 +36,8 @@ use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spaw
 #[allow(non_snake_case)]
 pub fn App() -> Element {
     let launch = use_hook(consume_context::<Launch>);
+    // The window's GPU is found (or provided) here, once, for every pane under it.
+    let _gpu = use_gpu();
     let started = use_hook(Instant::now);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
     // The person's look and the desktop's preferences, live: a change re-themes the window.
