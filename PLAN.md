@@ -556,6 +556,15 @@ The ranking rules:
   pre-shell output becomes a "Confirm it's you in your browser" row with Open. Tier B ports offer
   "Open at <name>:<port>" before "Forward port…". With no Tailscale account, the group is absent.
   Tests use a fake `Tailnet1` on a private bus and the throwaway sshd printing the check URL.
+  Landed in porter master `a7c11d2a48919c1ffa6766dcc98b9b3ca43c4ad2`: porter-client (feature
+  `dbus`) `DbusTransport::over(conn).tailnet().await?` then `machines() -> Vec<porter_core::Machine>`
+  and `watch()` (a stream of `()` per Changed). `Machine { node, name, dns (no trailing dot),
+  addresses, os, online, last_seen: Option<UnixSeconds>, ssh, ssh_host_keys, owner: Mine|Shared|Tagged }`;
+  this computer is left out. Errors `TailnetError {Denied, Unreachable, Malformed}`; no account or a
+  stopped tailscaled gives an empty list, not an error. Wire: `org.quire.Tailnet1` at
+  `/org/quire/Tailnet1` on `org.quire.Accounts1`, `Machines() -> a(sa{sv})`, `Changed()` (keys in
+  porter FINDINGS "Lane tailnet-account"). porter's `dist/callers.toml` gives temor (app
+  `org.quire.Temor`, unit `org.quire.Temor.service`) role "terminal": Tailnet1 only.
 
 ### Tier A: nothing installed on the host
 - **Hosts.** They come from `~/.ssh/config` (`Host` blocks, `Include`, `ProxyJump`) into ⌘T rows,
