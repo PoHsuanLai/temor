@@ -1,0 +1,38 @@
+[package]
+name = "temor-remote"
+description = "temor's helper for ssh hosts (Tier B): a session daemon that keeps terminals alive across disconnects, plus port detection, a confined file service and the client side the window uses."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = ["ghostty"]
+# The session daemon and the `temor-remote` binary: they keep each screen in libghostty (through
+# temor-vt). Without it the pure parts (ports, files, the client) still build.
+ghostty = ["dep:temor-vt", "temor-vt/ghostty"]
+
+[dependencies]
+temor-wire = { workspace = true }
+temor-pty = { workspace = true }
+temor-shell = { workspace = true }
+temor-transfer = { workspace = true }
+temor-vt = { workspace = true, optional = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true }
+
+[[bin]]
+name = "temor-remote"
+path = "src/bin/temor-remote.rs"
+required-features = ["ghostty"]
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

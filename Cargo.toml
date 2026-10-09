@@ -55,6 +55,9 @@ temor-ui = { path = "crates/temor-ui" }
 # temor-transfer (lane blocks): the downloads shelf's store, for "Save output".
 temor-transfer = { path = "crates/temor-transfer" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
+# temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
+temor-wire = { path = "crates/temor-wire" }
+sha2 = "0.10"
 
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
