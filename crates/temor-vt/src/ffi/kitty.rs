@@ -130,6 +130,7 @@ impl<'t> KittyImages<'t> {
     fn placement(&self, iter: sys::KittyGraphicsPlacementIterator) -> Option<KittyPlacement<'t>> {
         use sys::KittyGraphicsPlacementData as P;
         let (mut image_id, mut placement_id, mut is_virtual, mut z) = (0u32, 0u32, false, 0i32);
+        let (mut x_offset, mut y_offset) = (0u32, 0u32);
         // SAFETY: the iterator is positioned on a placement; each key writes its documented type.
         let image = unsafe {
             sys::ghostty_kitty_graphics_placement_get(
@@ -148,6 +149,16 @@ impl<'t> KittyImages<'t> {
                 (&raw mut is_virtual).cast(),
             );
             sys::ghostty_kitty_graphics_placement_get(iter, P::Z, (&raw mut z).cast());
+            sys::ghostty_kitty_graphics_placement_get(
+                iter,
+                P::X_OFFSET,
+                (&raw mut x_offset).cast(),
+            );
+            sys::ghostty_kitty_graphics_placement_get(
+                iter,
+                P::Y_OFFSET,
+                (&raw mut y_offset).cast(),
+            );
             sys::ghostty_kitty_graphics_image(self.raw, image_id)
         };
         if image.is_null() {
@@ -181,6 +192,8 @@ impl<'t> KittyImages<'t> {
                 rows: info.grid_rows,
                 viewport_col: info.viewport_col,
                 viewport_row: info.viewport_row,
+                x_offset,
+                y_offset,
                 visibility: if info.viewport_visible {
                     Visibility::Visible
                 } else {

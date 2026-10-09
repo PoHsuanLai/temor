@@ -7,6 +7,8 @@ mod fake;
 mod support;
 
 #[cfg(feature = "ghostty")]
+mod colors;
+#[cfg(feature = "ghostty")]
 mod graphemes;
 #[cfg(feature = "ghostty")]
 mod inline_file;

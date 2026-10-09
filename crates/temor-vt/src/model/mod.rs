@@ -5,6 +5,7 @@ mod colour;
 mod config;
 mod media;
 mod mode;
+mod selection;
 mod size;
 
 pub use cell::{
@@ -21,6 +22,7 @@ pub use media::{
 #[cfg(feature = "ghostty")]
 pub(crate) use mode::ModeFamily;
 pub use mode::{ModeState, TerminalMode};
+pub use selection::{SelectionShape, TextSelection};
 pub use size::{
     ByteCount, CellPx, Col, Cols, GridPoint, GridSize, LineCount, PointSpace, Px, Row, RowCount,
     RowDelta, Rows, Scrollbar, ViewportScroll,

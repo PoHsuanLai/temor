@@ -69,6 +69,9 @@ pub struct PlacementRender {
     /// Top-left cell relative to the viewport; negative when scrolled partly out.
     pub viewport_col: i32,
     pub viewport_row: i32,
+    /// Pixel offset of the image inside its top-left cell (`X=`, `Y=`).
+    pub x_offset: u32,
+    pub y_offset: u32,
     pub visibility: Visibility,
     /// The source rectangle in image pixels.
     pub source_x: u32,

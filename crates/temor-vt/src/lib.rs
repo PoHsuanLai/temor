@@ -36,8 +36,9 @@ pub use model::{
     CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation, GridPoint, GridSize,
     Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState, PlacementId,
     PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta, RowDirty,
-    RowFilter, RowId, Rows, Scrollbar, Selected, SemanticMark, StyleFlags, TerminalConfig,
-    TerminalMode, TextFormat, TextSpan, Underline, ViewportScroll, Visibility, ZIndex,
+    RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape, SemanticMark, StyleFlags,
+    TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, Underline, ViewportScroll,
+    Visibility, ZIndex,
 };
 pub use vt::Vt;
 
