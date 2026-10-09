@@ -128,6 +128,13 @@ impl PaneFrame {
     }
 
     /// The grid the frame holds.
+    /// The cursor's cell as of the last capture, when the cursor is shown.
+    pub fn cursor_cell(&self) -> Option<crate::metrics::CellPos> {
+        self.cursor
+            .as_ref()
+            .map(|c| crate::metrics::CellPos::new(c.col.0, c.row.0))
+    }
+
     pub fn size(&self) -> GridSize {
         self.size
     }

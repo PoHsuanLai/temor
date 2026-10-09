@@ -3,6 +3,7 @@
 //! crate root.
 
 mod callbacks;
+mod cells;
 mod colors;
 mod convert;
 mod format;
@@ -11,6 +12,7 @@ mod key;
 mod key_code;
 mod kitty;
 mod mouse;
+mod paste;
 mod png;
 mod render;
 mod reports;
@@ -20,12 +22,15 @@ mod snapshot;
 mod terminal;
 mod terminal_read;
 mod vt_impl;
+mod wrap;
 
+pub use cells::GridCell;
 pub use format::Formatter;
 pub use frame::Frame;
 pub use key::KeyEncoder;
 pub use kitty::{KittyImage, KittyImages, KittyPixels, KittyPlacement};
 pub use mouse::MouseEncoder;
+pub use paste::paste_is_safe;
 pub use png::install_png_decoder;
 pub use render::{PendingFrame, RenderView};
 pub use row::RowView;

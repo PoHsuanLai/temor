@@ -8,6 +8,8 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+temor-pty = { workspace = true }
+temor-ui = { workspace = true }
 
 [lints]
 workspace = true

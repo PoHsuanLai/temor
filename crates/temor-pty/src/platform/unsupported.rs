@@ -62,6 +62,9 @@ impl Pty {
 }
 
 impl PtyIo {
+    pub fn resize(&self, _size: GridSize) -> Result<(), PtyError> {
+        match self.never {}
+    }
     pub fn read(&self, _buf: &mut [u8]) -> Result<ReadOutcome, PtyError> {
         match self.never {}
     }

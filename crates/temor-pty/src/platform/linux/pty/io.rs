@@ -7,8 +7,10 @@ use rustix::event::{PollFd, PollFlags, Timespec, poll};
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
 
+use super::spawn::set_size;
 use crate::error::PtyError;
 use crate::pty::{Interest, ReadOutcome, Readiness, Ready, WriteOutcome};
+use crate::size::GridSize;
 
 /// The master side of a terminal, nonblocking. It is `Send`, so the caller moves it to the
 /// pane's I/O thread; it also implements `AsFd`, for callers with their own poller.
@@ -18,6 +20,12 @@ pub struct PtyIo {
 }
 
 impl PtyIo {
+    /// Tells the program its new size (`TIOCSWINSZ` on the shared master; the kernel sends
+    /// `SIGWINCH`). Callers that reflow their own terminal do this under the same lock.
+    pub fn resize(&self, size: GridSize) -> Result<(), PtyError> {
+        set_size(&self.fd, size).map_err(PtyError::Resize)
+    }
+
     pub(super) fn new(master: &OwnedFd) -> Result<Self, PtyError> {
         let fd = master.try_clone().map_err(PtyError::Io)?;
         // The flag lives on the shared open file, so the `Pty`'s own descriptor is
