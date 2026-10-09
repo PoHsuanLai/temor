@@ -145,3 +145,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       -sys lib), then add a crate-root example.
 - [ ] temor-vt `row_wraps` still returns `bool` (temor-vt can't see temor-core's `Wrap`); give temor-vt
       its own two-variant enum when R1b touches rows.
+
+## R1b (lane/r1b)
+- [ ] Blocks stay in temor-core (L2) because they use `vocab` ids and quire's `Stamp`. An embedder of
+      temor-pane gets raw OSC 133 events (`MarkBegin`/`Prompt`/`Anchor`) but no block model. Move the
+      block machine into temor-pane with its own id/time types once an embedder (anyview, sill) needs it.
