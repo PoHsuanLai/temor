@@ -6,6 +6,7 @@ use crate::env::ChildEnv;
 
 /// The shells temor has integration for, and everything else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ShellKind {
     Bash,
     Zsh,

@@ -40,6 +40,7 @@ pub(super) struct Io {
 }
 
 /// The pane's I/O loop, made by [`start`](super::start). Run it on a thread of the caller's own.
+/// The pane's I/O loop. `Send`: it moves to the thread the caller starts it on.
 pub struct PaneRunner {
     io: Io,
 }

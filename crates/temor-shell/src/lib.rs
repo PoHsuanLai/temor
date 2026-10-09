@@ -4,6 +4,18 @@
 //! This crate is pure planning plus the shim files it writes under a caller's runtime directory.
 //! It reads no ambient state: the environment, the passwd entry and the runtime directory are
 //! handed in. It spawns nothing; `temor-pty` starts the shell this crate plans.
+//!
+//! # Example
+//!
+//! The shell is the first usable of the passwd entry, then `SHELL` from the environment:
+//!
+//! ```
+//! use temor_shell::{ChildEnv, ShellKind, resolve_shell};
+//!
+//! let env: ChildEnv = [("SHELL", "/usr/bin/fish")].into_iter().collect();
+//! let shell = resolve_shell(None, &env, |_| true);
+//! assert_eq!(shell.kind, ShellKind::Fish);
+//! ```
 
 mod env;
 mod error;
