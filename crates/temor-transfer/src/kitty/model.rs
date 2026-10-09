@@ -130,6 +130,9 @@ pub enum WriteKind {
 pub enum Action {
     /// The remote offers a transfer.
     Send,
+    /// The remote asks the terminal to send a file (`temor get`). temor answers by offering the
+    /// file with `Send`, under the same id.
+    Receive,
     /// Metadata for one file or folder.
     File,
     /// A chunk of one file's data.
@@ -148,6 +151,7 @@ pub enum Action {
 
 wire_words!(Action {
     Send => "send",
+    Receive => "receive",
     File => "file",
     Data => "data",
     EndData => "end_data",

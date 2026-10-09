@@ -13,6 +13,7 @@ pub mod presence;
 pub mod proposal;
 pub mod quick;
 pub mod remote;
+pub mod shelf;
 pub mod space;
 pub mod split;
 pub mod transfer;

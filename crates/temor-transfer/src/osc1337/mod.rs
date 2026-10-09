@@ -3,10 +3,12 @@
 //! payload; this module decodes it.
 
 mod assemble;
+mod encode;
 mod model;
 mod parse;
 
 pub use assemble::Osc1337Reader;
+pub use encode::encode_file;
 pub use model::{
     Aspect, Completeness, Consented, Delivery, Dimension, FileHeader, FileOffer, InlineImage,
     MimeType, ReceivedFile,

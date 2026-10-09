@@ -4696,8 +4696,11 @@ dependencies = [
 name = "temor"
 version = "0.1.0"
 dependencies = [
+ "rustix",
  "temor-pty",
+ "temor-transfer",
  "temor-ui",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

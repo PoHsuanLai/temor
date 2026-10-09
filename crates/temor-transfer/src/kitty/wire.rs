@@ -2,7 +2,7 @@
 //! form; unknown keys are ignored, as the protocol asks.
 
 use super::model::{
-    Action, Compression, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
+    Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
     Transmission, UnixNanos,
 };
 use crate::base64;
@@ -115,6 +115,62 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
         })?
         .unwrap_or_default(),
     })
+}
+
+/// Parses a status reply (`ac=status`): the id, the file it is about, and the status text. The
+/// status is base64 in `st`: `OK`, `STARTED`, `CANCELED` or `CODE:message`. A code this crate
+/// does not know reads as `EIO` with the whole text as its message.
+pub fn parse_reply(payload: &[u8], limits: Limits) -> Result<Reply, TransferError> {
+    if payload.len() as u64 > limits.max_raw().get() {
+        return Err(TransferError::TooLarge {
+            limit: limits.max_bytes(),
+        });
+    }
+    let rest = payload
+        .strip_prefix(PREFIX)
+        .ok_or(Malformed::NotATransfer)?;
+    let pairs = pairs(rest);
+    let action = find(&pairs, &["ac", "action"]).ok_or(Malformed::MissingField { key: "ac" })?;
+    if Action::from_wire(ascii(action, "ac")?) != Action::Status {
+        return Err(Malformed::NotATransfer.into());
+    }
+    let id_raw = find(&pairs, &["id"]).ok_or(Malformed::MissingField { key: "id" })?;
+    let id = KittyId::parse(ascii(id_raw, "id")?)?;
+    let file = optional(&pairs, &["fid", "file_id"], |v| {
+        FileId::parse(ascii(v, "fid")?).map_err(TransferError::from)
+    })?;
+    let raw = find(&pairs, &["st", "status"]).ok_or(Malformed::MissingField { key: "st" })?;
+    let text = base64::decode_capped(raw, Bytes::new(MAX_NAME_TEXT))?;
+    let text = String::from_utf8_lossy(&text).into_owned();
+    Ok(Reply {
+        id,
+        file,
+        status: parse_status(&text),
+    })
+}
+
+fn parse_status(text: &str) -> ReplyStatus {
+    match text {
+        "OK" => ReplyStatus::Ok,
+        "STARTED" => ReplyStatus::Started,
+        "CANCELED" => ReplyStatus::Cancelled,
+        other => {
+            let known = other.split_once(':').and_then(|(code, message)| {
+                let code = code.to_lowercase().parse::<ErrorCode>().ok()?;
+                Some((code, message))
+            });
+            match known {
+                Some((code, message)) => ReplyStatus::Failed {
+                    code,
+                    message: message.to_owned(),
+                },
+                None => ReplyStatus::Failed {
+                    code: ErrorCode::Eio,
+                    message: other.to_owned(),
+                },
+            }
+        }
+    }
 }
 
 /// The id of a payload that does not parse, when its action and id are both readable. A frame
