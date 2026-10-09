@@ -15,8 +15,6 @@
 //!
 //! # Consumers
 //!
-//! # Consumers
-//!
 //! This crate draws with vello_cpu, which must be quire's fork (the colour matrix and filter
 //! layers). The fork is wired by a `[patch.crates-io]` block, and `[patch]` applies only at a
 //! workspace root, so a consumer that builds `temor-render` must copy quire's block into its own

@@ -4,6 +4,8 @@
 use crate::error::Malformed;
 use crate::units::Bytes;
 
+use super::words::UnknownWord;
+
 const MAX_IDENT_BYTES: usize = 128;
 
 /// Checks the protocol's `safe_string` class: `[0-9a-zA-Z_:./@-]`, non-empty, bounded.
@@ -110,35 +112,6 @@ impl Transmission {
             Self::Other(word) => word,
         }
     }
-}
-
-/// A word the protocol does not use for this set.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("{0:?} is not a word of this set")]
-pub struct UnknownWord(pub String);
-
-/// `Display` writes a closed set's protocol word; `FromStr` reads it back.
-macro_rules! wire_words {
-    ($ty:ident { $($variant:ident => $word:literal),+ $(,)? }) => {
-        impl std::fmt::Display for $ty {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(match self {
-                    $(Self::$variant => $word,)+
-                })
-            }
-        }
-
-        impl std::str::FromStr for $ty {
-            type Err = UnknownWord;
-
-            fn from_str(text: &str) -> Result<Self, UnknownWord> {
-                match text {
-                    $($word => Ok(Self::$variant),)+
-                    other => Err(UnknownWord(other.to_owned())),
-                }
-            }
-        }
-    };
 }
 
 /// Which file-system operation a write was for. The edge reports a failure with this, so the
