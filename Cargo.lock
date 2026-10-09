@@ -1533,6 +1533,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ds-lint"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5#b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"
+dependencies = [
+ "cssparser",
+ "ds-core",
+ "ds-style",
+]
+
+[[package]]
 name = "ds-motion"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5#b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"
@@ -4781,6 +4791,7 @@ dependencies = [
  "ds-blitz",
  "ds-core",
  "ds-harness",
+ "ds-lint",
  "ds-settings",
  "rustix",
  "temor-core",
@@ -4826,7 +4837,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

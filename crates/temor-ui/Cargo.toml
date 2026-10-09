@@ -27,6 +27,7 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 ds-harness = { workspace = true }
+ds-lint = { workspace = true }
 
 [[test]]
 name = "it"

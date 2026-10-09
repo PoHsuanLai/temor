@@ -19,7 +19,7 @@ use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 
 use super::support::scratch;
 
-fn harness(name: &str, probe: &Probe) -> Harness {
+pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
     let home = scratch(name).join("home");
     let ambient = Ambient {
         home: home.clone(),

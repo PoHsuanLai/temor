@@ -4,6 +4,7 @@
 
 mod ambient;
 mod blocks;
+mod coherence;
 mod session;
 mod support;
 mod window;
