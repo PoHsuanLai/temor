@@ -87,6 +87,15 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Output read just before a resize may be parsed at the new size (the usual SIGWINCH window).
 - [ ] Without XDG_RUNTIME_DIR the runtime folder is ~/.cache/temor/run (0700, owner checked).
 
+## temor-ssh (lane/ssh, reviewed at f3116b1 plus orchestrator fixes)
+- [ ] P13 wiring: host list in ⌘T (plus tailnet machines, D22), opening panes through the shared
+      master, consent per host, `HostId::same_machine` for the gate. §9b
+- [ ] HostAlias rejects `:`, `[`, `]`: IPv6 literals need a HostName in ssh_config; say so in the UI.
+- [ ] IdentityFile and ProxyJump values must be validated before any `-i`/`-J` builder uses them.
+- [ ] fish 4.9 prints no marks on piped stdin, so fish marks over SSH aren't asserted; no real sshd
+      test yet (only `ssh -G`); csh/tcsh login shells untested. §13
+- [ ] A bootstrap dir owned by us with mode 0300/0000 fails closed (EACCES) instead of tightening.
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift);
@@ -106,5 +115,7 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS/Windows transfer edge: `temor-transfer` platform/unsupported.rs refuses all writes
       (needs an openat2-like safe open), `sync_folder` is a no-op, and the duplicate-name key must be
       case-folded/normalised; Windows `RelPath` must refuse `:` components. §9
+- [ ] temor-ssh private runtime dir and regular-file reads: platform/unsupported.rs stubs
+      (macOS, Windows). §9b
 - [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
       side are unsupported today.

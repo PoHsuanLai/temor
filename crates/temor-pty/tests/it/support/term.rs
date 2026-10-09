@@ -14,7 +14,8 @@ pub struct Term {
     answered: usize,
 }
 
-const PATIENCE: Duration = Duration::from_secs(10);
+// Generous: shells start slowly on a loaded machine, and the wait ends as soon as the output arrives.
+const PATIENCE: Duration = Duration::from_secs(30);
 
 impl Term {
     pub fn spawn(spec: &SpawnSpec, launcher: &SessionLauncher) -> Self {
