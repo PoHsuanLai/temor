@@ -8,7 +8,7 @@ use crate::{DesktopEnv, DesktopError};
 use porter_client::{DbusTransport, Machine, MachineChanges, MachineOwner, Tailnet, TailnetError};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use temor_ssh::{Reach, TailnetHost, TailnetNode, TailnetOwner, TailscaleSsh, UnixSeconds};
+use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
 use zbus::export::futures_core::Stream;
 
 /// The tailnet list over the session bus.
@@ -41,7 +41,7 @@ impl SystemTailnet {
             return Ok(Vec::new());
         };
         match tailnet.machines().await {
-            Ok(machines) => Ok(machines.iter().map(host_of).collect()),
+            Ok(machines) => Ok(machines.iter().filter_map(host_of).collect()),
             Err(error) => absent_or_failed(error).map(|()| Vec::new()),
         }
     }
@@ -87,17 +87,17 @@ impl Ticks for Watch {
     }
 }
 
-/// One machine as temor's plain host record.
-pub(super) fn host_of(machine: &Machine) -> TailnetHost {
-    TailnetHost {
-        node: TailnetNode::new(machine.node.as_str()),
+/// One machine as temor's plain host record; `None` for a machine whose node id temor can't use.
+pub(super) fn host_of(machine: &Machine) -> Option<TailnetHost> {
+    Some(TailnetHost {
+        node: NodeId::new(machine.node.as_str())?,
         name: machine.name.clone(),
         dns: machine.dns.clone(),
         addresses: machine.addresses.clone(),
-        reach: if machine.online {
-            Reach::Online
+        online: if machine.online {
+            Presence::Online
         } else {
-            Reach::Offline
+            Presence::Offline
         },
         last_seen: machine.last_seen.map(|at| UnixSeconds(at.0)),
         ssh: if machine.ssh {
@@ -110,5 +110,5 @@ pub(super) fn host_of(machine: &Machine) -> TailnetHost {
             MachineOwner::Shared => TailnetOwner::Shared,
             MachineOwner::Tagged => TailnetOwner::Tagged,
         },
-    }
+    })
 }

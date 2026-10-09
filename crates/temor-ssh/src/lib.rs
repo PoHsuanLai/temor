@@ -75,8 +75,4 @@ pub use hosts::{HostGroup, HostRow, merge_hosts};
 pub use identity::{Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen};
 pub use master::{MasterProbe, prepare_control_dirs, probe_master};
 pub use platform::ensure_private_dir;
-<<<<<<< HEAD
 pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
-=======
-pub use tailnet::{Reach, TailnetHost, TailnetNode, TailnetOwner, TailscaleSsh, UnixSeconds};
->>>>>>> batch/desktop
