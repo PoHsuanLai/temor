@@ -4349,6 +4349,7 @@ dependencies = [
  "temor-core",
  "temor-pty",
  "temor-render",
+ "temor-transfer",
  "temor-vt",
  "thiserror 2.0.21",
  "tokio",

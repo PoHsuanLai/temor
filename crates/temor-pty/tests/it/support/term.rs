@@ -12,6 +12,7 @@ pub struct Term {
     pub out: Vec<u8>,
     closed: bool,
     answered: usize,
+    answered_cursor: usize,
 }
 
 const PATIENCE: Duration = Duration::from_secs(10);
@@ -26,6 +27,7 @@ impl Term {
             out: Vec::new(),
             closed: false,
             answered: 0,
+            answered_cursor: 0,
         }
     }
 
@@ -85,6 +87,12 @@ impl Term {
         while self.answered < asked {
             self.answered += 1;
             self.send("\x1b[?62;22c");
+        }
+        // Cursor position reports (CSI 6 n): nushell waits for one before each prompt.
+        let asked = count(&self.out, b"\x1b[6n");
+        while self.answered_cursor < asked {
+            self.answered_cursor += 1;
+            self.send("\x1b[1;1R");
         }
     }
 

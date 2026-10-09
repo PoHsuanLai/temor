@@ -49,6 +49,8 @@ temor-render = { path = "crates/temor-render", default-features = false }
 temor-core = { path = "crates/temor-core" }
 temor-pty = { path = "crates/temor-pty" }
 temor-ui = { path = "crates/temor-ui" }
+# temor-transfer (lane blocks): the downloads shelf's store, for "Save output".
+temor-transfer = { path = "crates/temor-transfer" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
 
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).

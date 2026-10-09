@@ -16,7 +16,8 @@ fn shell_kind_reads_the_file_name() {
         ("/usr/bin/zsh", ShellKind::Zsh),
         ("/opt/homebrew/bin/fish", ShellKind::Fish),
         ("/bin/sh", ShellKind::Other),
-        ("/usr/bin/nu", ShellKind::Other),
+        ("/usr/bin/nu", ShellKind::Nushell),
+        ("/opt/homebrew/bin/nushell", ShellKind::Nushell),
     ];
     for (path, kind) in CASES {
         assert_eq!(ShellKind::of(Path::new(path)), *kind, "{path}");
