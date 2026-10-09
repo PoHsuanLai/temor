@@ -12,7 +12,7 @@ publish = false
 testing = []
 
 [dependencies]
-temor-pty = { path = "../temor-pty" }
+temor-pty = { workspace = true }
 thiserror = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]

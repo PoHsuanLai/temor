@@ -13,6 +13,15 @@
 //! 3. **Show**: the UI uploads the pixels (or registers the texture) in a quire `TextureLayer`.
 //!    Nothing here names Dioxus or ds-blitz.
 //!
+//! # Consumers
+//!
+//! # Consumers
+//!
+//! This crate draws with vello_cpu, which must be quire's fork (the colour matrix and filter
+//! layers). The fork is wired by a `[patch.crates-io]` block, and `[patch]` applies only at a
+//! workspace root, so a consumer that builds `temor-render` must copy quire's block into its own
+//! root `Cargo.toml`. `scripts/fork-patches.sh print` in quire prints it.
+//!
 //! Fonts come from fontique ([`FontSet`]): the system `monospace` family by default, or a named
 //! one, at a logical size. swash shapes and rasterises into glyph atlases; COLRv1 emoji are
 //! painted through vello_cpu (skrifa's colour painter) into the colour atlas; box drawing, block
