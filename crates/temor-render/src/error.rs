@@ -2,6 +2,7 @@
 
 /// What can stop a frame from being captured or drawn.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum RenderError {
     /// No font could be loaded for the configured family or any fallback. Pick another family,
     /// or install a monospace font.

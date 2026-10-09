@@ -20,6 +20,7 @@ use crate::units::{Bytes, Limits};
 /// as `WriteFailed`. A successful `Finish` is fed back as `WriteDone`, because a file counts as
 /// saved only once its `Finish` has succeeded. Other successes need no input.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Input {
     Frame(Message),
     /// A frame that did not parse, whose action and id were still readable (see
@@ -45,6 +46,7 @@ pub enum Input {
 
 /// A file-system change the edge must make, in order. Paths are relative to the transfer's root.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WriteOp {
     MakeDir(RelPath),
     /// Create a new, empty file. It must not exist yet.
@@ -71,6 +73,7 @@ pub struct SavedFile {
 
 /// How a session ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum EndWhy {
     Finished,
     Refused,
@@ -81,6 +84,7 @@ pub enum EndWhy {
 
 /// What the edge must do after a step.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Effect {
     /// Ask the person whether to accept an offer from this origin. Answer with `Input::Decided`.
     AskConsent(Origin),

@@ -63,6 +63,7 @@ pub enum GoneReason {
 
 /// What happened, as the caller saw it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LinkEvent {
     /// The link dropped: the ssh process exited, the network changed, or the machine woke.
     Lost {
@@ -98,6 +99,7 @@ pub enum LinkEvent {
 
 /// What the caller must do. The step returns these; it never does them.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LinkEffect {
     /// Deliver a `Tick` at or after this time.
     WakeAt(Monotonic),

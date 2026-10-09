@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Why a pane, the settings file or the window could not do what was asked.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum UiError {
     /// The terminal emulator refused (a libghostty call failed, or it could not start).
     #[error("the terminal could not start: {0}")]

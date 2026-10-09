@@ -160,6 +160,7 @@ pub enum ReceivedFile {
 
 /// One decoded OSC 1337 sequence. Multipart pieces stay as base64 text until the file ends.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Osc1337Command {
     /// A whole `File=` sequence: its header and the decoded data.
     Whole { header: FileHeader, data: Vec<u8> },

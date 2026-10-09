@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 /// A successful answer. Each variant says what it carries, and which payload (if any) comes with
 /// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Reply {
     /// The request was done and has nothing to return.
     Ack,

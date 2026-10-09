@@ -168,6 +168,7 @@ pub struct ConfigIssue {
 
 /// Why a line or block was ignored.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IssueReason {
     /// A keyword without the value it needs.
     MissingValue { keyword: String },

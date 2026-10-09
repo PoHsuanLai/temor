@@ -77,7 +77,8 @@ impl Session {
                 };
                 let exit = match exit {
                     ExitStatus::Code(code) => Some(ExitCode(code.0)),
-                    ExitStatus::Unreported => None,
+                    // Unreported, or a status this build does not know: no exit code.
+                    _ => None,
                 };
                 let taken = self.step(BlockIn::Finished { row, exit, at });
                 match (taken, running) {
@@ -87,6 +88,8 @@ impl Session {
                     _ => self.drop_anchor(id),
                 }
             }
+            // A prompt event this build does not know: no block is opened or closed for it.
+            _ => self.drop_anchor(id),
         }
         self.sweep();
         Notice::Chrome

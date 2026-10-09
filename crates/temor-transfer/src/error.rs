@@ -7,6 +7,7 @@ use crate::units::{Bytes, Count};
 
 /// What went wrong, shaped so the caller can act on it.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum TransferError {
     /// The transfer is bigger than the caller's limit.
     #[error("the file is larger than the limit of {limit}")]
@@ -47,6 +48,7 @@ pub enum TransferError {
 
 /// The particular way a transfer's bytes were malformed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum Malformed {
     #[error("the sequence is not a transfer this crate reads")]
     NotATransfer,

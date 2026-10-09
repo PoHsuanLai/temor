@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 /// What temor asks for. Requests that carry bytes say so: the bytes are the frame's payload.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Request {
     /// Open a session. Replies [`Reply::Opened`](super::Reply::Opened).
     OpenSession(OpenSession),

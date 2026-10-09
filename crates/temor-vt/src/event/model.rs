@@ -10,6 +10,7 @@ use crate::model::AnchorId;
 /// the order the bytes produced them. Replies to the program do not travel here: they go to the
 /// terminal's [`crate::ReplySink`], which `write` and `resize` may also call.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum VtEvent {
     /// BEL.
     Bell,
@@ -56,6 +57,7 @@ pub enum VtEvent {
 
 /// Which kind of sequence an [`VtEvent::Unknown`] carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum UnknownKind {
     /// An application program command (`ESC _ ... ST`).
     Apc,
@@ -67,6 +69,7 @@ pub enum UnknownKind {
 
 /// Whether a payload is whole or was cut at the configured limit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum Truncation {
     Complete,
     Truncated,
@@ -74,6 +77,7 @@ pub enum Truncation {
 
 /// Whether the screen is held for a synchronized update.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum RenderHold {
     /// Keep showing the last frame; the program is drawing the next one.
     Held,
@@ -83,6 +87,7 @@ pub enum RenderHold {
 
 /// Which clipboard a write goes to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum ClipboardLocation {
     Standard,
     Selection,
@@ -91,6 +96,7 @@ pub enum ClipboardLocation {
 
 /// Whether the terminal already holds the person's permission for this program's writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum ClipboardGrant {
     /// Write without asking.
     Granted,
@@ -150,6 +156,7 @@ impl Percent {
 
 /// What a progress report says.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum ProgressState {
     /// Hide the progress.
     Remove,
@@ -173,6 +180,7 @@ pub struct Progress {
 
 /// Which prompt an OSC 133 A starts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[non_exhaustive]
 pub enum PromptKind {
     Primary,
     Right,
@@ -186,6 +194,7 @@ pub struct ExitCode(pub i32);
 
 /// How a command ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ExitStatus {
     /// The shell reported this exit code.
     Code(ExitCode),
@@ -195,6 +204,7 @@ pub enum ExitStatus {
 
 /// One step of a command, as shell integration (OSC 133) reports it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PromptEvent {
     /// A: the prompt starts.
     PromptStart(PromptKind),

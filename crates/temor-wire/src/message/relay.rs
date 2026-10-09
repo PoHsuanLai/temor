@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// One call from the agent, carried out on the host.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RelayCall {
     /// `fs/read_text_file`: a file's text, optionally from a line for a number of lines.
     ReadText {
@@ -78,6 +79,7 @@ pub enum Truncation {
 
 /// The answer to a relayed call.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RelayReply {
     /// The text of a file.
     Text(String),
