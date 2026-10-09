@@ -85,11 +85,7 @@ pub fn App() -> Element {
         let (slot, look) = (Rc::clone(&slot), look.clone());
         use_effect(use_reactive!(|look| {
             let now = env();
-            let palette = resolved_palette(
-                now.settings.appearance.appearance(),
-                &look,
-                now.system,
-            );
+            let palette = resolved_palette(now.settings.appearance.appearance(), &look, now.system);
             if let Some(text) = slot.borrow_mut().set_palette(palette) {
                 notice.set(Some(text));
             }

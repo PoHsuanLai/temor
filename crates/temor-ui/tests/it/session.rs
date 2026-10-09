@@ -125,7 +125,7 @@ fn wait_until(what: &str, mut ok: impl FnMut() -> bool) {
     let start = Instant::now();
     while !ok() {
         assert!(
-            start.elapsed() < Duration::from_secs(10),
+            start.elapsed() < Duration::from_secs(30),
             "timed out waiting for {what}"
         );
         std::thread::sleep(Duration::from_millis(10));

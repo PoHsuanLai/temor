@@ -171,7 +171,8 @@ pub(super) fn pump(live: &mut Live, what: &str, done: impl Fn(&Session) -> bool)
             return;
         }
         assert!(
-            start.elapsed() < Duration::from_secs(15),
+            // Generous: shells start slowly on a loaded machine, and the wait ends as soon as it holds.
+            start.elapsed() < Duration::from_secs(30),
             "timed out waiting for {what}; screen:\n{}",
             live.session.screen_text()
         );

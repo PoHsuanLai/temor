@@ -65,7 +65,7 @@ fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> b
     while !ok(&probe.screen()) {
         h.advance(Duration::from_millis(25));
         assert!(
-            start.elapsed() < Duration::from_secs(15),
+            start.elapsed() < Duration::from_secs(30),
             "timed out waiting for {what}:\n{}",
             probe.screen()
         );

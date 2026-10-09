@@ -23,10 +23,11 @@ fn window_css() -> String {
     format!("{}\n{WINDOW_CSS}", ds::stylesheet())
 }
 
-/// The window's first frame as the harness renders it.
-fn first_frame() -> String {
+/// The window's first frame as the harness renders it. Each test names its own scratch folder:
+/// tests run in parallel, and a shared one is removed under the other.
+fn first_frame(name: &str) -> String {
     let probe = Probe::new();
-    harness("coherence-markup", &probe).html()
+    harness(name, &probe).html()
 }
 
 /// Rule 1: the window's CSS under the strictest profile, the call `CONSUMING.md` section 5 shows.
@@ -47,7 +48,7 @@ fn rendered_markup_uses_only_styled_classes() {
     if !tools_present() {
         return;
     }
-    let html = first_frame();
+    let html = first_frame("coherence-1");
     let offences = markup(&html, &window_css(), &LintConfig::new(&ds::kits()));
     let unstyled: Vec<_> = offences
         .iter()
@@ -67,7 +68,7 @@ fn no_raw_form_control_or_svg_is_rendered() {
     if !tools_present() {
         return;
     }
-    let html = first_frame();
+    let html = first_frame("coherence-2");
     let offences = markup(&html, &window_css(), &LintConfig::new(&ds::kits()));
     let raw: Vec<_> = offences
         .iter()
