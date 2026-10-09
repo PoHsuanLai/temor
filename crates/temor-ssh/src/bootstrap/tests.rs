@@ -54,8 +54,9 @@ fn remote_command_is_plain_ascii_with_no_quote_or_backslash_inside() {
     let remote = super::bootstrap_remote_command(&script).expect("fits");
     let text = remote.as_str();
     assert!(text.is_ascii());
-    assert!(text.starts_with("sh -c 'eval \""));
-    assert!(text.ends_with("; })\"'"), "{text}");
+    assert!(text.starts_with("sh -c 's=$(printf %s "));
+    assert!(text.ends_with("eval \"$s\"'"), "{text}");
+    assert!(text.contains("needs base64 or openssl"), "{text}");
     let inside = &text["sh -c '".len()..text.len() - 1];
     assert!(!inside.contains('\''), "a quote inside the quoted part");
     assert!(!inside.contains('\\'), "a backslash inside the quoted part");

@@ -189,3 +189,14 @@ fn zsh_and_fish_load_their_shims_when_installed() {
         );
     }
 }
+
+#[test]
+fn a_host_without_base64_or_openssl_says_so_and_fails() {
+    let s = scratch();
+    make_bin(&s.bin, &["bash", "sh", "printf", "cat"], &[]);
+    let path = s.bin.display().to_string();
+    let ran = run(&s, &path, &bash(), &format!("{PRINT_TERM}exit\n"));
+    let text = String::from_utf8_lossy(&ran.text).into_owned();
+    assert_eq!(ran.status.code(), Some(1), "{text}");
+    assert!(text.contains("needs base64 or openssl"), "{text}");
+}

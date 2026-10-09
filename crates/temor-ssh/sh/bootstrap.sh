@@ -12,10 +12,17 @@ esac
 temor_umask=$(umask)
 umask 077
 
-# Removes temp directories of sessions that have ended. A directory is removed only when it is a
-# real directory owned by this user and its recorded pid is gone.
+# Removes temp directories of sessions that have ended. A directory is removed only when its name
+# has mktemp's exact shape, it is a real directory owned by this user, it carries the marker only
+# this bootstrap writes, and its recorded pid is gone.
+temor_an='[A-Za-z0-9]'
 for temor_old in "$temor_base"/temor.*; do
+    case ${temor_old##*/} in
+        temor.$temor_an$temor_an$temor_an$temor_an$temor_an$temor_an$temor_an$temor_an) ;;
+        *) continue ;;
+    esac
     [ -d "$temor_old" ] && [ ! -L "$temor_old" ] && [ -O "$temor_old" ] || continue
+    [ -f "$temor_old/temor-bootstrap" ] && [ ! -L "$temor_old/temor-bootstrap" ] || continue
     temor_old_pid=$(cat "$temor_old/pid" 2>/dev/null)
     case $temor_old_pid in
         ''|*[!0-9]*) continue ;;
@@ -28,6 +35,7 @@ trap 'rm -rf "$temor_tmp"' EXIT
 # The shell we start handles these signals itself. This wrapper must outlive it to clean up.
 trap : HUP INT QUIT TERM
 printf '%s\n' "$$" > "$temor_tmp/pid"
+: > "$temor_tmp/temor-bootstrap"
 
 mkdir -p "$temor_tmp/bash" "$temor_tmp/zsh" "$temor_tmp/fish/fish/vendor_conf.d" || exit 1
 #@INTEGRATION@

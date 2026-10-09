@@ -65,12 +65,14 @@ pub fn bootstrap_remote_command(script: &BootstrapScript) -> Result<RemoteComman
 
 /// The transport on its own: `script` as a remote command that decodes and runs it with `sh`.
 /// The bootstrap uses it, and tests use it to check the transport with a known payload.
+#[doc(hidden)]
 pub fn wrap_script(script: &str) -> Result<RemoteCommand, SshError> {
     let encoded = base64::encode(script.as_bytes());
-    // Only base64 characters sit between the quotes. The decoder falls back to openssl for
-    // hosts without GNU or BusyBox base64 (`openssl base64 -d -A`).
+    // Only base64 characters and plain shell syntax sit between the quotes (no `'` or `\`). The
+    // decoder falls back to openssl for hosts without GNU or BusyBox base64, and a host with
+    // neither says so and fails instead of ending the session silently.
     let text = format!(
-        "sh -c 'eval \"$(printf %s {encoded} | {{ base64 -d 2>/dev/null || openssl base64 -d -A; }})\"'"
+        "sh -c 's=$(printf %s {encoded} | {{ base64 -d 2>/dev/null || openssl base64 -d -A 2>/dev/null; }}); [ -n \"$s\" ] || {{ echo \"temor: this computer needs base64 or openssl to start\" >&2; exit 1; }}; eval \"$s\"'"
     );
     match text.len() <= MAX_REMOTE_COMMAND_BYTES {
         true => Ok(RemoteCommand::new(text)),

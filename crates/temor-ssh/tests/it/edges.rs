@@ -58,13 +58,24 @@ fn stale_temp_dirs_of_dead_sessions_are_removed_and_nothing_else() {
     let dead = child.id().to_string();
     child.wait().expect("reap");
 
-    let dead_dir = s.tmp.join("temor.dead");
-    fs::create_dir(&dead_dir).expect("dead dir");
-    write(&dead_dir.join("pid"), &format!("{dead}\n"));
+    // Directories this bootstrap made: mktemp's exact name shape plus its marker file.
+    let ours = |name: &str, pid: &str| {
+        let dir = s.tmp.join(name);
+        fs::create_dir(&dir).expect("session dir");
+        write(&dir.join("pid"), &format!("{pid}\n"));
+        write(&dir.join("temor-bootstrap"), "");
+        dir
+    };
+    let dead_dir = ours("temor.Dead0001", &dead);
+    let live = ours("temor.Live0001", &std::process::id().to_string());
 
-    let live = s.tmp.join("temor.live");
-    fs::create_dir(&live).expect("live dir");
-    write(&live.join("pid"), &format!("{}\n", std::process::id()));
+    // The person's own directories that merely look similar.
+    let backup = s.tmp.join("temor.backup");
+    fs::create_dir(&backup).expect("backup dir");
+    write(&backup.join("pid"), &format!("{dead}\n"));
+    let unmarked = s.tmp.join("temor.Abcd1234");
+    fs::create_dir(&unmarked).expect("unmarked dir");
+    write(&unmarked.join("pid"), &format!("{dead}\n"));
 
     let nopid = s.tmp.join("temor.nopid");
     fs::create_dir(&nopid).expect("nopid dir");
@@ -99,6 +110,14 @@ fn stale_temp_dirs_of_dead_sessions_are_removed_and_nothing_else() {
         "the symlink target was followed and removed"
     );
     assert!(other.is_dir(), "a dir outside temor.* was removed");
+    assert!(
+        backup.is_dir(),
+        "a dir without mktemp's name shape was removed"
+    );
+    assert!(
+        unmarked.is_dir(),
+        "a dir without the bootstrap's marker was removed"
+    );
 }
 
 #[test]
