@@ -1,11 +1,9 @@
 //! Kitty images and text export, as plain values.
 
-use ds_core::word::Word;
-
 use super::GridPoint;
 
 /// Which kitty placements to list, by z-layer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KittyLayer {
     All,
     /// Below the cell backgrounds (z < -1,073,741,824).
@@ -17,7 +15,7 @@ pub enum KittyLayer {
 }
 
 /// How a kitty image's pixels are laid out. PNG payloads are always decoded to `Rgba`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KittyPixelFormat {
     Rgb,
     Rgba,
@@ -44,14 +42,14 @@ pub struct ZIndex(pub i32);
 pub struct Generation(pub u64);
 
 /// Whether a placement is a virtual one (Unicode placeholders) rather than drawn at a position.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlacementKind {
     Direct,
     Virtual,
 }
 
 /// Whether any part of a placement is in the viewport.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {
     Visible,
     Hidden,
@@ -81,7 +79,7 @@ pub struct PlacementRender {
 }
 
 /// What text export produces.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TextFormat {
     Plain,
     /// HTML; colours are `var(--vt-palette-N)` CSS variables.

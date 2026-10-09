@@ -5,11 +5,11 @@ use super::files::{FileStamp, RemotePath};
 use super::trial::UncheckedWhy;
 use crate::hello::Capability;
 use crate::ids::{SessionId, TerminalId, WatchId};
-use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// Why the host refused a relayed call.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Refusal {
     /// The path is outside the remote workspace.
     OutsideWorkspace,
@@ -24,6 +24,7 @@ pub enum Refusal {
 
 /// Why a request failed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RemoteError {
     /// The helper cannot read this request: it is from a newer temor. Sent under the request's id.
     UnknownRequest,

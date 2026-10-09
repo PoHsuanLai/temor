@@ -1,28 +1,26 @@
 //! The typed values an OSC 1337 file carries.
 
-use ds_core::word::Word;
-
 use crate::consent::Consent;
 use crate::name::FileName;
 use crate::units::Bytes;
 
 /// Whether the terminal's own limit cut the sequence short. The app maps temor-vt's truncation
 /// onto this when it hands a payload over.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Completeness {
     Whole,
     Cut,
 }
 
 /// `inline=0` (the default) asks to save the file; `inline=1` asks to show it in the terminal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Delivery {
     Offer,
     Inline,
 }
 
 /// `preserveAspectRatio`: the default keeps the image's proportions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Aspect {
     Preserve,
     Stretch,
@@ -160,6 +158,7 @@ pub enum ReceivedFile {
 
 /// One decoded OSC 1337 sequence. Multipart pieces stay as base64 text until the file ends.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Osc1337Command {
     /// A whole `File=` sequence: its header and the decoded data.
     Whole { header: FileHeader, data: Vec<u8> },

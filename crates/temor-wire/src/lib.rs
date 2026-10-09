@@ -14,6 +14,30 @@
 //! Layout: [`frame`] (framing), [`hello`] (the handshake and version negotiation), [`message`]
 //! (requests, replies, events and errors), [`link`] (the reconnect step machine), with the
 //! vocabulary in [`ids`], [`units`] and [`digest`]. Every crate-level failure is [`WireError`].
+//!
+//! # Example
+//!
+//! One message, encoded to a frame and read back by the decoder:
+//!
+//! ```
+//! use temor_wire::frame::{Decoder, FrameLimit, encode};
+//! use temor_wire::ids::RequestId;
+//! use temor_wire::message::{Incoming, Message, Reply};
+//!
+//! # fn main() -> Result<(), temor_wire::WireError> {
+//! let limit = FrameLimit(1 << 20);
+//! let sent = Message::Response { id: RequestId(7), outcome: Ok(Reply::Ack) };
+//! let bytes = encode(&sent, None, limit)?;
+//!
+//! let mut decoder = Decoder::new(limit);
+//! decoder.push(&bytes);
+//! let Some(Incoming::Frame(frame)) = decoder.next_message()? else {
+//!     panic!("a whole frame was pushed");
+//! };
+//! assert_eq!(frame.message, sent);
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod digest;
 pub mod error;

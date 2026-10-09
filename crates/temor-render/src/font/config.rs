@@ -1,7 +1,5 @@
 //! What fonts the person asked for and where they come from.
 
-use ds_core::word::Word;
-
 use crate::metrics::FontSize;
 
 /// The grid's font family.
@@ -72,13 +70,13 @@ impl FaceStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Weight {
     Regular,
     Bold,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Slant {
     Upright,
     Italic,

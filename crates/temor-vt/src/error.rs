@@ -2,6 +2,7 @@
 
 /// What went wrong in a terminal call, in terms a caller can act on.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum VtError {
     /// libghostty could not allocate memory.
     #[error("the terminal ran out of memory")]

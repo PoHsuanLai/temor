@@ -6,6 +6,7 @@ use std::path::PathBuf;
 /// What can go wrong building SSH arguments, scripts and identities, or preparing the
 /// runtime directory. Config parsing never fails: its problems are [`crate::ConfigIssue`]s.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum SshError {
     /// The text cannot be an `ssh` destination: only ASCII letters, digits and `.-_@:[]%+`,
     /// and no leading `-` (which ssh would read as an option).

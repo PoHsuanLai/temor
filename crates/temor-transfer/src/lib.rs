@@ -12,6 +12,21 @@
 //!
 //! Remote names and paths are untrusted. [`FileName::sanitise`] always yields a usable name, and
 //! [`RelPath::parse`] refuses anything that could leave the destination.
+//!
+//! # Example
+//!
+//! Remote names are untrusted: a name always becomes a safe file name, and a path that
+//! could leave the folder is refused.
+//!
+//! ```
+//! use temor_transfer::{FileName, RelPath};
+//!
+//! let name = FileName::sanitise("../../etc/passwd");
+//! assert!(!name.as_str().contains('/'));
+//! assert!(!name.as_str().starts_with('.'));
+//! assert!(RelPath::parse("../escape.txt").is_err());
+//! assert!(RelPath::parse("reports/q3.pdf").is_ok());
+//! ```
 
 mod base64;
 mod consent;

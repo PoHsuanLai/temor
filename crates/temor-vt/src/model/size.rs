@@ -1,7 +1,5 @@
 //! Grid sizes, pixel sizes, counts and positions.
 
-use ds_core::word::Word;
-
 /// A number of columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Cols(pub u16);
@@ -94,7 +92,7 @@ pub struct Scrollbar {
 }
 
 /// Which coordinate space a [`GridPoint`]'s row is in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PointSpace {
     /// Rows of the live screen (0 is its top row).
     Active,

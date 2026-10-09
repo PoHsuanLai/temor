@@ -29,11 +29,17 @@ fn main() -> ExitCode {
     for (line, issue) in &parsed.issues {
         eprintln!("temor: settings line {line}: {issue}");
     }
-    temor_ui::run(Launch {
+    let launched = temor_ui::run(Launch {
         ambient,
         settings: parsed.settings,
         launcher: LauncherChoice::ThisProgram,
         probe: None,
     });
-    ExitCode::SUCCESS
+    match launched {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("temor: {err}");
+            ExitCode::FAILURE
+        }
+    }
 }

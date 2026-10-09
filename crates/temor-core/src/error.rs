@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Why outside data was refused at the boundary. Each variant names the fix a caller can make.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum CoreError {
     /// An environment key was empty or held `=` or NUL; the profile entry is dropped.
     #[error("not an environment variable name: {0:?}")]

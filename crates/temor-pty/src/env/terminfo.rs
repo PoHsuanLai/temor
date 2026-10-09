@@ -3,16 +3,23 @@
 use std::path::{Path, PathBuf};
 
 use super::model::ChildEnv;
-use ds_core::word::Word;
 
 /// The `TERM` values temor sets.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TermName {
     /// Ghostty's own entry, which describes what libghostty-vt really does.
     XtermGhostty,
     /// The fallback every system has.
-    #[word(slug = "xterm-256color")]
     Xterm256Color,
+}
+
+impl std::fmt::Display for TermName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::XtermGhostty => "xterm-ghostty",
+            Self::Xterm256Color => "xterm-256color",
+        })
+    }
 }
 
 /// Where ncurses looks when neither `TERMINFO` nor `TERMINFO_DIRS` says otherwise, across
@@ -57,10 +64,10 @@ pub fn terminfo_dirs(env: &ChildEnv, system: &[&str]) -> Vec<PathBuf> {
 /// `xterm-ghostty` if any of `dirs` holds its entry (`x/xterm-ghostty`, or macOS's hashed
 /// `78/xterm-ghostty`), else `xterm-256color`.
 pub fn find_term(dirs: &[PathBuf]) -> TermName {
-    let name = TermName::XtermGhostty.slug();
+    let name = TermName::XtermGhostty.to_string();
     let found = dirs
         .iter()
-        .any(|dir| dir.join("x").join(name).is_file() || dir.join("78").join(name).is_file());
+        .any(|dir| dir.join("x").join(&name).is_file() || dir.join("78").join(&name).is_file());
     match found {
         true => TermName::XtermGhostty,
         false => TermName::Xterm256Color,

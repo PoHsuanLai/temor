@@ -1,9 +1,10 @@
-//! Typed values of the kitty protocol. Wire names are snake_case words, read through `Word`.
-
-use ds_core::word::Word;
+//! Typed values of the kitty protocol. Wire names are snake_case words: each closed set has
+//! `Display` (the word sent) and `FromStr` (the word read).
 
 use crate::error::Malformed;
 use crate::units::Bytes;
+
+use super::words::UnknownWord;
 
 const MAX_IDENT_BYTES: usize = 128;
 
@@ -115,8 +116,7 @@ impl Transmission {
 
 /// Which file-system operation a write was for. The edge reports a failure with this, so the
 /// machine knows what, if anything, exists on disk.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WriteKind {
     MakeDir,
     Create,
@@ -126,8 +126,7 @@ pub enum WriteKind {
 }
 
 /// The action of a message (`ac`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Action {
     /// The remote offers a transfer.
     Send,
@@ -147,20 +146,30 @@ pub enum Action {
     Unknown,
 }
 
+wire_words!(Action {
+    Send => "send",
+    File => "file",
+    Data => "data",
+    EndData => "end_data",
+    Finish => "finish",
+    Cancel => "cancel",
+    Status => "status",
+    Unknown => "unknown",
+});
+
 impl Action {
     /// The action named by the wire word. A word outside the set is `Unknown`.
     /// The spec's table says `finish`; its receive example says `finished`. Both are accepted.
     pub fn from_wire(word: &str) -> Self {
         match word {
             "finished" => Self::Finish,
-            _ => <Self as Word>::parse(word).unwrap_or(Self::Unknown),
+            _ => word.parse().unwrap_or(Self::Unknown),
         }
     }
 }
 
 /// What a file is (`ft`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileType {
     Regular,
     Directory,
@@ -168,13 +177,24 @@ pub enum FileType {
     Link,
 }
 
+wire_words!(FileType {
+    Regular => "regular",
+    Directory => "directory",
+    Symlink => "symlink",
+    Link => "link",
+});
+
 /// Compression of the data (`zip`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Compression {
     None,
     Zlib,
 }
+
+wire_words!(Compression {
+    None => "none",
+    Zlib => "zlib",
+});
 
 /// One decoded message. Absent fields are `None`; `data` is empty when there was none.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,8 +235,7 @@ impl Message {
 }
 
 /// The receiving side's status codes, in the protocol's `CODE:message` form.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorCode {
     Eperm,
     Enoent,
@@ -226,10 +245,19 @@ pub enum ErrorCode {
     Eio,
 }
 
+wire_words!(ErrorCode {
+    Eperm => "eperm",
+    Enoent => "enoent",
+    Eexist => "eexist",
+    Einval => "einval",
+    Efbig => "efbig",
+    Eio => "eio",
+});
+
 impl ErrorCode {
     /// The upper-case code the protocol sends (`EPERM`).
     pub fn code(self) -> String {
-        self.slug().to_uppercase()
+        self.to_string().to_uppercase()
     }
 }
 

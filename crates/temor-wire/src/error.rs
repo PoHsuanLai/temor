@@ -2,6 +2,7 @@
 
 /// What went wrong with the bytes or the framing, shaped so the caller can act on it.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum WireError {
     /// A frame announces more bytes than the limit allows, so it is refused before its body is
     /// buffered.

@@ -3,7 +3,7 @@
 use crate::{CellPx, GridSize, ModeState, TerminalMode, ViewportScroll, VtError};
 
 /// A terminal emulator: bytes in, events and replies out (through the sinks it was created
-/// with), state to read back. `Terminal` is the real one; `FakeVt` (feature `fake`) is a small stand-in.
+/// with), state to read back. `Terminal` is the real one; `FakeVt` (feature `testing`) is a small stand-in.
 pub trait Vt: Send {
     /// Feeds program output. Events for what it contained go to the sink before this returns.
     fn write(&mut self, bytes: &[u8]);

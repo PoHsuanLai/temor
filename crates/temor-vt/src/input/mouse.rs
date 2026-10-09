@@ -1,12 +1,10 @@
 //! Mouse events for programs that track the mouse.
 
-use ds_core::word::Word;
-
 use super::Modifiers;
 use crate::Px;
 
 /// Press, release or motion.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseAction {
     Press,
     Release,
@@ -14,7 +12,7 @@ pub enum MouseAction {
 }
 
 /// Which button. Wheel steps are `WheelUp`/`WheelDown` presses.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButton {
     Left,
     Middle,
@@ -28,7 +26,7 @@ pub enum MouseButton {
 }
 
 /// The wire format reports use. `Auto` follows the modes the program set.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum MouseFormat {
     #[default]
     Auto,

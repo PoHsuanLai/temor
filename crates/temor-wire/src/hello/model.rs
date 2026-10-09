@@ -1,7 +1,6 @@
 //! The greeting's contents.
 
 use crate::digest::ContentHash;
-use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// A version of this protocol. Each side speaks a contiguous range of them.
@@ -25,9 +24,7 @@ pub struct ProtocolRange {
 pub struct HelperVersion(pub ContentHash);
 
 /// What a side can do. Agreement is the set both sides offer, in the order of this enum.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Word, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Capability {
     /// Sessions that outlive a connection, with idle limits.
     Sessions,

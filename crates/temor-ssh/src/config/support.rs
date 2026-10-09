@@ -1,4 +1,4 @@
-//! Shared fixtures for the config tests: an in-memory config directory.
+//! In-memory `~/.ssh/config` fixtures, behind the `testing` feature.
 
 use std::collections::BTreeMap;
 use std::io;
@@ -33,7 +33,7 @@ impl ConfigFiles for Fixture {
     }
 }
 
-pub(super) fn load(files: &[(&str, &str)]) -> HostList {
+pub fn load(files: &[(&str, &str)]) -> HostList {
     let map = files
         .iter()
         .map(|(name, text)| (PathBuf::from(SSH_DIR).join(name), (*text).to_owned()))
@@ -46,7 +46,7 @@ pub(super) fn load(files: &[(&str, &str)]) -> HostList {
     load_host_list(&Fixture(map), &paths)
 }
 
-pub(super) fn one(list: &HostList, alias: &str) -> HostEntry {
+pub fn one(list: &HostList, alias: &str) -> HostEntry {
     list.entries
         .iter()
         .find(|entry| entry.alias.as_str() == alias)
@@ -54,6 +54,6 @@ pub(super) fn one(list: &HostList, alias: &str) -> HostEntry {
         .unwrap_or_else(|| panic!("no entry for {alias}: {:?}", list.entries))
 }
 
-pub(super) fn aliases(list: &HostList) -> Vec<&str> {
+pub fn aliases(list: &HostList) -> Vec<&str> {
     list.entries.iter().map(|e| e.alias.as_str()).collect()
 }

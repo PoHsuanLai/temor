@@ -10,8 +10,8 @@ mod model;
 mod parse;
 mod pattern;
 mod resolve;
-#[cfg(test)]
-mod support;
+#[cfg(feature = "testing")]
+pub mod support;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

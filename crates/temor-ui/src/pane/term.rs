@@ -5,7 +5,7 @@
 use std::sync::mpsc::{Receiver, channel};
 
 use temor_core::terminal::paste::PasteMode;
-use temor_core::terminal::row::{RowCell, RowText, Span};
+use temor_core::terminal::row::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
     AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
@@ -141,7 +141,11 @@ impl Term {
             .collect();
         Ok(RowText {
             cells,
-            wraps: self.terminal.row_wraps(row)?,
+            wrap: if self.terminal.row_wraps(row)? {
+                Wrap::Continues
+            } else {
+                Wrap::Ends
+            },
         })
     }
 

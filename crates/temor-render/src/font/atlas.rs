@@ -1,8 +1,6 @@
 //! A shelf-packed glyph atlas in memory. It grows downwards (so packed slots never move) up to
 //! a limit; when full, the owner clears it and every cached glyph with it.
 
-use ds_core::word::Word;
-
 /// A packed rectangle in an atlas, in texels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub(crate) struct Slot {
@@ -13,7 +11,7 @@ pub(crate) struct Slot {
 }
 
 /// What an atlas texel holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum AtlasFormat {
     /// One coverage byte, tinted with the text colour.
     Alpha,

@@ -31,6 +31,8 @@ pub fn progress_line(progress: Progress) -> Option<ProgressLine> {
         ProgressState::Set | ProgressState::Pause => Some(ProgressLine::Share(
             progress.percent.map_or(0, |p| p.value()),
         )),
+        // A state this build does not know: nothing is shown.
+        _ => None,
     }
 }
 

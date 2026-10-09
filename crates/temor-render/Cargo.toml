@@ -16,7 +16,6 @@ ghostty = ["temor-vt/ghostty"]
 gpu = ["dep:wgpu", "dep:bytemuck"]
 
 [dependencies]
-ds-core = { workspace = true }
 thiserror = { workspace = true }
 temor-vt = { workspace = true }
 fontique = { workspace = true }

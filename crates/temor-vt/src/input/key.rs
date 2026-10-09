@@ -1,9 +1,7 @@
 //! Keys: physical key codes (layout independent), modifiers and the text a key produced.
 
-use ds_core::word::Word;
-
 /// A physical key, named after its position on a US layout (W3C UI Events `code`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     A,
     B,
@@ -111,7 +109,7 @@ pub enum KeyCode {
 }
 
 /// Press, auto-repeat or release.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum KeyAction {
     #[default]
     Press,
@@ -120,7 +118,7 @@ pub enum KeyAction {
 }
 
 /// Whether an input method is composing (pre-edit) while the key arrives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Ime {
     #[default]
     Idle,

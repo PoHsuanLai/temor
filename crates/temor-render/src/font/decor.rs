@@ -1,13 +1,11 @@
 //! Masks for the underline styles that are not plain bars: curly, dotted and dashed. Each is
 //! one cell wide and repeats across a run of cells.
 
-use ds_core::word::Word;
-
 use super::boxdraw::Canvas;
 use crate::metrics::CellMetrics;
 
 /// An underline drawn from a mask.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Decoration {
     Curly,
     Dotted,

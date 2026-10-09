@@ -30,6 +30,7 @@ pub struct Frame {
 
 /// What one frame turned out to be.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Incoming {
     /// A message this build reads in full.
     Frame(Frame),

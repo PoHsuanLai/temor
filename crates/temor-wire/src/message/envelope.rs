@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// A frame's message: the greeting, a request, its answer, or an event.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Message {
     /// The greeting, sent first by each side.
     Hello(Hello),

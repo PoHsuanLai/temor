@@ -1,6 +1,5 @@
 //! Units and sizes: scale, font size, pane pixels, padding, cell metrics and the fitted grid.
 
-use ds_core::word::Word;
 use temor_vt::{CellPx, Col, GridSize, Px, Row};
 
 /// Device pixels per logical pixel (1.0, 1.5, 2.0, ...). Always finite and positive.
@@ -158,14 +157,14 @@ impl CellPos {
 }
 
 /// Which half of a cell a point fell in (selection snaps by it).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CellSide {
     Left,
     Right,
 }
 
 /// Whether a point was over the grid or over the padding around it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HitRegion {
     Grid,
     Padding,

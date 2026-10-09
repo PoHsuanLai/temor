@@ -27,6 +27,7 @@ pub struct Agreement {
 
 /// Why two greetings cannot be agreed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Incompatibility {
     /// The two ranges do not overlap.
     NoCommonProtocol {

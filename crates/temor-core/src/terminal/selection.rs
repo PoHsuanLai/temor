@@ -4,7 +4,7 @@
 
 use ds_core::word::Word;
 
-use super::row::{RowText, Span};
+use super::row::{RowText, Span, Wrap};
 
 /// A cell in the screen space: row 0 is the oldest kept line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -136,11 +136,11 @@ impl Selection {
             if row != start.row && !joins {
                 out.push('\n');
             }
-            match line.wraps && self.shape == Shape::Linear {
+            match line.wrap == Wrap::Continues && self.shape == Shape::Linear {
                 true => out.push_str(&piece),
                 false => out.push_str(piece.trim_end()),
             }
-            previous_wraps = line.wraps;
+            previous_wraps = line.wrap == Wrap::Continues;
         }
         out
     }

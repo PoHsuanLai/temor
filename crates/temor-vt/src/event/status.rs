@@ -1,11 +1,10 @@
 //! OSC 7501 program status reports.
 
-use ds_core::word::Word;
-
 use super::Percent;
 
 /// What a reporting program is doing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ProgramState {
     Idle,
     Working,
@@ -18,7 +17,8 @@ pub enum ProgramState {
 }
 
 /// What a blocked program waits for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ProgramWait {
     /// It did not say.
     Unspecified,

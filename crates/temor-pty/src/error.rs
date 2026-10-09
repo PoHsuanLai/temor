@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 /// What went wrong, shaped so the caller can act on it.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum PtyError {
     /// This platform has no pseudo-terminal support in temor yet (macOS, Windows and every OS
     /// other than Linux).

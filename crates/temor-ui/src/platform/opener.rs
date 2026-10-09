@@ -6,6 +6,7 @@ use thiserror::Error;
 
 /// Why a link could not be opened.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum OpenError {
     /// This system has no opener yet.
     #[error("links cannot be opened on this system yet")]

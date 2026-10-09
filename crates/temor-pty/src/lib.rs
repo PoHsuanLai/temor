@@ -88,6 +88,29 @@
 //!
 //! Each script emits OSC 133 `A` (prompt start), `B` (prompt end), `C` (command output starts)
 //! and `D;<exit status>` (command finished), and OSC 7 `file://<host><percent-encoded cwd>`.
+//!
+//! # Example
+//!
+//! The child's environment, built from an injected source. Nothing here reads the process
+//! environment, so the example runs anywhere:
+//!
+//! ```
+//! use std::ffi::OsStr;
+//! use temor_pty::{ChildEnv, EnvContract, PaneId, ProgramVersion, TermName, base_env, child_env};
+//!
+//! let host = base_env([("HOME", "/home/me"), ("TERM", "xterm-kitty"), ("PATH", "/usr/bin")]);
+//! let contract = EnvContract {
+//!     term: TermName::XtermGhostty,
+//!     version: ProgramVersion("0.1.0".to_owned()),
+//!     pane: PaneId("pane-1".to_owned()),
+//!     socket: None,
+//! };
+//! let env = child_env(host, &ChildEnv::new(), &contract);
+//! assert_eq!(env.get("HOME"), Some(OsStr::new("/home/me")));
+//! assert_eq!(env.get("TERM_PROGRAM"), Some(OsStr::new("temor")));
+//! assert_eq!(env.get("TEMOR_PANE_ID"), Some(OsStr::new("pane-1")));
+//! assert_eq!(env.get("TEMOR_SOCKET"), None);
+//! ```
 
 mod env;
 mod error;

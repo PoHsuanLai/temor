@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use crate::env::ChildEnv;
 use crate::size::GridSize;
-use ds_core::word::Word;
 
 /// What to start on a new terminal: an explicit program, arguments, directory and the complete
 /// environment (nothing is inherited from temor).
@@ -32,7 +31,7 @@ pub enum ChildExit {
 }
 
 /// The signals temor sends to a terminal's process group.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SignalKind {
     /// The terminal went away (closing a tab); shells pass it on to their jobs.
     Hangup,

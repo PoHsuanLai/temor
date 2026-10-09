@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ds_core::word::Word;
 use swash::scale::ScaleContext;
 use swash::shape::ShapeContext;
 
@@ -17,7 +16,7 @@ use crate::metrics::{CellMetrics, Scale};
 use crate::platform::SystemBitmapEmoji;
 
 /// Which atlas a glyph lives in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum GlyphKind {
     /// A coverage mask, tinted with the text colour.
     Mask,

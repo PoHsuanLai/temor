@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Something the helper reports unasked.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Event {
     /// Output for an attached session. The payload is the bytes.
     Output {

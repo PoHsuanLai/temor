@@ -1,6 +1,5 @@
 //! One loaded font face: its bytes, swash's handle on them, and what has to be synthesised.
 
-use ds_core::word::Word;
 use fontique::Blob;
 use swash::{CacheKey, FontRef, tag_from_bytes};
 
@@ -9,21 +8,21 @@ use swash::{CacheKey, FontRef, tag_from_bytes};
 pub(crate) struct FaceId(pub u16);
 
 /// Whether glyphs are thickened because the family has no bold cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Embolden {
     No,
     Yes,
 }
 
 /// Whether glyphs are slanted because the family has no italic cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Skew {
     No,
     Yes,
 }
 
 /// How a face draws colour glyphs, if it does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ColorFormat {
     /// Outlines only.
     None,
@@ -34,7 +33,7 @@ pub(crate) enum ColorFormat {
 }
 
 /// Whether the face is one of the chosen family's cuts or a fallback.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum FaceRole {
     Primary,
     Fallback,
