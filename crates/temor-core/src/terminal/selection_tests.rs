@@ -1,12 +1,12 @@
 //! Selection, search and wide cells: what the pane selects, finds and copies.
 
-use super::row::RowText;
+use super::row::{RowText, Wrap};
 use super::search::{Finder, find_all};
 use super::selection::{CellPos, Granularity, Selection, Shape, word_span};
 
 #[test]
 fn selection_drags_in_both_directions() {
-    let line = RowText::plain("hello world", false);
+    let line = RowText::plain("hello world", Wrap::Ends);
     let mut sel = Selection::begin(CellPos::new(2, 4), &line, Granularity::Cells, Shape::Linear);
     sel.extend(CellPos::new(2, 1), &line);
     assert_eq!(sel.ends(), (CellPos::new(2, 1), CellPos::new(2, 4)));
@@ -18,9 +18,9 @@ fn selection_drags_in_both_directions() {
 #[test]
 fn selection_spans_rows_and_drops_trailing_blanks() {
     let rows = [
-        RowText::plain("first   ", false),
-        RowText::plain("second", false),
-        RowText::plain("third", false),
+        RowText::plain("first   ", Wrap::Ends),
+        RowText::plain("second", Wrap::Ends),
+        RowText::plain("third", Wrap::Ends),
     ];
     let mut sel = Selection::begin(
         CellPos::new(0, 3),
@@ -34,11 +34,14 @@ fn selection_spans_rows_and_drops_trailing_blanks() {
 
 #[test]
 fn word_and_line_selection_snap_to_their_runs() {
-    let line = RowText::plain("foo_bar baz", false);
+    let line = RowText::plain("foo_bar baz", Wrap::Ends);
     assert_eq!(word_span(&line, 2), (0, 6));
-    assert_eq!(word_span(&RowText::plain("foo  baz", false), 4), (3, 4));
-    assert_eq!(word_span(&RowText::plain("a.b", false), 1), (1, 1));
-    let run = RowText::plain("run ls -la now", false);
+    assert_eq!(
+        word_span(&RowText::plain("foo  baz", Wrap::Ends), 4),
+        (3, 4)
+    );
+    assert_eq!(word_span(&RowText::plain("a.b", Wrap::Ends), 1), (1, 1));
+    let run = RowText::plain("run ls -la now", Wrap::Ends);
     let mut sel = Selection::begin(CellPos::new(0, 4), &run, Granularity::Words, Shape::Linear);
     assert_eq!(sel.text(|_| run.clone()), "ls");
     sel.extend(CellPos::new(0, 9), &run);
@@ -50,8 +53,8 @@ fn word_and_line_selection_snap_to_their_runs() {
 #[test]
 fn block_selection_takes_a_rectangle() {
     let rows = [
-        RowText::plain("abcdef", false),
-        RowText::plain("ghijkl", false),
+        RowText::plain("abcdef", Wrap::Ends),
+        RowText::plain("ghijkl", Wrap::Ends),
     ];
     let mut sel = Selection::begin(
         CellPos::new(0, 1),
@@ -66,9 +69,9 @@ fn block_selection_takes_a_rectangle() {
 #[test]
 fn search_is_case_insensitive_and_steps_with_wrap() {
     let rows = [
-        RowText::plain("Error one", false),
-        RowText::plain("nothing", false),
-        RowText::plain("error and ERROR", false),
+        RowText::plain("Error one", Wrap::Ends),
+        RowText::plain("nothing", Wrap::Ends),
+        RowText::plain("error and ERROR", Wrap::Ends),
     ];
     let matches = find_all(rows.iter().enumerate().map(|(i, r)| (i as u32, r)), "error");
     assert_eq!(matches.len(), 3);
@@ -79,16 +82,16 @@ fn search_is_case_insensitive_and_steps_with_wrap() {
     assert_eq!(finder.position(), Some((3, 3)));
     finder.next();
     assert_eq!(finder.position(), Some((1, 3)));
-    assert!(find_all([(0, &RowText::plain("x", false))], "").is_empty());
+    assert!(find_all([(0, &RowText::plain("x", Wrap::Ends))], "").is_empty());
 }
 
 #[test]
 fn a_soft_wrapped_row_joins_the_next_without_a_line_break() {
     // "abcdefghij" wrapped at ten columns, then "klmno" on its own row: one line when copied.
     let rows = [
-        RowText::plain("abcdefghij", true),
-        RowText::plain("klmno", false),
-        RowText::plain("next", false),
+        RowText::plain("abcdefghij", Wrap::Continues),
+        RowText::plain("klmno", Wrap::Ends),
+        RowText::plain("next", Wrap::Ends),
     ];
     let mut sel = Selection::begin(
         CellPos::new(0, 0),
@@ -129,7 +132,7 @@ fn wide_characters_are_two_columns_in_selection_and_search() {
             plain('a'),
             plain('b'),
         ],
-        wraps: false,
+        wrap: Wrap::Ends,
     };
     // A double-click on the a selects "ab" by its cell columns, not by characters.
     assert_eq!(word_span(&row, 5), (5, 6));

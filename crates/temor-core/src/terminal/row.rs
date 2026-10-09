@@ -30,16 +30,26 @@ pub struct RowCell {
     pub span: Span,
 }
 
+/// Whether a row continues on the next one (a soft wrap) or ends its line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Wrap {
+    /// The row ends its line: the next row starts a new one.
+    #[default]
+    Ends,
+    /// The row is soft-wrapped: the next row carries on the same line.
+    Continues,
+}
+
 /// One screen row, cell by cell, and whether it continues on the next row (a soft wrap).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RowText {
     pub cells: Vec<RowCell>,
-    pub wraps: bool,
+    pub wrap: Wrap,
 }
 
 impl RowText {
     /// A row of single-width cells, one per character (for plain text and tests).
-    pub fn plain(text: &str, wraps: bool) -> Self {
+    pub fn plain(text: &str, wrap: Wrap) -> Self {
         Self {
             cells: text
                 .chars()
@@ -48,7 +58,7 @@ impl RowText {
                     span: Span::Single,
                 })
                 .collect(),
-            wraps,
+            wrap,
         }
     }
 
