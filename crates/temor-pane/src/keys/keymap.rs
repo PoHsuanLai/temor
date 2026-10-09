@@ -6,6 +6,7 @@ use super::chord::{Chord, ChordKey, Mods, NamedKey};
 use crate::error::SettingsError;
 
 /// The actions and their chords. Looked up both ways; a chord belongs to one action at most.
+/// A setting for an action replaces both of its default forms (see [`Keymap::bind`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keymap {
     bindings: Vec<(Action, Chord)>,
@@ -77,11 +78,17 @@ impl Keymap {
             .map(|(_, c)| c)
     }
 
-    /// Binds `action` to `chord` alone, replacing all its old chords. Refused when the chord is
-    /// reserved or another action already uses it (binding an action to its own chord is allowed).
+    /// Binds `action` to `chord` alone, replacing all its old chords: a setting for an action
+    /// replaces both default forms, which is how a person gives a chord back to the program.
+    /// Refused when the chord is reserved, when it is a bare Ctrl chord (those belong to the
+    /// program), or when another action already uses it (binding an action to its own chord is
+    /// allowed).
     pub fn bind(&mut self, action: Action, chord: Chord) -> Result<(), SettingsError> {
         if chord.is_reserved() {
             return Err(SettingsError::ReservedChord(chord.label()));
+        }
+        if let Some(refused) = chord.bare_ctrl_refusal() {
+            return Err(refused);
         }
         if let Some((by, _)) = self
             .bindings

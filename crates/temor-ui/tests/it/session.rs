@@ -438,6 +438,78 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
     );
 }
 
+/// A key press as the window routes it: the chord (when it has one) and what the program gets.
+fn pressed(chord: Option<(Mods, char)>, code: KeyCode, mods: Modifiers, text: &str) -> Stroke {
+    Stroke {
+        chord: chord.map(|(m, c)| Chord::of_char(c, m)),
+        key: KeyInput::press(code, mods, text),
+    }
+}
+
+#[test]
+fn ctrl_c_reaches_the_program_as_an_interrupt_and_altgr_text_as_text() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-keys-rows");
+    // Ctrl+C is not a chord the pane runs: bash echoes the interrupt it received as ^C.
+    f.session
+        .key(pressed(
+            Some((Mods::CTRL, 'c')),
+            KeyCode::C,
+            Modifiers::CTRL,
+            "",
+        ))
+        .expect("ctrl+c");
+    wait_until("the interrupt echoed", || {
+        f.session.screen_text().contains("^C")
+    });
+    // AltGr types a character as Ctrl+Alt with text: the program gets the text.
+    type_text(&mut f.session, "echo ");
+    f.session
+        .key(pressed(
+            Some((Mods::CTRL.with(Mods::ALT), '2')),
+            KeyCode::Digit2,
+            Modifiers::CTRL.with(Modifiers::ALT),
+            "@",
+        ))
+        .expect("altgr");
+    press_enter(&mut f.session);
+    wait_until("the altgr text as the program's output", || {
+        has_line(&f.session.screen_text(), "@")
+    });
+}
+
+#[test]
+fn command_v_pastes_in_both_command_forms() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-paste-forms");
+    for (text, chord_mods, mods) in [
+        (
+            "echo pasted-ctrl-shift",
+            Mods::CTRL.with(Mods::SHIFT),
+            Modifiers::CTRL.with(Modifiers::SHIFT),
+        ),
+        ("echo pasted-super", Mods::SUPER, Modifiers::SUPER),
+    ] {
+        *f.clipboard.0.borrow_mut() = text.to_owned();
+        wait_until("bracketed paste", || {
+            f.session.pane().with_term(|t| t.paste_mode())
+                == temor_pane::paste::PasteMode::Bracketed
+        });
+        f.session
+            .key(pressed(Some((chord_mods, 'v')), KeyCode::V, mods, ""))
+            .expect("the paste chord");
+        press_enter(&mut f.session);
+        let want = text.trim_start_matches("echo ").to_owned();
+        wait_until("the pasted command's output", || {
+            has_line(&f.session.screen_text(), &want)
+        });
+    }
+}
+
 #[test]
 fn the_pane_paints_its_text_into_pixels() {
     if !super::support::tools_present() {

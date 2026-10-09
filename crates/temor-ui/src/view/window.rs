@@ -10,11 +10,9 @@ use std::time::Instant;
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
 use ds::edit::composition::Composing;
-use ds::edit::input::{Composition, EditInput};
-use ds::edit::pointer::EditFocus;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::host::document::use_document_host;
-use ds::host::ime::{ImeEvent, ImeSwitch};
+use ds::host::ime::ImeEvent;
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
@@ -32,28 +30,18 @@ use super::handlers::{
     bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
     find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_shell,
 };
-use super::ime::ImeGlue;
+use super::ime::{ImeGlue, composed_sink, focus_handler};
 use super::launch::Launch;
+use super::palette::{PaletteFollow, SlotRef};
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Slot, layout, repaint};
 use super::status::StatusLine;
-use super::theme::resolved_palette;
 use super::title::window_title;
-use super::window_help::{
-    device_pixels, focus_in, place_cursor, send_text, set_focus, take_notice,
-};
+use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
+use super::window_style::WINDOW_CSS;
 use crate::input::stroke;
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::BlockId;
-
-/// The window's column and the terminal region's sizing (quire has no column component at v0.3.1,
-/// and a `RawKeySurface` takes no style of its own). Colours and type come from quire's tokens
-/// and the pane's palette, so this sheet has no design values.
-pub const WINDOW_CSS: &str = "\
-.temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
-.temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
-.temor-grid { position: relative; width: 100%; height: 100%; }\
-.temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }";
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -80,19 +68,6 @@ pub fn App() -> Element {
     let mut notice = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
 
-    // The grid's colours follow the look and the environment, re-applied when either changes.
-    {
-        let (slot, look) = (Rc::clone(&slot), look.clone());
-        use_effect(use_reactive!(|look| {
-            let now = env();
-            let palette = resolved_palette(now.settings.appearance.appearance(), &look, now.system);
-            if let Some(text) = slot.borrow_mut().set_palette(palette) {
-                notice.set(Some(text));
-            }
-            repaint(&slot);
-        }));
-    }
-
     // Every change of the pane's size, scale or device lays it out again.
     {
         let (slot, texture, launch, signals, gpu) = (
@@ -118,24 +93,7 @@ pub fn App() -> Element {
         });
     }
 
-    // Composed text and the preedit line, from the input method.
-    let apply = {
-        let slot = Rc::clone(&slot);
-        move |input: EditInput| {
-            let mut preedit = preedit;
-            match input {
-                EditInput::Text(text) => send_text(&slot, &text),
-                EditInput::Composition(Composition::Update { text, .. }) => {
-                    preedit.set((!text.is_empty()).then_some(text));
-                }
-                EditInput::Composition(Composition::End { text }) => {
-                    preedit.set(None);
-                    send_text(&slot, &text);
-                }
-                _ => {}
-            }
-        }
-    };
+    let apply = composed_sink(Rc::clone(&slot), preedit);
     let heard = {
         let ime = ime.clone();
         let apply = apply.clone();
@@ -186,26 +144,16 @@ pub fn App() -> Element {
             focus_in(ime.clone(), Rc::clone(&slot), rect);
         }
     };
-    let on_focus = {
-        let ime = ime.clone();
-        let apply = apply.clone();
-        let slot = Rc::clone(&slot);
-        let gained = gained.clone();
-        move |focus: EditFocus| match focus {
-            EditFocus::In => gained(),
-            EditFocus::Out => {
-                set_focus(&slot, Focus::Unfocused);
-                ime.settle(&apply);
-                let ime = ime.clone();
-                spawn(async move {
-                    ime.switch(ImeSwitch::Off).await;
-                });
-            }
-        }
-    };
+    let on_focus = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
 
     // The region's element: rect and input method hear it; the first layout gives it the keyboard,
     // as a person's click would.
+    // Where the keyboard goes back to when the find bar closes (its field leaves the page).
+    let regain = EventHandler::new({
+        let gained = gained.clone();
+        move |()| gained()
+    });
+
     let on_mounted = {
         let (ime, gained) = (ime.clone(), gained.clone());
         move |event: MountedEvent| {
@@ -237,8 +185,6 @@ pub fn App() -> Element {
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
     let message = notice();
     use_window_title(window_title(&chrome.title, chrome.cwd.as_deref()));
-    // TODO(quire 0.2.31): full-height root (RootExtent::Window) and quire's layout components and
-    // spacing tokens replace the inline layout below (CONSUMING.md rules 1 and 2).
     let now = env();
     rsx! {
         Ds {
@@ -253,6 +199,11 @@ pub fn App() -> Element {
             // quire v0.3.1 has no column layout component (only SplitView, for panes), so the
             // window's column is a plain flex element in the window-high root (see `WINDOW_CSS`).
             style { {WINDOW_CSS} }
+            PaletteFollow {
+                slot: SlotRef(Rc::clone(&slot)),
+                env,
+                notice,
+            }
             div { class: "temor-window",
                 if let Some((query, position)) = find {
                     FindBar {
@@ -260,7 +211,7 @@ pub fn App() -> Element {
                         position,
                         on_query:find_query(Rc::clone(&slot), ui, started),
                         on_step:find_step(Rc::clone(&slot), ui),
-                        on_close:find_close(Rc::clone(&slot), ui),
+                        on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
                     }
                 }
                 RawKeySurface {

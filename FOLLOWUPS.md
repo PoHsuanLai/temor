@@ -67,7 +67,8 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       cell, through the host seam with a Busy retry (5f852bf; `view/window_help.rs`, `view/ime.rs`).
       Not seen on a real fcitx5 yet, and ds-harness has no IME host to test it (leftover below).
 - [x] Theme: the palette is re-applied on each `use_environment` change and on a Space look change
-      (5bccf7d; `view/theme.rs`, `view/window.rs`). `use_space_frame()` is not followed: its frame
+      (5bccf7d; `view/theme.rs`; the follower is `view/palette.rs`, a child inside the `Ds` root that
+      reads `use_space_look()` there). `use_space_frame()` is not followed: its frame
       variables are sidebar ink, and P3a has no sidebar (P3b). Window title: `use_window_title` (fefac1e).
 - [x] IME on the pane's TextureLayer: `switch(On)` first, `cursor_area` with the caret in window-logical
       px, Busy retried (5f852bf). quire's `EditSurface` retry is private, so `view/ime.rs` keeps its own.
@@ -159,8 +160,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       `RawKeySurface` takes no style, pointer or wheel handlers and sizes nothing: the grid needs an
       inner element and a sheet rule for the surface's class (`view/window.rs` `WINDOW_CSS`); (5)
       `.ds-texture-layer` has no rule in quire's sheet (the coherence test allows that one class). §6
-- [ ] A keymap rebind replaces both command forms of an action (`bind` keeps one chord). Decide
-      whether a rebind should keep the Super form. §6
+- [x] A keymap setting replaces both command forms of its action, which gives the chord back to the
+      program; a bare Ctrl chord is refused with the ⌘ forms named (review fixes). §6
 - [ ] Unbound Super+letter reaches the program as text (as before P3a). Ghostty drops unbound ⌘ keys;
       decide the same here. §6
 - [ ] KWin takes Meta+T/W/D/V globally on KDE, so those Super forms never reach temor there; the
@@ -169,6 +170,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       real check. §6
 - [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
 - [ ] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
-- [ ] The palette follows the Space look but not `use_space_frame()` (the sidebar's ink; P3b). §5
+- [ ] The palette follows the Space look (read inside `Ds`, `view/palette.rs`) but not
+      `use_space_frame()` (the sidebar's ink; P3b). The look itself is `SpaceLook::default()` until
+      sill publishes per-workspace looks, so no change reaches it yet. §5
 - [ ] `real_shells_*` and `a_five_mebibyte_paste_arrives_intact` time out under a parallel
       `cargo test -p temor-ui` (fish startup, a 15 s wait); they pass alone. §13

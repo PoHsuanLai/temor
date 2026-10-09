@@ -130,6 +130,23 @@ impl Chord {
         self.mods.contains(Mods::CTRL.with(Mods::SHIFT))
     }
 
+    /// The refusal for a bare Ctrl chord (Ctrl with a letter, digit or punctuation, and no Shift or
+    /// Alt): it belongs to the program, and the refusal names the ⌘ forms to bind instead.
+    pub fn bare_ctrl_refusal(&self) -> Option<SettingsError> {
+        let bare = self.mods == Mods::CTRL;
+        match self.key {
+            ChordKey::Char(c) if bare => {
+                let key = c.to_uppercase().collect::<String>();
+                Some(SettingsError::ProgramChord {
+                    chord: format!("Ctrl+{key}"),
+                    ctrl_shift: format!("Ctrl+Shift+{key}"),
+                    command: format!("⌘{key}"),
+                })
+            }
+            _ => None,
+        }
+    }
+
     /// Chords the desktop keeps (PLAN §6): Super with Space, Tab or a digit (the shell's and
     /// compositor's), and Ctrl+Space (the input method's). Other Super chords are the app's ⌘
     /// chords, and a person's keymap may bind them.

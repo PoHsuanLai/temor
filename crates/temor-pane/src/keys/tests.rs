@@ -95,6 +95,9 @@ fn rebinding_moves_an_action_and_refuses_clashes() {
     keymap.bind(Action::Copy, alt_c).expect("free chord");
     assert_eq!(keymap.action_for(&alt_c), Some(Action::Copy));
     assert_eq!(keymap.action_for(&ctrl_shift('c')), None);
+    // A setting replaces both default forms: the Super form is given back as well.
+    assert_eq!(keymap.action_for(&Chord::of_char('c', Mods::SUPER)), None);
+    assert_eq!(keymap.chords_for(Action::Copy).count(), 1);
     let clash = keymap.bind(Action::Paste, alt_c);
     assert!(matches!(clash, Err(SettingsError::ChordInUse { .. })));
     let reserved = keymap.bind(Action::Paste, Chord::parse("super+tab").expect("valid"));
@@ -157,4 +160,33 @@ fn notify_after_reads_seconds_and_off() {
         NotifyAfter::Off
     );
     assert_eq!(parse_settings("notify.after = soon").issues.len(), 1);
+}
+
+#[test]
+fn a_bare_ctrl_chord_is_refused_and_the_message_names_the_command_forms() {
+    let cases: &[(&str, Option<&str>)] = &[
+        (
+            "ctrl+c",
+            Some("Ctrl+C belongs to the program; use Ctrl+Shift+C or ⌘C"),
+        ),
+        (
+            "ctrl+5",
+            Some("Ctrl+5 belongs to the program; use Ctrl+Shift+5 or ⌘5"),
+        ),
+        (
+            "ctrl+/",
+            Some("Ctrl+/ belongs to the program; use Ctrl+Shift+/ or ⌘/"),
+        ),
+        ("ctrl+shift+c", None),
+        ("ctrl+alt+c", None),
+        ("super+c", None),
+    ];
+    for (text, want) in cases {
+        let chord = Chord::parse(text).expect("valid");
+        let got = Keymap::defaults()
+            .bind(Action::Copy, chord)
+            .err()
+            .map(|e| e.to_string());
+        assert_eq!(got.as_deref(), *want, "{text}");
+    }
 }

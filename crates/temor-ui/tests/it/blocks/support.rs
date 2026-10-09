@@ -161,6 +161,22 @@ pub(super) fn start_with(
 }
 
 /// Feeds the session the events its pane sent, until `done` holds.
+/// Absorbs events until none has come for `quiet` (at most ten seconds), so a mark the shell sends
+/// late lands before a test counts anchors.
+pub(super) fn settle(live: &mut Live, quiet: Duration) {
+    let start = Instant::now();
+    let mut last = Instant::now();
+    while last.elapsed() < quiet && start.elapsed() < Duration::from_secs(10) {
+        match live.events.try_recv() {
+            Ok(event) => {
+                live.session.absorb(event);
+                last = Instant::now();
+            }
+            Err(_) => std::thread::sleep(Duration::from_millis(10)),
+        }
+    }
+}
+
 pub(super) fn pump(live: &mut Live, what: &str, done: impl Fn(&Session) -> bool) {
     let start = Instant::now();
     loop {

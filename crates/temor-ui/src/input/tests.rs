@@ -143,3 +143,36 @@ fn keys_as_the_desktop_sends_them_reach_the_action_or_the_program() {
         assert_eq!(got, *want, "{name}");
     }
 }
+
+#[test]
+fn altgr_text_is_typed_and_a_bare_ctrl_press_is_not() {
+    use temor_vt::{KeyCode, KeyInput, Modifiers};
+
+    use super::is_altgr_text;
+    let ctrl_alt = Modifiers::CTRL.with(Modifiers::ALT);
+    let cases = [
+        (
+            "AltGr @",
+            KeyInput::press(KeyCode::Digit2, ctrl_alt, "@"),
+            true,
+        ),
+        (
+            "Ctrl+C",
+            KeyInput::press(KeyCode::C, Modifiers::CTRL, ""),
+            false,
+        ),
+        (
+            "Ctrl+Alt+C with no text",
+            KeyInput::press(KeyCode::C, ctrl_alt, ""),
+            false,
+        ),
+        (
+            "Alt+x",
+            KeyInput::press(KeyCode::X, Modifiers::ALT, "x"),
+            false,
+        ),
+    ];
+    for (name, key, want) in cases {
+        assert_eq!(is_altgr_text(&key), want, "{name}");
+    }
+}

@@ -9,6 +9,7 @@ pub mod find_bar;
 pub mod handlers;
 pub mod ime;
 pub mod launch;
+pub mod palette;
 pub mod pointer;
 pub mod probe;
 pub mod slot;
@@ -17,6 +18,7 @@ pub mod theme;
 pub mod title;
 pub mod window;
 pub mod window_help;
+pub mod window_style;
 
 pub use launch::{Launch, SESSION_LEADER_ARG};
 pub use window::App;

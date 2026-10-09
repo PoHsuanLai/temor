@@ -12,6 +12,7 @@ use temor_core::vocab::ids::BlockId;
 use temor_pane::keys::Action;
 
 use super::find_bar::StepDirection;
+use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
 
@@ -49,14 +50,21 @@ pub fn find_step(
     }
 }
 
-/// The find bar's close.
-pub fn find_close(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(()) + 'static {
+/// The find bar's close. Its field leaves the page with it, so the keyboard goes back to the
+/// terminal region (`regain`, the same focus the region takes on a click).
+pub fn find_close(
+    slot: Rc<RefCell<Slot>>,
+    mut ui: Signal<u32>,
+    ime: ImeGlue,
+    regain: EventHandler<()>,
+) -> impl FnMut(()) + 'static {
     move |_: ()| {
         if let Some(s) = slot.borrow_mut().session.as_mut() {
             let _ = s.run(Action::CloseFind);
         }
         ui += 1;
         repaint(&slot);
+        ime.take_focus(regain);
     }
 }
 

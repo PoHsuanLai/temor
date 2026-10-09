@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use ds::base::time::FRAME_SLACK;
 use ds::base::time::clock::sleep;
 use ds::edit::composition::{Composing, on_ime, settle};
-use ds::edit::input::EditInput;
+use ds::edit::input::{Composition, EditInput};
 use ds::focus::select::Select;
 use ds::focus::soon::focus_soon_told;
 use ds::host::document::DocumentHost;
@@ -19,6 +19,11 @@ use ds::host::ime::{ImeEvent, ImeListener, ImeSwitch};
 use ds::host::parts::EditHost;
 use ds::host::probe::Probe;
 use ds::prelude::Rect;
+
+use super::slot::Slot;
+use super::window_help::{send_text, set_focus};
+use ds::edit::pointer::EditFocus;
+use temor_core::notify::Focus;
 
 /// The region's IME state, shared by its handlers.
 #[derive(Clone)]
@@ -84,6 +89,49 @@ impl ImeGlue {
     pub async fn listen(&self, element: Rc<MountedData>, heard: EventHandler<ImeEvent>) {
         let listener = with_edit(&self.host, |e| e.ime().listen(&element, heard)).await;
         *self.listener.borrow_mut() = listener;
+    }
+}
+
+/// Where the input method's composed text goes: the program, and the preedit line the window
+/// draws while a composition is under way.
+pub fn composed_sink(
+    slot: Rc<RefCell<Slot>>,
+    preedit: Signal<Option<String>>,
+) -> impl Fn(EditInput) + Clone + 'static {
+    move |input: EditInput| {
+        let mut preedit = preedit;
+        match input {
+            EditInput::Text(text) => send_text(&slot, &text),
+            EditInput::Composition(Composition::Update { text, .. }) => {
+                preedit.set((!text.is_empty()).then_some(text));
+            }
+            EditInput::Composition(Composition::End { text }) => {
+                preedit.set(None);
+                send_text(&slot, &text);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The region's focus: the keyboard in (`gained`), or out, when the composition ends and the
+/// input method turns off.
+pub fn focus_handler(
+    slot: Rc<RefCell<Slot>>,
+    ime: ImeGlue,
+    apply: impl Fn(EditInput) + Clone + 'static,
+    gained: impl Fn() + Clone + 'static,
+) -> impl FnMut(EditFocus) + 'static {
+    move |focus: EditFocus| match focus {
+        EditFocus::In => gained(),
+        EditFocus::Out => {
+            set_focus(&slot, Focus::Unfocused);
+            ime.settle(&apply);
+            let ime = ime.clone();
+            spawn(async move {
+                ime.switch(ImeSwitch::Off).await;
+            });
+        }
     }
 }
 

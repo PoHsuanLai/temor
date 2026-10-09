@@ -9,7 +9,7 @@
 
 use ds_lint::{LintConfig, Profile, Rule, assert_clean, markup};
 use temor_ui::view::probe::Probe;
-use temor_ui::view::window::WINDOW_CSS;
+use temor_ui::view::window_style::WINDOW_CSS;
 
 use super::support::tools_present;
 use super::window::harness;

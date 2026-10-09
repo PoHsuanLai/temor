@@ -40,6 +40,15 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
     })
 }
 
+/// Whether a key is a typed character from AltGr: a press with Ctrl and Alt both held that the
+/// layout typed text for. The program gets that text; encoding Ctrl+Alt+key would send a control
+/// character instead (AltGr's "@" would be lost).
+pub fn is_altgr_text(key: &KeyInput) -> bool {
+    matches!(key.action, KeyAction::Press | KeyAction::Repeat)
+        && key.mods.contains(Modifiers::CTRL.with(Modifiers::ALT))
+        && !key.text.is_empty()
+}
+
 /// The held modifiers as the keymap sees them. Meta counts as Super (PLAN §6).
 pub fn core_mods(held: HeldMods) -> Mods {
     let mut out = Mods::NONE;
