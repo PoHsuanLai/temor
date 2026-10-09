@@ -214,3 +214,17 @@ fn a_malformed_frame_after_the_transfer_ended_is_ignored() {
     });
     assert!(effects.is_empty());
 }
+
+#[test]
+fn an_unreadable_offer_before_any_transfer_is_answered() {
+    let (s, effects) = session(1024).step(Input::Malformed {
+        id: temor_transfer::kitty::KittyId::parse("tx9").expect("id"),
+    });
+    assert_eq!(codes(&effects), vec![ErrorCode::Einval.code()]);
+    let (_, next) = s.step(Input::Frame(msg(Action::Send)));
+    assert!(
+        next.iter()
+            .any(|effect| matches!(effect, Effect::AskConsent(_))),
+        "the session is still idle and takes a later offer"
+    );
+}
