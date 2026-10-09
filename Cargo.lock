@@ -655,6 +655,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-transfer"
+version = "0.1.0"
+dependencies = [
+ "ds-core",
+ "proptest",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "temor-vt"
 version = "0.1.0"
 dependencies = [
