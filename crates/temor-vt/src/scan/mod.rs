@@ -9,9 +9,13 @@
 mod inline_file;
 #[cfg(feature = "ghostty")]
 mod marks;
+#[cfg(feature = "testing")]
+mod status;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use inline_file::{InlineFileScanner, Scanned};
 #[cfg(feature = "ghostty")]
 pub(crate) use marks::MarkCuts;
+#[cfg(feature = "testing")]
+pub(crate) use status::parse_program_status;

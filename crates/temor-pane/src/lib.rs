@@ -21,12 +21,16 @@
 
 pub mod keys;
 pub mod paste;
+#[cfg(unix)]
+pub mod report;
 pub mod settings;
 pub mod text;
 
 #[cfg(feature = "ghostty")]
 mod engine;
 mod error;
+#[cfg(unix)]
+mod platform;
 #[cfg(feature = "ghostty")]
 mod shell;
 

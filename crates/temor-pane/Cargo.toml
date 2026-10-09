@@ -16,9 +16,14 @@ ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render
 [dependencies]
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
+# `SO_PEERCRED` for the status socket (the `net` feature joins the workspace set here).
+rustix = { workspace = true, features = ["net"] }
 temor-render = { workspace = true, optional = true }
 temor-vt = { workspace = true, optional = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
 
 [[test]]
 name = "it"

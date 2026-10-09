@@ -20,6 +20,7 @@ thiserror = { workspace = true }
 ds-core = { workspace = true, features = ["testing"] }
 icu_properties = { workspace = true }
 proptest = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

@@ -18,6 +18,19 @@ pub enum PaneError {
     /// The program could not be started on a terminal, or the terminal failed.
     #[error("the shell could not start: {0}")]
     Pty(#[from] temor_pty::PtyError),
+    /// A pane id was not 1 to 32 letters, digits, `-` or `_`; the caller allocates a valid one.
+    #[error("not a usable pane id: {0:?}")]
+    BadPaneId(String),
+    /// The pane's status socket could not be made in its directory.
+    #[error("the status socket at {path} failed: {source}")]
+    Socket {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+    /// The socket's path is longer than a Unix socket address can hold; use a shorter runtime
+    /// directory.
+    #[error("the status socket path is too long: {0}")]
+    SocketPathTooLong(std::path::PathBuf),
 }
 
 /// Why outside settings text was refused. Each variant names the fix a person can make.

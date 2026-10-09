@@ -4714,6 +4714,7 @@ dependencies = [
  "serde",
  "serde_json",
  "temor-pane",
+ "tempfile",
  "thiserror 2.0.21",
 ]
 
@@ -4721,10 +4722,12 @@ dependencies = [
 name = "temor-pane"
 version = "0.1.0"
 dependencies = [
+ "rustix",
  "temor-pty",
  "temor-render",
  "temor-shell",
  "temor-vt",
+ "tempfile",
  "thiserror 2.0.21",
 ]
 
