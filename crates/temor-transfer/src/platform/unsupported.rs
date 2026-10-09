@@ -16,6 +16,13 @@ fn unsupported() -> TransferError {
     TransferError::Unsupported { feature: FEATURE }
 }
 
+// TODO(platform:windows): directories cannot be opened for sync; the rename is left to the file
+// system's own journal. TODO(platform:macos): sync the directory's descriptor, as on Linux.
+/// Syncs a folder. Nothing is done here yet, so a rename may not survive a crash on this platform.
+pub fn sync_folder(_path: &Path) -> Result<(), TransferError> {
+    Ok(())
+}
+
 /// The destination folder. On this platform it cannot be opened.
 #[derive(Debug)]
 pub struct Root(());

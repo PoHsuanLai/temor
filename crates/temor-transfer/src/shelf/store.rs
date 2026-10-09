@@ -81,12 +81,14 @@ impl ShelfStore {
         io_at(&temp, file.sync_all())?;
         drop(file);
         io_at(&target, fs::rename(&temp, &target))?;
-        sync_dir(&self.dir)
+        crate::platform::sync_folder(&self.dir)
     }
 
-    /// Moves `source` into the folder under `name`, or the next free name, and returns the final
-    /// path. The source is removed only after the copy is complete. If the removal fails, the
-    /// copy is taken back out and the error is returned, so no duplicate is left behind.
+    /// Moves a local file into the folder under `name`, or the next free name, and returns the
+    /// final path. Only for local origins (a file a program in a local pane produced). Never pass
+    /// remote data here: remote files go through the consent flow and `place_consented`. The
+    /// source is removed only after the copy is complete. If the removal fails, the copy is taken
+    /// back out and the error is returned, so no duplicate is left behind.
     pub fn place(&self, source: &Path, name: &FileName) -> Result<PathBuf, TransferError> {
         let placed = self.claim(name, |dest| {
             let mut input = File::open(source)?;
@@ -145,19 +147,6 @@ impl ShelfStore {
             }
         }
     }
-}
-
-/// Syncs a folder so a rename within it survives a crash.
-#[cfg(unix)]
-fn sync_dir(dir: &Path) -> Result<(), TransferError> {
-    io_at(dir, File::open(dir).and_then(|folder| folder.sync_all()))
-}
-
-// TODO(platform:windows): directories cannot be opened for sync there; the rename is durable
-// by the file system's own journal instead.
-#[cfg(not(unix))]
-fn sync_dir(_dir: &Path) -> Result<(), TransferError> {
-    Ok(())
 }
 
 fn io_at<T>(path: &Path, result: io::Result<T>) -> Result<T, TransferError> {

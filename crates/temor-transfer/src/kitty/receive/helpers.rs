@@ -42,6 +42,7 @@ pub(super) fn discards(session: &ReceiveSession) -> Vec<Effect> {
     session
         .open
         .values()
+        .chain(session.finishing.values())
         .map(|file| Effect::Write(WriteOp::Discard(file.path.clone())))
         .collect()
 }

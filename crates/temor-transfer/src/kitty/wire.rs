@@ -107,13 +107,27 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
             word::<Compression>(v, "zip")
         })?,
         transmission: optional(&pairs, &["tt", "transmission"], |v| {
-            word::<Transmission>(v, "tt")
+            let text = ascii(v, "tt")?;
+            Transmission::from_wire(text).ok_or_else(|| Malformed::BadValue { key: "tt" }.into())
         })?,
         data: optional(&pairs, &["d", "data"], |v| {
             base64::decode_capped(v, limits.max_bytes())
         })?
         .unwrap_or_default(),
     })
+}
+
+/// The id of a payload that does not parse, when its action and id are both readable. A frame
+/// like that is answered for its transfer (with `EINVAL`) rather than dropped in silence.
+pub fn readable_header(payload: &[u8], limits: Limits) -> Option<KittyId> {
+    if payload.len() as u64 > limits.max_raw().get() {
+        return None;
+    }
+    let rest = payload.strip_prefix(PREFIX)?;
+    let pairs = pairs(rest);
+    find(&pairs, &["ac", "action"])?;
+    let raw = std::str::from_utf8(find(&pairs, &["id"])?).ok()?;
+    KittyId::parse(raw).ok()
 }
 
 /// Encodes a message as a complete OSC sequence. Used to build sender-side frames and in tests.
@@ -146,8 +160,8 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
     if let Some(compression) = message.compression {
         fields.push(format!("zip={}", compression.slug()));
     }
-    if let Some(transmission) = message.transmission {
-        fields.push(format!("tt={}", transmission.slug()));
+    if let Some(transmission) = &message.transmission {
+        fields.push(format!("tt={}", transmission.word()));
     }
     if !message.data.is_empty() {
         fields.push(format!("d={}", base64::encode(&message.data)));

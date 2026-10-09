@@ -15,8 +15,21 @@ use rustix::io::Errno;
 use crate::error::TransferError;
 use crate::name::RelPath;
 
+/// Folders the transfer makes are 0o755 and files are 0o644. The remote's `prm` is ignored.
 const FOLDER_MODE: u32 = 0o755;
 const FILE_MODE: u32 = 0o644;
+
+/// Syncs a folder to disk, so a rename made inside it survives a crash.
+pub fn sync_folder(path: &Path) -> Result<(), TransferError> {
+    let folder = std::fs::File::open(path).map_err(|source| TransferError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    folder.sync_all().map_err(|source| TransferError::Io {
+        path: path.to_path_buf(),
+        source,
+    })
+}
 
 fn resolve() -> ResolveFlags {
     ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS

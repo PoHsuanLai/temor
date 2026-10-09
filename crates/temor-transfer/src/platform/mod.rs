@@ -8,6 +8,6 @@ mod linux;
 mod unsupported;
 
 #[cfg(target_os = "linux")]
-pub use linux::Root;
+pub use linux::{Root, sync_folder};
 #[cfg(not(target_os = "linux"))]
-pub use unsupported::Root;
+pub use unsupported::{Root, sync_folder};

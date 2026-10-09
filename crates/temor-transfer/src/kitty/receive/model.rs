@@ -4,28 +4,42 @@
 //! one result. A success needs no input. A failure is fed back as `Input::WriteFailed`, which
 //! cancels that file, or the whole transfer when the failure is not for an open file.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ds_core::word::Word;
 
 use crate::consent::Consent;
-use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Reply, UnixNanos};
+use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Reply, UnixNanos, WriteKind};
 use crate::name::RelPath;
 use crate::origin::Origin;
 use crate::units::{Bytes, Limits};
 
-/// What the machine is told: a frame from the remote, the person's answer, the stream ending
-/// early, or a write that failed at the edge.
+/// What the machine is told.
+///
+/// The edge contract: every `Effect::Write` is performed in order. A failure is always fed back
+/// as `WriteFailed`. A successful `Finish` is fed back as `WriteDone`, because a file counts as
+/// saved only once its `Finish` has succeeded. Other successes need no input.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Input {
     Frame(Message),
+    /// A frame that did not parse, whose action and id were still readable (see
+    /// `readable_header`). It is answered with `EINVAL` for its transfer.
+    Malformed {
+        id: KittyId,
+    },
     Decided(Consent),
     /// The stream was dropped. Partly written files are discarded and the transfer ends.
     Aborted,
-    /// An `Effect::Write` failed. `fid` names the file it was for, when there was one.
+    /// An `Effect::Write` failed. `fid` names the file it was for, when there was one, and `op`
+    /// says which operation failed.
     WriteFailed {
         fid: Option<FileId>,
+        op: WriteKind,
         error: ErrorCode,
+    },
+    /// The `Finish` for `fid` succeeded.
+    WriteDone {
+        fid: FileId,
     },
 }
 
@@ -103,6 +117,11 @@ pub struct ReceiveSession {
     pub(crate) open: BTreeMap<FileId, OpenFile>,
     pub(crate) received: u64,
     pub(crate) entries: u64,
+    /// Every path this transfer has created or claimed, so a second entry with the same name is
+    /// refused instead of clobbering the first.
+    pub(crate) claimed: BTreeSet<RelPath>,
+    /// Files whose data is complete and whose `Finish` is in flight.
+    pub(crate) finishing: BTreeMap<FileId, OpenFile>,
 }
 
 impl ReceiveSession {
@@ -115,6 +134,8 @@ impl ReceiveSession {
             open: BTreeMap::new(),
             received: 0,
             entries: 0,
+            claimed: BTreeSet::new(),
+            finishing: BTreeMap::new(),
         }
     }
 

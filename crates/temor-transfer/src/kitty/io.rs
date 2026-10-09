@@ -31,6 +31,7 @@ pub fn wire_code(err: &TransferError) -> ErrorCode {
         | TransferError::TooManyOpen { .. } => ErrorCode::Efbig,
         TransferError::Io { source, .. } => match source.kind() {
             io::ErrorKind::NotFound => ErrorCode::Enoent,
+            io::ErrorKind::AlreadyExists => ErrorCode::Eexist,
             io::ErrorKind::PermissionDenied => ErrorCode::Eperm,
             _ => ErrorCode::Eio,
         },

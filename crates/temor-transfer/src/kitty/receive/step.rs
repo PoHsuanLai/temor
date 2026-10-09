@@ -2,9 +2,12 @@
 
 use super::files::{Chunk, on_data, on_file};
 use super::helpers::{close, discards, ended, failed, reply, with_phase};
-use super::model::{Effect, EndWhy, Input, Phase, ReceiveSession, WriteOp};
+use super::model::{Effect, EndWhy, Input, Phase, ReceiveSession, SavedFile, WriteOp};
 use crate::consent::Consent;
-use crate::kitty::model::{Action, ErrorCode, FileId, KittyId, Message, ReplyStatus, Transmission};
+use crate::kitty::model::{
+    Action, ErrorCode, FileId, KittyId, Message, ReplyStatus, Transmission, WriteKind,
+};
+use crate::units::Bytes;
 
 pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Vec<Effect>) {
     match (session.phase.clone(), input) {
@@ -21,9 +24,11 @@ pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Ve
             close(session, &id, status, EndWhy::Refused)
         }
         (Phase::Receiving(id), Input::Frame(message)) => on_frame(session, &id, message),
-        (Phase::Receiving(id), Input::WriteFailed { fid, error }) => {
-            on_write_failed(session, &id, fid, error)
+        (Phase::Receiving(id), Input::WriteFailed { fid, op, error }) => {
+            on_write_failed(session, &id, fid, op, error)
         }
+        (Phase::Receiving(id), Input::WriteDone { fid }) => on_write_done(session, &id, fid),
+        (_, Input::Malformed { id }) => malformed(session, &id),
         (_, Input::Aborted) => abort(session),
         (_, _) => (session, Vec::new()),
     }
@@ -34,7 +39,8 @@ pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Ve
 fn offer(session: ReceiveSession, message: Message) -> (ReceiveSession, Vec<Effect>) {
     if message
         .transmission
-        .is_some_and(|tt| tt != Transmission::Simple)
+        .as_ref()
+        .is_some_and(|tt| *tt != Transmission::Simple)
     {
         let status = failed(
             ErrorCode::Eperm,
@@ -65,27 +71,64 @@ fn on_frame(
 }
 
 /// A write failed at the edge. A failure for an open file cancels that file and the transfer
-/// goes on. Any other failure ends the transfer.
+/// A write failed at the edge. The failed operation decides what is on disk. A failed `Create`
+/// or `Append` cancels that file (only `Append` leaves something to discard, and `Create` never
+/// got past `EEXIST` or a similar refusal, so nothing of ours is at that path). A failed `Finish`
+/// cancels the file that was complete. Any other failure ends the transfer.
 fn on_write_failed(
     session: ReceiveSession,
     id: &KittyId,
     fid: Option<FileId>,
+    op: WriteKind,
     error: ErrorCode,
 ) -> (ReceiveSession, Vec<Effect>) {
     let status = failed(error, "the file could not be written");
-    let Some(file_id) = fid.filter(|file_id| session.open.contains_key(file_id)) else {
-        let status = failed(error, "the transfer could not be written");
-        return close(session, id, status, EndWhy::Failed);
+    let whole = failed(error, "the transfer could not be written");
+    let Some(file_id) = fid else {
+        return close(session, id, whole, EndWhy::Failed);
     };
     let mut next = session;
-    let Some(open) = next.open.remove(&file_id) else {
+    let (found, discard) = match op {
+        WriteKind::Create => (next.open.remove(&file_id), false),
+        WriteKind::Append => (next.open.remove(&file_id), true),
+        WriteKind::Finish => (next.finishing.remove(&file_id), true),
+        WriteKind::MakeDir | WriteKind::Discard => (None, false),
+    };
+    let Some(file) = found else {
+        return close(next, id, whole, EndWhy::Failed);
+    };
+    let mut effects = Vec::new();
+    if discard {
+        effects.push(Effect::Write(WriteOp::Discard(file.path)));
+    }
+    effects.push(reply(id, Some(file_id), status));
+    (next, effects)
+}
+
+/// The `Finish` of a complete file succeeded: now it is saved.
+fn on_write_done(
+    session: ReceiveSession,
+    id: &KittyId,
+    fid: FileId,
+) -> (ReceiveSession, Vec<Effect>) {
+    let mut next = session;
+    let Some(file) = next.finishing.remove(&fid) else {
         return (next, Vec::new());
     };
     let effects = vec![
-        Effect::Write(WriteOp::Discard(open.path)),
-        reply(id, Some(file_id), status),
+        reply(id, Some(fid), ReplyStatus::Ok),
+        Effect::Saved(SavedFile {
+            path: file.path,
+            size: Bytes::new(file.written),
+        }),
     ];
     (next, effects)
+}
+
+/// A frame that did not parse but whose id was readable: answered for its transfer.
+fn malformed(session: ReceiveSession, id: &KittyId) -> (ReceiveSession, Vec<Effect>) {
+    let status = failed(ErrorCode::Einval, "the frame could not be read");
+    (session, vec![reply(id, None, status)])
 }
 
 /// The stream was dropped: partly written files are discarded and nothing is replied, since

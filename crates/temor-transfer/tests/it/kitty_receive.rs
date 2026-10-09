@@ -48,7 +48,7 @@ fn a_regular_file_is_created_appended_finished_and_saved() {
         data: b"hello".to_vec(),
         ..msg(Action::EndData)
     });
-    let (_, effects) = s.step(last);
+    let (s, effects) = s.step(last);
     let path = RelPath::parse("a.txt").expect("path");
     assert_eq!(
         writes(&effects),
@@ -63,7 +63,13 @@ fn a_regular_file_is_created_appended_finished_and_saved() {
             },
         ]
     );
-    assert!(effects.iter().any(|effect| matches!(
+    assert!(
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::Saved(_)))
+    );
+    let (_, done) = s.step(Input::WriteDone { fid: fid("1") });
+    assert!(done.iter().any(|effect| matches!(
         effect,
         Effect::Saved(saved) if saved.path == path && saved.size == Bytes::new(5)
     )));
@@ -79,13 +85,14 @@ fn chunks_arrive_in_pieces_before_the_last() {
         ..msg(Action::Data)
     }));
     assert_eq!(writes(&first).len(), 1);
-    let (_, last) = s.step(Input::Frame(Message {
+    let (s, _) = s.step(Input::Frame(Message {
         file: Some(fid("9")),
         data: b"cd".to_vec(),
         ..msg(Action::EndData)
     }));
+    let (_, done) = s.step(Input::WriteDone { fid: fid("9") });
     assert!(
-        last.iter()
+        done.iter()
             .any(|effect| matches!(effect, Effect::Saved(saved) if saved.size == Bytes::new(4)))
     );
 }
@@ -113,11 +120,12 @@ fn a_folder_and_its_children_land_under_it() {
             RelPath::parse("docs/note.txt").expect("p")
         )]
     );
-    let (_, effects) = s.step(Input::Frame(Message {
+    let (s, _) = s.step(Input::Frame(Message {
         file: Some(fid("2")),
         ..msg(Action::EndData)
     }));
-    assert!(effects.iter().any(|effect| matches!(
+    let (_, done) = s.step(Input::WriteDone { fid: fid("2") });
+    assert!(done.iter().any(|effect| matches!(
         effect,
         Effect::Saved(saved) if saved.path == RelPath::parse("docs/note.txt").expect("p")
     )));

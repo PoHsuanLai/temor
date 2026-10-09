@@ -2,12 +2,11 @@
 //! checked against the announced size.
 
 use super::helpers::{close, failed, refuse, refuse_with, reply};
-use super::model::{Effect, EndWhy, OpenFile, ReceiveSession, SavedFile, WriteOp};
+use super::model::{Effect, EndWhy, OpenFile, ReceiveSession, WriteOp};
 use crate::kitty::model::{
     Compression, ErrorCode, FileId, FileType, KittyId, Message, ReplyStatus,
 };
 use crate::name::RelPath;
-use crate::units::Bytes;
 
 /// Whether a data frame carries the last chunk of its file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +23,10 @@ pub(super) fn on_file(
     let Some(file_id) = message.file.clone() else {
         return refuse(session, id, None, ErrorCode::Einval, "the file has no id");
     };
-    if session.dirs.contains_key(&file_id) || session.open.contains_key(&file_id) {
+    if session.dirs.contains_key(&file_id)
+        || session.open.contains_key(&file_id)
+        || session.finishing.contains_key(&file_id)
+    {
         return refuse(
             session,
             id,
@@ -53,10 +55,20 @@ pub(super) fn on_file(
         Ok(path) => path,
         Err((code, why)) => return refuse(session, id, Some(file_id), code, why),
     };
+    if session.claimed.contains(&path) {
+        return refuse(
+            session,
+            id,
+            Some(file_id),
+            ErrorCode::Eexist,
+            "the name is already used in this transfer",
+        );
+    }
     match message.file_type.unwrap_or(FileType::Regular) {
         FileType::Directory => {
             let mut next = session;
             next.dirs.insert(file_id.clone(), path.clone());
+            next.claimed.insert(path.clone());
             next.entries += 1;
             let ok = reply(id, Some(file_id), ReplyStatus::Ok);
             (next, vec![Effect::Write(WriteOp::MakeDir(path)), ok])
@@ -115,6 +127,7 @@ pub(super) fn open_regular(
     }
     let mut next = session;
     next.entries += 1;
+    next.claimed.insert(path.clone());
     next.open.insert(
         file_id.clone(),
         OpenFile {
@@ -191,15 +204,12 @@ pub(super) fn on_data(
         let short = failed(ErrorCode::Eio, "the size does not match the announced size");
         return close(next, id, short, EndWhy::Failed);
     }
+    // The file is saved only when its Finish succeeds; the edge feeds that back as `WriteDone`.
     next.open.remove(&file_id);
     effects.push(Effect::Write(WriteOp::Finish {
         path: open.path.clone(),
         modified: open.modified,
     }));
-    effects.push(reply(id, Some(file_id), ReplyStatus::Ok));
-    effects.push(Effect::Saved(SavedFile {
-        path: open.path,
-        size: Bytes::new(written),
-    }));
+    next.finishing.insert(file_id, OpenFile { written, ..open });
     (next, effects)
 }

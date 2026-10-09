@@ -49,7 +49,8 @@ impl FileId {
     }
 }
 
-/// POSIX permission bits (`prm`). Parsed and carried; applying them needs the platform edge.
+/// POSIX permission bits (`prm`). Parsed and carried, but ignored by the writer: files are created
+/// with mode 0o644 and folders with 0o755, whatever the remote sent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mode(u32);
 
@@ -77,13 +78,51 @@ impl UnixNanos {
     }
 }
 
-/// The transmission type (`tt`). The protocol's default is `simple`. `rsync` is a different
-/// delta protocol this crate does not implement, so it is refused.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
+/// The transmission type (`tt`). The protocol's default is `simple`. `rsync` is a different delta
+/// protocol this crate does not implement. Any other word is kept as `Other` so it can be refused
+/// with a reply rather than ignored.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Transmission {
     Simple,
     Rsync,
+    Other(String),
+}
+
+/// The longest transmission word kept. Longer words are malformed.
+const MAX_TRANSMISSION_BYTES: usize = 64;
+
+impl Transmission {
+    /// Reads the wire word. `None` when the word is longer than the cap; the caller treats that as
+    /// malformed.
+    pub fn from_wire(word: &str) -> Option<Self> {
+        match word {
+            "simple" => Some(Self::Simple),
+            "rsync" => Some(Self::Rsync),
+            other if other.len() <= MAX_TRANSMISSION_BYTES => Some(Self::Other(other.to_owned())),
+            _ => None,
+        }
+    }
+
+    /// The word as it appears on the wire.
+    pub fn word(&self) -> &str {
+        match self {
+            Self::Simple => "simple",
+            Self::Rsync => "rsync",
+            Self::Other(word) => word,
+        }
+    }
+}
+
+/// Which file-system operation a write was for. The edge reports a failure with this, so the
+/// machine knows what, if anything, exists on disk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[word(case = snake)]
+pub enum WriteKind {
+    MakeDir,
+    Create,
+    Append,
+    Finish,
+    Discard,
 }
 
 /// The action of a message (`ac`).
@@ -181,6 +220,7 @@ impl Message {
 pub enum ErrorCode {
     Eperm,
     Enoent,
+    Eexist,
     Einval,
     Efbig,
     Eio,

@@ -3,7 +3,7 @@
 
 use temor_transfer::kitty::{
     Action, Effect, EndWhy, ErrorCode, FileType, Input, Message, ReceiveSession, ReplyStatus,
-    Transmission, WriteOp,
+    Transmission, WriteKind, WriteOp,
 };
 use temor_transfer::{Bytes, Consent, Count, Limits, RelPath};
 
@@ -213,6 +213,7 @@ fn a_failed_write_cancels_that_file_and_the_transfer_goes_on() {
     let (s, _) = s.step(file("w", "1", FileType::Regular, None));
     let (s, effects) = s.step(Input::WriteFailed {
         fid: Some(fid("1")),
+        op: WriteKind::Append,
         error: ErrorCode::Eio,
     });
     assert_eq!(
@@ -229,6 +230,7 @@ fn a_failed_write_for_no_open_file_ends_the_transfer() {
     let s = allowed(1024);
     let (_, effects) = s.step(Input::WriteFailed {
         fid: None,
+        op: WriteKind::Append,
         error: ErrorCode::Enoent,
     });
     assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));

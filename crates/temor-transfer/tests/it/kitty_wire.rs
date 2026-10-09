@@ -1,6 +1,6 @@
 use temor_transfer::kitty::{
     Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
-    Transmission, UnixNanos, encode_message, encode_reply, parse_message,
+    Transmission, UnixNanos, encode_message, encode_reply, parse_message, readable_header,
 };
 use temor_transfer::{Malformed, TransferError};
 
@@ -144,4 +144,33 @@ fn an_oversized_payload_is_refused_before_it_is_read() {
 fn the_transmission_type_is_read() {
     let message = parse_message(b"5113;ac=send;id=a;tt=rsync", limits(64)).expect("parses");
     assert_eq!(message.transmission, Some(Transmission::Rsync));
+}
+
+#[test]
+fn an_unknown_transmission_word_is_kept_for_a_reply() {
+    let message = parse_message(b"5113;ac=send;id=a;tt=frobnicate", limits(64)).expect("parses");
+    assert_eq!(
+        message.transmission,
+        Some(temor_transfer::kitty::Transmission::Other(
+            "frobnicate".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn a_frame_that_does_not_parse_keeps_its_readable_id() {
+    let bad = b"5113;ac=file;id=tx9;n=!!!!";
+    assert!(parse_message(bad, limits(64)).is_err());
+    assert_eq!(
+        readable_header(bad, limits(64)).map(|id| id.as_str().to_owned()),
+        Some("tx9".to_owned())
+    );
+    assert!(
+        readable_header(b"5113;id=tx9", limits(64)).is_none(),
+        "no action readable"
+    );
+    assert!(
+        readable_header(b"5113;ac=file", limits(64)).is_none(),
+        "no id readable"
+    );
 }

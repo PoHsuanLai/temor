@@ -10,7 +10,7 @@ mod wire;
 pub use io::{apply_write, wire_code};
 pub use model::{
     Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
-    Transmission, UnixNanos,
+    Transmission, UnixNanos, WriteKind,
 };
 pub use receive::{Effect, EndWhy, Input, ReceiveSession, SavedFile, WriteOp};
-pub use wire::{encode_message, encode_reply, parse_message};
+pub use wire::{encode_message, encode_reply, parse_message, readable_header};
