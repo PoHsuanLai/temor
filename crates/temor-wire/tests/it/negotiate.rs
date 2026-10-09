@@ -28,9 +28,8 @@ proptest! {
         match (&here, &there) {
             (Negotiation::Agreed(a), Negotiation::Agreed(b)) => {
                 prop_assert_eq!(a.protocol, b.protocol);
-                prop_assert!(a.caps.iter().all(|cap| b.caps.contains(cap)));
-                prop_assert!(b.caps.iter().all(|cap| a.caps.contains(cap)));
-                prop_assert_eq!(a.caps.len(), b.caps.len());
+                // Both ends hold the same ordered vector, not merely the same set.
+                prop_assert_eq!(&a.caps, &b.caps);
             }
             (Negotiation::Incompatible { .. }, Negotiation::Incompatible { .. }) => {}
             _ => prop_assert!(false, "the two ends disagree: {here:?} vs {there:?}"),
@@ -40,8 +39,12 @@ proptest! {
     #[test]
     fn an_agreed_version_lies_inside_both_ranges(ours in hello(), theirs in hello()) {
         if let Negotiation::Agreed(agreed) = negotiate(&ours, &theirs) {
-            prop_assert!(agreed.protocol >= ours.oldest_protocol && agreed.protocol <= ours.protocol);
-            prop_assert!(agreed.protocol >= theirs.oldest_protocol && agreed.protocol <= theirs.protocol);
+            let within_ours = agreed.protocol >= ours.oldest_protocol
+                && agreed.protocol <= ours.protocol;
+            let within_theirs = agreed.protocol >= theirs.oldest_protocol
+                && agreed.protocol <= theirs.protocol;
+            prop_assert!(within_ours);
+            prop_assert!(within_theirs);
             prop_assert!(agreed.caps.iter().all(|cap| theirs.caps.contains(cap)));
         }
     }

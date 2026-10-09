@@ -17,11 +17,16 @@ pub enum Refusal {
     DeniedByHost,
     /// The call's output or size is over the host's limit.
     OverLimit,
+    /// A reason this build does not know.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a request failed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RemoteError {
+    /// The helper cannot read this request: it is from a newer temor. Sent under the request's id.
+    UnknownRequest,
     /// No session has that id (it ended, or it was never opened here).
     NoSuchSession {
         /// The id asked for.

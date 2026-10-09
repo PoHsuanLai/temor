@@ -21,7 +21,7 @@ pub struct Agreement {
     pub protocol: ProtocolVersion,
     /// The peer's helper identity, so the caller can see whether the helper is the one it shipped.
     pub helper: HelperVersion,
-    /// The capabilities both offer, in the local side's order.
+    /// The capabilities both offer, sorted, so both ends hold the same vector.
     pub caps: Vec<Capability>,
 }
 
@@ -46,7 +46,8 @@ pub enum Incompatibility {
 /// Agrees a protocol and capabilities from the local greeting and the peer's.
 ///
 /// The protocol is the newest version inside both ranges. The capabilities are the local ones
-/// the peer also offers, each once. Helper identity is passed through: whether it is current is the caller's
+/// the peer also offers, sorted and each once. Helper identity is passed through: whether it is
+/// current is the caller's
 /// decision, since an old helper is updated, not refused.
 pub fn negotiate(ours: &Hello, theirs: &Hello) -> Negotiation {
     let their_range = theirs.range();
@@ -67,12 +68,16 @@ pub fn negotiate(ours: &Hello, theirs: &Hello) -> Negotiation {
             },
         };
     }
-    let mut caps: Vec<Capability> = Vec::new();
-    for cap in &ours.caps {
-        if theirs.caps.contains(cap) && !caps.contains(cap) {
-            caps.push(*cap);
-        }
-    }
+    // Both ends compute the same set, sorted by the enum's order, so the agreement is identical
+    // whichever side computes it. A capability this build does not know is never agreed.
+    let mut caps: Vec<Capability> = ours
+        .caps
+        .iter()
+        .copied()
+        .filter(|cap| *cap != Capability::Unknown && theirs.caps.contains(cap))
+        .collect();
+    caps.sort_unstable();
+    caps.dedup();
     Negotiation::Agreed(Agreement {
         protocol: newest,
         helper: theirs.helper,

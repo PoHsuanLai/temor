@@ -44,6 +44,9 @@ pub enum SessionState {
     Attached,
     /// No client is attached; the session runs on and keeps its screen.
     Detached,
+    /// A state this build does not know.
+    #[serde(other)]
+    Unknown,
 }
 
 /// One session in a listing.

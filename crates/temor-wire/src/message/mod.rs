@@ -8,6 +8,7 @@
 mod envelope;
 mod event;
 mod files;
+mod incoming;
 mod ports;
 mod relay;
 mod remote_error;
@@ -18,11 +19,15 @@ mod trial;
 
 pub use envelope::Message;
 pub use event::Event;
-pub use files::{ChangeKind, DirEntry, EntryKind, FileMeta, FileStamp, RemotePath, WriteCheck};
+pub use files::{DirEntry, EntryKind, FileMeta, FileStamp, RemotePath, WatchChange, WriteCheck};
+pub use incoming::{Frame, Incoming};
 pub use ports::ListeningPort;
 pub use relay::{RelayCall, RelayReply, Truncation};
 pub use remote_error::{Refusal, RemoteError};
 pub use reply::Reply;
 pub use request::Request;
 pub use session::{EnvVar, ExitStatus, IdleLimit, OpenSession, SessionInfo, SessionState};
-pub use trial::{TrialRequest, UncheckedWhy, Verdict};
+pub use trial::{
+    ChangeKind, ErrorLine, FileChange, FileChanges, RelPath, TrialRequest, TrialVerdict,
+    UncheckedWhy,
+};

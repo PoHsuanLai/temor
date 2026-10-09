@@ -1,6 +1,6 @@
 //! Events: what the helper reports without being asked.
 
-use super::files::{ChangeKind, RemotePath};
+use super::files::{RemotePath, WatchChange};
 use super::ports::ListeningPort;
 use super::session::ExitStatus;
 use crate::ids::{SessionId, WatchId};
@@ -30,6 +30,6 @@ pub enum Event {
         /// The path that changed.
         path: RemotePath,
         /// How.
-        kind: ChangeKind,
+        kind: WatchChange,
     },
 }

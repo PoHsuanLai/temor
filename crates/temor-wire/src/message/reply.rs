@@ -4,7 +4,7 @@ use super::files::{DirEntry, FileMeta, FileStamp};
 use super::ports::ListeningPort;
 use super::relay::RelayReply;
 use super::session::SessionInfo;
-use super::trial::Verdict;
+use super::trial::TrialVerdict;
 use crate::ids::{SessionId, WatchId};
 use crate::units::{ByteCount, Size};
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ pub enum Reply {
         watch: WatchId,
     },
     /// A trial's verdict.
-    Verdict(Verdict),
+    Verdict(TrialVerdict),
     /// A relayed call's answer.
     Relayed(RelayReply),
 }

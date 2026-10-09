@@ -7,6 +7,7 @@ use super::files::RemotePath;
 use super::session::{EnvVar, ExitStatus};
 use crate::ids::TerminalId;
 use crate::units::{ByteCount, LineCount, LineNumber};
+use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
 /// One call from the agent, carried out on the host.
@@ -64,12 +65,15 @@ pub enum RelayCall {
 }
 
 /// Whether a terminal's kept output was cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
 pub enum Truncation {
     /// Everything printed is kept.
     Kept,
     /// The head was cut to fit the limit.
     Cut,
+    /// A value this build does not know.
+    #[serde(other)]
+    Unknown,
 }
 
 /// The answer to a relayed call.

@@ -23,6 +23,12 @@ pub enum Request {
         /// The session.
         session: SessionId,
     },
+    /// End a session: send it a hangup, then reap its program and drop its screen. Replies `Ack`.
+    /// Unlike detaching, nothing of the session survives.
+    Close {
+        /// The session.
+        session: SessionId,
+    },
     /// Resize a session. Replies `Ack`.
     ResizeSession {
         /// The session.

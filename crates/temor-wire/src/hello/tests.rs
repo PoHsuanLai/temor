@@ -82,17 +82,24 @@ fn an_inverted_peer_range_is_refused_even_when_it_would_overlap() {
 }
 
 #[test]
-fn capabilities_are_the_intersection_in_local_order() {
+fn capabilities_are_the_sorted_intersection_and_both_ends_agree_on_the_order() {
     let ours = hello(
         1,
         1,
-        &[Capability::Files, Capability::Ports, Capability::Trial],
+        &[Capability::Trial, Capability::Files, Capability::Ports],
     );
-    let theirs = hello(1, 1, &[Capability::Trial, Capability::Files]);
-    assert_eq!(
-        agreed(negotiate(&ours, &theirs)).caps,
-        [Capability::Files, Capability::Trial]
-    );
+    let theirs = hello(1, 1, &[Capability::Files, Capability::Trial]);
+    let here = agreed(negotiate(&ours, &theirs)).caps;
+    let there = agreed(negotiate(&theirs, &ours)).caps;
+    assert_eq!(here, [Capability::Files, Capability::Trial]);
+    assert_eq!(here, there);
+}
+
+#[test]
+fn an_unknown_capability_is_never_agreed() {
+    let ours = hello(1, 1, &[Capability::Unknown, Capability::Files]);
+    let theirs = hello(1, 1, &[Capability::Unknown, Capability::Files]);
+    assert_eq!(agreed(negotiate(&ours, &theirs)).caps, [Capability::Files]);
 }
 
 #[test]

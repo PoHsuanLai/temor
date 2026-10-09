@@ -1,29 +1,24 @@
 //! Cutting frames out of bytes as they arrive.
 
-use super::HEADER;
-use super::limit::{FrameLimit, header_lengths};
+use super::header::{HEADER, Lengths, read, total};
+use super::limit::FrameLimit;
 use crate::WireError;
-use serde::de::DeserializeOwned;
-
-/// A decoded message and the payload that came with it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Frame<T> {
-    /// The message.
-    pub message: T,
-    /// The payload; empty when the message has none.
-    pub payload: Vec<u8>,
-}
+use crate::message::Incoming;
+use ds_core::word::Word;
 
 /// Whether the decoder can still take bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
 enum Health {
     Sound,
     Spent,
 }
 
 /// Cuts frames out of bytes as they arrive. Push whatever was read, then pull frames until
-/// `None`. A frame over the limit, or JSON that is not the expected message, ends the stream:
-/// that error is returned once, and every call after it is [`WireError::Spent`].
+/// `None`.
+///
+/// A frame that is over the limit, or whose JSON is not a message this decoder can read, ends the
+/// stream. That error is returned once; every later call is [`WireError::Spent`], and
+/// [`Decoder::finish`] returns the same error.
 #[derive(Debug, Clone)]
 pub struct Decoder {
     limit: FrameLimit,
@@ -31,6 +26,7 @@ pub struct Decoder {
     /// Where the next unread frame starts in `buffer`.
     start: usize,
     health: Health,
+    failure: Option<WireError>,
 }
 
 impl Decoder {
@@ -41,6 +37,7 @@ impl Decoder {
             buffer: Vec::new(),
             start: 0,
             health: Health::Sound,
+            failure: None,
         }
     }
 
@@ -49,47 +46,53 @@ impl Decoder {
         self.buffer.extend_from_slice(bytes);
     }
 
-    /// The next whole frame, or `None` until more bytes arrive.
-    pub fn next_frame<T: DeserializeOwned>(&mut self) -> Result<Option<Frame<T>>, WireError> {
+    /// The next whole frame, read as an [`Incoming`], or `None` until more bytes arrive.
+    pub fn next_message(&mut self) -> Result<Option<Incoming>, WireError> {
         if self.health == Health::Spent {
             return Err(WireError::Spent);
         }
-        let result = self.take_frame();
-        if result.is_err() {
-            self.health = Health::Spent;
+        match self.take() {
+            Ok(incoming) => Ok(incoming),
+            Err(error) => {
+                self.health = Health::Spent;
+                self.failure = Some(error.clone());
+                Err(error)
+            }
         }
-        result
     }
 
-    /// Ends the stream. Bytes of an unfinished frame mean it was cut off.
+    /// Ends the stream. An earlier refusal is returned again; otherwise bytes of an unfinished
+    /// frame mean it was cut off.
     pub fn finish(self) -> Result<(), WireError> {
-        if self.start < self.buffer.len() {
+        if let Some(error) = self.failure {
+            Err(error)
+        } else if self.start < self.buffer.len() {
             Err(WireError::Truncated)
         } else {
             Ok(())
         }
     }
 
-    fn take_frame<T: DeserializeOwned>(&mut self) -> Result<Option<Frame<T>>, WireError> {
+    fn take(&mut self) -> Result<Option<Incoming>, WireError> {
         let pending = self.buffer.get(self.start..).unwrap_or_default();
         let Some(header) = pending.first_chunk::<HEADER>() else {
             return Ok(None);
         };
-        // The header is judged before any body is waited for, so an announced length over the
-        // limit is refused at once and never buffered.
-        let (json_len, payload_len) = header_lengths(header, self.limit)?;
-        let total = HEADER + json_len + payload_len;
-        let Some(whole) = pending.get(..total) else {
+        // The header is judged before any body is waited for.
+        let lengths: Lengths = read(header, self.limit)?;
+        let Some(size) = total(lengths) else {
+            return Err(self.limit.refuse(u64::MAX));
+        };
+        let Some(whole) = pending.get(..size) else {
             return Ok(None);
         };
-        let json = whole.get(HEADER..HEADER + json_len).unwrap_or_default();
-        let message = serde_json::from_slice(json).map_err(|error| WireError::Malformed {
-            reason: error.to_string(),
-        })?;
-        let payload = whole.get(HEADER + json_len..).unwrap_or_default().to_vec();
-        self.start += total;
+        let json_end = HEADER + lengths.json;
+        let json = whole.get(HEADER..json_end).unwrap_or_default();
+        let payload = lengths.payload.and_then(|_| whole.get(json_end..size));
+        let incoming = Incoming::parse(json, payload)?;
+        self.start += size;
         self.compact();
-        Ok(Some(Frame { message, payload }))
+        Ok(Some(incoming))
     }
 
     /// Drops the bytes of frames already taken once they make up half the buffer, so the copy is

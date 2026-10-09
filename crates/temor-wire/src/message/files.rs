@@ -43,6 +43,9 @@ pub enum EntryKind {
     Symlink,
     /// Anything else: a device, a socket, a pipe.
     Other,
+    /// A kind this build does not know.
+    #[serde(other)]
+    Unknown,
 }
 
 /// What `stat` says about a path.
@@ -71,7 +74,7 @@ pub struct DirEntry {
 
 /// How a watched path changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
-pub enum ChangeKind {
+pub enum WatchChange {
     /// Something appeared.
     Created,
     /// Its contents or metadata changed.
@@ -80,4 +83,7 @@ pub enum ChangeKind {
     Removed,
     /// It was moved.
     Renamed,
+    /// A change this build does not know.
+    #[serde(other)]
+    Unknown,
 }

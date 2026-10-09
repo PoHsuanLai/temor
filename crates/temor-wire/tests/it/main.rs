@@ -2,7 +2,9 @@
 //! version agreement and the reconnect machine, all over generated values.
 
 mod decoder;
+mod future;
 mod garbage;
+mod golden;
 mod link;
 mod negotiate;
 mod roundtrip;

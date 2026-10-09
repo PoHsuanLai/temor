@@ -56,6 +56,9 @@ pub enum GoneReason {
     Closed,
     /// Every attempt in the policy failed.
     GaveUp,
+    /// The host refused the connection (an incompatible handshake, or a refusal). Retrying would
+    /// meet the same refusal, so the link stops at once.
+    Refused,
 }
 
 /// What happened, as the caller saw it.
@@ -88,6 +91,9 @@ pub enum LinkEvent {
     },
     /// The person closed the connection.
     Close,
+    /// The host refused: the handshake is incompatible, or the host turned the link away. Goes
+    /// straight to `Gone(Refused)` with no retries.
+    Refused,
 }
 
 /// What the caller must do. The step returns these; it never does them.

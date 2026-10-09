@@ -5,8 +5,9 @@ use temor_wire::digest::ContentHash;
 use temor_wire::hello::{Capability, HelperVersion, ProtocolVersion};
 use temor_wire::ids::{RequestId, SessionId, TerminalId, WatchId};
 use temor_wire::message::{
-    ChangeKind, EntryKind, EnvVar, ExitStatus, FileMeta, FileStamp, IdleLimit, ListeningPort,
-    Refusal, RemotePath, SessionState, Truncation, UncheckedWhy, WriteCheck,
+    ChangeKind, EntryKind, EnvVar, ErrorLine, ExitStatus, FileChange, FileChanges, FileMeta,
+    FileStamp, IdleLimit, ListeningPort, Refusal, RelPath, RemotePath, SessionState, Truncation,
+    UncheckedWhy, WatchChange, WriteCheck,
 };
 use temor_wire::units::{
     ByteCount, ByteOffset, ByteRange, Cols, ExitCode, LineCount, LineNumber, Pid, Port, Rows,
@@ -59,6 +60,7 @@ pub fn capability() -> impl Strategy<Value = Capability> {
         Just(Capability::Files),
         Just(Capability::Trial),
         Just(Capability::Relay),
+        Just(Capability::Unknown),
     ]
 }
 
@@ -94,6 +96,7 @@ pub fn entry_kind() -> impl Strategy<Value = EntryKind> {
         Just(EntryKind::Directory),
         Just(EntryKind::Symlink),
         Just(EntryKind::Other),
+        Just(EntryKind::Unknown),
     ]
 }
 
@@ -105,13 +108,34 @@ pub fn file_meta() -> impl Strategy<Value = FileMeta> {
     })
 }
 
-pub fn change_kind() -> impl Strategy<Value = ChangeKind> {
+pub fn watch_change() -> impl Strategy<Value = WatchChange> {
+    prop_oneof![
+        Just(WatchChange::Created),
+        Just(WatchChange::Modified),
+        Just(WatchChange::Removed),
+        Just(WatchChange::Renamed),
+        Just(WatchChange::Unknown),
+    ]
+}
+
+pub fn trial_change_kind() -> impl Strategy<Value = ChangeKind> {
     prop_oneof![
         Just(ChangeKind::Created),
         Just(ChangeKind::Modified),
         Just(ChangeKind::Removed),
-        Just(ChangeKind::Renamed),
+        Just(ChangeKind::Unknown),
     ]
+}
+
+pub fn file_changes() -> impl Strategy<Value = FileChanges> {
+    prop::collection::vec(
+        (text(), trial_change_kind()).prop_map(|(path, how)| FileChange {
+            path: RelPath(path),
+            how,
+        }),
+        0..4,
+    )
+    .prop_map(|files| FileChanges { files })
 }
 
 pub fn byte_range() -> impl Strategy<Value = ByteRange> {
@@ -129,7 +153,11 @@ pub fn idle_limit() -> impl Strategy<Value = IdleLimit> {
 }
 
 pub fn session_state() -> impl Strategy<Value = SessionState> {
-    prop_oneof![Just(SessionState::Attached), Just(SessionState::Detached)]
+    prop_oneof![
+        Just(SessionState::Attached),
+        Just(SessionState::Detached),
+        Just(SessionState::Unknown),
+    ]
 }
 
 pub fn exit_status() -> impl Strategy<Value = ExitStatus> {
@@ -152,6 +180,7 @@ pub fn refusal() -> impl Strategy<Value = Refusal> {
         Just(Refusal::OutsideWorkspace),
         Just(Refusal::DeniedByHost),
         Just(Refusal::OverLimit),
+        Just(Refusal::Unknown),
     ]
 }
 
@@ -160,11 +189,20 @@ pub fn unchecked_why() -> impl Strategy<Value = UncheckedWhy> {
         Just(UncheckedWhy::TimedOut),
         Just(UncheckedWhy::NeededNetwork),
         Just(UncheckedWhy::NoSandbox),
+        Just(UncheckedWhy::Unknown),
     ]
 }
 
+pub fn error_line() -> impl Strategy<Value = ErrorLine> {
+    text().prop_map(ErrorLine)
+}
+
 pub fn truncation() -> impl Strategy<Value = Truncation> {
-    prop_oneof![Just(Truncation::Kept), Just(Truncation::Cut)]
+    prop_oneof![
+        Just(Truncation::Kept),
+        Just(Truncation::Cut),
+        Just(Truncation::Unknown),
+    ]
 }
 
 pub fn line_number() -> impl Strategy<Value = LineNumber> {

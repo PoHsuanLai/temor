@@ -55,7 +55,7 @@ fn a_huge_attempt_number_does_not_overflow() {
 #[test]
 fn the_transition_table() {
     use LinkEffect::{Attach, Dial, WakeAt};
-    use LinkEvent::{AttemptFailed, Close, Lost, Reattached, SessionsChanged, Tick};
+    use LinkEvent::{AttemptFailed, Close, Lost, Reattached, Refused, SessionsChanged, Tick};
     let cases: Vec<(&str, LinkState, LinkEvent, LinkState, Vec<LinkEffect>)> = vec![
         (
             "a loss schedules an immediate first dial",
@@ -129,6 +129,27 @@ fn the_transition_table() {
             backoff(2, 1_200, 100),
             Close,
             gone(GoneReason::Closed),
+            Vec::new(),
+        ),
+        (
+            "a refusal while connected is final, with no retry",
+            connected(),
+            Refused,
+            gone(GoneReason::Refused),
+            Vec::new(),
+        ),
+        (
+            "a refusal while dialing is final, with no retry",
+            reattaching(2),
+            Refused,
+            gone(GoneReason::Refused),
+            Vec::new(),
+        ),
+        (
+            "a refusal while waiting is final, with no retry",
+            backoff(2, 1_200, 100),
+            Refused,
+            gone(GoneReason::Refused),
             Vec::new(),
         ),
         (

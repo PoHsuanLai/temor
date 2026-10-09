@@ -24,8 +24,10 @@ pub struct ProtocolRange {
 #[serde(transparent)]
 pub struct HelperVersion(pub ContentHash);
 
-/// What a side can do. Agreement is the set both sides offer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word, Serialize, Deserialize)]
+/// What a side can do. Agreement is the set both sides offer, in the order of this enum.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Word, Serialize, Deserialize,
+)]
 pub enum Capability {
     /// Sessions that outlive a connection, with idle limits.
     Sessions,
@@ -37,6 +39,9 @@ pub enum Capability {
     Trial,
     /// Agent relay: fs and terminal calls for a remote workspace.
     Relay,
+    /// A capability this build does not know. Never agreed.
+    #[serde(other)]
+    Unknown,
 }
 
 /// The first message each side sends, before anything else.

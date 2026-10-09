@@ -5,9 +5,9 @@ use proptest::prelude::*;
 use temor_wire::hello::Hello;
 use temor_wire::message::{
     DirEntry, Event, Message, OpenSession, RelayCall, RelayReply, RemoteError, Reply, Request,
-    TrialRequest, Verdict,
+    SessionInfo, TrialRequest, TrialVerdict,
 };
-use temor_wire::units::UnixMillis;
+use temor_wire::units::{ByteCount, UnixMillis};
 
 fn hello() -> impl Strategy<Value = Hello> {
     (
@@ -76,6 +76,7 @@ pub fn request() -> impl Strategy<Value = Request> {
         open_session().prop_map(Request::OpenSession),
         session_id().prop_map(|session| Request::AttachSession { session }),
         session_id().prop_map(|session| Request::DetachSession { session }),
+        session_id().prop_map(|session| Request::Close { session }),
         (session_id(), size()).prop_map(|(session, size)| Request::ResizeSession { session, size }),
         session_id().prop_map(|session| Request::SendInput { session }),
         Just(Request::ListSessions),
@@ -97,17 +98,18 @@ fn dir_entry() -> impl Strategy<Value = DirEntry> {
         DirEntry {
             name,
             kind,
-            len: temor_wire::units::ByteCount(len),
+            len: ByteCount(len),
             mtime: UnixMillis(mtime),
         }
     })
 }
 
-fn verdict() -> impl Strategy<Value = Verdict> {
+fn trial_verdict() -> impl Strategy<Value = TrialVerdict> {
     prop_oneof![
-        Just(Verdict::Passed),
-        exit_code().prop_map(|exit| Verdict::Failed { exit }),
-        unchecked_why().prop_map(|reason| Verdict::Unchecked { reason }),
+        file_changes().prop_map(|changes| TrialVerdict::Clean { changes }),
+        (exit_code(), error_line())
+            .prop_map(|(exit, first_error)| TrialVerdict::Failed { exit, first_error }),
+        unchecked_why().prop_map(TrialVerdict::Unchecked),
     ]
 }
 
@@ -135,7 +137,7 @@ pub fn reply() -> impl Strategy<Value = Reply> {
         (session_id(), size()).prop_map(|(session, size)| Reply::Attached { session, size }),
         prop::collection::vec(
             (session_id(), path(), size(), session_state()).prop_map(
-                |(session, cwd, size, state)| temor_wire::message::SessionInfo {
+                |(session, cwd, size, state)| SessionInfo {
                     session,
                     cwd,
                     size,
@@ -151,13 +153,14 @@ pub fn reply() -> impl Strategy<Value = Reply> {
         (file_stamp(), byte_count()).prop_map(|(stamp, total)| Reply::Read { stamp, total }),
         file_stamp().prop_map(Reply::Written),
         watch_id().prop_map(|watch| Reply::Watching { watch }),
-        verdict().prop_map(Reply::Verdict),
+        trial_verdict().prop_map(Reply::Verdict),
         relay_reply().prop_map(Reply::Relayed),
     ]
 }
 
 pub fn remote_error() -> impl Strategy<Value = RemoteError> {
     prop_oneof![
+        Just(RemoteError::UnknownRequest),
         session_id().prop_map(|session| RemoteError::NoSuchSession { session }),
         watch_id().prop_map(|watch| RemoteError::NoSuchWatch { watch }),
         terminal_id().prop_map(|terminal| RemoteError::NoSuchTerminal { terminal }),
@@ -178,7 +181,7 @@ pub fn event() -> impl Strategy<Value = Event> {
         (session_id(), exit_status())
             .prop_map(|(session, status)| Event::Exited { session, status }),
         prop::collection::vec(listening_port(), 0..4).prop_map(Event::Ports),
-        (watch_id(), path(), change_kind()).prop_map(|(watch, path, kind)| Event::FileChanged {
+        (watch_id(), path(), watch_change()).prop_map(|(watch, path, kind)| Event::FileChanged {
             watch,
             path,
             kind,
@@ -193,7 +196,7 @@ pub fn any_message() -> impl Strategy<Value = Message> {
         (request_id(), request()).prop_map(|(id, body)| Message::Request { id, body }),
         (
             request_id(),
-            prop_oneof![reply().prop_map(Ok), remote_error().prop_map(Err),]
+            prop_oneof![reply().prop_map(Ok), remote_error().prop_map(Err)]
         )
             .prop_map(|(id, outcome)| Message::Response { id, outcome }),
         event().prop_map(Message::Event),
@@ -203,4 +206,9 @@ pub fn any_message() -> impl Strategy<Value = Message> {
 /// A payload of any length up to 4 KiB, with every byte value possible.
 pub fn any_payload() -> impl Strategy<Value = Vec<u8>> {
     prop::collection::vec(any::<u8>(), 0..4096)
+}
+
+/// The payload a message would be sent with: its own bytes when it carries any, none otherwise.
+pub fn payload_for(message: &Message, bytes: Vec<u8>) -> Option<Vec<u8>> {
+    message.carries_payload().then_some(bytes)
 }

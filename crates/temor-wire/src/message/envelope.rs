@@ -1,4 +1,4 @@
-//! The one type every frame carries.
+//! The one type every frame carries, and the rule for which of them carry a payload.
 
 use super::{Event, RemoteError, Reply, Request};
 use crate::hello::Hello;
@@ -27,4 +27,29 @@ pub enum Message {
     },
     /// Something the helper reports without being asked.
     Event(Event),
+}
+
+impl Message {
+    /// Whether this message's frame carries a payload: the bytes of input, of a write, of a
+    /// snapshot, of a ranged read, or of terminal output. Every other message has none.
+    pub fn carries_payload(&self) -> bool {
+        matches!(
+            self,
+            Message::Request {
+                body: Request::SendInput { .. } | Request::WriteFile { .. },
+                ..
+            } | Message::Response {
+                outcome: Ok(Reply::Attached { .. } | Reply::Read { .. }),
+                ..
+            } | Message::Event(Event::Output { .. })
+        )
+    }
+
+    /// The answer to a request this build cannot read: a typed error under the same id.
+    pub fn unknown_request(id: RequestId) -> Self {
+        Message::Response {
+            id,
+            outcome: Err(RemoteError::UnknownRequest),
+        }
+    }
 }

@@ -18,6 +18,12 @@ pub fn link_step(
             },
             Vec::new(),
         ),
+        (_, LinkEvent::Refused) => (
+            LinkState::Gone {
+                reason: GoneReason::Refused,
+            },
+            Vec::new(),
+        ),
         (LinkState::Connected { sessions }, event) => on_connected(sessions, event, policy),
         (
             LinkState::Backoff {
