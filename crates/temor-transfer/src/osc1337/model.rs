@@ -2,6 +2,7 @@
 
 use ds_core::word::Word;
 
+use crate::consent::Consent;
 use crate::name::FileName;
 use crate::units::Bytes;
 
@@ -83,12 +84,59 @@ impl FileHeader {
     }
 }
 
-/// A file the remote offers to save.
+/// A file the remote offers to save. Its data is private: the only way to reach it is to give
+/// the person's consent with [`FileOffer::consent`], which yields a [`Consented`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileOffer {
-    pub name: FileName,
-    pub mime: Option<MimeType>,
-    pub data: Vec<u8>,
+    name: FileName,
+    mime: Option<MimeType>,
+    data: Vec<u8>,
+}
+
+impl FileOffer {
+    pub(crate) fn new(name: FileName, mime: Option<MimeType>, data: Vec<u8>) -> Self {
+        Self { name, mime, data }
+    }
+
+    pub fn name(&self) -> &FileName {
+        &self.name
+    }
+
+    pub fn mime(&self) -> Option<&MimeType> {
+        self.mime.as_ref()
+    }
+
+    /// The size of the data the offer carries.
+    pub fn size(&self) -> Bytes {
+        Bytes::new(self.data.len() as u64)
+    }
+
+    /// Applies the person's answer. Only an allowed offer comes back, as a `Consented`, and only
+    /// that can be saved. A refused offer is dropped with its data.
+    pub fn consent(self, answer: Consent) -> Option<Consented> {
+        match answer {
+            Consent::Allow => Some(Consented(self)),
+            Consent::Refuse => None,
+        }
+    }
+}
+
+/// A file offer the person allowed. Only this type exposes the file's data for saving.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Consented(FileOffer);
+
+impl Consented {
+    pub fn name(&self) -> &FileName {
+        self.0.name()
+    }
+
+    pub fn mime(&self) -> Option<&MimeType> {
+        self.0.mime()
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.0.data
+    }
 }
 
 /// An image the remote asks to show in the terminal.
@@ -102,10 +150,11 @@ pub struct InlineImage {
     pub data: Vec<u8>,
 }
 
-/// A complete, decoded OSC 1337 file.
+/// A complete, decoded OSC 1337 file. An offer waits for consent; an inline image may be shown
+/// without it, since showing it writes nothing to disk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReceivedFile {
-    Offer(FileOffer),
+    NeedsConsent(FileOffer),
     Inline(InlineImage),
 }
 

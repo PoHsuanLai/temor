@@ -8,5 +8,5 @@ mod store;
 
 pub use clock::{Clock, SystemClock};
 pub use model::{Shelf, ShelfId, ShelfItem, UnixMillis};
-pub use naming::{candidate_name, unique_name};
+pub use naming::candidate_name;
 pub use store::ShelfStore;

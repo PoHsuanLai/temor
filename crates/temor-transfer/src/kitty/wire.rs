@@ -4,7 +4,8 @@
 use ds_core::word::Word;
 
 use super::model::{
-    Action, Compression, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus, UnixNanos,
+    Action, Compression, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
+    Transmission, UnixNanos,
 };
 use crate::base64;
 use crate::error::{Malformed, TransferError};
@@ -63,6 +64,11 @@ fn number<T: std::str::FromStr>(value: &[u8], key: &'static str) -> Result<T, Tr
 /// required; every other field is optional. Data and names are decoded from base64 here,
 /// under the caller's limits.
 pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, TransferError> {
+    if payload.len() as u64 > limits.max_raw().get() {
+        return Err(TransferError::TooLarge {
+            limit: limits.max_bytes(),
+        });
+    }
     let rest = payload
         .strip_prefix(PREFIX)
         .ok_or(Malformed::NotATransfer)?;
@@ -92,13 +98,16 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
             Ok(Bytes::new(number(v, "sz")?))
         })?,
         mtime: optional(&pairs, &["mod", "mtime"], |v| {
-            Ok(UnixNanos(number(v, "mod")?))
+            Ok(UnixNanos::new(number(v, "mod")?))
         })?,
         permissions: optional(&pairs, &["prm", "permissions"], |v| {
-            Ok(Mode(number(v, "prm")?))
+            Ok(Mode::new(number(v, "prm")?))
         })?,
         compression: optional(&pairs, &["zip", "compression"], |v| {
             word::<Compression>(v, "zip")
+        })?,
+        transmission: optional(&pairs, &["tt", "transmission"], |v| {
+            word::<Transmission>(v, "tt")
         })?,
         data: optional(&pairs, &["d", "data"], |v| {
             base64::decode_capped(v, limits.max_bytes())
@@ -129,13 +138,16 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
         fields.push(format!("sz={}", size.get()));
     }
     if let Some(mtime) = message.mtime {
-        fields.push(format!("mod={}", mtime.0));
+        fields.push(format!("mod={}", mtime.get()));
     }
     if let Some(mode) = message.permissions {
-        fields.push(format!("prm={}", mode.0));
+        fields.push(format!("prm={}", mode.get()));
     }
     if let Some(compression) = message.compression {
         fields.push(format!("zip={}", compression.slug()));
+    }
+    if let Some(transmission) = message.transmission {
+        fields.push(format!("tt={}", transmission.slug()));
     }
     if !message.data.is_empty() {
         fields.push(format!("d={}", base64::encode(&message.data)));

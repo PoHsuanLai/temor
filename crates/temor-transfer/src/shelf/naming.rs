@@ -10,14 +10,6 @@ pub fn candidate_name(desired: &str, n: usize) -> String {
     format!("{stem} ({n}){ext}")
 }
 
-/// The first candidate that `taken` does not reject.
-pub fn unique_name(desired: &str, taken: impl Fn(&str) -> bool) -> String {
-    (1..)
-        .map(|n| candidate_name(desired, n))
-        .find(|candidate| !taken(candidate))
-        .unwrap_or_else(|| desired.to_owned())
-}
-
 fn split_extension(name: &str) -> (&str, &str) {
     match name.rfind('.') {
         Some(at) if at > 0 => name.split_at(at),

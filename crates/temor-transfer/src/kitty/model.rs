@@ -51,11 +51,40 @@ impl FileId {
 
 /// POSIX permission bits (`prm`). Parsed and carried; applying them needs the platform edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Mode(pub u32);
+pub struct Mode(u32);
+
+impl Mode {
+    pub const fn new(bits: u32) -> Self {
+        Self(bits)
+    }
+
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+}
 
 /// Modification time (`mod`), in nanoseconds since the UNIX epoch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct UnixNanos(pub i64);
+pub struct UnixNanos(i64);
+
+impl UnixNanos {
+    pub const fn new(nanos: i64) -> Self {
+        Self(nanos)
+    }
+
+    pub const fn get(self) -> i64 {
+        self.0
+    }
+}
+
+/// The transmission type (`tt`). The protocol's default is `simple`. `rsync` is a different
+/// delta protocol this crate does not implement, so it is refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
+#[word(case = snake)]
+pub enum Transmission {
+    Simple,
+    Rsync,
+}
 
 /// The action of a message (`ac`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
@@ -122,6 +151,7 @@ pub struct Message {
     pub mtime: Option<UnixNanos>,
     pub permissions: Option<Mode>,
     pub compression: Option<Compression>,
+    pub transmission: Option<Transmission>,
     pub data: Vec<u8>,
 }
 
@@ -139,6 +169,7 @@ impl Message {
             mtime: None,
             permissions: None,
             compression: None,
+            transmission: None,
             data: Vec::new(),
         }
     }

@@ -1,7 +1,8 @@
 //! Random input never panics: every parser and the cleaners return a value or a typed error.
 
 use proptest::prelude::*;
-use temor_transfer::kitty::{Consent, Input, ReceiveSession, parse_message};
+use temor_transfer::Consent;
+use temor_transfer::kitty::{Input, ReceiveSession, parse_message};
 use temor_transfer::osc1337::{Completeness, Osc1337Reader};
 use temor_transfer::{FileName, HostName, Origin, RelPath};
 

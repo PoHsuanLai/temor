@@ -14,15 +14,19 @@
 //! [`RelPath::parse`] refuses anything that could leave the destination.
 
 mod base64;
+mod consent;
 mod error;
 pub mod kitty;
 mod name;
 mod origin;
 pub mod osc1337;
+mod platform;
 pub mod shelf;
 mod units;
 
+pub use consent::Consent;
 pub use error::{Malformed, TransferError};
 pub use name::{FileName, RelPath};
 pub use origin::{BlockKey, HostName, Origin, PaneKey, TabKey};
-pub use units::{Bytes, Limits};
+pub use platform::Root;
+pub use units::{Bytes, Count, Limits};

@@ -19,6 +19,6 @@ impl Clock for SystemClock {
             .map_or(0, |elapsed| {
                 i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
             });
-        UnixMillis(millis)
+        UnixMillis::new(millis)
     }
 }

@@ -1,26 +1,32 @@
 //! The receive machine's types. Writes are described here and performed at the edge.
+//!
+//! The edge contract: every `Effect::Write` is performed in order, and each one yields exactly
+//! one result. A success needs no input. A failure is fed back as `Input::WriteFailed`, which
+//! cancels that file, or the whole transfer when the failure is not for an open file.
 
 use std::collections::BTreeMap;
 
 use ds_core::word::Word;
 
-use crate::kitty::model::{FileId, KittyId, Message, Reply, UnixNanos};
+use crate::consent::Consent;
+use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Reply, UnixNanos};
 use crate::name::RelPath;
 use crate::origin::Origin;
 use crate::units::{Bytes, Limits};
 
-/// The person's answer to a remote offer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-pub enum Consent {
-    Allow,
-    Refuse,
-}
-
-/// What the machine is told: a frame from the remote, or the person's answer.
+/// What the machine is told: a frame from the remote, the person's answer, the stream ending
+/// early, or a write that failed at the edge.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Input {
     Frame(Message),
     Decided(Consent),
+    /// The stream was dropped. Partly written files are discarded and the transfer ends.
+    Aborted,
+    /// An `Effect::Write` failed. `fid` names the file it was for, when there was one.
+    WriteFailed {
+        fid: Option<FileId>,
+        error: ErrorCode,
+    },
 }
 
 /// A file-system change the edge must make, in order. Paths are relative to the transfer's root.
@@ -56,6 +62,7 @@ pub enum EndWhy {
     Refused,
     Cancelled,
     Failed,
+    Aborted,
 }
 
 /// What the edge must do after a step.
@@ -95,6 +102,7 @@ pub struct ReceiveSession {
     pub(crate) dirs: BTreeMap<FileId, RelPath>,
     pub(crate) open: BTreeMap<FileId, OpenFile>,
     pub(crate) received: u64,
+    pub(crate) entries: u64,
 }
 
 impl ReceiveSession {
@@ -106,6 +114,7 @@ impl ReceiveSession {
             dirs: BTreeMap::new(),
             open: BTreeMap::new(),
             received: 0,
+            entries: 0,
         }
     }
 

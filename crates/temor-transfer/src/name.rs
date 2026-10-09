@@ -55,8 +55,11 @@ impl FileName {
 pub struct RelPath(Vec<String>);
 
 impl RelPath {
-    /// Parses a path the remote sent. Anything that is absolute, has an empty or dot component,
-    /// or contains a backslash or control character is refused.
+    /// Parses a path the remote sent. Anything that is absolute, has an empty component, or any
+    /// component starting with a dot (`.`, `..`, `.ssh`), or contains a backslash or control
+    /// character, is refused.
+    // TODO(platform:windows): also refuse `:` components (alternate data streams and drive
+    // letters) once the Windows edge exists.
     pub fn parse(raw: &str) -> Result<Self, TransferError> {
         let refuse = || TransferError::UnsafePath {
             path: raw.to_owned(),
@@ -73,7 +76,8 @@ impl RelPath {
         let parts = raw
             .split('/')
             .map(|part| match part {
-                "" | "." | ".." => Err(refuse()),
+                "" => Err(refuse()),
+                _ if part.starts_with('.') => Err(refuse()),
                 _ if part.len() > MAX_COMPONENT_BYTES => Err(refuse()),
                 _ => Ok(part.to_owned()),
             })

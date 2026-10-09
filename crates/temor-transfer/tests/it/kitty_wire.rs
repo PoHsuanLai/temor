@@ -1,6 +1,6 @@
 use temor_transfer::kitty::{
     Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
-    UnixNanos, encode_message, encode_reply, parse_message,
+    Transmission, UnixNanos, encode_message, encode_reply, parse_message,
 };
 use temor_transfer::{Malformed, TransferError};
 
@@ -18,8 +18,8 @@ fn a_message_round_trips_through_the_wire() {
         name: Some("dir/a b.txt".to_owned()),
         file_type: Some(FileType::Regular),
         size: Some(temor_transfer::Bytes::new(5)),
-        mtime: Some(UnixNanos(-42)),
-        permissions: Some(Mode(0o644)),
+        mtime: Some(UnixNanos::new(-42)),
+        permissions: Some(Mode::new(0o644)),
         compression: Some(Compression::None),
         data: b"hello".to_vec(),
         ..Message::new(Action::EndData, id())
@@ -129,4 +129,19 @@ fn both_finish_spellings_are_accepted() {
     )
     .expect("parses");
     assert_eq!(message.file_type, Some(FileType::Directory));
+}
+
+#[test]
+fn an_oversized_payload_is_refused_before_it_is_read() {
+    let payload = vec![b'a'; 20_000];
+    assert!(matches!(
+        parse_message(&payload, limits(16)),
+        Err(TransferError::TooLarge { .. })
+    ));
+}
+
+#[test]
+fn the_transmission_type_is_read() {
+    let message = parse_message(b"5113;ac=send;id=a;tt=rsync", limits(64)).expect("parses");
+    assert_eq!(message.transmission, Some(Transmission::Rsync));
 }

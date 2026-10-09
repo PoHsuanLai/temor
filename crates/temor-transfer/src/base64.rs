@@ -38,7 +38,10 @@ pub(crate) fn decode(input: &[u8], cap: Bytes) -> Result<Vec<u8>, DecodeError> {
     if pad > 2 || digits.len() % 4 == 1 || (pad > 0 && !body.len().is_multiple_of(4)) {
         return Err(DecodeError::Invalid);
     }
-    let mut out = Vec::with_capacity(digits.len() / 4 * 3 + 3);
+    // Allocate from the cap, never from the input's length alone.
+    let wanted = digits.len() / 4 * 3 + 3;
+    let room = usize::try_from(cap.get()).unwrap_or(usize::MAX);
+    let mut out = Vec::with_capacity(wanted.min(room));
     for group in digits.chunks(4) {
         let mut acc: u32 = 0;
         for &byte in group {

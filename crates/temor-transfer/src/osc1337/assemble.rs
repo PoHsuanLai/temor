@@ -1,5 +1,6 @@
 //! Joins multipart pieces into a file. The step is pure; [`Osc1337Reader`] holds its state.
 
+use crate::base64;
 use crate::error::{Malformed, TransferError};
 use crate::units::{Bytes, Limits};
 
@@ -7,7 +8,6 @@ use super::model::{
     Completeness, Delivery, FileHeader, FileOffer, InlineImage, Osc1337Command, ReceivedFile,
 };
 use super::parse::parse_command;
-use crate::base64;
 
 /// Where a multipart file is: nothing open, or a header waiting for its parts.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,11 +105,9 @@ fn text_cap(limits: Limits) -> Bytes {
 
 fn file(header: FileHeader, data: Vec<u8>) -> ReceivedFile {
     match header.delivery {
-        Delivery::Offer => ReceivedFile::Offer(FileOffer {
-            name: header.name,
-            mime: header.mime,
-            data,
-        }),
+        Delivery::Offer => {
+            ReceivedFile::NeedsConsent(FileOffer::new(header.name, header.mime, data))
+        }
         Delivery::Inline => ReceivedFile::Inline(InlineImage {
             name: header.name,
             mime: header.mime,

@@ -3,7 +3,7 @@
 use std::io;
 use std::path::PathBuf;
 
-use crate::units::Bytes;
+use crate::units::{Bytes, Count};
 
 /// What went wrong, shaped so the caller can act on it.
 #[derive(Debug, thiserror::Error)]
@@ -11,6 +11,15 @@ pub enum TransferError {
     /// The transfer is bigger than the caller's limit.
     #[error("the file is larger than the limit of {limit}")]
     TooLarge { limit: Bytes },
+    /// The transfer creates more files and folders than the limit allows.
+    #[error("the transfer has more than {limit}")]
+    TooManyEntries { limit: Count },
+    /// More files would be open for writing at once than the limit allows.
+    #[error("more than {limit} files would be open at once")]
+    TooManyOpen { limit: Count },
+    /// This platform cannot do the operation safely, so it is refused rather than approximated.
+    #[error("{feature} is not supported on this platform")]
+    Unsupported { feature: &'static str },
     /// The sequence was cut short by the terminal's own limit, so it cannot be decoded.
     #[error("the file arrived cut short")]
     Cut,

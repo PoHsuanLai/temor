@@ -98,3 +98,10 @@ fn the_protocol_length_limits_hold() {
     assert!(deep.len() > 4096);
     assert!(RelPath::parse(&deep).is_err());
 }
+
+#[test]
+fn components_starting_with_a_dot_are_refused() {
+    for raw in [".ssh/x", "a/.git/config", ".bashrc", "a/..b"] {
+        assert!(RelPath::parse(raw).is_err(), "{raw:?} must be refused");
+    }
+}

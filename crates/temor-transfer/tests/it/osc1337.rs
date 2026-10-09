@@ -1,5 +1,5 @@
 use temor_transfer::osc1337::{Completeness, Dimension, Osc1337Reader, ReceivedFile};
-use temor_transfer::{Malformed, TransferError};
+use temor_transfer::{Consent, Malformed, TransferError};
 
 use crate::support::{b64, limits};
 
@@ -15,9 +15,12 @@ fn file_payload(args: &str, data: &[u8]) -> Vec<u8> {
 fn a_whole_offer_decodes_with_its_name_and_data() {
     let payload = file_payload(&format!("name={};size=5", b64(b"a.txt")), b"hello");
     match feed_one(&payload).expect("decodes") {
-        Some(ReceivedFile::Offer(offer)) => {
-            assert_eq!(offer.name.as_str(), "a.txt");
-            assert_eq!(offer.data, b"hello");
+        Some(ReceivedFile::NeedsConsent(offer)) => {
+            assert_eq!(offer.name().as_str(), "a.txt");
+            assert_eq!(
+                offer.consent(Consent::Allow).expect("allowed").data(),
+                b"hello"
+            );
         }
         other => panic!("expected an offer, got {other:?}"),
     }
@@ -44,11 +47,11 @@ fn inline_zero_is_an_offer_and_auto_is_the_default_size() {
     let payload = file_payload("inline=0;width=auto", b"x");
     assert!(matches!(
         feed_one(&payload),
-        Ok(Some(ReceivedFile::Offer(_)))
+        Ok(Some(ReceivedFile::NeedsConsent(_)))
     ));
     let payload = file_payload("width=7", b"x");
     match feed_one(&payload).expect("decodes") {
-        Some(ReceivedFile::Offer(_)) => {}
+        Some(ReceivedFile::NeedsConsent(_)) => {}
         other => panic!("expected an offer, got {other:?}"),
     }
 }
@@ -58,7 +61,7 @@ fn unknown_keys_are_ignored() {
     let payload = file_payload("future=thing;name=eA==", b"x");
     assert!(matches!(
         feed_one(&payload),
-        Ok(Some(ReceivedFile::Offer(_)))
+        Ok(Some(ReceivedFile::NeedsConsent(_)))
     ));
 }
 
@@ -123,8 +126,8 @@ fn a_non_transfer_sequence_is_refused() {
 fn hostile_names_are_cleaned_never_used_as_paths() {
     let payload = file_payload(&format!("name={}", b64(b"../../etc/passwd")), b"x");
     match feed_one(&payload).expect("decodes") {
-        Some(ReceivedFile::Offer(offer)) => {
-            let name = offer.name.as_str();
+        Some(ReceivedFile::NeedsConsent(offer)) => {
+            let name = offer.name().as_str();
             assert!(!name.contains('/'));
             assert!(!name.starts_with('.'));
             assert!(!name.is_empty());
@@ -158,9 +161,12 @@ fn multipart_pieces_join_in_order_and_end_the_file() {
         .feed(b"1337;FileEnd", Completeness::Whole)
         .expect("end")
     {
-        Some(ReceivedFile::Offer(offer)) => {
-            assert_eq!(offer.name.as_str(), "m.bin");
-            assert_eq!(offer.data, b"abcdef");
+        Some(ReceivedFile::NeedsConsent(offer)) => {
+            assert_eq!(offer.name().as_str(), "m.bin");
+            assert_eq!(
+                offer.consent(Consent::Allow).expect("allowed").data(),
+                b"abcdef"
+            );
         }
         other => panic!("expected the joined file, got {other:?}"),
     }
@@ -191,7 +197,7 @@ fn multipart_order_errors_reset_the_reader() {
     ));
     assert!(matches!(
         reader.feed(b"1337;File=:eA==", Completeness::Whole),
-        Ok(Some(ReceivedFile::Offer(_)))
+        Ok(Some(ReceivedFile::NeedsConsent(_)))
     ));
 }
 
@@ -204,6 +210,27 @@ fn multipart_text_over_the_cap_is_too_large() {
     let big = format!("1337;FilePart={}", "A".repeat(20_000));
     assert!(matches!(
         reader.feed(big.as_bytes(), Completeness::Whole),
+        Err(TransferError::TooLarge { .. })
+    ));
+}
+
+#[test]
+fn a_refused_offer_yields_no_data() {
+    let payload = file_payload(&format!("name={}", b64(b"x.bin")), b"secret");
+    match feed_one(&payload).expect("decodes") {
+        Some(ReceivedFile::NeedsConsent(offer)) => {
+            assert!(offer.consent(Consent::Refuse).is_none())
+        }
+        other => panic!("expected an offer, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_payload_over_the_raw_cap_is_refused_before_decoding() {
+    let mut payload = b"1337;File=:".to_vec();
+    payload.resize(20_000, b'A');
+    assert!(matches!(
+        feed_one(&payload),
         Err(TransferError::TooLarge { .. })
     ));
 }

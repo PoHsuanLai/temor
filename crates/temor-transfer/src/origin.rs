@@ -18,15 +18,45 @@ impl HostName {
 
 /// The tab a local pane belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TabKey(pub u64);
+pub struct TabKey(u64);
+
+impl TabKey {
+    pub const fn new(key: u64) -> Self {
+        Self(key)
+    }
+
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 /// A pane within a tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct PaneKey(pub u64);
+pub struct PaneKey(u64);
+
+impl PaneKey {
+    pub const fn new(key: u64) -> Self {
+        Self(key)
+    }
+
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 /// A command block (OSC 133) whose output was saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct BlockKey(pub u64);
+pub struct BlockKey(u64);
+
+impl BlockKey {
+    pub const fn new(key: u64) -> Self {
+        Self(key)
+    }
+
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 /// Where a shelf item came from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -21,6 +21,11 @@ pub(crate) fn parse_command(
     if completeness == Completeness::Cut {
         return Err(TransferError::Cut);
     }
+    if payload.len() as u64 > limits.max_raw().get() {
+        return Err(TransferError::TooLarge {
+            limit: limits.max_bytes(),
+        });
+    }
     let rest = payload
         .strip_prefix(PREFIX)
         .ok_or(Malformed::NotATransfer)?;

@@ -1,9 +1,10 @@
 //! Helpers shared by the test modules.
 
-use temor_transfer::{Bytes, Limits};
+use temor_transfer::{Bytes, Count, Limits};
 
+/// Caps for tests: the byte cap is the argument; entry and open caps are generous.
 pub fn limits(max: u64) -> Limits {
-    Limits::new(Bytes::new(max))
+    Limits::new(Bytes::new(max), Count::new(100_000), Count::new(10_000))
 }
 
 /// Standard base64, for building inputs. Mirrors the crate's encoder; kept separate so the

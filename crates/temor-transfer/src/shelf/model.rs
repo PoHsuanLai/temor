@@ -10,11 +10,31 @@ use crate::units::Bytes;
 
 /// An item's id, unique within one shelf.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct ShelfId(pub u64);
+pub struct ShelfId(u64);
+
+impl ShelfId {
+    pub const fn new(id: u64) -> Self {
+        Self(id)
+    }
+
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 /// A point in time, in milliseconds since the UNIX epoch. Supplied by the caller's clock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct UnixMillis(pub i64);
+pub struct UnixMillis(i64);
+
+impl UnixMillis {
+    pub const fn new(millis: i64) -> Self {
+        Self(millis)
+    }
+
+    pub const fn get(self) -> i64 {
+        self.0
+    }
+}
 
 /// One received file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,8 +65,13 @@ impl Shelf {
 
     /// The id one past the largest in use, so ids are never reused while the shelf lives.
     pub fn next_id(&self) -> ShelfId {
-        let largest = self.items.iter().map(|item| item.id.0).max().unwrap_or(0);
-        ShelfId(largest + 1)
+        let largest = self
+            .items
+            .iter()
+            .map(|item| item.id.get())
+            .max()
+            .unwrap_or(0);
+        ShelfId::new(largest + 1)
     }
 
     /// Adds an item in its place by time.
