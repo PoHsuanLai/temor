@@ -7,6 +7,8 @@ mod fake;
 mod support;
 
 #[cfg(feature = "ghostty")]
+mod anchors;
+#[cfg(feature = "ghostty")]
 mod cells;
 mod colors;
 #[cfg(feature = "ghostty")]

@@ -3,6 +3,7 @@
 use ds_core::word::Word;
 
 use super::ProgramStatus;
+use crate::model::AnchorId;
 
 /// Something the program in the terminal did that the host must act on. Events are sent from
 /// inside `write` (and `resize`, which can end a render hold), on the thread that called it, in
@@ -29,6 +30,10 @@ pub enum VtEvent {
     ProgramStatus(ProgramStatus),
     /// A shell integration mark (OSC 133 A/B/C/D).
     Prompt(PromptEvent),
+    /// The cursor was anchored right after a shell integration mark (OSC 133). It is sent
+    /// directly after the mark's own [`VtEvent::Prompt`]; read the anchor with
+    /// `Terminal::anchor_point`.
+    Anchor(AnchorId),
     /// The program fully reset the terminal (RIS, `ESC c`). The title, working directory,
     /// modes, screen and scrollback are cleared without `Title` or `Cwd` events; forget what is
     /// known about the running command.

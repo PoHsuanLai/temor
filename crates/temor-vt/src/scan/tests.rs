@@ -152,3 +152,47 @@ fn cancelling_drops_the_held_payload() {
         assert_eq!(scanner.held_payload(), 0, "cancel {cancel:?}");
     }
 }
+
+#[cfg(feature = "ghostty")]
+mod marks {
+    use super::super::MarkCuts;
+
+    /// The cut ends over `chunks`, as absolute offsets into their concatenation.
+    fn cuts(chunks: &[&[u8]]) -> Vec<usize> {
+        let mut scanner = MarkCuts::new();
+        let mut at = 0;
+        let mut out = Vec::new();
+        for chunk in chunks {
+            out.extend(scanner.feed(chunk).into_iter().map(|end| at + end));
+            at += chunk.len();
+        }
+        out
+    }
+
+    #[test]
+    fn a_bel_or_st_terminated_mark_ends_after_its_terminator() {
+        assert_eq!(cuts(&[b"ab\x1b]133;A\x07cd"]), vec![2 + 8]);
+        assert_eq!(cuts(&[b"ab\x1b]133;D;0\x1b\\cd"]), vec![2 + 11]);
+    }
+
+    #[test]
+    fn marks_split_anywhere_are_found_once_complete() {
+        let whole = b"x\x1b]133;C\x1b\\y";
+        for split in 0..=whole.len() {
+            let (a, b) = whole.split_at(split);
+            assert_eq!(cuts(&[a, b]), vec![whole.len() - 1], "split at {split}");
+        }
+    }
+
+    #[test]
+    fn other_osc_sequences_and_text_are_not_marks() {
+        assert!(cuts(&[b"\x1b]0;133;A\x07"]).is_empty());
+        assert!(cuts(&[b"\x1b]1337;File=x\x07 133;A\x07"]).is_empty());
+        assert!(cuts(&[b"133;A\x07 \x1b[0m"]).is_empty());
+    }
+
+    #[test]
+    fn several_marks_in_one_chunk_each_cut() {
+        assert_eq!(cuts(&[b"\x1b]133;A\x07\x1b]133;B\x07"]), vec![8, 16]);
+    }
+}

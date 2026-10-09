@@ -2,6 +2,7 @@
 //! every block carries a `SAFETY` comment. The safe types defined here are re-exported at the
 //! crate root.
 
+mod anchor;
 mod callbacks;
 mod cells;
 mod colors;
