@@ -409,12 +409,22 @@ The ranking rules:
     path check then refuses or asks for writes outside it, including an agent that tries to make its
     own worktree elsewhere. The CLI pane gets the cwd only; the agent view is told its root. Processes
     and ports stay shared, and the tab's details say so ("separate files, shared ports").
-  - **Early overlap warnings (deterministic, no AI):**
-    - After each command finishes in an agent worktree, temor runs `git merge-tree --write-tree`
-      (git ≥ 2.38; a dry-run merge that touches no checkout) against the base and against every
-      sibling agent worktree in the Space.
-    - The tab shows ahead/behind, files changed, and "overlaps with <tab> in <file>" while both
-      agents are still working.
+  - **Early overlap warnings (deterministic, no AI; spike `spikes/worktree/SPIKE.md`):**
+    - **When:** after a command finishes in an agent worktree, debounced, off the render path.
+    - **Snapshot:** each changed worktree is snapshotted with a temporary index
+      (`GIT_INDEX_FILE=<tmp> read-tree HEAD; add -A; write-tree; commit-tree -p HEAD`), so uncommitted
+      and untracked work counts. The agent's own index is never touched. The snapshot's tree id is the
+      cache key; only pairs whose trees changed are recomputed.
+    - **Checks** (refs validated with `rev-parse --verify` first, since a bad ref also exits 1):
+      `merge-tree --write-tree --name-only -z` against the base and each sibling (exit 1 = conflict,
+      with the paths), plus a same-file signal from `diff --no-renames --name-only` on both sides of
+      the merge base (catches rename-vs-edit), and ahead/behind from `rev-list --left-right --count`.
+    - **Tab shows, two severities only:** red "Conflicts with <tab> in <file>"; amber "Both touch
+      <file>"; amber "Base moved: N files, M overlap yours"; then plain ahead/behind and files changed.
+      Labelled "text overlap only": semantic conflicts (an API changed in another file) aren't seen.
+    - **Cost measured:** about 1 ms per pair; a full round for five agents is 40 ms (commits only)
+      to 350 ms (five dirty snapshots on a 2,500-file repo). Snapshots add loose objects to the repo,
+      which `git gc` cleans up.
   - **Review and merge:**
     - "Review" opens the diff against the base in the viewer pane (§10), with accept or reject per
       file.
@@ -641,7 +651,7 @@ The ranking rules:
 | **P4 Spaces** | kit integration, `Project` payload, profiles (env, ssh-agent, dotenv), routes, ⌃1–9 | P3 |
 | **P5 Command bar and quick terminal** | providers, fixed ranking, Run row, quick terminal | P4 |
 | **P6 Desktop integration** | intents manifest, `IntentProvider1`, `context()`, D-Bus activation and systemd unit, dock badge, `quire-desktop` boundary gate | P2 |
-| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), the approval mode line (D20), agent worktrees (D19; spike first: `git merge-tree` overlap detection across sibling worktrees on a real repo, timing and false-positive check) | P3, P6, P10 (review view); docket |
+| **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), the approval mode line (D20), agent worktrees (D19; overlap spike done) | P3, P6, P10 (review view); docket |
 | **P8 Proposals** | the context card (D21), the trial module in bulkhead, sanitising, the model call, the verdict UI, the Fix chip, the taint marker, the log record | P2, P6; bulkhead split |
 | **P9 Transfers and shelf** | OSC 5113/1337, `temor get/save/view`, shelf UI, upload by drop | P2 |
 | **P10 Viewers** | peek, Sequence, viewer pane | P2; anyview pane API |
