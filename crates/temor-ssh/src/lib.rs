@@ -37,6 +37,7 @@ mod config;
 mod error;
 mod identity;
 mod platform;
+mod tailnet;
 
 /// In-memory config fixtures for tests; built with the `testing` feature.
 #[cfg(feature = "testing")]
@@ -56,3 +57,4 @@ pub use config::{
 pub use error::SshError;
 pub use identity::{Fingerprint, HostId, ShownName, fingerprint_from_keygen};
 pub use platform::ensure_private_dir;
+pub use tailnet::{Reach, TailnetHost, TailnetNode, TailnetOwner, TailscaleSsh, UnixSeconds};
