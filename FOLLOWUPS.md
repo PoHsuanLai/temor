@@ -42,6 +42,14 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [ ] Tune snapshot and file-size limits and the retry policy (1 s base, 60 s cap, 30 tries) against
       real hosts. §9b, §14
 
+## temor-transfer (lane/transfer, reviewed at 39cc6df)
+- [ ] Edge contract for the app: feed back every write failure (`WriteFailed{op}`) and every
+      successful Finish (`WriteDone`); hold the `Root` for the transfer's lifetime. §9
+- [ ] Upload by drop (`SendSession`) is not built. §9
+- [ ] Kitty `prm` is ignored (files 0o644, folders 0o755); in-root symlinks are refused, not made.
+- [ ] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9
+- [ ] A malformed frame with no open files only replies; the transfer continues.
+
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift). §6
@@ -54,5 +62,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       `NoSandbox`, and document the profile. §8.3
 - [ ] macOS: verify quire windows and IME (winit) and fontique's CoreText path; consider a
       `cargo check --target aarch64-apple-darwin` CI job (Zig can cross-build libghostty).
+- [ ] macOS/Windows transfer edge: `temor-transfer` platform/unsupported.rs refuses all writes
+      (needs an openat2-like safe open), `sync_folder` is a no-op, and the duplicate-name key must be
+      case-folded/normalised; Windows `RelPath` must refuse `:` components. §9
 - [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
       side are unsupported today.
