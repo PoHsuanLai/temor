@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use temor_core::block::Outcome;
+use temor_pane::PaneEvent;
 use temor_pane::keys::Keymap;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::settings::ShellChoice;
@@ -15,7 +16,6 @@ use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
 use temor_ui::edge::{Ambient, FakeClock, RecordingNotifier};
-use temor_ui::pane::PaneEvent;
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use tokio::sync::mpsc::UnboundedReceiver;

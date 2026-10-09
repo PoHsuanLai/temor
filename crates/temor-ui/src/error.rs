@@ -6,12 +6,12 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum UiError {
-    /// The terminal emulator refused (a libghostty call failed, or it could not start).
-    #[error("the terminal could not start: {0}")]
-    Terminal(#[from] temor_vt::VtError),
     /// The fonts or the renderer refused.
     #[error("drawing the terminal failed: {0}")]
     Render(#[from] temor_render::RenderError),
+    /// The pane engine could not start or draw (see `temor-pane`).
+    #[error(transparent)]
+    Pane(#[from] temor_pane::PaneError),
     /// The program could not be started on a terminal, or the terminal failed.
     #[error("the shell could not start: {0}")]
     Pty(#[from] temor_pty::PtyError),

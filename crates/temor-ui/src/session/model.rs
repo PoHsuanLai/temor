@@ -21,8 +21,8 @@ use super::clipboard::Clipboard;
 use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::Painter;
-use crate::pane::{Hold, PaneHandle, PaneSpec};
 use crate::platform::Opener;
+use temor_pane::{Hold, PaneHandle, PaneSpec};
 
 /// What the window should do about an event from the pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +39,7 @@ pub enum Notice {
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
-    Hold(crate::pane::Hold),
+    Hold(temor_pane::Hold),
     /// Nothing for the window.
     Quiet,
 }

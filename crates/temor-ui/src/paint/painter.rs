@@ -8,7 +8,7 @@ use temor_render::{
 };
 
 use crate::error::UiError;
-use crate::pane::PaneHandle;
+use temor_pane::PaneHandle;
 
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]

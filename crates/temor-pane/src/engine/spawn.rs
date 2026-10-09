@@ -1,21 +1,21 @@
 //! Starting a pane: the program on a new terminal, the emulator for it, and the I/O thread that
 //! joins them. The caller builds the program's spawn spec and launcher at the app's edge.
 
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
 use temor_pty::{Cols, Pty, Px as PtyPx, Rows, SessionLauncher, SpawnSpec};
 use temor_render::Palette;
 use temor_vt::{CellPx, GridSize, LineCount};
-use tokio::sync::mpsc::UnboundedSender;
 
 use super::event::PaneEvent;
 use super::handle::PaneHandle;
-use super::io::{Io, run};
+use super::io::{Io, PaneRunner};
 use super::outbox::Outbox;
+use super::sink::EventSink;
 use super::term::Term;
-use crate::error::UiError;
+use crate::error::PaneError;
 
 /// What a new pane is made of.
 #[derive(Debug)]
@@ -47,8 +47,12 @@ fn saturate(value: u32) -> u16 {
     u16::try_from(value).unwrap_or(u16::MAX)
 }
 
-/// Starts the program and its I/O thread. Events for the window go to `events`.
-pub fn start(spec: PaneSpec, events: UnboundedSender<PaneEvent>) -> Result<PaneHandle, UiError> {
+/// Starts the program and its I/O loop. Events for the window go to `events`. The loop is
+/// returned, not run: the caller runs it on a thread of its own (see [`PaneRunner::run`]).
+pub fn start(
+    spec: PaneSpec,
+    events: Arc<dyn EventSink>,
+) -> Result<(PaneHandle, PaneRunner), PaneError> {
     let size = pty_size(spec.grid, spec.cell);
     let spawn = SpawnSpec { size, ..spec.spawn };
     let pty = Pty::spawn(&spawn, &spec.launcher)?;
@@ -69,16 +73,15 @@ pub fn start(spec: PaneSpec, events: UnboundedSender<PaneEvent>) -> Result<PaneH
         outbox: Arc::clone(&outbox),
         pty,
         commands,
-        events: events.clone(),
+        events: Arc::clone(&events),
         dirty: Arc::clone(&dirty),
         last_title: None,
     };
-    std::thread::Builder::new()
-        .name("temor-pane-io".to_owned())
-        .spawn(move || run(io))
-        .map_err(UiError::Thread)?;
     // The first frame is always due.
-    let _ = dirty.swap(true, std::sync::atomic::Ordering::AcqRel);
-    let _ = events.send(PaneEvent::Dirty);
-    Ok(PaneHandle::new(term, outbox, commands_tx, events, dirty))
+    let _ = dirty.swap(true, Ordering::AcqRel);
+    events.send(PaneEvent::Dirty);
+    Ok((
+        PaneHandle::new(term, outbox, commands_tx, events, dirty),
+        PaneRunner::new(io),
+    ))
 }

@@ -12,11 +12,11 @@ use std::time::Duration;
 
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_vt::{RenderHold, VtEvent};
-use tokio::sync::mpsc::UnboundedSender;
 
 use super::event::PaneEvent;
 use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
+use super::sink::EventSink;
 use super::term::Term;
 
 /// What the window asks of the I/O thread.
@@ -32,15 +32,38 @@ pub(super) struct Io {
     pub outbox: Arc<Outbox>,
     pub pty: Pty,
     pub commands: Receiver<Command>,
-    pub events: UnboundedSender<PaneEvent>,
+    pub events: Arc<dyn EventSink>,
     /// Set while a `Dirty` is in flight; cleared by the window when it repaints.
     pub dirty: Arc<AtomicBool>,
     /// The last title sent, so a program that sets the same title in a loop costs nothing.
     pub last_title: Option<String>,
 }
 
+/// The pane's I/O loop, made by [`start`](super::start). Run it on a thread of the caller's own.
+pub struct PaneRunner {
+    io: Io,
+}
+
+impl std::fmt::Debug for PaneRunner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PaneRunner").finish_non_exhaustive()
+    }
+}
+
+impl PaneRunner {
+    pub(super) fn new(io: Io) -> Self {
+        Self { io }
+    }
+
+    /// Runs until the program is reaped (or the pane is dropped). Blocks: call it on the pane's
+    /// own thread, which the caller starts.
+    pub fn run(self) {
+        pump(self.io);
+    }
+}
+
 /// Runs until the program is reaped. Called on the pane's own thread.
-pub(super) fn run(mut io: Io) {
+fn pump(mut io: Io) {
     let mut buf = vec![0u8; 64 * 1024];
     loop {
         // The only command is Shutdown (the window dropped the pane).
@@ -149,8 +172,8 @@ fn reap(io: &mut Io) -> Option<ChildExit> {
 }
 
 fn send(io: &Io, event: PaneEvent) {
-    // A closed channel means the window is gone; the event has nowhere to go.
-    let _ = io.events.send(event);
+    // A closed channel means the window is gone; the sink drops the event.
+    io.events.send(event);
 }
 
 /// Locks a pane's terminal. A poisoned lock still holds the terminal, so the pane keeps going.

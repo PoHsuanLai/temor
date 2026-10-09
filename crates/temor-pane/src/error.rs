@@ -1,6 +1,22 @@
-//! The crate's error: what a settings line or a key chord can get wrong.
+//! The crate's errors: what a settings line or a key chord can get wrong, and what a pane can
+//! fail to start with.
 
 use thiserror::Error;
+
+/// What a pane can fail to do: start its terminal, its drawing, or its program.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum PaneError {
+    /// The terminal emulator refused (a libghostty call failed, or it could not start).
+    #[error("the terminal could not start: {0}")]
+    Terminal(#[from] temor_vt::VtError),
+    /// The fonts or the renderer refused.
+    #[error("drawing the terminal failed: {0}")]
+    Render(#[from] temor_render::RenderError),
+    /// The program could not be started on a terminal, or the terminal failed.
+    #[error("the shell could not start: {0}")]
+    Pty(#[from] temor_pty::PtyError),
+}
 
 /// Why outside settings text was refused. Each variant names the fix a person can make.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]

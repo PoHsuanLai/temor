@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use temor_core::block::Outcome;
 use temor_core::notify::Focus;
-use temor_ui::pane::PaneEvent;
+use temor_pane::PaneEvent;
 use temor_vt::Notification;
 
 use super::super::support::tools_present;

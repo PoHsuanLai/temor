@@ -1,6 +1,6 @@
 [package]
 name = "temor-pane"
-description = "temor's terminal pane, headless: key chords and the keymap, settings text, cell rows, selection, search, paste rules and link checks. Pure; no I/O."
+description = "temor's terminal pane engine: a program on a pty, its terminal under one lock, and the I/O loop that feeds it, plus the pure key, settings, text and paste rules. No UI, no async runtime."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,7 +8,17 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+temor-pty = { workspace = true }
+temor-render = { workspace = true, features = ["ghostty"] }
+temor-vt = { workspace = true, features = ["ghostty"] }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+temor-shell = { workspace = true }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
 
 [lints]
 workspace = true

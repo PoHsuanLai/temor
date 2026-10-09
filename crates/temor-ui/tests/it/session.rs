@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use temor_pane::PaneEvent;
 use temor_pane::keys::Action;
 use temor_pane::keys::ChordKey;
 use temor_pane::keys::Keymap;
@@ -20,7 +21,6 @@ use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelS
 use temor_ui::app::shell_pane;
 use temor_ui::edge::Ambient;
 use temor_ui::input::{FindBar, Stroke, route};
-use temor_ui::pane::PaneEvent;
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};

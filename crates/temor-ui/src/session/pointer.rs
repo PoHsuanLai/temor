@@ -163,12 +163,12 @@ impl Session {
     /// Makes the core selection's ends the terminal's selection, so the grid draws it.
     pub(super) fn mirror_selection(&mut self) -> Result<(), UiError> {
         let text = self.selection.map(to_text_selection);
-        self.pane.with_term(|term| term.set_selection(text))
+        Ok(self.pane.with_term(|term| term.set_selection(text))?)
     }
 
     /// The text of a screen row.
     pub(super) fn line(&self, row: u32) -> Result<RowText, UiError> {
-        self.pane.with_term(|term| term.row_text(row))
+        Ok(self.pane.with_term(|term| term.row_text(row))?)
     }
 
     fn open_link_at(&mut self, cell: CellPos) -> Result<(), UiError> {

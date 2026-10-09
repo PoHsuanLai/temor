@@ -25,7 +25,7 @@ impl Session {
                     self.pane
                         .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));
                 }
-                self.pane.key(&key)
+                Ok(self.pane.key(&key)?)
             }
             Routed::Ignored => Ok(()),
         }

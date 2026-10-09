@@ -4,7 +4,7 @@
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::BlockId;
-use temor_ui::pane::PaneEvent;
+use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::support::tools_present;

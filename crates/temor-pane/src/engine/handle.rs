@@ -2,28 +2,34 @@
 //! send, and the resize. Dropping the handle shuts the pane down (the I/O thread reaps the
 //! program).
 
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use temor_vt::{CellPx, GridSize, KeyInput};
-use tokio::sync::mpsc::UnboundedSender;
 
 use super::event::PaneEvent;
 use super::io::{Command, lock_term, map_event};
 use super::outbox::Outbox;
+use super::sink::EventSink;
 use super::spawn::pty_size;
 use super::term::Term;
-use crate::error::UiError;
+use crate::error::PaneError;
 
 /// A running pane, as the window holds it.
-#[derive(Debug)]
 pub struct PaneHandle {
     term: Arc<Mutex<Term>>,
     outbox: Arc<Outbox>,
     commands: Sender<Command>,
-    events: UnboundedSender<PaneEvent>,
+    events: Arc<dyn EventSink>,
     dirty: Arc<AtomicBool>,
+}
+
+impl fmt::Debug for PaneHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PaneHandle").finish_non_exhaustive()
+    }
 }
 
 impl PaneHandle {
@@ -31,7 +37,7 @@ impl PaneHandle {
         term: Arc<Mutex<Term>>,
         outbox: Arc<Outbox>,
         commands: Sender<Command>,
-        events: UnboundedSender<PaneEvent>,
+        events: Arc<dyn EventSink>,
         dirty: Arc<AtomicBool>,
     ) -> Self {
         Self {
@@ -56,7 +62,7 @@ impl PaneHandle {
     }
 
     /// Encodes a key with the terminal's current modes and sends it.
-    pub fn key(&self, key: &KeyInput) -> Result<(), UiError> {
+    pub fn key(&self, key: &KeyInput) -> Result<(), PaneError> {
         let bytes = self.with_term(|term| term.encode_key(key))?;
         self.send(&bytes);
         Ok(())
@@ -66,19 +72,19 @@ impl PaneHandle {
     /// the pane's lock, so the I/O thread never parses output against a half-changed pane. Output
     /// the program wrote before the size change but read from the PTY just before it may still be
     /// parsed at the new size; that one read is the same window every terminal has on SIGWINCH.
-    pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), UiError> {
+    pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), PaneError> {
         let size = pty_size(grid, cell);
         let output = self.with_term(|term| {
             let output = term.resize(grid, cell)?;
             // A failed size change leaves the program at its old size; the grid is still right.
             let _ = self.outbox.port().resize(size);
-            Ok::<_, UiError>(output)
+            Ok::<_, PaneError>(output)
         })?;
         for reply in output.replies {
             let _ = self.outbox.push_reply(&reply);
         }
         for event in output.events.into_iter().filter_map(map_event) {
-            let _ = self.events.send(event);
+            self.events.send(event);
         }
         self.request_repaint();
         Ok(())
@@ -87,7 +93,7 @@ impl PaneHandle {
     /// Asks the window for a repaint, unless one is already on its way.
     pub fn request_repaint(&self) {
         if !self.dirty.swap(true, Ordering::AcqRel) {
-            let _ = self.events.send(PaneEvent::Dirty);
+            self.events.send(PaneEvent::Dirty);
         }
     }
 

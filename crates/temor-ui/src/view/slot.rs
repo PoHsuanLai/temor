@@ -14,8 +14,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::launch::{Launch, open_session};
 use super::probe::Probe;
-use crate::pane::{Hold, PaneEvent};
 use crate::session::{BELL_MARK, Notice, Session};
+use temor_pane::{Hold, PaneEvent};
 
 /// What the window keeps between renders that is not a signal.
 #[derive(Default)]

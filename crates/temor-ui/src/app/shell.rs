@@ -14,7 +14,7 @@ use temor_vt::{CellPx, GridSize, LineCount};
 
 use crate::edge::Ambient;
 use crate::error::UiError;
-use crate::pane::PaneSpec;
+use temor_pane::PaneSpec;
 
 /// The version temor tells children (`TERM_PROGRAM_VERSION`).
 const VERSION: &str = env!("CARGO_PKG_VERSION");

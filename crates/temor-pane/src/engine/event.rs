@@ -5,6 +5,7 @@ use temor_vt::{AnchorId, ClipboardWrite, Notification, Progress, PromptEvent};
 
 /// One event from a pane's terminal or its program.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum PaneEvent {
     /// The screen changed: repaint it.
     Dirty,

@@ -12,9 +12,9 @@ use super::probe::Probe;
 use crate::app::shell_pane;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
-use crate::pane::PaneEvent;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
+use temor_pane::PaneEvent;
 
 /// Given to the session's own process as its first argument: the program becomes the session
 /// leader and runs the shell (temor-pty's trampoline; the binary's `main` handles it).

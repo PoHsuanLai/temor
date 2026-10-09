@@ -4332,6 +4332,10 @@ dependencies = [
 name = "temor-pane"
 version = "0.1.0"
 dependencies = [
+ "temor-pty",
+ "temor-render",
+ "temor-shell",
+ "temor-vt",
  "thiserror 2.0.21",
 ]
 

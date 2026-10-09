@@ -4,8 +4,8 @@
 
 use std::sync::mpsc::{Receiver, channel};
 
-use temor_pane::paste::PasteMode;
-use temor_pane::text::{RowCell, RowText, Span, Wrap};
+use crate::paste::PasteMode;
+use crate::text::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
     AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
@@ -14,7 +14,7 @@ use temor_vt::{
     ViewportScroll, VtEvent,
 };
 
-use crate::error::UiError;
+use crate::error::PaneError;
 
 /// What one write to the terminal produced: events for the window and replies for the PTY.
 #[derive(Debug, Default)]
@@ -42,7 +42,7 @@ impl Term {
         scrollback: LineCount,
         cursor: CursorShape,
         palette: &Palette,
-    ) -> Result<Self, UiError> {
+    ) -> Result<Self, PaneError> {
         let (event_tx, events) = channel();
         let (reply_tx, replies) = channel();
         let mut config = TerminalConfig::new(size);
@@ -69,7 +69,7 @@ impl Term {
     }
 
     /// Changes the grid. Reflow events and in-band replies come back like a write's.
-    pub fn resize(&mut self, size: GridSize, cell: CellPx) -> Result<Output, UiError> {
+    pub fn resize(&mut self, size: GridSize, cell: CellPx) -> Result<Output, PaneError> {
         self.terminal.resize(size, cell)?;
         Ok(self.collect())
     }
@@ -84,7 +84,7 @@ impl Term {
     }
 
     /// The bytes for a key, after the program's kitty and cursor-key modes (PLAN §6).
-    pub fn encode_key(&mut self, key: &KeyInput) -> Result<Vec<u8>, UiError> {
+    pub fn encode_key(&mut self, key: &KeyInput) -> Result<Vec<u8>, PaneError> {
         self.keys.sync(&self.terminal);
         Ok(self.keys.encode(key)?)
     }
@@ -95,7 +95,7 @@ impl Term {
         &mut self,
         input: &MouseInput,
         surface: MouseSurface,
-    ) -> Result<Vec<u8>, UiError> {
+    ) -> Result<Vec<u8>, PaneError> {
         self.mouse.sync(&self.terminal);
         self.mouse.set_surface(surface);
         Ok(self.mouse.encode(input)?)
@@ -121,18 +121,18 @@ impl Term {
         }
     }
 
-    pub fn set_selection(&mut self, selection: Option<TextSelection>) -> Result<(), UiError> {
+    pub fn set_selection(&mut self, selection: Option<TextSelection>) -> Result<(), PaneError> {
         Ok(self.terminal.set_selection(selection)?)
     }
 
     /// The text between two screen points, as the terminal formats it.
-    pub fn text(&self, start: GridPoint, end: GridPoint) -> Result<String, UiError> {
+    pub fn text(&self, start: GridPoint, end: GridPoint) -> Result<String, PaneError> {
         Ok(Formatter::new(TextFormat::Plain)
             .format(&self.terminal, TextSpan::Range { start, end })?)
     }
 
     /// One screen row, cell by cell, and whether it continues on the next (soft wrap).
-    pub fn row_text(&self, row: u32) -> Result<RowText, UiError> {
+    pub fn row_text(&self, row: u32) -> Result<RowText, PaneError> {
         let cells = self
             .terminal
             .row_cells(row)?
@@ -150,14 +150,14 @@ impl Term {
     }
 
     /// The viewport's place: its first screen row, and the rows it shows.
-    pub fn viewport(&self) -> Result<(u32, u32), UiError> {
+    pub fn viewport(&self) -> Result<(u32, u32), PaneError> {
         let bar = self.terminal.scrollbar()?;
         let clamp = |v: u64| u32::try_from(v).unwrap_or(u32::MAX);
         Ok((clamp(bar.offset.0), clamp(bar.len.0)))
     }
 
     /// How many screen rows exist, scrollback included.
-    pub fn screen_rows(&self) -> Result<u32, UiError> {
+    pub fn screen_rows(&self) -> Result<u32, PaneError> {
         Ok(u32::try_from(self.terminal.scrollbar()?.total.0).unwrap_or(u32::MAX))
     }
 
@@ -166,7 +166,7 @@ impl Term {
     pub fn begin_frame<'c>(
         &mut self,
         capture: &'c mut FrameCapture,
-    ) -> Result<CapturedFrame<'c>, UiError> {
+    ) -> Result<CapturedFrame<'c>, PaneError> {
         Ok(capture.begin(&mut self.terminal)?)
     }
 
@@ -205,7 +205,7 @@ impl Term {
         self.terminal.hyperlink_at(at).ok().flatten()
     }
 
-    pub fn set_palette(&mut self, palette: &Palette) -> Result<(), UiError> {
+    pub fn set_palette(&mut self, palette: &Palette) -> Result<(), PaneError> {
         palette.apply(&mut self.terminal)?;
         Ok(())
     }

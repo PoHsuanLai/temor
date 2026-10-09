@@ -8,7 +8,7 @@ use temor_render::GridFit;
 use super::Session;
 use super::clip::PendingPaste;
 use crate::error::UiError;
-use crate::pane::PaneHandle;
+use temor_pane::PaneHandle;
 
 impl Session {
     /// The pane's engine handle, for the window's painting loop and tests.
