@@ -80,6 +80,12 @@ impl ExitCode {
     pub fn succeeded(self) -> bool {
         self == Self::SUCCESS
     }
+
+    /// Whether the command was stopped by the person rather than failing: 130 (Ctrl-C) or
+    /// 141 (a closed pipe).
+    pub fn stopped(self) -> bool {
+        matches!(self.0, 130 | 141)
+    }
 }
 
 impl Seq {

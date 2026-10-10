@@ -15,6 +15,7 @@ use super::model::{Lifetime, Notice, PADDING_LOGICAL, SessionParts};
 use crate::error::UiError;
 use crate::paint::{PaintView, Painter};
 use crate::pane::UiSink;
+use crate::view::card_colours::CardColours;
 use temor_pane::{EventSink, Hold, PaneEvent, start, start_restored};
 use temor_vt::Snapshot;
 
@@ -150,6 +151,8 @@ impl Session {
         if self.pixels.width.0 == 0 || self.pixels.height.0 == 0 {
             return Ok(());
         }
+        let palette = self.painter.palette();
+        let bands = self.card_bands(&CardColours::of(palette, palette.cursor));
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,
@@ -159,6 +162,7 @@ impl Session {
                 Focus::Unfocused => PaneFocus::Unfocused,
             },
             selection: None,
+            bands: &bands,
         };
         if self.hold == Hold::Held {
             // The program is holding the screen: keep showing the last frame.

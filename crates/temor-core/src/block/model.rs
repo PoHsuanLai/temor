@@ -38,6 +38,8 @@ pub enum Outcome {
     Succeeded,
     /// It exited with another status.
     Failed(ExitCode),
+    /// It was stopped (Ctrl-C or a closed pipe), which is not a failure.
+    Stopped(ExitCode),
     /// It ended, and the shell did not say how.
     Unreported,
 }
@@ -48,6 +50,7 @@ impl Block {
         match (self.ended, self.exit) {
             (None, _) => Outcome::Running,
             (Some(_), Some(code)) if code.succeeded() => Outcome::Succeeded,
+            (Some(_), Some(code)) if code.stopped() => Outcome::Stopped(code),
             (Some(_), Some(code)) => Outcome::Failed(code),
             (Some(_), None) => Outcome::Unreported,
         }

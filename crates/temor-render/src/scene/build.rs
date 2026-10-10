@@ -5,6 +5,7 @@ use temor_vt::{Col, Row, StyleFlags, Underline};
 use super::colors::{CellColors, UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle};
 use super::model::{Premul, Quad, QuadPaint, RowScene};
+use crate::bands::{RowBand, RowBox, look_of, push_quads};
 use crate::font::{
     BUILD_ATTEMPTS, Decoration, FaceStyle, GlyphCache, GlyphKind, RunGlyph, Slant, Weight,
 };
@@ -24,6 +25,10 @@ pub(crate) struct SceneInput<'a> {
     pub colors: &'a TermColors,
     pub cursor: Option<CursorDraw>,
     pub selection: Option<SelectionOverlay>,
+    pub bands: &'a [RowBand],
+    /// The pane's width and the stripe's, in device pixels.
+    pub pane_width: u32,
+    pub stripe_width: u32,
 }
 
 /// Builds `row` until the glyph atlases do not clear while it is built, so every quad points at
@@ -93,6 +98,13 @@ pub(crate) fn build_row(
             decorations(cell, &colors, (x0, y0), &m, glyphs, out);
         }
     }
+    let at = RowBox {
+        y: y0,
+        height: ch,
+        pane_width: input.pane_width,
+        stripe_width: input.stripe_width,
+    };
+    push_quads(&look_of(input.bands, row), at, out);
     if let Some(c) = cursor {
         cursor_quads(&c, (x_of(c.col), y0), &m, out);
     }

@@ -186,7 +186,7 @@ pub(super) fn exit_of(outcome: Outcome) -> Exit {
     match outcome {
         Outcome::Running => Exit::Running,
         Outcome::Succeeded => Exit::Code(0),
-        Outcome::Failed(code) => Exit::Code(code.0),
+        Outcome::Failed(code) | Outcome::Stopped(code) => Exit::Code(code.0),
         Outcome::Unreported => Exit::Unknown,
     }
 }

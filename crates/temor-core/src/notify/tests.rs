@@ -60,6 +60,22 @@ fn the_threshold_is_inclusive_and_short_commands_stay_quiet() {
 }
 
 #[test]
+fn a_stopped_command_notifies_as_finished_not_as_failed() {
+    let note = finished_notice(
+        &block(15_000, Some(130)),
+        NotifyAfter::DEFAULT,
+        Focus::Unfocused,
+    );
+    assert!(matches!(
+        note,
+        Some(Notice::CommandFinished {
+            outcome: Outcome::Stopped(ExitCode(130)),
+            ..
+        })
+    ));
+}
+
+#[test]
 fn off_never_notifies_and_a_running_block_is_not_finished() {
     assert_eq!(
         finished_notice(&block(99_000, Some(0)), NotifyAfter::Off, Focus::Unfocused),

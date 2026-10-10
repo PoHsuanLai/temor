@@ -5,6 +5,7 @@
 
 mod actions;
 mod anchors;
+mod bands;
 mod mark;
 mod notify;
 mod query;

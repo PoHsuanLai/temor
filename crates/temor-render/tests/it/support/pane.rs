@@ -101,6 +101,7 @@ impl Pane {
             palette: &self.palette,
             focus,
             selection: None,
+            bands: &[],
         };
         let out = self
             .renderer

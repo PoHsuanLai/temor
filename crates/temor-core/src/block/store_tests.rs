@@ -99,6 +99,23 @@ fn a_missing_b_still_makes_a_block_and_a_failure_keeps_its_code() {
 }
 
 #[test]
+fn a_stop_by_the_person_is_stopped_and_other_statuses_are_failures() {
+    // (exit status, outcome)
+    for (code, expected) in [
+        (130, Outcome::Stopped(ExitCode(130))),
+        (141, Outcome::Stopped(ExitCode(141))),
+        (127, Outcome::Failed(ExitCode(127))),
+        (2, Outcome::Failed(ExitCode(2))),
+    ] {
+        let mut sh = Shell::new(10);
+        sh.prompt(0);
+        sh.run(1, "sleep 9");
+        sh.finish(1, Some(code));
+        assert_eq!(sh.outcomes(), vec![expected], "status {code}");
+    }
+}
+
+#[test]
 fn a_missing_d_is_closed_by_the_next_prompt_as_unreported() {
     let mut sh = Shell::new(10);
     sh.prompt(0);

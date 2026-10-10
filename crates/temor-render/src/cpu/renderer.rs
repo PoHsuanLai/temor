@@ -4,6 +4,7 @@ use temor_vt::Row;
 
 use super::compose::compose_row;
 use super::pixels::Target;
+use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
 use crate::font::{FontSet, GlyphCache};
 use crate::frame::PaneFrame;
@@ -116,10 +117,13 @@ impl Renderer for CpuRenderer {
             colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
+            bands: view.bands,
+            pane_width: w,
+            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let plan = self
             .tracker
-            .plan(key, frame.take_dirty(), cursor, &frame.images);
+            .plan(key, frame.take_dirty(), cursor, &frame.images, view.bands);
         let input = SceneInput {
             metrics,
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
