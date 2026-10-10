@@ -1,7 +1,7 @@
 //! The ⌘T bar's rows and where they come from (§7). Rows are ranked here and handed to quire's
 //! palette machine as they are; the palette never re-ranks.
 
-use crate::vocab::ids::{FolderId, TabId};
+use crate::vocab::ids::{FolderId, Seq, TabId};
 use crate::vocab::text::{CommandText, Cwd, HostAlias, PluginId};
 use ds_core::word::Word;
 use ds_style::space::list::SpaceId;
@@ -38,6 +38,9 @@ pub enum Target {
     Space(SpaceId),
     /// Go to a tab.
     Tab(TabId),
+    /// Bring back the tab closed last (recently closed, with its scrollback). `Seq` is the order
+    /// it was closed in, so the row's identity changes when another tab is closed after it.
+    Closed(Seq),
     /// Open a folder of tabs.
     Folder(FolderId),
     /// Connect to a host.
@@ -71,6 +74,9 @@ pub struct PluginRow {
 pub enum BarAction {
     /// Go to a local thing.
     Go(Target),
+    /// Open a plain tab with one shell. The bar offers it on an empty query, so ⌘T then Enter
+    /// is a new tab.
+    NewTab,
     /// Run the query as a command in a new tab.
     Run(CommandText),
     /// Hand the item back to its plugin.
@@ -91,7 +97,7 @@ pub enum BarAction {
 /// Which rule placed a row; rows come in this order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Word)]
 pub enum RowGroup {
-    /// The Run row (rule 2), on top.
+    /// The Run row (rule 2), on top; on an empty query, the "New tab" row.
     Run,
     /// Local matches (rule 1).
     Match,

@@ -1,6 +1,6 @@
 use super::{
-    BarAction, BarContext, BarIn, BarKey, BarOut, BarState, Candidate, OpenBar, PathResolver,
-    PluginRow, RowKey, Target, bar_step,
+    BarAction, BarContext, BarIn, BarOut, BarState, Candidate, OpenBar, PathResolver, PluginRow,
+    RowKey, Target, bar_step,
 };
 use crate::vocab::ai::AiSwitch;
 use crate::vocab::ids::TabId;
@@ -40,86 +40,71 @@ fn open_with(query: &str) -> OpenBar {
     bar
 }
 
-fn highlighted(state: &BarState) -> Option<&str> {
-    match state {
-        BarState::Open(bar) => bar.highlighted.as_ref().map(|key| key.0.as_str()),
-        _ => None,
-    }
+fn keys(bar: &OpenBar) -> Vec<&str> {
+    bar.rows.iter().map(|row| row.key.0.as_str()).collect()
 }
 
 #[test]
-fn toggle_opens_and_closes_and_escape_closes() {
+fn toggle_opens_and_closes_and_close_closes() {
     let (open, out) = step(BarState::Closed, BarIn::Toggle);
-    assert!(matches!(open, BarState::Open(_)));
+    let BarState::Open(bar) = &open else {
+        panic!("{open:?}")
+    };
     assert_eq!(out, vec![BarOut::Refreshed]);
+    assert_eq!(
+        keys(bar)[0],
+        "new-tab",
+        "an empty bar leads with a plain tab"
+    );
     assert_eq!(
         step(open.clone(), BarIn::Toggle),
         (BarState::Closed, vec![BarOut::Closed])
     );
     assert_eq!(
-        step(open, BarIn::Key(BarKey::Escape)),
+        step(open, BarIn::Close),
         (BarState::Closed, vec![BarOut::Closed])
     );
     assert_eq!(
-        step(BarState::Closed, BarIn::Key(BarKey::Escape)),
+        step(BarState::Closed, BarIn::Close),
         (BarState::Closed, vec![])
     );
 }
 
 #[test]
-fn typing_reranks_asks_providers_and_highlights_the_top_row() {
+fn typing_reranks_and_asks_providers() {
     let (state, _) = step(BarState::Closed, BarIn::Toggle);
     let (state, out) = step(state, BarIn::Typed("logs 2".into()));
     assert_eq!(
         out,
         vec![BarOut::AskProviders("logs 2".into()), BarOut::Refreshed]
     );
-    assert_eq!(highlighted(&state), Some("tab:2"));
+    let BarState::Open(bar) = state else { panic!() };
+    assert_eq!(keys(&bar), ["tab:2"]);
 }
 
 #[test]
-fn selection_stops_at_the_ends() {
+fn a_picked_row_runs_and_an_unknown_one_changes_nothing() {
     let start = BarState::Open(open_with("logs"));
-    #[rustfmt::skip]
-    let cases: &[(&str, &[BarKey], &str)] = &[
-        ("down moves on",                &[BarKey::Down], "tab:2"),
-        ("tab moves on",                 &[BarKey::Tab, BarKey::Tab], "tab:3"),
-        ("down stops at the last",       &[BarKey::Down, BarKey::Down, BarKey::Down, BarKey::Down], "tab:3"),
-        ("up stops at the first",        &[BarKey::Up], "tab:1"),
-        ("shift-tab moves back",         &[BarKey::Down, BarKey::BackTab], "tab:1"),
-    ];
-    for (name, keys, want) in cases {
-        let state = keys
-            .iter()
-            .fold(start.clone(), |state, key| step(state, BarIn::Key(*key)).0);
-        assert_eq!(highlighted(&state), Some(*want), "{name}");
-    }
-}
-
-#[test]
-fn enter_and_click_pick_a_row() {
-    let start = BarState::Open(open_with("logs"));
-    let (state, _) = step(start.clone(), BarIn::Key(BarKey::Down));
-    let (picked, out) = step(state, BarIn::Key(BarKey::Enter));
+    let (picked, out) = step(start.clone(), BarIn::Pick(RowKey("tab:2".into())));
     let BarState::Picked(row) = &picked else {
         panic!("{picked:?}")
     };
     assert_eq!(row.action, BarAction::Go(Target::Tab(TabId(2))));
     assert_eq!(out, vec![BarOut::Run(row.clone())]);
-    let (clicked, _) = step(start.clone(), BarIn::Click(RowKey("tab:3".into())));
-    assert!(matches!(clicked, BarState::Picked(ref row) if row.key == RowKey("tab:3".into())));
-    let (missed, out) = step(start.clone(), BarIn::Click(RowKey("tab:9".into())));
+    let (missed, out) = step(start.clone(), BarIn::Pick(RowKey("tab:9".into())));
     assert_eq!((missed, out), (start, vec![]));
+    let (closed_pick, out) = step(BarState::Closed, BarIn::Pick(RowKey("tab:2".into())));
+    assert_eq!((closed_pick, out), (BarState::Closed, vec![]));
 }
 
 #[test]
-fn provider_rows_for_an_old_query_are_dropped_and_the_highlight_survives() {
+fn provider_rows_for_an_old_query_are_dropped() {
     let plugin = PluginRow {
         plugin: PluginId("git".into()),
         item: "x".into(),
         title: "logs branch".into(),
     };
-    let start = step(BarState::Open(open_with("logs")), BarIn::Key(BarKey::Down)).0;
+    let start = BarState::Open(open_with("logs"));
     let stale = BarIn::ProviderRows {
         query: "log".into(),
         rows: vec![plugin.clone()],
@@ -131,7 +116,6 @@ fn provider_rows_for_an_old_query_are_dropped_and_the_highlight_survives() {
     };
     let (state, out) = step(start, fresh);
     assert_eq!(out, vec![BarOut::Refreshed]);
-    assert_eq!(highlighted(&state), Some("tab:2"));
     let BarState::Open(bar) = state else { panic!() };
     assert_eq!(
         bar.rows.last().map(|row| row.title.as_str()),
@@ -147,22 +131,19 @@ impl PathResolver for Xclip {
 }
 
 #[test]
-fn typing_resets_the_highlight_to_the_new_top_row() {
+fn the_run_row_leads_when_the_command_is_on_path_and_ai_rows_follow() {
     let cx = BarContext {
         candidates: &[],
         resolver: &Xclip,
         ai: AiSwitch::On,
     };
     let (state, _) = bar_step(BarState::Closed, BarIn::Toggle, cx);
-    let (state, _) = bar_step(state, BarIn::Typed("x".into()), cx);
-    assert_eq!(highlighted(&state), Some("ai:suggest"));
     let (state, _) = bar_step(state, BarIn::Typed("xclip -o".into()), cx);
-    assert_eq!(
-        highlighted(&state),
-        Some("run"),
-        "the Run row on top takes the highlight"
-    );
-    let (_, out) = bar_step(state, BarIn::Key(BarKey::Enter), cx);
+    let BarState::Open(bar) = &state else {
+        panic!()
+    };
+    assert_eq!(keys(bar), ["run", "ai:suggest", "ai:agent", "ai:about"]);
+    let (_, out) = bar_step(state, BarIn::Pick(RowKey("run".into())), cx);
     assert!(
         matches!(out.as_slice(), [BarOut::Run(row)] if matches!(row.action, BarAction::Run(_)))
     );

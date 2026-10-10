@@ -117,7 +117,13 @@ fn a_run_row_tops_the_list_only_when_the_first_word_is_on_path() {
     );
     assert!(off.iter().all(|row| row.group != RowGroup::Run));
     let blank = rank("   ", &candidates(), &[], &OnPath(&[""]), AiSwitch::Off);
-    assert!(blank.iter().all(|row| row.group != RowGroup::Run));
+    assert!(
+        blank
+            .iter()
+            .all(|row| !matches!(row.action, BarAction::Run(_))),
+        "a blank query is not a command"
+    );
+    assert_eq!(blank[0].action, BarAction::NewTab, "it is a plain new tab");
 }
 
 #[test]
@@ -170,8 +176,9 @@ fn ai_rows_are_always_last_and_absent_when_ai_is_off() {
         AiSwitch::Off,
     );
     assert!(off.iter().all(|row| row.group != RowGroup::Ai));
-    assert!(
-        rank("", &[], &[], &OnPath(&[]), AiSwitch::On).is_empty(),
-        "no AI rows for no query"
+    assert_eq!(
+        titles(&rank("", &[], &[], &OnPath(&[]), AiSwitch::On)),
+        vec!["New tab"],
+        "no AI rows for no query, only the plain new tab"
     );
 }

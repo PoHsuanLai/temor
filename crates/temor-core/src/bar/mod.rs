@@ -17,4 +17,4 @@ pub use model::{
 };
 pub use providers::{DirectoryUse, Sources, SpaceEntry, candidates, space_entries};
 pub use rank::rank;
-pub use step::{BarContext, BarIn, BarKey, BarOut, BarState, OpenBar, bar_step};
+pub use step::{BarContext, BarIn, BarOut, BarState, OpenBar, bar_step};

@@ -1,13 +1,13 @@
 //! `bar_step`: the ⌘T bar from opening to a picked row (§7).
 //!
-//! While open, the bar's own field has focus, so the keys it is given were never the shell's;
-//! the bar takes no Ctrl-C at all. Selection stops at the ends and does not wrap. Rows come
-//! ranked from [`rank`]; the output tells quire's palette machine when they changed.
+//! The bar ranks; quire's palette machine walks the ranked rows (the highlight, Up and Down that
+//! stop at the ends, Enter), so no highlight is kept here. The window feeds `OpenBar::rows` to
+//! the palette as its params, sends it `Refreshed` on [`BarOut::Refreshed`], and gives back the
+//! row the palette ran as [`BarIn::Pick`].
 
 use super::model::{BarRow, Candidate, PathResolver, PluginRow, RowKey};
 use super::rank::rank;
 use crate::vocab::ai::AiSwitch;
-use ds_core::word::Word;
 
 /// The bar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,25 +29,6 @@ pub struct OpenBar {
     pub plugins: Vec<PluginRow>,
     /// The ranked rows.
     pub rows: Vec<BarRow>,
-    /// The highlighted row.
-    pub highlighted: Option<RowKey>,
-}
-
-/// A key in the bar's field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-pub enum BarKey {
-    /// Up arrow.
-    Up,
-    /// Down arrow.
-    Down,
-    /// Tab: the next row.
-    Tab,
-    /// Shift-Tab: the row before.
-    BackTab,
-    /// Enter: pick the highlighted row.
-    Enter,
-    /// Escape: close the bar.
-    Escape,
 }
 
 /// What moves the bar.
@@ -64,10 +45,10 @@ pub enum BarIn {
         /// Their rows.
         rows: Vec<PluginRow>,
     },
-    /// A key in the field.
-    Key(BarKey),
-    /// A row was clicked.
-    Click(RowKey),
+    /// The palette ran this row (Enter or a click).
+    Pick(RowKey),
+    /// Escape or a click outside: close.
+    Close,
 }
 
 /// What the bar wants done.
@@ -106,7 +87,7 @@ impl std::fmt::Debug for BarContext<'_> {
 /// The bar after `input`.
 pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState, Vec<BarOut>) {
     match (state, input) {
-        (BarState::Open(_), BarIn::Toggle) | (BarState::Open(_), BarIn::Key(BarKey::Escape)) => {
+        (BarState::Open(_), BarIn::Toggle | BarIn::Close) => {
             (BarState::Closed, vec![BarOut::Closed])
         }
         (BarState::Closed | BarState::Picked(_), BarIn::Toggle) => {
@@ -114,15 +95,12 @@ pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState,
             (BarState::Open(bar), vec![BarOut::Refreshed])
         }
         (BarState::Open(_), BarIn::Typed(query)) => {
-            // A new query is a new list: the highlight goes to its top row, so Enter never
-            // picks a row the person had moved to under an older query.
             let ask = BarOut::AskProviders(query.clone());
             let bar = reranked(
                 OpenBar {
                     query,
                     plugins: Vec::new(),
                     rows: Vec::new(),
-                    highlighted: None,
                 },
                 cx,
             );
@@ -138,50 +116,15 @@ pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState,
             );
             (BarState::Open(bar), vec![BarOut::Refreshed])
         }
-        (BarState::Open(bar), BarIn::Key(BarKey::Up | BarKey::BackTab)) => moved(bar, Move::Back),
-        (BarState::Open(bar), BarIn::Key(BarKey::Down | BarKey::Tab)) => moved(bar, Move::On),
-        (BarState::Open(bar), BarIn::Key(BarKey::Enter)) => match bar.highlighted.clone() {
-            Some(key) => pick(bar, &key),
-            None => (BarState::Open(bar), vec![]),
-        },
-        (BarState::Open(bar), BarIn::Click(key)) => pick(bar, &key),
+        (BarState::Open(bar), BarIn::Pick(key)) => pick(bar, &key),
         (state, _) => (state, vec![]),
     }
 }
 
-/// `bar` with its rows ranked afresh, keeping the highlight if that row is still there (a plugin
-/// refresh under the same query), else on the top row.
+/// `bar` with its rows ranked afresh.
 fn reranked(bar: OpenBar, cx: BarContext<'_>) -> OpenBar {
     let rows = rank(&bar.query, cx.candidates, &bar.plugins, cx.resolver, cx.ai);
-    let highlighted = bar
-        .highlighted
-        .filter(|key| rows.iter().any(|row| row.key == *key))
-        .or_else(|| rows.first().map(|row| row.key.clone()));
-    OpenBar {
-        rows,
-        highlighted,
-        ..bar
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Move {
-    Back,
-    On,
-}
-
-fn moved(bar: OpenBar, way: Move) -> (BarState, Vec<BarOut>) {
-    let at = bar
-        .highlighted
-        .as_ref()
-        .and_then(|key| bar.rows.iter().position(|row| row.key == *key));
-    let to = match (at, way) {
-        (None, _) => 0,
-        (Some(at), Move::Back) => at.saturating_sub(1),
-        (Some(at), Move::On) => (at + 1).min(bar.rows.len().saturating_sub(1)),
-    };
-    let highlighted = bar.rows.get(to).map(|row| row.key.clone());
-    (BarState::Open(OpenBar { highlighted, ..bar }), vec![])
+    OpenBar { rows, ..bar }
 }
 
 fn pick(bar: OpenBar, key: &RowKey) -> (BarState, Vec<BarOut>) {
