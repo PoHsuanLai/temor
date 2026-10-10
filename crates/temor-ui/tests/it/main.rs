@@ -8,6 +8,7 @@ mod agents_window;
 mod ambient;
 mod bar;
 mod blocks;
+mod cards;
 mod coherence;
 mod desktop;
 mod persist;
