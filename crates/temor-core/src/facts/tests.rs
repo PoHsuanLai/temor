@@ -261,6 +261,11 @@ fn python_versions() {
         ("not quoted", "[project]\nrequires-python = 3.10\n", None),
         ("too long for a chip", "[project]\nrequires-python = \">=3.10,!=3.11.1,!=3.11.2\"\n", None),
         ("no file contents", "", None),
+        ("poetry", "[tool.poetry.dependencies]\npython = \"^3.10\"\nrequests = \"^2\"\n", Some("^3.10")),
+        ("poetry with spaces", "[tool.poetry.dependencies]\npython = \">= 3.9, < 4\"\n", Some(">=3.9,<4")),
+        ("project wins over poetry", "[tool.poetry.dependencies]\npython = \"^3.8\"\n[project]\nrequires-python = \">=3.11\"\n", Some(">=3.11")),
+        ("poetry dev group is not it", "[tool.poetry.group.dev.dependencies]\npython = \"^3.8\"\n", None),
+        ("poetry table form", "[tool.poetry.dependencies]\npython = { version = \"^3.10\" }\n", None),
     ];
     for (name, text, want) in pyprojects {
         assert_eq!(
