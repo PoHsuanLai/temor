@@ -5,10 +5,11 @@
 //! the pane's: anyview's one remembering policy writes it to the store.
 
 use std::cell::OnceCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use anyview_machines::StageFamily;
 use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Sequence, SequenceOrigin};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::ViewerRef;
@@ -27,6 +28,10 @@ pub(super) struct ViewerHub {
     pending: Option<ViewAsk>,
     seats: BTreeMap<PaneId, Seat>,
     handles: BTreeMap<PaneId, PaneHandle>,
+    /// The viewers whose file has no stage to show it (a kind the viewer only describes).
+    describes_only: BTreeSet<PaneId>,
+    /// The files fetched from other computers, and the copies the viewers show.
+    pub(super) host: super::viewer_host::HostCopies,
 }
 
 /// One viewer pane's own state.
@@ -86,6 +91,7 @@ impl Hub {
     /// The workspace announced a viewer pane: it has no program, only a seat.
     pub(super) fn viewer_opened(&mut self, open: ViewerOpen) {
         let file = PathBuf::from(open.file.as_str());
+        self.host_copy_shown(open.pane, &file);
         let around = match self.viewers.pending.take() {
             Some(ask) if ask.file == file => ask.around,
             _ => Vec::new(),
@@ -103,7 +109,19 @@ impl Hub {
     /// A saved viewer pane comes back if its file is still there; if not, the pane is closed.
     pub(super) fn restore_viewer(&mut self, open: ViewerOpen) {
         let pane = open.pane;
-        let there = Path::new(open.file.as_str()).is_file();
+        let file = PathBuf::from(open.file.as_str());
+        // A copy of a file on another computer does not outlive the window that fetched it.
+        if self.is_host_copy(&file) {
+            super::ssh_edit::forget_copy(&file);
+            self.viewer_opened(open);
+            self.act(WorkspaceIn::ClosePane(Some(pane)));
+            self.notices.push(
+                "A file from another computer was closed with the window; ⌘-click it to get it again."
+                    .to_owned(),
+            );
+            return;
+        }
+        let there = file.is_file();
         self.viewer_opened(open);
         if !there {
             self.act(WorkspaceIn::ClosePane(Some(pane)));
@@ -116,6 +134,8 @@ impl Hub {
     pub(super) fn viewer_ended(&mut self, pane: PaneId) {
         self.viewers.seats.remove(&pane);
         self.viewers.handles.remove(&pane);
+        self.viewers.describes_only.remove(&pane);
+        self.host_copy_ended(pane);
     }
 
     /// The request that gives the keyboard back from the viewer `pane`: to the terminal it came
@@ -146,6 +166,19 @@ impl Hub {
         if self.ws.viewers.get(&pane) != Some(&file) {
             self.act(WorkspaceIn::ViewerShows { pane, file });
         }
+    }
+
+    /// The viewer `pane` opened a file, and whether the viewer can show it or only describe it.
+    pub fn viewer_family(&mut self, pane: PaneId, family: StageFamily) {
+        match family {
+            StageFamily::PeekOnly => self.viewers.describes_only.insert(pane),
+            _ => self.viewers.describes_only.remove(&pane),
+        };
+    }
+
+    /// Whether the viewer `pane` can only describe its file, which another app may open.
+    pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
+        self.viewers.describes_only.contains(&pane)
     }
 
     /// Whether `pane` is a viewer.
@@ -198,6 +231,11 @@ impl HubRef {
     /// See [`Hub::viewer_show`].
     pub fn viewer_show(&self, pane: PaneId) -> Option<ViewerShow> {
         self.0.borrow().viewer_show(pane)
+    }
+
+    /// See [`Hub::viewer_describes_only`].
+    pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
+        self.0.borrow().viewer_describes_only(pane)
     }
 
     /// See [`Hub::is_viewer`].

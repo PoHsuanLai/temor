@@ -65,6 +65,7 @@ sha2 = "0.10"
 anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c91ec0a6b60fbdd5136dc096e2522e6a86085c21" }
 anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c91ec0a6b60fbdd5136dc096e2522e6a86085c21" }
 anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c91ec0a6b60fbdd5136dc096e2522e6a86085c21" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c91ec0a6b60fbdd5136dc096e2522e6a86085c21" }
 anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c91ec0a6b60fbdd5136dc096e2522e6a86085c21" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
@@ -89,6 +90,8 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
 tempfile = "3"
+# The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).
+similar = { version = "2", default-features = false, features = ["text"] }
 
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch

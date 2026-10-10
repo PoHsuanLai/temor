@@ -21,6 +21,9 @@ pub struct ViewAsk {
     pub file: PathBuf,
     /// The files its output lists, in the order they were printed; empty when it had none.
     pub around: Vec<PathBuf>,
+    /// Where the file is: on this computer, or on the host the pane is a session on (then it is
+    /// a path there, not checked, and nothing is listed around it).
+    pub site: PaneSite,
 }
 
 /// The path a `file://` link names when it names this computer (no host, or `localhost`).
@@ -31,6 +34,16 @@ fn local_file_url(url: &str) -> Option<PathBuf> {
         return None;
     }
     cwd_from_url(url).map(PathBuf::from)
+}
+
+/// The path a click on `token` most likely means on a host: the last of its candidates, which is
+/// the token without wrapping, `:line:column` or `rg`'s trailing text. Nothing here can look at
+/// the host's disk, so the fetch finds out whether it is a file.
+fn host_path(cwd: Option<&str>, token: &str) -> Option<PathBuf> {
+    candidates(token)
+        .iter()
+        .rev()
+        .find_map(|candidate| resolve(cwd, candidate))
 }
 
 /// Whether `path` is a file on this computer: the check the pure path rules are given.
@@ -44,51 +57,66 @@ impl Session {
         self.view_ask.take()
     }
 
-    /// ⌘-click at `cell`: the word there, if it names a file, is asked for. A pane on another
-    /// computer has no files of this one's.
+    /// ⌘-click at `cell`: the word there, if it names a file, is asked for. On a pane on another
+    /// computer the word is taken as a path there (the window fetches it).
     pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), UiError> {
         let Some(file) = self.file_at(cell)? else {
             return Ok(());
         };
         let cwd = self.cwd.clone();
-        let around = self
-            .output_at_row(cell.row)
-            .map(|output| output_paths(&output, cwd.as_deref(), is_file))
-            .unwrap_or_default();
-        self.view_ask = Some(ViewAsk { file, around });
+        let around = match self.site {
+            PaneSite::Remote => Vec::new(),
+            PaneSite::Local => self
+                .output_at_row(cell.row)
+                .map(|output| output_paths(&output, cwd.as_deref(), is_file))
+                .unwrap_or_default(),
+        };
+        self.view_ask = Some(ViewAsk {
+            file,
+            around,
+            site: self.site,
+        });
         Ok(())
     }
 
-    /// The file the word at `cell` names, if it names one that exists here. The rule is the
-    /// ⌘-click's, and the peek's too.
+    /// The file the word at `cell` names, if it names one that exists here; on a pane on another
+    /// computer, the path it most likely names there. The rule is the ⌘-click's, and the peek's
+    /// too.
     fn file_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
-        if self.site == PaneSite::Remote {
-            return Ok(None);
-        }
         let row = self.line(cell.row)?;
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
         };
         let cwd = self.cwd.as_deref();
-        Ok(candidates(&token)
-            .iter()
-            .filter_map(|candidate| resolve(cwd, candidate))
-            .find(|path| is_file(path)))
+        Ok(match self.site {
+            PaneSite::Remote => host_path(cwd, &token),
+            PaneSite::Local => candidates(&token)
+                .iter()
+                .filter_map(|candidate| resolve(cwd, candidate))
+                .find(|path| is_file(path)),
+        })
     }
 
-    /// The file a `file://` link (OSC 8) at `cell` names, if it is one that exists here.
-    /// A `file://` link that names a file here opens in the viewer, as the peek shows it. Whether
-    /// it did.
-    pub(super) fn view_link(&mut self, target: &str) -> bool {
-        if self.site == PaneSite::Remote {
-            return false;
+    /// The file a `file://` link names: on this computer, one that exists here; on a pane on
+    /// another computer, the path in the link, whatever host it names (the program on the host
+    /// wrote it).
+    fn linked_file(&self, target: &str) -> Option<PathBuf> {
+        match self.site {
+            PaneSite::Remote => cwd_from_url(target).map(PathBuf::from),
+            PaneSite::Local => local_file_url(target).filter(|path| is_file(path)),
         }
-        let Some(file) = local_file_url(target).filter(|path| is_file(path)) else {
+    }
+
+    /// A `file://` link that names a file opens in the viewer, as the peek shows it. Whether it
+    /// did.
+    pub(super) fn view_link(&mut self, target: &str) -> bool {
+        let Some(file) = self.linked_file(target) else {
             return false;
         };
         self.view_ask = Some(ViewAsk {
             file,
             around: Vec::new(),
+            site: self.site,
         });
         true
     }
@@ -97,12 +125,12 @@ impl Session {
         let target = self.pane.with_term(|term| {
             term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
         })?;
-        local_file_url(&target).filter(|path| is_file(path))
+        self.linked_file(&target)
     }
 
     /// The file under the pointer at `at`, for the peek: a `file://` link there, else a path in
-    /// the text. None on a pane on another computer, while the program has the mouse (a ⌘-click
-    /// would go to it), or where nothing names a file.
+    /// the text (on a pane on another computer, a path there, unchecked). None while the program
+    /// has the mouse (a ⌘-click would go to it), or where nothing names a file.
     pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
         let fit = self.fit?;
         if self.pane.with_term(|term| term.mouse_tracking()) {
@@ -111,9 +139,6 @@ impl Session {
         let hit = fit.cell_at(at);
         let top = self.viewport_top().ok()?;
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
-        if self.site == PaneSite::Remote {
-            return None;
-        }
         self.linked_file_at(cell)
             .or_else(|| self.file_at(cell).ok().flatten())
     }
@@ -121,7 +146,8 @@ impl Session {
     /// The block toolbar's View: the first file the block's output lists, with the rest around it.
     pub fn view_block(&mut self, id: BlockId) {
         if self.site == PaneSite::Remote {
-            self.notice = Some("Files on another computer cannot be shown here yet.".to_owned());
+            self.notice =
+                Some("To view a file on another computer, \u{2318}-click its name".to_owned());
             return;
         }
         let Some(output) = self.block_output(id) else {
@@ -130,7 +156,13 @@ impl Session {
         };
         let around = output_paths(&output, self.cwd.as_deref(), is_file);
         match around.first().cloned() {
-            Some(file) => self.view_ask = Some(ViewAsk { file, around }),
+            Some(file) => {
+                self.view_ask = Some(ViewAsk {
+                    file,
+                    around,
+                    site: PaneSite::Local,
+                })
+            }
             None => self.notice = Some("This output lists no files to show.".to_owned()),
         }
     }
@@ -139,6 +171,26 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_click_on_a_host_takes_the_path_without_the_line_numbers_or_the_text_after_them() {
+        let table = [
+            ("src/a.rs", Some("/w/src/a.rs")),
+            ("src/a.rs:12:5", Some("/w/src/a.rs")),
+            ("(src/a.rs:12)", Some("/w/src/a.rs")),
+            ("src/a.rs:12:let", Some("/w/src/a.rs")),
+            ("/etc/hosts", Some("/etc/hosts")),
+            ("", None),
+        ];
+        for (token, want) in table {
+            assert_eq!(
+                host_path(Some("/w"), token),
+                want.map(PathBuf::from),
+                "{token}"
+            );
+        }
+        assert_eq!(host_path(None, "a.rs"), None, "no folder to start from");
+    }
 
     #[test]
     fn only_a_link_to_a_file_on_this_computer_names_a_path() {

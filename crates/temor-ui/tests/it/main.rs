@@ -12,6 +12,7 @@ mod cards;
 mod coherence;
 mod desktop;
 mod facts;
+mod host_files;
 mod offer;
 mod peek;
 mod persist;

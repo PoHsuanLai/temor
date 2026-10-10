@@ -26,6 +26,7 @@ pub(crate) const REQUEST_KINDS: &[&str] = &[
     "WriteFile",
     "Watch",
     "Unwatch",
+    "Facts",
     "RunTrial",
     "Relay",
 ];
@@ -36,7 +37,7 @@ pub(crate) const EVENT_KINDS: &[&str] = &["Output", "Exited", "Ports", "FileChan
 /// The reply kinds (the variants of `Reply`).
 pub(crate) const REPLY_KINDS: &[&str] = &[
     "Ack", "Pong", "Opened", "Attached", "Sessions", "Ports", "Listing", "Stat", "Read", "Written",
-    "Watching", "Verdict", "Relayed",
+    "Watching", "Facts", "Verdict", "Relayed",
 ];
 
 /// The error kinds (the variants of `RemoteError`).

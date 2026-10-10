@@ -7,6 +7,7 @@
 
 mod envelope;
 mod event;
+mod facts;
 mod files;
 mod incoming;
 mod kinds;
@@ -21,6 +22,7 @@ mod trial;
 
 pub use envelope::Message;
 pub use event::Event;
+pub use facts::{FactFile, FolderFacts, FolderFiles, GitText};
 pub use files::{
     DirEntry, EntryKind, FileMeta, FileStamp, PartEnd, RemotePath, WatchChange, WriteCheck,
     WriteMode,

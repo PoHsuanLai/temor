@@ -17,6 +17,7 @@ quire-desktop = ["temor-desktop/quire-desktop"]
 anyview-core = { workspace = true }
 anyview-fs = { workspace = true }
 anyview-peek = { workspace = true, features = ["pane"] }
+anyview-machines = { workspace = true }
 anyview-pane = { workspace = true }
 chordkit = { workspace = true }
 chordkit-gnome = { workspace = true }
@@ -29,6 +30,7 @@ ds-settings = { workspace = true, features = ["dioxus"] }
 png = { workspace = true }
 rustix = { workspace = true }
 serde_json = { workspace = true }
+similar = { workspace = true }
 temor-core = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }

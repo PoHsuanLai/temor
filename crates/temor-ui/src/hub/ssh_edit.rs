@@ -20,9 +20,8 @@ use crate::edge::ssh_work::EditId;
 use crate::platform::ensure_private_dir;
 
 /// The name the local copy has: the host file's own name, so the editor picks the right mode.
-pub(super) fn local_name(path: &RemoteFilePath) -> String {
+pub(super) fn local_name(path: &str) -> String {
     let name: String = path
-        .as_str()
         .rsplit('/')
         .find(|part| !part.is_empty())
         .unwrap_or("file")
@@ -51,7 +50,7 @@ pub(super) fn stamp_of(path: &Path) -> Option<LocalStamp> {
 }
 
 /// Removes a local copy and the folder made for it. Already gone is as good as removed.
-fn forget_copy(local: &Path) {
+pub(super) fn forget_copy(local: &Path) {
     let _ = std::fs::remove_file(local);
     if let Some(dir) = local.parent() {
         // Only an empty folder goes: the person may have saved something beside the copy.
@@ -108,7 +107,7 @@ impl Hub {
                 .push(format!("The local copy can't be made: {err}"));
             return;
         }
-        let local = dir.join(local_name(&path));
+        let local = dir.join(local_name(path.as_str()));
         self.ssh.edits.insert(
             id,
             RemoteEdit {

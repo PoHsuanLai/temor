@@ -9,8 +9,16 @@ pub const PROTOCOL: ProtocolVersion = ProtocolVersion(2);
 
 /// The capabilities the daemon offers. Trial runs and the agent relay need the sandbox runner
 /// (bulkhead), which is not linked yet, so they are not offered.
-pub const DAEMON_CAPS: [Capability; 3] =
-    [Capability::Sessions, Capability::Ports, Capability::Files];
+///
+/// `Facts` (a session's folder read for the chips) was added without a new protocol version: a
+/// request and a reply nobody sends unless both ends agreed the capability change nothing for an
+/// older peer, which never offers it and is never asked.
+pub const DAEMON_CAPS: [Capability; 4] = [
+    Capability::Sessions,
+    Capability::Ports,
+    Capability::Files,
+    Capability::Facts,
+];
 
 /// A greeting for this build, carrying `helper` as the identity of the helper binary (the
 /// daemon's own hash, or the hash temor expects of the host).

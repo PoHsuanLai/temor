@@ -25,6 +25,7 @@ pub(super) fn is_file_request(body: &Request) -> bool {
             | Request::WriteFile { .. }
             | Request::Watch { .. }
             | Request::Unwatch { .. }
+            | Request::Facts { .. }
     )
 }
 

@@ -28,7 +28,11 @@ impl Desk {
             }
             PaneRequest::Opened(opened) => {
                 let path = opened.source.path().as_path().to_path_buf();
-                self.settle(|hub| hub.viewer_shows(pane, &path));
+                let family = opened.family;
+                self.settle(|hub| {
+                    hub.viewer_shows(pane, &path);
+                    hub.viewer_family(pane, family);
+                });
             }
             // Where the person left off: with a store the pane keeps it itself, by anyview's one
             // remembering policy (`Remembering`), and never asks; a run without a store keeps
@@ -42,7 +46,26 @@ impl Desk {
     }
 }
 
+impl Desk {
+    /// "Open in another app" on a viewer that can only describe its file: the desktop opens the
+    /// file with the program it chose for it.
+    pub fn viewer_open_in_app(&self, pane: PaneId) {
+        self.settle(|hub| hub.viewer_file_in_app(pane));
+    }
+}
+
 impl Hub {
+    /// The desktop opens the file the viewer `pane` shows with the program it chose for it.
+    fn viewer_file_in_app(&mut self, pane: PaneId) {
+        let file =
+            self.ws.viewers.get(&pane).and_then(|file| {
+                anyview_pane::FilePath::new(std::path::Path::new(file.as_str())).ok()
+            });
+        if let Some(file) = file {
+            self.viewer_open_elsewhere(&[file]);
+        }
+    }
+
     /// The desktop opens `files` with the program it chose for them.
     fn viewer_open_elsewhere(&mut self, files: &[anyview_pane::FilePath]) {
         if files.is_empty() {

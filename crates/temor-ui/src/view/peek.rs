@@ -1,7 +1,7 @@
 //! The ⌘-hover peek on a terminal pane (PLAN §10, D13): the pane's pointer and key events feed the
 //! pure step (`hub::peek_step`), whose answer shows or hides the card. The card takes neither the
 //! keyboard nor the pointer; it is drawn over the terminal and lets every event through. A pane
-//! on another computer never shows one.
+//! on another computer shows one only when its host has the helper (the file is fetched first).
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -12,6 +12,7 @@ use ds::base::time::clock::sleep;
 use ds::edit::raw_key::RawKey;
 use ds::host::measure::{RectProbe, use_rect};
 use ds::host::signals::HostSignals;
+use temor_core::vocab::ids::PaneId;
 use temor_vt::SurfacePoint;
 
 use super::peek_card::PeekCard;
@@ -67,6 +68,7 @@ struct Memo {
 /// Everything an event needs to be fed to the step.
 #[derive(Clone)]
 struct Feeder {
+    pane: PaneId,
     slot: Rc<RefCell<Slot>>,
     desk: Desk,
     rect: RectProbe,
@@ -117,7 +119,7 @@ impl Feeder {
         let Some(room) = self.rect.rect().map(|r| (r.size.width.0, r.size.height.0)) else {
             return;
         };
-        let Some(ticket) = self.desk.hub.peek_ask(&under.file) else {
+        let Some(ticket) = self.desk.hub.peek_ask(self.pane, &under.file) else {
             return;
         };
         let (hub, mut card) = (self.desk.hub.clone(), self.card);
@@ -142,6 +144,7 @@ impl Feeder {
 
 /// The pane's peek: call it once, in the pane's component, and wire the handles in.
 pub fn use_peek(
+    pane: PaneId,
     slot: Rc<RefCell<Slot>>,
     desk: Desk,
     rect: RectProbe,
@@ -151,6 +154,7 @@ pub fn use_peek(
     let measure = use_rect();
     let memo = use_hook(|| Rc::new(RefCell::new(Memo::default())));
     let feeder = Feeder {
+        pane,
         slot,
         desk,
         rect,

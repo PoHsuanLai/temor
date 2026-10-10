@@ -34,6 +34,7 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     hub.viewers_ask(ViewAsk {
         file: PathBuf::from(file),
         around: around.iter().map(PathBuf::from).collect(),
+        site: temor_core::shelf::PaneSite::Local,
     });
     hub.viewer_opened(open);
     (hub, shell, pane)
@@ -113,4 +114,44 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
         "{:?}",
         hub.notices
     );
+}
+
+#[test]
+fn a_viewer_of_a_host_file_takes_its_copy_away_with_it_and_never_a_file_of_the_person() {
+    let (mut hub, _, viewer) = with_viewer("/w/a.txt", &[]);
+    let folder = hub.copies_dir().join("7");
+    std::fs::create_dir_all(&folder).expect("copy folder");
+    let copy = folder.join("a.txt");
+    std::fs::write(&copy, "from the host").expect("copy");
+    let theirs = hub
+        .copies_dir()
+        .parent()
+        .expect("runtime")
+        .join("theirs.txt");
+    std::fs::write(&theirs, "mine").expect("a local file");
+    hub.host_copy_shown(viewer, &theirs);
+    hub.viewer_ended(viewer);
+    assert!(theirs.exists(), "a file that is not a copy is left alone");
+    hub.host_copy_shown(viewer, &copy);
+    hub.viewer_ended(viewer);
+    assert!(
+        !copy.exists() && !folder.exists(),
+        "the copy and its folder go"
+    );
+}
+
+#[test]
+fn a_viewer_that_only_describes_its_file_says_so_until_one_it_can_show_opens() {
+    use anyview_machines::StageFamily::{PeekOnly, Raster, Text};
+    let (mut hub, _, viewer) = with_viewer("/w/a.bin", &[]);
+    let steps = [
+        (PeekOnly, true),
+        (Text, false),
+        (PeekOnly, true),
+        (Raster, false),
+    ];
+    for (family, want) in steps {
+        hub.viewer_family(viewer, family);
+        assert_eq!(hub.viewer_describes_only(viewer), want, "{family:?}");
+    }
 }

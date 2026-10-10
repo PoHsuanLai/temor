@@ -6,6 +6,7 @@
 mod calls;
 mod connect;
 mod events;
+mod facts;
 mod offer;
 mod pending;
 mod stream;

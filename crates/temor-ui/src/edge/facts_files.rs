@@ -35,8 +35,25 @@ pub(super) fn read_venv(dir: &Path, env: &FactsEnv) -> Option<EnvName> {
     }
 }
 
-fn read(folder: &Path, file: &str) -> Option<String> {
-    std::fs::read_to_string(folder.join(file)).ok()
+/// Where the folders' files are read from: this computer's disk, or what a host's helper sent.
+pub(super) trait FolderSource {
+    /// The text of `file` in `folder`, when it is there.
+    fn read(&self, folder: &Path, file: &str) -> Option<String>;
+    /// Whether `folder` is the top of a repository, where the walk up stops.
+    fn is_root(&self, folder: &Path) -> bool;
+}
+
+/// This computer's disk.
+struct OnDisk;
+
+impl FolderSource for OnDisk {
+    fn read(&self, folder: &Path, file: &str) -> Option<String> {
+        std::fs::read_to_string(folder.join(file)).ok()
+    }
+
+    fn is_root(&self, folder: &Path) -> bool {
+        folder.join(".git").exists()
+    }
 }
 
 /// The versions from the nearest files, looking in the folder and then each parent up to the
@@ -45,6 +62,12 @@ fn read(folder: &Path, file: &str) -> Option<String> {
 /// `.python-version`, then `.tool-versions`; Ruby and Go from `.tool-versions`. Only when no
 /// folder names a Python version does the nearest `pyproject.toml`'s `requires-python` stand in.
 pub(super) fn read_runtimes(dir: &Path) -> Runtimes {
+    runtimes_in(dir, &OnDisk)
+}
+
+/// [`read_runtimes`] over any source of folders' files.
+pub(super) fn runtimes_in(dir: &Path, source: &dyn FolderSource) -> Runtimes {
+    let read = |folder: &Path, file: &str| source.read(folder, file);
     let mut out = Runtimes::default();
     let mut required = None;
     for folder in dir.ancestors().take(MOST_PARENTS) {
@@ -70,7 +93,7 @@ pub(super) fn read_runtimes(dir: &Path) -> Runtimes {
         out.go = out.go.or(tools.go);
         let all =
             out.node.is_some() && out.python.is_some() && out.ruby.is_some() && out.go.is_some();
-        if all || folder.join(".git").exists() {
+        if all || source.is_root(folder) {
             break;
         }
     }

@@ -11,6 +11,8 @@
 //! - **Ports** ([`ports`]): the listening TCP ports of the sessions' process trees, from `/proc`.
 //! - **Files** ([`files`]): list, stat, read, write and watch, confined to the folders the client
 //!   was given and resolved with `openat2` beneath them, never through a symlink.
+//! - **Facts** ([`facts`]): git's text and the version files of a session's folder, for the
+//!   window's chips (a request of its own, the `Facts` capability).
 //! - **Client** ([`Client`]): connect over a pair of streams, list, open, attach and detach
 //!   sessions, move files, and the actions to offer for a port ([`port_actions`]).
 //!
@@ -40,6 +42,7 @@ mod clock;
 #[cfg(feature = "ghostty")]
 mod daemon;
 mod error;
+pub mod facts;
 pub mod files;
 #[cfg(feature = "ghostty")]
 pub mod host;

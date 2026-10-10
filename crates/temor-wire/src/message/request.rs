@@ -104,6 +104,12 @@ pub enum Request {
         /// The watch.
         watch: WatchId,
     },
+    /// Read a session's folder for the chips (git, version files). Replies
+    /// [`Reply::Facts`](super::Reply::Facts). Needs the `Facts` capability.
+    Facts {
+        /// The session whose folder is read.
+        session: SessionId,
+    },
     /// Run a proposal's trial. Replies [`Reply::Verdict`](super::Reply::Verdict).
     RunTrial(TrialRequest),
     /// An agent's call, carried out in a remote workspace.
