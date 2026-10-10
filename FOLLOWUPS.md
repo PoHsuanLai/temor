@@ -754,3 +754,6 @@ Nothing was compiled or run (batch rule). The orchestrator's first build will fi
 ## quire asks
 - A multi-line body for `Alert` (the restore plan is a `Sheet` with one `Label` per file for now).
 - A `Menu` anchored to a `Row` that does not bubble its picks to the row.
+
+## Agent checkpoints move to docket (decided 2026-10-10)
+- [ ] docket owns per-turn checkpoints: it uses temor's git-ref approach (private index, hidden ref), keeps the last 20 per run, drops them after 14 days, and skips agents that keep their own (Claude Code /rewind). When the interface is frozen (a list per run, plus restore with a dry-run plan), temor stops snapshotting (hub/agents/checkpoints.rs, temor-core checkpoint git) and shows docket's list and restore. Until then temor's refs stay, and temor adds no pruning.
