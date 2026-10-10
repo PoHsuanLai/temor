@@ -10,4 +10,4 @@ mod tests;
 
 pub use action::Action;
 pub use build::{KeyIssue, build_keymap, shortcut, terminal_shortcut};
-pub use declare::declared;
+pub use declare::{Declared, declared};

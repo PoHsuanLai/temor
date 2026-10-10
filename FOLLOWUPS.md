@@ -512,7 +512,8 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [ ] Adopt in Batch 2: `SwitchChord::Unbound` for the Space switch when Spaces reach the window; `Column`; `ds::focus::soon::focus_landing_told`; `ds::components::editor::write_soon::write_soon`; RawKeySurface `style` and pointer/wheel props; ds-harness `WindowHosting::Recorded` (`window_titles()`, `window_icon()`); `WindowIcon` + `HostWindow::set_icon` (X11 and Windows; Wayland takes the desktop entry's icon).
 
 ## Keys on chordkit (lane/keys, chordkit d6fed65)
-- [ ] Bump chordkit when the agent session sends the sha with: offered-only standard actions (ShowFonts…), so ⌘T goes back to new tab or the command bar; a fallback default per action (equalize: Primary+Ctrl+= plus a terminal fallback); a person's override registering a refused action (focus left/right on "Other" Linux). Then move new tab off Standard(New) and add the fallbacks.
+- [x] chordkit 338b717: temor forgoes "show fonts" and "new", so ⌘T is new tab (⌘N free); equalize has the fallback ⌥⌘0 (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift); a person's chord revives an action refused at start (focus left/right on "Other" Linux, where Ctrl+Alt arrows switch Spaces).
+- [ ] chordkit FINDINGS: a fallback applies only where the default has no live form, not where it collides; focus left/right stay refused by default on "Other" Linux.
 - [x] keycap 0d9abbf adds the `keymap-aware` profile (⌘ arrives as Super); temor's desktop entry asks for it with `X-Keycap-Profile=keymap-aware`. A still-remapped window falls back to chordkit's Ctrl+Shift alias, where ⌘⇧D reads as ⌘D.
 - [ ] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop.
 - [ ] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register.

@@ -3,10 +3,12 @@
 //! their defaults (PLAN §6). Pure over its inputs: the platform and the source come from the
 //! caller, and nothing here reads the environment or a file.
 
-use chordkit::{AppId, Chord, Context, DefaultChord, Keymap, KeymapSource, Overrides, Platform};
+use chordkit::{
+    AppId, Chord, Context, DefaultChord, Keymap, KeymapSource, Overrides, Platform, Registration,
+};
 
 use super::action::{APP, Action};
-use super::declare::declared;
+use super::declare::{Declared, declared};
 use crate::error::SettingsError;
 
 /// A problem with the keymap, with the settings line it came from (0 when no line is to blame).
@@ -46,25 +48,36 @@ fn register_declared(keymap: &mut Keymap) -> Vec<KeyIssue> {
         Err(err) => return vec![(0, SettingsError::Key(err.to_string()))],
     };
     let mut issues = Vec::new();
-    for (action, text) in declared() {
-        let Some(id) = action.to_chordkit() else {
-            continue;
-        };
-        let chordkit::Action::App(id) = id else {
-            continue;
-        };
-        let chord = match text.parse::<DefaultChord>() {
-            Ok(chord) => chord,
-            Err(err) => {
-                issues.push((0, SettingsError::Key(format!("{}: {err}", action.label()))));
-                continue;
+    for declared in declared() {
+        match registration(&app, &declared) {
+            Ok(Some(registration)) => {
+                if let Err(conflict) = keymap.register_with(&registration) {
+                    issues.push((0, SettingsError::Key(conflict.to_string())));
+                }
             }
-        };
-        if let Err(conflict) = keymap.register(&app, &[(id, chord)]) {
-            issues.push((0, SettingsError::Key(conflict.to_string())));
+            Ok(None) => {}
+            Err(err) => issues.push((0, err)),
         }
     }
     issues
+}
+
+/// One action's registration: its default (and fallback), and the standard actions it forgoes.
+/// `None` for an action with no app id of temor's.
+fn registration(app: &AppId, declared: &Declared) -> Result<Option<Registration>, SettingsError> {
+    let Some(chordkit::Action::App(id)) = declared.action.to_chordkit() else {
+        return Ok(None);
+    };
+    let parse = |text: &str| {
+        text.parse::<DefaultChord>()
+            .map_err(|err| SettingsError::Key(format!("{}: {err}", declared.action.label())))
+    };
+    let chord = parse(&declared.chord)?;
+    let registration = Registration::new(app).forgo_all(declared.forgo.iter().copied());
+    Ok(Some(match declared.fallback {
+        Some(fallback) => registration.action_with_fallback(id, chord, parse(fallback)?),
+        None => registration.action(id, chord),
+    }))
 }
 
 /// The first shortcut that runs `action` in ordinary window content, written for the platform

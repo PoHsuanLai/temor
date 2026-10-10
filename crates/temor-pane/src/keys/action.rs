@@ -57,6 +57,7 @@ pub enum Action {
 
 /// The app actions' ids after `temor.`, for the actions that are not standard.
 const APP_SLUGS: &[(Action, &str)] = &[
+    (Action::NewTab, "new-tab"),
     (Action::PreviousPrompt, "previous-prompt"),
     (Action::NextPrompt, "next-prompt"),
     (Action::SplitRight, "split-right"),
@@ -77,7 +78,6 @@ const STANDARD: &[(Action, StandardAction)] = &[
     (Action::Find, StandardAction::Find),
     (Action::FindNext, StandardAction::FindNext),
     (Action::FindPrevious, StandardAction::FindPrevious),
-    (Action::NewTab, StandardAction::New),
     (Action::ClosePane, StandardAction::Close),
 ];
 

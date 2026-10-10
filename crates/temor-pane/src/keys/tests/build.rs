@@ -46,7 +46,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::Find, "find"),
         (Action::FindNext, "find-next"),
         (Action::FindPrevious, "find-previous"),
-        (Action::NewTab, "new"),
+        (Action::NewTab, "temor.new-tab"),
         (Action::ClosePane, "close"),
         (Action::SplitRight, "temor.split-right"),
         (Action::SplitDown, "temor.split-down"),
@@ -87,7 +87,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
 fn the_declared_defaults_are_temors_own_only() {
     let ids: Vec<String> = declared()
         .iter()
-        .filter_map(|(action, _)| action.to_chordkit())
+        .filter_map(|declared| declared.action.to_chordkit())
         .map(|named| named.id())
         .collect();
     assert_eq!(ids.len(), declared().len());

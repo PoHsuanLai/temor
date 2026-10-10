@@ -266,7 +266,7 @@ fn chord(h: &mut Harness, key: char) {
     h.advance(Duration::from_millis(300));
 }
 
-/// The ⌘ chords open and close tabs and panes: ⌘N a tab, ⌘D a split, ⌘W a pane, and a chord
+/// The ⌘ chords open and close tabs and panes: ⌘T a tab, ⌘D a split, ⌘W a pane, and a chord
 /// nothing binds never reaches the shell (^D would end it).
 #[test]
 fn the_command_chords_open_and_close_tabs_and_panes() {
@@ -283,7 +283,7 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
     h.advance(Duration::from_millis(200));
     assert_eq!((rows(&h), panes(&h)), (1, 1), "{}", h.html());
 
-    chord(&mut h, 'n');
+    chord(&mut h, 't');
     assert_eq!(rows(&h), 2, "a new tab:\n{}", h.html());
     chord(&mut h, 'd');
     assert_eq!((rows(&h), panes(&h)), (2, 2), "a split:\n{}", h.html());

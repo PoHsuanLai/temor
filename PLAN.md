@@ -320,23 +320,24 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
     down is Ctrl+Shift+Alt+D) and leave Super alone; macOS uses Super; AltGr characters type.
 - **Default keys** (`Primary+…`; standard actions use the platform's own chord and temor never
   registers one):
-  - standard actions: new tab is the standard "new" (⌘N), close pane the standard "close" (⌘W),
+  - standard actions: close pane is the standard "close" (⌘W),
     copy, paste, find, find next and find previous (the platform's chords: ⌘F, ⌘G, ⇧⌘G on Ours and
     macOS; Ctrl+Shift forms or F3 elsewhere)
-  - temor's own, registered under the id `temor`: `temor.split-right` ⌘D; `temor.split-down` ⇧⌘D;
+  - temor's own, registered under the id `temor`: `temor.new-tab` ⌘T (temor forgoes the
+    offered-only standard "show fonts" and "new", so ⌘N is free); `temor.split-right` ⌘D; `temor.split-down` ⇧⌘D;
     `temor.focus-left/right/up/down` ⌥⌘ arrows; `temor.previous-prompt` / `next-prompt` ⌘↑ / ⌘↓;
-    `temor.zoom` ⇧⌘↩; `temor.equalize` ⌃⌘=; `temor.reopen-tab` ⇧⌘T; `temor.tab-1` to `tab-9` ⌘1 to ⌘9
+    `temor.zoom` ⇧⌘↩; `temor.equalize` ⌃⌘= (fallback ⌥⌘0 where Primary is
+    Ctrl+Shift, as Ctrl+Shift+Alt+0); `temor.reopen-tab` ⇧⌘T; `temor.tab-1` to `tab-9` ⌘1 to ⌘9
     (as Terminal and iTerm); the Space switch is the standard "switch to Space n" with no default of
     temor's (the desktop owns Ctrl+digit; the command bar and the Spaces menu reach it)
-  - ⌘T is the standard "show fonts" on a Mac-style desktop, so the ⌘T command bar's chord is a
-    FOLLOWUP (chordkit has no answer yet for a chord a standard action holds); ⌘⇧U jumps to the
+  - ⌘T opens a plain tab until the command bar lands (P5), then the bar; ⌘⇧U jumps to the
     waiting agent
   - Every binding is configurable in the settings file in chordkit's line form:
     `temor.split-right = Primary+Alt+N`, `copy = Primary+Alt+C`, `temor.zoom = none` to unbind.
     A change replaces the action's defaults, which gives a chord back to the program. A line the
     keymap refuses (a chord the desktop keeps, or one that is not a key) is reported with its line
     number and skipped; an action's refused default is reported once at start and leaves only that
-    action unbound.
+    action unbound until the person binds it (chordkit lets a person's chord revive it).
 
 ## 7. Browser-like structure
 
