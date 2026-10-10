@@ -28,7 +28,8 @@ Additions for temor:
 - Tests never touch the real system: private bus, scratch `HOME`, no real `~/.config`.
 
 ## Gate
-Run from the repo root with `TEMOR_REQUIRE_TOOLS=1` and the shells on `PATH`:
+Run from the repo root with `TEMOR_REQUIRE_TOOLS=1`, the shells and `dbus-daemon` (temor-desktop's and
+temor-ui's private-bus tests) on `PATH`:
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
 - `cargo test --workspace --no-fail-fast`
