@@ -20,8 +20,9 @@ use ds::root::pass_through::ExtraClass;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::vocab::ids::{BlockId, PaneId};
 
+use super::block_edit::bar_edit;
 use super::block_header::BlockHeader;
-use super::block_tools::BlockTools;
+use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
 use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
@@ -184,6 +185,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .as_ref()
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
     let facts = desk.hub.facts_of(pane);
+    let on_host = desk.hub.is_host_pane(pane);
+    // "Edit here" is only for a pane on another computer.
+    let tools = chrome.tools.clone().map(|tools| ToolsView {
+        edit: on_host.then_some(Availability::Enabled),
+        ..tools
+    });
     let chips = slot
         .borrow()
         .session
@@ -247,7 +254,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}
                 }
-                if let Some(tools) = chrome.tools.clone() {
+                if let Some(tools) = tools {
                     BlockTools {
                         tools,
                         on_copy_command:then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain),
@@ -255,6 +262,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_save:then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain),
                         on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
+                        on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
                     }
                 }
             }

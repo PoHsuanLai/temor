@@ -62,6 +62,7 @@ mod ssh_wait;
 #[cfg(test)]
 mod tests;
 mod transfers;
+mod uploads;
 mod viewer_requests;
 #[cfg(test)]
 mod viewer_tests;

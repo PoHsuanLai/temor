@@ -6,6 +6,7 @@ mod blocks;
 mod clip;
 mod clipboard;
 mod dropped;
+mod edit_text;
 mod find;
 mod keys;
 mod lifecycle;

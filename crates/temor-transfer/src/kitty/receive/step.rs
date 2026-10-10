@@ -133,25 +133,20 @@ fn on_write_done(
 }
 
 /// A frame that did not parse but whose id was readable. It is answered only for the transfer it
-/// belongs to. If files are open or finishing, the frame may have been a chunk, so the transfer
-/// is closed rather than saved with a gap: the open files are discarded. A frame whose id is not
-/// this transfer's is ignored; before any transfer, an unreadable offer is answered. After the
-/// session is done, the Done arm ignores every input.
+/// belongs to. While files are receiving, the frame may have been a chunk, and even with none
+/// open a sender that sends frames we cannot read is not one to carry on with: the transfer ends
+/// with an error and whatever is open is discarded. A frame whose id is not this transfer's is
+/// ignored. While the person is still being asked, and before any transfer, it is only answered.
+/// After the session is done, the Done arm ignores every input.
 fn malformed(session: ReceiveSession, id: &KittyId) -> (ReceiveSession, Vec<Effect>) {
     let status = failed(ErrorCode::Einval, "the frame could not be read");
-    let owner = match &session.phase {
-        Phase::Asking(own) | Phase::Receiving(own) => Some(own),
+    match &session.phase {
+        Phase::Receiving(own) if own == id => close(session, id, status, EndWhy::Failed),
+        Phase::Asking(own) if own == id => (session, vec![reply(id, None, status)]),
         // No transfer yet: answer, so the sender of an unreadable offer doesn't wait forever.
-        Phase::Idle => return (session, vec![reply(id, None, status)]),
-        Phase::Done => None,
-    };
-    if owner != Some(id) {
-        return (session, Vec::new());
+        Phase::Idle => (session, vec![reply(id, None, status)]),
+        Phase::Receiving(_) | Phase::Asking(_) | Phase::Done => (session, Vec::new()),
     }
-    if !session.open.is_empty() || !session.finishing.is_empty() {
-        return close(session, id, status, EndWhy::Failed);
-    }
-    (session, vec![reply(id, None, status)])
 }
 
 /// The stream was dropped: partly written files are discarded and nothing is replied, since

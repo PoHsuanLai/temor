@@ -17,7 +17,19 @@ pub fn apply_write(root: &Root, op: &WriteOp) -> Result<(), TransferError> {
         WriteOp::MakeDir(rel) => root.make_dir(rel),
         WriteOp::CreateFile(rel) => root.create_file(rel),
         WriteOp::Append { path, data } => root.append(path, data),
-        WriteOp::Finish { path, modified } => root.finish(path, modified.and_then(system_time)),
+        WriteOp::Finish {
+            path,
+            modified,
+            mode,
+        } => {
+            root.finish(path, modified.and_then(system_time))?;
+            match mode {
+                Some(mode) => root.set_file_mode(path, mode.permission_bits()),
+                None => Ok(()),
+            }
+        }
+        WriteOp::SetDirMode { path, mode } => root.set_dir_mode(path, mode.permission_bits()),
+        WriteOp::Symlink { path, target } => root.make_symlink(path, target),
         WriteOp::Discard(rel) => root.discard(rel),
     }
 }

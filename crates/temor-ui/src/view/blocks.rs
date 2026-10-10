@@ -53,6 +53,8 @@ fn tools_of(
                     true => Availability::Enabled,
                     false => Availability::Disabled,
                 },
+                // The window knows which panes are on another computer.
+                edit: None,
             })
         })
 }

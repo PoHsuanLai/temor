@@ -3,7 +3,8 @@
 
 mod files;
 mod helpers;
+mod links;
 mod model;
 mod step;
 
-pub use model::{Effect, EndWhy, Input, ReceiveSession, SavedFile, WriteOp};
+pub use model::{Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp};

@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::consent::Consent;
-use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Reply, UnixNanos, WriteKind};
+use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, Mode, Reply, UnixNanos, WriteKind};
 use crate::name::RelPath;
 use crate::origin::Origin;
 use crate::units::{Bytes, Limits};
@@ -53,10 +53,23 @@ pub enum WriteOp {
         path: RelPath,
         data: Vec<u8>,
     },
-    /// Set the modification time, when the remote sent one.
+    /// Set the modification time and the permission bits, when the remote sent them. The edge
+    /// applies `mode.permission_bits()` and nothing above it.
     Finish {
         path: RelPath,
         modified: Option<UnixNanos>,
+        mode: Option<Mode>,
+    },
+    /// Set a folder's permission bits (the owner keeps full access, so what follows can be put
+    /// in it).
+    SetDirMode {
+        path: RelPath,
+        mode: Mode,
+    },
+    /// Make a symbolic link whose target `link_target` has checked stays inside the root.
+    Symlink {
+        path: RelPath,
+        target: String,
     },
     /// Remove a partly written file after a failure or cancel.
     Discard(RelPath),
@@ -107,6 +120,24 @@ pub(crate) struct OpenFile {
     pub(crate) expected: Option<Bytes>,
     pub(crate) written: u64,
     pub(crate) modified: Option<UnixNanos>,
+    pub(crate) mode: Option<Mode>,
+}
+
+/// A symbolic link whose target is still arriving as data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OpenLink {
+    pub(crate) path: RelPath,
+    pub(crate) target: Vec<u8>,
+}
+
+/// Whether the session makes the symbolic links the remote sends. A link is made only when its
+/// target stays inside the transfer's folder. The default is to refuse them, for a folder whose
+/// files are moved out one by one (a link would be left behind).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LinkPolicy {
+    #[default]
+    Refuse,
+    Make,
 }
 
 /// One transfer from one origin. Create a new session for each offer.
@@ -124,6 +155,9 @@ pub struct ReceiveSession {
     pub(crate) claimed: BTreeSet<RelPath>,
     /// Files whose data is complete and whose `Finish` is in flight.
     pub(crate) finishing: BTreeMap<FileId, OpenFile>,
+    pub(crate) links: LinkPolicy,
+    /// Links whose target has not all arrived.
+    pub(crate) open_links: BTreeMap<FileId, OpenLink>,
 }
 
 impl ReceiveSession {
@@ -138,7 +172,15 @@ impl ReceiveSession {
             entries: 0,
             claimed: BTreeSet::new(),
             finishing: BTreeMap::new(),
+            links: LinkPolicy::Refuse,
+            open_links: BTreeMap::new(),
         }
+    }
+
+    /// The same session, making (or refusing) the links the remote sends.
+    #[must_use]
+    pub fn with_links(self, links: LinkPolicy) -> Self {
+        Self { links, ..self }
     }
 
     /// The step: `(session, input) -> (session, effects)`. Pure; the edge carries out the effects.

@@ -4,7 +4,7 @@
 
 use std::os::unix::fs::symlink;
 
-use temor_transfer::kitty::{WriteOp, apply_write};
+use temor_transfer::kitty::{Mode, WriteOp, apply_write};
 use temor_transfer::{RelPath, Root, TransferError};
 
 fn rel(raw: &str) -> RelPath {
@@ -30,6 +30,7 @@ fn applying_writes_creates_files_under_the_root() {
         &WriteOp::Finish {
             path: rel("sub/out.txt"),
             modified: None,
+            mode: None,
         },
     )
     .expect("finish");
@@ -108,4 +109,55 @@ fn discarding_a_link_removes_the_link_and_not_its_target() {
     apply_write(&root, &WriteOp::Discard(rel("link"))).expect("discard");
     assert!(!root_dir.path().join("link").exists());
     assert_eq!(std::fs::read(&keep).expect("read"), b"keep");
+}
+
+#[test]
+fn a_remote_mode_is_applied_without_setuid_and_a_folder_keeps_the_owner_in() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = Root::open(dir.path()).expect("root");
+    apply_write(&root, &WriteOp::MakeDir(rel("sub"))).expect("dir");
+    let sealed = WriteOp::SetDirMode {
+        path: rel("sub"),
+        mode: Mode::new(0o040),
+    };
+    apply_write(&root, &sealed).expect("dir mode");
+    apply_write(&root, &WriteOp::CreateFile(rel("sub/run.sh"))).expect("create");
+    let finish = WriteOp::Finish {
+        path: rel("sub/run.sh"),
+        modified: None,
+        mode: Some(Mode::new(0o4755)),
+    };
+    apply_write(&root, &finish).expect("finish");
+    let mode_of = |p: &str| {
+        std::fs::metadata(dir.path().join(p))
+            .expect("meta")
+            .permissions()
+            .mode()
+            & 0o7777
+    };
+    assert_eq!(mode_of("sub/run.sh"), 0o755, "setuid dropped");
+    assert_eq!(mode_of("sub"), 0o740, "the owner keeps rwx");
+}
+
+#[test]
+fn a_link_is_made_inside_the_root_and_never_over_a_name_that_is_taken() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = Root::open(dir.path()).expect("root");
+    let link = |path: &str, target: &str| WriteOp::Symlink {
+        path: rel(path),
+        target: target.to_owned(),
+    };
+    apply_write(&root, &link("sub/l", "../a.txt")).expect("link");
+    assert_eq!(
+        std::fs::read_link(dir.path().join("sub/l")).expect("read link"),
+        std::path::PathBuf::from("../a.txt")
+    );
+    assert!(apply_write(&root, &link("sub/l", "b")).is_err());
+    // Writing through the link is still refused.
+    let through = apply_write(&root, &WriteOp::CreateFile(rel("sub/l/x")));
+    assert!(
+        matches!(through, Err(TransferError::UnsafePath { .. })),
+        "{through:?}"
+    );
 }

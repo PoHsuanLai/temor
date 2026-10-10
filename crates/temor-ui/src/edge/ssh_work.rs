@@ -37,6 +37,11 @@ pub enum SshEvent {
     /// The host's file, as a helper read or wrote it: the stamp the next write-back must still
     /// find. Sent just before the `Edit` event that goes with it.
     EditSeen { id: EditId, stamp: FileStamp },
+    /// A dropped file reached the host, or did not.
+    Upload {
+        id: temor_core::shelf::UploadId,
+        result: Result<(), temor_core::shelf::UploadFault>,
+    },
     /// The forward of the host's `remote` port is up.
     ForwardOpened { host: HostAlias, remote: Port },
     /// The forward of the host's `remote` port could not be opened.

@@ -9,7 +9,9 @@ use crate::error::TransferError;
 use crate::kitty::frames::FrameScanner;
 use crate::kitty::io::{apply_write, wire_code};
 use crate::kitty::model::{FileId, KittyId, Message, ReplyStatus, WriteKind};
-use crate::kitty::receive::{Effect, EndWhy, Input, ReceiveSession, SavedFile, WriteOp};
+use crate::kitty::receive::{
+    Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp,
+};
 use crate::kitty::wire::{
     encode_message, encode_reply, parse_message, parse_reply, readable_header,
 };
@@ -33,7 +35,8 @@ pub fn drive_receive(
         tab: TabKey::new(0),
         pane: PaneKey::new(0),
     };
-    let mut session = ReceiveSession::new(origin, limits);
+    // The folder is the caller's destination, so links that stay inside it are made.
+    let mut session = ReceiveSession::new(origin, limits).with_links(LinkPolicy::Make);
     let mut scanner = FrameScanner::new();
     let mut saved = Vec::new();
     let mut work: VecDeque<(Input, Option<FileId>)> = VecDeque::new();
@@ -100,7 +103,9 @@ fn apply(
         }
         Err(err) => {
             let kind = match op {
-                WriteOp::MakeDir(_) => WriteKind::MakeDir,
+                WriteOp::MakeDir(_) | WriteOp::SetDirMode { .. } | WriteOp::Symlink { .. } => {
+                    WriteKind::MakeDir
+                }
                 WriteOp::CreateFile(_) => WriteKind::Create,
                 WriteOp::Append { .. } => WriteKind::Append,
                 WriteOp::Finish { .. } => WriteKind::Finish,

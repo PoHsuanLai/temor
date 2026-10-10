@@ -36,7 +36,7 @@ pub use model::{
     Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
     Transmission, UnixNanos, WriteKind,
 };
-pub use receive::{Effect, EndWhy, Input, ReceiveSession, SavedFile, WriteOp};
+pub use receive::{Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp};
 pub use send::{
     ChunkEnd, Offered, SendEffect, SendEnd, SendFile, SendInput, SendSession, Served, describe,
     read_chunk, serve,

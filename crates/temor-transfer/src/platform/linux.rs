@@ -6,16 +6,18 @@
 use std::fs::File;
 use std::io::{self, Write};
 use std::os::fd::{AsFd, OwnedFd};
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::SystemTime;
 
-use rustix::fs::{Mode, OFlags, ResolveFlags, mkdirat, openat2, unlinkat};
+use rustix::fs::{Mode, OFlags, ResolveFlags, mkdirat, openat2, symlinkat, unlinkat};
 use rustix::io::Errno;
 
 use crate::error::TransferError;
 use crate::name::RelPath;
 
-/// Folders the transfer makes are 0o755 and files are 0o644. The remote's `prm` is ignored.
+/// Folders the transfer makes start as 0o755 and files as 0o644; the remote's `prm` is applied
+/// afterwards (`set_file_mode`, `set_dir_mode`).
 const FOLDER_MODE: u32 = 0o755;
 const FILE_MODE: u32 = 0o644;
 
@@ -159,6 +161,35 @@ impl Root {
                 .map_err(|source| TransferError::Io { path, source }),
             None => Ok(()),
         }
+    }
+
+    /// Sets the permission bits of a file the transfer made, once it is whole. Only the nine
+    /// permission bits are applied.
+    pub fn set_file_mode(&self, rel: &RelPath, bits: u32) -> Result<(), TransferError> {
+        let path = rel.to_path_buf();
+        let file = self.open_existing(rel, OFlags::WRONLY)?;
+        file.set_permissions(std::fs::Permissions::from_mode(bits & 0o777))
+            .map_err(|source| TransferError::Io { path, source })
+    }
+
+    /// Sets the permission bits of a folder the transfer made. The owner keeps read, write and
+    /// search, so the files that follow can still be put in it.
+    pub fn set_dir_mode(&self, rel: &RelPath, bits: u32) -> Result<(), TransferError> {
+        let path = rel.to_path_buf();
+        let fd = self.folder(rel.components(), false, &path)?;
+        File::from(fd)
+            .set_permissions(std::fs::Permissions::from_mode((bits & 0o777) | 0o700))
+            .map_err(|source| TransferError::Io { path, source })
+    }
+
+    /// Makes a symbolic link at `rel` pointing at `target`, which is written as given. The caller
+    /// has checked that it stays inside the root; the link is never followed here, and a name
+    /// that is taken is refused.
+    pub fn make_symlink(&self, rel: &RelPath, target: &str) -> Result<(), TransferError> {
+        let path = rel.to_path_buf();
+        let (folders, leaf) = split(rel)?;
+        let parent = self.folder(folders, true, &path)?;
+        symlinkat(target, &parent, leaf).map_err(|err| io_at(&path, err))
     }
 
     /// Removes a file the transfer made. A link is removed as a link, never followed. A missing

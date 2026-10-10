@@ -31,6 +31,7 @@ impl Hub {
             SshEvent::Identified { host, fingerprint } => self.on_identified(host, fingerprint),
             SshEvent::Edit { id, input } => self.on_edit(id, input),
             SshEvent::EditSeen { id, stamp } => self.on_edit_seen(id, stamp),
+            SshEvent::Upload { id, result } => self.on_upload(id, result),
             SshEvent::ForwardOpened { host, remote } => {
                 self.feed_forwards(&host, ForwardIn::Opened { remote });
             }

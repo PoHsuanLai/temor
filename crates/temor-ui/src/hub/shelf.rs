@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 
 use temor_core::remote::Grant;
-use temor_core::shelf::{Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, shelf_view};
+use temor_core::shelf::{Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, shelf_view};
 use temor_core::transfer::Origin;
 use temor_core::vocab::ids::{DownloadId, PaneId};
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
@@ -92,6 +92,8 @@ pub struct ShelfHub {
     pub(super) live: BTreeMap<(PaneId, OfferId), Live>,
     pub(super) files: BTreeMap<(PaneId, OfferId, String), DownloadId>,
     pub(super) shell: Box<dyn FileShell>,
+    /// Files on their way to other computers.
+    pub(super) uploads: Uploads,
     /// The window's own clock, for the model's stamps.
     pub(super) clock: crate::edge::SystemClock,
 }
@@ -123,6 +125,7 @@ impl ShelfHub {
             live: BTreeMap::new(),
             files: BTreeMap::new(),
             shell: default_file_shell(),
+            uploads: Uploads::default(),
             clock: crate::edge::SystemClock::new(),
         };
         (hub, trouble)
@@ -259,9 +262,13 @@ impl HubRef {
         std::mem::take(&mut hub.notices)
     }
 
-    /// Files were dropped on a pane; what the person should be told comes back.
+    /// Files were dropped on a pane; what the person should be told comes back. On a pane that
+    /// runs on another computer they are sent there; anywhere else their paths are typed.
     pub fn drop_files(&self, pane: PaneId, paths: Vec<PathBuf>) -> Vec<String> {
-        let hub = self.0.borrow();
+        let mut hub = self.0.borrow_mut();
+        if hub.is_host_pane(pane) {
+            return hub.upload_drop(pane, &paths);
+        }
         let said = hub.slots.get(&pane).and_then(|slot| {
             let mut slot = slot.borrow_mut();
             let session = slot.session.as_mut()?;
@@ -269,5 +276,20 @@ impl HubRef {
             session.take_notice()
         });
         said.into_iter().collect()
+    }
+
+    /// Whether `pane` is a session on another computer.
+    pub fn is_host_pane(&self, pane: PaneId) -> bool {
+        self.0.borrow().is_host_pane(pane)
+    }
+
+    /// The files on their way to other computers, newest first.
+    pub fn uploads(&self) -> Vec<temor_core::shelf::Upload> {
+        self.0.borrow().shelf.uploads.items().to_vec()
+    }
+
+    /// The person took an upload off the list.
+    pub fn clear_upload(&self, id: temor_core::shelf::UploadId) {
+        self.0.borrow_mut().clear_upload(id);
     }
 }
