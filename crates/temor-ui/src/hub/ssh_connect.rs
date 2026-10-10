@@ -44,6 +44,18 @@ pub(super) fn session_args(
     }
 }
 
+/// What the person is told about a host name temor can't use. An IPv6 address can't be typed
+/// here: it goes in the ssh config as the `HostName` of a short name.
+fn not_a_name(text: &str) -> String {
+    match temor_ssh::is_ipv6_literal(text) {
+        true => format!(
+            "{text} is an IPv6 address; give it a short name with a HostName line in your \
+             ssh config, then use that name"
+        ),
+        false => format!("{text} is not a name temor can connect to"),
+    }
+}
+
 impl Hub {
     /// Opens a new tab that is a session on the host `row` names.
     pub fn open_host(&mut self, row: &HostRow) {
@@ -65,10 +77,7 @@ impl Hub {
     pub fn open_host_named(&mut self, text: &str) {
         match HostAlias::new(text.trim()) {
             Ok(alias) => self.open_host_tab(alias),
-            Err(_) => self.notices.push(format!(
-                "{} is not a name temor can connect to",
-                text.trim()
-            )),
+            Err(_) => self.notices.push(not_a_name(text.trim())),
         }
     }
 
@@ -250,5 +259,17 @@ impl Hub {
             }
             self.pace.changed();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_ipv6_address_is_told_to_go_in_the_ssh_config_other_names_just_cannot_be_used() {
+        let said = not_a_name("2001:db8::1");
+        assert!(said.contains("HostName") && said.contains("IPv6"), "{said}");
+        assert_eq!(not_a_name("a b"), "a b is not a name temor can connect to");
     }
 }

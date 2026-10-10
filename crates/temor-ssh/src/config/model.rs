@@ -97,7 +97,7 @@ impl Port {
 
 /// An `IdentityFile` value, kept as written (`~` is expanded by [`IdentityFile::expanded`]).
 /// Only length and control characters are checked here. A builder that passes it to `ssh -i`
-/// must validate it first (a value starting with `-` is an option to ssh).
+/// must go through [`IdentityFile::for_argv`] (a value starting with `-` is an option to ssh).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdentityFile(String);
 
@@ -125,7 +125,8 @@ impl IdentityFile {
 }
 
 /// A `ProxyJump` value (one or more hops, comma-separated), kept as written. Only control
-/// characters are checked here; a builder that passes it to `ssh -J` must validate it first.
+/// characters are checked here; a builder that passes it to `ssh -J` must go through
+/// [`ProxyJump::for_argv`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProxyJump(String);
 
