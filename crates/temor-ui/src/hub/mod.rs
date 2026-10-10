@@ -18,6 +18,8 @@ mod hosts;
 mod keys;
 mod model;
 mod offer;
+mod peek;
+pub mod peek_step;
 mod persist;
 mod quick;
 mod remote;
