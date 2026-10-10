@@ -23,6 +23,7 @@ use super::remote::RemoteHub;
 use super::shelf::ShelfHub;
 use super::spaces::SpaceBook;
 use super::ssh::SshHub;
+use super::viewers::ViewerHub;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -58,6 +59,8 @@ pub struct Hub {
     pub(super) offer: OfferHub,
     /// Sessions on hosts' helpers (Tier B).
     pub(super) remote: RemoteHub,
+    /// The panes that show a file (PLAN §10).
+    pub(super) viewers: ViewerHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -98,6 +101,7 @@ impl Hub {
             facts,
             offer,
             remote,
+            viewers: ViewerHub::default(),
         }
     }
 

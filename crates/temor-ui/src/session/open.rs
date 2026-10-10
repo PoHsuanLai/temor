@@ -112,6 +112,7 @@ impl Session {
             bell_until: None,
             shelf_dir: kit.shelf_dir,
             asked: None,
+            view_ask: None,
             quoting: temor_core::shelf::Quoting::Posix,
             site: temor_core::shelf::PaneSite::Local,
         }

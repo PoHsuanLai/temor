@@ -98,6 +98,11 @@ impl Session {
         self.text_between(anchors.output?, anchors.end?)
     }
 
+    /// The output of the block that holds screen row `row`, once its command has finished.
+    pub fn output_at_row(&self, row: u32) -> Option<String> {
+        self.block_at_row(row).and_then(|id| self.block_output(id))
+    }
+
     /// How a block ended and how long it ran, for its hover and its notices.
     pub fn block_summary(&self, id: BlockId) -> Option<String> {
         let block = self.blocks.store.get(id)?;

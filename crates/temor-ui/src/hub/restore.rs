@@ -10,7 +10,7 @@ use ds::components::app::spaces::{SpaceId, Spaces};
 use temor_core::notify::Focus;
 use temor_core::space::{Place, Project, TemorSpaces};
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan};
+use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan, viewer_plan};
 use temor_core::workspace::{KeepClosed, Workspace};
 
 use super::model::Hub;
@@ -81,6 +81,7 @@ impl Hub {
         taken.extend(panes);
         self.book.note(&ws);
         let plan = launch_plan(&ws);
+        let viewers = viewer_plan(&ws);
         match id == self.book.active {
             true => self.ws = ws,
             false => {
@@ -91,6 +92,9 @@ impl Hub {
             for spawn in plan {
                 let snapshot = sidecar::take(dir, spawn.pane);
                 hub.open_pane(&spawn, snapshot);
+            }
+            for open in viewers {
+                hub.restore_viewer(open);
             }
         });
     }

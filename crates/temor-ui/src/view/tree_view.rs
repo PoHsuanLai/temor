@@ -17,6 +17,7 @@ use temor_core::split::{Axis, Handle, Node, Share, SplitTree};
 use temor_core::vocab::ids::PaneId;
 
 use super::pane_view::PaneView;
+use super::viewer_pane::ViewerView;
 use crate::hub::Desk;
 
 /// The panes of the tab in front. `focus` is the pane that has the keys.
@@ -25,7 +26,7 @@ use crate::hub::Desk;
 pub fn TreeView(tree: SplitTree, focus: PaneId, desk: Desk, started: Instant) -> Element {
     match tree.zoomed() {
         Some(pane) => rsx! {
-            PaneView { key: "{pane.0}", pane, desk, started }
+            Leaf { key: "{pane.0}", pane, desk, started }
         },
         None => rsx! {
             TreeNode { tree, at: Handle::ROOT, focus, desk, started }
@@ -39,7 +40,7 @@ pub fn TreeView(tree: SplitTree, focus: PaneId, desk: Desk, started: Instant) ->
 fn TreeNode(tree: SplitTree, at: Handle, focus: PaneId, desk: Desk, started: Instant) -> Element {
     match tree.node(at) {
         Some(Node::Leaf(pane)) => rsx! {
-            PaneView { key: "{pane.0}", pane, desk, started }
+            Leaf { key: "{pane.0}", pane, desk, started }
         },
         Some(Node::Split {
             axis,
@@ -70,6 +71,20 @@ fn TreeNode(tree: SplitTree, at: Handle, focus: PaneId, desk: Desk, started: Ins
             }
         }
         None => rsx! {},
+    }
+}
+
+/// One tile: a terminal, or a viewer when the pane shows a file.
+#[component]
+#[allow(non_snake_case)]
+fn Leaf(pane: PaneId, desk: Desk, started: Instant) -> Element {
+    match desk.hub.is_viewer(pane) {
+        true => rsx! {
+            ViewerView { pane, desk }
+        },
+        false => rsx! {
+            PaneView { pane, desk, started }
+        },
     }
 }
 

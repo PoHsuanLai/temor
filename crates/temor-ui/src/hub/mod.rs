@@ -51,6 +51,10 @@ mod ssh_view;
 #[cfg(test)]
 mod tests;
 mod transfers;
+mod viewer_requests;
+#[cfg(test)]
+mod viewer_tests;
+mod viewers;
 
 pub use agents::{
     AgentMenu, AgentPick, Agents, Alert, LeftoverRow, PointLine, RestoreMenu, SheetView,
@@ -73,3 +77,4 @@ pub use say::refusal_text;
 pub use shelf::{Ask, AskKind, AskView};
 pub use ssh_events::spawn_ssh_loop;
 pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+pub use viewers::ViewerShow;

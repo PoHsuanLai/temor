@@ -42,6 +42,7 @@ impl Hub {
     pub(super) fn carry_out(&mut self, out: WorkspaceOut) {
         match out {
             WorkspaceOut::Spawn(spawn) => self.open_pane(&spawn, None),
+            WorkspaceOut::Viewer(open) => self.viewer_opened(open),
             WorkspaceOut::Snapshot(pane) => self.keep_scrollback(pane),
             WorkspaceOut::End(pane) => self.end_pane(pane),
             WorkspaceOut::Forgotten(panes) => {
@@ -119,6 +120,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
+        self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
         if let Some(slot) = self.slots.remove(&pane) {

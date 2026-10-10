@@ -48,6 +48,10 @@ fn tools_of(
                     true => Availability::Enabled,
                     false => Availability::Disabled,
                 },
+                view: match session.block_finished(id) {
+                    true => Availability::Enabled,
+                    false => Availability::Disabled,
+                },
             })
         })
 }

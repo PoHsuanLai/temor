@@ -45,6 +45,7 @@ use super::offer::OfferBar;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
 use super::status::StatusLine;
+use super::viewer_open::{bar_view, then_view};
 use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
 use crate::hub::{Desk, WindowAction, workspace_input};
 use crate::input::stroke;
@@ -308,7 +309,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         dropper.mounted(e.clone());
                         mouse.capture.on_mounted(e);
                     },
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, mouse.down.clone()),
+                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, then_view(mouse.down.clone(), Rc::clone(&slot), desk.clone(), pane)),
                     onpointerup: move |e| (mouse.up)(e),
                     onpointermove:block_hovered(Rc::clone(&slot), signals, hovered),
                     onwheel: move |e| (mouse.wheel)(e),
@@ -334,6 +335,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_copy_output:then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_save:then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain),
                         on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
+                        on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                     }
                 }
             }

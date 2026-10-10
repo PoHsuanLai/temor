@@ -177,7 +177,8 @@ impl Session {
             term.hyperlink_at(point)
         });
         let Some(target) = link else {
-            return Ok(());
+            // Not a link: a path in the text may be a file to look at.
+            return self.view_path_at(cell);
         };
         match check_link(&target) {
             LinkVerdict::Open(link) => {

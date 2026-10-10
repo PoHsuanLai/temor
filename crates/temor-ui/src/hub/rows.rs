@@ -181,6 +181,9 @@ impl Hub {
 
     /// What a pane is called: its program's title, else the last part of its folder, else "Shell".
     pub(super) fn pane_name(&self, pane: PaneId) -> String {
+        if let Some(name) = self.viewer_name(pane) {
+            return name;
+        }
         if let Some(title) = self.ssh_title(pane) {
             return title;
         }
@@ -215,6 +218,9 @@ impl Hub {
         };
         if let Some(title) = self.ssh_title(pane) {
             return (title, None);
+        }
+        if let Some(name) = self.viewer_name(pane) {
+            return (name, None);
         }
         let title = self
             .live(pane, |s| s.title().to_owned())
