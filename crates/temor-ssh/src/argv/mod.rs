@@ -8,7 +8,8 @@ mod forward;
 mod tests;
 
 pub use build::{
-    RemoteCommand, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,
+    RemoteCommand, cancel_forward_argv, check_argv, exit_argv, forward_argv, plain_session_argv,
+    session_argv,
 };
 pub use control::{ControlLayout, ControlPersist, RuntimeDir, Seconds};
 pub use forward::{BindAddress, Forward, ForwardSpec, RemoteHost};

@@ -4,8 +4,10 @@
 
 use std::time::Instant;
 
+use ds::components::app::spaces::SpaceId;
+
 use super::model::Hub;
-use crate::edge::{Pace, save_session_for, save_spaces, sidecar};
+use crate::edge::{Pace, save_session_for, save_spaces, save_with_hosts, sidecar};
 use crate::session::Session;
 
 impl Hub {
@@ -40,7 +42,11 @@ impl Hub {
             .map(|(id, ws)| (*id, ws))
             .chain([(self.book.active, &self.ws)]);
         let mut failures: Vec<String> = sessions
-            .filter_map(|(id, ws)| save_session_for(dir, id, ws).err())
+            .filter_map(|(id, ws)| match id {
+                // The first Space's file also keeps the hosts (answers and panes on hosts).
+                SpaceId(0) => save_with_hosts(dir, ws, &self.ssh.hosts_file()).err(),
+                _ => save_session_for(dir, id, ws).err(),
+            })
             .map(|err| err.to_string())
             .collect();
         if let Err(err) = save_spaces(dir, &self.spaces_for_file()) {

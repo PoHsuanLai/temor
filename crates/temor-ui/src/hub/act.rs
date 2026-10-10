@@ -24,6 +24,7 @@ impl Hub {
         }
         let input = self.in_project(input);
         self.book.lift(&mut self.ws);
+        let input = self.ssh_prepare(input);
         let (ws, outs) = workspace_step(self.ws.clone(), input);
         self.ws = ws;
         self.book.note(&self.ws);
@@ -31,6 +32,7 @@ impl Hub {
             self.carry_out(out);
         }
         self.agents_after_act();
+        self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
         if self.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
@@ -63,6 +65,9 @@ impl Hub {
     /// disk; otherwise a pane that is coming back from the recently closed list takes its own.
     /// A pane that cannot start still gets a slot (empty), and the reason is for the person.
     pub(super) fn open_pane(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
+        if let Some(alias) = self.ssh_claims(spawn) {
+            return self.begin_host(spawn, alias);
+        }
         let snapshot = restored.or_else(|| match spawn.start {
             Start::Scrollback(pane) => self.recent.remove(&pane),
             Start::Fresh => None,
@@ -77,6 +82,7 @@ impl Hub {
             self.events.clone(),
             &start.env,
             socket.as_deref(),
+            None,
         );
         let mut slot = Slot {
             palette: self.palette,
@@ -114,6 +120,7 @@ impl Hub {
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
         self.agent_pane_ended(pane);
+        self.ssh_forget(pane);
         if let Some(slot) = self.slots.remove(&pane) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;
@@ -131,6 +138,9 @@ impl Hub {
 
     /// Starts a new shell in a pane whose program ended, in the folder it was last in.
     pub fn restart(&mut self, pane: PaneId) {
+        if self.ssh_restart(pane) {
+            return;
+        }
         let start = self.space_start();
         let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
@@ -141,6 +151,7 @@ impl Hub {
             self.events.clone(),
             &start.env,
             socket.as_deref(),
+            None,
         ) {
             Ok(session) => {
                 if let Some(slot) = self.slots.get(&pane) {

@@ -108,13 +108,19 @@ impl Hub {
         let tab = self.ws.tabs.tab(id)?;
         let pane = self.ws.focus_of(id)?;
         let title = self
-            .live(pane, |s| s.title().to_owned())
-            .filter(|t| !t.is_empty())
+            .ssh_title(pane)
+            .or_else(|| {
+                self.live(pane, |s| s.title().to_owned())
+                    .filter(|t| !t.is_empty())
+            })
             .unwrap_or_else(|| tab.title.as_str().to_owned());
+        // A host's title already names its folder, and its paths are not under this home.
+        let on_host = self.host_of(pane).is_some();
         let cwd = self
             .live(pane, |s| s.cwd().map(str::to_owned))
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
+            .filter(|_| !on_host)
             .map(|path| tidy(&path, &self.launch.ambient.home));
         let agent = self.agent_state_of_tab(id);
         // News, or an agent that waits or has a result the person has not looked at.
@@ -172,6 +178,9 @@ impl Hub {
 
     /// What a pane is called: its program's title, else the last part of its folder, else "Shell".
     pub(super) fn pane_name(&self, pane: PaneId) -> String {
+        if let Some(title) = self.ssh_title(pane) {
+            return title;
+        }
         let title = self
             .live(pane, |s| s.title().to_owned())
             .unwrap_or_default();
@@ -201,6 +210,9 @@ impl Hub {
         let Some(pane) = self.keyboard_pane() else {
             return (String::new(), None);
         };
+        if let Some(title) = self.ssh_title(pane) {
+            return (title, None);
+        }
         let title = self
             .live(pane, |s| s.title().to_owned())
             .unwrap_or_default();

@@ -28,9 +28,9 @@ use super::bar::BarView;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
-use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::quick::QuickView;
 use super::radar::AgentSheets;
+use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::transfer_ask::TransferAsk;
@@ -40,7 +40,7 @@ use crate::app::Desktop;
 use crate::edge::Credentials;
 use crate::hub::{
     Desk, DragKey, Hub, HubRef, SidebarData, spawn_agent_loops, spawn_desktop_loop,
-    spawn_event_loop, spawn_save_loop,
+    spawn_event_loop, spawn_save_loop, spawn_ssh_loop,
 };
 
 /// The window's root component.
@@ -62,6 +62,9 @@ pub fn App() -> Element {
         move || {
             let mut hub = Hub::new(launch);
             hub.set_credentials(try_consume_context::<Credentials>().unwrap_or_default());
+            if let Some(desktop) = try_consume_context::<Desktop>() {
+                hub.set_tailnet(desktop.tailnet.clone());
+            }
             hub.start();
             HubRef(Rc::new(RefCell::new(hub)))
         }
@@ -85,6 +88,7 @@ pub fn App() -> Element {
         move || {
             spawn_event_loop(desk.clone());
             spawn_agent_loops(desk.clone());
+            spawn_ssh_loop(desk.clone());
             spawn_save_loop(desk.hub);
         }
     });

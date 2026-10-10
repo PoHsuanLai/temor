@@ -18,6 +18,10 @@ pub mod sidecar;
 pub mod space_agent;
 pub mod space_start;
 mod spaces_file;
+mod ssh_env;
+pub mod ssh_work;
+#[cfg(test)]
+mod ssh_work_tests;
 mod unix_now;
 
 pub use agent_socket::SocketHost;
@@ -28,10 +32,11 @@ pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNot
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{
     FILE_NAME, Startup, file_name as session_file_name, load as load_session,
-    load_for as load_session_for, remove_for as remove_session_for, resolve_state_dir,
-    save as save_session, save_for as save_session_for,
+    load_for as load_session_for, load_hosts, remove_for as remove_session_for, resolve_state_dir,
+    save as save_session, save_for as save_session_for, save_with_hosts,
 };
 pub use settings_file::load_settings;
 pub use space_start::{CredentialFault, CredentialSource, Credentials, NoCredentials};
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
+pub use ssh_env::{ArcRunner, SshEnv};
 pub use unix_now::unix_now;

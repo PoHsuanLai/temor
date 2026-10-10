@@ -4,15 +4,16 @@
 //! the hub and send it the person's requests.
 
 mod act;
+pub mod agents;
 mod bar;
 mod bar_run;
-pub mod agents;
 mod desk;
 mod desktop;
 mod desktop_io;
 #[cfg(test)]
 mod desktop_tests;
 mod events;
+mod hosts;
 mod keys;
 mod model;
 mod persist;
@@ -20,26 +21,40 @@ mod quick;
 mod restore;
 mod rows;
 mod say;
+mod shelf;
 mod space_launch;
 mod space_move;
 mod space_route;
 mod spaces;
-mod shelf;
+mod ssh;
+mod ssh_check;
+mod ssh_connect;
+mod ssh_desk;
+mod ssh_edit;
+mod ssh_events;
+mod ssh_forward;
+mod ssh_master;
+#[cfg(test)]
+mod ssh_tests;
+mod ssh_view;
 #[cfg(test)]
 mod tests;
 mod transfers;
 
-pub use bar::{BarData, WindowAction};
 pub use agents::{
     AgentMenu, AgentPick, Agents, Alert, LeftoverRow, SheetView, WaitingCount, Where,
     spawn_agent_loops,
 };
+pub use bar::{BarData, WindowAction};
 pub use desk::Desk;
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;
+pub use hosts::HostRows;
 pub use keys::workspace_input;
 pub use model::{Hub, HubRef};
 pub use persist::spawn_save_loop;
 pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};
 pub use say::refusal_text;
 pub use shelf::{Ask, AskKind, AskView};
+pub use ssh_events::spawn_ssh_loop;
+pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};

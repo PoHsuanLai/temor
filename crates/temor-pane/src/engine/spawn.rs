@@ -15,8 +15,8 @@ use super::io::{Io, PaneRunner};
 use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;
-use super::xfer::{TransferSetup, Transfers};
 use super::watch::ForegroundWatch;
+use super::xfer::{TransferSetup, Transfers};
 use crate::error::PaneError;
 
 /// What a new pane is made of.

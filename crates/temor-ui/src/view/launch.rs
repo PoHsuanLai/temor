@@ -73,6 +73,13 @@ impl Clipboard for DesktopClipboard {
     }
 }
 
+/// A program to run in a pane in place of the person's shell (the `ssh` of a host session).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Program {
+    pub program: PathBuf,
+    pub args: Vec<std::ffi::OsString>,
+}
+
 /// Opens a session for pane `pane`: a shell at 80 by 24 cells (the first layout refits it) in
 /// `cwd` when that is a folder, else the home folder. With a `snapshot` the terminal begins as
 /// that closed pane's screen and scrollback. The pane's events go to `events`, tagged with it.
@@ -91,11 +98,13 @@ pub fn open_session(
         events,
         &ChildEnv::new(),
         None,
+        None,
     )
 }
 
-/// [`open_session`] with `env` set over the surroundings' own (a Space's variables), and the
-/// pane's status socket, when it has one, named to the shell in `TEMOR_SOCKET`.
+/// [`open_session`] with `env` set over the surroundings' own (a Space's variables), the pane's
+/// status socket, when it has one, named to the shell in `TEMOR_SOCKET`, and `program` run in
+/// place of the shell when one is given (a host session).
 pub fn open_session_with(
     launch: &Launch,
     palette: Palette,
@@ -103,6 +112,7 @@ pub fn open_session_with(
     events: UnboundedSender<(PaneId, PaneEvent)>,
     env: &ChildEnv,
     socket: Option<&std::path::Path>,
+    program: Option<Program>,
 ) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
@@ -148,6 +158,11 @@ pub fn open_session_with(
         staging: launch.ambient.staging_dir(pane.0),
         limits: transfer_limits(),
     });
+    if let Some(run) = program {
+        // The pane's environment and size stay; only what runs in it changes.
+        spec.spawn.program = run.program;
+        spec.spawn.args = run.args;
+    }
     let quoting = quoting_of(&spec.spawn.program);
     let mut session = Session::open_with(
         SessionParts {

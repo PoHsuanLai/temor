@@ -1,6 +1,7 @@
 //! Host-key fingerprints from `ssh-keygen` output. The fingerprint is the identity; the shown
 //! name is what the person typed or picked (PLAN §9b).
 
+use crate::config::{HostName, Port};
 use crate::error::SshError;
 
 /// The length of a SHA-256 digest in unpadded base64.
@@ -58,4 +59,16 @@ pub fn fingerprint_from_keygen(output: &str) -> Result<Fingerprint, SshError> {
         }
     }
     Err(SshError::NoFingerprint)
+}
+
+/// The `ssh-keygen` arguments that print the fingerprint of the key `known_hosts` holds for
+/// `host` (`-F` finds hashed entries too): read the output with [`fingerprint_from_keygen`].
+/// A port other than 22 is looked up in the `[host]:port` form ssh records. Ask only after a
+/// connection to the host has verified its key, so the entry is the one that was accepted.
+pub fn keygen_lookup_argv(host: &HostName, port: Option<Port>) -> Vec<String> {
+    let name = match port.map(Port::get) {
+        Some(number) if number != 22 => format!("[{}]:{number}", host.as_str()),
+        _ => host.as_str().to_owned(),
+    };
+    vec!["-F".to_owned(), name, "-l".to_owned()]
 }

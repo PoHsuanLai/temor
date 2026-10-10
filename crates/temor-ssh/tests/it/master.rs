@@ -4,11 +4,11 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
 use temor_ssh::{
-    ControlLayout, ControlPersist, FileTools, HostAlias, MasterProbe, RuntimeDir, StdRunner,
+    ControlLayout, ControlPersist, FileTools, HostAlias, MasterProbe, RuntimeDir,
     prepare_control_dirs, probe_master,
 };
 
-use crate::harness::{make_bin, scratch};
+use crate::harness::{RetryRunner, make_bin, scratch};
 
 fn layout_in(root: &std::path::Path) -> ControlLayout {
     ControlLayout::new(
@@ -49,7 +49,7 @@ fn a_probe_reads_the_exit_of_ssh_dash_o_check() {
             ssh: dir.join("ssh"),
             scp: dir.join("scp"),
         };
-        let got = probe_master(&StdRunner, &tools, &alias, &layout).expect("probe");
+        let got = probe_master(&RetryRunner, &tools, &alias, &layout).expect("probe");
         assert_eq!(got, want, "{name}");
     }
 }

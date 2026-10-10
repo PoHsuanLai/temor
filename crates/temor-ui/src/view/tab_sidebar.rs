@@ -16,8 +16,8 @@ use temor_core::vocab::ids::TabId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
-use super::space_ui::{SpaceFoot, SpaceHeader};
 use super::shelf::ShelfFoot;
+use super::space_ui::{SpaceFoot, SpaceHeader};
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow};
 

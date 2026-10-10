@@ -58,7 +58,8 @@ impl Hub {
                 Notice::Repaint => {
                     out.paint.insert(pane);
                 }
-                Notice::Ended(_) => {
+                Notice::Ended(exit) => {
+                    self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
@@ -80,6 +81,7 @@ impl Hub {
                     out.asks.extend(self.rename_for(pane, &title));
                 }
                 Notice::Cwd(path) => {
+                    self.ssh_shell_started(pane);
                     out.chrome.insert(pane);
                     out.quick.push(QuickIn::Cwd {
                         pane,
@@ -102,6 +104,7 @@ impl Hub {
                 Notice::Quiet => {}
             }
         }
+        self.ssh_scan(&out.paint);
         out
     }
 

@@ -1,0 +1,208 @@
+//! The questions before a first connection, how `ssh` starts, sharing the connection between
+//! panes, and the browser check.
+
+use temor_core::host::consent::BootstrapAction;
+use temor_core::remote::Grant;
+use temor_core::vocab::text::Cwd;
+use temor_core::workspace::WorkspaceIn;
+
+use super::support::Rig;
+use crate::hub::ssh_view::{CheckRow, Stage};
+
+const CHECK_LINE: &str = "# To authenticate, visit: https://login.tailscale.com/a/abc123\n";
+
+/// The arguments the stand-in `ssh` was started with for session `n`.
+fn session(rig: &Rig, n: u32) -> Vec<String> {
+    let text = rig.got(&format!("session-{n}")).unwrap_or_default();
+    text.lines().map(str::to_owned).collect()
+}
+
+#[test]
+fn each_question_is_asked_alone_and_the_answers_decide_how_ssh_starts() {
+    // Name, the answer to the setup, the answer to the terminal file (asked only after a yes),
+    // whether the session carries the setup, and the file policy the setup was built with.
+    let table = [
+        (
+            "both yes",
+            Grant::Allowed,
+            Some(Grant::Allowed),
+            true,
+            "install",
+        ),
+        (
+            "no file",
+            Grant::Allowed,
+            Some(Grant::Refused),
+            true,
+            "skip",
+        ),
+        ("plain", Grant::Refused, None, false, ""),
+    ];
+    for (name, integrate, terminfo, bootstrap, policy) in table {
+        let Some(mut rig) = Rig::new(&format!("asks-{}", name.replace(' ', "-"))) else {
+            return;
+        };
+        rig.hub.open_host_named("fake");
+        let pane = rig.front();
+        assert_eq!(
+            rig.stage(pane),
+            Stage::Asking(BootstrapAction::Integrate),
+            "{name}"
+        );
+        rig.hub.answer_host(pane, integrate);
+        match terminfo {
+            Some(grant) => {
+                assert_eq!(
+                    rig.stage(pane),
+                    Stage::Asking(BootstrapAction::Terminfo),
+                    "{name}"
+                );
+                rig.hub.answer_host(pane, grant);
+            }
+            None => assert_eq!(
+                rig.stage(pane),
+                Stage::Connecting,
+                "{name}: no second question"
+            ),
+        }
+        let dir = rig.dir.clone();
+        rig.pump("the session to start", |_| dir.join("session-1").exists());
+
+        let argv = session(&rig, 1);
+        assert_eq!(&argv[..2], ["-t", "-o"], "{name}");
+        assert!(argv.contains(&"ControlMaster=auto".to_owned()), "{name}");
+        let tail = &argv[argv.len() - 2..];
+        match bootstrap {
+            true => {
+                assert_eq!(
+                    (&argv[argv.len() - 3], &tail[0]),
+                    (&"--".to_owned(), &"fake".to_owned())
+                );
+                assert!(
+                    argv.last()
+                        .is_some_and(|c| c.starts_with("sh -c 's=$(printf %s ")),
+                    "{name}"
+                );
+                rig.pump("the setup to be decoded", |_| {
+                    dir.join("session-1.script").exists()
+                });
+                let script = rig.got("session-1.script").unwrap_or_default();
+                assert!(
+                    script.contains(&format!("\ntemor_terminfo={policy}\n")),
+                    "{name}"
+                );
+            }
+            false => assert_eq!(tail, ["--", "fake"], "{name}: plain ssh has no command"),
+        }
+        // What was answered is kept for the machine, so the session file can hold it.
+        let book = rig.hub.ssh.hosts_file().book;
+        assert_eq!(book.records().len(), 1, "{name}");
+        assert_eq!(book.records()[0].aliases, ["fake"], "{name}");
+        assert_eq!(book.records()[0].grants.integrate, integrate, "{name}");
+    }
+}
+
+#[test]
+fn a_host_that_was_answered_is_not_asked_again() {
+    let Some(mut rig) = Rig::new("asks-once") else {
+        return;
+    };
+    rig.hub.open_host_named("fake");
+    let first = rig.front();
+    rig.hub.answer_host(first, Grant::Allowed);
+    rig.hub.answer_host(first, Grant::Allowed);
+    rig.hub.open_host_named("fake");
+    let second = rig.front();
+    assert_ne!(first, second);
+    assert_eq!(rig.stage(second), Stage::Connecting);
+}
+
+#[test]
+fn a_split_or_new_tab_of_a_host_pane_joins_its_connection_in_its_folder() {
+    let Some(mut rig) = Rig::new("share") else {
+        return;
+    };
+    rig.hub.open_host_named("fake");
+    let first = rig.front();
+    rig.hub.answer_host(first, Grant::Allowed);
+    rig.hub.answer_host(first, Grant::Allowed);
+    let dir = rig.dir.clone();
+    rig.pump("the first session", |_| dir.join("session-1").exists());
+    // The host answers `-O check` from now on: the connection is up.
+    rig.put("up", "");
+    rig.pump("the connection to be up", |hub| {
+        hub.host_view(first).is_some_and(|v| v.stage == Stage::Up)
+    });
+    rig.hub.act(WorkspaceIn::Cwd {
+        pane: first,
+        cwd: Cwd("/srv/it's here".to_owned()),
+    });
+
+    // A split, then a new tab: each is a session on the same host, started in that folder, and
+    // neither asks anything.
+    for (n, input) in [
+        (
+            2,
+            WorkspaceIn::Split {
+                towards: temor_core::split::Direction::Right,
+            },
+        ),
+        (3, WorkspaceIn::NewTab { cwd: None }),
+    ] {
+        rig.hub.act(input);
+        let pane = rig.front();
+        assert_eq!(rig.hub.host_of(pane), Some("fake"), "session {n}");
+        let name = format!("session-{n}.script");
+        rig.pump("the joined session", |_| dir.join(&name).exists());
+        let script = rig.got(&name).unwrap_or_default();
+        assert!(
+            script.contains("\ntemor_start_dir='/srv/it'\\''s here'\n"),
+            "session {n}:\n{script}"
+        );
+        assert_eq!(rig.stage(pane), Stage::Up, "session {n}");
+    }
+    let title = rig
+        .hub
+        .sidebar()
+        .loose
+        .iter()
+        .map(|row| row.title.clone())
+        .collect::<Vec<_>>();
+    assert!(
+        title.iter().any(|t| t == "fake:/srv/it's here"),
+        "{title:?}"
+    );
+}
+
+#[test]
+fn the_browser_check_is_shown_and_opens_only_on_a_click_and_goes_when_the_shell_starts() {
+    let Some(mut rig) = Rig::new("check") else {
+        return;
+    };
+    rig.put("banner", CHECK_LINE);
+    rig.hub.open_host_named("fake");
+    let pane = rig.front();
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.pump("the check row", |hub| {
+        hub.host_view(pane)
+            .is_some_and(|v| v.check == CheckRow::Waiting)
+    });
+    assert!(
+        rig.links.0.borrow().is_empty(),
+        "nothing opened before a click"
+    );
+
+    rig.hub.open_check(pane);
+    assert_eq!(
+        *rig.links.0.borrow(),
+        ["https://login.tailscale.com/a/abc123"]
+    );
+
+    // The connection comes up (the person confirmed): the row goes.
+    rig.put("up", "");
+    rig.pump("the connection", |hub| {
+        hub.host_view(pane)
+            .is_some_and(|v| v.check == CheckRow::Nothing && v.stage == Stage::Up)
+    });
+}

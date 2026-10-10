@@ -20,8 +20,8 @@ use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
 use super::term::Term;
-use super::xfer::{OfferId, Reaction, Transfers};
 use super::watch::ForegroundWatch;
+use super::xfer::{OfferId, Reaction, Transfers};
 
 /// What the window asks of the I/O thread.
 #[derive(Debug)]

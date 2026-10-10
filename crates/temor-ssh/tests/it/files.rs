@@ -8,10 +8,10 @@ use std::path::Path;
 
 use temor_ssh::{
     ByteCount, ControlLayout, ControlPersist, FileTools, HostAlias, RemoteFilePath, RemoteFiles,
-    RemoteStat, RemoteState, RuntimeDir, SshRemoteFiles, StdRunner, UnixSeconds,
+    RemoteStat, RemoteState, RuntimeDir, SshRemoteFiles, UnixSeconds,
 };
 
-use crate::harness::{make_bin, scratch, write};
+use crate::harness::{RetryRunner, make_bin, scratch, write};
 
 /// Runs the last argument (the remote command) with `sh -c`, as the host's shell would.
 const FAKE_SSH: &str = "#!/bin/sh\nfor last; do :; done\nexec sh -c \"$last\"\n";
@@ -27,7 +27,7 @@ for a; do\n\
 done\n\
 exec cp -- \"$src\" \"$dst\"\n";
 
-fn files(bin: &Path) -> SshRemoteFiles<StdRunner> {
+fn files(bin: &Path) -> SshRemoteFiles<RetryRunner> {
     let layout = ControlLayout::new(
         RuntimeDir::new(Path::new("/run/user/1000/temor")).expect("runtime"),
         ControlPersist::Forever,
@@ -37,7 +37,7 @@ fn files(bin: &Path) -> SshRemoteFiles<StdRunner> {
         ssh: bin.join("ssh"),
         scp: bin.join("scp"),
     };
-    SshRemoteFiles::new(StdRunner, tools, layout)
+    SshRemoteFiles::new(RetryRunner, tools, layout)
 }
 
 #[test]

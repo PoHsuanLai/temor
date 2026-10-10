@@ -14,13 +14,16 @@ use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan};
 use temor_core::workspace::{KeepClosed, Workspace};
 
 use super::model::Hub;
-use crate::edge::{SpacesStartup, Startup, load_session_for, load_spaces, sidecar};
+use crate::edge::{SpacesStartup, Startup, load_hosts, load_session_for, load_spaces, sidecar};
 
 impl Hub {
     /// Restores the saved Spaces (every tab's panes, in their folders, with their scrollback
     /// where a snapshot was kept) or opens a first tab.
     pub fn start(&mut self) {
         if let Some(dir) = self.state_dir.clone() {
+            let hosts = load_hosts(&dir);
+            self.ssh.book = hosts.book;
+            self.ssh.restored = hosts.panes;
             self.book.spaces = self.read_spaces(&dir);
             self.book.active = self.book.spaces.current().id;
             let ids: Vec<SpaceId> = self.book.spaces.list().iter().map(|s| s.id).collect();

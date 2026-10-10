@@ -15,10 +15,11 @@ use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use super::spaces::SpaceBook;
+use super::agents::Agents;
 use super::bar::BarSlot;
 use super::shelf::ShelfHub;
-use super::agents::Agents;
+use super::spaces::SpaceBook;
+use super::ssh::SshHub;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -47,6 +48,7 @@ pub struct Hub {
     /// The downloads shelf and the questions programs have put to the person.
     pub(super) shelf: ShelfHub,
     pub(super) agents: Agents,
+    pub(super) ssh: SshHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -63,6 +65,7 @@ impl Hub {
         let (events, inbox) = unbounded_channel();
         let (shelf, trouble) = ShelfHub::open(&launch);
         let agents = Agents::new(&launch, events.clone());
+        let ssh = SshHub::new(&launch.ambient);
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             book: SpaceBook::new(),
@@ -79,6 +82,7 @@ impl Hub {
             notices: trouble.into_iter().collect(),
             shelf,
             agents,
+            ssh,
         }
     }
 
