@@ -9,6 +9,8 @@ use temor_remote::{HostReach, PortAction, port_actions};
 use super::model::{Hub, HubRef};
 use super::remote::Shown;
 use super::remote_source::{LinkShown, link_shown};
+use crate::edge::remote_hold::Typing;
+use crate::edge::remote_link::lock;
 
 /// Where a pane on a helper stands, for the person.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,6 +45,8 @@ pub struct RemoteView {
     pub host: String,
     pub stage: RemoteStage,
     pub ports: Vec<PortRow>,
+    /// Whether typing was lost while the connection was down.
+    pub typing: Typing,
 }
 
 /// The stage for a pane whose session is `shown` on a host whose helper stands at `helper`
@@ -91,6 +95,7 @@ impl Hub {
             host: remote.alias.as_str().to_owned(),
             stage,
             ports,
+            typing: lock(&remote.target).held.typing(),
         })
     }
 }

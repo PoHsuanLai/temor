@@ -3,6 +3,7 @@
 
 use temor_remote::PortAction;
 
+use crate::edge::remote_hold::Typing;
 use crate::hub::RemoteStage;
 
 /// The question about putting the helper on a computer.
@@ -34,6 +35,14 @@ pub fn stage_line(stage: RemoteStage, host: &str) -> Option<String> {
         RemoteStage::Reconnecting => Some("Reconnecting…".to_owned()),
         RemoteStage::Lost => Some("Connection lost".to_owned()),
         RemoteStage::Asking | RemoteStage::Live | RemoteStage::Ended => None,
+    }
+}
+
+/// What a pane says when typing held back during a lost connection overflowed.
+pub fn typing_line(typing: Typing) -> Option<&'static str> {
+    match typing {
+        Typing::Kept => None,
+        Typing::Dropped => Some("Part of what you typed while disconnected was dropped"),
     }
 }
 
@@ -97,6 +106,16 @@ mod tests {
                 assert!(!text.to_lowercase().contains(word), "{word} in {text:?}");
             }
         }
+    }
+
+    #[test]
+    fn only_dropped_typing_is_said() {
+        assert_eq!(typing_line(Typing::Kept), None);
+        let said = typing_line(Typing::Dropped).unwrap_or_default();
+        assert!(
+            said.contains("dropped") && !said.contains("buffer"),
+            "{said}"
+        );
     }
 
     #[test]
