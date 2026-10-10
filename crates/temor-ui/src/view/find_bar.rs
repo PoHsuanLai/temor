@@ -1,8 +1,13 @@
-//! The find bar (PLAN §6, ⌘F): a search field, the position of the current match, and the
-//! previous, next and done buttons. Enter is next, Shift+Enter is previous, Escape closes it.
+//! The find bar (PLAN §6, ⌘F): a search field that takes the keyboard when it opens, the position
+//! of the current match ("3 of 12"), and chevron buttons for the previous and next match. It sits
+//! on the pane's top-right corner. Enter is next, Shift+Enter is previous, Escape closes it
+//! and gives the keyboard back to the pane.
 
 use dioxus::prelude::*;
+use ds::components::content::icon_source::IconSource;
+use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::prelude::*;
+use ds::style::tokens::control_size::ControlSize;
 
 /// Which way the find bar steps through matches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -27,35 +32,42 @@ pub fn FindBar(
         None => "No matches".to_owned(),
     };
     rsx! {
-        // TODO(quire 0.2.31): a toolbar or row layout component; v0.2.30 offers none for this bar.
-        div { style: "display:flex; align-items:center",
-            TextField {
-                label: "Find in terminal".to_owned(),
-                value: query,
-                placeholder: "Find in terminal".to_owned(),
-                oninput: move |text: String| on_query.call(text),
-                onsubmit: move |_: String| on_step.call(StepDirection::Forward),
-                onkey: move |event: KeyboardEvent| {
-                    if event.key() == Key::Escape {
-                        on_close.call(());
-                    }
-                },
+        div { class: "temor-find",
+            div { class: "temor-find-field",
+                TextField {
+                    label: "Find in terminal".to_owned(),
+                    value: query,
+                    placeholder: "Find in terminal".to_owned(),
+                    size: ControlSize::Regular,
+                    // The caret goes in the field as the bar opens: typing is the field's.
+                    focus: FieldFocus::OnMount,
+                    oninput: move |text: String| on_query.call(text),
+                    onsubmit: move |_: String| on_step.call(StepDirection::Forward),
+                    onkey: move |event: KeyboardEvent| {
+                        if event.key() == Key::Escape {
+                            on_close.call(());
+                        }
+                    },
+                }
             }
             Label { text: status }
             Button {
-                label: "Previous".to_owned(),
+                label: "Previous match".to_owned(),
                 title: Some("Previous match".to_owned()),
+                bezel: Bezel::Toolbar,
+                image: ImagePosition::Only,
+                size: ControlSize::Regular,
+                icon: Some(IconSource::Glyph(Icon::ChevronUp)),
                 onclick: move |_| on_step.call(StepDirection::Backward),
             }
             Button {
-                label: "Next".to_owned(),
+                label: "Next match".to_owned(),
                 title: Some("Next match".to_owned()),
+                bezel: Bezel::Toolbar,
+                image: ImagePosition::Only,
+                size: ControlSize::Regular,
+                icon: Some(IconSource::Glyph(Icon::ChevronDown)),
                 onclick: move |_| on_step.call(StepDirection::Forward),
-            }
-            Button {
-                label: "Done".to_owned(),
-                title: Some("Close find".to_owned()),
-                onclick: move |_| on_close.call(()),
             }
         }
     }

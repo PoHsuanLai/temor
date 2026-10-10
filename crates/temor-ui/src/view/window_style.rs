@@ -6,7 +6,9 @@ pub const WINDOW_CSS: &str = "\
 .temor-shell { width: 100%; height: 100%; }\
 .temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
-.temor-pane { display: flex; flex-direction: column; width: 100%; height: 100%; }\
+.temor-pane { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; }\
+.temor-find { position: absolute; top: var(--s-2); right: var(--s-2); display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2); background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-item); box-shadow: var(--shadow-sheet); }\
+.temor-find-field { width: calc(var(--s-16) * 3); }\
 .temor-status { display: flex; align-items: center; gap: var(--s-3); padding: 0 var(--s-3); min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 0 auto; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; }\

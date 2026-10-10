@@ -221,15 +221,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         div { class: "temor-pane",
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
             onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
-            if let Some((query, position)) = find {
-                FindBar {
-                    query,
-                    position,
-                    on_query:find_query(Rc::clone(&slot), ui, started),
-                    on_step:find_step(Rc::clone(&slot), ui),
-                    on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
-                }
-            }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),
                 on_focus,
@@ -285,6 +276,16 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                         on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
                     }
+                }
+            }
+            // On the pane's top-right corner, over the grid.
+            if let Some((query, position)) = find {
+                FindBar {
+                    query,
+                    position,
+                    on_query:find_query(Rc::clone(&slot), ui, started),
+                    on_step:find_step(Rc::clone(&slot), ui),
+                    on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
                 }
             }
             if let Some(ask) = clip_ask {
