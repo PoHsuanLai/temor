@@ -3,6 +3,7 @@
 
 mod event;
 mod fed;
+mod fed_io;
 mod handle;
 mod io;
 mod outbox;

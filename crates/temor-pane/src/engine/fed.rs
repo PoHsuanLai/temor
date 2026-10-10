@@ -16,8 +16,9 @@ use temor_render::Palette;
 use temor_vt::{CellPx, CursorShape, GridSize, LineCount, Snapshot};
 
 use super::event::PaneEvent;
+use super::fed_io::FedSetup;
 use super::handle::PaneHandle;
-use super::io::{Command, FedSetup, Io, PaneRunner};
+use super::io::{Command, Io, PaneRunner};
 use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;

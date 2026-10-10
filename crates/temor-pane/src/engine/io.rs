@@ -6,17 +6,17 @@
 //! then it is killed.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
-use temor_render::Palette;
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{CellPx, CursorShape, LineCount, RenderHold, Snapshot, VtEvent};
+use temor_vt::{RenderHold, Snapshot, VtEvent};
 
 use super::event::PaneEvent;
+use super::fed_io::{FedSetup, pump_fed};
 use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
@@ -40,24 +40,6 @@ pub(super) enum Command {
     /// A fed pane's program ended.
     End(Option<ChildExit>),
 }
-
-/// What a fed pane needs to rebuild its terminal from a snapshot.
-#[derive(Debug, Clone)]
-pub(super) struct FedSetup {
-    pub cell: CellPx,
-    pub scrollback: LineCount,
-    pub cursor: CursorShape,
-    pub palette: Palette,
-}
-
-/// Whether a fed pane's loop goes on.
-enum Flow {
-    Go,
-    Stop,
-}
-
-/// How long a fed pane waits for a command before looking at its transfers again.
-const FED_POLL: Duration = Duration::from_millis(100);
 
 /// Everything the thread owns or shares.
 pub(super) struct Io {
@@ -183,12 +165,12 @@ fn finish(io: &mut Io) {
     send(io, PaneEvent::Exited(exit));
 }
 
-fn decide(io: &mut Io, offer: OfferId, consent: Consent) {
+pub(super) fn decide(io: &mut Io, offer: OfferId, consent: Consent) {
     let reaction = io.transfers.as_mut().map(|t| t.decide(offer, consent));
     carry_out(io, reaction);
 }
 
-fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offered]) {
+pub(super) fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offered]) {
     let reaction = io
         .transfers
         .as_mut()
@@ -196,83 +178,8 @@ fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offered]) {
     carry_out(io, reaction);
 }
 
-/// The loop of a pane fed from elsewhere: output arrives as commands, nothing is polled.
-fn pump_fed(mut io: Io) {
-    loop {
-        let sending = io.transfers.as_ref().is_some_and(|t| t.sending());
-        let wait = match sending {
-            true => Duration::from_millis(1),
-            false => FED_POLL,
-        };
-        match io.commands.recv_timeout(wait) {
-            Ok(command) => {
-                if let Flow::Stop = fed_command(&mut io, command) {
-                    return;
-                }
-            }
-            Err(RecvTimeoutError::Timeout) => {}
-            // Every sender is gone, the handle included: nobody is left to show it to.
-            Err(RecvTimeoutError::Disconnected) => return abort_transfers(&mut io),
-        }
-        while let Ok(command) = io.commands.try_recv() {
-            if let Flow::Stop = fed_command(&mut io, command) {
-                return;
-            }
-        }
-        if !io.outbox.is_waiting() && io.transfers.as_ref().is_some_and(|t| t.sending()) {
-            let reaction = io.transfers.as_mut().map(Transfers::pump_sends);
-            carry_out(&mut io, reaction);
-        }
-    }
-}
-
-fn fed_command(io: &mut Io, command: Command) -> Flow {
-    match command {
-        Command::Shutdown => {
-            abort_transfers(io);
-            return Flow::Stop;
-        }
-        Command::Decide(offer, consent) => decide(io, offer, consent),
-        Command::Serve(offer, consent, shelf) => serve(io, offer, consent, &shelf),
-        Command::Feed(bytes) => deliver(io, &bytes),
-        Command::Restore(snapshot) => restore(io, &snapshot),
-        Command::End(exit) => {
-            abort_transfers(io);
-            send(io, PaneEvent::Exited(exit));
-            return Flow::Stop;
-        }
-    }
-    Flow::Go
-}
-
-fn abort_transfers(io: &mut Io) {
-    let aborted = io.transfers.as_mut().map(Transfers::abort_all);
-    carry_out(io, aborted);
-}
-
-/// Replaces a fed pane's terminal with one that begins as `snapshot`, and tells the window the
-/// screen was reset (what it knew of the old one is gone).
-fn restore(io: &mut Io, snapshot: &Snapshot) {
-    let Some(setup) = io.fed.clone() else {
-        return;
-    };
-    let restored = Term::restored(
-        snapshot,
-        setup.cell,
-        setup.scrollback,
-        setup.cursor,
-        &setup.palette,
-    );
-    // A snapshot that cannot be read leaves the old screen; the live output still follows.
-    if let Ok(term) = restored {
-        *lock_term(&io.term) = term;
-        send(io, PaneEvent::Reset);
-        signal_dirty(io);
-    }
-}
-
 /// Feeds program output to the terminal, sends its replies to the PTY and its events on.
-fn deliver(io: &mut Io, bytes: &[u8]) {
+pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
     let output = lock_term(&io.term).write(bytes);
     for reply in output.replies {
         let _ = io.outbox.push_reply(&reply);
@@ -303,7 +210,7 @@ fn deliver(io: &mut Io, bytes: &[u8]) {
 }
 
 /// Sends a transfer step's sequences to the program and its events to the window.
-fn carry_out(io: &mut Io, reaction: Option<Reaction>) {
+pub(super) fn carry_out(io: &mut Io, reaction: Option<Reaction>) {
     let Some(reaction) = reaction else {
         return;
     };
@@ -368,7 +275,7 @@ fn reap(io: &mut Io) -> Option<ChildExit> {
     }
 }
 
-fn send(io: &Io, event: PaneEvent) {
+pub(super) fn send(io: &Io, event: PaneEvent) {
     // A closed channel means the window is gone; the sink drops the event.
     io.events.send(event);
 }
