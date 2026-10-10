@@ -78,6 +78,6 @@ pub use hosts::{HostGroup, HostRow, merge_hosts};
 pub use identity::{
     Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen, keygen_lookup_argv,
 };
-pub use master::{MasterProbe, prepare_control_dirs, probe_master};
+pub use master::{MasterProbe, prepare_control_dirs, probe_master, socket_appeared};
 pub use platform::ensure_private_dir;
 pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};

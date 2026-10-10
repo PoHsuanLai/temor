@@ -206,3 +206,32 @@ fn the_browser_check_is_shown_and_opens_only_on_a_click_and_goes_when_the_shell_
             .is_some_and(|v| v.check == CheckRow::Nothing && v.stage == Stage::Up)
     });
 }
+
+#[test]
+fn the_connection_is_up_when_its_socket_appears_without_asking_ssh() {
+    let Some(mut rig) = Rig::new("socket") else {
+        return;
+    };
+    rig.hub.open_host_named("fake");
+    let pane = rig.front();
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.pump("the session to start", |hub| {
+        hub.host_view(pane)
+            .is_some_and(|v| v.stage == Stage::Connecting)
+    });
+
+    // The stand-in's `-O check` says no (there is no `up` file): only the socket can say it.
+    let socket_dir = rig
+        .hub
+        .ssh
+        .env
+        .layout
+        .as_ref()
+        .expect("a layout")
+        .socket_dir();
+    std::fs::write(socket_dir.join("c".repeat(40)), "").expect("the master's socket");
+    rig.pump("the connection", |hub| {
+        hub.host_view(pane).is_some_and(|v| v.stage == Stage::Up)
+    });
+}

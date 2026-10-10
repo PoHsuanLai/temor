@@ -3,6 +3,7 @@
 //! [`crate::session_argv`]; whether to wait for a first connection or join at once is decided
 //! by temor-core's master machine from the answer here.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::argv::{ControlLayout, check_argv};
@@ -19,6 +20,14 @@ pub enum MasterProbe {
     Running,
     /// There is no master (or its socket is stale): the next session makes one.
     NotRunning,
+}
+
+/// Whether a master's socket appeared since `before` (the layout's
+/// [`finished_sockets`](ControlLayout::finished_sockets) when the connection was started): the
+/// master listens only once the host is verified and the person has logged in, so this is
+/// "established" without asking `ssh -O check`.
+pub fn socket_appeared(before: &BTreeSet<String>, now: &BTreeSet<String>) -> bool {
+    now.difference(before).next().is_some()
 }
 
 impl MasterProbe {

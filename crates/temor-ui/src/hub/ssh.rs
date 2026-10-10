@@ -2,7 +2,7 @@
 //! and forwards, which panes are sessions on a host, and the remote files being edited. The
 //! steps that decide are temor-core's (`host::*`); the files beside this one carry them out.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use temor_core::host::consent::{ConsentBook, RunMode};
@@ -120,6 +120,9 @@ pub(super) struct SshHub {
     pub closed: BTreeMap<PaneId, HostAlias>,
     pub opener: Box<dyn Opener>,
     pub file_opener: Box<dyn FileShell>,
+    /// The finished sockets in the connection folder when each connection being made started:
+    /// a new one means that connection is up.
+    pub baselines: BTreeMap<HostAlias, BTreeSet<String>>,
     /// Where the last tick polled the connections, to space the probes.
     pub ticks: u32,
 }
@@ -147,6 +150,7 @@ impl SshHub {
             closed: BTreeMap::new(),
             opener: default_opener(),
             file_opener: default_file_shell(),
+            baselines: BTreeMap::new(),
             ticks: 0,
         }
     }

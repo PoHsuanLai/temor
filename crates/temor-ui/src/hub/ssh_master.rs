@@ -8,7 +8,9 @@ use temor_core::host::consent::{ConsentIn, Who};
 use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::PaneId;
-use temor_ssh::{Fingerprint, HostAlias, HostKey, HostName, MasterProbe, prepare_control_dirs};
+use temor_ssh::{
+    Fingerprint, HostAlias, HostKey, HostName, MasterProbe, prepare_control_dirs, socket_appeared,
+};
 
 use super::model::Hub;
 use super::remote::Tier;
@@ -48,12 +50,35 @@ impl Hub {
         for out in outs {
             match out {
                 MasterOut::Probe => self.ssh.work.probe(alias.clone()),
-                MasterOut::Open { pane, how } => self.start_session(alias, pane, how),
+                MasterOut::Open { pane, how } => {
+                    if how == OpenAs::First {
+                        self.note_sockets(alias);
+                    }
+                    self.start_session(alias, pane, how)
+                }
                 MasterOut::ConnectionEnded => {
                     self.feed_forwards(alias, temor_core::host::forward::ForwardIn::ConnectionLost)
                 }
             }
         }
+    }
+
+    /// Remembers which connections exist before `alias`'s is made.
+    fn note_sockets(&mut self, alias: &HostAlias) {
+        if let Ok(layout) = &self.ssh.env.layout {
+            let before = layout.finished_sockets();
+            self.ssh.baselines.insert(alias.clone(), before);
+        }
+    }
+
+    /// Whether the one connection being made has its socket. With several being made at once a
+    /// new socket cannot be told apart, so each is asked after instead.
+    pub(super) fn socket_up(&self, alias: &HostAlias) -> bool {
+        let (Ok(layout), Some(before)) = (&self.ssh.env.layout, self.ssh.baselines.get(alias))
+        else {
+            return false;
+        };
+        socket_appeared(before, &layout.finished_sockets())
     }
 
     /// Starts `ssh` in `pane`, to make the connection (`First`) or join it (`Join`).
