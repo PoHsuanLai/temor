@@ -235,3 +235,32 @@ fn the_connection_is_up_when_its_socket_appears_without_asking_ssh() {
         hub.host_view(pane).is_some_and(|v| v.stage == Stage::Up)
     });
 }
+
+#[test]
+fn a_plain_aliass_fingerprint_is_looked_up_by_the_name_and_port_ssh_resolves() {
+    let Some(mut rig) = Rig::new("identify") else {
+        return;
+    };
+    rig.put(
+        "fp",
+        "256 SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s resolved.example.com (ED25519)\n",
+    );
+    rig.hub.open_host_named("fake");
+    let pane = rig.front();
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.put("up", "");
+    let alias = temor_ssh::HostAlias::new("fake").expect("alias");
+    rig.pump("the host to be known by its key", |hub| {
+        hub.ssh
+            .lines
+            .get(&alias)
+            .is_some_and(|line| line.key.is_some())
+    });
+    // Asked for by the HostName and port of `ssh -G`, in the form ssh records a port in, and
+    // not by the alias.
+    assert_eq!(
+        rig.got("keygen-args").as_deref(),
+        Some("-F\n[resolved.example.com]:2200\n-l\n")
+    );
+}

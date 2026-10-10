@@ -5,6 +5,7 @@ mod fingerprint;
 mod host_id;
 mod key;
 mod node;
+mod resolved;
 #[cfg(test)]
 mod tests;
 
@@ -12,3 +13,4 @@ pub use fingerprint::{Fingerprint, ShownName, fingerprint_from_keygen, keygen_lo
 pub use host_id::HostId;
 pub use key::HostKey;
 pub use node::NodeId;
+pub use resolved::{KnownName, known_name_from_resolved, resolve_argv};

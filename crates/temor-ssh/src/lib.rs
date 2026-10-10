@@ -76,7 +76,8 @@ pub use files::{
 };
 pub use hosts::{HostGroup, HostRow, merge_hosts};
 pub use identity::{
-    Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen, keygen_lookup_argv,
+    Fingerprint, HostId, HostKey, KnownName, NodeId, ShownName, fingerprint_from_keygen,
+    keygen_lookup_argv, known_name_from_resolved, resolve_argv,
 };
 pub use master::{MasterProbe, prepare_control_dirs, probe_master, socket_appeared};
 pub use platform::ensure_private_dir;
