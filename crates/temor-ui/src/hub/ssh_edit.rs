@@ -146,7 +146,7 @@ impl Hub {
                 EditOut::OpenLocal => {
                     if edit.opened == Opened::No {
                         edit.opened = Opened::Yes;
-                        if let Err(err) = self.ssh.file_opener.open_file(&local) {
+                        if let Err(err) = self.ssh.file_opener.open(&local) {
                             self.notices.push(err.to_string());
                         }
                     }

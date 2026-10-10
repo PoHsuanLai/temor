@@ -15,7 +15,7 @@ use crate::edge::Ambient;
 use crate::edge::ssh_work::SshEvent;
 use crate::hub::model::Hub;
 use crate::hub::ssh_view::{HostView, Stage};
-use crate::platform::{FileOpener, OpenError, Opener};
+use crate::platform::{FileShell, OpenError, Opener};
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
 
@@ -68,10 +68,14 @@ impl Opener for RecordLinks {
 #[derive(Clone, Default)]
 pub(super) struct RecordFiles(pub Rc<RefCell<Vec<PathBuf>>>);
 
-impl FileOpener for RecordFiles {
-    fn open_file(&self, path: &Path) -> Result<(), OpenError> {
+impl FileShell for RecordFiles {
+    fn open(&self, path: &Path) -> Result<(), OpenError> {
         self.0.borrow_mut().push(path.to_path_buf());
         Ok(())
+    }
+
+    fn reveal(&self, path: &Path) -> Result<(), OpenError> {
+        self.open(path.parent().unwrap_or(path))
     }
 }
 
