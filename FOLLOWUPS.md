@@ -198,3 +198,311 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       dot is the fallback). Check both at window integration.
 - [ ] ⌃⌘= is bound to Ctrl+Shift+= and Ctrl+Super+=. The Ctrl+Super form is not a ⌘ chord under
       the terminal rule (it has Ctrl), so the owner should confirm this binding. §6
+
+## Batch 1 (2026-10-10: window, spaces, desktop, ssh, remote, transfers, agents)
+Written without builds by Sonnet lanes; compiled, fixed and gated together by the orchestrator.
+Items below are each lane's leftovers and the orchestrator's decisions.
+
+### window
+
+
+- quire ask: `SplitView` takes a starting share (used) but reports no finished drag, so a divider the
+  person drags is not written back to the tree. It stays where it was dragged until the tab's
+  structure changes (`view/tree_view.rs`). Ask: an `on_resized(index, Share)` handler.
+- quire ask: a named unread badge (a token-styled `Badge` dot is used, `view/tab_row.rs`).
+- Snapshot sidecars: libghostty's snapshot is one opaque block, so "cap at 4 MiB, keep the newest
+  part" cannot cut it. A snapshot over the cap is not stored (`edge/sidecar.rs`, `Session::snapshot`).
+  A real cap needs the pane to trim its scrollback first (temor-vt) or a text-based store.
+- Sidecars are written when the hub is dropped (quit). If the process is killed, none are written
+  and the next launch restores trees and folders only. Dioxus gives no explicit quit hook, so the
+  drop of the window's `Hub` is the quit save; confirm on the real window that it runs.
+- Blitz panic on Restart (node.rs:1573) was not reproduced (nothing runs here). Temor-side changes:
+  the restart now happens a frame after the press, element handles of the input method are dropped
+  when a pane leaves the page (`ImeGlue::release`), and no pane measures a handle across an unmount.
+  If it still panics, the node left behind is a quire/Blitz one (a hovered node of the removed
+  banner); report it upstream with the harness test `restarting_an_ended_shell_*`.
+- Pinning a tab, folders and renaming have no controls yet (the model and sidebar support them).
+- A restored pinned tab types its command into the new shell (`hub/act.rs` `type_command`); it does
+  not replace the shell with the command.
+- Tab titles follow the program's title in the pane that has the keys; they are saved (paced).
+- Keyboard focus after a sidebar press: the pane takes the keyboard back on the next window update
+  (`view/pane_view.rs` `had_keyboard`); verify on a real window.
+- `ReopenTab` (⌘⇧T) is a new temor-pane action; PLAN §6 should list it.
+
+### spaces
+
+
+- temor-ui must change to compile with this lane (not touched, another lane owns it):
+  - `session/keys.rs:75`: add `| Action::SelectSpace(_)` to the arm of window-owned actions.
+  - `edge/session_file.rs:48-53`: `Restored` and `FreshWhy` are now `#[non_exhaustive]`; add a `_` arm.
+  - `edge/save_pace.rs`: `Pace` is in temor-ui, so its `#[non_exhaustive]` (review item 7) is for the window lane.
+- Wiring for the window lane:
+  - Space switching: `Action::SelectSpace(n)` -> `Spaces::at(n-1)`.
+  - New tabs: `space::launch(space, project, dotenv_text, runtime)` gives cwd, env, agent plan and credential list.
+  - The edge reads `dotenv_path(project)`, starts the agent at `AgentPlan::socket` (folder `<runtime>/temor`, mode 0700), asks porter for each `Credential`, and spawns.
+  - Routes: `routes_of(spaces.list())` then `route(command, &routes)` / `route_folder(cwd, &routes)`.
+  - Quick terminal: `quick_step`, then on `Promote` call `quick::adopt(&workspace_of(space), pane, cwd)`. `adopt` exists because `WorkspaceIn` has no "adopt a running pane" input.
+- Palette: `bar_step` keeps its own highlight and `OpenBar.rows` (kept from P3). To sit on quire's `PaletteState`, temor-ui feeds `OpenBar.rows` as `PaletteParams { rows }` and sends `Refreshed` on `BarOut::Refreshed`. The adapter lives in temor-ui because temor-core cannot depend on the `ds` views crate. Once that is wired, the duplicate highlight in `OpenBar` can go.
+- Ctrl+1..9 Space chords:
+  - Plain Ctrl+digit is the only form. Super+digit is reserved, and Ctrl+Shift+digit is the tab chord.
+  - It is a bare Ctrl chord and so takes Ctrl+2..7 (NUL, ESC..US) from programs that want them. Owner decision: keep, or move to a chord with Alt.
+  - quire's own note says Ctrl+digit is the desktop's workspace switch "left free of apps"; check on KDE that KWin does not take Ctrl+1..9 first.
+  - The keymap can't rebind them (not in `Action::ALL`, and bare Ctrl is refused); add settings keys if wanted.
+- Quick terminal closing ends the shell (throwaway). A "hide, keep running" mode is a different state machine; ask the owner.
+- The quick terminal's hotkey is a model input only (`QuickIn::Toggle`). A global hotkey needs the desktop/portal edge (TODO(platform)); no `Action` was added.
+- Bar: no "Move to Space" row yet; a Target for it needs the quick terminal open. The "Ask about" row reads "Ask about this tab: ..." (existing wording) while PLAN says "@tab".
+- Dotenv: multi-line quoted values, `${VAR}` expansion and `export -n` are out of scope by the rules in `space/dotenv.rs`.
+- Routes: patterns are not validated when saved (an empty or all-star pattern is allowed; `*` alone matches every command at lowest specificity). A settings UI should warn.
+- `closed.rs` `next_seq` now saturates instead of overflowing; a pure sequence number, so no refusal path.
+
+#### Orchestrator decisions (2026-10-10)
+- ⌃1–9 stays the Space switch (PLAN §6), but must use quire's `SwitchChord` definition, not a hand-coded Ctrl+digit table; fix at merge.
+- Quick terminal hotkey toggles: hide and keep the shell while temor runs; it isn't saved with the session unless promoted ("Move to Space").
+- At merge: temor-ui session/keys.rs add `Action::SelectSpace(_)`; edge/session_file.rs add `_` arms for `Restored`/`FreshWhy`.
+
+### desktop
+
+
+- Window wiring (another lane): implement `temor_desktop::WindowPort` over the window's shared
+  state (reads must return from a snapshot, they run on the bus task), then at startup
+  `SystemInstance::new(env).claim(&Request::NewWindow)`; on `Claim::Primary` call
+  `SystemIntents::serve(&env, window)`, keep the `Primary` and `SystemIntents` alive, and drive
+  `primary.next()`. Needs a tokio runtime and `ds-settings/tokio` (zbus is built on tokio here,
+  as docket and porter build it).
+- temor-ui must depend on temor-desktop with `default-features = false` and forward its own
+  `quire-desktop` feature, or the portable build pulls zbus.
+- Action names are `temor.*`, not `terminal.*` as PLAN §8.4 writes them: docket's validator
+  requires the app name's last element as prefix. PLAN should say so.
+- `context()`: docket's ContextSnapshot has no field for the focused pane's folder or the last
+  block, and temor declares no entities. cwd and the last command are served by the actions
+  `temor.pane.cwd` / `temor.command.read` (they taint the session). If the companion should get
+  them in `context()`, temor needs entity kinds (`temor.pane`, `temor.command`) in the manifest.
+- The Space in `Invocation.space` is not mapped to the window's Spaces yet; the window decides
+  which Space an action acts in. `SpaceRef` is only used to label `context()`.
+- Dock badge: nothing in ds-desktop or docket sends `LauncherEntry.Update` (sill only reads it), so
+  `SystemDock` emits the signal itself at object path `/com/canonical/unity/launcherentry/1`.
+  A dock that keys on the path (none known) would need the libunity hash.
+- Porter identifies the terminal by its systemd unit (`org.quire.Temor.service`). A temor started
+  from the launcher or a shell is not that unit, so Tailnet1 may answer `Denied`. `SystemTailnet`
+  returns that as an error (not an empty list); the window should show the group as absent.
+- Dependency copies: docket abbb62c pins porter 55d1ade, the Tailnet reader is porter a7c11d2, so
+  two copies of porter-core are in the tree. temor only touches the a7c11d2 copy through
+  `porter_client::Machine`. When docket has a rev pinning a7c11d2 or later, bump docket and
+  prov/porter-core to it and the duplicate goes.
+- `porter-client` (feature `dbus`) still pulls porter-provider, porter-secrets and porter-service
+  (oo7 keyring etc.). Ask porter for a `tailnet`-only feature if the build weight matters.
+- `DBusActivatable=true` plus `org.freedesktop.Application` is not implemented; activation is
+  by the two bus names in dist/. Add it if the launcher should activate temor that way.
+- Platform TODOs: macOS dock badge and single instance, Windows taskbar badge and single
+  instance (stubs in crates/temor-desktop/src/platform/unsupported.rs).
+- The `quire-desktop` boundary gate is in scripts/check-layers.sh (metadata level). A build-level
+  check (`cargo tree --no-default-features -p temor-desktop` has no zbus) is for the orchestrator's
+  gate if wanted.
+- Add `temor-desktop` and its tests (need `dbus-daemon`) to the TEMOR_REQUIRE_TOOLS list.
+
+#### Orchestrator decisions (2026-10-10)
+- Two porter-core copies (docket abbb62c pins porter 55d1ade; porter-client is a7c11d2): accepted until docket moves; asked the agent session for a docket rev on porter ≥ a7c11d2.
+- `temor.pane` / `temor.command` entity kinds and richer `context()`: P12 (companion context).
+- Launcher starts must run as the unit so porter grants Tailnet1: set `DBusActivatable=true` in dist/org.quire.Temor.desktop (the launcher then activates org.quire.Temor, and D-Bus starts it through `SystemdService=`). Do at merge.
+- UPDATE: pin docket 1b905edc5303c9f2241f8a5f6358968ece8dde36 and porter (prov, porter-core, porter-client) b12886e4d047d9763a4dccfa9fa3ce92084483ca (includes a7c11d2) at merge, for one porter-core. Batch 10 later: porter a1a07f5 (additive).
+
+### ssh
+
+
+#### For the window (temor-ui / temor-desktop) to wire
+- Host list: `merge_hosts(&load_host_list(..), &tailnet_hosts)` -> `HostRow`s; group by `HostRow::group()`,
+  dim `presence() == Offline`, connect with `destination()`. The desktop lane maps porter's `Machine`
+  to `temor_ssh::TailnetHost` (`online`/`ssh` are `Presence`/`TailscaleSsh` enums, not bools).
+- Session start: `consent::gate(book, Who{key, alias})` -> ask one question at a time (`Gate::Ask`),
+  then `RunMode::Bootstrap(policy)` -> `BootstrapScript::build_with(.., BootstrapOptions::with_terminfo(policy))`,
+  `RunMode::Plain` -> plain `ssh` with no remote command. After the first connection verifies the host key,
+  send `ConsentIn::Identified` so answers recorded under the alias join the machine's record.
+- Panes: `master_step` decides First vs Join; run `prepare_control_dirs` once, `probe_master` on `MasterOut::Probe`,
+  `session_argv` on `MasterOut::Open`. Feed `MasterIn::Established` when the first session's host key is verified.
+- Where the fingerprint comes from for `HostKey`/`HostId` on a plain alias is not built (needs the live
+  handshake: e.g. `ssh -v` parse or `ssh-keygen -l` on the key the session presented).
+- Persist `ConsentBook` (serde, a list of records) in the session file; not wired.
+- `CheckScan` must be fed raw pre-shell bytes and stopped at the first OSC 7/133; the window shows the row
+  and opens the link only on click.
+- Local copy watching: poll the local copy (e.g. every 300 ms) into `LocalStamp`, `watch_step`, feed
+  `edit_step`; after the app rewrites the copy (fetch), restart with `Watch::new(stamp)`.
+
+#### Known gaps
+- Remote file edge uses `scp -s` (OpenSSH 8.7+ for the flag; older clients only have the legacy mode). Add an
+  sftp-batch fallback or a version probe.
+- Stat granularity is whole seconds (`stat -c %Y`): an edit that keeps the size and lands in the same second
+  as the fetch goes unnoticed. GNU `%.9Y` / BSD `%Fm` would fix it.
+- Write-back copies over the file in place (keeps owner and mode, not atomic). A temp-file-and-rename mode
+  with mode/owner copy is not built.
+- Remote paths with `* ? [ ] { } \` are refused (scp globs them); `~/` paths are refused (use the OSC 7 cwd).
+- tailnet alias matching is by MagicDNS name or address only; a bare short `HostName` equal to the machine
+  name does not match.
+- Forwards bind the default (loopback) address and always target the host's `localhost`; remote-host and
+  bind choices are in `Forward` but the step does not take them. Port detection from output is P14/UI.
+- `ForwardFault` mapping from `ssh -O forward` stderr text is not written (app must classify).
+- Consent: only `Integrate` and `Terminfo` are modelled. Clipboard/transfers/notifications stay in
+  `remote::HostConsent` (per Space, not per machine); merging the two stores is open.
+- Pins per Space keyed by `HostKey` are not built (the consent book is the pattern to copy).
+- The nu case is tested with a stand-in `nu` that reports its start; no real nushell test yet (needs nu on the
+  gate PATH, then a marks assertion like zsh).
+- No test against the throwaway sshd printing the check URL (only `CheckScan` units); no real sshd test.
+- Cargo.lock: added `temor-ssh` to temor-core's dependency list by hand.
+
+#### Orchestrator decisions (2026-10-10)
+- `TailnetHost`: keep the ssh lane's shape (Presence/TailscaleSsh enums plus `node: NodeId`); adapt temor-desktop's mapping to it at merge (both lanes wrote crates/temor-ssh/src/tailnet.rs).
+- `scp -s` (OpenSSH ≥ 8.7) is the default; an sftp fallback for older hosts is a follow-up.
+
+### remote
+
+
+#### Not done (needs something outside this lane)
+- **Trial runs on the host and the agent relay** (`Request::RunTrial`, `Request::Relay`): need
+  bulkhead's trial module and its shared path/limit/redaction code. The daemon does not advertise
+  `Capability::Trial` / `Capability::Relay`; both requests answer `RemoteError::Unsupported`.
+  `src/daemon/dispatch.rs` is the one place to add them.
+- **Chunked uploads**: `WriteFile` carries the whole file in one frame, so `Client::upload` stops at
+  about 63 MiB (`Error::TooLarge`). Wire addition wanted: a write at an offset (or an append) with a
+  final commit step, so big uploads can stream. I did not touch temor-wire.
+- **Keepalive**: the wire has no ping. A client too slow to read is hung up on by the daemon (its
+  queue overflowed) and sees end-of-stream; a stalled but open link is only noticed by ssh. A
+  `Ping` request in the wire would let `link_step` notice dead links sooner.
+- **Cell size and colours of the host-side screen**: the screen the daemon keeps uses libghostty
+  defaults (8x16 px cells, default palette, dark colour scheme). Colour queries (OSC 10/11) and
+  pixel reports from programs on the host are answered from those, not the window's. `OpenSession`
+  and `ResizeSession` would need to carry the cell size, and a palette message would be needed.
+- **`OpenSession` has no argument list** (only a program). Login-shell flags and shell-integration
+  injection (temor-shell `plan_integration`) are not applied on the host; Tier A's bootstrap env is
+  what a client can put in `env`.
+- **Default shell** is `$SHELL`, else `/bin/sh`; no passwd lookup (temor-pty has none).
+
+#### Known limits
+- Requests on one connection are handled one at a time on its reader thread, so a big file read
+  delays keystrokes sent on the same connection. Fix: hand file requests to a worker thread.
+- Watches poll with `stat` once per `tick` (about a second). A folder's mtime shows entry changes,
+  but not changes inside sub-folders. inotify (rustix `fs::inotify`) is the refinement.
+- The port scan reads all of `/proc` each tick; throttle it if hosts with thousands of processes
+  matter.
+- The write-back check and the replace are two steps; a change between them is lost (documented on
+  `FileService::write`).
+- A symlink is listed and `stat`ed as a symlink and never followed (confinement). The wire's doc says
+  `stat` may report what it points at; it does not here.
+- The daemon does not survive its own death (no persistence of PTYs, by design: a PTY cannot be
+  re-owned). An updated helper (new hash) listens on a new socket, so the old daemon and its
+  sessions stay until "Remove from host" or until its sessions end. A `Shutdown` request is not in
+  the wire; `Daemon::shutdown` exists for it.
+- Terminal replies queued for a program that never reads are capped at 1 MiB (dropped beyond),
+  as in temor-pane.
+
+#### For the window (client side use)
+- Command to run over ssh: `ssh host ~/.cache/temor-remote/<hash>/temor-remote stdio` (starts the
+  daemon when needed). `Client::connect(child.stdout, child.stdin, hello(expected_hash, &DAEMON_CAPS))`.
+- After a lost link: `link_step` -> `Dial` -> `Client::connect` again -> `attach` each session
+  (`Attached::screen()` -> `temor_vt::Terminal::restore`), then feed `ClientEvent::Output`.
+- `port_actions(&HostReach, Port)` gives "Open at <name>:<port>" first for tailnet hosts, then
+  "Forward port...".
+
+#### Platform (owner)
+- `src/platform/unsupported.rs`: `Beneath` (confined files), `listening_ports`, the unix socket
+  (`Listener`, `Half`, `connect`, `ensure_private_dir`) and `spawn_detached` refuse with
+  `Error::Unsupported` off Linux. `TODO(platform:macos)` / `TODO(platform:windows)` marked there.
+  Hosts are Linux per PLAN; the client-side types still build everywhere.
+
+#### Build notes for the orchestrator
+- New workspace deps (root Cargo.toml): `temor-wire` (path) and `sha2 = "0.10"`; Cargo.lock needs
+  updating (sha2 0.10.x is in the offline registry; I did not resolve it).
+- `scripts/check-layers.sh` already listed `temor-remote 3`; no change was needed.
+
+#### Orchestrator decisions (2026-10-10)
+- Yes to all three as one temor-wire revision (P14 follow-up): WriteFile with offset/append for streamed uploads; Ping for stalled-link detection in link_step; cell pixel size on Open/Resize plus a Palette message.
+
+### transfers
+
+
+#### Decisions to confirm
+- `temor get` uses a temor dialect of kitty's receive: the client sends `ac=receive;id=X[;n=<name>]`;
+  the terminal answers by offering the file with `ac=send` under the same id (`kitty::serve` +
+  `SendSession`), and the client takes it with `ReceiveSession` (`drive_receive`). A refusal is an
+  `ac=status` failure for the request id. Not wire-compatible with kitty's own `receive` (which lists
+  several paths in `file` frames); fine for temor-to-temor.
+- Two shelf models exist: temor-core `shelf::Shelf` (live model, `shelf_step`, view) and
+  temor-transfer `shelf::ShelfStore` (index file + exclusive file placement). The app maps between
+  them: core's `ShelfOut::Place{path}` is created with `create_new` (answer `NameTaken` on EEXIST);
+  `ShelfStore::receive_consented` / `receive_saved` are the one-call versions for headless use.
+
+#### For the window (temor-ui lane, after the other lane lands)
+- Terminal side of the protocols is not wired: temor-vt reports `UnknownKind::Osc1337File` and the
+  OSC 5113 payloads; the pane must feed `Osc1337Reader` (keep one per pane, map temor-vt truncation to
+  `Completeness`), `kitty::ReceiveSession` (one per offer; edge contract in its `Input` docs; the
+  fid for `WriteDone` is the `file` of the frame that produced the `Finish`, see
+  `drive/receive.rs`), and answer `ac=receive` with `kitty::serve` then a `SendSession` (or run
+  `drive_send` on a helper thread over the pty as a `Link`).
+- Ask once per host/stream via core `transfer::offer`; then `shelf_step(Incoming)`.
+- Drop: build `shelf::Dropped` (support: pane has answered a transfer offer or announced; quoting
+  from the pane's shell) and carry out `DropAction`. `Send` needs a terminal-initiated send to the
+  program; with the current protocol only a program that started the exchange can receive, so
+  "announced" support has no source yet. Needs a decision: an `ac=receive`-style advert from
+  `temor` on the host (shell integration sets it), or `Unknown` always.
+
+#### Known gaps
+- Directories: `SendSession`/`temor save` send regular files only; the receiver already takes folders.
+- `temor view -` and `temor save -` (pipes) are not built: they need a temp file/stream with unknown
+  size (PLAN §9 "from pipes").
+- `temor view` over SSH sends to the shelf and tells the person to open it there; no remote "open".
+- `temor save` waits up to 60 s for the first answer (the person may be asked). A terminal that is
+  not temor therefore hangs for a minute. Fix: ReceiveSession replies `STARTED` for the offer id
+  before asking (changes `an_offer_asks_for_consent...` test), then `first` can be ~3 s.
+- Compression (`zip=zlib`), rsync transmission, symlinks, `prm` permissions: still refused/ignored.
+- Verify the `st` reply encoding (base64) and `CANCELED` spelling against real kitty (parse_reply
+  accepts what encode_reply writes; unknown codes read as EIO).
+- Error text from the other side (`Declined`) is passed through; only "User refused the transfer"
+  is mapped to a friendlier sentence.
+- macOS/Windows: cli `platform/unsupported.rs` (tty line, opener `open`/`start`); transfer edge notes
+  already in FOLLOWUPS.
+- Dropped-path pasting of names with control characters is refused (a tell), not escaped.
+
+#### Orchestrator decisions (2026-10-10)
+- The temor-only `ac=receive` handshake for `temor get` is accepted; document it as temor's variant in temor-transfer's docs.
+- "Program announced receive": default Unknown, so the drop pastes quoted paths. Shell integration advertises it later (P9 follow-up).
+- `temor save`: answer STARTED before asking consent, so the CLI doesn't wait 60 s; update the test that pins the old order.
+
+### agents
+
+
+Nothing here was compiled or run (batch rule). The orchestrator's first build will find the typos.
+
+#### Found already done (told in the report)
+- OSC 7501 was already parsed by libghostty into `VtEvent::ProgramStatus` (temor-vt `ffi/reports.rs`), with `ProgramStatus` in `event/status.rs`. I added only a pure reader (`scan/status.rs`) so `FakeVt` emits the same event; it is `testing`-feature only.
+- `presence_step` and `checkpoint_step` existed. Added `agent::radar` over `presence_step` (sources, precedence, timing, title hints, process facts) and `checkpoint::git` (the refs and the restore plan).
+
+#### Assumptions to check
+- OSC 7501 grammar in `scan/status.rs` is taken from the libghostty header example only (spec page not in the repo): fields split on `:`, `key=value`, `title`/`msg` base64, limits 256 bytes (`id`, `app`) and 1024 bytes decoded (`title`, `msg`). Compare with the real spec at superlogical.com/rex/docs/build/program-status. The reply to `OSC 7501 ; ?` is not produced by the fake.
+- `title_hint`: a leading Braille pattern char means busy (Claude Code's spinner). Unverified for other agents.
+- Radar timings (`RadarParams::default`): precedence hold 60 s, title hold 4 s, stale working 15 min. Tune with real agents.
+- A notification or bell makes an unfocused pane Waiting(Question) until focus or a prompt; maybe too loud for bells in plain shells. The app should send `Notified` only for panes that are agents or have 7501 records.
+- Pane socket: per-pane file `<dir>/<pane id>.sock`, mode 0600, directory 0700. Path must be under 104 bytes. Protocol v1 lines are in `temor-pane/src/report/protocol.rs`.
+
+#### Needs the owner or another lane
+- `ProcessGit` lives in temor-core (`worktree/process.rs`), the only code there that starts a process. PLAN says the core has no I/O. If that is not wanted, move that one file to temor-desktop and keep the `Git` trait in core.
+- Restore deletes: `checkpoint::restore_files` writes files back but the core cannot delete files made since; the caller deletes `RestorePlan::delete`.
+- Checkpoint numbers: `Checkpoints::default()` starts at 0 but refs are per repository; seed `next` from `checkpoint::next_free` when a run starts or two runs overwrite each other.
+- Snapshot index: one fixed private index per worktree (`<gitdir>/temor-snapshot-index`); the runner must not snapshot one worktree twice at once.
+- Setting names: the pane socket env needs `TEMOR_SOCKET` to be this per-pane path (temor-pty's `EnvContract.socket` already carries it).
+- Platform TODOs: peer uid and private dir on macOS (`getpeereid`) and Windows (named pipe with ACL) in `temor-pane/src/platform/unsupported.rs`; the whole `report` module is `cfg(unix)`.
+- The `.worktreeinclude` name is unverified (PLAN says so). The matcher is a small gitignore subset (no `!`).
+- Not built: the "Leftover branches" list (needs `git worktree list` parsing), SSH/Tier B worktrees, `Open pull request` (outcome only), the shell split on conflict.
+- Semantic overlap is invisible by design; the UI must show `TEXT_OVERLAP_ONLY`.
+- D20: `LaunchFact`/`GateFact` need real readers (docket-launch profile, docket session). `ModeChange::Asks` has no gate API yet.
+- D21: sizes are bytes of the text; no token estimate. The sent list stores the chip text (the log is local); decide retention.
+- Cargo.lock was edited by hand (tempfile dev-dep on temor-core and temor-pane, rustix on temor-pane); let cargo rewrite it.
+
+#### Orchestrator decisions (2026-10-10)
+- Move `temor-core/src/worktree/process.rs` (ProcessGit) to temor-ui `edge/` at merge; core keeps the `Git` trait (L2 stays I/O-free).
+- Braille-spinner title hint: keep as the weakest fallback (OSC 7501 and process facts win).
+- Bell/notification sets Waiting only for agent panes; the app sends `Notified` only there.
+- Duplicate commit message 6cf65ed/71ed891: fine, leave history.
+
+### orchestrator (merge)
+- [ ] Space switch: no default chord until the desktop rule settles (quire leaves Ctrl+digit to the desktop; the shell owns Super+digit); asked the agent session.
+- [ ] Unbound Ctrl+Shift chords are dropped. Once a program turns on kitty keyboard flags they are distinct keys; forward them then instead of dropping.
+- [ ] `temor save` STARTED-before-consent (transfers decision) not yet done.
+- [ ] The Restart panic (Blitz node.rs:1573) was not reproduced; the regression test runs it in the harness. If it still happens on the desktop, take it to quire/Blitz with a backtrace (RUST_BACKTRACE=1).

@@ -10,6 +10,11 @@ fn ctrl_shift(c: char) -> Chord {
     Chord::of_char(c, Mods::CTRL.with(Mods::SHIFT))
 }
 
+/// ⌃⌘= is the one default with Ctrl and Super together (see `Keymap::defaults`).
+fn is_ctrl_super(chord: &Chord) -> bool {
+    *chord == Chord::of_char('=', Mods::CTRL.with(Mods::SUPER))
+}
+
 #[test]
 fn chords_parse_in_any_case_and_order_of_modifiers() {
     let parsed = Chord::parse("Shift+Ctrl+C").expect("valid chord");
@@ -53,13 +58,13 @@ fn chord_labels_show_the_command_key_for_both_command_forms() {
 
 #[test]
 fn the_shells_chords_and_ctrl_space_are_reserved_and_app_super_chords_are_not() {
-    for reserved in ["super+space", "super+tab", "super+1", "ctrl+space"] {
+    for reserved in ["super+space", "super+tab", "ctrl+space"] {
         assert!(
             Chord::parse(reserved).is_ok_and(|c| c.is_reserved()),
             "{reserved}"
         );
     }
-    for allowed in ["super+c", "super+alt+g", "ctrl+shift+c"] {
+    for allowed in ["super+c", "super+1", "super+alt+g", "ctrl+shift+c"] {
         assert!(
             Chord::parse(allowed).is_ok_and(|c| !c.is_reserved()),
             "{allowed}"
@@ -78,11 +83,9 @@ fn defaults_bind_each_action_in_both_command_forms_and_nothing_reserved() {
             "{action:?} has one Ctrl+Shift and one Super form"
         );
         for chord in chords {
-            // ⌃⌘= is the one chord with Ctrl and Super together (see `Keymap::defaults`).
             assert!(
-                chord.is_command_form()
-                    || chord.is_ctrl_shift_form()
-                    || *action == Action::Equalize
+                chord.is_command_form() || chord.is_ctrl_shift_form() || is_ctrl_super(chord),
+                "{action:?} {chord:?}"
             );
             assert!(!chord.is_reserved());
             assert_eq!(keymap.action_for(chord), Some(*action));
@@ -210,11 +213,19 @@ fn workspace_chords_run_their_actions_in_the_right_forms() {
         ("ctrl+shift+alt+left", Some(Action::FocusLeft)),
         ("super+alt+up", Some(Action::FocusUp)),
         ("super+shift+enter", Some(Action::ToggleZoom)),
+        ("super+shift+t", Some(Action::ReopenTab)),
+        ("ctrl+shift+alt+t", Some(Action::ReopenTab)),
         ("ctrl+shift+=", Some(Action::Equalize)),
         ("ctrl+super+=", Some(Action::Equalize)),
         ("ctrl+shift+1", Some(Action::SelectTab(1))),
         ("ctrl+shift+9", Some(Action::SelectTab(9))),
-        ("super+1", None),
+        // Ctrl+digit is the desktop's workspace switch: temor claims none of it.
+        ("ctrl+1", None),
+        ("ctrl+9", None),
+        ("ctrl+0", None),
+        ("ctrl+alt+1", None),
+        ("super+1", Some(Action::SelectTab(1))),
+        ("super+9", Some(Action::SelectTab(9))),
         ("super+shift+z", None),
     ];
     for (text, want) in rows {

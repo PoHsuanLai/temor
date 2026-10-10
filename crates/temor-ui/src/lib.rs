@@ -5,6 +5,7 @@
 pub mod app;
 pub mod edge;
 pub mod error;
+pub mod hub;
 pub mod input;
 pub mod paint;
 pub mod pane;

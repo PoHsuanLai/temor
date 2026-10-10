@@ -21,18 +21,23 @@
 
 pub mod keys;
 pub mod paste;
+#[cfg(unix)]
+pub mod report;
 pub mod settings;
 pub mod text;
 
 #[cfg(feature = "ghostty")]
 mod engine;
 mod error;
+#[cfg(unix)]
+mod platform;
 #[cfg(feature = "ghostty")]
 mod shell;
 
 #[cfg(feature = "ghostty")]
 pub use engine::{
     EventSink, Hold, Output, PaneEvent, PaneHandle, PaneRunner, PaneSpec, Term, start,
+    start_restored,
 };
 pub use error::{PaneError, SettingsError};
 #[cfg(feature = "ghostty")]

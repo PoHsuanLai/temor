@@ -157,10 +157,7 @@ impl Chord {
                 ChordKey::Named(NamedKey::Space) | ChordKey::Char(' ')
             );
         let shell_super = self.mods.contains(Mods::SUPER)
-            && matches!(
-                self.key,
-                ChordKey::Named(NamedKey::Space | NamedKey::Tab) | ChordKey::Char('0'..='9')
-            );
+            && matches!(self.key, ChordKey::Named(NamedKey::Space | NamedKey::Tab));
         ctrl_space || shell_super
     }
 }

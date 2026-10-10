@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use super::closed::{ClosedState, KeepClosed};
 use super::model::Workspace;
 use super::sidebar::order;
-use super::step::{Spawn, Start, relaunch_for};
+use super::step::relaunch_for;
+use super::step_types::{Spawn, Start};
 use super::tabs::TabsState;
 use crate::error::CoreError;
 use crate::space::Place;
@@ -27,6 +28,7 @@ pub const VERSION: u32 = 1;
 
 /// Why a session file was not restored: the window starts fresh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FreshWhy {
     /// The file is missing its version, is not JSON, or is an unknown old version.
     Damaged,
@@ -36,6 +38,7 @@ pub enum FreshWhy {
 
 /// What reading a session file gave.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Restored {
     /// The saved workspace.
     Loaded(Workspace),
@@ -123,15 +126,37 @@ pub fn decode(text: &str, keep: KeepClosed) -> Restored {
         Some(newer) if newer > VERSION => return Restored::Fresh(FreshWhy::NewerVersion(newer)),
         _ => return Restored::Fresh(FreshWhy::Damaged),
     }
+    if !place_is_well_formed(&value) {
+        return Restored::Fresh(FreshWhy::Damaged);
+    }
     match serde_json::from_value::<ReadV1>(value) {
-        Ok(read) => Restored::Loaded(rebuild(read, keep)),
+        Ok(read) => {
+            rebuild(read, keep).map_or(Restored::Fresh(FreshWhy::Damaged), Restored::Loaded)
+        }
         Err(_) => Restored::Fresh(FreshWhy::Damaged),
     }
 }
 
+/// Whether `place` is shaped like a place: absent (an empty one), or a map whose `tabs` and
+/// `folders`, when present, are lists. A single damaged tab inside is dropped alone later; a
+/// place that is not a place at all is damage the edge must move the file aside for, not an
+/// empty workspace to save over it.
+fn place_is_well_formed(file: &serde_json::Value) -> bool {
+    let Some(place) = file.get("place") else {
+        return true;
+    };
+    let Some(map) = place.as_object() else {
+        return false;
+    };
+    ["tabs", "folders"]
+        .iter()
+        .all(|key| map.get(*key).is_none_or(serde_json::Value::is_array))
+}
+
 /// The saved parts made consistent: duplicate tabs and panes are dropped (the first one stays),
 /// references to missing things are ignored, and the id counters move past every id in use.
-fn rebuild(read: ReadV1, keep: KeepClosed) -> Workspace {
+/// An id at the top of the range leaves none after it: that file is damaged.
+fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     let mut place = read.place;
     let mut seen_tabs = BTreeSet::new();
     let mut seen_panes = BTreeSet::new();
@@ -171,12 +196,21 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Workspace {
         .filter(|rec| seen_panes.contains(&rec.pane))
         .map(|rec| (rec.pane, rec.cwd))
         .collect::<BTreeMap<_, _>>();
-    let top_tab = ids.iter().map(|t| t.0 + 1).max().unwrap_or(1);
-    let top_pane = seen_panes.iter().map(|p| p.0 + 1).max().unwrap_or(1);
+    if tabs.place.folders.iter().any(|f| f.id.0 == u64::MAX) {
+        return None;
+    }
+    let top_tab = ids
+        .iter()
+        .map(|t| t.0.checked_add(1))
+        .try_fold(1, |top: u64, next| next.map(|n| top.max(n)))?;
+    let top_pane = seen_panes
+        .iter()
+        .map(|p| p.0.checked_add(1))
+        .try_fold(1, |top: u64, next| next.map(|n| top.max(n)))?;
     ws.next_tab = read.next_tab.max(top_tab).max(1);
     ws.next_pane = read.next_pane.max(top_pane).max(1);
     ws.tabs = tabs;
-    ws
+    Some(ws)
 }
 
 /// The panes to start when a saved workspace is restored: every pane in every tab, each in its

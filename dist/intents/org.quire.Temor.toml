@@ -1,0 +1,252 @@
+# What agents may ask temor to do (docket intents vocabulary 1; PLAN §8.4). Installed to
+# $XDG_DATA_DIRS/quire/intents/org.quire.Temor.toml beside dbus-1/services/org.quire.Temor.service,
+# which starts temor when docket's router calls the name. Every field is written (porter's
+# provider-file rule). crates/temor-desktop embeds this file, so the file the installer ships and
+# the one the window answers for are one file; a test holds it to docket's validator.
+#
+# Action names start with `temor`, the app name's last element: the validator refuses any other
+# prefix (PLAN writes them as `terminal.*`).
+#
+# Effects:
+# - Listing panes, their folders and commands, and reading text only look: `read`. Terminal text
+#   is somebody else's words (a program's output), so everything returned is `third_party`, source
+#   `screen`; reading it taints the agent's session (`ReadUntrusted`, decided by the router).
+# - Opening a pane changes the window and can be closed again: `undoable_write` with a token.
+# - A sandboxed command's ceiling is `outbound`; the window classifies each call (`per_call`):
+#   with the network closed it is `undoable_write` (the overlay is the undo), with it open it
+#   stays `outbound`. The `network` choice uses docket's ids (closed, open).
+# - Typing a command into a pane runs it as the person, so it is `destructive`, always asks, and is
+#   never a standing grant (`ask_always`).
+vocab = 1
+app = "org.quire.Temor"
+entities = []
+
+[[actions]]
+name = "temor.pane.list"
+label = "List the panes"
+on = { kind = "nothing" }
+effect = "read"
+classes = ["screen"]
+undo = "not_undoable"
+reach = "offered"
+latency = "instant"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 65536, lines = "many" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+params = []
+
+[[actions]]
+name = "temor.pane.cwd"
+label = "Get a pane's folder"
+on = { kind = "nothing" }
+effect = "read"
+classes = ["screen"]
+undo = "not_undoable"
+reach = "offered"
+latency = "instant"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 4096, lines = "one" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "pane"
+label = "Which pane (from the list; the one in front if left out)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions]]
+name = "temor.pane.read"
+label = "Read a pane's text"
+on = { kind = "nothing" }
+effect = "read"
+classes = ["screen"]
+undo = "not_undoable"
+reach = "offered"
+latency = "quick"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 65536, lines = "many" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "pane"
+label = "Which pane (from the list; the one in front if left out)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions.params]]
+name = "from"
+label = "First line to read, counted from the top of the pane's history"
+ty = { kind = "integer", v = { min = 0, max = 10000000 } }
+need = { kind = "defaulted", v = { kind = "integer", v = 0 } }
+sink = "inert"
+
+[[actions.params]]
+name = "count"
+label = "How many lines to read"
+ty = { kind = "integer", v = { min = 1, max = 2000 } }
+need = { kind = "defaulted", v = { kind = "integer", v = 200 } }
+sink = "inert"
+
+[[actions]]
+name = "temor.pane.open"
+label = "Open a pane"
+on = { kind = "nothing" }
+effect = "undoable_write"
+classes = ["app_own"]
+undo = "token"
+reach = "offered"
+latency = "quick"
+result = { kind = "value", v = { ty = { kind = "integer", v = { min = 0, max = 4294967295 } }, trust = { kind = "app_authored" } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "kind"
+label = "What to open"
+ty = { kind = "choice", v = [
+  { id = "terminal", label = "A terminal" },
+  { id = "agent", label = "A coding agent" },
+  { id = "viewer", label = "A file viewer" },
+] }
+need = { kind = "defaulted", v = { kind = "choice", v = "terminal" } }
+sink = "inert"
+
+[[actions.params]]
+name = "placement"
+label = "Where to put it"
+ty = { kind = "choice", v = [
+  { id = "tab", label = "In a new tab" },
+  { id = "split_right", label = "Beside this pane" },
+  { id = "split_down", label = "Below this pane" },
+] }
+need = { kind = "defaulted", v = { kind = "choice", v = "tab" } }
+sink = "inert"
+
+[[actions.params]]
+name = "cwd"
+label = "Folder to start in (the front pane's if left out)"
+ty = { kind = "text", v = { max = 4096, lines = "one" } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions]]
+name = "temor.command.list"
+label = "List a pane's commands"
+on = { kind = "nothing" }
+effect = "read"
+classes = ["screen"]
+undo = "not_undoable"
+reach = "offered"
+latency = "instant"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 65536, lines = "many" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "pane"
+label = "Which pane (from the list; the one in front if left out)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions]]
+name = "temor.command.read"
+label = "Read a command's output"
+on = { kind = "nothing" }
+effect = "read"
+classes = ["screen"]
+undo = "not_undoable"
+reach = "offered"
+latency = "quick"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 65536, lines = "many" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "pane"
+label = "Which pane (from the list; the one in front if left out)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions.params]]
+name = "command"
+label = "Which command (from the pane's list)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "required" }
+sink = "inert"
+
+[[actions]]
+name = "temor.command.run_sandboxed"
+label = "Run a command in a sandbox"
+on = { kind = "nothing" }
+effect = "outbound"
+per_call = "classified"
+classes = ["files", "screen"]
+undo = "token"
+reach = "offered"
+latency = "long"
+result = { kind = "value", v = { ty = { kind = "text", v = { max = 65536, lines = "many" } }, trust = { kind = "third_party", v = { kind = "screen", v = { app = "org.quire.Temor" } } } } }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "line"
+label = "The command to run"
+ty = { kind = "text", v = { max = 8192, lines = "many" } }
+need = { kind = "required" }
+sink = "body"
+
+[[actions.params]]
+name = "cwd"
+label = "Folder to run in (the front pane's if left out)"
+ty = { kind = "text", v = { max = 4096, lines = "one" } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions.params]]
+name = "network"
+label = "Whether the command may reach the network"
+ty = { kind = "choice", v = [
+  { id = "closed", label = "No network" },
+  { id = "open", label = "Network allowed" },
+] }
+need = { kind = "defaulted", v = { kind = "choice", v = "closed" } }
+sink = "destination"
+
+[[actions]]
+name = "temor.command.run_in_pane"
+label = "Run a command in a pane"
+on = { kind = "nothing" }
+effect = "destructive"
+classes = ["files", "screen"]
+undo = "not_undoable"
+reach = "ask_always"
+latency = "quick"
+result = { kind = "nothing" }
+keys = { kind = "none" }
+lasting = "no"
+dry_run = "none"
+
+[[actions.params]]
+name = "pane"
+label = "Which pane (from the list; the one in front if left out)"
+ty = { kind = "integer", v = { min = 0, max = 4294967295 } }
+need = { kind = "optional" }
+sink = "inert"
+
+[[actions.params]]
+name = "line"
+label = "The command to type"
+ty = { kind = "text", v = { max = 8192, lines = "many" } }
+need = { kind = "required" }
+sink = "body"

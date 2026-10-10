@@ -47,7 +47,9 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
         (Some(Action::FindNext | Action::FindPrevious), FindBar::Closed) => Routed::Ignored,
         (Some(action), _) => Routed::Action(action),
         // An unbound ⌘ letter is dropped, never typed into the program (PLAN §6; Ghostty does the
-        // same). Super with Ctrl is not a ⌘ chord and goes to the program as before.
+        // same), in both forms: Super+letter and the Ctrl+Shift+letter keycap sends for ⌘, which
+        // would otherwise arrive as a control byte (⌘D once ended the shell with ^D). Super with
+        // Ctrl is not a ⌘ chord and goes to the program as before.
         (None, _) if stroke.chord.as_ref().is_some_and(is_unbound_command_letter) => {
             Routed::Ignored
         }
@@ -55,11 +57,18 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
     }
 }
 
-/// A ⌘ chord (Super, without Ctrl) on a letter that no binding uses. Super digits and
-/// Super+Space are the shell's (PLAN §6), so they keep their old route.
+/// A ⌘ chord that no binding uses and the program must not see: Super without Ctrl on a letter,
+/// or the Ctrl+Shift form keycap sends for ⌘ on a letter, digit or punctuation key. Super digits
+/// and Super+Space are the shell's (PLAN §6), so they keep their old route.
 fn is_unbound_command_letter(chord: &Chord) -> bool {
-    chord.is_command_form()
-        && matches!(chord.key, temor_pane::keys::ChordKey::Char(c) if c.is_alphabetic())
+    use temor_pane::keys::ChordKey;
+    match chord.key {
+        ChordKey::Char(c) if chord.is_ctrl_shift_form() => {
+            c.is_alphanumeric() || c.is_ascii_punctuation()
+        }
+        ChordKey::Char(c) => chord.is_command_form() && c.is_alphabetic(),
+        ChordKey::Named(_) => false,
+    }
 }
 
 #[cfg(test)]
@@ -107,10 +116,12 @@ mod tests {
         #[rustfmt::skip]
         let rows: &[(&str, bool)] = &[
             ("super+z", true),
-            ("super+5", false),
+            ("super+tab", false),
             ("super+space", false),
             ("ctrl+z", false),
-            ("ctrl+shift+z", false),
+            ("ctrl+shift+z", true),
+            ("ctrl+shift+0", true),
+            ("ctrl+shift+/", true),
         ];
         for (text, dropped) in rows {
             let chord = Chord::parse(text).expect("valid");

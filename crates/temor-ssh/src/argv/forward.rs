@@ -41,6 +41,13 @@ impl RemoteHost {
     }
 }
 
+impl RemoteHost {
+    /// The host's own ports: `localhost` as the host sees it.
+    pub fn localhost() -> Self {
+        Self("localhost".to_owned())
+    }
+}
+
 /// One local forward: local `bind:local` to `remote_host:remote_port` on the host.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Forward {

@@ -4,6 +4,7 @@
 mod clock;
 mod model;
 mod naming;
+mod receive;
 mod store;
 
 pub use clock::{Clock, SystemClock};

@@ -9,6 +9,7 @@ mod persist;
 mod session;
 mod support;
 mod window;
+mod worktree_git;
 
 #[test]
 fn every_module_in_this_directory_is_declared() {

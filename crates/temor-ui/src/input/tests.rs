@@ -99,13 +99,6 @@ fn keys_as_the_desktop_sends_them_reach_the_action_or_the_program() {
             Held::CONTROL,
             None,
         ),
-        (
-            "unbound Ctrl+Shift+Z",
-            Key::Character("Z".into()),
-            Code::KeyZ,
-            ctrl_shift,
-            None,
-        ),
         ("Super alone", Key::Meta, Code::MetaLeft, Held::SUPER, None),
         (
             "Super+Space",
@@ -139,6 +132,58 @@ fn keys_as_the_desktop_sends_them_reach_the_action_or_the_program() {
             Routed::Action(action) => Some(action),
             Routed::Shell(_) => None,
             Routed::Ignored => panic!("{name}: ignored"),
+        };
+        assert_eq!(got, *want, "{name}");
+    }
+}
+
+/// Shifted keys as the desktop reports them: the logical key is the shifted character, and the
+/// chord must still be the base key with Shift held. Every ⌘ chord is an action, never a control
+/// byte for the program (Ctrl+Shift+W must not arrive as Ctrl+W).
+#[test]
+fn shifted_command_chords_match_with_or_without_the_unshifted_key() {
+    use dioxus::html::{Code, Key, Location, Modifiers as Held};
+    use ds::edit::raw_key::{KeyPhase, RawKey};
+    use temor_pane::keys::{Action, Keymap};
+    use temor_vt::Ime;
+
+    use super::keys::stroke;
+    use crate::input::{FindBar, Routed, route};
+
+    let keymap = Keymap::defaults();
+    let cs = Held::CONTROL | Held::SHIFT;
+    // (name, logical key, physical key, modifiers, unshifted key if reported, the action)
+    #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
+    let rows: &[(&str, &str, Code, Held, Option<&str>, Option<Action>)] = &[
+        ("⌘1 with no unshifted key", "!", Code::Digit1, cs, None, Some(Action::SelectTab(1))),
+        ("⌘1 with the unshifted key", "!", Code::Digit1, cs, Some("1"), Some(Action::SelectTab(1))),
+        ("⌘9 with no unshifted key", "(", Code::Digit9, cs, None, Some(Action::SelectTab(9))),
+        ("⌃⌘= as Ctrl+Shift+=", "+", Code::Equal, cs, None, Some(Action::Equalize)),
+        ("⌃⌘= as Ctrl+Super+=", "=", Code::Equal, Held::CONTROL | Held::SUPER, None, Some(Action::Equalize)),
+        ("⌘W as Ctrl+Shift+W", "W", Code::KeyW, cs, None, Some(Action::ClosePane)),
+        ("⌘T as Ctrl+Shift+T", "T", Code::KeyT, cs, None, Some(Action::NewTab)),
+        ("⌘D as Ctrl+Shift+D", "D", Code::KeyD, cs, None, Some(Action::SplitRight)),
+        ("⌘⇧D as Ctrl+Shift+Alt+D", "D", Code::KeyD, cs | Held::ALT, None, Some(Action::SplitDown)),
+        ("⌘⇧D as Super+Shift+D", "D", Code::KeyD, Held::SUPER | Held::SHIFT, None, Some(Action::SplitDown)),
+        ("unbound Ctrl+Shift+Z is dropped", "Z", Code::KeyZ, cs, None, None),
+        ("unbound Super+Z is dropped", "z", Code::KeyZ, Held::SUPER, None, None),
+    ];
+    for (name, key, code, held, unshifted, want) in rows {
+        let raw = RawKey {
+            phase: KeyPhase::Press,
+            key: Key::Character((*key).into()),
+            code: *code,
+            modifiers: *held,
+            location: Location::Standard,
+            text: None,
+            unshifted: unshifted.map(|u| Key::Character(u.into())),
+        };
+        let stroke = stroke(&raw, Ime::Idle).unwrap_or_else(|| panic!("{name}: no stroke"));
+        let got = match route(stroke, &keymap, FindBar::Closed) {
+            Routed::Action(action) => Some(action),
+            Routed::Ignored => None,
+            Routed::Shell(_) => panic!("{name}: reached the program"),
         };
         assert_eq!(got, *want, "{name}");
     }

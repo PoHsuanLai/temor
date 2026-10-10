@@ -86,6 +86,16 @@ fn no_file_means_no_session_and_a_damaged_one_is_set_aside() {
     );
     assert!(dir.path().join("session.json.bad").exists());
     assert!(!dir.path().join("session.json").exists());
+    // Bytes that are not text are damaged too, and are set aside rather than overwritten.
+    std::fs::write(dir.path().join("session.json"), [0xff, 0xfe, 0x00]).unwrap();
+    assert_eq!(
+        load_session(dir.path(), KeepClosed::DEFAULT).unwrap(),
+        Startup::Fresh(FreshWhy::Damaged)
+    );
+    assert_eq!(
+        std::fs::read(dir.path().join("session.json.bad")).unwrap(),
+        [0xff, 0xfe, 0x00]
+    );
 }
 
 #[test]
@@ -127,4 +137,42 @@ fn saves_are_paced_to_one_per_interval_and_owed_at_quit() {
     assert!(!pace.owed());
     pace.changed();
     assert!(pace.owed(), "a change not yet written is owed at quit");
+}
+
+#[test]
+fn snapshot_sidecars_are_private_capped_read_once_and_cleared() {
+    use temor_core::vocab::ids::PaneId;
+    use temor_ui::edge::sidecar::{Stored, clear, remove, take, write};
+    use temor_ui::session::SNAPSHOT_LIMIT;
+    use temor_vt::Snapshot;
+
+    let dir = tempfile::tempdir().unwrap();
+    let state = dir.path().join("temor");
+    let small = Snapshot::from_bytes(vec![7; 64]);
+    assert_eq!(write(&state, PaneId(1), &small).unwrap(), Stored::Kept);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&state.join("snapshots/1.bin")), 0o600);
+        assert_eq!(mode(&state.join("snapshots")), 0o700);
+        assert_eq!(mode(&state), 0o700);
+    }
+    // Over the cap nothing is stored.
+    let big = Snapshot::from_bytes(vec![0; SNAPSHOT_LIMIT + 1]);
+    assert_eq!(write(&state, PaneId(2), &big).unwrap(), Stored::TooLarge);
+    assert!(!state.join("snapshots/2.bin").exists());
+    // Reading takes it: a second launch must not see an old pane's screen.
+    assert_eq!(
+        take(&state, PaneId(1)).unwrap().as_bytes(),
+        small.as_bytes()
+    );
+    assert!(take(&state, PaneId(1)).is_none());
+    // A forgotten pane's file goes, and so does anything left over.
+    write(&state, PaneId(3), &small).unwrap();
+    write(&state, PaneId(4), &small).unwrap();
+    remove(&state, PaneId(3));
+    assert!(!state.join("snapshots/3.bin").exists());
+    clear(&state);
+    assert!(!state.join("snapshots/4.bin").exists());
 }

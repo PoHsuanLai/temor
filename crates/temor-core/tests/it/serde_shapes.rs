@@ -15,7 +15,9 @@ use temor_core::proposal::{
     UncheckedWhy, sanitise,
 };
 use temor_core::remote::{Grant, Host, HostConsent, RemoteSession, RemoteTier};
-use temor_core::space::{Pin, Place, Profile, Project, Route, Tab, TemorSpaces};
+use temor_core::space::{
+    AccountRef, Credential, Pin, Place, Profile, Project, Route, Tab, TemorSpaces,
+};
 use temor_core::split::{Axis, Direction, SplitTree};
 use temor_core::transfer::{Download, Origin, Transfer};
 use temor_core::vocab::ai::AiSwitch;
@@ -42,6 +44,10 @@ fn project() -> Project {
             env: vec![(EnvKey::new("RUST_LOG").unwrap(), EnvValue("debug".into()))],
             ssh_identity: Some(KeyPath("~/.ssh/work".into())),
             dotenv: Some(RelPath(".env".into())),
+            credentials: vec![Credential {
+                env: EnvKey::new("ANTHROPIC_API_KEY").unwrap(),
+                account: AccountRef::new("anthropic-work").unwrap(),
+            }],
         },
         routes: vec![Route {
             pattern: RoutePattern("ssh prod-*".into()),

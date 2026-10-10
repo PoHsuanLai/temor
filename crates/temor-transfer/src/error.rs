@@ -37,6 +37,18 @@ pub enum TransferError {
         #[source]
         source: io::Error,
     },
+    /// Nothing answered in time: the other side may not take part in file transfers.
+    #[error("nothing answered")]
+    NoAnswer,
+    /// The line to the other side failed.
+    #[error("the connection failed: {0}")]
+    Link(#[source] io::Error),
+    /// The other side said no or gave up, with its own words.
+    #[error("{message}")]
+    Declined { message: String },
+    /// A path that should be a file is a folder, a link or something else.
+    #[error("{path} is not a file")]
+    NotAFile { path: PathBuf },
     /// The downloads index exists but cannot be read back.
     #[error("the downloads index at {path} is unreadable: {source}")]
     Index {

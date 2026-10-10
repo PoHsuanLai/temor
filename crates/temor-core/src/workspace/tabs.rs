@@ -31,7 +31,9 @@ impl TabsState {
         let next_folder = place
             .folders
             .iter()
-            .map(|folder| folder.id.0 + 1)
+            // A folder id at the top of the range leaves no id after it: the next `NewFolder` is
+            // refused rather than reusing one.
+            .map(|folder| folder.id.0.saturating_add(1))
             .max()
             .unwrap_or(1);
         TabsState {
@@ -88,6 +90,7 @@ impl NthTab {
 
 /// What the tab list is asked to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TabsIn {
     /// Bring a tab to the front (clears its unread mark).
     Select(TabSel),
@@ -112,6 +115,7 @@ pub enum TabsIn {
 
 /// What the tab list tells the caller.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TabsOut {
     /// This tab is in front now.
     Focused(TabId),
@@ -125,6 +129,7 @@ pub enum TabsOut {
 
 /// Why a tab request was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TabRefusal {
     /// The tab is not in the list.
     NoSuchTab(TabId),
@@ -134,6 +139,8 @@ pub enum TabRefusal {
     NoTabAtSlot(NthTab),
     /// There are no tabs to move between.
     NoTabs,
+    /// The folder counter has no id left to hand out.
+    IdsExhausted,
 }
 
 /// The tab list after `input`.
@@ -146,8 +153,11 @@ pub fn tabs_step(mut state: TabsState, input: TabsIn) -> (TabsState, Vec<TabsOut
         TabsIn::Unpin(tab) => edit_tab(&mut state, tab, |t| t.pin = Pin::Loose),
         TabsIn::MoveToFolder { tab, folder } => move_to_folder(&mut state, tab, folder),
         TabsIn::NewFolder { title } => {
+            let Some(next) = state.next_folder.checked_add(1) else {
+                return (state, refuse(TabRefusal::IdsExhausted));
+            };
             let id = FolderId(state.next_folder);
-            state.next_folder += 1;
+            state.next_folder = next;
             state.place.folders.push(Folder { id, title });
             vec![TabsOut::Created(id)]
         }

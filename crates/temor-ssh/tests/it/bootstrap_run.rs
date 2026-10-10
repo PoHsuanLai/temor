@@ -6,10 +6,10 @@ use std::fs;
 use std::process::Command;
 
 use temor_shell::integration_scripts;
-use temor_ssh::BootstrapScript;
+use temor_ssh::{BootstrapOptions, BootstrapScript, TerminfoPolicy, bootstrap_remote_command};
 
 use crate::harness::{
-    contains, make_bin, require, run, scratch, snapshot, system_path, tool, write,
+    Launch, contains, make_bin, require, run, scratch, snapshot, system_path, tool, write,
 };
 
 const PRINT_TERM: &str = "echo \"T=$TERM P=$FROM_PROFILE\"\n";
@@ -103,6 +103,33 @@ fn terminfo_is_compiled_into_the_home_when_the_host_lacks_it() {
         "tic did not write ~/.terminfo"
     );
     assert!(contains(&ran.text, "T=xterm-ghostty"));
+}
+
+#[test]
+fn a_host_that_did_not_consent_gets_no_terminfo_even_with_tic() {
+    let s = scratch();
+    make_bin(
+        &s.bin,
+        &[
+            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "cp", "rmdir", "uname", "hostname",
+            "base64", "tic", "printf",
+        ],
+        &[("infocmp", "#!/bin/sh\nexit 1\n")],
+    );
+    let options = BootstrapOptions::with_terminfo(TerminfoPolicy::Skip);
+    let script = BootstrapScript::build_with(&integration_scripts(), options).expect("build");
+    let mut launch = Launch::new(&s);
+    launch.command = bootstrap_remote_command(&script)
+        .expect("fits")
+        .as_str()
+        .to_owned();
+    launch.path = s.bin.display().to_string();
+    launch.shell = bash();
+    launch.input = format!("{PRINT_TERM}exit\n");
+    let ran = launch.run();
+    assert!(ran.status.success());
+    assert!(contains(&ran.text, "T=xterm-256color"));
+    assert!(!s.home.join(".terminfo").exists());
 }
 
 #[test]

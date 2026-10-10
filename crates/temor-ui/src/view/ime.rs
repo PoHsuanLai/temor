@@ -44,6 +44,13 @@ impl ImeGlue {
         }
     }
 
+    /// The region left the page: the handles to its element are dropped, so nothing asks the host
+    /// about an element that is gone.
+    pub fn release(&self) {
+        self.element.replace(None);
+        self.listener.replace(None);
+    }
+
     /// One IME event: the composition steps it makes, handed to `apply`.
     pub fn event(&self, event: ImeEvent, apply: &dyn Fn(EditInput)) {
         let (next, inputs) = on_ime(self.composing.get(), event);

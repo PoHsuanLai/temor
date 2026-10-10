@@ -5,12 +5,15 @@ mod fuzz;
 mod kitty_receive;
 mod kitty_receive_limits;
 mod kitty_receive_names;
+mod kitty_send;
 mod kitty_wire;
 #[cfg(target_os = "linux")]
 mod kitty_writes;
 mod osc1337;
 mod paths;
 mod receive_support;
+#[cfg(target_os = "linux")]
+mod roundtrip;
 mod shelf;
 mod support;
 

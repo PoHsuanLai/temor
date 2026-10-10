@@ -2,6 +2,7 @@
 //! window would deliver (never OS input). The pane's text is read from the probe the window
 //! publishes after each repaint, since its pixels are a texture.
 
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
@@ -20,6 +21,11 @@ use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 use super::support::scratch;
 
 pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
+    harness_in(name, probe, None)
+}
+
+/// A window whose session file lives in `state_dir` (none: nothing is saved or restored).
+pub(super) fn harness_in(name: &str, probe: &Probe, state_dir: Option<PathBuf>) -> Harness {
     let home = scratch(name).join("home");
     let ambient = Ambient {
         home: home.clone(),
@@ -48,6 +54,7 @@ pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
                 .expect("util-linux setsid is installed"),
         ),
         probe: Some(probe.clone()),
+        state_dir,
     };
     let config = HarnessConfig::new(Viewport {
         width: 760,
@@ -60,7 +67,7 @@ pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
     h
 }
 
-fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
+pub(super) fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
     let start = Instant::now();
     while !ok(&probe.screen()) {
         h.advance(Duration::from_millis(25));
@@ -216,7 +223,7 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
     h.advance(Duration::from_millis(200));
     assert!(h.html().contains("Find in terminal"), "find did not open");
     let done = h
-        .centre(".ds-button:last-of-type")
+        .centre(".temor-pane .ds-button:last-of-type")
         .unwrap_or_else(|| panic!("no Done button:\n{}", h.html()));
     h.send(Input::click(done));
     h.advance(Duration::from_millis(200));
@@ -231,4 +238,128 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
     wait_until(&mut h, &probe, "the command's output", |s| {
         s.lines().any(|l| l.trim_end() == "after-find")
     });
+}
+
+/// How many tab rows the sidebar shows.
+fn rows(h: &Harness) -> usize {
+    h.html().matches("role=\"option\"").count()
+}
+
+/// How many terminal panes the tab in front shows.
+fn panes(h: &Harness) -> usize {
+    h.html().matches("aria-label=\"Terminal\"").count()
+}
+
+fn chord(h: &mut Harness, key: char) {
+    h.send(Input::chord(
+        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
+        ShortcutKey::Char(key),
+    ));
+    h.advance(Duration::from_millis(300));
+}
+
+/// The ⌘ chords open and close tabs and panes: ⌘T a tab, ⌘D a split, ⌘W a pane, and a chord
+/// nothing binds never reaches the shell (^D would end it).
+#[test]
+fn the_command_chords_open_and_close_tabs_and_panes() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-tabs", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(200));
+    assert_eq!((rows(&h), panes(&h)), (1, 1), "{}", h.html());
+
+    chord(&mut h, 't');
+    assert_eq!(rows(&h), 2, "a new tab:\n{}", h.html());
+    chord(&mut h, 'd');
+    assert_eq!((rows(&h), panes(&h)), (2, 2), "a split:\n{}", h.html());
+    // An unbound chord: the shell must still be there afterwards.
+    chord(&mut h, 'z');
+    chord(&mut h, 'w');
+    assert_eq!((rows(&h), panes(&h)), (2, 1), "one pane closed");
+    chord(&mut h, 'w');
+    assert_eq!((rows(&h), panes(&h)), (1, 1), "the tab closed");
+    wait_until(&mut h, &probe, "the first tab's prompt", |s| {
+        s.contains('$')
+    });
+}
+
+/// The shell ends, the person presses Restart, and the window carries on (Blitz once panicked in
+/// `absolute_position` for a node that was gone). Frames keep running past the tooltip delay.
+#[test]
+#[ignore = "Blitz panics measuring a live control whose layout parent was freed (node.rs:1573, through quire's hover card follow_rect); reported to quire 2026-10-10"]
+fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-restart", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    for c in "exit".chars() {
+        h.send(Input::key(ShortcutKey::Char(c)));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    let start = Instant::now();
+    while !h.html().contains("The shell has ended.") {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "the shell did not end"
+        );
+    }
+    // The sidebar has a button of its own (New tab), so the banner's is found inside the banner.
+    let restart = h
+        .centre(".ds-inline-banner .ds-button")
+        .unwrap_or_else(|| panic!("no Restart button:\n{}", h.html()));
+    h.send(Input::click(restart));
+    // Keep drawing well past the pointer's rest (a tooltip reads its anchor then).
+    for _ in 0..60 {
+        h.advance(Duration::from_millis(25));
+    }
+    assert!(!h.html().contains("The shell has ended."));
+    wait_until(&mut h, &probe, "a new prompt", |s| s.contains('$'));
+}
+
+/// A saved session starts again: its tabs are in the sidebar and their shells run.
+#[test]
+fn a_saved_session_is_restored_on_launch() {
+    if !super::support::tools_present() {
+        return;
+    }
+    use temor_core::split::Direction;
+    use temor_core::vocab::text::Cwd;
+    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
+    // The window's own scratch folder is emptied when it opens, so the session lives beside it.
+    let state = scratch("window-restore-state").join("state");
+    let here = Cwd(state.parent().expect("a parent").display().to_string());
+    let ws = [
+        WorkspaceIn::NewTab {
+            cwd: Some(here.clone()),
+        },
+        WorkspaceIn::Split {
+            towards: Direction::Right,
+        },
+        WorkspaceIn::NewTab { cwd: Some(here) },
+    ]
+    .into_iter()
+    .fold(
+        Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
+        |ws, step| workspace_step(ws, step).0,
+    );
+    temor_ui::edge::save_session(&state, &ws).expect("saved");
+    let probe = Probe::new();
+    let mut h = harness_in("window-restore", &probe, Some(state));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    assert_eq!(rows(&h), 2, "{}", h.html());
 }
