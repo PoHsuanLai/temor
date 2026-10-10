@@ -84,9 +84,7 @@ impl Hub {
         Some(pane)
     }
 
-    /// Gives the running quick pane to the window as a tab of its own.
-    // TODO(orchestrator): with per-Space workspaces this is the spaces lane's
-    // `Hub::adopt_into_space(space, pane, cwd)`; until then the one workspace takes it.
+    /// Gives the running quick pane to `space` as a tab of its own.
     fn adopt_quick_pane(&mut self, space: SpaceId, pane: PaneId, cwd: Option<Cwd>) {
         if self.adopt_into_space(space, pane, cwd).is_err() {
             self.end_pane(pane);
