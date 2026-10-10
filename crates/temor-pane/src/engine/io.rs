@@ -13,9 +13,10 @@ use std::time::Duration;
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{RenderHold, VtEvent};
+use temor_vt::{RenderHold, Snapshot, VtEvent};
 
 use super::event::PaneEvent;
+use super::fed_io::{FedSetup, pump_fed};
 use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
@@ -32,13 +33,22 @@ pub(super) enum Command {
     Decide(OfferId, Consent),
     /// The person's answer to a program's request for a file, with what the shelf can hand out.
     Serve(OfferId, Consent, Vec<Offered>),
+    /// Output from the far end of a fed pane.
+    Feed(Vec<u8>),
+    /// A fed pane's screen starts over from this snapshot (the link came back).
+    Restore(Snapshot),
+    /// A fed pane's program ended.
+    End(Option<ChildExit>),
 }
 
 /// Everything the thread owns or shares.
 pub(super) struct Io {
     pub term: Arc<Mutex<Term>>,
     pub outbox: Arc<Outbox>,
-    pub pty: Pty,
+    /// The program's terminal; `None` for a pane fed from elsewhere.
+    pub pty: Option<Pty>,
+    /// Set for a pane fed from elsewhere.
+    pub fed: Option<FedSetup>,
     pub commands: Receiver<Command>,
     pub events: Arc<dyn EventSink>,
     /// Set while a `Dirty` is in flight; cleared by the window when it repaints.
@@ -72,7 +82,11 @@ impl PaneRunner {
     /// own thread, which the caller starts.
     pub fn run(mut self) {
         if let Some(io) = self.io.take() {
-            pump(io);
+            if io.fed.is_some() {
+                pump_fed(io);
+            } else {
+                pump(io);
+            }
         }
     }
 }
@@ -90,21 +104,18 @@ impl Drop for PaneRunner {
 /// Runs until the program is reaped. Called on the pane's own thread.
 fn pump(mut io: Io) {
     let mut buf = vec![0u8; 64 * 1024];
+    let outbox = Arc::clone(&io.outbox);
+    let Some(port) = outbox.pty_port() else {
+        return finish(&mut io);
+    };
     loop {
         while let Ok(command) = io.commands.try_recv() {
             match command {
                 Command::Shutdown => return finish(&mut io),
-                Command::Decide(offer, consent) => {
-                    let reaction = io.transfers.as_mut().map(|t| t.decide(offer, consent));
-                    carry_out(&mut io, reaction);
-                }
-                Command::Serve(offer, consent, shelf) => {
-                    let reaction = io
-                        .transfers
-                        .as_mut()
-                        .map(|t| t.serve(offer, consent, &shelf));
-                    carry_out(&mut io, reaction);
-                }
+                Command::Decide(offer, consent) => decide(&mut io, offer, consent),
+                Command::Serve(offer, consent, shelf) => serve(&mut io, offer, consent, &shelf),
+                // Only a fed pane takes these.
+                Command::Feed(_) | Command::Restore(_) | Command::End(_) => {}
             }
         }
         // A file on its way to the program goes a few frames at a time, once the last are taken.
@@ -112,7 +123,9 @@ fn pump(mut io: Io) {
             let reaction = io.transfers.as_mut().map(Transfers::pump_sends);
             carry_out(&mut io, reaction);
         }
-        if let Some(event) = io.watch.poll(&io.pty) {
+        if let Some(pty) = io.pty.as_ref()
+            && let Some(event) = io.watch.poll(pty)
+        {
             send(&io, event);
         }
         let interest = if io.outbox.is_waiting() {
@@ -125,7 +138,7 @@ fn pump(mut io: Io) {
             true => Duration::from_millis(1),
             false => POLL,
         };
-        let ready = match io.outbox.port().wait(interest, Some(poll)) {
+        let ready = match port.wait(interest, Some(poll)) {
             Ok(ready) => ready,
             Err(_) => return finish(&mut io),
         };
@@ -135,7 +148,7 @@ fn pump(mut io: Io) {
         if ready.read != Ready::Now {
             continue;
         }
-        match io.outbox.port().read(&mut buf) {
+        match port.read(&mut buf) {
             Ok(ReadOutcome::Data(n)) => deliver(&mut io, &buf[..n]),
             Ok(ReadOutcome::WouldBlock) => {}
             // Every holder of the terminal has closed it: the program is done.
@@ -152,8 +165,21 @@ fn finish(io: &mut Io) {
     send(io, PaneEvent::Exited(exit));
 }
 
+pub(super) fn decide(io: &mut Io, offer: OfferId, consent: Consent) {
+    let reaction = io.transfers.as_mut().map(|t| t.decide(offer, consent));
+    carry_out(io, reaction);
+}
+
+pub(super) fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offered]) {
+    let reaction = io
+        .transfers
+        .as_mut()
+        .map(|t| t.serve(offer, consent, shelf));
+    carry_out(io, reaction);
+}
+
 /// Feeds program output to the terminal, sends its replies to the PTY and its events on.
-fn deliver(io: &mut Io, bytes: &[u8]) {
+pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
     let output = lock_term(&io.term).write(bytes);
     for reply in output.replies {
         let _ = io.outbox.push_reply(&reply);
@@ -184,7 +210,7 @@ fn deliver(io: &mut Io, bytes: &[u8]) {
 }
 
 /// Sends a transfer step's sequences to the program and its events to the window.
-fn carry_out(io: &mut Io, reaction: Option<Reaction>) {
+pub(super) fn carry_out(io: &mut Io, reaction: Option<Reaction>) {
     let Some(reaction) = reaction else {
         return;
     };
@@ -230,11 +256,12 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
 /// Ends the program: hangs up its process group, polls for the exit for the grace period, then
 /// kills it. `None` when the status is no longer known.
 fn reap(io: &mut Io) -> Option<ChildExit> {
+    let pty = io.pty.as_mut()?;
     // Already gone is fine: the poll below sees the exit either way.
-    let _ = io.pty.hang_up();
+    let _ = pty.hang_up();
     let mut waited = Duration::ZERO;
     loop {
-        if let Ok(Some(exit)) = io.pty.try_exit() {
+        if let Ok(Some(exit)) = pty.try_exit() {
             return Some(exit);
         }
         match reap_step(waited, GRACE) {
@@ -243,12 +270,12 @@ fn reap(io: &mut Io) -> Option<ChildExit> {
                 waited += POLL;
             }
             // `kill` reaps the child itself; `None` when the status is no longer known.
-            ReapStep::Kill => return io.pty.kill().ok(),
+            ReapStep::Kill => return pty.kill().ok(),
         }
     }
 }
 
-fn send(io: &Io, event: PaneEvent) {
+pub(super) fn send(io: &Io, event: PaneEvent) {
     // A closed channel means the window is gone; the sink drops the event.
     io.events.send(event);
 }

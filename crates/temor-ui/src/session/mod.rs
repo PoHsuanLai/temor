@@ -12,6 +12,7 @@ mod lifecycle;
 mod marks;
 mod model;
 mod offer;
+mod open;
 mod pointer;
 mod read;
 
@@ -20,5 +21,5 @@ pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use marks::{BlockMark, PromptStep, desktop_note};
-pub use model::{Drag, Notice, PADDING_LOGICAL, Session, SessionParts};
+pub use model::{Drag, FedParts, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts};
 pub use pointer::WheelDirection;

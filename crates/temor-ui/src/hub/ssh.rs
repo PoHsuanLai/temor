@@ -53,6 +53,8 @@ pub(super) struct HostPane {
     /// Looks for the check link in what the host printed, until the shell starts.
     pub scan: Option<CheckScan>,
     pub check: Check,
+    /// What the pane's session runs on.
+    pub tier: super::remote::Tier,
 }
 
 /// One host's shared connection, forwards and identity.

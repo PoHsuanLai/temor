@@ -19,6 +19,7 @@ use super::agents::Agents;
 use super::bar::BarSlot;
 use super::facts::FactsHub;
 use super::offer::OfferHub;
+use super::remote::RemoteHub;
 use super::shelf::ShelfHub;
 use super::spaces::SpaceBook;
 use super::ssh::SshHub;
@@ -55,6 +56,8 @@ pub struct Hub {
     pub(super) facts: FactsHub,
     /// The shell offer's state for every pane.
     pub(super) offer: OfferHub,
+    /// Sessions on hosts' helpers (Tier B).
+    pub(super) remote: RemoteHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -74,6 +77,7 @@ impl Hub {
         let ssh = SshHub::new(&launch.ambient);
         let facts = FactsHub::new(&launch);
         let offer = OfferHub::new(&launch);
+        let remote = RemoteHub::new(&launch.ambient, launch.state_dir.clone());
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             book: SpaceBook::new(),
@@ -93,6 +97,7 @@ impl Hub {
             ssh,
             facts,
             offer,
+            remote,
         }
     }
 

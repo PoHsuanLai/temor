@@ -1,87 +1,23 @@
 //! The session's lifecycle: opening the program, fitting and painting, and taking the events
 //! the program sends.
 
-use std::sync::Arc;
-use temor_core::notify::{Focus, Limiter};
+use temor_core::notify::Focus;
 use temor_core::vocab::text::display_text;
 use temor_pane::text::cwd_from_url;
 use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
-use tokio::sync::mpsc::UnboundedSender;
-
 use super::Session;
-use super::blocks::BlockLog;
-use super::model::{Lifetime, Notice, PADDING_LOGICAL, SessionParts};
+use super::model::{Lifetime, Notice, PADDING_LOGICAL};
 use crate::error::UiError;
-use crate::paint::{PaintView, Painter};
-use crate::pane::UiSink;
+use crate::paint::PaintView;
 use crate::view::card_colours::CardColours;
-use temor_pane::{EventSink, Hold, PaneEvent, start, start_restored};
+use temor_pane::{Hold, PaneEvent};
 use temor_vt::Snapshot;
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
 
 impl Session {
-    /// Starts the program and its session. Events for the window go to `events`.
-    pub fn open(parts: SessionParts, events: UnboundedSender<PaneEvent>) -> Result<Self, UiError> {
-        Self::open_with(parts, Arc::new(UiSink(events)), None)
-    }
-
-    /// Starts the program and its session, its events going to `sink`. With a `snapshot` the
-    /// terminal begins as that closed pane's screen and scrollback, the new program writing below.
-    pub fn open_with(
-        parts: SessionParts,
-        sink: Arc<dyn EventSink>,
-        snapshot: Option<&Snapshot>,
-    ) -> Result<Self, UiError> {
-        let painter = Painter::new(parts.fonts, parts.spec.palette)?;
-        let (pane, runner) = match snapshot {
-            Some(snapshot) => start_restored(parts.spec, snapshot, sink)?,
-            None => start(parts.spec, sink)?,
-        };
-        std::thread::Builder::new()
-            .name("temor-pane-io".to_owned())
-            .spawn(move || runner.run())
-            .map_err(UiError::Thread)?;
-        Ok(Self {
-            pane,
-            painter,
-            keymap: parts.keymap,
-            clipboard: parts.clipboard,
-            opener: parts.opener,
-            fit: None,
-            scale: Scale::new(1.0),
-            pixels: PixelSize::new(0, 0),
-            selection: None,
-            drag: None,
-            click: None,
-            finder: None,
-            pending: None,
-            title: String::new(),
-            lifetime: Lifetime::Running,
-            notice: None,
-            hold: Hold::Released,
-            hold_generation: 0,
-            find_text: String::new(),
-            pending_query: None,
-            blocks: BlockLog::default(),
-            selected_block: None,
-            cwd: None,
-            progress: None,
-            focus: Focus::Focused,
-            notify_after: parts.notify_after,
-            limiter: Limiter::default(),
-            notifier: parts.notifier,
-            clock: parts.clock,
-            bell_until: None,
-            shelf_dir: parts.shelf_dir,
-            asked: None,
-            quoting: temor_core::shelf::Quoting::Posix,
-            site: temor_core::shelf::PaneSite::Local,
-        })
-    }
-
     /// The program started holding the screen. Returns the hold's generation, which its timer
     /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b).
     pub fn start_hold(&mut self) -> u64 {

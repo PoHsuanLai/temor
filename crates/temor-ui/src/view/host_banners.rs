@@ -11,6 +11,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::Port;
 
 use super::host_words::{ask_words, edit_line, forward_line, stage_line};
+use super::remote::RemoteBanners;
 use crate::edge::ssh_work::EditId;
 use crate::hub::{CheckRow, Desk, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
 
@@ -60,6 +61,7 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
                     },
                 }
             }
+            RemoteBanners { pane, desk: desk.clone() }
             if view.stage == Stage::Up {
                 Tools { pane, desk: desk.clone(), view: view.clone(), port, file }
             }

@@ -18,6 +18,7 @@ use temor_ssh::{
 };
 
 use super::model::Hub;
+use super::remote::Tier;
 use super::ssh::{Check, HostPane, Phase};
 use crate::view::slot::Slot;
 
@@ -131,6 +132,7 @@ impl Hub {
                 start_dir,
                 scan: None,
                 check: Check::Nothing,
+                tier: Tier::Plain,
             },
         );
         self.pace.changed();
@@ -150,6 +152,7 @@ impl Hub {
             return;
         };
         let verdict = gate(&self.ssh.book, &self.who_of(&alias));
+        let tier = self.remote_tier(&alias);
         let Some(host) = self.ssh.panes.get_mut(&pane) else {
             return;
         };
@@ -157,6 +160,7 @@ impl Hub {
             Gate::Ask(action) => host.phase = Phase::Asking(action),
             Gate::Run(mode) => {
                 host.mode = Some(mode);
+                host.tier = tier;
                 host.phase = Phase::Waiting;
                 self.want_session(&alias, pane);
             }
@@ -198,7 +202,7 @@ impl Hub {
         let Some(host) = self.ssh.panes.get_mut(&pane) else {
             return;
         };
-        let (alias, was) = (host.alias.clone(), host.phase);
+        let (alias, was, tier) = (host.alias.clone(), host.phase, host.tier);
         host.phase = Phase::Failed;
         host.scan = None;
         host.check = Check::Nothing;
@@ -207,7 +211,10 @@ impl Hub {
                 self.feed_master(&alias, MasterIn::Failed(pane))
             }
             // ssh itself failed on a connection that was up: the master is gone.
-            (Phase::Up, Some(ChildExit::Exited(255))) => self.feed_master(&alias, MasterIn::Lost),
+            // (A helper session's own exit code says nothing of the connection.)
+            (Phase::Up, Some(ChildExit::Exited(255))) if tier == Tier::Plain => {
+                self.feed_master(&alias, MasterIn::Lost)
+            }
             _ => {}
         }
     }
@@ -230,6 +237,7 @@ impl Hub {
 
     /// A host pane was closed.
     pub(super) fn ssh_forget(&mut self, pane: PaneId) {
+        self.remote_forget(pane);
         if let Some(host) = self.ssh.panes.remove(&pane) {
             if matches!(host.phase, Phase::Connecting | Phase::Waiting) {
                 self.feed_master(&host.alias, MasterIn::Failed(pane));

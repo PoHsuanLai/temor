@@ -25,6 +25,7 @@ serde_json = { workspace = true }
 temor-core = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
+temor-remote = { workspace = true }
 temor-shell = { workspace = true }
 temor-ssh = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
@@ -32,6 +33,7 @@ temor-transfer = { workspace = true }
 tempfile = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }
 temor-vt = { workspace = true, features = ["ghostty"] }
+temor-wire = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
 

@@ -103,7 +103,8 @@ fn start_from(
     let io = Io {
         term: Arc::clone(&term),
         outbox: Arc::clone(&outbox),
-        pty,
+        pty: Some(pty),
+        fed: None,
         commands,
         events: Arc::clone(&events),
         dirty: Arc::clone(&dirty),

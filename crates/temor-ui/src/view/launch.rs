@@ -186,7 +186,7 @@ pub fn open_session_with(
 
 /// The caps on what a program may send through the terminal: a gigabyte a file, and as many
 /// files as a folder tree reasonably has.
-fn transfer_limits() -> Limits {
+pub(super) fn transfer_limits() -> Limits {
     Limits::new(Bytes::new(1 << 30), Count::new(10_000), Count::new(64))
 }
 

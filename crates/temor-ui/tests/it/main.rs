@@ -14,6 +14,7 @@ mod desktop;
 mod facts;
 mod offer;
 mod persist;
+mod remote;
 mod session;
 mod shelf;
 mod spaces;
