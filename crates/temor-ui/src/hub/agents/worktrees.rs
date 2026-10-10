@@ -212,7 +212,7 @@ impl Hub {
     fn remove_worktree(&mut self, tab: TabId, wt: AgentWorktree) {
         self.agents.trees.gone(tab);
         self.notices.push(format!(
-            "{} is merged into your checkout; undo is kept as a checkpoint",
+            "{} is merged into your checkout; the old state is kept so it can be undone",
             wt.branch()
         ));
         let path = wt.path.clone();

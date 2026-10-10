@@ -1,18 +1,19 @@
 //! What the views show about agents, prepared as plain data: the choices in a tab's menu, the
 //! sheet over the window, and the row's caption. The words are the person's, no jargon.
 
-use temor_core::checkpoint::IGNORED_NOT_COVERED;
-use temor_core::vocab::ids::{BlockId, TabId};
+use temor_core::vocab::ids::TabId;
 use temor_core::worktree::overlap::{Other, TEXT_OVERLAP_ONLY};
+use temor_desktop::PointId;
 
+use super::points::{RestoreMenu, restore_menu};
 use super::state::Sheet;
 use crate::hub::model::Hub;
 
 /// What a tab's menu can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentPick {
-    /// Put the files back to the checkpoint taken before this turn.
-    Restore(BlockId),
+    /// Put the files back to the restore point saved before this turn.
+    Restore(PointId),
     /// Open a worktree on a new branch for the pane's repository, in a new tab.
     RunInWorktree,
     /// Merge the tab's worktree back (Squash).
@@ -33,8 +34,8 @@ pub enum Where {
 /// The choices of one tab's menu.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentMenu {
-    /// The checkpoints offered, oldest first, with the words for each.
-    pub checkpoints: Vec<(BlockId, String)>,
+    /// What Restore offers: the run's restore points, or why it is greyed out.
+    pub restore: RestoreMenu,
     pub place: Where,
 }
 
@@ -51,6 +52,7 @@ pub enum SheetView {
     Restore {
         title: String,
         put_back: Vec<String>,
+        bring_back: Vec<String>,
         remove: Vec<String>,
         note: &'static str,
     },
@@ -68,12 +70,11 @@ pub enum SheetView {
 /// The most file names a sheet lists; the rest are counted.
 const LISTED: usize = 12;
 
-fn names(files: &[temor_core::vocab::text::RelPath]) -> Vec<String> {
-    let mut lines: Vec<String> = files
-        .iter()
-        .take(LISTED)
-        .map(|f| f.as_str().to_owned())
-        .collect();
+/// What a restore leaves alone.
+const IGNORED_NOT_TOUCHED: &str = "Files git ignores are not touched";
+
+fn names(files: &[String]) -> Vec<String> {
+    let mut lines: Vec<String> = files.iter().take(LISTED).cloned().collect();
     if files.len() > LISTED {
         lines.push(format!("and {} more", files.len() - LISTED));
     }
@@ -81,36 +82,29 @@ fn names(files: &[temor_core::vocab::text::RelPath]) -> Vec<String> {
 }
 
 impl Hub {
-    /// The menu of `tab`; `None` when there is nothing to offer (no git).
+    /// The menu of `tab`.
     pub fn agent_menu(&self, tab: TabId) -> Option<AgentMenu> {
-        self.agents.jobs.available().ok()?;
         let pane = self.ws.focus_of(tab)?;
-        let checkpoints = self
-            .agents
-            .runs
-            .get(&pane)
-            .map(|run| {
-                run.marks()
-                    .iter()
-                    .map(|mark| (mark.block, format!("Before turn {}", mark.block.0)))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let restore = restore_menu(
+            self.agents.points.lists.get(&pane),
+            self.agents.radar.state_of(pane),
+        );
         let place = match self.agents.trees.by_tab.contains_key(&tab) {
             true => Where::Worktree,
             false => Where::Checkout,
         };
-        Some(AgentMenu { checkpoints, place })
+        Some(AgentMenu { restore, place })
     }
 
     /// The sheet to show, if any.
     pub fn agent_sheet(&self) -> Option<SheetView> {
         Some(match self.agents.sheet.as_ref()? {
             Sheet::Restore { plan, .. } => SheetView::Restore {
-                title: "Restore to this checkpoint?".to_owned(),
-                put_back: names(&plan.write),
-                remove: names(&plan.delete),
-                note: IGNORED_NOT_COVERED,
+                title: "Restore to this point?".to_owned(),
+                put_back: names(&plan.changed),
+                bring_back: names(&plan.added),
+                remove: names(&plan.removed),
+                note: IGNORED_NOT_TOUCHED,
             },
             Sheet::Details(tab) => SheetView::Details {
                 tab: *tab,

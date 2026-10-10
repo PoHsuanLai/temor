@@ -1,17 +1,16 @@
-//! Agent worktrees and checkpoints on scratch repositories made with the real git: a private
+//! Agent worktrees and the refs temor keeps on scratch repositories made with the real git: a private
 //! HOME-free setup (`GIT_CONFIG_GLOBAL=/dev/null`, a fixed identity), nothing outside temp dirs.
 //! Skips when git is missing, unless `TEMOR_REQUIRE_TOOLS` is set.
 
 use std::fs;
 use std::path::Path;
 
-use temor_core::checkpoint::{existing, next_free, restore_files, restore_plan, take};
-use temor_core::vocab::ids::{CheckpointRef, TabId};
+use temor_core::vocab::ids::{TabId, UndoRef};
 use temor_core::vocab::text::RelPath;
 use temor_core::worktree::overlap::{probe_base, probe_pair};
 use temor_core::worktree::{
     AgentWorktree, CreateParams, Git, GitCommand, MergeMethod, MergeOutcome, WorktreeName, create,
-    merge, remove, resolve_commit, run_ok, snapshot,
+    merge, next_undo, remove, resolve_commit, run_ok, snapshot, sweep_old_snapshots,
 };
 use temor_ui::edge::git::ProcessGit;
 
@@ -190,14 +189,7 @@ fn squash_merges_and_a_conflict_is_reported_not_resolved() {
         )
         .expect("commit");
     }
-    let merged = merge(
-        &s.git,
-        &one,
-        MergeMethod::Squash,
-        "Squash one",
-        CheckpointRef(0),
-    )
-    .expect("merge");
+    let merged = merge(&s.git, &one, MergeMethod::Squash, "Squash one", UndoRef(0)).expect("merge");
     assert_eq!(merged, MergeOutcome::Merged);
     let log = run_ok(&s.git, &GitCommand::new(&s.repo, &["log", "--format=%s"]))
         .expect("log")
@@ -205,21 +197,11 @@ fn squash_merges_and_a_conflict_is_reported_not_resolved() {
     assert_eq!(log.lines().collect::<Vec<_>>(), ["Squash one", "base"]);
     let kept = run_ok(
         &s.git,
-        &GitCommand::new(
-            &s.repo,
-            &["rev-parse", "--verify", "refs/temor/checkpoints/0"],
-        ),
+        &GitCommand::new(&s.repo, &["rev-parse", "--verify", "refs/temor/undo/0"]),
     );
     assert!(kept.is_ok(), "the old tip is kept for undo");
 
-    let stuck = merge(
-        &s.git,
-        &two,
-        MergeMethod::Squash,
-        "Squash two",
-        CheckpointRef(1),
-    )
-    .expect("merge");
+    let stuck = merge(&s.git, &two, MergeMethod::Squash, "Squash two", UndoRef(1)).expect("merge");
     assert_eq!(
         stuck,
         MergeOutcome::Conflicted {
@@ -230,41 +212,28 @@ fn squash_merges_and_a_conflict_is_reported_not_resolved() {
 }
 
 #[test]
-fn checkpoints_snapshot_untracked_files_and_restore_them() {
+fn old_snapshot_refs_are_swept_and_merge_undo_numbers_go_on_after_the_highest() {
     let Some(s) = scratch() else { return };
-    let root = Path::new(&s.repo);
-    assert_eq!(next_free(&s.git, &s.repo).expect("free"), CheckpointRef(0));
-    fs::write(root.join("a.txt"), "edited\n").expect("edit");
-    fs::write(root.join("untracked.txt"), "keep me\n").expect("untracked");
-    take(&s.git, &s.repo, CheckpointRef(0)).expect("take");
-    assert_eq!(next_free(&s.git, &s.repo).expect("free"), CheckpointRef(1));
-
-    // The agent writes, deletes and adds files; a later checkpoint exists too.
-    fs::write(root.join("a.txt"), "agent was here\n").expect("write");
-    fs::remove_file(root.join("untracked.txt")).expect("rm");
-    fs::write(root.join("made.txt"), "new\n").expect("made");
-    take(&s.git, &s.repo, CheckpointRef(1)).expect("take 1");
-
-    let plan = restore_plan(&s.git, &s.repo, CheckpointRef(0)).expect("plan");
-    assert_eq!(plan.write, vec![rel("a.txt"), rel("untracked.txt")]);
-    assert_eq!(plan.delete, vec![rel("made.txt")]);
-    restore_files(&s.git, &s.repo, CheckpointRef(0), &plan).expect("restore");
-    assert_eq!(
-        fs::read_to_string(root.join("a.txt")).expect("a"),
-        "edited\n"
-    );
-    assert_eq!(
-        fs::read_to_string(root.join("untracked.txt")).expect("u"),
-        "keep me\n"
-    );
-    assert_eq!(
-        existing(&s.git, &s.repo).expect("refs"),
-        vec![CheckpointRef(0)]
-    );
-    let staged = run_ok(
+    let run = |args: &[&str]| run_ok(&s.git, &GitCommand::new(&s.repo, args)).expect("git");
+    // A snapshot commit dated long ago, one made now, and an undo ref.
+    let old = run_ok(
         &s.git,
-        &GitCommand::new(&s.repo, &["diff", "--cached", "--name-only"]),
+        &GitCommand::new(&s.repo, &["commit-tree", "HEAD^{tree}", "-m", "old"])
+            .with_env("GIT_COMMITTER_DATE", "2020-01-01T00:00:00Z"),
     )
-    .expect("diff");
-    assert!(staged.stdout.is_empty(), "the person's index is untouched");
+    .expect("old commit")
+    .text();
+    run(&["update-ref", "refs/temor/checkpoints/3", old.trim()]);
+    run(&["update-ref", "refs/temor/checkpoints/4", "HEAD"]);
+    run(&["update-ref", "refs/temor/undo/6", "HEAD"]);
+
+    let now = temor_ui::edge::unix_now().0;
+    assert_eq!(sweep_old_snapshots(&s.git, &s.repo, now).expect("sweep"), 1);
+    let left = run(&["for-each-ref", "--format=%(refname)", "refs/temor/"]).text();
+    assert_eq!(
+        left.lines().collect::<Vec<_>>(),
+        ["refs/temor/checkpoints/4", "refs/temor/undo/6"]
+    );
+    assert_eq!(sweep_old_snapshots(&s.git, &s.repo, now).expect("again"), 0);
+    assert_eq!(next_undo(&s.git, &s.repo).expect("next"), UndoRef(7));
 }

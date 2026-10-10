@@ -1,30 +1,22 @@
-//! What the agent jobs do, as plain functions over a [`Git`] runner and the filesystem: seed and
-//! take checkpoints, restore one, make an agent worktree, snapshot and merge it, list leftovers.
+//! What the agent jobs do, as plain functions over a [`Git`] runner and the filesystem: make an
+//! agent worktree, snapshot and merge it, list leftovers, sweep old snapshot refs.
 //! They run on worker threads (never the render path) and know nothing of the window.
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-use temor_core::checkpoint::{RestorePlan, next_free, restore_files};
 use temor_core::error::CoreError;
-use temor_core::vocab::ids::{CheckpointRef, TabId};
+use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::RelPath;
 use temor_core::worktree::overlap::parse_names;
 use temor_core::worktree::{
     AgentWorktree, CreateParams, Git, GitCommand, INCLUDE_FILE, IncludeList, ListedWorktree,
     MergeMethod, MergeOutcome, Oid, Snapshot, WorktreeName, agent_worktrees, create,
-    list_worktrees, merge, remove, resolve_commit, run_ok, snapshot,
+    list_worktrees, merge, next_undo, remove, resolve_commit, run_ok, snapshot,
+    sweep_old_snapshots,
 };
 
 use crate::error::UiError;
-
-/// Where a run's checkpoints go and the number to start from.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Seeded {
-    /// The repository's top folder, or `None` when the folder is not in a repository.
-    pub root: Option<String>,
-    pub next: CheckpointRef,
-}
 
 /// The top folder of the repository `cwd` is in.
 pub fn toplevel(git: &dyn Git, cwd: &str) -> Option<String> {
@@ -36,16 +28,6 @@ pub fn toplevel(git: &dyn Git, cwd: &str) -> Option<String> {
     (out.code == 0 && !root.is_empty()).then(|| root.to_owned())
 }
 
-/// The repository of `cwd` and the first checkpoint number it has free.
-pub fn seed(git: &dyn Git, cwd: &str) -> Seeded {
-    let root = toplevel(git, cwd);
-    let next = root
-        .as_deref()
-        .and_then(|root| next_free(git, root).ok())
-        .unwrap_or(CheckpointRef(0));
-    Seeded { root, next }
-}
-
 /// `rel` under `root`, or `None` when it is absolute or climbs out.
 pub fn safe_join(root: &Path, rel: &str) -> Option<PathBuf> {
     let rel = Path::new(rel);
@@ -53,32 +35,6 @@ pub fn safe_join(root: &Path, rel: &str) -> Option<PathBuf> {
         .components()
         .all(|part| matches!(part, Component::Normal(_)));
     (plain && rel.components().next().is_some()).then(|| root.join(rel))
-}
-
-/// Puts the files back to checkpoint `at`, then removes the files made since. Returns how many
-/// it removed. Only plain files and links are removed, never a folder.
-pub fn restore(
-    git: &dyn Git,
-    root: &str,
-    at: CheckpointRef,
-    plan: &RestorePlan,
-) -> Result<usize, UiError> {
-    restore_files(git, root, at, plan)?;
-    let mut removed = 0;
-    for rel in &plan.delete {
-        let Some(path) = safe_join(Path::new(root), rel.as_str()) else {
-            continue;
-        };
-        let is_file = fs::symlink_metadata(&path).is_ok_and(|m| !m.is_dir());
-        if is_file {
-            fs::remove_file(&path).map_err(|source| UiError::AgentFile {
-                path: rel.as_str().to_owned(),
-                source,
-            })?;
-            removed += 1;
-        }
-    }
-    Ok(removed)
 }
 
 /// What making a worktree needs.
@@ -236,10 +192,10 @@ fn commit_pending(git: &dyn Git, wt: &AgentWorktree) -> Result<(), CoreError> {
 }
 
 /// Merges the worktree's branch into the checkout it was cut from, Squash. The base's old tip
-/// is kept under a checkpoint ref so the merge can be undone.
+/// is kept under `refs/temor/undo/<n>` so the merge can be undone.
 pub fn merge_back(git: &dyn Git, wt: &AgentWorktree) -> Result<MergeOutcome, UiError> {
     commit_pending(git, wt)?;
-    let undo = next_free(git, &wt.repo)?;
+    let undo = next_undo(git, &wt.repo)?;
     let message = format!("Merge {}", wt.branch());
     Ok(merge(git, wt, MergeMethod::Squash, &message, undo)?)
 }
@@ -272,4 +228,13 @@ pub fn listed_as_worktree(repo: &str, listed: &ListedWorktree) -> Result<AgentWo
         base_ref: "HEAD".to_owned(),
         base: Oid::parse(&listed.head)?,
     })
+}
+
+/// Deletes the old per-turn snapshot refs (`refs/temor/checkpoints/*`) older than 14 days from
+/// the repository `cwd` is in. Returns how many it deleted; a folder outside a repository has none.
+pub fn sweep_snapshots(git: &dyn Git, cwd: &str, now: u64) -> Result<usize, UiError> {
+    let Some(root) = toplevel(git, cwd) else {
+        return Ok(0);
+    };
+    Ok(sweep_old_snapshots(git, &root, now)?)
 }

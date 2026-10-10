@@ -42,7 +42,8 @@ impl Hub {
     }
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.
-    /// A pane known to run an agent that starts working begins a turn: its checkpoint is taken.
+    /// A pane known to run an agent that starts working begins a turn: docket saves a restore point, so the list is read again; the same when it
+    /// stops working.
     pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, event: &PaneEvent) -> Changed {
         let now = self.agents.now();
         let before = self.agents.radar.state_of(pane);
@@ -52,8 +53,9 @@ impl Hub {
             before,
             AgentState::Idle | AgentState::Done(_) | AgentState::Failed(_)
         ) && after == AgentState::Working;
-        if began && self.agents.radar.is_named_agent(pane) {
-            self.start_turn(pane);
+        let ended = before == AgentState::Working && after != AgentState::Working;
+        if (began || ended) && self.agents.radar.is_named_agent(pane) {
+            self.refresh_points(pane);
         }
         changed
     }
@@ -87,7 +89,7 @@ impl Hub {
     /// A pane's program ended and the pane is gone.
     pub(in crate::hub) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);
-        self.agents.runs.remove(&pane);
+        self.agents.points.forget(pane);
         if let Some(sockets) = &self.agents.sockets {
             sockets.close(pane);
         }

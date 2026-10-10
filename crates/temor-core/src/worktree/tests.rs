@@ -136,3 +136,49 @@ fn the_worktree_list_is_read_and_only_temors_agent_worktrees_are_leftovers() {
     assert_eq!(mine.len(), 1);
     assert_eq!(mine[0].head, "bbbb");
 }
+
+#[test]
+fn merge_undo_refs_have_their_own_namespace_and_numbers_go_on_after_the_highest() {
+    use crate::vocab::ids::UndoRef;
+    assert_eq!(undo_ref(UndoRef(0)), "refs/temor/undo/0");
+    assert_eq!(undo_ref(UndoRef(12)), "refs/temor/undo/12");
+    #[rustfmt::skip]
+    let cases: &[(&str, &[u64])] = &[
+        ("", &[]),
+        ("refs/temor/undo/2\nrefs/temor/undo/0\nrefs/temor/undo/10\n", &[0, 2, 10]),
+        // The old family is not an undo ref, and neither is a name that is no number.
+        ("refs/temor/checkpoints/7\nrefs/temor/undo/x\nrefs/temor/undo/\nrefs/heads/undo/3\n", &[]),
+    ];
+    for (listing, want) in cases {
+        let got: Vec<u64> = undo_ref_numbers(listing).iter().map(|n| n.0).collect();
+        assert_eq!(&got, want, "{listing:?}");
+    }
+}
+
+#[test]
+fn old_snapshot_refs_are_swept_after_fourteen_days_and_nothing_else() {
+    const DAY: u64 = 86_400;
+    let now = 100 * DAY;
+    let line = |name: &str, age: u64| format!("{name} {}\n", now - age);
+    #[rustfmt::skip]
+    let cases = [
+        ("fresh stays",              line("refs/temor/checkpoints/1", DAY),         vec![]),
+        ("exactly 14 days stays",    line("refs/temor/checkpoints/1", 14 * DAY),    vec![]),
+        ("a second older goes",      line("refs/temor/checkpoints/1", 14 * DAY + 1), vec!["refs/temor/checkpoints/1"]),
+        ("another family stays",     line("refs/temor/undo/1", 30 * DAY),           vec![]),
+        ("the bare prefix stays",    line("refs/temor/checkpoints/", 30 * DAY),     vec![]),
+        ("no time stays",            "refs/temor/checkpoints/1\n".to_owned(),       vec![]),
+        ("a bad time stays",         "refs/temor/checkpoints/1 soon\n".to_owned(),  vec![]),
+        ("a time ahead of now stays", format!("refs/temor/checkpoints/1 {}\n", now + DAY), vec![]),
+    ];
+    for (name, listing, want) in cases {
+        assert_eq!(stale_snapshot_refs(&listing, now), want, "{name}");
+    }
+    let mixed = line("refs/temor/checkpoints/1", 20 * DAY)
+        + &line("refs/temor/checkpoints/2", DAY)
+        + &line("refs/temor/checkpoints/3", 15 * DAY);
+    assert_eq!(
+        stale_snapshot_refs(&mixed, now),
+        ["refs/temor/checkpoints/1", "refs/temor/checkpoints/3"]
+    );
+}

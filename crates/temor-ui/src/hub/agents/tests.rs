@@ -1,11 +1,11 @@
-//! The radar on a virtual clock, the checkpoint numbering, the worktree look timing and the
+//! The radar on a virtual clock, the worktree look timing and the
 //! path rule for files put back. No threads, no git, no window.
 
 use std::path::Path;
 
 use temor_core::agent::radar::{Millis, RadarParams};
 use temor_core::presence::{AgentState, Seen, WaitKind};
-use temor_core::vocab::ids::{BlockId, CheckpointRef, ExitCode, PaneId, TabId};
+use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
 use temor_core::worktree::{AgentWorktree, Oid, WorktreeName};
 use temor_pane::PaneEvent;
 use temor_pane::report::{ReportState, ReportWait, StatusLine};
@@ -14,9 +14,8 @@ use temor_vt::{Notification, ProgramState, ProgramStatus, ProgramWait};
 
 use super::convert::{exit_code, known_agent};
 use super::radar::Radar;
-use super::runs::Run;
 use super::trees::Trees;
-use super::work::{Seeded, safe_join};
+use super::work::safe_join;
 
 const P1: PaneId = PaneId(1);
 
@@ -193,7 +192,7 @@ fn a_pane_that_needs_you_while_unfocused_asks_for_a_notification_with_its_words(
 }
 
 #[test]
-fn only_named_agents_start_checkpoint_turns() {
+fn only_named_agents_count_as_agents() {
     let mut radar = Radar::new(RadarParams::default());
     let build = status_of("cargo", ProgramState::Working, ProgramWait::Unspecified);
     radar.observe(PaneId(1), Millis(0), &build);
@@ -229,43 +228,6 @@ fn programs_and_exits_are_read_as_the_radar_needs() {
     for (exit, want) in exits {
         assert_eq!(exit_code(*exit), ExitCode(*want), "{exit:?}");
     }
-}
-
-fn seeded(root: Option<&str>, next: u64) -> Seeded {
-    Seeded {
-        root: root.map(str::to_owned),
-        next: CheckpointRef(next),
-    }
-}
-
-#[test]
-fn checkpoints_are_numbered_from_what_the_repository_has_and_start_afresh_in_another_one() {
-    let mut run = Run::default();
-    // Two turns waiting for one read of the repository: numbered 3 and 4.
-    run.turn_started();
-    run.turn_started();
-    assert_eq!(
-        run.seeded(&seeded(Some("/r"), 3)),
-        [CheckpointRef(3), CheckpointRef(4)]
-    );
-    // Another run took 5 and 6 meanwhile: this one goes on after them.
-    run.turn_started();
-    assert_eq!(run.seeded(&seeded(Some("/r"), 7)), [CheckpointRef(7)]);
-    assert_eq!(run.marks().len(), 3);
-    // A snapshot that failed is no longer offered.
-    run.take_failed(CheckpointRef(4));
-    let blocks: Vec<u64> = run.marks().iter().map(|m| m.block.0).collect();
-    assert_eq!(blocks, [1, 3]);
-    // Restoring to turn 1 keeps the ones before it (none).
-    run.restored(BlockId(1));
-    assert!(run.marks().is_empty());
-    // A folder outside any repository drops the waiting turn and takes nothing.
-    run.turn_started();
-    assert!(run.seeded(&seeded(None, 0)).is_empty());
-    // Another repository: its numbering is its own.
-    run.turn_started();
-    assert_eq!(run.seeded(&seeded(Some("/other"), 0)), [CheckpointRef(0)]);
-    assert_eq!(run.root.as_deref(), Some("/other"));
 }
 
 fn worktree(path: &str) -> AgentWorktree {

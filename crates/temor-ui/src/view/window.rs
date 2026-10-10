@@ -65,6 +65,7 @@ pub fn App() -> Element {
             hub.set_credentials(try_consume_context::<Credentials>().unwrap_or_default());
             if let Some(desktop) = try_consume_context::<Desktop>() {
                 hub.set_tailnet(desktop.tailnet.clone());
+                hub.set_checkpoints(desktop.checkpoints.clone());
             }
             hub.start();
             HubRef(Rc::new(RefCell::new(hub)))

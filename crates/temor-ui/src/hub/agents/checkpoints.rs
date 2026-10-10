@@ -1,14 +1,20 @@
-//! The hub's side of checkpoints (D9): a snapshot when an agent pane starts a turn, and putting
-//! the files back to one, with the plan shown first. The git work is on worker threads.
+//! The hub's side of restore points (PLAN P19): docket keeps one run's points, and the window
+//! lists them in a tab's menu, shows what a restore would change in a sheet, and asks docket to
+//! do it. The calls run on worker threads; the answers come back as [`Done`]s. Restore is held
+//! back while the agent is working: a turn in flight would write over what was put back.
 
-use temor_core::checkpoint::{restore_plan, take};
-use temor_core::vocab::ids::{BlockId, CheckpointRef, PaneId, TabId};
+use std::sync::Arc;
+
+use temor_core::presence::AgentState;
+use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Cwd;
+use temor_desktop::{
+    CheckpointPort, DesktopError, PointId, PointList, PointPlan, SessionKey, TurnNo,
+};
 
 use super::jobs::Done;
+use super::points::WAIT_FOR_AGENT;
 use super::state::Sheet;
-use super::work::{self, Seeded};
-use crate::error::UiError;
 use crate::hub::model::Hub;
 
 impl Hub {
@@ -23,139 +29,159 @@ impl Hub {
         live.or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
     }
 
-    /// An agent pane started a turn: its folder's repository is read, then a snapshot is taken.
-    pub(super) fn start_turn(&mut self, pane: PaneId) {
-        if self.agents.jobs.available().is_err() {
-            return;
+    /// Where the restore points come from from now on.
+    pub fn set_checkpoints(&mut self, port: Arc<dyn CheckpointPort>) {
+        self.agents.points.port = port;
+    }
+
+    /// The docket session `pane` runs, or none once it ends. Its points are read again.
+    pub fn set_agent_session(&mut self, pane: PaneId, session: Option<SessionKey>) {
+        match session {
+            Some(session) => {
+                self.agents.points.sessions.insert(pane, session);
+                self.refresh_points(pane);
+            }
+            None => self.agents.points.forget(pane),
         }
-        let Some(cwd) = self.pane_cwd(pane) else {
+    }
+
+    /// Reads `pane`'s restore points again, if it runs a session docket knows.
+    pub fn refresh_points(&mut self, pane: PaneId) {
+        let Some(session) = self.agents.points.sessions.get(&pane).cloned() else {
             return;
         };
-        self.agents.runs.entry(pane).or_default().turn_started();
-        self.agents.jobs.run(move |git| Done::Seeded {
+        let port = Arc::clone(&self.agents.points.port);
+        self.agents.jobs.spawn(move || Done::PointsListed {
             pane,
-            seeded: work::seed(git, &cwd),
+            result: port.list(&session),
         });
     }
 
-    pub(super) fn checkpoint_seeded(&mut self, pane: PaneId, seeded: &Seeded) {
-        let Some(run) = self.agents.runs.get_mut(&pane) else {
-            return;
-        };
-        let takes = run.seeded(seeded);
-        let Some(root) = seeded.root.clone() else {
-            return;
-        };
-        for at in takes {
-            let root = root.clone();
-            self.agents.jobs.run(move |git| Done::Taken {
-                pane,
-                at,
-                result: take(git, &root, at).map(|_| ()).map_err(UiError::from),
-            });
+    /// Reads the points of the pane in front of `tab` (its menu is opening).
+    pub fn refresh_points_of(&mut self, tab: TabId) {
+        if let Some(pane) = self.ws.focus_of(tab) {
+            self.refresh_points(pane);
         }
     }
 
-    pub(super) fn checkpoint_taken(
-        &mut self,
-        pane: PaneId,
-        at: CheckpointRef,
-        result: Result<(), UiError>,
-    ) {
-        if let Err(err) = result {
-            if let Some(run) = self.agents.runs.get_mut(&pane) {
-                run.take_failed(at);
+    pub(super) fn points_listed(&mut self, pane: PaneId, result: Result<PointList, DesktopError>) {
+        // A pane that ended while the call ran is not given a list back.
+        if !self.agents.points.sessions.contains_key(&pane) {
+            return;
+        }
+        match result {
+            Ok(list) => {
+                self.agents.points.lists.insert(pane, list);
             }
-            self.notices
-                .push(format!("A checkpoint could not be saved: {err}"));
+            Err(err) => self.notices.push(format!(
+                "The restore points could not be read: {}",
+                words(&err)
+            )),
         }
     }
 
-    /// The person chose a checkpoint in `tab`'s menu: what restoring it would change is worked
-    /// out first, and shown in a sheet before anything is touched.
-    pub(super) fn ask_restore(&mut self, tab: TabId, block: BlockId) {
+    fn working(&self, pane: PaneId) -> bool {
+        self.agents.radar.state_of(pane) == AgentState::Working
+    }
+
+    /// The person chose a restore point in `tab`'s menu: what restoring it would change is
+    /// asked of docket first, and shown in a sheet before anything is touched.
+    pub(super) fn ask_restore(&mut self, tab: TabId, id: PointId) {
         let Some(pane) = self.ws.focus_of(tab) else {
             return;
         };
-        let found = self.agents.runs.get(&pane).and_then(|run| {
-            let mark = run.marks().iter().find(|m| m.block == block)?;
-            Some((mark.at, run.root.clone()?))
-        });
-        let Some((at, root)) = found else {
+        if self.working(pane) {
+            self.notices.push(WAIT_FOR_AGENT.to_owned());
+            return;
+        }
+        let Some(session) = self.agents.points.sessions.get(&pane).cloned() else {
             self.notices
-                .push("That checkpoint is no longer there".to_owned());
+                .push("That restore point is no longer there".to_owned());
             return;
         };
-        self.agents.jobs.run(move |git| Done::Planned {
+        let port = Arc::clone(&self.agents.points.port);
+        self.agents.jobs.spawn(move || Done::PointPlanned {
             pane,
-            block,
-            at,
-            plan: restore_plan(git, &root, at).map_err(UiError::from),
-            root,
+            result: port.plan(&session, id),
+            session,
+            id,
         });
     }
 
-    pub(super) fn checkpoint_planned(
+    pub(super) fn point_planned(
         &mut self,
-        (pane, block, at): (PaneId, BlockId, CheckpointRef),
-        root: String,
-        plan: Result<temor_core::checkpoint::RestorePlan, UiError>,
+        (pane, session, id): (PaneId, SessionKey, PointId),
+        result: Result<PointPlan, DesktopError>,
     ) {
-        match plan {
+        match result {
             Ok(plan) => {
+                let turn = self.agents.points.turn_of(pane, id);
                 self.agents.sheet = Some(Sheet::Restore {
                     pane,
-                    block,
-                    at,
-                    root,
+                    session,
+                    id,
+                    turn,
                     plan,
                 });
             }
-            Err(err) => self
-                .notices
-                .push(format!("The checkpoint could not be read: {err}")),
+            Err(err) => self.notices.push(format!(
+                "The restore point could not be read: {}",
+                words(&err)
+            )),
         }
     }
 
-    /// The person pressed Restore in the sheet.
+    /// The person pressed Restore in the sheet. docket gets back the digest of the plan the
+    /// sheet showed, so it refuses if the folder changed since.
     pub fn confirm_restore(&mut self) {
         let Some(Sheet::Restore {
             pane,
-            block,
-            at,
-            root,
+            session,
+            id,
+            turn,
             plan,
         }) = self.agents.sheet.take()
         else {
             return;
         };
-        self.agents.jobs.run(move |git| Done::Restored {
+        if self.working(pane) {
+            self.notices.push(WAIT_FOR_AGENT.to_owned());
+            return;
+        }
+        let port = Arc::clone(&self.agents.points.port);
+        self.agents.jobs.spawn(move || Done::PointRestored {
             pane,
-            block,
-            result: work::restore(git, &root, at, &plan),
+            turn,
+            result: port.restore(&session, id, &plan.digest),
         });
     }
 
-    pub(super) fn checkpoint_restored(
+    pub(super) fn point_restored(
         &mut self,
         pane: PaneId,
-        block: BlockId,
-        result: Result<usize, UiError>,
+        turn: Option<TurnNo>,
+        result: Result<(), DesktopError>,
     ) {
         match result {
-            Ok(_) => {
-                if let Some(run) = self.agents.runs.get_mut(&pane) {
-                    run.restored(block);
-                }
-                self.notices.push(format!(
-                    "Files are back as they were before turn {}",
-                    block.0
-                ));
+            Ok(()) => {
+                self.notices.push(match turn {
+                    Some(turn) => format!("Files are back as they were before turn {}", turn.0),
+                    None => "Files are back as they were".to_owned(),
+                });
+                self.refresh_points(pane);
             }
             Err(err) => self
                 .notices
-                .push(format!("The files could not be put back: {err}")),
+                .push(format!("The files could not be put back: {}", words(&err))),
         }
+    }
+}
+
+/// What went wrong, in the person's words.
+fn words(err: &DesktopError) -> String {
+    match err {
+        DesktopError::Checkpoint(fault) => fault.words().to_owned(),
+        _ => "the restore points are not reachable".to_owned(),
     }
 }
 

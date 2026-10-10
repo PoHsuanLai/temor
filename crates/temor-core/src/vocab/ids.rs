@@ -56,8 +56,8 @@ id_newtype!(
     Attempt(u32)
 );
 id_newtype!(
-    /// A checkpoint's number: `refs/temor/checkpoints/<n>`.
-    CheckpointRef(u64)
+    /// A merge's undo number: `refs/temor/undo/<n>`.
+    UndoRef(u64)
 );
 id_newtype!(
     /// A count of bytes.

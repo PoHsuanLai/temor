@@ -1,0 +1,185 @@
+//! A session's restore points, as the window reads them (PLAN P19). docket keeps the points and
+//! does the restore; the window asks this port for the list, for what a restore would change, and
+//! for the restore itself. The types here are plain: nothing of docket's crosses into the window.
+//!
+//! The port is blocking, because the window calls it from a worker thread of its own (as it runs
+//! git); the live one waits on the bus task's runtime.
+
+use std::fmt;
+
+use temor_ssh::UnixSeconds;
+
+use crate::DesktopError;
+
+/// A docket session, as docket numbers it: the key of one run's restore points.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SessionKey(String);
+
+impl SessionKey {
+    /// `text` as a session key: 1 to 128 bytes, no control characters. `None` otherwise.
+    pub fn new(text: &str) -> Option<SessionKey> {
+        let ok = !text.is_empty() && text.len() <= 128 && !text.chars().any(char::is_control);
+        ok.then(|| SessionKey(text.to_owned()))
+    }
+
+    /// The key's text.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// A restore point's number within one session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PointId(pub u32);
+
+/// A turn's number within one session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TurnNo(pub u64);
+
+/// Binds a restore to exactly the plan the person saw; given back as it was received.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanDigest(pub String);
+
+/// Whether a saved point can still be restored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PointState {
+    Available,
+    /// Cleared since (kept for 20 points and 14 days).
+    Gone,
+}
+
+/// Why a turn has no restore point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotSavedWhy {
+    /// The agent keeps its own history.
+    AgentKeepsOwn,
+    /// The folder is not in git, so docket skipped it.
+    NoHistory,
+    /// The folder holds too many files.
+    TooLarge,
+    /// Saving went wrong or took too long.
+    Failed,
+    /// A reason this build does not know.
+    Unknown,
+}
+
+/// One row of the list, oldest first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PointRow {
+    Saved {
+        id: PointId,
+        turn: TurnNo,
+        at: UnixSeconds,
+        state: PointState,
+    },
+    NotSaved {
+        turn: TurnNo,
+        at: UnixSeconds,
+        why: NotSavedWhy,
+    },
+    RestoredTo {
+        id: PointId,
+        at: UnixSeconds,
+    },
+}
+
+/// A session's list.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PointList {
+    pub rows: Vec<PointRow>,
+}
+
+/// What restoring one point would change: paths relative to the folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PointPlan {
+    /// Files put back to their older content.
+    pub changed: Vec<String>,
+    /// Files brought back.
+    pub added: Vec<String>,
+    /// Files deleted (made since).
+    pub removed: Vec<String>,
+    pub digest: PlanDigest,
+}
+
+/// Why docket would not list, plan or restore.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PointFault {
+    NoSuchPoint,
+    Gone,
+    TurnRunning,
+    /// The folder changed since the plan was shown.
+    PlanStale,
+    NoHistory,
+    Failed,
+    /// The desktop's agent layer did not allow it.
+    Denied,
+    /// The person said no.
+    Declined,
+}
+
+impl PointFault {
+    /// The words for the person.
+    pub fn words(self) -> &'static str {
+        match self {
+            PointFault::NoSuchPoint => "There is no such restore point",
+            PointFault::Gone => "That restore point has been cleared",
+            PointFault::TurnRunning => "Wait for the agent to finish",
+            PointFault::PlanStale => "The folder changed since you looked; look again",
+            PointFault::NoHistory => "This folder cannot keep restore points",
+            PointFault::Failed => "The restore could not be completed",
+            PointFault::Denied => "The desktop did not allow the restore",
+            PointFault::Declined => "The restore was cancelled",
+        }
+    }
+}
+
+impl fmt::Display for PointFault {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.words())
+    }
+}
+
+/// The window's view of docket's restore points. `Send + Sync`: calls come from worker threads.
+pub trait CheckpointPort: Send + Sync + fmt::Debug {
+    /// The session's points, oldest first.
+    fn list(&self, session: &SessionKey) -> Result<PointList, DesktopError>;
+
+    /// What restoring `id` would change. Read-only.
+    fn plan(&self, session: &SessionKey, id: PointId) -> Result<PointPlan, DesktopError>;
+
+    /// Puts the folder back to `id`, bound to the plan `digest` the person saw. docket asks the
+    /// person again where its policy says to.
+    fn restore(
+        &self,
+        session: &SessionKey,
+        id: PointId,
+        digest: &PlanDigest,
+    ) -> Result<(), DesktopError>;
+}
+
+/// No agent layer: nothing is listed and nothing can be restored. The default.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct NoCheckpoints;
+
+impl CheckpointPort for NoCheckpoints {
+    fn list(&self, _session: &SessionKey) -> Result<PointList, DesktopError> {
+        Ok(PointList::default())
+    }
+
+    fn plan(&self, _session: &SessionKey, _id: PointId) -> Result<PointPlan, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn restore(
+        &self,
+        _session: &SessionKey,
+        _id: PointId,
+        _digest: &PlanDigest,
+    ) -> Result<(), DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+}

@@ -26,7 +26,7 @@ quire-desktop = [
 serde_json = { workspace = true }
 temor-ssh = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 
 # Only a Linux build has a session bus; `quire-desktop` names these.
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -99,6 +99,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             onclick: move |press: Press| {
                 // A secondary press opens the tab's agent menu; it does not select the tab.
                 if matches!(press.button, PointerButton::Secondary) {
+                    selecting.agent_menu_opened(id);
                     menu.set(Shown::Visible);
                     return;
                 }

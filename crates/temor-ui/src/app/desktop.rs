@@ -7,8 +7,8 @@
 use std::sync::Arc;
 
 use temor_desktop::{
-    Badge, BadgeCount, Claim, DesktopEnv, DesktopError, Primary, Request, SystemDock,
-    SystemInstance, SystemIntents, SystemTailnet,
+    Badge, BadgeCount, CheckpointPort, Claim, DesktopEnv, DesktopError, NoCheckpoints, Primary,
+    Request, SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet,
 };
 use tokio::runtime::Handle;
 use tokio::sync::watch;
@@ -24,6 +24,8 @@ pub struct Desktop {
     pub link: Option<DesktopLink>,
     /// The Tailscale computers; the group is absent when empty.
     pub tailnet: Arc<dyn TailnetFeed>,
+    /// An agent run's restore points; none are listed without the agent layer.
+    pub checkpoints: Arc<dyn CheckpointPort>,
 }
 
 impl Desktop {
@@ -32,6 +34,7 @@ impl Desktop {
         Desktop {
             link: None,
             tailnet: Arc::new(NoTailnet),
+            checkpoints: Arc::new(NoCheckpoints),
         }
     }
 }
@@ -82,10 +85,17 @@ fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
     let tailnet = LiveTailnet::default();
     runtime.spawn(hear_and_serve(env.clone(), primary, port, link.clone()));
     runtime.spawn(show_badge(env.clone(), count));
+    // A desktop without the agent layer lists no restore points.
+    let checkpoints: Arc<dyn CheckpointPort> =
+        match runtime.block_on(SystemCheckpoints::connect(&env, runtime.clone())) {
+            Ok(live) => Arc::new(live),
+            Err(_) => Arc::new(NoCheckpoints),
+        };
     runtime.spawn(follow_tailnet(env, tailnet.clone()));
     Desktop {
         link: Some(link),
         tailnet: Arc::new(tailnet),
+        checkpoints,
     }
 }
 

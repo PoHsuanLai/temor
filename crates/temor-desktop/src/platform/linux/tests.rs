@@ -173,3 +173,102 @@ fn the_context_carries_program_text_as_untrusted() {
     assert!(matches!(snapshot.here, Here::Nowhere));
     assert!(matches!(snapshot.selection, Selection::Nothing));
 }
+
+#[test]
+fn dockets_list_becomes_the_windows_rows_and_a_restore_names_its_plan() {
+    use super::checkpoints::{fault_of, list_of, refusal_fault, restore_call};
+    use crate::{
+        DesktopError, NotSavedWhy, PlanDigest, PointFault, PointId, PointRow, PointState,
+        SessionKey, TurnNo,
+    };
+    use docket_core::{
+        CheckpointFault, CheckpointId, CheckpointRow, DenyCode, SavedState, SkipReason, TurnId,
+        Value,
+    };
+    use temor_ssh::UnixSeconds as Secs;
+
+    let at = porter_core::UnixSeconds(1_790_000_000);
+    let rows = [
+        CheckpointRow::Saved {
+            id: CheckpointId(1),
+            turn: TurnId(4),
+            at,
+            state: SavedState::Available,
+        },
+        CheckpointRow::Saved {
+            id: CheckpointId(2),
+            turn: TurnId(5),
+            at,
+            state: SavedState::Gone,
+        },
+        CheckpointRow::NotSaved {
+            turn: TurnId(6),
+            at,
+            why: SkipReason::NoHistory,
+        },
+        CheckpointRow::RestoredTo {
+            id: CheckpointId(1),
+            at,
+        },
+    ];
+    let secs = Secs(1_790_000_000);
+    assert_eq!(
+        list_of(&rows).rows,
+        [
+            PointRow::Saved {
+                id: PointId(1),
+                turn: TurnNo(4),
+                at: secs,
+                state: PointState::Available
+            },
+            PointRow::Saved {
+                id: PointId(2),
+                turn: TurnNo(5),
+                at: secs,
+                state: PointState::Gone
+            },
+            PointRow::NotSaved {
+                turn: TurnNo(6),
+                at: secs,
+                why: NotSavedWhy::NoHistory
+            },
+            PointRow::RestoredTo {
+                id: PointId(1),
+                at: secs
+            },
+        ]
+    );
+
+    let session = SessionKey::new("s-7").unwrap();
+    let call = restore_call(&session, PointId(3), &PlanDigest("abc123".to_owned())).unwrap();
+    assert_eq!(call.action.app.as_str(), "org.quire.Checkpoints");
+    assert_eq!(call.action.name.as_str(), "checkpoints.restore");
+    let args: Vec<(&str, &Value)> = call
+        .args
+        .iter()
+        .map(|(name, arg)| (name.as_str(), &arg.value))
+        .collect();
+    assert_eq!(
+        args,
+        [
+            ("plan", &Value::Text("abc123".to_owned())),
+            ("point", &Value::Integer(3)),
+            ("session", &Value::Text("s-7".to_owned())),
+        ]
+    );
+
+    let fault = |error: DesktopError| match error {
+        DesktopError::Checkpoint(fault) => Some(fault),
+        _ => None,
+    };
+    assert_eq!(
+        fault(fault_of(CheckpointFault::PlanStale)),
+        Some(PointFault::PlanStale)
+    );
+    assert_eq!(
+        fault(refusal_fault(docket_core::CallRefusal::Denied(
+            DenyCode::NotAllowed
+        ))),
+        Some(PointFault::Denied)
+    );
+}

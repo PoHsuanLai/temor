@@ -26,7 +26,7 @@ enum Known {
 struct Entry {
     state: RadarState,
     known: Known,
-    /// A known agent's name was seen (its process, or what it reported): checkpoints are taken
+    /// A known agent's name was seen (its process, or what it reported): restore points are read
     /// for these panes only, never for a build tool that reports its progress.
     named: Known,
 }

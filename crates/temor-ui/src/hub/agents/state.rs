@@ -1,20 +1,19 @@
-//! Everything the window keeps about agents: the radar, the checkpoints of each run, the agent
+//! Everything the window keeps about agents: the radar, the restore points of each run, the agent
 //! worktrees, the pane sockets and the git jobs. Lives in the hub, on the window's thread.
 
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use temor_core::agent::radar::{Millis, RadarParams};
-use temor_core::checkpoint::RestorePlan;
-use temor_core::vocab::ids::{BlockId, CheckpointRef, PaneId, TabId};
+use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::worktree::Git;
+use temor_desktop::{PointId, PointPlan, SessionKey, TurnNo};
 use temor_pane::PaneEvent;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::jobs::Jobs;
+use super::points::Points;
 use super::radar::Radar;
-use super::runs::Run;
 use super::trees::Trees;
 use crate::edge::git::ProcessGit;
 use crate::edge::{Clock, SocketHost, SystemClock};
@@ -26,13 +25,14 @@ pub(super) const SPACE: &str = "main";
 /// What a sheet over the window is showing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Sheet {
-    /// What putting the files back to a checkpoint would change, before it is done.
+    /// What putting the files back to a restore point would change, before it is done.
     Restore {
         pane: PaneId,
-        block: BlockId,
-        at: CheckpointRef,
-        root: String,
-        plan: RestorePlan,
+        session: SessionKey,
+        id: PointId,
+        /// The turn the point precedes, when the last list said.
+        turn: Option<TurnNo>,
+        plan: PointPlan,
     },
     /// An agent worktree's overlap findings and the way to merge it back.
     Details(TabId),
@@ -51,7 +51,7 @@ pub(super) enum Told {
 pub struct Agents {
     pub(super) clock: Box<dyn Clock>,
     pub radar: Radar,
-    pub(super) runs: BTreeMap<PaneId, Run>,
+    pub(super) points: Points,
     pub(super) trees: Trees,
     pub(super) jobs: Jobs,
     pub(super) sockets: Option<SocketHost>,
@@ -80,7 +80,7 @@ impl Agents {
         Agents {
             clock: Box::new(SystemClock::new()),
             radar: Radar::new(RadarParams::default()),
-            runs: BTreeMap::new(),
+            points: Points::default(),
             trees: Trees::default(),
             jobs: Jobs::new(git),
             sockets: SocketHost::start(launch.ambient.runtime_dir.clone(), events).ok(),

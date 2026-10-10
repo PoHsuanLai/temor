@@ -24,6 +24,11 @@ impl Desk {
         self.agents_then(crate::hub::Hub::jump_to_waiting);
     }
 
+    /// `tab`'s menu is opening: its run's restore points are read again.
+    pub fn agent_menu_opened(&self, tab: TabId) {
+        self.agents_then(|hub| hub.refresh_points_of(tab));
+    }
+
     /// A choice in `tab`'s menu.
     pub fn agent_pick(&self, tab: TabId, pick: AgentPick) {
         self.agents_then(|hub| hub.agent_pick(tab, pick));

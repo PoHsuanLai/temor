@@ -4,40 +4,38 @@
 
 use std::sync::Arc;
 
-use temor_core::checkpoint::RestorePlan;
-use temor_core::vocab::ids::{BlockId, CheckpointRef, PaneId, TabId};
+use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::worktree::overlap::{BaseKey, BaseProbe, PairKey, PairProbe, ProbeJob};
 use temor_core::worktree::{Git, ListedWorktree, MergeOutcome, Oid, Snapshot};
+use temor_desktop::{DesktopError, PointId, PointList, PointPlan, SessionKey, TurnNo};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use super::work::{Made, Seeded};
+use super::work::Made;
 use crate::error::UiError;
 
 /// What a finished job reports.
 #[derive(Debug)]
 pub enum Done {
-    /// A run's repository and first free checkpoint number.
-    Seeded { pane: PaneId, seeded: Seeded },
-    /// Checkpoint `at` was taken (or could not be).
-    Taken {
+    /// A pane's restore points were read.
+    PointsListed {
         pane: PaneId,
-        at: CheckpointRef,
-        result: Result<(), UiError>,
+        result: Result<PointList, DesktopError>,
     },
-    /// What restoring checkpoint `at` would change.
-    Planned {
+    /// What restoring one point would change.
+    PointPlanned {
         pane: PaneId,
-        block: BlockId,
-        at: CheckpointRef,
-        root: String,
-        plan: Result<RestorePlan, UiError>,
+        session: SessionKey,
+        id: PointId,
+        result: Result<PointPlan, DesktopError>,
     },
-    /// Files were put back; the number of files removed.
-    Restored {
+    /// The files were put back (or could not be).
+    PointRestored {
         pane: PaneId,
-        block: BlockId,
-        result: Result<usize, UiError>,
+        turn: Option<TurnNo>,
+        result: Result<(), DesktopError>,
     },
+    /// Old snapshot refs were swept from a repository; how many were deleted.
+    Swept { removed: usize },
     /// A worktree was made for a pane's repository.
     Made { result: Result<Made, UiError> },
     /// A worktree was snapshotted for the overlap check.
@@ -114,13 +112,19 @@ impl Jobs {
         let Some(git) = self.git.clone() else {
             return;
         };
+        self.spawn(move || work(git.as_ref()));
+    }
+
+    /// Runs `work` on a thread of its own and sends what it returns to the window. For jobs that
+    /// need no git (restore points are docket's).
+    pub fn spawn(&self, work: impl FnOnce() -> Done + Send + 'static) {
         let done = self.done.clone();
         // If the thread cannot start the job never reports; the next trigger asks again.
         let _ = std::thread::Builder::new()
             .name("temor-agent-job".to_owned())
             .spawn(move || {
                 // A closed channel means the window is gone.
-                let _ = done.send(work(git.as_ref()));
+                let _ = done.send(work());
             });
     }
 }
