@@ -31,9 +31,8 @@ fn pane_with_transfers(home: &Path) -> (PaneHandle, Receiver<PaneEvent>) {
 fn next_transfer(events: &Receiver<PaneEvent>, what: &str) -> TransferEvent {
     let start = Instant::now();
     loop {
-        match events.recv_timeout(Duration::from_millis(50)) {
-            Ok(PaneEvent::Transfer(event)) => return event,
-            Ok(_) | Err(_) => {}
+        if let Ok(PaneEvent::Transfer(event)) = events.recv_timeout(Duration::from_millis(50)) {
+            return event;
         }
         assert!(
             start.elapsed() < Duration::from_secs(10),

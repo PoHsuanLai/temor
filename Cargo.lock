@@ -4940,6 +4940,7 @@ dependencies = [
  "temor-pty",
  "temor-render",
  "temor-shell",
+ "temor-transfer",
  "temor-vt",
  "tempfile",
  "thiserror 2.0.21",

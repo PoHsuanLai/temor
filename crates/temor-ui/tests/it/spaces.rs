@@ -213,8 +213,8 @@ fn switching_spaces_shows_their_tabs_and_a_new_tab_gets_the_spaces_folder_and_va
         "the frame follows the Space"
     );
 
-    // A new tab in Work: its folder, its variable and its dotenv file.
-    chord(&mut h, 't');
+    // A new tab in Work (⌘N; ⌘T is the bar): its folder, its variable and its dotenv file.
+    chord(&mut h, 'n');
     assert_eq!(rows(&h), 3, "a new tab in Work:\n{}", h.html());
     focus_terminal(&mut h);
     type_line(&mut h, "echo =$SPACE_PROBE=$FROM_DOTENV=; basename $PWD");

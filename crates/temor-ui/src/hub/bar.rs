@@ -150,6 +150,11 @@ impl HubRef {
         self.0.borrow().bar_data()
     }
 
+    /// Whether the bar is open: its field has the keyboard, and no pane takes it back.
+    pub fn bar_is_open(&self) -> bool {
+        self.0.borrow().bar.model.is_open()
+    }
+
     /// The Spaces a quick terminal can be moved to.
     pub fn bar_spaces(&self) -> Vec<temor_core::bar::SpaceEntry> {
         self.0.borrow().bar.seams.spaces.spaces()

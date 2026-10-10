@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Harness, Input};
+use ds_harness::{Driver, Harness, Input, Query};
 use temor_ui::view::probe::Probe;
 
 use super::window::{chord, harness, panes, rows, wait_until};
@@ -32,7 +32,8 @@ fn click_pane(h: &mut Harness) {
 }
 
 fn bar_open(h: &Harness) -> bool {
-    h.html().contains("ds-palette")
+    // The element, not the stylesheet that names its class.
+    h.html().contains("class=\"ds-palette\"")
 }
 
 /// ⌘T opens the bar; typing a command that is on the path leads with its Run row; Enter runs it
@@ -55,12 +56,20 @@ fn the_bar_opens_ranks_runs_and_hands_the_keys_back() {
         "an empty bar leads with a plain tab"
     );
 
-    h.send(Input::ime_commit("echo bar-ok"));
+    for c in "echo bar-ok".chars() {
+        let key = match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        };
+        h.send(Input::key(key));
+    }
     h.advance(Duration::from_millis(300));
     assert!(
-        h.html().contains("Run `echo bar-ok` in a new tab"),
-        "echo is on the path, so the Run row leads:\n{}",
-        h.html()
+        h.text_of(".ds-palette")
+            .unwrap_or_default()
+            .contains("Run `echo bar-ok` in a new tab"),
+        "echo is on the path, so the Run row leads:\n{:?}",
+        h.text_of(".ds-palette")
     );
     h.send(Input::key(ShortcutKey::Enter));
     h.advance(Duration::from_millis(300));

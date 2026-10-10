@@ -108,7 +108,8 @@ fn a_second_launch_is_handed_over_and_the_first_window_hears_its_request() {
     for request in [Request::NewWindow, tab] {
         let second = join(runtime.handle(), env.clone(), &request);
         assert!(matches!(second, Joined::Handed), "{second:?}");
-        let heard = runtime.block_on(tokio::time::timeout(Duration::from_secs(5), asks.recv()));
+        let heard = runtime
+            .block_on(async { tokio::time::timeout(Duration::from_secs(5), asks.recv()).await });
         match heard {
             Ok(Some(Ask::Launch(got))) => assert_eq!(got, request),
             other => panic!("the first window should hear {request:?}, got {other:?}"),

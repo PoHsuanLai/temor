@@ -62,21 +62,24 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 onselect: select,
                 fill: SidebarFill::Clear,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
+                // Downloads sit above the Space row: the sidebar is too narrow for both in one.
                 foot: rsx! {
-                    ShelfFoot { desk: desk.clone() }
-                    SpaceFoot {
-                        desk: desk.clone(),
-                        leading: rsx! {
-                            Button {
-                                bezel: Bezel::Toolbar,
-                                image: ImagePosition::Only,
-                                size: ControlSize::Small,
-                                icon: Some(IconSource::Glyph(Icon::Plus)),
-                                label: "New tab".to_owned(),
-                                title: Some("New tab".to_owned()),
-                                onclick: new_tab,
-                            }
-                        },
+                    Column {
+                        ShelfFoot { desk: desk.clone() }
+                        SpaceFoot {
+                            desk: desk.clone(),
+                            leading: rsx! {
+                                Button {
+                                    bezel: Bezel::Toolbar,
+                                    image: ImagePosition::Only,
+                                    size: ControlSize::Small,
+                                    icon: Some(IconSource::Glyph(Icon::Plus)),
+                                    label: "New tab".to_owned(),
+                                    title: Some("New tab".to_owned()),
+                                    onclick: new_tab,
+                                }
+                            },
+                        }
                     }
                 },
             }

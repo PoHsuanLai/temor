@@ -217,7 +217,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     });
 
     // The pane that becomes the keyboard pane (a chord moved focus, a tile was pressed) takes the
-    // keyboard on the page too.
+    // keyboard on the page too; not while the bar's field has it, and back when the bar closes.
     {
         let (ime, gained, desk, had) = (
             ime.clone(),
@@ -227,7 +227,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         );
         use_effect(move || {
             let _ = (desk.ui)();
-            let has = desk.hub.keyboard_pane() == Some(pane);
+            let has = desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open();
             let before = had.replace(has);
             if has && !before {
                 let gained = gained.clone();

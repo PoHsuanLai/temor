@@ -117,7 +117,7 @@ impl SshWork {
     /// Copies the host's file to `local` (stat first), then reports `Fetched`, `FetchGone` or a
     /// fault.
     pub fn fetch(&self, id: EditId, host: HostAlias, path: RemoteFilePath, local: PathBuf) {
-        let input = |input| SshEvent::Edit { id, input };
+        let input = move |input| SshEvent::Edit { id, input };
         self.run(
             move |env, layout| {
                 let files = files_of(env, layout);
@@ -133,7 +133,7 @@ impl SshWork {
 
     /// Reads the host file's modified time and size.
     pub fn check(&self, id: EditId, host: HostAlias, path: RemoteFilePath) {
-        let input = |input| SshEvent::Edit { id, input };
+        let input = move |input| SshEvent::Edit { id, input };
         self.run(
             move |env, layout| {
                 Some(input(match files_of(env, layout).stat(&host, &path) {
@@ -147,7 +147,7 @@ impl SshWork {
 
     /// Copies `local` over the host's file, then reads the file's new stat.
     pub fn store(&self, id: EditId, host: HostAlias, local: PathBuf, path: RemoteFilePath) {
-        let input = |input| SshEvent::Edit { id, input };
+        let input = move |input| SshEvent::Edit { id, input };
         self.run(
             move |env, layout| {
                 let files = files_of(env, layout);

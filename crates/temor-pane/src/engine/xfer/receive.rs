@@ -217,6 +217,8 @@ impl Receive {
                     WriteOp::Append { .. } => WriteKind::Append,
                     WriteOp::Finish { .. } => WriteKind::Finish,
                     WriteOp::Discard(_) => WriteKind::Discard,
+                    // A write a later temor-transfer adds fails as a discard: nothing is kept.
+                    _ => WriteKind::Discard,
                 };
                 work.push_back((Input::WriteFailed { fid, op, error }, None));
             }

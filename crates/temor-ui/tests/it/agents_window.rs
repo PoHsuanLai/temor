@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Harness, Input};
+use ds_harness::{Driver, Harness, Input};
 use temor_pane::report::{ReportState, StatusLine, encode_hello, encode_status};
 use temor_ui::view::probe::Probe;
 
@@ -105,17 +105,18 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
     h.advance(Duration::from_millis(100));
     wait_for_orbs(&mut h, "an idle orb", &[("idle", 1)]);
 
-    // The program in the first tab says it needs permission, in its own status sequence.
+    // The program in the first tab says it needs permission, in its own status sequence, and
+    // then waits for an answer as an agent does (a prompt coming back would end the wait).
     type_line(
         &mut h,
-        "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'",
+        "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
     );
     wait_for_orbs(&mut h, "a waiting orb", &[("waiting", 1), ("idle", 0)]);
 
     // A second tab, and its program reports over the pane's socket.
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char('t'),
+        ShortcutKey::Char('n'),
     ));
     h.advance(Duration::from_millis(300));
     type_line(&mut h, "echo second-tab");

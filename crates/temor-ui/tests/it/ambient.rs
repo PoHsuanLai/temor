@@ -36,7 +36,9 @@ fn without_xdg_runtime_dir_the_folder_is_under_the_cache_and_never_shared_tmp() 
 #[test]
 fn the_downloads_folder_is_the_variable_then_user_dirs_then_home_downloads() {
     let user_dirs = "XDG_DESKTOP_DIR=\"$HOME/Desktop\"\nXDG_DOWNLOAD_DIR=\"$HOME/Got\"\n";
-    let cases: [(&[(&str, &str)], Option<&str>, &str); 5] = [
+    // (variables, user-dirs.dirs text, the folder)
+    type Case<'a> = (&'a [(&'a str, &'a str)], Option<&'a str>, &'a str);
+    let cases: [Case; 5] = [
         (&[("HOME", "/h")], None, "/h/Downloads"),
         (&[("HOME", "/h")], Some(user_dirs), "/h/Got"),
         (
