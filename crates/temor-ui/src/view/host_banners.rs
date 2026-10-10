@@ -195,7 +195,10 @@ fn Forwarded(pane: PaneId, host: String, line: ForwardLine, desk: Desk) -> Eleme
 fn Edited(edit: EditLine, desk: Desk) -> Element {
     let text = edit_line(&edit.name, edit.status);
     let id: EditId = edit.id;
-    let asking = matches!(edit.status, EditStatus::Changed | EditStatus::Deleted);
+    let asking = matches!(
+        edit.status,
+        EditStatus::Changed | EditStatus::Rewritten | EditStatus::Deleted
+    );
     let (done, over, theirs, later) = (desk.clone(), desk.clone(), desk.clone(), desk);
     if asking {
         return rsx! {
