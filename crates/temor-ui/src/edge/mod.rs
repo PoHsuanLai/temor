@@ -34,6 +34,7 @@ pub mod space_agent;
 pub mod space_start;
 mod spaces_file;
 mod ssh_env;
+mod ssh_hosts_cache;
 pub mod ssh_work;
 #[cfg(test)]
 mod ssh_work_tests;

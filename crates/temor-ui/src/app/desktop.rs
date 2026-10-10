@@ -190,7 +190,11 @@ mod tests {
             (None, None, None),
         ];
         for (wayland, x11, want) in table {
-            assert_eq!(launch_token(wayland, x11).as_deref(), want, "{wayland:?} {x11:?}");
+            assert_eq!(
+                launch_token(wayland, x11).as_deref(),
+                want,
+                "{wayland:?} {x11:?}"
+            );
         }
     }
 }
