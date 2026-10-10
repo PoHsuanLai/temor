@@ -2,13 +2,14 @@
 //! premultiplied pixels, handed to the pane's texture. The lock is held only for the first phase
 //! of the capture; the rows are copied and drawn after it is released.
 
+use temor_pane::{PaintSource, PaneHandle};
 use temor_render::{
-    CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit, Padding, Palette, PaneFocus,
-    PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale, SelectionOverlay, fit_grid,
+    CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit, Padding,
+    Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale, SelectionOverlay,
+    fit_grid,
 };
 
 use crate::error::UiError;
-use temor_pane::PaneHandle;
 
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -22,6 +23,22 @@ pub struct PaintView<'a> {
     pub bands: &'a [RowBand],
 }
 
+/// Which frame the pane's pixels were last drawn from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Showing {
+    /// The terminal, through `capture`.
+    Live,
+    /// The frame captured when the program began holding the screen.
+    Held,
+}
+
+/// What one paint draws from.
+enum Draw<'c> {
+    Live(CapturedFrame<'c>),
+    Held,
+    Nothing,
+}
+
 /// One pane's renderer, its capture state and its frame buffer.
 #[derive(Debug)]
 pub struct Painter {
@@ -29,6 +46,12 @@ pub struct Painter {
     capture: FrameCapture,
     frame: PaneFrame,
     palette: Palette,
+    /// The frame of the hold in progress (valid while `showing` is `Held`).
+    held: PaneFrame,
+    showing: Showing,
+    /// The pane's hold captures when `capture` was last started: a hold capture consumes the
+    /// marks `capture` reads, so when the count moves `capture` starts over.
+    seen_captures: u64,
 }
 
 impl Painter {
@@ -38,6 +61,9 @@ impl Painter {
             capture: FrameCapture::new()?,
             frame: PaneFrame::new(),
             palette,
+            held: PaneFrame::new(),
+            showing: Showing::Live,
+            seen_captures: 0,
         })
     }
 
@@ -81,9 +107,32 @@ impl Painter {
             capture,
             frame,
             palette,
+            held,
+            showing,
+            seen_captures,
         } = self;
-        let captured = pane.with_term(|term| term.begin_frame(capture))?;
-        captured.finish(frame)?;
+        // Decided and begun under one hold of the pane's lock, so a frame is never begun in the
+        // middle of a hold: while the program holds the screen the captured frame is drawn.
+        let draw = pane.with_term(|term| {
+            Ok::<_, UiError>(match term.paint_source() {
+                PaintSource::Live { captures } => {
+                    if *showing == Showing::Held || *seen_captures != captures {
+                        // A full redraw: the marks this capture would read were consumed.
+                        *capture = FrameCapture::new()?;
+                        *seen_captures = captures;
+                    }
+                    *showing = Showing::Live;
+                    Draw::Live(term.begin_frame(capture)?)
+                }
+                PaintSource::Fresh(fresh) => {
+                    *held = *fresh;
+                    *showing = Showing::Held;
+                    Draw::Held
+                }
+                PaintSource::Held if *showing == Showing::Held => Draw::Held,
+                _ => Draw::Nothing,
+            })
+        })?;
         let pane_view = PaneView {
             size: view.pixels,
             scale: view.scale,
@@ -93,7 +142,14 @@ impl Painter {
             selection: view.selection,
             bands: view.bands,
         };
-        let drawn = renderer.render(frame, &pane_view)?;
+        let drawn = match draw {
+            Draw::Live(captured) => {
+                captured.finish(frame)?;
+                renderer.render(frame, &pane_view)?
+            }
+            Draw::Held => renderer.render(held, &pane_view)?,
+            Draw::Nothing => return Ok(()),
+        };
         show(drawn.pixels, drawn.size);
         Ok(())
     }

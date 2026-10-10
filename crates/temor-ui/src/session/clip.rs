@@ -29,7 +29,9 @@ impl Session {
             return Ok(());
         }
         // A clipboard that refuses is not the pane's failure: the copy simply did not happen.
-        let _ = self.clipboard.write(&text);
+        if self.clipboard.write(&text).is_ok() {
+            self.refresh_clipboard_copy();
+        }
         Ok(())
     }
 

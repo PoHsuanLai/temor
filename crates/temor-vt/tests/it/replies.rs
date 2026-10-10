@@ -3,7 +3,10 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_vt::{EventSink, GridSize, ReplySink, Terminal, TerminalConfig, VtEvent};
+use temor_vt::{
+    ClipboardAnswer, ClipboardRead, ClipboardSource, EventSink, GridSize, ReplySink, Terminal,
+    TerminalConfig, VtEvent, Wrap,
+};
 
 use crate::support::{drain, fixture, term, term_with_replies};
 
@@ -139,6 +142,43 @@ fn an_osc_52_clipboard_query_gets_no_reply_with_clipboard_data() {
     );
 }
 
+/// A source that always gives the same answer.
+struct Fixed(ClipboardAnswer);
+
+impl ClipboardSource for Fixed {
+    fn read(&self, _read: &ClipboardRead) -> ClipboardAnswer {
+        self.0.clone()
+    }
+}
+
+#[test]
+fn an_osc_52_read_is_answered_by_the_clipboard_source() {
+    // (answer, the reply carries "Hello", a ClipboardRead event is sent)
+    let table = [
+        (ClipboardAnswer::Text("Hello".into()), true, false),
+        (ClipboardAnswer::Empty, false, false),
+        (ClipboardAnswer::Denied, false, false),
+        (ClipboardAnswer::Ask, false, true),
+    ];
+    for (answer, replied, asked) in table {
+        let replies = Collect::default();
+        let (tx, events) = std::sync::mpsc::channel::<VtEvent>();
+        let config = TerminalConfig::new(GridSize::new(80, 24));
+        let mut t =
+            Terminal::new(config, Box::new(tx), Box::new(replies.clone())).expect("terminal");
+        t.set_clipboard_source(Box::new(Fixed(answer.clone())));
+        t.write(b"\x1b]52;c;?\x07");
+        let got = replies.0.lock().expect("lock");
+        let hello = got.iter().any(|r| r.windows(8).any(|w| w == b"SGVsbG8="));
+        assert_eq!(hello, replied, "{answer:?}: {got:?}");
+        let read_events = drain(&events)
+            .into_iter()
+            .filter(|e| matches!(e, VtEvent::ClipboardRead { .. }))
+            .count();
+        assert_eq!(read_events, usize::from(asked), "{answer:?}");
+    }
+}
+
 #[test]
 fn paste_safety_is_libghostty_s_check() {
     use temor_vt::paste_is_safe;
@@ -151,12 +191,14 @@ fn paste_safety_is_libghostty_s_check() {
 fn a_soft_wrapped_row_is_reported_as_wrapped() {
     let (mut t, _events) = term(10, 4);
     t.write(b"abcdefghijklmno\r\nxyz");
-    assert!(
+    assert_eq!(
         t.row_wraps(0).expect("row 0"),
+        Wrap::Continues,
         "the first row continues on the second"
     );
-    assert!(
-        !t.row_wraps(1).expect("row 1"),
+    assert_eq!(
+        t.row_wraps(1).expect("row 1"),
+        Wrap::Ends,
         "the second row ends with a hard break"
     );
 }

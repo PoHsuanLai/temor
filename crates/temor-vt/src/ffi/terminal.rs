@@ -1,6 +1,6 @@
 //! `Terminal`: one libghostty-vt terminal, its callbacks and the inline-file pre-scan.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ptr::NonNull;
 
 use temor_vt_sys as sys;
@@ -11,9 +11,9 @@ use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
-use crate::scan::{InlineFileScanner, MarkCuts};
+use crate::scan::{HoldCuts, InlineFileScanner, MarkCuts};
 use crate::{
-    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode,
+    CellPx, EventSink, GridSize, ModeState, RenderHold, ReplySink, TerminalConfig, TerminalMode,
     ViewportScroll, VtError,
 };
 
@@ -31,6 +31,10 @@ pub struct Terminal {
     pub(super) scanner: InlineFileScanner,
     /// Where OSC 133 marks end, carried across writes.
     pub(super) marks: MarkCuts,
+    /// Where synchronized updates start, carried across writes.
+    pub(super) holds: HoldCuts,
+    /// Captures the frame when a hold begins.
+    pub(super) hold_hook: Option<Box<dyn super::HoldHook>>,
     /// The number of the last mark cut (see `VtEvent::MarkBegin`).
     pub(super) mark_seq: u64,
     pub(super) anchors: Anchors,
@@ -42,9 +46,9 @@ pub struct Terminal {
 //   `&`/`&mut` (and the caller's `Mutex`) guarantee since `Terminal` is not `Sync`;
 // - every callback runs on the thread that calls `write`, and only touches `Callbacks`, whose
 //   fields are `Send`: the sinks are `Box<dyn EventSink>`/`Box<dyn ReplySink>`, both traits
-//   requiring `Send`, and the `Cell`s
-//   hold `Copy` values. No callback can be registered except through this module, so no
-//   non-`Send` closure ever reaches libghostty;
+//   requiring `Send`, the clipboard source (also `Send`, in a `RefCell` only touched inside
+//   callbacks and `set_clipboard_source`), and the `Cell`s hold `Copy` values. No callback can be registered except through this
+//   module, so no non-`Send` closure ever reaches libghostty;
 // - the PNG decoder hook is a stateless function.
 unsafe impl Send for Terminal {}
 
@@ -74,6 +78,31 @@ impl Terminal {
         let term = Self::adopt(raw, config, sink, replies)?;
         term.set_mode_default(TerminalMode::GraphemeCluster, ModeState::Set)?;
         Ok(term)
+    }
+
+    /// Sets who answers the program's clipboard reads (OSC 52 with `?`). Without one every read
+    /// is refused. The source is called from inside `write`, on the writer's thread.
+    pub fn set_clipboard_source(&mut self, source: Box<dyn crate::ClipboardSource>) {
+        *self.callbacks().clipboard.borrow_mut() = Some(source);
+    }
+
+    /// Sets the hook that captures a frame when a render hold begins.
+    pub fn set_hold_hook(&mut self, hook: Box<dyn super::HoldHook>) {
+        self.hold_hook = Some(hook);
+    }
+
+    /// Whether the program holds the screen (synchronized output) right now.
+    pub fn render_hold(&self) -> RenderHold {
+        self.callbacks().hold.get()
+    }
+
+    /// Ends the program's hold from the host's side (its timeout ran out): synchronized output is
+    /// turned off, as libghostty advises, and updates show again. The program may start another.
+    pub fn end_render_hold(&mut self) -> Result<(), VtError> {
+        self.set_mode_raw(TerminalMode::SyncOutput, ModeState::Reset)?;
+        // Changing the mode ourselves does not call the hold callback.
+        self.callbacks().hold.set(RenderHold::Released);
+        Ok(())
     }
 
     /// A terminal restored from `snapshot`, with its screen, scrollback, modes, cursor and title,
@@ -112,6 +141,8 @@ impl Terminal {
             color_scheme: Cell::new(config.color_scheme),
             size: Cell::new((config.size, config.cell_px)),
             title: Cell::new(TitleChange::Unchanged),
+            clipboard: RefCell::new(None),
+            hold: Cell::new(RenderHold::Released),
         });
         let callbacks = NonNull::from(Box::leak(callbacks));
         let mut term = Self {
@@ -119,6 +150,8 @@ impl Terminal {
             callbacks,
             scanner: InlineFileScanner::new(config.inline_file_max),
             marks: MarkCuts::new(),
+            holds: HoldCuts::new(),
+            hold_hook: None,
             mark_seq: 0,
             anchors: Anchors::default(),
         };

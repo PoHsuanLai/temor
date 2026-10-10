@@ -3,7 +3,13 @@
 //! TEMOR_REQUIRE_TOOLS=1).
 
 #[cfg(feature = "ghostty")]
+mod clipboard;
+#[cfg(feature = "ghostty")]
 mod engine;
+#[cfg(feature = "ghostty")]
+mod holds;
+#[cfg(feature = "ghostty")]
+mod search_bench;
 #[cfg(feature = "ghostty")]
 mod support;
 #[cfg(feature = "ghostty")]

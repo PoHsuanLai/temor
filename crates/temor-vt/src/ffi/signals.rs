@@ -127,7 +127,12 @@ pub(super) unsafe extern "C" fn on_render_hold(_t: sys::Terminal, ud: *mut c_voi
         RenderHold::Released
     };
     // SAFETY: `ud` is ours.
-    unsafe { guarded(ud, (), |cb| cb.send(VtEvent::RenderHold(hold))) }
+    unsafe {
+        guarded(ud, (), |cb| {
+            cb.hold.set(hold);
+            cb.send(VtEvent::RenderHold(hold));
+        })
+    }
 }
 
 pub(super) unsafe extern "C" fn on_color_scheme(

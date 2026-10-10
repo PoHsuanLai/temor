@@ -4,18 +4,21 @@
 //! called it, with `userdata` pointing at the terminal's [`Callbacks`]. They only read their
 //! arguments, call the sinks and touch `Cell`s, so they never re-enter the terminal for writing.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use temor_vt_sys as sys;
 
+use super::clipboard_read::on_clipboard_read;
 use super::reports::{on_notification, on_program_status, on_progress, on_prompt};
 use super::signals::{
     on_bell, on_clipboard, on_color_scheme, on_pwd, on_render_hold, on_reset, on_size, on_title,
     on_unknown, on_write_pty,
 };
-use crate::{CellPx, ColorScheme, EventSink, GridSize, ReplySink, VtEvent};
+use crate::{
+    CellPx, ClipboardSource, ColorScheme, EventSink, GridSize, RenderHold, ReplySink, VtEvent,
+};
 
 /// Whether the title changed during the current write; libghostty only lets the title be read
 /// after its callback returns.
@@ -33,6 +36,10 @@ pub(super) struct Callbacks {
     pub(super) color_scheme: Cell<ColorScheme>,
     pub(super) size: Cell<(GridSize, CellPx)>,
     pub(super) title: Cell<TitleChange>,
+    /// Whether the program holds the screen right now.
+    pub(super) hold: Cell<RenderHold>,
+    /// Answers clipboard reads; none refuses them all. Set before output is written.
+    pub(super) clipboard: RefCell<Option<Box<dyn ClipboardSource>>>,
     /// Callbacks that panicked (in a sink or in their own body); their event was dropped.
     pub(super) dropped: Cell<u64>,
 }
@@ -81,6 +88,7 @@ pub(super) unsafe fn install(term: sys::Terminal, state: *const Callbacks) {
     let pwd: sys::TerminalPwdChangedFn = Some(on_pwd);
     let reset: sys::TerminalResetFn = Some(on_reset);
     let clipboard: sys::TerminalClipboardWriteFn = Some(on_clipboard);
+    let clipboard_read: sys::TerminalClipboardReadFn = Some(on_clipboard_read);
     let notification: sys::TerminalDesktopNotificationFn = Some(on_notification);
     let progress: sys::TerminalProgressReportFn = Some(on_progress);
     let status: sys::TerminalProgramStatusFn = Some(on_program_status);
@@ -89,13 +97,14 @@ pub(super) unsafe fn install(term: sys::Terminal, state: *const Callbacks) {
     let scheme: sys::TerminalColorSchemeFn = Some(on_color_scheme);
     let size: sys::TerminalSizeFn = Some(on_size);
     let unknown: sys::TerminalUnknownSequenceFn = Some(on_unknown);
-    let fns: [(sys::TerminalOption::Type, *const c_void); 14] = [
+    let fns: [(sys::TerminalOption::Type, *const c_void); 15] = [
         (O::WRITE_PTY, fn_ptr(write_pty)),
         (O::BELL, fn_ptr(bell)),
         (O::TITLE_CHANGED, fn_ptr(title)),
         (O::PWD_CHANGED, fn_ptr(pwd)),
         (O::RESET, fn_ptr(reset)),
         (O::CLIPBOARD_WRITE, fn_ptr(clipboard)),
+        (O::CLIPBOARD_READ, fn_ptr(clipboard_read)),
         (O::DESKTOP_NOTIFICATION, fn_ptr(notification)),
         (O::PROGRESS_REPORT, fn_ptr(progress)),
         (O::PROGRAM_STATUS, fn_ptr(status)),

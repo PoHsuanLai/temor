@@ -88,6 +88,8 @@ pub struct Session {
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
     pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
+    /// The link under the pointer as last drawn in the status line.
+    pub(super) link_hover: Option<String>,
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
     pub(super) focus: Focus,
@@ -106,6 +108,12 @@ pub struct Session {
     pub(super) quoting: temor_core::shelf::Quoting,
     /// Whether the pane's shell runs on this computer.
     pub(super) site: temor_core::shelf::PaneSite,
+    /// What the person answered about the program copying to the clipboard (OSC 52).
+    pub(super) clip_write: temor_core::remote::Grant,
+    /// The pane's copy of the clipboard, for the program's reads.
+    pub(super) clip_mirror: temor_pane::ClipboardMirror,
+    /// A clipboard question waiting for the person.
+    pub(super) clip_pending: Option<super::osc52::PendingClipboard>,
 }
 
 /// A find query typed but not yet run, and when it was last typed.

@@ -819,3 +819,117 @@ fn dropped_files_are_typed_into_the_prompt_quoted_for_the_shell() {
         Some("That file's name can't be typed into a terminal")
     );
 }
+
+#[test]
+fn hovering_a_link_shows_its_target_and_never_opens_it() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-link");
+    f.session.pane().with_term(|t| {
+        let _ = t
+            .write(b"\x1b[H\x1b[2K\x1b]8;;https://example.com/a?b=1\x1b\\link\x1b]8;;\x1b\\ after");
+    });
+    // (column, the target shown, whether the status line must be drawn again)
+    let table = [
+        (
+            1,
+            Some("https://example.com/a?b=1"),
+            temor_ui::session::LinkHover::Changed,
+        ),
+        (
+            2,
+            Some("https://example.com/a?b=1"),
+            temor_ui::session::LinkHover::Same,
+        ),
+        (20, None, temor_ui::session::LinkHover::Changed),
+    ];
+    for (col, want, redraw) in table {
+        f.session.pointer_moved(point_at(&f.session, 0, col));
+        assert_eq!(
+            f.session.link_under_pointer().as_deref(),
+            want,
+            "column {col}"
+        );
+        assert_eq!(f.session.refresh_link(), redraw, "column {col}");
+    }
+    assert!(f.session.take_notice().is_none());
+}
+
+fn copy_event(text: &str) -> PaneEvent {
+    PaneEvent::Clipboard(temor_vt::ClipboardWrite {
+        location: temor_vt::ClipboardLocation::Standard,
+        items: vec![temor_vt::ClipboardItem {
+            mime: "text/plain".to_owned(),
+            data: text.as_bytes().to_vec(),
+        }],
+        program: "tool".to_owned(),
+        grant: temor_vt::ClipboardGrant::Ask,
+    })
+}
+
+#[test]
+fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
+    use temor_core::remote::Grant;
+    use temor_core::shelf::PaneSite;
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-osc52-write");
+    f.session.absorb(copy_event("here"));
+    assert_eq!(*f.clipboard.0.borrow(), "here");
+
+    f.session.set_site(PaneSite::Remote);
+    f.session.absorb(copy_event("there"));
+    assert_eq!(*f.clipboard.0.borrow(), "here", "waits for the person");
+    assert_eq!(
+        f.session
+            .clipboard_ask()
+            .map(|a| (a.kind, a.program.as_str())),
+        Some((temor_ui::session::ClipboardUse::Copy, "tool"))
+    );
+    f.session.answer_clipboard(Grant::Allowed);
+    assert_eq!(*f.clipboard.0.borrow(), "there");
+    // The answer is kept: the next write goes through without a question.
+    f.session.absorb(copy_event("again"));
+    assert_eq!(*f.clipboard.0.borrow(), "again");
+    assert!(f.session.clipboard_ask().is_none());
+
+    f.session.set_clipboard_consent(Grant::Refused);
+    f.session.absorb(copy_event("refused"));
+    assert_eq!(*f.clipboard.0.borrow(), "again");
+}
+
+#[test]
+fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
+    use temor_core::remote::Grant;
+    use temor_vt::VtEvent;
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-osc52-read");
+    *f.clipboard.0.borrow_mut() = "Hello".to_owned();
+    let query = b"\x1b]52;c;?\x07";
+    let out = f.session.pane().with_term(|t| t.write(query));
+    let read = out
+        .events
+        .into_iter()
+        .find_map(|e| match e {
+            VtEvent::ClipboardRead { read } => Some(read),
+            _ => None,
+        })
+        .expect("the first read asks");
+    f.session.absorb(PaneEvent::ClipboardRead(read));
+    assert_eq!(
+        f.session.clipboard_ask().map(|a| a.kind),
+        Some(temor_ui::session::ClipboardUse::Read)
+    );
+    f.session.answer_clipboard(Grant::Allowed);
+    let out = f.session.pane().with_term(|t| t.write(query));
+    assert!(
+        out.replies
+            .iter()
+            .any(|r| r.windows(8).any(|w| w == b"SGVsbG8=")),
+        "the reply carries the clipboard"
+    );
+}

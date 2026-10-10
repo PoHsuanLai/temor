@@ -7,12 +7,12 @@ use temor_vt_sys as sys;
 
 use super::convert::check;
 use super::terminal::Terminal;
-use crate::{GridPoint, PointSpace, VtError};
+use crate::{GridPoint, PointSpace, VtError, Wrap};
 
 impl Terminal {
     /// Whether screen row `row` (in the screen space, scrollback included) is soft-wrapped into
     /// the row after it.
-    pub fn row_wraps(&self, row: u32) -> Result<bool, VtError> {
+    pub fn row_wraps(&self, row: u32) -> Result<Wrap, VtError> {
         let gref = self.grid_ref(GridPoint::new(PointSpace::Screen, 0, row))?;
         let mut row_handle: sys::Row = 0;
         // SAFETY: `gref` came from this live terminal and `row_handle` is a valid out-pointer.
@@ -32,6 +32,9 @@ impl Terminal {
             },
             "row wrap",
         )?;
-        Ok(wraps)
+        Ok(match wraps {
+            true => Wrap::Continues,
+            false => Wrap::Ends,
+        })
     }
 }

@@ -31,6 +31,11 @@ impl Session {
     /// The focus the window reports (a pane that is not focused notifies).
     pub fn set_focus(&mut self, focus: Focus) {
         self.focus = focus;
+        // Something may have been copied elsewhere meanwhile: a program that reads the
+        // clipboard (OSC 52) gets what is there now.
+        if focus == Focus::Focused {
+            self.refresh_clipboard_copy();
+        }
     }
 
     /// The notify setting the session uses.

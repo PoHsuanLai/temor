@@ -45,10 +45,10 @@ mod ffi;
 
 pub use error::VtError;
 pub use event::{
-    ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardWrite, EventSink, ExitCode,
-    ExitStatus, Notification, Percent, ProgramState, ProgramStatus, ProgramWait, Progress,
-    ProgressState, PromptEvent, PromptKind, RenderHold, ReplySink, Truncation, UnknownKind,
-    VtEvent,
+    ClipboardAnswer, ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardRead,
+    ClipboardSource, ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent,
+    ProgramState, ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind,
+    RenderHold, ReplySink, Truncation, UnknownKind, VtEvent,
 };
 pub use input::{
     Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,
@@ -61,7 +61,7 @@ pub use model::{
     PlacementId, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta,
     RowDirty, RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape, SemanticMark,
     StyleFlags, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, Underline,
-    ViewportScroll, Visibility, ZIndex,
+    ViewportScroll, Visibility, Wrap, ZIndex,
 };
 pub use vt::Vt;
 
@@ -70,7 +70,7 @@ pub use fake::FakeVt;
 
 #[cfg(feature = "ghostty")]
 pub use ffi::{
-    Formatter, Frame, GridCell, KeyEncoder, KittyImage, KittyImages, KittyPixels, KittyPlacement,
-    MouseEncoder, PendingFrame, RenderView, RowView, Snapshot, Terminal, install_png_decoder,
-    paste_is_safe,
+    Formatter, Frame, GridCell, HoldHook, KeyEncoder, KittyImage, KittyImages, KittyPixels,
+    KittyPlacement, MouseEncoder, PendingFrame, RenderView, RowView, Snapshot, Terminal,
+    install_png_decoder, paste_is_safe,
 };

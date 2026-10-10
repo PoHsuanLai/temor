@@ -44,14 +44,20 @@ pub fn StatusLine(
     title: String,
     progress: Option<ProgressLine>,
     bell: bool,
+    link: Option<String>,
 ) -> Element {
     rsx! {
         div { style: "display:flex; align-items:center; overflow:hidden; white-space:nowrap; flex:0 0 auto",
-            if let Some(cwd) = cwd {
-                Label { text: cwd, style: LabelStyle::Caption }
-            }
-            if !title.is_empty() {
-                Label { text: title, style: LabelStyle::Caption }
+            // The target of a hovered link takes the place of the folder and title.
+            if let Some(link) = link {
+                Label { text: link, style: LabelStyle::Caption }
+            } else {
+                if let Some(cwd) = cwd {
+                    Label { text: cwd, style: LabelStyle::Caption }
+                }
+                if !title.is_empty() {
+                    Label { text: title, style: LabelStyle::Caption }
+                }
             }
             if let Some(ProgressLine::Share(percent)) = progress {
                 ProgressIndicator {

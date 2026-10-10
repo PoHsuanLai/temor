@@ -6,6 +6,8 @@
 //! still goes to libghostty and is dropped there; catching it belongs with the transfer work
 //! (PLAN §9).
 
+#[cfg(feature = "ghostty")]
+mod hold;
 mod inline_file;
 #[cfg(feature = "ghostty")]
 mod marks;
@@ -14,6 +16,8 @@ mod status;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "ghostty")]
+pub(crate) use hold::{HoldCuts, ends_within};
 pub(crate) use inline_file::{InlineFileScanner, Scanned};
 #[cfg(feature = "ghostty")]
 pub(crate) use marks::MarkCuts;
