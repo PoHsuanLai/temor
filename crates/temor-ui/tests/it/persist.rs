@@ -3,11 +3,17 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use temor_core::host::consent::{ConsentBook, HostRecord};
+use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::split::Direction;
+use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::restore::FreshWhy;
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
-use temor_ui::edge::{Pace, SavePace, Startup, load_session, resolve_state_dir, save_session};
+use temor_ui::edge::{
+    Pace, SavePace, Startup, load_hosts, load_session, resolve_state_dir, save_session,
+    save_with_hosts,
+};
 
 fn built() -> Workspace {
     let ws = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
@@ -70,6 +76,29 @@ fn a_saved_session_loads_back_and_the_files_are_private() {
         assert_eq!(file, 0o600);
         assert_eq!(folder, 0o700);
     }
+}
+
+#[test]
+fn hosts_are_kept_beside_the_tabs_without_disturbing_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let state = dir.path().join("temor");
+    let ws = built();
+    let hosts = HostsFile {
+        book: ConsentBook::from_records(vec![HostRecord {
+            aliases: vec!["prod".to_owned()],
+            ..HostRecord::default()
+        }]),
+        panes: vec![PaneHost {
+            pane: PaneId(1),
+            alias: "prod".to_owned(),
+        }],
+    };
+    save_with_hosts(&state, &ws, &hosts).unwrap();
+    assert_eq!(load_hosts(&state), hosts);
+    let Startup::Restored(back) = load_session(&state, KeepClosed::DEFAULT).unwrap() else {
+        panic!("expected the saved session");
+    };
+    assert_eq!(back.tabs, ws.tabs);
 }
 
 #[test]

@@ -26,8 +26,19 @@ pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
 
 /// A window whose session file lives in `state_dir` (none: nothing is saved or restored).
 pub(super) fn harness_in(name: &str, probe: &Probe, state_dir: Option<PathBuf>) -> Harness {
+    harness_with(name, probe, state_dir, |_| {})
+}
+
+/// [`harness_in`] where `tweak` may change the window's surroundings first (the `PATH`, the
+/// runtime folder).
+pub(super) fn harness_with(
+    name: &str,
+    probe: &Probe,
+    state_dir: Option<PathBuf>,
+    tweak: impl FnOnce(&mut Ambient),
+) -> Harness {
     let home = scratch(name).join("home");
-    let ambient = Ambient {
+    let mut ambient = Ambient {
         home: home.clone(),
         env: [
             ("HOME", home.as_os_str()),
@@ -42,6 +53,7 @@ pub(super) fn harness_in(name: &str, probe: &Probe, state_dir: Option<PathBuf>) 
         config_dir: home.join("config"),
         runtime_dir: home.join("runtime"),
     };
+    tweak(&mut ambient);
     let launch = Launch {
         ambient,
         settings: TerminalSettings {
