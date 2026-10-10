@@ -3,7 +3,7 @@
 use super::closed::{ClosedIn, ClosedOut, ClosedState, ClosedTab, closed_step};
 use super::model::Workspace;
 use super::step::{relaunch_for, store_tree_state, take, tree_state};
-use super::step_types::{RefuseWhy, Spawn, Start, WorkspaceOut};
+use super::step_types::{RefuseWhy, Spawn, Start, ViewerOpen, WorkspaceOut};
 use super::tabs::{TabSel, TabsIn, TabsOut, tabs_step};
 use crate::split::{TreeAfter, TreeIn, tree_step};
 use crate::vocab::ids::{PaneId, TabId};
@@ -20,6 +20,7 @@ pub(super) fn close_pane(ws: &mut Workspace, pane: PaneId, out: &mut Vec<Workspa
             let focus = next.focus;
             store_tree_state(ws, tab, next);
             ws.cwds.remove(&pane);
+            ws.viewers.remove(&pane);
             out.push(WorkspaceOut::Snapshot(pane));
             out.push(WorkspaceOut::End(pane));
             out.push(WorkspaceOut::Focused(focus));
@@ -68,6 +69,7 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
         if let ClosedOut::Evicted(gone) = c {
             for pane in &gone {
                 ws.cwds.remove(pane);
+                ws.viewers.remove(pane);
             }
             out.push(WorkspaceOut::Forgotten(gone));
         }
@@ -92,6 +94,15 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
             let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(id)));
             ws.tabs = tabs;
             for pane in &panes {
+                if let Some(file) = ws.viewers.get(pane) {
+                    out.push(WorkspaceOut::Viewer(ViewerOpen {
+                        pane: *pane,
+                        tab: id,
+                        file: file.clone(),
+                        from: None,
+                    }));
+                    continue;
+                }
                 let relaunch = ws.tabs.tab(id).and_then(|t| relaunch_for(t, *pane));
                 out.push(WorkspaceOut::Spawn(Spawn {
                     pane: *pane,

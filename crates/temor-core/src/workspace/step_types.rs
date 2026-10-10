@@ -3,7 +3,7 @@
 use super::tabs::{TabsIn, TabsOut};
 use crate::split::{Direction, Goto};
 use crate::vocab::ids::{PaneId, TabId};
-use crate::vocab::text::{Cwd, Relaunch};
+use crate::vocab::text::{Cwd, Relaunch, ViewerRef};
 
 /// Where a new pane's program starts from.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +27,19 @@ pub struct Spawn {
     pub relaunch: Option<Relaunch>,
     /// Where its program starts from.
     pub start: Start,
+}
+
+/// A viewer pane the window must show.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewerOpen {
+    /// The pane.
+    pub pane: PaneId,
+    /// The tab it is in.
+    pub tab: TabId,
+    /// The file it shows.
+    pub file: ViewerRef,
+    /// The pane it was opened from, when it was opened from one.
+    pub from: Option<PaneId>,
 }
 
 /// What the workspace is asked to do.
@@ -64,6 +77,23 @@ pub enum WorkspaceIn {
     Activity(PaneId),
     /// The pane's working folder changed (OSC 7).
     Cwd { pane: PaneId, cwd: Cwd },
+    /// Show a file in a viewer pane to the right of `from` (the focused pane of the tab in
+    /// front when none is named). A tab that already has a viewer shows the file there instead
+    /// of splitting again.
+    OpenViewer {
+        /// The file.
+        file: ViewerRef,
+        /// The pane it comes from.
+        from: Option<PaneId>,
+    },
+    /// A viewer pane now shows `file` (the person walked to the next one): the session file
+    /// keeps it. The pane itself is not told anything.
+    ViewerShows {
+        /// The viewer pane.
+        pane: PaneId,
+        /// The file it shows now.
+        file: ViewerRef,
+    },
     /// Take back the newest recently closed tab.
     Reopen,
     /// A tab-list request (select, pin, folders, rename). Removing tabs goes through `CloseTab`.
@@ -76,6 +106,8 @@ pub enum WorkspaceIn {
 pub enum WorkspaceOut {
     /// Start this pane.
     Spawn(Spawn),
+    /// Show this viewer pane (a file, not a program).
+    Viewer(ViewerOpen),
     /// Take this pane's scrollback now, before it ends.
     Snapshot(PaneId),
     /// End this pane's program and drop the pane.
@@ -116,4 +148,6 @@ pub enum RefuseWhy {
     NoFront,
     /// The pane or tab counter has no id left to hand out.
     IdsExhausted,
+    /// The file to show has no name.
+    NoFile,
 }

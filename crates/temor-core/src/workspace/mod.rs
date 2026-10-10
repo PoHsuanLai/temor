@@ -18,6 +18,9 @@ mod step_refusals;
 #[cfg(test)]
 mod step_tests;
 mod step_types;
+mod step_viewer;
+#[cfg(test)]
+mod step_viewer_tests;
 mod tabs;
 #[cfg(test)]
 mod tests;
@@ -26,5 +29,5 @@ pub use closed::{ClosedIn, ClosedOut, ClosedState, ClosedTab, KeepClosed, closed
 pub use model::Workspace;
 pub use sidebar::{SidebarPlan, order, sidebar_plan};
 pub use step::workspace_step;
-pub use step_types::{RefuseWhy, Spawn, Start, WorkspaceIn, WorkspaceOut};
+pub use step_types::{RefuseWhy, Spawn, Start, ViewerOpen, WorkspaceIn, WorkspaceOut};
 pub use tabs::{NthTab, TabRefusal, TabSel, TabsIn, TabsOut, TabsState, tabs_step};

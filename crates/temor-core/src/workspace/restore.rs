@@ -15,13 +15,13 @@ use super::closed::{ClosedState, KeepClosed};
 use super::model::Workspace;
 use super::sidebar::order;
 use super::step::relaunch_for;
-use super::step_types::{Spawn, Start};
+use super::step_types::{Spawn, Start, ViewerOpen};
 use super::tabs::TabsState;
 use crate::error::CoreError;
 use crate::space::Place;
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::lenient::{lenient_list, lenient_or_default};
-use crate::vocab::text::Cwd;
+use crate::vocab::text::{Cwd, ViewerRef};
 
 /// The format version this build writes and reads.
 pub const VERSION: u32 = 1;
@@ -52,8 +52,15 @@ struct WriteV1<'a> {
     place: &'a Place,
     focus: Vec<FocusRec>,
     cwds: Vec<CwdRec>,
+    viewers: Vec<ViewerRec>,
     next_tab: u64,
     next_pane: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+struct ViewerRec {
+    pane: PaneId,
+    file: ViewerRef,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +83,8 @@ struct ReadV1 {
     focus: Vec<FocusRec>,
     #[serde(default, deserialize_with = "lenient_list")]
     cwds: Vec<CwdRec>,
+    #[serde(default, deserialize_with = "lenient_list")]
+    viewers: Vec<ViewerRec>,
     #[serde(default)]
     next_tab: u64,
     #[serde(default)]
@@ -103,6 +112,15 @@ pub fn encode(ws: &Workspace) -> Result<String, CoreError> {
             .map(|(pane, cwd)| CwdRec {
                 pane: *pane,
                 cwd: cwd.clone(),
+            })
+            .collect(),
+        viewers: ws
+            .viewers
+            .iter()
+            .filter(|(pane, _)| panes.contains(pane))
+            .map(|(pane, file)| ViewerRec {
+                pane: *pane,
+                file: file.clone(),
             })
             .collect(),
         next_tab: ws.next_tab,
@@ -196,6 +214,12 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
         .filter(|rec| seen_panes.contains(&rec.pane))
         .map(|rec| (rec.pane, rec.cwd))
         .collect::<BTreeMap<_, _>>();
+    ws.viewers = read
+        .viewers
+        .into_iter()
+        .filter(|rec| seen_panes.contains(&rec.pane) && !rec.file.as_str().is_empty())
+        .map(|rec| (rec.pane, rec.file))
+        .collect();
     if tabs.place.folders.iter().any(|f| f.id.0 == u64::MAX) {
         return None;
     }
@@ -213,19 +237,42 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     Some(ws)
 }
 
-/// The panes to start when a saved workspace is restored: every pane in every tab, each in its
-/// folder, and a pinned tab's first pane running its command again.
+/// The shells to start when a saved workspace is restored: every pane in every tab but the
+/// viewers, each in its folder, and a pinned tab's first pane running its command again.
 pub fn launch_plan(ws: &Workspace) -> Vec<Spawn> {
     order(&ws.tabs)
         .into_iter()
         .filter_map(|id| ws.tabs.tab(id).map(|tab| (id, tab)))
         .flat_map(|(id, tab)| {
-            tab.tree.panes().into_iter().map(move |pane| Spawn {
-                pane,
-                tab: id,
-                cwd: ws.cwds.get(&pane).cloned(),
-                relaunch: relaunch_for(tab, pane),
-                start: Start::Fresh,
+            tab.tree
+                .panes()
+                .into_iter()
+                .filter(|pane| !ws.viewers.contains_key(pane))
+                .map(move |pane| Spawn {
+                    pane,
+                    tab: id,
+                    cwd: ws.cwds.get(&pane).cloned(),
+                    relaunch: relaunch_for(tab, pane),
+                    start: Start::Fresh,
+                })
+        })
+        .collect()
+}
+
+/// The viewer panes to show when a saved workspace is restored, in tab order. The caller checks
+/// that each file is still there and closes the pane of one that is not.
+pub fn viewer_plan(ws: &Workspace) -> Vec<ViewerOpen> {
+    order(&ws.tabs)
+        .into_iter()
+        .filter_map(|id| ws.tabs.tab(id).map(|tab| (id, tab)))
+        .flat_map(|(id, tab)| {
+            tab.tree.panes().into_iter().filter_map(move |pane| {
+                ws.viewers.get(&pane).map(|file| ViewerOpen {
+                    pane,
+                    tab: id,
+                    file: file.clone(),
+                    from: None,
+                })
             })
         })
         .collect()
