@@ -83,7 +83,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let preedit = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
     // The ⌘-hover preview of a file path (PLAN §10).
-    let peek = use_peek(Rc::clone(&slot), desk.clone(), rect, signals);
+    let peek = use_peek(pane, Rc::clone(&slot), desk.clone(), rect, signals);
 
     // Every change of the pane's size, scale or device, or of the session behind it, lays it out.
     {

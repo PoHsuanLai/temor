@@ -139,9 +139,6 @@ impl Session {
         let hit = fit.cell_at(at);
         let top = self.viewport_top().ok()?;
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
-        if self.site == PaneSite::Remote {
-            return None;
-        }
         self.linked_file_at(cell)
             .or_else(|| self.file_at(cell).ok().flatten())
     }

@@ -47,6 +47,11 @@ impl<T> Mail<T> {
         self.answer = None;
     }
 
+    /// Whether `ticket` is still the latest ask (nothing came after it).
+    pub fn is_latest(&self, ticket: Ticket) -> bool {
+        ticket.0 == self.latest
+    }
+
     /// The worker's answer for `ticket`; kept only if it is still the latest.
     pub fn deliver(&mut self, ticket: Ticket, answer: T) {
         if ticket.0 == self.latest {
