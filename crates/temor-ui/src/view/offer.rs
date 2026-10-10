@@ -23,13 +23,13 @@ pub fn OfferBar(pane: PaneId, desk: Desk) -> Element {
             severity: Severity::Info,
             text: "Show commands as blocks in this shell?".to_owned(),
             detail: Some(TextLine::from(format!(
-                "You started {program}. temor can type one line to set this up here"
+                "You started {program}. temor can type a few lines to set this up here"
             ))),
             actions: rsx! {
                 Button {
                     label: "Yes".to_owned(),
                     size: ControlSize::Small,
-                    title: Some("Type the line that sets this up".to_owned()),
+                    title: Some("Type the lines that set this up".to_owned()),
                     onclick: move |_| yes.offer_answer(pane, Reply::Yes),
                 }
                 Button {

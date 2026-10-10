@@ -12,6 +12,8 @@ mod files;
 #[cfg(unix)]
 mod harness;
 #[cfg(unix)]
+mod inner_load;
+#[cfg(unix)]
 mod master;
 #[cfg(unix)]
 mod nu;
