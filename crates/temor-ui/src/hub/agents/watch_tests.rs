@@ -180,17 +180,18 @@ fn an_agent_is_watched_from_its_first_sight_to_its_exit() {
             .contains(&"restore w-1 1 digest-1".to_owned())
     );
 
-    // The shell comes back in front: the agent has exited and the watch closes.
+    // The shell comes back in front: the agent has exited and the watch closes; its restore
+    // points stay on offer until the pane ends.
     scene.hear(&in_front("zsh"));
     scene.settle(1);
     assert_eq!(
         scene.fake.writes().last().map(String::as_str),
         Some("close w-1")
     );
-    assert_eq!(
+    assert!(matches!(
         scene.hub.agent_menu(scene.tab).expect("a menu").restore,
-        RestoreMenu::Absent
-    );
+        RestoreMenu::Lines(_)
+    ));
 }
 
 #[test]

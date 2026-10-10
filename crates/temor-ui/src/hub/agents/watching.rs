@@ -107,8 +107,9 @@ impl Hub {
                 pane,
                 result: port.turn_ended(&session, turn, how),
             }),
+            // The Restore list stays after the agent exits (that is when undoing is wanted);
+            // it goes when the pane ends (`agent_pane_ended`).
             Call::Close(session) => {
-                self.agents.points.forget(pane);
                 self.agents.jobs.spawn(move || Done::WatchClosed {
                     pane,
                     result: port.close(&session),
