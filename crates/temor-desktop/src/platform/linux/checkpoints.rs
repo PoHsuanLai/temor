@@ -178,7 +178,10 @@ pub(super) fn restore_call(
         },
         target: TargetValue::Nothing,
         args,
-        origin: Origin::InWindowField,
+        // docket lists temor under its `cli` role, and the cli role's calls come from `Origin::Cli`
+        // (docket-cli and docket's own eval pair them); the router derives the arguments' source
+        // from the role, and policy keys on the origin only for the launcher's.
+        origin: Origin::Cli,
     })
 }
 
