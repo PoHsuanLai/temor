@@ -46,6 +46,7 @@ pub mod ssh_work;
 #[cfg(test)]
 mod ssh_work_tests;
 mod unix_now;
+pub mod viewer_host;
 pub mod viewer_workers;
 
 pub use agent_socket::SocketHost;

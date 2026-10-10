@@ -4,6 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::slot::Slot;
@@ -19,7 +20,12 @@ pub fn view_if_asked(slot: &RefCell<Slot>, desk: &Desk, pane: PaneId) {
         .as_mut()
         .and_then(Session::take_view_ask);
     if let Some(ask) = ask {
-        for text in desk.hub.open_viewer(pane, ask) {
+        // A file on another computer is fetched first; the viewer opens when it has arrived.
+        let notes = match ask.site {
+            PaneSite::Local => desk.hub.open_viewer(pane, ask),
+            PaneSite::Remote => desk.hub.open_host_viewer(pane, &ask.file.to_string_lossy()),
+        };
+        for text in notes {
             desk.say(text);
         }
         desk.bump();

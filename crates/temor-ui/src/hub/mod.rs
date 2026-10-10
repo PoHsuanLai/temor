@@ -62,6 +62,7 @@ mod ssh_wait;
 #[cfg(test)]
 mod tests;
 mod transfers;
+mod viewer_host;
 mod viewer_requests;
 #[cfg(test)]
 mod viewer_tests;
@@ -89,4 +90,5 @@ pub use shelf::{Ask, AskKind, AskView};
 pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;
 pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+pub use viewer_host::spawn_viewer_loop;
 pub use viewers::ViewerShow;

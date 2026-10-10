@@ -100,11 +100,25 @@ impl FactsHub {
 impl Hub {
     /// Tells the rule what happened in `pane` and starts a read if it says to.
     pub(super) fn facts_in(&mut self, pane: PaneId, input: FactsIn) {
+        self.mark_host_site(pane);
         let entry = self.facts.panes.entry(pane).or_default();
         let (state, out) = facts_step(entry.state, input);
         entry.state = state;
         if out == FactsOut::Run {
             self.facts_run(pane);
+        }
+    }
+
+    /// A pane that is a session on a host files for another computer: the paths it prints mean
+    /// nothing here. The pane's first prompt or folder report comes before any click on it.
+    fn mark_host_site(&self, pane: PaneId) {
+        if self.host_of(pane).is_none() {
+            return;
+        }
+        if let Some(slot) = self.slots.get(&pane)
+            && let Some(session) = slot.borrow_mut().session.as_mut()
+        {
+            session.set_site(temor_core::shelf::PaneSite::Remote);
         }
     }
 
