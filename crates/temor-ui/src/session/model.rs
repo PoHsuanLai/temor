@@ -84,6 +84,10 @@ pub struct Session {
     pub(super) pending_query: Option<PendingQuery>,
     pub(super) blocks: BlockLog,
     pub(super) selected_block: Option<BlockId>,
+    /// The block toolbar's measured height, written by its view.
+    pub(super) tools_height: super::ToolsHeight,
+    /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
+    pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
     pub(super) focus: Focus,

@@ -102,6 +102,8 @@ impl Session {
             pending_query: None,
             blocks: BlockLog::default(),
             selected_block: None,
+            tools_height: super::ToolsHeight::default(),
+            pointer_over: None,
             cwd: None,
             progress: None,
             focus: Focus::Focused,

@@ -103,6 +103,12 @@ impl Terminal {
         })
     }
 
+    /// The cursor's row on the active screen, now (row 0 is the active screen's top), without
+    /// waiting for a frame. `None` when libghostty will not say.
+    pub fn cursor_row(&self) -> Option<u16> {
+        self.cursor_u16(sys::TerminalData::CURSOR_Y)
+    }
+
     /// How many anchors are live.
     pub fn anchor_count(&self) -> usize {
         self.anchors().live.len()

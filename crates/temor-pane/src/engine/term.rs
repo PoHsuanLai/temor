@@ -202,6 +202,17 @@ impl Term {
         Ok((clamp(bar.offset.0), clamp(bar.len.0)))
     }
 
+    /// The cursor's row in the viewport as the terminal has it now, not as the last frame drew it.
+    /// `None` when the cursor is scrolled out of the viewport or the terminal will not say.
+    pub fn cursor_viewport_row(&self) -> Option<u16> {
+        let active_row = i64::from(self.terminal.cursor_row()?);
+        let (top, rows) = self.viewport().ok()?;
+        let total = i64::from(self.screen_rows().ok()?);
+        let active_rows = i64::from(self.terminal.size().rows.0);
+        let row = total - active_rows + active_row - i64::from(top);
+        u16::try_from(row).ok().filter(|row| u32::from(*row) < rows)
+    }
+
     /// How many screen rows exist, scrollback included.
     pub fn screen_rows(&self) -> Result<u32, PaneError> {
         Ok(u32::try_from(self.terminal.scrollbar()?.total.0).unwrap_or(u32::MAX))

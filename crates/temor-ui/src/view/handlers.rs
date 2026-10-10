@@ -96,7 +96,8 @@ pub fn gutter_pressed(
     }
 }
 
-/// The pointer over the pane: the block under it, if any, is hovered (its toolbar shows).
+/// The pointer over the pane: the block under it, if any, is hovered (its toolbar shows). The
+/// session keeps where the pointer is, so the wheel moves the hover with it.
 pub fn block_hovered(
     slot: Rc<RefCell<Slot>>,
     signals: Option<HostSignals>,
@@ -104,13 +105,28 @@ pub fn block_hovered(
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
         let at = device_at(&e, signals);
-        let over = slot
-            .borrow()
-            .session
-            .as_ref()
-            .and_then(|s| s.block_at_point(at));
+        let over = slot.borrow_mut().session.as_mut().and_then(|s| {
+            s.pointer_moved(at);
+            s.hovered_block()
+        });
         if over != hovered() {
             hovered.set(over);
+        }
+    }
+}
+
+/// The pointer left the pane: no block is hovered, and its toolbar goes unless the block is
+/// selected.
+pub fn block_unhovered(
+    slot: Rc<RefCell<Slot>>,
+    mut hovered: Signal<Option<BlockId>>,
+) -> impl FnMut(PointerEvent) + 'static {
+    move |_: PointerEvent| {
+        if let Some(s) = slot.borrow_mut().session.as_mut() {
+            s.pointer_left();
+        }
+        if hovered().is_some() {
+            hovered.set(None);
         }
     }
 }
