@@ -45,7 +45,7 @@ pub fn ClipboardConfirm(
     rsx! {
         Alert {
             title,
-            message: Some(message),
+            message: Some(message.into()),
             buttons: vec![
                 AlertButton {
                     label: "Allow".to_owned(),
