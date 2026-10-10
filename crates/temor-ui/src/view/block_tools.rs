@@ -34,6 +34,9 @@ pub struct ToolsView {
     pub rerun: Availability,
     /// Whether the output can be searched for files to show (the command has finished).
     pub view: Availability,
+    /// "Edit here" on a pane on another computer: `None` on any other pane, where there is
+    /// nothing to fetch.
+    pub edit: Option<Availability>,
 }
 
 /// One icon button of the toolbar. `label` names it; `tip` is the hover hint.
@@ -71,6 +74,7 @@ pub fn BlockTools(
     on_save: EventHandler<BlockId>,
     on_rerun: EventHandler<BlockId>,
     on_view: EventHandler<BlockId>,
+    on_edit: EventHandler<BlockId>,
 ) -> Element {
     let id = tools.id;
     // The toolbar's real height, once laid out, replaces the estimate the session starts with.
@@ -121,6 +125,15 @@ pub fn BlockTools(
                 tip: "Show the files this command listed",
                 availability: tools.view,
                 onclick: move |()| on_view.call(id),
+            }
+            if let Some(availability) = tools.edit {
+                ToolButton {
+                    icon: Icon::FolderInput,
+                    label: "Edit here",
+                    tip: "Open the selected file from this computer in an editor here",
+                    availability,
+                    onclick: move |()| on_edit.call(id),
+                }
             }
         }
     }

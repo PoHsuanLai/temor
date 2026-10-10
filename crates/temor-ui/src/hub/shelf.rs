@@ -278,6 +278,11 @@ impl HubRef {
         said.into_iter().collect()
     }
 
+    /// Whether `pane` is a session on another computer.
+    pub fn is_host_pane(&self, pane: PaneId) -> bool {
+        self.0.borrow().is_host_pane(pane)
+    }
+
     /// The files on their way to other computers, newest first.
     pub fn uploads(&self) -> Vec<temor_core::shelf::Upload> {
         self.0.borrow().shelf.uploads.items().to_vec()
