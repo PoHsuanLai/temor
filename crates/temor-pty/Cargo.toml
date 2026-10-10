@@ -15,6 +15,9 @@ tempfile = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { workspace = true }
 
+[dev-dependencies]
+temor-ssh = { workspace = true }
+
 [[bin]]
 # The portable session-leader trampoline (setsid, TIOCSCTTY, exec) for systems without
 # util-linux `setsid`; temor's own binary can call `run_session_leader` instead.

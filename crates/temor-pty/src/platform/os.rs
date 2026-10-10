@@ -12,6 +12,9 @@ pub(crate) trait Os {
     fn process_name(proc: &ProcRoot, pid: ProcessId) -> Option<String>;
     /// The working directory of process `pid`, when the OS can tell.
     fn process_cwd(proc: &ProcRoot, pid: ProcessId) -> Option<PathBuf>;
+    /// The last command of the pipeline that is process group `group`, run by the shell
+    /// `shell`: the shell's newest child in that group. `None` when the OS cannot tell.
+    fn pipeline_last(proc: &ProcRoot, shell: ProcessId, group: ProcessId) -> Option<ProcessId>;
     /// The real user id of this process.
     fn current_user() -> Option<UserId>;
     /// Whether `path` is a file this user may run.

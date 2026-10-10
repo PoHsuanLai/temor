@@ -10,6 +10,7 @@ mod integration;
 mod kill;
 mod line_discipline;
 mod nushell_env;
+mod nushell_offer;
 mod opt_out;
 mod prompt;
 mod resize;

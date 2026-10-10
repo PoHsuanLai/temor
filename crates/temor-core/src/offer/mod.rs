@@ -12,5 +12,6 @@ mod tests;
 pub use list::{DEFAULT_COMMANDS, OfferList, Program};
 pub use secret::asks_for_secret;
 pub use step::{
-    Line, OfferIn, OfferOut, OfferState, QUIET_MS, Reply, SETTLE_MS, Screen, offer_step,
+    Answer, Line, OfferIn, OfferOut, OfferState, PROBE_MS, QUIET_MS, Reply, SETTLE_MS, Screen,
+    offer_step,
 };

@@ -77,6 +77,30 @@ impl GitOutput {
 pub trait Git: Send + Sync {
     /// Runs `cmd` to completion. A non-zero exit is `Ok`; only failing to start git is `Err`.
     fn run(&self, cmd: &GitCommand) -> Result<GitOutput, CoreError>;
+
+    /// Runs `cmd`, but reads standard output as it comes and stops git once `count` lines that
+    /// start with `prefix` have arrived: the output then holds everything read so far and the
+    /// code is 0. For a count that has a ceiling on a huge folder. The default runs to
+    /// completion and cuts the output after the `count`th such line.
+    fn run_capped(
+        &self,
+        cmd: &GitCommand,
+        prefix: &[u8],
+        count: usize,
+    ) -> Result<GitOutput, CoreError> {
+        let mut out = self.run(cmd)?;
+        let mut seen = 0;
+        let mut end = 0;
+        for line in out.stdout.split_inclusive(|b| *b == b'\n') {
+            end += line.len();
+            seen += usize::from(line.starts_with(prefix));
+            if seen >= count {
+                break;
+            }
+        }
+        out.stdout.truncate(end);
+        Ok(out)
+    }
 }
 
 /// Runs `cmd` and requires exit code 0.

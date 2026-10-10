@@ -204,3 +204,71 @@ fn runtime_versions_come_from_the_nearest_files() {
     );
     assert_eq!(got.2, s("3.3.0"), "ruby still comes from the parent");
 }
+
+#[test]
+fn python_comes_from_its_own_files_and_pyproject_only_fills_a_gap() {
+    let scratch = tempfile::tempdir().expect("tempdir");
+    let root = scratch.path();
+    let python = |at: &Path| {
+        read_facts(None, &dir(at), &FactsEnv::default())
+            .python
+            .map(|v| v.as_str().to_owned())
+    };
+    let s = |v: &str| Some(v.to_owned());
+    let write = |name: &str, text: &str| std::fs::write(root.join(name), text).expect("write");
+    assert_eq!(python(root), None, "nothing anywhere");
+    write(
+        "pyproject.toml",
+        "[project]\nrequires-python = \">=3.10\"\n",
+    );
+    assert_eq!(
+        python(root),
+        s(">=3.10"),
+        "pyproject when nothing else says"
+    );
+    write(".tool-versions", "python 3.9.0\n");
+    assert_eq!(python(root), s("3.9.0"), ".tool-versions beats pyproject");
+    write(".python-version", "3.12.1\n");
+    assert_eq!(python(root), s("3.12.1"), ".python-version comes first");
+    let deep = root.join("pkg");
+    std::fs::create_dir(&deep).expect("mkdir");
+    std::fs::write(
+        deep.join("pyproject.toml"),
+        "[project]\nrequires-python = \">=3.8\"\n",
+    )
+    .expect("write");
+    assert_eq!(
+        python(&deep),
+        s("3.12.1"),
+        "a version file above beats a nearer pyproject"
+    );
+}
+
+#[test]
+fn untracked_counting_stops_past_the_most_shown() {
+    let tracked: String = (0..1200).map(|n| format!(" M t{n}\n")).collect();
+    let new: String = (0..1500).map(|n| format!("?? f{n}\n")).collect();
+    let status: &'static str = Box::leak(format!("{tracked}{new}").into_boxed_str());
+    let git = Canned::new(vec![
+        ("rev-parse", 0, "main\n"),
+        ("diff", 0, ""),
+        ("status", 0, status),
+    ]);
+    let scratch = tempfile::tempdir().expect("tempdir");
+    let facts = read_facts(Some(&git), &dir(scratch.path()), &FactsEnv::default());
+    assert_eq!(
+        facts.untracked,
+        Some(Untracked(1000)),
+        "tracked changes do not use up the count"
+    );
+    let seen = git.seen.lock().expect("lock");
+    let status = seen
+        .iter()
+        .find(|c| c.args[0] == "status")
+        .expect("status ran");
+    assert!(
+        status.args.iter().any(|a| a == "--untracked-files=normal"),
+        "{:?}",
+        status.args
+    );
+}

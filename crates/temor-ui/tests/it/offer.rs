@@ -1,7 +1,8 @@
 //! The shell offer in the window (ds-harness, event dispatch only). A stand-in `ssh` on a
-//! private `PATH` keeps running without printing, which is all the timing rule looks at. It
-//! saves the first bytes it is sent, so the test sees what a Yes writes to the pane, and
-//! nothing else leaves the scratch folders.
+//! private `PATH` keeps running without printing, which is all the timing rule looks at. After a
+//! Yes it saves the first line it is sent (the question to the shell), answers it the way a zsh
+//! would, and saves the next bytes (the setup), so the test sees what the pane is given and in
+//! which order. Nothing else leaves the scratch folders.
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -17,14 +18,16 @@ use super::window::{harness_with, wait_until};
 
 const QUESTION: &str = "Show commands as blocks in this shell?";
 
-/// A window whose `ssh` reads 40 bytes of raw input into `saved`, then sleeps. The first
-/// command, `ssh box`, has been typed.
+/// A window whose `ssh` reads a line of raw input into `saved`, prints a shell's name, reads 40
+/// more bytes into `saved` with `-load` added to its name, then sleeps. The first command,
+/// `ssh box`, has been typed.
 fn window_running_ssh(name: &str, saved: &Path) -> (Harness, Probe) {
     let bin = std::env::temp_dir().join(format!("tmr-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&bin);
     std::fs::create_dir_all(&bin).expect("bin folder");
     let script = format!(
-        "#!/bin/sh\nstty -icanon -echo\nhead -c 40 > '{}'\nexec sleep 20\n",
+        "#!/bin/sh\nstty -icanon -echo\nIFS= read -r line\nprintf '%s\\n' \"$line\" > '{}'\nprintf 'temor-shell:zsh\\n'\nhead -c 40 > '{}-load'\nexec sleep 20\n",
+        saved.display(),
         saved.display()
     );
     let ssh = bin.join("ssh");
@@ -72,12 +75,28 @@ fn press(h: &mut Harness, selector: &str) {
     h.advance(Duration::from_millis(100));
 }
 
+/// Steps the window until `path` holds at least `len` bytes.
+fn wait_bytes(h: &mut Harness, path: &Path, len: usize) -> Vec<u8> {
+    let start = Instant::now();
+    loop {
+        h.advance(Duration::from_millis(25));
+        let bytes = std::fs::read(path).unwrap_or_default();
+        if bytes.len() >= len {
+            return bytes;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "nothing was typed"
+        );
+    }
+}
+
 fn saved_path(name: &str) -> PathBuf {
     scratch_path(name).join("saved-input")
 }
 
 #[test]
-fn yes_types_the_setup_lines_into_the_pane_and_nothing_before() {
+fn yes_asks_the_shell_its_name_then_types_the_setup_written_for_it() {
     if !tools_present() {
         return;
     }
@@ -88,18 +107,15 @@ fn yes_types_the_setup_lines_into_the_pane_and_nothing_before() {
     assert!(before.is_empty(), "nothing is typed before Yes");
 
     press(&mut h, ".ds-inline-banner .ds-button:first-of-type");
-    let start = Instant::now();
-    let typed = loop {
-        h.advance(Duration::from_millis(25));
-        let bytes = std::fs::read(saved_path(name)).unwrap_or_default();
-        if bytes.len() >= 40 {
-            break bytes;
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "nothing was typed"
-        );
-    };
+    let asked = wait_bytes(&mut h, &saved_path(name), 40);
+    assert!(
+        asked.starts_with(b" sh -c 'echo temor-shell:"),
+        "{}",
+        String::from_utf8_lossy(&asked)
+    );
+    let mut load = saved_path(name).into_os_string();
+    load.push("-load");
+    let typed = wait_bytes(&mut h, &PathBuf::from(load), 40);
     assert!(
         typed.starts_with(b" [ -n \"$ZSH_VERSION\" ]"),
         "{}",

@@ -11,7 +11,6 @@
 
 if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
     unset TEMOR_BASH_LOGIN
-    trap '[[ -r ~/.bash_logout ]] && . ~/.bash_logout' EXIT
     [[ -r /etc/profile ]] && . /etc/profile
     for _temor_file in ~/.bash_profile ~/.bash_login ~/.profile; do
         if [[ -r $_temor_file ]]; then
@@ -20,6 +19,12 @@ if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
         fi
     done
     unset _temor_file
+    # The exit trap is set after the person's files ran, so one of theirs is kept: it runs
+    # first, then ~/.bash_logout, as a login shell would.
+    _temor_user_exit=$(trap -p EXIT)
+    _temor_user_exit=${_temor_user_exit% EXIT}
+    [[ -n $_temor_user_exit ]] && eval "_temor_user_exit=${_temor_user_exit#trap -- }"
+    trap '[[ -n ${_temor_user_exit-} ]] && eval "$_temor_user_exit"; [[ -r ~/.bash_logout ]] && . ~/.bash_logout' EXIT
 else
     [[ -r ~/.bashrc ]] && . ~/.bashrc
 fi

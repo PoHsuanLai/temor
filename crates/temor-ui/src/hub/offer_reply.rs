@@ -1,0 +1,82 @@
+//! The person's answer to the shell offer, and what follows it (PLAN P17): a Yes types one
+//! line that makes the inner shell name itself; once the tick has heard the name, the
+//! integration written for that shell is typed. Nothing is typed before a Yes.
+
+use temor_core::offer::{Line, OfferIn, OfferOut, Program, Reply, Screen};
+use temor_core::vocab::ids::PaneId;
+
+use super::model::Hub;
+use crate::edge::offer::{load_line, probe_text, remember_never};
+use crate::session::Session;
+
+impl Hub {
+    /// The person answered the offer in `pane`. A Yes types a one-line question into it; the
+    /// integration follows once the shell has answered (see [`Hub::offer_tick`]). Returns what
+    /// the person should be told.
+    pub fn offer_reply(&mut self, pane: PaneId, reply: Reply) -> Vec<String> {
+        let Some(slot) = self.slots.get(&pane).cloned() else {
+            return Vec::new();
+        };
+        let (at, busy) = match slot.borrow().session.as_ref() {
+            Some(session) => (session.now(), Self::offer_busy(session)),
+            None => return Vec::new(),
+        };
+        let (reply, mut notes) = match (reply, busy) {
+            (Reply::Yes, true) => (
+                Reply::NotNow,
+                vec!["Not set up: the program is waiting for an answer.".to_owned()],
+            ),
+            (reply, _) => (reply, Vec::new()),
+        };
+        let (_, outs) = self.offer_feed(pane, OfferIn::Reply(reply, at));
+        notes.extend(self.offer_outs(pane, outs));
+        notes
+    }
+
+    /// Whether the program is asking something right now: a typed line would answer it.
+    fn offer_busy(session: &Session) -> bool {
+        session.last_line_kind() == Line::Asking || session.screen_kind() == Screen::Alternate
+    }
+
+    pub(super) fn offer_outs(&mut self, pane: PaneId, outs: Vec<OfferOut>) -> Vec<String> {
+        let mut notes = Vec::new();
+        for out in outs {
+            let note = match out {
+                OfferOut::Redraw => None,
+                OfferOut::Probe => self.offer_type(pane, probe_text().as_bytes()),
+                OfferOut::Load => self.offer_load(pane),
+                OfferOut::Unsure => {
+                    self.offer.shells.remove(&pane);
+                    Some("Not set up: could not tell which shell this is.".to_owned())
+                }
+                OfferOut::Never(program) => self.offer_never(&program),
+            };
+            notes.extend(note);
+        }
+        notes
+    }
+
+    fn offer_type(&self, pane: PaneId, bytes: &[u8]) -> Option<String> {
+        let slot = self.slots.get(&pane)?;
+        let guard = slot.borrow();
+        guard.session.as_ref()?.pane().send(bytes);
+        None
+    }
+
+    /// Types the integration written for the shell the pane named.
+    fn offer_load(&mut self, pane: PaneId) -> Option<String> {
+        let shell = self.offer.shells.remove(&pane)?;
+        match load_line(shell) {
+            Ok(line) => self.offer_type(pane, line.as_str().as_bytes()),
+            Err(_) => Some("Could not set up blocks in this shell.".to_owned()),
+        }
+    }
+
+    /// Takes `program` off the list, now and in the settings file.
+    fn offer_never(&mut self, program: &Program) -> Option<String> {
+        self.offer.list.remove(program);
+        remember_never(&self.offer.settings_path, program)
+            .err()
+            .map(|_| "Could not save this choice.".to_owned())
+    }
+}

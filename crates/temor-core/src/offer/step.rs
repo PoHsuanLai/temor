@@ -11,6 +11,8 @@ use ds_core::time::stamp::Stamp;
 pub const SETTLE_MS: u64 = 1_500;
 /// How long the output must have been quiet.
 pub const QUIET_MS: u64 = 500;
+/// How long a Yes waits for the inner shell to name itself before the offer gives up.
+pub const PROBE_MS: u64 = 4_000;
 
 /// Where one pane stands.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -35,6 +37,14 @@ pub enum OfferState {
         block: BlockId,
         /// Which listed command.
         program: Program,
+    },
+    /// Yes was said and a one-line question went to the inner shell: which shell are you? The
+    /// integration is typed only once the answer is on the screen.
+    Probing {
+        /// The block of the command.
+        block: BlockId,
+        /// When the question was typed.
+        since: Stamp,
     },
     /// Answered; nothing more is offered for this command.
     Settled {
@@ -67,6 +77,17 @@ pub enum Reply {
     Never,
 }
 
+/// What the screen shows of the inner shell's answer to the question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Answer {
+    /// Nothing yet.
+    Silent,
+    /// A shell temor has an integration for named itself.
+    Known,
+    /// Some other shell named itself (dash, ash, ...).
+    Other,
+}
+
 /// What moves the machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OfferIn {
@@ -84,8 +105,10 @@ pub enum OfferIn {
         screen: Screen,
         line: Line,
     },
-    /// The person answered.
-    Reply(Reply),
+    /// The person answered, at this time.
+    Reply(Reply, Stamp),
+    /// Time passed while the question to the inner shell is out; what the screen shows of it.
+    Heard { at: Stamp, answer: Answer },
 }
 
 /// What the machine asks for.
@@ -93,8 +116,12 @@ pub enum OfferIn {
 pub enum OfferOut {
     /// The offer appeared (or went away): draw the pane again.
     Redraw,
-    /// Type the integration line into the pane.
+    /// Type the one-line question that makes the inner shell name itself.
+    Probe,
+    /// The shell has named itself: type the integration written for it.
     Load,
+    /// The shell never answered, or is one temor has no integration for.
+    Unsure,
     /// Add this command to the remove list, for good.
     Never(Program),
 }
@@ -146,13 +173,24 @@ pub fn offer_step(state: OfferState, input: OfferIn) -> (OfferState, Vec<OfferOu
         ) if at.since(started) >= SETTLE_MS && at.since(last_output) >= QUIET_MS => {
             (S::Asking { block, program }, vec![OfferOut::Redraw])
         }
-        (S::Asking { block, program }, OfferIn::Reply(reply)) => match reply {
-            Reply::Yes => (S::Settled { block }, vec![OfferOut::Redraw, OfferOut::Load]),
+        (S::Asking { block, program }, OfferIn::Reply(reply, since)) => match reply {
+            Reply::Yes => (
+                S::Probing { block, since },
+                vec![OfferOut::Redraw, OfferOut::Probe],
+            ),
             Reply::NotNow => (S::Settled { block }, vec![OfferOut::Redraw]),
             Reply::Never => (
                 S::Settled { block },
                 vec![OfferOut::Redraw, OfferOut::Never(program)],
             ),
+        },
+        (S::Probing { block, since }, OfferIn::Heard { at, answer }) => match answer {
+            Answer::Known => (S::Settled { block }, vec![OfferOut::Load]),
+            Answer::Other => (S::Settled { block }, vec![OfferOut::Unsure]),
+            Answer::Silent if at.since(since) >= PROBE_MS => {
+                (S::Settled { block }, vec![OfferOut::Unsure])
+            }
+            Answer::Silent => (S::Probing { block, since }, vec![]),
         },
         (state, _) => (state, vec![]),
     }
@@ -168,6 +206,7 @@ fn running(
         S::Idle => (None, false),
         S::Watching { block, .. } => (Some(*block), false),
         S::Asking { block, .. } => (Some(*block), true),
+        S::Probing { block, .. } => (Some(*block), false),
         S::Settled { block } => (Some(*block), false),
     };
     match now {

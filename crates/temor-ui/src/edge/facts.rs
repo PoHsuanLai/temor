@@ -6,7 +6,8 @@
 use std::path::Path;
 
 use temor_core::facts::{
-    BranchName, DiffStat, Facts, Untracked, parse_branch, parse_shortstat, parse_untracked,
+    BranchName, DiffStat, Facts, MOST_UNTRACKED, Untracked, parse_branch, parse_shortstat,
+    parse_untracked,
 };
 use temor_core::worktree::{Git, GitCommand};
 
@@ -58,6 +59,21 @@ fn ok_text(git: &dyn Git, dir: &str, args: &[&str]) -> Option<String> {
         .map(|out| out.text())
 }
 
+/// The untracked entries (a file, or a new folder as one), counted from git's output as it
+/// arrives: git is stopped once the count is past the most that is shown, so a folder with
+/// a million new files costs about a thousand lines.
+fn count_untracked(git: &dyn Git, dir: &str) -> Option<Untracked> {
+    let cmd = git_cmd(
+        dir,
+        &["status", "--porcelain=v1", "--untracked-files=normal"],
+    );
+    let past = MOST_UNTRACKED as usize + 1;
+    git.run_capped(&cmd, b"?? ", past)
+        .ok()
+        .filter(|out| out.code == 0)
+        .map(|out| parse_untracked(&out.text()))
+}
+
 fn read_git(git: &dyn Git, dir: &str) -> GitFacts {
     let nothing = GitFacts {
         branch: None,
@@ -80,8 +96,7 @@ fn read_git(git: &dyn Git, dir: &str) -> GitFacts {
         // Without a commit `diff HEAD` fails, so no changes are shown.
         changes: ok_text(git, dir, &["diff", "--shortstat", "HEAD"])
             .and_then(|text| parse_shortstat(&text)),
-        untracked: ok_text(git, dir, &["status", "--porcelain=v1", "-uall"])
-            .map(|text| parse_untracked(&text)),
+        untracked: count_untracked(git, dir),
     }
 }
 

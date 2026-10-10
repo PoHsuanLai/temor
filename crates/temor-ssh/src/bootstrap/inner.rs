@@ -85,13 +85,38 @@ impl InnerLoadLine {
     /// Builds the text from `integration` (`temor_shell::integration_scripts()`); only
     /// `temor.bash`, `temor.zsh`, `temor.fish` and `temor.nu` are used.
     pub fn build(integration: &[ShellScript], token: &LoadToken) -> Result<Self, SshError> {
-        let mut text = String::from(ZSH_PRELUDE);
+        Self::assemble(None, integration, token)
+    }
+
+    /// The text for one shell that has already named itself (see [`super::probe_line`]): the
+    /// zsh first line only for zsh, and the program with that shell's arm alone. No other
+    /// shell reads text written for another, so none prints a parse error.
+    pub fn build_for(
+        shell: InnerShell,
+        integration: &[ShellScript],
+        token: &LoadToken,
+    ) -> Result<Self, SshError> {
+        Self::assemble(Some(shell), integration, token)
+    }
+
+    fn assemble(
+        only: Option<InnerShell>,
+        integration: &[ShellScript],
+        token: &LoadToken,
+    ) -> Result<Self, SshError> {
+        let mut text = String::new();
+        if only.is_none_or(|shell| shell == InnerShell::Zsh) {
+            text.push_str(ZSH_PRELUDE);
+        }
         text.push_str(
             &HEAD
                 .replace("@MARK@", &token.marker())
                 .replace("@PATH@", &token.path()),
         );
         for shell in InnerShell::ALL {
+            if only.is_some_and(|wanted| wanted != shell) {
+                continue;
+            }
             let Some(payload) = shell.payload(integration, token) else {
                 continue;
             };

@@ -233,3 +233,42 @@ fn summary_shows_the_branch_and_a_dot_for_changes() {
         assert_eq!(facts.summary().as_deref(), want, "{name}");
     }
 }
+
+#[test]
+fn python_versions() {
+    #[rustfmt::skip]
+    let version_files: Vec<(&str, &str, Option<&str>)> = vec![
+        ("plain", "3.12.1\n", Some("3.12.1")),
+        ("comment first", "# pinned\n3.11\n3.10\n", Some("3.11")),
+        ("system", "system\n", None),
+        ("blank", "\n", None),
+    ];
+    for (name, text, want) in version_files {
+        assert_eq!(
+            python_from_version_file(text)
+                .as_ref()
+                .map(ToolVersion::as_str),
+            want,
+            ".python-version {name}"
+        );
+    }
+    #[rustfmt::skip]
+    let pyprojects: Vec<(&str, &str, Option<&str>)> = vec![
+        ("range", "[project]\nname = \"x\"\nrequires-python = \">=3.10\"\n", Some(">=3.10")),
+        ("spaces and a comment", "[project]\nrequires-python = '>= 3.9, < 4'  # note\n", Some(">=3.9,<4")),
+        ("another table", "[tool.x]\nrequires-python = \">=3.8\"\n", None),
+        ("table ends first", "[project]\nname = \"x\"\n[tool.y]\nrequires-python = \">=3.8\"\n", None),
+        ("not quoted", "[project]\nrequires-python = 3.10\n", None),
+        ("too long for a chip", "[project]\nrequires-python = \">=3.10,!=3.11.1,!=3.11.2\"\n", None),
+        ("no file contents", "", None),
+    ];
+    for (name, text, want) in pyprojects {
+        assert_eq!(
+            python_from_pyproject(text)
+                .as_ref()
+                .map(ToolVersion::as_str),
+            want,
+            "pyproject {name}"
+        );
+    }
+}

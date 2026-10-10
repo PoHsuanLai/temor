@@ -22,6 +22,11 @@ impl Os for MacOs {
         None
     }
 
+    // TODO(platform:macos): the last command of a foreground pipeline.
+    fn pipeline_last(_proc: &ProcRoot, _shell: ProcessId, _group: ProcessId) -> Option<ProcessId> {
+        None
+    }
+
     // TODO(platform:macos): the current user, for the passwd lookup.
     fn current_user() -> Option<UserId> {
         None

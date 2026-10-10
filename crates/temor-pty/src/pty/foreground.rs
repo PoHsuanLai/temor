@@ -13,4 +13,18 @@ impl Foreground {
             cwd: <Current as Os>::process_cwd(proc, group),
         }
     }
+
+    /// Like [`Foreground::of_group`], but named for the last command of a pipeline: when the
+    /// group is a job of `shell` and the OS can list the shell's children, the name is that of
+    /// the group's newest child (`b` in `a | b`), not of its leader (`a`). The directory is the
+    /// leader's.
+    pub fn of_pipeline(group: ProcessId, shell: ProcessId, proc: &ProcRoot) -> Self {
+        let mut found = Self::of_group(group, proc);
+        if group != shell {
+            let last = <Current as Os>::pipeline_last(proc, shell, group);
+            let name = last.and_then(|last| <Current as Os>::process_name(proc, last));
+            found.name = name.or(found.name);
+        }
+        found
+    }
 }

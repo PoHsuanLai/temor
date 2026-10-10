@@ -12,14 +12,14 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use temor_core::offer::{
-    Line, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, Screen, offer_step,
+    Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
 };
 use temor_core::vocab::ids::PaneId;
 use temor_pane::PaneEvent;
+use temor_ssh::{InnerShell, ProbeReading, read_probe};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::offer::{load_line, remember_never};
 use crate::session::Session;
 use crate::view::launch::Launch;
 
@@ -62,12 +62,14 @@ fn line_hash(line: &str) -> u64 {
 
 /// The offer's state for every pane, and the list it matches against.
 pub(super) struct OfferHub {
-    list: OfferList,
-    states: BTreeMap<PaneId, OfferState>,
+    pub(super) list: OfferList,
+    pub(super) states: BTreeMap<PaneId, OfferState>,
     /// A hash of the last line on each watched pane's screen: output counts only when that
     /// line changes, so a repaint or a resize (the offer's own bar shrinks the grid) is not output.
-    lines: BTreeMap<PaneId, u64>,
-    settings_path: PathBuf,
+    pub(super) lines: BTreeMap<PaneId, u64>,
+    /// The shell each probed pane named, kept from the tick that heard it to the load.
+    pub(super) shells: BTreeMap<PaneId, InnerShell>,
+    pub(super) settings_path: PathBuf,
 }
 
 impl OfferHub {
@@ -76,6 +78,7 @@ impl OfferHub {
             list: OfferList::new(&launch.settings.offer_add, &launch.settings.offer_remove),
             states: BTreeMap::new(),
             lines: BTreeMap::new(),
+            shells: BTreeMap::new(),
             settings_path: launch.ambient.settings_path(),
         }
     }
@@ -126,21 +129,47 @@ impl Hub {
         redraw
     }
 
-    /// One timer tick: panes whose listed command has run a while may now get the offer.
-    pub(super) fn offer_tick(&mut self) -> OfferRedraw {
+    /// One timer tick: panes whose listed command has run a while may now get the offer, and
+    /// panes that were asked which shell they run may have answered. Returns what the person
+    /// should be told.
+    pub(super) fn offer_tick(&mut self) -> (OfferRedraw, Vec<String>) {
         let waiting: Vec<PaneId> = self
             .offer
             .states
             .iter()
-            .filter(|(_, state)| matches!(state, OfferState::Watching { .. }))
+            .filter(|(_, state)| {
+                matches!(
+                    state,
+                    OfferState::Watching { .. } | OfferState::Probing { .. }
+                )
+            })
             .map(|(pane, _)| *pane)
             .collect();
         let mut redraw = OfferRedraw::No;
+        let mut notes = Vec::new();
         for pane in waiting {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
             };
+            let probing = matches!(
+                self.offer.states.get(&pane),
+                Some(OfferState::Probing { .. })
+            );
             let input = match slot.borrow().session.as_ref() {
+                Some(session) if probing => {
+                    let answer = match read_probe(&session.screen_text()) {
+                        ProbeReading::Silent => Answer::Silent,
+                        ProbeReading::Known(shell) => {
+                            self.offer.shells.insert(pane, shell);
+                            Answer::Known
+                        }
+                        ProbeReading::Other => Answer::Other,
+                    };
+                    OfferIn::Heard {
+                        at: session.now(),
+                        answer,
+                    }
+                }
                 Some(session) => OfferIn::Tick {
                     at: session.now(),
                     screen: session.screen_kind(),
@@ -148,14 +177,20 @@ impl Hub {
                 },
                 None => continue,
             };
-            if self.offer_feed(pane, input).0 == OfferRedraw::Yes {
+            let (seen, outs) = self.offer_feed(pane, input);
+            if seen == OfferRedraw::Yes {
                 redraw = OfferRedraw::Yes;
             }
+            notes.extend(self.offer_outs(pane, outs));
         }
-        redraw
+        (redraw, notes)
     }
 
-    fn offer_feed(&mut self, pane: PaneId, input: OfferIn) -> (OfferRedraw, Vec<OfferOut>) {
+    pub(super) fn offer_feed(
+        &mut self,
+        pane: PaneId,
+        input: OfferIn,
+    ) -> (OfferRedraw, Vec<OfferOut>) {
         let state = self.offer.states.remove(&pane).unwrap_or_default();
         let (next, outs) = offer_step(state, input);
         match next {
@@ -181,48 +216,6 @@ impl Hub {
             .and_then(OfferState::asking)
             .map(Program::to_string)
     }
-
-    /// The person answered the offer in `pane`. A Yes types the integration line into it;
-    /// returns what the person should be told.
-    pub fn offer_reply(&mut self, pane: PaneId, reply: Reply) -> Vec<String> {
-        let (_, outs) = self.offer_feed(pane, OfferIn::Reply(reply));
-        let mut notes = Vec::new();
-        for out in outs {
-            let note = match out {
-                OfferOut::Redraw => None,
-                OfferOut::Load => self.offer_load(pane),
-                OfferOut::Never(program) => self.offer_never(&program),
-            };
-            notes.extend(note);
-        }
-        notes
-    }
-
-    /// Types the line that loads the integration into `pane`, unless the program is asking
-    /// something right now: the line would answer it.
-    fn offer_load(&self, pane: PaneId) -> Option<String> {
-        let slot = self.slots.get(&pane)?;
-        let guard = slot.borrow();
-        let session = guard.session.as_ref()?;
-        if session.last_line_kind() == Line::Asking || session.screen_kind() == Screen::Alternate {
-            return Some("Not set up: the program is waiting for an answer.".to_owned());
-        }
-        match load_line() {
-            Ok(line) => {
-                session.pane().send(line.as_str().as_bytes());
-                None
-            }
-            Err(_) => Some("Could not set up blocks in this shell.".to_owned()),
-        }
-    }
-
-    /// Takes `program` off the list, now and in the settings file.
-    fn offer_never(&mut self, program: &Program) -> Option<String> {
-        self.offer.list.remove(program);
-        remember_never(&self.offer.settings_path, program)
-            .err()
-            .map(|_| "Could not save this choice.".to_owned())
-    }
 }
 
 /// Looks at the waiting rule for as long as the window lives.
@@ -230,7 +223,10 @@ pub fn spawn_offer_loop(desk: Desk) {
     spawn(async move {
         loop {
             sleep(TICK).await;
-            let redraw = desk.hub.0.borrow_mut().offer_tick();
+            let (redraw, notes) = desk.hub.0.borrow_mut().offer_tick();
+            for note in notes {
+                desk.say(note);
+            }
             if redraw == OfferRedraw::Yes {
                 desk.bump();
             }

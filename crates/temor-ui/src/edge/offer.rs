@@ -7,12 +7,17 @@ use std::io::Write;
 use std::path::Path;
 
 use temor_core::offer::Program;
-use temor_ssh::{InnerLoadLine, LoadToken, SshError};
+use temor_ssh::{InnerLoadLine, InnerShell, LoadToken, SshError, probe_line};
 
-/// The lines to type into the pane after a Yes. Built from the scripts temor ships, with a
-/// name nobody can guess for the one file they write on the host.
-pub fn load_line() -> Result<InnerLoadLine, SshError> {
-    InnerLoadLine::build(&temor_shell::integration_scripts(), &fresh_token())
+/// The one line a Yes types first: it makes the inner shell name itself.
+pub fn probe_text() -> String {
+    probe_line()
+}
+
+/// The lines to type into the pane once `shell` has named itself. Built from the scripts temor
+/// ships, with a name nobody can guess for the one file they write on the host.
+pub fn load_line(shell: InnerShell) -> Result<InnerLoadLine, SshError> {
+    InnerLoadLine::build_for(shell, &temor_shell::integration_scripts(), &fresh_token())
 }
 
 /// Two words the standard library seeds randomly for each hasher.
