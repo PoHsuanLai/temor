@@ -18,10 +18,21 @@ use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use super::remote_edit::EditTier;
 use super::ssh_edit::{forget_copy, local_name};
+use super::viewer_diff::{Changes, changes};
+use crate::edge::ssh_work::EditId;
 use crate::edge::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
 use crate::edge::viewer_host::{copy_from_helper, copy_with_scp};
 use crate::platform::ensure_private_dir;
 use crate::session::ViewAsk;
+
+/// What a fetched file is for.
+enum Then {
+    /// A viewer opens on it.
+    View,
+    /// It is compared with the person's copy `yours` of an edit, and the viewer opens on the
+    /// differences.
+    Diff { yours: PathBuf },
+}
 
 /// A file being fetched for a viewer.
 struct Wanted {
@@ -29,7 +40,11 @@ struct Wanted {
     host: HostAlias,
     name: String,
     local: PathBuf,
+    then: Then,
 }
+
+/// The most of a file fetched to compare: more is not shown as a diff (see `viewer_diff`).
+const DIFF_CAP: u64 = 2 * 1024 * 1024;
 
 /// The fetches in flight, and the copies the open viewers show.
 pub(super) struct HostCopies {
@@ -108,6 +123,40 @@ impl Hub {
             ));
             return;
         };
+        self.begin_fetch((from, host, tier), path, (Then::View, Cap::Unlimited));
+    }
+
+    /// The conflict question's "Show changes": the host's file as it is now is fetched and
+    /// compared with the person's copy; the differences open in a viewer beside a pane of the
+    /// host.
+    pub fn show_edit_changes(&mut self, id: EditId) {
+        let Some(edit) = self.ssh.edits.get(&id) else {
+            return;
+        };
+        let (host, path, yours, tier) = (
+            edit.host.clone(),
+            edit.path.as_str().to_owned(),
+            edit.local.clone(),
+            edit.tier,
+        );
+        let Some(from) = self.ssh.panes_on(&host).first().copied() else {
+            self.notices.push(format!(
+                "Open a tab on {} to see the changes",
+                host.as_str()
+            ));
+            return;
+        };
+        let how = (Then::Diff { yours }, Cap::Bytes(DIFF_CAP));
+        self.begin_fetch((from, host, tier), &path, how);
+    }
+
+    /// Fetches `path` of `host` into a private copy for `then`.
+    fn begin_fetch(
+        &mut self,
+        (from, host, tier): (PaneId, HostAlias, EditTier),
+        path: &str,
+        (then, cap): (Then, Cap),
+    ) {
         let id = CopyId(self.viewers.host.next);
         self.viewers.host.next = self.viewers.host.next.saturating_add(1);
         let dir = self.copies_dir();
@@ -126,7 +175,7 @@ impl Hub {
         let started = match tier {
             EditTier::Helper => self.remote.helper_conn(&host).map(|conn| {
                 let remote = RemotePath(path.to_owned());
-                copy_from_helper(done, conn, (remote, local.clone()), Cap::Unlimited);
+                copy_from_helper(done, conn, (remote, local.clone()), cap);
             }),
             EditTier::Scp => RemoteFilePath::new(path).ok().map(|file| {
                 let env = self.ssh.env.clone();
@@ -139,7 +188,9 @@ impl Hub {
                 .push(format!("{name} can't be fetched from {}", host.as_str()));
             return;
         }
-        self.notices.push(format!("Getting {name}\u{2026}"));
+        if matches!(then, Then::View) {
+            self.notices.push(format!("Getting {name}\u{2026}"));
+        }
         self.viewers.host.wanted.insert(
             id,
             Wanted {
@@ -147,39 +198,103 @@ impl Hub {
                 host,
                 name,
                 local,
+                then,
             },
         );
     }
 
     /// A fetch finished: the viewer opens on the copy. A path that is not a file, or is not
-    /// there, says nothing: a click on a word that was not a file name is not an error.
+    /// there, says nothing when it was only a click on a word; a comparison says so.
     pub(super) fn host_copy_done(&mut self, event: CopyEvent) -> Vec<String> {
         let Some(want) = self.viewers.host.wanted.remove(&event.id) else {
             return Vec::new();
         };
-        match event.outcome {
-            CopyOutcome::Whole if self.ws.tab_of(want.from).is_some() => {
-                self.open_viewer(
-                    want.from,
-                    ViewAsk {
-                        file: want.local,
-                        around: Vec::new(),
-                        site: PaneSite::Local,
-                    },
-                );
+        let open = self.ws.tab_of(want.from).is_some();
+        match (event.outcome, &want.then) {
+            (CopyOutcome::Whole, Then::View) if open => {
+                let file = want.local.clone();
+                self.show_file(want.from, file);
             }
-            CopyOutcome::Failed(fault) => {
+            (CopyOutcome::Whole, Then::Diff { yours }) if open => self.show_changes(&want, yours),
+            (CopyOutcome::Failed(fault), _) => {
                 forget_copy(&want.local);
                 let words = fault_words(&want.host, &want.name, fault);
                 self.notices.push(words);
             }
-            // Too big (never asked here), not a file, gone, or the pane closed meanwhile.
-            CopyOutcome::Whole
-            | CopyOutcome::Header { .. }
-            | CopyOutcome::NotAFile
-            | CopyOutcome::Gone => forget_copy(&want.local),
+            (CopyOutcome::Header { .. }, Then::Diff { .. }) => {
+                forget_copy(&want.local);
+                self.notices
+                    .push(format!("{} is too big to show its changes", want.name));
+            }
+            (CopyOutcome::Gone, Then::Diff { .. }) => {
+                forget_copy(&want.local);
+                let host = want.host.as_str();
+                self.notices
+                    .push(format!("{} is no longer on {host}", want.name));
+            }
+            // Not a file, gone, or the pane closed meanwhile.
+            _ => forget_copy(&want.local),
         }
         std::mem::take(&mut self.notices)
+    }
+
+    fn show_file(&mut self, from: PaneId, file: PathBuf) {
+        self.open_viewer(
+            from,
+            ViewAsk {
+                file,
+                around: Vec::new(),
+                site: PaneSite::Local,
+            },
+        );
+    }
+
+    /// Writes the differences between the host's file `want.local` and the person's copy
+    /// `yours` beside it, and opens the viewer on them.
+    fn show_changes(&mut self, want: &Wanted, yours: &Path) {
+        let (theirs, mine) = (std::fs::read(&want.local), std::fs::read(yours));
+        let names = (
+            format!("On {} now", want.host.as_str()),
+            "Your copy".to_owned(),
+        );
+        let found = match (&theirs, &mine) {
+            (Ok(theirs), Ok(mine)) => changes(theirs, mine, (&names.0, &names.1)),
+            _ => Changes::NotText,
+        };
+        let name = &want.name;
+        let text = match found {
+            Changes::Text(text) => text,
+            Changes::Same => {
+                self.notices
+                    .push(format!("{name} reads the same in both places"));
+                forget_copy(&want.local);
+                return;
+            }
+            Changes::NotText => {
+                self.notices
+                    .push(format!("{name} isn't text, so its changes can't be shown"));
+                forget_copy(&want.local);
+                return;
+            }
+            Changes::TooBig => {
+                self.notices
+                    .push(format!("{name} is too big to show its changes"));
+                forget_copy(&want.local);
+                return;
+            }
+        };
+        let diff = want.local.with_file_name(format!("{name}.diff"));
+        let written = std::fs::write(&diff, text);
+        // The host's file served its turn; the differences are what is shown.
+        let _ = std::fs::remove_file(&want.local);
+        match written {
+            Ok(()) => self.show_file(want.from, diff),
+            Err(err) => {
+                forget_copy(&diff);
+                self.notices
+                    .push(format!("The changes can't be shown: {err}"));
+            }
+        }
     }
 }
 
@@ -189,6 +304,21 @@ impl HubRef {
         let mut hub = self.0.borrow_mut();
         hub.open_host_viewer(from, path);
         std::mem::take(&mut hub.notices)
+    }
+}
+
+impl Desk {
+    /// The conflict question's "Show changes" for the edit `id`.
+    pub fn host_show_changes(&self, id: EditId) {
+        let notes = {
+            let mut hub = self.hub.0.borrow_mut();
+            hub.show_edit_changes(id);
+            std::mem::take(&mut hub.notices)
+        };
+        for note in notes {
+            self.say(note);
+        }
+        self.bump();
     }
 }
 

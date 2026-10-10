@@ -199,7 +199,9 @@ fn Edited(edit: EditLine, desk: Desk) -> Element {
         edit.status,
         EditStatus::Changed | EditStatus::Rewritten | EditStatus::Deleted
     );
-    let (done, over, theirs, later) = (desk.clone(), desk.clone(), desk.clone(), desk);
+    let (done, over, theirs, later) = (desk.clone(), desk.clone(), desk.clone(), desk.clone());
+    let changes = desk;
+    let diff_shown = edit.status != EditStatus::Deleted;
     if asking {
         return rsx! {
             InlineBanner {
@@ -207,6 +209,13 @@ fn Edited(edit: EditLine, desk: Desk) -> Element {
                 text,
                 detail: Some(TextLine::from("Your copy and the computer's file now differ")),
                 actions: rsx! {
+                    if diff_shown {
+                        Button {
+                            label: "Show changes".to_owned(),
+                            title: Some("See what differs, line by line".to_owned()),
+                            onclick: move |_| changes.host_show_changes(id),
+                        }
+                    }
                     Button {
                         label: "Replace theirs".to_owned(),
                         title: Some("Write your copy over the computer's file".to_owned()),
