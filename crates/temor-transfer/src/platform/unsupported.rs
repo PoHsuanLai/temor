@@ -52,6 +52,18 @@ impl Root {
         Err(unsupported())
     }
 
+    pub fn set_file_mode(&self, _rel: &RelPath, _bits: u32) -> Result<(), TransferError> {
+        Err(unsupported())
+    }
+
+    pub fn set_dir_mode(&self, _rel: &RelPath, _bits: u32) -> Result<(), TransferError> {
+        Err(unsupported())
+    }
+
+    pub fn make_symlink(&self, _rel: &RelPath, _target: &str) -> Result<(), TransferError> {
+        Err(unsupported())
+    }
+
     pub fn discard(&self, _rel: &RelPath) -> Result<(), TransferError> {
         Err(unsupported())
     }

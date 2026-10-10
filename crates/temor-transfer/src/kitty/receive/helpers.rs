@@ -51,6 +51,7 @@ pub(super) fn ended(session: ReceiveSession) -> ReceiveSession {
     ReceiveSession {
         phase: Phase::Done,
         open: BTreeMap::new(),
+        open_links: BTreeMap::new(),
         ..session
     }
 }

@@ -50,8 +50,9 @@ impl FileId {
     }
 }
 
-/// POSIX permission bits (`prm`). Parsed and carried, but ignored by the writer: files are created
-/// with mode 0o644 and folders with 0o755, whatever the remote sent.
+/// POSIX permission bits (`prm`), as the remote sent them. What the writer applies is
+/// [`Mode::permission_bits`]: the nine permission bits only, so a setuid, setgid or sticky bit
+/// never lands. Without a `prm`, files are 0o644 and folders 0o755.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mode(u32);
 
@@ -62,6 +63,11 @@ impl Mode {
 
     pub const fn get(self) -> u32 {
         self.0
+    }
+
+    /// The bits that are applied: `rwx` for owner, group and others, and nothing above them.
+    pub const fn permission_bits(self) -> u32 {
+        self.0 & 0o777
     }
 }
 

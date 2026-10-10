@@ -42,7 +42,8 @@ fn a_second_file_with_the_same_name_is_refused_and_the_first_stays_intact() {
             },
             WriteOp::Finish {
                 path: RelPath::parse("report.txt").expect("p"),
-                modified: None
+                modified: None,
+                mode: None
             },
         ]
     );
@@ -133,15 +134,20 @@ fn a_failed_finish_discards_only_its_own_file_and_reports_it() {
 }
 
 #[test]
-fn a_frame_that_did_not_parse_is_answered_for_its_transfer() {
-    let s = allowed(1024);
-    let (s, effects) = s.step(Input::Malformed {
-        id: temor_transfer::kitty::KittyId::parse("tx1").expect("id"),
-    });
+fn a_frame_that_did_not_parse_is_answered_while_asking_and_ends_a_live_transfer() {
+    let id = || temor_transfer::kitty::KittyId::parse("tx1").expect("id");
+    // The person is still being asked: the sender is told, and the question stands.
+    let (asking, _) = send(session(1024));
+    let (asking, effects) = asking.step(Input::Malformed { id: id() });
     assert_eq!(codes(&effects), vec!["EINVAL".to_owned()]);
     assert!(!effects.iter().any(|e| matches!(e, Effect::Ended(_))));
-    let (_, next) = s.step(file("ok.txt", "1", FileType::Regular, Some(1)));
-    assert!(!writes(&next).is_empty(), "the transfer keeps going");
+    let (_, answered) = asking.step(Input::Decided(temor_transfer::Consent::Allow));
+    assert_eq!(replies(&answered), vec![ReplyStatus::Ok]);
+
+    // Receiving, with no file open: the transfer ends with the error, not only a reply.
+    let (_, effects) = allowed(1024).step(Input::Malformed { id: id() });
+    assert_eq!(codes(&effects), vec!["EINVAL".to_owned()]);
+    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
 }
 
 #[test]

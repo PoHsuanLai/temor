@@ -2,7 +2,8 @@
 //! checked against the announced size.
 
 use super::helpers::{close, failed, refuse, refuse_with, reply};
-use super::model::{Effect, EndWhy, OpenFile, ReceiveSession, WriteOp};
+use super::links::{Last, on_link_data, open_link};
+use super::model::{Effect, EndWhy, LinkPolicy, OpenFile, ReceiveSession, WriteOp};
 use crate::kitty::model::{
     Compression, ErrorCode, FileId, FileType, KittyId, Message, ReplyStatus,
 };
@@ -74,9 +75,17 @@ pub(super) fn on_file(
             next.claimed.insert(path.clone());
             next.entries += 1;
             let ok = reply(id, Some(file_id), ReplyStatus::Ok);
-            (next, vec![Effect::Write(WriteOp::MakeDir(path)), ok])
+            let mut effects = vec![Effect::Write(WriteOp::MakeDir(path.clone()))];
+            if let Some(mode) = message.permissions {
+                effects.push(Effect::Write(WriteOp::SetDirMode { path, mode }));
+            }
+            effects.push(ok);
+            (next, effects)
         }
         FileType::Regular => open_regular(session, id, file_id, path, &message),
+        FileType::Symlink if session.links == LinkPolicy::Make => {
+            open_link(session, id, file_id, path)
+        }
         FileType::Symlink | FileType::Link => refuse(
             session,
             id,
@@ -138,6 +147,7 @@ pub(super) fn open_regular(
             expected: message.size,
             written: 0,
             modified: message.mtime,
+            mode: message.permissions,
         },
     );
     let started = reply(id, Some(file_id), ReplyStatus::Started);
@@ -162,6 +172,13 @@ pub(super) fn on_data(
             "the data has no file id",
         );
     };
+    if session.open_links.contains_key(&file_id) {
+        let last = match chunk {
+            Chunk::More => Last::No,
+            Chunk::Last => Last::Yes,
+        };
+        return on_link_data(session, id, file_id, message, last);
+    }
     let Some(open) = session.open.get(&file_id).cloned() else {
         return refuse(
             session,
@@ -212,6 +229,7 @@ pub(super) fn on_data(
     effects.push(Effect::Write(WriteOp::Finish {
         path: open.path.clone(),
         modified: open.modified,
+        mode: open.mode,
     }));
     next.finishing.insert(file_id, OpenFile { written, ..open });
     (next, effects)
