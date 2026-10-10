@@ -192,6 +192,21 @@ pub enum Origin { Remote { host: HostName, tab: TabId }, Local { tab: TabId, blo
 All closed sets derive `Word`. There are no bool fields: `Seen`, `Pin` and `CliGate` are enums. Every unit and
 id is a newtype.
 
+**temor-wire catch-alls (the helper protocol, §9b).** Every closed set on the wire has an `Unknown`
+variant for a word a newer temor sent, so an older one reads the message instead of failing it. They
+are never sent and never agreed. The sets: `Capability` (an `Unknown` capability is left out of the
+agreed set), `Refusal`, `Truncation`, `SessionState`, `EntryKind`, `WatchChange`, `ChangeKind` and
+`UncheckedWhy`. Beside them, `RemoteError::UnknownRequest` is the helper's answer to a request kind
+it does not know, and `Incoming` (not a wire type) says what a frame turned out to be: a known
+message, an unknown or unreadable request (answered, not run), an unreadable response (the request
+fails), or an event to skip. A request that carries a nested newer enum is answered as unreadable:
+safe, not precise.
+
+**The no-payload marker.** A frame is `u32 json length | u32 payload length | JSON | payload`. A
+payload length of `u32::MAX` means there is no payload; a message that carries bytes always has a
+payload, even an empty one, so the two stay apart. A payload of exactly `u32::MAX` bytes is refused
+when encoding, because it would read back as no payload.
+
 ## 4. State machines (pure `step`, effects at the edge)
 
 | Machine | States | Inputs |
