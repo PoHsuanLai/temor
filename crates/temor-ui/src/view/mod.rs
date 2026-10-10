@@ -15,6 +15,7 @@ pub mod palette;
 pub mod pane_view;
 pub mod pointer;
 pub mod probe;
+pub mod radar;
 pub mod slot;
 pub mod status;
 pub mod tab_row;

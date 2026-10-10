@@ -26,11 +26,14 @@ use temor_core::workspace::WorkspaceIn;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
+use super::radar::AgentSheets;
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
-use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
+use crate::hub::{
+    Desk, DragKey, Hub, HubRef, SidebarData, spawn_agent_loops, spawn_event_loop, spawn_save_loop,
+};
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -69,6 +72,7 @@ pub fn App() -> Element {
         let desk = desk.clone();
         move || {
             spawn_event_loop(desk.clone());
+            spawn_agent_loops(desk.clone());
             spawn_save_loop(desk.hub);
         }
     });
@@ -197,6 +201,7 @@ pub fn App() -> Element {
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }
+            AgentSheets { desk: desk.clone() }
         }
     }
 }

@@ -4,8 +4,8 @@
 //! the two tabs.
 
 use dioxus::prelude::*;
-use ds::base::press::Press;
-use ds::base::vocab::{Availability, CompanionPresence, DropState, Emphasis, RowState};
+use ds::base::press::{PointerButton, Press};
+use ds::base::vocab::{Availability, DropState, Emphasis, RowState};
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::content::label::LabelStyle;
@@ -13,10 +13,12 @@ use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
+use temor_core::presence::companion_presence;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::{Click, Dnd, is_primary, point_of};
 use super::miniature::Miniature;
+use super::radar::AgentTabMenu;
 use crate::hub::{Desk, DragKey, TabRow, Unread};
 
 /// The row for one tab.
@@ -25,6 +27,7 @@ use crate::hub::{Desk, DragKey, TabRow, Unread};
 pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let id = row.id;
     let rect = use_rect();
+    let mut menu = use_signal(|| Shown::Hidden);
     // The drag finds the row under the pointer from where the rows are.
     if let Some(at) = rect.rect() {
         dnd.rects.set(id, at);
@@ -49,11 +52,14 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     };
     let content = rsx! {
         span { class: "temor-tab",
-            CompanionOrb { presence: CompanionPresence::Idle, size: OrbSize::Inline }
+            CompanionOrb { presence: companion_presence(row.agent), size: OrbSize::Inline }
             span { class: "temor-tab-words",
                 Label { text: row.title.clone(), style: LabelStyle::Body }
                 if let Some(cwd) = row.cwd.clone() {
                     Label { text: cwd, style: LabelStyle::Caption }
+                }
+                if let Some(note) = row.note.clone() {
+                    Label { text: note, style: LabelStyle::Caption }
                 }
             }
             if row.unread == Unread::Unread {
@@ -65,6 +71,14 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         }
         if drop == DropState::Target {
             DropLine {}
+        }
+        if let (Shown::Visible, Some(at)) = (menu(), rect.rect()) {
+            AgentTabMenu {
+                tab: id,
+                at,
+                desk: desk.clone(),
+                onclose: move |()| menu.set(Shown::Hidden),
+            }
         }
     };
     let click = dnd.click.clone();
@@ -79,7 +93,12 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                 availability: Availability::Enabled,
                 drop,
             },
-            onclick: move |_: Press| {
+            onclick: move |press: Press| {
+                // A secondary press opens the tab's agent menu; it does not select the tab.
+                if matches!(press.button, PointerButton::Secondary) {
+                    menu.set(Shown::Visible);
+                    return;
+                }
                 if click.take() == Click::Counts {
                     selecting.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(id))));
                 }

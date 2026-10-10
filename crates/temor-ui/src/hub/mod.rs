@@ -4,6 +4,7 @@
 //! the hub and send it the person's requests.
 
 mod act;
+pub mod agents;
 mod desk;
 mod events;
 mod keys;
@@ -15,6 +16,10 @@ mod say;
 #[cfg(test)]
 mod tests;
 
+pub use agents::{
+    AgentMenu, AgentPick, Agents, Alert, LeftoverRow, SheetView, WaitingCount, Where,
+    spawn_agent_loops,
+};
 pub use desk::Desk;
 pub use events::spawn_event_loop;
 pub use keys::workspace_input;

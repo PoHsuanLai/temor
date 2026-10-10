@@ -137,6 +137,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 .session
                 .as_mut()
                 .and_then(|s| s.take_asked());
+            if asked == Some(temor_pane::keys::Action::JumpToWaiting) {
+                desk.jump_to_waiting();
+                return;
+            }
             if let Some(input) = asked.and_then(workspace_input) {
                 desk.act(input);
                 return;
@@ -155,6 +159,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         let (ime, slot, desk) = (ime.clone(), Rc::clone(&slot), desk.clone());
         move || {
             set_focus(&slot, Focus::Focused);
+            desk.pane_focused(pane);
             if desk.hub.keyboard_pane() != Some(pane) {
                 desk.act(WorkspaceIn::Focus(pane));
             }
@@ -164,11 +169,13 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let on_focus = {
         let mut inner = focus_handler(Rc::clone(&slot), ime.clone(), apply.clone(), gained.clone());
         let had = Rc::clone(&had_keyboard);
+        let desk = desk.clone();
         move |focus: EditFocus| {
             // The keyboard left the page region (the sidebar took it, say): the pane takes it
             // back the next time the window is told it is the keyboard pane.
             if matches!(focus, EditFocus::Out) {
                 had.set(false);
+                desk.pane_blurred(pane);
             }
             inner(focus);
         }

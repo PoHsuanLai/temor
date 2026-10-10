@@ -41,6 +41,10 @@ impl Hub {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
             };
+            // The radar hears the event first; the session then takes it.
+            if self.agents_observe(pane, &event) == super::agents::Changed::Yes {
+                out.chrome.insert(pane);
+            }
             let mut guard = slot.borrow_mut();
             let Some(session) = guard.session.as_mut() else {
                 continue;
@@ -77,6 +81,7 @@ impl Hub {
                     });
                 }
                 Notice::CommandDone => {
+                    self.agents_command_done(pane);
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
                 }

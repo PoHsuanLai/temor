@@ -72,6 +72,7 @@ impl Session {
             | Action::ToggleZoom
             | Action::Equalize
             | Action::ReopenTab
+            | Action::JumpToWaiting
             | Action::SelectTab(_) => {
                 self.asked = Some(action);
                 Ok(())

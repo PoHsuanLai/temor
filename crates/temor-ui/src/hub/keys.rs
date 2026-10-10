@@ -31,6 +31,8 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::CloseFind
         | Action::PreviousPrompt
         | Action::NextPrompt
+        // The window's own: it needs the radar, not the workspace (`Hub::jump_to_waiting`).
+        | Action::JumpToWaiting
         // TODO(P4): Spaces switch through the kit once the window shows Spaces.
         | Action::SelectSpace(_) => return None,
     })

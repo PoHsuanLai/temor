@@ -14,6 +14,7 @@ use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use super::agents::Agents;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -34,6 +35,7 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: SavePace,
     pub(super) notices: Vec<String>,
+    pub(super) agents: Agents,
 }
 
 impl std::fmt::Debug for Hub {
@@ -48,6 +50,7 @@ impl Hub {
     /// A hub with no panes yet; [`Hub::start`] restores the last session or opens a first tab.
     pub fn new(launch: Launch) -> Hub {
         let (events, inbox) = unbounded_channel();
+        let agents = Agents::new(&launch, events.clone());
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             slots: BTreeMap::new(),
@@ -59,6 +62,7 @@ impl Hub {
             palette: Palette::default(),
             pace: SavePace::new(SAVE_EVERY),
             notices: Vec::new(),
+            agents,
         }
     }
 
