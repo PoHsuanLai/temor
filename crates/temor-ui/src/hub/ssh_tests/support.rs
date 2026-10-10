@@ -12,6 +12,7 @@ use temor_pane::text::LinkTarget;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::edge::Ambient;
+use crate::edge::remote_event::RemoteEvent;
 use crate::edge::ssh_work::SshEvent;
 use crate::hub::model::Hub;
 use crate::hub::ssh_view::{HostView, Stage};
@@ -23,6 +24,9 @@ use crate::view::theme::AppearanceSource;
 /// `-O cancel` exit with the code in `control-exit`; `-T` runs the remote command here (the file
 /// calls); anything else is a session: its arguments and the decoded setup are kept in
 /// `session-N` and `session-N.script`, `banner` is printed, and it stays until the test ends.
+/// The connecting `ssh` (it runs `true`) asks for a password: the right one (`hunter2`) makes the
+/// connection (`up` appears, the password is kept in `connect-ok`) and it exits well; any other
+/// ends it with 255.
 const FAKE_SSH: &str = r#"#!/bin/sh
 d=@DIR@
 for last; do :; done
@@ -34,6 +38,14 @@ case "$1" in
     esac ;;
   -T) exec sh -c "$last" ;;
 esac
+if [ "$last" = true ]; then
+  printf 'Password: '
+  read pw
+  [ "$pw" = hunter2 ] || exit 255
+  echo "$pw" > "$d/connect-ok"
+  : > "$d/up"
+  exit 0
+fi
 n=$(($(cat "$d/count" 2>/dev/null || echo 0) + 1))
 echo "$n" > "$d/count"
 printf '%s\n' "$@" > "$d/session-$n"
@@ -84,6 +96,8 @@ pub(super) struct Rig {
     pub hub: Hub,
     pub panes: UnboundedReceiver<(PaneId, PaneEvent)>,
     pub jobs: UnboundedReceiver<SshEvent>,
+    /// What the helper's jobs and the connecting `ssh` report.
+    pub remote: UnboundedReceiver<RemoteEvent>,
     /// The stand-ins' folder: `up`, `banner`, `count`, `session-N`.
     pub dir: PathBuf,
     pub links: RecordLinks,
@@ -148,10 +162,12 @@ impl Rig {
         hub.set_openers(Box::new(links.clone()), Box::new(files.clone()));
         let panes = hub.inbox.take().expect("the pane events");
         let jobs = hub.ssh.inbox.take().expect("the job events");
+        let remote = hub.remote.inbox.take().expect("the helper events");
         Some(Rig {
             hub,
             panes,
             jobs,
+            remote,
             dir,
             links,
             files,
@@ -173,6 +189,10 @@ impl Rig {
             while let Ok(event) = self.jobs.try_recv() {
                 // What the window would show the person stays on the hub for the test to read.
                 let said = self.hub.ssh_event(event);
+                self.hub.notices.extend(said);
+            }
+            while let Ok(event) = self.remote.try_recv() {
+                let said = self.hub.remote_event(event);
                 self.hub.notices.extend(said);
             }
             let (_, said) = self.hub.ssh_tick();

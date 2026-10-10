@@ -5,4 +5,5 @@
 mod connect;
 mod edit;
 mod hosts;
+mod retry;
 mod support;
