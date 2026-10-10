@@ -2,6 +2,7 @@
 //! TODO(platform:macos): dock badge through NSDockTile, single instance through a socket.
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
+use crate::checkpoints::{CheckpointPort, PlanDigest, PointId, PointList, PointPlan, SessionKey};
 use crate::tailnet::TailnetChanges;
 use crate::{Badge, Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
 use std::sync::Arc;
@@ -84,5 +85,46 @@ impl SystemTailnet {
     /// A stream that has already ended.
     pub async fn changes(&self) -> Result<TailnetChanges, DesktopError> {
         Ok(TailnetChanges::ended())
+    }
+}
+
+/// Docket's restore points. Absent here.
+/// TODO(platform:macos): through the agent layer's transport once docket has one there.
+/// TODO(platform:windows): the same.
+#[derive(Debug)]
+pub struct SystemCheckpoints;
+
+impl SystemCheckpoints {
+    /// Always [`DesktopError::Unsupported`].
+    pub async fn connect(
+        _env: &DesktopEnv,
+        _runtime: tokio::runtime::Handle,
+    ) -> Result<Self, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+}
+
+impl CheckpointPort for SystemCheckpoints {
+    fn list(&self, _session: &SessionKey) -> Result<PointList, DesktopError> {
+        Ok(PointList::default())
+    }
+
+    fn plan(&self, _session: &SessionKey, _id: PointId) -> Result<PointPlan, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn restore(
+        &self,
+        _session: &SessionKey,
+        _id: PointId,
+        _digest: &PlanDigest,
+    ) -> Result<(), DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
     }
 }

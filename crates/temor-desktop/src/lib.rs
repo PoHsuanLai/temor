@@ -8,6 +8,8 @@
 //!   and hands a later launch's [`Request`] (a new window or tab) to it. The files in `dist/` let
 //!   the bus start temor when a call arrives and none runs.
 //! - **Dock badge.** [`SystemDock::show`] publishes a count, progress and attention.
+//! - **Restore points.** [`CheckpointPort`] lists an agent run's restore points, says what a
+//!   restore would change and performs it, through docket; [`SystemCheckpoints`] is the live one.
 //! - **Tailscale.** [`SystemTailnet::hosts`] lists the person's other computers as
 //!   [`temor_ssh::TailnetHost`]s, and [`SystemTailnet::changes`] says when to read again.
 //!
@@ -19,6 +21,7 @@
 //! Types that cross threads are `Send + Sync` unless their docs say otherwise.
 
 mod badge;
+mod checkpoints;
 mod env;
 mod error;
 mod manifest;
@@ -28,13 +31,17 @@ mod tailnet;
 mod window;
 
 pub use badge::{Attention, Badge, BadgeCount, Progress};
+pub use checkpoints::{
+    CheckpointPort, NoCheckpoints, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
+    PointPlan, PointRow, PointState, SessionKey, TurnNo,
+};
 pub use env::{BusRoute, DesktopEnv};
 pub use error::DesktopError;
 pub use manifest::{
     APP_BUS_NAME, COMMAND_LIST, COMMAND_READ, COMMAND_RUN_IN_PANE, COMMAND_RUN_SANDBOXED,
     INSTANCE_BUS_NAME, MANIFEST, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ,
 };
-pub use platform::{SystemDock, SystemInstance, SystemIntents, SystemTailnet};
+pub use platform::{SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet};
 pub use request::{Claim, Handover, Primary, Request};
 pub use tailnet::TailnetChanges;
 pub use window::{
