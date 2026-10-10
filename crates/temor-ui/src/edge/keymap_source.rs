@@ -135,9 +135,11 @@ impl<S: KeymapSource> KeymapSource for Polled<S> {
     fn watch(&self, on_change: ChangeCallback) -> Result<Watch, SourceError> {
         let (stop, alive) = channel::<()>();
         let (path, every) = (self.watched.clone(), self.every);
+        // Read now, not on the thread: a change made before the thread first runs still counts.
+        let seen = modified(&path);
         std::thread::Builder::new()
             .name("temor-keys-watch".to_owned())
-            .spawn(move || look(&path, every, &alive, &*on_change))
+            .spawn(move || look(&path, seen, every, &alive, &*on_change))
             .map_err(|err| {
                 SourceError::Unsupported(format!(
                     "couldn't watch the shortcut settings for changes: {err}"
@@ -155,9 +157,14 @@ fn modified(path: &Path) -> Option<SystemTime> {
 }
 
 /// Calls `on_change` whenever `path`'s modified time (or its being there) differs from the last
-/// look, until `alive` is closed.
-fn look(path: &Path, every: Duration, alive: &Receiver<()>, on_change: &dyn Fn()) {
-    let mut seen = modified(path);
+/// look (`seen` at first), until `alive` is closed.
+fn look(
+    path: &Path,
+    mut seen: Option<SystemTime>,
+    every: Duration,
+    alive: &Receiver<()>,
+    on_change: &dyn Fn(),
+) {
     loop {
         match alive.recv_timeout(every) {
             Err(RecvTimeoutError::Timeout) => {}
