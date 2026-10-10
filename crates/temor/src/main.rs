@@ -6,7 +6,7 @@ mod cli;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use temor_ui::edge::{Ambient, load_settings, resolve_state_dir};
+use temor_ui::edge::{Ambient, load_keymap, load_settings, resolve_state_dir};
 use temor_ui::{AppearanceSource, Launch, LauncherChoice, SESSION_LEADER_ARG};
 
 fn main() -> ExitCode {
@@ -31,8 +31,13 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    for (line, issue) in &parsed.issues {
-        eprintln!("temor: settings line {line}: {issue}");
+    // The keys: the desktop's conventions, then the person's changes, then temor's own actions.
+    let (keymap, key_issues) = load_keymap(&parsed.settings.keys);
+    for (line, issue) in parsed.issues.iter().chain(&key_issues) {
+        match *line {
+            0 => eprintln!("temor: keys: {issue}"),
+            line => eprintln!("temor: settings line {line}: {issue}"),
+        }
     }
     // The session file and its snapshots live under the XDG state home (a relative value is not used).
     let state_dir = resolve_state_dir(
@@ -42,6 +47,7 @@ fn main() -> ExitCode {
     let launched = temor_ui::run(Launch {
         ambient,
         settings: parsed.settings,
+        keymap,
         launcher: LauncherChoice::ThisProgram,
         appearance: AppearanceSource::desktop(),
         probe: None,

@@ -24,6 +24,13 @@ fn launch() -> Launch {
             runtime_dir: home.join("runtime"),
         },
         settings: temor_pane::settings::TerminalSettings::default(),
+        keymap: crate::edge::keymap_for(
+            chordkit::Platform::Linux {
+                desktop: chordkit::Desktop::Ours,
+            },
+            &chordkit::Overrides::default(),
+        )
+        .0,
         launcher: LauncherChoice::ThisProgram,
         appearance: AppearanceSource::scratch(
             home.join("config"),

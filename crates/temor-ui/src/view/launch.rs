@@ -41,6 +41,9 @@ pub enum LauncherChoice {
 pub struct Launch {
     pub ambient: Ambient,
     pub settings: TerminalSettings,
+    /// The keys: the desktop's conventions, the person's changes and temor's actions (see
+    /// `edge::load_keymap`).
+    pub keymap: chordkit::Keymap,
     pub launcher: LauncherChoice,
     /// Where the window's look (theme, accent, Space look, desktop preferences) is read from.
     pub appearance: AppearanceSource,
@@ -112,7 +115,7 @@ pub fn open_session(
         SessionParts {
             spec,
             fonts,
-            keymap: settings.keymap.clone(),
+            keymap: launch.keymap.clone(),
             clipboard: Box::new(DesktopClipboard),
             opener: default_opener(),
             notify_after: settings.notify_after,

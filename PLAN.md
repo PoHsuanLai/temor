@@ -285,36 +285,59 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
   - temor corrects the modifier lag in its own keymap.
   - Keys are **configurable** (ds-settings). On KDE, KWin takes Meta+T/W/D/V globally; the desktop's
     reserved chords have been asked of whopper.
-- **The desktop key rule** (whopper, restated for quire ≥ v0.2.31):
-  - Apps never claim the **shell's** Super chords: Super alone, Super+Space, Super+Tab, and anything
-    the shell or compositor lists. An app's own ⌘ chords (⌘T, ⌘W, ⌘C, ⌘1–9…) may be read when they
-    arrive as Super. **Ctrl+1–9 is the desktop's** Space switch (quire design/27 §8 item 5) and is
-    never bound (corrected 2026-10-10 by the agent session).
-  - **Two paths reach temor, and both must work:**
-    - With keycap (or Toshy) running and the window matched as `Categories=TerminalEmulator`,
-      physical ⌘ + letter arrives as **Ctrl+Shift + letter**.
-    - With no remapper, or a window it didn't match, physical ⌘ arrives as **Super**.
-    - So every ⌘ action is bound to both Ctrl+Shift+key and Super+key.
-  - **Terminal rule:** never use quire's `is_command` in a pane (it is true for plain Ctrl and would
-    steal Ctrl+C, Ctrl+D…). A chord is a ⌘ chord when
-    `let m = command_keys(mods); m.contains(Modifiers::META) && !m.contains(Modifiers::CONTROL)`
-    (Super folded to Meta, without Ctrl), or when it is in temor's Ctrl+Shift table. Everything else,
-    including plain Ctrl combos and unbound Ctrl+Shift combos, goes to the program. Chords are shown
-    as ⌘. (GUI parts of temor outside a pane, such as dialogs, may use `is_command`.)
-  - Ctrl+Space stays with the input method everywhere.
-  - **Test:** Ctrl+Shift+T and Super+T both open a tab; Ctrl+C reaches the PTY; an unbound
-    Ctrl+Shift combo is dropped (it would arrive as a control byte); Super alone and Super+Space never
-    reach temor's bindings.
-- **Default keys** (shown with ⌘; each bound as Ctrl+Shift+key and Super+key):
-  - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split (Ctrl+Shift+D, and Ctrl+Shift+Alt+D for down); ⌘⌥ arrows move
-    focus
-  - ⌘⇧↩ zoom; ⌃⌘= equalize; ⌘C/⌘V copy/paste; ⌘F searches the scrollback; ⌘↑/↓ move between prompts
-  - ⌘1–9 tabs (as Terminal and iTerm); temor's own Space switch has no default chord (the command
-    bar and the Spaces menu reach it; quire v0.3.3 adds an unbound `SwitchChord`); ⌘⇧T reopens a
-    closed tab; ⌘⇧U jumps to the waiting agent
-  - Every binding is configurable; the defaults never claim the shell's Super chords or Ctrl+Space.
-    A setting for an action replaces both of its default forms, which gives a chord back to the program;
-    a bare Ctrl chord (Ctrl with a letter, digit or punctuation, no Shift or Alt) is refused.
+- **Keys are chordkit's** (the desktop's portable keymap core, pinned in the workspace
+  `Cargo.toml`). temor owns no chord, modifier, keymap or Command-versus-Ctrl type or rule:
+  - **Platform and source:** the L3 edge (`temor_ui::edge::load_keymap`) reads
+    `chordkit::detect_process()` once, loads the platform's conventions (`ConventionSource`; the
+    desktop's own settings come later: keycap on our desktop, the KDE source on Plasma), lays the
+    person's changes over them (`Overrides::parse` + `with_overrides`), then registers temor's
+    actions (`temor_pane::keys::build_keymap`, pure).
+  - **Primary per platform:** defaults are written `Primary+…`. In a terminal Primary is Super on
+    macOS and on our desktop, and Ctrl+Shift on Windows, KDE, GNOME and other Linux, so plain Ctrl
+    always stays the program's. A Primary chord that already uses Shift takes Alt as well on the
+    Ctrl+Shift platforms (split down is Ctrl+Shift+Alt+D); one that uses Alt too has no terminal
+    form.
+  - **The Ours alias:** on our desktop keycap remaps ⌘ to Ctrl+Shift for terminal windows, so
+    `resolve` accepts Super+D and Ctrl+Shift+D as one chord. Other platforms have no alias. Menus
+    show the platform's own form (`chord.display(platform)`, `⌘D` on Ours and macOS).
+  - **Routing** (`temor_ui::input::route`): the window's key event becomes a `chordkit::KeyInput`
+    (physical modifiers, the logical key without Shift, AltGr from the toolkit's flag) and
+    `keymap.resolve(&input, Context::Terminal)` decides: an action temor acts on runs; otherwise a
+    key in the Primary form (`is_primary_form`: a letter, digit or symbol with the Primary
+    modifiers, bound or not) is dropped, as Ghostty does, instead of reaching the program as a
+    control byte; every other key, including plain Ctrl chords, goes to the program. FOLLOWUP: under
+    the kitty keyboard flags a program that asked for these chords should get them.
+  - **AltGr characters type:** a press with AltGr held resolves to nothing and is never in the
+    Primary form.
+  - **The find bar's own keys:** Escape closes the find bar only while it is open (app logic, not a
+    keymap entry), and the system's Cancel does the same; the find chords (find next, previous) act
+    only while it is open and are otherwise the program's or dropped like any key.
+  - **Ctrl+1–9 is the desktop's** Space switch and is never bound by temor. Super alone, Super+Space
+    and Super+Tab are the shell's; chordkit reserves them and `register` refuses them.
+  - **Test:** tables over platforms, with `chordkit::detect` or explicit `Platform` values and
+    never the real environment: Ours takes Super and Ctrl+Shift, Ctrl+D reaches the program, an
+    unbound Ctrl+Shift+K or Super+K is dropped; Windows and KDE use the Ctrl+Shift form (split
+    down is Ctrl+Shift+Alt+D) and leave Super alone; macOS uses Super; AltGr characters type.
+- **Default keys** (`Primary+…`; standard actions use the platform's own chord and temor never
+  registers one):
+  - standard actions: close pane is the standard "close" (⌘W),
+    copy, paste, find, find next and find previous (the platform's chords: ⌘F, ⌘G, ⇧⌘G on Ours and
+    macOS; Ctrl+Shift forms or F3 elsewhere)
+  - temor's own, registered under the id `temor`: `temor.new-tab` ⌘T (temor forgoes the
+    offered-only standard "show fonts" and "new", so ⌘N is free); `temor.split-right` ⌘D; `temor.split-down` ⇧⌘D;
+    `temor.focus-left/right/up/down` ⌥⌘ arrows; `temor.previous-prompt` / `next-prompt` ⌘↑ / ⌘↓;
+    `temor.zoom` ⇧⌘↩; `temor.equalize` ⌃⌘= (fallback ⌥⌘0 where Primary is
+    Ctrl+Shift, as Ctrl+Shift+Alt+0); `temor.reopen-tab` ⇧⌘T; `temor.tab-1` to `tab-9` ⌘1 to ⌘9
+    (as Terminal and iTerm); the Space switch is the standard "switch to Space n" with no default of
+    temor's (the desktop owns Ctrl+digit; the command bar and the Spaces menu reach it)
+  - ⌘T opens a plain tab until the command bar lands (P5), then the bar; ⌘⇧U jumps to the
+    waiting agent
+  - Every binding is configurable in the settings file in chordkit's line form:
+    `temor.split-right = Primary+Alt+N`, `copy = Primary+Alt+C`, `temor.zoom = none` to unbind.
+    A change replaces the action's defaults, which gives a chord back to the program. A line the
+    keymap refuses (a chord the desktop keeps, or one that is not a key) is reported with its line
+    number and skipped; an action's refused default is reported once at start and leaves only that
+    action unbound until the person binds it (chordkit lets a person's chord revive it).
 
 ## 7. Browser-like structure
 

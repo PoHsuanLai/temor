@@ -49,6 +49,14 @@ pub(super) fn harness_in(name: &str, probe: &Probe, state_dir: Option<PathBuf>) 
             ..TerminalSettings::default()
         },
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
+        // Our desktop: ⌘ is Super, or the Ctrl+Shift form the harness chords send.
+        keymap: temor_ui::edge::keymap_for(
+            chordkit::Platform::Linux {
+                desktop: chordkit::Desktop::Ours,
+            },
+            &chordkit::Overrides::default(),
+        )
+        .0,
         launcher: LauncherChoice::Setsid(
             temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
                 .expect("util-linux setsid is installed"),

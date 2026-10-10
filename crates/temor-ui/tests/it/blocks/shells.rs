@@ -68,7 +68,7 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
     let enter = KeyInput::press(KeyCode::Enter, Modifiers::NONE, "");
     live.session
         .key(Stroke {
-            chord: None,
+            input: None,
             key: enter,
         })
         .expect("enter");

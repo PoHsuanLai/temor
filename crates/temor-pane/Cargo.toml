@@ -14,6 +14,7 @@ default = ["ghostty"]
 ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render/ghostty"]
 
 [dependencies]
+chordkit = { workspace = true }
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
 # `SO_PEERCRED` for the status socket (the `net` feature joins the workspace set here).

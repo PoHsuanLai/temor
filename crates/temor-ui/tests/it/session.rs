@@ -2,25 +2,22 @@
 //! copy, paste (framed, and confirmed when unsafe), and the find bar.
 
 use std::cell::RefCell;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use chordkit::{AltGr, Context, Desktop, Key as ChordKey, Modifier, Modifiers as ChordMods};
+use chordkit::{Overrides, Platform};
 use temor_pane::PaneEvent;
 use temor_pane::keys::Action;
-use temor_pane::keys::ChordKey;
-use temor_pane::keys::Keymap;
-use temor_pane::keys::{Chord, Mods};
 use temor_pane::paste::UnsafeReason;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
-use temor_pane::text::CellPos;
 use temor_pty::SessionLauncher;
 use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
-use temor_ui::edge::Ambient;
-use temor_ui::input::{FindBar, Stroke, route};
+use temor_ui::edge::{Ambient, keymap_for};
+use temor_ui::input::{FindBar, Routed, Stroke, route};
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
@@ -103,7 +100,7 @@ fn fixture(name: &str) -> Fixture {
         SessionParts {
             spec,
             fonts,
-            keymap: Keymap::defaults(),
+            keymap: keymap_for(OURS, &Overrides::default()).0,
             clipboard: Box::new(clipboard.clone()),
             opener: Box::new(NoOpener),
             notify_after: TerminalSettings::default().notify_after,
@@ -147,7 +144,7 @@ fn type_text(session: &mut Session, text: &str) {
         let input = KeyInput::press(code, Modifiers::NONE, &c.to_string());
         session
             .key(Stroke {
-                chord: None,
+                input: None,
                 key: input,
             })
             .expect("key");
@@ -158,7 +155,7 @@ fn press_enter(session: &mut Session) {
     let input = KeyInput::press(KeyCode::Enter, Modifiers::NONE, "");
     session
         .key(Stroke {
-            chord: None,
+            input: None,
             key: input,
         })
         .expect("enter");
@@ -407,16 +404,34 @@ fn the_find_bar_finds_and_steps_through_matches() {
     assert!(f.session.finder().is_none());
 }
 
+/// The platform these tests run the keys on: our desktop, where ⌘ is Super or Ctrl+Shift.
+const OURS: Platform = Platform::Linux {
+    desktop: Desktop::Ours,
+};
+
+/// A chord as chordkit reads a press: these modifiers and this character.
+fn chord(mods: &[Modifier], c: char) -> chordkit::KeyInput {
+    chordkit::KeyInput::new(
+        mods.iter().copied().collect::<ChordMods>(),
+        ChordKey::Char(c),
+    )
+}
+
 #[test]
 fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
     if !super::support::tools_present() {
         return;
     }
-    let keymap = Keymap::defaults();
-    let next = Chord::parse("ctrl+shift+g").expect("valid");
-    assert_eq!(keymap.action_for(&next), Some(Action::FindNext));
+    let keymap = keymap_for(OURS, &Overrides::default()).0;
+    let next = chord(&[Modifier::Ctrl, Modifier::Shift], 'g');
+    assert_eq!(
+        keymap
+            .resolve(&next, Context::Terminal)
+            .and_then(|named| Action::from_chordkit(&named)),
+        Some(Action::FindNext)
+    );
     let stroke = Stroke {
-        chord: Some(next),
+        input: Some(next),
         key: KeyInput {
             code: KeyCode::G,
             action: KeyAction::Press,
@@ -426,22 +441,19 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
             ime: temor_vt::Ime::Idle,
         },
     };
-    assert_eq!(
-        route(stroke, &keymap, FindBar::Closed),
-        temor_ui::input::Routed::Ignored
-    );
-    let _ = (
-        ChordKey::Char('g'),
-        Mods::NONE,
-        CellPos::new(0, 0),
-        PathBuf::new(),
-    );
+    assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
 }
 
-/// A key press as the window routes it: the chord (when it has one) and what the program gets.
-fn pressed(chord: Option<(Mods, char)>, code: KeyCode, mods: Modifiers, text: &str) -> Stroke {
+/// A key press as the window routes it: the press as chordkit reads it (when it has one) and
+/// what the program gets.
+fn pressed(
+    input: Option<chordkit::KeyInput>,
+    code: KeyCode,
+    mods: Modifiers,
+    text: &str,
+) -> Stroke {
     Stroke {
-        chord: chord.map(|(m, c)| Chord::of_char(c, m)),
+        input,
         key: KeyInput::press(code, mods, text),
     }
 }
@@ -455,7 +467,7 @@ fn ctrl_c_reaches_the_program_as_an_interrupt_and_altgr_text_as_text() {
     // Ctrl+C is not a chord the pane runs: bash echoes the interrupt it received as ^C.
     f.session
         .key(pressed(
-            Some((Mods::CTRL, 'c')),
+            Some(chord(&[Modifier::Ctrl], 'c')),
             KeyCode::C,
             Modifiers::CTRL,
             "",
@@ -468,7 +480,7 @@ fn ctrl_c_reaches_the_program_as_an_interrupt_and_altgr_text_as_text() {
     type_text(&mut f.session, "echo ");
     f.session
         .key(pressed(
-            Some((Mods::CTRL.with(Mods::ALT), '2')),
+            Some(chord(&[Modifier::Ctrl, Modifier::Alt], '2').with_alt_gr(AltGr::Held)),
             KeyCode::Digit2,
             Modifiers::CTRL.with(Modifiers::ALT),
             "@",
@@ -489,10 +501,10 @@ fn command_v_pastes_in_both_command_forms() {
     for (text, chord_mods, mods) in [
         (
             "echo pasted-ctrl-shift",
-            Mods::CTRL.with(Mods::SHIFT),
+            vec![Modifier::Ctrl, Modifier::Shift],
             Modifiers::CTRL.with(Modifiers::SHIFT),
         ),
-        ("echo pasted-super", Mods::SUPER, Modifiers::SUPER),
+        ("echo pasted-super", vec![Modifier::Super], Modifiers::SUPER),
     ] {
         *f.clipboard.0.borrow_mut() = text.to_owned();
         wait_until("bracketed paste", || {
@@ -500,7 +512,7 @@ fn command_v_pastes_in_both_command_forms() {
                 == temor_pane::paste::PasteMode::Bracketed
         });
         f.session
-            .key(pressed(Some((chord_mods, 'v')), KeyCode::V, mods, ""))
+            .key(pressed(Some(chord(&chord_mods, 'v')), KeyCode::V, mods, ""))
             .expect("the paste chord");
         press_enter(&mut f.session);
         let want = text.trim_start_matches("echo ").to_owned();

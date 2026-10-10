@@ -6,7 +6,8 @@ use super::value::{
     font_family, font_points, notify_after, scrollback, shell,
 };
 use crate::error::SettingsError;
-use crate::keys::{Action, Chord, Keymap};
+use crate::keys::Action;
+use chordkit::Overrides;
 
 /// Everything the pane reads from its settings.
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +17,9 @@ pub struct TerminalSettings {
     pub scrollback: ScrollbackLines,
     pub cursor: CursorStyle,
     pub shell: ShellChoice,
-    pub keymap: Keymap,
+    /// The person's key changes, in chordkit's line form (`temor.split-right = Primary+Alt+N`).
+    /// The keymap itself is built at the app's edge from the desktop's conventions and these.
+    pub keys: Overrides,
     /// When a finished command is worth a notice while the pane is unfocused (PLAN §8.1).
     pub notify_after: NotifyAfter,
 }
@@ -29,7 +32,7 @@ impl Default for TerminalSettings {
             scrollback: ScrollbackLines::DEFAULT,
             cursor: CursorStyle::default(),
             shell: ShellChoice::default(),
-            keymap: Keymap::defaults(),
+            keys: Overrides::default(),
             notify_after: NotifyAfter::DEFAULT,
         }
     }
@@ -43,19 +46,49 @@ pub struct ParsedSettings {
 }
 
 /// Reads settings text over the defaults. Every problem is kept in `issues`; the rest applies.
+///
+/// A line whose left side names a key action (`copy`, `temor.split-right`) is a key line. Those
+/// lines go to chordkit's reader whole, in place, so its problems carry the file's line numbers.
 pub fn parse_settings(text: &str) -> ParsedSettings {
     let mut settings = TerminalSettings::default();
     let mut issues = Vec::new();
+    let mut key_text = String::new();
     for (index, raw) in text.lines().enumerate() {
         let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') {
+        let key_line = is_key_line(line);
+        if key_line {
+            key_text.push_str(raw);
+        }
+        key_text.push('\n');
+        if line.is_empty() || line.starts_with('#') || key_line {
             continue;
         }
         if let Err(err) = apply_line(&mut settings, line) {
             issues.push((index + 1, err));
         }
     }
+    let (keys, problems) = Overrides::parse(&key_text);
+    settings.keys = keys;
+    issues.extend(
+        problems
+            .into_iter()
+            .map(|problem| (problem.line, SettingsError::Key(problem.what))),
+    );
+    issues.sort_by_key(|(line, _)| *line);
     ParsedSettings { settings, issues }
+}
+
+/// Whether `line` is a key line: its left side is a standard action (`copy`) or one of temor's
+/// own (`temor.split-right`). Another app's action id is not, and is reported as unknown.
+fn is_key_line(line: &str) -> bool {
+    let Some((key, _)) = line.split_once('=') else {
+        return false;
+    };
+    match key.trim().parse::<chordkit::Action>() {
+        Ok(chordkit::Action::Standard(_)) => true,
+        Ok(other) => Action::from_chordkit(&other).is_some(),
+        Err(_) => false,
+    }
 }
 
 fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), SettingsError> {
@@ -71,14 +104,7 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), Setting
         "cursor.style" => settings.cursor = cursor(key, value)?,
         "shell.program" => settings.shell = shell(key, value)?,
         "notify.after" => settings.notify_after = notify_after(key, value)?,
-        _ => {
-            let action = key
-                .strip_prefix("keys.")
-                .and_then(Action::parse)
-                .ok_or_else(|| SettingsError::UnknownSetting(key.to_owned()))?;
-            let chord = Chord::parse(value)?;
-            settings.keymap.bind(action, chord)?;
-        }
+        _ => return Err(SettingsError::UnknownSetting(key.to_owned())),
     }
     Ok(())
 }

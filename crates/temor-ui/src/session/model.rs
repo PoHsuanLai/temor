@@ -4,10 +4,10 @@
 
 use std::path::PathBuf;
 
+use chordkit::Keymap;
 use ds_core::time::stamp::Stamp;
 use temor_core::notify::{Focus, Limiter};
 use temor_core::vocab::ids::BlockId;
-use temor_pane::keys::Keymap;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::text::Finder;
 use temor_pane::text::Selection;

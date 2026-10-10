@@ -1,7 +1,7 @@
 //! What the window and the tests read from a session: the pane, the grid, the cursor, the
 //! screen's text, the find bar and the paste waiting for an answer.
 
-use temor_pane::keys::Keymap;
+use chordkit::Keymap;
 use temor_pane::text::Finder;
 use temor_render::GridFit;
 

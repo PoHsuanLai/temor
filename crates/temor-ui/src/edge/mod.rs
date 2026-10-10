@@ -5,6 +5,7 @@
 mod ambient;
 pub mod clock;
 pub mod git;
+mod keymap;
 pub mod notify;
 mod save_pace;
 mod session_file;
@@ -13,6 +14,7 @@ pub mod sidecar;
 
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
+pub use keymap::{keymap_for, load_keymap};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{

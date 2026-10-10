@@ -1,6 +1,12 @@
-//! What a chord can ask the pane to do (PLAN §6). Closed set, so every match is checked.
+//! What a key can ask the pane to do (PLAN §6). A closed set, so every match is checked, and
+//! the two-way map to chordkit's actions: temor owns no chords, only these names.
 
-/// A pane action bound to a chord.
+use chordkit::{Action as Named, AppAction, SpaceNumber, StandardAction};
+
+/// The app id temor registers its own actions under.
+pub(super) const APP: &str = "temor";
+
+/// A pane action a key can run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Action {
     /// Copy the selection to the clipboard.
@@ -13,103 +19,70 @@ pub enum Action {
     FindNext,
     /// Jump to the previous match.
     FindPrevious,
-    /// Close the find bar.
+    /// Close the find bar. Not a keymap entry: Escape closes it only while it is open, and the
+    /// system's Cancel does the same (see `route`).
     CloseFind,
-    /// Bring the previous command's prompt into view (⌘↑).
+    /// Bring the previous command's prompt into view.
     PreviousPrompt,
-    /// Bring the next command's prompt into view (⌘↓).
+    /// Bring the next command's prompt into view.
     NextPrompt,
-    /// Open a new tab (⌘T).
+    /// Open a new tab (the standard "new").
     NewTab,
-    /// Close the focused pane; the last pane closes its tab (⌘W).
+    /// Close the focused pane; the last pane closes its tab (the standard "close").
     ClosePane,
-    /// Split the focused pane, the new one on its right (⌘D).
+    /// Split the focused pane, the new one on its right.
     SplitRight,
-    /// Split the focused pane, the new one below it (⌘⇧D).
+    /// Split the focused pane, the new one below it.
     SplitDown,
-    /// Move focus to the pane on the left (⌘⌥←).
+    /// Move focus to the pane on the left.
     FocusLeft,
-    /// Move focus to the pane on the right (⌘⌥→).
+    /// Move focus to the pane on the right.
     FocusRight,
-    /// Move focus to the pane above (⌘⌥↑).
+    /// Move focus to the pane above.
     FocusUp,
-    /// Move focus to the pane below (⌘⌥↓).
+    /// Move focus to the pane below.
     FocusDown,
-    /// Show the focused pane over its whole tab, or back to the split (⌘⇧↩).
+    /// Show the focused pane over its whole tab, or back to the split.
     ToggleZoom,
-    /// Even out the splits of the tab (⌃⌘=).
+    /// Even out the splits of the tab.
     Equalize,
-    /// Bring back the tab closed last (⌘⇧T).
+    /// Bring back the tab closed last.
     ReopenTab,
-    /// Select the tab at this sidebar position, 1 to 9 (⌘1 to ⌘9). Not in [`Action::ALL`]: the
-    /// digits are fixed defaults, not settings.
+    /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
-    /// Switch to the Space at this position, 1 to 9 (⌃1 to ⌃9). Not in [`Action::ALL`]: the
-    /// digits are fixed defaults, not settings. Plain Ctrl with a digit is the only form:
-    /// Super with a digit belongs to the desktop, and Ctrl+Shift with a digit selects a tab.
+    /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
+    /// no default of temor's: the desktop owns that key.
     SelectSpace(u8),
 }
 
+/// The app actions' ids after `temor.`, for the actions that are not standard.
+const APP_SLUGS: &[(Action, &str)] = &[
+    (Action::NewTab, "new-tab"),
+    (Action::PreviousPrompt, "previous-prompt"),
+    (Action::NextPrompt, "next-prompt"),
+    (Action::SplitRight, "split-right"),
+    (Action::SplitDown, "split-down"),
+    (Action::FocusLeft, "focus-left"),
+    (Action::FocusRight, "focus-right"),
+    (Action::FocusUp, "focus-up"),
+    (Action::FocusDown, "focus-down"),
+    (Action::ToggleZoom, "zoom"),
+    (Action::Equalize, "equalize"),
+    (Action::ReopenTab, "reopen-tab"),
+];
+
+/// The actions that are chordkit's standard ones.
+const STANDARD: &[(Action, StandardAction)] = &[
+    (Action::Copy, StandardAction::Copy),
+    (Action::Paste, StandardAction::Paste),
+    (Action::Find, StandardAction::Find),
+    (Action::FindNext, StandardAction::FindNext),
+    (Action::FindPrevious, StandardAction::FindPrevious),
+    (Action::ClosePane, StandardAction::Close),
+];
+
 impl Action {
-    /// Every action, in declaration order.
-    pub const ALL: &'static [Self] = &[
-        Self::Copy,
-        Self::Paste,
-        Self::Find,
-        Self::FindNext,
-        Self::FindPrevious,
-        Self::CloseFind,
-        Self::PreviousPrompt,
-        Self::NextPrompt,
-        Self::NewTab,
-        Self::ClosePane,
-        Self::SplitRight,
-        Self::SplitDown,
-        Self::FocusLeft,
-        Self::FocusRight,
-        Self::FocusUp,
-        Self::FocusDown,
-        Self::ToggleZoom,
-        Self::Equalize,
-        Self::ReopenTab,
-    ];
-
-    /// The action written as `slug` in settings text (`find_next`), or `None`.
-    pub fn parse(slug: &str) -> Option<Self> {
-        Self::ALL
-            .iter()
-            .copied()
-            .find(|action| action.slug() == slug)
-    }
-
-    /// The name settings text uses for this action.
-    fn slug(self) -> &'static str {
-        match self {
-            Self::Copy => "copy",
-            Self::Paste => "paste",
-            Self::Find => "find",
-            Self::FindNext => "find_next",
-            Self::FindPrevious => "find_previous",
-            Self::CloseFind => "close_find",
-            Self::PreviousPrompt => "previous_prompt",
-            Self::NextPrompt => "next_prompt",
-            Self::NewTab => "new_tab",
-            Self::ClosePane => "close_pane",
-            Self::SplitRight => "split_right",
-            Self::SplitDown => "split_down",
-            Self::FocusLeft => "focus_left",
-            Self::FocusRight => "focus_right",
-            Self::FocusUp => "focus_up",
-            Self::FocusDown => "focus_down",
-            Self::ToggleZoom => "toggle_zoom",
-            Self::Equalize => "equalize",
-            Self::ReopenTab => "reopen_tab",
-            Self::SelectTab(_) => "select_tab",
-            Self::SelectSpace(_) => "select_space",
-        }
-    }
-
-    /// What the person reads for this action, in messages such as "already used by Copy".
+    /// What the person reads for this action, in messages.
     pub fn label(self) -> &'static str {
         match self {
             Self::Copy => "Copy",
@@ -133,6 +106,54 @@ impl Action {
             Self::ReopenTab => "Reopen tab",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
+        }
+    }
+
+    /// The chordkit action this one is bound as, or `None` for an action with no keymap entry
+    /// ([`Action::CloseFind`], or a tab or Space number outside 1 to 9).
+    pub fn to_chordkit(self) -> Option<Named> {
+        if let Some((_, standard)) = STANDARD.iter().find(|(ours, _)| *ours == self) {
+            return Some(Named::Standard(*standard));
+        }
+        if let Some((_, slug)) = APP_SLUGS.iter().find(|(ours, _)| *ours == self) {
+            return AppAction::new(&format!("{APP}.{slug}"))
+                .ok()
+                .map(Named::App);
+        }
+        match self {
+            Self::SelectTab(n) if (1..=9).contains(&n) => AppAction::new(&format!("{APP}.tab-{n}"))
+                .ok()
+                .map(Named::App),
+            Self::SelectSpace(n) => {
+                SpaceNumber::new(n).map(|n| Named::Standard(StandardAction::SwitchToSpace(n)))
+            }
+            _ => None,
+        }
+    }
+
+    /// The pane action a chordkit action means, or `None` for one temor does not act on (the
+    /// keymap also carries the system's actions, such as Select all). The standard Cancel is
+    /// [`Action::CloseFind`]: it closes the find bar when one is open.
+    pub fn from_chordkit(action: &Named) -> Option<Self> {
+        match action {
+            Named::Standard(StandardAction::Cancel) => Some(Self::CloseFind),
+            Named::Standard(StandardAction::SwitchToSpace(n)) => Some(Self::SelectSpace(n.get())),
+            Named::Standard(standard) => STANDARD
+                .iter()
+                .find(|(_, candidate)| candidate == standard)
+                .map(|(ours, _)| *ours),
+            Named::App(app) => {
+                let slug = app.id().strip_prefix(APP)?.strip_prefix('.')?;
+                if let Some(digits) = slug.strip_prefix("tab-") {
+                    let n: u8 = digits.parse().ok()?;
+                    return (1..=9).contains(&n).then_some(Self::SelectTab(n));
+                }
+                APP_SLUGS
+                    .iter()
+                    .find(|(_, candidate)| *candidate == slug)
+                    .map(|(ours, _)| *ours)
+            }
+            _ => None,
         }
     }
 }

@@ -6,9 +6,9 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use chordkit::{Desktop, Overrides, Platform};
 use temor_core::block::Outcome;
 use temor_pane::PaneEvent;
-use temor_pane::keys::Keymap;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
@@ -133,7 +133,13 @@ pub(super) fn start_with(
         SessionParts {
             spec,
             fonts,
-            keymap: Keymap::defaults(),
+            keymap: temor_ui::edge::keymap_for(
+                Platform::Linux {
+                    desktop: Desktop::Ours,
+                },
+                &Overrides::default(),
+            )
+            .0,
             clipboard: Box::new(clipboard.clone()),
             opener: Box::new(NoOpener),
             notify_after: NotifyAfter::DEFAULT,

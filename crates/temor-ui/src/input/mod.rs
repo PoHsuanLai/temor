@@ -7,7 +7,7 @@ mod keys;
 mod route;
 
 pub use click::{Click, ClickState, next_click};
-pub use keys::{chord_of, core_mods, is_altgr_text, stroke, vt_mods};
+pub use keys::{is_altgr_text, pressed, stroke, vt_mods};
 pub use route::{FindBar, Routed, Stroke, route};
 
 #[cfg(test)]
