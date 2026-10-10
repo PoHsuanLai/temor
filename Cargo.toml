@@ -59,7 +59,7 @@ tokio = { version = "1", default-features = false, features = ["sync"] }
 temor-wire = { path = "crates/temor-wire" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
-chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "338b717cb62f73bfed60cc410d07b13b53636cb6" }
+chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 1b905ed locks porter b12886e (which includes Tailnet1), so docket and porter-client share
