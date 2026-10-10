@@ -10,11 +10,11 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds::edit::raw_key::RawKey;
-use ds::host::measure::RectProbe;
+use ds::host::measure::{RectProbe, use_rect};
 use ds::host::signals::HostSignals;
 use temor_vt::SurfacePoint;
 
-use super::peek_card::{PeekCard, place};
+use super::peek_card::PeekCard;
 use super::peek_keys::{KeySays, says};
 use super::slot::Slot;
 use super::window_help::device_at;
@@ -39,6 +39,8 @@ pub struct PeekHandles {
     pub key: Rc<dyn Fn(&RawKey)>,
     /// The card to draw, once the worker has made it.
     pub card: Signal<Option<PeekCard>>,
+    /// The drawn card's size, which places it.
+    pub measure: RectProbe,
 }
 
 impl std::fmt::Debug for PeekHandles {
@@ -123,8 +125,11 @@ impl Feeder {
             for _ in 0..POLLS {
                 match hub.peek_take(ticket) {
                     Taken::Ready(peeked) => {
-                        let (left, top) = place((under.x, under.y), room);
-                        card.set(Some(PeekCard { peeked, left, top }));
+                        card.set(Some(PeekCard {
+                            peeked,
+                            pointer: (under.x, under.y),
+                            room,
+                        }));
                         return;
                     }
                     Taken::Stale => return,
@@ -143,6 +148,7 @@ pub fn use_peek(
     signals: Option<HostSignals>,
 ) -> PeekHandles {
     let card = use_signal(|| None::<PeekCard>);
+    let measure = use_rect();
     let memo = use_hook(|| Rc::new(RefCell::new(Memo::default())));
     let feeder = Feeder {
         slot,
@@ -185,5 +191,6 @@ pub fn use_peek(
         gone: Rc::new(gone),
         key: Rc::new(key),
         card,
+        measure,
     }
 }

@@ -380,7 +380,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     FactChips { view }
                 }
                 if let Some(card) = (peek.card)() {
-                    {peek_card(&card)}
+                    {peek_card(&card, peek.measure)}
                 }
                 if let Some(tools) = chrome.tools.clone() {
                     BlockTools {
