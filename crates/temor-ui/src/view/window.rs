@@ -30,7 +30,10 @@ use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
-use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
+use crate::hub::{
+    Desk, DragKey, Hub, HubRef, SidebarData, TailnetHandle, spawn_event_loop, spawn_save_loop,
+    spawn_ssh_loop,
+};
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -51,6 +54,9 @@ pub fn App() -> Element {
         let launch = launch.clone();
         move || {
             let mut hub = Hub::new(launch);
+            if let Some(feed) = try_consume_context::<TailnetHandle>() {
+                hub.set_tailnet(feed.0);
+            }
             hub.start();
             HubRef(Rc::new(RefCell::new(hub)))
         }
@@ -69,6 +75,7 @@ pub fn App() -> Element {
         let desk = desk.clone();
         move || {
             spawn_event_loop(desk.clone());
+            spawn_ssh_loop(desk.clone());
             spawn_save_loop(desk.hub);
         }
     });

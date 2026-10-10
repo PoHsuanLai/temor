@@ -32,6 +32,7 @@ use super::handlers::{
     bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
     find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_pane,
 };
+use super::host_banners::HostBanners;
 use super::ime::{ImeGlue, composed_sink, focus_handler};
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
@@ -278,6 +279,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     on_close:bar_close(Rc::clone(&slot), ui),
                 }
             }
+            HostBanners { pane, desk: desk.clone() }
             StatusLine {
                 cwd: chrome.cwd.clone(),
                 title: chrome.title.clone(),
