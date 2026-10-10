@@ -15,6 +15,7 @@ use temor_core::vocab::ids::TabId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
+use super::shelf::ShelfFoot;
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow};
 
@@ -59,6 +60,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 onselect: select,
                 fill: SidebarFill::Clear,
                 foot: rsx! {
+                    ShelfFoot { desk: desk.clone() }
                     Button {
                         bezel: Bezel::Toolbar,
                         image: ImagePosition::Only,

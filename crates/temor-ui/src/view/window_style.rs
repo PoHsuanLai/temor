@@ -18,4 +18,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-tile-slot { position: absolute; box-sizing: border-box; }\
 .temor-tile-slot > * { display: block; width: 100%; height: 100%; }\
 .temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--line); }\
-.temor-tile[data-selected] { border-color: var(--accent); }";
+.temor-tile[data-selected] { border-color: var(--accent); }\
+.temor-dl-box { width: 100%; }\
+.temor-dl { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }\
+.temor-dl-actions { display: flex; gap: var(--s-3); }";

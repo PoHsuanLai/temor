@@ -28,6 +28,7 @@ use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
+use super::transfer_ask::TransferAsk;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
 use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
@@ -186,6 +187,7 @@ pub fn App() -> Element {
                                 onclose: move |_| notice.set(None),
                             }
                         }
+                        TransferAsk { desk: desk.clone() }
                         div { class: "temor-content",
                             if let Some((tab, tree, focus)) = front {
                                 TreeView { key: "{tab.0}", tree, focus, desk: desk.clone(), started }

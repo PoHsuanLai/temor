@@ -785,3 +785,36 @@ fn a_tab_copies_as_blanks_and_search_finds_the_blanks() {
     f.session.set_query("a  b").expect("search");
     assert_eq!(f.session.finder().map(|f| f.matches().len()), Some(1));
 }
+
+#[test]
+fn dropped_files_are_typed_into_the_prompt_quoted_for_the_shell() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-drop");
+    wait_until("bracketed paste", || {
+        f.session.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
+    });
+    f.session.drop_files(&[
+        std::path::PathBuf::from("/tmp/a b.txt"),
+        std::path::PathBuf::from("/tmp/it's.txt"),
+    ]);
+    wait_until("the quoted paths", || {
+        f.session
+            .screen_text()
+            .contains(r"'/tmp/a b.txt' '/tmp/it'\''s.txt'")
+    });
+    // Nothing ran: a drop only types, and the person's Enter is what runs it.
+    assert!(!has_line(
+        &f.session.screen_text(),
+        "a b.txt: command not found"
+    ));
+
+    // A name with a line break is never typed.
+    f.session
+        .drop_files(&[std::path::PathBuf::from("/tmp/x\ny")]);
+    assert_eq!(
+        f.session.take_notice().as_deref(),
+        Some("That file's name can't be typed into a terminal")
+    );
+}

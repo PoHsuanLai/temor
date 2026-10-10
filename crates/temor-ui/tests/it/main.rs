@@ -7,6 +7,7 @@ mod blocks;
 mod coherence;
 mod persist;
 mod session;
+mod shelf;
 mod support;
 mod window;
 mod worktree_git;
