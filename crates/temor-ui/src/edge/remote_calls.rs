@@ -1,11 +1,26 @@
-//! The calls on a helper's client that the window makes, in one place. The wire is being
-//! revised (TODO(batch3-wire): `OpenSession` and `resize` gain the cell pixel size, and the
-//! client gains `ping`); the rest of the window never names these types.
+//! The calls on a helper's client that the window makes, in one place; the rest of the window
+//! never names these types.
+
+use std::time::Duration;
 
 use temor_remote::{Attached, Client, Error};
 use temor_wire::ids::SessionId;
-use temor_wire::message::{EnvVar, ListeningPort, OpenSession, RemotePath};
-use temor_wire::units::{CellPx, Cols, Rows, Size};
+use temor_wire::message::{EnvVar, ListeningPort, OpenSession, Palette, RemotePath};
+use temor_wire::units::{CellPx, Cols, Pixels, Rows, Size};
+
+/// One cell in the pixels the helper wants, from the pane's cell in device pixels. A side that
+/// does not fit 16 bits is held at the most; a cell with no width or height (a pane not laid out
+/// yet) is the helper's own default.
+pub fn wire_cell(cell: temor_vt::CellPx) -> CellPx {
+    let side = |px: u32| u16::try_from(px).unwrap_or(u16::MAX);
+    match (side(cell.width.0), side(cell.height.0)) {
+        (0, _) | (_, 0) => CellPx::DEFAULT,
+        (width, height) => CellPx {
+            width: Pixels(width),
+            height: Pixels(height),
+        },
+    }
+}
 
 /// The size of a terminal of `cols` by `rows` cells.
 pub fn grid_size(cols: u16, rows: u16) -> Size {
@@ -16,12 +31,12 @@ pub fn grid_size(cols: u16, rows: u16) -> Size {
 }
 
 /// Opens a session running the account's login shell in `cwd`, with `env` as its whole
-/// environment.
+/// environment, at `size` cells of `cell` pixels, answering colour questions with `palette`.
 pub fn open(
     client: &Client,
-    cwd: &str,
-    env: &[(String, String)],
-    size: Size,
+    (cwd, env): (&str, &[(String, String)]),
+    (size, cell): (Size, CellPx),
+    palette: Palette,
 ) -> Result<SessionId, Error> {
     client.open_session(OpenSession {
         shell: None,
@@ -34,9 +49,8 @@ pub fn open(
             })
             .collect(),
         size,
-        // TODO(batch3-wire): the pane's real cell size and the window's palette.
-        cell: CellPx::default(),
-        palette: None,
+        cell,
+        palette: Some(palette),
     })
 }
 
@@ -44,8 +58,30 @@ pub fn attach(client: &Client, session: SessionId) -> Result<Attached, Error> {
     client.attach(session)
 }
 
-pub fn resize(client: &Client, session: SessionId, size: Size) -> Result<(), Error> {
-    client.resize(session, size, CellPx::default())
+pub fn resize(
+    client: &Client,
+    session: SessionId,
+    (size, cell): (Size, CellPx),
+) -> Result<(), Error> {
+    client.resize(session, size, cell)
+}
+
+pub fn set_palette(client: &Client, session: SessionId, palette: Palette) -> Result<(), Error> {
+    client.set_palette(session, palette)
+}
+
+/// Asks the helper whether it is there, waiting at most `within`.
+pub fn ping(client: &Client, within: Duration) -> Result<(), Error> {
+    client.ping(within)
+}
+
+/// The sessions the host holds.
+pub fn sessions(client: &Client) -> Result<Vec<SessionId>, Error> {
+    Ok(client
+        .list_sessions()?
+        .into_iter()
+        .map(|info| info.session)
+        .collect())
 }
 
 pub fn input(client: &Client, session: SessionId, bytes: &[u8]) -> Result<(), Error> {
@@ -58,4 +94,28 @@ pub fn close(client: &Client, session: SessionId) -> Result<(), Error> {
 
 pub fn ports(client: &Client) -> Result<Vec<ListeningPort>, Error> {
     client.list_ports()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_cell_goes_to_the_helper_in_pixels_it_can_hold() {
+        let cases = [
+            ((9, 18), (9, 18)),
+            ((18, 36), (18, 36)),
+            ((70_000, 20), (u16::MAX, 20)),
+            ((0, 18), (8, 16)),
+            ((9, 0), (8, 16)),
+        ];
+        for ((w, h), (want_w, want_h)) in cases {
+            let got = wire_cell(temor_vt::CellPx::new(w, h));
+            assert_eq!(
+                (got.width, got.height),
+                (Pixels(want_w), Pixels(want_h)),
+                "{w}x{h}"
+            );
+        }
+    }
 }

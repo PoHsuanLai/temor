@@ -12,17 +12,20 @@ use temor_remote::Error;
 use temor_ssh::{CommandOutput, CommandRunner, HostAlias};
 use temor_wire::digest::ContentHash;
 use temor_wire::ids::SessionId;
-use temor_wire::message::RemoteError;
+use temor_wire::link::PingPolicy;
+use temor_wire::message::{Palette, RemoteError};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::SshEnv;
-use super::remote_calls::{attach, close, open, ports, resize};
+use super::remote_adopt::{Adoption, adoption};
+use super::remote_calls::{attach, close, open, ports, resize, sessions, set_palette};
 use super::remote_conn::{Conn, DialFault, dial, dial_argv};
 use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket, Wanted};
 use super::remote_install::{
     Found, HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
 };
 use super::remote_link::lock;
+use super::remote_ping::watch;
 use super::remote_pump::pump;
 use super::remote_route::Router;
 
@@ -152,6 +155,15 @@ impl RemoteWork {
                 });
                 let outcome = match outcome {
                     Ok((conn, Ok(_))) => {
+                        let stalled = RemoteEvent::Stalled {
+                            host: host.clone(),
+                            generation,
+                        };
+                        let tell = events.clone();
+                        // Without the watch a stall goes unnoticed; the keepalives still run.
+                        let _ = watch(&conn, PingPolicy::DEFAULT, move || {
+                            let _ = tell.send(stalled);
+                        });
                         if let Ok(list) = ports(conn.client()) {
                             let _ = events.send(RemoteEvent::Ports {
                                 host: host.clone(),
@@ -210,6 +222,19 @@ impl RemoteWork {
         );
     }
 
+    /// Gives the sessions `sessions` of `conn` the window's new colours. Its outcome does not
+    /// matter: the next attach sends them again.
+    pub fn palette(&self, conn: Arc<Conn>, sessions: Vec<SessionId>, palette: Palette) {
+        self.run(
+            move |_| {
+                for session in sessions {
+                    let _ = set_palette(conn.client(), session, palette);
+                }
+            },
+            None,
+        );
+    }
+
     /// Ends a pane's session on the host. Its outcome does not matter.
     pub fn close(&self, conn: Arc<Conn>, session: SessionId) {
         self.run(
@@ -235,15 +260,38 @@ fn attach_pane(
     ticket: Ticket,
 ) -> Result<SessionId, AttachFault> {
     let client = conn.client();
-    let size = lock(&ticket.target).size;
+    let (size, cell) = {
+        let target = lock(&ticket.target);
+        (target.size, target.cell)
+    };
+    let palette = ticket.palette;
     let opened = match &ticket.wanted {
-        Wanted::Fresh { cwd, env } => open(client, cwd, env, size),
+        Wanted::Fresh { cwd, env } => open(
+            client,
+            (cwd.as_str(), env.as_slice()),
+            (size, cell),
+            palette,
+        ),
         Wanted::Again(session) => Ok(*session),
+        Wanted::Resume { session, cwd, env } => {
+            sessions(client).and_then(|held| match adoption(*session, &held) {
+                Adoption::Adopt => Ok(*session),
+                Adoption::OpenNew => open(
+                    client,
+                    (cwd.as_str(), env.as_slice()),
+                    (size, cell),
+                    palette,
+                ),
+            })
+        }
     };
     let attached = opened.and_then(|session| {
         // The screen the host sends back is at the size the window has now.
-        let _ = resize(client, session, size);
-        attach(client, session).map(|shown| (session, shown))
+        let _ = resize(client, session, (size, cell));
+        let shown = attach(client, session)?;
+        // The colours may have changed since the session was last attached.
+        let _ = set_palette(client, session, palette);
+        Ok((session, shown))
     });
     match attached {
         Ok((session, shown)) => {
