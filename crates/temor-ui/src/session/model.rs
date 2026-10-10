@@ -20,7 +20,7 @@ use super::clip::PendingPaste;
 use super::clipboard::Clipboard;
 use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
-use crate::paint::Painter;
+use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
 use temor_pane::{Hold, PaneHandle, PaneSpec};
 
@@ -57,10 +57,17 @@ pub struct Drag {
     pub shape: temor_pane::text::Shape,
 }
 
-/// One pane's state as the window needs it.
-/// Logical padding around the grid (PLAN §5: panes snap to whole cells, leftovers are padding).
-pub const PADDING_LOGICAL: f32 = 12.0;
+/// Logical padding around the grid (PLAN §5: panes snap to whole cells, leftovers are padding):
+/// the text starts 16 px from the pane's left and right edges and 8 px from its top and bottom.
+pub const INSET: Inset = Inset {
+    horizontal: PADDING_LOGICAL,
+    vertical: 8.0,
+};
 
+/// The left (and right) inset alone, for placing things beside the grid's rows.
+pub const PADDING_LOGICAL: f32 = 16.0;
+
+/// One pane's state as the window needs it.
 pub struct Session {
     pub(super) pane: PaneHandle,
     pub(super) painter: Painter,

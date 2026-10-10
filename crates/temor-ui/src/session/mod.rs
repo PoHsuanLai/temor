@@ -26,7 +26,9 @@ pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::LinkHover;
 pub use marks::{BlockMark, PromptStep, ToolsHeight, desktop_note};
-pub use model::{Drag, FedParts, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts};
+pub use model::{
+    Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
+};
 pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
 pub use viewer::ViewAsk;

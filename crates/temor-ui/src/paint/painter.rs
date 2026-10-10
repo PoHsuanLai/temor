@@ -11,12 +11,33 @@ use temor_render::{
 
 use crate::error::UiError;
 
+/// The space between a pane's edges and its grid, in logical pixels: the same on the left and the
+/// right, and the same on the top and the bottom.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Inset {
+    pub horizontal: f32,
+    pub vertical: f32,
+}
+
+impl Inset {
+    /// The inset as device pixels at `scale`, snapped to whole pixels.
+    fn padding(self, scale: Scale) -> Padding {
+        let (x, y) = (scale.device(self.horizontal), scale.device(self.vertical));
+        Padding {
+            top: y,
+            right: x,
+            bottom: y,
+            left: x,
+        }
+    }
+}
+
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PaintView<'a> {
     pub pixels: PixelSize,
     pub scale: Scale,
-    pub padding_logical: f32,
+    pub inset: Inset,
     pub focus: PaneFocus,
     pub selection: Option<SelectionOverlay>,
     /// The command cards over the grid's rows.
@@ -88,9 +109,9 @@ impl Painter {
     }
 
     /// The grid that fits a pane of `pixels` at `scale`, with the style's padding.
-    pub fn fit(&mut self, pixels: PixelSize, scale: Scale, padding_logical: f32) -> GridFit {
+    pub fn fit(&mut self, pixels: PixelSize, scale: Scale, inset: Inset) -> GridFit {
         let metrics = self.renderer.cell_metrics(scale);
-        fit_grid(pixels, &metrics, Padding::logical(padding_logical, scale))
+        fit_grid(pixels, &metrics, inset.padding(scale))
     }
 
     /// Draws what changed in the terminal since the last frame and hands the whole pane's
@@ -136,7 +157,7 @@ impl Painter {
         let pane_view = PaneView {
             size: view.pixels,
             scale: view.scale,
-            padding: Padding::logical(view.padding_logical, view.scale),
+            padding: view.inset.padding(view.scale),
             palette,
             focus: view.focus,
             selection: view.selection,
@@ -152,5 +173,26 @@ impl Painter {
         };
         show(drawn.pixels, drawn.size);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Inset;
+    use temor_render::Scale;
+
+    #[test]
+    fn the_grid_starts_16_px_in_from_the_sides_and_8_from_the_top_at_every_scale() {
+        // (scale, left and right, top and bottom) in device pixels.
+        let cases = [(1.0, 16, 8), (1.5, 24, 12), (2.0, 32, 16)];
+        for (factor, across, down) in cases {
+            let pad = Inset {
+                horizontal: 16.0,
+                vertical: 8.0,
+            }
+            .padding(Scale::new(factor));
+            let got = [pad.left.0, pad.right.0, pad.top.0, pad.bottom.0];
+            assert_eq!(got, [across, across, down, down], "scale {factor}");
+        }
     }
 }
