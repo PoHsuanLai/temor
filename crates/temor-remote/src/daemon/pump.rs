@@ -20,6 +20,9 @@ const CHUNK: usize = 32 * 1024;
 pub(super) fn run(daemon: Arc<Daemon>, session: Arc<Session>, io: PtyIo) {
     let mut buffer = vec![0u8; CHUNK];
     loop {
+        if session.close_asked() {
+            break;
+        }
         let interest = match session.backlog() {
             Backlog::Waiting => Interest::ReadWrite,
             Backlog::Empty => Interest::Read,

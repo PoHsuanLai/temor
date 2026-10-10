@@ -286,9 +286,10 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
   - Keys are **configurable** (ds-settings). On KDE, KWin takes Meta+T/W/D/V globally; the desktop's
     reserved chords have been asked of whopper.
 - **The desktop key rule** (whopper, restated for quire ≥ v0.2.31):
-  - Apps never claim the **shell's** Super chords: Super alone, Super+Space, Super+Tab, Super+number,
-    and anything the shell or compositor lists. An app's own ⌘ chords (⌘T, ⌘W, ⌘C…) may be read
-    when they arrive as Super.
+  - Apps never claim the **shell's** Super chords: Super alone, Super+Space, Super+Tab, and anything
+    the shell or compositor lists. An app's own ⌘ chords (⌘T, ⌘W, ⌘C, ⌘1–9…) may be read when they
+    arrive as Super. **Ctrl+1–9 is the desktop's** Space switch (quire design/27 §8 item 5) and is
+    never bound (corrected 2026-10-10 by the agent session).
   - **Two paths reach temor, and both must work:**
     - With keycap (or Toshy) running and the window matched as `Categories=TerminalEmulator`,
       physical ⌘ + letter arrives as **Ctrl+Shift + letter**.
@@ -302,12 +303,15 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
     as ⌘. (GUI parts of temor outside a pane, such as dialogs, may use `is_command`.)
   - Ctrl+Space stays with the input method everywhere.
   - **Test:** Ctrl+Shift+T and Super+T both open a tab; Ctrl+C reaches the PTY; an unbound
-    Ctrl+Shift combo reaches the program; Super alone and Super+Space never reach temor's bindings.
+    Ctrl+Shift combo is dropped (it would arrive as a control byte); Super alone and Super+Space never
+    reach temor's bindings.
 - **Default keys** (shown with ⌘; each bound as Ctrl+Shift+key and Super+key):
   - ⌘T bar; ⌘W close; ⌘D / ⌘⇧D split (Ctrl+Shift+D, and Ctrl+Shift+Alt+D for down); ⌘⌥ arrows move
     focus
   - ⌘⇧↩ zoom; ⌃⌘= equalize; ⌘C/⌘V copy/paste; ⌘F searches the scrollback; ⌘↑/↓ move between prompts
-  - ⌘1–9 tabs; ⌃1–9 Spaces (quire `SwitchChord`); ⌘⇧U jumps to the waiting agent
+  - ⌘1–9 tabs (as Terminal and iTerm); temor's own Space switch has no default chord (the command
+    bar and the Spaces menu reach it; quire v0.3.3 adds an unbound `SwitchChord`); ⌘⇧T reopens a
+    closed tab; ⌘⇧U jumps to the waiting agent
   - Every binding is configurable; the defaults never claim the shell's Super chords or Ctrl+Space.
     A setting for an action replaces both of its default forms, which gives a chord back to the program;
     a bare Ctrl chord (Ctrl with a letter, digit or punctuation, no Shift or Alt) is refused.

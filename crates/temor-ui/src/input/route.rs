@@ -116,7 +116,7 @@ mod tests {
         #[rustfmt::skip]
         let rows: &[(&str, bool)] = &[
             ("super+z", true),
-            ("super+5", false),
+            ("super+tab", false),
             ("super+space", false),
             ("ctrl+z", false),
             ("ctrl+shift+z", true),

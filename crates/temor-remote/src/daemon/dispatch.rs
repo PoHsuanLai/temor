@@ -67,7 +67,7 @@ impl Daemon {
             }
             Request::Close { session } => {
                 need(link, Capability::Sessions)?;
-                self.session(session)?.hang_up();
+                self.session(session)?.close();
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::ResizeSession { session, size } => {

@@ -103,17 +103,18 @@ impl Keymap {
             Action::ReopenTab,
             Chord::of_char('t', Mods::SUPER.with(Mods::SHIFT)),
         ));
-        // ⌘1 to ⌘9 are Ctrl+Shift only: the Super digits belong to the shell (reserved).
+        // ⌘1 to ⌘9 select tabs, in both forms. Ctrl+digit is the desktop's and is never bound.
         for n in 1..=9u8 {
             let digit = char::from(b'0' + n);
             bindings.push((
                 Action::SelectTab(n),
                 Chord::of_char(digit, Mods::CTRL.with(Mods::SHIFT)),
             ));
+            bindings.push((Action::SelectTab(n), Chord::of_char(digit, Mods::SUPER)));
         }
-        // The Space switch (`Action::SelectSpace`) has no default chord yet: quire leaves Ctrl+digit
-        // to the desktop's workspace switch, and Super+digit belongs to the shell (PLAN §6). The
-        // desktop rule decides which chord it gets; until then a person may bind one in settings.
+        // The Space switch (`Action::SelectSpace`) has no default chord: Ctrl+digit is the desktop's
+        // and ⌘digit selects tabs, as in other terminals (PLAN §6). It is reached through the
+        // command bar and the Spaces menu; a person may bind a chord in settings.
         // Escape is the find bar's own key, not a ⌘ chord.
         bindings.push((Action::CloseFind, ch_named(NamedKey::Escape, Mods::NONE)));
         Self { bindings }

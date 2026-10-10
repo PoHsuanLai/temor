@@ -58,13 +58,13 @@ fn chord_labels_show_the_command_key_for_both_command_forms() {
 
 #[test]
 fn the_shells_chords_and_ctrl_space_are_reserved_and_app_super_chords_are_not() {
-    for reserved in ["super+space", "super+tab", "super+1", "ctrl+space"] {
+    for reserved in ["super+space", "super+tab", "ctrl+space"] {
         assert!(
             Chord::parse(reserved).is_ok_and(|c| c.is_reserved()),
             "{reserved}"
         );
     }
-    for allowed in ["super+c", "super+alt+g", "ctrl+shift+c"] {
+    for allowed in ["super+c", "super+1", "super+alt+g", "ctrl+shift+c"] {
         assert!(
             Chord::parse(allowed).is_ok_and(|c| !c.is_reserved()),
             "{allowed}"
@@ -224,7 +224,8 @@ fn workspace_chords_run_their_actions_in_the_right_forms() {
         ("ctrl+9", None),
         ("ctrl+0", None),
         ("ctrl+alt+1", None),
-        ("super+1", None),
+        ("super+1", Some(Action::SelectTab(1))),
+        ("super+9", Some(Action::SelectTab(9))),
         ("super+shift+z", None),
     ];
     for (text, want) in rows {

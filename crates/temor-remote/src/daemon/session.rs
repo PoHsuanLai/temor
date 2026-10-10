@@ -43,6 +43,15 @@ struct Shared {
     size: Size,
     subscriber: Option<Arc<Link>>,
     detached_at: Option<Monotonic>,
+    closing: Closing,
+}
+
+/// Whether a client asked to close the session. A hang-up alone can be lost (a program that has
+/// not yet made its own process group misses it), so the pump also ends on this and reaps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Closing {
+    Open,
+    Asked,
 }
 
 fn check(size: Size) -> Result<Size, Error> {
@@ -101,6 +110,7 @@ impl Session {
                 size,
                 subscriber: None,
                 detached_at: Some(config.clock.now()),
+                closing: Closing::Open,
             }),
             pty: Mutex::new(pty),
             input,
@@ -178,6 +188,18 @@ impl Session {
         self.input.resize(pty_size(size))?;
         shared.size = size;
         Ok(())
+    }
+
+    /// Closes the session for a client: hangs the program up, and has the pump end and reap it
+    /// (hang-up, grace period, kill) even if the hang-up was missed.
+    pub(super) fn close(&self) {
+        self.lock().closing = Closing::Asked;
+        self.hang_up();
+    }
+
+    /// Whether a client asked to close the session.
+    pub(super) fn close_asked(&self) -> bool {
+        self.lock().closing == Closing::Asked
     }
 
     /// Hangs up the program, as closing a terminal window would. The pump thread reaps it.
