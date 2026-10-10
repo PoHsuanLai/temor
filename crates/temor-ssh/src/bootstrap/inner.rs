@@ -51,7 +51,7 @@ impl LoadToken {
 /// What zsh reads first: it makes lines that start with a space leave history, unless the
 /// person already had that set (then nothing changes). The `[` and `&&` forms parse the same
 /// in bash, zsh and fish, and do nothing there.
-pub(super) const ZSH_PRELUDE: &str = " [ -n \"$ZSH_VERSION\" ] && [ ! -o histignorespace ] && setopt histignorespace && _temor_hs_off=1\n";
+pub(super) const ZSH_PRELUDE: &str = " [ -n \"$ZSH_VERSION\" ] && [ ! -o histignorespace ] && setopt histignorespace && typeset -g _temor_hs_off=1\n";
 
 /// The `sh` program, up to the per-shell parts. `@MARK@` and `@PATH@` are the token's.
 const HEAD: &str = " sh -c '#@MARK@

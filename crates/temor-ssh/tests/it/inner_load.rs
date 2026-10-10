@@ -27,8 +27,9 @@ fn token() -> LoadToken {
     )
 }
 
-/// Runs `program args` with `input` on its stdin; stdout and stderr together.
-fn run_shell(s: &Scratch, program: &Path, args: &[&str], input: &str) -> Vec<u8> {
+/// Runs `program args` with `input` on its stdin: stdout and stderr together, and stdout alone (an
+/// interactive bash echoes the typed lines on stderr, so what history lists is on stdout).
+fn run_shell(s: &Scratch, program: &Path, args: &[&str], input: &str) -> (Vec<u8>, Vec<u8>) {
     let mut child = Command::new(program)
         .args(args)
         .env_clear()
@@ -49,49 +50,44 @@ fn run_shell(s: &Scratch, program: &Path, args: &[&str], input: &str) -> Vec<u8>
         let _ = stdin.write_all(input.as_bytes());
     }
     let output = child.wait_with_output().expect("wait");
-    let mut text = output.stdout;
+    let mut text = output.stdout.clone();
     text.extend(output.stderr);
-    text
+    (text, output.stdout)
 }
 
-/// Types the load text, then `after`, into `shell`.
-fn load_into(shell: &str, args: &[&str], after: &str) -> Option<(Vec<u8>, LoadToken)> {
+/// Types the load text, then `after`, into `shell`: all it printed, its stdout, and the token.
+fn load_into(shell: &str, args: &[&str], after: &str) -> Option<(Vec<u8>, Vec<u8>, LoadToken)> {
     let program = require(shell)?;
     let s = scratch();
     let token = token();
     let line = InnerLoadLine::build(&integration_scripts(), &token).expect("build");
-    let text = run_shell(&s, &program, args, &format!("{}{after}", line.as_str()));
-    Some((text, token))
+    let (text, out) = run_shell(&s, &program, args, &format!("{}{after}", line.as_str()));
+    Some((text, out, token))
 }
 
 #[test]
 fn bash_loads_the_integration_and_forgets_the_lines() {
     let after = "echo LOADED=${_temor_integrated-no}\nhistory\nexit\n";
-    let Some((text, token)) = load_into("bash", &["--norc", "--noprofile", "-i"], after) else {
+    let Some((text, out, token)) = load_into("bash", &["--norc", "--noprofile", "-i"], after)
+    else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
     assert!(contains(&text, "LOADED=1"), "{shown}");
     assert!(contains(&text, "\x1b]133;A"), "no prompt mark: {shown}");
     assert!(
-        contains(&text, "echo LOADED"),
+        contains(&out, "echo LOADED"),
         "history lists nothing: {shown}"
     );
-    assert!(
-        !contains(&text, &token.marker()),
-        "left in history: {shown}"
-    );
-    assert!(
-        !contains(&text, "_temor_hs_off"),
-        "left in history: {shown}"
-    );
+    assert!(!contains(&out, &token.marker()), "left in history: {shown}");
+    assert!(!contains(&out, "_temor_hs_off"), "left in history: {shown}");
     assert!(!Path::new(&token.path()).exists(), "the file stayed");
 }
 
 #[test]
 fn zsh_loads_the_integration_and_keeps_the_lines_out_of_history() {
     let after = "print LOADED=${_temor_integrated-no}\nfc -l 1\nexit\n";
-    let Some((text, token)) = load_into("zsh", &["-f", "-i"], after) else {
+    let Some((text, _, token)) = load_into("zsh", &["-f", "-i"], after) else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
@@ -107,7 +103,7 @@ fn zsh_loads_the_integration_and_keeps_the_lines_out_of_history() {
 #[test]
 fn fish_loads_the_integration_in_place_and_stays_running() {
     let after = "echo LOADED=$_temor_integrated\nhistory\necho STILL_HERE\nexit\n";
-    let Some((text, token)) = load_into("fish", &["--no-config", "-i"], after) else {
+    let Some((text, _, token)) = load_into("fish", &["--no-config", "-i"], after) else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
@@ -126,7 +122,7 @@ fn fish_loads_the_integration_in_place_and_stays_running() {
 #[test]
 fn a_plain_shell_gets_an_empty_file_and_no_marks() {
     let after = "echo DONE\nexit\n";
-    let Some((text, token)) = load_into("dash", &["-i"], after) else {
+    let Some((text, _, token)) = load_into("dash", &["-i"], after) else {
         return;
     };
     assert!(contains(&text, "DONE"));

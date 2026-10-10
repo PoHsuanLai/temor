@@ -814,11 +814,11 @@ together.
       - the `TODO(batch3-wire)` slots in `edge/remote_*.rs`.
 - [x] (Batch 4) Session ids aren't saved, so a restart opens new sessions. Adopt them through
       `list_sessions` on restore.
-- [ ] A reconnect after the shared connection died can't ask for a password (it uses
+- [x] (Batch 5) A reconnect after the shared connection died can't ask for a password (it uses
       BatchMode). Retry should repeat the in-pane connect step.
 - [ ] Remote edit and forwards still use scp and `ssh -O`; move them to the helper's file service.
       Input typed while the link is down is dropped.
-- [ ] Helper consent is in its own `remote.json`; fold it into the consent book.
+- [x] (Batch 5) Helper consent is in its own `remote.json`; fold it into the consent book.
 - [ ] The helper binary comes from `TEMOR_REMOTE_HELPER` or the folder beside temor, for the same
       CPU kind only. Packaging a helper per architecture is open.
 - [ ] Offer:
@@ -884,7 +884,7 @@ porter-core and docket.
 - The pane's cell size goes out on open and resize. The window's palette goes out on open, after
   every attach and on theme change. A ping per link drops a stalled one and redials it at once;
   `ServerAlive*` stays as a second check.
-- [ ] `edge/remote.rs` (328 lines) and `hub/remote_line.rs` (322) are over 300 lines; split them.
+- [x] (Batch 5) `edge/remote.rs` (328 lines) and `hub/remote_line.rs` (322) are over 300 lines; split them.
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b4-*.md`.
 
 ## Batch 15 (merged 2026-10-10: pins and P19 part 2, checkpoint watches)
@@ -902,7 +902,7 @@ Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1
   hold-to-confirm sheet is the one confirmation.
 - Orchestrator decision: an exited agent's Restore list stays until the pane ends, since that's
   when undoing is wanted.
-- [ ] Agent exit is detected only for agents first seen as the foreground process; report-only
+- [x] (Batch 5) Agent exit is detected only for agents first seen as the foreground process; report-only
       agents close their watch when the pane ends.
 - [x] (landed with anyview 397012b) P10 viewers are written and pass their tests on branch `b15/view` (anyview-pane 3d52a9b,
       zeroize 1.9.0 for anyview's pdf crate). They wait for anyview's Batch 15 sha, which uses
@@ -919,15 +919,69 @@ Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1
   reopened if the file still exists.
 - Orchestrator fix: the viewer opens on the press's release. Opening mid-press split the pane
   and dropped the press's pointer capture.
-- [ ] Peek (⌘-hover preview): needs `anyview-fs` and anyview-peek's `pane` feature.
+- [x] (Batch 5) Peek (⌘-hover preview): needs `anyview-fs` and anyview-peek's `pane` feature.
 - [ ] Recordings in the pane: anyview-pane's `player` feature with `PaneEdge::with_player`
       (off for now).
 - [x] (anyview 121db23) When anyview #94 lands, take `PaneEdge::with_store` (views remembered through the store;
       Remember is in memory now), and the single Unfocus on blur.
 - [ ] No D-Bus Open fallback. OpenElsewhere uses the FileShell opener. Files on another
       computer (Tier A/B panes) can't be viewed yet.
-- [ ] A Spaces-file recall of only a Place brings viewer panes back as shells.
+- [x] (Batch 5) A Spaces-file recall of only a Place brings viewer panes back as shells.
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-view.md`.
 - Viewer store: `PaneEdge::with_store($XDG_DATA_HOME/anyview)` (else `~/.local/share/anyview`),
   shared with anyview's own windows. It's used only by runs that keep state.
   Uses `anyview_pane::STORE_FOLDER` (anyview e74e5de).
+
+## Batch 5 (merged 2026-10-11: open follow-ups)
+Six Sonnet lanes from main 16b28dc (peek, remote, edit, offer, facts, desk); merged, fixed and gated
+together.
+
+- Peek: holding ⌘ over a file path shows anyview's preview card beside the pointer (local panes).
+  It never takes the keyboard or the pointer capture; a press hides it before the click opens the
+  viewer. anyview-fs and anyview-peek's `pane` feature are in the lock.
+- Remote: Retry repeats the in-pane connect step (password and key prompts show in the pane).
+  Typing while the link is down is held (64 KiB, in order) and sent after re-attach; past that
+  the banner says part was dropped. The helper answer is in the consent book; `remote.json` is
+  read once per start for carry-over and never written.
+- Edit: a Tier B pane's remote edit reads and writes through the helper with
+  `WriteCheck::Unchanged`, so a file changed on the host is a conflict question. Tier A keeps scp.
+  The helper sweeps `.temor-part-*` older than a day at start. `Error::TooLarge` is gone.
+- Offer: Yes works in fish (in place, as a function) and nushell (the marks only). The load text
+  is lines under 4096 bytes. bash and fish delete the lines from history; zsh keeps one short
+  first line in history (the rest is ignored through HIST_IGNORE_SPACE, which is put back).
+- Facts: `.node-version` and `.tool-versions` (node, python, ruby, go), the untracked count
+  ("N new"), the branch in a repo with no commit, and chips that step aside for a long command on
+  their own row.
+- Desk: the ⌘T bar caches ~/.ssh/config by mtime; `DESKTOP_STARTUP_ID` is the X11 launch token;
+  report-only agents end on an OSC 7501 `clear` or when a shell comes to the front; a place-only
+  Spaces recall brings viewer panes back as viewers.
+
+### Orchestrator decisions
+- Automatic redials stay in BatchMode; only Retry runs the in-pane connect step, so a password
+  prompt never appears in a pane unasked.
+- `remote.json` is left in place (never written again); temor does not delete it.
+- A shell in front ends a report-only agent. An agent's own tool commands stay under the agent's
+  foreground group, so this should not flap; revisit if it does.
+- No "ended" message on the agent socket for now.
+- Tier B edits read whole files in memory for now; streaming large files waits.
+- Merge fix: the zsh prelude sets its flag with `typeset -g`, which fish parses (a bare `x=1`
+  line was a fish parse error, printed to the person).
+- Merge fix: the chips overlap scenario was dropped. The harness never paints, so the cursor the
+  rule reads (`Session::cursor_logical`, from the painter's frame) is unknown there. The rule is
+  tested in temor-core.
+
+### Next
+- [ ] Host panes: no peek, no chips (both need the helper to read or report from the host).
+- [ ] Offer: nushell history isn't cleaned and the zsh prelude prints a parse error there; dash
+      prints "source: not found" once; nushell has no pty scenario; fish history deletion is only
+      checked with piped input.
+- [ ] Remote: no ds-harness scenario for Retry (needs a fake ssh that asks for a password);
+      `edge/remote_install.rs` is 307 lines; a half-received send can repeat after a reconnect.
+- [ ] Edit: stream large files; conflict wording could name the "same time, other contents" case.
+- [ ] Facts: `.python-version` and `pyproject.toml` aren't read; a huge untracked tree is slow.
+- [ ] Peek: OSC 8 `file://` links show no card; the card's size is estimated; `view/pane_view.rs`
+      is over 300 lines (split the pointer and key wiring).
+- [ ] Desk: an `Include`d ssh config edited in place isn't noticed; quire ask: confirm
+      `focus_with_token` acts on an X11 startup id; a place-only recall starts shells in the
+      Space's folder, not each pane's.
+- Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b5-*.md`.
