@@ -69,4 +69,47 @@ impl Ambient {
             .map_or_else(|| self.home.join(".local").join("share"), PathBuf::from);
         data_home.join("temor").join("shelf")
     }
+
+    /// Where files that arrive from a program are saved: the person's Downloads folder. The
+    /// `XDG_DOWNLOAD_DIR` variable wins, then the `user-dirs.dirs` file under the config
+    /// directory (`user_dirs` is its text, read by the caller), then `~/Downloads`.
+    pub fn downloads_dir(&self, user_dirs: Option<&str>) -> PathBuf {
+        let from_env = self.env.get("XDG_DOWNLOAD_DIR").filter(|d| !d.is_empty());
+        let from_file = user_dirs.and_then(|text| user_dir(text, "XDG_DOWNLOAD_DIR", &self.home));
+        match (from_env, from_file) {
+            (Some(dir), _) => PathBuf::from(dir),
+            (None, Some(dir)) => dir,
+            (None, None) => self.home.join("Downloads"),
+        }
+    }
+
+    /// The `user-dirs.dirs` file the Downloads folder may be named in.
+    pub fn user_dirs_path(&self) -> PathBuf {
+        self.config_dir
+            .parent()
+            .map_or_else(|| self.home.join(".config"), PathBuf::from)
+            .join("user-dirs.dirs")
+    }
+
+    /// The folder a pane stages the files a program sends before they are shelved.
+    pub fn staging_dir(&self, pane: u64) -> PathBuf {
+        self.shelf_dir()
+            .join("incoming")
+            .join(format!("pane-{pane}"))
+    }
+}
+
+/// One `NAME="$HOME/Downloads"` line of `user-dirs.dirs`: the folder, with `$HOME` filled in.
+/// Only an absolute result counts.
+fn user_dir(text: &str, name: &str, home: &std::path::Path) -> Option<PathBuf> {
+    let line = text.lines().map(str::trim).find(|line| {
+        line.strip_prefix(name)
+            .is_some_and(|rest| rest.starts_with('='))
+    })?;
+    let value = line.split_once('=')?.1.trim().trim_matches('"');
+    let path = match value.strip_prefix("$HOME") {
+        Some(rest) => PathBuf::from(format!("{}{rest}", home.display())),
+        None => PathBuf::from(value),
+    };
+    path.is_absolute().then_some(path)
 }

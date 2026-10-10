@@ -76,6 +76,8 @@ impl Session {
             bell_until: None,
             shelf_dir: parts.shelf_dir,
             asked: None,
+            quoting: temor_core::shelf::Quoting::Posix,
+            site: temor_core::shelf::PaneSite::Local,
         })
     }
 
@@ -228,6 +230,7 @@ impl Session {
                 }
                 Notice::Quiet
             }
+            PaneEvent::Transfer(event) => Notice::Transfer(event),
             PaneEvent::Clipboard(_) => {
                 // TODO(P9): OSC 52 writes need the clipboard's permission, which the pane asks for.
                 Notice::Quiet

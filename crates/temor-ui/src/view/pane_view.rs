@@ -12,6 +12,8 @@ use dioxus::prelude::*;
 use ds::edit::composition::Composing;
 use ds::edit::pointer::EditFocus;
 use ds::edit::raw_key::{KeyPhase, RawKey};
+use ds::file_drop::drag::FileDrop;
+use ds::file_drop::hook::use_file_drop;
 use ds::host::document::use_document_host;
 use ds::host::ime::ImeEvent;
 use ds::host::measure::use_rect;
@@ -164,6 +166,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
 
     let mouse = use_pane_mouse(Rc::clone(&slot), rect, signals, desk.notice, started);
 
+    // Files dropped on the pane are typed into its prompt, quoted for its shell.
+    let dropper = use_file_drop({
+        let desk = desk.clone();
+        move |files: FileDrop| {
+            for text in desk.hub.drop_files(pane, files.paths) {
+                desk.say(text);
+            }
+            desk.bump();
+        }
+    });
+
     // The region has the keyboard: the workspace and the session know, and the input method is on
     // and placed.
     let gained = {
@@ -271,7 +284,11 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 div {
                     class: "temor-grid",
                     "data-wheel": "capture",
-                    onmounted: move |e| mouse.capture.on_mounted(e),
+                    "data-drop": dropper.drop_attr(),
+                    onmounted: move |e: MountedEvent| {
+                        dropper.mounted(e.clone());
+                        mouse.capture.on_mounted(e);
+                    },
                     onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, mouse.down.clone()),
                     onpointerup: move |e| (mouse.up)(e),
                     onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),

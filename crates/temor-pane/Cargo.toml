@@ -17,6 +17,8 @@ ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render
 chordkit = { workspace = true }
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
+# Files the program sends (OSC 1337, OSC 5113): decoded and staged here, shelved by the window.
+temor-transfer = { workspace = true }
 # `SO_PEERCRED` for the status socket (the `net` feature joins the workspace set here).
 rustix = { workspace = true, features = ["net"] }
 temor-render = { workspace = true, optional = true }

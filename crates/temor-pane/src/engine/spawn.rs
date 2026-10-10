@@ -15,6 +15,7 @@ use super::io::{Io, PaneRunner};
 use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;
+use super::xfer::{TransferSetup, Transfers};
 use crate::error::PaneError;
 
 /// What a new pane is made of.
@@ -31,6 +32,9 @@ pub struct PaneSpec {
     pub palette: Palette,
     /// The cursor shape a plain reset (`CSI 0 q`) restores.
     pub cursor: temor_vt::CursorShape,
+    /// Where files the program sends are staged, and the caps on them. `None`: the program's
+    /// transfer sequences are ignored.
+    pub transfers: Option<TransferSetup>,
 }
 
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
@@ -103,6 +107,7 @@ fn start_from(
         events: Arc::clone(&events),
         dirty: Arc::clone(&dirty),
         last_title: None,
+        transfers: spec.transfers.map(Transfers::new),
     };
     // The first frame is always due.
     let _ = dirty.swap(true, Ordering::AcqRel);

@@ -32,6 +32,7 @@ use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::quick::QuickView;
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
+use super::transfer_ask::TransferAsk;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
@@ -213,6 +214,7 @@ pub fn App() -> Element {
                                 onclose: move |_| notice.set(None),
                             }
                         }
+                        TransferAsk { desk: desk.clone() }
                         div { class: "temor-content",
                             if let Some((tab, tree, focus)) = front {
                                 TreeView {

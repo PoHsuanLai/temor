@@ -168,6 +168,7 @@ pub fn shell_pane(
         scrollback: LineCount(input.settings.scrollback.lines() as usize),
         palette: input.palette,
         cursor: cursor_shape(input.settings.cursor),
+        transfers: None,
     })
 }
 

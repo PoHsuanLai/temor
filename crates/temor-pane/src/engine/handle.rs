@@ -7,6 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
+use temor_transfer::Consent;
+use temor_transfer::kitty::Offered;
 use temor_vt::{CellPx, GridSize, KeyInput};
 
 use super::event::PaneEvent;
@@ -15,6 +17,7 @@ use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::spawn::pty_size;
 use super::term::Term;
+use super::xfer::OfferId;
 use crate::error::PaneError;
 
 /// A running pane, as the window holds it. `Send` and `Sync`: the window may hold it on any thread;
@@ -89,6 +92,18 @@ impl PaneHandle {
         }
         self.request_repaint();
         Ok(())
+    }
+
+    /// The person's answer to a program's offer of files. The pane acts on it at its next turn.
+    pub fn decide(&self, offer: OfferId, consent: Consent) {
+        // The thread may be gone already (the program exited); then nothing waits for the answer.
+        let _ = self.commands.send(Command::Decide(offer, consent));
+    }
+
+    /// The person's answer to a program's request for a file. `shelf` is what could be handed out,
+    /// newest first.
+    pub fn serve(&self, offer: OfferId, consent: Consent, shelf: Vec<Offered>) {
+        let _ = self.commands.send(Command::Serve(offer, consent, shelf));
     }
 
     /// Asks the window for a repaint, unless one is already on its way.

@@ -23,8 +23,10 @@ mod space_launch;
 mod space_move;
 mod space_route;
 mod spaces;
+mod shelf;
 #[cfg(test)]
 mod tests;
+mod transfers;
 
 pub use bar::{BarData, WindowAction};
 pub use desk::Desk;
@@ -35,3 +37,4 @@ pub use model::{Hub, HubRef};
 pub use persist::spawn_save_loop;
 pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};
 pub use say::refusal_text;
+pub use shelf::{Ask, AskKind, AskView};

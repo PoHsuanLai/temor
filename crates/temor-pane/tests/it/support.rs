@@ -51,6 +51,7 @@ pub fn bash_spec(home: &Path, grid: GridSize, cell: CellPx) -> PaneSpec {
         scrollback: LineCount(1000),
         palette: Palette::default(),
         cursor: temor_vt::CursorShape::Block,
+        transfers: None,
     }
 }
 

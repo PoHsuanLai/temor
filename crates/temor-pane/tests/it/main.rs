@@ -6,6 +6,8 @@
 mod engine;
 #[cfg(feature = "ghostty")]
 mod support;
+#[cfg(feature = "ghostty")]
+mod transfers;
 
 #[test]
 fn every_module_in_this_directory_is_declared() {

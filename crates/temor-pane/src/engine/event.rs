@@ -1,5 +1,6 @@
 //! What a pane tells the window. Callbacks never block: the I/O thread sends these and moves on.
 
+use super::xfer::TransferEvent;
 use temor_pty::ChildExit;
 use temor_vt::{AnchorId, ClipboardWrite, Notification, Progress, PromptEvent};
 
@@ -33,6 +34,8 @@ pub enum PaneEvent {
     Exited(Option<ChildExit>),
     /// The program holds the screen (synchronized output) or released it.
     RenderHold(Hold),
+    /// A program offers a file, sends one, or asks for one (PLAN §9).
+    Transfer(TransferEvent),
 }
 
 /// Whether the program is holding the screen for a synchronized update.

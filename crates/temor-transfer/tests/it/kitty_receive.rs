@@ -8,9 +8,11 @@ use temor_transfer::{Bytes, Consent, RelPath};
 use crate::receive_support::*;
 
 #[test]
-fn an_offer_asks_for_consent_from_its_origin_and_writes_nothing() {
+fn an_offer_is_answered_started_then_asks_for_consent_and_writes_nothing() {
     let (_, effects) = send(session(1024));
-    assert_eq!(effects, vec![Effect::AskConsent(origin())]);
+    assert_eq!(replies(&effects), vec![ReplyStatus::Started]);
+    assert_eq!(effects.last(), Some(&Effect::AskConsent(origin())));
+    assert!(writes(&effects).is_empty());
 }
 
 #[test]

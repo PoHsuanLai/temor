@@ -17,6 +17,7 @@ use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
 use super::space_ui::{SpaceFoot, SpaceHeader};
+use super::shelf::ShelfFoot;
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow};
 
@@ -62,6 +63,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 fill: SidebarFill::Clear,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
                 foot: rsx! {
+                    ShelfFoot { desk: desk.clone() }
                     SpaceFoot {
                         desk: desk.clone(),
                         leading: rsx! {

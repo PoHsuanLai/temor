@@ -11,6 +11,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
+use temor_transfer::Consent;
+use temor_transfer::kitty::Offered;
 use temor_vt::{RenderHold, VtEvent};
 
 use super::event::PaneEvent;
@@ -18,12 +20,17 @@ use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
 use super::term::Term;
+use super::xfer::{OfferId, Reaction, Transfers};
 
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
 pub(super) enum Command {
     /// The window is gone: hang up and reap.
     Shutdown,
+    /// The person's answer to a program's offer of files.
+    Decide(OfferId, Consent),
+    /// The person's answer to a program's request for a file, with what the shelf can hand out.
+    Serve(OfferId, Consent, Vec<Offered>),
 }
 
 /// Everything the thread owns or shares.
@@ -37,6 +44,8 @@ pub(super) struct Io {
     pub dirty: Arc<AtomicBool>,
     /// The last title sent, so a program that sets the same title in a loop costs nothing.
     pub last_title: Option<String>,
+    /// Files the program sends or asks for; `None` when the pane takes none.
+    pub transfers: Option<Transfers>,
 }
 
 /// The pane's I/O loop, made by [`start`](super::start). `Send`: it moves to the thread the caller
@@ -79,16 +88,38 @@ impl Drop for PaneRunner {
 fn pump(mut io: Io) {
     let mut buf = vec![0u8; 64 * 1024];
     loop {
-        // The only command is Shutdown (the window dropped the pane).
-        if let Ok(Command::Shutdown) = io.commands.try_recv() {
-            return finish(&mut io);
+        while let Ok(command) = io.commands.try_recv() {
+            match command {
+                Command::Shutdown => return finish(&mut io),
+                Command::Decide(offer, consent) => {
+                    let reaction = io.transfers.as_mut().map(|t| t.decide(offer, consent));
+                    carry_out(&mut io, reaction);
+                }
+                Command::Serve(offer, consent, shelf) => {
+                    let reaction = io
+                        .transfers
+                        .as_mut()
+                        .map(|t| t.serve(offer, consent, &shelf));
+                    carry_out(&mut io, reaction);
+                }
+            }
+        }
+        // A file on its way to the program goes a few frames at a time, once the last are taken.
+        if !io.outbox.is_waiting() && io.transfers.as_ref().is_some_and(|t| t.sending()) {
+            let reaction = io.transfers.as_mut().map(Transfers::pump_sends);
+            carry_out(&mut io, reaction);
         }
         let interest = if io.outbox.is_waiting() {
             temor_pty::Interest::ReadWrite
         } else {
             temor_pty::Interest::Read
         };
-        let ready = match io.outbox.port().wait(interest, Some(POLL)) {
+        // A file being sent should not wait out a whole poll between its frames.
+        let poll = match io.transfers.as_ref().is_some_and(|t| t.sending()) {
+            true => Duration::from_millis(1),
+            false => POLL,
+        };
+        let ready = match io.outbox.port().wait(interest, Some(poll)) {
             Ok(ready) => ready,
             Err(_) => return finish(&mut io),
         };
@@ -109,6 +140,8 @@ fn pump(mut io: Io) {
 
 /// Reaps the program and tells the window how it ended.
 fn finish(io: &mut Io) {
+    let aborted = io.transfers.as_mut().map(Transfers::abort_all);
+    carry_out(io, aborted);
     let exit = reap(io);
     send(io, PaneEvent::Exited(exit));
 }
@@ -120,6 +153,17 @@ fn deliver(io: &mut Io, bytes: &[u8]) {
         let _ = io.outbox.push_reply(&reply);
     }
     for event in output.events {
+        if let VtEvent::Unknown {
+            kind,
+            payload,
+            truncation,
+        } = &event
+            && let Some(transfers) = io.transfers.as_mut()
+        {
+            let reaction = transfers.on_unknown(*kind, payload, *truncation);
+            carry_out(io, Some(reaction));
+            continue;
+        }
         if let Some(event) = map_event(event) {
             if let PaneEvent::Title(title) = &event {
                 if io.last_title.as_deref() == Some(title.as_str()) {
@@ -131,6 +175,19 @@ fn deliver(io: &mut Io, bytes: &[u8]) {
         }
     }
     signal_dirty(io);
+}
+
+/// Sends a transfer step's sequences to the program and its events to the window.
+fn carry_out(io: &mut Io, reaction: Option<Reaction>) {
+    let Some(reaction) = reaction else {
+        return;
+    };
+    for bytes in reaction.replies {
+        let _ = io.outbox.push_reply(&bytes);
+    }
+    for event in reaction.events {
+        send(io, PaneEvent::Transfer(event));
+    }
 }
 
 /// Tells the window the screen changed, unless it has not repainted the last such signal yet.

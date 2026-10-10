@@ -12,7 +12,7 @@ use temor_core::quick::QuickIn;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{Cwd, TabTitle};
 use temor_core::workspace::{TabsIn, WorkspaceIn};
-use temor_pane::{Hold, PaneEvent};
+use temor_pane::{Hold, PaneEvent, TransferEvent};
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -34,6 +34,8 @@ pub(super) struct Delivery {
     asks: Vec<WorkspaceIn>,
     /// What the quick terminal is told (it ignores reports about other panes).
     quick: Vec<QuickIn>,
+    /// What programs offered, sent or asked for through the terminal.
+    transfers: Vec<(PaneId, TransferEvent)>,
 }
 
 impl Hub {
@@ -91,6 +93,7 @@ impl Hub {
                 Notice::Bell => {
                     out.bell.insert(pane);
                 }
+                Notice::Transfer(event) => out.transfers.push((pane, event)),
                 Notice::Quiet => {}
             }
         }
@@ -133,7 +136,13 @@ pub fn spawn_event_loop(desk: Desk) {
                 holds,
                 asks,
                 quick,
+                transfers,
             } = delivery;
+            let heard = !transfers.is_empty();
+            let said = desk.hub.0.borrow_mut().transfers(transfers);
+            for text in said {
+                desk.say(text);
+            }
             for (slot, generation) in holds {
                 release_hold_later(slot, generation);
             }
@@ -142,8 +151,11 @@ pub fn spawn_event_loop(desk: Desk) {
                     repaint(&slot);
                 }
             }
-            let redraw =
-                !chrome.is_empty() || !bell.is_empty() || !asks.is_empty() || !quick.is_empty();
+            let redraw = heard
+                || !chrome.is_empty()
+                || !bell.is_empty()
+                || !asks.is_empty()
+                || !quick.is_empty();
             for ask in asks {
                 for text in desk.hub.act(ask) {
                     desk.say(text);

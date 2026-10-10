@@ -10,6 +10,7 @@ mod desktop;
 mod persist;
 mod session;
 mod spaces;
+mod shelf;
 mod support;
 mod window;
 mod worktree_git;
