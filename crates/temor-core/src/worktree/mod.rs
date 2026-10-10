@@ -6,6 +6,7 @@
 mod create;
 mod git;
 mod life;
+mod list;
 mod merge;
 mod model;
 pub mod overlap;
@@ -17,6 +18,7 @@ mod tests;
 pub use create::{CreateParams, add_command, create, remove, resolve_commit, worktree_path};
 pub use git::{Git, GitCommand, GitOutput, run_ok};
 pub use life::{Life, LifeIn, LifeOut, worktree_life_step};
+pub use list::{ListedWorktree, agent_worktrees, list_worktrees, parse_worktree_list};
 pub use merge::{MergeOutcome, merge, undo_ref};
 pub use model::{
     AgentWorktree, CloseChoice, MergeMethod, Oid, Placement, WorktreeName, placement_rows,
