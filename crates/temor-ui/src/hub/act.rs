@@ -30,6 +30,7 @@ impl Hub {
         for out in outs {
             self.carry_out(out);
         }
+        self.agents_after_act();
         // Closing the last tab leaves the window with a fresh one, as a browser does.
         if self.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
@@ -68,14 +69,14 @@ impl Hub {
         });
         let start = self.space_start();
         let cwd = spawn.cwd.clone().or(start.cwd);
+        let socket = self.open_socket(spawn.pane);
         let opened = open_session_with(
             &self.launch,
             self.palette,
-            spawn.pane,
-            cwd.as_ref(),
-            snapshot.as_ref(),
+            (spawn.pane, cwd.as_ref(), snapshot.as_ref()),
             self.events.clone(),
             &start.env,
+            socket.as_deref(),
         );
         let mut slot = Slot {
             palette: self.palette,
@@ -112,6 +113,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
+        self.agent_pane_ended(pane);
         if let Some(slot) = self.slots.remove(&pane) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;
@@ -131,14 +133,14 @@ impl Hub {
     pub fn restart(&mut self, pane: PaneId) {
         let start = self.space_start();
         let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
+        let socket = self.open_socket(pane);
         match open_session_with(
             &self.launch,
             self.palette,
-            pane,
-            cwd.as_ref(),
-            None,
+            (pane, cwd.as_ref(), None),
             self.events.clone(),
             &start.env,
+            socket.as_deref(),
         ) {
             Ok(session) => {
                 if let Some(slot) = self.slots.get(&pane) {

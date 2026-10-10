@@ -35,7 +35,9 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::CloseFind
         | Action::PreviousPrompt
         | Action::NextPrompt
-        // The Space switch is the window's (`Desk::select_space`), through the kit.
+        // The window's own: the radar jumps (`Hub::jump_to_waiting`), and the Space switch goes
+        // through the kit (`Desk::select_space`).
+        | Action::JumpToWaiting
         | Action::SelectSpace(_) => return None,
     })
 }

@@ -16,6 +16,7 @@ use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;
 use super::xfer::{TransferSetup, Transfers};
+use super::watch::ForegroundWatch;
 use crate::error::PaneError;
 
 /// What a new pane is made of.
@@ -108,6 +109,7 @@ fn start_from(
         dirty: Arc::clone(&dirty),
         last_title: None,
         transfers: spec.transfers.map(Transfers::new),
+        watch: ForegroundWatch::new(),
     };
     // The first frame is always due.
     let _ = dirty.swap(true, Ordering::AcqRel);

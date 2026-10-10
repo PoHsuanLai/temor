@@ -30,6 +30,7 @@ use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::quick::QuickView;
+use super::radar::AgentSheets;
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::transfer_ask::TransferAsk;
@@ -38,7 +39,8 @@ use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
 use crate::edge::Credentials;
 use crate::hub::{
-    Desk, DragKey, Hub, HubRef, SidebarData, spawn_desktop_loop, spawn_event_loop, spawn_save_loop,
+    Desk, DragKey, Hub, HubRef, SidebarData, spawn_agent_loops, spawn_desktop_loop,
+    spawn_event_loop, spawn_save_loop,
 };
 
 /// The window's root component.
@@ -82,6 +84,7 @@ pub fn App() -> Element {
         let desk = desk.clone();
         move || {
             spawn_event_loop(desk.clone());
+            spawn_agent_loops(desk.clone());
             spawn_save_loop(desk.hub);
         }
     });
@@ -239,6 +242,7 @@ pub fn App() -> Element {
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }
+            AgentSheets { desk: desk.clone() }
         }
     }
 }

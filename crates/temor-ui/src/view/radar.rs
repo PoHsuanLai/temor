@@ -1,0 +1,154 @@
+//! Agents in the window: the menu on a tab's row and the sheet over the window (what a restore
+//! would change, a worktree's findings, the leftover branches). The hub prepares the words; these
+//! views draw them with quire's components and send the person's choices back.
+
+use dioxus::prelude::*;
+use ds::base::press::Press;
+use ds::components::content::label::LabelStyle;
+use ds::host::measure::Anchor;
+use ds::prelude::*;
+use temor_core::vocab::ids::TabId;
+
+use crate::hub::{AgentMenu, AgentPick, Desk, SheetView, Where};
+
+/// The choices of a tab's menu as quire's menu items.
+fn items_of(menu: &AgentMenu) -> Vec<MenuItem<AgentPick>> {
+    let mut items = Vec::new();
+    if !menu.checkpoints.is_empty() {
+        items.push(MenuItem::Submenu {
+            title: "Restore to checkpoint".to_owned(),
+            image: None,
+            availability: Availability::Enabled,
+            children: menu
+                .checkpoints
+                .iter()
+                .map(|(block, label)| MenuItem::new(AgentPick::Restore(*block), label.clone()))
+                .collect(),
+        });
+    }
+    match menu.place {
+        Where::Checkout => items.push(MenuItem::new(AgentPick::RunInWorktree, "Run in a worktree")),
+        Where::Worktree => {
+            items.push(MenuItem::new(AgentPick::Details, "Show worktree details"));
+            items.push(MenuItem::new(AgentPick::MergeBack, "Merge back (Squash)"));
+        }
+    }
+    items.push(MenuItem::Separator);
+    items.push(MenuItem::new(AgentPick::Leftovers, "Leftover branches"));
+    items
+}
+
+/// The menu hung from a tab's row, opened by a secondary press on it.
+#[component]
+#[allow(non_snake_case)]
+pub fn AgentTabMenu(tab: TabId, at: Rect, desk: Desk, onclose: EventHandler<()>) -> Element {
+    let menu = desk.hub.0.borrow().agent_menu(tab);
+    let Some(menu) = menu else {
+        return rsx! {};
+    };
+    rsx! {
+        Menu {
+            placement: MenuPlacement::Context,
+            anchor: Anchor::Rect(at),
+            items: items_of(&menu),
+            onpick: move |pick: AgentPick| desk.agent_pick(tab, pick),
+            onclose,
+        }
+    }
+}
+
+/// A sheet's button.
+fn press(label: &str, onclick: impl FnMut(Press) + 'static) -> Element {
+    rsx! {
+        Button { label: label.to_owned(), onclick: EventHandler::new(onclick) }
+    }
+}
+
+/// The sheet over the window, when the hub has one.
+#[component]
+#[allow(non_snake_case)]
+pub fn AgentSheets(desk: Desk) -> Element {
+    let _ = (desk.ui)();
+    let view = desk.hub.0.borrow().agent_sheet();
+    let Some(view) = view else {
+        return rsx! {};
+    };
+    let close = {
+        let desk = desk.clone();
+        EventHandler::new(move |()| desk.close_agent_sheet())
+    };
+    match view {
+        SheetView::Restore {
+            title,
+            put_back,
+            remove,
+            note,
+        } => {
+            let (yes, no) = (desk.clone(), desk.clone());
+            let nothing = put_back.is_empty() && remove.is_empty();
+            rsx! {
+                Sheet { label: title.clone(), onclose: close,
+                    SectionHeader { title }
+                    if nothing {
+                        Label { text: "Nothing has changed since this checkpoint", style: LabelStyle::Body }
+                    }
+                    for file in put_back {
+                        Label { text: format!("Put back: {file}"), style: LabelStyle::Body }
+                    }
+                    for file in remove {
+                        Label { text: format!("Remove, made since: {file}"), style: LabelStyle::Body }
+                    }
+                    Label { text: note, style: LabelStyle::Caption }
+                    {press("Restore", move |_| yes.confirm_restore())}
+                    {press("Cancel", move |_| no.close_agent_sheet())}
+                }
+            }
+        }
+        SheetView::Details {
+            tab,
+            title,
+            lines,
+            note,
+        } => {
+            let (merge, done) = (desk.clone(), desk.clone());
+            rsx! {
+                Sheet { label: title.clone(), onclose: close,
+                    SectionHeader { title }
+                    for line in lines {
+                        Label { text: line, style: LabelStyle::Body }
+                    }
+                    Label { text: note, style: LabelStyle::Caption }
+                    {press("Merge back (Squash)", move |_| {
+                        merge.agent_pick(tab, AgentPick::MergeBack);
+                        merge.close_agent_sheet();
+                    })}
+                    {press("Close", move |_| done.close_agent_sheet())}
+                }
+            }
+        }
+        SheetView::Leftovers { rows } => {
+            let done = desk.clone();
+            rsx! {
+                Sheet { label: "Leftover branches".to_owned(), onclose: close,
+                    SectionHeader { title: "Leftover branches".to_owned() }
+                    for row in rows {
+                        {leftover(&desk, row.branch, row.path)}
+                    }
+                    {press("Done", move |_| done.close_agent_sheet())}
+                }
+            }
+        }
+    }
+}
+
+/// One leftover: its branch and folder, and what can be done with it.
+fn leftover(desk: &Desk, branch: String, path: String) -> Element {
+    let (open, discard) = (desk.clone(), desk.clone());
+    let (open_path, discard_path) = (path.clone(), path.clone());
+    rsx! {
+        Label { text: branch, style: LabelStyle::Body }
+        Label { text: path, style: LabelStyle::Caption }
+        {press("Open", move |_| open.open_leftover(open_path.clone()))}
+        {press("Discard", move |_| discard.discard_leftover(discard_path.clone()))}
+    }
+}

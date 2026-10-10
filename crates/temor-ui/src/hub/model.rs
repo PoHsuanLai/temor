@@ -18,6 +18,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use super::spaces::SpaceBook;
 use super::bar::BarSlot;
 use super::shelf::ShelfHub;
+use super::agents::Agents;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -45,6 +46,7 @@ pub struct Hub {
     pub(super) quick: QuickState,
     /// The downloads shelf and the questions programs have put to the person.
     pub(super) shelf: ShelfHub,
+    pub(super) agents: Agents,
 }
 
 impl std::fmt::Debug for Hub {
@@ -60,6 +62,7 @@ impl Hub {
     pub fn new(launch: Launch) -> Hub {
         let (events, inbox) = unbounded_channel();
         let (shelf, trouble) = ShelfHub::open(&launch);
+        let agents = Agents::new(&launch, events.clone());
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             book: SpaceBook::new(),
@@ -75,6 +78,7 @@ impl Hub {
             pace: SavePace::new(SAVE_EVERY),
             notices: trouble.into_iter().collect(),
             shelf,
+            agents,
         }
     }
 

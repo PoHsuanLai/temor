@@ -6,6 +6,7 @@
 mod act;
 mod bar;
 mod bar_run;
+pub mod agents;
 mod desk;
 mod desktop;
 mod desktop_io;
@@ -29,6 +30,10 @@ mod tests;
 mod transfers;
 
 pub use bar::{BarData, WindowAction};
+pub use agents::{
+    AgentMenu, AgentPick, Agents, Alert, LeftoverRow, SheetView, WaitingCount, Where,
+    spawn_agent_loops,
+};
 pub use desk::Desk;
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;

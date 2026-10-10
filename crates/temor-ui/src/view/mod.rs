@@ -18,6 +18,7 @@ pub mod pointer;
 pub mod probe;
 pub mod quick;
 pub mod shelf;
+pub mod radar;
 pub mod slot;
 pub mod space_handle;
 pub mod space_ui;

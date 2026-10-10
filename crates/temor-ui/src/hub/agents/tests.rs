@@ -1,0 +1,329 @@
+//! The radar on a virtual clock, the checkpoint numbering, the worktree look timing and the
+//! path rule for files put back. No threads, no git, no window.
+
+use std::path::Path;
+
+use temor_core::agent::radar::{Millis, RadarParams};
+use temor_core::presence::{AgentState, Seen, WaitKind};
+use temor_core::vocab::ids::{BlockId, CheckpointRef, ExitCode, PaneId, TabId};
+use temor_core::worktree::{AgentWorktree, Oid, WorktreeName};
+use temor_pane::PaneEvent;
+use temor_pane::report::{ReportState, ReportWait, StatusLine};
+use temor_pty::ChildExit;
+use temor_vt::{Notification, ProgramState, ProgramStatus, ProgramWait};
+
+use super::convert::{exit_code, known_agent};
+use super::radar::Radar;
+use super::runs::Run;
+use super::trees::Trees;
+use super::work::{Seeded, safe_join};
+
+const P1: PaneId = PaneId(1);
+
+fn status(state: ProgramState, wait: ProgramWait) -> PaneEvent {
+    status_of("claude", state, wait)
+}
+
+fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> PaneEvent {
+    PaneEvent::Program(ProgramStatus {
+        state,
+        wait,
+        percent: None,
+        record: String::new(),
+        app: app.to_owned(),
+        title: String::new(),
+        message: String::new(),
+    })
+}
+
+fn line(seq: u64, state: ReportState, wait: Option<ReportWait>) -> PaneEvent {
+    PaneEvent::Reported(StatusLine {
+        seq,
+        state,
+        wait,
+        app: Some("claude".to_owned()),
+        note: None,
+    })
+}
+
+enum Step {
+    Event(PaneEvent),
+    Focus(Option<PaneId>),
+    Tick,
+}
+
+/// Runs `(time in seconds, step)` on pane 1 and returns the state it shows after each step.
+fn run(steps: Vec<(u64, Step)>) -> Vec<AgentState> {
+    let mut radar = Radar::new(RadarParams::default());
+    let mut shown = Vec::new();
+    for (secs, step) in steps {
+        let now = Millis(secs * 1000);
+        match step {
+            Step::Event(event) => {
+                radar.observe(P1, now, &event);
+            }
+            Step::Focus(pane) => {
+                radar.set_focus(now, pane);
+            }
+            Step::Tick => {
+                radar.tick(now);
+            }
+        }
+        shown.push(radar.state_of(P1));
+    }
+    shown
+}
+
+use AgentState::{Done, Failed, Idle, Waiting, Working};
+use Step::{Event, Focus, Tick};
+
+#[test]
+fn what_a_pane_says_moves_its_orb_over_time() {
+    let spinner = || PaneEvent::Title("\u{280B} fixing tests".to_owned());
+    let claude = || PaneEvent::Foreground(Some("claude".to_owned()));
+    #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
+    let cases: Vec<(&str, Vec<(u64, Step)>, Vec<AgentState>)> = vec![
+        ("osc 7501 works, blocks, finishes; the result stays until the pane is focused",
+            vec![
+                (0, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
+                (1, Event(status(ProgramState::Blocked, ProgramWait::Permission))),
+                (2, Event(status(ProgramState::Done, ProgramWait::Unspecified))),
+                (3, Focus(Some(P1))),
+            ],
+            vec![Working, Waiting(WaitKind::Permission), Done(Seen::Unseen), Done(Seen::Seen)]),
+        ("a bell in a pane that runs no agent says nothing",
+            vec![(0, Event(PaneEvent::Bell))], vec![Idle]),
+        ("a bell in an agent pane makes it wait until it is focused",
+            vec![(0, Event(claude())), (1, Event(PaneEvent::Bell)), (2, Focus(Some(P1)))],
+            vec![Idle, Waiting(WaitKind::Question), Idle]),
+        ("a notification carries the agent's words and waits the same way",
+            vec![
+                (0, Event(claude())),
+                (1, Event(PaneEvent::Notification(Notification { title: "claude".into(), body: "Run tests?".into() }))),
+            ],
+            vec![Idle, Waiting(WaitKind::Question)]),
+        ("a spinner title is work for four seconds after it last changed",
+            vec![(0, Event(claude())), (1, Event(spinner())), (3, Tick), (6, Tick)],
+            vec![Idle, Working, Working, Idle]),
+        ("a spinner title means nothing without a known agent",
+            vec![(0, Event(spinner()))], vec![Idle]),
+        ("a socket report counts, an older one does not",
+            vec![
+                (0, Event(line(5, ReportState::Waiting, Some(ReportWait::Permission)))),
+                (1, Event(line(4, ReportState::Working, None))),
+                (2, Event(line(6, ReportState::Done, None))),
+            ],
+            vec![Waiting(WaitKind::Permission), Waiting(WaitKind::Permission), Done(Seen::Unseen)]),
+        ("the program exiting while it works is its result",
+            vec![
+                (0, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
+                (1, Event(PaneEvent::Exited(Some(ChildExit::Exited(0))))),
+            ],
+            vec![Working, Done(Seen::Unseen)]),
+        ("a signal ending it is a failure",
+            vec![
+                (0, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
+                (1, Event(PaneEvent::Exited(Some(ChildExit::Signaled(9))))),
+            ],
+            vec![Working, Failed(Seen::Unseen)]),
+        ("a report in the focused pane is seen as it finishes",
+            vec![
+                (0, Focus(Some(P1))),
+                (1, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
+                (2, Event(status(ProgramState::Done, ProgramWait::Unspecified))),
+            ],
+            vec![Idle, Working, Done(Seen::Seen)]),
+    ];
+    for (name, steps, want) in cases {
+        assert_eq!(run(steps), want, "{name}");
+    }
+}
+
+#[test]
+fn the_waiting_count_and_the_next_waiting_pane_follow_the_radar() {
+    let mut radar = Radar::new(RadarParams::default());
+    let blocked = status(ProgramState::Blocked, ProgramWait::Question);
+    for pane in [PaneId(2), PaneId(5), PaneId(9)] {
+        radar.observe(pane, Millis(0), &blocked);
+    }
+    radar.observe(
+        PaneId(9),
+        Millis(1),
+        &status(ProgramState::Working, ProgramWait::Unspecified),
+    );
+    assert_eq!(radar.waiting(), [PaneId(2), PaneId(5)]);
+    // From pane 2 the next is 5; from 5 it wraps to 2; from a pane that does not wait it is the
+    // first after it; with nobody waiting there is none.
+    assert_eq!(radar.next_waiting(Some(PaneId(2))), Some(PaneId(5)));
+    assert_eq!(radar.next_waiting(Some(PaneId(5))), Some(PaneId(2)));
+    assert_eq!(radar.next_waiting(Some(PaneId(3))), Some(PaneId(5)));
+    assert_eq!(radar.next_waiting(None), Some(PaneId(2)));
+    // A tab shows its most urgent pane.
+    let tab = [PaneId(9), PaneId(5), PaneId(7)];
+    assert_eq!(radar.most_urgent(tab), Waiting(WaitKind::Question));
+    assert_eq!(radar.most_urgent([PaneId(9), PaneId(7)]), Working);
+    radar.forget(PaneId(2));
+    radar.forget(PaneId(5));
+    assert_eq!(radar.next_waiting(None), None);
+}
+
+#[test]
+fn a_pane_that_needs_you_while_unfocused_asks_for_a_notification_with_its_words() {
+    let mut radar = Radar::new(RadarParams::default());
+    radar.observe(
+        P1,
+        Millis(0),
+        &PaneEvent::Reported(StatusLine {
+            seq: 1,
+            state: ReportState::Waiting,
+            wait: Some(ReportWait::Permission),
+            app: Some("claude".to_owned()),
+            note: Some("Run cargo test?".to_owned()),
+        }),
+    );
+    let alerts = radar.take_alerts();
+    assert_eq!(alerts.len(), 1);
+    assert_eq!(alerts[0].pane, P1);
+    assert_eq!(
+        alerts[0].note.as_ref().map(|n| n.as_str()),
+        Some("Run cargo test?")
+    );
+    assert!(radar.take_alerts().is_empty(), "taken once");
+}
+
+#[test]
+fn only_named_agents_start_checkpoint_turns() {
+    let mut radar = Radar::new(RadarParams::default());
+    let build = status_of("cargo", ProgramState::Working, ProgramWait::Unspecified);
+    radar.observe(PaneId(1), Millis(0), &build);
+    radar.observe(
+        PaneId(2),
+        Millis(0),
+        &status(ProgramState::Working, ProgramWait::Unspecified),
+    );
+    assert!(
+        !radar.is_named_agent(PaneId(1)),
+        "a build tool is not an agent"
+    );
+    assert!(radar.is_named_agent(PaneId(2)));
+    // Its status still shows on its row.
+    assert_eq!(radar.state_of(PaneId(1)), Working);
+}
+
+#[test]
+fn programs_and_exits_are_read_as_the_radar_needs() {
+    #[rustfmt::skip]
+    let names: &[(&str, bool)] = &[
+        ("claude", true), ("Claude", true), ("codex", true), ("agy", true),
+        ("bash", false), ("node", false), ("claude-helper", false), ("", false),
+    ];
+    for (name, want) in names {
+        assert_eq!(known_agent(name), *want, "{name:?}");
+    }
+    #[rustfmt::skip]
+    let exits: &[(Option<ChildExit>, i32)] = &[
+        (Some(ChildExit::Exited(0)), 0), (Some(ChildExit::Exited(2)), 2),
+        (Some(ChildExit::Signaled(9)), 137), (None, -1),
+    ];
+    for (exit, want) in exits {
+        assert_eq!(exit_code(*exit), ExitCode(*want), "{exit:?}");
+    }
+}
+
+fn seeded(root: Option<&str>, next: u64) -> Seeded {
+    Seeded {
+        root: root.map(str::to_owned),
+        next: CheckpointRef(next),
+    }
+}
+
+#[test]
+fn checkpoints_are_numbered_from_what_the_repository_has_and_start_afresh_in_another_one() {
+    let mut run = Run::default();
+    // Two turns waiting for one read of the repository: numbered 3 and 4.
+    run.turn_started();
+    run.turn_started();
+    assert_eq!(
+        run.seeded(&seeded(Some("/r"), 3)),
+        [CheckpointRef(3), CheckpointRef(4)]
+    );
+    // Another run took 5 and 6 meanwhile: this one goes on after them.
+    run.turn_started();
+    assert_eq!(run.seeded(&seeded(Some("/r"), 7)), [CheckpointRef(7)]);
+    assert_eq!(run.marks().len(), 3);
+    // A snapshot that failed is no longer offered.
+    run.take_failed(CheckpointRef(4));
+    let blocks: Vec<u64> = run.marks().iter().map(|m| m.block.0).collect();
+    assert_eq!(blocks, [1, 3]);
+    // Restoring to turn 1 keeps the ones before it (none).
+    run.restored(BlockId(1));
+    assert!(run.marks().is_empty());
+    // A folder outside any repository drops the waiting turn and takes nothing.
+    run.turn_started();
+    assert!(run.seeded(&seeded(None, 0)).is_empty());
+    // Another repository: its numbering is its own.
+    run.turn_started();
+    assert_eq!(run.seeded(&seeded(Some("/other"), 0)), [CheckpointRef(0)]);
+    assert_eq!(run.root.as_deref(), Some("/other"));
+}
+
+fn worktree(path: &str) -> AgentWorktree {
+    AgentWorktree {
+        tab: TabId(0),
+        name: WorktreeName::from_task("fix login").expect("name"),
+        repo: "/r".to_owned(),
+        path: path.to_owned(),
+        base_ref: "main".to_owned(),
+        base: Oid::parse(&format!("{:040x}", 1)).expect("oid"),
+    }
+}
+
+#[test]
+fn a_worktree_is_looked_at_once_after_its_commands_settle() {
+    let mut trees = Trees::default();
+    trees.adopt(TabId(4), worktree("/d/w"), Millis(10_000));
+    // The first look is due at once.
+    assert_eq!(trees.due(Millis(10_000)).len(), 1);
+    assert!(trees.due(Millis(11_000)).is_empty(), "one look at a time");
+    let tip = Oid::parse(&format!("{:040x}", 2)).expect("tip");
+    let snap = temor_core::worktree::Snapshot {
+        commit: tip.clone(),
+        tree: tip.clone(),
+    };
+    trees.snapshotted(TabId(4), tip, snap);
+    // A burst of commands counts once, and only after two quiet seconds.
+    trees.command_done(TabId(4), Millis(20_000));
+    trees.command_done(TabId(4), Millis(20_500));
+    assert!(trees.due(Millis(21_000)).is_empty());
+    assert_eq!(trees.due(Millis(22_000)).len(), 1);
+    // A failed look is asked for again after the next command, not at once.
+    trees.snapshot_failed(TabId(4));
+    assert!(trees.due(Millis(40_000)).is_empty());
+    trees.command_done(TabId(4), Millis(40_000));
+    assert_eq!(trees.due(Millis(42_000)).len(), 1);
+    trees.gone(TabId(4));
+    assert!(trees.by_tab.is_empty());
+}
+
+#[test]
+fn files_are_put_back_only_inside_the_repository() {
+    let root = Path::new("/r");
+    #[rustfmt::skip]
+    let rows: &[(&str, Option<&str>)] = &[
+        ("a.txt", Some("/r/a.txt")),
+        ("src/deep/b.rs", Some("/r/src/deep/b.rs")),
+        ("../escape", None),
+        ("src/../../escape", None),
+        ("/etc/passwd", None),
+        ("./a", None),
+        ("", None),
+    ];
+    for (rel, want) in rows {
+        assert_eq!(
+            safe_join(root, rel).as_deref(),
+            want.map(Path::new),
+            "{rel:?}"
+        );
+    }
+}

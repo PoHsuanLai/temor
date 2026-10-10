@@ -51,6 +51,7 @@ pub fn declared() -> Vec<Declared> {
             &[],
         ),
         (Action::ReopenTab, "Primary+Shift+T", None, &[]),
+        (Action::JumpToWaiting, "Primary+Shift+U", None, &[]),
     ];
     let tabs = (1..=9u8).map(|n| Declared {
         action: Action::SelectTab(n),

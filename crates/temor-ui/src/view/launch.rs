@@ -17,7 +17,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;
 use super::theme::AppearanceSource;
-use crate::app::shell_pane;
+use crate::app::shell_pane_with_socket;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
 use crate::pane::TaggedSink;
@@ -87,23 +87,22 @@ pub fn open_session(
     open_session_with(
         launch,
         palette,
-        pane,
-        cwd,
-        snapshot,
+        (pane, cwd, snapshot),
         events,
         &ChildEnv::new(),
+        None,
     )
 }
 
-/// [`open_session`] with `env` set over the surroundings' own (a Space's variables).
+/// [`open_session`] with `env` set over the surroundings' own (a Space's variables), and the
+/// pane's status socket, when it has one, named to the shell in `TEMOR_SOCKET`.
 pub fn open_session_with(
     launch: &Launch,
     palette: Palette,
-    pane: PaneId,
-    cwd: Option<&Cwd>,
-    snapshot: Option<&Snapshot>,
+    (pane, cwd, snapshot): (PaneId, Option<&Cwd>, Option<&Snapshot>),
     events: UnboundedSender<(PaneId, PaneEvent)>,
     env: &ChildEnv,
+    socket: Option<&std::path::Path>,
 ) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
@@ -136,7 +135,15 @@ pub fn open_session_with(
     {
         ambient.home = dir;
     }
-    let mut spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    let mut spec = shell_pane_with_socket(
+        &ambient,
+        settings,
+        pane.0,
+        (grid, cell),
+        palette,
+        launcher,
+        socket.map(std::path::Path::to_path_buf),
+    )?;
     spec.transfers = Some(TransferSetup {
         staging: launch.ambient.staging_dir(pane.0),
         limits: transfer_limits(),

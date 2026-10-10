@@ -4,7 +4,8 @@
 
 use std::collections::BTreeSet;
 
-use ds::prelude::Selection;
+use ds::prelude::{Emphasis, Selection};
+use temor_core::presence::{AgentState, attention};
 use temor_core::split::WholePx;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::sidebar_plan;
@@ -47,6 +48,10 @@ pub struct TabRow {
     pub title: String,
     pub cwd: Option<String>,
     pub unread: Unread,
+    /// What the agent in the tab is doing: the most urgent of its panes.
+    pub agent: AgentState,
+    /// A line under the folder: the tab's agent worktree and what the overlap check found.
+    pub note: Option<String>,
     /// Selected when the tab is in front.
     pub selection: Selection,
     /// The pane with the keys in this tab.
@@ -111,7 +116,10 @@ impl Hub {
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
             .map(|path| tidy(&path, &self.launch.ambient.home));
-        let unread = match self.ws.tabs.unread.contains(&id) {
+        let agent = self.agent_state_of_tab(id);
+        // News, or an agent that waits or has a result the person has not looked at.
+        let news = self.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
+        let unread = match news {
             true => Unread::Unread,
             false => Unread::Seen,
         };
@@ -128,6 +136,8 @@ impl Hub {
             title,
             cwd,
             unread,
+            agent,
+            note: self.agent_note(id),
             selection,
             pane,
             tiles,

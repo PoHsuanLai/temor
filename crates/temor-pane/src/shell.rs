@@ -52,6 +52,7 @@ pub struct ShellPaneInput {
     cell: CellPx,
     palette: Palette,
     launcher: SessionLauncher,
+    socket: Option<PathBuf>,
 }
 
 impl ShellPaneInput {
@@ -73,6 +74,7 @@ impl ShellPaneInput {
             cell: CellPx::new(8, 16),
             palette: Palette::default(),
             launcher,
+            socket: None,
         }
     }
 
@@ -120,6 +122,13 @@ impl ShellPaneInput {
         self
     }
 
+    /// The pane's status socket, which the child finds in `TEMOR_SOCKET` (default: none).
+    #[must_use]
+    pub fn socket(mut self, socket: Option<PathBuf>) -> Self {
+        self.socket = socket;
+        self
+    }
+
     /// The colours the pane starts with.
     #[must_use]
     pub fn palette(mut self, palette: Palette) -> Self {
@@ -145,7 +154,7 @@ pub fn shell_pane(
         term: find_term(&dirs),
         version: input.version,
         pane: PaneId(input.pane.to_string()),
-        socket: None,
+        socket: input.socket,
     };
     let env = child_env(base, &ChildEnv::new(), &contract);
     let shell = pick_shell(&input.settings, &env, input.passwd_shell, is_file);

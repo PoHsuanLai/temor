@@ -15,10 +15,10 @@ use temor_core::worktree::{
 };
 use temor_ui::edge::git::ProcessGit;
 
-struct Scratch {
-    git: ProcessGit,
-    repo: String,
-    data: String,
+pub(super) struct Scratch {
+    pub(super) git: ProcessGit,
+    pub(super) repo: String,
+    pub(super) data: String,
     _dirs: (tempfile::TempDir, tempfile::TempDir),
 }
 
@@ -42,15 +42,15 @@ fn git_runner() -> Option<ProcessGit> {
     }
 }
 
-fn path(p: &Path) -> String {
+pub(super) fn path(p: &Path) -> String {
     p.to_str().expect("utf-8 temp path").to_owned()
 }
 
-fn lines(prefix: &str, n: usize) -> String {
+pub(super) fn lines(prefix: &str, n: usize) -> String {
     (1..=n).map(|i| format!("{prefix}{i}\n")).collect()
 }
 
-fn scratch() -> Option<Scratch> {
+pub(super) fn scratch() -> Option<Scratch> {
     let git = git_runner()?;
     let repo_dir = tempfile::tempdir().expect("repo dir");
     let data_dir = tempfile::tempdir().expect("data dir");

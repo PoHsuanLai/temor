@@ -53,6 +53,8 @@ pub enum Action {
     Equalize,
     /// Bring back the tab closed last.
     ReopenTab,
+    /// Focus the agent pane that is waiting for the person, the next one after this pane.
+    JumpToWaiting,
     /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
     /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
@@ -76,6 +78,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::ToggleZoom, "zoom"),
     (Action::Equalize, "equalize"),
     (Action::ReopenTab, "reopen-tab"),
+    (Action::JumpToWaiting, "jump-to-waiting"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -113,6 +116,7 @@ impl Action {
             Self::ToggleZoom => "Zoom",
             Self::Equalize => "Equalize",
             Self::ReopenTab => "Reopen tab",
+            Self::JumpToWaiting => "Jump to waiting agent",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

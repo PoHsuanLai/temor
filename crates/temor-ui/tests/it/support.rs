@@ -10,6 +10,11 @@ pub fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+/// Where `scratch(name)` put its files, without making them again.
+pub fn scratch_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name)
+}
+
 /// Whether the tools these tests drive are present: bash, util-linux `setsid`, and `/proc`.
 /// Where one is missing the test returns early (with a note) instead of failing.
 pub fn tools_present() -> bool {

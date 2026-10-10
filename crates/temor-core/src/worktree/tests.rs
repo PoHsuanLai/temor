@@ -111,3 +111,28 @@ fn a_worktree_lives_through_merge_conflict_and_close() {
         assert_eq!(worktree_life_step(from, input), (to, out), "{name}");
     }
 }
+
+#[test]
+fn the_worktree_list_is_read_and_only_temors_agent_worktrees_are_leftovers() {
+    let text = "worktree /home/p/src/app\nHEAD aaaa\nbranch refs/heads/main\n\n\
+                worktree /d/temor/worktrees/main/fix-login\nHEAD bbbb\nbranch refs/heads/agent/fix-login\n\n\
+                worktree /d/temor/worktrees/main/loose\nHEAD cccc\ndetached\n\n\
+                worktree /home/p/src/other\nHEAD dddd\nbranch refs/heads/agent/mine\n\n\
+                worktree /home/p/bare.git\nbare\n";
+    let listed = parse_worktree_list(text);
+    let paths: Vec<_> = listed.iter().map(|w| w.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        [
+            "/home/p/src/app",
+            "/d/temor/worktrees/main/fix-login",
+            "/d/temor/worktrees/main/loose",
+            "/home/p/src/other"
+        ]
+    );
+    assert_eq!(listed[1].branch.as_deref(), Some("agent/fix-login"));
+    assert_eq!(listed[2].branch, None);
+    let mine = agent_worktrees(listed, "/d/temor/");
+    assert_eq!(mine.len(), 1);
+    assert_eq!(mine[0].head, "bbbb");
+}
