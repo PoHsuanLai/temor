@@ -86,6 +86,20 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
         ]
     );
 
+    // The bar lists the same hosts (a scratch ssh config, no seam stand-in).
+    rig.hub.bar_toggle();
+    rig.hub.bar_typed("prod".to_owned());
+    let titles: Vec<String> = rig
+        .hub
+        .bar_data()
+        .map(|data| data.rows.into_iter().map(|row| row.title).collect())
+        .unwrap_or_default();
+    assert!(
+        titles.iter().any(|t| t.contains("prod")),
+        "the bar lists prod: {titles:?}"
+    );
+    rig.hub.bar_close();
+
     // Opening a machine's row makes a tab on its tailnet name, remembered by its node.
     rig.hub.open_host(&rows[2]);
     let pane = rig.front();
