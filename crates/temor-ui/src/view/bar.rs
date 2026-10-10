@@ -4,9 +4,13 @@
 //!
 //! While a viewer pane has the keyboard its own commands (Zoom to Fit, Rotate Left, …) are listed
 //! after the bar's rows (PLAN §10). They are the pane's, not the bar's: the bar does not rank
-//! them, the query only narrows them by name, and a picked one is run by the pane's handle.
+//! them, the query only narrows them by name, and a picked one is run by the pane's handle. A row
+//! there, "Find in This File", turns the field into a search of the open file (`bar::viewer_find`).
 
-use anyview_pane::{PaneCommand, PaneHandle};
+use std::cell::Cell;
+use std::rc::Rc;
+
+use anyview_pane::{HitList, PaneCommand, PaneHandle};
 use dioxus::prelude::*;
 use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,
@@ -14,6 +18,7 @@ use ds::components::menus::palette::palette_group::{
 use ds::prelude::{AfterPick, CommandPalette, TextLine};
 use temor_core::bar::{BarAction, BarRow, RowGroup, Target};
 
+use crate::bar::{FIND_PLACEHOLDER, Finding, Reply, entry_row, lift, reply};
 use crate::hub::{BarData, Desk};
 
 /// What a row of the bar yields when it is picked.
@@ -21,8 +26,10 @@ use crate::hub::{BarData, Desk};
 enum Pick {
     /// One of the bar's own rows.
     Bar(BarRow),
-    /// A command of the viewer that has the keyboard.
+    /// A command of the viewer that has the keyboard, or one of its find's matches.
     Pane(PaneCommand),
+    /// "Find in This File": the field searches the open file from now on.
+    Find,
 }
 
 /// The bar, over the window.
@@ -32,71 +39,107 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
     let (typed, selected, picked, closed) =
         (desk.clone(), desk.clone(), desk.clone(), desk.clone());
     let handle = desk.hub.keyboard_viewer();
-    let mut groups = groups_of(&data.rows);
-    let extra = match handle {
-        Some(handle) => {
-            let group = pane_group(handle, &data.query);
+    let mut finding = use_signal(Finding::default);
+    let mut list = use_signal(HitList::default);
+    // The viewer whose find is up; the bar putting it away is the bar going, however it goes.
+    let searched = use_hook(|| Rc::new(Cell::new(None::<PaneHandle>)));
+    use_drop({
+        let searched = Rc::clone(&searched);
+        move || {
+            if let Some(handle) = searched.get() {
+                handle.end_find();
+            }
+        }
+    });
+    let searching = handle.filter(|_| finding() == Finding::On);
+    let (groups, extra) = match (searching, handle) {
+        (Some(handle), _) => {
+            let group = lifted(handle.hits(list()), |_| true, None);
+            let rows = rows_in(&group);
+            (vec![group], rows)
+        }
+        (None, Some(handle)) => {
+            let mut groups = groups_of(&data.rows);
+            let wanted = data.query.trim().to_lowercase();
+            let group = lifted(
+                handle.commands(),
+                |row| row.value.label().to_lowercase().contains(&wanted),
+                entry_row(Pick::Find, &data.query),
+            );
             let rows = rows_in(&group);
             groups.push(group);
-            rows
+            (groups, rows)
         }
-        None => 0,
+        (None, None) => (groups_of(&data.rows), 0),
+    };
+    let placeholder = match searching {
+        Some(_) => FIND_PLACEHOLDER,
+        None => "Search tabs, Spaces and commands",
     };
     rsx! {
         CommandPalette::<Pick> {
             label: "Command bar",
-            placeholder: "Search tabs, Spaces and commands",
+            placeholder,
             query: data.query.clone(),
             tokens: Vec::<String>::new(),
             groups: PaletteGroups(groups),
             empty: "Nothing matches.",
-            oninput: move |text: String| typed.bar_typed(text),
+            oninput: move |text: String| {
+                if let Some(handle) = searching {
+                    handle.find(text.clone());
+                }
+                typed.bar_typed(text);
+            },
             on_select: Some(EventHandler::new(move |index: usize| selected.bar_select_among(index, extra))),
             selected: Some(data.selected),
             onpick: move |pick: Pick| match pick {
                 Pick::Bar(row) => picked.bar_pick(&row.key),
-                Pick::Pane(command) => {
-                    // The bar goes first, so the keyboard is the pane's again when it runs.
-                    picked.bar_close();
-                    if let Some(handle) = handle {
-                        handle.run(command);
-                    }
+                Pick::Find => {
+                    searched.set(handle);
+                    finding.set(Finding::On);
+                    list.set(HitList::Brief);
+                    picked.bar_typed(String::new());
                 }
+                Pick::Pane(command) => match searching {
+                    // A match picked leaves the find up: the pane goes to it, and the bar stays.
+                    Some(handle) => match reply(&command) {
+                        Reply::ListAll => list.set(HitList::Whole),
+                        Reply::Go => handle.run(command),
+                    },
+                    None => {
+                        // The bar goes first, so the keyboard is the pane's again when it runs.
+                        picked.bar_close();
+                        if let Some(handle) = handle {
+                            handle.run(command);
+                        }
+                    }
+                },
             },
             onclose: move |()| closed.bar_close(),
         }
     }
 }
 
-/// The viewer's commands as a group of the bar, narrowed to those whose name holds the query.
-fn pane_group(handle: PaneHandle, query: &str) -> PaletteGroup<Pick> {
+/// The pane's group as a group of the bar: the rows `keep` lets through, after `first`.
+fn lifted(
+    group: PaletteGroup<PaneCommand>,
+    keep: impl Fn(&PaletteRow<PaneCommand>) -> bool,
+    first: Option<PaletteRow<Pick>>,
+) -> PaletteGroup<Pick> {
     let PaletteGroup {
         title,
         entries,
         action,
-    } = handle.commands();
-    let wanted = query.trim().to_lowercase();
+    } = group;
     let rows = match entries {
         GroupEntries::List(rows) => rows,
         GroupEntries::Grid(_) => Vec::new(),
     };
-    let rows = rows
+    let kept = rows.into_iter().filter(|row| keep(row)).collect();
+    let rows = first
         .into_iter()
-        .filter(|row| row.value.label().to_lowercase().contains(&wanted))
-        .map(|row| PaletteRow {
-            value: Pick::Pane(row.value),
-            title: row.title,
-            detail: row.detail,
-            leading: row.leading,
-            accessory: row.accessory,
-            chord: row.chord,
-            availability: row.availability,
-            action: row.action,
-            // The bar closes itself on the pick, then the pane runs the command.
-            after: AfterPick::KeepOpen,
-            shape: row.shape,
-        })
-        .collect();
+        .chain(lift(kept, Pick::Pane))
+        .collect::<Vec<_>>();
     PaletteGroup {
         title,
         entries: GroupEntries::List(rows),

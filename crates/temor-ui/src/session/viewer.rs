@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use temor_core::shelf::PaneSite;
 use temor_core::viewer::{candidates, output_paths, resolve, token_at};
 use temor_core::vocab::ids::BlockId;
-use temor_pane::text::CellPos;
-use temor_vt::SurfacePoint;
+use temor_pane::text::{CellPos, cwd_from_url};
+use temor_vt::{GridPoint, PointSpace, SurfacePoint};
 
 use super::Session;
 use super::pointer::screen_cell;
@@ -21,6 +21,16 @@ pub struct ViewAsk {
     pub file: PathBuf,
     /// The files its output lists, in the order they were printed; empty when it had none.
     pub around: Vec<PathBuf>,
+}
+
+/// The path a `file://` link names when it names this computer (no host, or `localhost`).
+fn local_file_url(url: &str) -> Option<PathBuf> {
+    let rest = url.strip_prefix("file://")?;
+    let host = &rest[..rest.find('/')?];
+    if !host.is_empty() && !host.eq_ignore_ascii_case("localhost") {
+        return None;
+    }
+    cwd_from_url(url).map(PathBuf::from)
 }
 
 /// Whether `path` is a file on this computer: the check the pure path rules are given.
@@ -66,8 +76,17 @@ impl Session {
             .find(|path| is_file(path)))
     }
 
-    /// The file under the pointer at `at`, for the peek: none on a pane on another computer, while
-    /// the program has the mouse (a ⌘-click would go to it), or where the text names no file.
+    /// The file a `file://` link (OSC 8) at `cell` names, if it is one that exists here.
+    fn linked_file_at(&self, cell: CellPos) -> Option<PathBuf> {
+        let target = self.pane.with_term(|term| {
+            term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
+        })?;
+        local_file_url(&target).filter(|path| is_file(path))
+    }
+
+    /// The file under the pointer at `at`, for the peek: a `file://` link there, else a path in
+    /// the text. None on a pane on another computer, while the program has the mouse (a ⌘-click
+    /// would go to it), or where nothing names a file.
     pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
         let fit = self.fit?;
         if self.pane.with_term(|term| term.mouse_tracking()) {
@@ -76,7 +95,11 @@ impl Session {
         let hit = fit.cell_at(at);
         let top = self.viewport_top().ok()?;
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
-        self.file_at(cell).ok().flatten()
+        if self.site == PaneSite::Remote {
+            return None;
+        }
+        self.linked_file_at(cell)
+            .or_else(|| self.file_at(cell).ok().flatten())
     }
 
     /// The block toolbar's View: the first file the block's output lists, with the rest around it.
@@ -93,6 +116,26 @@ impl Session {
         match around.first().cloned() {
             Some(file) => self.view_ask = Some(ViewAsk { file, around }),
             None => self.notice = Some("This output lists no files to show.".to_owned()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_link_to_a_file_on_this_computer_names_a_path() {
+        let table = [
+            ("file:///tmp/a%20b.txt", Some("/tmp/a b.txt")),
+            ("file://localhost/tmp/a", Some("/tmp/a")),
+            ("file://LOCALHOST/tmp/a", Some("/tmp/a")),
+            ("file://other-host/tmp/a", None),
+            ("file://", None),
+            ("https://example.com/a", None),
+        ];
+        for (url, want) in table {
+            assert_eq!(local_file_url(url), want.map(PathBuf::from), "{url}");
         }
     }
 }
