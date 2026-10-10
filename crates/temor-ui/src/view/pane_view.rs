@@ -53,9 +53,14 @@ fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {
     s.display = Display::Shown;
 }
 
-/// Takes the pane off the screen: nothing paints into a texture that is gone.
-fn hide(slot: &RefCell<Slot>) {
+/// Takes the pane off the screen: nothing paints into a texture that is gone. Only when the slot
+/// still paints into this view's `texture`: a split or a move mounts the pane's new view before
+/// the old one is dropped, and the old one must not take the new one's texture away.
+fn hide(slot: &RefCell<Slot>, texture: &ds_blitz::TextureHandle) {
     let mut s = slot.borrow_mut();
+    if s.texture.as_ref() != Some(texture) {
+        return;
+    }
     s.texture = None;
     s.display = Display::Away;
 }
@@ -85,9 +90,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     });
     let ime = use_hook(|| ImeGlue::new(Rc::clone(&host)));
     {
-        let (slot, ime) = (Rc::clone(&slot), ime.clone());
+        let (slot, ime, texture) = (Rc::clone(&slot), ime.clone(), texture.clone());
         use_drop(move || {
-            hide(&slot);
+            hide(&slot, &texture);
             ime.release();
         });
     }
@@ -293,3 +298,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "pane_view_tests.rs"]
+mod tests;

@@ -54,15 +54,15 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         span { class: "temor-tab",
             CompanionOrb { presence: companion_presence(row.agent), size: OrbSize::Inline }
             span { class: "temor-tab-words",
-                Label { text: row.title.clone(), style: LabelStyle::Body }
+                span { class: "ds-truncate", Label { text: row.title.clone(), style: LabelStyle::Body } }
                 if let Some(cwd) = row.cwd.clone() {
-                    Label { text: cwd, style: LabelStyle::Caption }
+                    span { class: "ds-truncate", Label { text: cwd, style: LabelStyle::Caption } }
                 }
                 if let Some(facts) = row.facts.clone() {
-                    Label { text: facts, style: LabelStyle::Caption }
+                    span { class: "ds-truncate", Label { text: facts, style: LabelStyle::Caption } }
                 }
                 if let Some(note) = row.note.clone() {
-                    Label { text: note, style: LabelStyle::Caption }
+                    span { class: "ds-truncate", Label { text: note, style: LabelStyle::Caption } }
                 }
             }
             if row.unread == Unread::Unread {

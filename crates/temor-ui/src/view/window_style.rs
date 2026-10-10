@@ -7,6 +7,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
 .temor-pane { display: flex; flex-direction: column; width: 100%; height: 100%; }\
+.temor-status { display: flex; align-items: center; gap: var(--s-3); padding: 0 var(--s-3); min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 0 auto; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; }\
 .temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; min-width: 0; overflow: hidden; background: var(--raise); border-bottom: var(--hair) solid var(--line); }\

@@ -77,6 +77,12 @@ impl Selection {
         (first.start(), last.end())
     }
 
+    /// Whether this is a single click's selection that never left the pressed cell: a click, not
+    /// a selection, so nothing should stay selected after it.
+    pub fn is_click(&self) -> bool {
+        self.granularity == Granularity::Cells && self.anchor.pos == self.head.pos
+    }
+
     /// The shape of the selection.
     pub fn shape(&self) -> Shape {
         self.shape

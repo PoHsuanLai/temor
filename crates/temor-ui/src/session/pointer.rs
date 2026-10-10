@@ -107,7 +107,8 @@ impl Session {
         self.mirror_selection()
     }
 
-    /// The button came up at `at`: the drag, if any, is over.
+    /// The button came up at `at`: the drag, if any, is over. A plain click that never left its
+    /// cell leaves nothing selected.
     pub fn release(
         &mut self,
         at: SurfacePoint,
@@ -115,6 +116,10 @@ impl Session {
         mods: Modifiers,
     ) -> Result<(), UiError> {
         self.drag = None;
+        if self.selection.is_some_and(|s| s.is_click()) {
+            self.selection = None;
+            self.mirror_selection()?;
+        }
         let Some(fit) = self.fit else {
             return Ok(());
         };

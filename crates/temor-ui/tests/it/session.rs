@@ -312,6 +312,41 @@ fn selecting_a_word_and_copying_puts_it_on_the_clipboard() {
 }
 
 #[test]
+fn a_plain_click_leaves_nothing_selected() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-click");
+    type_text(&mut f.session, "echo clicked-word");
+    press_enter(&mut f.session);
+    wait_until("the output", || {
+        has_line(&f.session.screen_text(), "clicked-word")
+    });
+    let row = f
+        .session
+        .screen_text()
+        .lines()
+        .position(|l| l.trim_end() == "clicked-word")
+        .expect("the output row") as u16;
+    let at = point_at(&f.session, row, 2);
+    let mods = Modifiers::NONE;
+    f.session
+        .press(
+            at,
+            temor_vt::MouseButton::Left,
+            mods,
+            Duration::from_secs(1),
+        )
+        .expect("press");
+    f.session
+        .release(at, temor_vt::MouseButton::Left, mods)
+        .expect("release");
+    *f.clipboard.0.borrow_mut() = "before".to_owned();
+    f.session.run(Action::Copy).expect("copy");
+    assert_eq!(*f.clipboard.0.borrow(), "before", "a click copies nothing");
+}
+
+#[test]
 fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     if !super::support::tools_present() {
         return;

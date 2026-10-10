@@ -16,6 +16,18 @@ fn selection_drags_in_both_directions() {
 }
 
 #[test]
+fn a_click_is_not_a_selection_but_a_drag_or_a_double_click_is() {
+    let line = RowText::plain("hello world", Wrap::Ends);
+    let click = Selection::begin(CellPos::new(0, 4), &line, Granularity::Cells, Shape::Linear);
+    assert!(click.is_click());
+    let mut drag = click;
+    drag.extend(CellPos::new(0, 6), &line);
+    assert!(!drag.is_click());
+    let word = Selection::begin(CellPos::new(0, 4), &line, Granularity::Words, Shape::Linear);
+    assert!(!word.is_click());
+}
+
+#[test]
 fn selection_spans_rows_and_drops_trailing_blanks() {
     let rows = [
         RowText::plain("first   ", Wrap::Ends),
