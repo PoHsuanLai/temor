@@ -791,6 +791,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "chordkit-gnome"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=ba094c62006c280ac53c4c5df5c0e639c1226c07#ba094c62006c280ac53c4c5df5c0e639c1226c07"
+dependencies = [
+ "chordkit",
+]
+
+[[package]]
+name = "chordkit-kde"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=ba094c62006c280ac53c4c5df5c0e639c1226c07#ba094c62006c280ac53c4c5df5c0e639c1226c07"
+dependencies = [
+ "chordkit",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1488,8 +1504,9 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 [[package]]
 name = "ds"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
+ "chordkit",
  "dioxus",
  "ds-core",
  "ds-intents",
@@ -1503,7 +1520,7 @@ dependencies = [
 [[package]]
 name = "ds-behaviour"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "ds-core",
 ]
@@ -1511,7 +1528,7 @@ dependencies = [
 [[package]]
 name = "ds-blitz"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "anyrender",
  "anyrender_vello_hybrid",
@@ -1522,6 +1539,9 @@ dependencies = [
  "blitz-paint",
  "blitz-shell",
  "blitz-traits",
+ "chordkit",
+ "chordkit-gnome",
+ "chordkit-kde",
  "dioxus",
  "dioxus-asset-resolver",
  "dioxus-native",
@@ -1546,8 +1566,9 @@ dependencies = [
 [[package]]
 name = "ds-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
+ "chordkit",
  "ds-core-derive",
  "futures-timer",
  "keyboard-types 0.7.0",
@@ -1559,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "ds-core-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1570,12 +1591,12 @@ dependencies = [
 [[package]]
 name = "ds-desktop"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 
 [[package]]
 name = "ds-harness"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "anyrender",
  "anyrender_vello_cpu",
@@ -1585,6 +1606,7 @@ dependencies = [
  "blitz-kit",
  "blitz-paint",
  "blitz-traits",
+ "chordkit",
  "dioxus",
  "dioxus-native-dom",
  "ds",
@@ -1605,7 +1627,7 @@ dependencies = [
 [[package]]
 name = "ds-intents"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "ds-core",
 ]
@@ -1613,7 +1635,7 @@ dependencies = [
 [[package]]
 name = "ds-lint"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "cssparser",
  "ds-core",
@@ -1623,7 +1645,7 @@ dependencies = [
 [[package]]
 name = "ds-motion"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "dioxus",
  "ds-core",
@@ -1633,7 +1655,7 @@ dependencies = [
 [[package]]
 name = "ds-settings"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "dioxus",
  "ds-behaviour",
@@ -1652,7 +1674,7 @@ dependencies = [
 [[package]]
 name = "ds-settings-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1662,7 +1684,7 @@ dependencies = [
 [[package]]
 name = "ds-style"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=e0d1ed4880c55557326261bcb8d3091ee8a66f89#e0d1ed4880c55557326261bcb8d3091ee8a66f89"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=8ce6d4b1a026247e286336a51c51d66e3ec7124b#8ce6d4b1a026247e286336a51c51d66e3ec7124b"
 dependencies = [
  "dioxus",
  "ds-core",
