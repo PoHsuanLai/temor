@@ -74,6 +74,7 @@ fn a_finished_command_reports_its_status_and_an_unreported_one_does_not_claim_su
         (Outcome::Running, Exit::Running),
         (Outcome::Succeeded, Exit::Code(0)),
         (Outcome::Failed(ExitCode(2)), Exit::Code(2)),
+        (Outcome::Stopped(ExitCode(130)), Exit::Code(130)),
         (Outcome::Unreported, Exit::Unknown),
     ];
     for (outcome, expected) in cases {

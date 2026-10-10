@@ -108,6 +108,7 @@ impl Session {
             (Outcome::Failed(code), Some(took)) => {
                 format!("Failed with status {} after {took}", code.0)
             }
+            (Outcome::Stopped(_), Some(took)) => format!("Stopped after {took}"),
             (Outcome::Unreported, Some(took)) => format!("Ended after {took}"),
             (_, None) => "Ended".to_owned(),
         })

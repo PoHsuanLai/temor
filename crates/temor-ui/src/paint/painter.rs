@@ -4,7 +4,7 @@
 
 use temor_render::{
     CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit, Padding, Palette, PaneFocus,
-    PaneFrame, PaneView, PixelSize, Renderer, Scale, SelectionOverlay, fit_grid,
+    PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale, SelectionOverlay, fit_grid,
 };
 
 use crate::error::UiError;
@@ -12,12 +12,14 @@ use temor_pane::PaneHandle;
 
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PaintView {
+pub struct PaintView<'a> {
     pub pixels: PixelSize,
     pub scale: Scale,
     pub padding_logical: f32,
     pub focus: PaneFocus,
     pub selection: Option<SelectionOverlay>,
+    /// The command cards over the grid's rows.
+    pub bands: &'a [RowBand],
 }
 
 /// One pane's renderer, its capture state and its frame buffer.
@@ -71,7 +73,7 @@ impl Painter {
     pub fn paint(
         &mut self,
         pane: &PaneHandle,
-        view: PaintView,
+        view: PaintView<'_>,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
         let Painter {
@@ -89,6 +91,7 @@ impl Painter {
             palette,
             focus: view.focus,
             selection: view.selection,
+            bands: view.bands,
         };
         let drawn = renderer.render(frame, &pane_view)?;
         show(drawn.pixels, drawn.size);

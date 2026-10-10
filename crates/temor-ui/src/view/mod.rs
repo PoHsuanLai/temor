@@ -4,6 +4,7 @@
 
 pub mod bar;
 pub mod blocks;
+pub mod card_colours;
 pub mod confirm;
 pub mod convert;
 pub mod dnd;
