@@ -39,7 +39,7 @@ ordered by dependency (§11), not split into versions.
 | D9 | **Checkpoints:** a git snapshot of tracked and untracked files is taken before an agent writes. Ignored files are labelled as not covered. Writes inside the project then count as `UndoableWrite`. |
 | D10 | **Spaces carry profiles:** env vars, an SSH identity through a per-Space agent, and an optional dotenv. They apply to new shells only. |
 | D11 | **The ⌘T command bar** ranks results by fixed rules, with AI rows always last. |
-| D12 | **Downloads shelf:** the path is configurable, defaulting to temor's own data dir. It is fed by kitty file transfer (OSC 5113), iTerm2 `File=` (OSC 1337), `temor get`/`save`/`view -`, and "Save output". |
+| D12 | **Downloads shelf:** the path is configurable, defaulting to XDG Downloads for now (owner, 2026-10-10; it was temor's own data dir). It is fed by kitty file transfer (OSC 5113), iTerm2 `File=` (OSC 1337), `temor get`/`save`/`view -`, and "Save output". |
 | D13 | **anyview:** `anyview-peek` is linked in-process. An embeddable viewer pane is being proposed by anyview to its owner. Both sit behind a default-on feature, and the fallback is D-Bus `Open`. |
 | D14 | **Plugins** follow `agent-spec/plugins.md`, using the shared crate in the new public repo **bayonet** (extracted by anyview). temor's capabilities: `block.lens`, `open.provider` (shaped to match sill's launcher providers), `agent.adapter`, `row.facts`. temor has no format plugins: viewing belongs to anyview. |
 | D15 | **Portable core** (design/36): every desktop extra sits behind the `quire-desktop` feature, and `--no-default-features` must build and pass. Off our desktop the trial says "not checked". |
@@ -735,8 +735,13 @@ The ranking rules:
 | **P13 SSH Tier A** | host list (plus tailnet machines from porter, D22), connection sharing, bootstrap (integration, terminfo, `temor get/open`), splits on the same host, remote files and write-back, forwards, consent per host | P2, P3, P9 |
 | **P14 SSH Tier B** | `temor-wire`, `temor-remote` (session daemon with libghostty-vt, snapshot and reattach, `link_step`), port detection (direct tailnet open first), the file service, remote trial, remote workspaces for local agents (plus the on-host CLI fallback) | P13; bulkhead; docket's `JudgeToolCall` |
 | **P12 Companion context** | @tab chips, `context()` scopes, the ⌘T "Ask about" row with the context card (D21) | P6; companion |
+| **P15 Look** (done) | Warp-style command cards, studied from Warp's design (AGPL, so no code was copied). The stock prompt is replaced by a dim folder-and-branch line above an empty typing line (`TEMOR_PROMPT=shell` keeps the shell's own). Cards are drawn as renderer row bands: a 1px rule, a failed tint plus a stripe, a selected tint, and the typing line shaded like an input. Exit 130 and 141 count as stopped. The command line stays pinned while its output scrolls, a toolbar appears on hover, and nothing is drawn on the alternate screen. D5 stays: no input box of temor's own | P2 |
+| **P16 Context chips** | Facts for the pane's folder, computed by the app at each prompt or folder change (git runs in the background, no lock): branch, uncommitted changes, +N −M lines, changed files, Python virtualenv, Node version. They show as chips at the right end of the prompt's header line and as a summary on the tab's sidebar row (the `row.facts` shape, built in ahead of P11) | P15 |
+| **P17 Shell offer** | Warpify-style: a typed `ssh`, `docker exec`, `sudo -i` and the like (a fixed list, editable in settings) gets a one-time offer to load temor's shell integration in the inner shell, so its commands become cards. Never automatic (no mode guessing) | P15 |
+| **P18 Finish Batch 2** | dock badge = agents waiting on the person; agent- and intent-opened panes don't take the keyboard; a second launch raises the window; the ⌘T bar lists SSH hosts from the hub; one file opener | Batch 2 |
+| **P19 Checkpoints on docket** | temor drops its own snapshots and uses docket's frozen interface (`~/rs-wt/checkpoints/DESIGN.md` §3, §5): CheckpointList / CheckpointPlan, restore through `checkpoints.restore`, `undo_ref` to `refs/temor/undo/<n>`, and old `refs/temor/checkpoints/*` pruned after 14 days with no import | docket sha from the agent session |
 
-P3 to P5 can run alongside P6 and P9 once P2 lands.
+P3 to P5 can run alongside P6 and P9 once P2 lands. P14's window side (Tier B sessions in the window, plus the temor-wire revision: WriteFile offset/append, Ping, cell size and Palette) runs with P16 to P18 as Batch 3. Version pins arrive in account-wide batches (Batch 13: porter's `Machine.link` / `Machine.ssh`) and are applied when the full set comes.
 
 ## 12. Work in other repos
 
