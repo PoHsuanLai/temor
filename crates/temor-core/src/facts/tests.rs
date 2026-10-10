@@ -57,7 +57,11 @@ fn venv_names() {
         ("empty", "", None),
     ];
     for (name, path, want) in cases {
-        assert_eq!(venv_name(path).as_ref().map(EnvName::as_str), want, "{name}");
+        assert_eq!(
+            venv_name(path).as_ref().map(EnvName::as_str),
+            want,
+            "{name}"
+        );
     }
 }
 

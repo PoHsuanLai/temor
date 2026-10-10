@@ -52,6 +52,8 @@ pub struct TabRow {
     pub agent: AgentState,
     /// A line under the folder: the tab's agent worktree and what the overlap check found.
     pub note: Option<String>,
+    /// The pane's branch, with a dot when its folder has uncommitted changes (PLAN P16).
+    pub facts: Option<String>,
     /// Selected when the tab is in front.
     pub selection: Selection,
     /// The pane with the keys in this tab.
@@ -144,6 +146,7 @@ impl Hub {
             unread,
             agent,
             note: self.agent_note(id),
+            facts: self.facts_of(pane).summary(),
             selection,
             pane,
             tiles,

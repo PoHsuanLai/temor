@@ -97,8 +97,16 @@ fn venv_comes_from_the_environment_first_then_the_folder() {
         .path()
         .file_name()
         .map(|n| n.to_string_lossy().into_owned());
-    assert_eq!(name(&FactsEnv::default()), project, "a .venv folder names the project");
-    assert_eq!(name(&from_env), Some("tools".to_owned()), "the environment wins");
+    assert_eq!(
+        name(&FactsEnv::default()),
+        project,
+        "a .venv folder names the project"
+    );
+    assert_eq!(
+        name(&from_env),
+        Some("tools".to_owned()),
+        "the environment wins"
+    );
 }
 
 #[test]

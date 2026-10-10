@@ -13,6 +13,7 @@ mod desktop_io;
 #[cfg(test)]
 mod desktop_tests;
 mod events;
+mod facts;
 mod hosts;
 mod keys;
 mod model;
@@ -49,6 +50,7 @@ pub use bar::{BarData, WindowAction};
 pub use desk::Desk;
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;
+pub use facts::spawn_facts_loop;
 pub use hosts::HostRows;
 pub use keys::workspace_input;
 pub use model::{Hub, HubRef};

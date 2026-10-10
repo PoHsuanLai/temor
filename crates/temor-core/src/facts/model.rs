@@ -63,7 +63,10 @@ pub struct Facts {
 impl Facts {
     /// Nothing is known, so nothing is shown.
     pub fn is_empty(&self) -> bool {
-        self.branch.is_none() && self.changes.is_none() && self.venv.is_none() && self.node.is_none()
+        self.branch.is_none()
+            && self.changes.is_none()
+            && self.venv.is_none()
+            && self.node.is_none()
     }
 
     /// Whether the folder has uncommitted changes.

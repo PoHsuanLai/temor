@@ -10,6 +10,7 @@ pub mod card_colours;
 pub mod confirm;
 pub mod convert;
 pub mod dnd;
+pub mod fact_chips;
 pub mod find_bar;
 pub mod handlers;
 pub mod host_banners;
