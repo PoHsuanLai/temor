@@ -513,7 +513,7 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 
 ## Keys on chordkit (lane/keys, chordkit d6fed65)
 - [ ] Bump chordkit when the agent session sends the sha with: offered-only standard actions (ShowFonts…), so ⌘T goes back to new tab or the command bar; a fallback default per action (equalize: Primary+Ctrl+= plus a terminal fallback); a person's override registering a refused action (focus left/right on "Other" Linux). Then move new tab off Standard(New) and add the fallbacks.
-- [ ] keycap and sill's keycap profile stop remapping ⌘ to Ctrl+Shift in temor's window (it reads the keymap). Until then ⌘⇧D in a remapped window reads as ⌘D (split right).
+- [x] keycap 0d9abbf adds the `keymap-aware` profile (⌘ arrives as Super); temor's desktop entry asks for it with `X-Keycap-Profile=keymap-aware`. A still-remapped window falls back to chordkit's Ctrl+Shift alias, where ⌘⇧D reads as ⌘D.
 - [ ] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop.
 - [ ] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register.
 - [ ] Move to quire v0.3.6 (same chordkit rev, maps ALT_GRAPH) when tagged; v0.3.5 would bring a second chordkit.

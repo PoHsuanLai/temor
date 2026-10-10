@@ -10,3 +10,5 @@ Categories=TerminalEmulator;System;
 StartupWMClass=org.quire.Temor
 StartupNotify=true
 DBusActivatable=true
+# keycap passes ⌘ through as Super: temor reads the keymap itself (chordkit), so ⌘D and ⌘⇧D stay apart.
+X-Keycap-Profile=keymap-aware
