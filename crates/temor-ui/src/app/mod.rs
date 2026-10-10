@@ -1,6 +1,7 @@
 //! The app's entry: what the window is given at start, and how it is launched.
 
 pub mod desktop;
+mod icon;
 mod shell;
 
 pub use shell::{shell_pane, shell_pane_with_socket};
@@ -26,5 +27,10 @@ pub fn run_with(launch: Launch, desktop: Desktop) -> Result<(), ds_blitz::Launch
     .with_app_id(ds_blitz::AppId(APP_ID.to_owned()))
     .with_context(launch)
     .with_context(desktop);
+    // X11 and Windows show the window's own icon; elsewhere the desktop entry gives it.
+    let config = match icon::window_icon() {
+        Some(icon) => config.with_icon(icon),
+        None => config,
+    };
     ds_blitz::launch(App, config)
 }
