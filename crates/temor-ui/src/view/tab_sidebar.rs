@@ -14,6 +14,7 @@ use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_core::vocab::ids::TabId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_pane::keys::Action;
 
 use super::dnd::Dnd;
 use super::shelf::ShelfFoot;
@@ -75,7 +76,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                                     size: ControlSize::Small,
                                     icon: Some(IconSource::Glyph(Icon::Plus)),
                                     label: "New tab".to_owned(),
-                                    title: Some("New tab".to_owned()),
+                                    title: Some(desk.hub.tooltip("New tab", Action::NewTab)),
                                     onclick: new_tab,
                                 }
                             },

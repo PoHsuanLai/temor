@@ -83,7 +83,11 @@ impl SpaceBook {
 
 /// What the Spaces file keeps of a workspace: its place and the files its viewer panes show.
 pub(super) fn recall_of(ws: &Workspace) -> Place {
-    ws.tabs.place.clone().with_viewers(&ws.viewers)
+    ws.tabs
+        .place
+        .clone()
+        .with_viewers(&ws.viewers)
+        .with_cwds(&ws.cwds)
 }
 
 impl Hub {

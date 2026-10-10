@@ -15,7 +15,8 @@ mod tests;
 /// would cover most of what is left of the block.
 pub const HEADER_MIN_ROWS: u32 = 2;
 
-/// The toolbar's height in logical pixels, to count the grid rows it covers.
+/// The toolbar's height in logical pixels before the window has measured it (`ToolsHeight`), to
+/// count the grid rows it covers.
 pub const TOOLS_HEIGHT_LOGICAL: f32 = 28.0;
 
 /// The command that heads the pane while its block's prompt is above the viewport.
@@ -165,7 +166,7 @@ impl Session {
             None => view.top,
         };
         let reach = self.gutter_geometry().map_or(1, |(_, cell_h)| {
-            (TOOLS_HEIGHT_LOGICAL / cell_h.max(1.0)).ceil() as u32
+            (self.tools_height.get() / cell_h.max(1.0)).ceil() as u32
         });
         let row = tools_row(span, &view, lowest, reach.max(1))?;
         Some(ToolsSpot {

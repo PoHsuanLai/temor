@@ -8,7 +8,7 @@ use temor_pane::keys::Action;
 use temor_vt::Ime;
 
 use super::super::keys::stroke;
-use super::super::route::{FindBar, Routed, route};
+use super::super::route::{FindBar, KittyKeys, Routed, route_with};
 use crate::edge::keymap_for;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +46,10 @@ pub(super) fn row(name: &'static str, key: Key, code: Code, held: Held, want: We
 }
 
 pub(super) fn went(keymap: &Keymap, row: &Row, find: FindBar) -> Went {
+    went_with(keymap, row, find, KittyKeys::Off)
+}
+
+pub(super) fn went_with(keymap: &Keymap, row: &Row, find: FindBar, kitty: KittyKeys) -> Went {
     let raw = RawKey {
         phase: KeyPhase::Press,
         key: row.key.clone(),
@@ -56,7 +60,7 @@ pub(super) fn went(keymap: &Keymap, row: &Row, find: FindBar) -> Went {
         unshifted: row.unshifted.map(ch),
     };
     let stroke = stroke(&raw, Ime::Idle).unwrap_or_else(|| panic!("{}: no stroke", row.name));
-    match route(stroke, keymap, find) {
+    match route_with(stroke, keymap, find, kitty) {
         Routed::Action(action) => Went::Action(action),
         Routed::Shell(_) => Went::Program,
         Routed::Ignored => Went::Dropped,

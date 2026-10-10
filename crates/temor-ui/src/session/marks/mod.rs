@@ -12,6 +12,8 @@ mod query;
 mod rows;
 #[cfg(test)]
 mod tests;
+mod tools_height;
 
 pub use notify::desktop_note;
 pub use query::{BlockMark, PromptStep};
+pub use tools_height::ToolsHeight;

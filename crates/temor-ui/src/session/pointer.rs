@@ -17,6 +17,26 @@ use crate::error::UiError;
 use crate::input::{Click, next_click};
 
 impl Session {
+    /// The pointer is over the grid at `at`.
+    pub fn pointer_moved(&mut self, at: SurfacePoint) {
+        self.pointer_over = Some(at);
+    }
+
+    /// The pointer left the grid: no block is hovered.
+    pub fn pointer_left(&mut self) {
+        self.pointer_over = None;
+    }
+
+    /// The block under the pointer now (it follows the wheel), if the pointer is over the grid.
+    pub fn hovered_block(&self) -> Option<temor_core::vocab::ids::BlockId> {
+        self.pointer_over.and_then(|at| self.block_at_point(at))
+    }
+
+    /// The toolbar's measured height, for its view to fill in.
+    pub fn tools_height(&self) -> super::ToolsHeight {
+        self.tools_height.clone()
+    }
+
     /// A button went down at `at`.
     pub fn press(
         &mut self,
@@ -123,6 +143,8 @@ impl Session {
         lines: u32,
         mods: Modifiers,
     ) -> Result<(), UiError> {
+        // The wheel moves the output under a pointer that did not move: it hovers what is there now.
+        self.pointer_over = Some(at);
         if lines == 0 {
             return Ok(());
         }

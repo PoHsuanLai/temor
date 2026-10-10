@@ -6,7 +6,7 @@ use temor_vt::{KeyAction, KeyCode};
 
 use super::{FindStep, PromptStep, Session};
 use crate::error::UiError;
-use crate::input::{FindBar, Routed, Stroke, is_altgr_text, route};
+use crate::input::{FindBar, KittyKeys, Routed, Stroke, is_altgr_text, route_with};
 
 impl Session {
     /// Routes one key event.
@@ -15,7 +15,10 @@ impl Session {
             true => FindBar::Open,
             false => FindBar::Closed,
         };
-        match route(stroke, &self.keymap, find) {
+        let kitty = self
+            .pane
+            .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
+        match route_with(stroke, &self.keymap, find, kitty) {
             Routed::Action(action) => self.run(action),
             Routed::Shell(key) => {
                 if key.action == KeyAction::Press && key.code == KeyCode::Enter {

@@ -107,7 +107,12 @@ impl Session {
 
     /// The bands to paint over the grid. Empty on the alternate screen.
     pub fn card_bands(&self, colours: &CardColours) -> Vec<RowBand> {
-        let cursor = self.painter.cursor_cell().map(|c| i64::from(c.row.0));
+        // This frame's cursor row when the terminal knows it, else where the last paint put it.
+        let cursor = self
+            .pane
+            .with_term(|term| term.cursor_viewport_row())
+            .or_else(|| self.painter.cursor_cell().map(|c| c.row.0))
+            .map(i64::from);
         let typing = matches!(
             self.blocks.machine,
             BlockState::Prompting { .. } | BlockState::Typing { .. }

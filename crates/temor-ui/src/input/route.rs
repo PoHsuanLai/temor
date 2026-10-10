@@ -1,11 +1,12 @@
 //! Where a key goes (PLAN §6): a key the keymap binds in a terminal runs its action; a key in
 //! the Primary form with no action is dropped, as Ghostty does; every other key is encoded for
-//! the program, unless the input method is composing, which owns the keys until it is done.
+//! the program, unless the input method is composing, which owns the keys until it is done. When
+//! the program has turned on the kitty keyboard flags it asked for those chords, so they reach it.
 //! Pure: no window, no terminal.
 
 use chordkit::{Context, Key as ChordKey, Keymap, NamedKey};
 use temor_pane::keys::Action;
-use temor_vt::{Ime, KeyAction, KeyInput};
+use temor_vt::{Ime, KeyAction, KeyInput, KittyKeyFlags};
 
 /// A key as the window heard it: the press as chordkit reads it (when it has a name there) and
 /// what the program would get.
@@ -22,6 +23,24 @@ pub enum FindBar {
     Closed,
 }
 
+/// Whether the program has turned on the kitty keyboard flags (any of them): then a chord with no
+/// action is the program's to read, not a control byte to drop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum KittyKeys {
+    On,
+    Off,
+}
+
+impl KittyKeys {
+    /// `On` when the program pushed any flag.
+    pub fn of(flags: KittyKeyFlags) -> Self {
+        match flags == KittyKeyFlags::DISABLED {
+            true => Self::Off,
+            false => Self::On,
+        }
+    }
+}
+
 /// Where a key goes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Routed {
@@ -35,6 +54,11 @@ pub enum Routed {
 
 /// Routes one key event (PLAN §4: a machine never takes a key the shell would get).
 pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
+    route_with(stroke, keymap, find, KittyKeys::Off)
+}
+
+/// [`route`], knowing whether the program turned on the kitty keyboard flags.
+pub fn route_with(stroke: Stroke, keymap: &Keymap, find: FindBar, kitty: KittyKeys) -> Routed {
     if stroke.key.ime == Ime::Composing {
         return Routed::Ignored;
     }
@@ -55,18 +79,18 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
         (Some(Action::CloseFind), FindBar::Open) => Routed::Action(Action::CloseFind),
         // The find keys are the bar's only while it is open; elsewhere they are any other key.
         (Some(Action::CloseFind | Action::FindNext | Action::FindPrevious), FindBar::Closed)
-        | (None, _) => unbound(stroke.key, &input, keymap),
+        | (None, _) => unbound(stroke.key, &input, keymap, kitty),
         (Some(action), _) => Routed::Action(action),
     }
 }
 
 /// A key with no action: dropped when it is in the Primary form (it would reach the program as a
-/// control byte; Ghostty drops these too), else the program's. FOLLOWUP: under the kitty keyboard
-/// flags a program that asked for these chords should get them.
-fn unbound(key: KeyInput, input: &chordkit::KeyInput, keymap: &Keymap) -> Routed {
-    match keymap.is_primary_form(input, Context::Terminal) {
-        true => Routed::Ignored,
-        false => Routed::Shell(key),
+/// control byte; Ghostty drops these too), else the program's. Under the kitty keyboard flags the
+/// program asked for these chords, so it gets them.
+fn unbound(key: KeyInput, input: &chordkit::KeyInput, keymap: &Keymap, kitty: KittyKeys) -> Routed {
+    match (keymap.is_primary_form(input, Context::Terminal), kitty) {
+        (true, KittyKeys::Off) => Routed::Ignored,
+        (true, KittyKeys::On) | (false, _) => Routed::Shell(key),
     }
 }
 

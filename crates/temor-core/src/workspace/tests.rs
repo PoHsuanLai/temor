@@ -38,6 +38,7 @@ fn fixture() -> TabsState {
         }],
         focused: Some(TabId(3)),
         viewers: vec![],
+        cwds: vec![],
     })
 }
 

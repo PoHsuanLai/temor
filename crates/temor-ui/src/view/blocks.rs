@@ -37,6 +37,7 @@ fn tools_of(
             let spot = session.tools_spot(id)?;
             Some(ToolsView {
                 id,
+                height: session.tools_height(),
                 top: pad + spot.row as f32 * cell_h,
                 inset: pad,
                 summary: session.block_summary(id).unwrap_or_default(),
@@ -56,8 +57,10 @@ fn tools_of(
         })
 }
 
-/// The chrome for a session, with `hovered` the block under the pointer.
-pub fn chrome_of(session: &Session, hovered: Option<BlockId>) -> Chrome {
+/// The chrome for a session. The hovered block is the session's own (it follows the wheel and
+/// clears when the pointer leaves); `_hovered`, the window's signal of it, only makes the window
+/// draw again when it changes.
+pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
     let (pad, cell_h) = session.gutter_geometry().unwrap_or((0.0, 0.0));
     let columns = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
     let header = session.sticky_header().map(|header| HeaderView {
@@ -68,7 +71,7 @@ pub fn chrome_of(session: &Session, hovered: Option<BlockId>) -> Chrome {
     });
     Chrome {
         header,
-        tools: tools_of(session, hovered, pad, cell_h),
+        tools: tools_of(session, session.hovered_block(), pad, cell_h),
         cwd: session.cwd().map(str::to_owned),
         title: session.title().to_owned(),
         progress: session.progress().and_then(progress_line),

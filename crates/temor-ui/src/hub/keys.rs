@@ -1,8 +1,12 @@
 //! Which workspace request a pane action asks for (PLAN §6, default keys). Pure.
 
+use ds_core::vocab::Shortcut;
 use temor_core::split::{Direction, Goto};
 use temor_core::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn};
 use temor_pane::keys::Action;
+
+use super::model::HubRef;
+use crate::input::terminal_shortcut_of;
 
 /// The workspace request for a tab or split action, or `None` for an action a pane runs itself.
 pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
@@ -40,4 +44,20 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::JumpToWaiting
         | Action::SelectSpace(_) => return None,
     })
+}
+
+impl HubRef {
+    /// What a person presses to run `action` in a terminal window, as quire draws a chord.
+    pub fn shortcut_of(&self, action: Action) -> Option<Shortcut> {
+        terminal_shortcut_of(&self.0.borrow().launch.keymap, action)
+    }
+
+    /// `label` with the action's chord after it, as a Mac tooltip writes it (`New tab (⌘N)`), or
+    /// `label` alone when the action has no chord.
+    pub fn tooltip(&self, label: &str, action: Action) -> String {
+        match temor_pane::keys::terminal_shortcut(&self.0.borrow().launch.keymap, action) {
+            Some(chord) => format!("{label} ({chord})"),
+            None => label.to_owned(),
+        }
+    }
 }

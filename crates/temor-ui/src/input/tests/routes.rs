@@ -6,8 +6,8 @@ use temor_pane::keys::Action;
 use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::super::keys::is_altgr_text;
-use super::super::route::{FindBar, Routed, Stroke, route};
-use super::table::{OURS, Row, Went, ch, check, keymap_of, row, went};
+use super::super::route::{FindBar, KittyKeys, Routed, Stroke, route};
+use super::table::{OURS, Row, Went, ch, check, keymap_of, row, went, went_with};
 
 /// The find bar's keys are the bar's only while it is open; closed, Escape and F3 are the
 /// program's, and a Primary-form find chord is dropped like any other.
@@ -156,5 +156,37 @@ fn altgr_text_is_typed_and_a_bare_ctrl_press_is_not() {
     ];
     for (name, key, want) in cases {
         assert_eq!(is_altgr_text(&key), want, "{name}");
+    }
+}
+
+/// A chord with no action is dropped, unless the program turned on the kitty keyboard flags: then
+/// it asked for the chord. A chord with an action stays temor's either way.
+#[test]
+fn kitty_flags_let_unbound_primary_chords_through() {
+    let keymap = keymap_of(OURS);
+    let rows = [
+        (
+            row("⌘K", ch("k"), Code::KeyK, Held::SUPER, Went::Dropped),
+            KittyKeys::Off,
+            Went::Dropped,
+        ),
+        (
+            row("⌘K", ch("k"), Code::KeyK, Held::SUPER, Went::Dropped),
+            KittyKeys::On,
+            Went::Program,
+        ),
+        (
+            row("⌘C", ch("c"), Code::KeyC, Held::SUPER, Went::Dropped),
+            KittyKeys::On,
+            Went::Action(Action::Copy),
+        ),
+    ];
+    for (row, kitty, want) in &rows {
+        assert_eq!(
+            went_with(&keymap, row, FindBar::Closed, *kitty),
+            *want,
+            "{kitty:?} {}",
+            row.name
+        );
     }
 }

@@ -189,3 +189,30 @@ fn a_place_recalled_alone_brings_its_viewer_panes_back_as_viewers() {
     let shells: Vec<PaneId> = launch_plan(&back).iter().map(|s| s.pane).collect();
     assert_eq!(shells, vec![PaneId(3), PaneId(1)], "pinned tab first");
 }
+
+#[test]
+fn a_place_recalled_alone_starts_each_shell_in_its_own_folder() {
+    let mut ws = built();
+    ws.cwds.insert(PaneId(1), Cwd("/home/a".into()));
+    ws.cwds.insert(PaneId(2), Cwd("/home/b".into()));
+    ws.cwds.insert(PaneId(3), Cwd("/srv".into()));
+    // A folder of a pane that is in no tree is not kept.
+    ws.cwds.insert(PaneId(9), Cwd("/gone".into()));
+    let recall = ws.tabs.place.clone().with_cwds(&ws.cwds);
+    assert_eq!(recall.cwds.len(), 3);
+
+    let text = serde_json::json!({ "version": 1, "place": recall }).to_string();
+    let back = loaded(&text);
+
+    let folders: Vec<(PaneId, Option<Cwd>)> = launch_plan(&back)
+        .into_iter()
+        .map(|spawn| (spawn.pane, spawn.cwd))
+        .collect();
+    for (pane, want) in [(1, "/home/a"), (2, "/home/b"), (3, "/srv")] {
+        assert!(
+            folders.contains(&(PaneId(pane), Some(Cwd(want.into())))),
+            "pane {pane} starts in {want}: {folders:?}"
+        );
+    }
+    assert!(back.tabs.place.cwds.is_empty(), "a live place holds none");
+}

@@ -24,6 +24,7 @@ ds = { workspace = true }
 ds-blitz = { workspace = true }
 ds-core = { workspace = true }
 ds-settings = { workspace = true, features = ["dioxus"] }
+png = { workspace = true }
 rustix = { workspace = true }
 serde_json = { workspace = true }
 temor-core = { workspace = true }

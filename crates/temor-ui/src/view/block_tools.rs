@@ -9,14 +9,19 @@ use ds::components::content::icon_source::IconSource;
 use ds::components::content::label::LabelStyle;
 use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::press::Propagation;
+use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_core::vocab::ids::BlockId;
+
+use crate::session::ToolsHeight;
 
 /// What the toolbar shows and does for one block.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ToolsView {
     pub id: BlockId,
+    /// Where the toolbar's measured height goes, for the session to count the rows it covers.
+    pub height: ToolsHeight,
     /// Distance from the top of the pane, in logical pixels.
     pub top: f32,
     /// Distance from the right edge of the pane, in logical pixels.
@@ -68,9 +73,18 @@ pub fn BlockTools(
     on_view: EventHandler<BlockId>,
 ) -> Element {
     let id = tools.id;
+    // The toolbar's real height, once laid out, replaces the estimate the session starts with.
+    let probe = use_rect();
+    let height = tools.height.clone();
+    use_effect(move || {
+        if let Some(rect) = probe.rect() {
+            height.measured(rect.size.height.0);
+        }
+    });
     rsx! {
         div {
             class: "temor-block-tools",
+            onmounted: move |event: MountedEvent| probe.on_mounted(event),
             style: "top:{tools.top}px; right:{tools.inset}px",
             Label { text: tools.summary.clone(), style: LabelStyle::Caption }
             ToolButton {

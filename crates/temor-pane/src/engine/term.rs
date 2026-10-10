@@ -9,9 +9,9 @@ use crate::text::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
     AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
-    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, PointSpace,
-    ReplySink, Snapshot, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection,
-    TextSpan, ViewportScroll, VtEvent,
+    KeyEncoder, KeyInput, KittyKeyFlags, LineCount, ModeState, MouseEncoder, MouseInput,
+    MouseSurface, PointSpace, ReplySink, Snapshot, Terminal, TerminalConfig, TerminalMode,
+    TextFormat, TextSelection, TextSpan, ViewportScroll, VtEvent,
 };
 
 use crate::error::PaneError;
@@ -130,6 +130,11 @@ impl Term {
         Ok(self.keys.encode(key)?)
     }
 
+    /// The kitty keyboard flags the program pushed.
+    pub fn kitty_keyboard_flags(&self) -> KittyKeyFlags {
+        self.terminal.kitty_keyboard_flags()
+    }
+
     /// The bytes for a mouse event on `surface`; empty when the program does not track the
     /// mouse for it.
     pub fn encode_mouse(
@@ -195,6 +200,17 @@ impl Term {
         let bar = self.terminal.scrollbar()?;
         let clamp = |v: u64| u32::try_from(v).unwrap_or(u32::MAX);
         Ok((clamp(bar.offset.0), clamp(bar.len.0)))
+    }
+
+    /// The cursor's row in the viewport as the terminal has it now, not as the last frame drew it.
+    /// `None` when the cursor is scrolled out of the viewport or the terminal will not say.
+    pub fn cursor_viewport_row(&self) -> Option<u16> {
+        let active_row = i64::from(self.terminal.cursor_row()?);
+        let (top, rows) = self.viewport().ok()?;
+        let total = i64::from(self.screen_rows().ok()?);
+        let active_rows = i64::from(self.terminal.size().rows.0);
+        let row = total - active_rows + active_row - i64::from(top);
+        u16::try_from(row).ok().filter(|row| u32::from(*row) < rows)
     }
 
     /// How many screen rows exist, scrollback included.
