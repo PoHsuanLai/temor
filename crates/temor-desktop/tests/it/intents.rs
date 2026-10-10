@@ -63,7 +63,7 @@ async fn call(
             arguments,
         )
         .await?;
-    Ok(reply.body().deserialize()?)
+    reply.body().deserialize()
 }
 
 async fn perform(

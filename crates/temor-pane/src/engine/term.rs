@@ -43,14 +43,7 @@ impl Term {
         cursor: CursorShape,
         palette: &Palette,
     ) -> Result<Self, PaneError> {
-        Self::assemble(
-            size,
-            cell,
-            scrollback,
-            cursor,
-            palette,
-            |config, sink, reply| Terminal::new(config, sink, reply),
-        )
+        Self::assemble(size, cell, scrollback, cursor, palette, Terminal::new)
     }
 
     /// A terminal restored from `snapshot` (its screen, scrollback, modes and cursor), with the

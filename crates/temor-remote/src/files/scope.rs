@@ -115,7 +115,8 @@ mod tests {
                 rel.iter().map(|s| s.to_string()).collect(),
             ))
         };
-        let cases: Vec<(&str, Result<(String, Vec<String>), String>)> = vec![
+        type Owned = Result<(String, Vec<String>), String>;
+        let cases: Vec<(&str, Owned)> = vec![
             (
                 "/home/me/work/a/b.txt",
                 owned("/home/me/work", &["a", "b.txt"]),

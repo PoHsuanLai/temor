@@ -26,6 +26,7 @@ fn files(names: &[&str]) -> Vec<PathBuf> {
 fn the_command_line_is_read() {
     use Command::{Get, Help, Save, View};
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let cases: Vec<(&str, Vec<&str>, Option<Result<Command, UsageError>>)> = vec![
         ("no words start the window", vec![], None),
         ("another word starts the window", vec!["--temor-session-leader"], None),

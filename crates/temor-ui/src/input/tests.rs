@@ -154,6 +154,7 @@ fn shifted_command_chords_match_with_or_without_the_unshifted_key() {
     let cs = Held::CONTROL | Held::SHIFT;
     // (name, logical key, physical key, modifiers, unshifted key if reported, the action)
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let rows: &[(&str, &str, Code, Held, Option<&str>, Option<Action>)] = &[
         ("⌘1 with no unshifted key", "!", Code::Digit1, cs, None, Some(Action::SelectTab(1))),
         ("⌘1 with the unshifted key", "!", Code::Digit1, cs, Some("1"), Some(Action::SelectTab(1))),

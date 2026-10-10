@@ -209,6 +209,7 @@ fn watches_report_a_file_appearing_changing_and_going() {
     let file = path(&rig, "w.txt");
     let watch = conn.client.watch(&file).expect("watch");
 
+    #[allow(clippy::type_complexity)] // a table of named rows
     let steps: [(&str, fn(&std::path::Path), WatchChange); 3] = [
         (
             "created",

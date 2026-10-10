@@ -12,7 +12,8 @@ ls \"$first/nushell/vendor/autoload\"\n";
 
 fn line<'a>(text: &'a str, key: &str) -> &'a str {
     text.lines()
-        .find_map(|l| l.strip_prefix(key))
+        // The bootstrap's own report (the folder, OSC 7) may share the stand-in's first line.
+        .find_map(|l| l.find(key).map(|at| &l[at + key.len()..]))
         .unwrap_or("<missing>")
 }
 
@@ -48,7 +49,7 @@ fn nushell_starts_as_a_login_shell_with_temors_folder_first_in_the_data_dirs() {
     ];
     for (name, before, tail, restore) in cases {
         let (text, tmp) = started_with(before);
-        assert_eq!(line(&text, "ARGS="), "-l", "{name}");
+        assert_eq!(line(&text, "ARGS="), "-l", "{name}: {text}");
         let x = line(&text, "X=");
         assert!(x.starts_with(&format!("{tmp}/temor.")), "{name}: {x}");
         assert!(x.ends_with(&format!("/nu{tail}")), "{name}: {x}");

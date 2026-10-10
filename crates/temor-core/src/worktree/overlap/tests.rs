@@ -29,6 +29,7 @@ fn merge_tree_output_is_read_by_exit_code_and_a_leading_tree_id() {
     let conflict = format!("{tree}\0b.txt\0a.txt\0b.txt\0\0CONFLICT (content): ...\0");
     let bad_ref = b"fatal: not something we can merge\n";
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let cases: Vec<(&str, GitOutput, Result<Vec<RelPath>, ()>)> = vec![
         ("clean", out(0, clean.as_bytes()), Ok(vec![])),
         ("conflict: sorted, deduplicated, messages ignored", out(1, conflict.as_bytes()), Ok(vec![rel("a.txt"), rel("b.txt")])),

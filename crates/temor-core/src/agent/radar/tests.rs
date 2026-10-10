@@ -46,6 +46,7 @@ fn the_sources_follow_their_rules_over_time() {
     let running = Process(ProcessFact::AgentRunning);
     let blocked = |w| fact("", ProgramKind::Blocked(w));
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let cases: Vec<(&str, PaneFocus, Vec<(u64, RadarIn)>, Vec<AgentState>)> = vec![
         ("osc 7501 working, blocked, done; unseen until focus", Unfocused,
             vec![(0, fact("", ProgramKind::Working)), (1, blocked(Some(WaitKind::Permission))), (2, fact("", ProgramKind::Done)), (3, Focus(Focused))],

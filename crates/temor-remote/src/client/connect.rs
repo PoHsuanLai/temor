@@ -54,7 +54,7 @@ impl Client {
         let mut writer = FrameWriter::new(Box::new(writer) as Box<dyn Write + Send>, limit);
         writer.send(&Message::Hello(ours.clone()), None)?;
         let mut reader = FrameReader::new(reader, limit);
-        let theirs = match reader.next()? {
+        let theirs = match reader.next_frame()? {
             Some(Incoming::Frame(Frame {
                 message: Message::Hello(theirs),
                 ..
@@ -89,7 +89,7 @@ impl Client {
 
 fn read_loop<R: Read>(mut reader: FrameReader<R>, pending: &Pending, events: &Sender<ClientEvent>) {
     loop {
-        match reader.next() {
+        match reader.next_frame() {
             Ok(Some(Incoming::Frame(Frame { message, payload }))) => match message {
                 Message::Response { id, outcome } => {
                     pending.complete(id, Ok(Answer { outcome, payload }));

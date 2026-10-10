@@ -19,6 +19,7 @@ fn pairs(rows: &[(&str, &str)]) -> Vec<(String, String)> {
 #[test]
 fn values_follow_the_quoting_rules() {
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let cases: &[(&str, &str, &[(&str, &str)])] = &[
         ("plain", "A=b", &[("A", "b")]),
         ("empty value", "A=", &[("A", "")]),

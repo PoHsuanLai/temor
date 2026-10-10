@@ -6,6 +6,9 @@ use temor_wire::units::UnixMillis;
 
 use crate::platform::RawStat;
 
+// The stat field types differ between targets (i64 or i32, u64 or u32): the conversions are
+// needed elsewhere even where they are the same type here.
+#[allow(clippy::useless_conversion)]
 pub(super) fn raw(stat: &Stat) -> RawStat {
     let kind = match FileType::from_raw_mode(stat.st_mode) {
         FileType::RegularFile => EntryKind::File,

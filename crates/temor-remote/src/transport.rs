@@ -28,7 +28,7 @@ impl<R: Read> FrameReader<R> {
 
     /// The next frame, blocking until it is whole. `None` when the stream ended between frames;
     /// a stream cut inside a frame is an error.
-    pub fn next(&mut self) -> Result<Option<Incoming>, Error> {
+    pub fn next_frame(&mut self) -> Result<Option<Incoming>, Error> {
         loop {
             let Some(decoder) = self.decoder.as_mut() else {
                 return Ok(None);

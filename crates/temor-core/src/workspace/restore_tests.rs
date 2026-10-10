@@ -121,6 +121,7 @@ fn a_place_that_is_not_a_place_or_cannot_count_on_is_damaged() {
     let max = serde_json::json!(u64::MAX);
     let base: serde_json::Value = serde_json::from_str(&encode(&built()).unwrap()).unwrap();
     #[rustfmt::skip]
+    #[allow(clippy::type_complexity)] // a table of named rows
     let edits: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
         ("place is a number", Box::new(|v: &mut serde_json::Value| v["place"] = serde_json::json!(5))),
         ("place is null", Box::new(|v: &mut serde_json::Value| v["place"] = serde_json::Value::Null)),

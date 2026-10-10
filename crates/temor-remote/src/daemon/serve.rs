@@ -45,7 +45,7 @@ impl Daemon {
         let ours = hello(self.config.helper, &DAEMON_CAPS);
         link.send(&Message::Hello(ours.clone()), None)?;
         let mut reader = FrameReader::new(reader, limit);
-        let theirs = match reader.next()? {
+        let theirs = match reader.next_frame()? {
             Some(Incoming::Frame(Frame {
                 message: Message::Hello(theirs),
                 ..
@@ -70,7 +70,7 @@ impl Daemon {
     ) -> Result<(), Error> {
         self.tell_ports(link)?;
         loop {
-            match reader.next()? {
+            match reader.next_frame()? {
                 None => return Ok(()),
                 Some(Incoming::Frame(Frame {
                     message: Message::Request { id, body },

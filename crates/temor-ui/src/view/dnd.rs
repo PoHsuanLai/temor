@@ -84,6 +84,12 @@ impl std::fmt::Debug for Dnd {
 #[derive(Clone, Default)]
 pub struct ClickCell(Rc<Cell<Option<Click>>>);
 
+impl std::fmt::Debug for ClickCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ClickCell").finish_non_exhaustive()
+    }
+}
+
 impl PartialEq for ClickCell {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.0, &other.0)
@@ -181,6 +187,7 @@ mod tests {
         let pane = PaneId(7);
         let edge = Some(Px(200.0));
         #[rustfmt::skip]
+        #[allow(clippy::type_complexity)] // a table of named rows
         let rows: &[(&str, DragPhase<DragKey>, Option<TabId>, Option<Px>, Dropped)] = &[
             ("a tab over another row", live(DragKey::Tab(a), 50.0), Some(b), edge, Dropped::Join { from: a, onto: b }),
             ("a tab over its own row", live(DragKey::Tab(a), 50.0), Some(a), edge, Dropped::Nothing),
