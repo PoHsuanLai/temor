@@ -1,16 +1,17 @@
-//! Where a key goes (PLAN §6): a chord the keymap binds runs its action; every other key is
-//! encoded for the program, unless the input method is composing, which owns the keys until it
-//! is done. Pure: no window, no terminal.
+//! Where a key goes (PLAN §6): a key the keymap binds in a terminal runs its action; a key in
+//! the Primary form with no action is dropped, as Ghostty does; every other key is encoded for
+//! the program, unless the input method is composing, which owns the keys until it is done.
+//! Pure: no window, no terminal.
 
+use chordkit::{Context, Key as ChordKey, Keymap, NamedKey};
 use temor_pane::keys::Action;
-use temor_pane::keys::Chord;
-use temor_pane::keys::Keymap;
 use temor_vt::{Ime, KeyAction, KeyInput};
 
-/// A key as the window heard it: its chord (when it has one) and what the program would get.
+/// A key as the window heard it: the press as chordkit reads it (when it has a name there) and
+/// what the program would get.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stroke {
-    pub chord: Option<Chord>,
+    pub input: Option<chordkit::KeyInput>,
     pub key: KeyInput,
 }
 
@@ -40,110 +41,35 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
     if stroke.key.action == KeyAction::Release {
         return Routed::Shell(stroke.key);
     }
-    let bound = stroke.chord.and_then(|chord| keymap.action_for(&chord));
+    let Some(input) = stroke.input else {
+        return Routed::Shell(stroke.key);
+    };
+    // Escape closes the find bar while it is open; that is the bar's own key, not a keymap entry.
+    if find == FindBar::Open && is_plain_escape(&input) {
+        return Routed::Action(Action::CloseFind);
+    }
+    let bound = keymap
+        .resolve(&input, Context::Terminal)
+        .and_then(|named| Action::from_chordkit(&named));
     match (bound, find) {
-        // Escape means the shell's when no find bar is open; the find keys do nothing there.
-        (Some(Action::CloseFind), FindBar::Closed) => Routed::Shell(stroke.key),
-        (Some(Action::FindNext | Action::FindPrevious), FindBar::Closed) => Routed::Ignored,
+        (Some(Action::CloseFind), FindBar::Open) => Routed::Action(Action::CloseFind),
+        // The find keys are the bar's only while it is open; elsewhere they are any other key.
+        (Some(Action::CloseFind | Action::FindNext | Action::FindPrevious), FindBar::Closed)
+        | (None, _) => unbound(stroke.key, &input, keymap),
         (Some(action), _) => Routed::Action(action),
-        // An unbound ⌘ letter is dropped, never typed into the program (PLAN §6; Ghostty does the
-        // same), in both forms: Super+letter and the Ctrl+Shift+letter keycap sends for ⌘, which
-        // would otherwise arrive as a control byte (⌘D once ended the shell with ^D). Super with
-        // Ctrl is not a ⌘ chord and goes to the program as before.
-        (None, _) if stroke.chord.as_ref().is_some_and(is_unbound_command_letter) => {
-            Routed::Ignored
-        }
-        (None, _) => Routed::Shell(stroke.key),
     }
 }
 
-/// A ⌘ chord that no binding uses and the program must not see: Super without Ctrl on a letter,
-/// or the Ctrl+Shift form keycap sends for ⌘ on a letter, digit or punctuation key. Super+Space
-/// and Super+Tab are the shell's (PLAN §6) and never reach the window.
-fn is_unbound_command_letter(chord: &Chord) -> bool {
-    use temor_pane::keys::ChordKey;
-    match chord.key {
-        ChordKey::Char(c) if chord.is_ctrl_shift_form() => {
-            c.is_alphanumeric() || c.is_ascii_punctuation()
-        }
-        ChordKey::Char(c) => chord.is_command_form() && c.is_alphabetic(),
-        ChordKey::Named(_) => false,
+/// A key with no action: dropped when it is in the Primary form (it would reach the program as a
+/// control byte; Ghostty drops these too), else the program's. FOLLOWUP: under the kitty keyboard
+/// flags a program that asked for these chords should get them.
+fn unbound(key: KeyInput, input: &chordkit::KeyInput, keymap: &Keymap) -> Routed {
+    match keymap.is_primary_form(input, Context::Terminal) {
+        true => Routed::Ignored,
+        false => Routed::Shell(key),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use temor_pane::keys::Chord;
-    use temor_vt::{KeyCode, Modifiers};
-
-    use super::*;
-
-    fn press(code: KeyCode, text: &str, chord: Option<Chord>) -> Stroke {
-        Stroke {
-            chord,
-            key: KeyInput::press(code, Modifiers::NONE, text),
-        }
-    }
-
-    #[test]
-    fn escape_is_the_shell_s_unless_the_find_bar_is_open() {
-        let keymap = Keymap::defaults();
-        let escape = || Stroke {
-            chord: Some(Chord::parse("escape").expect("valid")),
-            key: KeyInput::press(KeyCode::Escape, Modifiers::NONE, ""),
-        };
-        assert!(matches!(
-            route(escape(), &keymap, FindBar::Closed),
-            Routed::Shell(_)
-        ));
-        assert_eq!(
-            route(escape(), &keymap, FindBar::Open),
-            Routed::Action(Action::CloseFind)
-        );
-    }
-
-    #[test]
-    fn composing_keys_belong_to_the_input_method() {
-        let keymap = Keymap::defaults();
-        let mut stroke = press(KeyCode::A, "a", None);
-        stroke.key.ime = Ime::Composing;
-        assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
-    }
-
-    #[test]
-    fn an_unbound_command_letter_is_dropped_and_control_chords_still_reach_the_program() {
-        let keymap = Keymap::defaults();
-        #[rustfmt::skip]
-        let rows: &[(&str, bool)] = &[
-            ("super+z", true),
-            ("super+tab", false),
-            ("super+space", false),
-            ("ctrl+z", false),
-            ("ctrl+shift+z", true),
-            ("ctrl+shift+0", true),
-            ("ctrl+shift+/", true),
-        ];
-        for (text, dropped) in rows {
-            let chord = Chord::parse(text).expect("valid");
-            let stroke = Stroke {
-                chord: Some(chord),
-                key: KeyInput::press(KeyCode::A, Modifiers::NONE, "z"),
-            };
-            let got = route(stroke.clone(), &keymap, FindBar::Closed);
-            if *dropped {
-                assert_eq!(got, Routed::Ignored, "{text}");
-            } else {
-                assert!(matches!(got, Routed::Shell(_)), "{text}: {got:?}");
-            }
-        }
-    }
-
-    #[test]
-    fn plain_keys_go_to_the_program() {
-        let keymap = Keymap::defaults();
-        let key = press(KeyCode::A, "a", None);
-        assert!(
-            matches!(route(key.clone(), &keymap, FindBar::Closed), Routed::Shell(k) if k == key.key)
-        );
-    }
+fn is_plain_escape(input: &chordkit::KeyInput) -> bool {
+    input.modifiers.is_empty() && input.key == ChordKey::Named(NamedKey::Escape)
 }

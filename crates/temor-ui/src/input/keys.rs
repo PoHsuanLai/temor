@@ -1,9 +1,9 @@
 //! quire's raw key events as a [`Stroke`]: the physical key (from `Code`, falling back to the
-//! logical key on a US layout), the held modifiers, and the text the layout produced.
+//! logical key on a US layout), the held modifiers, and the text the layout produced, plus the
+//! same press as chordkit reads it (physical modifiers and the logical key without Shift).
 
 use dioxus::html::{Code, Key, Modifiers as HeldMods};
 use ds::edit::raw_key::{KeyPhase, RawKey};
-use temor_pane::keys::{Chord, ChordKey, Mods, NamedKey, fold};
 use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::route::Stroke;
@@ -13,7 +13,6 @@ use super::route::Stroke;
 /// identity (a dead or unidentified key): it is ignored rather than sent to the program as
 /// something else.
 pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
-    let mods = core_mods(raw.modifiers);
     let code = code_key(&raw.code).or_else(|| logical_key(&raw.key))?;
     let action = match raw.phase {
         KeyPhase::Press => KeyAction::Press,
@@ -35,9 +34,18 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
         ime,
     };
     Some(Stroke {
-        chord: chord_of(&chord_key(raw), mods),
+        input: pressed(&chord_key(raw), raw.modifiers, &key),
         key,
     })
+}
+
+/// A character lowercased, kept as it is when it has no single lowercase form.
+fn fold(c: char) -> char {
+    let mut lower = c.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(one), None) => one,
+        _ => c,
+    }
 }
 
 /// The key a chord is made from: the layout's key with no modifier held, so Ctrl+Shift+1 is the
@@ -91,23 +99,6 @@ pub fn is_altgr_text(key: &KeyInput) -> bool {
         && !key.text.is_empty()
 }
 
-/// The held modifiers as the keymap sees them. Meta counts as Super (PLAN §6).
-pub fn core_mods(held: HeldMods) -> Mods {
-    let mut out = Mods::NONE;
-    for (flag, mods) in [
-        (HeldMods::CONTROL, Mods::CTRL),
-        (HeldMods::SHIFT, Mods::SHIFT),
-        (HeldMods::ALT, Mods::ALT),
-        (HeldMods::SUPER, Mods::SUPER),
-        (HeldMods::META, Mods::SUPER),
-    ] {
-        if held.contains(flag) {
-            out = out.with(mods);
-        }
-    }
-    out
-}
-
 /// The held modifiers as the terminal encodes them.
 pub fn vt_mods(held: HeldMods) -> Modifiers {
     let mut out = Modifiers::NONE;
@@ -127,38 +118,78 @@ pub fn vt_mods(held: HeldMods) -> Modifiers {
     out
 }
 
-/// The chord a logical key makes with the held modifiers: a character (folded to lowercase) or
-/// a named key.
-pub fn chord_of(key: &Key, mods: Mods) -> Option<Chord> {
-    let key = match key {
-        Key::Character(s) => {
-            let mut chars = s.chars();
-            match (chars.next(), chars.next()) {
-                (Some(c), None) => ChordKey::Char(fold(c)),
-                _ => return None,
-            }
+/// The press as chordkit reads it: the physical modifiers as held (the Meta flag stays Meta; the
+/// keymap folds it to the platform's key), the logical key without Shift, and whether AltGr is
+/// held, which is the toolkit's `ALT_GRAPH` flag or, where the platform reports AltGr as Ctrl and
+/// Alt alone, a press with both held that typed text. `None` for a key chordkit has no name for
+/// (a dead key, a keypad key): it goes to the program as it always did.
+pub fn pressed(key: &Key, held: HeldMods, typed: &KeyInput) -> Option<chordkit::KeyInput> {
+    let mut mods = chordkit::Modifiers::NONE;
+    for (flag, modifier) in [
+        (HeldMods::CONTROL, chordkit::Modifier::Ctrl),
+        (HeldMods::ALT, chordkit::Modifier::Alt),
+        (HeldMods::SHIFT, chordkit::Modifier::Shift),
+        (HeldMods::SUPER, chordkit::Modifier::Super),
+        (HeldMods::META, chordkit::Modifier::Meta),
+    ] {
+        if held.contains(flag) {
+            mods = mods.with(modifier);
         }
-        other => ChordKey::Named(named(other)?),
+    }
+    let alt_gr = match held.contains(HeldMods::ALT_GRAPH) || is_altgr_text(typed) {
+        true => chordkit::AltGr::Held,
+        false => chordkit::AltGr::Released,
     };
-    Some(Chord { key, mods })
+    Some(chordkit::KeyInput::new(mods, chordkit_key(key)?).with_alt_gr(alt_gr))
 }
 
-fn named(key: &Key) -> Option<NamedKey> {
+/// The key chordkit names for a logical key.
+fn chordkit_key(key: &Key) -> Option<chordkit::Key> {
+    use chordkit::NamedKey as N;
+    let named = |key: N| Some(chordkit::Key::Named(key));
+    match key {
+        Key::Character(text) => {
+            let mut chars = text.chars();
+            match (chars.next(), chars.next()) {
+                (Some(' '), None) => named(N::Space),
+                (Some(c), None) => Some(chordkit::Key::character(c)),
+                _ => None,
+            }
+        }
+        Key::Enter => named(N::Enter),
+        Key::Tab => named(N::Tab),
+        Key::Escape => named(N::Escape),
+        Key::Backspace => named(N::Backspace),
+        Key::Delete => named(N::Delete),
+        Key::Insert => named(N::Insert),
+        Key::Home => named(N::Home),
+        Key::End => named(N::End),
+        Key::PageUp => named(N::PageUp),
+        Key::PageDown => named(N::PageDown),
+        Key::ArrowUp => named(N::Up),
+        Key::ArrowDown => named(N::Down),
+        Key::ArrowLeft => named(N::Left),
+        Key::ArrowRight => named(N::Right),
+        Key::PrintScreen => named(N::PrintScreen),
+        other => function_number(other).and_then(chordkit::Key::function),
+    }
+}
+
+/// The number of an F1 to F12 key.
+fn function_number(key: &Key) -> Option<u8> {
     Some(match key {
-        Key::Enter => NamedKey::Enter,
-        Key::Tab => NamedKey::Tab,
-        Key::Escape => NamedKey::Escape,
-        Key::Backspace => NamedKey::Backspace,
-        Key::Delete => NamedKey::Delete,
-        Key::Insert => NamedKey::Insert,
-        Key::Home => NamedKey::Home,
-        Key::End => NamedKey::End,
-        Key::PageUp => NamedKey::PageUp,
-        Key::PageDown => NamedKey::PageDown,
-        Key::ArrowUp => NamedKey::ArrowUp,
-        Key::ArrowDown => NamedKey::ArrowDown,
-        Key::ArrowLeft => NamedKey::ArrowLeft,
-        Key::ArrowRight => NamedKey::ArrowRight,
+        Key::F1 => 1,
+        Key::F2 => 2,
+        Key::F3 => 3,
+        Key::F4 => 4,
+        Key::F5 => 5,
+        Key::F6 => 6,
+        Key::F7 => 7,
+        Key::F8 => 8,
+        Key::F9 => 9,
+        Key::F10 => 10,
+        Key::F11 => 11,
+        Key::F12 => 12,
         _ => return None,
     })
 }

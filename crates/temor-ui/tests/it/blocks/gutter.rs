@@ -1,9 +1,9 @@
 //! The gutter, the prompt jumps and the block actions, driven by direct calls on a real shell.
 
+use chordkit::{Key, KeyInput as Pressed, Modifier, Modifiers as ChordMods, NamedKey};
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::keys::Action;
-use temor_pane::keys::Chord;
 use temor_ui::input::Stroke;
 use temor_ui::session::Session;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
@@ -74,11 +74,21 @@ fn control_shift_up_and_down_move_between_prompts() {
     }
     let prompt_top = |s: &Session| s.block_marks().iter().find(|m| m.row == 0).map(|m| m.id);
     let up = Stroke {
-        chord: Some(Chord::parse("ctrl+shift+up").expect("chord")),
+        input: Some(Pressed::new(
+            [Modifier::Ctrl, Modifier::Shift]
+                .into_iter()
+                .collect::<ChordMods>(),
+            Key::Named(NamedKey::Up),
+        )),
         key: KeyInput::press(KeyCode::ArrowUp, Modifiers::CTRL.with(Modifiers::SHIFT), ""),
     };
     let down = Stroke {
-        chord: Some(Chord::parse("ctrl+shift+down").expect("chord")),
+        input: Some(Pressed::new(
+            [Modifier::Ctrl, Modifier::Shift]
+                .into_iter()
+                .collect::<ChordMods>(),
+            Key::Named(NamedKey::Down),
+        )),
         key: KeyInput::press(
             KeyCode::ArrowDown,
             Modifiers::CTRL.with(Modifiers::SHIFT),

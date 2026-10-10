@@ -2,6 +2,8 @@
 //! §14). Parsing is pure: the caller reads the file and reports the lines that were refused.
 
 mod parse;
+#[cfg(test)]
+mod tests;
 mod value;
 
 pub use parse::{ParsedSettings, TerminalSettings, parse_settings};

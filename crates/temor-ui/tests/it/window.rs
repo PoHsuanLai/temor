@@ -49,6 +49,14 @@ pub(super) fn harness_in(name: &str, probe: &Probe, state_dir: Option<PathBuf>) 
             ..TerminalSettings::default()
         },
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
+        // Our desktop: ⌘ is Super, or the Ctrl+Shift form the harness chords send.
+        keymap: temor_ui::edge::keymap_for(
+            chordkit::Platform::Linux {
+                desktop: chordkit::Desktop::Ours,
+            },
+            &chordkit::Overrides::default(),
+        )
+        .0,
         launcher: LauncherChoice::Setsid(
             temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
                 .expect("util-linux setsid is installed"),
@@ -258,7 +266,7 @@ fn chord(h: &mut Harness, key: char) {
     h.advance(Duration::from_millis(300));
 }
 
-/// The ⌘ chords open and close tabs and panes: ⌘T a tab, ⌘D a split, ⌘W a pane, and a chord
+/// The ⌘ chords open and close tabs and panes: ⌘N a tab, ⌘D a split, ⌘W a pane, and a chord
 /// nothing binds never reaches the shell (^D would end it).
 #[test]
 fn the_command_chords_open_and_close_tabs_and_panes() {
@@ -275,7 +283,7 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
     h.advance(Duration::from_millis(200));
     assert_eq!((rows(&h), panes(&h)), (1, 1), "{}", h.html());
 
-    chord(&mut h, 't');
+    chord(&mut h, 'n');
     assert_eq!(rows(&h), 2, "a new tab:\n{}", h.html());
     chord(&mut h, 'd');
     assert_eq!((rows(&h), panes(&h)), (2, 2), "a split:\n{}", h.html());
