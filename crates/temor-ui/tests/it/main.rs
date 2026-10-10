@@ -20,6 +20,7 @@ mod shelf;
 mod spaces;
 mod ssh;
 mod support;
+mod viewer;
 mod window;
 mod worktree_git;
 
