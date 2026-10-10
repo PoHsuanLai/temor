@@ -187,5 +187,5 @@ fn a_place_recalled_alone_brings_its_viewer_panes_back_as_viewers() {
         "a live place holds none"
     );
     let shells: Vec<PaneId> = launch_plan(&back).iter().map(|s| s.pane).collect();
-    assert_eq!(shells, vec![PaneId(1), PaneId(3)]);
+    assert_eq!(shells, vec![PaneId(3), PaneId(1)], "pinned tab first");
 }
