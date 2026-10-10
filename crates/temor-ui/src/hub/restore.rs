@@ -23,6 +23,7 @@ impl Hub {
         if let Some(dir) = self.state_dir.clone() {
             let hosts = load_hosts(&dir);
             self.ssh.book = hosts.book;
+            self.remote_carry_over();
             self.ssh.restored = hosts.panes;
             self.book.spaces = self.read_spaces(&dir);
             self.book.active = self.book.spaces.current().id;

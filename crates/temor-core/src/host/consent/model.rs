@@ -24,6 +24,14 @@ pub struct BootstrapGrants {
     pub integrate: Grant,
     #[serde(default)]
     pub terminfo: Grant,
+    /// Whether the helper program may be put on the host. Not written while it is still open,
+    /// so a book that never asked reads as it did before the question was added.
+    #[serde(default, skip_serializing_if = "is_open")]
+    pub helper: Grant,
+}
+
+fn is_open(grant: &Grant) -> bool {
+    *grant == Grant::Ask
 }
 
 impl BootstrapGrants {
@@ -53,6 +61,7 @@ impl BootstrapGrants {
         Self {
             integrate: pick(self.integrate, other.integrate),
             terminfo: pick(self.terminfo, other.terminfo),
+            helper: pick(self.helper, other.helper),
         }
     }
 }
@@ -181,6 +190,12 @@ impl ConsentBook {
         }
         self.records = kept;
         indexes.first().map_or(self.records.len() - 1, |&i| i)
+    }
+
+    pub(super) fn set_helper(&mut self, index: usize, grant: Grant) {
+        if let Some(record) = self.records.get_mut(index) {
+            record.grants.helper = grant;
+        }
     }
 
     pub(super) fn set_grant(&mut self, index: usize, action: BootstrapAction, grant: Grant) {

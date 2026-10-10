@@ -98,7 +98,7 @@ impl Hub {
         let Some(wanted) = self.remote.blob().map(|blob| blob.name()) else {
             return self.remote_fallback_all(host);
         };
-        let grant = self.remote.grants.get(host).copied().unwrap_or(Grant::Ask);
+        let grant = self.helper_grant(host);
         let line = self.remote.lines.entry(host.clone()).or_default();
         let state = std::mem::replace(&mut line.helper, HelperState::Absent);
         let (state, outs) = helper_step(state, input, &wanted, grant);
@@ -107,7 +107,7 @@ impl Hub {
             match out {
                 // The question shows in the pane while the helper stands at `Offered`.
                 HelperOut::AskPerson => {}
-                HelperOut::Remember(grant) => self.remote.remember(host, grant),
+                HelperOut::Remember(grant) => self.remember_helper(host, grant),
                 HelperOut::Upload(_) => {
                     if let Some(blob) = self.remote.blob().cloned() {
                         self.remote.work.install(&self.ssh.env, host.clone(), blob);

@@ -109,8 +109,9 @@ impl Default for RemoteLine {
 pub(super) struct RemoteHub {
     pub work: RemoteWork,
     pub inbox: Option<UnboundedReceiver<RemoteEvent>>,
-    /// The hosts the person answered the helper question about.
-    pub grants: BTreeMap<HostAlias, Grant>,
+    /// The answers the old `remote.json` held, read once at start and carried into the consent
+    /// book by `Hub::remote_carry_over`; the file is never written again.
+    pub legacy: BTreeMap<String, Grant>,
     pub lines: BTreeMap<HostAlias, RemoteLine>,
     pub panes: BTreeMap<PaneId, RemotePane>,
     /// The sessions panes were saved with, until each pane has its session again or is told the
@@ -118,24 +119,20 @@ pub(super) struct RemoteHub {
     pub saved: BTreeMap<PaneId, SessionId>,
     blob: OnceLock<Option<HelperBlob>>,
     blob_at: Option<PathBuf>,
-    state_dir: Option<PathBuf>,
     started: Instant,
 }
 
 impl RemoteHub {
     pub(super) fn new(ambient: &Ambient, state_dir: Option<PathBuf>) -> Self {
         let (events, inbox) = unbounded_channel();
-        let grants = state_dir
+        let legacy = state_dir
             .as_deref()
             .map(remote_grants::load)
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|(name, grant)| Some((HostAlias::new(&name).ok()?, grant)))
-            .collect();
+            .unwrap_or_default();
         Self {
             work: RemoteWork::new(events),
             inbox: Some(inbox),
-            grants,
+            legacy,
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
             saved: BTreeMap::new(),
@@ -144,7 +141,6 @@ impl RemoteHub {
                 ambient.env.get("TEMOR_REMOTE_HELPER"),
                 std::env::current_exe().ok().as_deref(),
             ),
-            state_dir,
             started: Instant::now(),
         }
     }
@@ -159,20 +155,5 @@ impl RemoteHub {
     /// Now, on the clock the connection's machine reads.
     pub(super) fn now(&self) -> Monotonic {
         Monotonic(u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX))
-    }
-
-    /// Remembers the person's answer about `host`, in memory and in `remote.json`.
-    pub(super) fn remember(&mut self, host: &HostAlias, grant: Grant) {
-        self.grants.insert(host.clone(), grant);
-        let Some(dir) = &self.state_dir else {
-            return;
-        };
-        let text: BTreeMap<String, Grant> = self
-            .grants
-            .iter()
-            .map(|(host, grant)| (host.as_str().to_owned(), *grant))
-            .collect();
-        // A file that cannot be written means the question comes again next time.
-        let _ = remote_grants::save(dir, &text);
     }
 }
