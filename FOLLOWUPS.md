@@ -922,9 +922,12 @@ Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1
 - [ ] Peek (⌘-hover preview): needs `anyview-fs` and anyview-peek's `pane` feature.
 - [ ] Recordings in the pane: anyview-pane's `player` feature with `PaneEdge::with_player`
       (off for now).
-- [ ] When anyview #94 lands, take `PaneEdge::with_store` (views remembered through the store;
+- [x] (anyview 121db23) When anyview #94 lands, take `PaneEdge::with_store` (views remembered through the store;
       Remember is in memory now), and the single Unfocus on blur.
 - [ ] No D-Bus Open fallback. OpenElsewhere uses the FileShell opener. Files on another
       computer (Tier A/B panes) can't be viewed yet.
 - [ ] A Spaces-file recall of only a Place brings viewer panes back as shells.
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-view.md`.
+- Viewer store: `PaneEdge::with_store(<state>/viewer)`, so where each file was left survives
+  restarts. [ ] Share the root with anyview's own windows (anyview's "give root the one they use")
+  once anyview says which folder that is.
