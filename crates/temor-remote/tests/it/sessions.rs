@@ -197,3 +197,34 @@ fn only_detached_sessions_expire_and_only_after_the_whole_limit() {
     assert_eq!(only_session(&conn), Some(kept));
     assert_ne!(kept, expiring);
 }
+
+#[test]
+fn a_session_starts_with_temors_shell_integration_unless_switched_off() {
+    if !tools_present() {
+        return;
+    }
+    let rig = Rig::new("marks");
+    let mut conn = rig.connect();
+    let marked = conn
+        .client
+        .open_session(rig.bash_with_marks())
+        .expect("open");
+    conn.client.attach(marked).expect("attach");
+    let out = conn.watch.output_has("the prompt marks", |out| {
+        out.contains("\x1b]133;A") && out.contains("\x1b]133;B")
+    });
+    assert!(out.contains("\x1b]7;"), "the folder is reported:\n{out:?}");
+
+    // Switched off, a session shows no marks even after a command ran.
+    let mut other = rig.connect();
+    let plain = other.client.open_session(rig.bash()).expect("open");
+    other.client.attach(plain).expect("attach");
+    other
+        .client
+        .send_input(plain, b"echo quiet-$((2+3))\n")
+        .expect("input");
+    let out = other
+        .watch
+        .output_has("the plain session's output", |out| out.contains("quiet-5"));
+    assert!(!out.contains("\x1b]133;"), "no marks when off:\n{out:?}");
+}
