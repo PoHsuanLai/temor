@@ -91,7 +91,7 @@ fn a_second_launch_is_handed_over_and_the_first_window_hears_its_request() {
         .build()
         .expect("a runtime");
 
-    let first = join(runtime.handle(), env.clone(), &Request::NewWindow);
+    let first = join(runtime.handle(), env.clone(), &Request::NewWindow, None);
     let Joined::First { desktop, trouble } = first else {
         panic!("the first launch must own the name: {first:?}");
     };
@@ -106,12 +106,12 @@ fn a_second_launch_is_handed_over_and_the_first_window_hears_its_request() {
         cwd: Some("/tmp/work".into()),
     };
     for request in [Request::NewWindow, tab] {
-        let second = join(runtime.handle(), env.clone(), &request);
+        let second = join(runtime.handle(), env.clone(), &request, None);
         assert!(matches!(second, Joined::Handed), "{second:?}");
         let heard = runtime
             .block_on(async { tokio::time::timeout(Duration::from_secs(5), asks.recv()).await });
         match heard {
-            Ok(Some(Ask::Launch(got))) => assert_eq!(got, request),
+            Ok(Some(Ask::Launch(got, _))) => assert_eq!(got, request),
             other => panic!("the first window should hear {request:?}, got {other:?}"),
         }
     }

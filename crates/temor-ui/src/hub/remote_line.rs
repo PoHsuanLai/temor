@@ -186,10 +186,10 @@ impl Hub {
         generation: Generation,
         ports: Vec<ListeningPort>,
     ) {
-        if self.current(host, generation) {
-            if let Some(line) = self.remote.lines.get_mut(host) {
-                line.ports = ports;
-            }
+        if self.current(host, generation)
+            && let Some(line) = self.remote.lines.get_mut(host)
+        {
+            line.ports = ports;
         }
     }
 

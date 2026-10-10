@@ -47,10 +47,18 @@ fn dir(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+/// (name, git answers as (args, status, stdout), expected branch, expected changes)
+type Case = (
+    &'static str,
+    Vec<(&'static str, i32, &'static str)>,
+    Option<&'static str>,
+    Option<DiffStat>,
+);
+
 #[test]
 fn git_facts_come_from_two_runs_without_locks_and_fail_quietly() {
     #[rustfmt::skip]
-    let cases: Vec<(&str, Vec<(&str, i32, &str)>, Option<&str>, Option<DiffStat>)> = vec![
+    let cases: Vec<Case> = vec![
         ("repository with changes",
             vec![("rev-parse", 0, "main\n"), ("diff", 0, " 2 files changed, 5 insertions(+), 1 deletion(-)\n")],
             Some("main"), Some(DiffStat { files: 2, added: 5, removed: 1 })),

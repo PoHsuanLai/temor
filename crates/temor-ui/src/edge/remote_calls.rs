@@ -5,7 +5,7 @@
 use temor_remote::{Attached, Client, Error};
 use temor_wire::ids::SessionId;
 use temor_wire::message::{EnvVar, ListeningPort, OpenSession, RemotePath};
-use temor_wire::units::{Cols, Rows, Size};
+use temor_wire::units::{CellPx, Cols, Rows, Size};
 
 /// The size of a terminal of `cols` by `rows` cells.
 pub fn grid_size(cols: u16, rows: u16) -> Size {
@@ -34,6 +34,9 @@ pub fn open(
             })
             .collect(),
         size,
+        // TODO(batch3-wire): the pane's real cell size and the window's palette.
+        cell: CellPx::default(),
+        palette: None,
     })
 }
 
@@ -42,7 +45,7 @@ pub fn attach(client: &Client, session: SessionId) -> Result<Attached, Error> {
 }
 
 pub fn resize(client: &Client, session: SessionId, size: Size) -> Result<(), Error> {
-    client.resize(session, size)
+    client.resize(session, size, CellPx::default())
 }
 
 pub fn input(client: &Client, session: SessionId, bytes: &[u8]) -> Result<(), Error> {

@@ -58,10 +58,13 @@ fn connect(daemon: &Arc<Daemon>, generation: Generation) -> Link {
     }
 }
 
-fn next_note(link: &mut Link, want: impl Fn(&RemoteEvent) -> bool) -> RemoteEvent {
+fn next_note(
+    notes: &mut UnboundedReceiver<RemoteEvent>,
+    want: impl Fn(&RemoteEvent) -> bool,
+) -> RemoteEvent {
     let until = Instant::now() + PATIENCE;
     loop {
-        match link.notes.try_recv() {
+        match notes.try_recv() {
             Ok(note) if want(&note) => return note,
             Ok(_) => {}
             Err(_) if Instant::now() > until => panic!("the event never came"),
@@ -165,7 +168,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
             },
         },
     );
-    let RemoteEvent::Attached { session, .. } = next_note(&mut first, |note| {
+    let RemoteEvent::Attached { session, .. } = next_note(&mut first.notes, |note| {
         matches!(note, RemoteEvent::Attached { .. })
     }) else {
         unreachable!("the filter keeps only Attached")
@@ -176,7 +179,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
     // The link drops: the pane stops sending, and the helper keeps the session.
     lock(&target).conn = None;
     drop(first.conn);
-    next_note(&mut first, |note| {
+    next_note(&mut first.notes, |note| {
         matches!(note, RemoteEvent::Closed { .. })
     });
 
@@ -193,7 +196,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
             wanted: Wanted::Again(session),
         },
     );
-    next_note(&mut second, |note| {
+    next_note(&mut second.notes, |note| {
         matches!(note, RemoteEvent::Attached { .. })
     });
     assert!(

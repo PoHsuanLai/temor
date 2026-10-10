@@ -154,6 +154,14 @@ pub struct SessionKit {
     pub shelf_dir: PathBuf,
 }
 
+impl std::fmt::Debug for SessionKit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionKit")
+            .field("shelf_dir", &self.shelf_dir)
+            .finish_non_exhaustive()
+    }
+}
+
 /// What a session on a program that runs elsewhere is made from (see `temor_pane::start_fed`).
 pub struct FedParts {
     pub spec: temor_pane::FedSpec,

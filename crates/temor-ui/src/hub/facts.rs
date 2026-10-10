@@ -55,8 +55,9 @@ impl std::fmt::Debug for FactsHub {
 
 impl FactsHub {
     /// Facts for a window started from `launch`. git is looked for on the environment's `PATH`;
-    /// without it the branch and changes are left out. `VIRTUAL_ENV` is read from the
-    /// environment the shells start with.
+    /// without it the branch and changes are left out. The virtualenv comes from a `.venv`
+    /// folder only: one activated inside a shell is not visible to the window until the shell
+    /// reports it (FOLLOWUPS).
     pub fn new(launch: &Launch) -> FactsHub {
         let path = launch
             .ambient
@@ -65,11 +66,7 @@ impl FactsHub {
             .map_or_else(|| "/usr/bin:/bin".into(), std::ffi::OsStr::to_os_string);
         let git = temor_pty::find_program("git", &path)
             .map(|binary| Arc::new(ProcessGit::new(binary)) as Arc<dyn Git>);
-        let virtual_env = launch
-            .ambient
-            .env
-            .get("VIRTUAL_ENV")
-            .map(|v| v.to_string_lossy().into_owned());
+        let virtual_env = None;
         let (done, inbox) = unbounded_channel();
         FactsHub {
             git,

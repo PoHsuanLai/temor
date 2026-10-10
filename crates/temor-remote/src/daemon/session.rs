@@ -85,10 +85,10 @@ impl Session {
         let reader = pty.io()?;
         let input = Arc::new(Input::new(pty.io()?));
         let cwd = Arc::new(Mutex::new(request.cwd.0.clone()));
-        let mut config = TerminalConfig::new(screen_size(size));
-        config.cell_px = screen_cell(cell);
+        let mut screen_config = TerminalConfig::new(screen_size(size));
+        screen_config.cell_px = screen_cell(cell);
         let mut screen = Terminal::new(
-            config,
+            screen_config,
             Box::new(CwdSink(Arc::clone(&cwd))),
             Box::new(Replies(Arc::clone(&input))),
         )?;
