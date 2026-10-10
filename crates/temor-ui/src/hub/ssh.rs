@@ -11,7 +11,7 @@ use temor_core::host::forward::Forwards;
 use temor_core::host::master::Master;
 use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::vocab::ids::PaneId;
-use temor_ssh::{CheckScan, CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
+use temor_ssh::{CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use temor_wire::message::FileStamp;
@@ -54,7 +54,7 @@ pub(super) struct HostPane {
     /// The folder on the host the session opens in.
     pub start_dir: Option<RemoteFilePath>,
     /// Looks for the check link in what the host printed, until the shell starts.
-    pub scan: Option<CheckScan>,
+    pub scan: Option<Arc<super::ssh_check::RawCheck>>,
     pub check: Check,
     /// What the pane's session runs on.
     pub tier: super::remote::Tier,

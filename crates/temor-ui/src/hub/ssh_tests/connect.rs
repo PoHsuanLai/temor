@@ -9,7 +9,10 @@ use temor_core::workspace::WorkspaceIn;
 use super::support::Rig;
 use crate::hub::ssh_view::{CheckRow, Stage};
 
-const CHECK_LINE: &str = "# To authenticate, visit: https://login.tailscale.com/a/abc123\n";
+/// Longer than the 80-column screen, so on screen it wraps; the link is read from the bytes.
+const CHECK_URL: &str =
+    "https://login.tailscale.com/a/abc123?token=0123456789012345678901234567890123456789";
+const CHECK_LINE: &str = "# To authenticate, visit: https://login.tailscale.com/a/abc123?token=0123456789012345678901234567890123456789\n";
 
 /// The arguments the stand-in `ssh` was started with for session `n`.
 fn session(rig: &Rig, n: u32) -> Vec<String> {
@@ -194,10 +197,7 @@ fn the_browser_check_is_shown_and_opens_only_on_a_click_and_goes_when_the_shell_
     );
 
     rig.hub.open_check(pane);
-    assert_eq!(
-        *rig.links.0.borrow(),
-        ["https://login.tailscale.com/a/abc123"]
-    );
+    assert_eq!(*rig.links.0.borrow(), [CHECK_URL]);
 
     // The connection comes up (the person confirmed): the row goes.
     rig.put("up", "");

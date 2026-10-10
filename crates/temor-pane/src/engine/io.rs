@@ -20,6 +20,7 @@ use super::fed_io::{FedSetup, pump_fed};
 use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
+use super::tap::ByteTap;
 use super::term::Term;
 use super::watch::ForegroundWatch;
 use super::xfer::{OfferId, Reaction, Transfers};
@@ -59,6 +60,8 @@ pub(super) struct Io {
     pub transfers: Option<Transfers>,
     /// The foreground process's name, looked at about once a second.
     pub watch: ForegroundWatch,
+    /// Hears the raw output before the terminal parses it.
+    pub tap: Option<Arc<dyn ByteTap>>,
 }
 
 /// The pane's I/O loop, made by [`start`](super::start). `Send`: it moves to the thread the caller
@@ -149,7 +152,12 @@ fn pump(mut io: Io) {
             continue;
         }
         match port.read(&mut buf) {
-            Ok(ReadOutcome::Data(n)) => deliver(&mut io, &buf[..n]),
+            Ok(ReadOutcome::Data(n)) => {
+                if let Some(tap) = io.tap.as_ref() {
+                    tap.bytes(&buf[..n]);
+                }
+                deliver(&mut io, &buf[..n]);
+            }
             Ok(ReadOutcome::WouldBlock) => {}
             // Every holder of the terminal has closed it: the program is done.
             Ok(ReadOutcome::Closed) | Err(_) => return finish(&mut io),

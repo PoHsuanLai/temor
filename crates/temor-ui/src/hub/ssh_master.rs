@@ -2,6 +2,8 @@
 //! join, and the host's key is read once it is up. The decisions are temor-core's `master_step`;
 //! this runs the probe and starts the `ssh` it names.
 
+use std::sync::Arc;
+
 use temor_core::host::consent::{ConsentIn, Who};
 use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
 use temor_core::notify::Focus;
@@ -11,6 +13,7 @@ use temor_ssh::{Fingerprint, HostAlias, HostKey, HostName, MasterProbe, prepare_
 use super::model::Hub;
 use super::remote::Tier;
 use super::ssh::{Check, Phase};
+use super::ssh_check::RawCheck;
 use super::ssh_connect::session_args;
 use crate::view::launch::{Program, open_session_with};
 
@@ -72,9 +75,15 @@ impl Hub {
                 return self.fail_host(pane, err.to_string());
             }
         };
+        // Only the session that makes the connection can be asked for the browser check.
+        let scan = match how {
+            OpenAs::First => Some(Arc::new(RawCheck::new())),
+            OpenAs::Join => None,
+        };
         let program = Program {
             program: self.ssh.env.tools.ssh.clone(),
             args: args.into_iter().map(Into::into).collect(),
+            tap: scan.as_ref().map(RawCheck::listener),
         };
         let start = self.space_start();
         let opened = open_session_with(
@@ -96,10 +105,11 @@ impl Hub {
                     slot.borrow_mut().session = Some(session);
                 }
                 if let Some(host) = self.ssh.panes.get_mut(&pane) {
-                    (host.phase, host.scan) = match how {
-                        OpenAs::First => (Phase::Connecting, Some(temor_ssh::CheckScan::new())),
-                        OpenAs::Join => (Phase::Up, None),
+                    host.phase = match how {
+                        OpenAs::First => Phase::Connecting,
+                        OpenAs::Join => Phase::Up,
                     };
+                    host.scan = scan;
                 }
             }
             Err(err) => {
