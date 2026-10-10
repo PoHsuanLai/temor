@@ -22,6 +22,7 @@ mod persist;
 mod quick;
 mod remote;
 mod remote_desk;
+mod remote_keep;
 mod remote_line;
 mod remote_loop;
 mod remote_open;

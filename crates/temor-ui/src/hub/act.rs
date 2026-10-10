@@ -179,6 +179,7 @@ impl Hub {
     /// Makes `palette` the grid's colours in every pane; the first failure comes back as text.
     pub fn set_palette(&mut self, palette: temor_render::Palette) -> Option<String> {
         self.palette = palette;
+        self.remote_palette();
         let mut failure = None;
         for slot in self.slots.values() {
             let said = slot.borrow_mut().set_palette(palette);

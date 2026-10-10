@@ -180,6 +180,7 @@ impl Hub {
             return;
         };
         self.remote_drop_pane(pane);
+        self.remote.saved.remove(&pane);
         if let Some(host) = self.ssh.panes.get_mut(&pane) {
             host.tier = Tier::Plain;
         }
@@ -205,6 +206,7 @@ impl Hub {
 
     /// A host pane was closed: its session on the host ends.
     pub(super) fn remote_forget(&mut self, pane: PaneId) {
+        self.remote.saved.remove(&pane);
         let Some(old) = self.remote.panes.remove(&pane) else {
             return;
         };

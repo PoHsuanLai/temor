@@ -17,6 +17,7 @@ use temor_ui::edge::remote::RemoteWork;
 use temor_ui::edge::remote_conn::Conn;
 use temor_ui::edge::remote_event::{Generation, RemoteEvent, Ticket, Wanted};
 use temor_ui::edge::remote_link::{RemoteLink, Target, lock};
+use temor_ui::edge::remote_palette::wire_palette;
 use temor_ui::edge::remote_pump::pump;
 use temor_ui::edge::remote_route::Router;
 use temor_vt::{CellPx, CursorShape, GridSize, LineCount};
@@ -163,6 +164,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
             pane: PaneId(1),
             target: Arc::clone(&target),
             feeder: feeder.clone(),
+            palette: wire_palette(&Palette::default()),
             wanted: Wanted::Fresh {
                 cwd: home.display().to_string(),
                 env,
@@ -194,6 +196,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
             pane: PaneId(1),
             target: Arc::clone(&target),
             feeder,
+            palette: wire_palette(&Palette::default()),
             wanted: Wanted::Again(session),
         },
     );

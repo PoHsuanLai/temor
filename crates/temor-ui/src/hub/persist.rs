@@ -44,7 +44,7 @@ impl Hub {
         let mut failures: Vec<String> = sessions
             .filter_map(|(id, ws)| match id {
                 // The first Space's file also keeps the hosts (answers and panes on hosts).
-                SpaceId(0) => save_with_hosts(dir, ws, &self.ssh.hosts_file()).err(),
+                SpaceId(0) => save_with_hosts(dir, ws, &self.hosts_file()).err(),
                 _ => save_session_for(dir, id, ws).err(),
             })
             .map(|err| err.to_string())
@@ -62,6 +62,8 @@ impl Drop for Hub {
             return;
         };
         let _ = self.save_all(&dir);
+        // The links go, the host sessions stay: quitting detaches (D18).
+        self.remote_quit();
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         for (pane, slot) in &self.slots {

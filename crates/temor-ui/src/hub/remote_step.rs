@@ -49,6 +49,7 @@ impl Hub {
                 session,
             } => self.remote_exited(&host, generation, session),
             RemoteEvent::Closed { host, generation } => self.remote_closed(&host, generation),
+            RemoteEvent::Stalled { host, generation } => self.remote_stalled(&host, generation),
             RemoteEvent::Connected { pane } => self.remote_begin(pane),
         }
         std::mem::take(&mut self.notices)

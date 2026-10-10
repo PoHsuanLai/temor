@@ -8,18 +8,19 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use temor_pane::PaneLink;
 use temor_vt::{CellPx, GridSize};
 use temor_wire::ids::SessionId;
-use temor_wire::units::Size;
+use temor_wire::units::{CellPx as WireCell, Size};
 
-use super::remote_calls::{grid_size, input, resize};
+use super::remote_calls::{grid_size, input, resize, wire_cell};
 use super::remote_conn::Conn;
 
 /// Where a pane's input goes right now: the connection and session it is attached to, if any.
-/// The size is remembered for the next attach.
+/// The size and the cell's pixels are remembered for the next attach.
 #[derive(Debug)]
 pub struct Target {
     pub conn: Option<Arc<Conn>>,
     pub session: Option<SessionId>,
     pub size: Size,
+    pub cell: WireCell,
 }
 
 impl Default for Target {
@@ -28,6 +29,7 @@ impl Default for Target {
             conn: None,
             session: None,
             size: grid_size(80, 24),
+            cell: WireCell::DEFAULT,
         }
     }
 }
@@ -45,7 +47,7 @@ pub fn lock(target: &Mutex<Target>) -> MutexGuard<'_, Target> {
 #[derive(Debug)]
 enum Wish {
     Input(Vec<u8>),
-    Size(Size),
+    Size(Size, WireCell),
 }
 
 /// The [`PaneLink`] of a helper session.
@@ -72,19 +74,19 @@ impl PaneLink for RemoteLink {
             .map_err(|_| io::ErrorKind::BrokenPipe.into())
     }
 
-    fn resize(&self, grid: GridSize, _cell: CellPx) {
-        // TODO(batch3-wire): the cell size goes with the new size.
+    fn resize(&self, grid: GridSize, cell: CellPx) {
         // A gone writer means the pane is closing.
-        let _ = self
-            .wishes
-            .send(Wish::Size(grid_size(grid.cols.0, grid.rows.0)));
+        let _ = self.wishes.send(Wish::Size(
+            grid_size(grid.cols.0, grid.rows.0),
+            wire_cell(cell),
+        ));
     }
 }
 
-/// What one round of wishes comes to: the newest size, and the input in order.
+/// What one round of wishes comes to: the newest size with its cell, and the input in order.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Round {
-    pub size: Option<Size>,
+    pub size: Option<(Size, WireCell)>,
     pub input: Vec<u8>,
 }
 
@@ -92,7 +94,7 @@ impl Round {
     fn add(&mut self, wish: Wish) {
         match wish {
             Wish::Input(bytes) => self.input.extend_from_slice(&bytes),
-            Wish::Size(size) => self.size = Some(size),
+            Wish::Size(size, cell) => self.size = Some((size, cell)),
         }
     }
 }
@@ -108,8 +110,9 @@ fn carry(inbox: &Receiver<Wish>, target: &Mutex<Target>) {
         }
         let (conn, session) = {
             let mut target = lock(target);
-            if let Some(size) = round.size {
+            if let Some((size, cell)) = round.size {
                 target.size = size;
+                target.cell = cell;
             }
             (target.conn.clone(), target.session)
         };
@@ -132,19 +135,20 @@ mod tests {
 
     #[test]
     fn a_round_keeps_input_in_order_and_only_the_newest_size() {
+        let cell = wire_cell(CellPx::new(9, 18));
         let mut round = Round::default();
         for wish in [
             Wish::Input(b"ls".to_vec()),
-            Wish::Size(grid_size(100, 30)),
+            Wish::Size(grid_size(100, 30), WireCell::DEFAULT),
             Wish::Input(b" -l\r".to_vec()),
-            Wish::Size(grid_size(120, 40)),
+            Wish::Size(grid_size(120, 40), cell),
         ] {
             round.add(wish);
         }
         assert_eq!(
             round,
             Round {
-                size: Some(grid_size(120, 40)),
+                size: Some((grid_size(120, 40), cell)),
                 input: b"ls -l\r".to_vec()
             }
         );

@@ -8,7 +8,7 @@ use temor_core::vocab::text::HelperHash;
 use temor_pane::Feeder;
 use temor_ssh::HostAlias;
 use temor_wire::ids::SessionId;
-use temor_wire::message::ListeningPort;
+use temor_wire::message::{ListeningPort, Palette};
 
 use super::remote_conn::{Conn, DialFault};
 use super::remote_install::Found;
@@ -82,6 +82,11 @@ pub enum RemoteEvent {
         host: HostAlias,
         generation: Generation,
     },
+    /// A ping went unanswered: the connection is open but stalled.
+    Stalled {
+        host: HostAlias,
+        generation: Generation,
+    },
     /// The `ssh` that made the shared connection (and asked for passwords in the pane) ended
     /// successfully: the connection is up.
     Connected { pane: PaneId },
@@ -97,6 +102,13 @@ pub enum Wanted {
     },
     /// The session the pane had before the link dropped.
     Again(SessionId),
+    /// The session the pane had when temor was last quit: adopted if the host still holds it,
+    /// else a new one in `cwd` with `env`.
+    Resume {
+        session: SessionId,
+        cwd: String,
+        env: Vec<(String, String)>,
+    },
 }
 
 /// A pane to open or reattach.
@@ -106,4 +118,6 @@ pub struct Ticket {
     pub target: SharedTarget,
     pub feeder: Feeder,
     pub wanted: Wanted,
+    /// The window's colours, for the session to answer colour questions with.
+    pub palette: Palette,
 }
