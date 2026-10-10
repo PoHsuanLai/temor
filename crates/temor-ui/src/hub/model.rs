@@ -19,6 +19,7 @@ use super::agents::Agents;
 use super::bar::BarSlot;
 use super::facts::FactsHub;
 use super::offer::OfferHub;
+use super::peek::PeekHub;
 use super::remote::RemoteHub;
 use super::shelf::ShelfHub;
 use super::spaces::SpaceBook;
@@ -63,6 +64,8 @@ pub struct Hub {
     pub(super) remote: RemoteHub,
     /// The panes that show a file (PLAN §10).
     pub(super) viewers: ViewerHub,
+    /// The peek card's worker (PLAN §10).
+    pub(super) peek: PeekHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -108,6 +111,7 @@ impl Hub {
             offer,
             remote,
             viewers: ViewerHub::default(),
+            peek: PeekHub::default(),
         }
     }
 

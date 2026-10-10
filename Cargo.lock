@@ -6658,6 +6658,7 @@ name = "temor-ui"
 version = "0.1.0"
 dependencies = [
  "anyview-core",
+ "anyview-fs",
  "anyview-pane",
  "anyview-peek",
  "chordkit",

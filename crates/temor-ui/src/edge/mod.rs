@@ -13,6 +13,8 @@ pub mod git;
 mod keymap;
 pub mod notify;
 pub mod offer;
+pub mod peek_look;
+pub mod peek_mail;
 pub mod remote;
 pub mod remote_adopt;
 pub mod remote_attach;

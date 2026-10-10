@@ -13,6 +13,7 @@ mod coherence;
 mod desktop;
 mod facts;
 mod offer;
+mod peek;
 mod persist;
 mod remote;
 mod session;
