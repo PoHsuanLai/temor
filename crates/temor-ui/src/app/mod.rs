@@ -2,7 +2,7 @@
 
 mod shell;
 
-pub use shell::shell_pane;
+pub use shell::{shell_pane, shell_pane_with_socket};
 
 use crate::view::{App, Launch};
 

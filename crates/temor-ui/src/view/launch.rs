@@ -16,7 +16,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;
 use super::theme::AppearanceSource;
-use crate::app::shell_pane;
+use crate::app::shell_pane_with_socket;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
 use crate::pane::TaggedSink;
@@ -80,6 +80,17 @@ pub fn open_session(
     snapshot: Option<&Snapshot>,
     events: UnboundedSender<(PaneId, PaneEvent)>,
 ) -> Result<Session, UiError> {
+    open_session_at(launch, palette, (pane, cwd, snapshot), events, None)
+}
+
+/// Like [`open_session`], with the pane's status socket named to the shell in `TEMOR_SOCKET`.
+pub fn open_session_at(
+    launch: &Launch,
+    palette: Palette,
+    (pane, cwd, snapshot): (PaneId, Option<&Cwd>, Option<&Snapshot>),
+    events: UnboundedSender<(PaneId, PaneEvent)>,
+    socket: Option<&std::path::Path>,
+) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
     let family = match &settings.font {
@@ -110,7 +121,15 @@ pub fn open_session(
     {
         ambient.home = dir;
     }
-    let spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    let spec = shell_pane_with_socket(
+        &ambient,
+        settings,
+        pane.0,
+        (grid, cell),
+        palette,
+        launcher,
+        socket.map(std::path::Path::to_path_buf),
+    )?;
     Session::open_with(
         SessionParts {
             spec,

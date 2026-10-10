@@ -2,6 +2,7 @@
 //! notifications and the clock. Everything here is read once, at start, and handed to the rest
 //! of the app as values or trait objects.
 
+mod agent_socket;
 mod ambient;
 pub mod clock;
 pub mod git;
@@ -12,6 +13,7 @@ mod session_file;
 mod settings_file;
 pub mod sidecar;
 
+pub use agent_socket::SocketHost;
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
 pub use keymap::{keymap_for, load_keymap};

@@ -25,6 +25,27 @@ pub fn shell_pane(
     palette: temor_render::Palette,
     launcher: SessionLauncher,
 ) -> Result<PaneSpec, UiError> {
+    shell_pane_with_socket(
+        ambient,
+        settings,
+        pane,
+        (grid, cell),
+        palette,
+        launcher,
+        None,
+    )
+}
+
+/// Like [`shell_pane`], with the pane's status socket named to the shell in `TEMOR_SOCKET`.
+pub fn shell_pane_with_socket(
+    ambient: &Ambient,
+    settings: &TerminalSettings,
+    pane: u64,
+    (grid, cell): (GridSize, CellPx),
+    palette: temor_render::Palette,
+    launcher: SessionLauncher,
+    socket: Option<PathBuf>,
+) -> Result<PaneSpec, UiError> {
     // The passwd file is read only when the login shell is asked for.
     let passwd_shell = match settings.shell {
         ShellChoice::Login => login_shell_from_passwd(),
@@ -40,6 +61,7 @@ pub fn shell_pane(
     .passwd_shell(passwd_shell)
     .version(ProgramVersion(VERSION.to_owned()))
     .pane(pane)
+    .socket(socket)
     .grid(grid, cell)
     .palette(palette);
     Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)
