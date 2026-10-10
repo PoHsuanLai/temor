@@ -58,6 +58,8 @@ pub(super) fn harness_hosting(
             ("LANG", std::ffi::OsStr::new("C.UTF-8")),
             ("XDG_RUNTIME_DIR", home.join("xdg-runtime").as_os_str()),
             ("PS1", std::ffi::OsStr::new("$ ")),
+            // The tests read the plain `$ ` prompt, so the shell keeps its own.
+            ("TEMOR_PROMPT", std::ffi::OsStr::new("shell")),
         ]
         .into_iter()
         .map(|(k, v)| (std::ffi::OsString::from(k), v.to_os_string()))

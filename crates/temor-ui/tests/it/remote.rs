@@ -155,6 +155,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
         ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
         ("TERM".to_owned(), "dumb".to_owned()),
         ("PS1".to_owned(), "$ ".to_owned()),
+        ("TEMOR_PROMPT".to_owned(), "shell".to_owned()),
     ];
     first.work.attach(
         Arc::clone(&first.conn),

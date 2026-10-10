@@ -7,12 +7,11 @@
 $env.config.shell_integration.osc133 = true
 $env.config.shell_integration.osc7 = true
 
-# It also replaces nushell's stock prompt (the PROMPT_COMMAND that ships with nushell) with a
-# clean two-line one: a blank line, the folder and the git branch, then an empty line to type on.
-# A prompt you set yourself is never touched. TEMOR_PROMPT=shell keeps nushell's own prompt even
-# when it is the stock one; TEMOR_PROMPT=temor (or unset) means "temor's when nushell's is stock".
+# It also draws temor's own prompt in place of nushell's, whatever your config.nu sets: a blank
+# line, the folder and the git branch, then an empty line to type on, with no right-side prompt.
+# TEMOR_PROMPT=shell keeps your own prompt instead; TEMOR_PROMPT=temor (or unset) means temor's.
 # Colours are ANSI indices, so the terminal's palette themes them.
-if ($env.TEMOR_PROMPT? != "shell") and (try { view source $env.PROMPT_COMMAND | str contains 'path relative-to $nu.home-dir' } catch { false }) {
+if ($env.TEMOR_PROMPT? != "shell") {
     # The git branch of $PWD, or nothing outside a checkout. Reads .git/HEAD directly; no git
     # process. A .git file (a worktree) names the real directory.
     def _temor_branch [] {
@@ -41,7 +40,7 @@ if ($env.TEMOR_PROMPT? != "shell") and (try { view source $env.PROMPT_COMMAND | 
             $head | str substring 0..<7
         }
     }
-    $env.PROMPT_COMMAND = {||
+    $env.TEMOR_PROMPT_COMMAND = {||
         let esc = (ansi escape)
         let dir = match (do -i { $env.PWD | path relative-to $nu.home-dir }) {
             null => $env.PWD
@@ -53,6 +52,16 @@ if ($env.TEMOR_PROMPT? != "shell") and (try { view source $env.PROMPT_COMMAND | 
         let blank = if ($env.TEMOR_SEEN? | is-empty) { "" } else { "\n" }
         $"($blank)($esc)[2m($dir)($esc)[22m($branch_part)\n"
     }
+    # This file runs before config.nu, which may set a prompt of its own, so temor's is put back
+    # before every prompt.
+    $env.config.hooks.pre_prompt = (
+        $env.config.hooks.pre_prompt? | default [] | append {||
+            $env.PROMPT_COMMAND = $env.TEMOR_PROMPT_COMMAND
+            $env.PROMPT_INDICATOR = ""
+            $env.PROMPT_COMMAND_RIGHT = {|| "" }
+        }
+    )
+    $env.PROMPT_COMMAND = $env.TEMOR_PROMPT_COMMAND
     $env.PROMPT_INDICATOR = ""
     $env.PROMPT_COMMAND_RIGHT = {|| "" }
     # The blank line is tied to commands, not to drawing: there is one before every prompt once a

@@ -4,10 +4,9 @@
 # D;<status> command finished) and reports the working directory with OSC 7. temor loads this
 # from its ZDOTDIR shim; it never edits your files. TEMOR_SHELL_INTEGRATION=0 turns it off.
 #
-# It also replaces zsh's stock prompt (PS1 unset or exactly `%m%# `) with a clean two-line one:
-# the folder and the git branch, then an empty line to type on. A prompt you set yourself is never touched.
-# TEMOR_PROMPT=shell keeps the shell's own prompt even when it is the stock one; TEMOR_PROMPT=temor
-# (or unset) means "temor's when the shell's is stock".
+# It also draws temor's own prompt in place of the shell's, whatever PS1 your .zshrc or theme sets:
+# the folder and the git branch, then an empty line to type on, with no right-side prompt.
+# TEMOR_PROMPT=shell keeps your own prompt instead; TEMOR_PROMPT=temor (or unset) means temor's.
 
 [[ -o interactive ]] || return 0
 [[ ${TEMOR_SHELL_INTEGRATION-} == 0 ]] && return 0
@@ -77,10 +76,9 @@ _temor_prompt_text() {
     fi
 }
 
-# Whether the prompt is zsh's own stock one, or the one temor put there last time.
+# Whether temor draws the prompt: always, unless the person keeps their own.
 _temor_prompt_is_ours() {
-    [[ ${TEMOR_PROMPT-} != shell ]] || return 1
-    [[ -z ${PS1-} || $PS1 == '%m%# ' || $PS1 == "$_temor_ps1" ]]
+    [[ ${TEMOR_PROMPT-} != shell ]]
 }
 
 # Builds temor's prompt: a blank line (not before the first prompt), the folder and the
@@ -116,6 +114,8 @@ _temor_build_prompt() {
     fi
     PS1+=$'%{\e]133;B\e\\%}'
     _temor_ps1=$PS1
+    # A theme's right-side prompt would sit on temor's typing line.
+    RPS1=
 }
 
 # Runs first in every precmd cycle (it is hooked before your .zshrc runs), so it sees the

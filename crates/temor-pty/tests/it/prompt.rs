@@ -1,5 +1,6 @@
-//! The default prompt: replaced only when the shell's own is stock, kept otherwise, with the
-//! folder and the git branch on a header line and the end mark at column 0 of the line below it.
+//! The default prompt: temor's in place of the shell's, whatever the person's startup files set,
+//! unless TEMOR_PROMPT=shell keeps theirs. The folder and the git branch are on a header line and
+//! the end mark at column 0 of the line below it.
 
 use std::path::{Path, PathBuf};
 
@@ -26,16 +27,16 @@ fn startup(shell: &str, own: Own) -> (&'static str, &'static str) {
         ("bash", Own::Custom) => (".bashrc", "PS1='custom> '\n"),
         // An empty .zshrc keeps zsh's first-run wizard away.
         ("zsh", Own::Stock) => (".zshrc", ""),
-        ("zsh", Own::Custom) => (".zshrc", "PS1='custom> '\n"),
+        ("zsh", Own::Custom) => (".zshrc", "PS1='custom> '\nRPS1='right<'\n"),
         ("nu", Own::Stock) => (".config/nushell/config.nu", ""),
         ("nu", Own::Custom) => (
             ".config/nushell/config.nu",
-            "$env.PROMPT_COMMAND = {|| \"custom> \" }\n",
+            "$env.PROMPT_COMMAND = {|| \"custom> \" }\n$env.PROMPT_COMMAND_RIGHT = {|| \"right<\" }\n",
         ),
         (_, Own::Stock) => (".config/fish/config.fish", ""),
         (_, Own::Custom) => (
             ".config/fish/config.fish",
-            "function fish_prompt\n    echo -n 'custom> '\nend\n",
+            "function fish_prompt\n    echo -n 'custom> '\nend\nfunction fish_right_prompt\n    echo -n 'right<'\nend\n",
         ),
     }
 }
@@ -154,18 +155,34 @@ fn run_command(term: &mut Term, command: &str, status: u8) {
 
 /// Each case: (name, own prompt, TEMOR_PROMPT value, expected to be replaced).
 #[test]
-fn stock_is_replaced_and_the_rest_is_kept() {
-    if crate::support::pty_unsupported("stock_is_replaced_and_the_rest_is_kept") {
+fn temors_prompt_replaces_any_and_shell_keeps_the_persons() {
+    if crate::support::pty_unsupported("temors_prompt_replaces_any_and_shell_keeps_the_persons") {
         return;
     }
     let cases = [
         ("stock prompt", Own::Stock, None, true),
-        ("custom prompt", Own::Custom, None, false),
-        ("TEMOR_PROMPT=shell", Own::Stock, Some("shell"), false),
-        ("TEMOR_PROMPT=temor", Own::Stock, Some("temor"), true),
+        ("custom prompt", Own::Custom, None, true),
+        (
+            "custom, TEMOR_PROMPT=shell",
+            Own::Custom,
+            Some("shell"),
+            false,
+        ),
+        (
+            "stock, TEMOR_PROMPT=shell",
+            Own::Stock,
+            Some("shell"),
+            false,
+        ),
+        ("TEMOR_PROMPT=temor", Own::Custom, Some("temor"), true),
     ];
     for shell in SHELLS {
-        if program_or_skip(shell, "stock_is_replaced_and_the_rest_is_kept").is_none() {
+        if program_or_skip(
+            shell,
+            "temors_prompt_replaces_any_and_shell_keeps_the_persons",
+        )
+        .is_none()
+        {
             continue;
         }
         for (name, own, value, replaced) in cases {
@@ -179,7 +196,16 @@ fn stock_is_replaced_and_the_rest_is_kept() {
                 "{shell}, {name}: {prompt:?}"
             );
             if own == Own::Custom {
-                assert!(prompt.contains("custom> "), "{shell}: {prompt:?}");
+                // The person's prompt shows exactly when temor's does not; so does a right-side one.
+                assert_eq!(
+                    prompt.contains("custom> "),
+                    !replaced,
+                    "{shell}, {name}: {prompt:?}"
+                );
+                if replaced {
+                    let screen = term.text();
+                    assert!(!screen.contains("right<"), "{shell}, {name}: {screen:?}");
+                }
             }
         }
     }

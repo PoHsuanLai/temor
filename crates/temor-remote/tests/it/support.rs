@@ -103,6 +103,8 @@ impl Rig {
             ("TERM", "xterm-256color".to_string()),
             ("LANG", "C.UTF-8".to_string()),
             ("PS1", "$ ".to_string()),
+            // The tests read the plain `$ ` prompt, so the shell keeps its own.
+            ("TEMOR_PROMPT", "shell".to_string()),
             ("HISTFILE", self.home.join("history").display().to_string()),
         ];
         OpenSession {

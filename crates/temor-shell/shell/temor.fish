@@ -6,10 +6,10 @@
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
 # there this file adds no marks of its own.
 #
-# It also replaces fish's stock prompt (the fish_prompt that ships with fish) with a clean
-# two-line one: a blank line, the folder and the git branch, then an empty line to type on. A
-# prompt you define yourself is never touched. TEMOR_PROMPT=shell keeps fish's own prompt even
-# when it is the stock one; TEMOR_PROMPT=temor (or unset) means "temor's when fish's is stock".
+# It also draws temor's own prompt in place of fish's, whatever fish_prompt your config or theme
+# defines: a blank line, the folder and the git branch, then an empty line to type on, with no
+# right-side prompt. TEMOR_PROMPT=shell keeps your own prompt instead; TEMOR_PROMPT=temor (or
+# unset) means temor's.
 
 # Take temor's entry back out of XDG_DATA_DIRS, so programs started from this shell never see
 # it. Only that entry goes: conf.d snippets that ran before this one may have added their own.
@@ -67,7 +67,7 @@ function _temor_branch
     end
 end
 
-# temor's prompt, installed over fish's stock one by _temor_install_prompt. Colours are ANSI
+# temor's prompt, installed over fish's by _temor_install_prompt. Colours are ANSI
 # indices, so the terminal's palette themes them.
 function _temor_prompt
     set -l dir $PWD
@@ -86,18 +86,13 @@ function _temor_prompt
     printf '\n\e[0m'
 end
 
-# Replaces fish_prompt with temor's when it is the one that ships with fish.
+# Replaces fish_prompt (and any right-side prompt) with temor's, unless the person keeps their own.
 function _temor_install_prompt
     test "$TEMOR_PROMPT" = shell; and return 0
-    set -l source (functions --details fish_prompt 2>/dev/null)
-    # fish 4 builds its functions into the program and reports them as `embedded:functions/…`.
-    string match -q 'embedded:*' -- $source
-    or begin
-        test -n "$__fish_data_dir"; and string match -q -- "$__fish_data_dir/*" $source
-    end
-    or return 0
     function fish_prompt
         _temor_prompt
+    end
+    function fish_right_prompt
     end
 end
 

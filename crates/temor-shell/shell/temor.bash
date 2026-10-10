@@ -4,10 +4,9 @@
 # D;<status> command finished) and reports the working directory with OSC 7. temor sources this
 # after your own startup files; it never edits them. TEMOR_SHELL_INTEGRATION=0 turns it off.
 #
-# It also replaces bash's stock prompt (PS1 unset or exactly `\s-\v\$ `) with a clean two-line
-# one: a blank line, the folder and the git branch, then an empty line to type on. A prompt you set yourself is never
-# touched. TEMOR_PROMPT=shell keeps the shell's own prompt even when it is the stock one;
-# TEMOR_PROMPT=temor (or unset) means "temor's when the shell's is stock".
+# It also draws temor's own prompt in place of the shell's, whatever PS1 your startup files set:
+# a blank line, the folder and the git branch, then an empty line to type on. TEMOR_PROMPT=shell
+# keeps your own prompt instead; TEMOR_PROMPT=temor (or unset) means temor's.
 
 [[ $- == *i* ]] || return 0
 [[ ${TEMOR_SHELL_INTEGRATION-} == 0 ]] && return 0
@@ -70,10 +69,9 @@ _temor_find_branch() {
     _temor_branch=$'  \001\e[2;35m\002'$head$'\001\e[0m\002'
 }
 
-# Whether the prompt is bash's own stock one, or the one temor put there last time.
+# Whether temor draws the prompt: always, unless the person keeps their own.
 _temor_prompt_is_ours() {
-    [[ ${TEMOR_PROMPT-} != shell ]] || return 1
-    [[ -z ${PS1+set} || $PS1 == '\s-\v\$ ' || $PS1 == "$_temor_ps1" ]]
+    [[ ${TEMOR_PROMPT-} != shell ]]
 }
 
 _temor_save_status() {
