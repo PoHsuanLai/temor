@@ -36,6 +36,10 @@ pub enum Capability {
     Trial,
     /// Agent relay: fs and terminal calls for a remote workspace.
     Relay,
+    /// A session's folder read for the chips (git, version files). Added after the first
+    /// protocol versions: an older helper does not offer it, and the window shows no chips for
+    /// a host that does not.
+    Facts,
     /// A capability this build does not know. Never agreed.
     #[serde(other)]
     Unknown,

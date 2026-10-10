@@ -4,8 +4,8 @@ use super::values::*;
 use proptest::prelude::*;
 use temor_wire::hello::Hello;
 use temor_wire::message::{
-    DirEntry, Event, Message, OpenSession, RelayCall, RelayReply, RemoteError, Reply, Request,
-    SessionInfo, TrialRequest, TrialVerdict,
+    DirEntry, Event, FactFile, FolderFacts, FolderFiles, GitText, Message, OpenSession, RelayCall,
+    RelayReply, RemoteError, Reply, Request, SessionInfo, TrialRequest, TrialVerdict,
 };
 use temor_wire::units::{ByteCount, UnixMillis};
 
@@ -109,6 +109,7 @@ pub fn request() -> impl Strategy<Value = Request> {
         }),
         path().prop_map(|path| Request::Watch { path }),
         watch_id().prop_map(|watch| Request::Unwatch { watch }),
+        session_id().prop_map(|session| Request::Facts { session }),
         trial_request().prop_map(Request::RunTrial),
         (path(), relay_call()).prop_map(|(workspace, call)| Request::Relay { workspace, call }),
     ]
@@ -151,6 +152,41 @@ fn relay_reply() -> impl Strategy<Value = RelayReply> {
     ]
 }
 
+fn folder_facts() -> impl Strategy<Value = FolderFacts> {
+    let git = (
+        prop::option::of(text()),
+        prop::option::of(text()),
+        prop::option::of(text()),
+    )
+        .prop_map(|(head, shortstat, untracked)| GitText {
+            head,
+            shortstat,
+            untracked,
+        });
+    let files = prop::collection::vec(
+        (text(), text()).prop_map(|(name, text)| FactFile { name, text }),
+        0..3,
+    );
+    let folders = prop::collection::vec(
+        (path(), files).prop_map(|(dir, files)| FolderFiles { dir, files }),
+        0..3,
+    );
+    (
+        path(),
+        prop::option::of(git),
+        prop::option::of(path()),
+        prop::option::of(path()),
+        folders,
+    )
+        .prop_map(|(dir, git, venv, root, folders)| FolderFacts {
+            dir,
+            git,
+            venv,
+            root,
+            folders,
+        })
+}
+
 pub fn reply() -> impl Strategy<Value = Reply> {
     prop_oneof![
         Just(Reply::Ack),
@@ -175,6 +211,7 @@ pub fn reply() -> impl Strategy<Value = Reply> {
         (file_stamp(), byte_count()).prop_map(|(stamp, total)| Reply::Read { stamp, total }),
         file_stamp().prop_map(Reply::Written),
         watch_id().prop_map(|watch| Reply::Watching { watch }),
+        folder_facts().prop_map(Reply::Facts),
         trial_verdict().prop_map(Reply::Verdict),
         relay_reply().prop_map(Reply::Relayed),
     ]

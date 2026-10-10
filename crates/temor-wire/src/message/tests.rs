@@ -59,6 +59,7 @@ fn request_kind(value: &Request) -> &'static str {
         Request::WriteFile { .. } => "WriteFile",
         Request::Watch { .. } => "Watch",
         Request::Unwatch { .. } => "Unwatch",
+        Request::Facts { .. } => "Facts",
         Request::RunTrial(_) => "RunTrial",
         Request::Relay { .. } => "Relay",
     }
@@ -117,6 +118,9 @@ fn request_samples() -> Vec<Request> {
         },
         Request::Watch { path: path() },
         Request::Unwatch { watch: WatchId(1) },
+        Request::Facts {
+            session: SessionId(1),
+        },
         Request::RunTrial(TrialRequest {
             command: "true".to_string(),
             cwd: path(),
@@ -174,6 +178,7 @@ fn reply_kind(value: &Reply) -> &'static str {
         Reply::Read { .. } => "Read",
         Reply::Written(_) => "Written",
         Reply::Watching { .. } => "Watching",
+        Reply::Facts(_) => "Facts",
         Reply::Verdict(_) => "Verdict",
         Reply::Relayed(_) => "Relayed",
     }
@@ -204,6 +209,13 @@ fn reply_samples() -> Vec<Reply> {
         },
         Reply::Written(stamp()),
         Reply::Watching { watch: WatchId(1) },
+        Reply::Facts(FolderFacts {
+            dir: path(),
+            git: None,
+            venv: None,
+            root: None,
+            folders: vec![],
+        }),
         Reply::Verdict(TrialVerdict::Unchecked(UncheckedWhy::TimedOut)),
         Reply::Relayed(RelayReply::Done),
     ]

@@ -3,6 +3,8 @@
 //! the terminal tests skip, and fail under TEMOR_REQUIRE_TOOLS=1.
 
 #[cfg(feature = "ghostty")]
+mod facts;
+#[cfg(feature = "ghostty")]
 mod files;
 #[cfg(feature = "ghostty")]
 mod handshake;

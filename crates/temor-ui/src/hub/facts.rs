@@ -8,11 +8,14 @@ use std::sync::Arc;
 use temor_core::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
 use temor_core::vocab::ids::PaneId;
 use temor_core::worktree::Git;
+use temor_wire::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::model::Hub;
 use crate::edge::facts::{FactsEnv, read_facts};
+use crate::edge::facts_host::facts_from_host;
 use crate::edge::git::ProcessGit;
+use crate::edge::remote_conn::Conn;
 use crate::view::launch::Launch;
 
 /// Whether a result changed what the window shows.
@@ -26,7 +29,8 @@ pub(super) enum Shown {
 #[derive(Debug)]
 pub struct Ready {
     pane: PaneId,
-    facts: Facts,
+    /// What was read; none when the read failed, and what the pane showed stays.
+    facts: Option<Facts>,
 }
 
 /// One pane's rule state and what was last read.
@@ -90,8 +94,24 @@ impl FactsHub {
         let _ = std::thread::Builder::new()
             .name("temor-facts".to_owned())
             .spawn(move || {
-                let facts = read_facts(git.as_deref(), &dir, &env);
+                let facts = Some(read_facts(git.as_deref(), &dir, &env));
                 // A closed channel means the window is gone.
+                let _ = done.send(Ready { pane, facts });
+            });
+    }
+
+    /// Asks the helper of a host for the facts of `session`'s folder, on a thread of its own.
+    fn spawn_host(&self, pane: PaneId, (conn, session): (Arc<Conn>, SessionId)) {
+        let done = self.done.clone();
+        // As for a local read: if the thread cannot start, the pane's facts stay as they are.
+        let _ = std::thread::Builder::new()
+            .name("temor-facts-host".to_owned())
+            .spawn(move || {
+                let facts = conn
+                    .client()
+                    .folder_facts(session)
+                    .ok()
+                    .map(|sent| facts_from_host(&sent));
                 let _ = done.send(Ready { pane, facts });
             });
     }
@@ -122,14 +142,27 @@ impl Hub {
         }
     }
 
-    /// Starts a read of the pane's folder. A pane on a host has no local folder to read; a pane
-    /// with no folder yet has nothing to read: both count the run as done at once.
+    /// The helper connection and session of a pane on a host's helper (Tier B), once it is
+    /// attached. A host without the helper (Tier A) has no chips: nothing there can read its
+    /// folder but the shell.
+    fn helper_facts_source(&self, pane: PaneId) -> Option<(Arc<Conn>, SessionId)> {
+        let remote = self.remote.panes.get(&pane)?;
+        let session = remote.session?;
+        Some((self.remote.helper_conn(&remote.alias)?, session))
+    }
+
+    /// Starts a read of the pane's folder: on this computer, or through the host's helper for a
+    /// pane on it. A pane on a host without a helper, and a pane with no folder yet, have
+    /// nothing to read: both count the run as done at once.
     fn facts_run(&mut self, pane: PaneId) {
-        let dir = match self.host_of(pane) {
-            Some(_) => None,
-            None => self.pane_folder(pane),
-        };
-        match dir {
+        if self.host_of(pane).is_some() {
+            match self.helper_facts_source(pane) {
+                Some(source) => self.facts.spawn_host(pane, source),
+                None => self.facts_in(pane, FactsIn::RunDone),
+            }
+            return;
+        }
+        match self.pane_folder(pane) {
             Some(dir) => self.facts.spawn(pane, dir),
             None => {
                 // The rule only ever answers `Run` to `RunDone` after a trigger, so this cannot
@@ -147,11 +180,13 @@ impl Hub {
             return Shown::Same;
         }
         let entry = self.facts.panes.entry(pane).or_default();
-        let shown = match entry.facts == facts {
-            true => Shown::Same,
-            false => Shown::Changed,
+        let shown = match facts {
+            Some(facts) if entry.facts != facts => {
+                entry.facts = facts;
+                Shown::Changed
+            }
+            Some(_) | None => Shown::Same,
         };
-        entry.facts = facts;
         self.facts_in(pane, FactsIn::RunDone);
         shown
     }

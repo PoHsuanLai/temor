@@ -9,6 +9,7 @@ pub mod desktop_feed;
 pub mod desktop_port;
 pub mod facts;
 mod facts_files;
+pub mod facts_host;
 pub mod git;
 mod keymap;
 pub mod notify;

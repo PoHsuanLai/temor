@@ -60,6 +60,7 @@ pub fn capability() -> impl Strategy<Value = Capability> {
         Just(Capability::Files),
         Just(Capability::Trial),
         Just(Capability::Relay),
+        Just(Capability::Facts),
         Just(Capability::Unknown),
     ]
 }

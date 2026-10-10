@@ -1,5 +1,6 @@
 //! Replies: the successful answers to requests.
 
+use super::facts::FolderFacts;
 use super::files::{DirEntry, FileMeta, FileStamp};
 use super::ports::ListeningPort;
 use super::relay::RelayReply;
@@ -53,6 +54,8 @@ pub enum Reply {
         /// The new watch.
         watch: WatchId,
     },
+    /// A session's folder, as the chips read it.
+    Facts(FolderFacts),
     /// A trial's verdict.
     Verdict(TrialVerdict),
     /// A relayed call's answer.
