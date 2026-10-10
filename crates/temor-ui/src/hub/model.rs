@@ -43,6 +43,8 @@ pub struct Hub {
     pub(super) inbox: Option<UnboundedReceiver<(PaneId, PaneEvent)>>,
     pub(super) launch: Launch,
     pub(super) state_dir: Option<PathBuf>,
+    /// The viewer's store (shared with anyview), for a run that keeps its state.
+    pub(super) viewer_store: Option<PathBuf>,
     pub(super) palette: Palette,
     pub(super) pace: SavePace,
     pub(super) notices: Vec<String>,
@@ -91,6 +93,10 @@ impl Hub {
             bar: BarSlot::new(&launch),
             quick: QuickState::Closed,
             state_dir: launch.state_dir.clone(),
+            viewer_store: launch
+                .state_dir
+                .as_ref()
+                .map(|_| launch.ambient.viewer_store()),
             launch,
             palette: Palette::default(),
             pace: SavePace::new(SAVE_EVERY),

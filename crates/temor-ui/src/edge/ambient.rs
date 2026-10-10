@@ -59,14 +59,25 @@ impl Ambient {
         self.config_dir.join("terminal.conf")
     }
 
-    /// temor's own data directory: outside every repository, where agent worktrees live.
-    pub fn data_dir(&self) -> PathBuf {
-        let data_home = self
-            .env
+    /// `XDG_DATA_HOME`, else `~/.local/share`.
+    fn data_home(&self) -> PathBuf {
+        self.env
             .get("XDG_DATA_HOME")
             .filter(|d| !d.is_empty())
-            .map_or_else(|| self.home.join(".local").join("share"), PathBuf::from);
-        data_home.join("temor")
+            .map_or_else(|| self.home.join(".local").join("share"), PathBuf::from)
+    }
+
+    /// temor's own data directory: outside every repository, where agent worktrees live.
+    pub fn data_dir(&self) -> PathBuf {
+        self.data_home().join("temor")
+    }
+
+    /// The viewer's store, shared with anyview's own windows so both keep one history of where
+    /// each file was left (anyview's `STORE_FOLDER` under the data home; the store locks across
+    /// processes).
+    pub fn viewer_store(&self) -> PathBuf {
+        // TODO(anyview #97): `anyview_pane::STORE_FOLDER` once it is re-exported.
+        self.data_home().join("anyview")
     }
 
     /// Where the downloads shelf keeps its files: temor's own data directory, never the home

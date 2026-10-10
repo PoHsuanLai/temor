@@ -50,14 +50,15 @@ pub struct ViewerShow {
 }
 
 impl ViewerHub {
-    /// The shared edge. With a state folder, the viewer keeps where each file was left in its
-    /// own store there (`viewer/`), across runs; without one it remembers for this run only.
-    fn edge(&self, state_dir: Option<&std::path::Path>) -> PaneEdge {
+    /// The shared edge. With a store (a run that keeps its state), the viewer keeps where each
+    /// file was left there, shared with anyview's own windows; without one it remembers for this
+    /// run only.
+    fn edge(&self, store: Option<&std::path::Path>) -> PaneEdge {
         self.edge
             .get_or_init(|| {
                 let edge = PaneEdge::portable(Arc::new(ViewerWorkers::start()));
-                match state_dir {
-                    Some(dir) => edge.with_store(dir.join("viewer")),
+                match store {
+                    Some(root) => edge.with_store(root),
                     None => edge,
                 }
             })
@@ -181,7 +182,7 @@ impl Hub {
         Some(ViewerShow {
             file,
             sequence,
-            edge: self.viewers.edge(self.state_dir.as_deref()),
+            edge: self.viewers.edge(self.viewer_store.as_deref()),
         })
     }
 
