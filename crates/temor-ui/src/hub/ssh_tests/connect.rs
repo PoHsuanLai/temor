@@ -313,7 +313,9 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
         },
         ..HostRecord::default()
     }]);
-    // The last session had a host tab; it starts hidden behind a tab opened after it.
+    // The last session had a host tab; it starts hidden behind a plain tab.
+    rig.hub.act(WorkspaceIn::NewTab { cwd: None });
+    let plain = rig.front();
     let saved = temor_core::vocab::ids::PaneId(rig.hub.ws.next_pane);
     rig.hub.ssh.restored = vec![PaneHost {
         pane: saved,
@@ -322,8 +324,8 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
     }];
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     assert_eq!(rig.hub.host_of(saved), Some("fake"));
-    rig.hub.act(WorkspaceIn::NewTab { cwd: None });
-    assert_ne!(rig.front(), saved);
+    rig.hub.act(WorkspaceIn::Focus(plain));
+    assert_eq!(rig.front(), plain);
 
     let dir = rig.dir.clone();
     let start = std::time::Instant::now();
