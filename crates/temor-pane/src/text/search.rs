@@ -3,7 +3,6 @@
 
 use super::row::RowText;
 use super::selection::CellPos;
-use crate::keys::fold;
 
 /// One match: a row, the first column and its length in columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,6 +57,15 @@ pub fn find_all<'a>(rows: impl IntoIterator<Item = (u32, &'a RowText)>, query: &
         }
     }
     out
+}
+
+/// Lowercases a character, keeping it when it has no single lowercase form.
+fn fold(c: char) -> char {
+    let mut lower = c.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(one), None) => one,
+        _ => c,
+    }
 }
 
 /// A character of a row, folded for matching, with the column its cell starts at and the

@@ -1,128 +1,413 @@
-//! Unit tests for the pane's pure parts.
+//! The key rules (PLAN §6) over chordkit's keymap: what each platform does with each key in a
+//! terminal, the action ids a person's file uses, and how key lines read. Platforms are explicit
+//! values, never the real environment.
 
-use super::action::Action;
-use super::chord::{Chord, ChordKey, Mods, NamedKey};
-use super::keymap::Keymap;
+use chordkit::{
+    AltGr, Chord, Context, ConventionSource, Desktop, Key, KeyInput, Keymap, KeymapSource,
+    Modifier, Modifiers, Overrides, Platform, SourceError,
+};
+
+use super::{Action, build_keymap, declared, shortcut, terminal_shortcut};
 use crate::error::SettingsError;
-use crate::settings::{TerminalSettings, parse_settings};
+use crate::settings::parse_settings;
 
-fn ctrl_shift(c: char) -> Chord {
-    Chord::of_char(c, Mods::CTRL.with(Mods::SHIFT))
+const OURS: Platform = Platform::Linux {
+    desktop: Desktop::Ours,
+};
+const KDE: Platform = Platform::Linux {
+    desktop: Desktop::Kde,
+};
+const GNOME: Platform = Platform::Linux {
+    desktop: Desktop::Gnome,
+};
+const OTHER: Platform = Platform::Linux {
+    desktop: Desktop::Other,
+};
+
+/// Where a key goes in a terminal window, by the rule `route` applies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Went {
+    Ran(Action),
+    Dropped,
+    Program,
 }
 
-/// ⌃⌘= is the one default with Ctrl and Super together (see `Keymap::defaults`).
-fn is_ctrl_super(chord: &Chord) -> bool {
-    *chord == Chord::of_char('=', Mods::CTRL.with(Mods::SUPER))
+fn press(text: &str) -> KeyInput {
+    let chord: Chord = text.parse().expect("a valid chord in the table");
+    KeyInput::new(chord.modifiers(), chord.key())
 }
 
-#[test]
-fn chords_parse_in_any_case_and_order_of_modifiers() {
-    let parsed = Chord::parse("Shift+Ctrl+C").expect("valid chord");
-    assert_eq!(parsed, ctrl_shift('c'));
-    assert_eq!(
-        Chord::parse("alt+enter").map(|c| c.key),
-        Ok(ChordKey::Named(NamedKey::Enter))
-    );
-    assert!(matches!(Chord::parse(""), Err(SettingsError::BadChord(_))));
-    assert!(matches!(
-        Chord::parse("hyper+c"),
-        Err(SettingsError::BadChord(_))
-    ));
-    assert!(matches!(
-        Chord::parse("ctrl+"),
-        Err(SettingsError::BadChord(_))
-    ));
+fn keymap_for(platform: Platform) -> Keymap {
+    let (keymap, issues) = build_keymap(&ConventionSource, platform, &Overrides::default());
+    assert!(issues.is_empty(), "{platform:?}: {issues:?}");
+    keymap
 }
 
-#[test]
-fn chord_labels_show_the_command_key_for_both_command_forms() {
-    assert_eq!(ctrl_shift('c').label(), "⌘C");
-    assert_eq!(Chord::of_char('c', Mods::SUPER).label(), "⌘C");
-    assert_eq!(
-        Chord::parse("ctrl+shift+alt+g").map(|c| c.label()),
-        Ok("⌥⌘G".to_owned())
-    );
-    assert_eq!(
-        Chord::parse("super+shift+enter").map(|c| c.label()),
-        Ok("⇧⌘↩".to_owned())
-    );
-    assert_eq!(
-        Chord::parse("ctrl+alt+g").map(|c| c.label()),
-        Ok("⌃⌥G".to_owned())
-    );
-    assert_eq!(
-        Chord::parse("alt+enter").map(|c| c.label()),
-        Ok("⌥↩".to_owned())
-    );
-}
-
-#[test]
-fn the_shells_chords_and_ctrl_space_are_reserved_and_app_super_chords_are_not() {
-    for reserved in ["super+space", "super+tab", "ctrl+space"] {
-        assert!(
-            Chord::parse(reserved).is_ok_and(|c| c.is_reserved()),
-            "{reserved}"
-        );
+fn went(keymap: &Keymap, input: &KeyInput) -> Went {
+    match keymap
+        .resolve(input, Context::Terminal)
+        .and_then(|named| Action::from_chordkit(&named))
+    {
+        Some(action) => Went::Ran(action),
+        None if keymap.is_primary_form(input, Context::Terminal) => Went::Dropped,
+        None => Went::Program,
     }
-    for allowed in ["super+c", "super+1", "super+alt+g", "ctrl+shift+c"] {
-        assert!(
-            Chord::parse(allowed).is_ok_and(|c| !c.is_reserved()),
-            "{allowed}"
-        );
+}
+
+fn check(platform: Platform, rows: &[(&str, Went)]) {
+    let keymap = keymap_for(platform);
+    for (text, want) in rows {
+        assert_eq!(went(&keymap, &press(text)), *want, "{platform:?} {text}");
     }
 }
 
 #[test]
-fn defaults_bind_each_action_in_both_command_forms_and_nothing_reserved() {
-    let keymap = Keymap::defaults();
-    for action in Action::ALL.iter().filter(|a| **a != Action::CloseFind) {
-        let chords: Vec<&Chord> = keymap.chords_for(*action).collect();
-        assert_eq!(
-            chords.len(),
-            2,
-            "{action:?} has one Ctrl+Shift and one Super form"
+fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
+    use Went::{Dropped, Program, Ran};
+    #[rustfmt::skip]
+    let rows: &[(&str, Went)] = &[
+        ("Super+C", Ran(Action::Copy)),
+        ("Ctrl+Shift+C", Ran(Action::Copy)),
+        ("Super+V", Ran(Action::Paste)),
+        ("Super+F", Ran(Action::Find)),
+        ("Super+G", Ran(Action::FindNext)),
+        ("Super+Shift+G", Ran(Action::FindPrevious)),
+        ("Super+N", Ran(Action::NewTab)),
+        ("Super+W", Ran(Action::ClosePane)),
+        ("Super+D", Ran(Action::SplitRight)),
+        ("Ctrl+Shift+D", Ran(Action::SplitRight)),
+        ("Super+Shift+D", Ran(Action::SplitDown)),
+        ("Super+Alt+Left", Ran(Action::FocusLeft)),
+        ("Super+Alt+Down", Ran(Action::FocusDown)),
+        ("Super+Up", Ran(Action::PreviousPrompt)),
+        ("Super+Down", Ran(Action::NextPrompt)),
+        ("Super+Shift+Enter", Ran(Action::ToggleZoom)),
+        ("Ctrl+Super+=", Ran(Action::Equalize)),
+        ("Super+Shift+T", Ran(Action::ReopenTab)),
+        ("Super+1", Ran(Action::SelectTab(1))),
+        ("Ctrl+Shift+9", Ran(Action::SelectTab(9))),
+        // The system's Cancel; `route` decides whether a find bar is there to close.
+        ("Super+.", Ran(Action::CloseFind)),
+        // Plain Ctrl is the program's, whatever it is.
+        ("Ctrl+D", Program),
+        ("Ctrl+C", Program),
+        ("Escape", Program),
+        // Ctrl+digit is the desktop's Space switch: never bound here, never typed at the program
+        // as anything but itself.
+        ("Ctrl+1", Program),
+        ("Ctrl+9", Program),
+        ("Ctrl+Alt+1", Program),
+        // The desktop's own chords are handled before they reach a window.
+        ("Super+Space", Program),
+        ("Super+Tab", Program),
+        // A ⌘ chord with no action here is dropped, not sent as a control byte.
+        ("Super+K", Dropped),
+        ("Ctrl+Shift+K", Dropped),
+        ("Ctrl+Shift+;", Dropped),
+        // The system's actions that a terminal has no use for are dropped the same way.
+        ("Super+X", Dropped),
+    ];
+    check(OURS, rows);
+}
+
+#[test]
+fn the_ctrl_shift_platforms_keep_plain_ctrl_for_the_program() {
+    use Went::{Dropped, Program, Ran};
+    #[rustfmt::skip]
+    let rows: &[(&str, Went)] = &[
+        ("Ctrl+Shift+C", Ran(Action::Copy)),
+        ("Ctrl+Shift+V", Ran(Action::Paste)),
+        ("Ctrl+Shift+F", Ran(Action::Find)),
+        ("Ctrl+Shift+N", Ran(Action::NewTab)),
+        ("Ctrl+Shift+W", Ran(Action::ClosePane)),
+        ("Ctrl+Shift+D", Ran(Action::SplitRight)),
+        // A Primary chord that uses Shift takes Alt as well, since Ctrl+Shift is the Primary.
+        ("Ctrl+Shift+Alt+D", Ran(Action::SplitDown)),
+        ("Ctrl+Shift+Alt+T", Ran(Action::ReopenTab)),
+        ("Ctrl+Shift+Alt+Enter", Ran(Action::ToggleZoom)),
+        ("Ctrl+Shift+Alt+Left", Ran(Action::FocusLeft)),
+        ("Ctrl+Shift+Up", Ran(Action::PreviousPrompt)),
+        ("Ctrl+Shift+1", Ran(Action::SelectTab(1))),
+        ("Ctrl+Shift+9", Ran(Action::SelectTab(9))),
+        ("Ctrl+D", Program),
+        ("Ctrl+C", Program),
+        ("Ctrl+1", Program),
+        ("Ctrl+9", Program),
+        ("Ctrl+Alt+Left", Program),
+        // Super is not the Primary here: its chords belong to the OS or the program.
+        ("Super+D", Program),
+        ("Super+K", Program),
+        ("Ctrl+Shift+K", Dropped),
+        ("Ctrl+Shift+;", Dropped),
+    ];
+    for platform in [Platform::Windows, KDE, GNOME] {
+        check(platform, rows);
+    }
+}
+
+#[test]
+fn the_find_keys_follow_the_platform() {
+    use Went::Ran;
+    for platform in [Platform::Windows, KDE] {
+        check(
+            platform,
+            &[
+                ("F3", Ran(Action::FindNext)),
+                ("Shift+F3", Ran(Action::FindPrevious)),
+                ("Escape", Ran(Action::CloseFind)),
+            ],
         );
-        for chord in chords {
-            assert!(
-                chord.is_command_form() || chord.is_ctrl_shift_form() || is_ctrl_super(chord),
-                "{action:?} {chord:?}"
+    }
+    check(
+        GNOME,
+        &[
+            ("Ctrl+Shift+G", Ran(Action::FindNext)),
+            ("Ctrl+Shift+Alt+G", Ran(Action::FindPrevious)),
+        ],
+    );
+}
+
+#[test]
+fn macos_takes_super_only() {
+    use Went::{Dropped, Program, Ran};
+    check(
+        Platform::MacOs,
+        &[
+            ("Super+D", Ran(Action::SplitRight)),
+            ("Super+Shift+D", Ran(Action::SplitDown)),
+            ("Super+1", Ran(Action::SelectTab(1))),
+            ("Super+K", Dropped),
+            ("Ctrl+D", Program),
+            ("Ctrl+Shift+D", Program),
+            ("Ctrl+1", Program),
+        ],
+    );
+}
+
+#[test]
+fn altgr_characters_type_on_every_platform() {
+    let held = |mods: &[Modifier], key: Key| {
+        KeyInput::new(mods.iter().copied().collect::<Modifiers>(), key).with_alt_gr(AltGr::Held)
+    };
+    let inputs = [
+        held(&[Modifier::Ctrl, Modifier::Alt], Key::Char('2')),
+        held(&[Modifier::Ctrl, Modifier::Alt], Key::Char('q')),
+        held(&[Modifier::Alt], Key::Char('e')),
+        held(
+            &[Modifier::Ctrl, Modifier::Alt, Modifier::Shift],
+            Key::Char('d'),
+        ),
+        held(&[Modifier::Super], Key::Char('c')),
+    ];
+    for platform in Platform::ALL {
+        let keymap = keymap_for_any(platform);
+        for input in &inputs {
+            assert_eq!(
+                went(&keymap, input),
+                Went::Program,
+                "{platform:?} {input:?}"
             );
-            assert!(!chord.is_reserved());
-            assert_eq!(keymap.action_for(chord), Some(*action));
         }
     }
-    let copy_super = Chord::of_char('c', Mods::SUPER);
-    assert_eq!(keymap.action_for(&copy_super), Some(Action::Copy));
-    assert_eq!(keymap.action_for(&ctrl_shift('c')), Some(Action::Copy));
+}
+
+/// A keymap for any platform, ignoring registration problems (the "other" desktop has two).
+fn keymap_for_any(platform: Platform) -> Keymap {
+    build_keymap(&ConventionSource, platform, &Overrides::default()).0
 }
 
 #[test]
-fn rebinding_moves_an_action_and_refuses_clashes() {
-    let mut keymap = Keymap::defaults();
-    let alt_c = Chord::parse("ctrl+alt+c").expect("valid");
-    keymap.bind(Action::Copy, alt_c).expect("free chord");
-    assert_eq!(keymap.action_for(&alt_c), Some(Action::Copy));
-    assert_eq!(keymap.action_for(&ctrl_shift('c')), None);
-    // A setting replaces both default forms: the Super form is given back as well.
-    assert_eq!(keymap.action_for(&Chord::of_char('c', Mods::SUPER)), None);
-    assert_eq!(keymap.chords_for(Action::Copy).count(), 1);
-    let clash = keymap.bind(Action::Paste, alt_c);
-    assert!(matches!(clash, Err(SettingsError::ChordInUse { .. })));
-    let reserved = keymap.bind(Action::Paste, Chord::parse("super+tab").expect("valid"));
-    assert!(matches!(reserved, Err(SettingsError::ReservedChord(_))));
+fn every_declared_default_registers_except_where_a_standard_chord_has_it() {
+    for platform in [Platform::MacOs, Platform::Windows, KDE, GNOME, OURS] {
+        let (_, issues) = build_keymap(&ConventionSource, platform, &Overrides::default());
+        assert!(issues.is_empty(), "{platform:?}: {issues:?}");
+    }
+    // Ctrl+Alt+Left and Right are the common conventions' Space switch.
+    let (keymap, issues) = build_keymap(&ConventionSource, OTHER, &Overrides::default());
+    let mentioned = |id: &str| {
+        issues
+            .iter()
+            .filter(|(line, issue)| {
+                *line == 0 && matches!(issue, SettingsError::Key(m) if m.contains(id))
+            })
+            .count()
+    };
+    assert_eq!(issues.len(), 2, "{issues:?}");
+    assert_eq!(
+        (
+            mentioned("temor.focus-left"),
+            mentioned("temor.focus-right")
+        ),
+        (1, 1)
+    );
+    // The refusal costs those two actions only.
+    assert_eq!(
+        went(&keymap, &press("Ctrl+Shift+Alt+Up")),
+        Went::Ran(Action::FocusUp)
+    );
 }
 
 #[test]
-fn settings_text_applies_good_lines_and_reports_bad_ones() {
-    let text = "# comment\nfont.size = 15\nscrollback.lines = 500\ncursor.style = bar\n\
-                font.family = \"Iosevka\"\nshell.program = fish\nkeys.copy = ctrl+alt+c\n\
-                font.size = huge\nkeys.paste = super+space\nbogus = 1\n";
+fn action_ids_are_the_ones_a_keys_file_writes() {
+    #[rustfmt::skip]
+    let rows: &[(Action, &str)] = &[
+        (Action::Copy, "copy"),
+        (Action::Paste, "paste"),
+        (Action::Find, "find"),
+        (Action::FindNext, "find-next"),
+        (Action::FindPrevious, "find-previous"),
+        (Action::NewTab, "new"),
+        (Action::ClosePane, "close"),
+        (Action::SplitRight, "temor.split-right"),
+        (Action::SplitDown, "temor.split-down"),
+        (Action::FocusLeft, "temor.focus-left"),
+        (Action::FocusRight, "temor.focus-right"),
+        (Action::FocusUp, "temor.focus-up"),
+        (Action::FocusDown, "temor.focus-down"),
+        (Action::PreviousPrompt, "temor.previous-prompt"),
+        (Action::NextPrompt, "temor.next-prompt"),
+        (Action::ToggleZoom, "temor.zoom"),
+        (Action::Equalize, "temor.equalize"),
+        (Action::ReopenTab, "temor.reopen-tab"),
+        (Action::SelectTab(1), "temor.tab-1"),
+        (Action::SelectTab(9), "temor.tab-9"),
+        (Action::SelectSpace(3), "switch-to-space-3"),
+    ];
+    for (action, id) in rows {
+        let named = action.to_chordkit().expect("bound by a keymap entry");
+        assert_eq!(named.id(), *id);
+        assert_eq!(Action::from_chordkit(&named), Some(*action), "{id}");
+    }
+    assert_eq!(Action::CloseFind.to_chordkit(), None);
+    assert_eq!(Action::SelectTab(0).to_chordkit(), None);
+    assert_eq!(Action::SelectTab(10).to_chordkit(), None);
+    for id in [
+        "select-all",
+        "temor.nope",
+        "temor.tab-0",
+        "temor.tab-10",
+        "mail.split-right",
+    ] {
+        let named: chordkit::Action = id.parse().expect("an action id");
+        assert_eq!(Action::from_chordkit(&named), None, "{id}");
+    }
+}
+
+#[test]
+fn the_declared_defaults_are_temors_own_only() {
+    let ids: Vec<String> = declared()
+        .iter()
+        .filter_map(|(action, _)| action.to_chordkit())
+        .map(|named| named.id())
+        .collect();
+    assert_eq!(ids.len(), declared().len());
+    assert!(ids.iter().all(|id| id.starts_with("temor.")), "{ids:?}");
+}
+
+#[test]
+fn a_persons_changes_win_and_a_refused_one_keeps_the_default() {
+    let (overrides, bad) =
+        Overrides::parse("temor.split-right = Primary+Alt+N\ncopy = none\ntemor.zoom = Super+K\n");
+    assert!(bad.is_empty(), "{bad:?}");
+    let (keymap, issues) = build_keymap(&ConventionSource, Platform::Windows, &overrides);
+    // Windows keeps every Windows-key chord for itself: line 3 is refused, in words.
+    assert!(
+        matches!(issues.as_slice(), [(3, SettingsError::Key(_))]),
+        "{issues:?}"
+    );
+    use Went::{Dropped, Ran};
+    for (text, want) in [
+        ("Ctrl+Shift+Alt+N", Ran(Action::SplitRight)),
+        ("Ctrl+Shift+D", Dropped),
+        ("Ctrl+Shift+C", Dropped),
+        ("Ctrl+Shift+Alt+Enter", Ran(Action::ToggleZoom)),
+    ] {
+        assert_eq!(went(&keymap, &press(text)), want, "{text}");
+    }
+}
+
+/// A source whose settings cannot be read.
+#[derive(Debug)]
+struct Unreadable;
+
+impl KeymapSource for Unreadable {
+    fn load(&self, _platform: Platform) -> Result<Keymap, SourceError> {
+        Err(SourceError::Unsupported("no shortcut settings here".into()))
+    }
+}
+
+#[test]
+fn an_unreadable_source_leaves_the_conventions() {
+    let (keymap, issues) = build_keymap(&Unreadable, KDE, &Overrides::default());
+    assert!(
+        matches!(issues.as_slice(), [(0, SettingsError::Key(m))] if m.contains("no shortcut settings here")),
+        "{issues:?}"
+    );
+    assert_eq!(
+        went(&keymap, &press("Ctrl+Shift+C")),
+        Went::Ran(Action::Copy)
+    );
+}
+
+#[test]
+fn shortcuts_are_shown_the_way_the_platform_writes_them() {
+    let rows: &[(Platform, Action, Option<&str>, Option<&str>)] = &[
+        (OURS, Action::Copy, Some("⌘C"), Some("⌘C")),
+        (OURS, Action::SplitDown, Some("⇧⌘D"), Some("⇧⌘D")),
+        (
+            Platform::Windows,
+            Action::SplitRight,
+            Some("Ctrl+D"),
+            Some("Ctrl+Shift+D"),
+        ),
+        (
+            Platform::Windows,
+            Action::SplitDown,
+            Some("Ctrl+Shift+D"),
+            Some("Ctrl+Alt+Shift+D"),
+        ),
+        (OURS, Action::SelectSpace(1), Some("⌃1"), None),
+        (OURS, Action::CloseFind, None, None),
+    ];
+    for (platform, action, menu, terminal) in rows {
+        let keymap = keymap_for(*platform);
+        assert_eq!(
+            shortcut(&keymap, *action).as_deref(),
+            *menu,
+            "{platform:?} {action:?}"
+        );
+        assert_eq!(
+            terminal_shortcut(&keymap, *action).as_deref(),
+            *terminal,
+            "{platform:?} {action:?}"
+        );
+    }
+}
+
+#[test]
+fn settings_text_applies_good_lines_and_reports_bad_ones_by_line() {
+    let text = "# comment\n\
+                font.size = 15\n\
+                temor.split-right = Primary+Alt+N\n\
+                font.size = huge\n\
+                temor.nope = Primary+K\n\
+                keys.copy = ctrl+c\n\
+                copy = Primary+Hyper+K\n\
+                bogus = 1\n\
+                scrollback.lines = 500\n";
     let parsed = parse_settings(text);
     assert_eq!(parsed.settings.font_size.points(), 15.0);
     assert_eq!(parsed.settings.scrollback.lines(), 500);
-    assert_eq!(parsed.settings.keymap.action_for(&ctrl_shift('c')), None);
     let lines: Vec<usize> = parsed.issues.iter().map(|(line, _)| *line).collect();
-    assert_eq!(lines, vec![8, 9, 10]);
+    assert_eq!(lines, vec![4, 5, 6, 7, 8]);
+    let kept: Vec<String> = parsed
+        .settings
+        .keys
+        .entries()
+        .iter()
+        .map(|entry| entry.action.id())
+        .collect();
+    assert_eq!(kept, vec!["temor.split-right".to_owned()]);
 }
 
 #[test]
@@ -135,24 +420,8 @@ fn settings_values_have_limits() {
 }
 
 #[test]
-fn prompt_jumps_are_bound_to_ctrl_shift_arrows_and_settable() {
-    let keymap = Keymap::defaults();
-    let up = Chord::parse("ctrl+shift+up").expect("valid");
-    let down = Chord::parse("ctrl+shift+down").expect("valid");
-    assert_eq!(keymap.action_for(&up), Some(Action::PreviousPrompt));
-    assert_eq!(keymap.action_for(&down), Some(Action::NextPrompt));
-    assert_eq!(up.label(), "⌘↑");
-    let parsed = parse_settings("keys.next_prompt = alt+down");
-    assert!(parsed.issues.is_empty(), "{:?}", parsed.issues);
-    assert_eq!(
-        parsed.settings.keymap.chord_for(Action::NextPrompt),
-        Some(&Chord::parse("alt+down").expect("valid"))
-    );
-}
-
-#[test]
 fn notify_after_reads_seconds_and_off() {
-    use crate::settings::NotifyAfter;
+    use crate::settings::{NotifyAfter, TerminalSettings};
     assert_eq!(
         TerminalSettings::default().notify_after,
         NotifyAfter::Seconds(10)
@@ -168,68 +437,4 @@ fn notify_after_reads_seconds_and_off() {
         NotifyAfter::Off
     );
     assert_eq!(parse_settings("notify.after = soon").issues.len(), 1);
-}
-
-#[test]
-fn a_bare_ctrl_chord_is_refused_and_the_message_names_the_command_forms() {
-    let cases: &[(&str, Option<&str>)] = &[
-        (
-            "ctrl+c",
-            Some("Ctrl+C belongs to the program; use Ctrl+Shift+C or ⌘C"),
-        ),
-        (
-            "ctrl+5",
-            Some("Ctrl+5 belongs to the program; use Ctrl+Shift+5 or ⌘5"),
-        ),
-        (
-            "ctrl+/",
-            Some("Ctrl+/ belongs to the program; use Ctrl+Shift+/ or ⌘/"),
-        ),
-        ("ctrl+shift+c", None),
-        ("ctrl+alt+c", None),
-        ("super+c", None),
-    ];
-    for (text, want) in cases {
-        let chord = Chord::parse(text).expect("valid");
-        let got = Keymap::defaults()
-            .bind(Action::Copy, chord)
-            .err()
-            .map(|e| e.to_string());
-        assert_eq!(got.as_deref(), *want, "{text}");
-    }
-}
-
-#[test]
-fn workspace_chords_run_their_actions_in_the_right_forms() {
-    let keymap = Keymap::defaults();
-    #[rustfmt::skip]
-    let rows: &[(&str, Option<Action>)] = &[
-        ("ctrl+shift+t", Some(Action::NewTab)),
-        ("super+t", Some(Action::NewTab)),
-        ("ctrl+shift+w", Some(Action::ClosePane)),
-        ("super+d", Some(Action::SplitRight)),
-        ("ctrl+shift+alt+d", Some(Action::SplitDown)),
-        ("super+shift+d", Some(Action::SplitDown)),
-        ("ctrl+shift+alt+left", Some(Action::FocusLeft)),
-        ("super+alt+up", Some(Action::FocusUp)),
-        ("super+shift+enter", Some(Action::ToggleZoom)),
-        ("super+shift+t", Some(Action::ReopenTab)),
-        ("ctrl+shift+alt+t", Some(Action::ReopenTab)),
-        ("ctrl+shift+=", Some(Action::Equalize)),
-        ("ctrl+super+=", Some(Action::Equalize)),
-        ("ctrl+shift+1", Some(Action::SelectTab(1))),
-        ("ctrl+shift+9", Some(Action::SelectTab(9))),
-        // Ctrl+digit is the desktop's workspace switch: temor claims none of it.
-        ("ctrl+1", None),
-        ("ctrl+9", None),
-        ("ctrl+0", None),
-        ("ctrl+alt+1", None),
-        ("super+1", Some(Action::SelectTab(1))),
-        ("super+9", Some(Action::SelectTab(9))),
-        ("super+shift+z", None),
-    ];
-    for (text, want) in rows {
-        let chord = Chord::parse(text).expect("a valid chord");
-        assert_eq!(keymap.action_for(&chord), *want, "{text}");
-    }
 }

@@ -1,22 +1,19 @@
 //! temor's terminal pane, headless: the pure parts a terminal needs (PLAN §6, §11 P1). Key
-//! chords and the keymap, settings text, cell rows, selection and search, paste rules, and the
+//! actions and their keymap defaults, settings text, cell rows, selection and search, paste rules, and the
 //! link and working-directory checks, and the engine that runs a program on a pty and feeds its
 //! terminal. The engine never spawns a thread: the caller runs [`PaneRunner::run`].
 //!
 //! # Example
 //!
-//! Settings text is read over the defaults; a bad line is reported and the rest still applies:
+//! Settings text is read over the defaults; a bad line is reported and the rest still applies.
+//! Key lines are chordkit's form and are kept as the person's changes to the keymap:
 //!
 //! ```
-//! use temor_pane::keys::{Action, Chord};
 //! use temor_pane::settings::parse_settings;
 //!
-//! let parsed = parse_settings("keys.find_next = ctrl+alt+g\nfont.size = huge\n");
+//! let parsed = parse_settings("temor.split-right = Primary+Alt+N\nfont.size = huge\n");
 //! assert_eq!(parsed.issues.len(), 1);
-//! assert_eq!(
-//!     parsed.settings.keymap.chord_for(Action::FindNext),
-//!     Some(&Chord::parse("ctrl+alt+g").expect("a chord")),
-//! );
+//! assert_eq!(parsed.settings.keys.entries().len(), 1);
 //! ```
 
 pub mod keys;

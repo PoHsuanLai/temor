@@ -1,4 +1,4 @@
-//! The crate's errors: what a settings line or a key chord can get wrong, and what a pane can
+//! The crate's errors: what a settings line can get wrong, and what a pane can
 //! fail to start with.
 
 use thiserror::Error;
@@ -37,28 +37,14 @@ pub enum PaneError {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum SettingsError {
-    /// The chord belongs to the desktop (Super with Space, Tab or a digit, or Ctrl+Space); a
-    /// keymap may not bind it.
-    #[error("{0} belongs to the desktop")]
-    ReservedChord(String),
-    /// A bare Ctrl chord (Ctrl with a letter, digit or punctuation, no Shift or Alt) belongs to the
-    /// program (its interrupt, its end-of-file); the message names the ⌘ forms to use instead.
-    #[error("{chord} belongs to the program; use {ctrl_shift} or {command}")]
-    ProgramChord {
-        chord: String,
-        ctrl_shift: String,
-        command: String,
-    },
-    /// The chord already runs another action.
-    #[error("{chord} is already used by {by}")]
-    ChordInUse { chord: String, by: String },
+    /// A key line was refused or could not apply, in words for the person ("Ctrl+Tab can't be
+    /// used: the desktop switches windows with it"). The text comes from the keymap.
+    #[error("{0}")]
+    Key(String),
     /// A settings line names no setting this version knows.
     #[error("no setting called {0:?}")]
     UnknownSetting(String),
     /// A settings line has a value its setting cannot take.
     #[error("{key} cannot be {value:?}")]
     BadSettingValue { key: String, value: String },
-    /// A key chord in a settings file did not parse ("ctrl+shift+c" is the form).
-    #[error("not a key combination: {0:?}")]
-    BadChord(String),
 }
