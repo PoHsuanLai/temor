@@ -1238,6 +1238,7 @@ long text; anyview's `NotOpened` offers "Open in another app"; quire v0.3.16 pin
 - [ ] The look (owner to confirm): bolder cards with padding and the run time and exit code in
   the header; icon-only block tools; no status footer; the typing line pinned to the pane's bottom
   while the screen is not full; one surface for window, sidebar and pane (a quire ask for a flat
-  app-shell look); dark default or follow the system (owner's call).
+  app-shell look); dark by default (owner, 2026-10-11).
+- [ ] Design audit (2026-10-11, private artifact https://claude.ai/artifact/QZJUJwoLf5cSKodekfSdAh): 3 critical (five text colours under 4.5:1, the find field not taking the keyboard, no collapse or pane minimum below ~800 px), 8 high (four grounds in two temperatures, accent on six jobs, a ring around the focused pane, flat cards, the floating toolbar sentence, the typing line repeating the card, a 10 px status strip, `user@host:path` tab names), 6 medium (sidebar foot, actions missing from the bar, find bar layout, sans versus mono, the miniature, first launch).
 - [ ] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
   restore, keyboard-only use, resize with a menu or the bar open.
