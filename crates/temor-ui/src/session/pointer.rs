@@ -204,7 +204,7 @@ pub enum WheelDirection {
 }
 
 /// A viewport cell as a screen cell (the viewport starts at screen row `top`).
-fn screen_cell(top: u32, row: u16, col: u16) -> CellPos {
+pub(super) fn screen_cell(top: u32, row: u16, col: u16) -> CellPos {
     CellPos::new(top.saturating_add(u32::from(row)), col)
 }
 

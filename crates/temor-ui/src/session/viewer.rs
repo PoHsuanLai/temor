@@ -8,8 +8,10 @@ use temor_core::shelf::PaneSite;
 use temor_core::viewer::{candidates, output_paths, resolve, token_at};
 use temor_core::vocab::ids::BlockId;
 use temor_pane::text::CellPos;
+use temor_vt::SurfacePoint;
 
 use super::Session;
+use super::pointer::screen_cell;
 use crate::error::UiError;
 
 /// A file to show, with the files the same output lists (the viewer's arrows walk them).
@@ -35,27 +37,46 @@ impl Session {
     /// ⌘-click at `cell`: the word there, if it names a file, is asked for. A pane on another
     /// computer has no files of this one's.
     pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), UiError> {
-        if self.site == PaneSite::Remote {
-            return Ok(());
-        }
-        let row = self.line(cell.row)?;
-        let Some(token) = token_at(&row, cell.col) else {
+        let Some(file) = self.file_at(cell)? else {
             return Ok(());
         };
         let cwd = self.cwd.clone();
-        let file = candidates(&token)
-            .iter()
-            .filter_map(|candidate| resolve(cwd.as_deref(), candidate))
-            .find(|path| is_file(path));
-        let Some(file) = file else {
-            return Ok(());
-        };
         let around = self
             .output_at_row(cell.row)
             .map(|output| output_paths(&output, cwd.as_deref(), is_file))
             .unwrap_or_default();
         self.view_ask = Some(ViewAsk { file, around });
         Ok(())
+    }
+
+    /// The file the word at `cell` names, if it names one that exists here. The rule is the
+    /// ⌘-click's, and the peek's too.
+    fn file_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
+        if self.site == PaneSite::Remote {
+            return Ok(None);
+        }
+        let row = self.line(cell.row)?;
+        let Some(token) = token_at(&row, cell.col) else {
+            return Ok(None);
+        };
+        let cwd = self.cwd.as_deref();
+        Ok(candidates(&token)
+            .iter()
+            .filter_map(|candidate| resolve(cwd, candidate))
+            .find(|path| is_file(path)))
+    }
+
+    /// The file under the pointer at `at`, for the peek: none on a pane on another computer, while
+    /// the program has the mouse (a ⌘-click would go to it), or where the text names no file.
+    pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
+        let fit = self.fit?;
+        if self.pane.with_term(|term| term.mouse_tracking()) {
+            return None;
+        }
+        let hit = fit.cell_at(at);
+        let top = self.viewport_top().ok()?;
+        let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
+        self.file_at(cell).ok().flatten()
     }
 
     /// The block toolbar's View: the first file the block's output lists, with the rest around it.
