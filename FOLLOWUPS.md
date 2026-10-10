@@ -506,3 +506,6 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [ ] Unbound Ctrl+Shift chords are dropped. Once a program turns on kitty keyboard flags they are distinct keys; forward them then instead of dropping.
 - [ ] `temor save` STARTED-before-consent (transfers decision) not yet done.
 - [ ] The Restart panic (Blitz node.rs:1573) was not reproduced; the regression test runs it in the harness. If it still happens on the desktop, take it to quire/Blitz with a backtrace (RUST_BACKTRACE=1).
+
+## quire v0.3.3 (pending; agent session gating it)
+- [ ] Bump quire to v0.3.3 when tagged: the hover-card guard (ds-blitz `layout_chain::placeable`) fixes the Restart panic. Un-ignore `restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive` (verified passing against the guard by the agent session). Also `SwitchChord::Unbound` for temor's Space switch, and the seven P3a/window asks (column layout, focus_landing_told, Busy retry, RawKeySurface props, .ds-texture-layer rule, harness window/IME hosts, window icon).
