@@ -730,7 +730,7 @@ The ranking rules:
 | **P7 Agents** | `presence_step` and the radar, OSC 7501, `TEMOR_PANE_ID` socket, checkpoints, the CLI pane through docket-launch, the agent view (with docket and quire), the hook bridge (with docket), the approval mode line (D20), agent worktrees (D19; overlap spike done) | P3, P6, P10 (review view); docket |
 | **P8 Proposals** | the context card (D21), the trial module in bulkhead, sanitising, the model call, the verdict UI, the Fix chip, the taint marker, the log record | P2, P6; bulkhead split |
 | **P9 Transfers and shelf** | OSC 5113/1337, `temor get/save/view`, shelf UI, upload by drop | P2 |
-| **P10 Viewers** | peek, Sequence, viewer pane | P2; anyview pane API |
+| **P10 Viewers** (done, except peek) | peek, Sequence, viewer pane | P2; anyview pane API |
 | **P11 Plugins** | bayonet; `block.lens`, `open.provider`, `agent.adapter`, `row.facts`; the built-in adapters (Claude Code status and hook bridge, git facts) written as plugins | P5, P7; bayonet |
 | **P13 SSH Tier A** | host list (plus tailnet machines from porter, D22), connection sharing, bootstrap (integration, terminfo, `temor get/open`), splits on the same host, remote files and write-back, forwards, consent per host | P2, P3, P9 |
 | **P14 SSH Tier B** | `temor-wire`, `temor-remote` (session daemon with libghostty-vt, snapshot and reattach, `link_step`), port detection (direct tailnet open first), the file service, remote trial, remote workspaces for local agents (plus the on-host CLI fallback) | P13; bulkhead; docket's `JudgeToolCall` |

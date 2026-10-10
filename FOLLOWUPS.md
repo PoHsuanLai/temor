@@ -904,8 +904,27 @@ Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1
   when undoing is wanted.
 - [ ] Agent exit is detected only for agents first seen as the foreground process; report-only
       agents close their watch when the pane ends.
-- [ ] P10 viewers are written and pass their tests on branch `b15/view` (anyview-pane 3d52a9b,
+- [x] (landed with anyview 397012b) P10 viewers are written and pass their tests on branch `b15/view` (anyview-pane 3d52a9b,
       zeroize 1.9.0 for anyview's pdf crate). They wait for anyview's Batch 15 sha, which uses
       quire v0.3.12; with today's sha the lock would hold two quires. Peek isn't built (it needs
       `anyview-fs` and anyview-peek's `pane` feature).
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-*.md`.
+
+## P10 Viewers (merged 2026-10-10, anyview 397012b)
+- A viewer pane in a split, opened by ⌘-clicking a file path in the output or with the toolbar's
+  View button. A tab holds one viewer, and the next file replaces it.
+- The viewer's commands join the ⌘T bar while it has the keyboard. A listing's files form a
+  Sequence (`SequenceOrigin::Output`), so the arrow keys step through them.
+- Esc returns the keyboard to the terminal and ⌘W closes the viewer. Viewer tiles are saved and
+  reopened if the file still exists.
+- Orchestrator fix: the viewer opens on the press's release. Opening mid-press split the pane
+  and dropped the press's pointer capture.
+- [ ] Peek (⌘-hover preview): needs `anyview-fs` and anyview-peek's `pane` feature.
+- [ ] Recordings in the pane: anyview-pane's `player` feature with `PaneEdge::with_player`
+      (off for now).
+- [ ] When anyview #94 lands, take `PaneEdge::with_store` (views remembered through the store;
+      Remember is in memory now), and the single Unfocus on blur.
+- [ ] No D-Bus Open fallback. OpenElsewhere uses the FileShell opener. Files on another
+      computer (Tier A/B panes) can't be viewed yet.
+- [ ] A Spaces-file recall of only a Place brings viewer panes back as shells.
+- Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-view.md`.
