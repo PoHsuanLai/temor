@@ -201,13 +201,33 @@ fn only_named_agents_count_as_agents() {
         Millis(0),
         &status(ProgramState::Working, ProgramWait::Unspecified),
     );
-    assert!(
-        !radar.is_named_agent(PaneId(1)),
+    assert_eq!(
+        radar.agent_of(PaneId(1)),
+        None,
         "a build tool is not an agent"
     );
-    assert!(radar.is_named_agent(PaneId(2)));
+    assert_eq!(radar.agent_of(PaneId(2)), Some("claude"));
     // Its status still shows on its row.
     assert_eq!(radar.state_of(PaneId(1)), Working);
+}
+
+#[test]
+fn an_agent_seen_by_its_process_is_gone_when_another_program_is_in_front() {
+    let mut radar = Radar::new(RadarParams::default());
+    let front = |name: &str| PaneEvent::Foreground(Some(name.to_owned()));
+    // Seen by what it reported: another program in front does not end it.
+    radar.observe(
+        PaneId(1),
+        Millis(0),
+        &status(ProgramState::Idle, ProgramWait::Unspecified),
+    );
+    radar.observe(PaneId(1), Millis(0), &front("node"));
+    assert_eq!(radar.agent_of(PaneId(1)), Some("claude"));
+    // Seen in front: the shell coming back ends it.
+    radar.observe(PaneId(2), Millis(0), &front("Claude"));
+    assert_eq!(radar.agent_of(PaneId(2)), Some("claude"));
+    radar.observe(PaneId(2), Millis(1), &front("zsh"));
+    assert_eq!(radar.agent_of(PaneId(2)), None);
 }
 
 #[test]

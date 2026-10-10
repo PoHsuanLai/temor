@@ -34,9 +34,9 @@ impl Desk {
         self.agents_then(|hub| hub.agent_pick(tab, pick));
     }
 
-    /// Restore, in the sheet that showed what it would change.
-    pub fn confirm_restore(&self) {
-        self.agents_then(crate::hub::Hub::confirm_restore);
+    /// Restore…, in the sheet that showed what it would change.
+    pub fn perform_restore(&self) {
+        self.agents_then(crate::hub::Hub::perform_restore);
     }
 
     /// The sheet is closed.

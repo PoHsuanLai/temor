@@ -1,11 +1,10 @@
 //! The hub's side of restore points (PLAN P19): docket keeps one run's points, and the window
 //! lists them in a tab's menu, shows what a restore would change in a sheet, and asks docket to
 //! do it. The calls run on worker threads; the answers come back as [`Done`]s. Restore is held
-//! back while the agent is working: a turn in flight would write over what was put back.
+//! back while docket's list says a turn is running: it would write over what was put back.
 
 use std::sync::Arc;
 
-use temor_core::presence::AgentState;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Cwd;
 use temor_desktop::{
@@ -80,17 +79,13 @@ impl Hub {
         }
     }
 
-    fn working(&self, pane: PaneId) -> bool {
-        self.agents.radar.state_of(pane) == AgentState::Working
-    }
-
     /// The person chose a restore point in `tab`'s menu: what restoring it would change is
     /// asked of docket first, and shown in a sheet before anything is touched.
     pub(super) fn ask_restore(&mut self, tab: TabId, id: PointId) {
         let Some(pane) = self.ws.focus_of(tab) else {
             return;
         };
-        if self.working(pane) {
+        if self.agents.points.running(pane) {
             self.notices.push(WAIT_FOR_AGENT.to_owned());
             return;
         }
@@ -131,9 +126,10 @@ impl Hub {
         }
     }
 
-    /// The person pressed Restore in the sheet. docket gets back the digest of the plan the
-    /// sheet showed, so it refuses if the folder changed since.
-    pub fn confirm_restore(&mut self) {
+    /// The person pressed Restore… in the sheet, which only shows the plan. docket gets back the
+    /// digest of the plan the sheet showed, so it refuses if the folder changed since, and asks
+    /// the person itself before it puts anything back.
+    pub fn perform_restore(&mut self) {
         let Some(Sheet::Restore {
             pane,
             session,
@@ -144,7 +140,7 @@ impl Hub {
         else {
             return;
         };
-        if self.working(pane) {
+        if self.agents.points.running(pane) {
             self.notices.push(WAIT_FOR_AGENT.to_owned());
             return;
         }
@@ -178,7 +174,7 @@ impl Hub {
 }
 
 /// What went wrong, in the person's words.
-fn words(err: &DesktopError) -> String {
+pub(super) fn words(err: &DesktopError) -> String {
     match err {
         DesktopError::Checkpoint(fault) => fault.words().to_owned(),
         _ => "the restore points are not reachable".to_owned(),

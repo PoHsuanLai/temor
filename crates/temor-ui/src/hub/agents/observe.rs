@@ -42,22 +42,19 @@ impl Hub {
     }
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.
-    /// A pane known to run an agent that starts working begins a turn: docket saves a restore point, so the list is read again; the same when it
-    /// stops working.
+    /// A known agent that appears, starts or stops a turn, or leaves is followed by its watch.
     pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, event: &PaneEvent) -> Changed {
         let now = self.agents.now();
-        let before = self.agents.radar.state_of(pane);
+        let was = self.agent_and_state(pane);
         let changed = self.agents.radar.observe(pane, now, event);
-        let after = self.agents.radar.state_of(pane);
-        let began = matches!(
-            before,
-            AgentState::Idle | AgentState::Done(_) | AgentState::Failed(_)
-        ) && after == AgentState::Working;
-        let ended = before == AgentState::Working && after != AgentState::Working;
-        if (began || ended) && self.agents.radar.is_named_agent(pane) {
-            self.refresh_points(pane);
-        }
+        let is = self.agent_and_state(pane);
+        self.watch_follows(pane, was, is);
         changed
+    }
+
+    fn agent_and_state(&self, pane: PaneId) -> (Option<String>, AgentState) {
+        let agent = self.agents.radar.agent_of(pane).map(str::to_owned);
+        (agent, self.agents.radar.state_of(pane))
     }
 
     /// The pane has the keyboard and the window is in use.
@@ -90,6 +87,7 @@ impl Hub {
     pub(in crate::hub) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);
         self.agents.points.forget(pane);
+        self.watch_pane_ended(pane);
         if let Some(sockets) = &self.agents.sockets {
             sockets.close(pane);
         }

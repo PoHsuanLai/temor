@@ -85,10 +85,7 @@ impl Hub {
     /// The menu of `tab`.
     pub fn agent_menu(&self, tab: TabId) -> Option<AgentMenu> {
         let pane = self.ws.focus_of(tab)?;
-        let restore = restore_menu(
-            self.agents.points.lists.get(&pane),
-            self.agents.radar.state_of(pane),
-        );
+        let restore = restore_menu(self.agents.points.lists.get(&pane));
         let place = match self.agents.trees.by_tab.contains_key(&tab) {
             true => Where::Worktree,
             false => Where::Checkout,
@@ -100,7 +97,7 @@ impl Hub {
     pub fn agent_sheet(&self) -> Option<SheetView> {
         Some(match self.agents.sheet.as_ref()? {
             Sheet::Restore { plan, .. } => SheetView::Restore {
-                title: "Restore to this point?".to_owned(),
+                title: "What restoring changes".to_owned(),
                 put_back: names(&plan.changed),
                 bring_back: names(&plan.added),
                 remove: names(&plan.removed),

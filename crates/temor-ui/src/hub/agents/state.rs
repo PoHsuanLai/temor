@@ -15,6 +15,7 @@ use super::jobs::Jobs;
 use super::points::Points;
 use super::radar::Radar;
 use super::trees::Trees;
+use super::watch::Watches;
 use crate::edge::git::ProcessGit;
 use crate::edge::{Clock, SocketHost, SystemClock};
 use crate::view::launch::Launch;
@@ -53,6 +54,7 @@ pub struct Agents {
     pub radar: Radar,
     pub(super) points: Points,
     pub(super) trees: Trees,
+    pub(super) watches: Watches,
     pub(super) jobs: Jobs,
     pub(super) sockets: Option<SocketHost>,
     pub(super) socket_told: Told,
@@ -82,6 +84,7 @@ impl Agents {
             radar: Radar::new(RadarParams::default()),
             points: Points::default(),
             trees: Trees::default(),
+            watches: Watches::default(),
             jobs: Jobs::new(git),
             sockets: SocketHost::start(launch.ambient.runtime_dir.clone(), events).ok(),
             socket_told: Told::Not,

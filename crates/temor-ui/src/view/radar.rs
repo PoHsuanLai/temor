@@ -118,8 +118,8 @@ pub fn AgentSheets(desk: Desk) -> Element {
                         Label { text: format!("Remove, made since: {file}"), style: LabelStyle::Body }
                     }
                     Label { text: note, style: LabelStyle::Caption }
-                    {press("Restore", move |_| yes.confirm_restore())}
-                    {press("Cancel", move |_| no.close_agent_sheet())}
+                    {press("Close", move |_| no.close_agent_sheet())}
+                    {press("Restore…", move |_| yes.perform_restore())}
                 }
             }
         }

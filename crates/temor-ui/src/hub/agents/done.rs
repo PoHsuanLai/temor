@@ -4,6 +4,7 @@ use temor_core::worktree::overlap::OverlapIn;
 
 use super::jobs::Done;
 use super::state::Sheet;
+use super::watching::Refresh;
 use crate::hub::model::Hub;
 
 impl Hub {
@@ -18,6 +19,10 @@ impl Hub {
                 result,
             } => self.point_planned((pane, session, id), result),
             Done::PointRestored { pane, turn, result } => self.point_restored(pane, turn, result),
+            Done::WatchOpened { pane, result } => self.watch_opened(pane, result),
+            Done::WatchMarked { pane, result } => self.watch_marked(pane, result),
+            Done::WatchEnded { pane, result } => self.watch_answered(pane, result, Refresh::Yes),
+            Done::WatchClosed { pane, result } => self.watch_answered(pane, result, Refresh::No),
             Done::Swept { .. } => {}
             Done::Made { result } => self.worktree_made(result),
             Done::Snapshotted { tab, result } => self.tree_snapshotted(tab, result),
