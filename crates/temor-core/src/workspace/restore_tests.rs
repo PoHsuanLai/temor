@@ -32,7 +32,7 @@ fn built() -> Workspace {
 
 fn loaded(text: &str) -> Workspace {
     match decode(text, KeepClosed::DEFAULT) {
-        Restored::Loaded(ws) => ws,
+        Restored::Loaded(ws) => *ws,
         other => panic!("expected a loaded workspace, got {other:?}"),
     }
 }

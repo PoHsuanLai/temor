@@ -9,14 +9,14 @@ use dioxus::html::Modifiers;
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Harness, Input, PointerAction, PointerInput};
+use ds_harness::{Driver, Harness, Input, PointerAction, PointerInput};
 use temor_ui::view::probe::Probe;
 
 use super::support::{scratch_path, tools_present};
 use super::window::{chord, harness, wait_until};
 
 fn viewers(h: &Harness) -> usize {
-    h.html().matches("aria-label=\"Viewer\"").count()
+    h.html().matches("aria-label=\"File viewer\"").count()
 }
 
 fn terminals(h: &Harness) -> usize {
@@ -62,7 +62,9 @@ fn listed(name: &str, probe: &Probe) -> Harness {
     h
 }
 
-/// ⌘-clicks down the first characters of each row until a viewer opens. The listing's row is not
+/// ⌘-clicks down the third character of each row until a viewer opens. The pane starts 60px
+/// left of the focusing click at x=300 (the tab sidebar is to its left), and its gutter selects
+/// a block, so the click goes a few cells in. The listing's row is not
 /// known to the test (the font decides the rows' height), so every row of the pane is tried; a
 /// click on anything that is not a file does nothing.
 fn open_by_clicking(h: &mut Harness) {
@@ -71,7 +73,7 @@ fn open_by_clicking(h: &mut Harness) {
         command_click(
             h,
             Point {
-                x: Px(20.0),
+                x: Px(272.0),
                 y: Px(y),
             },
         );

@@ -41,7 +41,7 @@ pub enum Startup {
     /// No file: the first launch, or a launch after the file was removed.
     NoFile,
     /// The saved workspace.
-    Restored(Workspace),
+    Restored(Box<Workspace>),
     /// The file could not be used; the window starts fresh (the reason is for the log).
     Fresh(FreshWhy),
 }

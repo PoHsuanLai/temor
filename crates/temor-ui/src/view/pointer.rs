@@ -47,14 +47,20 @@ pub fn use_pane_mouse(
     signals: Option<HostSignals>,
     notice: Signal<Option<String>>,
     started: Instant,
+    released: Rc<dyn Fn()>,
 ) -> PaneMouse {
     // Who reports the release of the press in progress. The host's capture only follows a primary
     // press, so a primary press it captures is released through the capture, and every other press
     // is released through the element (PLAN §6). Exactly one of them reports.
     let owner = Rc::new(Cell::new(ReleaseOwner::Element));
     let capture = {
-        let (slot, signals, mut notice, owner) =
-            (Rc::clone(&slot), signals, notice, Rc::clone(&owner));
+        let (slot, signals, mut notice, owner, released) = (
+            Rc::clone(&slot),
+            signals,
+            notice,
+            Rc::clone(&owner),
+            Rc::clone(&released),
+        );
         use_pointer_capture(move |captured: CapturedPointer| {
             let scale = scale_of(signals.as_ref());
             let origin = rect
@@ -82,6 +88,10 @@ pub fn use_pane_mouse(
                 notice.set(Some(err.to_string()));
             }
             repaint(&slot);
+            // After the capture has let go: what the press asked for may change the layout.
+            if captured.phase == PointerPhase::Release {
+                released();
+            }
         })
     };
 
@@ -118,7 +128,13 @@ pub fn use_pane_mouse(
     };
 
     let up = {
-        let (slot, signals, notice, owner) = (Rc::clone(&slot), signals, notice, Rc::clone(&owner));
+        let (slot, signals, notice, owner, released) = (
+            Rc::clone(&slot),
+            signals,
+            notice,
+            Rc::clone(&owner),
+            Rc::clone(&released),
+        );
         move |event: PointerEvent| {
             let Some(button) = event.trigger_button().and_then(vt_button) else {
                 return;
@@ -130,17 +146,18 @@ pub fn use_pane_mouse(
             let p = event.element_coordinates();
             let scale = scale_of(signals.as_ref());
             let mut notice = notice;
-            let released = slot.borrow_mut().session.as_mut().map(|s| {
+            let result = slot.borrow_mut().session.as_mut().map(|s| {
                 s.release(
                     device_point(p.x, p.y, scale),
                     button,
                     vt_mods(event.modifiers()),
                 )
             });
-            if let Some(Err(err)) = released {
+            if let Some(Err(err)) = result {
                 notice.set(Some(err.to_string()));
             }
             repaint(&slot);
+            released();
         }
     };
 

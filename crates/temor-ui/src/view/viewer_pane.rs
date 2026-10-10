@@ -74,7 +74,7 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
                 on_key: EventHandler::new(on_key),
                 onpointerdown: EventHandler::new(pressed),
                 common: Common {
-                    aria_label: Some("Viewer".to_owned()),
+                    aria_label: Some("File viewer".to_owned()),
                     extra_class: ExtraClass::parse("temor-keys").ok(),
                     ..Common::default()
                 },

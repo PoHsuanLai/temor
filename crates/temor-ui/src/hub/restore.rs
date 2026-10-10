@@ -63,7 +63,7 @@ impl Hub {
     /// given to other Spaces: a file that reuses one of them is not restored.
     fn restore_space(&mut self, dir: &Path, id: SpaceId, taken: &mut BTreeSet<PaneId>) {
         let saved = match load_session_for(dir, id, KeepClosed::DEFAULT) {
-            Ok(Startup::Restored(ws)) if !ws.tabs.place.tabs.is_empty() => Some(ws),
+            Ok(Startup::Restored(ws)) if !ws.tabs.place.tabs.is_empty() => Some(*ws),
             Ok(_) => from_place(&self.book.spaces.recall().of(id)),
             Err(err) => {
                 self.notices.push(err.to_string());
@@ -118,7 +118,7 @@ impl Hub {
 fn from_place(place: &Place) -> Option<Workspace> {
     let text = serde_json::json!({ "version": VERSION, "place": place }).to_string();
     match decode(&text, KeepClosed::DEFAULT) {
-        Restored::Loaded(ws) if !ws.tabs.place.tabs.is_empty() => Some(ws),
+        Restored::Loaded(ws) if !ws.tabs.place.tabs.is_empty() => Some(*ws),
         _ => None,
     }
 }

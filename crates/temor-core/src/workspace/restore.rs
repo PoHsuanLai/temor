@@ -41,7 +41,7 @@ pub enum FreshWhy {
 #[non_exhaustive]
 pub enum Restored {
     /// The saved workspace.
-    Loaded(Workspace),
+    Loaded(Box<Workspace>),
     /// Nothing usable: start fresh.
     Fresh(FreshWhy),
 }
@@ -148,9 +148,9 @@ pub fn decode(text: &str, keep: KeepClosed) -> Restored {
         return Restored::Fresh(FreshWhy::Damaged);
     }
     match serde_json::from_value::<ReadV1>(value) {
-        Ok(read) => {
-            rebuild(read, keep).map_or(Restored::Fresh(FreshWhy::Damaged), Restored::Loaded)
-        }
+        Ok(read) => rebuild(read, keep).map_or(Restored::Fresh(FreshWhy::Damaged), |ws| {
+            Restored::Loaded(Box::new(ws))
+        }),
         Err(_) => Restored::Fresh(FreshWhy::Damaged),
     }
 }

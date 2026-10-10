@@ -26,19 +26,6 @@ pub fn view_if_asked(slot: &RefCell<Slot>, desk: &Desk, pane: PaneId) {
     }
 }
 
-/// A press in the grid, then the viewer it asked for (a ⌘-click on a path).
-pub fn then_view(
-    press: Rc<dyn Fn(dioxus::prelude::PointerEvent)>,
-    slot: Rc<RefCell<Slot>>,
-    desk: Desk,
-    pane: PaneId,
-) -> Rc<dyn Fn(dioxus::prelude::PointerEvent)> {
-    Rc::new(move |event: dioxus::prelude::PointerEvent| {
-        press(event);
-        view_if_asked(&slot, &desk, pane);
-    })
-}
-
 /// The block toolbar's View: the files the block's output lists open beside the pane.
 pub fn bar_view(
     slot: Rc<RefCell<Slot>>,

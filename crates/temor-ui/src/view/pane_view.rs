@@ -45,7 +45,7 @@ use super::offer::OfferBar;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
 use super::status::StatusLine;
-use super::viewer_open::{bar_view, then_view};
+use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
 use crate::hub::{Desk, WindowAction, workspace_input};
 use crate::input::stroke;
@@ -175,7 +175,20 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         }
     };
 
-    let mouse = use_pane_mouse(Rc::clone(&slot), rect, signals, desk.notice, started);
+    // A ⌘-click's viewer opens once the press is released: opening it splits the pane, which must
+    // not happen while the press holds the pointer.
+    let released: Rc<dyn Fn()> = {
+        let (slot, desk) = (Rc::clone(&slot), desk.clone());
+        Rc::new(move || view_if_asked(&slot, &desk, pane))
+    };
+    let mouse = use_pane_mouse(
+        Rc::clone(&slot),
+        rect,
+        signals,
+        desk.notice,
+        started,
+        released,
+    );
 
     // Files dropped on the pane are typed into its prompt, quoted for its shell.
     let dropper = use_file_drop({
@@ -309,7 +322,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         dropper.mounted(e.clone());
                         mouse.capture.on_mounted(e);
                     },
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, then_view(mouse.down.clone(), Rc::clone(&slot), desk.clone(), pane)),
+                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, mouse.down.clone()),
                     onpointerup: move |e| (mouse.up)(e),
                     onpointermove:block_hovered(Rc::clone(&slot), signals, hovered),
                     onwheel: move |e| (mouse.wheel)(e),
