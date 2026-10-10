@@ -7,6 +7,7 @@ use temor_vt::{
 
 use super::images::ImageCache;
 use super::model::{CellDraw, CellText, ImagePlacement, PaneFrame, TermColors};
+use super::update::Update;
 use crate::error::RenderError;
 
 /// One per terminal: libghostty's render state plus the kitty image copies.
@@ -49,48 +50,47 @@ pub struct CapturedFrame<'c> {
 
 impl CapturedFrame<'_> {
     /// Phase two, without the lock: copies the rows libghostty marks dirty (every row after a
-    /// resize or a full redraw) into `frame` and marks them for the renderer.
+    /// resize or a full redraw) into `frame` and marks them for the renderer. The frame changes
+    /// only when every row was read: a capture that fails after a resize leaves the old size and
+    /// rows, and libghostty keeps its dirty marks, so the next capture reads everything again.
     pub fn finish(self, frame: &mut PaneFrame) -> Result<(), RenderError> {
         let mut f = self.pending.end()?;
         let size = f.size();
         let resized = size != frame.size;
-        frame.resize(size);
         let colors = f.colors();
-        frame.set_colors(TermColors {
-            foreground: colors.foreground,
-            background: colors.background,
-            cursor: colors.cursor,
-        });
-        frame.cursor = f.cursor();
+        let cursor = f.cursor();
         let dirty = f.dirty();
+        let mut rows = Vec::new();
         if dirty != FrameDirty::Clean || resized {
             let filter = if dirty == FrameDirty::Full || resized {
                 RowFilter::All
             } else {
                 RowFilter::Dirty
             };
-            let mut failure = None;
             f.rows(filter, |row| {
                 let mut cells = Vec::new();
-                match row.cells(|c| {
-                    if let Some(cell) = drawable(c) {
-                        cells.push(cell);
-                    }
-                }) {
-                    Ok(()) => frame.set_row(row.row(), cells),
-                    // The row keeps its old cells; the first error is kept and reported below.
-                    Err(e) => {
-                        failure.get_or_insert(e);
-                    }
-                }
+                rows.push(
+                    row.cells(|c| {
+                        if let Some(cell) = drawable(c) {
+                            cells.push(cell);
+                        }
+                    })
+                    .map(|()| (row.row(), cells)),
+                );
             })?;
-            if let Some(e) = failure {
-                // Not marking the frame drawn keeps libghostty's dirty flags, so the next
-                // capture reads these rows again.
-                return Err(e.into());
-            }
         }
-        frame.images = self.images;
+        let update = Update {
+            size,
+            colors: TermColors {
+                foreground: colors.foreground,
+                background: colors.background,
+                cursor: colors.cursor,
+            },
+            cursor,
+            images: self.images,
+        };
+        // Not marking the frame drawn when a row failed keeps libghostty's dirty flags.
+        frame.apply(update, rows)?;
         f.mark_drawn()?;
         Ok(())
     }

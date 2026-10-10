@@ -5,6 +5,7 @@ mod capture;
 #[cfg(feature = "ghostty")]
 mod images;
 mod model;
+mod update;
 
 #[cfg(feature = "ghostty")]
 pub use capture::{CapturedFrame, FrameCapture};
