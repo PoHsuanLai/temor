@@ -6669,6 +6669,7 @@ version = "0.1.0"
 dependencies = [
  "anyview-core",
  "anyview-fs",
+ "anyview-machines",
  "anyview-pane",
  "anyview-peek",
  "chordkit",

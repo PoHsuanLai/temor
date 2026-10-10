@@ -68,6 +68,8 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
     let _ = (desk.ui)();
     let shown = desk.hub.viewer_show(pane);
     let answer = desk.clone();
+    let describes_only = desk.hub.viewer_describes_only(pane);
+    let in_app = desk.clone();
     rsx! {
         div { class: "temor-pane",
             RawKeySurface {
@@ -78,6 +80,20 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
                     extra_class: ExtraClass::parse("temor-keys").ok(),
                     ..Common::default()
                 },
+                if describes_only {
+                    InlineBanner {
+                        severity: Severity::Info,
+                        text: "This kind of file can't be shown here".to_owned(),
+                        detail: Some(TextLine::from("Another app may be able to open it")),
+                        actions: rsx! {
+                            Button {
+                                label: "Open in another app".to_owned(),
+                                title: Some("Open it with the app your computer uses for this file".to_owned()),
+                                onclick: move |_| in_app.viewer_open_in_app(pane),
+                            }
+                        },
+                    }
+                }
                 {match shown {
                     Some(show) => rsx! {
                         ViewerPane {

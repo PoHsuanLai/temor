@@ -17,6 +17,7 @@ quire-desktop = ["temor-desktop/quire-desktop"]
 anyview-core = { workspace = true }
 anyview-fs = { workspace = true }
 anyview-peek = { workspace = true, features = ["pane"] }
+anyview-machines = { workspace = true }
 anyview-pane = { workspace = true }
 chordkit = { workspace = true }
 dioxus = { workspace = true }

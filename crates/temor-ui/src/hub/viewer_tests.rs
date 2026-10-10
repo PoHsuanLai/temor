@@ -139,3 +139,19 @@ fn a_viewer_of_a_host_file_takes_its_copy_away_with_it_and_never_a_file_of_the_p
         "the copy and its folder go"
     );
 }
+
+#[test]
+fn a_viewer_that_only_describes_its_file_says_so_until_one_it_can_show_opens() {
+    use anyview_machines::StageFamily::{PeekOnly, Raster, Text};
+    let (mut hub, _, viewer) = with_viewer("/w/a.bin", &[]);
+    let steps = [
+        (PeekOnly, true),
+        (Text, false),
+        (PeekOnly, true),
+        (Raster, false),
+    ];
+    for (family, want) in steps {
+        hub.viewer_family(viewer, family);
+        assert_eq!(hub.viewer_describes_only(viewer), want, "{family:?}");
+    }
+}
