@@ -20,6 +20,8 @@ pub struct DaemonConfig {
     pub launcher: SessionLauncher,
     /// The program for a session that names none: the person's login shell.
     pub default_shell: PathBuf,
+    /// The daemon's private folder (mode 0700). Shell integration shims go in a subfolder.
+    pub runtime_dir: PathBuf,
     /// The folders the file service may reach before any session is opened.
     pub file_roots: Vec<PathBuf>,
     /// Where the process filesystem is mounted (normally `/proc`).

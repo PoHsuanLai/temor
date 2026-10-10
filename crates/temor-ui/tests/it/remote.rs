@@ -120,6 +120,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
         helper: HELPER,
         launcher: SessionLauncher::Setsid(setsid),
         default_shell: bash_path(),
+        runtime_dir: dir.join("run"),
         file_roots: vec![home.clone()],
         proc_root: "/proc".into(),
         idle: DEFAULT_IDLE,

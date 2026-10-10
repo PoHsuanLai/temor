@@ -49,6 +49,7 @@ impl Rig {
                 args: vec!["leader".into()],
             },
             default_shell: bash_path(),
+            runtime_dir: base.join("run"),
             file_roots: vec![files.clone()],
             proc_root: PathBuf::from("/proc"),
             idle: DEFAULT_IDLE,
@@ -83,8 +84,19 @@ impl Rig {
         }
     }
 
-    /// A bash in the scratch HOME with a fixed prompt, 80 by 24.
+    /// A bash in the scratch HOME with a fixed prompt, 80 by 24, and temor's shell integration
+    /// off so the screen holds only what a test makes it hold.
     pub fn bash(&self) -> OpenSession {
+        let mut open = self.bash_with_marks();
+        open.env.push(EnvVar {
+            name: "TEMOR_SHELL_INTEGRATION".to_string(),
+            value: "0".to_string(),
+        });
+        open
+    }
+
+    /// The same bash with the integration on, as the window opens it.
+    pub fn bash_with_marks(&self) -> OpenSession {
         let env = [
             ("HOME", self.home.display().to_string()),
             ("PATH", "/usr/bin:/bin".to_string()),

@@ -21,7 +21,11 @@ const TICK: Duration = Duration::from_secs(1);
 
 /// The settings for a daemon run by `env`'s binary: its own `leader` command starts programs, so
 /// the host needs nothing installed.
-fn config(env: &HostEnv, helper: temor_wire::hello::HelperVersion) -> DaemonConfig {
+fn config(
+    env: &HostEnv,
+    helper: temor_wire::hello::HelperVersion,
+    runtime_dir: PathBuf,
+) -> DaemonConfig {
     let home = env.home.clone().filter(|home| !home.is_empty());
     DaemonConfig {
         helper,
@@ -34,6 +38,7 @@ fn config(env: &HostEnv, helper: temor_wire::hello::HelperVersion) -> DaemonConf
             .clone()
             .filter(|shell| !shell.is_empty())
             .map_or_else(|| PathBuf::from("/bin/sh"), PathBuf::from),
+        runtime_dir,
         file_roots: home.into_iter().map(PathBuf::from).collect(),
         proc_root: PathBuf::from("/proc"),
         idle: DEFAULT_IDLE,
@@ -61,7 +66,7 @@ pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
             .map_err(|error| Error::io("removing a stale socket", error))?;
     }
     let listener = Listener::bind(&socket)?;
-    let daemon = Daemon::new(config(env, helper));
+    let daemon = Daemon::new(config(env, helper, dir));
 
     let ticking = Arc::clone(&daemon);
     std::thread::Builder::new()

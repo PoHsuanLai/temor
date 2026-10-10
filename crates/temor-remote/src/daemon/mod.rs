@@ -14,6 +14,7 @@ mod dispatch;
 mod exit;
 mod files_worker;
 mod input;
+mod launch;
 mod link;
 mod pump;
 mod registry;
