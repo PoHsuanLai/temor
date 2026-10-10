@@ -13,16 +13,16 @@ unsafe_code = "deny"
 missing_debug_implementations = "warn"
 
 [workspace.dependencies]
-# quire, pinned the desktop-wide way (.git + full rev; the tag is a comment). v0.3.4.
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "e0d1ed4880c55557326261bcb8d3091ee8a66f89" }  # v0.3.4
+# quire, pinned the desktop-wide way (.git + full rev; the tag is a comment). v0.3.6.
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "8ce6d4b1a026247e286336a51c51d66e3ec7124b" }  # v0.3.6
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }

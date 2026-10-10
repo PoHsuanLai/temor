@@ -507,7 +507,7 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [ ] `temor save` STARTED-before-consent (transfers decision) not yet done.
 - [ ] The Restart panic (Blitz node.rs:1573) was not reproduced; the regression test runs it in the harness. If it still happens on the desktop, take it to quire/Blitz with a backtrace (RUST_BACKTRACE=1).
 
-## quire v0.3.4
+## quire v0.3.4, v0.3.6
 - [x] Bumped to v0.3.4 (e0d1ed48; v0.3.3 lacked `ds-blitz/src/layout_chain.rs`). The hover-card guard fixes the Restart panic; `restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive` runs again. quire now styles `.ds-texture-layer`, so the coherence exemption is gone.
 - [ ] Adopt in Batch 2: `SwitchChord::Unbound` for the Space switch when Spaces reach the window; `Column`; `ds::focus::soon::focus_landing_told`; `ds::components::editor::write_soon::write_soon`; RawKeySurface `style` and pointer/wheel props; ds-harness `WindowHosting::Recorded` (`window_titles()`, `window_icon()`); `WindowIcon` + `HostWindow::set_icon` (X11 and Windows; Wayland takes the desktop entry's icon).
 
@@ -517,7 +517,7 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [x] keycap 0d9abbf adds the `keymap-aware` profile (⌘ arrives as Super); temor's desktop entry asks for it with `X-Keycap-Profile=keymap-aware`. A still-remapped window falls back to chordkit's Ctrl+Shift alias, where ⌘⇧D reads as ⌘D.
 - [ ] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop.
 - [ ] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register.
-- [ ] Move to quire v0.3.6 (same chordkit rev, maps ALT_GRAPH) when tagged; v0.3.5 would bring a second chordkit.
+- [x] quire v0.3.6 (8ce6d4b, chordkit ba094c6, maps ALT_GRAPH): one chordkit in the tree. temor still routes its own window keys; moving to quire's `ds::keys` resolver is a later step.
 - [ ] Wire `keys::{shortcut, terminal_shortcut}` into menus when they show shortcuts.
 - [ ] The old `keys.<action> = ctrl+shift+c` lines now report "no setting called"; say so in the user docs when settings are documented.
 - [ ] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds it live in a terminal, so it is reached from the bar and the Spaces menu only.
