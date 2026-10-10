@@ -8,23 +8,21 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 
 use temor_core::vocab::text::HelperHash;
-use temor_remote::Error;
 use temor_ssh::{CommandOutput, CommandRunner, HostAlias};
 use temor_wire::digest::ContentHash;
 use temor_wire::ids::SessionId;
 use temor_wire::link::PingPolicy;
-use temor_wire::message::{Palette, RemoteError};
+use temor_wire::message::Palette;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::SshEnv;
-use super::remote_adopt::{Adoption, adoption};
-use super::remote_calls::{attach, close, open, ports, resize, sessions, set_palette};
+use super::remote_attach::attach_pane;
+use super::remote_calls::{close, ports, set_palette};
 use super::remote_conn::{Conn, DialFault, dial, dial_argv};
-use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket, Wanted};
+use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket};
 use super::remote_install::{
     Found, HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
 };
-use super::remote_link::lock;
 use super::remote_ping::watch;
 use super::remote_pump::pump;
 use super::remote_route::Router;
@@ -251,58 +249,6 @@ fn probed(host: &HostAlias, found: Option<Found>) -> RemoteEvent {
     RemoteEvent::Probed {
         host: host.clone(),
         found,
-    }
-}
-
-fn attach_pane(
-    conn: &Arc<Conn>,
-    router: &Router,
-    ticket: Ticket,
-) -> Result<SessionId, AttachFault> {
-    let client = conn.client();
-    let (size, cell) = {
-        let target = lock(&ticket.target);
-        (target.size, target.cell)
-    };
-    let palette = ticket.palette;
-    let opened = match &ticket.wanted {
-        Wanted::Fresh { cwd, env } => open(
-            client,
-            (cwd.as_str(), env.as_slice()),
-            (size, cell),
-            palette,
-        ),
-        Wanted::Again(session) => Ok(*session),
-        Wanted::Resume { session, cwd, env } => {
-            sessions(client).and_then(|held| match adoption(*session, &held) {
-                Adoption::Adopt => Ok(*session),
-                Adoption::OpenNew => open(
-                    client,
-                    (cwd.as_str(), env.as_slice()),
-                    (size, cell),
-                    palette,
-                ),
-            })
-        }
-    };
-    let attached = opened.and_then(|session| {
-        // The screen the host sends back is at the size the window has now.
-        let _ = resize(client, session, (size, cell));
-        let shown = attach(client, session)?;
-        // The colours may have changed since the session was last attached.
-        let _ = set_palette(client, session, palette);
-        Ok((session, shown))
-    });
-    match attached {
-        Ok((session, shown)) => {
-            router.attach(session, ticket.feeder, shown.screen());
-            let mut target = lock(&ticket.target);
-            target.conn = Some(Arc::clone(conn));
-            target.session = Some(session);
-            Ok(session)
-        }
-        Err(Error::Remote(RemoteError::NoSuchSession { .. })) => Err(AttachFault::Gone),
-        Err(_) => Err(AttachFault::Failed),
     }
 }
 

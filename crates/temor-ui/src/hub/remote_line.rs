@@ -4,19 +4,17 @@
 
 use std::sync::Arc;
 
-use temor_core::vocab::ids::PaneId;
 use temor_ssh::HostAlias;
 use temor_wire::ids::SessionId;
-use temor_wire::link::{Attempt, LinkEffect, LinkEvent, LinkState, RetryPolicy, link_step};
+use temor_wire::link::{LinkEffect, LinkEvent, LinkState, RetryPolicy, link_step};
 use temor_wire::message::ListeningPort;
 
 use super::model::Hub;
 use super::remote::{Busy, Reach, Shown};
 use super::ssh_events::Redraw;
 use crate::edge::remote_conn::{Conn, DialFault};
-use crate::edge::remote_event::{AttachFault, Generation, Ticket, Wanted};
+use crate::edge::remote_event::Generation;
 use crate::edge::remote_link::lock;
-use crate::edge::remote_palette::wire_palette;
 
 impl Hub {
     /// Whether an event about `host` is about its current connection.
@@ -54,7 +52,7 @@ impl Hub {
     }
 
     /// The sessions the host holds for this window's panes, for the machine to reattach.
-    fn tell_sessions(&mut self, host: &HostAlias) {
+    pub(super) fn tell_sessions(&mut self, host: &HostAlias) {
         let sessions: Vec<SessionId> = self
             .remote
             .panes
@@ -106,85 +104,6 @@ impl Hub {
                 self.step_link(host, LinkEvent::AttemptFailed { at });
                 self.remote_tick_host(host);
             }
-        }
-    }
-
-    /// Reattaches the sessions `sessions` on the new connection, each pane getting its screen.
-    pub(super) fn remote_reattach(&mut self, host: &HostAlias, sessions: &[SessionId]) {
-        let Some(line) = self.remote.lines.get(host) else {
-            return;
-        };
-        let Some(conn) = line.conn.clone() else {
-            return;
-        };
-        let (generation, router) = (line.generation, line.router.clone());
-        let palette = wire_palette(&self.palette);
-        for (pane, remote) in &self.remote.panes {
-            let Some(session) = remote.session.filter(|s| sessions.contains(s)) else {
-                continue;
-            };
-            if remote.alias != *host {
-                continue;
-            }
-            let ticket = Ticket {
-                pane: *pane,
-                palette,
-                target: Arc::clone(&remote.target),
-                feeder: remote.feeder.clone(),
-                wanted: Wanted::Again(session),
-            };
-            self.remote.work.attach(
-                Arc::clone(&conn),
-                router.clone(),
-                (host.clone(), generation),
-                ticket,
-            );
-        }
-    }
-
-    pub(super) fn remote_attached(
-        &mut self,
-        host: &HostAlias,
-        generation: Generation,
-        pane: PaneId,
-        session: SessionId,
-    ) {
-        if !self.current(host, generation) {
-            return;
-        }
-        if let Some(remote) = self.remote.panes.get_mut(&pane) {
-            remote.session = Some(session);
-            remote.shown = Shown::Attached;
-        }
-        self.remote.saved.remove(&pane);
-        self.tell_sessions(host);
-    }
-
-    pub(super) fn remote_attach_failed(
-        &mut self,
-        host: &HostAlias,
-        generation: Generation,
-        pane: PaneId,
-        fault: AttachFault,
-    ) {
-        if !self.current(host, generation) {
-            return;
-        }
-        match fault {
-            AttachFault::Gone => {
-                if let Some(remote) = self.remote.panes.get_mut(&pane) {
-                    remote.shown = Shown::Gone;
-                    remote.session = None;
-                    // The pane says its program ended, with "Try again" beside it.
-                    remote.feeder.end(None);
-                }
-                self.remote.saved.remove(&pane);
-                self.notices
-                    .push(format!("{} no longer has that session", host.as_str()));
-                self.tell_sessions(host);
-            }
-            // The link is probably down; its closing is reported on its own.
-            AttachFault::Failed => {}
         }
     }
 
@@ -261,30 +180,6 @@ impl Hub {
             }
         }
         redraw
-    }
-
-    /// The person pressed Retry on a connection temor gave up on.
-    pub fn remote_retry(&mut self, pane: PaneId) {
-        let Some(host) = self.remote.panes.get(&pane).map(|p| p.alias.clone()) else {
-            return;
-        };
-        let sessions: Vec<SessionId> = self
-            .remote
-            .panes
-            .values()
-            .filter(|p| p.alias == host)
-            .filter_map(|p| p.session)
-            .collect();
-        let Some(line) = self.remote.lines.get_mut(&host) else {
-            return;
-        };
-        if matches!(line.link, LinkState::Gone { .. }) {
-            line.link = LinkState::Reattaching {
-                sessions,
-                attempt: Attempt(1),
-            };
-            self.remote_dial(&host);
-        }
     }
 }
 
