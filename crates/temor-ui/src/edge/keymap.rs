@@ -19,9 +19,6 @@ pub fn load_keymap(overrides: &Overrides, ambient: &Ambient) -> (Keymap, Vec<Key
 
 /// The keymap for `platform` from its conventions alone, with `overrides` and temor's actions
 /// laid over them. Tests name the platform; nothing here reads the environment or a file.
-///
-/// TODO(keycap): our desktop's own shortcut settings need a chordkit source from keycap; until
-/// then it takes the conventions (`SystemKeys::Conventions`).
 pub fn keymap_for(platform: Platform, overrides: &Overrides) -> (Keymap, Vec<KeyIssue>) {
     build_keymap(&ConventionSource as &dyn KeymapSource, platform, overrides)
 }

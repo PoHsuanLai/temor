@@ -22,6 +22,7 @@ anyview-pane = { workspace = true }
 chordkit = { workspace = true }
 chordkit-gnome = { workspace = true }
 chordkit-kde = { workspace = true }
+keycap-client = { workspace = true }
 dioxus = { workspace = true }
 ds = { workspace = true }
 ds-blitz = { workspace = true }

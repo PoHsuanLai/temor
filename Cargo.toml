@@ -71,6 +71,8 @@ chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
+# Our desktop's keymap source (keycap's daemon and keymap files), at the rev casement reads.
+keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "95f41dc4b613e3557f3cabc1638e53da348a09ff" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 7457399 locks porter 3356848, so docket and porter-client share

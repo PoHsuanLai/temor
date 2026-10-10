@@ -39,7 +39,9 @@ fn each_desktop_reads_its_own_store() {
             Platform::Linux {
                 desktop: Desktop::Ours,
             },
-            SystemKeys::Conventions,
+            SystemKeys::Keycap {
+                config_home: config.to_owned(),
+            },
         ),
         (
             "another Linux desktop",

@@ -1,6 +1,6 @@
-//! Where the desktop's own shortcut settings come from (PLAN §6): kdeglobals on Plasma, a dump of
-//! dconf on GNOME, the platform's conventions alone everywhere else. Our own desktop's source
-//! (keycap) is not here yet: keycap has no chordkit source to call (see FOLLOWUPS).
+//! Where the desktop's own shortcut settings come from (PLAN §6): keycap on our own desktop (its
+//! daemon, else the machine's and the person's keymap files), kdeglobals on Plasma, a dump of
+//! dconf on GNOME, the platform's conventions alone everywhere else.
 //!
 //! Each file source also watches its file, as chordkit's `KeymapSource::watch` asks of a source
 //! that can: a thread looks at the file's modified time and calls back when it moves, and the
@@ -18,6 +18,7 @@ use chordkit::{
 };
 use chordkit_gnome::GnomeSource;
 use chordkit_kde::KdeSource;
+use keycap_client::KeycapSource;
 
 use crate::platform::{ensure_private_dir, write_private_file};
 
@@ -32,6 +33,9 @@ pub type SharedSource = Arc<dyn KeymapSource + Send + Sync>;
 pub enum SystemKeys {
     /// The platform has no settings of its own that temor reads: its conventions alone.
     Conventions,
+    /// Our desktop: keycap's keymap, with the person's file under `config_home`. keycap's source
+    /// watches for itself (the daemon says when the keymap changes).
+    Keycap { config_home: PathBuf },
     /// Plasma: the shortcuts the person changed are in `kdeglobals`.
     Kde { kdeglobals: PathBuf },
     /// GNOME: the shortcuts live in the dconf database; `dconf dump /` is saved to `dump` for
@@ -44,6 +48,11 @@ impl SystemKeys {
     /// (where the dump is kept, for this user alone) named by the caller.
     pub fn choose(platform: Platform, config_home: &Path, runtime_dir: &Path) -> Self {
         match platform {
+            Platform::Linux {
+                desktop: Desktop::Ours,
+            } => Self::Keycap {
+                config_home: config_home.to_owned(),
+            },
             Platform::Linux {
                 desktop: Desktop::Kde,
             } => Self::Kde {
@@ -63,6 +72,15 @@ impl SystemKeys {
     pub fn source(&self) -> SharedSource {
         match self {
             Self::Conventions => Arc::new(ConventionSource),
+            Self::Keycap { config_home } => {
+                let config_home = config_home.display().to_string();
+                // The socket and the machine's file as keycap names them (its own variables, else
+                // its defaults); the person's file under the config home temor was given.
+                Arc::new(KeycapSource::from_lookup(move |name| match name {
+                    "XDG_CONFIG_HOME" => Some(config_home.clone()),
+                    _ => std::env::var(name).ok(),
+                }))
+            }
             Self::Kde { kdeglobals } => Arc::new(Polled {
                 inner: KdeSource::new(kdeglobals),
                 watched: kdeglobals.clone(),
