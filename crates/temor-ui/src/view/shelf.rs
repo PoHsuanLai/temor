@@ -12,7 +12,9 @@ use ds::components::controls::progress::model::{Progress as Share, ProgressStyle
 use ds::components::controls::progress::view::ProgressIndicator;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::shelf::{Row as Download, RowAction as Act, RowState as Arriving};
+use temor_core::shelf::{
+    Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
+};
 
 use crate::hub::Desk;
 
@@ -22,6 +24,7 @@ use crate::hub::Desk;
 pub fn ShelfFoot(desk: Desk) -> Element {
     let _ = (desk.ui)();
     let view = desk.hub.shelf_view();
+    let uploads = desk.hub.uploads();
     let mut shown = use_signal(|| Shown::Hidden);
     let label = match view.unseen {
         0 => "Downloads".to_owned(),
@@ -33,7 +36,10 @@ pub fn ShelfFoot(desk: Desk) -> Element {
                 shown: shown(),
                 on_toggle: move |next: Shown| shown.set(next),
                 label: Some(label),
-                if view.rows.is_empty() {
+                for upload in uploads.iter().cloned() {
+                    UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
+                }
+                if view.rows.is_empty() && uploads.is_empty() {
                     Label { text: view.empty, style: LabelStyle::Caption }
                 }
                 for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
@@ -126,6 +132,34 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                         },
                     }
                 }
+            }
+        }
+    }
+}
+
+/// One file on its way to another computer.
+#[component]
+#[allow(non_snake_case)]
+fn UploadRow(upload: Upload, desk: Desk) -> Element {
+    let id = upload.id;
+    let remove = (upload.state != UploadState::Sending).then(|| {
+        RowAction::new(
+            Icon::X,
+            "Remove from the list",
+            EventHandler::new(move |_: Press| {
+                desk.hub.clear_upload(id);
+                desk.bump();
+            }),
+        )
+    });
+    rsx! {
+        div { class: "temor-dl",
+            Row {
+                leading: RowLeading::Icon(Icon::Upload),
+                title: upload.name.clone(),
+                detail: Some(TextLine::from(upload_detail(&upload))),
+                state: RowState::default(),
+                action: remove,
             }
         }
     }
