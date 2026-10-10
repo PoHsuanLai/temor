@@ -17,6 +17,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::agents::Agents;
 use super::bar::BarSlot;
+use super::remote::RemoteHub;
 use super::shelf::ShelfHub;
 use super::spaces::SpaceBook;
 use super::ssh::SshHub;
@@ -49,6 +50,8 @@ pub struct Hub {
     pub(super) shelf: ShelfHub,
     pub(super) agents: Agents,
     pub(super) ssh: SshHub,
+    /// Sessions on hosts' helpers (Tier B).
+    pub(super) remote: RemoteHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -66,6 +69,7 @@ impl Hub {
         let (shelf, trouble) = ShelfHub::open(&launch);
         let agents = Agents::new(&launch, events.clone());
         let ssh = SshHub::new(&launch.ambient);
+        let remote = RemoteHub::new(&launch.ambient, launch.state_dir.clone());
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             book: SpaceBook::new(),
@@ -83,6 +87,7 @@ impl Hub {
             shelf,
             agents,
             ssh,
+            remote,
         }
     }
 

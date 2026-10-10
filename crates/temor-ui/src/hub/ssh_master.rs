@@ -9,6 +9,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::{Fingerprint, HostAlias, HostKey, HostName, MasterProbe, prepare_control_dirs};
 
 use super::model::Hub;
+use super::remote::Tier;
 use super::ssh::{Check, Phase};
 use super::ssh_connect::session_args;
 use crate::view::launch::{Program, open_session_with};
@@ -53,10 +54,13 @@ impl Hub {
     }
 
     /// Starts `ssh` in `pane`, to make the connection (`First`) or join it (`Join`).
-    fn start_session(&mut self, alias: &HostAlias, pane: PaneId, how: OpenAs) {
+    pub(super) fn start_session(&mut self, alias: &HostAlias, pane: PaneId, how: OpenAs) {
         let Some(host) = self.ssh.panes.get(&pane) else {
             return;
         };
+        if host.tier == Tier::Helper {
+            return self.start_helper(alias, pane, how);
+        }
         let (mode, dir) = (host.mode, host.start_dir.clone());
         let (Some(mode), Ok(layout)) = (mode, self.ssh.env.layout.clone()) else {
             return;
