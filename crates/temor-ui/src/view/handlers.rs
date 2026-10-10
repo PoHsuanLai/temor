@@ -117,8 +117,6 @@ pub fn block_hovered(
 
 /// The pointer left the pane: no block is hovered, and its toolbar goes unless the block is
 /// selected.
-// Wired from the pane's `.temor-pane` element by `pane_view` (see followups-b17-desk.md).
-#[allow(dead_code)]
 pub fn block_unhovered(
     slot: Rc<RefCell<Slot>>,
     mut hovered: Signal<Option<BlockId>>,

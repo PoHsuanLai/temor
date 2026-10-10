@@ -27,7 +27,7 @@ use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
 use super::handlers::{
-    bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query, find_step,
+    bar_copy_command, bar_copy_output, block_unhovered, bar_rerun, bar_save, find_close, find_query, find_step,
     header_press, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
@@ -191,6 +191,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .and_then(|s| chips_for(s, &facts));
     rsx! {
         div { class: "temor-pane",
+            // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
+            onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
             if let Some((query, position)) = find {
                 FindBar {
                     query,
@@ -221,7 +223,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     onpointerup: move |e| (mouse.up)(e),
                     onpointermove: on_move,
                     onpointerleave: on_leave,
-                    onwheel: move |e| (mouse.wheel)(e),
+                    onwheel: move |e| {
+                        (mouse.wheel)(e);
+                        // The hovered block follows the wheel; draw it again.
+                        let mut ui = ui;
+                        ui += 1;
+                    },
                     TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
                     if let Some(text) = preedit() {
                         div { class: "temor-preedit", "{text}" }

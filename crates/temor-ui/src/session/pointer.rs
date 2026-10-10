@@ -202,6 +202,9 @@ impl Session {
             // Not a link: a path in the text may be a file to look at.
             return self.view_path_at(cell);
         };
+        if self.view_link(&target) {
+            return Ok(());
+        }
         match check_link(&target) {
             LinkVerdict::Open(link) => {
                 if self.opener.open(&link).is_err() {

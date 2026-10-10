@@ -77,6 +77,22 @@ impl Session {
     }
 
     /// The file a `file://` link (OSC 8) at `cell` names, if it is one that exists here.
+    /// A `file://` link that names a file here opens in the viewer, as the peek shows it. Whether
+    /// it did.
+    pub(super) fn view_link(&mut self, target: &str) -> bool {
+        if self.site == PaneSite::Remote {
+            return false;
+        }
+        let Some(file) = local_file_url(target).filter(|path| is_file(path)) else {
+            return false;
+        };
+        self.view_ask = Some(ViewAsk {
+            file,
+            around: Vec::new(),
+        });
+        true
+    }
+
     fn linked_file_at(&self, cell: CellPos) -> Option<PathBuf> {
         let target = self.pane.with_term(|term| {
             term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
