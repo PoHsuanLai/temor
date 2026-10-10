@@ -21,6 +21,16 @@ impl Session {
         self.fit
     }
 
+    /// The pane's width and one cell's width in logical pixels (`None` before the first layout).
+    pub fn grid_logical(&self) -> Option<(f32, f32)> {
+        let fit = self.fit?;
+        let factor = self.scale.factor();
+        Some((
+            fit.pane.width.0 as f32 / factor,
+            fit.cell.width.0 as f32 / factor,
+        ))
+    }
+
     /// The cursor's cell in pane-relative logical pixels `[x, y, width, height]`, when shown.
     pub fn cursor_logical(&self) -> Option<[f32; 4]> {
         let fit = self.fit?;
