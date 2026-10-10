@@ -8,6 +8,7 @@ use std::rc::Rc;
 
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
+use temor_core::facts::FactsIn;
 use temor_core::quick::QuickIn;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{Cwd, TabTitle};
@@ -42,6 +43,8 @@ impl Hub {
     /// Gives each event to its pane's session and gathers what that means for the window.
     pub(super) fn deliver(&mut self, batch: Vec<(PaneId, PaneEvent)>) -> Delivery {
         let mut out = Delivery::default();
+        // What the facts rule is told once the sessions are let go: it looks at the panes.
+        let mut facts = Vec::new();
         for (pane, event) in batch {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
@@ -75,12 +78,16 @@ impl Hub {
                 }
                 Notice::Chrome => {
                     out.chrome.insert(pane);
+                    if session.prompts_seen() > 0 {
+                        facts.push((pane, FactsIn::Prompt));
+                    }
                 }
                 Notice::Title(title) => {
                     out.chrome.insert(pane);
                     out.asks.extend(self.rename_for(pane, &title));
                 }
                 Notice::Cwd(path) => {
+                    facts.push((pane, FactsIn::FolderChanged));
                     self.ssh_shell_started(pane);
                     out.chrome.insert(pane);
                     out.quick.push(QuickIn::Cwd {
@@ -94,6 +101,7 @@ impl Hub {
                 }
                 Notice::CommandDone => {
                     self.agents_command_done(pane);
+                    facts.push((pane, FactsIn::CommandDone));
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
                 }
@@ -105,6 +113,9 @@ impl Hub {
             }
         }
         self.ssh_scan(&out.paint);
+        for (pane, input) in facts {
+            self.facts_in(pane, input);
+        }
         out
     }
 

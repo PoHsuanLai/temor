@@ -32,6 +32,7 @@ use super::block_tools::BlockTools;
 use super::blocks::{Chrome, chrome_of};
 use super::confirm::PasteConfirm;
 use super::convert::scale_of;
+use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
 use super::handlers::{
     bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_hovered, find_close, find_query,
@@ -272,6 +273,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
+    let facts = desk.hub.facts_of(pane);
+    let chips = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|s| chips_for(s, &facts));
     rsx! {
         div { class: "temor-pane",
             if let Some((query, position)) = find {
@@ -315,6 +322,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         header,
                         on_press:then_regain(header_press(Rc::clone(&slot), ui), ime.clone(), regain),
                     }
+                }
+                if let Some(view) = chips {
+                    FactChips { view }
                 }
                 if let Some(tools) = chrome.tools.clone() {
                     BlockTools {

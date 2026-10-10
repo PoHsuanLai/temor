@@ -7,6 +7,7 @@ pub mod bar;
 pub mod block;
 pub mod checkpoint;
 pub mod error;
+pub mod facts;
 pub mod host;
 pub mod key;
 pub mod notify;
