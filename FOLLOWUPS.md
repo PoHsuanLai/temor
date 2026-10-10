@@ -785,3 +785,60 @@ there is no input box of temor's own (Warp's needs its own vim emulation and com
       its commands become cards). Later, after the context chips batch.
 - [ ] Next, queued (owner OK): the context chips batch
       (/mnt/data/cargo/temor-lanes/QUEUE-facts.md).
+
+## Batch 3 (merged 2026-10-10: P16 context chips, P17 shell offer, P18 finish Batch 2, P14 wire revision and Tier B in the window)
+Written by Sonnet lanes without builds. The orchestrator merged, compiled, fixed and gated them
+together.
+
+### Orchestrator decisions
+- The virtualenv chip comes from a `.venv` folder only. A venv activated in the shell needs the
+  shell to report `VIRTUAL_ENV` (an integration mark); until then it doesn't show.
+- Chips sit on the live prompt's header line (the line above the typing line, or the prompt's own
+  line for a one-line prompt), including before the first command.
+- `org.quire.Temor1` methods take an activation token (`NewWindow(s)`, `NewTab(ss)`). Nothing
+  outside temor calls them.
+- Remote calls send the default cell size (8×16) and no palette for now.
+- The offer bar stays a bar under the pane (it resizes the pane), like the host banners. An
+  overlay waits for a quire sticky surface.
+
+### Next (most visible first)
+- [ ] Tier B sessions get no shell integration, so no blocks, cards, chips or folder reports.
+      `OpenSession` needs an argument list, or the daemon applies `plan_integration`.
+- [ ] Check the quit path: if quitting runs `end_pane` for every pane, it ends host sessions
+      instead of detaching them, which defeats persistence.
+- [ ] Wire the real values into Tier B:
+      - the pane's cell size on open and resize;
+      - the window's palette after attach and on theme change;
+      - `Client::ping` on an abandonable thread, plus `LinkEvent::PingTimedOut` and
+        `LinkEffect::DropLink` (kill the stalled ssh first);
+      - the `TODO(batch3-wire)` slots in `edge/remote_*.rs`.
+- [ ] Session ids aren't saved, so a restart opens new sessions. Adopt them through
+      `list_sessions` on restore.
+- [ ] A reconnect after the shared connection died can't ask for a password (it uses
+      BatchMode). Retry should repeat the in-pane connect step.
+- [ ] Remote edit and forwards still use scp and `ssh -O`; move them to the helper's file service.
+      Input typed while the link is down is dropped.
+- [ ] Helper consent is in its own `remote.json`; fold it into the consent book.
+- [ ] The helper binary comes from `TEMOR_REMOTE_HELPER` or the folder beside temor, for the same
+      CPU kind only. Packaging a helper per architecture is open.
+- [ ] Offer:
+      - fish and nushell inner shells: Yes does nothing yet (`temor.fish` can't be sourced in
+        place);
+      - shells with no line editor cut the roughly 14 KB line at 4096 bytes, so shrink the payload
+        or split it;
+      - history hiding needs `ignorespace` / `HIST_IGNORE_SPACE`.
+- [ ] Facts:
+      - host panes get no chips;
+      - `.node-version` and `.tool-versions` aren't read;
+      - untracked files aren't counted;
+      - a repo with no commit shows no branch;
+      - a long typed command can run under the chips.
+- [ ] Desk:
+      - the ⌘T bar re-reads ~/.ssh/config on every keystroke (cache it);
+      - the X11 token is `DESKTOP_STARTUP_ID` and isn't read;
+      - check that the radar treats an agent-opened pane as unfocused.
+- [ ] Wire:
+      - staged `.temor-part-*` files aren't swept;
+      - `Error::TooLarge` is unused;
+      - there's no test that reads the pixel size back, and none for a slow file request.
+- Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b3-*.md`.
