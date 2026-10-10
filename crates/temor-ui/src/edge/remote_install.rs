@@ -67,15 +67,53 @@ pub fn command_argv(alias: &HostAlias, layout: &ControlLayout, remote: &str) -> 
 }
 
 /// The script that reports the host's system, processor, whether the helper's folder is
-/// writable, and the builds already there.
+/// writable, the login variables a session needs, and the builds already there.
 pub const PROBE_SCRIPT: &str = "sh -c 'uname -s; uname -m; d=\"$HOME/.cache/temor-remote\"; \
 mkdir -p \"$d\" 2>/dev/null; if [ -w \"$d\" ]; then echo writable; else echo readonly; fi; \
+env | grep -E \"^(HOME|USER|LOGNAME|SHELL|PATH|LANG|LC_ALL)=\" | sed \"s/^/env:/\"; \
 for f in \"$d\"/*/temor-remote; do [ -x \"$f\" ] && basename \"$(dirname \"$f\")\"; done; true'";
+
+/// The host's own login variables: the helper adds nothing to a session's environment, so the
+/// window passes these on.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HostLogin(pub Vec<(String, String)>);
+
+impl HostLogin {
+    /// The host's home folder, when it said.
+    pub fn home(&self) -> Option<&str> {
+        self.0
+            .iter()
+            .find(|(name, _)| name == "HOME")
+            .map(|(_, value)| value.as_str())
+            .filter(|home| home.starts_with('/'))
+    }
+
+    /// The whole environment of a session: the host's variables, and what a terminal says
+    /// about itself.
+    pub fn session_env(&self) -> Vec<(String, String)> {
+        let mut env: Vec<(String, String)> = self
+            .0
+            .iter()
+            .filter(|(name, _)| name != "TERM" && name != "COLORTERM")
+            .cloned()
+            .collect();
+        env.push(("TERM".to_owned(), "xterm-256color".to_owned()));
+        env.push(("COLORTERM".to_owned(), "truecolor".to_owned()));
+        env
+    }
+}
+
+/// What probing a host found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Found {
+    pub probe: Probe,
+    pub login: HostLogin,
+}
 
 /// Reads the probe's output. `local_arch` is this computer's (`std::env::consts::ARCH`): the
 /// build temor carries runs only on a host of the same kind. `wanted` picks which installed
 /// build is reported when several are there.
-pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Probe {
+pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Found {
     let mut lines = text.lines().map(str::trim);
     let os = match lines.next() {
         Some("Linux") => HostOs::Linux,
@@ -92,20 +130,28 @@ pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Probe {
         Some("writable") => CacheDir::Usable,
         _ => CacheDir::Unusable,
     };
-    let found: Vec<HelperHash> = lines
-        .filter(|line| ContentHash::from_hex(line).is_some())
-        .map(|line| HelperHash(line.to_ascii_lowercase()))
-        .collect();
+    let mut login = Vec::new();
+    let mut found: Vec<HelperHash> = Vec::new();
+    for line in lines {
+        if let Some((name, value)) = line.strip_prefix("env:").and_then(|v| v.split_once('=')) {
+            login.push((name.to_owned(), value.to_owned()));
+        } else if ContentHash::from_hex(line).is_some() {
+            found.push(HelperHash(line.to_ascii_lowercase()));
+        }
+    }
     let installed = found
         .iter()
         .find(|hash| *hash == wanted)
         .or_else(|| found.first())
         .cloned();
-    Probe {
-        os,
-        arch,
-        cache,
-        installed,
+    Found {
+        probe: Probe {
+            os,
+            arch,
+            cache,
+            installed,
+        },
+        login: HostLogin(login),
     }
 }
 
@@ -200,13 +246,31 @@ mod tests {
             ),
         ];
         for (text, local, (os, arch, cache, installed)) in cases {
-            let probe = parse_probe(&text, local, &wanted);
+            let probe = parse_probe(&text, local, &wanted).probe;
             assert_eq!(
                 (probe.os, probe.arch, probe.cache, probe.installed),
                 (os, arch, cache, installed),
                 "{text:?} on a {local} computer"
             );
         }
+    }
+
+    #[test]
+    fn a_session_gets_the_hosts_login_variables_and_says_what_terminal_it_is() {
+        let text = "Linux\nx86_64\nwritable\nenv:HOME=/home/me\nenv:PATH=/usr/bin:/bin\n\
+env:TERM=dumb\nsome noise\n";
+        let found = parse_probe(text, "x86_64", &name('a'));
+        assert_eq!(found.login.home(), Some("/home/me"));
+        let env = found.login.session_env();
+        assert!(env.contains(&("PATH".to_owned(), "/usr/bin:/bin".to_owned())));
+        let terms: Vec<_> = env.iter().filter(|(name, _)| name == "TERM").collect();
+        assert_eq!(
+            terms.len(),
+            1,
+            "the host's own TERM never survives: {env:?}"
+        );
+        assert_eq!(terms[0].1, "xterm-256color");
+        assert_eq!(HostLogin::default().home(), None);
     }
 
     #[test]

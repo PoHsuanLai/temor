@@ -7,121 +7,24 @@
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 
-use temor_core::remote::Probe;
-use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::HelperHash;
-use temor_pane::Feeder;
-use temor_pty::ChildExit;
 use temor_remote::Error;
 use temor_ssh::{CommandOutput, CommandRunner, HostAlias};
 use temor_wire::digest::ContentHash;
 use temor_wire::ids::SessionId;
-use temor_wire::message::{ListeningPort, RemoteError};
+use temor_wire::message::RemoteError;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::SshEnv;
 use super::remote_calls::{attach, close, open, ports, resize};
 use super::remote_conn::{Conn, DialFault, dial, dial_argv};
+use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket, Wanted};
 use super::remote_install::{
-    HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
+    Found, HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
 };
-use super::remote_link::{SharedTarget, lock};
+use super::remote_link::lock;
 use super::remote_pump::pump;
 use super::remote_route::Router;
-
-/// Which connection of a host an event is about; an event of an older one is stale.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Generation(pub u64);
-
-impl Generation {
-    pub fn next(self) -> Self {
-        Self(self.0.wrapping_add(1))
-    }
-}
-
-/// Why a pane's session could not be opened or reattached.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AttachFault {
-    /// The host no longer has the session (it ended, or its helper was restarted).
-    Gone,
-    /// The call failed; the link is probably down.
-    Failed,
-}
-
-/// What a job found, or what a connection told.
-#[derive(Debug)]
-pub enum RemoteEvent {
-    /// What the host has; `None` when it could not be asked.
-    Probed {
-        host: HostAlias,
-        probe: Option<Probe>,
-    },
-    /// The helper was stored; the hash of what is there now, `None` when the upload failed.
-    Installed {
-        host: HostAlias,
-        hash: Option<HelperHash>,
-    },
-    /// A dial finished.
-    Dialed {
-        host: HostAlias,
-        generation: Generation,
-        outcome: Result<Arc<Conn>, DialFault>,
-    },
-    /// A pane's session is open and attached, its screen handed to the pane.
-    Attached {
-        host: HostAlias,
-        generation: Generation,
-        pane: PaneId,
-        session: SessionId,
-    },
-    AttachFailed {
-        host: HostAlias,
-        generation: Generation,
-        pane: PaneId,
-        fault: AttachFault,
-    },
-    /// The host's listening ports; the whole list.
-    Ports {
-        host: HostAlias,
-        generation: Generation,
-        ports: Vec<ListeningPort>,
-    },
-    /// A session's program ended.
-    Exited {
-        host: HostAlias,
-        generation: Generation,
-        session: SessionId,
-    },
-    /// The connection ended.
-    Closed {
-        host: HostAlias,
-        generation: Generation,
-    },
-    /// The `ssh` that made the shared connection (and asked for passwords in the pane) ended
-    /// successfully: the connection is up.
-    Connected { pane: PaneId },
-}
-
-/// What a pane's session starts from.
-#[derive(Debug, Clone)]
-pub enum Wanted {
-    /// A new session in `cwd` with `env` as its whole environment.
-    Fresh {
-        cwd: String,
-        env: Vec<(String, String)>,
-    },
-    /// The session the pane had before the link dropped.
-    Again(SessionId),
-}
-
-/// A pane to open or reattach.
-#[derive(Debug)]
-pub struct Ticket {
-    pub pane: PaneId,
-    pub target: SharedTarget,
-    pub feeder: Feeder,
-    pub wanted: Wanted,
-}
 
 /// Starts jobs. Cloning shares the channel.
 #[derive(Debug, Clone)]
@@ -160,7 +63,7 @@ impl RemoteWork {
         let (env, none) = (env.clone(), probed(&host, None));
         self.run(
             move |events| {
-                let probe = env.layout.clone().ok().and_then(|layout| {
+                let found = env.layout.clone().ok().and_then(|layout| {
                     let argv = command_argv(&host, &layout, PROBE_SCRIPT);
                     let out = env.runner.run(&env.tools.ssh, &argv).ok()?;
                     (out.code == Some(0)).then(|| {
@@ -168,7 +71,7 @@ impl RemoteWork {
                         parse_probe(&text, std::env::consts::ARCH, &wanted)
                     })
                 });
-                let _ = events.send(probed(&host, probe));
+                let _ = events.send(probed(&host, found));
             },
             Some(none),
         );
@@ -319,10 +222,10 @@ impl RemoteWork {
     }
 }
 
-fn probed(host: &HostAlias, probe: Option<Probe>) -> RemoteEvent {
+fn probed(host: &HostAlias, found: Option<Found>) -> RemoteEvent {
     RemoteEvent::Probed {
         host: host.clone(),
-        probe,
+        found,
     }
 }
 
@@ -374,27 +277,4 @@ fn run_with_input(env: &SshEnv, argv: &[String], input: &[u8]) -> std::io::Resul
         stdout: out.stdout,
         stderr: out.stderr,
     })
-}
-
-/// The exit of a connect-phase `ssh`, as the window's event stream reports it.
-pub fn connect_succeeded(exit: Option<ChildExit>) -> bool {
-    exit == Some(ChildExit::Exited(0))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_a_clean_exit_means_the_shared_connection_is_up() {
-        let cases = [
-            (Some(ChildExit::Exited(0)), true),
-            (Some(ChildExit::Exited(255)), false),
-            (Some(ChildExit::Signaled(9)), false),
-            (None, false),
-        ];
-        for (exit, want) in cases {
-            assert_eq!(connect_succeeded(exit), want, "{exit:?}");
-        }
-    }
 }
