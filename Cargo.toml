@@ -67,6 +67,9 @@ anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "be8c91c
 anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "be8c91cb958c6537df49508df4f973d8b16ad35b" }
 anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "be8c91cb958c6537df49508df4f973d8b16ad35b" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
+# The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
+chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
+chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 7457399 locks porter 3356848, so docket and porter-client share

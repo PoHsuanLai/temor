@@ -18,6 +18,16 @@ fn settings_text_applies_good_lines_and_reports_bad_ones_by_line() {
     assert_eq!(parsed.settings.scrollback.lines(), 500);
     let lines: Vec<usize> = parsed.issues.iter().map(|(line, _)| *line).collect();
     assert_eq!(lines, vec![4, 5, 6, 7, 8]);
+    let old = parsed
+        .issues
+        .iter()
+        .find(|(line, _)| *line == 6)
+        .expect("line 6");
+    assert!(
+        old.1.to_string().contains("name the action itself"),
+        "an old `keys.` line says what to write instead: {}",
+        old.1
+    );
     let kept: Vec<String> = parsed
         .settings
         .keys
