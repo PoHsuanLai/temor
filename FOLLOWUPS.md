@@ -1012,13 +1012,13 @@ together.
 - [ ] Offer: nushell history isn't cleaned and the zsh prelude prints a parse error there; dash
       prints "source: not found" once; nushell has no pty scenario; fish history deletion is only
       checked with piped input.
-- [ ] Remote: no ds-harness scenario for Retry (needs a fake ssh that asks for a password);
+- [x] (Batch 17) Remote: no ds-harness scenario for Retry (needs a fake ssh that asks for a password);
       `edge/remote_install.rs` is 307 lines; a half-received send can repeat after a reconnect.
-- [ ] Edit: stream large files; conflict wording could name the "same time, other contents" case.
+- [x] (Batch 17) Edit: stream large files; conflict wording could name the "same time, other contents" case.
 - [ ] Facts: `.python-version` and `pyproject.toml` aren't read; a huge untracked tree is slow.
-- [ ] Peek: OSC 8 `file://` links show no card; the card's size is estimated; `view/pane_view.rs`
+- [x] (Batch 17) Peek: OSC 8 `file://` links show no card; the card's size is estimated; `view/pane_view.rs`
       is over 300 lines (split the pointer and key wiring).
-- [ ] Desk: an `Include`d ssh config edited in place isn't noticed; quire ask: confirm
+- [x] (Batch 17) Desk: an `Include`d ssh config edited in place isn't noticed; quire ask: confirm
       `focus_with_token` acts on an X11 startup id; a place-only recall starts shells in the
       Space's folder, not each pane's.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b5-*.md`.
@@ -1037,49 +1037,102 @@ changes.
       remembering policy, `anyview_machines::{Remembering, Noted, REMEMBER_EVERY}`; a pane flushes
       on unmount, so far fewer `Job::Keep`s).
 
-## Open now (swept 2026-10-11)
+## Batch 17 (merged 2026-10-11: bundled follow-ups)
+Four Sonnet lanes from main 26799e4, each with a bundle (viewer, remote, shell, desk); merged,
+fixed and gated together. anyview be8c91c.
+
+- Viewer:
+  - the viewer remembers places through anyview's one `Remembering` policy (temor's write-only
+    `resumes` map is gone);
+  - "Find in This File" in the ⌘T bar while a viewer has the keyboard (`bar/viewer_find.rs`);
+  - peek and ⌘-click both follow `file://` links;
+  - the peek card is placed by its measured size;
+  - `view/pane_view.rs` is split (pane_keys, pane_pointer, pane_focus, pane_footer).
+- Remote:
+  - `remote_install.rs` is split;
+  - a held chunk cut off by a dying link is dropped, never sent twice;
+  - a Retry scenario with a fake ssh that asks for a password;
+  - remote edits stream (1 MiB reads, 4 MiB uploads), and "same time, other contents" has its
+    own words;
+  - Tier A: Done deletes the local copy, a reopened tab keeps its host, a typed `host:path`
+    connects then edits, a swapped forward port is named, host banners mark the tab unread;
+  - IdentityFile and ProxyJump checks; an IPv6 hint; a control folder of mode 0300 or 0000 is
+    tightened.
+- Shell:
+  - the offer asks the inner shell its name first, then types that shell's text (dash and the
+    like get "could not tell which shell this is");
+  - `.python-version` and `requires-python`;
+  - the untracked count streams and stops at the cap (it counts entries);
+  - zsh under an unknown TERM prints the folder line from precmd;
+  - a person's exit trap and `zle-line-init` keep temor's hooks;
+  - a pipeline reports its newest command.
+- Desk:
+  - unbound Primary chords reach a program that turned on kitty keyboard flags;
+  - shortcuts on bar rows and the New tab tooltip;
+  - Space rows in the ⌘T bar;
+  - a place-only recall restores each pane's folder;
+  - block hover follows the wheel and clears on leave;
+  - card bands use this frame's cursor row;
+  - the toolbar height is measured;
+  - `Include`d ssh config files are watched;
+  - the window icon;
+  - checkpoint restore sends `Origin::Cli`.
+
+### Orchestrator decisions
+- A cut-off held chunk is dropped rather than numbered (no wire change; keys are never repeated).
+- A tab opened by connect-then-edit takes the keyboard: the person asked for it.
+- No dirty marker on the prompt line: it would need a blocking `git status`; the chips show it.
+- The probe line stays in history for now.
+- Merge wiring: ⌘-click opens a `file://` link in the viewer; hover clears on leave and redraws
+  after a wheel (the hooks the desk lane wrote for `pane_view.rs`).
+
+### Next
+- [ ] Recordings in the pane: needs the owner's call. The `player` feature brings anyview-media,
+      media-host, runtime, plugin and platform, a new git dependency (mpv-wgpu-player), a tokio
+      handle for its `MediaHub`, and a way to find mpv and its C plugin.
+- [ ] "Edit locally" from a block's output in a host pane: the hub entry exists
+      (`Desk::host_edit`); the block menu item and which text it passes are open.
+- [ ] Find in the bar: Esc closes the whole bar; no harness scenario (needs a mounted viewer).
+- [ ] quire asks: `Column` with a zero gap and a fill option; a `write_soon` that returns its value.
+      `focus_landing_told` no longer calls `told`, so temor keeps its own.
+- [ ] Offer: nushell history isn't cleaned (no delete command); the probe line stays in history;
+      the one-text `InnerLoadLine::build` is used only by tests.
+- [ ] zsh under an unknown TERM: a screen clear drops the folder line until the next prompt.
+- [ ] temor-ssh has no `-i`/`-J` builder yet to use the new checks.
+- [ ] pyproject: Poetry's python constraint isn't read.
+- Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b17-*.md`.
+
+## Open now (swept 2026-10-11, updated after Batch 17)
 Every item still unticked above, one line each, with the section it lives in. Ticked items and
 the plain notes in the Batch 1 and 2 lane sections are history. "(check)" marks an item whose
 state needs a look before anyone works on it.
 
 ### Next batches
-- Batch 17: take anyview be8c91c (recordings in a pane, one remembering policy). (Batch 16 pins)
-- Find in a viewer pane, anyview #100. (Batch 16 pins)
-- Recordings in the pane through anyview-pane's `player` feature. (P10 Viewers)
+- Recordings in the pane through anyview-pane's `player` feature: owner's call. (Batch 17 Next)
+- Batch 17 leftovers: "Edit locally" from a block, Esc in bar find, the probe in history, zsh
+  clear under an unknown TERM. (Batch 17 Next)
 - No D-Bus Open fallback; files on another computer can't be viewed. (P10 Viewers)
 - Host panes: no peek, no chips. (Batch 5 Next; Batch 3 Next, Facts)
-- Offer: nushell history, zsh prelude in nushell, dash's "source: not found", tests. (Batch 5 Next)
-- Remote: Retry scenario, `edge/remote_install.rs` over 300 lines, a repeated send. (Batch 5 Next)
-- Edit: stream large files; name the "same time, other contents" conflict. (Batch 5 Next)
-- Facts: `.python-version` and `pyproject.toml`; a huge untracked tree is slow. (Batch 5 Next)
-- Peek: OSC 8 `file://` links, the card's size, `view/pane_view.rs` over 300 lines. (Batch 5 Next)
-- Desk: an `Include`d ssh config edit; a place-only recall starts shells in the Space's folder.
-  (Batch 5 Next)
+- Offer: nushell history isn't cleaned. (Batch 17 Next)
+- Facts: Poetry's python constraint. (Batch 17 Next)
 - Package a helper binary per CPU architecture. (Batch 3 Next)
-- Checkpoint Perform sends `Origin::InWindowField`; check it against the cli role. (Batch 14)
 - Proposals (P8): fresh `TurnRef` per Ask, "edited" vs "replaced", U+2800 as a space.
   (temor-core)
 - OSC 52 writes and reads; the hyperlink hover preview. (temor-ui P1; temor-vt)
 - Upload by drop (`SendSession`). (temor-transfer; Batch 2 shelf gaps)
 - Move terminal.conf to ds-settings. (temor-ui P1) (check)
-- Adopt quire's `Column`, `focus_landing_told`, `write_soon`, RawKeySurface props, recorded
-  window hosting and the window icon. (quire v0.3.4, v0.3.6; temor-ui P1)
+- Adopt quire's `Column` and `write_soon` once quire adds a zero gap and a returning variant;
+  RawKeySurface props; recorded window hosting. (Batch 17 Next)
 - Mount the `HostList` view somewhere, or drop it. (Batch 2 ssh, wiring)
 - Decide whether a new tab from a host pane opens on the host. (Batch 2 ssh, wiring)
-- "Edit locally" from a block's output. (Batch 2 ssh, wiring)
 - SSH Tier A, each in Batch 2 ssh, Known gaps:
   - the check URL is read from screen text, not raw bytes;
   - "Established" comes from polling `ssh -O check`;
   - a plain alias's fingerprint is a `known_hosts` lookup by name;
   - a plain session can't start in the pane's folder;
   - a restored host tab may ask for a password at launch;
-  - a reopened closed tab loses its host;
   - offline tailnet rows can't be opened another way;
-  - a taken forward port is swapped without asking, and `LocalPortTaken` has no message;
-  - local copies of edited files are not deleted on "Done";
   - edit conflicts show no diff;
-  - host banners sit in the pane, with no unread mark in the sidebar;
-  - no "connect, then edit" for a typed `host:path`;
   - OSC 52, transfer and notification consent stays in `remote::HostConsent`.
 
 ### Asks of other projects
@@ -1109,8 +1162,6 @@ state needs a look before anyone works on it.
 - `RENDER_HOLD`: capture a frame when a hold starts. (temor-vt)
 - vttest captures in the conformance fixtures. (temor-vt)
 - fish 3 marks untested; bash 3.2 has no C/D marks. (temor-pty)
-- A person's own `trap … EXIT` and old-style `zle-line-init` lose temor's hooks. (temor-pty)
-- A pipeline reports its first command as the foreground. (temor-pty)
 - PLAN §3 should list the wire's `Unknown` catch-alls and the no-payload marker. (temor-wire)
 - Tune snapshot and file-size limits and the retry policy on real hosts. (temor-wire)
 - Kitty `prm` ignored and in-root symlinks refused. (temor-transfer)
@@ -1122,9 +1173,6 @@ state needs a look before anyone works on it.
 - Measure search cost on a large scrollback (~3 FFI calls a cell). (temor-ui P1)
 - Output just before a resize may parse at the new size. (temor-ui P1)
 - The runtime folder falls back to ~/.cache/temor/run without XDG_RUNTIME_DIR. (temor-ui P1)
-- Say in the UI that IPv6 literals need a HostName. (temor-ssh)
-- Validate IdentityFile and ProxyJump before any `-i`/`-J` builder. (temor-ssh)
-- A bootstrap dir with mode 0300/0000 fails closed. (temor-ssh)
 - Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
 - temor-vt's `row_wraps` returns `bool`. (R1a)
 - Blocks stay in temor-core, so an embedder of temor-pane gets no block model. (R1b)
@@ -1132,19 +1180,11 @@ state needs a look before anyone works on it.
 ### Keys
 - KWin takes Meta+T/W/D/V on KDE. (P3a)
 - A chordkit fallback applies only where the default has no live form. (Keys on chordkit)
-- Forward Primary-form chords under the kitty keyboard flags. (Keys on chordkit)
 - Desktop shortcut sources (keycap, chordkit-kde, chordkit-gnome) and reload. (Keys on chordkit)
-- Show shortcuts in menus. (Keys on chordkit)
 - Document that old `keys.<action>` lines report "no setting called". (Keys on chordkit)
-- The Space switch is reached from the Spaces menu only; the bar has no Space rows.
-  (Keys on chordkit)
 
 ### Look
-- Block hover goes stale after a wheel scroll or pointer leave. (Look batch)
-- `card_bands` lags one frame. (Look batch)
-- Measure `TOOLS_HEIGHT_LOGICAL`. (Look batch)
-- Prompt: nushell left alone, fish 3 not run, no dirty marker on the prompt line. (Look batch)
-- zsh's typing line starts with a space under an unknown TERM. (Look batch)
+- Prompt: nushell left alone, fish 3 not run. (Look batch)
 
 ### Tests and flakes
 - No device-level GPU tests for atlas retries or the oversize-image skip. (temor-render)
