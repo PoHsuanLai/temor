@@ -64,6 +64,7 @@ pub trait CopyDone: Send + 'static {
 }
 
 /// Reports to the hub's channel.
+#[derive(Debug)]
 pub struct ToHub {
     pub id: CopyId,
     pub events: UnboundedSender<CopyEvent>,

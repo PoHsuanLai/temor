@@ -4,8 +4,6 @@
 
 use std::path::Path;
 
-use temor_core::vocab::ids::PaneId;
-
 use super::desk::Desk;
 use super::model::Hub;
 use super::ssh_edit::forget_copy;

@@ -69,6 +69,15 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let rect = use_rect();
     let signals = use_hook(try_consume_context::<HostSignals>);
     let slot = use_hook(|| desk.hub.slot(pane).unwrap_or_default());
+    // A host's programs write to the clipboard as the person last answered for that host.
+    use_hook(|| {
+        if let (Some(grant), Some(s)) = (
+            desk.hub.clipboard_consent(pane),
+            slot.borrow_mut().session.as_mut(),
+        ) {
+            s.set_clipboard_consent(grant);
+        }
+    });
     let texture = use_hook(|| gpu.handle());
     use_hook({
         let (slot, texture) = (Rc::clone(&slot), texture.clone());
@@ -276,8 +285,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             if let Some(ask) = clip_ask {
                 ClipboardConfirm {
                     ask,
-                    on_allow:clipboard_answer(Rc::clone(&slot), ui, Grant::Allowed),
-                    on_refuse:clipboard_answer(Rc::clone(&slot), ui, Grant::Refused),
+                    on_allow:clipboard_answer(Rc::clone(&slot), ui, Grant::Allowed, { let hub = desk.hub.clone(); move |g| hub.clipboard_answered(pane, g) }),
+                    on_refuse:clipboard_answer(Rc::clone(&slot), ui, Grant::Refused, { let hub = desk.hub.clone(); move |g| hub.clipboard_answered(pane, g) }),
                 }
             }
             {pane_footer(pane, &desk, &slot, ui, &chrome, pending, shell)}

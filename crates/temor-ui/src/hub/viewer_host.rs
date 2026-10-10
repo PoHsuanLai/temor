@@ -81,7 +81,7 @@ fn fault_words(host: &HostAlias, name: &str, fault: EditFault) -> String {
 }
 
 impl Hub {
-    fn copies_dir(&self) -> PathBuf {
+    pub(super) fn copies_dir(&self) -> PathBuf {
         copies_dir(&self.launch.ambient.runtime_dir)
     }
 

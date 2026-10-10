@@ -69,10 +69,21 @@ pub fn clipboard_answer(
     slot: Rc<RefCell<Slot>>,
     mut ui: Signal<u32>,
     grant: Grant,
+    keep: impl Fn(Grant) + 'static,
 ) -> impl FnMut(()) + 'static {
     move |_: ()| {
+        let copy = slot
+            .borrow()
+            .session
+            .as_ref()
+            .and_then(|s| s.clipboard_ask().map(|a| a.kind))
+            == Some(ClipboardUse::Copy);
         if let Some(s) = slot.borrow_mut().session.as_mut() {
             s.answer_clipboard(grant);
+        }
+        // A write's answer is kept per host; a read's stays with the tab.
+        if copy {
+            keep(grant);
         }
         ui += 1;
     }
