@@ -5,16 +5,18 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 ## temor-core (lane/core, reviewed at 03031e9)
 - [ ] `TrialId` is only as unique as `TurnRef`: every Ask must get a fresh `TurnRef` (document it, or
       add a counter). §8.3
-- [ ] `Origin::LocalStream` emits `Remember(Grant)`, but no consent store exists for local panes
+- [x] `Origin::LocalStream` emits `Remember(Grant)`, but no consent store exists for local panes
       (`HostConsent` is per host). Add one at the edge, or always ask. §9
+      (done: Batch 2 shelf, `ShelfHub` grants per stream in `hub/shelf.rs`, kept until quit)
 - [ ] A typed proposal deleted by hand and replaced by the person's own command still logs
       `Ran{Edited}`. Tell "edited" apart from "replaced". §8.3
 - [ ] U+2800 (braille blank) looks like a space but isn't default-ignorable. Consider treating it as
       a space. §8.3
 
 ## temor-vt (lane/vt, reviewed at 8d586df)
-- [ ] iTerm2 `MultipartFile=` / `FilePart=` / `FileEnd` (imgcat inside tmux) are swallowed by Ghostty
-      and not yet pre-scanned. §9
+- [ ] iTerm2 `MultipartFile=` / `FilePart=` / `FileEnd` (imgcat inside tmux): temor-pane reads the
+      pieces when they arrive as an unknown OSC (`engine/xfer/state.rs`), but temor-vt's pre-scan
+      catches only `File=`, and its notes say Ghostty drops the rest. §9 (check)
 - [ ] `RENDER_HOLD`: capture a frame when a hold starts, as Ghostty recommends; the hold timeout is the
       UI's job. §4b
 - [ ] OSC 52 clipboard reads (`CLIPBOARD_READ`) are not wired. §6, §9
@@ -24,37 +26,43 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       wrappers. D1
 
 ## temor-pty (lane/pty, reviewed at 0f49c7b)
-- [ ] The app owns reaping: poll `try_exit` after `hang_up()` and escalate with `kill()` after a grace
-      period, or children stay zombies. §4b
-- [ ] nushell (the owner's shell) and other shells get no integration. nushell can emit the marks
-      itself (`shell_integration` config); turn that on. §6
+- [x] The app owns reaping: poll `try_exit` after `hang_up()` and escalate with `kill()` after a grace
+      period, or children stay zombies. §4b (done: temor-pane `engine/reap.rs`, R1b)
+- [x] nushell (the owner's shell) and other shells get no integration. nushell can emit the marks
+      itself (`shell_integration` config); turn that on. §6 (done: nushell through a vendor
+      autoload file, bb36e33)
 - [ ] fish 3 marks path untested (fish 4+ emits marks natively); bash 3.2 has no PS0, so no C/D marks.
 - [ ] A person's own `trap … EXIT` replaces the emulated-login `.bash_logout` trap; an old-style
       `zle -N zle-line-init` drops zsh's first-prompt B fallback under themes.
 - [ ] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7
-- [ ] Send `integration_scripts()` with the SSH Tier A bootstrap. §9b
+- [x] Send `integration_scripts()` with the SSH Tier A bootstrap. §9b (done: Batch 2 ssh,
+      `hub/ssh_connect.rs`)
 
 ## temor-wire (lane/wire, reviewed at 5e2ffd8)
-- [ ] Callers (temor-ssh, temor-remote) must check the first frame is `Hello`, answer
+- [x] Callers (temor-ssh, temor-remote) must check the first frame is `Hello`, answer
       `UnknownRequest`/`UnreadableRequest`, surface `UnreadableEvent`, and add request timeouts. §9b, §4b
+      (done: Batch 1 remote, `client/connect.rs`, `client/calls.rs`, `daemon/serve.rs`; temor-ssh
+      never speaks the wire)
 - [ ] `Unknown` catch-alls on wire enums and the `u32::MAX` no-payload marker are additions to §3;
       a request carrying a nested newer enum is answered `Unreadable` (safe, not precise).
 - [ ] Tune snapshot and file-size limits and the retry policy (1 s base, 60 s cap, 30 tries) against
       real hosts. §9b, §14
 
 ## temor-transfer (lane/transfer, reviewed at 39cc6df)
-- [ ] Edge contract for the app: feed back every write failure (`WriteFailed{op}`) and every
+- [x] Edge contract for the app: feed back every write failure (`WriteFailed{op}`) and every
       successful Finish (`WriteDone`); hold the `Root` for the transfer's lifetime. §9
+      (done: Batch 2, temor-pane `engine/xfer/receive.rs`)
 - [ ] Upload by drop (`SendSession`) is not built. §9
 - [ ] Kitty `prm` is ignored (files 0o644, folders 0o755); in-root symlinks are refused, not made.
 - [ ] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9
 - [ ] A malformed frame with no open files only replies; the transfer continues.
 
 ## temor-render (lane/render, reviewed at f4ead2c)
-- [ ] The app must call `Palette::apply` on every new terminal before its first frame and on theme
+- [x] The app must call `Palette::apply` on every new terminal before its first frame and on theme
       change; grid colours from quire's terminal tokens once v0.2.31 is tagged. §5
-- [ ] GPU path waits for quire's render hook (v0.2.32); no device-level tests for atlas retries or
-      the oversize-image skip. §5
+      (done: P3a 91eaf50 and 5bccf7d; temor-pane `engine/term.rs`)
+- [ ] No device-level tests for atlas retries or the oversize-image skip (the GPU path itself is
+      wired through `use_gpu` in `view/pane_view.rs`). §5
 - [ ] A capture error after a resize leaves the new size applied; harmless while libghostty reports
       Full after resize. §5
 - [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
@@ -80,26 +88,29 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       The keymap is in temor-pane `keys`, routing in temor-ui `input/`.
 
 ## temor-ui / temor (lane/app, P1, reviewed at f783a2a)
-- [ ] quire v0.2.31: replace plain layout divs and the 100vh root with quire layout components and
-      `RootExtent::Window`; terminal palette tokens; re-apply the palette on theme change. §5
-      (partly: `RootExtent::Window` and quire's terminal tokens in 91eaf50, the theme change in 5bccf7d.
-      The column is still a flex element: quire v0.3.1 has no column component, asked.)
+- [ ] The window and pane columns are still flex divs (`.temor-window`, `.temor-pane` in
+      `view/window_style.rs`). quire has `Column` now (the sidebar uses it); move them to it. §5
+      (the root extent, palette tokens and theme change are done: 91eaf50, 5bccf7d)
 - [x] quire asks (whopper offline; saved in /mnt/data/cargo/temor-lanes/pending-quire-asks.md): IME
       cursor area API, runtime window title, theme-change signal, consumer coherence test. Now in
       quire v0.3.1 and used (5f852bf, fefac1e, 5bccf7d, e318913). §6
-- [ ] Bell, OSC 0/2 title, OSC 52 writes, notifications, cwd and progress are received but not shown
-      (P2/P3). Hyperlink hover target preview not built. §6, §7
+- [ ] OSC 52 writes are received and dropped (`TODO(P9)` in `session/lifecycle.rs`), and the
+      hyperlink hover target preview is not built. Bell, title, notifications, cwd and progress
+      are shown (P2, P3). §6, §7
 - [ ] Settings are temor's own typed file at $XDG_CONFIG_HOME/temor/terminal.conf; move to
-      ds-settings when quire provides it. §6
+      ds-settings when quire provides it. §6 (check: ds-settings is already used for the theme in
+      `view/theme.rs`; is it ready for temor's own keys?)
 - [ ] Per-cell text reads cost ~3 FFI calls per cell: measure search on a large scrollback. §5
 - [ ] Output read just before a resize may be parsed at the new size (the usual SIGWINCH window).
 - [ ] Without XDG_RUNTIME_DIR the runtime folder is ~/.cache/temor/run (0700, owner checked).
 
 ## temor-ssh (lane/ssh, reviewed at f3116b1 plus orchestrator fixes)
-- [ ] P13 wiring: host list in ⌘T (plus tailnet machines, D22), opening panes through the shared
-      master, consent per host, `HostId::same_machine` for the gate. §9b
+- [x] P13 wiring: host list in ⌘T (plus tailnet machines, D22), opening panes through the shared
+      master, consent per host, `HostId::same_machine` for the gate. §9b (done: Batch 2 ssh, and
+      the bar's host rows in P18, 79ebb19)
 - [ ] HostAlias rejects `:`, `[`, `]`: IPv6 literals need a HostName in ssh_config; say so in the UI.
-- [ ] Nushell on the host: the bootstrap places `temor.nu` under `nu/nushell/vendor/autoload`; P13 adds the `nu` case that starts nushell with `XDG_DATA_DIRS` pointing there (same as temor-pty's local plan). §9b
+- [x] Nushell on the host: the bootstrap places `temor.nu` under `nu/nushell/vendor/autoload`; P13 adds the `nu` case that starts nushell with `XDG_DATA_DIRS` pointing there (same as temor-pty's local plan). §9b
+      (done: the `nu|nushell` case in temor-ssh `sh/bootstrap.sh`, tested in `tests/it/nu.rs`)
 - [ ] IdentityFile and ProxyJump values must be validated before any `-i`/`-J` builder uses them.
 - [ ] fish 4.9 prints no marks on piped stdin, so fish marks over SSH aren't asserted; no real sshd
       test yet (only `ssh -G`); csh/tcsh login shells untested. §13
@@ -107,8 +118,9 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
-- [ ] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift);
-      temor-core terminal/chord.rs and keymap.rs defaults. §6
+- [x] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift);
+      temor-core terminal/chord.rs and keymap.rs defaults. §6 (done: keys on chordkit, Primary per
+      platform; `macos_uses_command_only` in temor-ui input tests)
 - [ ] Link opener and private runtime dir: temor-ui platform/opener.rs and private_dir non-unix
       stubs. §6
 - [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); implement `SystemBitmapEmoji` in
@@ -138,13 +150,16 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] Mark cuts: libghostty reports an OSC 133 mark when it reads the ESC that ends it; the cut
       sits right after that ESC (scan/marks.rs). If a Ghostty bump changes where it dispatches,
       the blocks tests time out at "the first prompt"; check `marks_split_at_every_offset`.
-- [ ] Nushell marks are tested through the env only; a real nu block test once nu is on the gate PATH.
-- [ ] view/window.rs is near 300 lines; P3's split tree replaces most of it.
+- [x] Nushell marks are tested through the env only; a real nu block test once nu is on the gate PATH.
+      (done: the block tests run nu where it is installed, temor-ui `tests/it/blocks/support.rs`)
+- [x] view/window.rs is near 300 lines; P3's split tree replaces most of it. (done: Batch 1, the
+      tree is `view/tree_view.rs`)
 
 ## R1a (lane/r1a)
-- [ ] temor-vt-sys: generated bindings carry indented C doc comments that rustdoc runs as ~100 failing
+- [x] temor-vt-sys: generated bindings carry indented C doc comments that rustdoc runs as ~100 failing
       doctests. Have `scripts/gen-bindings.sh` fence them as `text` (or set `doctest = false` on the
-      -sys lib), then add a crate-root example.
+      -sys lib), then add a crate-root example. (done: `doctest = false`; PLAN R1 exempts the
+      bindings from the example, d5621cd)
 - [ ] temor-vt `row_wraps` still returns `bool` (temor-vt can't see temor-core's `Wrap`); give temor-vt
       its own two-variant enum when R1b touches rows.
 
@@ -154,50 +169,55 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       block machine into temor-pane with its own id/time types once an embedder (anyview, sill) needs it.
 
 ## P3a (lane/p3a: keys, layout and tokens, theme, title, IME, coherence)
-- [ ] quire asks: (1) a column or stack layout component (v0.3.1 has only SplitView); (2)
+- [x] quire asks: (1) a column or stack layout component (v0.3.1 has only SplitView); (2)
       `focus_landing_told` is `pub(crate)` at v0.3.1 (the v0.3.1 notes say public); (3) EditSurface's
       Busy retry (`write_soon`) is private, so `view/ime.rs` keeps its own 16-try loop; (4)
       `RawKeySurface` takes no style, pointer or wheel handlers and sizes nothing: the grid needs an
       inner element and a sheet rule for the surface's class (`view/window.rs` `WINDOW_CSS`); (5)
       `.ds-texture-layer` has no rule in quire's sheet (the coherence test allows that one class). §6
+      (done in quire by v0.3.6; temor's side is the "Adopt" item under quire v0.3.4, v0.3.6)
 - [x] A keymap setting replaces both command forms of its action, which gives the chord back to the
       program; a bare Ctrl chord is refused with the ⌘ forms named (review fixes). §6
-- [ ] Unbound Super+letter reaches the program as text (as before P3a). Ghostty drops unbound ⌘ keys;
-      decide the same here. §6
+- [x] Unbound Super+letter reaches the program as text (as before P3a). Ghostty drops unbound ⌘ keys;
+      decide the same here. §6 (done: dropped, f689008)
 - [ ] KWin takes Meta+T/W/D/V globally on KDE, so those Super forms never reach temor there; the
       desktop's reserved chords are with whopper. §6
 - [ ] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
       real check. §6
 - [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
-- [ ] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
-- [ ] The palette follows the Space look (read inside `Ds`, `view/palette.rs`) but not
+- [x] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
+      (done: Batch 2 spaces, the root takes `spaces.look()` in `view/window.rs`)
+- [x] The palette follows the Space look (read inside `Ds`, `view/palette.rs`) but not
       `use_space_frame()` (the sidebar's ink; P3b). The look itself is `SpaceLook::default()` until
-      sill publishes per-workspace looks, so no change reaches it yet. §5
+      sill publishes per-workspace looks, so no change reaches it yet. §5 (done: Batch 1 and 2,
+      the sidebar reads `use_space_frame()` in `view/tab_sidebar.rs`, the look comes per Space)
 - [ ] `real_shells_*` and `a_five_mebibyte_paste_arrives_intact` time out under a parallel
       `cargo test -p temor-ui` (fish startup, a 15 s wait); they pass alone. §13
 
 ## P3b (lane/p3b: tabs, splits, session restore)
-- [ ] Window integration is not done: the window still shows one session. The workspace model
+- [x] Window integration is not done: the window still shows one session. The workspace model
       (temor-core `workspace`) is not driven by the window yet, and the sidebar (quire `Sidebar`
       with tab rows), the split miniature, the `SplitView` tree, drag to split and tear, and the
-      `use_space_frame()` sidebar ink are not built. §7
-- [ ] The session file (`temor-ui::edge::session_file`) is written and read, but the window does
+      `use_space_frame()` sidebar ink are not built. §7 (done: Batch 1 window)
+- [x] The session file (`temor-ui::edge::session_file`) is written and read, but the window does
       not load or save it yet, so nothing is restored on launch. Saves are paced (once a second,
-      plus one on quit). §7
-- [ ] Restoring scrollback needs a temor-pane entry point that starts a pane from a
+      plus one on quit). §7 (done: Batch 1 window, restore on launch)
+- [x] Restoring scrollback needs a temor-pane entry point that starts a pane from a
       `temor_vt::Snapshot`. temor-vt's `Terminal::restore` exists and nothing calls it. Until then
       no snapshot sidecars are written. When added: the state dir is 0700, files 0600, each
       snapshot is capped at 4 MiB, a pane on the alternate screen is never snapshotted, and a
-      tab's sidecars are deleted when it is forgotten. §7
-- [ ] ⌘T opens a plain new tab for now (the ⌘T bar is P5). §6
-- [ ] The pane ignores the workspace actions (`Session::run` no-op) until the window routes them
-      to the workspace step. §6
-- [ ] quire asks: `SplitView` needs a starting share and a finished-drag report, so the tree's
-      ratio round-trips (if absent, the tree keeps its ratio and the screen uses equal shares,
-      and quire gets this ask). The unread dot has no named component at v0.3.1 (a token-styled
-      dot is the fallback). Check both at window integration.
-- [ ] ⌃⌘= is bound to Ctrl+Shift+= and Ctrl+Super+=. The Ctrl+Super form is not a ⌘ chord under
-      the terminal rule (it has Ctrl), so the owner should confirm this binding. §6
+      tab's sidecars are deleted when it is forgotten. §7 (done: e5fc6ca and Batch 1
+      `edge/sidecar.rs`; the 4 MiB cap caveat is under Batch 1 window)
+- [x] ⌘T opens a plain new tab for now (the ⌘T bar is P5). §6 (obsolete: ⌘T is the bar and ⌘N
+      the plain tab since Batch 2)
+- [x] The pane ignores the workspace actions (`Session::run` no-op) until the window routes them
+      to the workspace step. §6 (done: Batch 1, `Session::take_asked` hands them to the hub)
+- [ ] quire ask: `SplitView` reports no finished drag, so a dragged divider is not written back
+      to the tree (`view/tree_view.rs`; the starting share is used, and the unread dot is quire's
+      `Badge`). (check: v0.3.14's `SplitView` has `on_shown`; is that the report?)
+- [x] ⌃⌘= is bound to Ctrl+Shift+= and Ctrl+Super+=. The Ctrl+Super form is not a ⌘ chord under
+      the terminal rule (it has Ctrl), so the owner should confirm this binding. §6 (obsolete: keys
+      moved to chordkit; equalize is `Primary+Ctrl+=`, else ⌥⌘0 where Primary is Ctrl+Shift)
 
 ## Batch 1 (2026-10-10: window, spaces, desktop, ssh, remote, transfers, agents)
 Written without builds by Sonnet lanes; compiled, fixed and gated together by the orchestrator.
@@ -502,14 +522,22 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - Duplicate commit message 6cf65ed/71ed891: fine, leave history.
 
 ### orchestrator (merge)
-- [ ] Space switch: no default chord until the desktop rule settles (quire leaves Ctrl+digit to the desktop; the shell owns Super+digit); asked the agent session.
-- [ ] Unbound Ctrl+Shift chords are dropped. Once a program turns on kitty keyboard flags they are distinct keys; forward them then instead of dropping.
-- [ ] `temor save` STARTED-before-consent (transfers decision) not yet done.
-- [ ] The Restart panic (Blitz node.rs:1573) was not reproduced; the regression test runs it in the harness. If it still happens on the desktop, take it to quire/Blitz with a backtrace (RUST_BACKTRACE=1).
+- [x] Space switch: no default chord until the desktop rule settles (quire leaves Ctrl+digit to the desktop; the shell owns Super+digit); asked the agent session.
+      (done: settled as `SwitchChord::Unbound`, `view/space_ui.rs`; see Keys on chordkit)
+- [x] Unbound Ctrl+Shift chords are dropped. Once a program turns on kitty keyboard flags they are distinct keys; forward them then instead of dropping.
+      (obsolete: the same item lives under Keys on chordkit, "Forward Primary-form chords")
+- [x] `temor save` STARTED-before-consent (transfers decision) not yet done. (done: 8e55667)
+- [x] The Restart panic (Blitz node.rs:1573) was not reproduced; the regression test runs it in the harness. If it still happens on the desktop, take it to quire/Blitz with a backtrace (RUST_BACKTRACE=1).
+      (done: quire v0.3.4's hover-card guard fixed it; the restart test runs again)
 
 ## quire v0.3.4, v0.3.6
 - [x] Bumped to v0.3.4 (e0d1ed48; v0.3.3 lacked `ds-blitz/src/layout_chain.rs`). The hover-card guard fixes the Restart panic; `restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive` runs again. quire now styles `.ds-texture-layer`, so the coherence exemption is gone.
-- [ ] Adopt in Batch 2: `SwitchChord::Unbound` for the Space switch when Spaces reach the window; `Column`; `ds::focus::soon::focus_landing_told`; `ds::components::editor::write_soon::write_soon`; RawKeySurface `style` and pointer/wheel props; ds-harness `WindowHosting::Recorded` (`window_titles()`, `window_icon()`); `WindowIcon` + `HostWindow::set_icon` (X11 and Windows; Wayland takes the desktop entry's icon).
+- [ ] Still to adopt from quire: `Column` for the window and pane columns (the sidebar has it);
+      `ds::focus::soon::focus_landing_told`; `write_soon` (`view/ime.rs` keeps its own loop);
+      RawKeySurface `style` and pointer/wheel props (the grid still uses an inner div); ds-harness
+      `WindowHosting::Recorded` (`window_titles()`, `window_icon()`); `WindowIcon` and
+      `with_icon` (X11 and Windows; Wayland takes the desktop entry's icon).
+      `SwitchChord::Unbound` is in (`view/space_ui.rs`).
 
 ## Keys on chordkit (lane/keys, chordkit d6fed65)
 - [x] chordkit 338b717 (ba094c6 fixes the fallback where the default is plain Ctrl in a terminal): temor forgoes "show fonts" and "new", so ⌘T is new tab (⌘N free); equalize has the fallback ⌥⌘0 (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift); a person's chord revives an action refused at start (focus left/right on "Other" Linux, where Ctrl+Alt arrows switch Spaces).
@@ -520,8 +548,11 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [x] quire v0.3.6 (8ce6d4b, chordkit ba094c6, maps ALT_GRAPH): one chordkit in the tree. temor still routes its own window keys; moving to quire's `ds::keys` resolver is a later step.
 - [ ] Wire `keys::{shortcut, terminal_shortcut}` into menus when they show shortcuts.
 - [ ] The old `keys.<action> = ctrl+shift+c` lines now report "no setting called"; say so in the user docs when settings are documented.
-- [ ] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds it live in a terminal, so it is reached from the bar and the Spaces menu only.
-- [ ] temor-ssh `files::an_awkward_path_is_fetched_edited_and_written_back` flaked once with ETXTBSY (a fake `ssh` script written while another test thread forked). Retry the spawn on ExecutableFileBusy in the test helper, or write the fakes before the threads start.
+- [ ] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds
+      it live in a terminal, so it is reached from the Spaces menu only. The bar has no Space rows
+      yet: nothing sets `BarSeams::spaces`, so it stays `NoSpaces` (Batch 2 bar).
+- [x] temor-ssh `files::an_awkward_path_is_fetched_edited_and_written_back` flaked once with ETXTBSY (a fake `ssh` script written while another test thread forked). Retry the spawn on ExecutableFileBusy in the test helper, or write the fakes before the threads start.
+      (done: d5a9d6f, the spawn retries on ExecutableFileBusy in `tests/it/harness.rs`)
 
 ## Batch 2 (2026-10-10: Spaces, ⌘T bar and quick terminal, desktop, SSH Tier A, shelf, agents in the window)
 Written without builds by Sonnet lanes; merged, compiled, fixed and gated together by the orchestrator.
@@ -623,18 +654,16 @@ Written without builds by Sonnet lanes; merged, compiled, fixed and gated togeth
 ### ssh
 
 ## Wiring the orchestrator or other lanes must do
-- [ ] Mount `view::host_list::HostList { desk }` where the host list should show (the bar lane's ⌘T, or a
-      sidebar section). Nothing in `App` mounts it yet. The bar reads the same rows through
-      `hub::HostRows` (`HubRef`/`Hub` implement it); if the bar lane defined its own `HostRows`, drop mine
-      in `hub/hosts.rs` and implement theirs. Same for `TailnetFeed`.
-- [ ] The desktop lane provides the tailnet: `hub::TailnetHandle(Arc<dyn TailnetFeed>)` as a root context
+- [ ] `view::host_list::HostList { desk }` is still mounted nowhere (a sidebar section, if wanted).
+      The ⌘T bar lists the hub's host rows through `hub::HostRows` (P18, 79ebb19).
+- [x] The desktop lane provides the tailnet: `hub::TailnetHandle(Arc<dyn TailnetFeed>)` as a root context
       (read in `view/window.rs` with `try_consume_context`), or call `Hub::set_tailnet`. It maps porter's
-      `Machine` to `temor_ssh::TailnetHost`.
+      `Machine` to `temor_ssh::TailnetHost`. (done: `view/window.rs` calls `Hub::set_tailnet`)
 - [ ] ⌘T: a new tab or split of a host pane is a session on the same host (spec). With the bar, ⌘T opens the
       bar instead; decide whether the bar's "new tab" from a host pane means the host or a local shell.
       Today `Hub::ssh_prepare` makes every `NewTab { cwd: None }` from a host pane a host session.
-- [ ] `Desk::open_host(&HostRow)` / `Hub::open_host_named(text)` are the entries for the bar's host rows and
-      for a typed destination.
+- [x] `Desk::open_host(&HostRow)` / `Hub::open_host_named(text)` are the entries for the bar's host rows and
+      for a typed destination. (done: `hub/bar_run.rs` uses both)
 - [ ] "Edit locally" from a block: the entry is `Hub::edit_remote(Some(pane), "host:/path" | "path")`; the
       block bar has no such button yet (a path in a block's output needs picking out of text). The host
       banner has a "File on the computer" field + "Edit locally" button meanwhile.
@@ -669,6 +698,7 @@ Written without builds by Sonnet lanes; merged, compiled, fixed and gated togeth
 
 ## Quire asks
 - [ ] A `Toolbar`/row layout component for the host banner's text field + buttons (uses `.temor-host-line`).
+      (check: quire v0.3.14 has a `Toolbar` in `chrome/`; is it usable inside a banner?)
 
 ## Platform TODOs
 - `platform/open_file.rs`: `UnsupportedFile` stub for macOS/Windows (`TODO(platform:macos)`,
@@ -756,12 +786,13 @@ Nothing was compiled or run (batch rule). The orchestrator's first build will fi
 - A `Menu` anchored to a `Row` that does not bubble its picks to the row.
 
 ## Agent checkpoints move to docket (decided 2026-10-10)
-- [ ] docket owns per-turn checkpoints: it uses temor's git-ref approach (private index, hidden ref), keeps the last 20 per run, drops them after 14 days, and skips agents that keep their own (Claude Code /rewind). When the interface is frozen (a list per run, plus restore with a dry-run plan), temor stops snapshotting (hub/agents/checkpoints.rs, temor-core checkpoint git) and shows docket's list and restore. Until then temor's refs stay, and temor adds no pruning.
+- [x] docket owns per-turn checkpoints: it uses temor's git-ref approach (private index, hidden ref), keeps the last 20 per run, drops them after 14 days, and skips agents that keep their own (Claude Code /rewind). When the interface is frozen (a list per run, plus restore with a dry-run plan), temor stops snapshotting (hub/agents/checkpoints.rs, temor-core checkpoint git) and shows docket's list and restore. Until then temor's refs stay, and temor adds no pruning.
       Update (2026-10-10): the interface is frozen (~/rs-wt/checkpoints/DESIGN.md §3, §5, §8, §9). Migration starts when the agent session sends the docket sha:
       - delete temor-core checkpoint/* and the hub's checkpoint jobs, and call docket's CheckpointList / CheckpointPlan / `checkpoints.restore`;
       - move undo_ref to refs/temor/undo/<n>;
       - at start, prune refs/temor/checkpoints/* older than 14 days, with no import;
       - add `_` arms for the non-exhaustive SessionEntry.
+      (done: P19, Batches 14 and 15)
 
 ## Look batch: Warp-style cards (merged 2026-10-10)
 Studied Warp's design (AGPL; no code copied). D5 stays: the shell keeps its own line editor, and
@@ -774,17 +805,17 @@ there is no input box of temor's own (Warp's needs its own vim emulation and com
 - [ ] No GPU pixel test for bands (needs an adapter); the CPU tests cover the shared scene path.
 - [ ] Prompt: nushell is left alone (there's no reliable stock-prompt test). fish 3 and older were not run.
       In fish, Enter on an empty line before any command has no blank line above it. The branch is
-      read from .git only, with no dirty marker (the context chips batch adds facts).
+      read from .git only, with no dirty marker on the prompt line (the chips show changes now).
 - [ ] zsh: without a terminal description that can move the cursor up (an unknown TERM), the
       typing line starts with one space, because zsh draws no prompt whose last line is empty.
 - [ ] quire asks: a compact icon-button group surface (the toolbar uses `.temor-block-tools`
       CSS); a sticky overlay surface with an opaque material and a bottom hairline;
       `text-overflow: ellipsis` in Blitz (the header cuts with `clip_chars`).
-- [ ] Warpify-style offer: for a typed `ssh`, `docker exec` or `sudo -i` inside a tab, offer
+- [x] Warpify-style offer: for a typed `ssh`, `docker exec` or `sudo -i` inside a tab, offer
       once, from a fixed command list, to load temor's shell integration in the inner shell (so
-      its commands become cards). Later, after the context chips batch.
-- [ ] Next, queued (owner OK): the context chips batch
-      (/mnt/data/cargo/temor-lanes/QUEUE-facts.md).
+      its commands become cards). Later, after the context chips batch. (done: P17, Batch 3)
+- [x] Next, queued (owner OK): the context chips batch
+      (/mnt/data/cargo/temor-lanes/QUEUE-facts.md). (done: P16, Batch 3)
 
 ## Batch 3 (merged 2026-10-10: P16 context chips, P17 shell offer, P18 finish Batch 2, P14 wire revision and Tier B in the window)
 Written by Sonnet lanes without builds. The orchestrator merged, compiled, fixed and gated them
@@ -816,31 +847,36 @@ together.
       `list_sessions` on restore.
 - [x] (Batch 5) A reconnect after the shared connection died can't ask for a password (it uses
       BatchMode). Retry should repeat the in-pane connect step.
-- [ ] Remote edit and forwards still use scp and `ssh -O`; move them to the helper's file service.
-      Input typed while the link is down is dropped.
+- [x] Remote edit and forwards still use scp and `ssh -O`; move them to the helper's file service.
+      Input typed while the link is down is dropped. (done: Batch 5, Tier B edits go through the
+      helper and typing is held while the link is down; Tier A keeps scp and forwards stay on
+      `ssh -O` by design)
 - [x] (Batch 5) Helper consent is in its own `remote.json`; fold it into the consent book.
 - [ ] The helper binary comes from `TEMOR_REMOTE_HELPER` or the folder beside temor, for the same
       CPU kind only. Packaging a helper per architecture is open.
-- [ ] Offer:
+- [x] (Batch 5) Offer:
       - fish and nushell inner shells: Yes does nothing yet (`temor.fish` can't be sourced in
         place);
       - shells with no line editor cut the roughly 14 KB line at 4096 bytes, so shrink the payload
         or split it;
       - history hiding needs `ignorespace` / `HIST_IGNORE_SPACE`.
-- [ ] Facts:
-      - host panes get no chips;
+      (what is left is under Batch 5 Next)
+- [x] (Batch 5) Facts:
       - `.node-version` and `.tool-versions` aren't read;
       - untracked files aren't counted;
       - a repo with no commit shows no branch;
       - a long typed command can run under the chips.
-- [ ] Desk:
+- [ ] Facts: host panes get no chips (also under Batch 5 Next).
+- [x] (Batch 5) Desk:
       - the ⌘T bar re-reads ~/.ssh/config on every keystroke (cache it);
       - the X11 token is `DESKTOP_STARTUP_ID` and isn't read;
-      - check that the radar treats an agent-opened pane as unfocused.
-- [ ] Wire:
+      - check that the radar treats an agent-opened pane as unfocused (a560d57, test in
+        `hub/desktop_tests.rs`).
+- [x] (Batch 5) Wire:
       - staged `.temor-part-*` files aren't swept;
       - `Error::TooLarge` is unused;
       - there's no test that reads the pixel size back, and none for a slow file request.
+      (5977500)
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b3-*.md`.
 
 ## Batch 14 (merged 2026-10-10: pins and P19 checkpoints on docket, first part)
@@ -869,8 +905,9 @@ porter-core and docket.
       Working stopgap. A CheckpointList literal needs `turn`.
 - [x] Batch 15: temor shows the plan only, with no confirm of its own. sill's hold-to-confirm
       sheet is the one confirmation.
-- [ ] Outside temor: `org.quire.Temor` must be listed under `cli` in docket's intentd.toml (for the
-      docket side to add). Perform uses `Origin::InWindowField` for now; check it against the cli role.
+- [ ] docket lists `org.quire.Temor` under `cli` in its intentd.toml now (Batch 15 notes). Left:
+      Perform still sends `Origin::InWindowField` (temor-desktop `platform/linux/checkpoints.rs`);
+      check it against the cli role.
 - [ ] quire's context menu drops disabled items and has no per-item tooltip, so "Wait for the
       agent to finish" is an info row (quire ask).
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b14-ckpt.md`.
@@ -999,3 +1036,120 @@ changes.
       given a player, else opens elsewhere: pairs with the `player` follow-up above) and #99 (one
       remembering policy, `anyview_machines::{Remembering, Noted, REMEMBER_EVERY}`; a pane flushes
       on unmount, so far fewer `Job::Keep`s).
+
+## Open now (swept 2026-10-11)
+Every item still unticked above, one line each, with the section it lives in. Ticked items and
+the plain notes in the Batch 1 and 2 lane sections are history. "(check)" marks an item whose
+state needs a look before anyone works on it.
+
+### Next batches
+- Batch 17: take anyview be8c91c (recordings in a pane, one remembering policy). (Batch 16 pins)
+- Find in a viewer pane, anyview #100. (Batch 16 pins)
+- Recordings in the pane through anyview-pane's `player` feature. (P10 Viewers)
+- No D-Bus Open fallback; files on another computer can't be viewed. (P10 Viewers)
+- Host panes: no peek, no chips. (Batch 5 Next; Batch 3 Next, Facts)
+- Offer: nushell history, zsh prelude in nushell, dash's "source: not found", tests. (Batch 5 Next)
+- Remote: Retry scenario, `edge/remote_install.rs` over 300 lines, a repeated send. (Batch 5 Next)
+- Edit: stream large files; name the "same time, other contents" conflict. (Batch 5 Next)
+- Facts: `.python-version` and `pyproject.toml`; a huge untracked tree is slow. (Batch 5 Next)
+- Peek: OSC 8 `file://` links, the card's size, `view/pane_view.rs` over 300 lines. (Batch 5 Next)
+- Desk: an `Include`d ssh config edit; a place-only recall starts shells in the Space's folder.
+  (Batch 5 Next)
+- Package a helper binary per CPU architecture. (Batch 3 Next)
+- Checkpoint Perform sends `Origin::InWindowField`; check it against the cli role. (Batch 14)
+- Proposals (P8): fresh `TurnRef` per Ask, "edited" vs "replaced", U+2800 as a space.
+  (temor-core)
+- OSC 52 writes and reads; the hyperlink hover preview. (temor-ui P1; temor-vt)
+- Upload by drop (`SendSession`). (temor-transfer; Batch 2 shelf gaps)
+- Move terminal.conf to ds-settings. (temor-ui P1) (check)
+- Adopt quire's `Column`, `focus_landing_told`, `write_soon`, RawKeySurface props, recorded
+  window hosting and the window icon. (quire v0.3.4, v0.3.6; temor-ui P1)
+- Mount the `HostList` view somewhere, or drop it. (Batch 2 ssh, wiring)
+- Decide whether a new tab from a host pane opens on the host. (Batch 2 ssh, wiring)
+- "Edit locally" from a block's output. (Batch 2 ssh, wiring)
+- SSH Tier A, each in Batch 2 ssh, Known gaps:
+  - the check URL is read from screen text, not raw bytes;
+  - "Established" comes from polling `ssh -O check`;
+  - a plain alias's fingerprint is a `known_hosts` lookup by name;
+  - a plain session can't start in the pane's folder;
+  - a restored host tab may ask for a password at launch;
+  - a reopened closed tab loses its host;
+  - offline tailnet rows can't be opened another way;
+  - a taken forward port is swapped without asking, and `LocalPortTaken` has no message;
+  - local copies of edited files are not deleted on "Done";
+  - edit conflicts show no diff;
+  - host banners sit in the pane, with no unread mark in the sidebar;
+  - no "connect, then edit" for a typed `host:path`;
+  - OSC 52, transfer and notification consent stays in `remote::HostConsent`.
+
+### Asks of other projects
+- quire: `SplitView` finished-drag report. (P3b) (check)
+- quire: a row layout for the host banner's field and buttons. (Batch 2 ssh, Quire asks) (check)
+- quire: compact icon-button group, sticky overlay surface, `text-overflow: ellipsis` in Blitz.
+  (Look batch)
+- quire: context menu keeps disabled items and per-item tooltips. (Batch 14)
+- quire: confirm `focus_with_token` acts on an X11 startup id. (Batch 5 Next, Desk)
+- Ghostty upstream (owner's OK): OSC 1337 `File=` through UNKNOWN_SEQUENCE, per-cell hyperlink
+  id, libghostty-rs wrappers. (temor-vt)
+- Ghostty: iTerm2 multipart files are dropped before temor sees them. (temor-vt) (check)
+
+### Platforms
+- macOS and Windows: link opener and private runtime dir stubs. (Platform)
+- macOS: Apple Color Emoji (sbix). (Platform)
+- macOS: pty spawn, session leader, process name, cwd, user, executable check. (Platform)
+- macOS: no trial sandbox; decide what replaces bwrap. (Platform)
+- macOS: verify quire windows, IME and CoreText; a cross-check CI job. (Platform)
+- macOS and Windows: transfer edge (safe open, folder sync, case-folded names, `:`). (Platform)
+- macOS and Windows: temor-ssh private runtime dir and file reads. (Platform)
+- Windows: ConPTY and the plugin process side. (Platform)
+- Ubuntu 24.04+: AppArmor restricts user namespaces; detect, report `NoSandbox`, document.
+  (Platform)
+
+### Terminal core
+- `RENDER_HOLD`: capture a frame when a hold starts. (temor-vt)
+- vttest captures in the conformance fixtures. (temor-vt)
+- fish 3 marks untested; bash 3.2 has no C/D marks. (temor-pty)
+- A person's own `trap … EXIT` and old-style `zle-line-init` lose temor's hooks. (temor-pty)
+- A pipeline reports its first command as the foreground. (temor-pty)
+- PLAN §3 should list the wire's `Unknown` catch-alls and the no-payload marker. (temor-wire)
+- Tune snapshot and file-size limits and the retry policy on real hosts. (temor-wire)
+- Kitty `prm` ignored and in-root symlinks refused. (temor-transfer)
+- Verify kitty's `st` encoding and `tt` values against real kitty. (temor-transfer)
+- A malformed frame with no open files only replies. (temor-transfer)
+- A capture error after a resize keeps the new size. (temor-render)
+- Kitty virtual placements not drawn; selection recomposes the pane; glyph overhang differs.
+  (temor-render)
+- Measure search cost on a large scrollback (~3 FFI calls a cell). (temor-ui P1)
+- Output just before a resize may parse at the new size. (temor-ui P1)
+- The runtime folder falls back to ~/.cache/temor/run without XDG_RUNTIME_DIR. (temor-ui P1)
+- Say in the UI that IPv6 literals need a HostName. (temor-ssh)
+- Validate IdentityFile and ProxyJump before any `-i`/`-J` builder. (temor-ssh)
+- A bootstrap dir with mode 0300/0000 fails closed. (temor-ssh)
+- Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
+- temor-vt's `row_wraps` returns `bool`. (R1a)
+- Blocks stay in temor-core, so an embedder of temor-pane gets no block model. (R1b)
+
+### Keys
+- KWin takes Meta+T/W/D/V on KDE. (P3a)
+- A chordkit fallback applies only where the default has no live form. (Keys on chordkit)
+- Forward Primary-form chords under the kitty keyboard flags. (Keys on chordkit)
+- Desktop shortcut sources (keycap, chordkit-kde, chordkit-gnome) and reload. (Keys on chordkit)
+- Show shortcuts in menus. (Keys on chordkit)
+- Document that old `keys.<action>` lines report "no setting called". (Keys on chordkit)
+- The Space switch is reached from the Spaces menu only; the bar has no Space rows.
+  (Keys on chordkit)
+
+### Look
+- Block hover goes stale after a wheel scroll or pointer leave. (Look batch)
+- `card_bands` lags one frame. (Look batch)
+- Measure `TOOLS_HEIGHT_LOGICAL`. (Look batch)
+- Prompt: nushell left alone, fish 3 not run, no dirty marker on the prompt line. (Look batch)
+- zsh's typing line starts with a space under an unknown TERM. (Look batch)
+
+### Tests and flakes
+- No device-level GPU tests for atlas retries or the oversize-image skip. (temor-render)
+- No GPU pixel test for bands. (Look batch)
+- IME candidate placement untested. (P3a)
+- The window title untested in the harness. (P3a)
+- `real_shells_*` and the 5 MiB paste time out under a parallel run. (P3a)
+- fish marks over SSH not asserted; no real sshd test; csh/tcsh untested. (temor-ssh)
