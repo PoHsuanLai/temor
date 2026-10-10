@@ -39,6 +39,9 @@ fn main() -> ExitCode {
         runtime.handle(),
         DesktopEnv::from_process(),
         &Request::NewWindow,
+        // A launcher or a notification click hands the new process a one-use token that lets
+        // the running window take the keyboard on Wayland.
+        std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref(),
     ) {
         Joined::Handed => return ExitCode::SUCCESS,
         Joined::First { desktop, trouble } => {

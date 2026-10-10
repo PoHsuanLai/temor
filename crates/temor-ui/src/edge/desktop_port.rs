@@ -81,8 +81,9 @@ pub type Reply = SyncSender<Result<Answer, PortRefusal>>;
 pub enum Ask {
     /// An agent's action, answered through the reply.
     Act(Act, Reply),
-    /// A later launch of temor asked for a window or a tab.
-    Launch(Request),
+    /// A later launch of temor asked for a window or a tab. The second field is the activation
+    /// token it was started with, if any: the window raises itself with it.
+    Launch(Request, Option<String>),
 }
 
 /// The bus side. Cheap to share.

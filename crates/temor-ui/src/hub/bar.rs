@@ -5,10 +5,11 @@
 use std::collections::BTreeMap;
 
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
-use temor_core::vocab::text::CommandText;
+use temor_core::vocab::text::{CommandText, HostAlias};
 use temor_pane::keys::Action;
 
 use super::desk::Desk;
+use super::hosts::HostRows;
 use super::model::{Hub, HubRef};
 use crate::bar::{BarModel, BarSeams, closed_candidate, directory_uses, recent_commands};
 use crate::view::launch::Launch;
@@ -41,7 +42,7 @@ pub struct BarData {
 }
 
 impl Hub {
-    /// Replaces what the bar reads from outside (the Spaces, the hosts, the model).
+    /// Replaces what the bar reads from outside (the Spaces, the model).
     pub fn set_bar_seams(&mut self, seams: BarSeams) {
         self.bar.seams = seams;
     }
@@ -49,7 +50,14 @@ impl Hub {
     /// Everything the bar can match right now.
     fn bar_candidates(&self) -> Vec<Candidate> {
         let seams = &self.bar.seams;
-        let (spaces, hosts) = (seams.spaces.spaces(), seams.hosts.hosts());
+        let spaces = seams.spaces.spaces();
+        // The hub's own host list: ssh config hosts and tailnet machines, each once.
+        let hosts: Vec<HostAlias> = self
+            .host_rows()
+            .iter()
+            .filter_map(|row| row.destination())
+            .map(|alias| HostAlias(alias.as_str().to_owned()))
+            .collect();
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);

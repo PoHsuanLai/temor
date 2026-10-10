@@ -1,12 +1,12 @@
 //! What the bar reads from parts of the app that live elsewhere. Each has a default that offers
-//! nothing, so the bar works (and says nothing false) until the part exists.
+//! nothing, so the bar works (and says nothing false) until the part exists. The SSH hosts are
+//! not a seam: the hub lists them itself (`hub/hosts.rs`).
 
 use std::rc::Rc;
 
 use ds::style::space::list::SpaceId;
 use temor_core::bar::{BarAction, PathResolver, SpaceEntry, UnixSecs};
 use temor_core::vocab::ai::AiSwitch;
-use temor_core::vocab::text::{CommandText, HostAlias};
 
 use super::resolver::PathLookup;
 use crate::edge::unix_now;
@@ -19,24 +19,6 @@ pub trait SpaceRows {
 
     /// Switches to a Space the bar listed. The words come back as the notice when it cannot.
     fn go_to(&self, space: SpaceId) -> Result<(), String>;
-}
-
-/// The SSH hosts the bar lists and connects to. The SSH lane implements it.
-pub trait HostRows {
-    /// The hosts (the person's ssh config, and later the tailnet's computers).
-    fn hosts(&self) -> Vec<HostAlias>;
-
-    /// The command a new tab runs to connect to `host`: the system `ssh`, as PLAN §9b (D17)
-    /// has it. `None` for a name that is not safe to put on a command line.
-    fn connect(&self, host: &HostAlias) -> Option<CommandText> {
-        let name = host.as_str();
-        let safe = !name.is_empty()
-            && !name.starts_with('-')
-            && name
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '@' | ':'));
-        safe.then(|| CommandText(format!("ssh {name}")))
-    }
 }
 
 /// The model behind the bar's AI rows (PLAN §8.3, D6, D11). The rows exist only when this says
@@ -63,16 +45,6 @@ impl SpaceRows for NoSpaces {
     }
 }
 
-/// No hosts yet.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct NoHosts;
-
-impl HostRows for NoHosts {
-    fn hosts(&self) -> Vec<HostAlias> {
-        Vec::new()
-    }
-}
-
 /// No model: the AI rows are absent.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoModel;
@@ -91,7 +63,6 @@ impl ModelRows for NoModel {
 #[derive(Clone)]
 pub struct BarSeams {
     pub spaces: Rc<dyn SpaceRows>,
-    pub hosts: Rc<dyn HostRows>,
     pub model: Rc<dyn ModelRows>,
     /// The `PATH` lookup that decides whether the Run row exists.
     pub paths: Rc<dyn PathResolver>,
@@ -100,13 +71,12 @@ pub struct BarSeams {
 }
 
 impl BarSeams {
-    /// The defaults for a window: no Spaces, hosts or model, and the lookup over the `PATH` the
+    /// The defaults for a window: no Spaces or model, and the lookup over the `PATH` the
     /// new shells start with.
     pub fn new(launch: &Launch) -> BarSeams {
         let path = launch.ambient.env.get("PATH").unwrap_or_default();
         BarSeams {
             spaces: Rc::new(NoSpaces),
-            hosts: Rc::new(NoHosts),
             model: Rc::new(NoModel),
             paths: Rc::new(PathLookup::new(path.to_owned())),
             now: unix_now,

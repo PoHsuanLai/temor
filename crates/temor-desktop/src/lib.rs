@@ -35,7 +35,7 @@ pub use manifest::{
     INSTANCE_BUS_NAME, MANIFEST, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ,
 };
 pub use platform::{SystemDock, SystemInstance, SystemIntents, SystemTailnet};
-pub use request::{Claim, Primary, Request};
+pub use request::{Claim, Handover, Primary, Request};
 pub use tailnet::TailnetChanges;
 pub use window::{
     CommandInfo, CommandRef, Exit, Focus, LineRange, Network, PaneInfo, PaneKind, PaneOpen,

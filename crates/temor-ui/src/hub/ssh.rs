@@ -17,7 +17,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use crate::edge::desktop_feed::{NoTailnet, TailnetFeed};
 use crate::edge::ssh_work::{EditId, SshEvent, SshWork};
 use crate::edge::{Ambient, SshEnv};
-use crate::platform::{FileOpener, Opener, default_file_opener, default_opener};
+use crate::platform::{FileShell, Opener, default_file_shell, default_opener};
 
 /// Where a host pane's session stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,7 +103,7 @@ pub(super) struct SshHub {
     pub edits: BTreeMap<EditId, RemoteEdit>,
     pub next_edit: u64,
     pub opener: Box<dyn Opener>,
-    pub file_opener: Box<dyn FileOpener>,
+    pub file_opener: Box<dyn FileShell>,
     /// Where the last tick polled the connections, to space the probes.
     pub ticks: u32,
 }
@@ -128,7 +128,7 @@ impl SshHub {
             edits: BTreeMap::new(),
             next_edit: 1,
             opener: default_opener(),
-            file_opener: default_file_opener(),
+            file_opener: default_file_shell(),
             ticks: 0,
         }
     }
@@ -170,7 +170,7 @@ impl super::model::Hub {
     }
 
     /// Replaces how links and files are handed to the desktop (tests record them).
-    pub fn set_openers(&mut self, links: Box<dyn Opener>, files: Box<dyn FileOpener>) {
+    pub fn set_openers(&mut self, links: Box<dyn Opener>, files: Box<dyn FileShell>) {
         self.ssh.opener = links;
         self.ssh.file_opener = files;
     }

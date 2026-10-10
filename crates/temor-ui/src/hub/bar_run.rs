@@ -6,6 +6,7 @@ use temor_core::bar::{BarAction, BarRow, Target, Visits};
 use temor_core::vocab::text::{CommandText, Cwd};
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
+use super::hosts::HostRows;
 use super::model::Hub;
 use crate::session::Session;
 
@@ -57,13 +58,16 @@ impl Hub {
                     self.notices.push(why);
                 }
             }
-            Target::Host(host) => match self.bar.seams.hosts.connect(&host) {
-                Some(command) => self.command_in_new_tab(&command, Submit::Enter),
-                None => self.notices.push(format!(
-                    "{} cannot be connected to from here.",
-                    host.as_str()
-                )),
-            },
+            Target::Host(host) => {
+                let row = self.host_rows().into_iter().find(|row| {
+                    row.destination()
+                        .is_some_and(|d| d.as_str() == host.as_str())
+                });
+                match row {
+                    Some(row) => self.open_host(&row),
+                    None => self.open_host_named(host.as_str()),
+                }
+            }
             Target::RecentCommand(command) => self.command_in_new_tab(&command, Submit::Wait),
             Target::Directory { cwd, .. } => {
                 self.note_visit(&cwd);

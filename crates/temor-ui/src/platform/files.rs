@@ -1,5 +1,7 @@
-//! Opening a saved file, or showing it in the file manager (PLAN §9). What differs by system
-//! lives here; Linux hands the path to the desktop's opener, other systems have a stub.
+//! The one file opener (PLAN §9): opening a file (a saved download, a local copy of a host's file
+//! the person asked to edit) and showing it in the file manager. The path is one temor made.
+//! What differs by system lives here; Linux hands the path to the desktop's opener, other
+//! systems have a stub.
 
 use std::path::Path;
 

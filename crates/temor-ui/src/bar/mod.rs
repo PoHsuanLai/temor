@@ -13,5 +13,5 @@ mod sources_tests;
 
 pub use adapter::BarModel;
 pub use resolver::PathLookup;
-pub use seams::{BarSeams, HostRows, ModelRows, NoHosts, NoModel, NoSpaces, SpaceRows};
+pub use seams::{BarSeams, ModelRows, NoModel, NoSpaces, SpaceRows};
 pub use sources::{closed_candidate, directory_uses, recent_commands};

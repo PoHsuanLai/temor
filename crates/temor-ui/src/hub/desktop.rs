@@ -6,7 +6,9 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
+use ds_blitz::WindowHandle;
 use temor_core::block::Outcome;
+use temor_core::notify::Focus as NoteFocus;
 use temor_core::split::Direction;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
@@ -22,7 +24,7 @@ use crate::edge::desktop_port::{Act, Answer, Ask, DesktopLink, Snapshot};
 use crate::view::title::window_title;
 
 impl Hub {
-    /// What the desktop services see now, and how many tabs have news for the dock.
+    /// What the desktop services see now, and how many agents wait on the person, for the dock.
     pub fn desktop_snapshot(&self) -> (Snapshot, BadgeCount) {
         let keyboard = self.keyboard_pane();
         let order = self.ws.tabs.panes();
@@ -50,14 +52,16 @@ impl Hub {
                 link: None,
             },
         };
-        let unread = u32::try_from(self.ws.tabs.unread.len()).unwrap_or(u32::MAX);
+        // The dock asks for the person where an agent waits on them; unread tabs are the tab
+        // row's business.
+        let waiting = u32::try_from(self.waiting_count()).unwrap_or(u32::MAX);
         (
             Snapshot {
                 context,
                 panes,
                 commands,
             },
-            BadgeCount(unread),
+            BadgeCount(waiting),
         )
     }
 
@@ -96,7 +100,7 @@ impl Hub {
     /// Carries out one message from the desktop services.
     pub(super) fn serve(&mut self, ask: Ask) {
         match ask {
-            Ask::Launch(request) => self.act(new_tab_for(request)),
+            Ask::Launch(request, _token) => self.act(new_tab_for(request)),
             Ask::Act(act, reply) => {
                 let _ = reply.send(self.perform(act));
             }
@@ -148,6 +152,7 @@ impl Hub {
             }
         };
         let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
+        let held = self.ws.front().and_then(|tab| self.ws.focus_of(tab));
         self.act(input);
         match self
             .ws
@@ -156,7 +161,10 @@ impl Hub {
             .into_iter()
             .find(|p| !before.contains(p))
         {
-            Some(pane) => Ok(PaneRef(pane.0)),
+            Some(pane) => {
+                self.hand_keyboard_back(held, pane);
+                Ok(PaneRef(pane.0))
+            }
             None => {
                 Err(PortRefusal::Failed(self.notices.pop().unwrap_or_else(
                     || "there is no room for another pane".to_owned(),
@@ -164,6 +172,28 @@ impl Hub {
             }
         }
     }
+}
+
+impl Hub {
+    /// A pane the person did not open (an agent's) does not take the keyboard: the pane that had
+    /// it keeps it, and the new pane's shell counts as in the background.
+    fn hand_keyboard_back(&mut self, held: Option<PaneId>, opened: PaneId) {
+        let Some(held) = refocus_after_agent_open(held, opened) else {
+            return;
+        };
+        self.act(WorkspaceIn::Focus(held));
+        if let Some(slot) = self.slots.get(&opened) {
+            if let Some(session) = slot.borrow_mut().session.as_mut() {
+                session.set_focus(NoteFocus::Unfocused);
+            }
+        }
+    }
+}
+
+/// The pane to give the keyboard back to after an agent opened `opened`: the one that had it,
+/// unless there was none or the open already left it there.
+pub(super) fn refocus_after_agent_open(held: Option<PaneId>, opened: PaneId) -> Option<PaneId> {
+    held.filter(|held| *held != opened)
 }
 
 /// The folder a request names, as the workspace keeps it.
@@ -192,12 +222,18 @@ pub(super) fn exit_of(outcome: Outcome) -> Exit {
 }
 
 /// Hears the desktop services for as long as the window lives.
-pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink) {
+///
+/// A later launch also raises `window`: with the activation token it came with on Wayland, else
+/// by asking the system to focus it.
+pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink, window: Option<WindowHandle>) {
     let Some(mut asks) = link.take_asks() else {
         return;
     };
     spawn(async move {
         while let Some(ask) = asks.recv().await {
+            if let (Ask::Launch(_, token), Some(window)) = (&ask, &window) {
+                window.focus_with_token(token.clone());
+            }
             let notices = {
                 let mut hub = desk.hub.0.borrow_mut();
                 hub.serve(ask);
