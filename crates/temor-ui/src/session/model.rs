@@ -96,6 +96,8 @@ pub struct Session {
     pub(super) shelf_dir: PathBuf,
     /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
     pub(super) asked: Option<temor_pane::keys::Action>,
+    /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
+    pub(super) view_ask: Option<super::ViewAsk>,
     /// How the pane's shell quotes a word, for pasting dropped paths.
     pub(super) quoting: temor_core::shelf::Quoting,
     /// Whether the pane's shell runs on this computer.

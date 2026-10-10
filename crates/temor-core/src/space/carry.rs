@@ -41,6 +41,9 @@ pub fn carry_tab(
         if let Some(cwd) = src.cwds.remove(pane) {
             dst.cwds.insert(*pane, cwd);
         }
+        if let Some(file) = src.viewers.remove(pane) {
+            dst.viewers.insert(*pane, file);
+        }
     }
 
     dst.tabs.place.tabs.push(Tab {

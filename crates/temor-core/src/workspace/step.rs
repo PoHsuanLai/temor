@@ -6,6 +6,7 @@ use super::model::Workspace;
 use super::step_close::{close_pane, close_tab, reopen};
 use super::step_move::{drop_tab, tear};
 use super::step_types::{RefuseWhy, Spawn, Start, WorkspaceIn, WorkspaceOut};
+use super::step_viewer::open_viewer;
 use super::tabs::{TabSel, TabsIn, TabsState, tabs_step};
 use crate::space::{Pin, Tab};
 use crate::split::{Direction, SplitTree, TreeAfter, TreeIn, TreeOut, TreeState, tree_step};
@@ -59,6 +60,12 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
                 ws.cwds.insert(pane, cwd);
             }
         }
+        WorkspaceIn::OpenViewer { file, from } => open_viewer(&mut ws, from, file, &mut out),
+        WorkspaceIn::ViewerShows { pane, file } => {
+            if let Some(shown) = ws.viewers.get_mut(&pane) {
+                *shown = file;
+            }
+        }
         WorkspaceIn::Reopen => reopen(&mut ws, &mut out),
         WorkspaceIn::Tabs(TabsIn::Remove(_)) => {
             out.push(WorkspaceOut::Refused(RefuseWhy::UseCloseTab));
@@ -83,7 +90,7 @@ fn front_tab(ws: &Workspace) -> Option<&Tab> {
     ws.front().and_then(|id| ws.tabs.tab(id))
 }
 
-fn front_pane(ws: &Workspace) -> Option<PaneId> {
+pub(super) fn front_pane(ws: &Workspace) -> Option<PaneId> {
     ws.front().and_then(|id| ws.focus_of(id))
 }
 
@@ -202,7 +209,7 @@ fn split(ws: &mut Workspace, towards: Direction, out: &mut Vec<WorkspaceOut>) {
     }
 }
 
-fn focus(ws: &mut Workspace, pane: PaneId, out: &mut Vec<WorkspaceOut>) {
+pub(super) fn focus(ws: &mut Workspace, pane: PaneId, out: &mut Vec<WorkspaceOut>) {
     let Some(tab) = ws.tab_of(pane) else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::NoSuchPane(pane)));
     };

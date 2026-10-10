@@ -20,6 +20,7 @@ pub mod shelf;
 pub mod space;
 pub mod split;
 pub mod transfer;
+pub mod viewer;
 pub mod vocab;
 pub mod workspace;
 pub mod worktree;

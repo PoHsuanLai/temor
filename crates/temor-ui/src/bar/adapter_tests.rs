@@ -49,6 +49,8 @@ fn typing_filters_in_the_fixed_order_and_the_palette_owns_the_highlight() {
     // Down moves the palette's highlight and stops at the last row.
     let model = model.selecting(2).selecting(9);
     assert_eq!(model.selected(), 2);
+    // Rows the window lists after the bar's own (a viewer's commands) extend where it can go.
+    assert_eq!(model.clone().selecting_among(9, 2).selected(), 4);
 
     let model = model.typed("htop -d 2".to_owned(), cx);
     assert_eq!(

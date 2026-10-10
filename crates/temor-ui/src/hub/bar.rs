@@ -126,6 +126,12 @@ impl Hub {
         self.bar.model = model.selecting(index);
     }
 
+    /// The highlight moved to `index` among the bar's rows and `extra` rows listed after them.
+    pub fn bar_select_among(&mut self, index: usize, extra: usize) {
+        let model = std::mem::take(&mut self.bar.model);
+        self.bar.model = model.selecting_among(index, extra);
+    }
+
     /// The row `key` was run (Enter, or a click): the bar closes and the row is carried out.
     pub fn bar_pick(&mut self, key: &RowKey) {
         let candidates = self.bar_candidates();
@@ -201,6 +207,11 @@ impl Desk {
     /// The bar's highlight moved.
     pub fn bar_select(&self, index: usize) {
         self.settle(|hub| hub.bar_select(index));
+    }
+
+    /// The bar's highlight moved, with `extra` rows listed after the bar's own.
+    pub fn bar_select_among(&self, index: usize, extra: usize) {
+        self.settle(|hub| hub.bar_select_among(index, extra));
     }
 
     /// A bar row was run.

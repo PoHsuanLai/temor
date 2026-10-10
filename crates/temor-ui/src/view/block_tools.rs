@@ -1,6 +1,7 @@
 //! The block toolbar (PLAN §9 blocks): small icon buttons at the top right of the block under the
 //! pointer, or of the selected one. Copy the command, copy the output, save the output to
-//! Downloads, and type the command again (it is never run). A caption says how the block ended.
+//! Downloads, type the command again (it is never run), and show the files it listed. A caption
+//! says how the block ended.
 //! It sits beside the grid, not in it, so a press on it never reaches the terminal.
 
 use dioxus::prelude::*;
@@ -26,6 +27,8 @@ pub struct ToolsView {
     pub output: Availability,
     /// Whether the command can be typed again (it has a command).
     pub rerun: Availability,
+    /// Whether the output can be searched for files to show (the command has finished).
+    pub view: Availability,
 }
 
 /// One icon button of the toolbar. `label` names it; `tip` is the hover hint.
@@ -62,6 +65,7 @@ pub fn BlockTools(
     on_copy_output: EventHandler<BlockId>,
     on_save: EventHandler<BlockId>,
     on_rerun: EventHandler<BlockId>,
+    on_view: EventHandler<BlockId>,
 ) -> Element {
     let id = tools.id;
     rsx! {
@@ -96,6 +100,13 @@ pub fn BlockTools(
                 tip: "Put this command in the prompt. Press Return to run it",
                 availability: tools.rerun,
                 onclick: move |()| on_rerun.call(id),
+            }
+            ToolButton {
+                icon: Icon::File,
+                label: "View",
+                tip: "Show the files this command listed",
+                availability: tools.view,
+                onclick: move |()| on_view.call(id),
             }
         }
     }

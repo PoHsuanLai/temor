@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use super::closed::ClosedState;
 use super::tabs::TabsState;
 use crate::vocab::ids::{PaneId, TabId};
-use crate::vocab::text::Cwd;
+use crate::vocab::text::{Cwd, ViewerRef};
 
 /// Everything the window shows that is not inside a pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,6 +18,9 @@ pub struct Workspace {
     /// Each pane's working folder, as far as it is known (OSC 7). A closed tab keeps its panes'
     /// folders until they are forgotten, so a reopen can start in them.
     pub cwds: BTreeMap<PaneId, Cwd>,
+    /// The panes that show a file instead of a program, and which file. A closed tab keeps its
+    /// viewers until it is forgotten, so a reopen can show them again.
+    pub viewers: BTreeMap<PaneId, ViewerRef>,
     /// The recently closed tabs.
     pub closed: ClosedState,
     /// The id the next tab takes.
@@ -33,6 +36,7 @@ impl Workspace {
             tabs: TabsState::default(),
             focus: BTreeMap::new(),
             cwds: BTreeMap::new(),
+            viewers: BTreeMap::new(),
             closed,
             next_tab: 1,
             next_pane: 1,

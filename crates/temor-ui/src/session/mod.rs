@@ -15,6 +15,7 @@ mod offer;
 mod open;
 mod pointer;
 mod read;
+mod viewer;
 
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
@@ -23,3 +24,4 @@ pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use marks::{BlockMark, PromptStep, desktop_note};
 pub use model::{Drag, FedParts, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts};
 pub use pointer::WheelDirection;
+pub use viewer::ViewAsk;
