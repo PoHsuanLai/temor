@@ -17,9 +17,10 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         ("Super+F", Ran(Action::Find)),
         ("Super+G", Ran(Action::FindNext)),
         ("Super+Shift+G", Ran(Action::FindPrevious)),
-        ("Super+T", Ran(Action::NewTab)),
-        // temor offers no separate "new" or font panel: ⌘N is free, dropped like any unbound ⌘.
-        ("Super+N", Dropped),
+        // ⌘T is the command bar (the font panel's chord, which temor forgoes); ⌘N a plain tab.
+        ("Super+T", Ran(Action::OpenBar)),
+        ("Super+N", Ran(Action::NewTab)),
+        ("Super+Shift+Y", Ran(Action::ToggleQuick)),
         ("Super+W", Ran(Action::ClosePane)),
         ("Super+D", Ran(Action::SplitRight)),
         ("Ctrl+Shift+D", Ran(Action::SplitRight)),
@@ -65,7 +66,9 @@ fn the_ctrl_shift_platforms_keep_plain_ctrl_for_the_program() {
         ("Ctrl+Shift+C", Ran(Action::Copy)),
         ("Ctrl+Shift+V", Ran(Action::Paste)),
         ("Ctrl+Shift+F", Ran(Action::Find)),
-        ("Ctrl+Shift+T", Ran(Action::NewTab)),
+        ("Ctrl+Shift+T", Ran(Action::OpenBar)),
+        ("Ctrl+Shift+N", Ran(Action::NewTab)),
+        ("Ctrl+Shift+Alt+Y", Ran(Action::ToggleQuick)),
         ("Ctrl+Shift+W", Ran(Action::ClosePane)),
         ("Ctrl+Shift+D", Ran(Action::SplitRight)),
         // A Primary chord that uses Shift takes Alt as well, since Ctrl+Shift is the Primary.

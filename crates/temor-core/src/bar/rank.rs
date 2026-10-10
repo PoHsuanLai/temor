@@ -1,4 +1,5 @@
-//! The bar's fixed ranking (§7, D11): the Run row when the first word is on `PATH`, then local
+//! The bar's fixed ranking (§7, D11): the Run row when the first word is on `PATH` (a plain new
+//! tab when nothing is typed), then local
 //! matches, then plugin rows, then AI rows, always last.
 
 use super::model::{
@@ -31,6 +32,7 @@ pub fn rank(
 ) -> Vec<BarRow> {
     let query = query.trim();
     let mut rows = Vec::new();
+    rows.extend(new_tab_row(query));
     rows.extend(run_row(query, resolver));
     rows.extend(matches(query, candidates));
     rows.extend(plugins.iter().map(plugin_row));
@@ -40,6 +42,16 @@ pub fn rank(
     let mut seen = BTreeSet::new();
     rows.retain(|row| seen.insert(row.key.clone()));
     rows
+}
+
+/// With nothing typed the top row is a plain new tab, so Enter on an empty bar opens one.
+fn new_tab_row(query: &str) -> Option<BarRow> {
+    query.is_empty().then(|| BarRow {
+        key: RowKey("new-tab".to_string()),
+        group: RowGroup::Run,
+        title: "New tab".to_string(),
+        action: BarAction::NewTab,
+    })
 }
 
 fn run_row(query: &str, resolver: &dyn PathResolver) -> Option<BarRow> {
@@ -99,11 +111,12 @@ fn kind_order(target: &Target) -> usize {
     match target {
         Target::Space(_) => 0,
         Target::Tab(_) => 1,
-        Target::Folder(_) => 2,
-        Target::Host(_) => 3,
-        Target::Layout(_) => 4,
-        Target::RecentCommand(_) => 5,
-        Target::Directory { .. } => 6,
+        Target::Closed(_) => 2,
+        Target::Folder(_) => 3,
+        Target::Host(_) => 4,
+        Target::Layout(_) => 5,
+        Target::RecentCommand(_) => 6,
+        Target::Directory { .. } => 7,
     }
 }
 
@@ -118,6 +131,7 @@ fn target_key(target: &Target) -> RowKey {
     RowKey(match target {
         Target::Space(id) => format!("space:{}", id.0),
         Target::Tab(id) => format!("tab:{}", id.0),
+        Target::Closed(seq) => format!("closed:{}", seq.0),
         Target::Folder(id) => format!("folder:{}", id.0),
         Target::Host(alias) => format!("host:{}", alias.as_str()),
         Target::Layout(name) => format!("layout:{}", name.0),

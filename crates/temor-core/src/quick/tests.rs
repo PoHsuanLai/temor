@@ -20,6 +20,13 @@ fn open(pane: u64, path: Option<&str>) -> QuickState {
     })
 }
 
+fn hidden(pane: u64, path: Option<&str>) -> QuickState {
+    QuickState::Hidden(QuickTerm {
+        pane: PaneId(pane),
+        cwd: path.and_then(cwd),
+    })
+}
+
 fn toggle(pane: u64, path: &str) -> QuickIn {
     QuickIn::Toggle {
         pane: PaneId(pane),
@@ -33,10 +40,17 @@ fn quick_terminal_steps() {
     let cases: Vec<(&str, QuickState, QuickIn, QuickState, Vec<QuickOut>)> = vec![
         ("the hotkey opens a shell where the window is", QuickState::Closed, toggle(5, "/a"), open(5, Some("/a")),
             vec![QuickOut::Spawn { pane: PaneId(5), cwd: cwd("/a") }]),
-        ("the hotkey again ends it", open(5, Some("/a")), toggle(9, "/b"), QuickState::Closed,
-            vec![QuickOut::End(PaneId(5)), QuickOut::Hidden]),
-        ("the shell exiting hides it without ending anything", open(5, None), QuickIn::ShellExited(PaneId(5)), QuickState::Closed,
+        ("the hotkey again hides it and keeps the shell", open(5, Some("/a")), toggle(9, "/b"), hidden(5, Some("/a")),
             vec![QuickOut::Hidden]),
+        ("the hotkey once more shows the same shell, not a new pane", hidden(5, Some("/a")), toggle(9, "/b"), open(5, Some("/a")),
+            vec![QuickOut::Show(PaneId(5))]),
+        ("the shell exiting drops its pane", open(5, None), QuickIn::ShellExited(PaneId(5)), QuickState::Closed,
+            vec![QuickOut::End(PaneId(5)), QuickOut::Hidden]),
+        ("the shell exiting while hidden drops it too", hidden(5, None), QuickIn::ShellExited(PaneId(5)), QuickState::Closed,
+            vec![QuickOut::End(PaneId(5)), QuickOut::Hidden]),
+        ("a folder report reaches a hidden shell", hidden(5, Some("/a")), QuickIn::Cwd { pane: PaneId(5), cwd: Cwd("/b".into()) }, hidden(5, Some("/b")), vec![]),
+        ("Move to Space works from hidden", hidden(5, Some("/b")), QuickIn::MoveToSpace(SpaceId(2)), QuickState::Closed,
+            vec![QuickOut::Promote { pane: PaneId(5), space: SpaceId(2), cwd: cwd("/b") }, QuickOut::Hidden]),
         ("another pane exiting is stale", open(5, None), QuickIn::ShellExited(PaneId(6)), open(5, None), vec![]),
         ("a folder report follows the shell", open(5, Some("/a")), QuickIn::Cwd { pane: PaneId(5), cwd: Cwd("/b".into()) }, open(5, Some("/b")), vec![]),
         ("a stale folder report is ignored", open(5, Some("/a")), QuickIn::Cwd { pane: PaneId(6), cwd: Cwd("/b".into()) }, open(5, Some("/a")), vec![]),

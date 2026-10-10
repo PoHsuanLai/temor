@@ -4,6 +4,8 @@
 //! the hub and send it the person's requests.
 
 mod act;
+mod bar;
+mod bar_run;
 mod desk;
 mod desktop;
 mod desktop_io;
@@ -13,6 +15,7 @@ mod events;
 mod keys;
 mod model;
 mod persist;
+mod quick;
 mod restore;
 mod rows;
 mod say;
@@ -23,6 +26,7 @@ mod spaces;
 #[cfg(test)]
 mod tests;
 
+pub use bar::{BarData, WindowAction};
 pub use desk::Desk;
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;

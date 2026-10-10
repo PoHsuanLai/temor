@@ -38,7 +38,7 @@ use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
 use super::status::StatusLine;
 use super::window_help::{device_pixels, focus_in, place_cursor, set_focus, take_notice};
-use crate::hub::{Desk, workspace_input};
+use crate::hub::{Desk, WindowAction, workspace_input};
 use crate::input::stroke;
 
 /// Puts the pane on screen: it paints into `texture` from now on.
@@ -132,7 +132,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             if let Some(message) = take_notice(&slot) {
                 desk.say(message);
             }
-            // A tab or split chord is the window's: the workspace carries it out.
+            // A chord that is not the program's is the window's: the bar and the quick terminal
+            // are its own; a tab or split chord is the workspace's. The quick terminal has no
+            // tabs or splits of its own.
             let asked = slot
                 .borrow_mut()
                 .session
@@ -142,9 +144,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 desk.select_space(number);
                 return;
             }
-            if let Some(input) = asked.and_then(workspace_input) {
-                desk.act(input);
-                return;
+            if let Some(action) = asked {
+                if desk.window_action(action) == WindowAction::Taken {
+                    return;
+                }
+                if desk.hub.is_quick(pane) {
+                    return;
+                }
+                if let Some(input) = workspace_input(action) {
+                    desk.act(input);
+                    return;
+                }
             }
             desk.bump();
             repaint(&slot);

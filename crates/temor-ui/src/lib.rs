@@ -3,6 +3,7 @@
 //! `temor-core`; this crate holds what touches the OS, the emulator and Dioxus.
 
 pub mod app;
+pub mod bar;
 pub mod edge;
 pub mod error;
 pub mod hub;

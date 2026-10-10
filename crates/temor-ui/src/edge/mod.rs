@@ -16,6 +16,7 @@ pub mod sidecar;
 pub mod space_agent;
 pub mod space_start;
 mod spaces_file;
+mod unix_now;
 
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
@@ -30,3 +31,4 @@ pub use session_file::{
 pub use settings_file::load_settings;
 pub use space_start::{CredentialFault, CredentialSource, Credentials, NoCredentials};
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
+pub use unix_now::unix_now;

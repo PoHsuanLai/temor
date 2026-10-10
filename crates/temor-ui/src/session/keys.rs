@@ -62,6 +62,8 @@ impl Session {
             Action::NextPrompt => self.jump_prompt(PromptStep::Next),
             // Tabs and splits belong to the window: the action waits here for it to take.
             Action::NewTab
+            | Action::OpenBar
+            | Action::ToggleQuick
             | Action::ClosePane
             | Action::SplitRight
             | Action::SplitDown

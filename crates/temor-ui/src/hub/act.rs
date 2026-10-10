@@ -36,7 +36,7 @@ impl Hub {
         }
     }
 
-    fn carry_out(&mut self, out: WorkspaceOut) {
+    pub(super) fn carry_out(&mut self, out: WorkspaceOut) {
         match out {
             WorkspaceOut::Spawn(spawn) => self.open_pane(&spawn, None),
             WorkspaceOut::Snapshot(pane) => self.keep_scrollback(pane),
@@ -111,7 +111,7 @@ impl Hub {
     }
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
-    fn end_pane(&mut self, pane: PaneId) {
+    pub(super) fn end_pane(&mut self, pane: PaneId) {
         if let Some(slot) = self.slots.remove(&pane) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;

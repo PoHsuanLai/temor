@@ -71,7 +71,7 @@ fn our_desktop_sends_command_as_super_or_ctrl_shift() {
             ch("T"),
             Code::KeyT,
             cs,
-            Went::Action(Action::NewTab),
+            Went::Action(Action::OpenBar),
         ),
         row(
             "⌘D as Ctrl+Shift+D",
@@ -104,11 +104,11 @@ fn our_desktop_sends_command_as_super_or_ctrl_shift() {
             Went::Dropped,
         ),
         row(
-            "⌘N has no action (temor offers no separate new)",
+            "⌘N as Ctrl+Shift+N is a plain tab",
             ch("N"),
             Code::KeyN,
             cs,
-            Went::Dropped,
+            Went::Action(Action::NewTab),
         ),
         // The program's own keys.
         row(

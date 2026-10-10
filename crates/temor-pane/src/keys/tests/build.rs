@@ -47,6 +47,8 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::FindNext, "find-next"),
         (Action::FindPrevious, "find-previous"),
         (Action::NewTab, "temor.new-tab"),
+        (Action::OpenBar, "temor.open-bar"),
+        (Action::ToggleQuick, "temor.toggle-quick"),
         (Action::ClosePane, "close"),
         (Action::SplitRight, "temor.split-right"),
         (Action::SplitDown, "temor.split-down"),

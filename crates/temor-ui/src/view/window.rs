@@ -24,10 +24,12 @@ use ds_settings::use_environment;
 use temor_core::split::Direction;
 use temor_core::workspace::WorkspaceIn;
 
+use super::bar::BarView;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::space_ui::{SpaceMenus, use_window_spaces};
+use super::quick::QuickView;
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::tree_view::TreeView;
@@ -160,6 +162,8 @@ pub fn App() -> Element {
     }
     let data = hub.sidebar();
     let front = hub.front();
+    let bar = hub.bar_data();
+    let quick = hub.quick_shown().map(|pane| (pane, hub.bar_spaces()));
     let (title, cwd) = hub.window_parts();
     use_window_title(window_title(&title, cwd.as_deref()));
     let ghost = match dnd.drag.phase() {
@@ -219,11 +223,17 @@ pub fn App() -> Element {
                                     started,
                                 }
                             }
+                            if let Some((pane, spaces)) = quick {
+                                QuickView { key: "{pane.0}", pane, spaces, desk: desk.clone(), started }
+                            }
                         }
                     }
                 }
             }
             SpaceMenus { desk: desk.clone() }
+            if let Some(data) = bar {
+                BarView { data, desk: desk.clone() }
+            }
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }

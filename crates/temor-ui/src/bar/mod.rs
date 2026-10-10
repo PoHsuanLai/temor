@@ -1,0 +1,17 @@
+//! The ⌘T bar in the window (PLAN §7, D11): quire's palette machine over the rows temor-core
+//! ranks, the providers wired at the edge, and the seams other parts of the app fill in (Spaces,
+//! hosts, the model). Pure parts here; the hub carries the picks out (`hub::bar`).
+
+mod adapter;
+#[cfg(test)]
+mod adapter_tests;
+mod resolver;
+mod seams;
+mod sources;
+#[cfg(test)]
+mod sources_tests;
+
+pub use adapter::BarModel;
+pub use resolver::PathLookup;
+pub use seams::{BarSeams, HostRows, ModelRows, NoHosts, NoModel, NoSpaces, SpaceRows};
+pub use sources::{closed_candidate, directory_uses, recent_commands};

@@ -7,11 +7,14 @@ use ds_style::space::list::SpaceId;
 /// The quick terminal.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum QuickState {
-    /// Not shown, and no shell running.
+    /// No shell running.
     #[default]
     Closed,
     /// Shown over the window, with its shell running.
     Open(QuickTerm),
+    /// Not shown, with its shell still running: the hotkey brings it back as it was. It is a
+    /// throwaway: never saved with the session, only kept while temor runs.
+    Hidden(QuickTerm),
 }
 
 /// An open quick terminal.
@@ -28,8 +31,8 @@ pub struct QuickTerm {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QuickIn {
     /// The hotkey. Closed: open a shell in `cwd` (the folder of the pane in front) as `pane`, an
-    /// id the caller allocated. Open: close it, ending the shell (the hotkey is the way out;
-    /// Escape and Ctrl-C belong to the shell).
+    /// id the caller allocated. Open: hide it, the shell kept running. Hidden: show the same
+    /// shell again. The hotkey is the way out; Escape and Ctrl-C belong to the shell.
     Toggle {
         /// The pane to use when it opens.
         pane: PaneId,
@@ -59,9 +62,11 @@ pub enum QuickOut {
         /// The folder to start in.
         cwd: Option<Cwd>,
     },
-    /// End this pane's shell.
+    /// Drop this pane: its shell ended or was handed on, so nothing of it is kept.
     End(PaneId),
-    /// Hide the overlay.
+    /// Show the overlay again over the shell that is still running.
+    Show(PaneId),
+    /// Hide the overlay; the shell is not touched.
     Hidden,
     /// Give the running pane to `space` as a tab of its own (see [`adopt`](super::adopt)),
     /// without restarting its shell.

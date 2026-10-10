@@ -8,7 +8,7 @@ use super::action::Action;
 
 /// One action temor registers: its default, a fallback for contexts where the default has no
 /// live form, and the offered-only standard actions it takes the chord of (temor has no font
-/// panel, so ⌘T is a new tab, as in other terminals; nor a separate "new", so ⌘N is free).
+/// panel, so ⌘T is the command bar, as in a browser; ⌘N is the standard "new", a plain tab).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declared {
     pub action: Action,
@@ -21,14 +21,18 @@ pub struct Declared {
 /// `Primary+9`. The Space switch and "close find" have no entry: the desktop owns Ctrl+digit,
 /// and Escape is the find bar's own key.
 pub fn declared() -> Vec<Declared> {
-    const NEW_TAB_FORGOES: &[StandardAction] = &[StandardAction::ShowFonts, StandardAction::New];
+    const OPEN_BAR_FORGOES: &[StandardAction] = &[StandardAction::ShowFonts];
+    const NEW_TAB_FORGOES: &[StandardAction] = &[StandardAction::New];
     let fixed: &[(
         Action,
         &str,
         Option<&'static str>,
         &'static [StandardAction],
     )] = &[
-        (Action::NewTab, "Primary+T", None, NEW_TAB_FORGOES),
+        (Action::OpenBar, "Primary+T", None, OPEN_BAR_FORGOES),
+        (Action::NewTab, "Primary+N", None, NEW_TAB_FORGOES),
+        // Primary+Shift+Y: no convention of chordkit's binds it (Primary+` is "next window").
+        (Action::ToggleQuick, "Primary+Shift+Y", None, &[]),
         (Action::SplitRight, "Primary+D", None, &[]),
         (Action::SplitDown, "Primary+Shift+D", None, &[]),
         (Action::FocusLeft, "Primary+Alt+Left", None, &[]),
