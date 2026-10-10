@@ -23,7 +23,7 @@ pub use carry::carry_tab;
 pub use credential::{AccountRef, Credential};
 pub use dotenv::{Dotenv, DotenvFault, parse_dotenv};
 pub use launch::{SpaceLaunch, dotenv_path, launch};
-pub use place::{Folder, Pin, Place, Tab};
+pub use place::{Folder, Pin, Place, Tab, Viewing};
 pub use project::{Profile, Project, Route};
 pub use route::{SpaceRoute, route, route_folder, routes_of};
 

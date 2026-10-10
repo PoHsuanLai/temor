@@ -5,7 +5,7 @@ use super::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
 use crate::space::Pin;
 use crate::split::Direction;
 use crate::vocab::ids::{PaneId, TabId};
-use crate::vocab::text::{Cwd, Relaunch};
+use crate::vocab::text::{Cwd, Relaunch, ViewerRef};
 
 fn built() -> Workspace {
     let mut ws = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
@@ -163,4 +163,29 @@ fn a_pinned_tab_relaunches_its_command_on_its_first_pane() {
         .find(|s| s.pane == PaneId(1))
         .and_then(|s| s.cwd.clone());
     assert_eq!(cwd_of_pane_one, Some(Cwd("/home/a".into())));
+}
+
+#[test]
+fn a_place_recalled_alone_brings_its_viewer_panes_back_as_viewers() {
+    let mut ws = built();
+    ws.viewers.insert(PaneId(2), ViewerRef("/notes.txt".into()));
+    // A viewer of a pane that is in no tree is not kept.
+    ws.viewers.insert(PaneId(9), ViewerRef("/gone.txt".into()));
+    let recall = ws.tabs.place.clone().with_viewers(&ws.viewers);
+    assert_eq!(recall.viewers.len(), 1);
+
+    let text = serde_json::json!({ "version": 1, "place": recall }).to_string();
+    let back = loaded(&text);
+
+    assert_eq!(
+        back.viewers.get(&PaneId(2)),
+        Some(&ViewerRef("/notes.txt".into()))
+    );
+    assert_eq!(back.viewers.len(), 1);
+    assert!(
+        back.tabs.place.viewers.is_empty(),
+        "a live place holds none"
+    );
+    let shells: Vec<PaneId> = launch_plan(&back).iter().map(|s| s.pane).collect();
+    assert_eq!(shells, vec![PaneId(1), PaneId(3)]);
 }

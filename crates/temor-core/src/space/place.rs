@@ -2,9 +2,9 @@
 //! which tab was in front.
 
 use crate::split::SplitTree;
-use crate::vocab::ids::{FolderId, TabId};
+use crate::vocab::ids::{FolderId, PaneId, TabId};
 use crate::vocab::lenient::{lenient_list, lenient_or_default};
-use crate::vocab::text::{Relaunch, TabTitle};
+use crate::vocab::text::{Relaunch, TabTitle, ViewerRef};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// A Space's tabs as it was left. The default (a Space never opened) has none.
@@ -20,6 +20,38 @@ pub struct Place {
     pub folders: Vec<Folder>,
     /// The tab in front; none when there are no tabs.
     pub focused: Option<TabId>,
+    /// The files the viewer panes among the trees show. Only the Spaces file keeps these (a
+    /// session file has its own list), so that a Space recalled from its place alone brings
+    /// them back as viewers rather than shells. Empty in a live workspace.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub viewers: Vec<Viewing>,
+}
+
+/// A viewer pane and the file it shows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Viewing {
+    pub pane: PaneId,
+    pub file: ViewerRef,
+}
+
+impl Place {
+    /// This place with `viewers` (pane, file) kept for the panes its trees have, in pane order.
+    #[must_use]
+    pub fn with_viewers<'a>(
+        mut self,
+        viewers: impl IntoIterator<Item = (&'a PaneId, &'a ViewerRef)>,
+    ) -> Place {
+        let panes: Vec<PaneId> = self.tabs.iter().flat_map(|tab| tab.tree.panes()).collect();
+        self.viewers = viewers
+            .into_iter()
+            .filter(|(pane, _)| panes.contains(pane))
+            .map(|(pane, file)| Viewing {
+                pane: *pane,
+                file: file.clone(),
+            })
+            .collect();
+        self
+    }
 }
 
 /// [`Place`] as it is read, each field on its own.
@@ -31,6 +63,8 @@ struct PlaceRead {
     folders: Vec<Folder>,
     #[serde(default, deserialize_with = "lenient_or_default")]
     focused: Option<TabId>,
+    #[serde(default, deserialize_with = "lenient_list")]
+    viewers: Vec<Viewing>,
 }
 
 impl<'de> Deserialize<'de> for Place {
@@ -40,6 +74,7 @@ impl<'de> Deserialize<'de> for Place {
             tabs: read.tabs,
             folders: read.folders,
             focused: read.focused,
+            viewers: read.viewers,
         })
     }
 }

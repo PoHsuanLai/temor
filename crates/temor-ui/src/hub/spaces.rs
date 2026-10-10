@@ -81,6 +81,11 @@ impl SpaceBook {
     }
 }
 
+/// What the Spaces file keeps of a workspace: its place and the files its viewer panes show.
+pub(super) fn recall_of(ws: &Workspace) -> Place {
+    ws.tabs.place.clone().with_viewers(&ws.viewers)
+}
+
 impl Hub {
     /// The Space on screen.
     pub fn active_space(&self) -> SpaceId {
@@ -184,8 +189,8 @@ impl Hub {
             .book
             .parked
             .iter()
-            .map(|(id, ws)| (*id, ws.tabs.place.clone()))
-            .chain([(self.book.active, self.ws.tabs.place.clone())]);
+            .map(|(id, ws)| (*id, recall_of(ws)))
+            .chain([(self.book.active, recall_of(&self.ws))]);
         for (id, place) in places {
             all.edit_recall(id, |recalled| *recalled = place);
         }
