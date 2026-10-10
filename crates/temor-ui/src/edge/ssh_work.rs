@@ -13,6 +13,7 @@ use temor_ssh::{
     RemoteFilePath, RemoteFiles, RemoteState, SshError, SshRemoteFiles, cancel_forward_argv,
     fingerprint_from_keygen, forward_argv, keygen_lookup_argv, probe_master,
 };
+use temor_wire::message::FileStamp;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::SshEnv;
@@ -33,6 +34,9 @@ pub enum SshEvent {
     },
     /// A step of a remote edit finished.
     Edit { id: EditId, input: EditIn },
+    /// The host's file, as a helper read or wrote it: the stamp the next write-back must still
+    /// find. Sent just before the `Edit` event that goes with it.
+    EditSeen { id: EditId, stamp: FileStamp },
     /// The forward of the host's `remote` port is up.
     ForwardOpened { host: HostAlias, remote: Port },
     /// The forward of the host's `remote` port could not be opened.
@@ -53,6 +57,11 @@ pub struct SshWork {
 impl SshWork {
     pub fn new(env: SshEnv, events: UnboundedSender<SshEvent>) -> Self {
         Self { env, events }
+    }
+
+    /// The channel the jobs report on, for jobs that run through the host's helper.
+    pub fn sender(&self) -> UnboundedSender<SshEvent> {
+        self.events.clone()
     }
 
     /// Runs `job` on a thread. If the thread cannot start, `failed` is sent instead.

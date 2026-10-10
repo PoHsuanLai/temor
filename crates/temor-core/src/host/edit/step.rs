@@ -64,6 +64,8 @@ pub fn edit_step(state: Edit, input: EditIn) -> (Edit, Vec<EditOut>) {
         ),
         (S::Uploading { .. }, I::Stored { stat }) => (S::Open { base: stat }, vec![EditOut::Saved]),
 
+        (S::Uploading { base, .. }, I::Conflicted(found)) => conflict(base, found),
+
         (S::Checking { base, .. } | S::Uploading { base, .. }, I::Failed(fault)) => {
             (S::Stalled { base }, vec![EditOut::Report(fault)])
         }

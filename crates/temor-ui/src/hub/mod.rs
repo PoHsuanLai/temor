@@ -22,6 +22,9 @@ mod persist;
 mod quick;
 mod remote;
 mod remote_desk;
+mod remote_edit;
+#[cfg(test)]
+mod remote_edit_tests;
 mod remote_keep;
 mod remote_line;
 mod remote_loop;

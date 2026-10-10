@@ -16,6 +16,7 @@ pub mod remote;
 pub mod remote_adopt;
 pub mod remote_calls;
 pub mod remote_conn;
+pub mod remote_edit;
 pub mod remote_event;
 pub mod remote_grants;
 pub mod remote_install;

@@ -79,6 +79,10 @@ pub enum EditIn {
     Stored { stat: RemoteStat },
     /// The person chose.
     Resolved(Resolution),
+    /// The host refused the write-back because the file is not what the edit last saw: it
+    /// changed (or was removed) between the check and the write. Only a host whose files go
+    /// through the helper can say so, since the write itself carries the check.
+    Conflicted(Found),
     /// A call to the host failed.
     Failed(EditFault),
     /// Try again after a failure.
