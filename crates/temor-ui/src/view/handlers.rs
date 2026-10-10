@@ -96,8 +96,8 @@ pub fn gutter_pressed(
     }
 }
 
-/// The pointer over the pane: the block whose gutter it is over, if any, is hovered.
-pub fn gutter_hovered(
+/// The pointer over the pane: the block under it, if any, is hovered (its toolbar shows).
+pub fn block_hovered(
     slot: Rc<RefCell<Slot>>,
     signals: Option<HostSignals>,
     mut hovered: Signal<Option<BlockId>>,
@@ -108,14 +108,14 @@ pub fn gutter_hovered(
             .borrow()
             .session
             .as_ref()
-            .and_then(|s| s.gutter_block(at));
+            .and_then(|s| s.block_at_point(at));
         if over != hovered() {
             hovered.set(over);
         }
     }
 }
 
-/// The block bar's copy of a command.
+/// The block toolbar's copy of a command.
 pub fn bar_copy_command(
     slot: Rc<RefCell<Slot>>,
     mut ui: Signal<u32>,
@@ -128,7 +128,7 @@ pub fn bar_copy_command(
     }
 }
 
-/// The block bar's copy of an output.
+/// The block toolbar's copy of an output.
 pub fn bar_copy_output(
     slot: Rc<RefCell<Slot>>,
     mut ui: Signal<u32>,
@@ -141,7 +141,7 @@ pub fn bar_copy_output(
     }
 }
 
-/// The block bar's save of an output to Downloads.
+/// The block toolbar's save of an output to Downloads.
 pub fn bar_save(
     slot: Rc<RefCell<Slot>>,
     mut ui: Signal<u32>,
@@ -160,7 +160,7 @@ pub fn bar_save(
     }
 }
 
-/// The block bar's re-run: the command is typed, never run.
+/// The block toolbar's re-run: the command is typed, never run.
 pub fn bar_rerun(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
     move |id: BlockId| {
         if let Some(s) = slot.borrow_mut().session.as_mut() {
@@ -171,13 +171,27 @@ pub fn bar_rerun(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(Blo
     }
 }
 
-/// The block bar's done: the selection goes.
-pub fn bar_close(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    move |_: ()| {
+/// The sticky header's press: the block's prompt scrolls to the top of the pane.
+pub fn header_press(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    move |id: BlockId| {
         if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.clear_block_selection();
+            s.scroll_block_to_top(id);
         }
         ui += 1;
+        repaint(&slot);
+    }
+}
+
+/// A header or toolbar press, then the keyboard back to the terminal: the button the person
+/// pressed took it, and the terminal is where typing goes.
+pub fn then_regain<T: 'static>(
+    mut act: impl FnMut(T) + 'static,
+    ime: ImeGlue,
+    regain: EventHandler<()>,
+) -> impl FnMut(T) + 'static {
+    move |value: T| {
+        act(value);
+        ime.take_focus(regain);
     }
 }
 

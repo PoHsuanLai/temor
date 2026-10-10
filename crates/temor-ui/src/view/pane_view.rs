@@ -1,4 +1,4 @@
-//! One pane in the window (PLAN §2, temor-ui): the terminal region with its find bar, block bar,
+//! One pane in the window (PLAN §2, temor-ui): the terminal region with its find bar, sticky header, block toolbar,
 //! status line and paste confirmation. The component wires Dioxus events to the pane's session and
 //! the session's state to elements; the session does the work (see `slot` for the state and
 //! `convert` for the event values). A pane is mounted only while its tab is in front, and what it
@@ -27,13 +27,16 @@ use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 use temor_vt::Ime;
 
-use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
+use super::block_header::BlockHeader;
+use super::block_tools::BlockTools;
+use super::blocks::{Chrome, chrome_of};
 use super::confirm::PasteConfirm;
 use super::convert::scale_of;
 use super::find_bar::FindBar;
 use super::handlers::{
-    bar_close, bar_copy_command, bar_copy_output, bar_rerun, bar_save, find_close, find_query,
-    find_step, gutter_hovered, gutter_pressed, paste_cancel, paste_confirm, restart_pane,
+    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_hovered, find_close, find_query,
+    find_step, gutter_pressed, header_press, paste_cancel, paste_confirm, restart_pane,
+    then_regain,
 };
 use super::host_banners::HostBanners;
 use super::ime::{ImeGlue, composed_sink, focus_handler};
@@ -299,23 +302,28 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     },
                     onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, mouse.down.clone()),
                     onpointerup: move |e| (mouse.up)(e),
-                    onpointermove:gutter_hovered(Rc::clone(&slot), signals, hovered),
+                    onpointermove:block_hovered(Rc::clone(&slot), signals, hovered),
                     onwheel: move |e| (mouse.wheel)(e),
                     TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
                     if let Some(text) = preedit() {
                         div { class: "temor-preedit", "{text}" }
                     }
-                    GutterMarks { marks: chrome.marks.clone() }
                 }
-            }
-            if let Some(bar) = chrome.bar.clone() {
-                BlockBar {
-                    bar,
-                    on_copy_command:bar_copy_command(Rc::clone(&slot), ui),
-                    on_copy_output:bar_copy_output(Rc::clone(&slot), ui),
-                    on_save:bar_save(Rc::clone(&slot), ui, desk.notice),
-                    on_rerun:bar_rerun(Rc::clone(&slot), ui),
-                    on_close:bar_close(Rc::clone(&slot), ui),
+                // Beside the grid, not in it: a press on these never reaches the terminal.
+                if let Some(header) = chrome.header.clone() {
+                    BlockHeader {
+                        header,
+                        on_press:then_regain(header_press(Rc::clone(&slot), ui), ime.clone(), regain),
+                    }
+                }
+                if let Some(tools) = chrome.tools.clone() {
+                    BlockTools {
+                        tools,
+                        on_copy_command:then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain),
+                        on_copy_output:then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain),
+                        on_save:then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain),
+                        on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
+                    }
                 }
             }
             HostBanners { pane, desk: desk.clone() }

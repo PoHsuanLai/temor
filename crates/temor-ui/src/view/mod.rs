@@ -3,6 +3,8 @@
 //! session's state and send it the person's events; they decide nothing themselves.
 
 pub mod bar;
+pub mod block_header;
+pub mod block_tools;
 pub mod blocks;
 pub mod confirm;
 pub mod convert;
