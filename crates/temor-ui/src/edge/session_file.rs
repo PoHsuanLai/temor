@@ -5,6 +5,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use temor_core::host::store::{HostsFile, read_hosts, splice_hosts};
 use temor_core::workspace::restore::{FreshWhy, Restored, decode, encode};
 use temor_core::workspace::{KeepClosed, Workspace};
 
@@ -71,6 +72,24 @@ fn set_aside(path: &Path) {
 /// Writes `ws` to the session file in `dir`, creating the directory (owner-only) first. A
 /// file written by a newer build is never overwritten; a damaged one is set aside first.
 pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
+    write(dir, ws, None)
+}
+
+/// [`save`] with the hosts (remembered answers, panes on hosts) kept under the file's `hosts` key.
+pub fn save_with_hosts(dir: &Path, ws: &Workspace, hosts: &HostsFile) -> Result<(), UiError> {
+    write(dir, ws, Some(hosts))
+}
+
+/// The hosts kept in the session file in `dir`: nothing when there is no file or it has none.
+pub fn load_hosts(dir: &Path) -> HostsFile {
+    std::fs::read(dir.join(FILE_NAME))
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .map(|text| read_hosts(&text))
+        .unwrap_or_default()
+}
+
+fn write(dir: &Path, ws: &Workspace, hosts: Option<&HostsFile>) -> Result<(), UiError> {
     ensure_private_dir(dir).map_err(UiError::Session)?;
     let path = dir.join(FILE_NAME);
     if let Ok(existing) = std::fs::read(&path) {
@@ -84,6 +103,11 @@ pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
             Err(_) => set_aside(&path),
         }
     }
-    let text = encode(ws).map_err(|e| UiError::Session(io::Error::other(e.to_string())))?;
+    let failed =
+        |e: temor_core::error::CoreError| UiError::Session(io::Error::other(e.to_string()));
+    let mut text = encode(ws).map_err(failed)?;
+    if let Some(hosts) = hosts {
+        text = splice_hosts(&text, hosts).map_err(failed)?;
+    }
     write_private_file(&path, text.as_bytes()).map_err(UiError::Session)
 }

@@ -11,6 +11,10 @@ mod save_pace;
 mod session_file;
 mod settings_file;
 pub mod sidecar;
+mod ssh_env;
+pub mod ssh_work;
+#[cfg(test)]
+mod ssh_work_tests;
 
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
@@ -18,6 +22,8 @@ pub use keymap::{keymap_for, load_keymap};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{
-    FILE_NAME, Startup, load as load_session, resolve_state_dir, save as save_session,
+    FILE_NAME, Startup, load as load_session, load_hosts, resolve_state_dir, save as save_session,
+    save_with_hosts,
 };
 pub use settings_file::load_settings;
+pub use ssh_env::{ArcRunner, SshEnv};
