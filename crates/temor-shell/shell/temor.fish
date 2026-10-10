@@ -4,7 +4,12 @@
 # D;<status> command finished) and reports the working directory with OSC 7. fish finds this
 # in vendor_conf.d through temor's XDG_DATA_DIRS entry; it never edits your files.
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
-# there this file only tidies the environment.
+# there this file adds no marks of its own.
+#
+# It also replaces fish's stock prompt (the fish_prompt that ships with fish) with a clean
+# two-line one: a blank line, the folder and the git branch, then an empty line to type on. A
+# prompt you define yourself is never touched. TEMOR_PROMPT=shell keeps fish's own prompt even
+# when it is the stock one; TEMOR_PROMPT=temor (or unset) means "temor's when fish's is stock".
 
 # Take temor's entry back out of XDG_DATA_DIRS, so programs started from this shell never see
 # it. Only that entry goes: conf.d snippets that ran before this one may have added their own.
@@ -28,9 +33,90 @@ set -e _temor_entry _temor_dirs _temor_at
 status is-interactive; or exit 0
 test "$TEMOR_SHELL_INTEGRATION" = 0; and exit 0
 set -q _temor_integrated; and exit 0
-string match -qr '^[0-3]\.' -- $version; or exit 0
 set -g _temor_integrated 1
 set -g _temor_executing
+set -g _temor_seen
+
+# Prints the git branch of $PWD, or nothing outside a checkout. Reads .git/HEAD directly; no git
+# process. A .git file (a worktree) names the real directory.
+function _temor_branch
+    set -l dir $PWD
+    set -l gitdir
+    while true
+        if test -d $dir/.git
+            set gitdir $dir/.git
+            break
+        else if test -f $dir/.git
+            read -l line <$dir/.git 2>/dev/null
+            string match -q 'gitdir: *' -- $line; or return 0
+            set gitdir (string replace 'gitdir: ' '' -- $line)
+            string match -q '/*' -- $gitdir; or set gitdir $dir/$gitdir
+            break
+        end
+        test "$dir" = /; and return 0
+        set dir (string replace -r '/[^/]*$' '' -- $dir)
+        test -n "$dir"; or set dir /
+    end
+    test -r $gitdir/HEAD; or return 0
+    read -l head <$gitdir/HEAD 2>/dev/null
+    test -n "$head"; or return 0
+    if string match -q 'ref: refs/heads/*' -- $head
+        string replace 'ref: refs/heads/' '' -- $head
+    else
+        string sub -l 7 -- $head
+    end
+end
+
+# temor's prompt, installed over fish's stock one by _temor_install_prompt. Colours are ANSI
+# indices, so the terminal's palette themes them.
+function _temor_prompt
+    set -l dir $PWD
+    if test -n "$HOME" -a "$HOME" != /
+        if test "$PWD" = "$HOME"
+            set dir '~'
+        else if string match -q -- "$HOME/*" $PWD
+            set dir '~'(string sub -s (math (string length -- $HOME) + 1) -- $PWD)
+        end
+    end
+    test -n "$_temor_seen"; and echo
+    printf '\e[2m%s\e[22m' $dir
+    set -l branch (_temor_branch)
+    test -n "$branch"; and printf '  \e[2;35m%s\e[0m' $branch
+    # The reset after the newline keeps fish from trimming the newline off the prompt.
+    printf '\n\e[0m'
+end
+
+# Replaces fish_prompt with temor's when it is the one that ships with fish.
+function _temor_install_prompt
+    test "$TEMOR_PROMPT" = shell; and return 0
+    set -l source (functions --details fish_prompt 2>/dev/null)
+    # fish 4 builds its functions into the program and reports them as `embedded:functions/…`.
+    string match -q 'embedded:*' -- $source
+    or begin
+        test -n "$__fish_data_dir"; and string match -q -- "$__fish_data_dir/*" $source
+    end
+    or return 0
+    function fish_prompt
+        _temor_prompt
+    end
+end
+
+# Repaints (a resized window) draw the prompt again, so the blank line is tied to commands, not
+# to drawing: there is one before every prompt once a command has run.
+function _temor_command_seen --on-event fish_preexec
+    set -g _temor_seen 1
+end
+
+if not string match -qr '^[0-3]\.' -- $version
+    # fish 4 and newer draw the marks themselves; only the prompt is installed, once, when the
+    # first prompt is about to be drawn (after config.fish has had its say).
+    function _temor_first_prompt --on-event fish_prompt
+        functions -e _temor_first_prompt
+        _temor_install_prompt
+    end
+    exit 0
+end
+
 
 function _temor_prompt_start --on-event fish_prompt
     printf '\e]7;file://%s%s\e\\\\' $hostname (string escape --style=url -- $PWD)
@@ -38,6 +124,7 @@ function _temor_prompt_start --on-event fish_prompt
     # A prompt defined in config.fish replaces any earlier one, so the end mark is wrapped
     # around the prompt function the first time a prompt is drawn.
     if not functions -q _temor_original_prompt
+        _temor_install_prompt
         functions -c fish_prompt _temor_original_prompt
         function fish_prompt
             _temor_original_prompt
