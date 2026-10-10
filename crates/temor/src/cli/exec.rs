@@ -25,10 +25,12 @@ fn limits() -> Limits {
     Limits::new(Bytes::new(1 << 30), Count::new(10_000), Count::new(64))
 }
 
-/// A person may be asked before anything moves, so the first answer can take a while.
+/// The terminal answers `STARTED` as soon as it has heard an offer, before it asks the person, so
+/// a terminal that takes no part in file transfers is noticed after a few seconds. After that the
+/// person may take a while to decide, and a big file takes a while to cross.
 const WAITS: Waits = Waits {
-    first: Duration::from_secs(60),
-    next: Duration::from_secs(30),
+    first: Duration::from_secs(3),
+    next: Duration::from_secs(60),
 };
 
 pub fn run(command: Command, context: &Context, opener: &impl Opener) -> Result<String, CliError> {
