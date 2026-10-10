@@ -10,6 +10,7 @@ pub mod notify;
 mod save_pace;
 mod session_file;
 mod settings_file;
+pub mod shelf_files;
 pub mod sidecar;
 
 pub use ambient::Ambient;

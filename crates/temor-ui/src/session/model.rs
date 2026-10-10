@@ -44,6 +44,8 @@ pub enum Notice {
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
     Hold(temor_pane::Hold),
+    /// A program offered, sent or asked for a file (PLAN §9).
+    Transfer(temor_pane::TransferEvent),
     /// Nothing for the window.
     Quiet,
 }
@@ -94,6 +96,10 @@ pub struct Session {
     pub(super) shelf_dir: PathBuf,
     /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
     pub(super) asked: Option<temor_pane::keys::Action>,
+    /// How the pane's shell quotes a word, for pasting dropped paths.
+    pub(super) quoting: temor_core::shelf::Quoting,
+    /// Whether the pane's shell runs on this computer.
+    pub(super) site: temor_core::shelf::PaneSite,
 }
 
 /// A find query typed but not yet run, and when it was last typed.

@@ -12,8 +12,10 @@ mod persist;
 mod restore;
 mod rows;
 mod say;
+mod shelf;
 #[cfg(test)]
 mod tests;
+mod transfers;
 
 pub use desk::Desk;
 pub use events::spawn_event_loop;
@@ -22,3 +24,4 @@ pub use model::{Hub, HubRef};
 pub use persist::spawn_save_loop;
 pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};
 pub use say::refusal_text;
+pub use shelf::{Ask, AskKind, AskView};

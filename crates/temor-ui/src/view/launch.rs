@@ -22,7 +22,10 @@ use crate::error::UiError;
 use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
-use temor_pane::PaneEvent;
+use temor_core::shelf::Quoting;
+use temor_pane::{PaneEvent, TransferSetup};
+use temor_shell::ShellKind;
+use temor_transfer::{Bytes, Count, Limits};
 
 /// Given to the session's own process as its first argument: the program becomes the session
 /// leader and runs the shell (temor-pty's trampoline; the binary's `main` handles it).
@@ -110,8 +113,13 @@ pub fn open_session(
     {
         ambient.home = dir;
     }
-    let spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
-    Session::open_with(
+    let mut spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    spec.transfers = Some(TransferSetup {
+        staging: launch.ambient.staging_dir(pane.0),
+        limits: transfer_limits(),
+    });
+    let quoting = quoting_of(&spec.spawn.program);
+    let mut session = Session::open_with(
         SessionParts {
             spec,
             fonts,
@@ -126,5 +134,22 @@ pub fn open_session(
         },
         Arc::new(TaggedSink::new(pane, events)),
         snapshot,
-    )
+    )?;
+    session.set_quoting(quoting);
+    Ok(session)
+}
+
+/// The caps on what a program may send through the terminal: a gigabyte a file, and as many
+/// files as a folder tree reasonably has.
+fn transfer_limits() -> Limits {
+    Limits::new(Bytes::new(1 << 30), Count::new(10_000), Count::new(64))
+}
+
+/// How the shell a pane runs quotes a word, for the paths a drop types into it.
+fn quoting_of(shell: &std::path::Path) -> Quoting {
+    match ShellKind::of(shell) {
+        ShellKind::Fish => Quoting::Fish,
+        ShellKind::Nushell => Quoting::Nushell,
+        _ => Quoting::Posix,
+    }
 }

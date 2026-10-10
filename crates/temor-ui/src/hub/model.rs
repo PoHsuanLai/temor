@@ -14,6 +14,7 @@ use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use super::shelf::ShelfHub;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -34,6 +35,8 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: SavePace,
     pub(super) notices: Vec<String>,
+    /// The downloads shelf and the questions programs have put to the person.
+    pub(super) shelf: ShelfHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -48,6 +51,7 @@ impl Hub {
     /// A hub with no panes yet; [`Hub::start`] restores the last session or opens a first tab.
     pub fn new(launch: Launch) -> Hub {
         let (events, inbox) = unbounded_channel();
+        let (shelf, trouble) = ShelfHub::open(&launch);
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
             slots: BTreeMap::new(),
@@ -58,7 +62,8 @@ impl Hub {
             launch,
             palette: Palette::default(),
             pace: SavePace::new(SAVE_EVERY),
-            notices: Vec::new(),
+            notices: trouble.into_iter().collect(),
+            shelf,
         }
     }
 
