@@ -1170,7 +1170,7 @@ merged, fixed and gated together. anyview c91ec0a.
 - [ ] quire v0.3.16 (one re-pin): adopt the finished-drag report, `Column`, `write_soon`, the
       icon-button group, the offer-bar overlay, the menu tooltips and the banner row.
 - [ ] Byte progress for uploads (a progress hook on temor-remote's `Client::upload`).
-- [ ] anyview ask: a "could not be opened" request, so a failed file offers another app.
+- [x] anyview ask: a "could not be opened" request, so a failed file offers another app (anyview 75f1f86, `PaneRequest::NotOpened`; done 2026-10-11).
 - [ ] quire ask: tell Esc from a click outside on the palette (`onclose` covers both).
 - [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
 - [ ] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it).
@@ -1185,11 +1185,8 @@ could be closed on this machine was closed in Batches 17 and 18; what is left wa
 project, another platform, real hardware, or the owner.
 
 ### Waiting on another project
-- quire v0.3.16 (coming): adopt the drag report, `Column`, `write_soon`, the icon-button group,
-  the offer-bar overlay, menu tooltips and the banner row. (Batch 18 Next)
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)
-- anyview: a "could not be opened" request. (Batch 18 Next)
 - chordkit: a fallback where the default collides. (Keys on chordkit)
 - ds_blitz: primary and selection clipboards for OSC 52. (Batch 18 Next)
 - P8 Proposals: bulkhead split (fresh `TurnRef` per Ask, "edited" vs "replaced", U+2800).
@@ -1219,6 +1216,10 @@ project, another platform, real hardware, or the owner.
 - Run `search_bench` and decide on a row-text path. (Batch 18 Next)
 
 ### Small temor items left
+- Adopt quire v0.3.16 (pinned 2026-10-11 with anyview 75f1f86): SplitView `on_resized`, `Column`
+  (`ColumnGap::None`), `write_soon_then`, `IconButtonGroup`, `PinnedBar`, `BannerActionRow`, menu
+  tips, `DotFace::Foot`. Planned with the look work (block tools as an icon group, a pinned typing
+  line). (UI pass, 2026-10-11)
 - Byte progress for uploads. (Batch 18 Next)
 - Mark host panes remote where `ssh.panes` gets its entry. (Batch 18 Next)
 - Offer: zsh keeps the probe line; nushell history isn't cleaned (no delete in nushell).
@@ -1226,3 +1227,17 @@ project, another platform, real hardware, or the owner.
 - Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
 - Blocks stay in temor-core (a design choice for now). (R1b)
 - KWin takes Meta+T/W/D/V on KDE (the desktop's binding). (P3a)
+
+## UI pass and Warp comparison (2026-10-11)
+Warp and temor were run side by side in a private virtual KWin (offline, scratch home, never the
+owner's display). Done: temor's prompt in every shell whatever PS1 the startup files set, as Warp's
+default (Fedora's /etc/bashrc set PS1, so the cards never showed; `TEMOR_PROMPT=shell` keeps the
+person's own); a split pane no longer goes blank (the old view's drop took the new view's
+texture); a click leaves nothing selected; the status line and tab rows are spaced and fade
+long text; anyview's `NotOpened` offers "Open in another app"; quire v0.3.16 pinned.
+- [ ] The look (owner to confirm): bolder cards with padding and the run time and exit code in
+  the header; icon-only block tools; no status footer; the typing line pinned to the pane's bottom
+  while the screen is not full; one surface for window, sidebar and pane (a quire ask for a flat
+  app-shell look); dark default or follow the system (owner's call).
+- [ ] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
+  restore, keyboard-only use, resize with a menu or the bar open.

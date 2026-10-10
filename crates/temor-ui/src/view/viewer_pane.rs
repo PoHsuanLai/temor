@@ -69,6 +69,7 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
     let shown = desk.hub.viewer_show(pane);
     let answer = desk.clone();
     let describes_only = desk.hub.viewer_describes_only(pane);
+    let not_opened = desk.hub.viewer_not_opened(pane);
     let in_app = desk.clone();
     rsx! {
         div { class: "temor-pane",
@@ -80,10 +81,13 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
                     extra_class: ExtraClass::parse("temor-keys").ok(),
                     ..Common::default()
                 },
-                if describes_only {
+                if describes_only || not_opened {
                     InlineBanner {
                         severity: Severity::Info,
-                        text: "This kind of file can't be shown here".to_owned(),
+                        text: match not_opened {
+                            true => "This file couldn't be opened here".to_owned(),
+                            false => "This kind of file can't be shown here".to_owned(),
+                        },
                         detail: Some(TextLine::from("Another app may be able to open it")),
                         actions: rsx! {
                             Button {

@@ -30,6 +30,9 @@ pub(super) struct ViewerHub {
     handles: BTreeMap<PaneId, PaneHandle>,
     /// The viewers whose file has no stage to show it (a kind the viewer only describes).
     describes_only: BTreeSet<PaneId>,
+    /// The viewers whose file could not be opened (anyview's failure card is up), with that file,
+    /// which another app may still open. A later open of any file clears it.
+    not_opened: BTreeMap<PaneId, anyview_pane::FilePath>,
     /// The files fetched from other computers, and the copies the viewers show.
     pub(super) host: super::viewer_host::HostCopies,
 }
@@ -135,6 +138,7 @@ impl Hub {
         self.viewers.seats.remove(&pane);
         self.viewers.handles.remove(&pane);
         self.viewers.describes_only.remove(&pane);
+        self.viewers.not_opened.remove(&pane);
         self.host_copy_ended(pane);
     }
 
@@ -170,6 +174,7 @@ impl Hub {
 
     /// The viewer `pane` opened a file, and whether the viewer can show it or only describe it.
     pub fn viewer_family(&mut self, pane: PaneId, family: StageFamily) {
+        self.viewers.not_opened.remove(&pane);
         match family {
             StageFamily::PeekOnly => self.viewers.describes_only.insert(pane),
             _ => self.viewers.describes_only.remove(&pane),
@@ -179,6 +184,17 @@ impl Hub {
     /// Whether the viewer `pane` can only describe its file, which another app may open.
     pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
         self.viewers.describes_only.contains(&pane)
+    }
+
+    /// The viewer `pane` could not open `file`.
+    pub fn viewer_not_opened(&mut self, pane: PaneId, file: anyview_pane::FilePath) {
+        self.viewers.describes_only.remove(&pane);
+        self.viewers.not_opened.insert(pane, file);
+    }
+
+    /// The file the viewer `pane` could not open, if its last open failed.
+    pub fn viewer_failed_file(&self, pane: PaneId) -> Option<&anyview_pane::FilePath> {
+        self.viewers.not_opened.get(&pane)
     }
 
     /// Whether `pane` is a viewer.
@@ -236,6 +252,11 @@ impl HubRef {
     /// See [`Hub::viewer_describes_only`].
     pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
         self.0.borrow().viewer_describes_only(pane)
+    }
+
+    /// Whether the viewer `pane`'s last open failed (see [`Hub::viewer_failed_file`]).
+    pub fn viewer_not_opened(&self, pane: PaneId) -> bool {
+        self.0.borrow().viewer_failed_file(pane).is_some()
     }
 
     /// See [`Hub::is_viewer`].

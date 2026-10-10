@@ -157,3 +157,18 @@ fn a_viewer_that_only_describes_its_file_says_so_until_one_it_can_show_opens() {
         assert_eq!(hub.viewer_describes_only(viewer), want, "{family:?}");
     }
 }
+
+#[test]
+fn a_file_that_could_not_be_opened_is_offered_to_another_app_until_an_open_succeeds() {
+    use anyview_machines::StageFamily::Text;
+    let (mut hub, _, viewer) = with_viewer("/w/a.txt", &[]);
+    assert_eq!(hub.viewer_failed_file(viewer), None);
+    let broken =
+        anyview_pane::FilePath::new(std::path::Path::new("/w/broken.pdf")).expect("a path");
+    hub.viewer_not_opened(viewer, broken.clone());
+    // The failed file, not the one recorded as shown, is the one another app is handed.
+    assert_eq!(hub.viewer_failed_file(viewer), Some(&broken));
+    assert!(!hub.viewer_describes_only(viewer));
+    hub.viewer_family(viewer, Text);
+    assert_eq!(hub.viewer_failed_file(viewer), None);
+}

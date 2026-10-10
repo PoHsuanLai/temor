@@ -42,6 +42,10 @@ impl Desk {
             // that temor hears of yet.
             PaneRequest::Watch(_) | PaneRequest::Unwatch => {}
             PaneRequest::File(change) => self.settle(|hub| hub.viewer_file_request(change)),
+            // The pane shows why on its own failure card; the window offers another app.
+            PaneRequest::NotOpened(failed) => {
+                self.settle(|hub| hub.viewer_not_opened(pane, failed.file));
+            }
         }
     }
 }
@@ -57,10 +61,12 @@ impl Desk {
 impl Hub {
     /// The desktop opens the file the viewer `pane` shows with the program it chose for it.
     fn viewer_file_in_app(&mut self, pane: PaneId) {
-        let file =
+        // A file that could not be opened was never recorded as shown: it is the one to hand on.
+        let file = self.viewer_failed_file(pane).cloned().or_else(|| {
             self.ws.viewers.get(&pane).and_then(|file| {
                 anyview_pane::FilePath::new(std::path::Path::new(file.as_str())).ok()
-            });
+            })
+        });
         if let Some(file) = file {
             self.viewer_open_elsewhere(&[file]);
         }
