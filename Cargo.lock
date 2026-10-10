@@ -403,6 +403,9 @@ dependencies = [
  "anyview-fs",
  "anyview-image",
  "anyview-text",
+ "dioxus",
+ "ds",
+ "ds-blitz",
  "ds-core",
  "thiserror 2.0.21",
 ]

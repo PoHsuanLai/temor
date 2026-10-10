@@ -41,6 +41,12 @@ pub struct PeekHandles {
     pub card: Signal<Option<PeekCard>>,
 }
 
+impl std::fmt::Debug for PeekHandles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PeekHandles").finish_non_exhaustive()
+    }
+}
+
 /// Where the pointer last was.
 #[derive(Clone, Copy)]
 struct Pointed {

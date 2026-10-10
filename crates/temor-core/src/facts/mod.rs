@@ -15,7 +15,7 @@ pub use fit::{ChipRow, chips_that_fit};
 pub use model::{
     BranchName, DiffStat, EnvName, Facts, MOST_UNTRACKED, NodeVersion, ToolVersion, Untracked,
 };
-pub use node::{node_from_engines, node_from_nvmrc};
+pub use node::{node_from_engines, node_from_nvmrc, node_from_version_file};
 pub use parse::{parse_branch, parse_shortstat, parse_untracked, venv_name};
 pub use step::{FactsIn, FactsOut, FactsState, Flight, facts_step};
-pub use versions::{ToolVersions, node_from_version_file, tool_versions};
+pub use versions::{ToolVersions, tool_versions};

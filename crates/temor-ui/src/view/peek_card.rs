@@ -22,6 +22,15 @@ pub struct PeekCard {
     pub top: f32,
 }
 
+impl std::fmt::Debug for PeekCard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PeekCard")
+            .field("left", &self.left)
+            .field("top", &self.top)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Where the card goes for a pointer at `pointer` in a pane `room` big: right of and below the
 /// pointer, above it when there is no room below, and always inside the pane.
 pub fn place(pointer: (f32, f32), room: (f32, f32)) -> (f32, f32) {
