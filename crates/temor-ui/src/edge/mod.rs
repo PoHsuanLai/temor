@@ -7,6 +7,7 @@ mod ambient;
 pub mod clock;
 pub mod desktop_feed;
 pub mod desktop_port;
+pub mod facts;
 pub mod git;
 mod keymap;
 pub mod notify;
