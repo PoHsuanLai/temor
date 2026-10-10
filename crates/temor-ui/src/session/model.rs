@@ -88,6 +88,8 @@ pub struct Session {
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
     pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
+    /// The link under the pointer as last drawn in the status line.
+    pub(super) link_hover: Option<String>,
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
     pub(super) focus: Focus,

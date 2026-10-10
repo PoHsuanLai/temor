@@ -21,6 +21,8 @@ pub struct Chrome {
     pub title: String,
     pub progress: Option<ProgressLine>,
     pub bell: bool,
+    /// The target of the link under the pointer, shown in place of the folder and title.
+    pub link: Option<String>,
 }
 
 /// The toolbar for the first of `hovered` and the selected block that has a place on screen.
@@ -76,5 +78,6 @@ pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
         title: session.title().to_owned(),
         progress: session.progress().and_then(progress_line),
         bell: session.bell_showing(),
+        link: session.link_under_pointer(),
     }
 }

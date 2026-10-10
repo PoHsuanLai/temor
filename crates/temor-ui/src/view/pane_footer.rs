@@ -43,6 +43,7 @@ pub fn pane_footer(
             title: chrome.title.clone(),
             progress: chrome.progress,
             bell: chrome.bell,
+            link: chrome.link.clone(),
         }
         if let Some(reason) = pending {
             PasteConfirm {

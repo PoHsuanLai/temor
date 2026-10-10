@@ -12,6 +12,7 @@ use temor_core::vocab::ids::BlockId;
 use super::handlers::{block_hovered, gutter_pressed};
 use super::peek::PeekHandles;
 use super::slot::Slot;
+use crate::session::{LinkHover, Session};
 
 /// What the grid element is given.
 pub struct GridPointer {
@@ -45,15 +46,36 @@ pub fn grid_pointer(
         gutter_pressed(Rc::clone(slot), signals, ui, notice, mouse_down),
     );
     let leave = peek.gone.clone();
+    let (link_slot, link_gone) = (Rc::clone(slot), Rc::clone(slot));
+    let (mut link_ui, mut gone_ui) = (ui, ui);
     GridPointer {
         moved: Box::new(move |e: PointerEvent| {
             moved(e.clone());
             hover(e);
+            // The status line shows the link under the pointer; draw it again when it changes.
+            let changed = link_slot
+                .borrow_mut()
+                .session
+                .as_mut()
+                .map(Session::refresh_link);
+            if changed == Some(LinkHover::Changed) {
+                link_ui += 1;
+            }
         }),
         pressed: Box::new(move |e: PointerEvent| {
             gone();
             press(e);
         }),
-        left: Box::new(move |_: PointerEvent| leave()),
+        left: Box::new(move |_: PointerEvent| {
+            leave();
+            let changed = link_gone
+                .borrow_mut()
+                .session
+                .as_mut()
+                .map(Session::link_left);
+            if changed == Some(LinkHover::Changed) {
+                gone_ui += 1;
+            }
+        }),
     }
 }
