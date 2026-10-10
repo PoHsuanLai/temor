@@ -132,6 +132,7 @@ _temor_precmd() {
     if [[ ${precmd_functions[-1]-} != _temor_precmd ]]; then
         precmd_functions=(${precmd_functions:#_temor_precmd} _temor_precmd)
     fi
+    _temor_keep_line_init
     if [[ -z ${_temor_marked-} ]]; then
         _temor_marked=1
         if [[ -n ${_temor_executing-} ]]; then
@@ -165,6 +166,17 @@ _temor_preexec() {
 # when line editing starts, which is exactly where the prompt ends.
 _temor_line_init() {
     [[ ${PS1-} == *$'\e]133;B'* ]] || printf '\e]133;B\e\\'
+}
+
+# An old-style `zle -N zle-line-init myfn` in the person's files replaces the widget that runs
+# the hooks, and temor's hook with it. If that happened, hook again: their widget is kept and
+# runs first. (Hooking a name that is already listed does nothing, so it is taken out first.)
+_temor_keep_line_init() {
+    emulate -L zsh
+    zmodload -e zsh/zle || return 0
+    [[ ${widgets[zle-line-init]-} == user:azhw:zle-line-init ]] && return 0
+    add-zle-hook-widget -d zle-line-init _temor_line_init
+    add-zle-hook-widget zle-line-init _temor_line_init
 }
 
 autoload -Uz add-zsh-hook add-zle-hook-widget
