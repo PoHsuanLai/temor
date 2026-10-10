@@ -136,3 +136,32 @@ fn a_pane_an_agent_opens_leaves_the_keyboard_where_it_was() {
         assert_eq!(refocus_after_agent_open(held, opened), expected);
     }
 }
+
+#[test]
+fn a_pane_an_agent_opens_is_unfocused_in_the_radar_and_waits_for_the_person() {
+    use temor_core::presence::AgentState;
+    use temor_core::workspace::workspace_step;
+
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
+    hub.pane_focused(PaneId(1));
+    // What `open_for_agent` does, with the panes left unstarted: the open moves the keyboard to
+    // the new pane, then it is handed back.
+    for step in [
+        WorkspaceIn::Split {
+            towards: Direction::Right,
+        },
+        WorkspaceIn::Focus(PaneId(1)),
+    ] {
+        let (ws, _) = workspace_step(hub.ws.clone(), step);
+        hub.ws = ws;
+        hub.agents_after_act();
+        assert_ne!(hub.agents.radar.focused(), Some(PaneId(2)));
+    }
+
+    hub.agents_observe(PaneId(2), &agent_status(ProgramState::Blocked));
+
+    assert!(matches!(
+        hub.agents.radar.state_of(PaneId(2)),
+        AgentState::Waiting(_)
+    ));
+}
