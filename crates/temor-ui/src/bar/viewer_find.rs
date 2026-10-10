@@ -18,6 +18,23 @@ pub enum Finding {
     On,
 }
 
+/// What Escape does in the bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Escape {
+    /// Leave the file's find and show the bar's rows again; the next Escape closes the bar.
+    StepBack,
+    /// Close the bar.
+    Close,
+}
+
+/// What Escape does while the field is in `finding`.
+pub fn escape(finding: Finding) -> Escape {
+    match finding {
+        Finding::On => Escape::StepBack,
+        Finding::Off => Escape::Close,
+    }
+}
+
 /// What a picked match of the file's find asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reply {

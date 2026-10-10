@@ -10,7 +10,7 @@ use crate::support::{Scratch, Term, find, program_or_skip, setsid, size};
 const PROMPT_START: &[u8] = b"\x1b]133;A";
 const PROMPT_END: &[u8] = b"\x1b]133;B\x1b\\";
 
-const SHELLS: [&str; 3] = ["bash", "zsh", "fish"];
+const SHELLS: [&str; 4] = ["bash", "zsh", "fish", "nu"];
 
 /// What the person's own startup file sets: nothing, or a prompt of their own.
 #[derive(Clone, Copy, PartialEq)]
@@ -27,6 +27,11 @@ fn startup(shell: &str, own: Own) -> (&'static str, &'static str) {
         // An empty .zshrc keeps zsh's first-run wizard away.
         ("zsh", Own::Stock) => (".zshrc", ""),
         ("zsh", Own::Custom) => (".zshrc", "PS1='custom> '\n"),
+        ("nu", Own::Stock) => (".config/nushell/config.nu", ""),
+        ("nu", Own::Custom) => (
+            ".config/nushell/config.nu",
+            "$env.PROMPT_COMMAND = {|| \"custom> \" }\n",
+        ),
         (_, Own::Stock) => (".config/fish/config.fish", ""),
         (_, Own::Custom) => (
             ".config/fish/config.fish",
@@ -123,6 +128,14 @@ fn folder_name(cwd: &Path) -> String {
         .expect("name")
         .to_string_lossy()
         .into_owned()
+}
+
+/// A command that fails with status 1 in `shell` (nushell's own `false` is a value, not a failure).
+fn failing(shell: &str) -> &'static str {
+    match shell {
+        "nu" => "^false",
+        _ => "false",
+    }
 }
 
 /// Runs `command` and waits until its D mark (with `status`) and a new prompt's B mark arrive.
@@ -274,7 +287,7 @@ fn a_blank_line_separates_prompts_except_the_first() {
         );
         let first = last_prompt(&term);
         assert!(!first.starts_with('\n'), "{shell}: first {first:?}");
-        for (command, status) in [("false", 1), ("sh -c 'exit 130'", 130)] {
+        for (command, status) in [(failing(shell), 1), ("sh -c 'exit 130'", 130)] {
             run_command(&mut term, command, status);
             let prompt = last_prompt(&term);
             assert!(

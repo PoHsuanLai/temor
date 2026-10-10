@@ -18,22 +18,28 @@ pub fn python_from_version_file(text: &str) -> Option<ToolVersion> {
 }
 
 /// The version from the text of a `pyproject.toml`: `requires-python` in its `[project]` table
-/// (`>=3.10`). Read line by line, not as a whole TOML file: only a quoted value on the key's own
-/// line counts.
+/// (`>=3.10`), else `python` in Poetry's `[tool.poetry.dependencies]` (`^3.10`). Read line by
+/// line, not as a whole TOML file: only a quoted value on the key's own line counts.
 pub fn python_from_pyproject(text: &str) -> Option<ToolVersion> {
-    let mut in_project = false;
+    let project = quoted_in_table(text, "[project]", "requires-python");
+    project.or_else(|| quoted_in_table(text, "[tool.poetry.dependencies]", "python"))
+}
+
+/// The chip for `key = "value"` inside the table headed `header`.
+fn quoted_in_table(text: &str, header: &str, wanted: &str) -> Option<ToolVersion> {
+    let mut in_table = false;
     for line in text.lines().map(str::trim) {
         if line.starts_with('[') {
-            in_project = line.split('#').next().unwrap_or("").trim() == "[project]";
+            in_table = line.split('#').next().unwrap_or("").trim() == header;
             continue;
         }
-        if !in_project {
+        if !in_table {
             continue;
         }
         let Some((key, value)) = line.split_once('=') else {
             continue;
         };
-        if key.trim() != "requires-python" {
+        if key.trim() != wanted {
             continue;
         }
         let value = value.split('#').next().unwrap_or("").trim();

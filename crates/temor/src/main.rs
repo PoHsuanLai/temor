@@ -67,7 +67,7 @@ fn main() -> ExitCode {
         }
     };
     // The keys: the desktop's conventions, then the person's changes, then temor's own actions.
-    let (keymap, key_issues) = load_keymap(&parsed.settings.keys);
+    let (keymap, key_issues) = load_keymap(&parsed.settings.keys, &ambient);
     for (line, issue) in parsed.issues.iter().chain(&key_issues) {
         match *line {
             0 => eprintln!("temor: keys: {issue}"),

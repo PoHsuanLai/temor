@@ -54,6 +54,14 @@ impl Ambient {
         })
     }
 
+    /// The config home (`XDG_CONFIG_HOME`, else `~/.config`): where the desktop's own settings
+    /// are, such as KDE's `kdeglobals`.
+    pub fn config_home(&self) -> PathBuf {
+        self.config_dir
+            .parent()
+            .map_or_else(|| self.home.join(".config"), std::path::Path::to_path_buf)
+    }
+
     /// The settings file's path.
     pub fn settings_path(&self) -> PathBuf {
         self.config_dir.join("terminal.conf")

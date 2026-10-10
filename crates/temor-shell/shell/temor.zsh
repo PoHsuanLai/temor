@@ -179,9 +179,24 @@ _temor_keep_line_init() {
     add-zle-hook-widget zle-line-init _temor_line_init
 }
 
+# Under an unknown TERM the folder line is printed by _temor_precmd, so a screen clear (Ctrl-L)
+# would drop it. This clears by hand, prints the line again at the top and redraws the prompt.
+# Only the stock widget is replaced; one the person rebound is left alone.
+_temor_clear_screen() {
+    if [[ -z ${_temor_head-} ]]; then
+        zle .clear-screen
+        return
+    fi
+    zle -I
+    printf '\e[H\e[2J'
+    print -Pr -- "$_temor_head"
+    zle reset-prompt
+}
+
 autoload -Uz add-zsh-hook add-zle-hook-widget
 # Line editing loads lazily at the first prompt; it is loaded here so the widget can be hooked.
 zmodload zsh/zle 2>/dev/null && add-zle-hook-widget zle-line-init _temor_line_init
+[[ ${widgets[clear-screen]-} == builtin ]] && zle -N clear-screen _temor_clear_screen
 add-zsh-hook precmd _temor_save_status
 add-zsh-hook precmd _temor_precmd
 add-zsh-hook preexec _temor_preexec

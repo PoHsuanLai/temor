@@ -19,6 +19,8 @@ anyview-fs = { workspace = true }
 anyview-peek = { workspace = true, features = ["pane"] }
 anyview-pane = { workspace = true }
 chordkit = { workspace = true }
+chordkit-gnome = { workspace = true }
+chordkit-kde = { workspace = true }
 dioxus = { workspace = true }
 ds = { workspace = true }
 ds-blitz = { workspace = true }

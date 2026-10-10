@@ -11,6 +11,7 @@ pub mod facts;
 mod facts_files;
 pub mod git;
 mod keymap;
+mod keymap_source;
 pub mod notify;
 pub mod offer;
 pub mod peek_look;
@@ -53,6 +54,7 @@ pub use agent_socket::SocketHost;
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
 pub use keymap::{keymap_for, load_keymap};
+pub use keymap_source::{SharedSource, SystemKeys};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{

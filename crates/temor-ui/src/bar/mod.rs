@@ -20,4 +20,6 @@ pub use resolver::PathLookup;
 pub use seams::{BarSeams, ModelRows, NoModel, NoSpaces, SpaceRows};
 pub use shortcuts::action_of;
 pub use sources::{closed_candidate, directory_uses, recent_commands};
-pub use viewer_find::{Finding, PLACEHOLDER as FIND_PLACEHOLDER, Reply, entry_row, lift, reply};
+pub use viewer_find::{
+    Escape, Finding, PLACEHOLDER as FIND_PLACEHOLDER, Reply, entry_row, escape, lift, reply,
+};

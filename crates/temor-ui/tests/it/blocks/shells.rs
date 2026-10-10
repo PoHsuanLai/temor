@@ -12,6 +12,7 @@ fn real_shells_make_one_block_per_command_with_its_output_and_status() {
     if !tools_present() {
         return;
     }
+    let _alone = super::super::support::heavy();
     for (name, shell) in shells() {
         let mut live = start(&format!("blocks-{name}"), &shell);
         run_line(&live, "echo hello-block");

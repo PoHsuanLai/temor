@@ -79,7 +79,7 @@ pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;
 pub use facts::spawn_facts_loop;
 pub use hosts::HostRows;
-pub use keys::workspace_input;
+pub use keys::{spawn_keys_loop, workspace_input};
 pub use model::{Hub, HubRef};
 pub use offer::spawn_offer_loop;
 pub use persist::spawn_save_loop;

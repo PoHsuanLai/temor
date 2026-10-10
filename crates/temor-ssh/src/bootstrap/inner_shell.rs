@@ -6,6 +6,7 @@
 use temor_shell::ShellScript;
 
 use super::inner::LoadToken;
+use super::inner_probe::PROBE_WORD;
 
 /// A shell the load text can reach. Any other shell gets nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,7 +137,7 @@ fn cut_between(text: &str, from: &str, to: &str) -> String {
     }
 }
 
-/// bash: delete this offer's entries by number (the first lines of `history` output), then
+/// bash: delete this offer's entries (and the probe line that named the shell) by number (the first lines of `history` output), then
 /// remove the file. Entries the shell never recorded are not in the output, so nothing else goes.
 fn bash_forget(token: &LoadToken, path: &str) -> String {
     format!(
@@ -145,15 +146,16 @@ fn bash_forget(token: &LoadToken, path: &str) -> String {
     local -a nums=()
     while read -r num rest; do
         [[ $num =~ ^[0-9]+$ ]] || continue
-        [[ $rest == *{marker}* || $rest == *_temor_hs_off=1* ]] && nums+=(\"$num\")
-    done < <(history 64)
+        [[ $rest == *{marker}* || $rest == *_temor_hs_off=1* || $rest == *{probe}* ]] && nums+=(\"$num\")
+    done < <(history 80)
     for ((i = ${{#nums[@]}} - 1; i >= 0; i--)); do history -d \"${{nums[i]}}\"; done
 }}
 _temor_offer_forget
 unset -f _temor_offer_forget
 command rm -f -- {path}
 ",
-        marker = token.marker()
+        marker = token.marker(),
+        probe = PROBE_WORD
     )
 }
 
@@ -177,8 +179,8 @@ fn fish_forget(token: &LoadToken, path: &str) -> String {
         "function _temor_offer_forget --on-event fish_postexec
     functions -e _temor_offer_forget
     set -l hits
-    builtin history search --null --max 8 | while read --null --local entry
-        if string match -q -- '*{marker}*' $entry; or string match -q -- '*_temor_hs_off=1*' $entry
+    builtin history search --null --max 12 | while read --null --local entry
+        if string match -q -- '*{marker}*' $entry; or string match -q -- '*_temor_hs_off=1*' $entry; or string match -q -- '*{probe}*' $entry
             set -a hits $entry
         end
     end
@@ -188,6 +190,7 @@ fn fish_forget(token: &LoadToken, path: &str) -> String {
 end
 command rm -f -- {path}
 ",
-        marker = token.marker()
+        marker = token.marker(),
+        probe = PROBE_WORD
     )
 }

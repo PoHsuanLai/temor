@@ -10,7 +10,7 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use temor_shell::integration_scripts;
-use temor_ssh::{InnerLoadLine, LoadToken};
+use temor_ssh::{InnerLoadLine, InnerShell, LoadToken};
 
 use crate::harness::{Scratch, contains, require, scratch, system_path};
 
@@ -56,11 +56,16 @@ fn run_shell(s: &Scratch, program: &Path, args: &[&str], input: &str) -> (Vec<u8
 }
 
 /// Types the load text, then `after`, into `shell`: all it printed, its stdout, and the token.
-fn load_into(shell: &str, args: &[&str], after: &str) -> Option<(Vec<u8>, Vec<u8>, LoadToken)> {
+fn load_into(
+    shell: &str,
+    typed_for: InnerShell,
+    args: &[&str],
+    after: &str,
+) -> Option<(Vec<u8>, Vec<u8>, LoadToken)> {
     let program = require(shell)?;
     let s = scratch();
     let token = token();
-    let line = InnerLoadLine::build(&integration_scripts(), &token).expect("build");
+    let line = InnerLoadLine::build_for(typed_for, &integration_scripts(), &token).expect("build");
     let (text, out) = run_shell(&s, &program, args, &format!("{}{after}", line.as_str()));
     Some((text, out, token))
 }
@@ -68,8 +73,12 @@ fn load_into(shell: &str, args: &[&str], after: &str) -> Option<(Vec<u8>, Vec<u8
 #[test]
 fn bash_loads_the_integration_and_forgets_the_lines() {
     let after = "echo LOADED=${_temor_integrated-no}\nhistory\nexit\n";
-    let Some((text, out, token)) = load_into("bash", &["--norc", "--noprofile", "-i"], after)
-    else {
+    let Some((text, out, token)) = load_into(
+        "bash",
+        InnerShell::Bash,
+        &["--norc", "--noprofile", "-i"],
+        after,
+    ) else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
@@ -87,7 +96,7 @@ fn bash_loads_the_integration_and_forgets_the_lines() {
 #[test]
 fn zsh_loads_the_integration_and_keeps_the_lines_out_of_history() {
     let after = "print LOADED=${_temor_integrated-no}\nfc -l 1\nexit\n";
-    let Some((text, _, token)) = load_into("zsh", &["-f", "-i"], after) else {
+    let Some((text, _, token)) = load_into("zsh", InnerShell::Zsh, &["-f", "-i"], after) else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
@@ -103,7 +112,8 @@ fn zsh_loads_the_integration_and_keeps_the_lines_out_of_history() {
 #[test]
 fn fish_loads_the_integration_in_place_and_stays_running() {
     let after = "echo LOADED=$_temor_integrated\nhistory\necho STILL_HERE\nexit\n";
-    let Some((text, _, token)) = load_into("fish", &["--no-config", "-i"], after) else {
+    let Some((text, _, token)) = load_into("fish", InnerShell::Fish, &["--no-config", "-i"], after)
+    else {
         return;
     };
     let shown = String::from_utf8_lossy(&text).into_owned();
@@ -122,7 +132,7 @@ fn fish_loads_the_integration_in_place_and_stays_running() {
 #[test]
 fn a_plain_shell_gets_an_empty_file_and_no_marks() {
     let after = "echo DONE\nexit\n";
-    let Some((text, _, token)) = load_into("dash", &["-i"], after) else {
+    let Some((text, _, token)) = load_into("dash", InnerShell::Bash, &["-i"], after) else {
         return;
     };
     assert!(contains(&text, "DONE"));

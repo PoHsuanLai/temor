@@ -1,6 +1,6 @@
 use anyview_pane::PaneCommand;
 
-use super::viewer_find::{Reply, entry_row, reply};
+use super::viewer_find::{Escape, Finding, Reply, entry_row, escape, reply};
 
 #[test]
 fn the_entry_row_shows_for_a_query_that_names_it_and_a_pick_is_answered() {
@@ -16,4 +16,10 @@ fn the_entry_row_shows_for_a_query_that_names_it_and_a_pick_is_answered() {
     }
     assert_eq!(reply(&PaneCommand::ShowAllHits), Reply::ListAll);
     assert_eq!(reply(&PaneCommand::OpenFile), Reply::Go);
+}
+
+#[test]
+fn escape_steps_back_from_the_files_find_and_then_closes() {
+    assert_eq!(escape(Finding::On), Escape::StepBack);
+    assert_eq!(escape(Finding::Off), Escape::Close);
 }

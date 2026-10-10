@@ -113,6 +113,11 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), Setting
         "notify.after" => settings.notify_after = notify_after(key, value)?,
         "offer.add" => settings.offer_add.push(offer_command(key, value)?),
         "offer.remove" => settings.offer_remove.push(offer_command(key, value)?),
+        old if old.starts_with("keys.") => {
+            return Err(SettingsError::Key(format!(
+                "{old} is the old way to write a key; name the action itself, for example `copy = Ctrl+Shift+C` or `temor.zoom = none`"
+            )));
+        }
         _ => return Err(SettingsError::UnknownSetting(key.to_owned())),
     }
     Ok(())

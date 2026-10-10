@@ -23,6 +23,7 @@ mod ssh;
 mod support;
 mod viewer;
 mod window;
+mod window_title;
 mod worktree_git;
 
 #[test]

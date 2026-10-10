@@ -6666,6 +6666,8 @@ dependencies = [
  "anyview-pane",
  "anyview-peek",
  "chordkit",
+ "chordkit-gnome",
+ "chordkit-kde",
  "dioxus",
  "ds",
  "ds-blitz",

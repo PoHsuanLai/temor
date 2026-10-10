@@ -122,7 +122,7 @@ fn wait_until(what: &str, mut ok: impl FnMut() -> bool) {
     let start = Instant::now();
     while !ok() {
         assert!(
-            start.elapsed() < Duration::from_secs(30),
+            start.elapsed() < super::support::SLOW_WAIT,
             "timed out waiting for {what}"
         );
         std::thread::sleep(Duration::from_millis(10));
@@ -649,6 +649,7 @@ fn a_five_mebibyte_paste_arrives_intact() {
     if !super::support::tools_present() {
         return;
     }
+    let _alone = super::support::heavy();
     let mut f = ready("session-big-paste");
     // Raw mode lets dd take every byte; it counts the bytes and the bytes outside the alphabet.
     type_text(

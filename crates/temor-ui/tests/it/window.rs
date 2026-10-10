@@ -10,7 +10,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
-use ds_harness::{Driver, Harness, HarnessConfig, Viewport};
+use ds_harness::{Driver, Harness, HarnessConfig, Viewport, WindowHosting};
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::Ambient;
@@ -36,6 +36,18 @@ pub(super) fn harness_with(
     probe: &Probe,
     state_dir: Option<PathBuf>,
     tweak: impl FnOnce(&mut Ambient),
+) -> Harness {
+    harness_hosting(name, probe, state_dir, tweak, WindowHosting::Absent)
+}
+
+/// [`harness_with`] where the window also has a host that records the titles it is given
+/// (`Harness::window_titles`).
+pub(super) fn harness_hosting(
+    name: &str,
+    probe: &Probe,
+    state_dir: Option<PathBuf>,
+    tweak: impl FnOnce(&mut Ambient),
+    hosting: WindowHosting,
 ) -> Harness {
     let home = scratch(name).join("home");
     let mut ambient = Ambient {
@@ -81,7 +93,8 @@ pub(super) fn harness_with(
         height: 484,
         scale_percent: 100,
     })
-    .with_context(launch);
+    .with_context(launch)
+    .with_window_hosting(hosting);
     let mut h = Harness::new(App, config);
     h.map();
     h
