@@ -15,7 +15,6 @@ use super::event::PaneEvent;
 use super::io::{Command, lock_term, map_event};
 use super::outbox::Outbox;
 use super::sink::EventSink;
-use super::spawn::pty_size;
 use super::term::Term;
 use super::xfer::OfferId;
 use crate::error::PaneError;
@@ -77,11 +76,10 @@ impl PaneHandle {
     /// the program wrote before the size change but read from the PTY just before it may still be
     /// parsed at the new size; that one read is the same window every terminal has on SIGWINCH.
     pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), PaneError> {
-        let size = pty_size(grid, cell);
         let output = self.with_term(|term| {
             let output = term.resize(grid, cell)?;
             // A failed size change leaves the program at its old size; the grid is still right.
-            let _ = self.outbox.port().resize(size);
+            self.outbox.resize(grid, cell);
             Ok::<_, PaneError>(output)
         })?;
         for reply in output.replies {

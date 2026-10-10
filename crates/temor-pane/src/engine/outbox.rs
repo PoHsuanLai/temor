@@ -4,9 +4,13 @@
 //! [`REPLY_CAP`] a reply is dropped and counted, never a paste (PLAN §4b).
 
 use std::collections::VecDeque;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_pty::{PtyIo, WriteOutcome};
+use temor_vt::{CellPx, GridSize};
+
+use super::fed::PaneLink;
+use super::spawn::pty_size;
 
 /// The most reply bytes that may wait for the program (1 MiB).
 pub const REPLY_CAP: usize = 1 << 20;
@@ -92,24 +96,52 @@ impl Queue {
     }
 }
 
-/// The queue and the terminal's write end.
+/// Where the queued bytes go: a pseudo-terminal, or a link to a program somewhere else.
+#[derive(Debug)]
+enum Port {
+    Pty(PtyIo),
+    Link(Arc<dyn PaneLink>),
+}
+
+/// The queue and the program's write end.
 #[derive(Debug)]
 pub struct Outbox {
     queue: Mutex<Queue>,
-    port: PtyIo,
+    port: Port,
 }
 
 impl Outbox {
     pub fn new(port: PtyIo) -> Self {
         Self {
             queue: Mutex::new(Queue::default()),
-            port,
+            port: Port::Pty(port),
         }
     }
 
-    /// The write end, for the I/O thread's reads and waits.
-    pub fn port(&self) -> &PtyIo {
-        &self.port
+    /// An outbox whose bytes go to `link` (a pane fed from elsewhere).
+    pub fn linked(link: Arc<dyn PaneLink>) -> Self {
+        Self {
+            queue: Mutex::new(Queue::default()),
+            port: Port::Link(link),
+        }
+    }
+
+    /// The pseudo-terminal, for the I/O thread's reads and waits; `None` for a linked pane.
+    pub fn pty_port(&self) -> Option<&PtyIo> {
+        match &self.port {
+            Port::Pty(port) => Some(port),
+            Port::Link(_) => None,
+        }
+    }
+
+    /// Tells the program the grid changed. A failed size change leaves it at its old size.
+    pub fn resize(&self, grid: GridSize, cell: CellPx) {
+        match &self.port {
+            Port::Pty(port) => {
+                let _ = port.resize(pty_size(grid, cell));
+            }
+            Port::Link(link) => link.resize(grid, cell),
+        }
     }
 
     /// Queues the person's input or a paste after what is waiting, and writes what the terminal
@@ -149,7 +181,28 @@ impl Outbox {
     }
 }
 
-fn flush(port: &PtyIo, queue: &mut Queue) {
+fn flush(port: &Port, queue: &mut Queue) {
+    match port {
+        Port::Pty(port) => flush_pty(port, queue),
+        Port::Link(link) => flush_link(link.as_ref(), queue),
+    }
+}
+
+/// A link takes every chunk whole; a link that fails is gone, so what waits is forgotten.
+fn flush_link(link: &dyn PaneLink, queue: &mut Queue) {
+    while let Some(chunk) = queue.next_chunk() {
+        let n = chunk.len();
+        match link.send(chunk) {
+            Ok(()) => queue.advance(n),
+            Err(_) => {
+                queue.clear();
+                return;
+            }
+        }
+    }
+}
+
+fn flush_pty(port: &PtyIo, queue: &mut Queue) {
     while let Some(chunk) = queue.next_chunk() {
         match port.write(chunk) {
             Ok(WriteOutcome::Wrote(n)) if n > 0 => queue.advance(n),

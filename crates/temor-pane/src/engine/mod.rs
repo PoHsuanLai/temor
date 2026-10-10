@@ -2,6 +2,7 @@
 //! them. The caller owns the threads: [`PaneRunner::run`] blocks until the program is reaped.
 
 mod event;
+mod fed;
 mod handle;
 mod io;
 mod outbox;
@@ -13,6 +14,7 @@ mod watch;
 mod xfer;
 
 pub use event::{Hold, PaneEvent};
+pub use fed::{FedSpec, Feeder, PaneLink, start_fed};
 pub use handle::PaneHandle;
 pub use io::PaneRunner;
 pub use sink::EventSink;
