@@ -29,10 +29,10 @@ pub struct FileService {
 }
 
 /// A path opened for work: the folder it is beneath, its names below it, and how to show it.
-struct Target {
-    beneath: Beneath,
-    rel: Vec<String>,
-    shown: String,
+pub(super) struct Target {
+    pub(super) beneath: Beneath,
+    pub(super) rel: Vec<String>,
+    pub(super) shown: String,
 }
 
 impl FileService {
@@ -53,7 +53,7 @@ impl FileService {
             .grant(root)
     }
 
-    fn target(&self, path: &RemotePath) -> Result<Target, Error> {
+    pub(super) fn target(&self, path: &RemotePath) -> Result<Target, Error> {
         let resolved = self
             .scope
             .lock()
@@ -91,7 +91,7 @@ impl FileService {
         self.meta(&target)
     }
 
-    fn meta(&self, target: &Target) -> Result<FileMeta, Error> {
+    pub(super) fn meta(&self, target: &Target) -> Result<FileMeta, Error> {
         let stat = target.beneath.stat(&target.rel, &target.shown)?;
         if stat.kind != EntryKind::File {
             return Ok(meta_of(&stat, ContentHash([0; 32])));
@@ -99,6 +99,18 @@ impl FileService {
         let (mut file, opened) = target.beneath.open_file(&target.rel, &target.shown)?;
         let hash = self.cache.hash(&mut file, &opened)?;
         Ok(meta_of(&opened, hash))
+    }
+
+    /// The stamp of the regular file at `target`, or `None` if nothing is there.
+    pub(super) fn current(&self, target: &Target) -> Result<Option<FileStamp>, Error> {
+        match self.meta(target) {
+            Ok(meta) if meta.kind == EntryKind::File => Ok(Some(meta.stamp)),
+            Ok(_) => Err(Error::BadPath {
+                path: target.shown.clone(),
+            }),
+            Err(Error::NotFound { .. }) => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     /// A span of a regular file, at most [`MAX_READ`] bytes: the file's stamp, its full length and
@@ -141,16 +153,7 @@ impl FileService {
         bytes: &[u8],
     ) -> Result<FileStamp, Error> {
         let target = self.target(path)?;
-        let current = match self.meta(&target) {
-            Ok(meta) if meta.kind == EntryKind::File => Some(meta.stamp),
-            Ok(_) => {
-                return Err(Error::BadPath {
-                    path: target.shown.clone(),
-                });
-            }
-            Err(Error::NotFound { .. }) => None,
-            Err(error) => return Err(error),
-        };
+        let current = self.current(&target)?;
         match write_decision(check, current) {
             WriteDecision::Conflict => return Err(Error::Conflict { current }),
             WriteDecision::Replace => {

@@ -51,6 +51,27 @@ impl Beneath {
     }
 }
 
+impl Beneath {
+    pub fn stage_part(
+        &self,
+        _rel: &[String],
+        _name: &str,
+        _offset: u64,
+        _bytes: &[u8],
+        _shown: &str,
+    ) -> Result<(), Error> {
+        Err(no("confined file access"))
+    }
+
+    pub fn commit_part(&self, _rel: &[String], _name: &str, _shown: &str) -> Result<(), Error> {
+        Err(no("confined file access"))
+    }
+
+    pub fn discard_part(&self, _rel: &[String], _name: &str, _shown: &str) -> Result<(), Error> {
+        Err(no("confined file access"))
+    }
+}
+
 pub fn listening_ports(_proc: &Path, _roots: &[u32]) -> Result<Vec<ListeningPort>, Error> {
     Err(no("port detection"))
 }

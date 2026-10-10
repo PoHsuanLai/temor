@@ -35,30 +35,39 @@ fn a_client_without_a_capability_cannot_use_it() {
 
 #[test]
 fn ends_that_share_no_version_part_ways_and_both_say_why() {
-    let rig = Rig::new("hello-version");
-    let future = Hello {
-        protocol: ProtocolVersion(9),
-        oldest_protocol: ProtocolVersion(7),
-        helper: HELPER,
-        caps: DAEMON_CAPS.to_vec(),
-    };
-    let (served_in, client_out) = std::io::pipe().expect("pipe");
-    let (client_in, served_out) = std::io::pipe().expect("pipe");
-    let daemon = std::sync::Arc::clone(&rig.daemon);
-    let serving = std::thread::spawn(move || daemon.serve(served_in, served_out));
+    // A newer peer, and a peer from before the cell size, the palette, ping and streamed writes.
+    for (name, newest, oldest) in [("newer", 9, 7), ("version-1", 1, 1)] {
+        let rig = Rig::new(&format!("hello-version-{name}"));
+        let theirs = Hello {
+            protocol: ProtocolVersion(newest),
+            oldest_protocol: ProtocolVersion(oldest),
+            helper: HELPER,
+            caps: DAEMON_CAPS.to_vec(),
+        };
+        let (served_in, client_out) = std::io::pipe().expect("pipe");
+        let (client_in, served_out) = std::io::pipe().expect("pipe");
+        let daemon = std::sync::Arc::clone(&rig.daemon);
+        let serving = std::thread::spawn(move || daemon.serve(served_in, served_out));
 
-    let client = Client::connect(client_in, client_out, future);
-    assert!(matches!(
-        client,
-        Err(Error::Incompatible(
-            Incompatibility::NoCommonProtocol { .. }
-        ))
-    ));
-    let served = serving.join().expect("the serving thread did not panic");
-    assert!(matches!(
-        served,
-        Err(Error::Incompatible(
-            Incompatibility::NoCommonProtocol { .. }
-        ))
-    ));
+        let client = Client::connect(client_in, client_out, theirs);
+        assert!(
+            matches!(
+                client,
+                Err(Error::Incompatible(
+                    Incompatibility::NoCommonProtocol { .. }
+                ))
+            ),
+            "{name}: client"
+        );
+        let served = serving.join().expect("the serving thread did not panic");
+        assert!(
+            matches!(
+                served,
+                Err(Error::Incompatible(
+                    Incompatibility::NoCommonProtocol { .. }
+                ))
+            ),
+            "{name}: daemon"
+        );
+    }
 }

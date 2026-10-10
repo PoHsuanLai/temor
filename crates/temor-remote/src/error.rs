@@ -26,6 +26,9 @@ pub enum Error {
     /// The other end did not offer a capability that was asked for.
     #[error("the host does not offer {0:?}")]
     NotOffered(Capability),
+    /// The host did not answer a ping in time.
+    #[error("the host did not answer in time")]
+    NoAnswer,
     /// The host answered a request with an error.
     #[error("the host refused: {0:?}")]
     Remote(RemoteError),
@@ -75,6 +78,12 @@ pub enum Error {
     /// The file changed while it was being fetched.
     #[error("the file changed while it was being copied")]
     ChangedWhileCopying,
+    /// A part of a streamed upload did not start where the staged bytes end.
+    #[error("the parts of the upload arrived out of order")]
+    PartOutOfOrder {
+        /// How many bytes were staged.
+        have: u64,
+    },
     /// A terminal size with no columns or no rows.
     #[error("a terminal needs at least one column and one row")]
     BadSize,
@@ -121,6 +130,11 @@ impl Error {
             Self::Conflict { current } => RemoteError::Conflict { current: *current },
             Self::BadPath { path } => RemoteError::BadRequest {
                 detail: format!("not a usable path: {path}"),
+            },
+            Self::PartOutOfOrder { have } => RemoteError::BadRequest {
+                detail: format!(
+                    "the upload has {have} bytes staged and this part starts elsewhere"
+                ),
             },
             Self::BadSize => RemoteError::BadRequest {
                 detail: self.to_string(),

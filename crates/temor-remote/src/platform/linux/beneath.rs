@@ -50,6 +50,23 @@ fn joined(rel: &[String]) -> String {
     }
 }
 
+/// The permissions a replacement of `leaf` takes: the existing file's, or the default for a new
+/// one. A folder is refused.
+fn existing_mode(parent: &OwnedFd, leaf: &str, shown: &str) -> Result<Mode, Error> {
+    match statat(parent, leaf, AtFlags::SYMLINK_NOFOLLOW) {
+        Ok(stat) if FileType::from_raw_mode(stat.st_mode) == FileType::RegularFile => {
+            Ok(Mode::from_raw_mode(stat.st_mode))
+        }
+        Ok(stat) if FileType::from_raw_mode(stat.st_mode) == FileType::Directory => {
+            Err(Error::BadPath {
+                path: shown.to_string(),
+            })
+        }
+        Ok(_) | Err(Errno::NOENT) => Ok(Mode::from_raw_mode(FILE_MODE)),
+        Err(errno) => Err(map(shown, errno)),
+    }
+}
+
 /// A folder, and everything reachable beneath it without crossing a link. Holds one descriptor.
 #[derive(Debug)]
 pub struct Beneath {
@@ -142,18 +159,7 @@ impl Beneath {
             path: shown.to_string(),
         })?;
         let parent = self.open_at(folders, folder_flags(), Mode::empty(), shown)?;
-        let mode = match statat(&parent, leaf.as_str(), AtFlags::SYMLINK_NOFOLLOW) {
-            Ok(stat) if FileType::from_raw_mode(stat.st_mode) == FileType::RegularFile => {
-                Mode::from_raw_mode(stat.st_mode)
-            }
-            Ok(stat) if FileType::from_raw_mode(stat.st_mode) == FileType::Directory => {
-                return Err(Error::BadPath {
-                    path: shown.to_string(),
-                });
-            }
-            Ok(_) | Err(Errno::NOENT) => Mode::from_raw_mode(FILE_MODE),
-            Err(errno) => return Err(map(shown, errno)),
-        };
+        let mode = existing_mode(&parent, leaf, shown)?;
         let temp = format!(".temor-write-{}-{nonce}", std::process::id());
         let flags = OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC;
         let fd = openat2(
@@ -193,5 +199,85 @@ impl Beneath {
         File::from(fd)
             .write_all(bytes)
             .map_err(|source| Error::io(shown, source))
+    }
+
+    /// Adds `bytes` to the staging file `name` beside `rel`'s file. A part at offset 0 starts the
+    /// staging file afresh; any other must start exactly where the staged bytes end, else
+    /// [`Error::PartOutOfOrder`] (the file is left as it was).
+    pub fn stage_part(
+        &self,
+        rel: &[String],
+        name: &str,
+        offset: u64,
+        bytes: &[u8],
+        shown: &str,
+    ) -> Result<(), Error> {
+        let (_, folders) = rel.split_last().ok_or_else(|| Error::BadPath {
+            path: shown.to_string(),
+        })?;
+        let parent = self.open_at(folders, folder_flags(), Mode::empty(), shown)?;
+        // openat2 refuses a mode unless the call can create the file.
+        let (flags, mode) = if offset == 0 {
+            (
+                OFlags::WRONLY | OFlags::APPEND | OFlags::CLOEXEC | OFlags::CREATE | OFlags::TRUNC,
+                Mode::from_raw_mode(TEMP_MODE),
+            )
+        } else {
+            (
+                OFlags::WRONLY | OFlags::APPEND | OFlags::CLOEXEC,
+                Mode::empty(),
+            )
+        };
+        let fd = match openat2(&parent, name, flags, mode, resolve()) {
+            Ok(fd) => fd,
+            // Nothing staged yet, but this part says it continues something.
+            Err(Errno::NOENT) => return Err(Error::PartOutOfOrder { have: 0 }),
+            Err(errno) => return Err(map(shown, errno)),
+        };
+        let mut file = File::from(fd);
+        let have = file
+            .metadata()
+            .map_err(|source| Error::io(shown, source))?
+            .len();
+        if have != offset {
+            return Err(Error::PartOutOfOrder { have });
+        }
+        file.write_all(bytes)
+            .map_err(|source| Error::io(shown, source))
+    }
+
+    /// Makes the staged bytes the file `rel`: synced and renamed over it, so a reader never sees
+    /// half of it. An existing file keeps its permissions.
+    pub fn commit_part(&self, rel: &[String], name: &str, shown: &str) -> Result<(), Error> {
+        let (leaf, folders) = rel.split_last().ok_or_else(|| Error::BadPath {
+            path: shown.to_string(),
+        })?;
+        let parent = self.open_at(folders, folder_flags(), Mode::empty(), shown)?;
+        let mode = existing_mode(&parent, leaf, shown)?;
+        let fd = openat2(
+            &parent,
+            name,
+            OFlags::WRONLY | OFlags::CLOEXEC,
+            Mode::empty(),
+            resolve(),
+        )
+        .map_err(|errno| map(shown, errno))?;
+        let file = File::from(fd);
+        fchmod(&file, mode)
+            .and_then(|()| fsync(&file))
+            .and_then(|()| renameat(&parent, name, &parent, leaf.as_str()))
+            .map_err(|errno| map(shown, errno))
+    }
+
+    /// Drops the staging file `name`; not there is fine.
+    pub fn discard_part(&self, rel: &[String], name: &str, shown: &str) -> Result<(), Error> {
+        let (_, folders) = rel.split_last().ok_or_else(|| Error::BadPath {
+            path: shown.to_string(),
+        })?;
+        let parent = self.open_at(folders, folder_flags(), Mode::empty(), shown)?;
+        match unlinkat(&parent, name, AtFlags::empty()) {
+            Ok(()) | Err(Errno::NOENT) => Ok(()),
+            Err(errno) => Err(map(shown, errno)),
+        }
     }
 }

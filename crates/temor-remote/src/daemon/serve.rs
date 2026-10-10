@@ -11,6 +11,7 @@ use temor_wire::message::{Event, Frame, Incoming, Message, RemoteError, Request}
 
 use super::core::Daemon;
 use super::dispatch::Done;
+use super::files_worker::{FileWorker, Job, is_file_request};
 use super::link::{Link, LinkId, Outgoing, QUEUE, run_writer};
 use crate::error::Error;
 use crate::protocol::{DAEMON_CAPS, hello};
@@ -69,9 +70,14 @@ impl Daemon {
         reader: &mut FrameReader<R>,
     ) -> Result<(), Error> {
         self.tell_ports(link)?;
+        let files = FileWorker::start(self, link)?;
         loop {
             match reader.next_frame()? {
                 None => return Ok(()),
+                Some(Incoming::Frame(Frame {
+                    message: Message::Request { id, body },
+                    payload,
+                })) if is_file_request(&body) => files.submit(Job { id, body, payload })?,
                 Some(Incoming::Frame(Frame {
                     message: Message::Request { id, body },
                     payload,
@@ -106,7 +112,7 @@ impl Daemon {
         link.send(&Message::Event(Event::Ports(known)), None)
     }
 
-    fn answer(
+    pub(super) fn answer(
         self: &Arc<Self>,
         link: &Arc<Link>,
         id: RequestId,

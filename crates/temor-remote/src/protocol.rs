@@ -2,8 +2,10 @@
 
 use temor_wire::hello::{Capability, Hello, HelperVersion, ProtocolVersion};
 
-/// The one protocol version this build speaks.
-pub const PROTOCOL: ProtocolVersion = ProtocolVersion(1);
+/// The one protocol version this build speaks. Version 2 added streamed writes, `Ping`, the cell
+/// size on open and resize, and the palette. This build refuses a version 1 peer, which cannot
+/// do them: a helper at another version is replaced by the hash check before it matters.
+pub const PROTOCOL: ProtocolVersion = ProtocolVersion(2);
 
 /// The capabilities the daemon offers. Trial runs and the agent relay need the sandbox runner
 /// (bulkhead), which is not linked yet, so they are not offered.

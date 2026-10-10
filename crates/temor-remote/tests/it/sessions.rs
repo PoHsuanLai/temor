@@ -2,7 +2,7 @@
 
 use temor_remote::ClientEvent;
 use temor_wire::message::{ExitStatus, IdleLimit, SessionState};
-use temor_wire::units::{Cols, ExitCode, Rows, Seconds, Size};
+use temor_wire::units::{CellPx, Cols, ExitCode, Rows, Seconds, Size};
 
 use crate::support::{Rig, eventually, only_session, snapshot_text, tools_present};
 
@@ -123,7 +123,9 @@ fn a_resize_reaches_both_the_program_and_the_listing() {
         cols: Cols(100),
         rows: Rows(30),
     };
-    conn.client.resize(id, size).expect("resize");
+    conn.client
+        .resize(id, size, CellPx::DEFAULT)
+        .expect("resize");
     conn.client.send_input(id, b"stty size\n").expect("input");
     conn.watch
         .output_has("the size", |out| out.contains("30 100"));
@@ -133,7 +135,7 @@ fn a_resize_reaches_both_the_program_and_the_listing() {
         cols: Cols(0),
         rows: Rows(24),
     };
-    assert!(conn.client.resize(id, empty).is_err());
+    assert!(conn.client.resize(id, empty, CellPx::DEFAULT).is_err());
 }
 
 #[test]

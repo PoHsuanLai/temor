@@ -2,14 +2,16 @@
 //! before anything is sent.
 
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::RecvTimeoutError;
+use std::time::Duration;
 
 use temor_wire::hello::Capability;
 use temor_wire::ids::{RequestId, SessionId, WatchId};
 use temor_wire::message::{
     DirEntry, FileMeta, FileStamp, IdleLimit, ListeningPort, OpenSession, RemotePath, Reply,
-    Request, SessionInfo, WriteCheck,
+    Request, SessionInfo, WriteCheck, WriteMode,
 };
-use temor_wire::units::{ByteCount, ByteRange, Size};
+use temor_wire::units::{ByteCount, ByteRange, CellPx, Size};
 
 use super::connect::Client;
 use super::pending::Answer;
@@ -47,7 +49,7 @@ pub struct ReadChunk {
 }
 
 impl Client {
-    fn offered(&self, capability: Capability) -> Result<(), Error> {
+    pub(super) fn offered(&self, capability: Capability) -> Result<(), Error> {
         if self.agreement.caps.contains(&capability) {
             Ok(())
         } else {
@@ -55,7 +57,18 @@ impl Client {
         }
     }
 
-    fn call(&self, body: Request, payload: Option<&[u8]>) -> Result<Answer, Error> {
+    pub(super) fn call(&self, body: Request, payload: Option<&[u8]>) -> Result<Answer, Error> {
+        self.call_within(body, payload, None)
+    }
+
+    /// Like `call`, but gives up waiting for the answer after `within` ([`Error::NoAnswer`]).
+    /// `None` waits for as long as the link lives.
+    pub(super) fn call_within(
+        &self,
+        body: Request,
+        payload: Option<&[u8]>,
+        within: Option<Duration>,
+    ) -> Result<Answer, Error> {
         let id = RequestId(self.next.fetch_add(1, Ordering::Relaxed) + 1);
         let waiting = self.pending.register(id)?;
         let message = temor_wire::message::Message::Request { id, body };
@@ -68,10 +81,20 @@ impl Client {
             self.pending.forget(id);
             return Err(error);
         }
-        waiting.recv().map_err(|_| Error::LinkClosed)?
+        let answer = match within {
+            None => waiting.recv().map_err(|_| Error::LinkClosed),
+            Some(within) => waiting.recv_timeout(within).map_err(|error| match error {
+                RecvTimeoutError::Timeout => Error::NoAnswer,
+                RecvTimeoutError::Disconnected => Error::LinkClosed,
+            }),
+        };
+        if matches!(answer, Err(Error::NoAnswer)) {
+            self.pending.forget(id);
+        }
+        answer?
     }
 
-    fn ask(&self, capability: Capability, body: Request) -> Result<Reply, Error> {
+    pub(super) fn ask(&self, capability: Capability, body: Request) -> Result<Reply, Error> {
         self.offered(capability)?;
         self.call(body, None)?.outcome.map_err(Error::Remote)
     }
@@ -117,11 +140,16 @@ impl Client {
         self.ack(Capability::Sessions, Request::Close { session })
     }
 
-    /// Resizes a session's screen and terminal.
-    pub fn resize(&self, session: SessionId, size: Size) -> Result<(), Error> {
+    /// Resizes a session's screen and terminal. `cell` is one cell in pixels, for the program's
+    /// pixel size reports.
+    pub fn resize(&self, session: SessionId, size: Size, cell: CellPx) -> Result<(), Error> {
         self.ack(
             Capability::Sessions,
-            Request::ResizeSession { session, size },
+            Request::ResizeSession {
+                session,
+                size,
+                cell,
+            },
         )
     }
 
@@ -191,6 +219,7 @@ impl Client {
         let request = Request::WriteFile {
             path: path.clone(),
             check,
+            mode: WriteMode::Whole,
         };
         match self
             .call(request, Some(bytes))?
@@ -216,7 +245,7 @@ impl Client {
         self.ack(Capability::Files, Request::Unwatch { watch })
     }
 
-    fn ack(&self, capability: Capability, body: Request) -> Result<(), Error> {
+    pub(super) fn ack(&self, capability: Capability, body: Request) -> Result<(), Error> {
         match self.ask(capability, body)? {
             Reply::Ack => Ok(()),
             _ => Err(Error::UnexpectedReply),

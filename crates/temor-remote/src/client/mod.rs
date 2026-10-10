@@ -8,6 +8,7 @@ mod connect;
 mod events;
 mod offer;
 mod pending;
+mod stream;
 mod transfer;
 
 pub use calls::{Attached, ReadChunk};

@@ -4,21 +4,23 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use temor_pty::{ChildExit, Cols, GridSize, Pty, PtyIo, Rows, SpawnSpec};
+use temor_pty::{ChildExit, Pty, PtyIo, SpawnSpec};
 use temor_shell::ChildEnv;
-use temor_vt::{CellPx, GridSize as ScreenSize, Terminal, TerminalConfig};
+use temor_vt::{Terminal, TerminalConfig};
 use temor_wire::ids::{RequestId, SessionId};
 use temor_wire::link::Monotonic;
 use temor_wire::message::{
-    Event, Message, OpenSession, RemotePath, Reply, SessionInfo, SessionState,
+    Event, Message, OpenSession, Palette, RemotePath, Reply, SessionInfo, SessionState,
 };
-use temor_wire::units::Size;
+use temor_wire::units::{CellPx as CellSize, Size};
 
+use super::colours::apply_palette;
 use super::config::DaemonConfig;
 use super::exit::exit_status;
 use super::input::{Backlog, Input};
 use super::link::{Link, LinkId};
 use super::sinks::{CwdSink, Replies};
+use super::sizes::{check, pty_size, screen_cell, screen_size, usable};
 use crate::clock::Clock;
 use crate::error::Error;
 
@@ -54,22 +56,6 @@ enum Closing {
     Asked,
 }
 
-fn check(size: Size) -> Result<Size, Error> {
-    if size.cols.0 == 0 || size.rows.0 == 0 {
-        Err(Error::BadSize)
-    } else {
-        Ok(size)
-    }
-}
-
-fn pty_size(size: Size) -> GridSize {
-    GridSize::cells(Cols(size.cols.0), Rows(size.rows.0))
-}
-
-fn screen_size(size: Size) -> ScreenSize {
-    ScreenSize::new(size.cols.0, size.rows.0)
-}
-
 impl Session {
     /// Starts the program and its screen. The session begins detached. The terminal's read end is
     /// returned for the pump thread.
@@ -79,6 +65,7 @@ impl Session {
         config: &DaemonConfig,
     ) -> Result<(Arc<Self>, PtyIo), Error> {
         let size = check(request.size)?;
+        let cell = usable(request.cell);
         let program = request.shell.as_ref().map_or_else(
             || config.default_shell.clone(),
             |path| PathBuf::from(&path.0),
@@ -92,17 +79,22 @@ impl Session {
             args: Vec::new(),
             cwd: PathBuf::from(&request.cwd.0),
             env,
-            size: pty_size(size),
+            size: pty_size(size, cell),
         };
         let pty = Pty::spawn(&spec, &config.launcher)?;
         let reader = pty.io()?;
         let input = Arc::new(Input::new(pty.io()?));
         let cwd = Arc::new(Mutex::new(request.cwd.0.clone()));
-        let screen = Terminal::new(
-            TerminalConfig::new(screen_size(size)),
+        let mut config = TerminalConfig::new(screen_size(size));
+        config.cell_px = screen_cell(cell);
+        let mut screen = Terminal::new(
+            config,
             Box::new(CwdSink(Arc::clone(&cwd))),
             Box::new(Replies(Arc::clone(&input))),
         )?;
+        if let Some(palette) = &request.palette {
+            apply_palette(&mut screen, palette)?;
+        }
         let session = Arc::new(Self {
             id,
             shared: Mutex::new(Shared {
@@ -179,15 +171,19 @@ impl Session {
     }
 
     /// Changes the size of the screen and the program's terminal together.
-    pub(super) fn resize(&self, size: Size) -> Result<(), Error> {
+    pub(super) fn resize(&self, size: Size, cell: CellSize) -> Result<(), Error> {
         let size = check(size)?;
+        let cell = usable(cell);
         let mut shared = self.lock();
-        shared
-            .screen
-            .resize(screen_size(size), CellPx::new(8, 16))?;
-        self.input.resize(pty_size(size))?;
+        shared.screen.resize(screen_size(size), screen_cell(cell))?;
+        self.input.resize(pty_size(size, cell))?;
         shared.size = size;
         Ok(())
+    }
+
+    /// Sets the colours the screen answers colour queries with.
+    pub(super) fn set_palette(&self, palette: &Palette) -> Result<(), Error> {
+        apply_palette(&mut self.lock().screen, palette)
     }
 
     /// Closes the session for a client: hangs the program up, and has the pump end and reap it
