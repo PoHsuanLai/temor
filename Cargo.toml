@@ -62,14 +62,14 @@ sha2 = "0.10"
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
-# docket 1b905ed locks porter b12886e (which includes Tailnet1), so docket and porter-client share
+# docket 3feb56f locks porter 3d05f0a, so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "1b905edc5303c9f2241f8a5f6358968ece8dde36", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "1b905edc5303c9f2241f8a5f6358968ece8dde36" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b12886e4d047d9763a4dccfa9fa3ce92084483ca" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b12886e4d047d9763a4dccfa9fa3ce92084483ca" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b12886e4d047d9763a4dccfa9fa3ce92084483ca", default-features = false, features = ["dbus"] }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "3feb56fcbcf6d1567b2cec2a7d562cc86304afc9", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "3feb56fcbcf6d1567b2cec2a7d562cc86304afc9" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20", default-features = false, features = ["dbus"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
