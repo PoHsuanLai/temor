@@ -11,6 +11,7 @@ mod kill;
 mod line_discipline;
 mod nushell_env;
 mod opt_out;
+mod prompt;
 mod resize;
 mod support;
 

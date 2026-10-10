@@ -3,12 +3,19 @@
 # Marks prompts and commands with OSC 133 (A prompt start, B prompt end, C output start,
 # D;<status> command finished) and reports the working directory with OSC 7. temor loads this
 # from its ZDOTDIR shim; it never edits your files. TEMOR_SHELL_INTEGRATION=0 turns it off.
+#
+# It also replaces zsh's stock prompt (PS1 unset or exactly `%m%# `) with a clean two-line one:
+# the folder and the git branch, then an empty line to type on. A prompt you set yourself is never touched.
+# TEMOR_PROMPT=shell keeps the shell's own prompt even when it is the stock one; TEMOR_PROMPT=temor
+# (or unset) means "temor's when the shell's is stock".
 
 [[ -o interactive ]] || return 0
 [[ ${TEMOR_SHELL_INTEGRATION-} == 0 ]] && return 0
 (( ${+_temor_integrated} )) && return 0
 typeset -g _temor_integrated=1
 typeset -g _temor_executing=
+typeset -g _temor_ps1=
+typeset -g _temor_seen=
 
 # Percent-encodes a path for a file:// URL, byte by byte, into REPLY.
 _temor_encode_cwd() {
@@ -24,6 +31,74 @@ _temor_encode_cwd() {
         fi
     done
     REPLY=$out
+}
+
+# Sets REPLY to the git branch of $PWD as "  <name>" in dim magenta, or empty outside a checkout.
+# Reads .git/HEAD directly; no git process. A .git file (a worktree) names the real directory.
+_temor_find_branch() {
+    emulate -L zsh
+    local dir=$PWD gitdir= line= head=
+    REPLY=
+    while true; do
+        if [[ -d $dir/.git ]]; then
+            gitdir=$dir/.git
+            break
+        elif [[ -f $dir/.git ]]; then
+            read -r line <"$dir/.git" 2>/dev/null
+            [[ $line == 'gitdir: '* ]] || return 0
+            gitdir=${line#gitdir: }
+            [[ $gitdir == /* ]] || gitdir=$dir/$gitdir
+            break
+        fi
+        [[ -z $dir || $dir == / ]] && return 0
+        dir=${dir:h}
+    done
+    read -r head <"$gitdir/HEAD" 2>/dev/null
+    [[ -n $head ]] || return 0
+    if [[ $head == 'ref: refs/heads/'* ]]; then
+        head=${head#ref: refs/heads/}
+    else
+        head=${head[1,7]}
+    fi
+    REPLY=$head
+}
+
+# Escapes text so it is shown literally in a prompt.
+_temor_prompt_text() {
+    emulate -L zsh
+    REPLY=${1//\%/%%}
+    if [[ -o promptsubst ]]; then
+        REPLY=${REPLY//(#m)[\\\$\`]/\\$MATCH}
+    fi
+}
+
+# Whether the prompt is zsh's own stock one, or the one temor put there last time.
+_temor_prompt_is_ours() {
+    [[ ${TEMOR_PROMPT-} != shell ]] || return 1
+    [[ -z ${PS1-} || $PS1 == '%m%# ' || $PS1 == "$_temor_ps1" ]]
+}
+
+# Builds temor's prompt: a blank line (not before the first prompt), the folder and the
+# branch. Colours are ANSI indices, so the terminal's palette themes them. The end mark is
+# part of it, so _temor_precmd has nothing to add.
+_temor_build_prompt() {
+    emulate -L zsh
+    local dir=$PWD branch= blank=
+    [[ -n $_temor_seen ]] && blank=$'\n'
+    if [[ -n ${HOME-} && $HOME != / && ( $PWD == $HOME || $PWD == $HOME/* ) ]]; then
+        dir="~${PWD#$HOME}"
+    fi
+    local REPLY
+    _temor_prompt_text $dir
+    dir=$REPLY
+    _temor_find_branch
+    if [[ -n $REPLY ]]; then
+        _temor_prompt_text $REPLY
+        branch="  %{"$'\e[2;35m'"%}$REPLY%{"$'\e[0m'"%}"
+    fi
+    PS1="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"$'\n'
+    PS1+=$'%{\e]133;B\e\\%}'
+    _temor_ps1=$PS1
 }
 
 # Runs first in every precmd cycle (it is hooked before your .zshrc runs), so it sees the
@@ -50,6 +125,10 @@ _temor_precmd() {
         _temor_encode_cwd "$PWD"
         printf '\e]7;file://%s%s\e\\' "${HOST-}" "$REPLY"
         printf '\e]133;A\e\\'
+        if _temor_prompt_is_ours; then
+            _temor_build_prompt
+            _temor_seen=1
+        fi
     fi
     [[ ${PS1-} == *$'\e]133;B'* ]] || PS1+=$'%{\e]133;B\e\\%}'
 }
