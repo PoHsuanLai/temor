@@ -802,17 +802,17 @@ together.
   overlay waits for a quire sticky surface.
 
 ### Next (most visible first)
-- [ ] Tier B sessions get no shell integration, so no blocks, cards, chips or folder reports.
+- [x] (Batch 4) Tier B sessions get no shell integration, so no blocks, cards, chips or folder reports.
       `OpenSession` needs an argument list, or the daemon applies `plan_integration`.
-- [ ] Check the quit path: if quitting runs `end_pane` for every pane, it ends host sessions
+- [x] (Batch 4) Check the quit path: if quitting runs `end_pane` for every pane, it ends host sessions
       instead of detaching them, which defeats persistence.
-- [ ] Wire the real values into Tier B:
+- [x] (Batch 4) Wire the real values into Tier B:
       - the pane's cell size on open and resize;
       - the window's palette after attach and on theme change;
       - `Client::ping` on an abandonable thread, plus `LinkEvent::PingTimedOut` and
         `LinkEffect::DropLink` (kill the stalled ssh first);
       - the `TODO(batch3-wire)` slots in `edge/remote_*.rs`.
-- [ ] Session ids aren't saved, so a restart opens new sessions. Adopt them through
+- [x] (Batch 4) Session ids aren't saved, so a restart opens new sessions. Adopt them through
       `list_sessions` on restore.
 - [ ] A reconnect after the shared connection died can't ask for a password (it uses
       BatchMode). Retry should repeat the in-pane connect step.
@@ -874,3 +874,15 @@ porter-core and docket.
 - [ ] quire's context menu drops disabled items and has no per-item tooltip, so "Wait for the
       agent to finish" is an info row (quire ask).
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b14-ckpt.md`.
+
+## Batch 4 (merged 2026-10-10: Tier B finishing)
+- Helper sessions start as a login shell with temor's integration (`temor-remote/src/daemon/launch.rs`).
+  `TEMOR_SHELL_INTEGRATION=0` in the open request's env turns it off, so no wire field was needed.
+- Quitting lets go of the links without ending sessions. Each pane's helper session id is saved
+  in the hosts file (`PaneHost.session`) and adopted on restore when the host still has it;
+  otherwise a fresh session opens.
+- The pane's cell size goes out on open and resize. The window's palette goes out on open, after
+  every attach and on theme change. A ping per link drops a stalled one and redials it at once;
+  `ServerAlive*` stays as a second check.
+- [ ] `edge/remote.rs` (328 lines) and `hub/remote_line.rs` (322) are over 300 lines; split them.
+- Lane notes: `/mnt/data/cargo/temor-lanes/followups-b4-*.md`.
