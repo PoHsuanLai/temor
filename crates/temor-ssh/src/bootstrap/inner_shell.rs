@@ -9,15 +9,30 @@ use super::inner::LoadToken;
 
 /// A shell the load text can reach. Any other shell gets nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum InnerShell {
+pub enum InnerShell {
+    /// bash.
     Bash,
+    /// zsh.
     Zsh,
+    /// fish.
     Fish,
+    /// nushell.
     Nu,
 }
 
 impl InnerShell {
     pub(super) const ALL: [InnerShell; 4] = [Self::Bash, Self::Zsh, Self::Fish, Self::Nu];
+
+    /// The shell a process name stands for (`zsh`, `-zsh`, `/bin/bash`, `nu`), or `None` for
+    /// any other shell.
+    pub fn from_name(name: &str) -> Option<Self> {
+        let name = name.trim().rsplit('/').next().unwrap_or_default();
+        let name = name.trim_start_matches('-');
+        Self::ALL.into_iter().find(|shell| {
+            let stem = shell.pattern().trim_end_matches('*');
+            name.starts_with(stem)
+        })
+    }
 
     /// The `case` pattern for the shell's process name.
     pub(super) fn pattern(self) -> &'static str {
@@ -98,7 +113,11 @@ fn fish_in_place(script: &str) -> String {
     )
 }
 
-/// nushell: only the lines that switch its own marks on; the rest restores a variable that
+/// nushell: its history is cleaned by nothing here. It keeps entries in memory and in a file
+/// (plain text or SQLite) that it owns while running; `history` has no delete, and editing
+/// the file under a running nushell is not safe. The offer's lines (about ten) stay there.
+///
+/// Only the lines that switch its own marks on; the rest restores a variable that
 /// temor's start sets, which is not set here.
 fn nu_in_place(script: &str) -> String {
     let head = script

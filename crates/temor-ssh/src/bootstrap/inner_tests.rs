@@ -152,3 +152,60 @@ fn a_missing_script_leaves_its_shell_out_and_too_much_text_is_refused() {
     let err = InnerLoadLine::build(&scripts, &token()).expect_err("too large");
     assert!(matches!(err, SshError::ScriptTooLarge { .. }), "{err}");
 }
+
+#[test]
+fn text_for_a_named_shell_holds_only_what_that_shell_reads() {
+    // (shell, starts with the zsh first line, the arms it holds, the arms it lacks)
+    let cases: [(InnerShell, bool, &str, [&str; 3]); 4] = [
+        (
+            InnerShell::Bash,
+            false,
+            "bash*) ",
+            ["zsh*) ", "fish*) ", "nu*) "],
+        ),
+        (
+            InnerShell::Zsh,
+            true,
+            "zsh*) ",
+            ["bash*) ", "fish*) ", "nu*) "],
+        ),
+        (
+            InnerShell::Fish,
+            false,
+            "fish*) ",
+            ["bash*) ", "zsh*) ", "nu*) "],
+        ),
+        (
+            InnerShell::Nu,
+            false,
+            "nu*) ",
+            ["bash*) ", "zsh*) ", "fish*) "],
+        ),
+    ];
+    for (shell, prelude, has, hasnt) in cases {
+        let text = InnerLoadLine::build_for(shell, &integration_scripts(), &token())
+            .expect("build")
+            .as_str()
+            .to_owned();
+        assert_eq!(text.starts_with(ZSH_PRELUDE), prelude, "{shell:?}");
+        assert!(text.contains(has), "{shell:?} lacks {has:?}");
+        for arm in hasnt {
+            assert!(!text.contains(arm), "{shell:?} holds {arm:?}");
+        }
+    }
+}
+
+#[test]
+fn process_names_map_to_shells() {
+    let rows = [
+        ("bash", Some(InnerShell::Bash)),
+        ("-zsh", Some(InnerShell::Zsh)),
+        ("/usr/bin/fish", Some(InnerShell::Fish)),
+        ("nu", Some(InnerShell::Nu)),
+        ("dash", None),
+        ("", None),
+    ];
+    for (name, want) in rows {
+        assert_eq!(InnerShell::from_name(name), want, "{name:?}");
+    }
+}

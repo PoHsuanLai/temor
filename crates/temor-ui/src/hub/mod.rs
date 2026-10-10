@@ -18,6 +18,7 @@ mod hosts;
 mod keys;
 mod model;
 mod offer;
+mod offer_reply;
 mod peek;
 pub mod peek_step;
 mod persist;

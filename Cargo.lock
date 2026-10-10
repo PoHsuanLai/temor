@@ -6591,6 +6591,7 @@ version = "0.1.0"
 dependencies = [
  "rustix",
  "temor-shell",
+ "temor-ssh",
  "tempfile",
  "thiserror 2.0.21",
 ]

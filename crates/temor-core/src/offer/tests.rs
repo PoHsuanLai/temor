@@ -1,6 +1,6 @@
 use super::{
-    Line, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, Screen, asks_for_secret,
-    offer_step,
+    Answer, Line, OfferIn, OfferList, OfferOut, OfferState, PROBE_MS, Program, Reply, Screen,
+    asks_for_secret, offer_step,
 };
 use crate::vocab::ids::BlockId;
 use ds_core::time::stamp::Stamp;
@@ -194,43 +194,115 @@ fn the_offer_waits_for_the_timing_rule() {
 #[test]
 fn replies_settle_the_command_and_say_what_follows() {
     let base = vec![running(4, "docker exec", 0), tick(2_000)];
+    let settled = OfferState::Settled { block: BlockId(4) };
     let rows = [
-        (Reply::Yes, vec![OfferOut::Redraw, OfferOut::Load]),
-        (Reply::NotNow, vec![OfferOut::Redraw]),
+        (
+            Reply::Yes,
+            OfferState::Probing {
+                block: BlockId(4),
+                since: at(2_000),
+            },
+            vec![OfferOut::Redraw, OfferOut::Probe],
+        ),
+        (Reply::NotNow, settled.clone(), vec![OfferOut::Redraw]),
         (
             Reply::Never,
+            settled,
             vec![
                 OfferOut::Redraw,
                 OfferOut::Never(Program("docker exec".to_owned())),
             ],
         ),
     ];
-    for (reply, want) in rows {
+    for (reply, want_state, want) in rows {
         let mut inputs = base.clone();
-        inputs.push(OfferIn::Reply(reply));
+        inputs.push(OfferIn::Reply(reply, at(2_000)));
         // Time passing and the same command still running ask nothing more.
         inputs.push(tick(9_000));
         inputs.push(running(4, "docker exec", 9_000));
         let (state, outs) = run(inputs);
-        assert_eq!(
-            state,
-            OfferState::Settled { block: BlockId(4) },
-            "{reply:?}"
-        );
+        assert_eq!(state, want_state, "{reply:?}");
         let tail: Vec<OfferOut> = outs.into_iter().skip(1).collect();
         assert_eq!(tail, want, "{reply:?}");
     }
 }
 
 #[test]
+fn a_yes_types_the_integration_only_after_the_shell_names_itself() {
+    let heard = |ms: u64, answer: Answer| OfferIn::Heard { at: at(ms), answer };
+    let base = vec![
+        running(4, "ssh", 0),
+        tick(2_000),
+        OfferIn::Reply(Reply::Yes, at(2_000)),
+    ];
+    let settled = OfferState::Settled { block: BlockId(4) };
+    // (name, what follows the Yes, last state is settled, the outputs after the Probe)
+    let rows: Vec<(&str, Vec<OfferIn>, bool, Vec<OfferOut>)> = vec![
+        (
+            "nothing yet",
+            vec![heard(3_000, Answer::Silent)],
+            false,
+            vec![],
+        ),
+        (
+            "a shell with an integration",
+            vec![heard(3_000, Answer::Silent), heard(3_200, Answer::Known)],
+            true,
+            vec![OfferOut::Load],
+        ),
+        (
+            "a shell without one",
+            vec![heard(3_000, Answer::Other)],
+            true,
+            vec![OfferOut::Unsure],
+        ),
+        (
+            "no answer in time",
+            vec![heard(2_000 + PROBE_MS, Answer::Silent)],
+            true,
+            vec![OfferOut::Unsure],
+        ),
+        (
+            "an answer at the last moment still counts",
+            vec![heard(2_000 + PROBE_MS, Answer::Known)],
+            true,
+            vec![OfferOut::Load],
+        ),
+        (
+            "the command ended while waiting",
+            vec![
+                OfferIn::Running {
+                    now: None,
+                    at: at(2_500),
+                },
+                heard(3_000, Answer::Known),
+            ],
+            false,
+            vec![],
+        ),
+    ];
+    for (name, more, is_settled, want) in rows {
+        let mut inputs = base.clone();
+        inputs.extend(more);
+        let (state, outs) = run(inputs);
+        assert_eq!(state == settled, is_settled, "{name}");
+        let tail: Vec<OfferOut> = outs.into_iter().skip(3).collect();
+        assert_eq!(tail, want, "{name}");
+    }
+}
+
+#[test]
 fn a_reply_with_no_offer_does_nothing_and_a_new_command_starts_over() {
-    let (state, outs) = run(vec![running(1, "ssh", 0), OfferIn::Reply(Reply::Yes)]);
+    let (state, outs) = run(vec![
+        running(1, "ssh", 0),
+        OfferIn::Reply(Reply::Yes, at(100)),
+    ]);
     assert!(outs.is_empty());
     assert!(matches!(state, OfferState::Watching { .. }));
     let (state, _) = run(vec![
         running(1, "ssh", 0),
         tick(2_000),
-        OfferIn::Reply(Reply::NotNow),
+        OfferIn::Reply(Reply::NotNow, at(2_000)),
         running(2, "su", 10_000),
         tick(12_000),
     ]);
