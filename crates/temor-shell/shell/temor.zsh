@@ -16,6 +16,7 @@ typeset -g _temor_integrated=1
 typeset -g _temor_executing=
 typeset -g _temor_ps1=
 typeset -g _temor_seen=
+typeset -g _temor_head=
 
 # Percent-encodes a path for a file:// URL, byte by byte, into REPLY.
 _temor_encode_cwd() {
@@ -33,6 +34,10 @@ _temor_encode_cwd() {
     REPLY=$out
 }
 
+# There is no dirty marker here on purpose. Whether the folder has uncommitted changes takes a
+# `git status`, which would hold the prompt back in a large repository, and temor's chips on the
+# same line already show it from a run that does not block the shell.
+#
 # Sets REPLY to the git branch of $PWD as "  <name>" in dim magenta, or empty outside a checkout.
 # Reads .git/HEAD directly; no git process. A .git file (a worktree) names the real directory.
 _temor_find_branch() {
@@ -97,11 +102,18 @@ _temor_build_prompt() {
         branch="  %{"$'\e[2;35m'"%}$REPLY%{"$'\e[0m'"%}"
     fi
     # Without a terminal description that can move the cursor up (an unknown TERM), zsh draws
-    # no prompt at all when its last line is empty, so that line then starts with a space.
-    local typing=
+    # nothing at all for a prompt whose last line is empty. The folder line is then printed by
+    # _temor_precmd ahead of the prompt, with the end mark, and the prompt is left empty, so the
+    # typing line starts at the left edge and the folder line stays visible.
+    local head="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"
     zmodload -F zsh/terminfo +p:terminfo 2>/dev/null
-    [[ -n ${terminfo[cuu1]-} ]] || typing=' '
-    PS1="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"$'\n'"$typing"
+    if [[ -n ${terminfo[cuu1]-} ]]; then
+        _temor_head=
+        PS1="$head"$'\n'
+    else
+        _temor_head=$head
+        PS1=
+    fi
     PS1+=$'%{\e]133;B\e\\%}'
     _temor_ps1=$PS1
 }
@@ -132,6 +144,11 @@ _temor_precmd() {
         printf '\e]133;A\e\\'
         if _temor_prompt_is_ours; then
             _temor_build_prompt
+            if [[ -n $_temor_head ]]; then
+                # zsh draws no prompt here, not even the end mark inside it, so both are written.
+                print -Pr -- "$_temor_head"
+                printf '\e]133;B\e\\'
+            fi
             _temor_seen=1
         fi
     fi
