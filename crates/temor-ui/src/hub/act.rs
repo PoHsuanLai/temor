@@ -48,6 +48,7 @@ impl Hub {
             WorkspaceOut::Forgotten(panes) => {
                 for pane in panes {
                     self.recent.remove(&pane);
+                    self.ssh.closed.remove(&pane);
                     if let Some(dir) = &self.state_dir {
                         sidecar::remove(dir, pane);
                     }

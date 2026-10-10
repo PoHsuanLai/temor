@@ -112,7 +112,8 @@ impl Hub {
             }
             return HostAlias::new(&saved.alias).ok();
         }
-        self.ssh.intent.take()
+        self.ssh_reclaim(spawn.pane)
+            .or_else(|| self.ssh.intent.take())
     }
 
     /// Makes `spawn`'s pane a session on `alias`: an empty pane now, `ssh` in it once the
@@ -243,6 +244,7 @@ impl Hub {
     pub(super) fn ssh_forget(&mut self, pane: PaneId) {
         self.remote_forget(pane);
         if let Some(host) = self.ssh.panes.remove(&pane) {
+            self.ssh_note_closed(pane, host.alias.clone());
             if matches!(host.phase, Phase::Connecting | Phase::Waiting) {
                 self.feed_master(&host.alias, MasterIn::Failed(pane));
             }

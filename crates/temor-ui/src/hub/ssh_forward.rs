@@ -24,6 +24,21 @@ pub(super) fn fault_words(host: &HostAlias, remote: Port, fault: ForwardFault) -
     }
 }
 
+/// What the person is told when the forward lands on another port than the host's own: that
+/// port is in use on this computer, and where the host's port can be reached instead.
+pub(super) fn swap_words(host: &HostAlias, remote: Port, local: Port) -> Option<String> {
+    match local.get() == remote.get() {
+        true => None,
+        false => Some(format!(
+            "Port {} is in use on this computer, so {} port {} is at localhost:{}",
+            remote.get(),
+            host.as_str(),
+            remote.get(),
+            local.get()
+        )),
+    }
+}
+
 impl Hub {
     pub(super) fn feed_forwards(&mut self, alias: &HostAlias, input: ForwardIn) {
         let line = self.ssh.lines.entry(alias.clone()).or_default();
@@ -78,6 +93,9 @@ impl Hub {
                 .push("This computer has no free port to forward to".to_owned());
             return;
         };
+        if let Some(said) = swap_words(&alias, remote, local) {
+            self.notices.push(said);
+        }
         self.feed_forwards(&alias, ForwardIn::Requested { remote, local });
     }
 
@@ -124,5 +142,22 @@ impl Hub {
             }
             _ => self.notices.push("That address can't be opened".to_owned()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_forward_on_another_port_says_which() {
+        let host = HostAlias::new("prod").expect("a name");
+        let port = |n: &str| Port::parse(n).expect("a port");
+        assert_eq!(swap_words(&host, port("3000"), port("3000")), None);
+        let said = swap_words(&host, port("3000"), port("41234")).unwrap_or_default();
+        assert!(
+            said.contains("localhost:41234") && said.contains("3000"),
+            "{said}"
+        );
     }
 }
