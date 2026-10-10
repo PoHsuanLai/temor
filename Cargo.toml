@@ -57,6 +57,8 @@ temor-transfer = { path = "crates/temor-transfer" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
 # temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
 temor-wire = { path = "crates/temor-wire" }
+# temor-ui (lane remote): the helper's client, for Tier B sessions in the window.
+temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
