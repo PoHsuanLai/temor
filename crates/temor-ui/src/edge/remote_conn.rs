@@ -37,6 +37,15 @@ impl std::fmt::Debug for Conn {
 }
 
 impl Conn {
+    /// A connection over a client that is already connected and has no `ssh` of its own (a link
+    /// made some other way; the tests' pipes).
+    pub fn bare(client: Client) -> Self {
+        Self {
+            client,
+            child: Mutex::new(None),
+        }
+    }
+
     /// The client, for requests.
     pub fn client(&self) -> &Client {
         &self.client

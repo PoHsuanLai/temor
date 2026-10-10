@@ -119,8 +119,6 @@ impl Hub {
                 }
                 HelperOut::UseHelper(_) => self.remote_dial_first(host),
                 HelperOut::StayPlain => self.remote_fallback_all(host),
-                // An output a later core adds has nothing for the window to do yet.
-                _ => {}
             }
         }
     }

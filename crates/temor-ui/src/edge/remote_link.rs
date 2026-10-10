@@ -10,7 +10,7 @@ use temor_vt::{CellPx, GridSize};
 use temor_wire::ids::SessionId;
 use temor_wire::units::Size;
 
-use super::remote_calls::{input, resize, size_of};
+use super::remote_calls::{grid_size, input, resize};
 use super::remote_conn::Conn;
 
 /// Where a pane's input goes right now: the connection and session it is attached to, if any.
@@ -27,7 +27,7 @@ impl Default for Target {
         Self {
             conn: None,
             session: None,
-            size: size_of(80, 24),
+            size: grid_size(80, 24),
         }
     }
 }
@@ -77,7 +77,7 @@ impl PaneLink for RemoteLink {
         // A gone writer means the pane is closing.
         let _ = self
             .wishes
-            .send(Wish::Size(size_of(grid.cols.0, grid.rows.0)));
+            .send(Wish::Size(grid_size(grid.cols.0, grid.rows.0)));
     }
 }
 
@@ -135,16 +135,16 @@ mod tests {
         let mut round = Round::default();
         for wish in [
             Wish::Input(b"ls".to_vec()),
-            Wish::Size(size_of(100, 30)),
+            Wish::Size(grid_size(100, 30)),
             Wish::Input(b" -l\r".to_vec()),
-            Wish::Size(size_of(120, 40)),
+            Wish::Size(grid_size(120, 40)),
         ] {
             round.add(wish);
         }
         assert_eq!(
             round,
             Round {
-                size: Some(size_of(120, 40)),
+                size: Some(grid_size(120, 40)),
                 input: b"ls -l\r".to_vec()
             }
         );

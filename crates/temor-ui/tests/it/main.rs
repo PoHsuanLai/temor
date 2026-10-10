@@ -12,6 +12,7 @@ mod cards;
 mod coherence;
 mod desktop;
 mod persist;
+mod remote;
 mod session;
 mod shelf;
 mod spaces;

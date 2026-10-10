@@ -8,7 +8,7 @@ use temor_wire::message::{EnvVar, ListeningPort, OpenSession, RemotePath};
 use temor_wire::units::{Cols, Rows, Size};
 
 /// The size of a terminal of `cols` by `rows` cells.
-pub fn size_of(cols: u16, rows: u16) -> Size {
+pub fn grid_size(cols: u16, rows: u16) -> Size {
     Size {
         cols: Cols(cols),
         rows: Rows(rows),
