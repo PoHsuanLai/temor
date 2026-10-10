@@ -2,6 +2,9 @@
 //! place.
 
 mod agent;
+mod carry;
+#[cfg(test)]
+mod carry_tests;
 mod credential;
 mod dotenv;
 #[cfg(test)]
@@ -16,6 +19,7 @@ mod route;
 mod route_tests;
 
 pub use agent::{AgentPlan, RuntimeDir, agent_plan};
+pub use carry::carry_tab;
 pub use credential::{AccountRef, Credential};
 pub use dotenv::{Dotenv, DotenvFault, parse_dotenv};
 pub use launch::{SpaceLaunch, dotenv_path, launch};
