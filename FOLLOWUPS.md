@@ -842,3 +842,35 @@ together.
       - `Error::TooLarge` is unused;
       - there's no test that reads the pixel size back, and none for a slow file request.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b3-*.md`.
+
+## Batch 14 (merged 2026-10-10: pins and P19 checkpoints on docket, first part)
+Pins: quire v0.3.9 (7ce3a85), docket bd83d5e, porter 9c01699 (Machine.link / Machine.ssh, ported
+in temor-desktop), and almanac 0fdbcfd and stoker 4a0bd9e through the lock. One copy each of quire,
+porter-core and docket.
+
+- Done:
+  - temor's own snapshotting is gone (temor-core `checkpoint/`, the hub's jobs);
+  - merge-undo uses `refs/temor/undo/<n>` (`worktree/undo.rs`);
+  - `refs/temor/checkpoints/*` older than 14 days are swept at start, with no import;
+  - List, Plan and Perform `checkpoints.restore` sit behind temor-desktop's `CheckpointPort`;
+  - Restore is held back while the pane's agent is Working (a stopgap).
+- [ ] Batch 15 (docket DESIGN §11 and §12, with the shas coming through sill). Pane agents get
+      docket watches, not full sessions:
+      - `CheckpointWatch { workspace, label, rewind }` when an agent starts in a pane
+        (`rewind = Agent` for Claude Code, so the list says "not saved: this agent keeps its
+        own");
+      - `CheckpointMark { session }` on Idle→Working;
+      - `SessionTurnEnded { session, turn, how }` on Working→Idle;
+      - `Session.Close` when the agent exits.
+
+      Never Session.Open or Session.Turn for pane agents. Call `Hub::set_agent_session` with the
+      watch's id.
+- [ ] Batch 15: grey Restore out from `CheckpointList.turn: TurnState`, and drop the pane-local
+      Working stopgap. A CheckpointList literal needs `turn`.
+- [ ] Batch 15: temor shows the plan only, with no confirm of its own. sill's hold-to-confirm
+      sheet is the one confirmation.
+- [ ] Outside temor: `org.quire.Temor` must be listed under `cli` in docket's intentd.toml (for the
+      docket side to add). Perform uses `Origin::InWindowField` for now; check it against the cli role.
+- [ ] quire's context menu drops disabled items and has no per-item tooltip, so "Wait for the
+      agent to finish" is an info row (quire ask).
+- Lane notes: `/mnt/data/cargo/temor-lanes/followups-b14-ckpt.md`.
