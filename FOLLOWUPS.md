@@ -757,3 +757,31 @@ Nothing was compiled or run (batch rule). The orchestrator's first build will fi
 
 ## Agent checkpoints move to docket (decided 2026-10-10)
 - [ ] docket owns per-turn checkpoints: it uses temor's git-ref approach (private index, hidden ref), keeps the last 20 per run, drops them after 14 days, and skips agents that keep their own (Claude Code /rewind). When the interface is frozen (a list per run, plus restore with a dry-run plan), temor stops snapshotting (hub/agents/checkpoints.rs, temor-core checkpoint git) and shows docket's list and restore. Until then temor's refs stay, and temor adds no pruning.
+      Update (2026-10-10): the interface is frozen (~/rs-wt/checkpoints/DESIGN.md §3, §5, §8, §9). Migration starts when the agent session sends the docket sha:
+      - delete temor-core checkpoint/* and the hub's checkpoint jobs, and call docket's CheckpointList / CheckpointPlan / `checkpoints.restore`;
+      - move undo_ref to refs/temor/undo/<n>;
+      - at start, prune refs/temor/checkpoints/* older than 14 days, with no import;
+      - add `_` arms for the non-exhaustive SessionEntry.
+
+## Look batch: Warp-style cards (merged 2026-10-10)
+Studied Warp's design (AGPL; no code copied). D5 stays: the shell keeps its own line editor, and
+there is no input box of temor's own (Warp's needs its own vim emulation and completer, all AGPL).
+- [ ] Hover goes stale after a wheel scroll or when the pointer leaves the pane. Clear it on
+      pointer leave of `.temor-keys` and recompute on wheel.
+- [ ] `card_bands` reads the cursor row from the previous paint, so the last block's extent lags
+      one frame. Compute the bands after the capture.
+- [ ] `TOOLS_HEIGHT_LOGICAL` (28.0) is an estimate; measure it with `use_rect`.
+- [ ] No GPU pixel test for bands (needs an adapter); the CPU tests cover the shared scene path.
+- [ ] Prompt: nushell is left alone (there's no reliable stock-prompt test). fish 3 and older were not run.
+      In fish, Enter on an empty line before any command has no blank line above it. The branch is
+      read from .git only, with no dirty marker (the context chips batch adds facts).
+- [ ] zsh: without a terminal description that can move the cursor up (an unknown TERM), the
+      typing line starts with one space, because zsh draws no prompt whose last line is empty.
+- [ ] quire asks: a compact icon-button group surface (the toolbar uses `.temor-block-tools`
+      CSS); a sticky overlay surface with an opaque material and a bottom hairline;
+      `text-overflow: ellipsis` in Blitz (the header cuts with `clip_chars`).
+- [ ] Warpify-style offer: for a typed `ssh`, `docker exec` or `sudo -i` inside a tab, offer
+      once, from a fixed command list, to load temor's shell integration in the inner shell (so
+      its commands become cards). Later, after the context chips batch.
+- [ ] Next, queued (owner OK): the context chips batch
+      (/mnt/data/cargo/temor-lanes/QUEUE-facts.md).
