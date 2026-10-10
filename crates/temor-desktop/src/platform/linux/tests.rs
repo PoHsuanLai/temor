@@ -101,8 +101,8 @@ fn machine(json: serde_json::Value) -> Machine {
 fn a_machine_maps_to_a_plain_host() {
     let online = machine(serde_json::json!({
         "node": "nPXS7a2CNTRL", "name": "box", "dns": "box.tail1.ts.net",
-        "addresses": ["100.64.0.7"], "os": "linux", "online": true, "last_seen": null,
-        "ssh": true, "ssh_host_keys": ["ssh-ed25519 AAAA"], "owner": "mine",
+        "addresses": ["100.64.0.7"], "os": "linux", "link": "online", "last_seen": null,
+        "ssh": "on", "ssh_host_keys": ["ssh-ed25519 AAAA"], "owner": "mine",
     }));
     let host = host_of(&online).expect("a usable node id");
     assert_eq!(host.node.as_str(), "nPXS7a2CNTRL");
@@ -118,7 +118,7 @@ fn a_machine_maps_to_a_plain_host() {
 
     let away = machine(serde_json::json!({
         "node": "n2", "name": "nas", "dns": "nas.tail1.ts.net", "addresses": [],
-        "os": "", "online": false, "last_seen": 1_700_000_000, "ssh": false,
+        "os": "", "link": "offline", "last_seen": 1_700_000_000, "ssh": "off",
         "ssh_host_keys": [], "owner": "tagged",
     }));
     let host = host_of(&away).expect("a usable node id");

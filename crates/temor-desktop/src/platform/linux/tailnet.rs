@@ -5,7 +5,10 @@
 use super::bus::session_builder;
 use crate::tailnet::{TailnetChanges, Ticks};
 use crate::{DesktopEnv, DesktopError};
-use porter_client::{DbusTransport, Machine, MachineChanges, MachineOwner, Tailnet, TailnetError};
+use porter_client::{
+    DbusTransport, Machine, MachineChanges, MachineLink, MachineOwner, MachineSsh, Tailnet,
+    TailnetError,
+};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
@@ -94,19 +97,17 @@ pub(super) fn host_of(machine: &Machine) -> Option<TailnetHost> {
         name: machine.name.clone(),
         dns: machine.dns.clone(),
         addresses: machine.addresses.clone(),
-        online: if machine.online {
-            Presence::Online
-        } else {
-            Presence::Offline
+        online: match machine.link {
+            MachineLink::Online => Presence::Online,
+            MachineLink::Offline => Presence::Offline,
         },
         last_seen: machine
             .last_seen
             .and_then(|at| u64::try_from(at.0).ok())
             .map(UnixSeconds),
-        ssh: if machine.ssh {
-            TailscaleSsh::On
-        } else {
-            TailscaleSsh::Off
+        ssh: match machine.ssh {
+            MachineSsh::On => TailscaleSsh::On,
+            MachineSsh::Off => TailscaleSsh::Off,
         },
         owner: match machine.owner {
             MachineOwner::Mine => TailnetOwner::Mine,
