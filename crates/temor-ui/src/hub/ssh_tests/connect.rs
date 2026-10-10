@@ -264,3 +264,34 @@ fn a_plain_aliass_fingerprint_is_looked_up_by_the_name_and_port_ssh_resolves() {
         Some("-F\n[resolved.example.com]:2200\n-l\n")
     );
 }
+
+#[test]
+fn a_plain_session_sends_nothing_so_a_split_of_it_starts_in_the_hosts_home_folder() {
+    let Some(mut rig) = Rig::new("plain-split") else {
+        return;
+    };
+    rig.hub.open_host_named("fake");
+    let first = rig.front();
+    rig.hub.answer_host(first, Grant::Refused);
+    let dir = rig.dir.clone();
+    rig.pump("the first session", |_| dir.join("session-1").exists());
+    rig.put("up", "");
+    rig.pump("the connection to be up", |hub| {
+        hub.host_view(first).is_some_and(|v| v.stage == Stage::Up)
+    });
+    rig.hub.act(WorkspaceIn::Cwd {
+        pane: first,
+        cwd: Cwd("/srv/it".to_owned()),
+    });
+    rig.hub.act(WorkspaceIn::Split {
+        towards: temor_core::split::Direction::Right,
+    });
+    assert_eq!(rig.hub.host_of(rig.front()), Some("fake"));
+    rig.pump("the joined session", |_| dir.join("session-2").exists());
+    let args = session(&rig, 2);
+    assert_eq!(
+        args[args.len() - 2..],
+        ["--", "fake"],
+        "no remote command: {args:?}"
+    );
+}

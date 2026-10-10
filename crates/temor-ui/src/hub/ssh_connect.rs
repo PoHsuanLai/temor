@@ -31,6 +31,9 @@ pub(super) fn session_args(
     start_dir: Option<&RemoteFilePath>,
 ) -> Result<Vec<String>, SshError> {
     match mode {
+        // Declined means nothing of temor's reaches the host: no remote command, and no `cd`
+        // typed after the prompt either, so a plain session starts in the host's own home folder
+        // whatever folder the pane it came from was in.
         RunMode::Plain => Ok(plain_session_argv(alias, layout)),
         RunMode::Bootstrap(policy) => {
             let script = BootstrapScript::build_in(
