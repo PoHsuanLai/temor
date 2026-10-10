@@ -14,6 +14,8 @@ mod colors;
 #[cfg(feature = "ghostty")]
 mod graphemes;
 #[cfg(feature = "ghostty")]
+mod holds;
+#[cfg(feature = "ghostty")]
 mod inline_file;
 #[cfg(feature = "ghostty")]
 mod keys;

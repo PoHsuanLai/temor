@@ -16,7 +16,9 @@ use super::signals::{
     on_bell, on_clipboard, on_color_scheme, on_pwd, on_render_hold, on_reset, on_size, on_title,
     on_unknown, on_write_pty,
 };
-use crate::{CellPx, ClipboardSource, ColorScheme, EventSink, GridSize, ReplySink, VtEvent};
+use crate::{
+    CellPx, ClipboardSource, ColorScheme, EventSink, GridSize, RenderHold, ReplySink, VtEvent,
+};
 
 /// Whether the title changed during the current write; libghostty only lets the title be read
 /// after its callback returns.
@@ -34,6 +36,8 @@ pub(super) struct Callbacks {
     pub(super) color_scheme: Cell<ColorScheme>,
     pub(super) size: Cell<(GridSize, CellPx)>,
     pub(super) title: Cell<TitleChange>,
+    /// Whether the program holds the screen right now.
+    pub(super) hold: Cell<RenderHold>,
     /// Answers clipboard reads; none refuses them all. Set before output is written.
     pub(super) clipboard: RefCell<Option<Box<dyn ClipboardSource>>>,
     /// Callbacks that panicked (in a sink or in their own body); their event was dropped.

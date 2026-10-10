@@ -254,3 +254,43 @@ mod marks {
         }
     }
 }
+
+#[cfg(feature = "ghostty")]
+mod holds {
+    use super::super::{HoldCuts, ends_within};
+
+    /// The cut offsets over `chunks`, as absolute offsets into their concatenation.
+    fn cuts(chunks: &[&[u8]]) -> Vec<usize> {
+        let mut scanner = HoldCuts::new();
+        let mut at = 0;
+        let mut out = Vec::new();
+        for chunk in chunks {
+            out.extend(scanner.feed(chunk).into_iter().map(|end| at + end));
+            at += chunk.len();
+        }
+        out
+    }
+
+    #[test]
+    fn a_start_is_cut_right_after_its_final_byte_wherever_the_chunk_splits() {
+        let whole = b"ab\x1b[?2026hcd\x1b[?2026hef";
+        let expected = vec![11, 20];
+        for split in 0..=whole.len() {
+            let (a, b) = whole.split_at(split);
+            assert_eq!(cuts(&[a, b]), expected, "split at {split}");
+        }
+    }
+
+    #[test]
+    fn other_sequences_and_a_restarted_escape_are_not_starts() {
+        assert!(cuts(&[b"\x1b[?2026l \x1b[?2004h \x1b[?202h"]).is_empty());
+        // An ESC in the middle of a near-match starts over.
+        assert_eq!(cuts(&[b"\x1b[?20\x1b[?2026h"]), vec![14]);
+    }
+
+    #[test]
+    fn an_end_is_found_in_the_rest_of_a_chunk() {
+        assert!(ends_within(b"draw\x1b[?2026l"));
+        assert!(!ends_within(b"draw\x1b[?2026h"));
+    }
+}

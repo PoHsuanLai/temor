@@ -7,6 +7,8 @@ mod clipboard;
 #[cfg(feature = "ghostty")]
 mod engine;
 #[cfg(feature = "ghostty")]
+mod holds;
+#[cfg(feature = "ghostty")]
 mod support;
 #[cfg(feature = "ghostty")]
 mod transfers;

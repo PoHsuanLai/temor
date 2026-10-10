@@ -19,7 +19,8 @@ pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400)
 
 impl Session {
     /// The program started holding the screen. Returns the hold's generation, which its timer
-    /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b).
+    /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b). The frame
+    /// shown meanwhile was captured by the pane where the hold began.
     pub fn start_hold(&mut self) -> u64 {
         self.hold_generation += 1;
         self.hold = Hold::Held;
@@ -36,6 +37,9 @@ impl Session {
     pub fn end_hold(&mut self, generation: u64) -> bool {
         if self.hold == Hold::Held && self.hold_generation == generation {
             self.hold = Hold::Released;
+            // The program is told nothing; its next output shows as it arrives. A terminal that
+            // refuses is not the pane's failure: the next release from the program ends it.
+            let _ = self.pane.with_term(|term| term.end_hold());
             return true;
         }
         false
@@ -100,10 +104,8 @@ impl Session {
             selection: None,
             bands: &bands,
         };
-        if self.hold == Hold::Held {
-            // The program is holding the screen: keep showing the last frame.
-            return Ok(());
-        }
+        // While the program holds the screen the painter draws the frame captured where the
+        // hold began (see `temor_pane::PaintSource`).
         self.painter.paint(&self.pane, view, show)
     }
 

@@ -2,9 +2,11 @@
 //! renderer's frame capture. The I/O thread writes it under the pane's lock; the window reads
 //! and encodes under the same lock (PLAN §4b).
 
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
 
 use super::clipboard::ClipboardMirror;
+use super::hold::{HoldCapture, Shared};
 use crate::paste::PasteMode;
 use crate::text::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
@@ -27,12 +29,13 @@ pub struct Output {
 /// The terminal and everything that reads or encodes it.
 #[derive(Debug)]
 pub struct Term {
-    terminal: Terminal,
+    pub(super) terminal: Terminal,
     keys: KeyEncoder,
     mouse: MouseEncoder,
     events: Receiver<VtEvent>,
     replies: Receiver<Vec<u8>>,
     clipboard: ClipboardMirror,
+    pub(super) hold: Shared,
 }
 
 impl Term {
@@ -93,6 +96,8 @@ impl Term {
         terminal.set_default_cursor_shape(Some(cursor))?;
         let clipboard = ClipboardMirror::default();
         terminal.set_clipboard_source(Box::new(clipboard.clone()));
+        let hold = Shared::default();
+        terminal.set_hold_hook(Box::new(HoldCapture::new(Arc::clone(&hold))));
         Ok(Self {
             terminal,
             keys: KeyEncoder::new()?,
@@ -100,6 +105,7 @@ impl Term {
             events,
             replies,
             clipboard,
+            hold,
         })
     }
 

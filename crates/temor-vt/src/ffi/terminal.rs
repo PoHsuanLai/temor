@@ -11,9 +11,9 @@ use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
-use crate::scan::{InlineFileScanner, MarkCuts};
+use crate::scan::{HoldCuts, InlineFileScanner, MarkCuts};
 use crate::{
-    CellPx, EventSink, GridSize, ModeState, ReplySink, TerminalConfig, TerminalMode,
+    CellPx, EventSink, GridSize, ModeState, RenderHold, ReplySink, TerminalConfig, TerminalMode,
     ViewportScroll, VtError,
 };
 
@@ -31,6 +31,10 @@ pub struct Terminal {
     pub(super) scanner: InlineFileScanner,
     /// Where OSC 133 marks end, carried across writes.
     pub(super) marks: MarkCuts,
+    /// Where synchronized updates start, carried across writes.
+    pub(super) holds: HoldCuts,
+    /// Captures the frame when a hold begins.
+    pub(super) hold_hook: Option<Box<dyn super::HoldHook>>,
     /// The number of the last mark cut (see `VtEvent::MarkBegin`).
     pub(super) mark_seq: u64,
     pub(super) anchors: Anchors,
@@ -82,6 +86,25 @@ impl Terminal {
         *self.callbacks().clipboard.borrow_mut() = Some(source);
     }
 
+    /// Sets the hook that captures a frame when a render hold begins.
+    pub fn set_hold_hook(&mut self, hook: Box<dyn super::HoldHook>) {
+        self.hold_hook = Some(hook);
+    }
+
+    /// Whether the program holds the screen (synchronized output) right now.
+    pub fn render_hold(&self) -> RenderHold {
+        self.callbacks().hold.get()
+    }
+
+    /// Ends the program's hold from the host's side (its timeout ran out): synchronized output is
+    /// turned off, as libghostty advises, and updates show again. The program may start another.
+    pub fn end_render_hold(&mut self) -> Result<(), VtError> {
+        self.set_mode_raw(TerminalMode::SyncOutput, ModeState::Reset)?;
+        // Changing the mode ourselves does not call the hold callback.
+        self.callbacks().hold.set(RenderHold::Released);
+        Ok(())
+    }
+
     /// A terminal restored from `snapshot`, with its screen, scrollback, modes, cursor and title,
     /// sending its events to `sink` and replies to `replies`. `config.size` is ignored: the
     /// snapshot's size wins.
@@ -119,6 +142,7 @@ impl Terminal {
             size: Cell::new((config.size, config.cell_px)),
             title: Cell::new(TitleChange::Unchanged),
             clipboard: RefCell::new(None),
+            hold: Cell::new(RenderHold::Released),
         });
         let callbacks = NonNull::from(Box::leak(callbacks));
         let mut term = Self {
@@ -126,6 +150,8 @@ impl Terminal {
             callbacks,
             scanner: InlineFileScanner::new(config.inline_file_max),
             marks: MarkCuts::new(),
+            holds: HoldCuts::new(),
+            hold_hook: None,
             mark_seq: 0,
             anchors: Anchors::default(),
         };
