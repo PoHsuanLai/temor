@@ -12,6 +12,7 @@ mod cards;
 mod coherence;
 mod desktop;
 mod facts;
+mod offer;
 mod persist;
 mod session;
 mod shelf;

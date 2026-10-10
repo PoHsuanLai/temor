@@ -59,8 +59,8 @@ pub use argv::{
     plain_session_argv, session_argv,
 };
 pub use bootstrap::{
-    BootstrapOptions, BootstrapScript, MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy,
-    bootstrap_remote_command, wrap_script,
+    BootstrapOptions, BootstrapScript, InnerLoadLine, MAX_INNER_LINE_BYTES,
+    MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy, bootstrap_remote_command, wrap_script,
 };
 pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use config::{

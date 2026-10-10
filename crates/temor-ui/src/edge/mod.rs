@@ -11,6 +11,7 @@ pub mod facts;
 pub mod git;
 mod keymap;
 pub mod notify;
+pub mod offer;
 mod save_pace;
 mod session_file;
 mod settings_file;

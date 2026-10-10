@@ -11,6 +11,7 @@ pub mod facts;
 pub mod host;
 pub mod key;
 pub mod notify;
+pub mod offer;
 pub mod pane;
 pub mod presence;
 pub mod proposal;

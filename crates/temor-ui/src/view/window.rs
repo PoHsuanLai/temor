@@ -40,7 +40,7 @@ use crate::app::Desktop;
 use crate::edge::Credentials;
 use crate::hub::{
     Desk, DragKey, Hub, HubRef, SidebarData, spawn_agent_loops, spawn_desktop_loop,
-    spawn_event_loop, spawn_facts_loop, spawn_save_loop, spawn_ssh_loop,
+    spawn_event_loop, spawn_facts_loop, spawn_offer_loop, spawn_save_loop, spawn_ssh_loop,
 };
 
 /// The window's root component.
@@ -90,6 +90,7 @@ pub fn App() -> Element {
             spawn_agent_loops(desk.clone());
             spawn_facts_loop(desk.clone());
             spawn_ssh_loop(desk.clone());
+            spawn_offer_loop(desk.clone());
             spawn_save_loop(desk.hub);
         }
     });

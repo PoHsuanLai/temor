@@ -17,6 +17,7 @@ use temor_pane::{Hold, PaneEvent, TransferEvent};
 
 use super::desk::Desk;
 use super::model::Hub;
+use super::offer::{Heard, OfferRedraw};
 use crate::session::{BELL_MARK, Notice};
 use crate::view::slot::{Slot, release_hold_later, repaint};
 
@@ -57,7 +58,12 @@ impl Hub {
             let Some(session) = guard.session.as_mut() else {
                 continue;
             };
-            match session.absorb(event) {
+            let heard = Heard::of(&event);
+            let notice = session.absorb(event);
+            if self.offer_heard(pane, heard, session) == OfferRedraw::Yes {
+                out.chrome.insert(pane);
+            }
+            match notice {
                 Notice::Repaint => {
                     out.paint.insert(pane);
                 }

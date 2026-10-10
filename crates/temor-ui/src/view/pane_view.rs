@@ -41,6 +41,7 @@ use super::handlers::{
 };
 use super::host_banners::HostBanners;
 use super::ime::{ImeGlue, composed_sink, focus_handler};
+use super::offer::OfferBar;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
 use super::status::StatusLine;
@@ -337,6 +338,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 }
             }
             HostBanners { pane, desk: desk.clone() }
+            OfferBar { pane, desk: desk.clone() }
             StatusLine {
                 cwd: chrome.cwd.clone(),
                 title: chrome.title.clone(),
