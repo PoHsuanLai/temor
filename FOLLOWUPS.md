@@ -1087,9 +1087,10 @@ fixed and gated together. anyview be8c91c.
   after a wheel (the hooks the desk lane wrote for `pane_view.rs`).
 
 ### Next
-- [ ] Recordings in the pane: needs the owner's call. The `player` feature brings anyview-media,
-      media-host, runtime, plugin and platform, a new git dependency (mpv-wgpu-player), a tokio
-      handle for its `MediaHub`, and a way to find mpv and its C plugin.
+- [x] Recordings in the pane: skipped for now (owner's decision, relayed by the agent session
+      2026-10-11). Recordings open in their own app. Revisit when mpv-wgpu settles or the owner
+      wants video inside temor: an additive lane (the `player` feature, one `MediaHub` per window
+      on temor's tokio runtime, an mpv locator).
 - [ ] "Edit locally" from a block's output in a host pane: the hub entry exists
       (`Desk::host_edit`); the block menu item and which text it passes are open.
 - [ ] Find in the bar: Esc closes the whole bar; no harness scenario (needs a mounted viewer).
@@ -1108,7 +1109,7 @@ the plain notes in the Batch 1 and 2 lane sections are history. "(check)" marks 
 state needs a look before anyone works on it.
 
 ### Next batches
-- Recordings in the pane through anyview-pane's `player` feature: owner's call. (Batch 17 Next)
+- Recordings in the pane: deferred until mpv-wgpu settles or video is wanted. (Batch 17 Next)
 - Batch 17 leftovers: "Edit locally" from a block, Esc in bar find, the probe in history, zsh
   clear under an unknown TERM. (Batch 17 Next)
 - No D-Bus Open fallback; files on another computer can't be viewed. (P10 Viewers)
