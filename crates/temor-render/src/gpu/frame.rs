@@ -6,6 +6,7 @@ use temor_vt::{KittyLayer, Row};
 use super::device::ensure_image;
 use super::pipeline::{ALPHA, COLOR, IMAGE, Inst, SOLID, texture};
 use super::{GpuFrame, GpuRenderer};
+use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
 use crate::font::BUILD_ATTEMPTS;
 use crate::frame::{ImagePlacement, PaneFrame};
@@ -113,10 +114,13 @@ impl Renderer for GpuRenderer {
             colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
+            bands: view.bands,
+            pane_width: w,
+            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let plan = self
             .tracker
-            .plan(key, frame.take_dirty(), cursor, &frame.images);
+            .plan(key, frame.take_dirty(), cursor, &frame.images, view.bands);
         let all: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
         let reach = plan.reach();
         let mut rows = match plan {

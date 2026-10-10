@@ -78,6 +78,7 @@ fn gpu_and_cpu_draw_the_same_frame() {
         palette: &pane.palette,
         focus: PaneFocus::Focused,
         selection: None,
+        bands: &[],
     };
     let out = gpu.render(&mut pane.frame, &view).expect("gpu render");
     assert_eq!(out.stats.rows_composed, 4);

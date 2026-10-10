@@ -63,6 +63,7 @@ fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
         palette: &palette,
         focus: PaneFocus::Focused,
         selection: None,
+        bands: &[],
     };
     let mut f = frame();
     let out = renderer.render(&mut f, &view).expect("render");
@@ -79,4 +80,151 @@ fn a_frame_drawn_through_atlas_clears_matches_one_drawn_with_room() {
         "the small atlas must clear for this test to mean anything"
     );
     assert!(roomy == tight, "a glyph was read from a cleared atlas");
+}
+
+mod bands {
+    use temor_vt::{GridSize, Px, Rgb, Row};
+
+    use super::{COLS, CpuRenderer, ROWS, fonts};
+    use crate::bands::{Alpha, RowBand, RowSpan, Tint};
+    use crate::frame::{PaneFrame, TermColors};
+    use crate::metrics::{Padding, PixelSize, Scale};
+    use crate::palette::Palette;
+    use crate::renderer::{PaneFocus, PaneView, Renderer};
+
+    const PAD: u32 = 4;
+
+    struct Bench {
+        renderer: CpuRenderer,
+        frame: PaneFrame,
+        palette: Palette,
+        size: PixelSize,
+        cell_h: u32,
+    }
+
+    impl Bench {
+        fn new() -> Self {
+            let mut renderer = CpuRenderer::new(fonts(14.0));
+            let m = renderer.cell_metrics(Scale::new(1.0));
+            let mut frame = PaneFrame::new();
+            frame.resize(GridSize::new(COLS, ROWS));
+            frame.set_colors(TermColors {
+                foreground: Rgb::new(220, 220, 220),
+                background: Rgb::new(0, 0, 0),
+                cursor: None,
+            });
+            Self {
+                renderer,
+                frame,
+                palette: Palette::default(),
+                size: PixelSize::new(
+                    u32::from(COLS) * m.width() + PAD * 2,
+                    u32::from(ROWS) * m.height() + PAD * 2,
+                ),
+                cell_h: m.height(),
+            }
+        }
+
+        /// Renders with `bands`: the pixels and the number of rows composed.
+        fn render(&mut self, bands: &[RowBand]) -> (Vec<u8>, u32) {
+            let view = PaneView {
+                size: self.size,
+                scale: Scale::new(1.0),
+                padding: Padding::uniform(Px(PAD)),
+                palette: &self.palette,
+                focus: PaneFocus::Focused,
+                selection: None,
+                bands,
+            };
+            let out = self
+                .renderer
+                .render(&mut self.frame, &view)
+                .expect("render");
+            (out.pixels.to_vec(), out.stats.rows_composed)
+        }
+
+        fn px(&self, pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
+            let i = ((y * self.size.width.0 + x) * 4) as usize;
+            [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]
+        }
+
+        /// The top pixel row of grid row `r`.
+        fn top(&self, r: u32) -> u32 {
+            PAD + r * self.cell_h
+        }
+    }
+
+    fn tint(r: u8, g: u8, b: u8, a: u8) -> Option<Tint> {
+        Some(Tint {
+            color: Rgb::new(r, g, b),
+            alpha: Alpha(a),
+        })
+    }
+
+    fn band(row: u16, fill: Option<Tint>, stripe: Option<Tint>, rule: Option<Tint>) -> RowBand {
+        RowBand {
+            rows: RowSpan {
+                first: Row(row),
+                last: Row(row),
+            },
+            fill,
+            stripe,
+            rule,
+        }
+    }
+
+    #[test]
+    fn a_fill_tints_its_row_across_the_padding_and_not_the_row_below() {
+        let mut b = Bench::new();
+        let (px, _) = b.render(&[band(1, tint(200, 0, 0, 128), None, None)]);
+        let mid = b.top(1) + b.cell_h / 2;
+        // (x, y, red): inside the grid, in the left padding, in the right padding, row below.
+        for (x, y, red) in [
+            (40, mid, 100),
+            (1, mid, 100),
+            (b.size.width.0 - 1, mid, 100),
+            (40, b.top(2) + b.cell_h / 2, 0),
+            (40, b.top(0) + b.cell_h / 2, 0),
+        ] {
+            assert_eq!(b.px(&px, x, y)[0], red, "red at ({x}, {y})");
+        }
+    }
+
+    #[test]
+    fn the_stripe_lies_inside_the_left_padding() {
+        let mut b = Bench::new();
+        let (px, _) = b.render(&[band(1, None, tint(0, 255, 0, 255), None)]);
+        let mid = b.top(1) + b.cell_h / 2;
+        // Three logical px at scale 1: columns 0..3 are the stripe, the rest of the padding is not.
+        for (x, green) in [(0, 255), (2, 255), (3, 0), (PAD - 1, 0), (PAD + 10, 0)] {
+            assert_eq!(b.px(&px, x, mid)[1], green, "green at x {x}");
+        }
+        assert_eq!(b.px(&px, 1, b.top(2) + 1)[1], 0, "the row below has none");
+    }
+
+    #[test]
+    fn the_rule_is_one_pixel_on_the_top_edge() {
+        let mut b = Bench::new();
+        let (px, _) = b.render(&[band(2, None, None, tint(0, 0, 255, 255))]);
+        let top = b.top(2);
+        for (y, blue) in [(top - 1, 0), (top, 255), (top + 1, 0)] {
+            for x in [0, 40, b.size.width.0 - 1] {
+                assert_eq!(b.px(&px, x, y)[2], blue, "blue at ({x}, {y})");
+            }
+        }
+    }
+
+    #[test]
+    fn a_changed_band_redraws_exactly_its_rows() {
+        let mut b = Bench::new();
+        let first = band(1, tint(200, 0, 0, 128), None, None);
+        let moved = band(3, tint(200, 0, 0, 128), None, None);
+        let (_, all) = b.render(&[first]);
+        assert_eq!(all, u32::from(ROWS), "the first frame draws everything");
+        // (bands, rows composed)
+        for (bands, composed) in [(vec![first], 0), (vec![moved], 2), (vec![], 1), (vec![], 0)] {
+            let (_, rows) = b.render(&bands);
+            assert_eq!(rows, composed);
+        }
+    }
 }

@@ -2,6 +2,7 @@
 
 use temor_vt::Px;
 
+use crate::bands::RowBand;
 use crate::error::RenderError;
 use crate::frame::PaneFrame;
 use crate::metrics::{CellMetrics, CellPos, Padding, PixelSize, Scale};
@@ -51,7 +52,7 @@ impl SelectionOverlay {
 }
 
 /// What a pane is drawn for: its device-pixel size, the scale, the padding to keep, the colours,
-/// focus and any selection.
+/// focus, any selection and the row bands.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PaneView<'a> {
     pub size: PixelSize,
@@ -61,6 +62,8 @@ pub struct PaneView<'a> {
     pub palette: &'a Palette,
     pub focus: PaneFocus,
     pub selection: Option<SelectionOverlay>,
+    /// Fills, stripes and rules over runs of viewport rows (command cards); usually empty.
+    pub bands: &'a [RowBand],
 }
 
 /// A changed rectangle of the output, in device pixels from its top-left.

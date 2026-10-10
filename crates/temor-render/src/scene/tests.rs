@@ -97,6 +97,9 @@ fn build(cells: &[CellDraw], cursor: Option<CursorDraw>) -> RowScene {
         colors: &colors,
         cursor,
         selection: None,
+        bands: &[],
+        pane_width: 0,
+        stripe_width: 0,
     };
     let mut out = RowScene::default();
     build_row(&input, Row(0), cells, &mut glyphs, &mut out);
