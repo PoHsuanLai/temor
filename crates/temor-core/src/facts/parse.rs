@@ -51,8 +51,9 @@ pub fn venv_name(path: &str) -> Option<EnvName> {
     Some(EnvName(name.to_owned()))
 }
 
-/// How many files `git status --porcelain=v1 -uall` lists as untracked (lines starting `?? `),
-/// stopping past [`MOST_UNTRACKED`] so a huge folder stays cheap to show.
+/// How many entries `git status --porcelain=v1 --untracked-files=normal` lists as untracked
+/// (lines starting `?? `): a file, or a whole new folder as one entry. Stops past
+/// [`MOST_UNTRACKED`] so a huge folder stays cheap to show.
 pub fn parse_untracked(output: &str) -> Untracked {
     let count = output
         .lines()

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use temor_core::facts::{
     EnvName, NodeVersion, ToolVersion, node_from_engines, node_from_nvmrc, node_from_version_file,
-    tool_versions, venv_name,
+    python_from_pyproject, python_from_version_file, tool_versions, venv_name,
 };
 
 use super::facts::FactsEnv;
@@ -41,10 +41,12 @@ fn read(folder: &Path, file: &str) -> Option<String> {
 
 /// The versions from the nearest files, looking in the folder and then each parent up to the
 /// repository root (the folder that holds `.git`). In one folder Node comes from `.nvmrc`, then
-/// `.node-version`, then `.tool-versions`, then `package.json`'s `engines.node`; the others come
-/// from `.tool-versions`.
+/// `.node-version`, then `.tool-versions`, then `package.json`'s `engines.node`; Python from
+/// `.python-version`, then `.tool-versions`; Ruby and Go from `.tool-versions`. Only when no
+/// folder names a Python version does the nearest `pyproject.toml`'s `requires-python` stand in.
 pub(super) fn read_runtimes(dir: &Path) -> Runtimes {
     let mut out = Runtimes::default();
+    let mut required = None;
     for folder in dir.ancestors().take(MOST_PARENTS) {
         let tools = read(folder, ".tool-versions")
             .map(|text| tool_versions(&text))
@@ -56,7 +58,14 @@ pub(super) fn read_runtimes(dir: &Path) -> Runtimes {
                 .or(tools.node)
                 .or_else(|| read(folder, "package.json").and_then(|t| node_from_engines(&t)));
         }
-        out.python = out.python.or(tools.python);
+        if out.python.is_none() {
+            out.python = read(folder, ".python-version")
+                .and_then(|t| python_from_version_file(&t))
+                .or(tools.python);
+        }
+        if required.is_none() {
+            required = read(folder, "pyproject.toml").and_then(|t| python_from_pyproject(&t));
+        }
         out.ruby = out.ruby.or(tools.ruby);
         out.go = out.go.or(tools.go);
         let all =
@@ -65,5 +74,6 @@ pub(super) fn read_runtimes(dir: &Path) -> Runtimes {
             break;
         }
     }
+    out.python = out.python.or(required);
     out
 }
