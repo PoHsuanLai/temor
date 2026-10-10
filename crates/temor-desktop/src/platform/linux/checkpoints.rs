@@ -6,13 +6,14 @@
 use super::bus::connect;
 use crate::checkpoints::{
     CheckpointPort, NotSavedWhy, PlanDigest, PointFault, PointId, PointList, PointPlan, PointRow,
-    PointState, SessionKey, TurnNo,
+    PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo,
 };
 use crate::{DesktopEnv, DesktopError};
 use docket_client::{ClientError, DbusTransport, Intents};
 use docket_core::{
     ActionRef, Args, CallRefusal, CallRequest, CheckpointFault, CheckpointId, CheckpointRow,
-    Origin, ParamName, RestorePlan, SavedState, SkipReason, TargetValue, Value, WireRefusal,
+    Origin, ParamName, RestorePlan, SavedState, SkipReason, TargetValue, TurnEnd, TurnId,
+    TurnState, Value, WireRefusal, Workspace,
 };
 use porter_core::AppName;
 use prov::{ActionName, Label, Labelled, SessionId};
@@ -50,7 +51,9 @@ impl CheckpointPort for SystemCheckpoints {
             .runtime
             .block_on(self.intents.checkpoint_list(id))
             .map_err(|error| client_fault("read the restore points", &error))?;
-        Ok(list_of(&list.rows))
+        let mut points = list_of(&list.rows);
+        points.turn = run_state_of(list.turn);
+        Ok(points)
     }
 
     fn plan(&self, session: &SessionKey, id: PointId) -> Result<PointPlan, DesktopError> {
@@ -74,6 +77,68 @@ impl CheckpointPort for SystemCheckpoints {
             .block_on(self.intents.perform(call, None, None))
             .map_err(|error| client_fault("restore the files", &error))?;
         end.map(drop).map_err(refusal_fault)
+    }
+
+    fn watch(
+        &self,
+        workspace: &str,
+        label: &str,
+        rewind: Rewind,
+    ) -> Result<SessionKey, DesktopError> {
+        let workspace = Workspace::parse(workspace).map_err(|_| failed())?;
+        let rewind = match rewind {
+            Rewind::Docket => docket_core::Rewind::Docket,
+            Rewind::Agent => docket_core::Rewind::Agent,
+        };
+        let id = self
+            .runtime
+            .block_on(
+                self.intents
+                    .checkpoint_watch(workspace, label.to_owned(), rewind),
+            )
+            .map_err(|error| client_fault("watch the agent", &error))?;
+        SessionKey::new(id.as_str()).ok_or_else(failed)
+    }
+
+    fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {
+        let id = session_id(session)?;
+        let turn = self
+            .runtime
+            .block_on(self.intents.checkpoint_mark(id))
+            .map_err(|error| client_fault("save a restore point", &error))?;
+        Ok(TurnMark(turn.0))
+    }
+
+    fn turn_ended(
+        &self,
+        session: &SessionKey,
+        turn: TurnMark,
+        how: TurnHow,
+    ) -> Result<(), DesktopError> {
+        let id = session_id(session)?;
+        let how = match how {
+            TurnHow::Answered => TurnEnd::Answered,
+            TurnHow::Failed => TurnEnd::Failed,
+            TurnHow::Cancelled => TurnEnd::Cancelled,
+        };
+        self.runtime
+            .block_on(self.intents.session_turn_ended(id, TurnId(turn.0), how))
+            .map_err(|error| client_fault("end the turn", &error))
+    }
+
+    fn close(&self, session: &SessionKey) -> Result<(), DesktopError> {
+        let id = session_id(session)?;
+        self.runtime
+            .block_on(self.intents.session_close(id))
+            .map_err(|error| client_fault("stop watching the agent", &error))
+    }
+}
+
+/// docket's turn state as the window's.
+pub(super) fn run_state_of(state: TurnState) -> RunState {
+    match state {
+        TurnState::Running => RunState::Running,
+        _ => RunState::Idle,
     }
 }
 
@@ -162,7 +227,10 @@ pub(super) fn list_of(rows: &[CheckpointRow]) -> PointList {
             _ => None,
         })
         .collect();
-    PointList { rows }
+    PointList {
+        rows,
+        turn: RunState::Idle,
+    }
 }
 
 pub(super) fn plan_of(plan: &RestorePlan) -> PointPlan {

@@ -83,10 +83,42 @@ pub enum PointRow {
     },
 }
 
+/// Whether the session's agent is working now.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RunState {
+    #[default]
+    Idle,
+    /// A turn is running: docket refuses a restore until it ends.
+    Running,
+}
+
 /// A session's list.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PointList {
     pub rows: Vec<PointRow>,
+    /// Whether a turn is running now.
+    pub turn: RunState,
+}
+
+/// Who keeps the history of a watched agent's file changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rewind {
+    /// docket saves a restore point at each turn.
+    Docket,
+    /// The agent keeps its own: docket saves nothing and says so.
+    Agent,
+}
+
+/// A turn of a watched agent, as `mark` numbered it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TurnMark(pub u64);
+
+/// How a watched agent's turn ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnHow {
+    Answered,
+    Failed,
+    Cancelled,
 }
 
 /// What restoring one point would change: paths relative to the folder.
@@ -155,6 +187,30 @@ pub trait CheckpointPort: Send + Sync + fmt::Debug {
         id: PointId,
         digest: &PlanDigest,
     ) -> Result<(), DesktopError>;
+
+    /// Starts a session that only keeps restore points for an agent running in `workspace` (an
+    /// absolute folder). `label` is display text.
+    fn watch(
+        &self,
+        workspace: &str,
+        label: &str,
+        rewind: Rewind,
+    ) -> Result<SessionKey, DesktopError>;
+
+    /// The watched agent started working: a point is taken (unless it keeps its own) and a turn
+    /// begins. End it with [`turn_ended`](Self::turn_ended).
+    fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError>;
+
+    /// The turn `mark` numbered is over.
+    fn turn_ended(
+        &self,
+        session: &SessionKey,
+        turn: TurnMark,
+        how: TurnHow,
+    ) -> Result<(), DesktopError>;
+
+    /// The watched agent is gone.
+    fn close(&self, session: &SessionKey) -> Result<(), DesktopError>;
 }
 
 /// No agent layer: nothing is listed and nothing can be restored. The default.
@@ -181,5 +237,35 @@ impl CheckpointPort for NoCheckpoints {
         Err(DesktopError::Unsupported {
             what: "restore points",
         })
+    }
+
+    fn watch(
+        &self,
+        _workspace: &str,
+        _label: &str,
+        _rewind: Rewind,
+    ) -> Result<SessionKey, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn mark(&self, _session: &SessionKey) -> Result<TurnMark, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn turn_ended(
+        &self,
+        _session: &SessionKey,
+        _turn: TurnMark,
+        _how: TurnHow,
+    ) -> Result<(), DesktopError> {
+        Ok(())
+    }
+
+    fn close(&self, _session: &SessionKey) -> Result<(), DesktopError> {
+        Ok(())
     }
 }

@@ -2,7 +2,10 @@
 //! TODO(platform:macos): dock badge through NSDockTile, single instance through a socket.
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
-use crate::checkpoints::{CheckpointPort, PlanDigest, PointId, PointList, PointPlan, SessionKey};
+use crate::checkpoints::{
+    CheckpointPort, PlanDigest, PointId, PointList, PointPlan, Rewind, SessionKey, TurnHow,
+    TurnMark,
+};
 use crate::tailnet::TailnetChanges;
 use crate::{Badge, Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
 use std::sync::Arc;
@@ -126,5 +129,35 @@ impl CheckpointPort for SystemCheckpoints {
         Err(DesktopError::Unsupported {
             what: "restore points",
         })
+    }
+
+    fn watch(
+        &self,
+        _workspace: &str,
+        _label: &str,
+        _rewind: Rewind,
+    ) -> Result<SessionKey, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn mark(&self, _session: &SessionKey) -> Result<TurnMark, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "restore points",
+        })
+    }
+
+    fn turn_ended(
+        &self,
+        _session: &SessionKey,
+        _turn: TurnMark,
+        _how: TurnHow,
+    ) -> Result<(), DesktopError> {
+        Ok(())
+    }
+
+    fn close(&self, _session: &SessionKey) -> Result<(), DesktopError> {
+        Ok(())
     }
 }
