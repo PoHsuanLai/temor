@@ -59,7 +59,7 @@ pub struct Drag {
 
 /// One pane's state as the window needs it.
 /// Logical padding around the grid (PLAN §5: panes snap to whole cells, leftovers are padding).
-pub const PADDING_LOGICAL: f32 = 8.0;
+pub const PADDING_LOGICAL: f32 = 12.0;
 
 pub struct Session {
     pub(super) pane: PaneHandle,
