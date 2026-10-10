@@ -83,3 +83,47 @@ fn bash_login_shim_sources_bash_profile_first() {
     }
     run(ShellStart::Login, "profile-value");
 }
+
+#[test]
+fn a_login_shell_runs_the_persons_exit_trap_and_then_bash_logout() {
+    if crate::support::pty_unsupported(
+        "a_login_shell_runs_the_persons_exit_trap_and_then_bash_logout",
+    ) {
+        return;
+    }
+    let scratch = Scratch::new();
+    let home = &scratch.home;
+    let log = home.join("exit.log");
+    std::fs::write(
+        home.join(".bash_profile"),
+        format!("trap 'echo trap >> \"{}\"' EXIT\n", log.display()),
+    )
+    .expect(".bash_profile");
+    std::fs::write(
+        home.join(".bash_logout"),
+        format!("echo logout >> \"{}\"\n", log.display()),
+    )
+    .expect(".bash_logout");
+    let spec = prepare_shell(
+        &Shell::at(program("bash").expect("bash on PATH")),
+        ShellStart::Login,
+        scratch.contract_env(&ChildEnv::new()),
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    let mut term = Term::spawn(&spec, &setsid());
+    assert!(
+        term.read_until_has(0, "\x1b]133;B"),
+        "no marked prompt: {:?}",
+        term.text()
+    );
+    term.send("exit\r");
+    assert!(term.read_to_close(), "the shell did not end");
+    assert_eq!(
+        std::fs::read_to_string(&log).unwrap_or_default(),
+        "trap\nlogout\n",
+        "the person's trap runs, then ~/.bash_logout"
+    );
+}
