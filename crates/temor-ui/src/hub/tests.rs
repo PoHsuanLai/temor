@@ -137,3 +137,133 @@ fn the_home_folder_is_written_as_a_tilde() {
         assert_eq!(tidy(path, home), *want, "{path}");
     }
 }
+
+mod spaces {
+    use ds::components::app::spaces::{SpaceId, Spaces};
+    use temor_core::space::{Project, Route};
+    use temor_core::vocab::text::{Cwd, RoutePattern};
+    use temor_core::workspace::WorkspaceIn;
+
+    use super::super::space_route::expand_home;
+    use super::{hub_after, launch};
+    use crate::hub::Hub;
+
+    fn project(root: Option<&str>, routes: &[&str]) -> Project {
+        Project {
+            root: root.map(|r| temor_core::vocab::text::ProjectRoot(r.to_owned())),
+            routes: routes
+                .iter()
+                .map(|p| Route {
+                    pattern: RoutePattern((*p).to_owned()),
+                })
+                .collect(),
+            ..Project::default()
+        }
+    }
+
+    #[test]
+    fn switching_puts_a_workspace_away_and_brings_it_back_with_its_tabs() {
+        let mut hub = hub_after(vec![
+            WorkspaceIn::NewTab {
+                cwd: Some(Cwd("/a".into())),
+            },
+            WorkspaceIn::NewTab { cwd: None },
+        ]);
+        hub.swap_to(SpaceId(1));
+        assert_eq!(hub.active_space(), SpaceId(1));
+        assert!(
+            hub.workspace().tabs.place.tabs.is_empty(),
+            "a new Space starts empty"
+        );
+        hub.swap_to(SpaceId(0));
+        assert_eq!(hub.workspace().tabs.place.tabs.len(), 2);
+        assert_eq!(
+            hub.here().tabs.len(),
+            2,
+            "the kit remembers the place that was left"
+        );
+    }
+
+    #[test]
+    fn pane_ids_stay_apart_across_spaces() {
+        let mut hub = hub_after(vec![
+            WorkspaceIn::NewTab { cwd: None },
+            WorkspaceIn::NewTab { cwd: None },
+        ]);
+        assert_eq!(hub.workspace().next_pane, 3);
+        hub.book.note(&hub.ws.clone());
+        hub.swap_to(SpaceId(1));
+        let mut other = std::mem::replace(&mut hub.ws, super::super::spaces::empty_workspace());
+        hub.book.lift(&mut other);
+        assert_eq!(
+            other.next_pane, 3,
+            "the next Space's first pane is past the first Space's"
+        );
+    }
+
+    #[test]
+    fn routes_pick_a_space_by_command_or_folder_with_the_home_folder_expanded() {
+        let mut hub = Hub::new(launch());
+        hub.book.spaces = Spaces::first_run(
+            [
+                project(None, &[]),
+                project(None, &["ssh prod-*", "~/work"]),
+                project(None, &["/srv"]),
+            ],
+            Project::default,
+        );
+        #[rustfmt::skip]
+        let commands: &[(&str, Option<u64>)] = &[
+            ("ssh prod-web1", Some(1)),
+            ("ssh staging", None),
+            ("ls", None),
+        ];
+        for (command, want) in commands {
+            assert_eq!(
+                hub.space_for_command(command),
+                want.map(SpaceId),
+                "{command}"
+            );
+        }
+        #[rustfmt::skip]
+        let folders: &[(&str, Option<u64>)] = &[
+            ("/home/someone/work", Some(1)),
+            ("/home/someone/work/api", Some(1)),
+            ("/home/someone/workshop", None),
+            ("/srv/www", Some(2)),
+            ("/tmp", None),
+        ];
+        for (folder, want) in folders {
+            assert_eq!(hub.space_for_folder(folder), want.map(SpaceId), "{folder}");
+        }
+    }
+
+    #[test]
+    fn a_new_tab_opens_in_the_spaces_project_folder_and_a_named_folder_wins() {
+        let mut hub = Hub::new(launch());
+        hub.book.spaces = Spaces::first_run([project(Some("/srv/app"), &[])], Project::default);
+        let tab = |cwd: Option<&str>| WorkspaceIn::NewTab {
+            cwd: cwd.map(|c| Cwd(c.to_owned())),
+        };
+        assert_eq!(hub.in_project(tab(None)), tab(Some("/srv/app")));
+        assert_eq!(hub.in_project(tab(Some("/x"))), tab(Some("/x")));
+        assert_eq!(hub.in_project(WorkspaceIn::Reopen), WorkspaceIn::Reopen);
+    }
+
+    #[test]
+    fn only_a_leading_tilde_is_the_home_folder() {
+        let home = std::path::Path::new("/home/someone");
+        #[rustfmt::skip]
+        let rows: &[(&str, &str)] = &[
+            ("~", "/home/someone"),
+            ("~/work", "/home/someone/work"),
+            ("~other/work", "~other/work"),
+            ("ssh ~", "ssh ~"),
+            ("/srv", "/srv"),
+        ];
+        for (pattern, want) in rows {
+            let got = expand_home(&RoutePattern((*pattern).to_owned()), home);
+            assert_eq!(got.as_str(), *want, "{pattern}");
+        }
+    }
+}

@@ -13,14 +13,20 @@ use super::model::{Hub, HubRef};
 use super::say::refusal_text;
 use crate::edge::sidecar;
 use crate::session::Session;
-use crate::view::launch::open_session;
+use crate::view::launch::open_session_with;
 use crate::view::slot::{Slot, repaint};
 
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
+        if let Some(space) = self.parked_owner_of(&input) {
+            return self.with_space(space, |hub| hub.act(input));
+        }
+        let input = self.in_project(input);
+        self.book.lift(&mut self.ws);
         let (ws, outs) = workspace_step(self.ws.clone(), input);
         self.ws = ws;
+        self.book.note(&self.ws);
         for out in outs {
             self.carry_out(out);
         }
@@ -60,13 +66,16 @@ impl Hub {
             Start::Scrollback(pane) => self.recent.remove(&pane),
             Start::Fresh => None,
         });
-        let opened = open_session(
+        let start = self.space_start();
+        let cwd = spawn.cwd.clone().or(start.cwd);
+        let opened = open_session_with(
             &self.launch,
             self.palette,
             spawn.pane,
-            spawn.cwd.as_ref(),
+            cwd.as_ref(),
             snapshot.as_ref(),
             self.events.clone(),
+            &start.env,
         );
         let mut slot = Slot {
             palette: self.palette,
@@ -120,14 +129,16 @@ impl Hub {
 
     /// Starts a new shell in a pane whose program ended, in the folder it was last in.
     pub fn restart(&mut self, pane: PaneId) {
-        let cwd = self.ws.cwds.get(&pane).cloned();
-        match open_session(
+        let start = self.space_start();
+        let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
+        match open_session_with(
             &self.launch,
             self.palette,
             pane,
             cwd.as_ref(),
             None,
             self.events.clone(),
+            &start.env,
         ) {
             Ok(session) => {
                 if let Some(slot) = self.slots.get(&pane) {

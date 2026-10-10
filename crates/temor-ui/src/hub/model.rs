@@ -14,6 +14,7 @@ use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use super::spaces::SpaceBook;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -23,7 +24,9 @@ pub(super) const SAVE_EVERY: std::time::Duration = std::time::Duration::from_sec
 
 /// Everything the window keeps about its panes. Lives on the window's thread.
 pub struct Hub {
+    /// The workspace of the Space on screen; the other Spaces' are in `book`.
     pub(super) ws: Workspace,
+    pub(super) book: SpaceBook,
     pub(super) slots: BTreeMap<PaneId, Rc<RefCell<Slot>>>,
     /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
     pub(super) recent: BTreeMap<PaneId, Snapshot>,
@@ -50,6 +53,7 @@ impl Hub {
         let (events, inbox) = unbounded_channel();
         Hub {
             ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
+            book: SpaceBook::new(),
             slots: BTreeMap::new(),
             recent: BTreeMap::new(),
             events,

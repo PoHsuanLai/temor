@@ -10,6 +10,7 @@ use temor_pane::settings::FontChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
+use temor_shell::ChildEnv;
 use temor_vt::Snapshot;
 use temor_vt::{CellPx, GridSize};
 use tokio::sync::mpsc::UnboundedSender;
@@ -80,6 +81,27 @@ pub fn open_session(
     snapshot: Option<&Snapshot>,
     events: UnboundedSender<(PaneId, PaneEvent)>,
 ) -> Result<Session, UiError> {
+    open_session_with(
+        launch,
+        palette,
+        pane,
+        cwd,
+        snapshot,
+        events,
+        &ChildEnv::new(),
+    )
+}
+
+/// [`open_session`] with `env` set over the surroundings' own (a Space's variables).
+pub fn open_session_with(
+    launch: &Launch,
+    palette: Palette,
+    pane: PaneId,
+    cwd: Option<&Cwd>,
+    snapshot: Option<&Snapshot>,
+    events: UnboundedSender<(PaneId, PaneEvent)>,
+    env: &ChildEnv,
+) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
     let family = match &settings.font {
@@ -104,6 +126,7 @@ pub fn open_session(
     let cell = CellPx::new(8, 16);
     // The shell starts in the pane's folder when it is still there.
     let mut ambient = launch.ambient.clone();
+    ambient.env = ambient.env.overlay(env);
     if let Some(dir) = cwd
         .map(|c| PathBuf::from(c.as_str()))
         .filter(|p| p.is_absolute() && p.is_dir())
