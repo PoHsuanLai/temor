@@ -206,6 +206,7 @@ impl Hub {
                     cwd,
                     env: env.clone(),
                 },
+                palette: crate::edge::remote_palette::wire_palette(&self.palette),
             };
             self.remote.work.attach(
                 std::sync::Arc::clone(&conn),

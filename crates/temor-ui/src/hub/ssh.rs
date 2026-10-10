@@ -145,6 +145,8 @@ impl SshHub {
                 .map(|(pane, host)| PaneHost {
                     pane: *pane,
                     alias: host.alias.as_str().to_owned(),
+                    // The hub adds the helper session (`Hub::hosts_file`).
+                    session: None,
                 })
                 .collect(),
         }
