@@ -178,6 +178,7 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     let mut place = read.place;
     // Viewers a Spaces-file place carries: used only for panes the session list does not name.
     let recalled = std::mem::take(&mut place.viewers);
+    let recalled_cwds = std::mem::take(&mut place.cwds);
     let mut seen_tabs = BTreeSet::new();
     let mut seen_panes = BTreeSet::new();
     place.tabs.retain(|tab| {
@@ -210,9 +211,14 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
         .filter(|rec| tabs.tab(rec.tab).is_some_and(|t| t.tree.contains(rec.pane)))
         .map(|rec| (rec.tab, rec.pane))
         .collect();
-    ws.cwds = read
-        .cwds
+    // The folders a Spaces-file place carries: the session's own record of a pane wins.
+    ws.cwds = recalled_cwds
         .into_iter()
+        .map(|rec| CwdRec {
+            pane: rec.pane,
+            cwd: rec.cwd,
+        })
+        .chain(read.cwds)
         .filter(|rec| seen_panes.contains(&rec.pane))
         .map(|rec| (rec.pane, rec.cwd))
         .collect::<BTreeMap<_, _>>();
