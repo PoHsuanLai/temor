@@ -9,6 +9,7 @@ mod bands;
 mod mark;
 mod notify;
 mod query;
+mod rows;
 #[cfg(test)]
 mod tests;
 
