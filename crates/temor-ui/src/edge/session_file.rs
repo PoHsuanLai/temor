@@ -5,14 +5,24 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use ds::components::app::spaces::SpaceId;
 use temor_core::workspace::restore::{FreshWhy, Restored, decode, encode};
 use temor_core::workspace::{KeepClosed, Workspace};
 
 use crate::error::UiError;
 use crate::platform::{ensure_private_dir, write_private_file};
 
-/// The file's name inside the state directory.
+/// The first Space's file name inside the state directory (the one a single-Space build wrote).
 pub const FILE_NAME: &str = "session.json";
+
+/// The session file of `space`: the first Space keeps `session.json`, so a session saved before
+/// Spaces is that Space's; the others are `session-<id>.json`.
+pub fn file_name(space: SpaceId) -> String {
+    match space.0 {
+        0 => FILE_NAME.to_owned(),
+        n => format!("session-{n}.json"),
+    }
+}
 
 /// The state directory: `$XDG_STATE_HOME/temor`, else `~/.local/state/temor`. A relative or
 /// missing value is not used, as the XDG spec says. `None` when neither is set (no saving then).
@@ -35,10 +45,15 @@ pub enum Startup {
     Fresh(FreshWhy),
 }
 
-/// Reads the session in `dir`. A damaged file (not JSON, not valid text, no version) is renamed
-/// to `session.json.bad`; a newer one is kept as it is, so a downgrade never destroys it.
+/// Reads the first Space's session in `dir` (see [`load_for`]).
 pub fn load(dir: &Path, keep: KeepClosed) -> Result<Startup, UiError> {
-    let path = dir.join(FILE_NAME);
+    load_for(dir, SpaceId(0), keep)
+}
+
+/// Reads the session of `space` in `dir`. A damaged file (not JSON, not valid text, no version)
+/// is renamed to `<name>.bad`; a newer one is kept as it is, so a downgrade never destroys it.
+pub fn load_for(dir: &Path, space: SpaceId, keep: KeepClosed) -> Result<Startup, UiError> {
+    let path = dir.join(file_name(space));
     let bytes = match std::fs::read(&path) {
         Ok(bytes) => bytes,
         Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(Startup::NoFile),
@@ -60,19 +75,32 @@ pub fn load(dir: &Path, keep: KeepClosed) -> Result<Startup, UiError> {
     }
 }
 
-/// Renames a damaged file to `session.json.bad`: it keeps the evidence and lets the next save
-/// write a clean file.
-fn set_aside(path: &Path) {
-    if let Some(dir) = path.parent() {
-        let _ = std::fs::rename(path, dir.join(format!("{FILE_NAME}.bad")));
+/// Renames a damaged file to `<name>.bad`: it keeps the evidence and lets the next save write a
+/// clean file.
+pub(crate) fn set_aside(path: &Path) {
+    if let (Some(dir), Some(name)) = (path.parent(), path.file_name()) {
+        let mut bad = name.to_os_string();
+        bad.push(".bad");
+        let _ = std::fs::rename(path, dir.join(bad));
     }
 }
 
-/// Writes `ws` to the session file in `dir`, creating the directory (owner-only) first. A
-/// file written by a newer build is never overwritten; a damaged one is set aside first.
+/// Deletes the session file of a Space that was deleted, so a later Space with its number does
+/// not start from it.
+pub fn remove_for(dir: &Path, space: SpaceId) {
+    let _ = std::fs::remove_file(dir.join(file_name(space)));
+}
+
+/// Writes `ws` to the first Space's session file (see [`save_for`]).
 pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
+    save_for(dir, SpaceId(0), ws)
+}
+
+/// Writes `ws` to the session file of `space` in `dir`, creating the directory (owner-only)
+/// first. A file written by a newer build is never overwritten; a damaged one is set aside first.
+pub fn save_for(dir: &Path, space: SpaceId, ws: &Workspace) -> Result<(), UiError> {
     ensure_private_dir(dir).map_err(UiError::Session)?;
-    let path = dir.join(FILE_NAME);
+    let path = dir.join(file_name(space));
     if let Ok(existing) = std::fs::read(&path) {
         match String::from_utf8(existing) {
             Ok(text) => match decode(&text, KeepClosed::DEFAULT) {

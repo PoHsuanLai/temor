@@ -30,6 +30,9 @@ pub enum UiError {
     /// The session file could not be read or written.
     #[error("the session file could not be saved: {0}")]
     Session(#[source] std::io::Error),
+    /// A Space's key agent could not be started.
+    #[error("the Space's key agent could not start: {0}")]
+    Agent(String),
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),
