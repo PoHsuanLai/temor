@@ -119,6 +119,8 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
 #[test]
 fn a_viewer_of_a_host_file_takes_its_copy_away_with_it_and_never_a_file_of_the_person() {
     let (mut hub, _, viewer) = with_viewer("/w/a.txt", &[]);
+    let scratch = tempfile::tempdir().expect("scratch");
+    hub.launch.ambient.runtime_dir = scratch.path().join("runtime");
     let folder = hub.copies_dir().join("7");
     std::fs::create_dir_all(&folder).expect("copy folder");
     let copy = folder.join("a.txt");

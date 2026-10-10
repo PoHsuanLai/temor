@@ -274,7 +274,7 @@ mod holds {
     #[test]
     fn a_start_is_cut_right_after_its_final_byte_wherever_the_chunk_splits() {
         let whole = b"ab\x1b[?2026hcd\x1b[?2026hef";
-        let expected = vec![11, 20];
+        let expected = vec![10, 20];
         for split in 0..=whole.len() {
             let (a, b) = whole.split_at(split);
             assert_eq!(cuts(&[a, b]), expected, "split at {split}");
@@ -285,7 +285,7 @@ mod holds {
     fn other_sequences_and_a_restarted_escape_are_not_starts() {
         assert!(cuts(&[b"\x1b[?2026l \x1b[?2004h \x1b[?202h"]).is_empty());
         // An ESC in the middle of a near-match starts over.
-        assert_eq!(cuts(&[b"\x1b[?20\x1b[?2026h"]), vec![14]);
+        assert_eq!(cuts(&[b"\x1b[?20\x1b[?2026h"]), vec![13]);
     }
 
     #[test]

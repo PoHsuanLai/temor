@@ -24,16 +24,18 @@ impl Terminal {
     pub fn write(&mut self, bytes: &[u8]) {
         let mut segments = Vec::new();
         self.scanner.feed(bytes, |seg| segments.push(seg));
-        for seg in segments {
+        // A hold's end can straddle two pieces (the scanner hands a held-back ESC on as a piece of
+        // its own), so the check after a hold's start reads the later pieces too.
+        for (i, seg) in segments.iter().enumerate() {
             match seg {
-                Scanned::Bytes(b) => self.write_marked(b),
+                Scanned::Bytes(b) => self.write_marked(b, &segments[i + 1..]),
                 Scanned::File {
                     payload,
                     truncation,
                 } => self.callbacks().send(VtEvent::Unknown {
                     kind: UnknownKind::Osc1337File,
-                    payload,
-                    truncation,
+                    payload: payload.clone(),
+                    truncation: *truncation,
                 }),
             }
         }
@@ -48,7 +50,7 @@ impl Terminal {
     /// its `Anchor` (the cursor where the mark stood). A missed anchor leaves no `Anchor` behind,
     /// so the numbers keep the next mark's events from pairing with the missed one. The start of a
     /// synchronized update is cut too, so the frame can be captured where the hold began.
-    fn write_marked(&mut self, bytes: &[u8]) {
+    fn write_marked(&mut self, bytes: &[u8], later: &[Scanned<'_>]) {
         let mut cuts: Vec<(usize, Cut)> = self
             .marks
             .feed(bytes)
@@ -71,7 +73,17 @@ impl Terminal {
                 }
                 Cut::Hold => {
                     self.vt_write(&bytes[start..end]);
-                    self.hold_began(&bytes[end..]);
+                    let rest: Vec<u8> = later
+                        .iter()
+                        .filter_map(|seg| match seg {
+                            Scanned::Bytes(b) => Some(*b),
+                            Scanned::File { .. } => None,
+                        })
+                        .fold(bytes[end..].to_vec(), |mut all, b| {
+                            all.extend_from_slice(b);
+                            all
+                        });
+                    self.hold_began(&rest);
                 }
             }
             start = end;

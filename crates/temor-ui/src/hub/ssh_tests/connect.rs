@@ -219,6 +219,11 @@ fn the_connection_is_up_when_its_socket_appears_without_asking_ssh() {
     rig.pump("the session to start", |hub| {
         hub.host_view(pane)
             .is_some_and(|v| v.stage == Stage::Connecting)
+            && hub
+                .ssh
+                .baselines
+                .keys()
+                .any(|alias| alias.as_str() == "fake")
     });
 
     // The stand-in's `-O check` says no (there is no `up` file): only the socket can say it.
@@ -249,6 +254,10 @@ fn a_plain_aliass_fingerprint_is_looked_up_by_the_name_and_port_ssh_resolves() {
     let pane = rig.front();
     rig.hub.answer_host(pane, Grant::Allowed);
     rig.hub.answer_host(pane, Grant::Allowed);
+    // Up only once the first session is making the connection: an `up` before that is a
+    // connection already there, which is joined, not identified.
+    let dir = rig.dir.clone();
+    rig.pump("the first session", |_| dir.join("session-1").exists());
     rig.put("up", "");
     let alias = temor_ssh::HostAlias::new("fake").expect("alias");
     rig.pump("the host to be known by its key", |hub| {

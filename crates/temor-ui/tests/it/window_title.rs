@@ -56,12 +56,14 @@ fn the_title_is_the_programs_then_the_folder() {
     h.advance(Duration::from_millis(100));
 
     // The program sets a title (OSC 2): the window shows it.
-    type_line(&mut h, "printf '\\033]2;scenario title\\007'");
+    // Each title is held by a sleep: the shell's prompt may set a title of its own (Fedora's
+    // /etc/bashrc does), which would replace it as soon as the command returns.
+    type_line(&mut h, "printf '\\033]2;scenario title\\007'; sleep 3");
     wait_for_title(&mut h, "the program's title", |t| t == "scenario title");
 
     // It clears the title: the window falls back to the folder the shell reported (the scratch
     // home the window starts in).
-    type_line(&mut h, "printf '\\033]2;\\007'");
+    type_line(&mut h, "printf '\\033]2;\\007'; sleep 3");
     let folder = wait_for_title(&mut h, "the folder", |t| t != "scenario title");
     assert!(
         folder.ends_with("/home"),
