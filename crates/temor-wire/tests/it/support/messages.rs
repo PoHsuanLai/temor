@@ -25,14 +25,22 @@ fn hello() -> impl Strategy<Value = Hello> {
 }
 
 fn open_session() -> impl Strategy<Value = OpenSession> {
-    (prop::option::of(path()), path(), env_vars(), size()).prop_map(|(shell, cwd, env, size)| {
-        OpenSession {
+    (
+        prop::option::of(path()),
+        path(),
+        env_vars(),
+        size(),
+        cell_px(),
+        prop::option::of(palette()),
+    )
+        .prop_map(|(shell, cwd, env, size, cell, palette)| OpenSession {
             shell,
             cwd,
             env,
             size,
-        }
-    })
+            cell,
+            palette,
+        })
 }
 
 fn trial_request() -> impl Strategy<Value = TrialRequest> {
@@ -77,7 +85,16 @@ pub fn request() -> impl Strategy<Value = Request> {
         session_id().prop_map(|session| Request::AttachSession { session }),
         session_id().prop_map(|session| Request::DetachSession { session }),
         session_id().prop_map(|session| Request::Close { session }),
-        (session_id(), size()).prop_map(|(session, size)| Request::ResizeSession { session, size }),
+        (session_id(), size(), cell_px()).prop_map(|(session, size, cell)| {
+            Request::ResizeSession {
+                session,
+                size,
+                cell,
+            }
+        }),
+        (session_id(), palette())
+            .prop_map(|(session, palette)| Request::SetPalette { session, palette }),
+        Just(Request::Ping),
         session_id().prop_map(|session| Request::SendInput { session }),
         Just(Request::ListSessions),
         idle_limit().prop_map(|limit| Request::SetIdleLimit { limit }),
@@ -85,7 +102,11 @@ pub fn request() -> impl Strategy<Value = Request> {
         path().prop_map(|path| Request::ListDir { path }),
         path().prop_map(|path| Request::Stat { path }),
         (path(), byte_range()).prop_map(|(path, range)| Request::ReadFile { path, range }),
-        (path(), write_check()).prop_map(|(path, check)| Request::WriteFile { path, check }),
+        (path(), write_check(), write_mode()).prop_map(|(path, check, mode)| Request::WriteFile {
+            path,
+            check,
+            mode
+        }),
         path().prop_map(|path| Request::Watch { path }),
         watch_id().prop_map(|watch| Request::Unwatch { watch }),
         trial_request().prop_map(Request::RunTrial),
@@ -133,6 +154,7 @@ fn relay_reply() -> impl Strategy<Value = RelayReply> {
 pub fn reply() -> impl Strategy<Value = Reply> {
     prop_oneof![
         Just(Reply::Ack),
+        Just(Reply::Pong),
         session_id().prop_map(|session| Reply::Opened { session }),
         (session_id(), size()).prop_map(|(session, size)| Reply::Attached { session, size }),
         prop::collection::vec(

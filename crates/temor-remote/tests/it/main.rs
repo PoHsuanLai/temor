@@ -9,6 +9,8 @@ mod handshake;
 #[cfg(feature = "ghostty")]
 mod ports;
 #[cfg(feature = "ghostty")]
+mod revision;
+#[cfg(feature = "ghostty")]
 mod sessions;
 #[cfg(feature = "ghostty")]
 mod support;

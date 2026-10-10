@@ -47,3 +47,25 @@ impl RetryPolicy {
         Millis(raw.min(self.cap.0))
     }
 }
+
+/// How the caller probes an open link: ping every `every`, and call the link stalled if no
+/// answer comes within `within`. The caller runs the timers; [`LinkEvent::PingTimedOut`] is what
+/// it reports back.
+///
+/// [`LinkEvent::PingTimedOut`]: super::LinkEvent::PingTimedOut
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PingPolicy {
+    /// The time between pings while the link is idle.
+    pub every: Millis,
+    /// How long to wait for the answer.
+    pub within: Millis,
+}
+
+impl PingPolicy {
+    /// Every 15 seconds, giving up on an answer after 10: a stalled link is noticed in under
+    /// half a minute and a slow but live one is not cut.
+    pub const DEFAULT: Self = Self {
+        every: Millis(15_000),
+        within: Millis(10_000),
+    };
+}

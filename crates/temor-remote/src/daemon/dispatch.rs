@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use temor_wire::hello::Capability;
 use temor_wire::ids::{RequestId, SessionId};
-use temor_wire::message::{RemoteError, Reply, Request};
+use temor_wire::message::{RemoteError, Reply, Request, WriteMode};
 
 use super::core::Daemon;
 use super::link::Link;
@@ -70,11 +70,23 @@ impl Daemon {
                 self.session(session)?.close();
                 Ok(Done::Reply(Reply::Ack))
             }
-            Request::ResizeSession { session, size } => {
+            Request::ResizeSession {
+                session,
+                size,
+                cell,
+            } => {
                 need(link, Capability::Sessions)?;
-                self.session(session)?.resize(size).map_err(wire)?;
+                self.session(session)?.resize(size, cell).map_err(wire)?;
                 Ok(Done::Reply(Reply::Ack))
             }
+            Request::SetPalette { session, palette } => {
+                need(link, Capability::Sessions)?;
+                self.session(session)?.set_palette(&palette).map_err(wire)?;
+                Ok(Done::Reply(Reply::Ack))
+            }
+            // Answered here on the reader thread, ahead of any file request still running, so a
+            // slow download never looks like a dead link.
+            Request::Ping => Ok(Done::Reply(Reply::Pong)),
             Request::SendInput { session } => {
                 need(link, Capability::Sessions)?;
                 self.session(session)?
@@ -125,11 +137,20 @@ impl Daemon {
                 let (stamp, total, bytes) = self.files.read(&path, range).map_err(wire)?;
                 Ok(Done::Payload(Reply::Read { stamp, total }, bytes))
             }
-            Request::WriteFile { path, check } => {
+            Request::WriteFile { path, check, mode } => {
                 need(link, Capability::Files)?;
                 let bytes = payload.unwrap_or_default();
-                let stamp = self.files.write(&path, &check, bytes).map_err(wire)?;
-                Ok(Done::Reply(Reply::Written(stamp)))
+                let staged = match mode {
+                    WriteMode::Part { offset, end } => self
+                        .files
+                        .write_part(&path, &check, offset, end, bytes)
+                        .map_err(wire)?,
+                    WriteMode::Whole => Some(self.files.write(&path, &check, bytes).map_err(wire)?),
+                };
+                Ok(Done::Reply(match staged {
+                    Some(stamp) => Reply::Written(stamp),
+                    None => Reply::Ack,
+                }))
             }
             Request::Watch { path } => {
                 need(link, Capability::Files)?;

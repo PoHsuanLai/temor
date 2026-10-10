@@ -6,11 +6,13 @@
 //! and returns when it ends; the sessions go on. [`Daemon::tick`] does the periodic work (idle
 //! sweep, port report, watches) and is driven by the caller's timer, so tests drive it by hand.
 
+mod colours;
 mod config;
 mod core;
 mod cwd;
 mod dispatch;
 mod exit;
+mod files_worker;
 mod input;
 mod link;
 mod pump;
@@ -18,6 +20,7 @@ mod registry;
 mod serve;
 mod session;
 mod sinks;
+mod sizes;
 mod tick;
 
 pub use config::DaemonConfig;

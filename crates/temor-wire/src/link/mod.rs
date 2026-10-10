@@ -12,5 +12,5 @@ mod step;
 mod tests;
 
 pub use model::{GoneReason, LinkEffect, LinkEvent, LinkState, Millis, Monotonic};
-pub use policy::{Attempt, RetryPolicy};
+pub use policy::{Attempt, PingPolicy, RetryPolicy};
 pub use step::link_step;

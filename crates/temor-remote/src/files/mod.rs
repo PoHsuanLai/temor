@@ -2,6 +2,7 @@
 //! open-and-write-back and its live viewers. Every path is confined to the folders the client was
 //! given (see [`Scope`]) and resolved beneath them without crossing a link.
 
+mod part;
 mod scope;
 mod service;
 mod stamp;
@@ -12,4 +13,4 @@ pub use scope::{Resolved, Scope};
 pub use service::FileService;
 pub use stamp::sha256;
 pub use watch::{Observed, WatchTable, watch_step};
-pub use write::{WriteDecision, write_decision};
+pub use write::{WriteDecision, stage_name, write_decision};

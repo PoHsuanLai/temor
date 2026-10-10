@@ -16,7 +16,7 @@ use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{EnvVar, OpenSession, RemotePath};
-use temor_wire::units::{Cols, Rows, Size};
+use temor_wire::units::{CellPx, Cols, Rows, Size};
 
 /// How long a test waits for something the host does.
 const PATIENCE: Duration = Duration::from_secs(20);
@@ -107,6 +107,8 @@ impl Rig {
                 cols: Cols(80),
                 rows: Rows(24),
             },
+            cell: CellPx::DEFAULT,
+            palette: None,
         }
     }
 }

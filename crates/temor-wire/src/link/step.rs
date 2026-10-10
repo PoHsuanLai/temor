@@ -47,6 +47,11 @@ fn on_connected(
 ) -> (LinkState, Vec<LinkEffect>) {
     match event {
         LinkEvent::Lost { at } => schedule(sessions, Attempt(1), at, policy),
+        LinkEvent::PingTimedOut { at } => {
+            let (state, mut effects) = schedule(sessions, Attempt(1), at, policy);
+            effects.insert(0, LinkEffect::DropLink);
+            (state, effects)
+        }
         LinkEvent::SessionsChanged { sessions } => (LinkState::Connected { sessions }, Vec::new()),
         // Ticks, dial outcomes from an earlier loss and the rest change nothing while connected.
         _ => (LinkState::Connected { sessions }, Vec::new()),

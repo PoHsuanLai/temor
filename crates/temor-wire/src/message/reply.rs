@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 pub enum Reply {
     /// The request was done and has nothing to return.
     Ack,
+    /// The helper is there: the answer to [`Request::Ping`](super::Request::Ping).
+    Pong,
     /// A session was opened. Its id is the helper's to choose.
     Opened {
         /// The new session.

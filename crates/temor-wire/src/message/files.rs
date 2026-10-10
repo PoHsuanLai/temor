@@ -1,7 +1,7 @@
 //! Files on the host: paths, stamps for the conflict check, listings and watch events.
 
 use crate::digest::ContentHash;
-use crate::units::{ByteCount, UnixMillis};
+use crate::units::{ByteCount, ByteOffset, UnixMillis};
 use serde::{Deserialize, Serialize};
 
 /// A path on the host, as UTF-8. Paths that are not UTF-8 are refused by the helper rather than
@@ -29,6 +29,37 @@ pub enum WriteCheck {
     Unchanged(FileStamp),
     /// Write only if nothing is there yet.
     MustBeNew,
+}
+
+/// How a write's payload lands: as the whole file, or as one part of a file sent in several.
+///
+/// Parts stage in a hidden file beside the target and replace it when the last one arrives, so
+/// a reader never sees half a file and the [`WriteCheck`] is applied once, at the end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WriteMode {
+    /// The payload is the whole file.
+    #[default]
+    Whole,
+    /// The payload is the bytes from `offset` on. The first part has offset 0 and starts the
+    /// staging file afresh; every later part must start where the staged bytes end, or the
+    /// write is refused as a bad request.
+    Part {
+        /// Where this part starts in the file.
+        offset: ByteOffset,
+        /// Whether more follow.
+        end: PartEnd,
+    },
+}
+
+/// What a part of a streamed write says about the parts after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PartEnd {
+    /// More parts follow. Replies `Ack`.
+    More,
+    /// The last part: check, replace the file and reply `Written`.
+    Last,
+    /// Give up: drop what was staged and reply `Ack`. The payload is ignored.
+    Abort,
 }
 
 /// What kind of entry a path is.

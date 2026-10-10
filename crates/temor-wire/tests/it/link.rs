@@ -13,6 +13,7 @@ fn event() -> impl Strategy<Value = LinkEvent> {
     prop_oneof![
         (0u64..120_000).prop_map(|at| LinkEvent::Lost { at: Monotonic(at) }),
         (0u64..120_000).prop_map(|at| LinkEvent::Tick { at: Monotonic(at) }),
+        (0u64..120_000).prop_map(|at| LinkEvent::PingTimedOut { at: Monotonic(at) }),
         (0u64..120_000).prop_map(|at| LinkEvent::Reattached { at: Monotonic(at) }),
         (0u64..120_000).prop_map(|at| LinkEvent::AttemptFailed { at: Monotonic(at) }),
         Just(LinkEvent::Close),

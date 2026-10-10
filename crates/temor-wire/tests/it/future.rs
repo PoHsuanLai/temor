@@ -237,3 +237,35 @@ fn an_unknown_refusal_in_an_error_reads_as_unknown_not_a_failure() {
         }
     );
 }
+
+#[test]
+fn requests_from_before_the_revision_read_with_the_old_meaning() {
+    use temor_wire::message::{Request, WriteMode};
+    use temor_wire::units::CellPx;
+    // A resize without a cell size, and a write without a mode: both read as before.
+    let resize = r#"{"Request":{"id":1,"body":{"ResizeSession":{"session":1,"size":{"cols":80,"rows":24}}}}}"#;
+    let Ok(Incoming::Frame(frame)) = one(resize, None) else {
+        panic!("an old resize must be read");
+    };
+    let Message::Request {
+        body: Request::ResizeSession { cell, .. },
+        ..
+    } = frame.message
+    else {
+        panic!("not a resize");
+    };
+    assert_eq!(cell, CellPx::DEFAULT);
+
+    let write = r#"{"Request":{"id":2,"body":{"WriteFile":{"path":"/a","check":"Overwrite"}}}}"#;
+    let Ok(Incoming::Frame(frame)) = one(write, Some(b"x")) else {
+        panic!("an old write must be read");
+    };
+    let Message::Request {
+        body: Request::WriteFile { mode, .. },
+        ..
+    } = frame.message
+    else {
+        panic!("not a write");
+    };
+    assert_eq!(mode, WriteMode::Whole);
+}

@@ -1,12 +1,13 @@
 //! Moving files through the link (PLAN §9b, Tier B): a download in chunks into the downloads
-//! folder, an upload in one piece, and the pair the edit-locally flow uses: read with a stamp,
+//! folder, an upload streamed in parts, and the pair the edit-locally flow uses: read with a stamp,
 //! write back only if the remote file is still that.
 
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 use temor_transfer::{RelPath, Root};
-use temor_wire::frame::FrameLimit;
-use temor_wire::message::{FileStamp, RemotePath, WriteCheck};
+use temor_wire::message::{FileStamp, PartEnd, RemotePath, WriteCheck};
 use temor_wire::units::{ByteCount, ByteOffset, ByteRange};
 
 use super::calls::ReadChunk;
@@ -16,10 +17,8 @@ use crate::error::Error;
 /// How much of a file one request asks for.
 const CHUNK: u64 = 1 << 20;
 
-/// The most an upload may carry: the frame limit less room for the message around it.
-fn upload_limit() -> usize {
-    (FrameLimit::DEFAULT.0 as usize).saturating_sub(64 * 1024)
-}
+/// How much of a file one part of an upload carries.
+const PART: usize = 4 << 20;
 
 fn span(offset: u64) -> ByteRange {
     ByteRange {
@@ -102,19 +101,66 @@ impl Client {
         self.write_file(remote, WriteCheck::Unchanged(seen), bytes)
     }
 
-    /// Copies a local file to the host after `check`. The file goes in one message, so it must
-    /// fit in one (about 63 MiB); a bigger one is [`Error::TooLarge`].
+    /// Copies a local file to the host after `check`. A file that fits in one part goes in one
+    /// message; a bigger one streams in parts of 4 MiB, staged beside the target and put in place
+    /// when the last has arrived, so `check` is applied once, at the end, and a failure part-way
+    /// leaves the target as it was.
     pub fn upload(
         &self,
         local: &Path,
         remote: &RemotePath,
         check: WriteCheck,
     ) -> Result<FileStamp, Error> {
-        let bytes = std::fs::read(local)
-            .map_err(|error| Error::io(format!("reading {}", local.display()), error))?;
-        if bytes.len() > upload_limit() {
-            return Err(Error::TooLarge);
+        let fail = |error| Error::io(format!("reading {}", local.display()), error);
+        let mut file = File::open(local).map_err(fail)?;
+        let mut part = fill(&mut file, PART).map_err(fail)?;
+        if part.len() < PART {
+            return self.write_file(remote, check, &part);
         }
-        self.write_file(remote, check, &bytes)
+        let mut offset = 0u64;
+        loop {
+            // Read ahead, so the part being sent knows whether it is the last.
+            let next = match fill(&mut file, PART) {
+                Ok(next) => next,
+                Err(error) => {
+                    self.abort_upload(remote, offset);
+                    return Err(fail(error));
+                }
+            };
+            let end = if next.is_empty() {
+                PartEnd::Last
+            } else {
+                PartEnd::More
+            };
+            match self.write_part(remote, check, ByteOffset(offset), end, &part) {
+                Ok(Some(stamp)) => return Ok(stamp),
+                Ok(None) => {}
+                Err(error) => {
+                    self.abort_upload(remote, offset);
+                    return Err(error);
+                }
+            }
+            offset += part.len() as u64;
+            part = next;
+        }
     }
+
+    /// Drops what an upload staged, when it failed part-way. The upload's own error is the one to
+    /// report, so a failure here (the link is probably gone) is not.
+    fn abort_upload(&self, remote: &RemotePath, offset: u64) {
+        let _ = self.write_part(
+            remote,
+            WriteCheck::Overwrite,
+            ByteOffset(offset),
+            PartEnd::Abort,
+            &[],
+        );
+    }
+}
+
+/// Reads up to `size` bytes, fewer only at the end of the file.
+fn fill(file: &mut File, size: usize) -> std::io::Result<Vec<u8>> {
+    let mut bytes = Vec::with_capacity(size);
+    file.take(size as u64).read_to_end(&mut bytes)?;
+    Ok(bytes)
 }

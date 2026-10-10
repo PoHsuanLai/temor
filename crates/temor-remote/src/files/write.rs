@@ -1,6 +1,14 @@
 //! The write-back rule: what a write must find before it replaces a file.
 
+use super::stamp::sha256;
 use temor_wire::message::{FileStamp, WriteCheck};
+
+/// The name of the hidden file a streamed write stages in, beside its target. Derived from the
+/// target's name so each target has its own and a retry finds the same one.
+pub fn stage_name(leaf: &str) -> String {
+    let hex = sha256(leaf.as_bytes()).to_hex();
+    format!(".temor-part-{}", &hex[..16])
+}
 
 /// What a write does, given its check and what is there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +42,14 @@ mod tests {
             mtime: UnixMillis(mtime),
             hash: ContentHash([byte; 32]),
         }
+    }
+
+    #[test]
+    fn each_target_stages_in_its_own_hidden_file() {
+        assert_eq!(stage_name("a.txt"), stage_name("a.txt"));
+        assert_ne!(stage_name("a.txt"), stage_name("b.txt"));
+        assert!(stage_name("a.txt").starts_with(".temor-part-"));
+        assert_eq!(stage_name("a.txt").len(), ".temor-part-".len() + 16);
     }
 
     #[test]
