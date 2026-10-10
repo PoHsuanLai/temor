@@ -3,7 +3,7 @@
 
 use super::value::{
     CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice, cursor,
-    font_family, font_points, notify_after, scrollback, shell,
+    font_family, font_points, notify_after, offer_command, scrollback, shell,
 };
 use crate::error::SettingsError;
 use crate::keys::Action;
@@ -22,6 +22,11 @@ pub struct TerminalSettings {
     pub keys: Overrides,
     /// When a finished command is worth a notice while the pane is unfocused (PLAN §8.1).
     pub notify_after: NotifyAfter,
+    /// Commands added to the shell offer's list (`offer.add = kubectl debug -it`), each as the
+    /// first words of a command line. Repeat the line for more.
+    pub offer_add: Vec<String>,
+    /// Commands taken off the shell offer's list (`offer.remove = su`), including the fixed ones.
+    pub offer_remove: Vec<String>,
 }
 
 impl Default for TerminalSettings {
@@ -34,6 +39,8 @@ impl Default for TerminalSettings {
             shell: ShellChoice::default(),
             keys: Overrides::default(),
             notify_after: NotifyAfter::DEFAULT,
+            offer_add: Vec::new(),
+            offer_remove: Vec::new(),
         }
     }
 }
@@ -104,6 +111,8 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), Setting
         "cursor.style" => settings.cursor = cursor(key, value)?,
         "shell.program" => settings.shell = shell(key, value)?,
         "notify.after" => settings.notify_after = notify_after(key, value)?,
+        "offer.add" => settings.offer_add.push(offer_command(key, value)?),
+        "offer.remove" => settings.offer_remove.push(offer_command(key, value)?),
         _ => return Err(SettingsError::UnknownSetting(key.to_owned())),
     }
     Ok(())

@@ -119,6 +119,16 @@ pub fn notify_after(key: &str, value: &str) -> Result<NotifyAfter, SettingsError
     }
 }
 
+/// Reads a command for the shell offer's lists: its first words, single-spaced. Empty, over 64
+/// characters, or holding a control character is refused.
+pub fn offer_command(key: &str, value: &str) -> Result<String, SettingsError> {
+    let words = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    match words.is_empty() || words.chars().count() > 64 || words.chars().any(char::is_control) {
+        true => Err(bad(key, value)),
+        false => Ok(words),
+    }
+}
+
 /// The longest threshold a setting may name: a day.
 const NOTIFY_AFTER_MAX_SECONDS: u32 = 86_400;
 

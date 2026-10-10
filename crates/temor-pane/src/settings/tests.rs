@@ -55,3 +55,11 @@ fn notify_after_reads_seconds_and_off() {
     );
     assert_eq!(parse_settings("notify.after = soon").issues.len(), 1);
 }
+
+#[test]
+fn offer_lines_collect_in_order_and_refuse_empty() {
+    let parsed = parse_settings("offer.add = kubectl  debug -it\noffer.add = mosh\noffer.remove = su\noffer.add =\n");
+    assert_eq!(parsed.settings.offer_add, vec!["kubectl debug -it", "mosh"]);
+    assert_eq!(parsed.settings.offer_remove, vec!["su"]);
+    assert_eq!(parsed.issues.len(), 1);
+}
