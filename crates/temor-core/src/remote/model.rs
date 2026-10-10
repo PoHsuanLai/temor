@@ -24,7 +24,8 @@ pub struct Host {
     pub tier: RemoteTier,
 }
 
-/// What a host may do, each asked once and remembered per Space.
+/// What a host may do, as it was once kept per Space. The consent book (`host::consent`) holds
+/// these answers now, per machine; this shape is what `carry_host_consent` reads, once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct HostConsent {
     /// Reading the clipboard.

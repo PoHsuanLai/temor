@@ -109,3 +109,34 @@ fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
     rig.hub.try_offline(pane);
     assert_eq!(rig.stage(pane), Stage::Asking(BootstrapAction::Integrate));
 }
+
+#[test]
+fn what_a_host_may_do_here_is_remembered_per_host() {
+    use temor_core::host::consent::Permit;
+    use temor_core::remote::Grant;
+    use temor_ssh::HostAlias;
+
+    let Some(mut rig) = Rig::new("permits") else {
+        return;
+    };
+    let prod = HostAlias::new("prod").expect("alias");
+    let other = HostAlias::new("other").expect("alias");
+    assert_eq!(rig.hub.permit_grant(&prod, Permit::Clipboard), Grant::Ask);
+    rig.hub
+        .remember_permit(&prod, Permit::Clipboard, Grant::Refused);
+    // Host, permit, what the book says.
+    for (host, permit, want) in [
+        (&prod, Permit::Clipboard, Grant::Refused),
+        (&prod, Permit::Transfers, Grant::Ask),
+        (&other, Permit::Clipboard, Grant::Ask),
+    ] {
+        assert_eq!(
+            rig.hub.permit_grant(host, permit),
+            want,
+            "{host:?} {permit:?}"
+        );
+    }
+    rig.hub
+        .remember_permit(&prod, Permit::Clipboard, Grant::Ask);
+    assert_eq!(rig.hub.permit_grant(&prod, Permit::Clipboard), Grant::Ask);
+}

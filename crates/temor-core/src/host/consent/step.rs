@@ -1,7 +1,7 @@
 //! `gate`: what to do for the next connection to a host. `consent_step`: remember an answer, or
 //! tie an alias to the machine a connection proved it reaches.
 
-use super::model::{BootstrapAction, ConsentBook, Who};
+use super::model::{BootstrapAction, ConsentBook, Permit, Who};
 use crate::remote::Grant;
 use temor_ssh::TerminfoPolicy;
 
@@ -48,6 +48,13 @@ pub enum ConsentIn {
     /// The person answered whether the helper program may be put on the host (`Grant::Ask`
     /// forgets the answer). It is not a bootstrap question: [`gate`] never asks it.
     HelperAnswered { who: Who, grant: Grant },
+    /// The person answered whether programs on the host may `permit` here (`Grant::Ask`
+    /// forgets the answer). [`gate`] never asks it: the pane asks when the program does.
+    PermitAnswered {
+        who: Who,
+        permit: Permit,
+        grant: Grant,
+    },
     /// A connection verified the host's key: `who.key` is that identity and `who.alias` the
     /// name it was reached by. Records kept under the alias alone join the machine's record.
     Identified { who: Who },
@@ -73,6 +80,11 @@ pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, Vec<Co
             let at = next.matching(&who);
             let index = next.fold(&at, &who);
             next.set_helper(index, grant);
+        }
+        ConsentIn::PermitAnswered { who, permit, grant } => {
+            let at = next.matching(&who);
+            let index = next.fold(&at, &who);
+            next.set_permit(index, permit, grant);
         }
         ConsentIn::Identified { who } => {
             let at = next.matching(&who);

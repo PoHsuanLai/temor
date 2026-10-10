@@ -55,6 +55,7 @@ mod ssh_edit;
 mod ssh_events;
 mod ssh_forward;
 mod ssh_master;
+mod ssh_permits;
 #[cfg(test)]
 mod ssh_tests;
 mod ssh_view;
