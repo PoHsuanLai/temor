@@ -45,10 +45,10 @@ mod ffi;
 
 pub use error::VtError;
 pub use event::{
-    ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardWrite, EventSink, ExitCode,
-    ExitStatus, Notification, Percent, ProgramState, ProgramStatus, ProgramWait, Progress,
-    ProgressState, PromptEvent, PromptKind, RenderHold, ReplySink, Truncation, UnknownKind,
-    VtEvent,
+    ClipboardAnswer, ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardRead,
+    ClipboardSource, ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent,
+    ProgramState, ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind,
+    RenderHold, ReplySink, Truncation, UnknownKind, VtEvent,
 };
 pub use input::{
     Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,

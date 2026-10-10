@@ -171,10 +171,8 @@ impl Session {
                 Notice::Quiet
             }
             PaneEvent::Transfer(event) => Notice::Transfer(event),
-            PaneEvent::Clipboard(_) => {
-                // TODO(P9): OSC 52 writes need the clipboard's permission, which the pane asks for.
-                Notice::Quiet
-            }
+            PaneEvent::Clipboard(write) => self.osc52_write(write),
+            PaneEvent::ClipboardRead(read) => self.osc52_read_asked(read),
             // A variant this window does not draw yet: nothing to show.
             _ => Notice::Quiet,
         }

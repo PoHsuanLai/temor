@@ -1,6 +1,6 @@
 //! `Terminal`: one libghostty-vt terminal, its callbacks and the inline-file pre-scan.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ptr::NonNull;
 
 use temor_vt_sys as sys;
@@ -42,9 +42,9 @@ pub struct Terminal {
 //   `&`/`&mut` (and the caller's `Mutex`) guarantee since `Terminal` is not `Sync`;
 // - every callback runs on the thread that calls `write`, and only touches `Callbacks`, whose
 //   fields are `Send`: the sinks are `Box<dyn EventSink>`/`Box<dyn ReplySink>`, both traits
-//   requiring `Send`, and the `Cell`s
-//   hold `Copy` values. No callback can be registered except through this module, so no
-//   non-`Send` closure ever reaches libghostty;
+//   requiring `Send`, the clipboard source (also `Send`, in a `RefCell` only touched inside
+//   callbacks and `set_clipboard_source`), and the `Cell`s hold `Copy` values. No callback can be registered except through this
+//   module, so no non-`Send` closure ever reaches libghostty;
 // - the PNG decoder hook is a stateless function.
 unsafe impl Send for Terminal {}
 
@@ -74,6 +74,12 @@ impl Terminal {
         let term = Self::adopt(raw, config, sink, replies)?;
         term.set_mode_default(TerminalMode::GraphemeCluster, ModeState::Set)?;
         Ok(term)
+    }
+
+    /// Sets who answers the program's clipboard reads (OSC 52 with `?`). Without one every read
+    /// is refused. The source is called from inside `write`, on the writer's thread.
+    pub fn set_clipboard_source(&mut self, source: Box<dyn crate::ClipboardSource>) {
+        *self.callbacks().clipboard.borrow_mut() = Some(source);
     }
 
     /// A terminal restored from `snapshot`, with its screen, scrollback, modes, cursor and title,
@@ -112,6 +118,7 @@ impl Terminal {
             color_scheme: Cell::new(config.color_scheme),
             size: Cell::new((config.size, config.cell_px)),
             title: Cell::new(TitleChange::Unchanged),
+            clipboard: RefCell::new(None),
         });
         let callbacks = NonNull::from(Box::leak(callbacks));
         let mut term = Self {

@@ -2,7 +2,9 @@
 
 use super::xfer::TransferEvent;
 use temor_pty::ChildExit;
-use temor_vt::{AnchorId, ClipboardWrite, Notification, ProgramStatus, Progress, PromptEvent};
+use temor_vt::{
+    AnchorId, ClipboardRead, ClipboardWrite, Notification, ProgramStatus, Progress, PromptEvent,
+};
 
 /// One event from a pane's terminal or its program.
 #[derive(Debug)]
@@ -16,8 +18,11 @@ pub enum PaneEvent {
     Bell,
     /// The working directory changed (OSC 7), as the raw URL.
     Cwd(String),
-    /// The program asked to write the clipboard (OSC 52). Not acted on yet (PLAN §6).
+    /// The program asked to write the clipboard (OSC 52); the window decides (PLAN §6).
     Clipboard(ClipboardWrite),
+    /// The program asked to read the clipboard before the person was asked: the window asks,
+    /// and sets the answer on the pane's [`crate::ClipboardMirror`].
+    ClipboardRead(ClipboardRead),
     /// A desktop notification from the program (OSC 9, OSC 777).
     Notification(Notification),
     /// A shell integration mark (OSC 133) starts, numbered `seq`. Its own event follows.

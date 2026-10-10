@@ -79,6 +79,7 @@ impl Session {
     }
 
     fn assemble(pane: PaneHandle, painter: Painter, kit: SessionKit) -> Self {
+        let clip_mirror = pane.with_term(|term| term.clipboard());
         Self {
             pane,
             painter,
@@ -117,6 +118,9 @@ impl Session {
             view_ask: None,
             quoting: temor_core::shelf::Quoting::Posix,
             site: temor_core::shelf::PaneSite::Local,
+            clip_write: temor_core::remote::Grant::Ask,
+            clip_mirror,
+            clip_pending: None,
         }
     }
 }

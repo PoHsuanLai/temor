@@ -5,6 +5,7 @@
 mod anchor;
 mod callbacks;
 mod cells;
+mod clipboard_read;
 mod colors;
 mod convert;
 mod format;

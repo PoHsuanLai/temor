@@ -18,11 +18,13 @@ use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
+use temor_core::remote::Grant;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::block_header::BlockHeader;
 use super::block_tools::BlockTools;
 use super::blocks::{Chrome, chrome_of};
+use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
@@ -183,6 +185,11 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
+    let clip_ask = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|s| s.clipboard_ask().cloned());
     let facts = desk.hub.facts_of(pane);
     let chips = slot
         .borrow()
@@ -256,6 +263,13 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                     }
+                }
+            }
+            if let Some(ask) = clip_ask {
+                ClipboardConfirm {
+                    ask,
+                    on_allow:clipboard_answer(Rc::clone(&slot), ui, Grant::Allowed),
+                    on_refuse:clipboard_answer(Rc::clone(&slot), ui, Grant::Refused),
                 }
             }
             {pane_footer(pane, &desk, &slot, ui, &chrome, pending, shell)}

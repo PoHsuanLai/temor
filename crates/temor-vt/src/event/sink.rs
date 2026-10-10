@@ -2,7 +2,7 @@
 
 use std::sync::mpsc::Sender;
 
-use super::VtEvent;
+use super::{ClipboardAnswer, ClipboardRead, VtEvent};
 
 /// Receives [`VtEvent`]s. Called from inside `write` (and `resize`), on the calling thread, so it
 /// must not block and must be `Send` (the terminal moves between threads with it).
@@ -37,4 +37,13 @@ impl ReplySink for Sender<Vec<u8>> {
     fn reply(&self, bytes: &[u8]) {
         let _ = self.send(bytes.to_vec());
     }
+}
+
+/// Answers a program's clipboard reads (OSC 52 with `?`). libghostty wants the answer before the
+/// read returns, so it is given from what the host already holds, never by asking the window: an
+/// implementation reads a copy the host keeps up to date and returns at once. Same threading
+/// rules as [`EventSink`]. A terminal without a source refuses every read.
+pub trait ClipboardSource: Send {
+    /// The answer to `read`.
+    fn read(&self, read: &ClipboardRead) -> ClipboardAnswer;
 }

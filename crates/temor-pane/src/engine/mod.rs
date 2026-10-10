@@ -1,6 +1,7 @@
 //! The pane engine: a program on a pty, its terminal under one lock, and the I/O loop that joins
 //! them. The caller owns the threads: [`PaneRunner::run`] blocks until the program is reaped.
 
+mod clipboard;
 mod event;
 mod fed;
 mod fed_io;
@@ -14,6 +15,7 @@ mod term;
 mod watch;
 mod xfer;
 
+pub use clipboard::{ClipboardMirror, MIRROR_LIMIT, ReadPolicy};
 pub use event::{Hold, PaneEvent};
 pub use fed::{FedSpec, Feeder, PaneLink, start_fed};
 pub use handle::PaneHandle;

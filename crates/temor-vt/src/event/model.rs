@@ -21,6 +21,10 @@ pub enum VtEvent {
     /// The program wrote to a clipboard (OSC 52 and others). It was told the write succeeded;
     /// whether to perform it is the host's decision.
     Clipboard { write: ClipboardWrite },
+    /// The program asked to read a clipboard (OSC 52 with `?`) and the terminal's
+    /// [`crate::ClipboardSource`] said to ask the person first. The program was answered with
+    /// nothing; once the person allows reads, the next request is served.
+    ClipboardRead { read: ClipboardRead },
     /// A desktop notification (OSC 9, OSC 777).
     Notification(Notification),
     /// A progress report (OSC 9;4).
@@ -127,6 +131,41 @@ pub struct ClipboardWrite {
     /// The program's name for permission prompts, when the protocol carries one.
     pub program: String,
     pub grant: ClipboardGrant,
+}
+
+/// A program's request to read a clipboard.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClipboardRead {
+    pub location: ClipboardLocation,
+    /// The program's name for permission prompts, when the protocol carries one.
+    pub program: String,
+}
+
+/// What a [`crate::ClipboardSource`] answers a read with.
+#[derive(Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ClipboardAnswer {
+    /// The clipboard's text.
+    Text(String),
+    /// Allowed, and the clipboard holds no text.
+    Empty,
+    /// Not decided: the program gets nothing now and the host is sent a
+    /// [`VtEvent::ClipboardRead`] to ask the person.
+    Ask,
+    /// Refused: the program gets nothing.
+    Denied,
+}
+
+impl std::fmt::Debug for ClipboardAnswer {
+    // Clipboard contents stay out of logs and panics.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Text(text) => write!(f, "Text(<{} bytes>)", text.len()),
+            Self::Empty => f.write_str("Empty"),
+            Self::Ask => f.write_str("Ask"),
+            Self::Denied => f.write_str("Denied"),
+        }
+    }
 }
 
 /// A desktop notification. `title` is empty when the protocol has none (OSC 9).

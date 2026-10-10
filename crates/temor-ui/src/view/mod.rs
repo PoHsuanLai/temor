@@ -7,6 +7,7 @@ pub mod block_header;
 pub mod block_tools;
 pub mod blocks;
 pub mod card_colours;
+pub mod clipboard_ask;
 pub mod confirm;
 pub mod convert;
 pub mod dnd;

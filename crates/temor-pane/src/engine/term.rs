@@ -4,6 +4,7 @@
 
 use std::sync::mpsc::{Receiver, channel};
 
+use super::clipboard::ClipboardMirror;
 use crate::paste::PasteMode;
 use crate::text::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
@@ -31,6 +32,7 @@ pub struct Term {
     mouse: MouseEncoder,
     events: Receiver<VtEvent>,
     replies: Receiver<Vec<u8>>,
+    clipboard: ClipboardMirror,
 }
 
 impl Term {
@@ -89,13 +91,21 @@ impl Term {
         let mut terminal = make(config, sink, reply)?;
         palette.apply(&mut terminal)?;
         terminal.set_default_cursor_shape(Some(cursor))?;
+        let clipboard = ClipboardMirror::default();
+        terminal.set_clipboard_source(Box::new(clipboard.clone()));
         Ok(Self {
             terminal,
             keys: KeyEncoder::new()?,
             mouse: MouseEncoder::new()?,
             events,
             replies,
+            clipboard,
         })
+    }
+
+    /// The copy of the clipboard that answers the program's reads (OSC 52), and whether it may.
+    pub fn clipboard(&self) -> ClipboardMirror {
+        self.clipboard.clone()
     }
 
     /// The whole terminal encoded, to start a pane from later.

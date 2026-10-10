@@ -236,6 +236,7 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
         VtEvent::Bell => PaneEvent::Bell,
         VtEvent::Cwd(url) => PaneEvent::Cwd(url),
         VtEvent::Clipboard { write } => PaneEvent::Clipboard(write),
+        VtEvent::ClipboardRead { read } => PaneEvent::ClipboardRead(read),
         VtEvent::Notification(note) => PaneEvent::Notification(note),
         VtEvent::MarkBegin { seq } => PaneEvent::MarkBegin { seq },
         VtEvent::Prompt(mark) => PaneEvent::Prompt(mark),
@@ -247,7 +248,7 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
             PaneEvent::RenderHold(super::event::Hold::Released)
         }
         VtEvent::ProgramStatus(status) => PaneEvent::Program(status),
-        // Colour-scheme queries, clipboard reads and unknown sequences have no UI yet
+        // Colour-scheme queries and unknown sequences have no UI yet
         // (PLAN §4b, §9); they are dropped here, in one place.
         _ => return None,
     })
