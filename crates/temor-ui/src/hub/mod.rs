@@ -5,6 +5,10 @@
 
 mod act;
 mod desk;
+mod desktop;
+mod desktop_io;
+#[cfg(test)]
+mod desktop_tests;
 mod events;
 mod keys;
 mod model;
@@ -16,6 +20,7 @@ mod say;
 mod tests;
 
 pub use desk::Desk;
+pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;
 pub use keys::workspace_input;
 pub use model::{Hub, HubRef};

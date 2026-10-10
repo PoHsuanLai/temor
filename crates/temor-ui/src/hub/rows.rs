@@ -161,7 +161,7 @@ impl Hub {
     }
 
     /// What a pane is called: its program's title, else the last part of its folder, else "Shell".
-    fn pane_name(&self, pane: PaneId) -> String {
+    pub(super) fn pane_name(&self, pane: PaneId) -> String {
         let title = self
             .live(pane, |s| s.title().to_owned())
             .unwrap_or_default();
@@ -176,7 +176,11 @@ impl Hub {
     }
 
     /// Reads something from the pane's session, if it has one.
-    fn live<T>(&self, pane: PaneId, read: impl FnOnce(&crate::session::Session) -> T) -> Option<T> {
+    pub(super) fn live<T>(
+        &self,
+        pane: PaneId,
+        read: impl FnOnce(&crate::session::Session) -> T,
+    ) -> Option<T> {
         let slot = self.slots.get(&pane)?;
         let slot = slot.borrow();
         slot.session.as_ref().map(read)

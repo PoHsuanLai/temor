@@ -4,6 +4,8 @@
 
 mod ambient;
 pub mod clock;
+pub mod desktop_feed;
+pub mod desktop_port;
 pub mod git;
 mod keymap;
 pub mod notify;
