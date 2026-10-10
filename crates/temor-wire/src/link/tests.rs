@@ -54,8 +54,10 @@ fn a_huge_attempt_number_does_not_overflow() {
 
 #[test]
 fn the_transition_table() {
-    use LinkEffect::{Attach, Dial, WakeAt};
-    use LinkEvent::{AttemptFailed, Close, Lost, Reattached, Refused, SessionsChanged, Tick};
+    use LinkEffect::{Attach, Dial, DropLink, WakeAt};
+    use LinkEvent::{
+        AttemptFailed, Close, Lost, PingTimedOut, Reattached, Refused, SessionsChanged, Tick,
+    };
     let cases: Vec<(&str, LinkState, LinkEvent, LinkState, Vec<LinkEffect>)> = vec![
         (
             "a loss schedules an immediate first dial",
@@ -63,6 +65,27 @@ fn the_transition_table() {
             Lost { at: at(1_000) },
             backoff(1, 1_000, 0),
             vec![WakeAt(at(1_000))],
+        ),
+        (
+            "an unanswered ping on a live link drops it and redials at once",
+            connected(),
+            PingTimedOut { at: at(5_000) },
+            backoff(1, 5_000, 0),
+            vec![DropLink, WakeAt(at(5_000))],
+        ),
+        (
+            "a stale ping timeout while waiting changes nothing",
+            backoff(2, 1_200, 100),
+            PingTimedOut { at: at(1_100) },
+            backoff(2, 1_200, 100),
+            Vec::new(),
+        ),
+        (
+            "a stale ping timeout while dialing changes nothing",
+            reattaching(1),
+            PingTimedOut { at: at(1_100) },
+            reattaching(1),
+            Vec::new(),
         ),
         (
             "a tick at the due time starts the dial",

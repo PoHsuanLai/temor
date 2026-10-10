@@ -74,6 +74,14 @@ pub enum LinkEvent {
         /// When.
         at: Monotonic,
     },
+    /// A ping went unanswered for the whole of [`PingPolicy::within`](super::PingPolicy): the link
+    /// is open but stalled (a sleeping laptop, a dropped Wi-Fi). While connected it counts as a
+    /// loss, and the caller is told to drop the dead connection first. In any other state it is
+    /// a stale answer to a ping from an earlier connection and changes nothing.
+    PingTimedOut {
+        /// When.
+        at: Monotonic,
+    },
     /// A dial succeeded: the helper's greeting was agreed and the link is up.
     Reattached {
         /// When.
@@ -102,6 +110,8 @@ pub enum LinkEvent {
 pub enum LinkEffect {
     /// Deliver a `Tick` at or after this time.
     WakeAt(Monotonic),
+    /// Close the connection that stalled (kill its ssh process) before dialing again.
+    DropLink,
     /// Dial the host and run the handshake, for this attempt.
     Dial {
         /// The attempt.

@@ -5,10 +5,10 @@ use temor_wire::digest::ContentHash;
 use temor_wire::hello::{Capability, Hello, HelperVersion, ProtocolVersion};
 use temor_wire::ids::{RequestId, SessionId};
 use temor_wire::message::{
-    Event, FileChange, FileChanges, Message, RelPath, RemoteError, RemotePath, Reply, Request,
-    TrialVerdict, UncheckedWhy,
+    Event, FileChange, FileChanges, Message, PartEnd, RelPath, RemoteError, RemotePath, Reply,
+    Request, TrialVerdict, UncheckedWhy, WriteCheck, WriteMode,
 };
-use temor_wire::units::{ExitCode, Size};
+use temor_wire::units::{ByteOffset, ExitCode, Size};
 
 fn json(message: &Message) -> String {
     serde_json::to_string(message).unwrap()
@@ -40,13 +40,14 @@ fn a_request_with_fields_names_them() {
                 cols: temor_wire::units::Cols(80),
                 rows: temor_wire::units::Rows(24),
             },
+            cell: temor_wire::units::CellPx::DEFAULT,
         },
     };
     assert_eq!(
         json(&message),
         concat!(
             r#"{"Request":{"id":5,"body":{"ResizeSession":"#,
-            r#"{"session":1,"size":{"cols":80,"rows":24}}}}}"#
+            r#"{"session":1,"size":{"cols":80,"rows":24},"cell":{"width":8,"height":16}}}}}"#
         )
     );
 }
@@ -152,5 +153,40 @@ fn trial_verdicts_read_as_plan_three_names() {
     assert_eq!(
         json(&unchecked),
         r#"{"Response":{"id":8,"outcome":{"Ok":{"Verdict":{"Unchecked":"NoSandbox"}}}}}"#
+    );
+}
+
+#[test]
+fn ping_and_a_streamed_part_are_pinned() {
+    let ping = Message::Request {
+        id: RequestId(11),
+        body: Request::Ping,
+    };
+    assert_eq!(json(&ping), r#"{"Request":{"id":11,"body":"Ping"}}"#);
+    let pong = Message::Response {
+        id: RequestId(11),
+        outcome: Ok(Reply::Pong),
+    };
+    assert_eq!(
+        json(&pong),
+        r#"{"Response":{"id":11,"outcome":{"Ok":"Pong"}}}"#
+    );
+    let part = Message::Request {
+        id: RequestId(12),
+        body: Request::WriteFile {
+            path: RemotePath("/a".to_string()),
+            check: WriteCheck::MustBeNew,
+            mode: WriteMode::Part {
+                offset: ByteOffset(4096),
+                end: PartEnd::Last,
+            },
+        },
+    };
+    assert_eq!(
+        json(&part),
+        concat!(
+            r#"{"Request":{"id":12,"body":{"WriteFile":{"path":"/a","check":"MustBeNew","#,
+            r#""mode":{"Part":{"offset":4096,"end":"Last"}}}}}}"#
+        )
     );
 }

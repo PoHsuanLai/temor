@@ -17,6 +17,8 @@ pub(crate) const REQUEST_KINDS: &[&str] = &[
     "SendInput",
     "ListSessions",
     "SetIdleLimit",
+    "SetPalette",
+    "Ping",
     "ListPorts",
     "ListDir",
     "Stat",
@@ -33,7 +35,7 @@ pub(crate) const EVENT_KINDS: &[&str] = &["Output", "Exited", "Ports", "FileChan
 
 /// The reply kinds (the variants of `Reply`).
 pub(crate) const REPLY_KINDS: &[&str] = &[
-    "Ack", "Opened", "Attached", "Sessions", "Ports", "Listing", "Stat", "Read", "Written",
+    "Ack", "Pong", "Opened", "Attached", "Sessions", "Ports", "Listing", "Stat", "Read", "Written",
     "Watching", "Verdict", "Relayed",
 ];
 

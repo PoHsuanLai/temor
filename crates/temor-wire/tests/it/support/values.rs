@@ -6,12 +6,12 @@ use temor_wire::hello::{Capability, HelperVersion, ProtocolVersion};
 use temor_wire::ids::{RequestId, SessionId, TerminalId, WatchId};
 use temor_wire::message::{
     ChangeKind, EntryKind, EnvVar, ErrorLine, ExitStatus, FileChange, FileChanges, FileMeta,
-    FileStamp, IdleLimit, ListeningPort, Refusal, RelPath, RemotePath, SessionState, Truncation,
-    UncheckedWhy, WatchChange, WriteCheck,
+    FileStamp, IdleLimit, ListeningPort, Palette, PartEnd, Refusal, RelPath, RemotePath, Rgb,
+    SessionState, Truncation, UncheckedWhy, WatchChange, WriteCheck, WriteMode,
 };
 use temor_wire::units::{
-    ByteCount, ByteOffset, ByteRange, Cols, ExitCode, LineCount, LineNumber, Pid, Port, Rows,
-    Seconds, Size, UnixMillis,
+    ByteCount, ByteOffset, ByteRange, CellPx, Cols, ExitCode, LineCount, LineNumber, Pid, Pixels,
+    Port, Rows, Seconds, Size, UnixMillis,
 };
 
 pub fn text() -> impl Strategy<Value = String> {
@@ -219,4 +219,44 @@ pub fn exit_code() -> impl Strategy<Value = ExitCode> {
 
 pub fn byte_count() -> impl Strategy<Value = ByteCount> {
     any::<u64>().prop_map(ByteCount)
+}
+
+pub fn cell_px() -> impl Strategy<Value = CellPx> {
+    (any::<u16>(), any::<u16>()).prop_map(|(width, height)| CellPx {
+        width: Pixels(width),
+        height: Pixels(height),
+    })
+}
+
+pub fn rgb() -> impl Strategy<Value = Rgb> {
+    any::<[u8; 3]>().prop_map(|[r, g, b]| Rgb { r, g, b })
+}
+
+pub fn palette() -> impl Strategy<Value = Palette> {
+    (prop::array::uniform16(rgb()), rgb(), rgb(), rgb()).prop_map(
+        |(ansi, foreground, background, cursor)| Palette {
+            ansi,
+            foreground,
+            background,
+            cursor,
+        },
+    )
+}
+
+pub fn write_mode() -> impl Strategy<Value = WriteMode> {
+    prop_oneof![
+        Just(WriteMode::Whole),
+        (
+            any::<u64>(),
+            prop_oneof![
+                Just(PartEnd::More),
+                Just(PartEnd::Last),
+                Just(PartEnd::Abort)
+            ]
+        )
+            .prop_map(|(offset, end)| WriteMode::Part {
+                offset: ByteOffset(offset),
+                end,
+            }),
+    ]
 }

@@ -7,7 +7,9 @@ use super::*;
 use crate::digest::ContentHash;
 use crate::hello::{Capability, Hello, HelperVersion, ProtocolVersion};
 use crate::ids::{RequestId, SessionId, TerminalId, WatchId};
-use crate::units::{ByteCount, ByteOffset, ByteRange, Cols, Pid, Port, Rows, Size, UnixMillis};
+use crate::units::{
+    ByteCount, ByteOffset, ByteRange, CellPx, Cols, Pid, Port, Rows, Size, UnixMillis,
+};
 use std::collections::BTreeSet;
 
 fn size() -> Size {
@@ -28,6 +30,16 @@ fn stamp() -> FileStamp {
     }
 }
 
+fn palette() -> Palette {
+    let grey = Rgb { r: 9, g: 9, b: 9 };
+    Palette {
+        ansi: [grey; 16],
+        foreground: grey,
+        background: grey,
+        cursor: grey,
+    }
+}
+
 fn request_kind(value: &Request) -> &'static str {
     match value {
         Request::OpenSession(_) => "OpenSession",
@@ -38,6 +50,8 @@ fn request_kind(value: &Request) -> &'static str {
         Request::SendInput { .. } => "SendInput",
         Request::ListSessions => "ListSessions",
         Request::SetIdleLimit { .. } => "SetIdleLimit",
+        Request::SetPalette { .. } => "SetPalette",
+        Request::Ping => "Ping",
         Request::ListPorts => "ListPorts",
         Request::ListDir { .. } => "ListDir",
         Request::Stat { .. } => "Stat",
@@ -57,6 +71,8 @@ fn request_samples() -> Vec<Request> {
             cwd: path(),
             env: vec![],
             size: size(),
+            cell: CellPx::DEFAULT,
+            palette: Some(palette()),
         }),
         Request::AttachSession {
             session: SessionId(1),
@@ -70,6 +86,7 @@ fn request_samples() -> Vec<Request> {
         Request::ResizeSession {
             session: SessionId(1),
             size: size(),
+            cell: CellPx::DEFAULT,
         },
         Request::SendInput {
             session: SessionId(1),
@@ -78,6 +95,11 @@ fn request_samples() -> Vec<Request> {
         Request::SetIdleLimit {
             limit: IdleLimit::Never,
         },
+        Request::SetPalette {
+            session: SessionId(1),
+            palette: palette(),
+        },
+        Request::Ping,
         Request::ListPorts,
         Request::ListDir { path: path() },
         Request::Stat { path: path() },
@@ -91,6 +113,7 @@ fn request_samples() -> Vec<Request> {
         Request::WriteFile {
             path: path(),
             check: WriteCheck::Overwrite,
+            mode: WriteMode::Whole,
         },
         Request::Watch { path: path() },
         Request::Unwatch { watch: WatchId(1) },
@@ -141,6 +164,7 @@ fn event_samples() -> Vec<Event> {
 fn reply_kind(value: &Reply) -> &'static str {
     match value {
         Reply::Ack => "Ack",
+        Reply::Pong => "Pong",
         Reply::Opened { .. } => "Opened",
         Reply::Attached { .. } => "Attached",
         Reply::Sessions(_) => "Sessions",
@@ -158,6 +182,7 @@ fn reply_kind(value: &Reply) -> &'static str {
 fn reply_samples() -> Vec<Reply> {
     vec![
         Reply::Ack,
+        Reply::Pong,
         Reply::Opened {
             session: SessionId(1),
         },

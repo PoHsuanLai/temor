@@ -10,6 +10,7 @@ mod event;
 mod files;
 mod incoming;
 mod kinds;
+mod palette;
 mod ports;
 mod relay;
 mod remote_error;
@@ -20,8 +21,12 @@ mod trial;
 
 pub use envelope::Message;
 pub use event::Event;
-pub use files::{DirEntry, EntryKind, FileMeta, FileStamp, RemotePath, WatchChange, WriteCheck};
+pub use files::{
+    DirEntry, EntryKind, FileMeta, FileStamp, PartEnd, RemotePath, WatchChange, WriteCheck,
+    WriteMode,
+};
 pub use incoming::{Frame, Incoming};
+pub use palette::{Palette, Rgb};
 pub use ports::ListeningPort;
 pub use relay::{RelayCall, RelayReply, Truncation};
 pub use remote_error::{Refusal, RemoteError};

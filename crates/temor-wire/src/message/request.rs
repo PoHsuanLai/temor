@@ -1,11 +1,12 @@
 //! Requests: everything temor asks the helper to do.
 
-use super::files::{RemotePath, WriteCheck};
+use super::files::{RemotePath, WriteCheck, WriteMode};
+use super::palette::Palette;
 use super::relay::RelayCall;
 use super::session::{IdleLimit, OpenSession};
 use super::trial::TrialRequest;
 use crate::ids::{SessionId, WatchId};
-use crate::units::{ByteRange, Size};
+use crate::units::{ByteRange, CellPx, Size};
 use serde::{Deserialize, Serialize};
 
 /// What temor asks for. Requests that carry bytes say so: the bytes are the frame's payload.
@@ -36,12 +37,25 @@ pub enum Request {
         session: SessionId,
         /// The new size.
         size: Size,
+        /// One cell in pixels. A client that sends none gets 8 by 16.
+        #[serde(default)]
+        cell: CellPx,
     },
     /// Input for a session. The payload is the bytes. Replies `Ack`.
     SendInput {
         /// The session.
         session: SessionId,
     },
+    /// Set the colours a session's terminal answers colour queries with. Replies `Ack`.
+    SetPalette {
+        /// The session.
+        session: SessionId,
+        /// The window's colours.
+        palette: Palette,
+    },
+    /// Ask whether the helper is still there. Replies [`Reply::Pong`](super::Reply::Pong). Needs
+    /// no capability, and is answered ahead of file requests that are still running.
+    Ping,
     /// List the person's sessions. Replies [`Reply::Sessions`](super::Reply::Sessions).
     ListSessions,
     /// Set how long detached sessions are kept. Replies `Ack`.
@@ -68,12 +82,17 @@ pub enum Request {
         /// The span.
         range: ByteRange,
     },
-    /// Write a file. The payload is the new contents. Replies `Written` or a `Conflict`.
+    /// Write a file. The payload is the new contents, or one part of them (see [`WriteMode`]).
+    /// Replies `Written` or a `Conflict`; a part that is not the last replies `Ack`.
     WriteFile {
         /// The file.
         path: RemotePath,
-        /// What must be there first.
+        /// What must be there first. Checked when the file is replaced, so for parts on the
+        /// last one.
         check: WriteCheck,
+        /// Whole, or one part of a streamed upload. Missing means whole.
+        #[serde(default)]
+        mode: WriteMode,
     },
     /// Watch a path for changes. Replies `Watching`.
     Watch {

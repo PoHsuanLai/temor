@@ -1,8 +1,9 @@
 //! Sessions: the shells and programs temor runs on the host.
 
 use super::files::RemotePath;
+use super::palette::Palette;
 use crate::ids::SessionId;
-use crate::units::{ExitCode, Seconds, Size};
+use crate::units::{CellPx, ExitCode, Seconds, Size};
 use serde::{Deserialize, Serialize};
 
 /// One environment variable for a session or a relayed command.
@@ -34,6 +35,14 @@ pub struct OpenSession {
     pub env: Vec<EnvVar>,
     /// The starting size.
     pub size: Size,
+    /// One cell in pixels, for the program's pixel size reports and its terminal's window size.
+    /// A client that sends none gets 8 by 16.
+    #[serde(default)]
+    pub cell: CellPx,
+    /// The window's colours, so a program that asks for them at start already gets the right
+    /// answer. `None` keeps the terminal's defaults until [`Request::SetPalette`](super::Request).
+    #[serde(default)]
+    pub palette: Option<Palette>,
 }
 
 /// Whether a session has a client on it right now.

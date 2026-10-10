@@ -21,6 +21,35 @@ pub struct Size {
     pub rows: Rows,
 }
 
+/// A length in device pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Pixels(pub u16);
+
+/// The size of one terminal cell in pixels, which programs on the host ask for (pixel size
+/// reports, image placement) and which a pseudo-terminal carries in its window size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CellPx {
+    /// A cell's width.
+    pub width: Pixels,
+    /// A cell's height.
+    pub height: Pixels,
+}
+
+impl CellPx {
+    /// What the helper assumed before the window sent a size: 8 by 16.
+    pub const DEFAULT: Self = Self {
+        width: Pixels(8),
+        height: Pixels(16),
+    };
+}
+
+impl Default for CellPx {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 /// A count of bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
