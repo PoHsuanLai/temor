@@ -14,10 +14,6 @@ use temor_ui::view::window_style::WINDOW_CSS;
 use super::support::tools_present;
 use super::window::harness;
 
-/// Classes quire's own components draw that no stylesheet defines: quire styles them inline (the
-/// texture layer's box). Ours are never on this list; quire is asked to define them (FOLLOWUPS).
-const QUIRE_INLINE_CLASSES: &[&str] = &["ds-texture-layer"];
-
 /// What `markup` needs to know is styled: quire's own stylesheet, plus the window's.
 fn window_css() -> String {
     format!("{}\n{WINDOW_CSS}", ds::stylesheet())
@@ -53,11 +49,6 @@ fn rendered_markup_uses_only_styled_classes() {
     let unstyled: Vec<_> = offences
         .iter()
         .filter(|offence| offence.rule == Rule::UnstyledClass)
-        .filter(|offence| {
-            !QUIRE_INLINE_CLASSES
-                .iter()
-                .any(|c| offence.text.contains(c))
-        })
         .collect();
     assert!(unstyled.is_empty(), "{unstyled:#?}\nin:\n{html}");
 }

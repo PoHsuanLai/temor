@@ -58,8 +58,8 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
 }
 
 /// A ⌘ chord that no binding uses and the program must not see: Super without Ctrl on a letter,
-/// or the Ctrl+Shift form keycap sends for ⌘ on a letter, digit or punctuation key. Super digits
-/// and Super+Space are the shell's (PLAN §6), so they keep their old route.
+/// or the Ctrl+Shift form keycap sends for ⌘ on a letter, digit or punctuation key. Super+Space
+/// and Super+Tab are the shell's (PLAN §6) and never reach the window.
 fn is_unbound_command_letter(chord: &Chord) -> bool {
     use temor_pane::keys::ChordKey;
     match chord.key {

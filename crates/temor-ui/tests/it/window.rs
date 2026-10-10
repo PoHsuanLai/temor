@@ -293,7 +293,6 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
 /// The shell ends, the person presses Restart, and the window carries on (Blitz once panicked in
 /// `absolute_position` for a node that was gone). Frames keep running past the tooltip delay.
 #[test]
-#[ignore = "Blitz panics measuring a live control whose layout parent was freed (node.rs:1573, through quire's hover card follow_rect); reported to quire 2026-10-10"]
 fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
     if !super::support::tools_present() {
         return;
