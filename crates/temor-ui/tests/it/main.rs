@@ -11,6 +11,7 @@ mod blocks;
 mod cards;
 mod coherence;
 mod desktop;
+mod offer;
 mod persist;
 mod session;
 mod shelf;

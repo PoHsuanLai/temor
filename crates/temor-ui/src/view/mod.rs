@@ -18,6 +18,7 @@ pub mod host_words;
 pub mod ime;
 pub mod launch;
 pub mod miniature;
+pub mod offer;
 pub mod palette;
 pub mod pane_view;
 pub mod pointer;

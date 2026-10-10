@@ -11,6 +11,7 @@ mod keys;
 mod lifecycle;
 mod marks;
 mod model;
+mod offer;
 mod pointer;
 mod read;
 
