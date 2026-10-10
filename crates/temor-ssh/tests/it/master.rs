@@ -53,3 +53,17 @@ fn a_probe_reads_the_exit_of_ssh_dash_o_check() {
         assert_eq!(got, want, "{name}");
     }
 }
+
+#[test]
+fn a_directory_of_ours_with_no_read_permission_is_tightened_not_refused() {
+    let s = scratch();
+    let layout = layout_in(&s.work);
+    prepare_control_dirs(&layout).expect("first");
+    let socket_dir = layout.socket_dir();
+    for mode in [0o300, 0o000, 0o755] {
+        fs::set_permissions(&socket_dir, fs::Permissions::from_mode(mode)).expect("chmod");
+        prepare_control_dirs(&layout).unwrap_or_else(|err| panic!("{mode:o}: {err}"));
+        let now = fs::metadata(&socket_dir).expect("dir").permissions().mode() & 0o777;
+        assert_eq!(now, 0o700, "from {mode:o}");
+    }
+}

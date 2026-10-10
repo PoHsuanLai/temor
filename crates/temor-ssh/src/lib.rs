@@ -66,7 +66,8 @@ pub use bootstrap::{
 pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use config::{
     ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
-    IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, known_host_names, load_host_list,
+    IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal,
+    known_host_names, load_host_list,
 };
 pub use error::SshError;
 pub use files::{

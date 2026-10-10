@@ -59,6 +59,9 @@ pub enum EditStatus {
     Saving,
     /// The host's file changed since it was fetched: the person chooses.
     Changed,
+    /// The host's file was written again since it was fetched, yet its time and size read the
+    /// same (only the helper can tell): the person chooses.
+    Rewritten,
     /// The host's file was removed since it was fetched: the person chooses.
     Deleted,
     /// A call failed; saving again tries again.
@@ -92,6 +95,9 @@ fn status_of(state: Edit, asking: Option<Found>) -> EditStatus {
         (Edit::Open { .. }, _) => EditStatus::Open,
         (Edit::Checking { .. } | Edit::Uploading { .. }, _) => EditStatus::Saving,
         (Edit::Conflict { .. }, Some(Found::Deleted)) => EditStatus::Deleted,
+        (Edit::Conflict { base, .. }, Some(Found::Changed(now))) if base == now => {
+            EditStatus::Rewritten
+        }
         (Edit::Conflict { .. }, _) => EditStatus::Changed,
         (Edit::Stalled { .. }, _) => EditStatus::Stalled,
         (Edit::Broken(_) | Edit::Closed, _) => EditStatus::Broken,
@@ -184,5 +190,42 @@ impl HubRef {
     /// What to show for `pane`, when it is a session on a host.
     pub fn host_view(&self, pane: PaneId) -> Option<HostView> {
         self.0.borrow().host_view(pane)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use temor_ssh::{ByteCount, RemoteStat, UnixSeconds};
+
+    #[test]
+    fn a_conflict_reads_as_changed_rewritten_or_removed() {
+        let stat = |secs, size| RemoteStat {
+            mtime: UnixSeconds(secs),
+            size: ByteCount(size),
+        };
+        let base = stat(10, 5);
+        let conflict = |found| Edit::Conflict { base, found };
+        let cases = [
+            (
+                "later time",
+                Found::Changed(stat(11, 5)),
+                EditStatus::Changed,
+            ),
+            (
+                "other size",
+                Found::Changed(stat(10, 6)),
+                EditStatus::Changed,
+            ),
+            (
+                "same time and size",
+                Found::Changed(base),
+                EditStatus::Rewritten,
+            ),
+            ("removed", Found::Deleted, EditStatus::Deleted),
+        ];
+        for (name, found, want) in cases {
+            assert_eq!(status_of(conflict(found), Some(found)), want, "{name}");
+        }
     }
 }

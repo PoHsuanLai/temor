@@ -53,6 +53,9 @@ pub fn edit_line(name: &str, status: EditStatus) -> String {
         EditStatus::Open => "open in your editor",
         EditStatus::Saving => "saving",
         EditStatus::Changed => "changed on the computer since you opened it",
+        EditStatus::Rewritten => {
+            "rewritten on the computer since you opened it (same time and size, other contents)"
+        }
         EditStatus::Deleted => "removed from the computer since you opened it",
         EditStatus::Stalled => "couldn't be saved; save again to retry",
         EditStatus::Broken => "couldn't be opened",
@@ -90,6 +93,7 @@ mod tests {
         .flatten()
         .chain([
             edit_line("prod:/a", EditStatus::Changed),
+            edit_line("prod:/a", EditStatus::Rewritten),
             forward_line("prod", 3000, Some(3001)),
         ])
         .collect();

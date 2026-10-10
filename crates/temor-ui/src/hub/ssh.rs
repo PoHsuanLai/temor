@@ -114,6 +114,10 @@ pub(super) struct SshHub {
     pub intent: Option<HostAlias>,
     pub edits: BTreeMap<EditId, RemoteEdit>,
     pub next_edit: u64,
+    /// Files asked for on a host that was not connected yet; they open once it is.
+    pub waiting: Vec<super::ssh_wait::WaitingEdit>,
+    /// Hosts of panes in tabs kept for reopening.
+    pub closed: BTreeMap<PaneId, HostAlias>,
     pub opener: Box<dyn Opener>,
     pub file_opener: Box<dyn FileShell>,
     /// Where the last tick polled the connections, to space the probes.
@@ -139,6 +143,8 @@ impl SshHub {
             intent: None,
             edits: BTreeMap::new(),
             next_edit: 1,
+            waiting: Vec::new(),
+            closed: BTreeMap::new(),
             opener: default_opener(),
             file_opener: default_file_shell(),
             ticks: 0,

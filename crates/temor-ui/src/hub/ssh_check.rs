@@ -19,6 +19,7 @@ impl Hub {
     /// The scan is fed what the pane's terminal shows (the pane engine does not hand out the raw
     /// bytes it reads); a link on screen is the same link, and a redraw of it is reported once.
     pub(super) fn ssh_scan(&mut self, painted: &BTreeSet<PaneId>) {
+        let mut news = Vec::new();
         for pane in painted {
             let Some(host) = self.ssh.panes.get_mut(pane) else {
                 continue;
@@ -33,10 +34,14 @@ impl Hub {
             let Some(screen) = screen else { continue };
             for event in scan.feed(format!("{screen}\n").as_bytes()) {
                 if let PreShellEvent::ConfirmInBrowser(url) = event {
+                    if host.check == Check::Nothing {
+                        news.push(*pane);
+                    }
                     host.check = Check::Shown(url);
                 }
             }
         }
+        self.host_attention(news);
     }
 
     /// The shell started (its first folder report): the check, if any, is over.

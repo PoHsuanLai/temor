@@ -1,6 +1,7 @@
 //! `~/.ssh/config` into host rows (PLAN §9b): lenient parsing, `Include` with globs, `Host`
 //! patterns with `!` negation, and `Match` blocks skipped with a note.
 
+mod argv_values;
 mod fs;
 mod glob;
 mod include;
@@ -19,6 +20,7 @@ mod tests_files;
 #[cfg(test)]
 mod tests_misc;
 
+pub use argv_values::is_ipv6_literal;
 pub use fs::FsConfigFiles;
 pub use include::{ConfigFiles, ConfigPaths};
 pub use known_hosts::known_host_names;

@@ -14,7 +14,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
-use super::remote_edit::{Job, Overwrite};
+use super::remote_edit::{EditTier, Job, Overwrite};
 use super::ssh::{Opened, RemoteEdit};
 use crate::edge::ssh_work::EditId;
 use crate::platform::ensure_private_dir;
@@ -50,6 +50,15 @@ pub(super) fn stamp_of(path: &Path) -> Option<LocalStamp> {
     })
 }
 
+/// Removes a local copy and the folder made for it. Already gone is as good as removed.
+fn forget_copy(local: &Path) {
+    let _ = std::fs::remove_file(local);
+    if let Some(dir) = local.parent() {
+        // Only an empty folder goes: the person may have saved something beside the copy.
+        let _ = std::fs::remove_dir(dir);
+    }
+}
+
 fn fault_words(host: &HostAlias, fault: EditFault) -> String {
     let host = host.as_str();
     match fault {
@@ -80,13 +89,15 @@ impl Hub {
                 .push("Name the file like computer:/folder/file".to_owned());
             return;
         };
-        let Ok(tier) = self.edit_tier(&host) else {
-            self.notices.push(format!(
-                "Open a session on {} first, then edit its files",
-                host.as_str()
-            ));
-            return;
-        };
+        match self.edit_tier(&host) {
+            Ok(tier) => self.begin_edit(host, path, tier),
+            // Not connected: connect, then open.
+            Err(_) => self.edit_when_up(host, path),
+        }
+    }
+
+    /// Fetches `path` of `host` to a private local copy and opens it.
+    pub(super) fn begin_edit(&mut self, host: HostAlias, path: RemoteFilePath, tier: EditTier) {
         let id = EditId(self.ssh.next_edit);
         self.ssh.next_edit = self.ssh.next_edit.saturating_add(1);
         let dir = self.ssh.env.edit_dir.join(id.0.to_string());
@@ -151,7 +162,11 @@ impl Hub {
                         }
                     }
                 }
-                EditOut::AskConflict(found) => edit.asking = Some(found),
+                EditOut::AskConflict(found) => {
+                    edit.asking = Some(found);
+                    let panes = self.ssh.panes_on(&host);
+                    self.host_attention(panes);
+                }
                 EditOut::Saved => {
                     self.notices
                         .push(format!("Saved {} to {}", path.as_str(), host.as_str()))
@@ -172,10 +187,13 @@ impl Hub {
         self.on_edit(id, EditIn::Resolved(choice));
     }
 
-    /// The person is done with the edit; the local copy is left where it is.
+    /// The person is done with the edit; its local copy goes (a save that has not reached the
+    /// host yet is the person's to finish first).
     pub fn close_edit(&mut self, id: EditId) {
         self.on_edit(id, EditIn::Closed);
-        self.ssh.edits.remove(&id);
+        if let Some(edit) = self.ssh.edits.remove(&id) {
+            forget_copy(&edit.local);
+        }
     }
 
     /// Polls the local copies: a settled save goes on to the host.

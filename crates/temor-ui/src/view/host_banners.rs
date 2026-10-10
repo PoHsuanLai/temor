@@ -195,7 +195,10 @@ fn Forwarded(pane: PaneId, host: String, line: ForwardLine, desk: Desk) -> Eleme
 fn Edited(edit: EditLine, desk: Desk) -> Element {
     let text = edit_line(&edit.name, edit.status);
     let id: EditId = edit.id;
-    let asking = matches!(edit.status, EditStatus::Changed | EditStatus::Deleted);
+    let asking = matches!(
+        edit.status,
+        EditStatus::Changed | EditStatus::Rewritten | EditStatus::Deleted
+    );
     let (done, over, theirs, later) = (desk.clone(), desk.clone(), desk.clone(), desk);
     if asking {
         return rsx! {
@@ -228,7 +231,7 @@ fn Edited(edit: EditLine, desk: Desk) -> Element {
             Label { text, style: LabelStyle::Caption }
             Button {
                 label: "Done".to_owned(),
-                title: Some("Stop watching this copy".to_owned()),
+                title: Some("Stop watching and delete this copy".to_owned()),
                 onclick: move |_| done.host_close_edit(id),
             }
         }

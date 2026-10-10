@@ -56,6 +56,7 @@ mod ssh_master;
 #[cfg(test)]
 mod ssh_tests;
 mod ssh_view;
+mod ssh_wait;
 #[cfg(test)]
 mod tests;
 mod transfers;

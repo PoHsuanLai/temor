@@ -21,6 +21,7 @@ pub mod remote_attach;
 pub mod remote_calls;
 pub mod remote_conn;
 pub mod remote_edit;
+pub mod remote_edit_stream;
 pub mod remote_event;
 pub mod remote_grants;
 pub mod remote_hold;

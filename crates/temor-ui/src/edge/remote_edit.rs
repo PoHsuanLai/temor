@@ -13,6 +13,7 @@ use temor_wire::message::{EntryKind, FileStamp, RemoteError, RemotePath, WriteCh
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::remote_conn::Conn;
+use super::remote_edit_stream::fetch_to;
 use super::ssh_work::{EditId, SshEvent};
 
 /// The host's file as the edit's steps count it: whole seconds and the length.
@@ -72,19 +73,17 @@ impl HelperEdits {
         }
     }
 
-    /// Reads the host's file whole into `local`, then reports `Fetched`, `FetchGone` or a fault.
+    /// Copies the host's file into `local` (a big one a chunk at a time), then reports
+    /// `Fetched`, `FetchGone` or a fault.
     pub fn fetch(&self, id: EditId, conn: Arc<Conn>, path: RemotePath, local: PathBuf) {
         self.run(id, move |report| {
-            let input = match conn.client().read_all(&path) {
-                Ok((stamp, bytes)) => match std::fs::write(&local, &bytes) {
-                    Ok(()) => {
-                        report.seen(stamp);
-                        EditIn::Fetched {
-                            stat: stat_of(stamp, bytes.len() as u64),
-                        }
+            let input = match fetch_to(conn.client(), &path, &local) {
+                Ok((stamp, len)) => {
+                    report.seen(stamp);
+                    EditIn::Fetched {
+                        stat: stat_of(stamp, len),
                     }
-                    Err(_) => EditIn::Failed(EditFault::Refused),
-                },
+                }
                 Err(error) => match fault_of(&error) {
                     EditFault::Gone => EditIn::FetchGone,
                     fault => EditIn::Failed(fault),
@@ -111,8 +110,9 @@ impl HelperEdits {
         });
     }
 
-    /// Writes `local` over the host's file if it still passes `check`. A file that changed since
-    /// it was read is reported as `Conflicted`, and the host's file is left as it is.
+    /// Writes `local` over the host's file if it still passes `check` (a big one streams in
+    /// parts). A file that changed since it was read is reported as `Conflicted`, and the host's
+    /// file is left as it is.
     pub fn store(
         &self,
         id: EditId,
@@ -121,15 +121,15 @@ impl HelperEdits {
         check: WriteCheck,
     ) {
         self.run(id, move |report| {
-            let Ok(bytes) = std::fs::read(&local) else {
+            let Ok(len) = std::fs::metadata(&local).map(|meta| meta.len()) else {
                 report.edit(EditIn::Failed(EditFault::Refused));
                 return;
             };
-            let input = match conn.client().write_file(&path, check, &bytes) {
+            let input = match conn.client().upload(&local, &path, check) {
                 Ok(stamp) => {
                     report.seen(stamp);
                     EditIn::Stored {
-                        stat: stat_of(stamp, bytes.len() as u64),
+                        stat: stat_of(stamp, len),
                     }
                 }
                 Err(error) => match conflict_of(&error) {
