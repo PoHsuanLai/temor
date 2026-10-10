@@ -14,15 +14,15 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment). v0.3.7.
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "7ce3a8572224e97c6cede443649cddfbe06dc84d" }  # v0.3.9
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "faecc7ad7349e97cdc496f6b65081e67b8d5fedf" }  # v0.3.12
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -67,11 +67,11 @@ chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62
 # docket 7457399 locks porter 3356848, so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "f0ebaecdd8212b3bfa64756de35dd03d98f4a00e", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "f0ebaecdd8212b3bfa64756de35dd03d98f4a00e" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243", default-features = false, features = ["dbus"] }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "864c03d57ef7c6dbcd0d1ce4be1d2e667bdc52b2", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "864c03d57ef7c6dbcd0d1ce4be1d2e667bdc52b2" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "a83b575bd196fa588bfe2140f1f5a5fc469f8be3" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "a83b575bd196fa588bfe2140f1f5a5fc469f8be3" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "a83b575bd196fa588bfe2140f1f5a5fc469f8be3", default-features = false, features = ["dbus"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
