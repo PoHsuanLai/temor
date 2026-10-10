@@ -107,7 +107,13 @@ impl BarModel {
     /// The highlight moved to `index` (the arrows, or the pointer): the palette keeps it where
     /// the rows end.
     pub fn selecting(self, index: usize) -> BarModel {
-        let rows = self.rows().len();
+        self.selecting_among(index, 0)
+    }
+
+    /// The highlight moved to `index` among the bar's rows and `extra` more rows the window lists
+    /// after them (a viewer's commands), which the bar does not rank.
+    pub fn selecting_among(self, index: usize, extra: usize) -> BarModel {
+        let rows = self.rows().len() + extra;
         let palette = match self.palette {
             PaletteState::Open { query, .. } => {
                 PaletteState::open(query, PaletteIndex(index.min(rows.saturating_sub(1))))
