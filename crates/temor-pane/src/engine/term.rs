@@ -203,10 +203,9 @@ impl Term {
             .collect();
         Ok(RowText {
             cells,
-            wrap: if self.terminal.row_wraps(row)? {
-                Wrap::Continues
-            } else {
-                Wrap::Ends
+            wrap: match self.terminal.row_wraps(row)? {
+                temor_vt::Wrap::Continues => Wrap::Continues,
+                _ => Wrap::Ends,
             },
         })
     }

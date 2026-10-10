@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use temor_vt::{
     ClipboardAnswer, ClipboardRead, ClipboardSource, EventSink, GridSize, ReplySink, Terminal,
-    TerminalConfig, VtEvent,
+    TerminalConfig, VtEvent, Wrap,
 };
 
 use crate::support::{drain, fixture, term, term_with_replies};
@@ -191,12 +191,14 @@ fn paste_safety_is_libghostty_s_check() {
 fn a_soft_wrapped_row_is_reported_as_wrapped() {
     let (mut t, _events) = term(10, 4);
     t.write(b"abcdefghijklmno\r\nxyz");
-    assert!(
+    assert_eq!(
         t.row_wraps(0).expect("row 0"),
+        Wrap::Continues,
         "the first row continues on the second"
     );
-    assert!(
-        !t.row_wraps(1).expect("row 1"),
+    assert_eq!(
+        t.row_wraps(1).expect("row 1"),
+        Wrap::Ends,
         "the second row ends with a hard break"
     );
 }

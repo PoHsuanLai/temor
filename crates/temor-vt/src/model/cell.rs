@@ -103,6 +103,16 @@ impl StyleFlags {
     }
 }
 
+/// Whether a screen row continues on the next one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Wrap {
+    /// The row ends its line: the next row starts a new one.
+    Ends,
+    /// The row is soft-wrapped: the next row carries on the same line.
+    Continues,
+}
+
 /// A cell's text attributes. Colours are resolved separately on [`CellView`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct CellStyle {
