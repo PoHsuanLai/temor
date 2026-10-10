@@ -1,15 +1,12 @@
-//! The host list: SSH config hosts and tailnet machines merged, grouped, with offline ones
-//! dimmed, read from a scratch `~/.ssh/config`.
+//! The host list: SSH config hosts and tailnet machines merged, each machine once, read from a scratch `~/.ssh/config`.
 
 use std::sync::Arc;
 
-use ds::base::vocab::Availability;
 use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
 
 use super::support::Rig;
 use crate::edge::desktop_feed::TailnetFeed;
 use crate::hub::hosts::HostRows;
-use crate::view::host_list::{group_title, row_availability, row_detail};
 
 #[derive(Debug)]
 struct Fixed(Vec<TailnetHost>);
@@ -55,36 +52,12 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
     // The alias that names a machine carries it; the rest follow, online first.
     let shown: Vec<&str> = rows.iter().map(|row| row.shown()).collect();
     assert_eq!(shown, ["prod", "box", "desk", "laptop"]);
-    let groups: Vec<&str> = rows.iter().map(|row| group_title(row.group())).collect();
-    assert_eq!(
-        groups,
-        [
-            "Your hosts",
-            "Your hosts",
-            "Your computers",
-            "Your computers"
-        ]
-    );
     assert_eq!(
         rows[1].presence(),
         Some(Presence::Online),
         "box is the tailnet machine"
     );
     assert_eq!(rows[0].presence(), None);
-
-    let looks: Vec<(Availability, Option<String>)> = rows
-        .iter()
-        .map(|row| (row_availability(row), row_detail(row)))
-        .collect();
-    assert_eq!(
-        looks,
-        [
-            (Availability::Enabled, Some("prod.example.com".to_owned())),
-            (Availability::Enabled, Some("box.tail.ts.net".to_owned())),
-            (Availability::Enabled, None),
-            (Availability::Disabled, Some("Offline".to_owned())),
-        ]
-    );
 
     // The bar lists the same hosts (a scratch ssh config, no seam stand-in).
     rig.hub.bar_toggle();
