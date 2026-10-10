@@ -64,7 +64,7 @@ pub use session_file::{
     load_for as load_session_for, load_hosts, remove_for as remove_session_for, resolve_state_dir,
     save as save_session, save_for as save_session_for, save_with_hosts,
 };
-pub use settings_file::load_settings;
+pub use settings_file::{ThemeChoice, load_settings, read_theme_choice, theme_choice};
 pub use space_start::{CredentialFault, CredentialSource, Credentials, NoCredentials};
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
 pub use ssh_env::{ArcRunner, SshEnv};
