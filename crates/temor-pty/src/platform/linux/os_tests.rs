@@ -31,6 +31,9 @@ fn write_proc(root: &Path, procs: &[Proc], children_of_shell: &str) {
     .expect("children");
 }
 
+/// A case: name, shell, the processes, the group, and the name wanted.
+type Case<'a> = (&'a str, &'a str, Vec<Proc>, i32, Option<&'a str>);
+
 #[test]
 fn a_pipeline_is_named_for_its_last_command() {
     let shell = Proc {
@@ -40,7 +43,7 @@ fn a_pipeline_is_named_for_its_last_command() {
     };
     let job = |pid, comm, group| Proc { pid, comm, group };
     // (name, children of the shell, processes besides the shell, the foreground group, the name)
-    let cases: Vec<(&str, &str, Vec<Proc>, i32, Option<&str>)> = vec![
+    let cases: Vec<Case> = vec![
         (
             "three commands",
             "11 12 13",

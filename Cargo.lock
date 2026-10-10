@@ -6673,6 +6673,7 @@ dependencies = [
  "ds-harness",
  "ds-lint",
  "ds-settings",
+ "png",
  "rustix",
  "serde_json",
  "temor-core",

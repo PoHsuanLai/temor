@@ -132,6 +132,7 @@ mod tests {
         let cache = HostCache::default();
         let loads = Cell::new(0);
         let mut disk: BTreeMap<&str, u64> = BTreeMap::from([("/c", 1), ("/inc", 1), ("/other", 1)]);
+        #[allow(clippy::type_complexity)]
         let rows: [(&str, Option<(&'static str, u64)>, i32); 6] = [
             ("first read", None, 1),
             ("nothing changed", None, 1),

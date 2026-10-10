@@ -6,7 +6,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use dioxus::prelude::Readable;
+use dioxus::prelude::ReadableExt;
 use ds::components::app::spaces::SpaceId;
 use temor_core::bar::{SpaceEntry, space_entries};
 
@@ -34,6 +34,12 @@ pub struct KitSpaces {
     pending: PendingSwitch,
 }
 
+impl std::fmt::Debug for KitSpaces {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KitSpaces").finish_non_exhaustive()
+    }
+}
+
 impl KitSpaces {
     pub fn new(handle: SpacesOf, pending: PendingSwitch) -> KitSpaces {
         KitSpaces { handle, pending }
@@ -42,7 +48,7 @@ impl KitSpaces {
 
 impl SpaceRows for KitSpaces {
     fn spaces(&self) -> Vec<SpaceEntry> {
-        space_entries(self.handle.spaces().read().list())
+        space_entries(self.handle.spaces().peek().list())
     }
 
     fn go_to(&self, space: SpaceId) -> Result<(), String> {

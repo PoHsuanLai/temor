@@ -20,6 +20,12 @@ pub struct GridPointer {
     pub left: Box<dyn FnMut(PointerEvent)>,
 }
 
+impl std::fmt::Debug for GridPointer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GridPointer").finish_non_exhaustive()
+    }
+}
+
 /// The grid's pointer handlers over the pane's `slot`. `mouse_down` is the pane's own press.
 pub fn grid_pointer(
     slot: &Rc<RefCell<Slot>>,

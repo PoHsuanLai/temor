@@ -10,10 +10,10 @@ use crate::hub::ssh_view::Stage;
 
 /// Types `text` into the pane.
 fn type_into(rig: &Rig, pane: temor_core::vocab::ids::PaneId, text: &str) {
-    if let Some(slot) = rig.hub.slots.get(&pane) {
-        if let Some(session) = slot.borrow().session.as_ref() {
-            session.pane().send(text.as_bytes());
-        }
+    if let Some(slot) = rig.hub.slots.get(&pane)
+        && let Some(session) = slot.borrow().session.as_ref()
+    {
+        session.pane().send(text.as_bytes());
     }
 }
 

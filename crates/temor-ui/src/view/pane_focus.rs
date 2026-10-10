@@ -29,6 +29,12 @@ pub struct PaneFocus {
     pub on_mounted: EventHandler<MountedEvent>,
 }
 
+impl std::fmt::Debug for PaneFocus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PaneFocus").finish_non_exhaustive()
+    }
+}
+
 /// Wires the keyboard for the pane `pane`. `heard` takes the input method's events.
 pub fn use_pane_focus(
     pane: PaneId,

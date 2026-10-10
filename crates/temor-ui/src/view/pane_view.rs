@@ -27,8 +27,8 @@ use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
 use super::handlers::{
-    bar_copy_command, bar_copy_output, block_unhovered, bar_rerun, bar_save, find_close, find_query, find_step,
-    header_press, then_regain,
+    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
+    find_query, find_step, header_press, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::pane_focus::{PaneFocus, use_pane_focus};
