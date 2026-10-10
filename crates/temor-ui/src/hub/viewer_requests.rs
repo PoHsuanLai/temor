@@ -30,12 +30,10 @@ impl Desk {
                 let path = opened.source.path().as_path().to_path_buf();
                 self.settle(|hub| hub.viewer_shows(pane, &path));
             }
-            PaneRequest::Remember(resume) => {
-                let shown = self.hub.0.borrow().viewer_file_of(pane);
-                if let Some(file) = shown {
-                    self.hub.0.borrow_mut().viewer_remember(&file, resume);
-                }
-            }
+            // Where the person left off: with a store the pane keeps it itself, by anyview's one
+            // remembering policy (`Remembering`), and never asks; a run without a store keeps
+            // nothing, so there is nothing to time or write here.
+            PaneRequest::Remember(_) => {}
             // The files are on this computer and nothing changes them behind the pane's back
             // that temor hears of yet.
             PaneRequest::Watch(_) | PaneRequest::Unwatch => {}

@@ -1,14 +1,15 @@
 //! Viewer panes in the hub (PLAN §10): a pane that shows a file instead of running a program.
 //! The workspace says which panes are viewers and which file each shows; this keeps what the
 //! workspace does not: where each came from (Esc goes back there), the files printed around it
-//! (the arrows walk them), the pane's palette handle and the places the person left off.
+//! (the arrows walk them), and the pane's palette handle. Where the person left off in a file is
+//! the pane's: anyview's one remembering policy writes it to the store.
 
 use std::cell::OnceCell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Resume, Sequence, SequenceOrigin};
+use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Sequence, SequenceOrigin};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::ViewerRef;
 use temor_core::workspace::{ViewerOpen, WorkspaceIn};
@@ -26,8 +27,6 @@ pub(super) struct ViewerHub {
     pending: Option<ViewAsk>,
     seats: BTreeMap<PaneId, Seat>,
     handles: BTreeMap<PaneId, PaneHandle>,
-    /// Where the person left off in each file; kept for this run only.
-    resumes: BTreeMap<PathBuf, Resume>,
 }
 
 /// One viewer pane's own state.
@@ -147,19 +146,6 @@ impl Hub {
         if self.ws.viewers.get(&pane) != Some(&file) {
             self.act(WorkspaceIn::ViewerShows { pane, file });
         }
-    }
-
-    /// Keeps where the person left off in `file`.
-    pub fn viewer_remember(&mut self, file: &Path, resume: Resume) {
-        self.viewers.resumes.insert(file.to_path_buf(), resume);
-    }
-
-    /// The file the viewer `pane` shows now.
-    pub(super) fn viewer_file_of(&self, pane: PaneId) -> Option<PathBuf> {
-        self.ws
-            .viewers
-            .get(&pane)
-            .map(|file| PathBuf::from(file.as_str()))
     }
 
     /// Whether `pane` is a viewer.
