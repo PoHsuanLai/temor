@@ -16,10 +16,11 @@ use super::ssh_events::Redraw;
 use crate::edge::remote_conn::{Conn, DialFault};
 use crate::edge::remote_event::{AttachFault, Generation, Ticket, Wanted};
 use crate::edge::remote_link::lock;
+use crate::edge::remote_palette::wire_palette;
 
 impl Hub {
     /// Whether an event about `host` is about its current connection.
-    fn current(&self, host: &HostAlias, generation: Generation) -> bool {
+    pub(super) fn current(&self, host: &HostAlias, generation: Generation) -> bool {
         self.remote
             .lines
             .get(host)
@@ -43,6 +44,7 @@ impl Hub {
             match effect {
                 // The tick polls for the end of a wait.
                 LinkEffect::WakeAt(_) => {}
+                LinkEffect::DropLink => self.remote_drop_link(host),
                 LinkEffect::Dial { .. } => self.remote_dial(host),
                 LinkEffect::Attach { sessions } => self.remote_reattach(host, &sessions),
                 // An effect a later wire adds has nothing for the window to do yet.
@@ -61,6 +63,8 @@ impl Hub {
             .filter_map(|pane| pane.session)
             .collect();
         self.step_link(host, LinkEvent::SessionsChanged { sessions });
+        // The session file keeps the numbers; they changed.
+        self.pace.changed();
     }
 
     pub(super) fn remote_dialed(
@@ -114,6 +118,7 @@ impl Hub {
             return;
         };
         let (generation, router) = (line.generation, line.router.clone());
+        let palette = wire_palette(&self.palette);
         for (pane, remote) in &self.remote.panes {
             let Some(session) = remote.session.filter(|s| sessions.contains(s)) else {
                 continue;
@@ -123,6 +128,7 @@ impl Hub {
             }
             let ticket = Ticket {
                 pane: *pane,
+                palette,
                 target: Arc::clone(&remote.target),
                 feeder: remote.feeder.clone(),
                 wanted: Wanted::Again(session),
@@ -150,6 +156,7 @@ impl Hub {
             remote.session = Some(session);
             remote.shown = Shown::Attached;
         }
+        self.remote.saved.remove(&pane);
         self.tell_sessions(host);
     }
 
@@ -171,6 +178,7 @@ impl Hub {
                     // The pane says its program ended, with "Try again" beside it.
                     remote.feeder.end(None);
                 }
+                self.remote.saved.remove(&pane);
                 self.notices
                     .push(format!("{} no longer has that session", host.as_str()));
                 self.tell_sessions(host);
@@ -230,7 +238,7 @@ impl Hub {
     }
 
     /// Lets a wait that has run out end.
-    fn remote_tick_host(&mut self, host: &HostAlias) {
+    pub(super) fn remote_tick_host(&mut self, host: &HostAlias) {
         let at = self.remote.now();
         self.step_link(host, LinkEvent::Tick { at });
     }

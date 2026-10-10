@@ -46,6 +46,15 @@ impl Conn {
         }
     }
 
+    /// Ends the `ssh` that carries this connection, so a request stuck on a stalled link fails
+    /// and the helper's side sees the connection go. The connection is no use afterwards.
+    pub fn drop_link(&self) {
+        let child = self.child.lock().ok().and_then(|mut slot| slot.take());
+        if let Some(child) = child {
+            reap(child);
+        }
+    }
+
     /// The client, for requests.
     pub fn client(&self) -> &Client {
         &self.client
@@ -71,7 +80,7 @@ pub fn dial_argv(alias: &HostAlias, layout: &ControlLayout, hash: &ContentHash) 
         .iter()
         .map(|arg| (*arg).to_owned())
         .collect();
-    // TODO(batch3-wire): the wire's ping replaces these keepalives as the stall detector.
+    // The wire's ping (remote_ping) is the stall detector; these keepalives stay as a second one.
     for option in [
         "ServerAliveInterval=15".to_owned(),
         "ServerAliveCountMax=3".to_owned(),
