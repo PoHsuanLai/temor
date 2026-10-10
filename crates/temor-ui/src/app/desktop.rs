@@ -52,14 +52,11 @@ pub enum Joined {
     Handed,
 }
 
-/// The activation token this launch was started with: Wayland's `XDG_ACTIVATION_TOKEN`, else the
-/// X11 `DESKTOP_STARTUP_ID` a launcher sets. Empty values count as absent.
-pub fn launch_token(wayland: Option<&str>, x11: Option<&str>) -> Option<String> {
-    [wayland, x11]
-        .into_iter()
-        .flatten()
-        .find(|token| !token.is_empty())
-        .map(str::to_owned)
+/// The activation token this launch was started with: Wayland's `XDG_ACTIVATION_TOKEN`, handed on
+/// so the running window can raise itself. An empty value counts as absent. X11 needs none: quire
+/// reads `DESKTOP_STARTUP_ID` itself, and an X11 raise ignores the token.
+pub fn launch_token(wayland: Option<&str>) -> Option<String> {
+    wayland.filter(|token| !token.is_empty()).map(str::to_owned)
 }
 
 /// Claims the first-instance name on `env`'s session bus. Starts the services on `runtime`'s
@@ -181,20 +178,9 @@ mod tests {
     }
 
     #[test]
-    fn the_launch_token_is_wayland_first_then_x11_and_never_empty() {
-        let table = [
-            (Some("w"), Some("x"), Some("w")),
-            (None, Some("x"), Some("x")),
-            (Some(""), Some("x"), Some("x")),
-            (Some(""), Some(""), None),
-            (None, None, None),
-        ];
-        for (wayland, x11, want) in table {
-            assert_eq!(
-                launch_token(wayland, x11).as_deref(),
-                want,
-                "{wayland:?} {x11:?}"
-            );
+    fn the_launch_token_is_wayland_s_and_never_empty() {
+        for (wayland, want) in [(Some("w"), Some("w")), (Some(""), None), (None, None)] {
+            assert_eq!(launch_token(wayland).as_deref(), want, "{wayland:?}");
         }
     }
 }
