@@ -56,9 +56,9 @@ const DROPPED_PREFIXES: &[&str] = &[
     "TEMOR_",
 ];
 
-/// The opt-out survives the scrub, so `TEMOR_SHELL_INTEGRATION=0` in temor's own
-/// environment reaches the shells it starts.
-const KEPT: &[&str] = &["TEMOR_SHELL_INTEGRATION"];
+/// The person's choices survive the scrub, so `TEMOR_SHELL_INTEGRATION=0` and `TEMOR_PROMPT`
+/// in temor's own environment reach the shells it starts.
+const KEPT: &[&str] = &["TEMOR_SHELL_INTEGRATION", "TEMOR_PROMPT"];
 
 /// The base environment from an injected `source` (the app passes its own environment at its
 /// edge), without the variables that describe another terminal.

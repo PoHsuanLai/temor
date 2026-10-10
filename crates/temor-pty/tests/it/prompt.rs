@@ -104,14 +104,23 @@ fn last_prompt(term: &Term) -> String {
     plain(&out[start..end])
 }
 
-/// Whether the prompt is temor's: the end mark sits at column 0 of the line below a header.
+/// The prompt without zsh's one-space typing indent, which it gets when the terminal
+/// description is unknown (zsh draws no prompt whose last line is empty then).
+fn without_indent(prompt: &str) -> &str {
+    prompt
+        .strip_suffix("\n ")
+        .map_or(prompt, |p| &prompt[..p.len() + 1])
+}
+
+/// Whether the prompt is temor's: the end mark starts the line below a header.
 fn is_temor_prompt(prompt: &str) -> bool {
+    let prompt = without_indent(prompt);
     prompt.contains('\n') && prompt.ends_with('\n')
 }
 
 /// The header line: the last line before the one the end mark is on.
 fn header(prompt: &str) -> &str {
-    prompt
+    without_indent(prompt)
         .trim_end_matches('\n')
         .rsplit('\n')
         .next()
@@ -274,7 +283,7 @@ fn a_blank_line_separates_prompts_except_the_first() {
         );
         let first = last_prompt(&term);
         assert!(!first.starts_with('\n'), "{shell}: first {first:?}");
-        for (command, status) in [("false", 1), ("(exit 130)", 130)] {
+        for (command, status) in [("false", 1), ("sh -c 'exit 130'", 130)] {
             run_command(&mut term, command, status);
             let prompt = last_prompt(&term);
             assert!(

@@ -96,7 +96,12 @@ _temor_build_prompt() {
         _temor_prompt_text $REPLY
         branch="  %{"$'\e[2;35m'"%}$REPLY%{"$'\e[0m'"%}"
     fi
-    PS1="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"$'\n'
+    # Without a terminal description that can move the cursor up (an unknown TERM), zsh draws
+    # no prompt at all when its last line is empty, so that line then starts with a space.
+    local typing=
+    zmodload -F zsh/terminfo +p:terminfo 2>/dev/null
+    [[ -n ${terminfo[cuu1]-} ]] || typing=' '
+    PS1="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"$'\n'"$typing"
     PS1+=$'%{\e]133;B\e\\%}'
     _temor_ps1=$PS1
 }
