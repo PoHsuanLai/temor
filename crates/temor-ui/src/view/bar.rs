@@ -18,7 +18,9 @@ use ds::components::menus::palette::palette_group::{
 use ds::prelude::{AfterPick, CommandPalette, RowChord, TextLine};
 use temor_core::bar::{BarAction, BarRow, RowGroup, Target};
 
-use crate::bar::{FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, lift, reply};
+use crate::bar::{
+    Escape, FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, escape, lift, reply,
+};
 use crate::hub::{BarData, Desk, HubRef};
 
 /// What a row of the bar yields when it is picked.
@@ -52,6 +54,7 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
         }
     });
     let searching = handle.filter(|_| finding() == Finding::On);
+    let stepped = Rc::clone(&searched);
     let (groups, extra) = match (searching, handle) {
         (Some(handle), _) => {
             let group = lifted(handle.hits(list()), |_| true, None);
@@ -115,7 +118,18 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
                     }
                 },
             },
-            onclose: move |()| closed.bar_close(),
+            // Escape leaves the file's find first, back to the bar's rows; a second one closes.
+            onclose: move |()| match escape(finding()) {
+                Escape::Close => closed.bar_close(),
+                Escape::StepBack => {
+                    if let Some(handle) = stepped.take() {
+                        handle.end_find();
+                    }
+                    finding.set(Finding::Off);
+                    list.set(HitList::default());
+                    closed.bar_typed(String::new());
+                }
+            },
         }
     }
 }
