@@ -1,6 +1,22 @@
 //! Shared helpers for the window tests: a scratch directory and the tools they need.
 
 use std::path::PathBuf;
+use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
+
+/// How long a test waits for a real shell or a large transfer before it gives up. The wait ends
+/// as soon as the condition holds, so a generous bound costs nothing when the machine is idle.
+pub const SLOW_WAIT: Duration = Duration::from_secs(60);
+
+static HEAVY: Mutex<()> = Mutex::new(());
+
+/// Held by the tests that start several real shells or move megabytes through one, so a parallel
+/// run does not start them all at once and starve each other past their deadlines. The other
+/// tests still run beside them.
+pub fn heavy() -> MutexGuard<'static, ()> {
+    // A test that failed while holding it leaves nothing half-done for the next.
+    HEAVY.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// Where tests put their files: under the build directory, never under the real HOME.
 pub fn scratch(name: &str) -> PathBuf {
