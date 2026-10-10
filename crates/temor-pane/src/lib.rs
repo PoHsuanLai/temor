@@ -33,8 +33,8 @@ mod shell;
 
 #[cfg(feature = "ghostty")]
 pub use engine::{
-    EventSink, Hold, Output, PaneEvent, PaneHandle, PaneRunner, PaneSpec, Term, start,
-    start_restored,
+    EventSink, Hold, OfferId, OfferKind, Output, PaneEvent, PaneHandle, PaneRunner, PaneSpec, Term,
+    TransferEnd, TransferEvent, TransferSetup, start, start_restored,
 };
 pub use error::{PaneError, SettingsError};
 #[cfg(feature = "ghostty")]
