@@ -77,7 +77,7 @@ fn saved_path(name: &str) -> PathBuf {
 }
 
 #[test]
-fn yes_types_the_setup_line_into_the_pane_and_nothing_before() {
+fn yes_types_the_setup_lines_into_the_pane_and_nothing_before() {
     if !tools_present() {
         return;
     }
@@ -101,7 +101,7 @@ fn yes_types_the_setup_line_into_the_pane_and_nothing_before() {
         );
     };
     assert!(
-        typed.starts_with(b" eval \"$(sh -c 'case"),
+        typed.starts_with(b" [ -n \"$ZSH_VERSION\" ]"),
         "{}",
         String::from_utf8_lossy(&typed)
     );
