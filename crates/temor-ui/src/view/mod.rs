@@ -2,6 +2,7 @@
 //! pane's view with its find bar and paste confirmation, and the input method glue. Views read the
 //! session's state and send it the person's events; they decide nothing themselves.
 
+pub mod bar;
 pub mod blocks;
 pub mod confirm;
 pub mod convert;
@@ -15,6 +16,7 @@ pub mod palette;
 pub mod pane_view;
 pub mod pointer;
 pub mod probe;
+pub mod quick;
 pub mod slot;
 pub mod status;
 pub mod tab_row;

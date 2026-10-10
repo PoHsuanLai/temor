@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use temor_core::quick::QuickState;
 use temor_core::split::SplitTree;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace};
@@ -14,6 +15,7 @@ use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use super::bar::BarSlot;
 use crate::edge::SavePace;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -34,6 +36,9 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: SavePace,
     pub(super) notices: Vec<String>,
+    pub(super) bar: BarSlot,
+    /// The quick terminal: never part of the workspace, so never saved with the session.
+    pub(super) quick: QuickState,
 }
 
 impl std::fmt::Debug for Hub {
@@ -54,6 +59,8 @@ impl Hub {
             recent: BTreeMap::new(),
             events,
             inbox: Some(inbox),
+            bar: BarSlot::new(&launch),
+            quick: QuickState::Closed,
             state_dir: launch.state_dir.clone(),
             launch,
             palette: Palette::default(),
@@ -72,9 +79,11 @@ impl Hub {
         &self.ws
     }
 
-    /// The pane that has the keyboard: the focused pane of the tab in front.
+    /// The pane that has the keyboard: the quick terminal's while it is shown, else the focused
+    /// pane of the tab in front.
     pub fn keyboard_pane(&self) -> Option<PaneId> {
-        self.ws.front().and_then(|tab| self.ws.focus_of(tab))
+        self.quick_shown()
+            .or_else(|| self.ws.front().and_then(|tab| self.ws.focus_of(tab)))
     }
 
     /// The next message for the person, if one is waiting; taking it clears it.

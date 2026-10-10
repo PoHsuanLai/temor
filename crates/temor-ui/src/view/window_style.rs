@@ -10,6 +10,9 @@ pub const WINDOW_CSS: &str = "\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\
+.temor-quick { position: absolute; left: 8%; right: 8%; top: 4%; bottom: 24%; display: flex; flex-direction: column; background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); box-shadow: var(--shadow-sheet); overflow: hidden; }\
+.temor-quick-head { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-3); padding: var(--s-3); }\
+.temor-quick-body { flex: 1 1 auto; min-height: 0; position: relative; }\
 .temor-side-box { width: 100%; height: 100%; }\
 .temor-side { width: 100%; height: 100%; }\
 .temor-tab { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }\

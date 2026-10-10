@@ -40,6 +40,10 @@ impl Drop for Hub {
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         for (pane, slot) in &self.slots {
+            // The quick terminal is a throwaway: kept while temor runs, never saved.
+            if self.is_quick(*pane) {
+                continue;
+            }
             let snapshot = slot.borrow().session.as_ref().and_then(Session::snapshot);
             if let Some(snapshot) = snapshot {
                 let _ = sidecar::write(&dir, *pane, &snapshot);

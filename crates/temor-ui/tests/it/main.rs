@@ -3,6 +3,7 @@
 //! never OS input).
 
 mod ambient;
+mod bar;
 mod blocks;
 mod coherence;
 mod persist;

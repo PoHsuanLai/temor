@@ -8,6 +8,7 @@ use std::rc::Rc;
 
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
+use temor_core::quick::QuickIn;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{Cwd, TabTitle};
 use temor_core::workspace::{TabsIn, WorkspaceIn};
@@ -31,6 +32,8 @@ pub(super) struct Delivery {
     holds: Vec<(Rc<RefCell<Slot>>, u64)>,
     /// What the workspace is told.
     asks: Vec<WorkspaceIn>,
+    /// What the quick terminal is told (it ignores reports about other panes).
+    quick: Vec<QuickIn>,
 }
 
 impl Hub {
@@ -53,6 +56,7 @@ impl Hub {
                     out.paint.insert(pane);
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
+                    out.quick.push(QuickIn::ShellExited(pane));
                 }
                 Notice::Hold(Hold::Held) => {
                     // Each hold has its own generation: a stale timer cannot end a newer one.
@@ -71,6 +75,10 @@ impl Hub {
                 }
                 Notice::Cwd(path) => {
                     out.chrome.insert(pane);
+                    out.quick.push(QuickIn::Cwd {
+                        pane,
+                        cwd: Cwd(path.clone()),
+                    });
                     out.asks.push(WorkspaceIn::Cwd {
                         pane,
                         cwd: Cwd(path),
@@ -124,6 +132,7 @@ pub fn spawn_event_loop(desk: Desk) {
                 bell,
                 holds,
                 asks,
+                quick,
             } = delivery;
             for (slot, generation) in holds {
                 release_hold_later(slot, generation);
@@ -133,11 +142,15 @@ pub fn spawn_event_loop(desk: Desk) {
                     repaint(&slot);
                 }
             }
-            let redraw = !chrome.is_empty() || !bell.is_empty() || !asks.is_empty();
+            let redraw =
+                !chrome.is_empty() || !bell.is_empty() || !asks.is_empty() || !quick.is_empty();
             for ask in asks {
                 for text in desk.hub.act(ask) {
                     desk.say(text);
                 }
+            }
+            for input in quick {
+                desk.hub.0.borrow_mut().quick_input(input);
             }
             if redraw {
                 desk.bump();

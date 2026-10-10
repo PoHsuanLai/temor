@@ -1,0 +1,217 @@
+//! The ⌘T bar in the hub (PLAN §7): the model that walks the ranked rows, the candidates the
+//! window offers it, and the requests the views send (open, type, move, pick, close). Carrying a
+//! picked row out is `bar_run`.
+
+use std::collections::BTreeMap;
+
+use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
+use temor_core::vocab::text::CommandText;
+use temor_pane::keys::Action;
+
+use super::desk::Desk;
+use super::model::{Hub, HubRef};
+use crate::bar::{BarModel, BarSeams, closed_candidate, directory_uses, recent_commands};
+use crate::view::launch::Launch;
+
+/// What the hub keeps for the bar.
+pub(super) struct BarSlot {
+    pub(super) model: BarModel,
+    pub(super) seams: BarSeams,
+    /// How often each folder was opened from the bar, by path.
+    pub(super) visits: BTreeMap<String, Visits>,
+}
+
+impl BarSlot {
+    pub(super) fn new(launch: &Launch) -> BarSlot {
+        BarSlot {
+            model: BarModel::default(),
+            seams: BarSeams::new(launch),
+            visits: BTreeMap::new(),
+        }
+    }
+}
+
+/// What the bar's view draws.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BarData {
+    pub query: String,
+    pub rows: Vec<BarRow>,
+    /// The highlighted row's place, the palette's.
+    pub selected: usize,
+}
+
+impl Hub {
+    /// Replaces what the bar reads from outside (the Spaces, the hosts, the model).
+    pub fn set_bar_seams(&mut self, seams: BarSeams) {
+        self.bar.seams = seams;
+    }
+
+    /// Everything the bar can match right now.
+    fn bar_candidates(&self) -> Vec<Candidate> {
+        let seams = &self.bar.seams;
+        let (spaces, hosts) = (seams.spaces.spaces(), seams.hosts.hosts());
+        let recent = recent_commands(self.block_commands());
+        let now = (seams.now)();
+        let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
+        let sources = Sources {
+            spaces: &spaces,
+            tabs: &self.ws.tabs.place.tabs,
+            folders: &self.ws.tabs.place.folders,
+            hosts: &hosts,
+            layouts: &[],
+            recent: &recent,
+            directories: &directories,
+            now,
+        };
+        let mut all = candidates(&sources);
+        all.extend(closed_candidate(&self.ws.closed));
+        all
+    }
+
+    /// The commands every pane's blocks ran, newest first within a pane.
+    fn block_commands(&self) -> Vec<CommandText> {
+        let mut out = Vec::new();
+        for slot in self.slots.values() {
+            let slot = slot.borrow();
+            let Some(session) = slot.session.as_ref() else {
+                continue;
+            };
+            for (id, _) in session.block_outcomes().into_iter().rev() {
+                if let Some(command) = session.block_command(id) {
+                    out.push(CommandText(command.to_owned()));
+                }
+            }
+        }
+        out
+    }
+
+    /// Runs `step` on the bar with the context of now.
+    fn bar_apply(&mut self, step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel) {
+        let candidates = self.bar_candidates();
+        let cx = BarContext {
+            candidates: &candidates,
+            resolver: &*self.bar.seams.paths,
+            ai: self.bar.seams.model.available(),
+        };
+        let model = std::mem::take(&mut self.bar.model);
+        self.bar.model = step(model, cx);
+    }
+
+    /// ⌘T.
+    pub fn bar_toggle(&mut self) {
+        self.bar_apply(|model, cx| model.toggled(cx));
+    }
+
+    /// Escape, or a click outside the bar.
+    pub fn bar_close(&mut self) {
+        self.bar_apply(|model, cx| model.closed(cx));
+    }
+
+    /// The field changed.
+    pub fn bar_typed(&mut self, text: String) {
+        self.bar_apply(|model, cx| model.typed(text, cx));
+    }
+
+    /// The highlight moved to the row at `index`.
+    pub fn bar_select(&mut self, index: usize) {
+        let model = std::mem::take(&mut self.bar.model);
+        self.bar.model = model.selecting(index);
+    }
+
+    /// The row `key` was run (Enter, or a click): the bar closes and the row is carried out.
+    pub fn bar_pick(&mut self, key: &RowKey) {
+        let candidates = self.bar_candidates();
+        let cx = BarContext {
+            candidates: &candidates,
+            resolver: &*self.bar.seams.paths,
+            ai: self.bar.seams.model.available(),
+        };
+        let model = std::mem::take(&mut self.bar.model);
+        let (model, row) = model.picked(key, cx);
+        self.bar.model = model;
+        if let Some(row) = row {
+            self.run_bar_row(row);
+        }
+    }
+
+    /// What the bar's view draws, while it is open.
+    pub fn bar_data(&self) -> Option<BarData> {
+        self.bar.model.is_open().then(|| BarData {
+            query: self.bar.model.query().to_owned(),
+            rows: self.bar.model.rows().to_vec(),
+            selected: self.bar.model.selected(),
+        })
+    }
+}
+
+impl HubRef {
+    /// What the bar's view draws, while it is open.
+    pub fn bar_data(&self) -> Option<BarData> {
+        self.0.borrow().bar_data()
+    }
+
+    /// The Spaces a quick terminal can be moved to.
+    pub fn bar_spaces(&self) -> Vec<temor_core::bar::SpaceEntry> {
+        self.0.borrow().bar.seams.spaces.spaces()
+    }
+}
+
+impl Desk {
+    /// Runs `change` on the hub, shows the notices it left, and draws the window again.
+    pub(super) fn settle(&self, change: impl FnOnce(&mut Hub)) {
+        let notes = {
+            let mut hub = self.hub.0.borrow_mut();
+            change(&mut hub);
+            std::mem::take(&mut hub.notices)
+        };
+        for text in notes {
+            self.say(text);
+        }
+        self.bump();
+    }
+
+    /// ⌘T.
+    pub fn bar_toggle(&self) {
+        self.settle(Hub::bar_toggle);
+    }
+
+    /// Escape, or a click outside the bar.
+    pub fn bar_close(&self) {
+        self.settle(Hub::bar_close);
+    }
+
+    /// The bar's field changed.
+    pub fn bar_typed(&self, text: String) {
+        self.settle(|hub| hub.bar_typed(text));
+    }
+
+    /// The bar's highlight moved.
+    pub fn bar_select(&self, index: usize) {
+        self.settle(|hub| hub.bar_select(index));
+    }
+
+    /// A bar row was run.
+    pub fn bar_pick(&self, key: &RowKey) {
+        self.settle(|hub| hub.bar_pick(key));
+    }
+
+    /// An action the window itself takes, not a pane and not the workspace: the bar and the
+    /// quick terminal.
+    pub fn window_action(&self, action: Action) -> WindowAction {
+        match action {
+            Action::OpenBar => self.bar_toggle(),
+            Action::ToggleQuick => self.quick_toggle(),
+            _ => return WindowAction::NotMine,
+        }
+        WindowAction::Taken
+    }
+}
+
+/// Whether the window took an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowAction {
+    /// The window carried it out.
+    Taken,
+    /// It is the pane's or the workspace's.
+    NotMine,
+}

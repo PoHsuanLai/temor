@@ -11,6 +11,7 @@ mod save_pace;
 mod session_file;
 mod settings_file;
 pub mod sidecar;
+mod unix_now;
 
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
@@ -21,3 +22,4 @@ pub use session_file::{
     FILE_NAME, Startup, load as load_session, resolve_state_dir, save as save_session,
 };
 pub use settings_file::load_settings;
+pub use unix_now::unix_now;
