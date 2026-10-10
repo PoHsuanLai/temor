@@ -5,6 +5,7 @@
 mod ambient;
 mod blocks;
 mod coherence;
+mod desktop;
 mod persist;
 mod session;
 mod support;
