@@ -295,3 +295,46 @@ fn a_plain_session_sends_nothing_so_a_split_of_it_starts_in_the_hosts_home_folde
         "no remote command: {args:?}"
     );
 }
+
+#[test]
+fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
+    use temor_core::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
+    use temor_core::host::store::PaneHost;
+
+    let Some(mut rig) = Rig::new("restored") else {
+        return;
+    };
+    rig.hub.ssh.book = ConsentBook::from_records(vec![HostRecord {
+        aliases: vec!["fake".to_owned()],
+        grants: BootstrapGrants {
+            integrate: Grant::Allowed,
+            terminfo: Grant::Refused,
+            ..BootstrapGrants::default()
+        },
+        ..HostRecord::default()
+    }]);
+    // The last session had a host tab; it starts hidden behind a tab opened after it.
+    let saved = temor_core::vocab::ids::PaneId(rig.hub.ws.next_pane);
+    rig.hub.ssh.restored = vec![PaneHost {
+        pane: saved,
+        alias: "fake".to_owned(),
+        session: None,
+    }];
+    rig.hub.act(WorkspaceIn::NewTab { cwd: None });
+    assert_eq!(rig.hub.host_of(saved), Some("fake"));
+    rig.hub.act(WorkspaceIn::NewTab { cwd: None });
+    assert_ne!(rig.front(), saved);
+
+    let dir = rig.dir.clone();
+    let start = std::time::Instant::now();
+    rig.pump("some ticks to pass", |_| {
+        start.elapsed() > std::time::Duration::from_millis(900)
+    });
+    assert!(
+        !dir.join("session-1").exists() && rig.got("connect-ok").is_none(),
+        "nothing connects behind the front tab"
+    );
+
+    rig.hub.act(WorkspaceIn::Focus(saved));
+    rig.pump("the session once shown", |_| dir.join("session-1").exists());
+}

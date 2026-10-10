@@ -47,6 +47,7 @@ impl Hub {
     /// One tick: polls the local copies, and asks after a connection still being made.
     pub(super) fn ssh_tick(&mut self) -> (Redraw, Vec<String>) {
         self.ssh.ticks = self.ssh.ticks.wrapping_add(1);
+        self.ssh_start_shown();
         self.poll_waiting_edits();
         let redraw = match (self.poll_edits(), self.remote_tick()) {
             (Redraw::No, Redraw::No) => Redraw::No,

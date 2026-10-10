@@ -110,6 +110,9 @@ pub(super) struct SshHub {
     pub panes: BTreeMap<PaneId, HostPane>,
     /// Panes of the last session that were on hosts; they reconnect as their panes start.
     pub restored: Vec<PaneHost>,
+    /// Restored panes whose connection waits until their tab is first in front, so a launch does
+    /// not ask for a password in every tab the last session had open.
+    pub deferred: BTreeSet<PaneId>,
     /// The host the next pane started is a session on.
     pub intent: Option<HostAlias>,
     pub edits: BTreeMap<EditId, RemoteEdit>,
@@ -143,6 +146,7 @@ impl SshHub {
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
             restored: Vec::new(),
+            deferred: BTreeSet::new(),
             intent: None,
             edits: BTreeMap::new(),
             next_edit: 1,
