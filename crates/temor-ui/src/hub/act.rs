@@ -19,11 +19,13 @@ use crate::view::slot::{Slot, repaint};
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
+        let input = self.ssh_prepare(input);
         let (ws, outs) = workspace_step(self.ws.clone(), input);
         self.ws = ws;
         for out in outs {
             self.carry_out(out);
         }
+        self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
         if self.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
@@ -56,6 +58,9 @@ impl Hub {
     /// disk; otherwise a pane that is coming back from the recently closed list takes its own.
     /// A pane that cannot start still gets a slot (empty), and the reason is for the person.
     pub(super) fn open_pane(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
+        if let Some(alias) = self.ssh_claims(spawn) {
+            return self.begin_host(spawn, alias);
+        }
         let snapshot = restored.or_else(|| match spawn.start {
             Start::Scrollback(pane) => self.recent.remove(&pane),
             Start::Fresh => None,
@@ -103,6 +108,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     fn end_pane(&mut self, pane: PaneId) {
+        self.ssh_forget(pane);
         if let Some(slot) = self.slots.remove(&pane) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;
@@ -120,6 +126,9 @@ impl Hub {
 
     /// Starts a new shell in a pane whose program ended, in the folder it was last in.
     pub fn restart(&mut self, pane: PaneId) {
+        if self.ssh_restart(pane) {
+            return;
+        }
         let cwd = self.ws.cwds.get(&pane).cloned();
         match open_session(
             &self.launch,

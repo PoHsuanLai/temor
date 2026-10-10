@@ -69,6 +69,13 @@ impl Clipboard for DesktopClipboard {
     }
 }
 
+/// A program to run in a pane in place of the person's shell (the `ssh` of a host session).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Program {
+    pub program: PathBuf,
+    pub args: Vec<std::ffi::OsString>,
+}
+
 /// Opens a session for pane `pane`: a shell at 80 by 24 cells (the first layout refits it) in
 /// `cwd` when that is a folder, else the home folder. With a `snapshot` the terminal begins as
 /// that closed pane's screen and scrollback. The pane's events go to `events`, tagged with it.
@@ -79,6 +86,19 @@ pub fn open_session(
     cwd: Option<&Cwd>,
     snapshot: Option<&Snapshot>,
     events: UnboundedSender<(PaneId, PaneEvent)>,
+) -> Result<Session, UiError> {
+    open_program(launch, palette, pane, cwd, snapshot, events, None)
+}
+
+/// [`open_session`] running `program` when one is given (a host session), else the shell.
+pub fn open_program(
+    launch: &Launch,
+    palette: Palette,
+    pane: PaneId,
+    cwd: Option<&Cwd>,
+    snapshot: Option<&Snapshot>,
+    events: UnboundedSender<(PaneId, PaneEvent)>,
+    program: Option<Program>,
 ) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
@@ -110,7 +130,12 @@ pub fn open_session(
     {
         ambient.home = dir;
     }
-    let spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    let mut spec = shell_pane(&ambient, settings, pane.0, grid, cell, palette, launcher)?;
+    if let Some(run) = program {
+        // The pane's environment and size stay; only what runs in it changes.
+        spec.spawn.program = run.program;
+        spec.spawn.args = run.args;
+    }
     Session::open_with(
         SessionParts {
             spec,

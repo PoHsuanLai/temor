@@ -5,7 +5,7 @@
 use std::time::Instant;
 
 use super::model::Hub;
-use crate::edge::{Pace, save_session, sidecar};
+use crate::edge::{Pace, save_with_hosts, sidecar};
 use crate::session::Session;
 
 impl Hub {
@@ -25,7 +25,7 @@ impl Hub {
 
     fn write_session(&mut self) {
         let Some(dir) = &self.state_dir else { return };
-        if let Err(err) = save_session(dir, &self.ws) {
+        if let Err(err) = save_with_hosts(dir, &self.ws, &self.ssh.hosts_file()) {
             self.notices.push(err.to_string());
         }
     }
@@ -36,7 +36,7 @@ impl Drop for Hub {
         let Some(dir) = self.state_dir.clone() else {
             return;
         };
-        let _ = save_session(&dir, &self.ws);
+        let _ = save_with_hosts(&dir, &self.ws, &self.ssh.hosts_file());
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         for (pane, slot) in &self.slots {
