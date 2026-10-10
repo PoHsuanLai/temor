@@ -11,7 +11,8 @@ use std::time::Instant;
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
 use ds::base::vocab::Shown;
-use ds::components::chrome::split_view::model::{PaneSpec, SplitPane};
+use ds::components::app::spaces::SIDEBAR_MIN_WIDTH;
+use ds::components::chrome::split_view::model::{PaneSize, PaneSpec, SplitPane};
 use ds::components::chrome::split_view::view::SplitView;
 use ds::components::overlays::drag_ghost::DragGhost;
 use ds::host::measure::use_rect;
@@ -26,10 +27,12 @@ use temor_core::workspace::WorkspaceIn;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
+use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
+use crate::edge::Credentials;
 use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
 
 /// The window's root component.
@@ -46,11 +49,11 @@ pub fn App() -> Element {
         launch.appearance.system.clone(),
         spawner,
     );
-    let look = SpaceLook::default();
     let hub = use_hook({
         let launch = launch.clone();
         move || {
             let mut hub = Hub::new(launch);
+            hub.set_credentials(try_consume_context::<Credentials>().unwrap_or_default());
             hub.start();
             HubRef(Rc::new(RefCell::new(hub)))
         }
@@ -60,10 +63,14 @@ pub fn App() -> Element {
         let hub = hub.clone();
         move || hub.0.borrow_mut().take_notice()
     });
+    let spaces = use_window_spaces(&hub, ui, notice);
+    // The Space on screen decides the look: the frame, the sidebar's ink and the terminal's colours.
+    let look = spaces.look();
     let desk = Desk {
         hub: hub.clone(),
         ui,
         notice,
+        spaces,
     };
     use_hook({
         let desk = desk.clone();
@@ -175,7 +182,7 @@ pub fn App() -> Element {
                 SplitView {
                     label: "Window",
                     panes: vec![
-                        SplitPane::new(PaneSpec::SIDEBAR, sidebar_body).shown(sidebar()),
+                        SplitPane::new(sidebar_spec(), sidebar_body).shown(sidebar()),
                     ],
                     on_shown: move |(_, shown): (usize, Shown)| sidebar.set(shown),
                     div { class: "temor-window",
@@ -188,16 +195,31 @@ pub fn App() -> Element {
                         }
                         div { class: "temor-content",
                             if let Some((tab, tree, focus)) = front {
-                                TreeView { key: "{tab.0}", tree, focus, desk: desk.clone(), started }
+                                TreeView {
+                                    key: "{desk.hub.active_space().0}-{tab.0}",
+                                    tree,
+                                    focus,
+                                    desk: desk.clone(),
+                                    started,
+                                }
                             }
                         }
                     }
                 }
             }
+            SpaceMenus { desk: desk.clone() }
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }
         }
+    }
+}
+
+/// The sidebar's widths: quire's, but never narrower than the Spaces foot needs.
+fn sidebar_spec() -> PaneSpec {
+    PaneSpec {
+        min: PaneSize::Fixed(Px(SIDEBAR_MIN_WIDTH)),
+        ..PaneSpec::SIDEBAR
     }
 }
 
