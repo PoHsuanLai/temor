@@ -78,3 +78,34 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
     let pane = rig.front();
     assert_eq!(rig.hub.host_of(pane), Some("desk.tail.ts.net"));
 }
+
+#[test]
+fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
+    use crate::hub::ssh_view::Stage;
+    use temor_core::host::consent::BootstrapAction;
+
+    let Some(mut rig) = Rig::new("offline") else {
+        return;
+    };
+    rig.hub.set_tailnet(Arc::new(Fixed(vec![machine(
+        "n2",
+        "laptop",
+        "laptop.tail.ts.net",
+        Presence::Offline,
+    )])));
+    let row = rig
+        .hub
+        .host_rows()
+        .into_iter()
+        .find(|row| row.shown() == "laptop")
+        .expect("the offline machine is listed");
+
+    rig.hub.open_host(&row);
+    let pane = rig.front();
+    assert_eq!(rig.hub.host_of(pane), Some("laptop.tail.ts.net"));
+    assert_eq!(rig.stage(pane), Stage::Offline, "told why, nothing asked");
+    assert!(rig.got("session-1").is_none());
+
+    rig.hub.try_offline(pane);
+    assert_eq!(rig.stage(pane), Stage::Asking(BootstrapAction::Integrate));
+}

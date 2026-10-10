@@ -23,6 +23,8 @@ pub enum Stage {
     Up,
     /// The session ended; the pane offers to start another.
     Ended,
+    /// The tailnet shows the computer offline; the host view offers to try anyway.
+    Offline,
     /// The session never started (the connection could not be placed): the host view offers to
     /// try again.
     Failed,
@@ -113,6 +115,7 @@ impl Hub {
             Phase::Asking(action) => Stage::Asking(action),
             Phase::Waiting | Phase::Connecting => Stage::Connecting,
             Phase::Up => Stage::Up,
+            Phase::Offline => Stage::Offline,
             Phase::Failed => match self.has_session(pane) {
                 true => Stage::Ended,
                 false => Stage::Failed,

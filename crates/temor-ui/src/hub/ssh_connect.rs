@@ -13,8 +13,8 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::{Spawn, WorkspaceIn};
 use temor_pty::ChildExit;
 use temor_ssh::{
-    BootstrapOptions, BootstrapScript, ControlLayout, HostAlias, HostRow, RemoteFilePath, SshError,
-    bootstrap_remote_command, plain_session_argv, session_argv,
+    BootstrapOptions, BootstrapScript, ControlLayout, HostAlias, HostRow, Presence, RemoteFilePath,
+    SshError, bootstrap_remote_command, plain_session_argv, session_argv,
 };
 
 use super::model::Hub;
@@ -73,6 +73,9 @@ impl Hub {
             line.key = Some(key);
         }
         line.direct = row.direct_host();
+        if row.presence() == Some(Presence::Offline) {
+            self.ssh.offline = Some(alias.clone());
+        }
         self.open_host_tab(alias);
     }
 
@@ -87,6 +90,7 @@ impl Hub {
     fn open_host_tab(&mut self, alias: HostAlias) {
         self.ssh.intent = Some(alias);
         self.act(WorkspaceIn::NewTab { cwd: None });
+        self.ssh.offline = None;
     }
 
     /// A split or a new tab of a host pane is a session on the same host, in the pane's folder.
@@ -141,6 +145,7 @@ impl Hub {
             .cwd
             .as_ref()
             .and_then(|cwd| RemoteFilePath::new(cwd.as_str()).ok());
+        let offline = self.ssh.offline.take().as_ref() == Some(&alias);
         self.ssh.panes.insert(
             spawn.pane,
             HostPane {
@@ -154,7 +159,21 @@ impl Hub {
             },
         );
         self.pace.changed();
+        if offline {
+            // Say why before dialling a computer the tailnet cannot reach.
+            if let Some(host) = self.ssh.panes.get_mut(&spawn.pane) {
+                host.phase = Phase::Offline;
+            }
+            return;
+        }
         self.gate_host(spawn.pane);
+    }
+
+    /// The person pressed "Try anyway" on a computer shown offline.
+    pub fn try_offline(&mut self, pane: PaneId) {
+        if self.ssh.panes.get(&pane).map(|host| host.phase) == Some(Phase::Offline) {
+            self.gate_host(pane);
+        }
     }
 
     pub(super) fn who_of(&self, alias: &HostAlias) -> Who {

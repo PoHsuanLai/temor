@@ -33,6 +33,11 @@ impl Desk {
         self.with_hub(|hub| hub.answer_host(pane, grant));
     }
 
+    /// The person pressed "Try anyway" on a computer shown offline.
+    pub fn host_try_anyway(&self, pane: PaneId) {
+        self.with_hub(|hub| hub.try_offline(pane));
+    }
+
     /// The person pressed Open on the browser check row.
     pub fn host_open_check(&self, pane: PaneId) {
         self.with_hub(|hub| hub.open_check(pane));

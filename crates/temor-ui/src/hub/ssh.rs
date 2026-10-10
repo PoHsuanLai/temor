@@ -35,6 +35,8 @@ pub(super) enum Phase {
     Up,
     /// The session ended before it was up, or the connection could not be placed.
     Failed,
+    /// The tailnet says the computer is offline: the person is told, and may try anyway.
+    Offline,
 }
 
 /// The browser check the host asked for.
@@ -115,6 +117,8 @@ pub(super) struct SshHub {
     pub deferred: BTreeSet<PaneId>,
     /// The host the next pane started is a session on.
     pub intent: Option<HostAlias>,
+    /// A host picked while the tailnet shows it offline: its pane waits for "Try anyway".
+    pub offline: Option<HostAlias>,
     pub edits: BTreeMap<EditId, RemoteEdit>,
     pub next_edit: u64,
     /// Files asked for on a host that was not connected yet; they open once it is.
@@ -148,6 +152,7 @@ impl SshHub {
             restored: Vec::new(),
             deferred: BTreeSet::new(),
             intent: None,
+            offline: None,
             edits: BTreeMap::new(),
             next_edit: 1,
             waiting: Vec::new(),

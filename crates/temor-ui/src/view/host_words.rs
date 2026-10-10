@@ -41,6 +41,7 @@ pub fn stage_line(stage: Stage, host: &str) -> Option<String> {
     match stage {
         Stage::Asking(_) | Stage::Up => None,
         Stage::Connecting => Some(format!("Connecting to {host}")),
+        Stage::Offline => Some(format!("{host} looks offline on your tailnet")),
         Stage::Ended => Some(format!("The connection to {host} has ended")),
         Stage::Failed => Some(format!("Couldn't connect to {host}")),
     }
@@ -87,6 +88,7 @@ mod tests {
         }
         let owned: Vec<String> = [
             stage_line(Stage::Connecting, "prod"),
+            stage_line(Stage::Offline, "prod"),
             stage_line(Stage::Ended, "prod"),
         ]
         .into_iter()

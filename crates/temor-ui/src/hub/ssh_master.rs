@@ -35,7 +35,9 @@ impl Hub {
         }
         // A connection nobody uses may have timed out since: ask the system again.
         let busy = self.ssh.panes.iter().any(|(other, host)| {
-            host.alias == *alias && *other != pane && host.phase != Phase::Failed
+            host.alias == *alias
+                && *other != pane
+                && !matches!(host.phase, Phase::Failed | Phase::Offline)
         });
         let line = self.ssh.lines.entry(alias.clone()).or_default();
         if line.master == Master::Up && !busy {
