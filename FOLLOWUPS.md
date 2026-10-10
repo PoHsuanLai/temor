@@ -522,3 +522,235 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [ ] The old `keys.<action> = ctrl+shift+c` lines now report "no setting called"; say so in the user docs when settings are documented.
 - [ ] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds it live in a terminal, so it is reached from the bar and the Spaces menu only.
 - [ ] temor-ssh `files::an_awkward_path_is_fetched_edited_and_written_back` flaked once with ETXTBSY (a fake `ssh` script written while another test thread forked). Retry the spawn on ExecutableFileBusy in the test helper, or write the fakes before the threads start.
+
+## Batch 2 (2026-10-10: Spaces, ⌘T bar and quick terminal, desktop, SSH Tier A, shelf, agents in the window)
+Written without builds by Sonnet lanes; merged, compiled, fixed and gated together by the orchestrator.
+
+### Orchestrator decisions (2026-10-10)
+- Agent- or intent-opened panes do not take the keyboard; a second launch raises the window (not done yet: both are defaults to apply).
+- Dock badge should count agents waiting on the person (`waiting_count`), not unread tabs; switch the desktop badge to it.
+- Downloads land in XDG Downloads (lane choice) while PLAN D12 says temor's data dir: owner to decide.
+- One `TailnetFeed` (edge/desktop_feed.rs) serves the SSH host list; the bar's own `HostRows` seam is still `NoHosts`: wire it to the hub's host rows.
+- Hosts (consent book, panes on hosts) live in the first Space's session file.
+- Two openers exist (platform/files.rs from shelf, platform/open_file.rs from ssh): merge into one.
+
+### spaces
+
+## Needs the orchestrator / other lanes
+- Desktop lane: provide the account store with `with_context(temor_ui::edge::Credentials(Arc::new(impl CredentialSource)))` on the launch config. The window reads it with `try_consume_context`; without one `NoCredentials` is used and a profile with a credential prints "No saved key for <account> was found" per new shell. Secrets cross as plain `String` (no zeroizing).
+- Bar lane: the quick terminal's pane must already be in the hub's slots when it calls `Hub::adopt_into_space(space, pane, cwd)` / `HubRef::adopt_into_space`. It does not switch the Space; call `desk.spaces.switch(space)` after if wanted. Routes for "Run in a new tab": `HubRef::space_for_command(cmd)` / `space_for_folder(dir)` return the Space; the bar then switches and opens the tab.
+- Merge: `Desk` has a new field `spaces`; `Hub` a new field `book`. Anyone using `self.ws` directly sees the Space on screen, as before.
+
+## Known gaps
+- All Spaces' sessions are restored and their shells started at launch (pane ids are only unique across Spaces if every Space restores together). Lazy start needs pane-id remapping at restore.
+- A pane's title change in a Space that is not on screen is not saved as the tab's title (the row uses the live title anyway); `Hub::deliver` finds the tab in the current workspace only.
+- Starting a Space's ssh-agent blocks the window thread for up to 2 s on that Space's first new shell. Move to a worker. The agent edge is untested (no test starts `ssh-agent`/`ssh-add`).
+- A passphrase-protected key cannot be added (no terminal, no askpass): the person is told, the Space opens without the agent.
+- Project root, profile (env, dotenv, key, credentials) and routes have no editor yet: they live in `spaces.json`. Wants a Space settings page (and a warning for empty or all-star route patterns).
+- The delete question from the kit says "Everything on disk is not affected. Only X's look and settings go." It does not say that the Space's tabs close. Ask quire for a hook on that text.
+- "Move Tab Here" is in the menu of the Space you right-click; a "Move tab to Space" submenu on tab rows (listing the other Spaces) would be nicer, and the bar's "Move to Space" row.
+- The kit's `use_keys()` inside `use_spaces` runs outside the `Ds` root (hook is called in `App`), so it makes a default keymap that is never read (`SwitchChord::Unbound`, no `on_key`).
+- Space `link` (desktop Space following) is stored by the kit but unused here.
+- Windows: the key agent is a named pipe there; `edge/space_agent.rs` has `TODO(platform:windows)` and spawns `ssh-agent -a` as on Unix.
+- A hidden Space's shells count as "unfocused" only at launch and on switch; a long command finishing in a hidden Space notifies like any unfocused pane.
+- Spaces' `recall` (place) is refreshed in `spaces.json` at each save from every workspace, so losing `session-<id>.json` still restores tabs (without their folders and focus).
+- Session files: Space 0 keeps `session.json` (a pre-Spaces session becomes Space 0's), others `session-<id>.json`. A Space deleted while temor is not running leaves its file; ids are never reused within one list, but delete the file by hand if the list is rebuilt.
+
+### bar
+
+## PLAN / FOLLOWUPS text to update (the lane may not edit them)
+- PLAN §6 default keys: `temor.open-bar` is ⌘T (forgoes the offered-only "show fonts"); `temor.new-tab` moves to ⌘N (forgoes "new"), the plain tab; `temor.toggle-quick` is ⇧⌘Y. Why: ⌘T must be the bar (D11) and the tab chord the person already knows from other terminals is ⌘N here; ⌘T Enter is also a new tab. The old line "⌘T opens a plain tab until the command bar lands" is done.
+- PLAN §7 quick terminal: "one hotkey" is an in-app chord now; a global one is TODO(platform) (below).
+
+## Open
+- Older recently-closed tabs: the bar offers only the newest ("Reopen <title>", `Target::Closed(Seq)`), because `WorkspaceIn::Reopen` takes the newest. Reopening a chosen one needs a `ReopenSeq(Seq)` input in `workspace_step`.
+- Routes (`route`, `route_folder`) are not applied to the Run row or to folders: they belong to the spaces lane (it knows each Space's routes). Hook: `Hub::run_bar_row` (`hub/bar_run.rs`), before `command_in_new_tab`.
+- Space rows: `SpaceRows::go_to` is a seam the spaces lane implements (`BarSeams::spaces`, set with `Hub::set_bar_seams`). Until then no Space rows exist.
+- Host rows: `HostRows` is the ssh lane's; `connect` defaults to a new tab running the system `ssh <alias>` (D17), refusing names unsafe for a command line. The ssh lane should override it to use its shared connection.
+- AI rows: only when `ModelRows::available()` says On (default `NoModel`: Off, rows absent, no stub). One switch covers all three rows; the PLAN wants "Ask about @tab" wording (core says "Ask about this tab").
+- Plugin rows (`open.provider`): no plugin host exists; `BarOut::AskProviders` is ignored and `BarAction::Plugin` is a no-op. Saved layouts: none are stored, so none are offered.
+- Folder frecency (`BarSlot::visits`) lives in memory only and is seeded from the panes' folders; persist it with the session when someone owns that file.
+- Recent commands are gathered per pane (newest first within a pane), not merged by time across panes: `Block::started` is a per-session `Stamp`.
+- Moving a recent-command row into a tab types it without Enter (the person's Enter approves, D6); host rows and the Run row send Enter because the row says it connects/runs.
+- Quick terminal: "Move to Space" calls the stub `Hub::adopt_quick_pane` (`hub/quick.rs`) which adopts into the one workspace via `quick::adopt`; the orchestrator replaces its body with the spaces lane's `Hub::adopt_into_space(space, pane, cwd)`. With no Spaces the overlay offers one button, "Keep as a tab" (`SpaceId(0)`, unread).
+- Quick terminal global hotkey: TODO(platform): a desktop/portal shortcut that works while another app has the keys. Only the in-app chord exists.
+- Quick terminal size is fixed (CSS percentages in `view/window_style.rs`); no resize, no per-screen placement.
+- The bar's field takes the keyboard, so ⌘T does not close an open bar (Escape and a click outside do). If wanted, a `claim` on `CommandPalette` can take the chord.
+- quire ask: a `PaletteIn::Select(PaletteIndex)` so a controlled palette's `on_select` goes through the machine; today `BarModel::selecting` rebuilds `PaletteState::open(query, index)`.
+- Focus return after Escape relies on the pane's existing "take the keyboard back when it becomes the keyboard pane" effect (`pane_view.rs` `had_keyboard`); the scenario `the_bar_opens_ranks_runs_and_hands_the_keys_back` checks it, nothing here proves it on a real window.
+
+### desktop
+
+- Credentials (item 5): not done. temor-desktop exposes nothing over porter for secrets, and the
+  spaces lane's `CredentialSource` trait is not on this base. Needed from porter: a client for
+  the secrets store through `porter-client` (a `Secrets`-style handle over `DbusTransport::over(conn)`
+  with `get(name)` for a Space-scoped item, plus its `Denied` error), and then a `SystemSecrets` in
+  temor-desktop::platform::linux that maps it to `CredentialSource`. Wire it in
+  `app/desktop.rs::serve` next to the tailnet feed, and add a `credentials: Arc<dyn CredentialSource>`
+  to `Desktop` (default no-op), read from the window with `try_consume_context::<Desktop>()`.
+- `TailnetFeed` (edge/desktop_feed.rs) is pull-only: `hosts()` returns the last list. The ssh lane
+  reads it with `try_consume_context::<temor_ui::app::Desktop>()` (`.tailnet`). If the host list
+  must redraw on a change, add a `watch` tick to `LiveTailnet` and bump the desk from a loop.
+- Dock badge counts tabs with news (`ws.tabs.unread`). Agent panes that are waiting for an answer
+  (the agents lane's presence) should add to the count and set `Attention::Needed`; hook point is
+  `Hub::desktop_snapshot` returning the count, and `badge_of` in app/desktop.rs.
+- `Snapshot.context.space` is `SpaceRef { local: 0, link: None }` and `selection` is `None`:
+  the spaces lane should fill the Space (local id and link) in `Hub::desktop_snapshot`; a selection
+  needs a public `Session::selected_text()`.
+- Reads of a pane's text (`temor.pane.read`, `temor.command.read`) and every action go to the
+  window thread and wait up to 5 s (`ASK_TIMEOUT`); only `context`, `panes`, `commands` come from
+  the published snapshot. Publishing happens in the window's render (`view/window.rs`), so a
+  window that is not redrawing publishes late.
+- `temor.pane.open` supports terminals only (tab, split right, split down); agent and viewer panes
+  answer "can only open a terminal for now". The opened pane takes the keyboard (the workspace step
+  focuses a new tab or split), which an agent can use to pull the person's focus; consider opening
+  it in the background once the workspace step has a way.
+- `temor.command.run_sandboxed` answers "not available yet" until the trial module (P8) exists.
+- A second launch's NewWindow opens a new tab (temor has one window); it does not raise or focus
+  the window. Raising needs an `AppHandle`/activation token from ds-blitz.
+- `Exit::Unknown` was added to temor-desktop (command ended, status not reported); it reads as
+  `null` in `temor.command.list`, same as Running. If agents need to tell them apart, add an
+  `"ended"` field in `perform.rs::command_list`.
+- `SystemIntents::serve` and the Linux `SystemTailnet` futures are spawned with `Handle::spawn`
+  (app/desktop.rs); if either is not `Send` the compiler will say so. A dedicated
+  `current_thread` runtime on its own thread is the fallback.
+- A tailnet read that is `Denied` is retried only when `Changed` ticks (and the watch itself fails
+  with Denied too, so the feed stays empty until the next launch). Launching through the unit
+  (DBusActivatable, orchestrator decision) is what makes porter grant it.
+- Cargo.lock was edited by hand (temor: temor-desktop, tokio; temor-ui: temor-desktop, temor-ssh);
+  cargo will normalise it.
+
+### ssh
+
+## Wiring the orchestrator or other lanes must do
+- [ ] Mount `view::host_list::HostList { desk }` where the host list should show (the bar lane's ⌘T, or a
+      sidebar section). Nothing in `App` mounts it yet. The bar reads the same rows through
+      `hub::HostRows` (`HubRef`/`Hub` implement it); if the bar lane defined its own `HostRows`, drop mine
+      in `hub/hosts.rs` and implement theirs. Same for `TailnetFeed`.
+- [ ] The desktop lane provides the tailnet: `hub::TailnetHandle(Arc<dyn TailnetFeed>)` as a root context
+      (read in `view/window.rs` with `try_consume_context`), or call `Hub::set_tailnet`. It maps porter's
+      `Machine` to `temor_ssh::TailnetHost`.
+- [ ] ⌘T: a new tab or split of a host pane is a session on the same host (spec). With the bar, ⌘T opens the
+      bar instead; decide whether the bar's "new tab" from a host pane means the host or a local shell.
+      Today `Hub::ssh_prepare` makes every `NewTab { cwd: None }` from a host pane a host session.
+- [ ] `Desk::open_host(&HostRow)` / `Hub::open_host_named(text)` are the entries for the bar's host rows and
+      for a typed destination.
+- [ ] "Edit locally" from a block: the entry is `Hub::edit_remote(Some(pane), "host:/path" | "path")`; the
+      block bar has no such button yet (a path in a block's output needs picking out of text). The host
+      banner has a "File on the computer" field + "Edit locally" button meanwhile.
+
+## Known gaps
+- [ ] The check URL is found by reading the pane's screen text (`Session::screen_text`) after each repaint,
+      not the raw bytes (the pane engine does not hand raw bytes out). Stopped at the first folder report
+      (OSC 7), the connection coming up, or the session ending; OSC 133 alone does not stop it. A raw tap in
+      temor-pane (`PaneEvent::Raw` or an `EventSink` hook, before `Term::write`) would match the spec exactly.
+- [ ] Established is detected by polling `ssh -O check` every ~900 ms while the first session connects (a
+      probe thread per poll), not from the host key being verified in the pane. A master that dies later is
+      only noticed when a joined `ssh` exits 255.
+- [ ] Fingerprint of a plain alias: `ssh-keygen -F <hostname> -l` on `known_hosts` after the connection is up
+      (`keygen_lookup_argv` + `fingerprint_from_keygen`). It is a lookup by name, not the key the handshake
+      presented; with several key types recorded for a name the first line wins. An `ssh -v` parse of
+      "Server host key: … SHA256:…" would be exact.
+- [ ] A plain session (consent refused) cannot start in the pane's folder (no remote command to carry it).
+- [ ] The restored tab of a host reconnects on launch and may ask for a password then.
+- [ ] A reopened closed tab (`Start::Scrollback`) loses its host (the mapping is dropped with the pane).
+- [ ] Offline tailnet rows are `Availability::Disabled` (quire dims them and takes no press); a machine that
+      is offline in the tailnet but reachable another way cannot be opened from the list.
+- [ ] The forward row's local port is any free port when the same number is taken; the person is not asked.
+- [ ] `ForwardFault::LocalPortTaken` has no message path in practice (a free port is picked first).
+- [ ] Local copies of edited files stay in `<runtime>/edit/<id>/` until the runtime dir is cleared; "Done"
+      stops watching but does not delete them.
+- [ ] Remote edit conflicts show Replace theirs / Use theirs / Decide later; no diff.
+- [ ] HostRow/Edit/Forward banners are drawn above the status line of each host pane; they are not in the
+      sidebar. No unread mark for a pending question in a background tab.
+- [ ] `Hub::edit_remote` needs the host's connection up; there is no "connect, then edit" for `host:path`
+      typed in the bar for a host with no open pane.
+- [ ] OSC 52 / transfers / notifications consent stays in `remote::HostConsent` (FOLLOWUPS Batch 1 ssh).
+
+## Quire asks
+- [ ] A `Toolbar`/row layout component for the host banner's text field + buttons (uses `.temor-host-line`).
+
+## Platform TODOs
+- `platform/open_file.rs`: `UnsupportedFile` stub for macOS/Windows (`TODO(platform:macos)`,
+  `TODO(platform:windows)`); Linux uses `xdg-open`.
+
+## Tests not run (nothing compiled in this lane)
+- hub/ssh_tests/* (stand-in `ssh`/`scp` in /tmp/tmr-<pid>-<name>, setsid needed), tests/it/ssh.rs (ds-harness).
+
+### shelf
+
+## Decisions made (confirm)
+- A program's `ac=receive` (temor get) is asked about every time (banner "wants your newest download" /
+  "the file X"), never remembered: a remote program could otherwise pull any Downloads file by printing
+  one escape sequence. `Allow` for an offer to save is remembered per stream (host, or the pane's own
+  output) until temor quits; `Don't allow` is remembered the same way (core `transfer_step` says
+  Remember(Refused)). A refusal that is remembered has no undo short of restarting; consider remembering
+  only Allowed, or listing remembered answers in settings.
+- Files land in the XDG Downloads folder (`XDG_DOWNLOAD_DIR`, then `user-dirs.dirs`, then `~/Downloads`),
+  not temor's data dir (PLAN D12 says the data dir by default; the lane brief said XDG download dir).
+  The shelf index (`shelf.json`, through `ShelfStore`) stays in temor's data dir (`Ambient::shelf_dir`).
+- Staging: each pane has `<shelf_dir>/incoming/pane-<id>/offer-<n>/`; the window moves the file with
+  an exclusive create and removes the staged copy and its folder. Empty `pane-<id>` folders stay.
+
+## Gaps
+- "Save output" (block bar) still saves into `shelf_dir` through `ShelfStore::place` and does not make a
+  row on the new shelf; route it through `Incoming{source: TemporSave}` and the same placement.
+- `Origin::Remote` is never produced: every pane's files are `LocalStream`. Once ssh host sessions exist
+  (`hub/transfers.rs::origin_of`, TODO(ssh)), the host name keys the remembered answer and the row says
+  "from <host>". Remote files' tab id is not kept across a restart (the index stores no tab): "Show tab"
+  on a restored row names tab 0 and the workspace says it is no longer open.
+- The remembered answers (`ShelfHub::grants`) are not persisted; they could live beside the host consent
+  of the ssh lane (`HostConsent`).
+- Drop: `ReceiveSupport` is always `Unknown`, so a drop only pastes quoted paths. `Send` (a program that
+  announced receive) is carried out as a notice only ("can't send files to this program yet"). `PaneSite`
+  is always `Local` (`Session::set_site` is the hook for the ssh lane).
+- OSC 1337 `inline=1` images are parsed and then dropped (not drawn); needs a kitty-graphics-like path in
+  temor-render.
+- Sending (`ac=receive`) streams 16 frames per I/O turn when the program's input has drained; files that
+  cannot be opened cancel the transfer silently (the program sees `ac=cancel`). No progress is shown for
+  files sent out.
+- `Wanted` serves only regular shelf files (`kitty::serve`); folders are not offered.
+- Shelf UI: a `Disclosure` in the sidebar foot with `Row`s; a long list grows the foot instead of scrolling
+  (needs quire's scroll container for the foot, CONSUMING §11). Thumbnails and drag-out are not drawn.
+  Reveal is `xdg-open` on the folder (TODO(platform:linux): FileManager1.ShowItems); macOS and Windows
+  are stubs in `platform/files.rs`.
+- `Harness::file_drag` is `pub(crate)` in ds-harness at 8ce6d4b, so the drop is tested through
+  `Session::drop_files` (real bash), not by a harness drag. Ask quire to make it public.
+- The banner is one question at a time (queue); there is no badge for questions waiting in other tabs.
+- `temor save` over a non-temor terminal now fails after ~3 s with "nothing answered" (was 60 s); the
+  next wait is 60 s so a person has time to answer. A terminal that never says STARTED but does ask
+  (an older temor) would fail the same way.
+
+### agents
+
+Nothing was compiled or run (batch rule). The orchestrator's first build will find the typos.
+
+## Not built (PLAN §8.2 / D19)
+- Worktree name is not editable at creation: it is `<repo folder>-<n>`. The Space profile's setup command is not run; the Space is the constant `main` (`hub/agents/state.rs` `SPACE`) until Spaces reach the window.
+- Closing an agent tab does not ask Keep / Merge / Discard (`LifeIn::CloseTab` exists in core). A closed tab's worktree just becomes a "Leftover branch".
+- Merge back offers Squash only. Merge, Rebase onto base and Open pull request need the review view (P10) first. A leftover can be opened or discarded, not merged.
+- A merge that stops on conflicts opens a plain shell tab in the checkout (not a split) and leaves the checkout mid-merge as git left it; the conflicted file list is in the notice only.
+- After a successful merge the worktree is removed, but its tab's shell is still in the removed folder.
+- Tier B / SSH worktrees; D20 mode line (Sandbox / Asks) needs docket readers; hook bridge, agent view.
+- Restore is offered from the tab's focused pane's run only; marks are labelled "Before turn N".
+- The tab's tooltip (state words, mode) is not set; the orb has no words of its own besides quire's aria label.
+
+## Decisions I took, to check
+- Checkpoints are taken when a pane known to run an agent (foreground process name, or the `app` it reported over 7501 or the socket, in `KNOWN_AGENTS`) goes Idle/Done/Failed -> Working. A build tool reporting 7501 (`app=cargo`) shows its status but gets no checkpoints. Every turn takes one ref; nothing prunes them (`refs/temor/checkpoints/*` grow). Consider skipping a snapshot whose tree equals the last one.
+- The radar's focus = the pane that has the keyboard on the page (`EditFocus::In/Out` in `pane_view`), plus "no longer the keyboard pane" after a workspace change. A window that loses the OS focus is only unfocused if the page reports `Out`; verify in a real window. `pane_blurred` must not redraw (a redraw makes the pane take the keyboard back).
+- Bell and notifications reach the radar only for panes with an agent process or any 7501/socket report (orchestrator decision). The `Alert`s the radar wants made are in `Hub::take_agent_alerts()` for the desktop lane (notification text = the agent's own note, raise through xdg-activation); nothing calls it yet.
+- The waiting count: `hub::WaitingCount` (trait, on `Hub` and `HubRef`) and `Hub::waiting_count()`. Counts panes in `Waiting` only, not unseen Done/Failed.
+- Foreground process is polled once a second by the pane's I/O thread (`temor-pane/src/engine/watch.rs`, `/proc` root fixed), and sent as `PaneEvent::Foreground(Option<String>)` on change. macOS/Windows: temor-pty returns no name, so no events (`TODO(platform:macos)`, `TODO(platform:windows)` live in temor-pty).
+- `.worktreeinclude` copying lists every ignored file (`ls-files --others --ignored`), including `target/`; fine for small repos, slow for huge ones. Pass the include patterns as pathspecs or cap the list.
+- Default `Primary+Shift+U` on platforms where Primary is Ctrl+Shift becomes Ctrl+Shift+Alt+U; plain Ctrl+Shift+U is IBus/GTK's Unicode input anyway.
+- `PaneEvent` gained `Program`, `Foreground` and (unix) `Reported`; `ShellPaneInput::socket`; `Action::JumpToWaiting` (`temor.jump-to-waiting`).
+
+## Verify first in the harness
+- The tab menu (`AgentTabMenu`) is rendered inside the Row's content; if a pick bubbles to the Row and selects the tab, move it out next to the Row.
+- `Menu::<AgentPick>` / `Sheet` / `Button { onclick: EventHandler::new(..) }` props were written from the quire sources at 8ce6d4b, not compiled.
+- `ShortcutKey::Super + Shift + u` in `tests/it/agents_window.rs` reaches the keymap as `Super+Shift+U`.
+- A socket path must stay under 104 bytes: harness scratch names are short for that (`ag-orb`, `ag-sock`).
+
+## quire asks
+- A multi-line body for `Alert` (the restore plan is a `Sheet` with one `Label` per file for now).
+- A `Menu` anchored to a `Row` that does not bubble its picks to the row.
