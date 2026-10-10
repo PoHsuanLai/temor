@@ -26,8 +26,13 @@ pub enum Action {
     PreviousPrompt,
     /// Bring the next command's prompt into view.
     NextPrompt,
-    /// Open a new tab (the standard "new").
+    /// Open a plain tab with one shell (the standard "new", ⌘N). ⌘T is the command bar, whose
+    /// Enter on an empty bar also opens one.
     NewTab,
+    /// Open the command bar (⌘T), or close it while it is open.
+    OpenBar,
+    /// Show the quick terminal over the window, or hide it; its shell keeps running while hidden.
+    ToggleQuick,
     /// Close the focused pane; the last pane closes its tab (the standard "close").
     ClosePane,
     /// Split the focused pane, the new one on its right.
@@ -58,6 +63,8 @@ pub enum Action {
 /// The app actions' ids after `temor.`, for the actions that are not standard.
 const APP_SLUGS: &[(Action, &str)] = &[
     (Action::NewTab, "new-tab"),
+    (Action::OpenBar, "open-bar"),
+    (Action::ToggleQuick, "toggle-quick"),
     (Action::PreviousPrompt, "previous-prompt"),
     (Action::NextPrompt, "next-prompt"),
     (Action::SplitRight, "split-right"),
@@ -94,6 +101,8 @@ impl Action {
             Self::PreviousPrompt => "Previous prompt",
             Self::NextPrompt => "Next prompt",
             Self::NewTab => "New tab",
+            Self::OpenBar => "Command bar",
+            Self::ToggleQuick => "Quick terminal",
             Self::ClosePane => "Close pane",
             Self::SplitRight => "Split right",
             Self::SplitDown => "Split down",

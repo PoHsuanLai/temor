@@ -23,7 +23,11 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         Action::Equalize => WorkspaceIn::Equalize,
         Action::ReopenTab => WorkspaceIn::Reopen,
         Action::SelectTab(n) => WorkspaceIn::Tabs(TabsIn::Select(TabSel::Nth(NthTab::new(n)?))),
-        Action::Copy
+        // The command bar and the quick terminal are the window's own, not the workspace's
+        // (`hub::bar`, `hub::quick`).
+        Action::OpenBar
+        | Action::ToggleQuick
+        | Action::Copy
         | Action::Paste
         | Action::Find
         | Action::FindNext

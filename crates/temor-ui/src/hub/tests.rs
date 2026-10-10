@@ -74,6 +74,9 @@ fn each_tab_and_split_action_makes_its_request_and_the_others_make_none() {
         (Action::SelectTab(0), None),
         (Action::Copy, None),
         (Action::Find, None),
+        // The bar and the quick terminal are the window's, not the workspace's.
+        (Action::OpenBar, None),
+        (Action::ToggleQuick, None),
     ];
     for (action, want) in rows {
         assert_eq!(workspace_input(*action), *want, "{action:?}");
