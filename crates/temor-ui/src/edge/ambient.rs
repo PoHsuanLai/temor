@@ -76,8 +76,7 @@ impl Ambient {
     /// each file was left (anyview's `STORE_FOLDER` under the data home; the store locks across
     /// processes).
     pub fn viewer_store(&self) -> PathBuf {
-        // TODO(anyview #97): `anyview_pane::STORE_FOLDER` once it is re-exported.
-        self.data_home().join("anyview")
+        self.data_home().join(anyview_pane::STORE_FOLDER)
     }
 
     /// Where the downloads shelf keeps its files: temor's own data directory, never the home

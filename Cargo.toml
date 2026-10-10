@@ -62,9 +62,9 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "121db2340ab7fb8dfc50a1e71ec2ff4f8311f795" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "121db2340ab7fb8dfc50a1e71ec2ff4f8311f795" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "121db2340ab7fb8dfc50a1e71ec2ff4f8311f795" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e74e5de3725d84c34d5e8acad6db5b226a690e69" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e74e5de3725d84c34d5e8acad6db5b226a690e69" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e74e5de3725d84c34d5e8acad6db5b226a690e69" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).

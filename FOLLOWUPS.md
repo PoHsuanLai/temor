@@ -930,4 +930,4 @@ Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-view.md`.
 - Viewer store: `PaneEdge::with_store($XDG_DATA_HOME/anyview)` (else `~/.local/share/anyview`),
   shared with anyview's own windows. It's used only by runs that keep state.
-  [ ] Use `anyview_pane::STORE_FOLDER` once anyview #97 re-exports it.
+  Uses `anyview_pane::STORE_FOLDER` (anyview e74e5de).
