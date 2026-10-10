@@ -62,6 +62,8 @@ pub enum Exit {
     Running,
     /// Finished with this status.
     Code(i32),
+    /// Finished, and the shell did not say how.
+    Unknown,
 }
 
 /// A pane as the window describes it.

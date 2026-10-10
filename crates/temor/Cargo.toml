@@ -7,11 +7,19 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+# The Linux desktop's services (single instance, the agent layer, the dock badge, Tailscale).
+# `--no-default-features` is the portable build, with no zbus.
+default = ["quire-desktop"]
+quire-desktop = ["temor-ui/quire-desktop"]
+
 [dependencies]
+temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
 temor-transfer = { workspace = true }
 temor-ui = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { workspace = true }

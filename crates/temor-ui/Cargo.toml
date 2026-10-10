@@ -7,6 +7,12 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+# The Linux desktop's services (PLAN D15): the agent layer, single instance, the dock badge and the
+# Tailscale list. Off, temor-desktop is its portable half and the build has no zbus.
+default = ["quire-desktop"]
+quire-desktop = ["temor-desktop/quire-desktop"]
+
 [dependencies]
 chordkit = { workspace = true }
 dioxus = { workspace = true }
@@ -17,19 +23,22 @@ ds-settings = { workspace = true, features = ["dioxus"] }
 rustix = { workspace = true }
 serde_json = { workspace = true }
 temor-core = { workspace = true }
+temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
+temor-ssh = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
 temor-transfer = { workspace = true }
 tempfile = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }
 temor-vt = { workspace = true, features = ["ghostty"] }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 ds-harness = { workspace = true }
 ds-lint = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 
 [[test]]
 name = "it"

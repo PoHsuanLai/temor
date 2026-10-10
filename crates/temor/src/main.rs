@@ -6,6 +6,8 @@ mod cli;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
+use temor_desktop::{DesktopEnv, Request};
+use temor_ui::app::desktop::{Joined, join};
 use temor_ui::edge::{Ambient, load_keymap, load_settings, resolve_state_dir};
 use temor_ui::{AppearanceSource, Launch, LauncherChoice, SESSION_LEADER_ARG};
 
@@ -20,6 +22,32 @@ fn main() -> ExitCode {
     if let Some(code) = cli::dispatch(&args) {
         return code;
     }
+    // The bus side runs on its own small runtime, kept until the window closes. A second launch
+    // hands its request to the first temor and ends here, before reading any file.
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(err) => {
+            eprintln!("temor: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let desktop = match join(
+        runtime.handle(),
+        DesktopEnv::from_process(),
+        &Request::NewWindow,
+    ) {
+        Joined::Handed => return ExitCode::SUCCESS,
+        Joined::First { desktop, trouble } => {
+            if let Some(trouble) = trouble {
+                eprintln!("temor: the desktop's services are off: {trouble}");
+            }
+            desktop
+        }
+    };
     let Some(ambient) = Ambient::from_process() else {
         eprintln!("temor: there is no home directory to start in");
         return ExitCode::FAILURE;
@@ -44,15 +72,18 @@ fn main() -> ExitCode {
         ambient.env.get("XDG_STATE_HOME").map(std::path::Path::new),
         Some(&ambient.home),
     );
-    let launched = temor_ui::run(Launch {
-        ambient,
-        settings: parsed.settings,
-        keymap,
-        launcher: LauncherChoice::ThisProgram,
-        appearance: AppearanceSource::desktop(),
-        probe: None,
-        state_dir,
-    });
+    let launched = temor_ui::app::run_with(
+        Launch {
+            ambient,
+            settings: parsed.settings,
+            keymap,
+            launcher: LauncherChoice::ThisProgram,
+            appearance: AppearanceSource::desktop(),
+            probe: None,
+            state_dir,
+        },
+        desktop,
+    );
     match launched {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {

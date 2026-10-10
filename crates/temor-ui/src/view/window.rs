@@ -32,8 +32,11 @@ use super::tab_sidebar::TabSidebar;
 use super::title::window_title;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
+use crate::app::Desktop;
 use crate::edge::Credentials;
-use crate::hub::{Desk, DragKey, Hub, HubRef, SidebarData, spawn_event_loop, spawn_save_loop};
+use crate::hub::{
+    Desk, DragKey, Hub, HubRef, SidebarData, spawn_desktop_loop, spawn_event_loop, spawn_save_loop,
+};
 
 /// The window's root component.
 #[allow(non_snake_case)]
@@ -77,6 +80,16 @@ pub fn App() -> Element {
         move || {
             spawn_event_loop(desk.clone());
             spawn_save_loop(desk.hub);
+        }
+    });
+    // What the desktop services are given of the window; a window without them has none.
+    let desktop = use_hook(|| try_consume_context::<Desktop>().unwrap_or_else(Desktop::none));
+    use_hook({
+        let (desk, desktop) = (desk.clone(), desktop.clone());
+        move || {
+            if let Some(link) = desktop.link {
+                spawn_desktop_loop(desk, link);
+            }
         }
     });
     let mut sidebar = use_signal(|| Shown::Visible);
@@ -142,6 +155,9 @@ pub fn App() -> Element {
     };
 
     let _ = ui();
+    if let Some(link) = &desktop.link {
+        hub.publish_to(link);
+    }
     let data = hub.sidebar();
     let front = hub.front();
     let (title, cwd) = hub.window_parts();

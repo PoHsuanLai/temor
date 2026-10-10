@@ -14,7 +14,7 @@ use crate::edge::Ambient;
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
 
-fn launch() -> Launch {
+pub(super) fn launch() -> Launch {
     let home = std::path::PathBuf::from("/home/someone");
     Launch {
         ambient: Ambient {
@@ -42,7 +42,7 @@ fn launch() -> Launch {
 }
 
 /// A hub whose workspace went through `steps`, with no pane started.
-fn hub_after(steps: Vec<WorkspaceIn>) -> Hub {
+pub(super) fn hub_after(steps: Vec<WorkspaceIn>) -> Hub {
     let mut hub = Hub::new(launch());
     for step in steps {
         let (ws, outs) = workspace_step(hub.ws.clone(), step);

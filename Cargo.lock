@@ -4887,10 +4887,12 @@ name = "temor"
 version = "0.1.0"
 dependencies = [
  "rustix",
+ "temor-desktop",
  "temor-pty",
  "temor-transfer",
  "temor-ui",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
@@ -5029,10 +5031,12 @@ dependencies = [
  "rustix",
  "serde_json",
  "temor-core",
+ "temor-desktop",
  "temor-pane",
  "temor-pty",
  "temor-render",
  "temor-shell",
+ "temor-ssh",
  "temor-transfer",
  "temor-vt",
  "tempfile",

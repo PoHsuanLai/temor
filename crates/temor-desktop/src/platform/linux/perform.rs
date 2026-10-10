@@ -75,6 +75,7 @@ pub(super) async fn perform<W: WindowPort>(
             let status = match done.exit {
                 Exit::Running => "still running".to_owned(),
                 Exit::Code(code) => format!("exit status {code}"),
+                Exit::Unknown => "ended, status not reported".to_owned(),
             };
             let mut outcome = shape.read(format!("{status}\n{}", done.output));
             if let Some(token) = done.undo {
@@ -153,7 +154,7 @@ pub(super) fn command_list(commands: &[CommandInfo]) -> String {
         .iter()
         .map(|command| {
             let exit = match command.exit {
-                Exit::Running => serde_json::Value::Null,
+                Exit::Running | Exit::Unknown => serde_json::Value::Null,
                 Exit::Code(code) => json!(code),
             };
             json!({ "command": command.id.0, "line": command.line, "exit": exit })

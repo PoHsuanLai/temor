@@ -52,11 +52,27 @@ impl FakeTailnet {
     async fn changed(emitter: &SignalEmitter<'_>) -> zbus::Result<()>;
 }
 
-async fn account_service(bus: &PrivateBus) -> zbus::Connection {
+/// What accountd answers a caller it does not know as the terminal (porter's `dist/callers.toml`
+/// names temor by its systemd unit, so a launcher start is refused).
+struct RefusingTailnet;
+
+#[zbus::interface(name = "org.quire.Tailnet1")]
+impl RefusingTailnet {
+    fn machines(&self) -> zbus::fdo::Result<Vec<Row>> {
+        Err(zbus::fdo::Error::AccessDenied(
+            "not the terminal".to_owned(),
+        ))
+    }
+}
+
+async fn account_service<I: zbus::object_server::Interface>(
+    bus: &PrivateBus,
+    interface: I,
+) -> zbus::Connection {
     let connection = bus.connect().await;
     connection
         .object_server()
-        .at("/org/quire/Tailnet1", FakeTailnet)
+        .at("/org/quire/Tailnet1", interface)
         .await
         .unwrap();
     connection
@@ -71,7 +87,7 @@ async fn the_machines_come_back_as_plain_hosts_and_a_change_ticks() {
     let Some(bus) = PrivateBus::start() else {
         return;
     };
-    let service = account_service(&bus).await;
+    let service = account_service(&bus, FakeTailnet).await;
     let tailnet = SystemTailnet::connect(&bus.env()).await.unwrap();
 
     let mut changes = tailnet.changes().await.unwrap();
@@ -109,4 +125,16 @@ async fn no_account_service_means_no_computers() {
     // The bus is up but nothing owns org.quire.Accounts1 (and nothing is activatable).
     let tailnet = SystemTailnet::connect(&bus.env()).await.unwrap();
     assert!(tailnet.hosts().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_refused_caller_gets_an_error_not_a_list() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let _service = account_service(&bus, RefusingTailnet).await;
+    let tailnet = SystemTailnet::connect(&bus.env()).await.unwrap();
+    // The window turns both into "no Tailscale group" (temor-ui's `group_of`); neither is empty.
+    assert!(tailnet.hosts().await.is_err());
+    assert!(tailnet.changes().await.is_err());
 }
