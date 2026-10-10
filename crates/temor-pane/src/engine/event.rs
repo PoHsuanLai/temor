@@ -1,7 +1,7 @@
 //! What a pane tells the window. Callbacks never block: the I/O thread sends these and moves on.
 
 use temor_pty::ChildExit;
-use temor_vt::{AnchorId, ClipboardWrite, Notification, Progress, PromptEvent};
+use temor_vt::{AnchorId, ClipboardWrite, Notification, ProgramStatus, Progress, PromptEvent};
 
 /// One event from a pane's terminal or its program.
 #[derive(Debug)]
@@ -33,6 +33,14 @@ pub enum PaneEvent {
     Exited(Option<ChildExit>),
     /// The program holds the screen (synchronized output) or released it.
     RenderHold(Hold),
+    /// A program status report (OSC 7501): what an agent says it is doing.
+    Program(ProgramStatus),
+    /// The name of the pane's foreground process changed (`None`: it could not be read). Sent by
+    /// the I/O thread about once a second, only on a change.
+    Foreground(Option<String>),
+    /// A report over the pane's status socket (an adapter, a hook or the `temor` command).
+    #[cfg(unix)]
+    Reported(crate::report::StatusLine),
 }
 
 /// Whether the program is holding the screen for a synchronized update.

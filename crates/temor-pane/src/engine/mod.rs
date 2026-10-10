@@ -9,6 +9,7 @@ mod reap;
 mod sink;
 mod spawn;
 mod term;
+mod watch;
 
 pub use event::{Hold, PaneEvent};
 pub use handle::PaneHandle;

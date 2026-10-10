@@ -31,6 +31,7 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         ("Super+Shift+Enter", Ran(Action::ToggleZoom)),
         ("Ctrl+Super+=", Ran(Action::Equalize)),
         ("Super+Shift+T", Ran(Action::ReopenTab)),
+        ("Super+Shift+U", Ran(Action::JumpToWaiting)),
         ("Super+1", Ran(Action::SelectTab(1))),
         ("Ctrl+Shift+9", Ran(Action::SelectTab(9))),
         // The system's Cancel; `route` decides whether a find bar is there to close.
@@ -71,6 +72,7 @@ fn the_ctrl_shift_platforms_keep_plain_ctrl_for_the_program() {
         // A Primary chord that uses Shift takes Alt as well, since Ctrl+Shift is the Primary.
         ("Ctrl+Shift+Alt+D", Ran(Action::SplitDown)),
         ("Ctrl+Shift+Alt+T", Ran(Action::ReopenTab)),
+        ("Ctrl+Shift+Alt+U", Ran(Action::JumpToWaiting)),
         // Equalize's fallback: Ctrl+Shift+= would be `+` under plain Ctrl, the program's.
         ("Ctrl+Shift+Alt+0", Ran(Action::Equalize)),
         ("Ctrl+Shift+Alt+Enter", Ran(Action::ToggleZoom)),

@@ -132,8 +132,11 @@ pub fn tools_present() -> bool {
 /// Counts the events waiting on the channel, consuming them.
 pub fn count_events(events: &mut Receiver<PaneEvent>) -> usize {
     let mut count = 0;
-    while events.try_recv().is_ok() {
-        count += 1;
+    while let Ok(event) = events.try_recv() {
+        // The foreground process's name is read on a timer, not driven by output.
+        if !matches!(event, PaneEvent::Foreground(_)) {
+            count += 1;
+        }
     }
     count
 }

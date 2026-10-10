@@ -15,6 +15,7 @@ use super::io::{Io, PaneRunner};
 use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;
+use super::watch::ForegroundWatch;
 use crate::error::PaneError;
 
 /// What a new pane is made of.
@@ -103,6 +104,7 @@ fn start_from(
         events: Arc::clone(&events),
         dirty: Arc::clone(&dirty),
         last_title: None,
+        watch: ForegroundWatch::new(),
     };
     // The first frame is always due.
     let _ = dirty.swap(true, Ordering::AcqRel);

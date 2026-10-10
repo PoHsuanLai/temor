@@ -18,6 +18,7 @@ use super::outbox::Outbox;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
 use super::term::Term;
+use super::watch::ForegroundWatch;
 
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
@@ -37,6 +38,8 @@ pub(super) struct Io {
     pub dirty: Arc<AtomicBool>,
     /// The last title sent, so a program that sets the same title in a loop costs nothing.
     pub last_title: Option<String>,
+    /// The foreground process's name, looked at about once a second.
+    pub watch: ForegroundWatch,
 }
 
 /// The pane's I/O loop, made by [`start`](super::start). `Send`: it moves to the thread the caller
@@ -82,6 +85,9 @@ fn pump(mut io: Io) {
         // The only command is Shutdown (the window dropped the pane).
         if let Ok(Command::Shutdown) = io.commands.try_recv() {
             return finish(&mut io);
+        }
+        if let Some(event) = io.watch.poll(&io.pty) {
+            send(&io, event);
         }
         let interest = if io.outbox.is_waiting() {
             temor_pty::Interest::ReadWrite
@@ -157,8 +163,9 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
         VtEvent::RenderHold(RenderHold::Released) => {
             PaneEvent::RenderHold(super::event::Hold::Released)
         }
-        // Program status, colour-scheme queries, clipboard reads and unknown sequences have no
-        // UI yet (PLAN §4b, §8.1, §9); they are dropped here, in one place.
+        VtEvent::ProgramStatus(status) => PaneEvent::Program(status),
+        // Colour-scheme queries, clipboard reads and unknown sequences have no UI yet
+        // (PLAN §4b, §9); they are dropped here, in one place.
         _ => return None,
     })
 }

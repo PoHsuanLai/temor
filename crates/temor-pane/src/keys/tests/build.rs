@@ -59,6 +59,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::ToggleZoom, "temor.zoom"),
         (Action::Equalize, "temor.equalize"),
         (Action::ReopenTab, "temor.reopen-tab"),
+        (Action::JumpToWaiting, "temor.jump-to-waiting"),
         (Action::SelectTab(1), "temor.tab-1"),
         (Action::SelectTab(9), "temor.tab-9"),
         (Action::SelectSpace(3), "switch-to-space-3"),
