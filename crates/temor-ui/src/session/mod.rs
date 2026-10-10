@@ -18,6 +18,7 @@ mod open;
 mod osc52;
 mod pointer;
 mod read;
+mod running;
 mod viewer;
 
 pub use clip::{PASTE_LIMIT, PendingPaste};
@@ -29,4 +30,5 @@ pub use marks::{BlockMark, PromptStep, ToolsHeight, desktop_note};
 pub use model::{Drag, FedParts, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts};
 pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
+pub use running::Running;
 pub use viewer::ViewAsk;

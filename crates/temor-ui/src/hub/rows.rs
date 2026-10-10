@@ -11,6 +11,7 @@ use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::sidebar_plan;
 
 use super::model::{Hub, HubRef};
+use super::tab_name::{Marking, NameIn, TabState, tab_title};
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,7 +54,9 @@ pub struct TabRow {
     /// A line under the folder: the tab's agent worktree and what the overlap check found.
     pub note: Option<String>,
     /// The pane's branch, with a dot when its folder has uncommitted changes (PLAN P16).
-    pub facts: Option<String>,
+    pub branch: Option<String>,
+    /// Whether a command runs in the tab's pane, for the row's second line.
+    pub state: TabState,
     /// Selected when the tab is in front.
     pub selection: Selection,
     /// The pane with the keys in this tab.
@@ -109,13 +112,7 @@ impl Hub {
     fn row(&self, id: TabId) -> Option<TabRow> {
         let tab = self.ws.tabs.tab(id)?;
         let pane = self.ws.focus_of(id)?;
-        let title = self
-            .ssh_title(pane)
-            .or_else(|| {
-                self.live(pane, |s| s.title().to_owned())
-                    .filter(|t| !t.is_empty())
-            })
-            .unwrap_or_else(|| tab.title.as_str().to_owned());
+        let (title, state) = self.tab_name_and_state(pane, &tab.title);
         // A host's title already names its folder, and its paths are not under this home.
         let on_host = self.host_of(pane).is_some();
         let cwd = self
@@ -146,11 +143,50 @@ impl Hub {
             unread,
             agent,
             note: self.agent_note(id),
-            facts: self.facts_of(pane).summary(),
+            branch: self.facts_of(pane).summary(),
+            state,
             selection,
             pane,
             tiles,
         })
+    }
+
+    /// The tab's name and what it is doing (see `tab_name`).
+    fn tab_name_and_state(
+        &self,
+        pane: PaneId,
+        made_as: &temor_core::vocab::text::TabTitle,
+    ) -> (String, TabState) {
+        let read = self.live(pane, |s| {
+            (
+                s.title().to_owned(),
+                s.cwd().map(str::to_owned),
+                s.running_command(),
+                s.prompts_seen(),
+            )
+        });
+        let (title, live_cwd, running, prompts) = read.unwrap_or_default();
+        let state = match &running {
+            Some(run) => TabState::Running { for_ms: run.for_ms },
+            None => TabState::Idle,
+        };
+        if let Some(host_title) = self.ssh_title(pane) {
+            return (host_title, state);
+        }
+        let cwd = live_cwd.or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
+        let marking = match prompts {
+            0 => Marking::Unmarked,
+            _ => Marking::Marked,
+        };
+        let name = tab_title(NameIn {
+            running: running.as_ref().map(|run| run.command.as_str()),
+            title: &title,
+            cwd: cwd.as_deref(),
+            home: &self.launch.ambient.home,
+            fallback: made_as.as_str(),
+            marking,
+        });
+        (name, state)
     }
 
     fn tiles(&self, id: TabId, focus: PaneId) -> Vec<Tile> {
