@@ -129,6 +129,7 @@ fn the_browser_check_shows_a_row_and_opens_nothing_by_itself() {
         grants: BootstrapGrants {
             integrate: Grant::Allowed,
             terminfo: Grant::Refused,
+            ..BootstrapGrants::default()
         },
         ..HostRecord::default()
     }]);

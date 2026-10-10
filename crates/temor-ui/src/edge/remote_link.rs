@@ -12,15 +12,18 @@ use temor_wire::units::{CellPx as WireCell, Size};
 
 use super::remote_calls::{grid_size, input, resize, wire_cell};
 use super::remote_conn::Conn;
+use super::remote_hold::Hold;
 
 /// Where a pane's input goes right now: the connection and session it is attached to, if any.
-/// The size and the cell's pixels are remembered for the next attach.
+/// The size and the cell's pixels are remembered for the next attach, and input typed while
+/// there is no link is held until it is.
 #[derive(Debug)]
 pub struct Target {
     pub conn: Option<Arc<Conn>>,
     pub session: Option<SessionId>,
     pub size: Size,
     pub cell: WireCell,
+    pub held: Hold,
 }
 
 impl Default for Target {
@@ -30,6 +33,7 @@ impl Default for Target {
             session: None,
             size: grid_size(80, 24),
             cell: WireCell::DEFAULT,
+            held: Hold::default(),
         }
     }
 }
@@ -100,7 +104,7 @@ impl Round {
 }
 
 /// Carries wishes to the connection until the pane's link is dropped. Input that arrives while
-/// the pane is detached is dropped: the pane says so, and nothing is typed into the past.
+/// the pane is detached is held (see [`Hold`]) and goes out when the session is attached again.
 fn carry(inbox: &Receiver<Wish>, target: &Mutex<Target>) {
     while let Ok(first) = inbox.recv() {
         let mut round = Round::default();
@@ -108,23 +112,30 @@ fn carry(inbox: &Receiver<Wish>, target: &Mutex<Target>) {
         while let Ok(more) = inbox.try_recv() {
             round.add(more);
         }
-        let (conn, session) = {
+        let route = {
             let mut target = lock(target);
             if let Some((size, cell)) = round.size {
                 target.size = size;
                 target.cell = cell;
             }
-            (target.conn.clone(), target.session)
+            match (target.conn.clone(), target.session) {
+                (Some(conn), Some(session)) => Some((conn, session)),
+                _ => {
+                    target.held.push(&round.input);
+                    None
+                }
+            }
         };
-        let (Some(conn), Some(session)) = (conn, session) else {
+        let Some((conn, session)) = route else {
             continue;
         };
         if let Some(size) = round.size {
             // A failure here is the link dropping; the reconnect machine hears of it elsewhere.
             let _ = resize(conn.client(), session, size);
         }
-        if !round.input.is_empty() {
-            let _ = input(conn.client(), session, &round.input);
+        if !round.input.is_empty() && input(conn.client(), session, &round.input).is_err() {
+            // The link went before the window heard of it: what was typed waits for the next.
+            lock(target).held.push(&round.input);
         }
     }
 }

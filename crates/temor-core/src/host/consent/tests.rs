@@ -152,7 +152,8 @@ fn two_records_for_one_machine_fold_into_one_and_the_earlier_answer_wins() {
         book.grants(&by_node),
         BootstrapGrants {
             integrate: Grant::Allowed,
-            terminfo: Grant::Allowed
+            terminfo: Grant::Allowed,
+            ..BootstrapGrants::default()
         }
     );
 }
@@ -182,5 +183,51 @@ fn the_book_is_stored_as_a_plain_list() {
     assert_eq!(
         gate(&old, &who("x", None, None)),
         Gate::Ask(Action::Integrate)
+    );
+}
+
+#[test]
+fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_file_while_open() {
+    let prod = who("prod", Some(FP), Some("n1"));
+    let alias_only = who("prod", None, None);
+    let mut book = answer(
+        ConsentBook::default(),
+        &prod,
+        Action::Integrate,
+        Grant::Allowed,
+    );
+    assert_eq!(book.grants(&prod).helper, Grant::Ask);
+    let helper = |book, who: &Who, grant| {
+        consent_step(
+            book,
+            ConsentIn::HelperAnswered {
+                who: who.clone(),
+                grant,
+            },
+        )
+    };
+    let (next, outs) = helper(book.clone(), &alias_only, Grant::Allowed);
+    assert_eq!(outs, vec![ConsentOut::Persist]);
+    book = next;
+    let kept = book.grants(&prod);
+    assert_eq!(
+        (kept.integrate, kept.helper),
+        (Grant::Allowed, Grant::Allowed)
+    );
+    assert!(
+        serde_json::to_string(&book)
+            .expect("encode")
+            .contains(r#""helper":"allowed""#)
+    );
+    let (same, outs) = helper(book.clone(), &prod, Grant::Allowed);
+    assert!(
+        outs.is_empty() && same == book,
+        "the same answer changes nothing"
+    );
+    let (forgotten, _) = helper(book, &prod, Grant::Ask);
+    assert!(
+        !serde_json::to_string(&forgotten)
+            .expect("encode")
+            .contains("helper")
     );
 }

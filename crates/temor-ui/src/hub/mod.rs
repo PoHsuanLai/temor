@@ -21,6 +21,8 @@ mod offer;
 mod persist;
 mod quick;
 mod remote;
+mod remote_attach;
+mod remote_consent;
 mod remote_desk;
 mod remote_edit;
 #[cfg(test)]
@@ -29,6 +31,7 @@ mod remote_keep;
 mod remote_line;
 mod remote_loop;
 mod remote_open;
+mod remote_retry;
 mod remote_source;
 mod remote_step;
 mod remote_view;

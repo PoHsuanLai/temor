@@ -45,6 +45,9 @@ pub enum ConsentIn {
         action: BootstrapAction,
         grant: Grant,
     },
+    /// The person answered whether the helper program may be put on the host (`Grant::Ask`
+    /// forgets the answer). It is not a bootstrap question: [`gate`] never asks it.
+    HelperAnswered { who: Who, grant: Grant },
     /// A connection verified the host's key: `who.key` is that identity and `who.alias` the
     /// name it was reached by. Records kept under the alias alone join the machine's record.
     Identified { who: Who },
@@ -65,6 +68,11 @@ pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, Vec<Co
             let at = next.matching(&who);
             let index = next.fold(&at, &who);
             next.set_grant(index, action, grant);
+        }
+        ConsentIn::HelperAnswered { who, grant } => {
+            let at = next.matching(&who);
+            let index = next.fold(&at, &who);
+            next.set_helper(index, grant);
         }
         ConsentIn::Identified { who } => {
             let at = next.matching(&who);

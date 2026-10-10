@@ -7,15 +7,16 @@ use std::sync::{Arc, Mutex};
 
 use temor_core::host::master::OpenAs;
 use temor_core::notify::Focus;
-use temor_core::remote::{Grant, HelperState};
+use temor_core::remote::HelperState;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{ControlLayout, HostAlias};
 
 use super::model::Hub;
 use super::remote::{Busy, RemotePane, Shown, Tier};
+use super::remote_retry::{Begin, begin_plan};
 use super::remote_source::{Blob, Source, session_source};
 use super::ssh::{Check, Phase};
-use crate::edge::remote_link::{RemoteLink, Target};
+use crate::edge::remote_link::{RemoteLink, Target, lock};
 use crate::edge::remote_relay::relay;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
@@ -48,7 +49,7 @@ impl Hub {
             Some(_) => Blob::Have,
             None => Blob::Missing,
         };
-        let grant = self.remote.grants.get(alias).copied().unwrap_or(Grant::Ask);
+        let grant = self.helper_grant(alias);
         let absent = HelperState::Absent;
         let helper = self
             .remote
@@ -71,7 +72,7 @@ impl Hub {
     }
 
     /// Runs the `ssh` that makes the shared connection in the pane.
-    fn start_connect(&mut self, alias: &HostAlias, pane: PaneId) {
+    pub(super) fn start_connect(&mut self, alias: &HostAlias, pane: PaneId) {
         let Ok(layout) = self.ssh.env.layout.clone() else {
             return;
         };
@@ -127,8 +128,18 @@ impl Hub {
         host.scan = None;
         host.check = Check::Nothing;
         let alias = host.alias.clone();
+        // A pane that had a session when the link was lost asks for the same one.
+        let before = self.remote.panes.get(&pane).map(|old| {
+            let target = lock(&old.target);
+            (old.session, old.shown, target.size, target.cell)
+        });
+        let begin = begin_plan(before.map(|(session, shown, ..)| (session, shown)));
         self.remote_drop_pane(pane);
-        let target = Arc::new(Mutex::new(Target::default()));
+        let mut start = Target::default();
+        if let Some((.., size, cell)) = before {
+            (start.size, start.cell) = (size, cell);
+        }
+        let target = Arc::new(Mutex::new(start));
         let link = match RemoteLink::start(Arc::clone(&target)) {
             Ok(link) => link,
             Err(err) => return self.fail_host(pane, err.to_string()),
@@ -148,17 +159,25 @@ impl Hub {
                 alias: alias.clone(),
                 target,
                 feeder,
-                session: None,
+                session: match begin {
+                    Begin::Fresh => None,
+                    Begin::Rejoin(session) => Some(session),
+                },
                 shown: Shown::Opening,
             },
         );
-        self.remote
-            .lines
-            .entry(alias.clone())
-            .or_default()
-            .waiting
-            .push(pane);
-        self.remote_advance(&alias);
+        match begin {
+            Begin::Fresh => {
+                self.remote
+                    .lines
+                    .entry(alias.clone())
+                    .or_default()
+                    .waiting
+                    .push(pane);
+                self.remote_advance(&alias);
+            }
+            Begin::Rejoin(_) => self.remote_rejoin(&alias),
+        }
     }
 
     /// Forgets what a pane held on a helper (a restarted pane starts over).

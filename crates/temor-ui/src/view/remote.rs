@@ -11,7 +11,7 @@ use temor_remote::PortAction;
 use temor_ssh::Port;
 
 use super::remote_words::{
-    ASK_DETAIL, HELPER_ASK, ask_line, port_action_words, port_line, stage_line,
+    ASK_DETAIL, HELPER_ASK, ask_line, port_action_words, port_line, stage_line, typing_line,
 };
 use crate::hub::{Desk, PortRow, RemoteStage};
 
@@ -56,6 +56,11 @@ pub fn RemoteBanners(pane: PaneId, desk: Desk) -> Element {
                         onclick: move |_| retry.remote_retry(pane),
                     }
                 }
+            }
+        }
+        if let Some(text) = typing_line(view.typing) {
+            div { class: "temor-host-line",
+                Label { text: text.to_owned(), style: LabelStyle::Caption }
             }
         }
         for row in view.ports.iter().cloned() {
