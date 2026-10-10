@@ -3,7 +3,7 @@
 //! temor when someone calls either name while none runs.
 
 use super::bus::session_builder;
-use crate::{Claim, DesktopEnv, DesktopError, INSTANCE_BUS_NAME, Primary, Request};
+use crate::{Claim, DesktopEnv, DesktopError, Handover, INSTANCE_BUS_NAME, Primary, Request};
 use std::path::PathBuf;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use zbus::{fdo, interface};
@@ -25,6 +25,16 @@ impl SystemInstance {
     /// Try to be the first temor. The first launch owns the name and gets [`Claim::Primary`];
     /// a later one asks the first to do `request` and gets [`Claim::Forwarded`].
     pub async fn claim(&self, request: &Request) -> Result<Claim, DesktopError> {
+        self.claim_with(request, None).await
+    }
+
+    /// [`claim`](Self::claim), handing the first temor `token` (this launch's activation token)
+    /// along with the request so it can raise its window.
+    pub async fn claim_with(
+        &self,
+        request: &Request,
+        token: Option<&str>,
+    ) -> Result<Claim, DesktopError> {
         let (sender, requests) = unbounded_channel();
         let built = session_builder(&self.env)?
             .name(INSTANCE_BUS_NAME)
@@ -41,7 +51,7 @@ impl SystemInstance {
         match built {
             Ok(connection) => Ok(Claim::Primary(Primary::new(requests, Box::new(connection)))),
             Err(zbus::Error::NameTaken) => {
-                forward(&self.env, request).await?;
+                forward(&self.env, request, token).await?;
                 Ok(Claim::Forwarded)
             }
             Err(error) => Err(DesktopError::bus("register temor's name", error)),
@@ -51,7 +61,12 @@ impl SystemInstance {
 
 /// Call the running temor with `request`. The bus starts temor for the call when none runs and
 /// the activation file is installed.
-async fn forward(env: &DesktopEnv, request: &Request) -> Result<(), DesktopError> {
+async fn forward(
+    env: &DesktopEnv,
+    request: &Request,
+    token: Option<&str>,
+) -> Result<(), DesktopError> {
+    let token = token.unwrap_or_default().to_owned();
     let connection = super::bus::connect(env).await?;
     let reply = match request {
         Request::NewWindow => {
@@ -61,7 +76,7 @@ async fn forward(env: &DesktopEnv, request: &Request) -> Result<(), DesktopError
                     OBJECT_PATH,
                     Some(INSTANCE_BUS_NAME),
                     "NewWindow",
-                    &(),
+                    &(token,),
                 )
                 .await
         }
@@ -76,7 +91,7 @@ async fn forward(env: &DesktopEnv, request: &Request) -> Result<(), DesktopError
                     OBJECT_PATH,
                     Some(INSTANCE_BUS_NAME),
                     "NewTab",
-                    &(cwd,),
+                    &(cwd, token),
                 )
                 .await
         }
@@ -88,27 +103,28 @@ async fn forward(env: &DesktopEnv, request: &Request) -> Result<(), DesktopError
 
 /// The object other launches call.
 struct Service {
-    sender: UnboundedSender<Request>,
+    sender: UnboundedSender<Handover>,
 }
 
 impl Service {
-    fn hand_over(&self, request: Request) -> fdo::Result<()> {
+    fn hand_over(&self, request: Request, token: String) -> fdo::Result<()> {
+        let token = (!token.is_empty()).then_some(token);
         self.sender
-            .send(request)
+            .send(Handover { request, token })
             .map_err(|_| fdo::Error::Failed("temor is closing".to_owned()))
     }
 }
 
 #[interface(name = "org.quire.Temor1")]
 impl Service {
-    /// Open a new window.
-    fn new_window(&self) -> fdo::Result<()> {
-        self.hand_over(Request::NewWindow)
+    /// Open a new window; `token` is the caller's activation token, empty when it has none.
+    fn new_window(&self, token: String) -> fdo::Result<()> {
+        self.hand_over(Request::NewWindow, token)
     }
 
     /// Open a new tab in `cwd`; an empty folder means the default one.
-    fn new_tab(&self, cwd: String) -> fdo::Result<()> {
+    fn new_tab(&self, cwd: String, token: String) -> fdo::Result<()> {
         let cwd = (!cwd.is_empty()).then(|| PathBuf::from(cwd));
-        self.hand_over(Request::NewTab { cwd })
+        self.hand_over(Request::NewTab { cwd }, token)
     }
 }

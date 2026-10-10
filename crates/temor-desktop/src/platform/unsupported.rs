@@ -23,6 +23,15 @@ impl SystemInstance {
         let (_sender, requests) = unbounded_channel();
         Ok(Claim::Primary(Primary::new(requests, Box::new(()))))
     }
+
+    /// As [`claim`](Self::claim); there is no second launch to hand a token to.
+    pub async fn claim_with(
+        &self,
+        request: &Request,
+        _token: Option<&str>,
+    ) -> Result<Claim, DesktopError> {
+        self.claim(request).await
+    }
 }
 
 /// temor's actions for agents. Absent here.

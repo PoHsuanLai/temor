@@ -19,7 +19,7 @@ use ds::host::measure::use_rect;
 use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
 use ds::window::host::use_window_title;
-use ds_blitz::{TokioSpawner, use_gpu};
+use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
 use ds_settings::use_environment;
 use temor_core::split::Direction;
 use temor_core::workspace::WorkspaceIn;
@@ -94,11 +94,13 @@ pub fn App() -> Element {
     });
     // What the desktop services are given of the window; a window without them has none.
     let desktop = use_hook(|| try_consume_context::<Desktop>().unwrap_or_else(Desktop::none));
+    // The window's own handle, so a second launch can raise it (none in the harness).
+    let window = use_window_handle();
     use_hook({
         let (desk, desktop) = (desk.clone(), desktop.clone());
         move || {
             if let Some(link) = desktop.link {
-                spawn_desktop_loop(desk, link);
+                spawn_desktop_loop(desk, link, window);
             }
         }
     });

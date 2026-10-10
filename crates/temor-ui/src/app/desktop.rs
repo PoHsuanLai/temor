@@ -50,9 +50,12 @@ pub enum Joined {
 }
 
 /// Claims the first-instance name on `env`'s session bus. Starts the services on `runtime`'s
-/// threads, which the caller keeps alive until the window closes.
-pub fn join(runtime: &Handle, env: DesktopEnv, request: &Request) -> Joined {
-    let claim = runtime.block_on(SystemInstance::new(env.clone()).claim(request));
+/// threads, which the caller keeps alive until the window closes. `token` is the activation token
+/// this launch was started with (`XDG_ACTIVATION_TOKEN`); a later launch passes it on so the
+/// running window can raise itself.
+// TODO(platform:macos): a second launch raises the window through NSApplication activation.
+pub fn join(runtime: &Handle, env: DesktopEnv, request: &Request, token: Option<&str>) -> Joined {
+    let claim = runtime.block_on(SystemInstance::new(env.clone()).claim_with(request, token));
     match claim {
         Ok(Claim::Forwarded) => Joined::Handed,
         Ok(Claim::Primary(primary)) => Joined::First {
@@ -96,8 +99,8 @@ async fn hear_and_serve(
     // Kept alive for the life of the task; an agent layer that is not there is not an error.
     let _intents = SystemIntents::serve(&env, Arc::new(port)).await.ok();
     let asks = link.asker();
-    while let Some(request) = primary.next().await {
-        if asks.send(Ask::Launch(request)).is_err() {
+    while let Some(heard) = primary.next_handover().await {
+        if asks.send(Ask::Launch(heard.request, heard.token)).is_err() {
             break;
         }
     }

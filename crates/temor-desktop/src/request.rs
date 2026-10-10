@@ -18,16 +18,26 @@ pub enum Request {
     },
 }
 
+/// A request and the activation token its sender was started with (a launcher, a notification
+/// click), which lets the running window take the keyboard on Wayland. Empty means none.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Handover {
+    /// What was asked.
+    pub request: Request,
+    /// The one-use activation token, when the sender had one.
+    pub token: Option<String>,
+}
+
 /// The first launch's side: the requests other launches and agents send, until it is dropped.
 /// Dropping it gives the name up.
 pub struct Primary {
-    requests: UnboundedReceiver<Request>,
+    requests: UnboundedReceiver<Handover>,
     _guard: Box<dyn Any + Send + Sync>,
 }
 
 impl Primary {
     /// A primary that hears `requests` and keeps `guard` (the bus connection) alive.
-    pub fn new(requests: UnboundedReceiver<Request>, guard: Box<dyn Any + Send + Sync>) -> Self {
+    pub fn new(requests: UnboundedReceiver<Handover>, guard: Box<dyn Any + Send + Sync>) -> Self {
         Self {
             requests,
             _guard: guard,
@@ -36,6 +46,12 @@ impl Primary {
 
     /// The next request, or `None` once nothing can send one.
     pub async fn next(&mut self) -> Option<Request> {
+        self.next_handover().await.map(|heard| heard.request)
+    }
+
+    /// The next request with the activation token that came with it, or `None` once nothing can
+    /// send one.
+    pub async fn next_handover(&mut self) -> Option<Handover> {
         self.requests.recv().await
     }
 }

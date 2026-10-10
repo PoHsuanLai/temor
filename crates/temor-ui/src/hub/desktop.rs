@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
+use ds_blitz::WindowHandle;
 use temor_core::block::Outcome;
 use temor_core::notify::Focus as NoteFocus;
 use temor_core::split::Direction;
@@ -99,7 +100,7 @@ impl Hub {
     /// Carries out one message from the desktop services.
     pub(super) fn serve(&mut self, ask: Ask) {
         match ask {
-            Ask::Launch(request) => self.act(new_tab_for(request)),
+            Ask::Launch(request, _token) => self.act(new_tab_for(request)),
             Ask::Act(act, reply) => {
                 let _ = reply.send(self.perform(act));
             }
@@ -221,12 +222,18 @@ pub(super) fn exit_of(outcome: Outcome) -> Exit {
 }
 
 /// Hears the desktop services for as long as the window lives.
-pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink) {
+///
+/// A later launch also raises `window`: with the activation token it came with on Wayland, else
+/// by asking the system to focus it.
+pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink, window: Option<WindowHandle>) {
     let Some(mut asks) = link.take_asks() else {
         return;
     };
     spawn(async move {
         while let Some(ask) = asks.recv().await {
+            if let (Ask::Launch(_, token), Some(window)) = (&ask, &window) {
+                window.focus_with_token(token.clone());
+            }
             let notices = {
                 let mut hub = desk.hub.0.borrow_mut();
                 hub.serve(ask);

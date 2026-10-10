@@ -39,6 +39,29 @@ async fn a_second_launch_hands_its_request_to_the_first_and_exits() {
 }
 
 #[tokio::test]
+async fn a_second_launch_passes_its_activation_token_on_and_an_empty_one_is_none() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let mut primary = first(&bus).await;
+    let second = SystemInstance::new(bus.env());
+
+    let cases = [
+        (Some("tok-1"), Some("tok-1".to_owned())),
+        (Some(""), None),
+        (None, None),
+    ];
+    for (sent, expected) in cases {
+        let claim = second.claim_with(&Request::NewWindow, sent).await.unwrap();
+        assert!(matches!(claim, Claim::Forwarded), "{claim:?}");
+        let heard = tokio::time::timeout(Duration::from_secs(5), primary.next_handover()).await;
+        let heard = heard.unwrap().expect("a handover");
+        assert_eq!(heard.request, Request::NewWindow);
+        assert_eq!(heard.token, expected);
+    }
+}
+
+#[tokio::test]
 async fn the_name_is_free_again_once_the_first_launch_is_gone() {
     let Some(bus) = PrivateBus::start() else {
         return;
