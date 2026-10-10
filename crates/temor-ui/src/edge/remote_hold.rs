@@ -1,6 +1,8 @@
 //! Input typed while a helper session has no link (PLAN §9b): it is held, in order, up to a
 //! bound, and sent once the session is attached again. Past the bound the rest is dropped (never
-//! a later piece ahead of an earlier one) and the pane says so.
+//! a later piece ahead of an earlier one) and the pane says so. A piece that was being sent when
+//! the link died is never held again: the host may have received part of it, so sending it once
+//! more could repeat keys. It is counted as lost instead.
 
 /// How much typing a pane holds while its link is down.
 pub const HOLD_LIMIT: usize = 64 * 1024;
@@ -30,6 +32,8 @@ pub enum Held {
 pub struct Hold {
     bytes: Vec<u8>,
     typing: Typing,
+    /// Whether a piece was cut off mid-send (kept apart: later typing is still held).
+    cut: Typing,
 }
 
 impl Hold {
@@ -49,9 +53,18 @@ impl Hold {
         }
     }
 
+    /// A piece was in flight when the link died and is not kept: the pane is told, and nothing
+    /// is sent twice.
+    pub fn lose_in_flight(&mut self) {
+        self.cut = Typing::Dropped;
+    }
+
     /// Whether anything was lost since the hold was last taken.
     pub fn typing(&self) -> Typing {
-        self.typing
+        match (self.typing, self.cut) {
+            (Typing::Kept, Typing::Kept) => Typing::Kept,
+            _ => Typing::Dropped,
+        }
     }
 
     /// Whether nothing is held.
@@ -62,6 +75,7 @@ impl Hold {
     /// Takes what is held, in the order it came, and starts over.
     pub fn take(&mut self) -> Vec<u8> {
         self.typing = Typing::Kept;
+        self.cut = Typing::Kept;
         std::mem::take(&mut self.bytes)
     }
 }
@@ -115,6 +129,16 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn a_piece_lost_in_flight_is_not_held_again_but_is_told() {
+        let mut hold = Hold::default();
+        hold.lose_in_flight();
+        assert_eq!((hold.typing(), hold.is_empty()), (Typing::Dropped, true));
+        assert_eq!(hold.push(b"later"), Held::Kept);
+        assert_eq!(hold.take(), b"later");
+        assert_eq!(hold.typing(), Typing::Kept);
     }
 
     #[test]

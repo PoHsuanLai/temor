@@ -134,8 +134,8 @@ fn carry(inbox: &Receiver<Wish>, target: &Mutex<Target>) {
             let _ = resize(conn.client(), session, size);
         }
         if !round.input.is_empty() && input(conn.client(), session, &round.input).is_err() {
-            // The link went before the window heard of it: what was typed waits for the next.
-            lock(target).held.push(&round.input);
+            // The link went mid-send: the host may hold part of it, so it is never sent again.
+            lock(target).held.lose_in_flight();
         }
     }
 }

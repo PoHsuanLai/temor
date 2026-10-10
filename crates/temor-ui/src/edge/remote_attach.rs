@@ -1,5 +1,6 @@
 //! Opening or reattaching one pane's session on a connection (PLAN §9b): the call sequence, the
-//! screen handed to the pane, and the typing held while the link was down sent ahead of any new.
+//! screen handed to the pane, and the typing held while the link was down sent ahead of any new (a piece cut off mid-send is
+//! dropped, never repeated).
 
 use std::sync::Arc;
 
@@ -83,11 +84,12 @@ fn publish(target: &SharedTarget, conn: &Arc<Conn>, session: SessionId) {
             target.held.take()
         };
         if input(conn.client(), session, &held).is_err() {
-            // The link went again: the typing waits for the next attach, still in order.
+            // The link went again mid-send: that piece may be half received, so it is not sent
+            // twice. What was typed since waits for the next attach, still in order.
             let mut target = lock(target);
             let later = target.held.take();
-            target.held.push(&held);
             target.held.push(&later);
+            target.held.lose_in_flight();
             return;
         }
     }
