@@ -1172,7 +1172,7 @@ merged, fixed and gated together. anyview c91ec0a.
 - [ ] Byte progress for uploads (a progress hook on temor-remote's `Client::upload`).
 - [ ] anyview ask: a "could not be opened" request, so a failed file offers another app.
 - [ ] quire ask: tell Esc from a click outside on the palette (`onclose` covers both).
-- [ ] keycap ask: a chordkit `KeymapSource`, so our desktop's own shortcuts are read.
+- [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
 - [ ] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it).
 - [ ] Run `search_bench` and decide on a row-text path for search.
 - [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned.
@@ -1190,8 +1190,7 @@ project, another platform, real hardware, or the owner.
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)
 - anyview: a "could not be opened" request. (Batch 18 Next)
-- keycap: a chordkit `KeymapSource`. chordkit: a fallback where the default collides.
-  (Batch 18 Next; Keys on chordkit)
+- chordkit: a fallback where the default collides. (Keys on chordkit)
 - ds_blitz: primary and selection clipboards for OSC 52. (Batch 18 Next)
 - P8 Proposals: bulkhead split (fresh `TurnRef` per Ask, "edited" vs "replaced", U+2800).
   (temor-core)

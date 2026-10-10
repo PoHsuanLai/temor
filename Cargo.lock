@@ -3633,6 +3633,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "keycap-client"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=95f41dc4b613e3557f3cabc1638e53da348a09ff#95f41dc4b613e3557f3cabc1638e53da348a09ff"
+dependencies = [
+ "chordkit",
+ "keycap-protocol",
+ "rustix",
+]
+
+[[package]]
+name = "keycap-protocol"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=95f41dc4b613e3557f3cabc1638e53da348a09ff#95f41dc4b613e3557f3cabc1638e53da348a09ff"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "khronos-egl"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6682,6 +6702,7 @@ dependencies = [
  "ds-harness",
  "ds-lint",
  "ds-settings",
+ "keycap-client",
  "png",
  "rustix",
  "serde_json",
