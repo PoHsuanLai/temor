@@ -55,7 +55,8 @@ pub use config::support as testing;
 
 pub use argv::{
     BindAddress, ControlLayout, ControlPersist, Forward, ForwardSpec, RemoteCommand, RemoteHost,
-    RuntimeDir, Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,
+    RuntimeDir, Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv,
+    plain_session_argv, session_argv,
 };
 pub use bootstrap::{
     BootstrapOptions, BootstrapScript, MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy,
@@ -72,7 +73,9 @@ pub use files::{
     RemoteState, SshRemoteFiles, StdRunner, fetch_argv, parse_stat, stat_argv, store_argv,
 };
 pub use hosts::{HostGroup, HostRow, merge_hosts};
-pub use identity::{Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen};
+pub use identity::{
+    Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen, keygen_lookup_argv,
+};
 pub use master::{MasterProbe, prepare_control_dirs, probe_master};
 pub use platform::ensure_private_dir;
 pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};

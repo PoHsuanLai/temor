@@ -56,6 +56,16 @@ pub fn session_argv(
     argv
 }
 
+/// A plain session on the shared connection to `alias`: a pty (`-t`) and no remote command, so
+/// the host runs the person's own login shell and nothing of temor's. Used when the person
+/// declined the setup.
+pub fn plain_session_argv(alias: &HostAlias, layout: &ControlLayout) -> Vec<String> {
+    let mut argv = vec!["-t".to_owned()];
+    argv.extend(shared(layout));
+    argv.extend(["--".to_owned(), alias.as_str().to_owned()]);
+    argv
+}
+
 /// `ssh -O check`: is the master for `alias` running?
 pub fn check_argv(alias: &HostAlias, layout: &ControlLayout) -> Vec<String> {
     control_command("check", alias, layout, Vec::new())

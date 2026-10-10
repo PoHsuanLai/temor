@@ -1,4 +1,7 @@
-use super::{Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen};
+use super::{
+    Fingerprint, HostId, HostKey, NodeId, ShownName, fingerprint_from_keygen, keygen_lookup_argv,
+};
+use crate::config::{HostName, Port};
 use crate::error::SshError;
 
 const FP: &str = "SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s";
@@ -138,4 +141,20 @@ fn a_key_remembers_the_parts_a_tailnet_list_and_a_connection_each_know() {
     assert_eq!(merged, both);
     assert!(HostKey::from_parts(Some("SHA256:short"), Some("a b")).is_none());
     assert_eq!(HostKey::from_parts(Some(FP), Some("n1")), Some(both));
+}
+
+#[test]
+fn the_keygen_lookup_names_the_host_the_way_ssh_records_it() {
+    let host = HostName::new("prod.example.com").expect("host");
+    for (port, want) in [
+        (None, "prod.example.com"),
+        (Port::parse("22"), "prod.example.com"),
+        (Port::parse("2222"), "[prod.example.com]:2222"),
+    ] {
+        assert_eq!(
+            keygen_lookup_argv(&host, port),
+            ["-F", want, "-l"],
+            "{port:?}"
+        );
+    }
 }

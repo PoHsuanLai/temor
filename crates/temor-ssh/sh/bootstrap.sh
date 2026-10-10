@@ -2,7 +2,8 @@
 # `sh`, with each connection, and nothing is installed on the host. Everything it writes lives in a
 # temp directory that is removed when the shell exits. Your dotfiles are never touched.
 
-# Whether this bootstrap may add a terminal description to ~/.terminfo (install or skip).
+# Whether this bootstrap may add a terminal description to ~/.terminfo (install or skip), and
+# the folder the shell starts in (empty: the login folder).
 #@OPTIONS@
 
 temor_base=${TMPDIR:-/tmp}
@@ -88,6 +89,11 @@ elif [ "$temor_terminfo" = install ] && command -v tic >/dev/null 2>&1 && [ -n "
     fi
 fi
 export TERM=$temor_term COLORTERM=truecolor
+
+# A session opened beside another starts in that one's folder, when it is still there.
+if [ -n "$temor_start_dir" ]; then
+    cd -- "$temor_start_dir" 2>/dev/null || :
+fi
 
 # OSC 7 with this host's name, so temor knows where the pane is before the first prompt.
 temor_host=$(hostname 2>/dev/null || uname -n 2>/dev/null)

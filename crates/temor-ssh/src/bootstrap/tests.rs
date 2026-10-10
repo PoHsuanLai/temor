@@ -80,3 +80,20 @@ fn skipping_terminfo_leaves_out_the_source_and_says_so() {
     assert!(text.contains("\ntemor_terminfo=skip\n"));
     assert!(!text.contains("xterm-ghostty.src\" <<"));
 }
+
+#[test]
+fn a_start_folder_is_quoted_into_the_options_and_absent_otherwise() {
+    let options = BootstrapOptions::default();
+    let plain = BootstrapScript::build_in(&integration_scripts(), options, None).expect("build");
+    assert!(plain.as_str().contains("\ntemor_start_dir=\n"));
+    let dir = crate::files::RemoteFilePath::new("/srv/it's here").expect("path");
+    let script =
+        BootstrapScript::build_in(&integration_scripts(), options, Some(&dir)).expect("build");
+    assert!(
+        script
+            .as_str()
+            .contains("\ntemor_start_dir='/srv/it'\\''s here'\n"),
+        "{}",
+        script.as_str()
+    );
+}

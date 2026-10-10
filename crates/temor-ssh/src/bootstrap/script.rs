@@ -8,6 +8,7 @@ use super::files::{TERMINFO_SOURCE, remote_path};
 use super::quote::heredoc_write;
 use crate::argv::RemoteCommand;
 use crate::error::SshError;
+use crate::files::RemoteFilePath;
 
 /// The template, with `#@INTEGRATION@` and `#@TERMINFO@` lines replaced by heredocs.
 const TEMPLATE: &str = include_str!("../../sh/bootstrap.sh");
@@ -63,6 +64,17 @@ impl BootstrapScript {
         integration: &[ShellScript],
         options: BootstrapOptions,
     ) -> Result<Self, SshError> {
+        Self::build_in(integration, options, None)
+    }
+
+    /// [`BootstrapScript::build_with`] where the shell starts in `start_dir` on the host (a
+    /// session opened beside another one, in its folder). A folder that is gone is skipped
+    /// and the shell starts where the login does.
+    pub fn build_in(
+        integration: &[ShellScript],
+        options: BootstrapOptions,
+        start_dir: Option<&RemoteFilePath>,
+    ) -> Result<Self, SshError> {
         let mut placed = String::new();
         for script in integration {
             if let Some(rel) = remote_path(script) {
@@ -79,7 +91,8 @@ impl BootstrapScript {
             ),
             TerminfoPolicy::Skip => (String::new(), "skip"),
         };
-        let options_line = format!("temor_terminfo={policy}\n");
+        let dir = start_dir.map_or_else(String::new, |dir| single_quoted(dir.as_str()));
+        let options_line = format!("temor_terminfo={policy}\ntemor_start_dir={dir}\n");
         let mut script = String::with_capacity(TEMPLATE.len() + placed.len() + terminfo.len());
         for line in TEMPLATE.lines() {
             match line.trim() {
@@ -99,6 +112,11 @@ impl BootstrapScript {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+}
+
+/// `text` in single quotes for `sh`; the script travels base64-encoded, so no login shell reads it.
+fn single_quoted(text: &str) -> String {
+    format!("'{}'", text.replace('\'', "'\\''"))
 }
 
 /// The remote command for `script`. The login shell only sees plain ASCII: the script travels

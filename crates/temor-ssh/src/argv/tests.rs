@@ -4,7 +4,8 @@ use std::path::Path;
 
 use super::{
     BindAddress, ControlLayout, ControlPersist, Forward, RemoteCommand, RemoteHost, RuntimeDir,
-    Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, session_argv,
+    Seconds, cancel_forward_argv, check_argv, exit_argv, forward_argv, plain_session_argv,
+    session_argv,
 };
 use crate::config::{HostAlias, Port};
 use crate::error::SshError;
@@ -49,6 +50,24 @@ fn session_vector_shares_the_master_and_runs_the_bootstrap() {
             "--",
             "prod",
             "sh -c 'echo hi'",
+        ])
+    );
+}
+
+#[test]
+fn the_plain_session_shares_the_master_and_sends_no_command() {
+    assert_eq!(
+        plain_session_argv(&alias("prod"), &layout()),
+        strings(&[
+            "-t",
+            "-o",
+            "ControlMaster=auto",
+            "-o",
+            "ControlPath=/run/user/1000/temor/ssh/%C",
+            "-o",
+            "ControlPersist=600",
+            "--",
+            "prod",
         ])
     );
 }

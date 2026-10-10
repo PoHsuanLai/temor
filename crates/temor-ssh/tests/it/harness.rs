@@ -1,13 +1,16 @@
 //! Scratch directories, fake tools on a private PATH, and running the bootstrap.
 
 use std::fs;
-use std::io::Write;
+use std::io::{self, Write};
 use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
 use temor_shell::integration_scripts;
-use temor_ssh::{BootstrapScript, RemoteCommand, bootstrap_remote_command};
+use temor_ssh::{
+    BootstrapScript, CommandOutput, CommandRunner, RemoteCommand, StdRunner,
+    bootstrap_remote_command,
+};
 
 /// One test's directories. Dropped with the temp root.
 pub struct Scratch {
@@ -208,4 +211,25 @@ pub fn contains(haystack: &[u8], needle: &str) -> bool {
     haystack
         .windows(needle.len())
         .any(|window| window == needle.as_bytes())
+}
+
+/// [`StdRunner`] that tries again when the program cannot be started because it is still open
+/// for writing: a fake tool written just before, while another test's thread forked and let
+/// the child inherit the write handle (ETXTBSY). The handle closes as that child execs.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RetryRunner;
+
+impl CommandRunner for RetryRunner {
+    fn run(&self, program: &Path, args: &[String]) -> io::Result<CommandOutput> {
+        let mut tries = 0;
+        loop {
+            match StdRunner.run(program, args) {
+                Err(err) if err.kind() == io::ErrorKind::ExecutableFileBusy && tries < 50 => {
+                    tries += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                done => return done,
+            }
+        }
+    }
 }
