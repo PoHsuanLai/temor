@@ -14,6 +14,9 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::{CheckScan, CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use temor_wire::message::FileStamp;
+
+use super::remote_edit::{EditTier, Overwrite};
 use crate::edge::desktop_feed::{NoTailnet, TailnetFeed};
 use crate::edge::ssh_work::{EditId, SshEvent, SshWork};
 use crate::edge::{Ambient, SshEnv};
@@ -87,6 +90,13 @@ pub(super) struct RemoteEdit {
     pub opened: Opened,
     /// The question waiting for the person, when the host's file changed under the edit.
     pub asking: Option<Found>,
+    /// How the file is fetched and written back.
+    pub tier: EditTier,
+    /// The host's file as the helper last read or wrote it; the write-back must still find it.
+    /// Always `None` for a host without a helper.
+    pub seen: Option<FileStamp>,
+    /// Set once the person chose to overwrite, for the one write that follows.
+    pub overwrite: Overwrite,
 }
 
 /// The hub's SSH state.

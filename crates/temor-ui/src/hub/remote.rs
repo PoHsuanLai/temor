@@ -161,6 +161,15 @@ impl RemoteHub {
         Monotonic(u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX))
     }
 
+    /// The connection to `host`'s helper, when it is up now.
+    pub(super) fn helper_conn(&self, host: &HostAlias) -> Option<Arc<Conn>> {
+        let line = self.lines.get(host)?;
+        match line.link {
+            LinkState::Connected { .. } => line.conn.clone(),
+            _ => None,
+        }
+    }
+
     /// Remembers the person's answer about `host`, in memory and in `remote.json`.
     pub(super) fn remember(&mut self, host: &HostAlias, grant: Grant) {
         self.grants.insert(host.clone(), grant);

@@ -7,6 +7,8 @@ mod files;
 #[cfg(feature = "ghostty")]
 mod handshake;
 #[cfg(feature = "ghostty")]
+mod live;
+#[cfg(feature = "ghostty")]
 mod ports;
 #[cfg(feature = "ghostty")]
 mod revision;
@@ -14,6 +16,8 @@ mod revision;
 mod sessions;
 #[cfg(feature = "ghostty")]
 mod support;
+#[cfg(feature = "ghostty")]
+mod sweep;
 #[cfg(feature = "ghostty")]
 mod transfer;
 

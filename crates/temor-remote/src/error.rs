@@ -87,9 +87,6 @@ pub enum Error {
     /// A terminal size with no columns or no rows.
     #[error("a terminal needs at least one column and one row")]
     BadSize,
-    /// A file is too big for one message.
-    #[error("the file is too big to send in one piece")]
-    TooLarge,
     /// This host cannot do that.
     #[error("{feature} is not supported on this host")]
     Unsupported {

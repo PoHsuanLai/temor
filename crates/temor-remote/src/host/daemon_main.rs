@@ -3,9 +3,10 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use temor_pty::SessionLauncher;
+use temor_wire::units::UnixMillis;
 
 use super::env::HostEnv;
 use super::identity::hash_executable;
@@ -46,6 +47,23 @@ fn config(
     }
 }
 
+/// Clears uploads left half-staged by writers that are gone. On a thread of its own: the walk
+/// may be long, and nothing waits for it. If the thread cannot start the files stay until the
+/// next start.
+fn sweep_in_background(daemon: &Arc<Daemon>) {
+    let daemon = Arc::clone(daemon);
+    let _ = std::thread::Builder::new()
+        .name("temor-remote-sweep".to_string())
+        .spawn(move || {
+            let since = SystemTime::now().duration_since(UNIX_EPOCH);
+            let Ok(since) = since else {
+                return;
+            };
+            let now = i64::try_from(since.as_millis()).unwrap_or(i64::MAX);
+            daemon.sweep_staged(UnixMillis(now));
+        });
+}
+
 /// Runs the daemon until the process is killed. Returns at once, with `Ok`, if a daemon of this
 /// version is already listening.
 pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
@@ -67,6 +85,8 @@ pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
     }
     let listener = Listener::bind(&socket)?;
     let daemon = Daemon::new(config(env, helper, dir));
+
+    sweep_in_background(&daemon);
 
     let ticking = Arc::clone(&daemon);
     std::thread::Builder::new()

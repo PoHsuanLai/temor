@@ -45,6 +45,11 @@ impl Scope {
         Ok(())
     }
 
+    /// The granted folders.
+    pub fn roots(&self) -> &[PathBuf] {
+        &self.roots
+    }
+
     /// Finds `path` inside the most specific granted folder that holds it.
     pub fn resolve(&self, path: &RemotePath) -> Result<Resolved, Error> {
         let clean = clean(Path::new(&path.0)).ok_or_else(|| Error::BadPath {

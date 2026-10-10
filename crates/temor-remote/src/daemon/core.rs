@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use temor_wire::hello::Capability;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{IdleLimit, ListeningPort, Message, OpenSession};
+use temor_wire::units::UnixMillis;
 
 use super::config::DaemonConfig;
 use super::link::Link;
@@ -14,7 +15,7 @@ use super::pump;
 use super::registry::Registry;
 use super::session::Session;
 use crate::error::Error;
-use crate::files::{FileService, Scope};
+use crate::files::{FileService, STALE_AFTER, Scope};
 use crate::platform;
 
 /// A session daemon. `Send` and `Sync`; share it as an `Arc`.
@@ -63,6 +64,13 @@ impl Daemon {
             return Err(Error::io("starting a session's thread", error));
         }
         Ok(id)
+    }
+
+    /// Removes the staged parts of uploads that were never finished and are over a day old, in
+    /// the folders the file service reaches now. The number removed. Run it once when the
+    /// daemon starts, off the thread that accepts connections.
+    pub fn sweep_staged(&self, now: UnixMillis) -> usize {
+        self.files.sweep_staged(now, STALE_AFTER)
     }
 
     /// Hangs up every session. Their pump threads reap the programs. For a daemon being stopped

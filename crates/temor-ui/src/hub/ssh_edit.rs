@@ -9,12 +9,12 @@ use std::time::UNIX_EPOCH;
 use temor_core::host::edit::{
     Edit, EditFault, EditIn, EditOut, LocalStamp, Resolution, Watch, edit_step, watch_step,
 };
-use temor_core::host::master::Master;
 use temor_core::host::target::{parse_host_path, resolve_in};
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
+use super::remote_edit::{Job, Overwrite};
 use super::ssh::{Opened, RemoteEdit};
 use crate::edge::ssh_work::EditId;
 use crate::platform::ensure_private_dir;
@@ -80,14 +80,13 @@ impl Hub {
                 .push("Name the file like computer:/folder/file".to_owned());
             return;
         };
-        let up = self.ssh.lines.get(&host).map(|line| &line.master) == Some(&Master::Up);
-        if !up {
+        let Ok(tier) = self.edit_tier(&host) else {
             self.notices.push(format!(
                 "Open a session on {} first, then edit its files",
                 host.as_str()
             ));
             return;
-        }
+        };
         let id = EditId(self.ssh.next_edit);
         self.ssh.next_edit = self.ssh.next_edit.saturating_add(1);
         let dir = self.ssh.env.edit_dir.join(id.0.to_string());
@@ -99,9 +98,6 @@ impl Hub {
             return;
         }
         let local = dir.join(local_name(&path));
-        self.ssh
-            .work
-            .fetch(id, host.clone(), path.clone(), local.clone());
         self.ssh.edits.insert(
             id,
             RemoteEdit {
@@ -112,8 +108,12 @@ impl Hub {
                 watch: None,
                 opened: Opened::No,
                 asking: None,
+                tier,
+                seen: None,
+                overwrite: Overwrite::No,
             },
         );
+        self.start_job(id, Job::Fetch);
     }
 
     /// A step of an edit finished.
@@ -140,9 +140,9 @@ impl Hub {
             };
             let (host, path, local) = (edit.host.clone(), edit.path.clone(), edit.local.clone());
             match out {
-                EditOut::Fetch => self.ssh.work.fetch(id, host, path, local),
-                EditOut::Check => self.ssh.work.check(id, host, path),
-                EditOut::Store => self.ssh.work.store(id, host, local, path),
+                EditOut::Fetch => self.start_job(id, Job::Fetch),
+                EditOut::Check => self.start_job(id, Job::Check),
+                EditOut::Store => self.start_job(id, Job::Store),
                 EditOut::OpenLocal => {
                     if edit.opened == Opened::No {
                         edit.opened = Opened::Yes;
@@ -164,6 +164,11 @@ impl Hub {
 
     /// The person chose what to do about a changed file.
     pub fn resolve_edit(&mut self, id: EditId, choice: Resolution) {
+        if choice == Resolution::Overwrite
+            && let Some(edit) = self.ssh.edits.get_mut(&id)
+        {
+            edit.overwrite = Overwrite::Yes;
+        }
         self.on_edit(id, EditIn::Resolved(choice));
     }
 

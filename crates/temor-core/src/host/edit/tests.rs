@@ -152,6 +152,55 @@ fn a_conflict_waits_for_the_person_and_each_choice_does_what_it_says() {
 }
 
 #[test]
+fn a_write_the_host_refuses_as_changed_asks_the_person_and_never_lands() {
+    let changed = Found::Changed(stat(150, 10));
+    // Name, state when the refusal arrives, input, state after, outputs.
+    let uploading = Edit::Uploading {
+        base: V1,
+        queued: Queued::Resave,
+    };
+    let cases = [
+        (
+            "changed since the check",
+            uploading,
+            EditIn::Conflicted(changed),
+            Edit::Conflict {
+                base: V1,
+                found: changed,
+            },
+            vec![EditOut::AskConflict(changed)],
+        ),
+        (
+            "removed since the check",
+            uploading,
+            EditIn::Conflicted(Found::Deleted),
+            Edit::Conflict {
+                base: V1,
+                found: Found::Deleted,
+            },
+            vec![EditOut::AskConflict(Found::Deleted)],
+        ),
+        (
+            "a late refusal after closing",
+            Edit::Closed,
+            EditIn::Conflicted(changed),
+            Edit::Closed,
+            vec![],
+        ),
+        (
+            "a refusal with nothing being written",
+            Edit::Open { base: V1 },
+            EditIn::Conflicted(changed),
+            Edit::Open { base: V1 },
+            vec![],
+        ),
+    ];
+    for (name, from, input, want, outs) in cases {
+        assert_eq!(edit_step(from, input), (want, outs), "{name}");
+    }
+}
+
+#[test]
 fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
     for (name, failing) in [
         (
