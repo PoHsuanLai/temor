@@ -41,7 +41,10 @@ pub fn sweep_old_snapshots(git: &dyn Git, repo: &str, now: u64) -> Result<usize,
     );
     let stale = stale_snapshot_refs(&run_ok(git, &list)?.text(), now);
     for name in &stale {
-        run_ok(git, &GitCommand::new(repo, &["update-ref", "-d", name]))?;
+        run_ok(
+            git,
+            &GitCommand::new(repo, &["update-ref", "-d", name.as_str()]),
+        )?;
     }
     Ok(stale.len())
 }

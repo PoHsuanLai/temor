@@ -9,22 +9,37 @@ use ds::host::measure::Anchor;
 use ds::prelude::*;
 use temor_core::vocab::ids::TabId;
 
-use crate::hub::{AgentMenu, AgentPick, Desk, SheetView, Where};
+use crate::hub::{
+    AgentMenu, AgentPick, Desk, PointLine, RestoreMenu, SheetView, WAIT_FOR_AGENT, Where,
+};
 
 /// The choices of a tab's menu as quire's menu items.
 fn items_of(menu: &AgentMenu) -> Vec<MenuItem<AgentPick>> {
     let mut items = Vec::new();
-    if !menu.checkpoints.is_empty() {
-        items.push(MenuItem::Submenu {
-            title: "Restore to checkpoint".to_owned(),
+    match &menu.restore {
+        RestoreMenu::Absent => {}
+        // A context menu leaves out a disabled item, so the reason is a line of its own.
+        RestoreMenu::Waiting => items.push(MenuItem::Info {
+            title: "Restore…".to_owned(),
+            detail: Some(WAIT_FOR_AGENT.to_owned()),
+        }),
+        RestoreMenu::Lines(lines) => items.push(MenuItem::Submenu {
+            title: "Restore…".to_owned(),
             image: None,
             availability: Availability::Enabled,
-            children: menu
-                .checkpoints
+            children: lines
                 .iter()
-                .map(|(block, label)| MenuItem::new(AgentPick::Restore(*block), label.clone()))
+                .map(|line| match line {
+                    PointLine::Choice { id, label } => {
+                        MenuItem::new(AgentPick::Restore(*id), label.clone())
+                    }
+                    PointLine::Note(text) => MenuItem::Info {
+                        title: text.clone(),
+                        detail: None,
+                    },
+                })
                 .collect(),
-        });
+        }),
     }
     match menu.place {
         Where::Checkout => items.push(MenuItem::new(AgentPick::RunInWorktree, "Run in a worktree")),
@@ -81,19 +96,23 @@ pub fn AgentSheets(desk: Desk) -> Element {
         SheetView::Restore {
             title,
             put_back,
+            bring_back,
             remove,
             note,
         } => {
             let (yes, no) = (desk.clone(), desk.clone());
-            let nothing = put_back.is_empty() && remove.is_empty();
+            let nothing = put_back.is_empty() && bring_back.is_empty() && remove.is_empty();
             rsx! {
                 Sheet { label: title.clone(), onclose: close,
                     SectionHeader { title }
                     if nothing {
-                        Label { text: "Nothing has changed since this checkpoint", style: LabelStyle::Body }
+                        Label { text: "Nothing has changed since this point", style: LabelStyle::Body }
                     }
                     for file in put_back {
                         Label { text: format!("Put back: {file}"), style: LabelStyle::Body }
+                    }
+                    for file in bring_back {
+                        Label { text: format!("Bring back: {file}"), style: LabelStyle::Body }
                     }
                     for file in remove {
                         Label { text: format!("Remove, made since: {file}"), style: LabelStyle::Body }

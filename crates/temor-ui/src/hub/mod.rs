@@ -52,8 +52,8 @@ mod tests;
 mod transfers;
 
 pub use agents::{
-    AgentMenu, AgentPick, Agents, Alert, LeftoverRow, SheetView, WaitingCount, Where,
-    spawn_agent_loops,
+    AgentMenu, AgentPick, Agents, Alert, LeftoverRow, PointLine, RestoreMenu, SheetView,
+    WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
 };
 pub use bar::{BarData, WindowAction};
 pub use desk::Desk;

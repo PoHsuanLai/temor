@@ -6,8 +6,8 @@
 use super::git::{Git, GitCommand, run_ok};
 use super::model::{AgentWorktree, MergeMethod};
 use super::overlap::parse_names;
-use crate::error::CoreError;
 use super::undo::undo_ref;
+use crate::error::CoreError;
 use crate::vocab::ids::UndoRef;
 use crate::vocab::text::RelPath;
 

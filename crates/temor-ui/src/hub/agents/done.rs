@@ -10,20 +10,15 @@ impl Hub {
     /// Carries on from a finished job.
     pub fn agent_done(&mut self, done: Done) {
         match done {
-            Done::Seeded { pane, seeded } => self.checkpoint_seeded(pane, &seeded),
-            Done::Taken { pane, at, result } => self.checkpoint_taken(pane, at, result),
-            Done::Planned {
+            Done::PointsListed { pane, result } => self.points_listed(pane, result),
+            Done::PointPlanned {
                 pane,
-                block,
-                at,
-                root,
-                plan,
-            } => self.checkpoint_planned((pane, block, at), root, plan),
-            Done::Restored {
-                pane,
-                block,
+                session,
+                id,
                 result,
-            } => self.checkpoint_restored(pane, block, result),
+            } => self.point_planned((pane, session, id), result),
+            Done::PointRestored { pane, turn, result } => self.point_restored(pane, turn, result),
+            Done::Swept { .. } => {}
             Done::Made { result } => self.worktree_made(result),
             Done::Snapshotted { tab, result } => self.tree_snapshotted(tab, result),
             Done::Pair(key, Ok(probe), _) => self.probe_done(OverlapIn::Pair(key, probe)),
@@ -57,12 +52,16 @@ impl Hub {
     /// The person chose something in a tab's menu.
     pub fn agent_pick(&mut self, tab: temor_core::vocab::ids::TabId, pick: super::menu::AgentPick) {
         use super::menu::AgentPick;
+        // Restore points are docket's; everything else here needs git.
+        if let AgentPick::Restore(id) = pick {
+            return self.ask_restore(tab, id);
+        }
         if let Err(why) = self.agents.jobs.available() {
             self.notices.push(why.to_owned());
             return;
         }
         match pick {
-            AgentPick::Restore(block) => self.ask_restore(tab, block),
+            AgentPick::Restore(_) => {}
             AgentPick::RunInWorktree => self.ask_worktree(tab),
             AgentPick::MergeBack => self.ask_merge(tab),
             AgentPick::Details => self.agents.sheet = Some(Sheet::Details(tab)),

@@ -36,10 +36,10 @@ pub enum UiError {
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),
-    /// git could not do what a checkpoint or an agent worktree needed.
+    /// git could not do what an agent worktree needed.
     #[error(transparent)]
     Git(#[from] temor_core::error::CoreError),
-    /// A file of a checkpoint or an agent worktree could not be copied, written back or removed.
+    /// A file of an agent worktree could not be copied, written back or removed.
     #[error("{path}: {source}")]
     AgentFile {
         path: String,
