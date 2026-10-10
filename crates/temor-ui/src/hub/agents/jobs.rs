@@ -7,7 +7,7 @@ use std::sync::Arc;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::worktree::overlap::{BaseKey, BaseProbe, PairKey, PairProbe, ProbeJob};
 use temor_core::worktree::{Git, ListedWorktree, MergeOutcome, Oid, Snapshot};
-use temor_desktop::{DesktopError, PointId, PointList, PointPlan, SessionKey, TurnNo};
+use temor_desktop::{DesktopError, PointId, PointList, PointPlan, SessionKey, TurnMark, TurnNo};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::work::Made;
@@ -32,6 +32,26 @@ pub enum Done {
     PointRestored {
         pane: PaneId,
         turn: Option<TurnNo>,
+        result: Result<(), DesktopError>,
+    },
+    /// A watched agent's session was opened.
+    WatchOpened {
+        pane: PaneId,
+        result: Result<SessionKey, DesktopError>,
+    },
+    /// The agent's turn was marked.
+    WatchMarked {
+        pane: PaneId,
+        result: Result<TurnMark, DesktopError>,
+    },
+    /// The agent's turn was ended.
+    WatchEnded {
+        pane: PaneId,
+        result: Result<(), DesktopError>,
+    },
+    /// The watch was closed.
+    WatchClosed {
+        pane: PaneId,
         result: Result<(), DesktopError>,
     },
     /// Old snapshot refs were swept from a repository; how many were deleted.

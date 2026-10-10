@@ -15,6 +15,23 @@ use temor_vt::PromptEvent;
 
 use super::convert::{exit_code, known_agent, note_of, program_fact, status_report};
 
+/// How a pane's agent was seen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Via {
+    /// Its process is in front of the pane.
+    Process,
+    /// It reported its own status.
+    Report,
+}
+
+/// A known agent seen in a pane.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Named {
+    /// The program's name, lowercase.
+    program: String,
+    via: Via,
+}
+
 /// Whether a pane is known to run an agent: by its process, or because it reported.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Known {
@@ -26,9 +43,9 @@ enum Known {
 struct Entry {
     state: RadarState,
     known: Known,
-    /// A known agent's name was seen (its process, or what it reported): restore points are read
+    /// A known agent's name was seen (its process, or what it reported): restore points are kept
     /// for these panes only, never for a build tool that reports its progress.
-    named: Known,
+    named: Option<Named>,
 }
 
 /// A pane that needs the person while its window is not the one in use: the desktop's
@@ -77,7 +94,7 @@ impl Radar {
         self.panes.entry(pane).or_insert_with(|| Entry {
             state: RadarState::new(focus),
             known: Known::No,
-            named: Known::No,
+            named: None,
         })
     }
 
@@ -99,17 +116,27 @@ impl Radar {
         }
     }
 
-    fn know(&mut self, pane: PaneId, app: Option<&str>) {
+    fn know(&mut self, pane: PaneId, app: Option<&str>, via: Via) {
         let entry = self.entry(pane);
         entry.known = Known::Yes;
-        if app.is_some_and(known_agent) {
-            entry.named = Known::Yes;
+        let Some(app) = app.filter(|app| known_agent(app)) else {
+            return;
+        };
+        let program = app.to_ascii_lowercase();
+        // The process in front is the stronger evidence: its leaving ends the agent.
+        let keep = entry
+            .named
+            .as_ref()
+            .is_some_and(|n| n.program == program && n.via == Via::Process);
+        if !keep {
+            entry.named = Some(Named { program, via });
         }
     }
 
-    /// Whether a known agent program was seen in `pane`.
-    pub fn is_named_agent(&self, pane: PaneId) -> bool {
-        self.panes.get(&pane).is_some_and(|e| e.named == Known::Yes)
+    /// The known agent program seen in `pane` (lowercase), if any.
+    pub fn agent_of(&self, pane: PaneId) -> Option<&str> {
+        let entry = self.panes.get(&pane)?;
+        entry.named.as_ref().map(|n| n.program.as_str())
     }
 
     /// The pane that has the keyboard, as the radar last heard.
@@ -126,17 +153,26 @@ impl Radar {
     pub fn observe(&mut self, pane: PaneId, now: Millis, event: &PaneEvent) -> Changed {
         match event {
             PaneEvent::Program(status) => {
-                self.know(pane, Some(status.app.as_str()));
+                self.know(pane, Some(status.app.as_str()), Via::Report);
                 self.feed(pane, now, RadarIn::Program(program_fact(status)))
             }
             #[cfg(unix)]
             PaneEvent::Reported(line) => {
-                self.know(pane, line.app.as_deref());
+                self.know(pane, line.app.as_deref(), Via::Report);
                 self.feed(pane, now, RadarIn::Report(status_report(pane, line)))
             }
             PaneEvent::Foreground(Some(name)) if known_agent(name) => {
-                self.know(pane, Some(name.as_str()));
+                self.know(pane, Some(name.as_str()), Via::Process);
                 self.feed(pane, now, RadarIn::Process(ProcessFact::AgentRunning))
+            }
+            // The agent seen by its process left the front of the pane: it has exited.
+            PaneEvent::Foreground(_) => {
+                if let Some(entry) = self.panes.get_mut(&pane)
+                    && entry.named.as_ref().is_some_and(|n| n.via == Via::Process)
+                {
+                    entry.named = None;
+                }
+                Changed::No
             }
             PaneEvent::Title(title) if self.panes.contains_key(&pane) => {
                 self.feed(pane, now, RadarIn::Title(title.clone()))

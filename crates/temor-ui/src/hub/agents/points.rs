@@ -5,10 +5,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use temor_core::presence::AgentState;
 use temor_core::vocab::ids::PaneId;
 use temor_desktop::{
-    CheckpointPort, NoCheckpoints, NotSavedWhy, PointId, PointList, PointRow, PointState,
+    CheckpointPort, NoCheckpoints, NotSavedWhy, PointId, PointList, PointRow, PointState, RunState,
     SessionKey, TurnNo,
 };
 
@@ -39,6 +38,12 @@ impl Default for Points {
 }
 
 impl Points {
+    /// Whether the pane's last list says a turn is running.
+    pub(super) fn running(&self, pane: PaneId) -> bool {
+        let list = self.lists.get(&pane);
+        list.is_some_and(|list| list.turn == RunState::Running)
+    }
+
     /// The pane is gone: its session and list are forgotten.
     pub(super) fn forget(&mut self, pane: PaneId) {
         self.sessions.remove(&pane);
@@ -73,18 +78,19 @@ pub enum PointLine {
 pub enum RestoreMenu {
     /// Nothing to show: no session is known for the pane, or its list is empty.
     Absent,
-    /// The agent is still working: the entry is shown but takes no pick.
+    /// A turn is running: the entry is shown but takes no pick.
     Waiting,
     /// The run's points and the notes between them.
     Lines(Vec<PointLine>),
 }
 
-/// The Restore entry for a pane in `state` whose last list is `list`.
-pub fn restore_menu(list: Option<&PointList>, state: AgentState) -> RestoreMenu {
+/// The Restore entry for a pane whose last list is `list`; docket's list says whether a turn is
+/// running.
+pub fn restore_menu(list: Option<&PointList>) -> RestoreMenu {
     let Some(list) = list.filter(|list| !list.rows.is_empty()) else {
         return RestoreMenu::Absent;
     };
-    if state == AgentState::Working {
+    if list.turn == RunState::Running {
         return RestoreMenu::Waiting;
     }
     let skip = list.rows.len().saturating_sub(LISTED);

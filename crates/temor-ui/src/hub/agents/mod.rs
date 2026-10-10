@@ -20,6 +20,10 @@ mod sweep;
 #[cfg(test)]
 mod tests;
 mod trees;
+mod watch;
+#[cfg(test)]
+mod watch_tests;
+mod watching;
 mod work;
 mod worktrees;
 
