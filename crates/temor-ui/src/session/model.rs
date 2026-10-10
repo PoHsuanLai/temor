@@ -141,6 +141,34 @@ pub struct SessionParts {
     pub shelf_dir: PathBuf,
 }
 
+/// What a session is made from besides its pane: the fonts, the keys, the surroundings.
+pub struct SessionKit {
+    pub keymap: Keymap,
+    pub clipboard: Box<dyn Clipboard>,
+    pub opener: Box<dyn Opener>,
+    /// When a finished command is worth a notice.
+    pub notify_after: NotifyAfter,
+    pub notifier: Box<dyn Notifier>,
+    pub clock: Box<dyn Clock>,
+    /// Where "Save output" places files (the downloads shelf).
+    pub shelf_dir: PathBuf,
+}
+
+/// What a session on a program that runs elsewhere is made from (see `temor_pane::start_fed`).
+pub struct FedParts {
+    pub spec: temor_pane::FedSpec,
+    pub fonts: FontSet,
+    pub kit: SessionKit,
+}
+
+impl std::fmt::Debug for FedParts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FedParts")
+            .field("spec", &self.spec)
+            .finish_non_exhaustive()
+    }
+}
+
 impl std::fmt::Debug for SessionParts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SessionParts")
