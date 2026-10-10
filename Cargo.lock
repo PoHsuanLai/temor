@@ -101,7 +101,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 [[package]]
 name = "almanac-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/almanac?rev=7af8f0bf8200f39e2455ea19fbbb6bbde2c51e5f#7af8f0bf8200f39e2455ea19fbbb6bbde2c51e5f"
+source = "git+https://github.com/PoHsuanLai/almanac?rev=ec129071cdff05531ddb945bf561f59edc9b4884#ec129071cdff05531ddb945bf561f59edc9b4884"
 dependencies = [
  "porter-core",
  "prov",
@@ -1009,7 +1009,7 @@ dependencies = [
 [[package]]
 name = "cua-action"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=916da297d564e35cee9302d2d1e6607ae45962a7#916da297d564e35cee9302d2d1e6607ae45962a7"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=9e4ba527e368a57c40b73c59da2de0cd867e5e03#9e4ba527e368a57c40b73c59da2de0cd867e5e03"
 dependencies = [
  "keyboard-types 0.7.0",
  "serde",
@@ -1441,7 +1441,7 @@ dependencies = [
 [[package]]
 name = "docket-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=1b905edc5303c9f2241f8a5f6358968ece8dde36#1b905edc5303c9f2241f8a5f6358968ece8dde36"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=3feb56fcbcf6d1567b2cec2a7d562cc86304afc9#3feb56fcbcf6d1567b2cec2a7d562cc86304afc9"
 dependencies = [
  "docket-core",
  "docket-dbus",
@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "docket-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=1b905edc5303c9f2241f8a5f6358968ece8dde36#1b905edc5303c9f2241f8a5f6358968ece8dde36"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=3feb56fcbcf6d1567b2cec2a7d562cc86304afc9#3feb56fcbcf6d1567b2cec2a7d562cc86304afc9"
 dependencies = [
  "almanac-core",
  "cua-action",
@@ -1471,7 +1471,7 @@ dependencies = [
 [[package]]
 name = "docket-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=1b905edc5303c9f2241f8a5f6358968ece8dde36#1b905edc5303c9f2241f8a5f6358968ece8dde36"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=3feb56fcbcf6d1567b2cec2a7d562cc86304afc9#3feb56fcbcf6d1567b2cec2a7d562cc86304afc9"
 dependencies = [
  "docket-core",
  "porter-dbus",
@@ -2061,7 +2061,7 @@ dependencies = [
 [[package]]
 name = "genai-names"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=916da297d564e35cee9302d2d1e6607ae45962a7#916da297d564e35cee9302d2d1e6607ae45962a7"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=9e4ba527e368a57c40b73c59da2de0cd867e5e03#9e4ba527e368a57c40b73c59da2de0cd867e5e03"
 
 [[package]]
 name = "generational-box"
@@ -3061,7 +3061,7 @@ dependencies = [
 [[package]]
 name = "model-provider"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=916da297d564e35cee9302d2d1e6607ae45962a7#916da297d564e35cee9302d2d1e6607ae45962a7"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=9e4ba527e368a57c40b73c59da2de0cd867e5e03#9e4ba527e368a57c40b73c59da2de0cd867e5e03"
 dependencies = [
  "base64 0.22.1",
  "cua-action",
@@ -3841,7 +3841,7 @@ dependencies = [
 [[package]]
 name = "porter-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b12886e4d047d9763a4dccfa9fa3ce92084483ca#b12886e4d047d9763a4dccfa9fa3ce92084483ca"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20#3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20"
 dependencies = [
  "porter-core",
  "porter-dbus",
@@ -3857,7 +3857,7 @@ dependencies = [
 [[package]]
 name = "porter-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b12886e4d047d9763a4dccfa9fa3ce92084483ca#b12886e4d047d9763a4dccfa9fa3ce92084483ca"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20#3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20"
 dependencies = [
  "serde",
  "serde_json",
@@ -3868,11 +3868,12 @@ dependencies = [
 [[package]]
 name = "porter-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b12886e4d047d9763a4dccfa9fa3ce92084483ca#b12886e4d047d9763a4dccfa9fa3ce92084483ca"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20#3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20"
 dependencies = [
  "porter-core",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
  "tokio",
  "zbus",
 ]
@@ -3967,10 +3968,11 @@ dependencies = [
 [[package]]
 name = "prov"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b12886e4d047d9763a4dccfa9fa3ce92084483ca#b12886e4d047d9763a4dccfa9fa3ce92084483ca"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20#3d05f0a185fdae1e2d10c47ddb48f1c1ff0c7f20"
 dependencies = [
  "porter-core",
  "serde",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -5559,7 +5561,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vision-prep"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=916da297d564e35cee9302d2d1e6607ae45962a7#916da297d564e35cee9302d2d1e6607ae45962a7"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=9e4ba527e368a57c40b73c59da2de0cd867e5e03#9e4ba527e368a57c40b73c59da2de0cd867e5e03"
 dependencies = [
  "cua-action",
  "serde",
