@@ -42,6 +42,7 @@ fn setup(name: &str, body: &str, book: ConsentBook) -> (PathBuf, PathBuf) {
         panes: vec![PaneHost {
             pane: PaneId(1),
             alias: "fake".to_owned(),
+            session: None,
         }],
     };
     save_with_hosts(&state, &ws, &hosts).expect("session saved");

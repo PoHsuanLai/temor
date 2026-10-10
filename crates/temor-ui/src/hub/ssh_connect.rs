@@ -106,6 +106,10 @@ impl Hub {
     pub(super) fn ssh_claims(&mut self, spawn: &Spawn) -> Option<HostAlias> {
         if let Some(at) = self.ssh.restored.iter().position(|r| r.pane == spawn.pane) {
             let saved = self.ssh.restored.remove(at);
+            if let Some(session) = saved.session {
+                let session = temor_wire::ids::SessionId(session.0);
+                self.remote.saved.insert(spawn.pane, session);
+            }
             return HostAlias::new(&saved.alias).ok();
         }
         self.ssh.intent.take()

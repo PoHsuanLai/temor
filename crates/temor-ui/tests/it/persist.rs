@@ -91,6 +91,7 @@ fn hosts_are_kept_beside_the_tabs_without_disturbing_them() {
         panes: vec![PaneHost {
             pane: PaneId(1),
             alias: "prod".to_owned(),
+            session: None,
         }],
     };
     save_with_hosts(&state, &ws, &hosts).unwrap();

@@ -9,12 +9,22 @@ use crate::error::CoreError;
 use crate::vocab::ids::PaneId;
 use crate::vocab::lenient::lenient_list;
 
+/// The number a host's helper gave a session of its own. temor only keeps it to ask for the same
+/// session after a restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct HostSession(pub u64);
+
 /// One pane that is a session on a host.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaneHost {
     pub pane: PaneId,
     /// The name it was reached by (an ssh_config alias, or a tailnet name).
     pub alias: String,
+    /// The session the pane had on the host's helper, when it was one; it is adopted again on
+    /// restore if the host still has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<HostSession>,
 }
 
 /// The host parts of a session file.
@@ -81,7 +91,7 @@ pub fn read_hosts(session: &str) -> HostsFile {
 
 #[cfg(test)]
 mod tests {
-    use super::{HostsFile, PaneHost, read_hosts, splice_hosts};
+    use super::{HostSession, HostsFile, PaneHost, read_hosts, splice_hosts};
     use crate::host::consent::{ConsentBook, HostRecord};
     use crate::vocab::ids::PaneId;
 
@@ -94,6 +104,7 @@ mod tests {
             panes: vec![PaneHost {
                 pane: PaneId(3),
                 alias: "prod".to_owned(),
+                session: Some(HostSession(12)),
             }],
         }
     }

@@ -113,6 +113,9 @@ pub(super) struct RemoteHub {
     pub grants: BTreeMap<HostAlias, Grant>,
     pub lines: BTreeMap<HostAlias, RemoteLine>,
     pub panes: BTreeMap<PaneId, RemotePane>,
+    /// The sessions panes were saved with, until each pane has its session again or is told the
+    /// host lost it.
+    pub saved: BTreeMap<PaneId, SessionId>,
     blob: OnceLock<Option<HelperBlob>>,
     blob_at: Option<PathBuf>,
     state_dir: Option<PathBuf>,
@@ -135,6 +138,7 @@ impl RemoteHub {
             grants,
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
+            saved: BTreeMap::new(),
             blob: OnceLock::new(),
             blob_at: blob_path(
                 ambient.env.get("TEMOR_REMOTE_HELPER"),
