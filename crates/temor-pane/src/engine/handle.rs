@@ -75,6 +75,13 @@ impl PaneHandle {
     /// the pane's lock, so the I/O thread never parses output against a half-changed pane. Output
     /// the program wrote before the size change but read from the PTY just before it may still be
     /// parsed at the new size; that one read is the same window every terminal has on SIGWINCH.
+    ///
+    /// Draining the PTY first would not close it. Only the I/O thread may read the PTY (a second
+    /// reader would reorder bytes against the read in flight), so a drain means asking that thread
+    /// and waiting for it, which blocks the window on a thread that may be busy with a flood of
+    /// output; and whatever the program writes between the drain and the size change is in the
+    /// same position. The program redraws on SIGWINCH anyway, so the one mis-parsed read is
+    /// repainted a moment later. Closed (FOLLOWUPS, "Output just before a resize").
     pub fn resize(&self, grid: GridSize, cell: CellPx) -> Result<(), PaneError> {
         let output = self.with_term(|term| {
             let output = term.resize(grid, cell)?;
