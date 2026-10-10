@@ -22,6 +22,12 @@ pub enum CoreError {
     /// A tab or pane counter has no id left to hand out; nothing was changed.
     #[error("no ids are left to hand out")]
     IdsExhausted,
+    /// The tab is not in this workspace; the caller's view of the sidebar is stale.
+    #[error("tab {0} is not in this Space")]
+    UnknownTab(u64),
+    /// The Space is not in the list (it was deleted); the caller's view of the Spaces is stale.
+    #[error("Space {0} is not in the list")]
+    UnknownSpace(u64),
     /// The tab already holds the most panes it can; open a new tab instead.
     #[error("this tab cannot be split further")]
     TreeFull,

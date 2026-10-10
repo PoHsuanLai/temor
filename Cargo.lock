@@ -5027,6 +5027,7 @@ dependencies = [
  "ds-lint",
  "ds-settings",
  "rustix",
+ "serde_json",
  "temor-core",
  "temor-pane",
  "temor-pty",

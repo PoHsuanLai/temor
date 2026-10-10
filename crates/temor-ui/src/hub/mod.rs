@@ -12,6 +12,10 @@ mod persist;
 mod restore;
 mod rows;
 mod say;
+mod space_launch;
+mod space_move;
+mod space_route;
+mod spaces;
 #[cfg(test)]
 mod tests;
 

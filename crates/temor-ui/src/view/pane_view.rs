@@ -22,6 +22,7 @@ use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_core::workspace::WorkspaceIn;
+use temor_pane::keys::Action;
 use temor_vt::Ime;
 
 use super::blocks::{BlockBar, Chrome, GutterMarks, chrome_of};
@@ -137,6 +138,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 .session
                 .as_mut()
                 .and_then(|s| s.take_asked());
+            if let Some(Action::SelectSpace(number)) = asked {
+                desk.select_space(number);
+                return;
+            }
             if let Some(input) = asked.and_then(workspace_input) {
                 desk.act(input);
                 return;

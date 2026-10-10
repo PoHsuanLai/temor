@@ -5,7 +5,7 @@
 use std::time::Instant;
 
 use super::model::Hub;
-use crate::edge::{Pace, save_session, sidecar};
+use crate::edge::{Pace, save_session_for, save_spaces, sidecar};
 use crate::session::Session;
 
 impl Hub {
@@ -24,10 +24,29 @@ impl Hub {
     }
 
     fn write_session(&mut self) {
-        let Some(dir) = &self.state_dir else { return };
-        if let Err(err) = save_session(dir, &self.ws) {
-            self.notices.push(err.to_string());
+        let Some(dir) = self.state_dir.clone() else {
+            return;
+        };
+        let failures = self.save_all(&dir);
+        self.notices.extend(failures);
+    }
+
+    /// Writes every Space's session and the Spaces file; what could not be written, as text.
+    fn save_all(&self, dir: &std::path::Path) -> Vec<String> {
+        let sessions = self
+            .book
+            .parked
+            .iter()
+            .map(|(id, ws)| (*id, ws))
+            .chain([(self.book.active, &self.ws)]);
+        let mut failures: Vec<String> = sessions
+            .filter_map(|(id, ws)| save_session_for(dir, id, ws).err())
+            .map(|err| err.to_string())
+            .collect();
+        if let Err(err) = save_spaces(dir, &self.spaces_for_file()) {
+            failures.push(err.to_string());
         }
+        failures
     }
 }
 
@@ -36,7 +55,7 @@ impl Drop for Hub {
         let Some(dir) = self.state_dir.clone() else {
             return;
         };
-        let _ = save_session(&dir, &self.ws);
+        let _ = self.save_all(&dir);
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         for (pane, slot) in &self.slots {

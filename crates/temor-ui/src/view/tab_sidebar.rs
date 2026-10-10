@@ -1,7 +1,8 @@
 //! The sidebar (PLAN §7): the tabs as quire's `Sidebar`, pinned tabs first, then each folder's
 //! tabs under its name, then the rest. The sections' order is the model's (`hub::rows`), so a row
 //! and its ⌘1 to ⌘9 key always name the same tab. The sidebar is drawn in the Space's frame ink
-//! (`use_space_frame`), so a Space's look reaches it as it does quire's own sidebars.
+//! (`use_space_frame`), so a Space's look reaches it as it does quire's own sidebars. It shows
+//! the tabs of the Space on screen; the Space's name heads it and the Spaces are in its foot.
 
 use dioxus::prelude::*;
 use ds::base::press::Press;
@@ -15,6 +16,7 @@ use temor_core::vocab::ids::TabId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
+use super::space_ui::{SpaceFoot, SpaceHeader};
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow};
 
@@ -58,15 +60,21 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 cursor,
                 onselect: select,
                 fill: SidebarFill::Clear,
+                header: rsx! { SpaceHeader { desk: desk.clone() } },
                 foot: rsx! {
-                    Button {
-                        bezel: Bezel::Toolbar,
-                        image: ImagePosition::Only,
-                        size: ControlSize::Small,
-                        icon: Some(IconSource::Glyph(Icon::Plus)),
-                        label: "New tab".to_owned(),
-                        title: Some("New tab".to_owned()),
-                        onclick: new_tab,
+                    SpaceFoot {
+                        desk: desk.clone(),
+                        leading: rsx! {
+                            Button {
+                                bezel: Bezel::Toolbar,
+                                image: ImagePosition::Only,
+                                size: ControlSize::Small,
+                                icon: Some(IconSource::Glyph(Icon::Plus)),
+                                label: "New tab".to_owned(),
+                                title: Some("New tab".to_owned()),
+                                onclick: new_tab,
+                            }
+                        },
                     }
                 },
             }

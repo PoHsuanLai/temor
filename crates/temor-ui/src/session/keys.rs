@@ -72,13 +72,11 @@ impl Session {
             | Action::ToggleZoom
             | Action::Equalize
             | Action::ReopenTab
-            | Action::SelectTab(_) => {
+            | Action::SelectTab(_)
+            | Action::SelectSpace(_) => {
                 self.asked = Some(action);
                 Ok(())
             }
-            // TODO(P4): the Space switch waits for the window's Spaces; held so it never reaches
-            // the program.
-            Action::SelectSpace(_) => Ok(()),
         }
     }
 

@@ -16,6 +16,8 @@ pub mod pane_view;
 pub mod pointer;
 pub mod probe;
 pub mod slot;
+pub mod space_handle;
+pub mod space_ui;
 pub mod status;
 pub mod tab_row;
 pub mod tab_sidebar;

@@ -6,6 +6,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
 use super::model::HubRef;
+use crate::view::space_handle::SpacesOf;
 
 /// The window's desk. Two desks are equal when they are the same window's.
 #[derive(Clone, PartialEq)]
@@ -15,6 +16,8 @@ pub struct Desk {
     pub ui: Signal<u32>,
     /// The message the person sees above the panes.
     pub notice: Signal<Option<String>>,
+    /// The Spaces: the kit's handle, which switches, edits and writes them.
+    pub spaces: SpacesOf,
 }
 
 impl std::fmt::Debug for Desk {

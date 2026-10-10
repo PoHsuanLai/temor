@@ -31,7 +31,7 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::CloseFind
         | Action::PreviousPrompt
         | Action::NextPrompt
-        // TODO(P4): Spaces switch through the kit once the window shows Spaces.
+        // The Space switch is the window's (`Desk::select_space`), through the kit.
         | Action::SelectSpace(_) => return None,
     })
 }
