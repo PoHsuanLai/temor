@@ -103,7 +103,10 @@ fn inner_line_is_one_quiet_line_for_bash_and_zsh() {
     use super::InnerLoadLine;
     let line = InnerLoadLine::build(&integration_scripts()).expect("build");
     let text = line.as_str();
-    assert!(text.starts_with(' '), "a leading space keeps it out of history");
+    assert!(
+        text.starts_with(' '),
+        "a leading space keeps it out of history"
+    );
     assert_eq!(text.matches('\n').count(), 1);
     assert!(text.ends_with("\"$BASH_VERSION\")\"\n"));
     assert!(text.is_ascii());
