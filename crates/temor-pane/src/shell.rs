@@ -178,6 +178,7 @@ pub fn shell_pane(
         palette: input.palette,
         cursor: cursor_shape(input.settings.cursor),
         transfers: None,
+        tap: None,
     })
 }
 

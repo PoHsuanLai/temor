@@ -1,6 +1,6 @@
 //! The host list as the window offers it (PLAN §9b, D22): the person's `~/.ssh/config` hosts
-//! and their tailnet machines in one list, each machine once. The command bar and the host list
-//! view read it through [`HostRows`]; the tailnet machines come from a [`TailnetFeed`] the
+//! and their tailnet machines in one list, each machine once. The command bar reads it through
+//! [`HostRows`]; the tailnet machines come from a [`TailnetFeed`] the
 //! desktop edge provides.
 
 use std::sync::Arc;

@@ -15,7 +15,6 @@ pub mod fact_chips;
 pub mod find_bar;
 pub mod handlers;
 pub mod host_banners;
-pub mod host_list;
 pub mod host_words;
 pub mod ime;
 pub mod launch;

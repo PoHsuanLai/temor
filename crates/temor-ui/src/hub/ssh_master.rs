@@ -2,15 +2,21 @@
 //! join, and the host's key is read once it is up. The decisions are temor-core's `master_step`;
 //! this runs the probe and starts the `ssh` it names.
 
+use std::sync::Arc;
+
 use temor_core::host::consent::{ConsentIn, Who};
 use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::PaneId;
-use temor_ssh::{Fingerprint, HostAlias, HostKey, HostName, MasterProbe, prepare_control_dirs};
+use temor_ssh::{
+    Fingerprint, HostAlias, HostKey, HostName, KnownName, MasterProbe, prepare_control_dirs,
+    socket_appeared,
+};
 
 use super::model::Hub;
 use super::remote::Tier;
 use super::ssh::{Check, Phase};
+use super::ssh_check::RawCheck;
 use super::ssh_connect::session_args;
 use crate::view::launch::{Program, open_session_with};
 
@@ -29,7 +35,9 @@ impl Hub {
         }
         // A connection nobody uses may have timed out since: ask the system again.
         let busy = self.ssh.panes.iter().any(|(other, host)| {
-            host.alias == *alias && *other != pane && host.phase != Phase::Failed
+            host.alias == *alias
+                && *other != pane
+                && !matches!(host.phase, Phase::Failed | Phase::Offline)
         });
         let line = self.ssh.lines.entry(alias.clone()).or_default();
         if line.master == Master::Up && !busy {
@@ -45,12 +53,35 @@ impl Hub {
         for out in outs {
             match out {
                 MasterOut::Probe => self.ssh.work.probe(alias.clone()),
-                MasterOut::Open { pane, how } => self.start_session(alias, pane, how),
+                MasterOut::Open { pane, how } => {
+                    if how == OpenAs::First {
+                        self.note_sockets(alias);
+                    }
+                    self.start_session(alias, pane, how)
+                }
                 MasterOut::ConnectionEnded => {
                     self.feed_forwards(alias, temor_core::host::forward::ForwardIn::ConnectionLost)
                 }
             }
         }
+    }
+
+    /// Remembers which connections exist before `alias`'s is made.
+    fn note_sockets(&mut self, alias: &HostAlias) {
+        if let Ok(layout) = &self.ssh.env.layout {
+            let before = layout.finished_sockets();
+            self.ssh.baselines.insert(alias.clone(), before);
+        }
+    }
+
+    /// Whether the one connection being made has its socket. With several being made at once a
+    /// new socket cannot be told apart, so each is asked after instead.
+    pub(super) fn socket_up(&self, alias: &HostAlias) -> bool {
+        let (Ok(layout), Some(before)) = (&self.ssh.env.layout, self.ssh.baselines.get(alias))
+        else {
+            return false;
+        };
+        socket_appeared(before, &layout.finished_sockets())
     }
 
     /// Starts `ssh` in `pane`, to make the connection (`First`) or join it (`Join`).
@@ -72,9 +103,15 @@ impl Hub {
                 return self.fail_host(pane, err.to_string());
             }
         };
+        // Only the session that makes the connection can be asked for the browser check.
+        let scan = match how {
+            OpenAs::First => Some(Arc::new(RawCheck::new())),
+            OpenAs::Join => None,
+        };
         let program = Program {
             program: self.ssh.env.tools.ssh.clone(),
             args: args.into_iter().map(Into::into).collect(),
+            tap: scan.as_ref().map(RawCheck::listener),
         };
         let start = self.space_start();
         let opened = open_session_with(
@@ -96,10 +133,11 @@ impl Hub {
                     slot.borrow_mut().session = Some(session);
                 }
                 if let Some(host) = self.ssh.panes.get_mut(&pane) {
-                    (host.phase, host.scan) = match how {
-                        OpenAs::First => (Phase::Connecting, Some(temor_ssh::CheckScan::new())),
-                        OpenAs::Join => (Phase::Up, None),
+                    host.phase = match how {
+                        OpenAs::First => Phase::Connecting,
+                        OpenAs::Join => Phase::Up,
                     };
+                    host.scan = scan;
                 }
             }
             Err(err) => {
@@ -141,9 +179,8 @@ impl Hub {
                 (HostName::new(bare), None)
             }
         };
-        if let Some(name) = name {
-            self.ssh.work.identify(alias.clone(), name, port);
-        }
+        let fallback = name.map(|host| KnownName { host, port });
+        self.ssh.work.identify(alias.clone(), fallback);
     }
 
     /// Hears the fingerprint of the key a host's connection verified: answers recorded under

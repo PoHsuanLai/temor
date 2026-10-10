@@ -6,6 +6,7 @@ use ds::base::time::clock::sleep;
 use std::time::Duration;
 use temor_core::host::forward::ForwardIn;
 use temor_core::host::master::Master;
+use temor_ssh::{HostAlias, MasterProbe};
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -47,20 +48,47 @@ impl Hub {
     /// One tick: polls the local copies, and asks after a connection still being made.
     pub(super) fn ssh_tick(&mut self) -> (Redraw, Vec<String>) {
         self.ssh.ticks = self.ssh.ticks.wrapping_add(1);
+        self.ssh_start_shown();
         self.poll_waiting_edits();
         let redraw = match (self.poll_edits(), self.remote_tick()) {
             (Redraw::No, Redraw::No) => Redraw::No,
             _ => Redraw::Yes,
         };
+        let connecting: Vec<HostAlias> = self
+            .ssh
+            .lines
+            .iter()
+            .filter(|(_, line)| matches!(line.master, Master::Connecting { .. }))
+            .map(|(alias, _)| alias.clone())
+            .collect();
+        self.ssh
+            .baselines
+            .retain(|alias, _| connecting.contains(alias));
+        // The connection's socket appearing says it is up; `ssh -O check` is asked only when
+        // that cannot say (several connections at once, or one joined without a new socket).
+        let mut unsure = Vec::new();
+        for alias in connecting {
+            match connecting_alone(&self.ssh.lines) && self.socket_up(&alias) {
+                true => self.on_probed(alias, MasterProbe::Running),
+                false => unsure.push(alias),
+            }
+        }
         if self.ssh.ticks.is_multiple_of(PROBE_EVERY) {
-            for (alias, line) in &self.ssh.lines {
-                if matches!(line.master, Master::Connecting { .. }) {
-                    self.ssh.work.probe(alias.clone());
-                }
+            for alias in unsure {
+                self.ssh.work.probe(alias);
             }
         }
         (redraw, std::mem::take(&mut self.notices))
     }
+}
+
+/// Whether only one connection is being made.
+fn connecting_alone(lines: &std::collections::BTreeMap<HostAlias, super::ssh::HostLine>) -> bool {
+    lines
+        .values()
+        .filter(|line| matches!(line.master, Master::Connecting { .. }))
+        .count()
+        == 1
 }
 
 /// Hears the SSH jobs and polls, for as long as the window lives.

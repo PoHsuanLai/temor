@@ -113,6 +113,7 @@ pub fn start_fed(
         dirty: Arc::clone(&dirty),
         last_title: None,
         transfers: spec.transfers.map(Transfers::new),
+        tap: None,
         watch: ForegroundWatch::new(),
     };
     // The first frame is always due.

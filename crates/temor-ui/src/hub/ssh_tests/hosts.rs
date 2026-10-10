@@ -1,15 +1,12 @@
-//! The host list: SSH config hosts and tailnet machines merged, grouped, with offline ones
-//! dimmed, read from a scratch `~/.ssh/config`.
+//! The host list: SSH config hosts and tailnet machines merged, each machine once, read from a scratch `~/.ssh/config`.
 
 use std::sync::Arc;
 
-use ds::base::vocab::Availability;
 use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
 
 use super::support::Rig;
 use crate::edge::desktop_feed::TailnetFeed;
 use crate::hub::hosts::HostRows;
-use crate::view::host_list::{group_title, row_availability, row_detail};
 
 #[derive(Debug)]
 struct Fixed(Vec<TailnetHost>);
@@ -55,36 +52,12 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
     // The alias that names a machine carries it; the rest follow, online first.
     let shown: Vec<&str> = rows.iter().map(|row| row.shown()).collect();
     assert_eq!(shown, ["prod", "box", "desk", "laptop"]);
-    let groups: Vec<&str> = rows.iter().map(|row| group_title(row.group())).collect();
-    assert_eq!(
-        groups,
-        [
-            "Your hosts",
-            "Your hosts",
-            "Your computers",
-            "Your computers"
-        ]
-    );
     assert_eq!(
         rows[1].presence(),
         Some(Presence::Online),
         "box is the tailnet machine"
     );
     assert_eq!(rows[0].presence(), None);
-
-    let looks: Vec<(Availability, Option<String>)> = rows
-        .iter()
-        .map(|row| (row_availability(row), row_detail(row)))
-        .collect();
-    assert_eq!(
-        looks,
-        [
-            (Availability::Enabled, Some("prod.example.com".to_owned())),
-            (Availability::Enabled, Some("box.tail.ts.net".to_owned())),
-            (Availability::Enabled, None),
-            (Availability::Disabled, Some("Offline".to_owned())),
-        ]
-    );
 
     // The bar lists the same hosts (a scratch ssh config, no seam stand-in).
     rig.hub.bar_toggle();
@@ -104,4 +77,66 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
     rig.hub.open_host(&rows[2]);
     let pane = rig.front();
     assert_eq!(rig.hub.host_of(pane), Some("desk.tail.ts.net"));
+}
+
+#[test]
+fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
+    use crate::hub::ssh_view::Stage;
+    use temor_core::host::consent::BootstrapAction;
+
+    let Some(mut rig) = Rig::new("offline") else {
+        return;
+    };
+    rig.hub.set_tailnet(Arc::new(Fixed(vec![machine(
+        "n2",
+        "laptop",
+        "laptop.tail.ts.net",
+        Presence::Offline,
+    )])));
+    let row = rig
+        .hub
+        .host_rows()
+        .into_iter()
+        .find(|row| row.shown() == "laptop")
+        .expect("the offline machine is listed");
+
+    rig.hub.open_host(&row);
+    let pane = rig.front();
+    assert_eq!(rig.hub.host_of(pane), Some("laptop.tail.ts.net"));
+    assert_eq!(rig.stage(pane), Stage::Offline, "told why, nothing asked");
+    assert!(rig.got("session-1").is_none());
+
+    rig.hub.try_offline(pane);
+    assert_eq!(rig.stage(pane), Stage::Asking(BootstrapAction::Integrate));
+}
+
+#[test]
+fn what_a_host_may_do_here_is_remembered_per_host() {
+    use temor_core::host::consent::Permit;
+    use temor_core::remote::Grant;
+    use temor_ssh::HostAlias;
+
+    let Some(mut rig) = Rig::new("permits") else {
+        return;
+    };
+    let prod = HostAlias::new("prod").expect("alias");
+    let other = HostAlias::new("other").expect("alias");
+    assert_eq!(rig.hub.permit_grant(&prod, Permit::Clipboard), Grant::Ask);
+    rig.hub
+        .remember_permit(&prod, Permit::Clipboard, Grant::Refused);
+    // Host, permit, what the book says.
+    for (host, permit, want) in [
+        (&prod, Permit::Clipboard, Grant::Refused),
+        (&prod, Permit::Transfers, Grant::Ask),
+        (&other, Permit::Clipboard, Grant::Ask),
+    ] {
+        assert_eq!(
+            rig.hub.permit_grant(host, permit),
+            want,
+            "{host:?} {permit:?}"
+        );
+    }
+    rig.hub
+        .remember_permit(&prod, Permit::Clipboard, Grant::Ask);
+    assert_eq!(rig.hub.permit_grant(&prod, Permit::Clipboard), Grant::Ask);
 }

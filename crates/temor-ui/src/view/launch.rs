@@ -24,7 +24,7 @@ use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
 use temor_core::shelf::Quoting;
-use temor_pane::{PaneEvent, TransferSetup};
+use temor_pane::{ByteTap, PaneEvent, TransferSetup};
 use temor_shell::ShellKind;
 use temor_transfer::{Bytes, Count, Limits};
 
@@ -74,10 +74,12 @@ impl Clipboard for DesktopClipboard {
 }
 
 /// A program to run in a pane in place of the person's shell (the `ssh` of a host session).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub program: PathBuf,
     pub args: Vec<std::ffi::OsString>,
+    /// Hears what the program prints, before the terminal parses it.
+    pub tap: Option<Arc<dyn ByteTap>>,
 }
 
 /// Opens a session for pane `pane`: a shell at 80 by 24 cells (the first layout refits it) in
@@ -162,6 +164,7 @@ pub fn open_session_with(
         // The pane's environment and size stay; only what runs in it changes.
         spec.spawn.program = run.program;
         spec.spawn.args = run.args;
+        spec.tap = run.tap;
     }
     let quoting = quoting_of(&spec.spawn.program);
     let mut session = Session::open_with(

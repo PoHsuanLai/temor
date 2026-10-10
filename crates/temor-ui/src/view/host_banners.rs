@@ -34,6 +34,16 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
             if let Some(line) = stage_line(view.stage, &host) {
                 Label { text: line, style: LabelStyle::Caption }
             }
+            if view.stage == Stage::Offline {
+                Button {
+                    label: "Try anyway".to_owned(),
+                    title: Some("Connect even though it looks offline".to_owned()),
+                    onclick: {
+                        let desk = desk.clone();
+                        move |_| desk.host_try_anyway(pane)
+                    },
+                }
+            }
             if view.stage == Stage::Failed {
                 Button {
                     label: "Try again".to_owned(),

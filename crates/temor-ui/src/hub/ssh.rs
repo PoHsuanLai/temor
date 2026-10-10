@@ -2,7 +2,7 @@
 //! and forwards, which panes are sessions on a host, and the remote files being edited. The
 //! steps that decide are temor-core's (`host::*`); the files beside this one carry them out.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use temor_core::host::consent::{ConsentBook, RunMode};
@@ -11,7 +11,7 @@ use temor_core::host::forward::Forwards;
 use temor_core::host::master::Master;
 use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::vocab::ids::PaneId;
-use temor_ssh::{CheckScan, CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
+use temor_ssh::{CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use temor_wire::message::FileStamp;
@@ -35,6 +35,8 @@ pub(super) enum Phase {
     Up,
     /// The session ended before it was up, or the connection could not be placed.
     Failed,
+    /// The tailnet says the computer is offline: the person is told, and may try anyway.
+    Offline,
 }
 
 /// The browser check the host asked for.
@@ -54,7 +56,7 @@ pub(super) struct HostPane {
     /// The folder on the host the session opens in.
     pub start_dir: Option<RemoteFilePath>,
     /// Looks for the check link in what the host printed, until the shell starts.
-    pub scan: Option<CheckScan>,
+    pub scan: Option<Arc<super::ssh_check::RawCheck>>,
     pub check: Check,
     /// What the pane's session runs on.
     pub tier: super::remote::Tier,
@@ -110,8 +112,13 @@ pub(super) struct SshHub {
     pub panes: BTreeMap<PaneId, HostPane>,
     /// Panes of the last session that were on hosts; they reconnect as their panes start.
     pub restored: Vec<PaneHost>,
+    /// Restored panes whose connection waits until their tab is first in front, so a launch does
+    /// not ask for a password in every tab the last session had open.
+    pub deferred: BTreeSet<PaneId>,
     /// The host the next pane started is a session on.
     pub intent: Option<HostAlias>,
+    /// A host picked while the tailnet shows it offline: its pane waits for "Try anyway".
+    pub offline: Option<HostAlias>,
     pub edits: BTreeMap<EditId, RemoteEdit>,
     pub next_edit: u64,
     /// Files asked for on a host that was not connected yet; they open once it is.
@@ -120,6 +127,9 @@ pub(super) struct SshHub {
     pub closed: BTreeMap<PaneId, HostAlias>,
     pub opener: Box<dyn Opener>,
     pub file_opener: Box<dyn FileShell>,
+    /// The finished sockets in the connection folder when each connection being made started:
+    /// a new one means that connection is up.
+    pub baselines: BTreeMap<HostAlias, BTreeSet<String>>,
     /// Where the last tick polled the connections, to space the probes.
     pub ticks: u32,
 }
@@ -140,13 +150,16 @@ impl SshHub {
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
             restored: Vec::new(),
+            deferred: BTreeSet::new(),
             intent: None,
+            offline: None,
             edits: BTreeMap::new(),
             next_edit: 1,
             waiting: Vec::new(),
             closed: BTreeMap::new(),
             opener: default_opener(),
             file_opener: default_file_shell(),
+            baselines: BTreeMap::new(),
             ticks: 0,
         }
     }

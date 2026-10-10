@@ -17,6 +17,18 @@ pub enum BootstrapAction {
     Terminfo,
 }
 
+/// Something a program on a host may be allowed to do on this computer (PLAN §9b, "Consent per
+/// host"): asked once and remembered per machine, like the bootstrap's questions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Permit {
+    /// Writing and reading the clipboard (OSC 52).
+    Clipboard,
+    /// Sending files to this computer.
+    Transfers,
+    /// Showing desktop notifications.
+    Notifications,
+}
+
 /// The answers for one host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct BootstrapGrants {
@@ -28,6 +40,13 @@ pub struct BootstrapGrants {
     /// so a book that never asked reads as it did before the question was added.
     #[serde(default, skip_serializing_if = "is_open")]
     pub helper: Grant,
+    /// What programs on the host may do here, each left out of the file while open.
+    #[serde(default, skip_serializing_if = "is_open")]
+    pub clipboard: Grant,
+    #[serde(default, skip_serializing_if = "is_open")]
+    pub transfers: Grant,
+    #[serde(default, skip_serializing_if = "is_open")]
+    pub notifications: Grant,
 }
 
 fn is_open(grant: &Grant) -> bool {
@@ -40,6 +59,15 @@ impl BootstrapGrants {
         match action {
             BootstrapAction::Integrate => self.integrate,
             BootstrapAction::Terminfo => self.terminfo,
+        }
+    }
+
+    /// The answer for `permit`.
+    pub fn permit(&self, permit: Permit) -> Grant {
+        match permit {
+            Permit::Clipboard => self.clipboard,
+            Permit::Transfers => self.transfers,
+            Permit::Notifications => self.notifications,
         }
     }
 
@@ -62,6 +90,9 @@ impl BootstrapGrants {
             integrate: pick(self.integrate, other.integrate),
             terminfo: pick(self.terminfo, other.terminfo),
             helper: pick(self.helper, other.helper),
+            clipboard: pick(self.clipboard, other.clipboard),
+            transfers: pick(self.transfers, other.transfers),
+            notifications: pick(self.notifications, other.notifications),
         }
     }
 }
@@ -195,6 +226,16 @@ impl ConsentBook {
     pub(super) fn set_helper(&mut self, index: usize, grant: Grant) {
         if let Some(record) = self.records.get_mut(index) {
             record.grants.helper = grant;
+        }
+    }
+
+    pub(super) fn set_permit(&mut self, index: usize, permit: Permit, grant: Grant) {
+        if let Some(record) = self.records.get_mut(index) {
+            match permit {
+                Permit::Clipboard => record.grants.clipboard = grant,
+                Permit::Transfers => record.grants.transfers = grant,
+                Permit::Notifications => record.grants.notifications = grant,
+            }
         }
     }
 

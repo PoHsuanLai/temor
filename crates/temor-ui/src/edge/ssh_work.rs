@@ -9,9 +9,10 @@ use std::path::PathBuf;
 use temor_core::host::edit::{EditFault, EditIn};
 use temor_core::host::forward::ForwardFault;
 use temor_ssh::{
-    CommandRunner, ControlLayout, Fingerprint, Forward, HostAlias, HostName, MasterProbe, Port,
+    CommandRunner, ControlLayout, Fingerprint, Forward, HostAlias, KnownName, MasterProbe, Port,
     RemoteFilePath, RemoteFiles, RemoteState, SshError, SshRemoteFiles, cancel_forward_argv,
-    fingerprint_from_keygen, forward_argv, keygen_lookup_argv, probe_master,
+    fingerprint_from_keygen, forward_argv, keygen_lookup_argv, known_name_from_resolved,
+    probe_master, resolve_argv,
 };
 use temor_wire::message::FileStamp;
 use tokio::sync::mpsc::UnboundedSender;
@@ -109,17 +110,27 @@ impl SshWork {
         );
     }
 
-    /// Reads the fingerprint of the key recorded for `name` (the host name the connection went
-    /// to). Ask after the connection verified the key.
-    pub fn identify(&self, host: HostAlias, name: HostName, port: Option<Port>) {
+    /// Reads the fingerprint of the key recorded for the machine `host` goes to: ssh says which
+    /// name and port that is (`ssh -G`), and `fallback` is used when it cannot. Ask after the
+    /// connection verified the key.
+    pub fn identify(&self, host: HostAlias, fallback: Option<KnownName>) {
         let none = SshEvent::Identified {
             host: host.clone(),
             fingerprint: None,
         };
         self.run(
             move |env, _| {
-                let argv = keygen_lookup_argv(&name, port);
-                let fingerprint = env.runner.run(&env.keygen, &argv).ok().and_then(|out| {
+                let resolved = env
+                    .runner
+                    .run(&env.tools.ssh, &resolve_argv(&host))
+                    .ok()
+                    .filter(|out| out.code == Some(0))
+                    .and_then(|out| {
+                        known_name_from_resolved(&String::from_utf8_lossy(&out.stdout))
+                    });
+                let fingerprint = resolved.or(fallback).and_then(|name| {
+                    let argv = keygen_lookup_argv(&name.host, name.port);
+                    let out = env.runner.run(&env.keygen, &argv).ok()?;
                     fingerprint_from_keygen(&String::from_utf8_lossy(&out.stdout)).ok()
                 });
                 Some(SshEvent::Identified { host, fingerprint })

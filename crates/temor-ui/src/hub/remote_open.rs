@@ -16,6 +16,7 @@ use super::remote::{Busy, RemotePane, Shown, Tier};
 use super::remote_retry::{Begin, begin_plan};
 use super::remote_source::{Blob, Source, session_source};
 use super::ssh::{Check, Phase};
+use super::ssh_check::RawCheck;
 use crate::edge::remote_link::{RemoteLink, Target, lock};
 use crate::edge::remote_relay::relay;
 use crate::view::launch::{Program, open_session_with};
@@ -76,12 +77,14 @@ impl Hub {
         let Ok(layout) = self.ssh.env.layout.clone() else {
             return;
         };
+        let scan = Arc::new(RawCheck::new());
         let program = Program {
             program: self.ssh.env.tools.ssh.clone(),
             args: connect_argv(alias, &layout)
                 .into_iter()
                 .map(Into::into)
                 .collect(),
+            tap: Some(scan.listener()),
         };
         let start = self.space_start();
         let events = relay(self.events.clone(), self.remote.work.sender());
@@ -102,7 +105,7 @@ impl Hub {
                 }
                 if let Some(host) = self.ssh.panes.get_mut(&pane) {
                     host.phase = Phase::Connecting;
-                    host.scan = Some(temor_ssh::CheckScan::new());
+                    host.scan = Some(scan);
                 }
             }
             Err(err) => {

@@ -14,6 +14,7 @@ use super::handle::PaneHandle;
 use super::io::{Io, PaneRunner};
 use super::outbox::Outbox;
 use super::sink::EventSink;
+use super::tap::ByteTap;
 use super::term::Term;
 use super::watch::ForegroundWatch;
 use super::xfer::{TransferSetup, Transfers};
@@ -36,6 +37,8 @@ pub struct PaneSpec {
     /// Where files the program sends are staged, and the caps on them. `None`: the program's
     /// transfer sequences are ignored.
     pub transfers: Option<TransferSetup>,
+    /// Hears the program's raw output as it is read. `None`: nothing listens.
+    pub tap: Option<Arc<dyn ByteTap>>,
 }
 
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
@@ -110,6 +113,7 @@ fn start_from(
         dirty: Arc::clone(&dirty),
         last_title: None,
         transfers: spec.transfers.map(Transfers::new),
+        tap: spec.tap,
         watch: ForegroundWatch::new(),
     };
     // The first frame is always due.

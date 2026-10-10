@@ -1,8 +1,8 @@
 use super::{
-    BootstrapAction as Action, BootstrapGrants, ConsentBook, ConsentIn, ConsentOut, Gate, RunMode,
-    Who, consent_step, gate,
+    BootstrapAction as Action, BootstrapGrants, ConsentBook, ConsentIn, ConsentOut, Gate, Permit,
+    RunMode, Who, carry_host_consent, consent_step, gate,
 };
-use crate::remote::Grant;
+use crate::remote::{Grant, HostConsent};
 use temor_ssh::{HostKey, TerminfoPolicy};
 
 const FP: &str = "SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s";
@@ -229,5 +229,82 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
         !serde_json::to_string(&forgotten)
             .expect("encode")
             .contains("helper")
+    );
+}
+
+#[test]
+fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() {
+    let prod = who("prod", Some(FP), Some("n1"));
+    let alias_only = who("prod", None, None);
+    let permit = |book, who: &Who, permit, grant| {
+        consent_step(
+            book,
+            ConsentIn::PermitAnswered {
+                who: who.clone(),
+                permit,
+                grant,
+            },
+        )
+    };
+    let (book, outs) = permit(
+        ConsentBook::default(),
+        &alias_only,
+        Permit::Clipboard,
+        Grant::Refused,
+    );
+    assert_eq!(outs, vec![ConsentOut::Persist]);
+    let (book, _) = permit(book, &prod, Permit::Transfers, Grant::Allowed);
+    let kept = book.grants(&prod);
+    // Name, permit, answer: each is its own question, and the alias joined the machine.
+    for (name, which, want) in [
+        ("clipboard", Permit::Clipboard, Grant::Refused),
+        ("transfers", Permit::Transfers, Grant::Allowed),
+        ("notifications", Permit::Notifications, Grant::Ask),
+    ] {
+        assert_eq!(kept.permit(which), want, "{name}");
+    }
+    let json = serde_json::to_string(&book).expect("encode");
+    assert!(json.contains(r#""clipboard":"refused""#) && json.contains(r#""transfers":"allowed""#));
+    assert!(
+        !json.contains("notifications"),
+        "an open answer is not written: {json}"
+    );
+    let (same, outs) = permit(book.clone(), &prod, Permit::Transfers, Grant::Allowed);
+    assert!(outs.is_empty() && same == book);
+}
+
+#[test]
+fn the_old_per_host_answers_carry_over_once_and_never_over_the_books_own() {
+    let prod = who("prod", None, None);
+    let old = HostConsent {
+        clipboard: Grant::Refused,
+        transfers: Grant::Allowed,
+        notifications: Grant::Ask,
+        helper: Grant::Allowed,
+    };
+    let held = consent_step(
+        ConsentBook::default(),
+        ConsentIn::PermitAnswered {
+            who: prod.clone(),
+            permit: Permit::Transfers,
+            grant: Grant::Refused,
+        },
+    )
+    .0;
+    let got = carry_host_consent(held, &prod, &old);
+    let grants = got.grants(&prod);
+    // Name, what the book holds after, why.
+    for (name, have, want) in [
+        ("clipboard", grants.clipboard, Grant::Refused),
+        ("transfers", grants.transfers, Grant::Refused),
+        ("notifications", grants.notifications, Grant::Ask),
+        ("helper", grants.helper, Grant::Allowed),
+    ] {
+        assert_eq!(have, want, "{name}");
+    }
+    assert_eq!(carry_host_consent(got.clone(), &prod, &old), got);
+    assert_eq!(
+        carry_host_consent(ConsentBook::default(), &prod, &HostConsent::default()),
+        ConsentBook::default()
     );
 }

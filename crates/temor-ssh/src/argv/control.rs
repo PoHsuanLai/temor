@@ -1,5 +1,6 @@
 //! The private runtime directory and the ControlMaster options derived from it.
 
+use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::SshError;
@@ -95,6 +96,19 @@ impl ControlLayout {
     /// [`crate::ensure_private_dir`] before any ssh runs.
     pub fn socket_dir(&self) -> PathBuf {
         socket_dir_of(&self.runtime)
+    }
+
+    /// The names of the finished sockets in the socket directory: a master listens under a
+    /// temporary name and renames it into place, so a name of exactly the hash's length is a
+    /// master ready for sessions. Empty when the directory cannot be read.
+    pub fn finished_sockets(&self) -> BTreeSet<String> {
+        let Ok(entries) = std::fs::read_dir(self.socket_dir()) else {
+            return BTreeSet::new();
+        };
+        entries
+            .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+            .filter(|name| name.len() == HASH_LEN)
+            .collect()
     }
 
     /// `ControlPath=<socket dir>/%C`.

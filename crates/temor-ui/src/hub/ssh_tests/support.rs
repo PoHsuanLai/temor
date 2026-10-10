@@ -21,7 +21,7 @@ use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
 
 /// The stand-in `ssh`. `-O check` says a connection is up when `up` exists; `-O forward` and
-/// `-O cancel` exit with the code in `control-exit`; `-T` runs the remote command here (the file
+/// `-O cancel` exit with the code in `control-exit`; `-G` resolves any alias to `resolved.example.com` port 2200; `-T` runs the remote command here (the file
 /// calls); anything else is a session: its arguments and the decoded setup are kept in
 /// `session-N` and `session-N.script`, `banner` is printed, and it stays until the test ends.
 /// The connecting `ssh` (it runs `true`) asks for a password: the right one (`hunter2`) makes the
@@ -31,6 +31,7 @@ const FAKE_SSH: &str = r#"#!/bin/sh
 d=@DIR@
 for last; do :; done
 case "$1" in
+  -G) printf 'hostname resolved.example.com\nport 2200\n'; exit 0 ;;
   -O)
     case "$2" in
       check) [ -e "$d/up" ] && exit 0; exit 255 ;;
@@ -55,6 +56,14 @@ esac
 cat "$d/banner" 2>/dev/null
 exec sleep 60
 "#;
+
+/// The stand-in `ssh-keygen`: keeps its arguments in `keygen-args`, and prints the fingerprint
+/// in the `fp` file when there is one.
+const FAKE_KEYGEN: &str = "#!/bin/sh\n\
+d=@DIR@\n\
+printf '%s\\n' \"$@\" > \"$d/keygen-args\"\n\
+cat \"$d/fp\" 2>/dev/null\n\
+exit 0\n";
 
 /// Copies the two paths after `--`, dropping the `fake:` host prefix.
 const FAKE_SCP: &str = "#!/bin/sh\n\
@@ -129,6 +138,10 @@ impl Rig {
             &FAKE_SSH.replace("@DIR@", &dir.display().to_string()),
         );
         write_tool(&bin.join("scp"), FAKE_SCP);
+        write_tool(
+            &bin.join("ssh-keygen"),
+            &FAKE_KEYGEN.replace("@DIR@", &dir.display().to_string()),
+        );
         let search = format!("{}:/usr/bin:/bin", bin.display());
         let ambient = Ambient::from_vars(
             [

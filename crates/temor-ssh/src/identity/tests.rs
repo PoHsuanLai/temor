@@ -158,3 +158,39 @@ fn the_keygen_lookup_names_the_host_the_way_ssh_records_it() {
         );
     }
 }
+
+#[test]
+fn the_name_known_hosts_holds_comes_from_what_ssh_resolves_not_from_the_alias() {
+    use super::{known_name_from_resolved, resolve_argv};
+    use crate::config::HostAlias;
+
+    assert_eq!(
+        resolve_argv(&HostAlias::new("prod").expect("alias")),
+        ["-G", "prod"]
+    );
+    // Name, `ssh -G` output, the host and port to look up.
+    let table = [
+        (
+            "an alias with its own HostName and port",
+            "user me\nhostname prod.example.com\nport 2222\n",
+            Some(("prod.example.com", Some("2222"))),
+        ),
+        (
+            "a host key alias replaces the name",
+            "hostname 192.0.2.10\nhostkeyalias prod-key\nport 22\n",
+            Some(("prod-key", Some("22"))),
+        ),
+        ("no port line", "hostname box\n", Some(("box", None))),
+        ("neither", "user me\nport 22\n", None),
+    ];
+    for (name, output, want) in table {
+        let got = known_name_from_resolved(output).map(|k| {
+            (
+                k.host.as_str().to_owned(),
+                k.port.map(|p| p.get().to_string()),
+            )
+        });
+        let want = want.map(|(h, p)| (h.to_owned(), p.map(str::to_owned)));
+        assert_eq!(got, want, "{name}");
+    }
+}

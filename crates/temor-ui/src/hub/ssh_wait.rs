@@ -64,7 +64,7 @@ impl Hub {
             .panes_on(host)
             .iter()
             .filter_map(|pane| self.ssh.panes.get(pane))
-            .any(|pane| pane.phase != Phase::Failed)
+            .any(|pane| !matches!(pane.phase, Phase::Failed | Phase::Offline))
     }
 
     /// A pane of `pane`'s host that closed inside a tab kept for reopening is remembered, so

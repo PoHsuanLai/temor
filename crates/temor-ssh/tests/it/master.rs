@@ -5,7 +5,7 @@ use std::os::unix::fs::PermissionsExt;
 
 use temor_ssh::{
     ControlLayout, ControlPersist, FileTools, HostAlias, MasterProbe, RuntimeDir,
-    prepare_control_dirs, probe_master,
+    prepare_control_dirs, probe_master, socket_appeared,
 };
 
 use crate::harness::{RetryRunner, make_bin, scratch};
@@ -27,6 +27,39 @@ fn the_socket_directories_are_made_private_and_made_again_harmlessly() {
     for dir in [layout.runtime_dir().to_path_buf(), layout.socket_dir()] {
         let mode = fs::metadata(&dir).expect("dir").permissions().mode() & 0o777;
         assert_eq!(mode, 0o700, "{}", dir.display());
+    }
+}
+
+#[test]
+fn a_master_is_ready_when_a_finished_socket_appears_not_its_temporary_name() {
+    let s = scratch();
+    let layout = layout_in(&s.work);
+    prepare_control_dirs(&layout).expect("dirs");
+    let old = "a".repeat(40);
+    let new = "b".repeat(40);
+    fs::write(layout.socket_dir().join(&old), "").expect("an older master");
+    let before = layout.finished_sockets();
+    assert_eq!(before.len(), 1);
+
+    // Name, what is in the folder after, whether the new master shows.
+    let table = [
+        ("nothing new", vec![], false),
+        (
+            "the temporary name ssh listens under first",
+            vec![format!("{new}.AbCdEfGhIjKlMnOp")],
+            false,
+        ),
+        ("renamed into place", vec![new.clone()], true),
+    ];
+    for (name, add, want) in table {
+        for file in &add {
+            fs::write(layout.socket_dir().join(file), "").expect("socket");
+        }
+        assert_eq!(
+            socket_appeared(&before, &layout.finished_sockets()),
+            want,
+            "{name}"
+        );
     }
 }
 
