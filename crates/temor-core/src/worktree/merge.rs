@@ -1,13 +1,14 @@
 //! Review and merge (D19): Squash (default), Merge, Rebase onto base, Open pull request. temor
 //! runs git itself. A conflict is never resolved silently: the outcome lists the files and the
 //! caller opens a shell split. Before any merge a hidden ref keeps the base's old tip so the
-//! merge can be undone (same ref family as checkpoints).
+//! merge can be undone (`refs/temor/undo/<n>`, see `undo`).
 
 use super::git::{Git, GitCommand, run_ok};
 use super::model::{AgentWorktree, MergeMethod};
 use super::overlap::parse_names;
 use crate::error::CoreError;
-use crate::vocab::ids::CheckpointRef;
+use super::undo::undo_ref;
+use crate::vocab::ids::UndoRef;
 use crate::vocab::text::RelPath;
 
 /// How a merge ended.
@@ -29,19 +30,14 @@ pub enum MergeOutcome {
     },
 }
 
-/// The hidden ref that keeps the base's tip from before a merge.
-pub fn undo_ref(n: CheckpointRef) -> String {
-    crate::checkpoint::ref_name(n)
-}
-
 /// Merges `wt` into the base checked out in its main checkout. `undo` is the number of the
-/// checkpoint ref that keeps the old tip. `message` is the commit message (Squash, Merge).
+/// undo ref that keeps the old tip. `message` is the commit message (Squash, Merge).
 pub fn merge(
     git: &dyn Git,
     wt: &AgentWorktree,
     method: MergeMethod,
     message: &str,
-    undo: CheckpointRef,
+    undo: UndoRef,
 ) -> Result<MergeOutcome, CoreError> {
     let branch = wt.branch();
     if method == MergeMethod::OpenPullRequest {
