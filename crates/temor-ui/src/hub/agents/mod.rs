@@ -6,6 +6,7 @@ mod checkpoints;
 mod convert;
 mod desk;
 mod done;
+mod ending;
 mod jobs;
 mod leftovers;
 mod loops;

@@ -11,18 +11,10 @@ use temor_core::presence::{AgentState, PaneFocus, PresenceOut, Seen};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Note;
 use temor_pane::PaneEvent;
-use temor_vt::PromptEvent;
+use temor_vt::{ProgramState, PromptEvent};
 
 use super::convert::{exit_code, known_agent, note_of, program_fact, status_report};
-
-/// How a pane's agent was seen.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Via {
-    /// Its process is in front of the pane.
-    Process,
-    /// It reported its own status.
-    Report,
-}
+use super::ending::{Via, front_of};
 
 /// A known agent seen in a pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,6 +125,15 @@ impl Radar {
         }
     }
 
+    /// `pane`'s agent is no longer known when `gone` says so of the way it was seen.
+    fn leave(&mut self, pane: PaneId, gone: impl FnOnce(Via) -> bool) {
+        if let Some(entry) = self.panes.get_mut(&pane)
+            && entry.named.as_ref().is_some_and(|n| gone(n.via))
+        {
+            entry.named = None;
+        }
+    }
+
     /// The known agent program seen in `pane` (lowercase), if any.
     pub fn agent_of(&self, pane: PaneId) -> Option<&str> {
         let entry = self.panes.get(&pane)?;
@@ -154,7 +155,12 @@ impl Radar {
         match event {
             PaneEvent::Program(status) => {
                 self.know(pane, Some(status.app.as_str()), Via::Report);
-                self.feed(pane, now, RadarIn::Program(program_fact(status)))
+                let changed = self.feed(pane, now, RadarIn::Program(program_fact(status)));
+                // Clearing its status is a program saying it has ended.
+                if matches!(status.state, ProgramState::Clear) {
+                    self.leave(pane, |via| via == Via::Report);
+                }
+                changed
             }
             #[cfg(unix)]
             PaneEvent::Reported(line) => {
@@ -165,13 +171,11 @@ impl Radar {
                 self.know(pane, Some(name.as_str()), Via::Process);
                 self.feed(pane, now, RadarIn::Process(ProcessFact::AgentRunning))
             }
-            // The agent seen by its process left the front of the pane: it has exited.
-            PaneEvent::Foreground(_) => {
-                if let Some(entry) = self.panes.get_mut(&pane)
-                    && entry.named.as_ref().is_some_and(|n| n.via == Via::Process)
-                {
-                    entry.named = None;
-                }
+            // The agent seen by its process left the front of the pane, or a shell came back
+            // after an agent that only reported: it has exited.
+            PaneEvent::Foreground(name) => {
+                let front = front_of(name.as_deref());
+                self.leave(pane, |via| via.gone_with(front));
                 Changed::No
             }
             PaneEvent::Title(title) if self.panes.contains_key(&pane) => {
