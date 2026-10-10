@@ -4,8 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use temor_pty::{ChildExit, Pty, PtyIo, SpawnSpec};
-use temor_shell::ChildEnv;
+use temor_pty::{ChildExit, Pty, PtyIo};
 use temor_vt::{Terminal, TerminalConfig};
 use temor_wire::ids::{RequestId, SessionId};
 use temor_wire::link::Monotonic;
@@ -18,6 +17,7 @@ use super::colours::apply_palette;
 use super::config::DaemonConfig;
 use super::exit::exit_status;
 use super::input::{Backlog, Input};
+use super::launch::spawn_spec;
 use super::link::{Link, LinkId};
 use super::sinks::{CwdSink, Replies};
 use super::sizes::{check, pty_size, screen_cell, screen_size, usable};
@@ -70,17 +70,13 @@ impl Session {
             || config.default_shell.clone(),
             |path| PathBuf::from(&path.0),
         );
-        let mut env = ChildEnv::new();
-        for var in &request.env {
-            env.set(&var.name, &var.value);
-        }
-        let spec = SpawnSpec {
+        let spec = spawn_spec(
             program,
-            args: Vec::new(),
-            cwd: PathBuf::from(&request.cwd.0),
-            env,
-            size: pty_size(size, cell),
-        };
+            &request.env,
+            &config.runtime_dir,
+            PathBuf::from(&request.cwd.0),
+            pty_size(size, cell),
+        )?;
         let pty = Pty::spawn(&spec, &config.launcher)?;
         let reader = pty.io()?;
         let input = Arc::new(Input::new(pty.io()?));
