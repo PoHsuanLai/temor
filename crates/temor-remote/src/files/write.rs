@@ -3,11 +3,14 @@
 use super::stamp::sha256;
 use temor_wire::message::{FileStamp, WriteCheck};
 
+/// What every staging file's name starts with.
+pub const STAGE_PREFIX: &str = ".temor-part-";
+
 /// The name of the hidden file a streamed write stages in, beside its target. Derived from the
 /// target's name so each target has its own and a retry finds the same one.
 pub fn stage_name(leaf: &str) -> String {
     let hex = sha256(leaf.as_bytes()).to_hex();
-    format!(".temor-part-{}", &hex[..16])
+    format!("{STAGE_PREFIX}{}", &hex[..16])
 }
 
 /// What a write does, given its check and what is there.

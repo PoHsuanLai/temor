@@ -53,6 +53,15 @@ impl FileService {
             .grant(root)
     }
 
+    /// The folders the client may reach now.
+    pub(super) fn roots(&self) -> Vec<std::path::PathBuf> {
+        self.scope
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .roots()
+            .to_vec()
+    }
+
     pub(super) fn target(&self, path: &RemotePath) -> Result<Target, Error> {
         let resolved = self
             .scope
