@@ -8,13 +8,13 @@
 use super::inner_shell::InnerShell;
 
 /// The word that leads the answer.
-const WORD: &str = "temor-shell:";
+pub(super) const PROBE_WORD: &str = "temor-shell:";
 
 /// The line to type, newline included. Leading space: shells that ignore such lines keep it
 /// out of history. Nothing between the quotes is a quote, a backslash or a history mark.
 pub fn probe_line() -> String {
     format!(
-        " sh -c 'echo {WORD}$(cat /proc/$PPID/comm 2>/dev/null || ps -p $PPID -o comm= 2>/dev/null)' sh\n"
+        " sh -c 'echo {PROBE_WORD}$(cat /proc/$PPID/comm 2>/dev/null || ps -p $PPID -o comm= 2>/dev/null)' sh\n"
     )
 }
 
@@ -33,7 +33,7 @@ pub enum ProbeReading {
 /// letters, digits, `.`, `_`, `-` and `/`; the typed probe line (`temor-shell:$(`) never does.
 pub fn read_probe(screen: &str) -> ProbeReading {
     let answer = screen.lines().rev().find_map(|line| {
-        let (_, rest) = line.rsplit_once(WORD)?;
+        let (_, rest) = line.rsplit_once(PROBE_WORD)?;
         let name = rest.trim();
         let plain = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/');
         (!name.is_empty() && name.chars().all(plain)).then_some(name)

@@ -14,8 +14,15 @@ fn token() -> LoadToken {
     LoadToken::from_words(0x0123_4567_89ab_cdef, 0xfedc_ba98_7654_3210)
 }
 
-fn built() -> InnerLoadLine {
-    InnerLoadLine::build(&integration_scripts(), &token()).expect("build")
+/// The text for every shell the load can reach.
+fn built() -> Vec<(InnerShell, InnerLoadLine)> {
+    InnerShell::ALL
+        .into_iter()
+        .map(|shell| {
+            let text = InnerLoadLine::build_for(shell, &integration_scripts(), &token());
+            (shell, text.expect("build"))
+        })
+        .collect()
 }
 
 #[test]
@@ -37,49 +44,56 @@ fn text_is_cut_into_runs_that_fit() {
 
 #[test]
 fn every_typed_line_fits_a_terminal_in_line_mode() {
-    let line = built();
-    let text = line.as_str();
-    assert!(text.len() <= MAX_INNER_LINE_BYTES);
-    assert!(text.is_ascii());
-    for typed in line.lines() {
-        // The newline counts toward the 4096 bytes a line-mode terminal keeps.
-        assert!(typed.len() < MAX_TTY_LINE_BYTES, "{} bytes", typed.len());
+    for (shell, line) in built() {
+        let text = line.as_str();
+        assert!(text.len() <= MAX_INNER_LINE_BYTES, "{shell:?}");
+        assert!(text.is_ascii(), "{shell:?}");
+        for typed in line.lines() {
+            // The newline counts toward the 4096 bytes a line-mode terminal keeps.
+            assert!(
+                typed.len() < MAX_TTY_LINE_BYTES,
+                "{shell:?}: {} bytes",
+                typed.len()
+            );
+        }
+        assert!(
+            line.lines().count() > 5,
+            "{shell:?}: the payload is split across lines"
+        );
     }
-    assert!(
-        line.lines().count() > 5,
-        "the payload is split across lines"
-    );
 }
 
 #[test]
 fn the_program_between_the_quotes_holds_no_quote_backslash_or_history_mark() {
-    let text = built().as_str().to_owned();
-    let start = text.find("sh -c '").expect("program") + "sh -c '".len();
-    let end = text.rfind("' sh\n").expect("end of program");
-    let inside = &text[start..end];
-    for bad in ['\'', '\\', '!'] {
-        assert!(!inside.contains(bad), "{bad:?} between the quotes");
+    for (shell, line) in built() {
+        let text = line.as_str();
+        let start = text.find("sh -c '").expect("program") + "sh -c '".len();
+        let end = text.rfind("' sh\n").expect("end of program");
+        let inside = &text[start..end];
+        for bad in ['\'', '\\', '!'] {
+            assert!(
+                !inside.contains(bad),
+                "{shell:?}: {bad:?} between the quotes"
+            );
+        }
     }
 }
 
 #[test]
 fn the_order_is_prelude_then_program_then_source() {
-    let text = built().as_str().to_owned();
-    assert!(text.starts_with(ZSH_PRELUDE));
     assert!(
         ZSH_PRELUDE.starts_with(' '),
         "a space keeps it out of history"
     );
-    assert!(text.ends_with(&format!("\n source /tmp/{MARKER}\n")));
-    assert!(text.contains(&format!("\nf=/tmp/{MARKER}\n")));
-    for arm in [
-        "bash*) dec >$f <<E\n",
-        "zsh*) ",
-        "fish*) ",
-        "nu*) ",
-        "*) : >$f ;;\n",
-    ] {
-        assert!(text.contains(arm), "no arm {arm:?}");
+    for (shell, line) in built() {
+        let text = line.as_str();
+        assert_eq!(text.starts_with(ZSH_PRELUDE), shell == InnerShell::Zsh);
+        assert!(text.ends_with(&format!("\n source /tmp/{MARKER}\n")));
+        assert!(text.contains(&format!("\nf=/tmp/{MARKER}\n")));
+        let own = format!("{}) dec >$f <<E\n", shell.pattern());
+        for arm in [own.as_str(), "*) : >$f ;;\n"] {
+            assert!(text.contains(arm), "{shell:?}: no arm {arm:?}");
+        }
     }
 }
 
@@ -91,6 +105,7 @@ fn each_shell_gets_its_own_script_and_its_own_way_to_forget() {
             &[
                 "_temor_offer_load() {",
                 "history -d",
+                "*temor-shell:*",
                 MARKER,
                 "command rm -f -- /tmp/temor-load-",
             ],
@@ -111,6 +126,7 @@ fn each_shell_gets_its_own_script_and_its_own_way_to_forget() {
                 "function _temor_offer_load",
                 "return 0",
                 "history delete --exact",
+                "*temor-shell:*",
                 MARKER,
             ],
             &["exit", "XDG_DATA_DIRS", "TEMOR_FISH"],
@@ -141,7 +157,7 @@ fn a_missing_script_leaves_its_shell_out_and_too_much_text_is_refused() {
         .into_iter()
         .filter(|script| script.name != "temor.nu")
         .collect();
-    let text = InnerLoadLine::build(&scripts, &token()).expect("build");
+    let text = InnerLoadLine::build_for(InnerShell::Nu, &scripts, &token()).expect("build");
     assert!(!text.as_str().contains("nu*) "));
 
     let big: &'static str = Box::leak("echo x\n".repeat(20_000).into_boxed_str());
@@ -149,7 +165,8 @@ fn a_missing_script_leaves_its_shell_out_and_too_much_text_is_refused() {
         name: "temor.bash",
         contents: big,
     }];
-    let err = InnerLoadLine::build(&scripts, &token()).expect_err("too large");
+    let err =
+        InnerLoadLine::build_for(InnerShell::Bash, &scripts, &token()).expect_err("too large");
     assert!(matches!(err, SshError::ScriptTooLarge { .. }), "{err}");
 }
 
