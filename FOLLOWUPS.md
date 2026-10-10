@@ -985,3 +985,13 @@ together.
       `focus_with_token` acts on an X11 startup id; a place-only recall starts shells in the
       Space's folder, not each pane's.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b5-*.md`.
+
+## Batch 16 pins (2026-10-11)
+quire v0.3.14 (c404fb0), docket 312cd27, porter 83ac0fa, anyview 6c325c9, and almanac ac4bc03,
+stoker 4a0bd9e, blitz-kit 25b5099 and chordkit ba094c6 through the lock. One copy each; no code
+changes.
+
+- [ ] anyview #100: find in a viewer pane. `PaneHandle::find(query)` / `end_find()` and
+      `hits(HitList::Brief | Whole)` (an "In This File" palette group whose rows run through
+      `run`). anyview suggests ⌘T feeds its query to the viewer in a "find in pane" mode; ⌘F stays
+      temor's.
