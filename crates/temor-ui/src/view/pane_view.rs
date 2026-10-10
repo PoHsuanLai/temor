@@ -42,6 +42,8 @@ use super::handlers::{
 use super::host_banners::HostBanners;
 use super::ime::{ImeGlue, composed_sink, focus_handler};
 use super::offer::OfferBar;
+use super::peek::use_peek;
+use super::peek_card::peek_card;
 use super::pointer::use_pane_mouse;
 use super::slot::{Device, Display, Slot, layout, repaint};
 use super::status::StatusLine;
@@ -91,6 +93,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let hovered = use_signal(|| None::<BlockId>);
     // Whether this pane had the keyboard the last time it was drawn.
     let had_keyboard = use_hook(|| Rc::new(Cell::new(false)));
+    // The ⌘-hover preview of a file path (PLAN §10).
+    let peek = use_peek(Rc::clone(&slot), desk.clone(), rect, signals);
 
     // Every change of the pane's size, scale or device, or of the session behind it, lays it out.
     {
@@ -119,7 +123,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     // Every key the region hears (a press, a repeat, a release) as quire's raw key.
     let on_key = {
         let (slot, ime, apply, desk) = (Rc::clone(&slot), ime.clone(), apply.clone(), desk.clone());
+        let peek_key = peek.key.clone();
         move |raw: RawKey| {
+            peek_key(&raw);
             let composing = match ime.composing.get() {
                 Composing::Active => Ime::Composing,
                 Composing::Idle | Composing::Cleared => Ime::Idle,
@@ -274,6 +280,37 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         }
     };
 
+    // The pointer over the grid also moves the preview; a press or leaving puts it away.
+    let on_move = {
+        let (moved, mut hover) = (
+            peek.moved.clone(),
+            block_hovered(Rc::clone(&slot), signals, hovered),
+        );
+        move |e: PointerEvent| {
+            moved(e.clone());
+            hover(e);
+        }
+    };
+    let on_press = {
+        let (gone, mut press) = (
+            peek.gone.clone(),
+            gutter_pressed(
+                Rc::clone(&slot),
+                signals,
+                ui,
+                desk.notice,
+                mouse.down.clone(),
+            ),
+        );
+        move |e: PointerEvent| {
+            gone();
+            press(e);
+        }
+    };
+    let on_leave = {
+        let gone = peek.gone.clone();
+        move |_: PointerEvent| gone()
+    };
     let _ = ui();
     let view = slot.borrow().session.as_ref().map(|s| {
         (
@@ -322,9 +359,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         dropper.mounted(e.clone());
                         mouse.capture.on_mounted(e);
                     },
-                    onpointerdown:gutter_pressed(Rc::clone(&slot), signals, ui, desk.notice, mouse.down.clone()),
+                    onpointerdown: on_press,
                     onpointerup: move |e| (mouse.up)(e),
-                    onpointermove:block_hovered(Rc::clone(&slot), signals, hovered),
+                    onpointermove: on_move,
+                    onpointerleave: on_leave,
                     onwheel: move |e| (mouse.wheel)(e),
                     TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
                     if let Some(text) = preedit() {
@@ -340,6 +378,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 }
                 if let Some(view) = chips {
                     FactChips { view }
+                }
+                if let Some(card) = (peek.card)() {
+                    {peek_card(&card)}
                 }
                 if let Some(tools) = chrome.tools.clone() {
                     BlockTools {

@@ -43,7 +43,7 @@ fn type_line(h: &mut Harness, line: &str) {
 }
 
 /// A window whose shell has listed `a.txt` and `b.txt`, two files in its folder.
-fn listed(name: &str, probe: &Probe) -> Harness {
+pub fn listed(name: &str, probe: &Probe) -> Harness {
     let mut h = harness(name, probe);
     let home = scratch_path(name).join("home");
     for file in ["a.txt", "b.txt"] {
