@@ -117,9 +117,6 @@ impl Renderer for CpuRenderer {
             colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
-            bands: view.bands,
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let plan = self
             .tracker
@@ -132,6 +129,9 @@ impl Renderer for CpuRenderer {
             colors: &frame.colors,
             cursor,
             selection: view.selection,
+            bands: view.bands,
+            pane_width: w,
+            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let mut target = Target {
             data: &mut self.buf,

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Harness, Input};
+use ds_harness::{Driver, Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;

@@ -114,9 +114,6 @@ impl Renderer for GpuRenderer {
             colors: frame.colors,
             focus: view.focus,
             selection: view.selection,
-            bands: view.bands,
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let plan = self
             .tracker
@@ -139,6 +136,9 @@ impl Renderer for GpuRenderer {
             colors: &frame.colors,
             cursor,
             selection: view.selection,
+            bands: view.bands,
+            pane_width: w,
+            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         // An atlas clear while building invalidates the glyphs of rows built before it: build
         // again, every row this time, until a build finishes without a clear.

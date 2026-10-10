@@ -92,10 +92,10 @@ impl Session {
             if term.on_alternate_screen() {
                 return Vec::new();
             }
-            let Ok(bar) = term.scrollbar() else {
+            let Ok((top, _)) = term.viewport() else {
                 return Vec::new();
             };
-            let top = i64::try_from(bar.offset.0).unwrap_or(i64::MAX);
+            let top = i64::from(top);
             let rows = term.size().rows.0;
             let first_of = |anchor| {
                 let at = term.anchor_point(anchor, PointSpace::Screen)?;
