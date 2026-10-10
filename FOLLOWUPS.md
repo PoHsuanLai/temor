@@ -854,7 +854,7 @@ porter-core and docket.
   - `refs/temor/checkpoints/*` older than 14 days are swept at start, with no import;
   - List, Plan and Perform `checkpoints.restore` sit behind temor-desktop's `CheckpointPort`;
   - Restore is held back while the pane's agent is Working (a stopgap).
-- [ ] Batch 15 (docket DESIGN §11 and §12, with the shas coming through sill). Pane agents get
+- [x] Batch 15 (docket DESIGN §11 and §12, with the shas coming through sill). Pane agents get
       docket watches, not full sessions:
       - `CheckpointWatch { workspace, label, rewind }` when an agent starts in a pane
         (`rewind = Agent` for Claude Code, so the list says "not saved: this agent keeps its
@@ -865,9 +865,9 @@ porter-core and docket.
 
       Never Session.Open or Session.Turn for pane agents. Call `Hub::set_agent_session` with the
       watch's id.
-- [ ] Batch 15: grey Restore out from `CheckpointList.turn: TurnState`, and drop the pane-local
+- [x] Batch 15: grey Restore out from `CheckpointList.turn: TurnState`, and drop the pane-local
       Working stopgap. A CheckpointList literal needs `turn`.
-- [ ] Batch 15: temor shows the plan only, with no confirm of its own. sill's hold-to-confirm
+- [x] Batch 15: temor shows the plan only, with no confirm of its own. sill's hold-to-confirm
       sheet is the one confirmation.
 - [ ] Outside temor: `org.quire.Temor` must be listed under `cli` in docket's intentd.toml (for the
       docket side to add). Perform uses `Origin::InWindowField` for now; check it against the cli role.
@@ -886,3 +886,26 @@ porter-core and docket.
   `ServerAlive*` stays as a second check.
 - [ ] `edge/remote.rs` (328 lines) and `hub/remote_line.rs` (322) are over 300 lines; split them.
 - Lane notes: `/mnt/data/cargo/temor-lanes/followups-b4-*.md`.
+
+## Batch 15 (merged 2026-10-10: pins and P19 part 2, checkpoint watches)
+Pins: quire v0.3.12 (faecc7a), docket 864c03d, porter a83b575, and almanac 20bf1a4 through the lock.
+
+- Pane agents get docket watches:
+  - Watch on first sight (rewind = Agent for agents that keep their own history, such as
+    `claude`; a table in temor-core);
+  - Mark on Idle→Working;
+  - SessionTurnEnded on Working→Idle (Answered or Failed);
+  - Close when the agent exits or the pane ends.
+- Calls run off the UI thread, one at a time per pane. Failures are logged once per pane.
+- Restore greys out from the list's `turn`; the pane-local stopgap is gone.
+- temor's sheet is a preview ("What restoring changes", with Close and "Restore…"). sill's
+  hold-to-confirm sheet is the one confirmation.
+- Orchestrator decision: an exited agent's Restore list stays until the pane ends, since that's
+  when undoing is wanted.
+- [ ] Agent exit is detected only for agents first seen as the foreground process; report-only
+      agents close their watch when the pane ends.
+- [ ] P10 viewers are written and pass their tests on branch `b15/view` (anyview-pane 3d52a9b,
+      zeroize 1.9.0 for anyview's pdf crate). They wait for anyview's Batch 15 sha, which uses
+      quire v0.3.12; with today's sha the lock would hold two quires. Peek isn't built (it needs
+      `anyview-fs` and anyview-peek's `pane` feature).
+- Lane notes: `/mnt/data/cargo/temor-lanes/followups-b15-*.md`.
