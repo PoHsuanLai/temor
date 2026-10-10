@@ -67,8 +67,8 @@ chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62
 # docket 7457399 locks porter 3356848, so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "bd83d5ee5bf2743b6468ad72a7c0b209c219bf42", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "bd83d5ee5bf2743b6468ad72a7c0b209c219bf42" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "f0ebaecdd8212b3bfa64756de35dd03d98f4a00e", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "f0ebaecdd8212b3bfa64756de35dd03d98f4a00e" }
 prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243" }
 porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243" }
 porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "9c01699eda3bfae0f8c6504c72c9b05672728243", default-features = false, features = ["dbus"] }
