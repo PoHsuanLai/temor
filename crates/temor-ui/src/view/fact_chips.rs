@@ -86,15 +86,11 @@ pub fn chips_for(session: &Session, facts: &Facts) -> Option<ChipsView> {
         return None;
     }
     let (inset, cell_h) = session.gutter_geometry()?;
-    let newest = session.block_outcomes().last().map(|(id, _)| *id)?;
-    // `block_marks` is empty on the alternate screen and holds only prompts that are in view.
-    let mark = session
-        .block_marks()
-        .into_iter()
-        .find(|mark| mark.id == newest)?;
+    // The prompt being typed at, when it is in view and not on the alternate screen.
+    let row = session.live_prompt_row()?;
     Some(ChipsView {
         chips,
-        top: inset + mark.row as f32 * cell_h,
+        top: inset + row as f32 * cell_h,
         height: cell_h,
         inset,
     })

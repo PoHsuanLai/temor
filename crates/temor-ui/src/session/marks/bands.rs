@@ -81,6 +81,30 @@ pub(super) fn bands_of(
 }
 
 impl Session {
+    /// The viewport row of the header line of the prompt being typed at: with temor's prompt,
+    /// the line above the empty typing line; with a one-line prompt, the prompt's own line.
+    /// None while a command runs, on the alternate screen, or when it is out of view.
+    pub fn live_prompt_row(&self) -> Option<u32> {
+        let typing = matches!(
+            self.blocks.machine,
+            BlockState::Prompting { .. } | BlockState::Typing { .. }
+        );
+        let prompt = self.blocks.prompt.filter(|_| typing)?;
+        let input = self.blocks.input;
+        self.pane.with_term(|term| {
+            if term.on_alternate_screen() {
+                return None;
+            }
+            let start = term.anchor_point(prompt, PointSpace::Viewport)?.row;
+            let typed = input.and_then(|id| term.anchor_point(id, PointSpace::Viewport));
+            Some(match typed {
+                Some(at) if at.row > start && at.col.0 <= 1 => at.row - 1,
+                Some(at) => at.row,
+                None => start,
+            })
+        })
+    }
+
     /// The bands to paint over the grid. Empty on the alternate screen.
     pub fn card_bands(&self, colours: &CardColours) -> Vec<RowBand> {
         let cursor = self.painter.cursor_cell().map(|c| i64::from(c.row.0));
