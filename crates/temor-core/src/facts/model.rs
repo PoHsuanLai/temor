@@ -35,6 +35,24 @@ impl NodeVersion {
     }
 }
 
+/// A Python, Ruby or Go version from `.tool-versions`, cut to be a chip.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ToolVersion(pub String);
+
+impl ToolVersion {
+    /// The version text.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// How many files git has not been told about, counted up to [`MOST_UNTRACKED`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Untracked(pub u32);
+
+/// The count stops here; more shows as `999+`.
+pub const MOST_UNTRACKED: u32 = 999;
+
 /// What `git diff --shortstat HEAD` says: files changed and lines added and removed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct DiffStat {
@@ -58,6 +76,11 @@ pub struct Facts {
     pub changes: Option<DiffStat>,
     pub venv: Option<EnvName>,
     pub node: Option<NodeVersion>,
+    /// Files git does not track (and does not ignore); `None` when it could not be counted.
+    pub untracked: Option<Untracked>,
+    pub python: Option<ToolVersion>,
+    pub ruby: Option<ToolVersion>,
+    pub go: Option<ToolVersion>,
 }
 
 impl Facts {
@@ -67,6 +90,10 @@ impl Facts {
             && self.changes.is_none()
             && self.venv.is_none()
             && self.node.is_none()
+            && self.untracked.is_none()
+            && self.python.is_none()
+            && self.ruby.is_none()
+            && self.go.is_none()
     }
 
     /// Whether the folder has uncommitted changes.

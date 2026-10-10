@@ -6,7 +6,9 @@ use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use ds_harness::Driver;
+use ds::base::vocab::ShortcutKey;
+use ds::prelude::{Point, Px};
+use ds_harness::{Driver, Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;
@@ -46,6 +48,20 @@ fn chips_of(html: &str) -> Option<String> {
     Some(after[..end].to_owned())
 }
 
+/// A window whose shell starts in a scratch repository with one changed file, at its prompt.
+fn changed_repository(name: &str, probe: &Probe) -> Harness {
+    let mut h = harness_with(name, probe, None, |ambient| {
+        let home = &ambient.home;
+        git(home, &["init", "-q", "-b", "main"]);
+        std::fs::write(home.join("a.txt"), "one\n").expect("write");
+        git(home, &["add", "a.txt"]);
+        git(home, &["commit", "-q", "-m", "first"]);
+        std::fs::write(home.join("a.txt"), "one\ntwo\n").expect("write");
+    });
+    wait_until(&mut h, probe, "the prompt", |s| s.contains('$'));
+    h
+}
+
 #[test]
 fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab() {
     if !tools_present() || !git_present() {
@@ -54,15 +70,7 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
     let probe = Probe::new();
     // The shell starts in the home folder, so the repository is made there, after the harness has
     // made the folder clean and before the shell is started.
-    let mut h = harness_with("facts-chips", &probe, None, |ambient| {
-        let home = &ambient.home;
-        git(home, &["init", "-q", "-b", "main"]);
-        std::fs::write(home.join("a.txt"), "one\n").expect("write");
-        git(home, &["add", "a.txt"]);
-        git(home, &["commit", "-q", "-m", "first"]);
-        std::fs::write(home.join("a.txt"), "one\ntwo\n").expect("write");
-    });
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = changed_repository("facts-chips", &probe);
     let start = Instant::now();
     let chips = loop {
         h.advance(Duration::from_millis(50));
@@ -82,5 +90,47 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
     };
     for want in ["main \u{2022}", "+1 \u{2212}0", "1 file"] {
         assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
+    }
+}
+
+/// A long command typed on the chips' own row runs under them, so they leave. When the prompt is
+/// two lines the typing is on another row and the chips stay.
+#[test]
+fn chips_leave_when_the_typing_reaches_them_and_stay_when_it_cannot() {
+    if !tools_present() || !git_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = changed_repository("facts-overlap", &probe);
+    let start = Instant::now();
+    while chips_of(&h.html()).is_none_or(|c| !c.contains("1 file")) {
+        h.advance(Duration::from_millis(50));
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "no chips:\n{}",
+            h.html()
+        );
+    }
+    // A click gives the pane the keyboard, as a person's click would.
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    for _ in 0..80 {
+        h.send(Input::key(ShortcutKey::Char('x')));
+    }
+    let marker = "x".repeat(80);
+    wait_until(&mut h, &probe, "the typing", |s| s.contains(&marker));
+    h.advance(Duration::from_millis(200));
+    let screen = probe.screen();
+    let typed_row = screen.lines().find(|l| l.contains(&marker)).unwrap_or("");
+    let chips = chips_of(&h.html());
+    match typed_row.contains('$') {
+        true => assert!(chips.is_none(), "chips under the typing:\n{:?}", chips),
+        false => assert!(
+            chips.is_some_and(|c| c.contains("1 file")),
+            "chips left though the typing is on another row:\n{screen}"
+        ),
     }
 }

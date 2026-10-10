@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use temor_core::error::CoreError;
-use temor_core::facts::DiffStat;
+use temor_core::facts::{DiffStat, Untracked};
 use temor_core::worktree::{Git, GitCommand, GitOutput};
 
 use super::{FactsEnv, read_facts};
@@ -47,37 +47,49 @@ fn dir(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-/// (name, git answers as (args, status, stdout), expected branch, expected changes)
+/// (name, git answers as (args, status, stdout), expected branch, changes, untracked)
 type Case = (
     &'static str,
     Vec<(&'static str, i32, &'static str)>,
     Option<&'static str>,
     Option<DiffStat>,
+    Option<Untracked>,
 );
 
 #[test]
-fn git_facts_come_from_two_runs_without_locks_and_fail_quietly() {
+fn git_facts_come_from_a_few_runs_without_locks_and_fail_quietly() {
     #[rustfmt::skip]
     let cases: Vec<Case> = vec![
         ("repository with changes",
-            vec![("rev-parse", 0, "main\n"), ("diff", 0, " 2 files changed, 5 insertions(+), 1 deletion(-)\n")],
-            Some("main"), Some(DiffStat { files: 2, added: 5, removed: 1 })),
+            vec![("rev-parse", 0, "main\n"), ("diff", 0, " 2 files changed, 5 insertions(+), 1 deletion(-)\n"),
+                 ("status", 0, " M a\n M b\n?? c\n?? d\n?? e\n")],
+            Some("main"), Some(DiffStat { files: 2, added: 5, removed: 1 }), Some(Untracked(3))),
         ("clean repository",
-            vec![("rev-parse", 0, "dev\n"), ("diff", 0, "")],
-            Some("dev"), Some(DiffStat::default())),
+            vec![("rev-parse", 0, "dev\n"), ("diff", 0, ""), ("status", 0, "")],
+            Some("dev"), Some(DiffStat::default()), Some(Untracked(0))),
         ("not a repository",
-            vec![("rev-parse", 128, ""), ("diff", 0, " 1 file changed, 1 insertion(+)\n")],
-            None, None),
+            vec![("rev-parse", 128, ""), ("symbolic-ref", 128, ""), ("diff", 0, " 1 file changed, 1 insertion(+)\n"), ("status", 0, "?? x\n")],
+            None, None, None),
         ("diff fails, branch stays",
-            vec![("rev-parse", 0, "main\n"), ("diff", 128, "")],
-            Some("main"), None),
+            vec![("rev-parse", 0, "main\n"), ("diff", 128, ""), ("status", 0, "")],
+            Some("main"), None, Some(Untracked(0))),
+        ("no commit yet shows its branch",
+            vec![("rev-parse", 128, ""), ("symbolic-ref", 0, "trunk\n"), ("diff", 128, ""), ("status", 0, "?? a\n?? b\n")],
+            Some("trunk"), None, Some(Untracked(2))),
+        ("detached head has no branch",
+            vec![("rev-parse", 0, "HEAD\n"), ("symbolic-ref", 128, ""), ("status", 0, "?? a\n")],
+            None, None, None),
+        ("status fails, the rest stays",
+            vec![("rev-parse", 0, "main\n"), ("diff", 0, ""), ("status", 128, "")],
+            Some("main"), Some(DiffStat::default()), None),
     ];
     let scratch = tempfile::tempdir().expect("tempdir");
-    for (name, answers, branch, changes) in cases {
+    for (name, answers, branch, changes, untracked) in cases {
         let git = Canned::new(answers);
         let facts = read_facts(Some(&git), &dir(scratch.path()), &FactsEnv::default());
         assert_eq!(facts.branch.as_ref().map(|b| b.as_str()), branch, "{name}");
         assert_eq!(facts.changes, changes, "{name}");
+        assert_eq!(facts.untracked, untracked, "{name}");
         let seen = git.seen.lock().expect("lock");
         assert!(
             seen.iter()
@@ -137,4 +149,58 @@ fn node_comes_from_the_nearest_file_up_to_the_repository_root() {
     let inner = tempfile::tempdir_in(root).expect("tempdir");
     std::fs::create_dir(inner.path().join(".git")).expect("mkdir");
     assert_eq!(node(inner.path()), None, "stops at the repository root");
+}
+
+#[test]
+fn runtime_versions_come_from_the_nearest_files() {
+    let scratch = tempfile::tempdir().expect("tempdir");
+    let root = scratch.path();
+    let deep = root.join("app");
+    std::fs::create_dir_all(&deep).expect("mkdir");
+    let versions = |at: &Path| {
+        let f = read_facts(None, &dir(at), &FactsEnv::default());
+        let text = |v: Option<&str>| v.map(str::to_owned);
+        (
+            text(f.node.as_ref().map(|v| v.as_str())),
+            text(f.python.as_ref().map(|v| v.as_str())),
+            text(f.ruby.as_ref().map(|v| v.as_str())),
+            text(f.go.as_ref().map(|v| v.as_str())),
+        )
+    };
+    let s = |v: &str| Some(v.to_owned());
+    assert_eq!(
+        versions(&deep),
+        (None, None, None, None),
+        "nothing anywhere"
+    );
+    std::fs::write(
+        root.join(".tool-versions"),
+        "nodejs 18.0.0\npython 3.12.1\nruby 3.3.0\ngolang 1.22.0\n",
+    )
+    .expect("write");
+    assert_eq!(
+        versions(&deep),
+        (s("18.0.0"), s("3.12.1"), s("3.3.0"), s("1.22.0")),
+        "all from one file in a parent"
+    );
+    std::fs::write(deep.join(".node-version"), "v20\n").expect("write");
+    assert_eq!(
+        versions(&deep).0,
+        s("v20"),
+        ".node-version in the nearer folder wins"
+    );
+    std::fs::write(deep.join(".nvmrc"), "v21\n").expect("write");
+    assert_eq!(
+        versions(&deep).0,
+        s("v21"),
+        ".nvmrc comes before .node-version"
+    );
+    std::fs::write(deep.join(".tool-versions"), "python 3.9.0\n").expect("write");
+    let got = versions(&deep);
+    assert_eq!(
+        got.1,
+        s("3.9.0"),
+        "the nearer .tool-versions wins for python"
+    );
+    assert_eq!(got.2, s("3.3.0"), "ruby still comes from the parent");
 }

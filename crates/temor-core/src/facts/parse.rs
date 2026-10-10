@@ -1,6 +1,6 @@
 //! Reading what git and the environment say. Anything unreadable is `None`.
 
-use super::model::{BranchName, DiffStat, EnvName};
+use super::model::{BranchName, DiffStat, EnvName, MOST_UNTRACKED, Untracked};
 
 /// The branch from `git rev-parse --abbrev-ref HEAD`. A detached `HEAD` has no branch name.
 pub fn parse_branch(output: &str) -> Option<BranchName> {
@@ -49,4 +49,15 @@ pub fn venv_name(path: &str) -> Option<EnvName> {
         other => other,
     };
     Some(EnvName(name.to_owned()))
+}
+
+/// How many files `git status --porcelain=v1 -uall` lists as untracked (lines starting `?? `),
+/// stopping past [`MOST_UNTRACKED`] so a huge folder stays cheap to show.
+pub fn parse_untracked(output: &str) -> Untracked {
+    let count = output
+        .lines()
+        .filter(|l| l.starts_with("?? "))
+        .take(MOST_UNTRACKED as usize + 1)
+        .count();
+    Untracked(u32::try_from(count).unwrap_or(MOST_UNTRACKED + 1))
 }

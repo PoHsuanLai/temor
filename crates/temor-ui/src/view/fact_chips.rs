@@ -6,7 +6,7 @@
 
 use dioxus::prelude::*;
 use ds::components::controls::chip::{Chip, ChipVariant};
-use temor_core::facts::{DiffStat, Facts};
+use temor_core::facts::{ChipRow, DiffStat, Facts, MOST_UNTRACKED, chips_that_fit};
 
 use crate::session::Session;
 
@@ -48,8 +48,15 @@ fn files_words(files: u32) -> String {
     }
 }
 
+fn untracked_words(count: u32) -> String {
+    match count > MOST_UNTRACKED {
+        true => format!("{MOST_UNTRACKED}+ new"),
+        false => format!("{count} new"),
+    }
+}
+
 /// The chips for `facts`, in order: branch (a dot when there are changes), `+N -M`, files,
-/// environment, Node. Nothing known gives none; a clean folder gives no change chips.
+/// new files, Python (the environment, else the version), Ruby, Go, Node. Nothing known gives none; a clean folder gives no change chips.
 pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
     let mut chips = Vec::new();
     if let Some(summary) = facts.summary() {
@@ -68,8 +75,22 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
         chips.push(chip(format!("+{added} \u{2212}{removed}"), ChipTone::Plain));
         chips.push(chip(files_words(files), ChipTone::Plain));
     }
-    if let Some(venv) = &facts.venv {
-        chips.push(chip(format!("python {}", venv.as_str()), ChipTone::Plain));
+    if let Some(untracked) = facts.untracked.filter(|u| u.0 > 0) {
+        chips.push(chip(untracked_words(untracked.0), ChipTone::Plain));
+    }
+    let python = match (&facts.venv, &facts.python) {
+        (Some(venv), _) => Some(venv.as_str()),
+        (None, Some(version)) => Some(version.as_str()),
+        (None, None) => None,
+    };
+    if let Some(python) = python {
+        chips.push(chip(format!("python {python}"), ChipTone::Plain));
+    }
+    if let Some(ruby) = &facts.ruby {
+        chips.push(chip(format!("ruby {}", ruby.as_str()), ChipTone::Plain));
+    }
+    if let Some(go) = &facts.go {
+        chips.push(chip(format!("go {}", go.as_str()), ChipTone::Plain));
     }
     if let Some(node) = &facts.node {
         chips.push(chip(format!("node {}", node.as_str()), ChipTone::Plain));
@@ -81,16 +102,33 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
 /// prompt is on screen. `None` when there is nothing to say, on a full-screen program's screen, or
 /// before the first layout.
 pub fn chips_for(session: &Session, facts: &Facts) -> Option<ChipsView> {
-    let chips = chip_texts(facts);
+    let mut chips = chip_texts(facts);
     if chips.is_empty() {
         return None;
     }
     let (inset, cell_h) = session.gutter_geometry()?;
     // The prompt being typed at, when it is in view and not on the alternate screen.
     let row = session.live_prompt_row()?;
+    let top = inset + row as f32 * cell_h;
+    // A command typed on this very row runs under the chips: leave out the ones it reaches.
+    let (pane_width, cell_width) = session.grid_logical()?;
+    let cursor_right = session
+        .cursor_logical()
+        .filter(|[_, y, _, h]| (y - top).abs() < h / 2.0)
+        .map(|[x, _, w, _]| x + w);
+    let words: Vec<usize> = chips.iter().map(|c| c.text.chars().count()).collect();
+    let geometry = ChipRow {
+        pane_width,
+        inset,
+        cell_width,
+    };
+    chips.truncate(chips_that_fit(&words, geometry, cursor_right));
+    if chips.is_empty() {
+        return None;
+    }
     Some(ChipsView {
         chips,
-        top: inset + row as f32 * cell_h,
+        top,
         height: cell_h,
         inset,
     })
