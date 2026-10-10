@@ -20,15 +20,14 @@ pub const WINDOW_CSS: &str = "\
 .temor-quick-body { flex: 1 1 auto; min-height: 0; position: relative; }\
 .temor-side-box { width: 100%; height: 100%; }\
 .temor-side { width: 100%; height: 100%; }\
-.temor-tab { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }\
-.temor-tab-words { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }\
-.temor-mini { position: relative; width: 100%; aspect-ratio: 16 / 9; min-height: calc(var(--s-5) * 5); }\
+.temor-tab-box { position: relative; min-width: 0; }\
+.temor-mini { position: relative; flex: none; width: var(--s-28); height: var(--s-16); }\
 .temor-tile-slot { position: absolute; box-sizing: border-box; }\
 .temor-tile-slot > * { display: block; width: 100%; height: 100%; }\
 .temor-host { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--s-2); }\
 .temor-host-line { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }\
-.temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--line); }\
-.temor-tile[data-selected] { border-color: var(--accent); }\
+.temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--ink-faint); }\
+.temor-tile[data-selected] { border-color: var(--ink-soft); }\
 .temor-dl-box { width: 100%; }\
 .temor-dl { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }\
 .temor-dl-actions { display: flex; gap: var(--s-3); }";
