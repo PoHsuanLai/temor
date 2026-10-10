@@ -68,6 +68,7 @@ fn place() -> Place {
         }],
         folders: vec![],
         focused: Some(TabId(3)),
+        viewers: vec![],
     }
 }
 

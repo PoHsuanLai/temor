@@ -176,6 +176,8 @@ fn place_is_well_formed(file: &serde_json::Value) -> bool {
 /// An id at the top of the range leaves none after it: that file is damaged.
 fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     let mut place = read.place;
+    // Viewers a Spaces-file place carries: used only for panes the session list does not name.
+    let recalled = std::mem::take(&mut place.viewers);
     let mut seen_tabs = BTreeSet::new();
     let mut seen_panes = BTreeSet::new();
     place.tabs.retain(|tab| {
@@ -214,9 +216,13 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
         .filter(|rec| seen_panes.contains(&rec.pane))
         .map(|rec| (rec.pane, rec.cwd))
         .collect::<BTreeMap<_, _>>();
-    ws.viewers = read
-        .viewers
+    ws.viewers = recalled
         .into_iter()
+        .map(|rec| ViewerRec {
+            pane: rec.pane,
+            file: rec.file,
+        })
+        .chain(read.viewers)
         .filter(|rec| seen_panes.contains(&rec.pane) && !rec.file.as_str().is_empty())
         .map(|rec| (rec.pane, rec.file))
         .collect();

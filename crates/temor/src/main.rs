@@ -41,7 +41,11 @@ fn main() -> ExitCode {
         &Request::NewWindow,
         // A launcher or a notification click hands the new process a one-use token that lets
         // the running window take the keyboard on Wayland.
-        std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref(),
+        temor_ui::app::desktop::launch_token(
+            std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref(),
+            std::env::var("DESKTOP_STARTUP_ID").ok().as_deref(),
+        )
+        .as_deref(),
     ) {
         Joined::Handed => return ExitCode::SUCCESS,
         Joined::First { desktop, trouble } => {

@@ -52,6 +52,16 @@ pub enum Joined {
     Handed,
 }
 
+/// The activation token this launch was started with: Wayland's `XDG_ACTIVATION_TOKEN`, else the
+/// X11 `DESKTOP_STARTUP_ID` a launcher sets. Empty values count as absent.
+pub fn launch_token(wayland: Option<&str>, x11: Option<&str>) -> Option<String> {
+    [wayland, x11]
+        .into_iter()
+        .flatten()
+        .find(|token| !token.is_empty())
+        .map(str::to_owned)
+}
+
 /// Claims the first-instance name on `env`'s session bus. Starts the services on `runtime`'s
 /// threads, which the caller keeps alive until the window closes. `token` is the activation token
 /// this launch was started with (`XDG_ACTIVATION_TOKEN`); a later launch passes it on so the
@@ -168,5 +178,23 @@ mod tests {
         let three = badge_of(BadgeCount(3));
         assert_eq!(three.count, Some(BadgeCount(3)));
         assert_eq!(three.progress, None);
+    }
+
+    #[test]
+    fn the_launch_token_is_wayland_first_then_x11_and_never_empty() {
+        let table = [
+            (Some("w"), Some("x"), Some("w")),
+            (None, Some("x"), Some("x")),
+            (Some(""), Some("x"), Some("x")),
+            (Some(""), Some(""), None),
+            (None, None, None),
+        ];
+        for (wayland, x11, want) in table {
+            assert_eq!(
+                launch_token(wayland, x11).as_deref(),
+                want,
+                "{wayland:?} {x11:?}"
+            );
+        }
     }
 }

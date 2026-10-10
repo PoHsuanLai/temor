@@ -37,6 +37,7 @@ fn fixture() -> TabsState {
             title: TabTitle("Work".into()),
         }],
         focused: Some(TabId(3)),
+        viewers: vec![],
     })
 }
 

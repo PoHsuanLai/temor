@@ -8,11 +8,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use temor_ssh::{
-    CommandOutput, CommandRunner, ConfigPaths, ControlLayout, ControlPersist, FileTools,
-    FsConfigFiles, HostList, RuntimeDir, Seconds, StdRunner, load_host_list,
+    CommandOutput, CommandRunner, ConfigPaths, ControlLayout, ControlPersist, FileTools, HostList,
+    RuntimeDir, Seconds, StdRunner,
 };
 
 use super::Ambient;
+use super::ssh_hosts_cache::HostCache;
 
 /// How long a shared connection outlives its last pane.
 const PERSIST_SECONDS: u32 = 600;
@@ -52,6 +53,8 @@ pub struct SshEnv {
     pub config: ConfigPaths,
     /// Where local copies of edited files are kept (private to the person).
     pub edit_dir: PathBuf,
+    /// The host list as last read; shared by clones.
+    hosts: HostCache,
 }
 
 impl SshEnv {
@@ -83,11 +86,13 @@ impl SshEnv {
                 Some(ambient.home.clone()),
             ),
             edit_dir: ambient.runtime_dir.join("edit"),
+            hosts: HostCache::default(),
         }
     }
 
     /// The hosts of the person's `~/.ssh/config` (never fails; trouble in the file is skipped).
+    /// The file is read again only when its modified time (or its folder's) moved.
     pub fn host_list(&self) -> HostList {
-        load_host_list(&FsConfigFiles, &self.config)
+        self.hosts.list(&self.config)
     }
 }
