@@ -995,3 +995,7 @@ changes.
       `hits(HitList::Brief | Whole)` (an "In This File" palette group whose rows run through
       `run`). anyview suggests ⌘T feeds its query to the viewer in a "find in pane" mode; ⌘F stays
       temor's.
+- [ ] Batch 17: take anyview be8c91c (same lock as 6c325c9). It adds #98 (a recording plays in a pane
+      given a player, else opens elsewhere: pairs with the `player` follow-up above) and #99 (one
+      remembering policy, `anyview_machines::{Remembering, Noted, REMEMBER_EVERY}`; a pane flushes
+      on unmount, so far fewer `Job::Keep`s).
