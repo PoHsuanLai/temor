@@ -9,9 +9,9 @@ use crate::text::{RowCell, RowText, Span, Wrap};
 use temor_render::{CapturedFrame, FrameCapture, Palette};
 use temor_vt::{
     AnchorId, CellPx, CellWidth, CursorShape, EventSink, Formatter, GridCell, GridPoint, GridSize,
-    KeyEncoder, KeyInput, LineCount, ModeState, MouseEncoder, MouseInput, MouseSurface, PointSpace,
-    ReplySink, Snapshot, Terminal, TerminalConfig, TerminalMode, TextFormat, TextSelection,
-    TextSpan, ViewportScroll, VtEvent,
+    KeyEncoder, KeyInput, KittyKeyFlags, LineCount, ModeState, MouseEncoder, MouseInput,
+    MouseSurface, PointSpace, ReplySink, Snapshot, Terminal, TerminalConfig, TerminalMode,
+    TextFormat, TextSelection, TextSpan, ViewportScroll, VtEvent,
 };
 
 use crate::error::PaneError;
@@ -128,6 +128,11 @@ impl Term {
     pub fn encode_key(&mut self, key: &KeyInput) -> Result<Vec<u8>, PaneError> {
         self.keys.sync(&self.terminal);
         Ok(self.keys.encode(key)?)
+    }
+
+    /// The kitty keyboard flags the program pushed.
+    pub fn kitty_keyboard_flags(&self) -> KittyKeyFlags {
+        self.terminal.kitty_keyboard_flags()
     }
 
     /// The bytes for a mouse event on `surface`; empty when the program does not track the

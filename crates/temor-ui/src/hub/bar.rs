@@ -3,6 +3,7 @@
 //! picked row out is `bar_run`.
 
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
 use temor_core::vocab::text::{CommandText, HostAlias};
@@ -11,7 +12,9 @@ use temor_pane::keys::Action;
 use super::desk::Desk;
 use super::hosts::HostRows;
 use super::model::{Hub, HubRef};
-use crate::bar::{BarModel, BarSeams, closed_candidate, directory_uses, recent_commands};
+use crate::bar::{
+    BarModel, BarSeams, SpaceRows, closed_candidate, directory_uses, recent_commands,
+};
 use crate::view::launch::Launch;
 
 /// What the hub keeps for the bar.
@@ -45,6 +48,11 @@ impl Hub {
     /// Replaces what the bar reads from outside (the Spaces, the model).
     pub fn set_bar_seams(&mut self, seams: BarSeams) {
         self.bar.seams = seams;
+    }
+
+    /// Lists these Spaces in the bar and switches through them.
+    pub fn set_bar_spaces(&mut self, spaces: Rc<dyn SpaceRows>) {
+        self.bar.seams.spaces = spaces;
     }
 
     /// Everything the bar can match right now.
@@ -169,6 +177,11 @@ impl HubRef {
         self.0.borrow().bar.model.is_open()
     }
 
+    /// Lists these Spaces in the bar and switches through them.
+    pub fn set_bar_spaces(&self, spaces: Rc<dyn SpaceRows>) {
+        self.0.borrow_mut().set_bar_spaces(spaces);
+    }
+
     /// The Spaces a quick terminal can be moved to.
     pub fn bar_spaces(&self) -> Vec<temor_core::bar::SpaceEntry> {
         self.0.borrow().bar.seams.spaces.spaces()
@@ -217,6 +230,7 @@ impl Desk {
     /// A bar row was run.
     pub fn bar_pick(&self, key: &RowKey) {
         self.settle(|hub| hub.bar_pick(key));
+        self.switch_to_picked_space();
     }
 
     /// An action the window itself takes, not a pane and not the workspace: the bar and the

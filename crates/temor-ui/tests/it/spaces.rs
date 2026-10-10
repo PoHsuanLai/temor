@@ -250,3 +250,34 @@ fn a_damaged_spaces_file_is_set_aside_and_the_window_starts_with_one_space() {
     assert!(state.join("spaces.json.bad").exists());
     assert_eq!(rows(&h), 1);
 }
+
+/// The ⌘T bar lists the Spaces: typing a Space's name and Enter switches to it, with no mouse.
+#[test]
+fn the_bar_switches_spaces_from_the_keyboard() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let state = scratch("spaces-bar-state").join("state");
+    let mut spaces = Spaces::first_run([Project::default(), Project::default()], Project::default);
+    spaces.rename(SpaceId(0), "Home");
+    spaces.rename(SpaceId(1), "Elsewhere");
+    save_spaces(&state, &spaces).expect("spaces saved");
+    let probe = Probe::new();
+    let mut h = harness_in("spaces-bar", &probe, Some(state));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    assert_eq!(
+        h.text_of(".ds-space-head").unwrap_or_default().trim(),
+        "Home"
+    );
+
+    focus_terminal(&mut h);
+    chord(&mut h, 't');
+    type_line(&mut h, "Elsewhere");
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        h.text_of(".ds-space-head").unwrap_or_default().trim(),
+        "Elsewhere",
+        "the Space row switched:\n{}",
+        h.html()
+    );
+}

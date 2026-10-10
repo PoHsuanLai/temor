@@ -6,6 +6,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
 use super::model::HubRef;
+use super::space_rows::PendingSwitch;
 use crate::view::space_handle::SpacesOf;
 
 /// The window's desk. Two desks are equal when they are the same window's.
@@ -18,6 +19,8 @@ pub struct Desk {
     pub notice: Signal<Option<String>>,
     /// The Spaces: the kit's handle, which switches, edits and writes them.
     pub spaces: SpacesOf,
+    /// The Space the ⌘T bar asked for, until the desk switches to it.
+    pub picked_space: PendingSwitch,
 }
 
 impl std::fmt::Debug for Desk {

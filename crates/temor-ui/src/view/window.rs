@@ -39,9 +39,9 @@ use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
 use crate::edge::Credentials;
 use crate::hub::{
-    Desk, DragKey, Hub, HubRef, SidebarData, spawn_agent_loops, spawn_desktop_loop,
-    spawn_event_loop, spawn_facts_loop, spawn_offer_loop, spawn_remote_loop, spawn_save_loop,
-    spawn_ssh_loop,
+    Desk, DragKey, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
+    spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_offer_loop, spawn_remote_loop,
+    spawn_save_loop, spawn_ssh_loop,
 };
 
 /// The window's root component.
@@ -79,11 +79,17 @@ pub fn App() -> Element {
     let spaces = use_window_spaces(&hub, ui, notice);
     // The Space on screen decides the look: the frame, the sidebar's ink and the terminal's colours.
     let look = spaces.look();
+    let picked_space = use_hook(PendingSwitch::default);
+    use_hook({
+        let (hub, picked) = (hub.clone(), picked_space.clone());
+        move || hub.set_bar_spaces(Rc::new(KitSpaces::new(spaces, picked)))
+    });
     let desk = Desk {
         hub: hub.clone(),
         ui,
         notice,
         spaces,
+        picked_space,
     };
     use_hook({
         let desk = desk.clone();

@@ -7,6 +7,7 @@ mod adapter;
 mod adapter_tests;
 mod resolver;
 mod seams;
+mod shortcuts;
 mod sources;
 #[cfg(test)]
 mod sources_tests;
@@ -14,4 +15,5 @@ mod sources_tests;
 pub use adapter::BarModel;
 pub use resolver::PathLookup;
 pub use seams::{BarSeams, ModelRows, NoModel, NoSpaces, SpaceRows};
+pub use shortcuts::action_of;
 pub use sources::{closed_candidate, directory_uses, recent_commands};

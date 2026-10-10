@@ -11,10 +11,11 @@ use dioxus::prelude::*;
 use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,
 };
-use ds::prelude::{AfterPick, CommandPalette, TextLine};
+use ds::prelude::{AfterPick, CommandPalette, RowChord, TextLine};
 use temor_core::bar::{BarAction, BarRow, RowGroup, Target};
 
-use crate::hub::{BarData, Desk};
+use crate::bar::action_of;
+use crate::hub::{BarData, Desk, HubRef};
 
 /// What a row of the bar yields when it is picked.
 #[derive(Debug, Clone, PartialEq)]
@@ -32,7 +33,7 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
     let (typed, selected, picked, closed) =
         (desk.clone(), desk.clone(), desk.clone(), desk.clone());
     let handle = desk.hub.keyboard_viewer();
-    let mut groups = groups_of(&data.rows);
+    let mut groups = groups_of(&data.rows, &desk.hub);
     let extra = match handle {
         Some(handle) => {
             let group = pane_group(handle, &data.query);
@@ -114,11 +115,16 @@ fn rows_in(group: &PaletteGroup<Pick>) -> usize {
 
 /// The rows as the palette's groups, in the order they were ranked: a run of rows from one rule
 /// is one group, so the palette's numbering is the rows' own.
-fn groups_of(rows: &[BarRow]) -> Vec<PaletteGroup<Pick>> {
+fn groups_of(rows: &[BarRow], hub: &HubRef) -> Vec<PaletteGroup<Pick>> {
     let mut groups: Vec<(RowGroup, Vec<PaletteRow<Pick>>)> = Vec::new();
     for row in rows {
         let line = PaletteRow {
             detail: kind_of(&row.action).map(TextLine::from),
+            // A row that is also a pane action shows its chord on the highlighted row.
+            chord: action_of(&row.action)
+                .and_then(|action| hub.shortcut_of(action))
+                .map(RowChord::on_selected)
+                .unwrap_or_default(),
             // The palette stays up until the bar's own step closes it, so the pick reaches the
             // palette machine once.
             after: AfterPick::KeepOpen,
