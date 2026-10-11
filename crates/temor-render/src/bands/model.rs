@@ -48,15 +48,25 @@ impl RowSpan {
     }
 }
 
+/// How heavy a band's text is drawn. `Bold` draws every cell of the rows in the bold face, on top
+/// of what the program asked for (a card's command line); `Normal` leaves the cells alone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum RowWeight {
+    #[default]
+    Normal,
+    Bold,
+}
+
 /// One band over `rows`: `fill` blends over every background across the pane's full width,
 /// `stripe` is a solid bar at the pane's left edge, `rule` is a 1 device pixel line along the
-/// top edge of `rows.first`.
+/// top edge of `rows.first`, `weight` can make the text of the rows bold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RowBand {
     pub rows: RowSpan,
     pub fill: Option<Tint>,
     pub stripe: Option<Tint>,
     pub rule: Option<Tint>,
+    pub weight: RowWeight,
 }
 
 /// What one row looks like under the bands: the unit change tracking compares.
@@ -66,6 +76,7 @@ pub(crate) struct RowLook {
     pub stripe: Option<Tint>,
     /// Set on the band's first row only.
     pub rule: Option<Tint>,
+    pub weight: RowWeight,
 }
 
 /// The look of `row`; where bands overlap the later one wins, per part.
@@ -74,6 +85,9 @@ pub(crate) fn look_of(bands: &[RowBand], row: Row) -> RowLook {
     for b in bands.iter().filter(|b| b.rows.contains(row)) {
         look.fill = b.fill.or(look.fill);
         look.stripe = b.stripe.or(look.stripe);
+        if b.weight == RowWeight::Bold {
+            look.weight = RowWeight::Bold;
+        }
         if b.rows.first == row {
             look.rule = b.rule.or(look.rule);
         }

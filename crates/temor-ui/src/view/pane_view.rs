@@ -23,6 +23,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::bar_edit;
 use super::block_header::BlockHeader;
+use super::block_meta::BlockMetas;
 use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
@@ -277,6 +278,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
+                BlockMetas { metas: chrome.metas.clone() }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}
                 }

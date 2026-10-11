@@ -1,11 +1,13 @@
 //! What the window draws for a pane's blocks beside the grid (PLAN §9 blocks): the sticky header
-//! (`block_header`), the toolbar on the hovered or selected block (`block_tools`), and the rest
+//! (`block_header`), how each card ended (`block_meta`), the tools on the hovered or selected
+//! block (`block_tools`), and the rest
 //! of the pane's chrome (working folder, title, progress, bell). A gutter click still selects a
 //! block; the cards lane's bands show how each one ended.
 
 use temor_core::vocab::ids::BlockId;
 
 use super::block_header::HeaderView;
+use super::block_meta::{MetaView, metas_of};
 use super::block_tools::ToolsView;
 use super::status::{ProgressLine, progress_line};
 use crate::session::Session;
@@ -17,6 +19,8 @@ use ds::prelude::Availability;
 pub struct Chrome {
     pub header: Option<HeaderView>,
     pub tools: Option<ToolsView>,
+    /// How each card on screen ended, except the one whose tools say it themselves.
+    pub metas: Vec<MetaView>,
     pub cwd: Option<String>,
     pub title: String,
     pub progress: Option<ProgressLine>,
@@ -25,7 +29,7 @@ pub struct Chrome {
     pub link: Option<String>,
 }
 
-/// The toolbar for the first of `hovered` and the selected block that has a place on screen.
+/// The tools for the first of `hovered` and the selected block that has a place on screen.
 fn tools_of(
     session: &Session,
     hovered: Option<BlockId>,
@@ -41,8 +45,9 @@ fn tools_of(
                 id,
                 height: session.tools_height(),
                 top: pad + spot.row as f32 * cell_h,
+                row: cell_h,
                 inset: pad,
-                summary: session.block_summary(id).unwrap_or_default(),
+                meta: session.block_meta(id),
                 output: match session.block_finished(id) {
                     true => Availability::Enabled,
                     false => Availability::Disabled,
@@ -73,9 +78,12 @@ pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
         inset: pad,
         height: pad + cell_h,
     });
+    let tools = tools_of(session, session.hovered_block(), pad, cell_h);
+    let metas = metas_of(session, tools.as_ref().map(|tools| tools.id));
     Chrome {
         header,
-        tools: tools_of(session, session.hovered_block(), pad, cell_h),
+        tools,
+        metas,
         cwd: session.cwd().map(str::to_owned),
         title: session.title().to_owned(),
         progress: session.progress().and_then(progress_line),

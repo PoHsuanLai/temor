@@ -86,7 +86,7 @@ mod bands {
     use temor_vt::{GridSize, Px, Rgb, Row};
 
     use super::{COLS, CpuRenderer, ROWS, fonts};
-    use crate::bands::{Alpha, RowBand, RowSpan, Tint};
+    use crate::bands::{Alpha, RowBand, RowSpan, RowWeight, Tint};
     use crate::frame::{PaneFrame, TermColors};
     use crate::metrics::{Padding, PixelSize, Scale};
     use crate::palette::Palette;
@@ -170,6 +170,7 @@ mod bands {
             fill,
             stripe,
             rule,
+            weight: RowWeight::Normal,
         }
     }
 

@@ -2,11 +2,11 @@
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::ExitCode;
-use temor_render::{Palette, RowBand, RowSpan, Tint};
+use temor_render::{Palette, RowBand, RowSpan, RowWeight, Tint};
 use temor_vt::{Rgb, Row};
 
 use super::actions::output_name;
-use super::bands::{CardBlock, Pick, Stage, bands_of};
+use super::bands::{CardBlock, Pick, Stage, bands_of, command_rows};
 use crate::view::card_colours::CardColours;
 
 #[test]
@@ -17,7 +17,12 @@ fn output_names_come_from_the_command_or_a_fallback() {
 }
 
 fn block(first: i64, stage: Stage, pick: Pick) -> CardBlock {
-    CardBlock { first, stage, pick }
+    CardBlock {
+        first,
+        stage,
+        pick,
+        command: None,
+    }
 }
 
 fn band(first: u16, last: u16, parts: [Option<Tint>; 3]) -> RowBand {
@@ -30,6 +35,7 @@ fn band(first: u16, last: u16, parts: [Option<Tint>; 3]) -> RowBand {
         fill,
         stripe,
         rule,
+        weight: RowWeight::Normal,
     }
 }
 
@@ -64,24 +70,17 @@ fn blocks_become_bands_by_how_they_stand() {
             )],
         ),
         (
-            "the newest block at its prompt gets the input fill and keeps its rule",
+            "the newest block at its prompt is set off by its rule alone, with no fill",
             vec![block(1, done, plain), block(4, Stage::AtPrompt, plain)],
             5,
             10,
             vec![
                 band(1, 3, [None, None, Some(c.rule)]),
-                band(4, 5, [Some(c.input), None, Some(c.rule)]),
+                band(4, 5, [None, None, Some(c.rule)]),
             ],
         ),
         (
-            "once it runs the input fill is gone",
-            vec![block(4, done, plain)],
-            7,
-            10,
-            vec![band(4, 7, [None, None, Some(c.rule)])],
-        ),
-        (
-            "selected and failed both win over the input fill",
+            "the selected fill shows on the block at its prompt",
             vec![block(3, Stage::AtPrompt, chosen)],
             4,
             10,
@@ -119,5 +118,62 @@ fn blocks_become_bands_by_how_they_stand() {
     ];
     for (what, blocks, end, rows, expected) in cases {
         assert_eq!(bands_of(&blocks, end, rows, &c), expected, "{what}");
+    }
+}
+
+#[test]
+fn the_command_line_is_a_bold_band_clipped_to_the_view() {
+    let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
+    let done = Stage::Ran(Outcome::Succeeded);
+    let bold = |first: u16, last: u16| RowBand {
+        rows: RowSpan {
+            first: Row(first),
+            last: Row(last),
+        },
+        fill: None,
+        stripe: None,
+        rule: None,
+        weight: RowWeight::Bold,
+    };
+    let with = |first, command| CardBlock {
+        command: Some(command),
+        ..block(first, done, Pick::Unselected)
+    };
+    // (what, block, expected bold band)
+    for (what, card, expected) in [
+        ("the typing line", with(2, (3, 3)), Some(bold(3, 3))),
+        ("a wrapped command", with(2, (3, 4)), Some(bold(3, 4))),
+        (
+            "scrolled half out of the top",
+            with(-3, (-1, 1)),
+            Some(bold(0, 1)),
+        ),
+        ("scrolled out of the top", with(-3, (-2, -1)), None),
+        ("past the bottom", with(7, (9, 12)), Some(bold(9, 9))),
+        (
+            "a block with no input mark",
+            block(2, done, Pick::Unselected),
+            None,
+        ),
+    ] {
+        let got: Vec<RowBand> = bands_of(&[card], 9, 10, &c)
+            .into_iter()
+            .filter(|b| b.weight == RowWeight::Bold)
+            .collect();
+        assert_eq!(got, expected.into_iter().collect::<Vec<_>>(), "{what}");
+    }
+}
+
+#[test]
+fn a_command_ends_before_the_output_mark_at_a_line_start() {
+    // (what, input row, output mark (row, col), end if no output yet, rows)
+    for (what, input, output, end, rows) in [
+        ("output on the next line", 4, Some((5, 0)), 9, (4, 4)),
+        ("a wrapped command", 4, Some((6, 0)), 9, (4, 5)),
+        ("output mark mid-line", 4, Some((4, 7)), 9, (4, 4)),
+        ("still typing", 4, None, 6, (4, 6)),
+        ("the cursor above the input mark", 4, None, 2, (4, 4)),
+    ] {
+        assert_eq!(command_rows(input, output, end), rows, "{what}");
     }
 }

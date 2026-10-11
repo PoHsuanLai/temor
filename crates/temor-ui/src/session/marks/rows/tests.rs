@@ -1,4 +1,4 @@
-//! The row arithmetic of the sticky header and the toolbar, with no terminal.
+//! The row arithmetic of the sticky header and the tools, with no terminal.
 
 use super::{Span, ViewRows, heads_viewport, tools_row};
 
@@ -36,33 +36,31 @@ fn a_block_heads_the_viewport_only_when_its_prompt_is_above_and_two_rows_show() 
 }
 
 #[test]
-fn the_toolbar_starts_on_the_first_visible_row_below_the_header_and_avoids_the_cursor() {
-    // (block, viewport, lowest row allowed, reach, expected screen row)
+fn the_tools_sit_in_the_header_row_or_the_sticky_header_and_avoid_the_cursor() {
+    // (block, viewport, reach, expected screen row)
     let table = [
-        // The prompt is on screen: the toolbar sits on it.
-        ((12, 20), view(10, 33, Some(30)), 10, 2, Some(12)),
-        // The prompt scrolled away and no header: the viewport's top row.
-        ((2, 20), view(10, 33, Some(30)), 10, 2, Some(10)),
-        // With a header on the top row: the next one.
-        ((2, 20), view(10, 33, Some(30)), 11, 2, Some(11)),
-        // The block has nothing left below the header.
-        ((2, 10), view(10, 33, Some(30)), 11, 2, None),
-        // The toolbar would cover the cursor's row.
-        ((12, 20), view(10, 33, Some(13)), 10, 2, None),
-        ((12, 20), view(10, 33, Some(12)), 10, 2, None),
+        // The prompt is on screen: the tools sit on its row.
+        ((12, 20), view(10, 33, Some(30)), 2, Some(12)),
+        // The prompt scrolled away with enough rows left: the sticky header, the top row.
+        ((2, 20), view(10, 33, Some(30)), 2, Some(10)),
+        // The prompt scrolled away and one row left: no header, so no tools.
+        ((2, 10), view(10, 33, Some(30)), 2, None),
+        // The tools would cover the cursor's row.
+        ((12, 20), view(10, 33, Some(13)), 2, None),
+        ((12, 20), view(10, 33, Some(12)), 2, None),
         // Just clear of it.
-        ((12, 20), view(10, 33, Some(14)), 10, 2, Some(12)),
-        ((12, 20), view(10, 33, Some(11)), 10, 2, Some(12)),
+        ((12, 20), view(10, 33, Some(14)), 2, Some(12)),
+        ((12, 20), view(10, 33, Some(11)), 2, Some(12)),
         // No cursor shown.
-        ((12, 20), view(10, 33, None), 10, 2, Some(12)),
+        ((12, 20), view(10, 33, None), 2, Some(12)),
         // The block is below the viewport.
-        ((40, 50), view(10, 33, None), 10, 2, None),
+        ((40, 50), view(10, 33, None), 2, None),
     ];
-    for ((first, last), viewport, lowest, reach, expected) in table {
+    for ((first, last), viewport, reach, expected) in table {
         assert_eq!(
-            tools_row(Span { first, last }, &viewport, lowest, reach),
+            tools_row(Span { first, last }, &viewport, reach),
             expected,
-            "block {first}..{last} in {viewport:?}, lowest {lowest}"
+            "block {first}..{last} in {viewport:?}"
         );
     }
 }

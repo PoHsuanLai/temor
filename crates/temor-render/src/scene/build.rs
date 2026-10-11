@@ -5,7 +5,7 @@ use temor_vt::{Col, Row, StyleFlags, Underline};
 use super::colors::{CellColors, UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle};
 use super::model::{Premul, Quad, QuadPaint, RowScene};
-use crate::bands::{RowBand, RowBox, look_of, push_quads};
+use crate::bands::{RowBand, RowBox, RowWeight, look_of, push_quads};
 use crate::font::{
     BUILD_ATTEMPTS, Decoration, FaceStyle, GlyphCache, GlyphKind, RunGlyph, Slant, Weight,
 };
@@ -72,6 +72,7 @@ pub(crate) fn build_row(
         out.bg
             .push(Quad::solid(x_of(c0), y0, w, ch, input.palette.selection));
     }
+    let look = look_of(input.bands, row);
     let cursor = input.cursor.filter(|c| c.row == row);
     let block = cursor.filter(|c| c.style == CursorStyle::Block);
     for cell in cells {
@@ -94,7 +95,7 @@ pub(crate) fn build_row(
             out.bg.push(Quad::solid(x0, y0, span_w, ch, bg));
         }
         if !cell.style.flags.contains(StyleFlags::INVISIBLE) {
-            text(cell, &colors, (x0, y0), glyphs, out);
+            text(cell, &colors, look.weight, (x0, y0), glyphs, out);
             decorations(cell, &colors, (x0, y0), &m, glyphs, out);
         }
     }
@@ -104,7 +105,7 @@ pub(crate) fn build_row(
         pane_width: input.pane_width,
         stripe_width: input.stripe_width,
     };
-    push_quads(&look_of(input.bands, row), at, out);
+    push_quads(&look, at, out);
     if let Some(c) = cursor {
         cursor_quads(&c, (x_of(c.col), y0), &m, out);
     }
@@ -134,6 +135,7 @@ fn selected_cols(s: &SelectionOverlay, row: Row, cols: u16) -> Option<(Col, Col)
 fn text(
     cell: &CellDraw,
     colors: &CellColors,
+    weight: RowWeight,
     at: (i32, i32),
     glyphs: &mut GlyphCache,
     out: &mut RowScene,
@@ -143,7 +145,7 @@ fn text(
     }
     let flags = cell.style.flags;
     let style = FaceStyle {
-        weight: if flags.contains(StyleFlags::BOLD) {
+        weight: if flags.contains(StyleFlags::BOLD) || weight == RowWeight::Bold {
             Weight::Bold
         } else {
             Weight::Regular

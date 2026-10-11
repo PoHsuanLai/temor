@@ -15,9 +15,9 @@ mod tests;
 /// would cover most of what is left of the block.
 pub const HEADER_MIN_ROWS: u32 = 2;
 
-/// The toolbar's height in logical pixels before the window has measured it (`ToolsHeight`), to
-/// count the grid rows it covers.
-pub const TOOLS_HEIGHT_LOGICAL: f32 = 28.0;
+/// The tools' height in logical pixels before the window has measured it (`ToolsHeight`), to
+/// count the grid rows they cover: the dense control size.
+pub const TOOLS_HEIGHT_LOGICAL: f32 = 20.0;
 
 /// The command that heads the pane while its block's prompt is above the viewport.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub struct StickyHeader {
     pub command: String,
 }
 
-/// Where the block toolbar goes: the block it acts on and the viewport row it starts at.
+/// Where the block tools go: the block they act on and the viewport row they are on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ToolsSpot {
     pub id: BlockId,
@@ -60,11 +60,16 @@ pub(super) fn heads_viewport(span: Span, view: &ViewRows) -> bool {
     span.first < view.top && shown.saturating_sub(view.top) >= HEADER_MIN_ROWS
 }
 
-/// The screen row the toolbar starts at: the block's first visible row, no higher than `lowest`
-/// (below the header). `None` when the block has no row left there, or when the toolbar, `reach`
-/// rows tall, would cover the cursor's row.
-pub(super) fn tools_row(span: Span, view: &ViewRows, lowest: u32, reach: u32) -> Option<u32> {
-    let row = span.first.max(view.top).max(lowest);
+/// The screen row the tools go on: the block's header row (its prompt's row) when that is in
+/// view, else the top row, which the sticky header covers, when the block heads the viewport.
+/// `None` when the block has neither, or when the tools, `reach` rows tall, would cover the
+/// cursor's row.
+pub(super) fn tools_row(span: Span, view: &ViewRows, reach: u32) -> Option<u32> {
+    let row = match span.first >= view.top {
+        true => span.first,
+        false if heads_viewport(span, view) => view.top,
+        false => return None,
+    };
     if row > span.last.min(view.bottom) {
         return None;
     }
@@ -152,23 +157,19 @@ impl Session {
         }
     }
 
-    /// Where the toolbar for `id` goes: its first visible row, below the header when one is
-    /// shown. `None` for a block with no command, one off the screen, or when it would cover
-    /// the cursor.
+    /// Where the tools for `id` go: its header row, or the sticky header when its prompt is
+    /// scrolled away. `None` for a block with no command, one off the screen, or when they would
+    /// cover the cursor.
     pub fn tools_spot(&self, id: BlockId) -> Option<ToolsSpot> {
         let view = self.view_rows()?;
         if !self.block_command(id).is_some_and(|c| !c.is_empty()) {
             return None;
         }
         let span = self.span_of(id, &view)?;
-        let lowest = match self.sticky_header() {
-            Some(_) => view.top.saturating_add(1),
-            None => view.top,
-        };
         let reach = self.gutter_geometry().map_or(1, |(_, cell_h)| {
             (self.tools_height.get() / cell_h.max(1.0)).ceil() as u32
         });
-        let row = tools_row(span, &view, lowest, reach.max(1))?;
+        let row = tools_row(span, &view, reach.max(1))?;
         Some(ToolsSpot {
             id,
             row: row - view.top,
