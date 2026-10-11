@@ -1,5 +1,6 @@
-//! How narrow a pane may get. A terminal under about 60 columns wraps most output into noise, so
-//! a split that would leave a pane below that is refused.
+//! How narrow a pane may get. A terminal under about 40 columns wraps most output into noise, so
+//! a split that would leave a pane below that is refused. (60 refused a side-by-side split in any
+//! window under about 1270 px wide with the sidebar shown, which is most laptop windows.)
 
 use super::model::Direction;
 
@@ -8,7 +9,7 @@ use super::model::Direction;
 pub struct Columns(pub u32);
 
 /// The least width a pane keeps after a split.
-pub const LEAST_COLUMNS: Columns = Columns(60);
+pub const LEAST_COLUMNS: Columns = Columns(40);
 
 /// Whether a pane `width` columns wide may be split `towards`. Splitting left or right halves the
 /// width, so both halves must keep [`LEAST_COLUMNS`]; splitting up or down keeps the width, so it
@@ -26,12 +27,12 @@ mod tests {
     use crate::split::Direction;
 
     #[test]
-    fn a_side_by_side_split_keeps_sixty_columns_in_each_half() {
+    fn a_side_by_side_split_keeps_forty_columns_in_each_half() {
         // (name, width, towards, allowed)
         let cases = [
-            ("wide enough for two", 120, Direction::Right, true),
-            ("one column short", 119, Direction::Left, false),
-            ("a narrow pane", 80, Direction::Right, false),
+            ("wide enough for two", 80, Direction::Right, true),
+            ("one column short", 79, Direction::Left, false),
+            ("a narrow pane", 60, Direction::Right, false),
             ("stacking keeps the width", 80, Direction::Down, true),
             ("stacking in a narrow window", 30, Direction::Up, true),
         ];

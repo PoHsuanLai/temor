@@ -85,7 +85,7 @@ pub(super) fn take_notice(slot: &RefCell<Slot>) -> Option<String> {
 }
 
 /// Runs the find query once the person has paused typing for [`QUERY_DEBOUNCE`].
-pub(super) fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant) {
+pub(super) fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant, mut ui: Signal<u32>) {
     spawn(async move {
         sleep(QUERY_DEBOUNCE).await;
         let ran = slot
@@ -95,6 +95,8 @@ pub(super) fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant) {
             .map(|s| s.run_due_query(started.elapsed()));
         if matches!(ran, Some(Ok(true))) {
             repaint(&slot);
+            // The find bar's count reads the matches the query just found.
+            ui += 1;
         }
     });
 }

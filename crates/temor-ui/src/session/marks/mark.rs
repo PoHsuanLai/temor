@@ -126,9 +126,11 @@ impl Session {
         });
         if accepted {
             self.blocks.next_id += 1;
+            // The input anchor stays: the card's command rows (drawn bold) run from it to the
+            // output anchor.
             let anchors = BlockAnchors {
                 prompt: self.blocks.prompt.take(),
-                input: None,
+                input,
                 output: Some(id),
                 end: None,
             };

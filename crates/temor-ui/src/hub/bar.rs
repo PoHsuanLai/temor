@@ -245,6 +245,10 @@ impl Desk {
     pub fn bar_pick(&self, key: &RowKey) {
         self.settle(|hub| hub.bar_pick(key));
         self.switch_to_picked_space();
+        let asks = std::mem::take(&mut self.hub.0.borrow_mut().window_asks);
+        for action in asks {
+            self.window_action(action);
+        }
     }
 
     /// An action the window itself takes, not a pane and not the workspace: the bar and the

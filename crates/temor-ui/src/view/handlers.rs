@@ -30,7 +30,7 @@ pub fn find_query(
             s.queue_query(&text, started.elapsed());
         }
         // The search runs once typing pauses (see `run_query_later`).
-        run_query_later(Rc::clone(&slot), started);
+        run_query_later(Rc::clone(&slot), started, ui);
         ui += 1;
     }
 }

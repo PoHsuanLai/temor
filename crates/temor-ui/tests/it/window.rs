@@ -10,7 +10,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
-use ds_harness::{Driver, Harness, HarnessConfig, Viewport, WindowHosting};
+use ds_harness::{Driver, Harness, HarnessConfig, Query, Viewport, WindowHosting};
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::Ambient;
@@ -90,9 +90,10 @@ pub(super) fn harness_hosting(
         probe: Some(probe.clone()),
         state_dir,
     };
+    // Wide enough that a pane splits side by side (two halves of at least 40 columns).
     let config = HarnessConfig::new(Viewport {
-        width: 760,
-        height: 484,
+        width: 1024,
+        height: 640,
         scale_percent: 100,
     })
     .with_context(launch)
@@ -257,10 +258,8 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
     ));
     h.advance(Duration::from_millis(200));
     assert!(h.html().contains("Find in terminal"), "find did not open");
-    let done = h
-        .centre(".temor-pane .ds-button:last-of-type")
-        .unwrap_or_else(|| panic!("no Done button:\n{}", h.html()));
-    h.send(Input::click(done));
+    // Esc closes find and hands the keyboard back (the bar has no Done button).
+    h.send(Input::key(ShortcutKey::Escape));
     h.advance(Duration::from_millis(200));
     for c in "echo after-find".chars() {
         let key = match c {
@@ -328,7 +327,8 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
     });
 }
 
-/// The show/hide action (Ctrl+Shift+Alt+L here) folds the sidebar away and brings it back.
+/// The show/hide action (⌘⇧L, Super+Shift+L on our desktop) folds the sidebar away and brings it
+/// back.
 #[test]
 fn the_sidebar_action_hides_and_shows_the_sidebar() {
     if !super::support::tools_present() {
@@ -342,18 +342,21 @@ fn the_sidebar_action_hides_and_shows_the_sidebar() {
         y: Px(200.0),
     }));
     h.advance(Duration::from_millis(200));
-    assert_eq!(rows(&h), 1, "the sidebar starts shown");
+    // A hidden sidebar keeps its rows in the document; its width is what goes.
+    // Folded, the sidebar keeps its width inside a pane that clips it: the pane is what narrows.
+    let sidebar_width = |h: &Harness| h.rect(".ds-split-pane").map_or(0.0, |r| r.size.width.0);
+    assert!(sidebar_width(&h) > 100.0, "the sidebar starts shown");
     let toggle = |h: &mut Harness| {
         h.send(Input::chord(
-            &[ShortcutKey::Ctrl, ShortcutKey::Shift, ShortcutKey::Alt],
+            &[ShortcutKey::Super, ShortcutKey::Shift],
             ShortcutKey::Char('l'),
         ));
         h.advance(Duration::from_millis(600));
     };
     toggle(&mut h);
-    assert_eq!(rows(&h), 0, "hidden:\n{}", h.html());
+    assert!(sidebar_width(&h) < 1.0, "hidden: {}", sidebar_width(&h));
     toggle(&mut h);
-    assert_eq!(rows(&h), 1, "shown again");
+    assert!(sidebar_width(&h) > 100.0, "shown again");
 }
 
 /// The shell ends, the person presses Restart, and the window carries on (Blitz once panicked in

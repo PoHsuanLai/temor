@@ -8,7 +8,7 @@ use ds::base::press::{PointerButton, Press};
 use ds::base::vocab::{Availability, DropState, Emphasis, RowState};
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
-use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
+use ds::components::content::text_runs::TextLine;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::components::overlays::tooltip::Tooltip;
@@ -123,19 +123,17 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     }
 }
 
-/// Shell data (a folder, a program, a branch) is set in the code face.
+/// Shell data (a folder, a program, a branch). quire's `Code` tone is an inline code chip, not
+/// plain fixed pitch, so it is set in the row's own face until quire has a plain fixed-pitch run.
 fn shell_data(text: &str) -> TextLine {
-    TextLine::Runs(vec![TextRun::new(text, RunTone::Code)])
+    TextLine::Plain(text.to_owned())
 }
 
 /// The second line: the branch (shell data), then what the tab is doing.
 fn detail_of(row: &TabRow) -> TextLine {
     let state = row.state.words();
     match &row.branch {
-        Some(branch) => TextLine::Runs(vec![
-            TextRun::new(branch.as_str(), RunTone::Code),
-            TextRun::new(format!(" \u{b7} {state}"), RunTone::Plain),
-        ]),
+        Some(branch) => TextLine::Plain(format!("{branch} \u{b7} {state}")),
         None => TextLine::Plain(state),
     }
 }

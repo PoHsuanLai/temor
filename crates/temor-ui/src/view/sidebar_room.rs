@@ -6,7 +6,7 @@ use ds::base::vocab::Shown;
 use ds::prelude::Px;
 
 /// The window width under which the sidebar starts hidden, in logical pixels. The sidebar is
-/// about 240 wide and a pane wants 60 columns (about 480 px) beside it, plus its insets.
+/// about 240 wide and a pane wants room for a readable terminal (about 480 px) beside it.
 pub const NARROW_BELOW: Px = Px(720.0);
 
 /// The window's width, as far as the sidebar is concerned.

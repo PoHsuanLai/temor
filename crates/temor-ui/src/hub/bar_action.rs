@@ -12,6 +12,7 @@ impl Hub {
         match action {
             Action::ToggleQuick => self.quick_toggle(),
             Action::JumpToWaiting => self.jump_to_waiting(),
+            Action::ToggleSidebar => self.window_asks.push(action),
             // The pane's own: the find bar and the jumps between prompts.
             Action::Find
             | Action::PreviousPrompt

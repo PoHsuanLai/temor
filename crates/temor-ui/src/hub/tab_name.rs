@@ -132,11 +132,21 @@ mod tests {
         })
     }
 
+    /// (case, running program, window title, folder, marking, expected name)
+    type Case<'a> = (
+        &'a str,
+        Option<&'a str>,
+        &'a str,
+        Option<&'a str>,
+        Marking,
+        &'a str,
+    );
+
     #[test]
     fn a_tab_is_named_by_its_program_while_one_runs_else_by_its_folder() {
         use Marking::{Marked, Unmarked};
         #[rustfmt::skip]
-        let rows: &[(&str, Option<&str>, &str, Option<&str>, Marking, &str)] = &[
+        let rows: &[Case] = &[
             ("program title wins",       Some("vim a.md"),    "vim a.md",        Some("/home/me/doc"),  Marked,   "vim a.md"),
             ("host-form title ignored",  Some("ssh box"),     "me@box: ~/doc",   Some("/home/me/doc"),  Marked,   "ssh box"),
             ("idle shell: the folder",   None,                "vim a.md",        Some("/home/me/temor"),Marked,   "temor"),

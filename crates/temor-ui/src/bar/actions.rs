@@ -22,5 +22,6 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::PreviousPrompt,
     Action::NextPrompt,
     Action::ToggleQuick,
+    Action::ToggleSidebar,
     Action::JumpToWaiting,
 ];

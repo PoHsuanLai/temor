@@ -1,6 +1,7 @@
 //! A split is refused when it would leave a pane under the least width (PLAN §6): the workspace
 //! step decides, from the width the window tells it here.
 
+use dioxus::prelude::WritableExt;
 use temor_core::split::Columns;
 use temor_core::workspace::WorkspaceIn;
 
