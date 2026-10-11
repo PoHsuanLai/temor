@@ -1279,7 +1279,12 @@ the bar runs the sidebar action through the desk.
   `RowLeading::Element` (the orb leads a tab while an agent works or waits; a terminal glyph
   otherwise). Adopted at the v0.3.17 re-pin. The sidebar's branch lost its changes dot (it read
   as a stray mark beside "· idle"; the card's chips show the counts).
-- [ ] Porter/docket batch 18 (docket 1695cff, porter ee3c63e, almanac 5678345): take anyview's
-  #109 sha when it lands, all three moving together.
-- [ ] The nushell offer test timed out once under the gate's load (30 s read for "loaded-ok");
-  passes alone. Watch for a repeat.
+- [x] Porter/docket batch 18 (docket 1695cff, porter ee3c63e, almanac 5678345): taken with
+  anyview 5ec7c56 (#109).
+- [ ] The nushell offer load is quadratic: the load text is one `sh -c '...'` program over many
+  lines, and nushell's line editor repaints the whole open quote for every line it receives
+  (6.4 MB of output for a few KB of script). Alone it finishes in well under a second; under
+  the gate's load `nushell_offer` passes its 30 s read twice in four runs. A person's slow ssh
+  link would see the same flood. Fix in the offer, not the test: give nushell a load text it
+  takes in one line (a nushell-native `decode base64 | save` line, then `source`), or send the
+  text as one bracketed paste.
