@@ -239,6 +239,7 @@ impl Desk {
         match action {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
+            Action::ToggleSidebar => self.sidebar_toggle(),
             _ => return WindowAction::NotMine,
         }
         WindowAction::Taken

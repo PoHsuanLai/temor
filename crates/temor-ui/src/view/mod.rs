@@ -38,6 +38,7 @@ pub mod remote;
 pub mod remote_launch;
 pub mod remote_words;
 pub mod shelf;
+pub mod sidebar_room;
 pub mod slot;
 pub mod space_handle;
 pub mod space_ui;

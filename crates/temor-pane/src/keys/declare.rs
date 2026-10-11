@@ -52,6 +52,8 @@ pub fn declared() -> Vec<Declared> {
         ),
         (Action::ReopenTab, "Primary+Shift+T", None, &[]),
         (Action::JumpToWaiting, "Primary+Shift+U", None, &[]),
+        // Safari's chord for its sidebar; no convention of chordkit's binds it.
+        (Action::ToggleSidebar, "Primary+Shift+L", None, &[]),
     ];
     let tabs = (1..=9u8).map(|n| Declared {
         action: Action::SelectTab(n),

@@ -30,6 +30,7 @@ use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::quick::QuickView;
 use super::radar::AgentSheets;
+use super::sidebar_room::SidebarRoom;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
 use super::theme::dark_by_default;
@@ -94,7 +95,9 @@ pub fn App() -> Element {
         let (hub, picked) = (hub.clone(), picked_space.clone());
         move || hub.set_bar_spaces(Rc::new(KitSpaces::new(spaces, picked)))
     });
+    let mut sidebar = use_signal(|| Shown::Visible);
     let desk = Desk {
+        sidebar,
         hub: hub.clone(),
         ui,
         notice,
@@ -127,8 +130,19 @@ pub fn App() -> Element {
             }
         }
     });
-    let mut sidebar = use_signal(|| Shown::Visible);
     let side = use_rect();
+    // A window narrower than the breakpoint starts without the sidebar, and one that crosses it
+    // starts over from what its width suggests. The show/hide action overrides in between.
+    let shell = use_rect();
+    let mut room = use_signal(|| None::<SidebarRoom>);
+    use_effect(move || {
+        let Some(rect) = shell.rect() else { return };
+        let now = SidebarRoom::of(rect.size.width);
+        if *room.peek() != Some(now) {
+            room.set(Some(now));
+            sidebar.set(now.shown());
+        }
+    });
     let dnd = Dnd {
         drag: use_drag::<DragKey>(DRAG_THRESHOLD),
         rects: use_hook(RowRects::default),
@@ -229,6 +243,7 @@ pub fn App() -> Element {
             }
             div {
                 class: "temor-shell",
+                onmounted: move |event: MountedEvent| shell.on_mounted(event),
                 onpointermove: moved,
                 onpointerup: move |_| release.call(()),
                 onpointerleave: move |_| cancel.call(()),

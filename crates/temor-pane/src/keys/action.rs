@@ -53,6 +53,8 @@ pub enum Action {
     Equalize,
     /// Bring back the tab closed last.
     ReopenTab,
+    /// Show the sidebar, or hide it. At every window width; a narrow window starts without it.
+    ToggleSidebar,
     /// Focus the agent pane that is waiting for the person, the next one after this pane.
     JumpToWaiting,
     /// Select the tab at this sidebar position, 1 to 9.
@@ -79,6 +81,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::Equalize, "equalize"),
     (Action::ReopenTab, "reopen-tab"),
     (Action::JumpToWaiting, "jump-to-waiting"),
+    (Action::ToggleSidebar, "toggle-sidebar"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -117,6 +120,7 @@ impl Action {
             Self::Equalize => "Equalize",
             Self::ReopenTab => "Reopen tab",
             Self::JumpToWaiting => "Jump to waiting agent",
+            Self::ToggleSidebar => "Sidebar",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

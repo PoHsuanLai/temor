@@ -78,6 +78,7 @@ impl Session {
             | Action::Equalize
             | Action::ReopenTab
             | Action::JumpToWaiting
+            | Action::ToggleSidebar
             | Action::SelectTab(_)
             | Action::SelectSpace(_) => {
                 self.asked = Some(action);

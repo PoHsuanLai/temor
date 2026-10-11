@@ -2,6 +2,7 @@
 //! and the signal the message bar reads. Cloned into every pane view and the sidebar.
 
 use dioxus::prelude::*;
+use ds::base::vocab::Shown;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
@@ -21,6 +22,8 @@ pub struct Desk {
     pub spaces: SpacesOf,
     /// The Space the ⌘T bar asked for, until the desk switches to it.
     pub picked_space: PendingSwitch,
+    /// Whether the sidebar is shown: the window's, which the show/hide action flips.
+    pub sidebar: Signal<Shown>,
 }
 
 impl std::fmt::Debug for Desk {
