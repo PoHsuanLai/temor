@@ -1,9 +1,9 @@
 //! The colours of the command cards, derived from the grid's palette so they follow the theme:
 //! a rule is the foreground at 10% over the background, the failed fill red (ANSI 1) at 10%, the
-//! stripe red at full strength, and the selected fill the accent at 12%.
+//! stripe red at full strength, and the selected fill the foreground at 8%: a neutral wash, as
+//! quire's source list selects while the keyboard is elsewhere.
 
 use temor_render::{Alpha, Palette, Tint};
-use temor_vt::Rgb;
 
 /// The tints the card bands use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,9 +24,8 @@ fn percent(percent: u32) -> Alpha {
 }
 
 impl CardColours {
-    /// The tints for `palette`; `accent` is the theme's accent colour (the palette's cursor
-    /// colour follows it).
-    pub fn of(palette: &Palette, accent: Rgb) -> Self {
+    /// The tints for `palette`.
+    pub fn of(palette: &Palette) -> Self {
         let red = palette.ansi[1];
         Self {
             rule: Tint {
@@ -42,8 +41,8 @@ impl CardColours {
                 alpha: Alpha(255),
             },
             selected_fill: Tint {
-                color: accent,
-                alpha: percent(12),
+                color: palette.foreground,
+                alpha: percent(8),
             },
         }
     }
@@ -56,14 +55,13 @@ mod tests {
     #[test]
     fn the_tints_follow_the_palette_at_their_strengths() {
         let palette = Palette::default();
-        let accent = Rgb::new(10, 20, 30);
-        let c = CardColours::of(&palette, accent);
+        let c = CardColours::of(&palette);
         // (tint, colour, alpha)
         for (tint, color, alpha) in [
             (c.rule, palette.foreground, 26),
             (c.failed_fill, palette.ansi[1], 26),
             (c.failed_stripe, palette.ansi[1], 255),
-            (c.selected_fill, accent, 31),
+            (c.selected_fill, palette.foreground, 20),
         ] {
             assert_eq!((tint.color, tint.alpha), (color, Alpha(alpha)));
         }

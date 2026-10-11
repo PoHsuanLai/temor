@@ -1,14 +1,14 @@
-//! One tab's row in the sidebar (PLAN §7): quire's `Row` with the tab's name and, under it, its
-//! branch and state; trailing, the companion's orb (idle until the companion exists), a dot when
-//! it has news, and a small glyph of the split when the tab has several panes. Pressing the row
+//! One tab's row in the sidebar (PLAN §7): quire's `Row` led by a terminal glyph, or by the
+//! companion's orb while an agent works or waits, with the tab's name and, under it, its branch and state; trailing, a
+//! dot when it has news, and a small glyph of the split when the tab has several panes. Pressing the row
 //! brings the tab to the front; dragging it onto another row joins the two tabs.
 
 use dioxus::prelude::*;
 use ds::base::press::{PointerButton, Press};
-use ds::base::vocab::{Availability, DropState, Emphasis, RowState};
+use ds::base::vocab::{Availability, CompanionPresence, DropState, Emphasis, RowState};
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
-use ds::components::content::text_runs::TextLine;
+use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::components::overlays::tooltip::Tooltip;
@@ -51,10 +51,16 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         Unread::Unread => Emphasis::Strong,
         Unread::Seen => Emphasis::Plain,
     };
-    // The orb, the news dot and the miniature trail the row; the words are the row's own title
-    // and detail, so their sizes are quire's (13 and 11.5).
+    // A terminal glyph leads the row, or the companion's orb while an agent works or waits (a
+    // press on it is a press on the row); the news dot and the miniature trail it. The words
+    // are the row's own title and detail, so their sizes are quire's (13 and 11.5).
+    let leading = match companion_presence(row.agent) {
+        CompanionPresence::Idle => RowLeading::Icon(Icon::Terminal),
+        presence => RowLeading::Element(rsx! {
+            CompanionOrb { presence, size: OrbSize::Inline }
+        }),
+    };
     let trail = rsx! {
-        CompanionOrb { presence: companion_presence(row.agent), size: OrbSize::Inline }
         if row.unread == Unread::Unread {
             Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
         }
@@ -82,6 +88,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             Row {
                 title: shell_data(&row.title),
                 detail: Some(detail_of(&row)),
+                leading,
                 accessory: Accessory::Slot(trail),
                 state: RowState {
                     selection: row.selection,
@@ -123,17 +130,20 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     }
 }
 
-/// Shell data (a folder, a program, a branch). quire's `Code` tone is an inline code chip, not
-/// plain fixed pitch, so it is set in the row's own face until quire has a plain fixed-pitch run.
+/// Shell data (a folder, a program, a branch): fixed pitch on the row's own ground and ink.
 fn shell_data(text: &str) -> TextLine {
-    TextLine::Plain(text.to_owned())
+    TextLine::Runs(vec![TextRun::new(text, RunTone::Mono)])
 }
 
-/// The second line: the branch (shell data), then what the tab is doing.
+/// The second line: the branch (shell data, fixed pitch), then what the tab is doing (temor's
+/// words, in the row's face).
 fn detail_of(row: &TabRow) -> TextLine {
     let state = row.state.words();
     match &row.branch {
-        Some(branch) => TextLine::Plain(format!("{branch} \u{b7} {state}")),
+        Some(branch) => TextLine::Runs(vec![
+            TextRun::new(branch.clone(), RunTone::Mono),
+            TextRun::new(format!(" \u{b7} {state}"), RunTone::Plain),
+        ]),
         None => TextLine::Plain(state),
     }
 }

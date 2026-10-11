@@ -4,7 +4,7 @@ use temor_core::block::Outcome;
 use temor_core::vocab::ids::ExitCode;
 use temor_pane::text::{RowText, Wrap};
 use temor_render::{Cut, Palette, RowBand, RowSpan, RowWeight, Tint};
-use temor_vt::{Rgb, Row};
+use temor_vt::Row;
 
 use super::actions::output_name;
 use super::bands::{CardBlock, Lead, Pick, Stage, bands_of, command_rows, leads_blank};
@@ -45,7 +45,7 @@ fn band(first: u16, last: u16, parts: [Option<Tint>; 3]) -> RowBand {
 
 #[test]
 fn blocks_become_bands_by_how_they_stand() {
-    let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
+    let c = CardColours::of(&Palette::default());
     let failed = Stage::Ran(Outcome::Failed(ExitCode(1)));
     let done = Stage::Ran(Outcome::Succeeded);
     let stopped = Stage::Ran(Outcome::Stopped(ExitCode(130)));
@@ -127,7 +127,7 @@ fn blocks_become_bands_by_how_they_stand() {
 
 #[test]
 fn a_card_on_a_blank_line_begins_and_ends_across_that_lines_middle() {
-    let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
+    let c = CardColours::of(&Palette::default());
     let done = Stage::Ran(Outcome::Succeeded);
     let failed = Stage::Ran(Outcome::Failed(ExitCode(1)));
     let blank = |first, stage| CardBlock {
@@ -205,7 +205,7 @@ fn a_prompt_leads_with_a_blank_line_only_when_its_header_follows() {
 
 #[test]
 fn the_command_line_is_a_bold_band_clipped_to_the_view() {
-    let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
+    let c = CardColours::of(&Palette::default());
     let done = Stage::Ran(Outcome::Succeeded);
     let bold = |first: u16, last: u16| RowBand {
         rows: RowSpan {

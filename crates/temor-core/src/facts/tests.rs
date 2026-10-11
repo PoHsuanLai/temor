@@ -220,21 +220,6 @@ fn recompute_rule() {
 }
 
 #[test]
-fn summary_shows_the_branch_and_a_dot_for_changes() {
-    let branch = Some(BranchName("main".to_owned()));
-    #[rustfmt::skip]
-    let cases: Vec<(&str, Facts, Option<&str>)> = vec![
-        ("clean", Facts { branch: branch.clone(), changes: stat(0, 0, 0), ..Facts::default() }, Some("main")),
-        ("dirty", Facts { branch: branch.clone(), changes: stat(1, 2, 0), ..Facts::default() }, Some("main \u{2022}")),
-        ("changes unknown", Facts { branch, ..Facts::default() }, Some("main")),
-        ("not a repository", Facts::default(), None),
-    ];
-    for (name, facts, want) in cases {
-        assert_eq!(facts.summary().as_deref(), want, "{name}");
-    }
-}
-
-#[test]
 fn python_versions() {
     #[rustfmt::skip]
     let version_files: Vec<(&str, &str, Option<&str>)> = vec![

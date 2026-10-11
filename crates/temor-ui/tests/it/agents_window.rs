@@ -16,11 +16,20 @@ use temor_ui::view::probe::Probe;
 use super::support::{scratch_path, tools_present};
 use super::window::{harness, wait_until};
 
-/// How many orbs in the sidebar show `presence` (`idle`, `working`, `waiting`).
+/// How many tab rows show `presence` (`idle`, `working`, `waiting`). An idle tab has no orb (a
+/// terminal glyph leads it): the tabs that show neither of the others.
 fn orbs(h: &Harness, presence: &str) -> usize {
-    h.html()
-        .matches(&format!("data-presence=\"{presence}\""))
-        .count()
+    let html = h.html();
+    let count = |presence: &str| {
+        html.matches(&format!("data-presence=\"{presence}\""))
+            .count()
+    };
+    match presence {
+        "idle" => {
+            html.matches("class=\"temor-tab-box\"").count() - count("working") - count("waiting")
+        }
+        _ => count(presence),
+    }
 }
 
 fn wait_for_orbs(h: &mut Harness, what: &str, want: &[(&str, usize)]) {

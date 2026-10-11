@@ -92,7 +92,7 @@ impl Session {
             return Ok(());
         }
         let palette = self.painter.palette();
-        let bands = self.card_bands(&CardColours::of(palette, palette.cursor));
+        let bands = self.card_bands(&CardColours::of(palette));
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,

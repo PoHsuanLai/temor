@@ -143,7 +143,7 @@ impl Hub {
             unread,
             agent,
             note: self.agent_note(id),
-            branch: self.facts_of(pane).summary(),
+            branch: self.facts_of(pane).branch.as_ref().map(ToString::to_string),
             state,
             selection,
             pane,

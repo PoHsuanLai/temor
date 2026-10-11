@@ -100,16 +100,6 @@ impl Facts {
     pub fn dirty(&self) -> bool {
         self.changes.is_some_and(DiffStat::is_dirty)
     }
-
-    /// The short line for the tab's sidebar row: the branch, then a dot when there are changes.
-    /// `None` outside a repository.
-    pub fn summary(&self) -> Option<String> {
-        let branch = self.branch.as_ref()?;
-        Some(match self.dirty() {
-            true => format!("{branch} \u{2022}"),
-            false => branch.to_string(),
-        })
-    }
 }
 
 impl fmt::Display for BranchName {

@@ -1272,7 +1272,14 @@ the bar runs the sidebar action through the desk.
   card's meta.
 - [ ] `Chrome.cwd`, `title` and `link` are unread; remove.
 - [ ] The more menu unmounts with the hover tools if the pointer leaves the pane.
-- [ ] The selected card fill is still the accent at 12%; neutral once quire's selection lands.
-- quire asks (whopper, q20 → v0.3.17): flat shell ground, neutral sidebar selection, concentric
-  palette rows. New asks to send: a plain fixed-pitch text run (the Code tone is a chip, so tab
-  rows are sans), and a leading element slot on Row (the agent orb sits trailing now).
+- [x] The selected card fill is still the accent at 12%; neutral once quire's selection lands.
+  Done: the foreground at 8%.
+- [x] quire asks (q20, q21 → v0.3.17): flat sidebar (`SidebarFill::Flat`), neutral source-list
+  selection, concentric palette rows, `RunTone::Mono` (tab names and branches), and
+  `RowLeading::Element` (the orb leads a tab while an agent works or waits; a terminal glyph
+  otherwise). Adopted at the v0.3.17 re-pin. The sidebar's branch lost its changes dot (it read
+  as a stray mark beside "· idle"; the card's chips show the counts).
+- [ ] Porter/docket batch 18 (docket 1695cff, porter ee3c63e, almanac 5678345): take anyview's
+  #109 sha when it lands, all three moving together.
+- [ ] The nushell offer test timed out once under the gate's load (30 s read for "loaded-ok");
+  passes alone. Watch for a repeat.

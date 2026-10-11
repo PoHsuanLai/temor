@@ -63,7 +63,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 onselect: select,
                 // The sidebar ladder's 36, with room above and below a two-line row.
                 size: SidebarSize::Large,
-                fill: SidebarFill::Clear,
+                fill: SidebarFill::Flat,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
                 // Downloads sit above the Space row: the sidebar is too narrow for both in one.
                 foot: rsx! {
