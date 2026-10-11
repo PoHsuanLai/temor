@@ -1,6 +1,5 @@
-//! The status line under the pane (PLAN §7): the working directory the shell reported, the
-//! program's title (the window's own title is set from it, see `title`), its progress and the bell's
-//! brief mark.
+//! The pane's bottom edge (PLAN §7): the program's progress and the bell's brief mark. There is no
+//! status strip: the folder is in the card header and the tab's row, the title in the window's.
 
 use dioxus::prelude::*;
 use ds::components::content::label::LabelStyle;
@@ -11,7 +10,7 @@ use ds::components::overlays::tooltip::Tooltip;
 use ds::prelude::*;
 use temor_vt::{Progress, ProgressState};
 
-/// A progress report as the status line shows it.
+/// A progress report as the pane's edge shows it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressLine {
     /// A known share, 0 to 100.
@@ -36,29 +35,17 @@ pub fn progress_line(progress: Progress) -> Option<ProgressLine> {
     }
 }
 
-/// The status line's content: the program's title is shown here as well as the window's.
+/// What the pane shows at its bottom edge: the program's progress and the bell's brief mark. The
+/// folder and title live in the card header and the tab's row; a hovered link has its own tooltip
+/// (`link_tip`). With nothing to show it draws nothing and takes no room.
 #[component]
 #[allow(non_snake_case)]
-pub fn StatusLine(
-    cwd: Option<String>,
-    title: String,
-    progress: Option<ProgressLine>,
-    bell: bool,
-    link: Option<String>,
-) -> Element {
+pub fn PaneEdge(progress: Option<ProgressLine>, bell: bool) -> Element {
+    if progress.is_none() && !bell {
+        return rsx! {};
+    }
     rsx! {
-        div { class: "temor-status",
-            // The target of a hovered link takes the place of the folder and title.
-            if let Some(link) = link {
-                span { class: "ds-truncate", Label { text: link, style: LabelStyle::Caption } }
-            } else {
-                if let Some(cwd) = cwd {
-                    span { class: "ds-truncate", Label { text: cwd, style: LabelStyle::Caption } }
-                }
-                if !title.is_empty() {
-                    span { class: "ds-truncate", Label { text: title, style: LabelStyle::Caption } }
-                }
-            }
+        div { class: "temor-edge",
             if let Some(ProgressLine::Share(percent)) = progress {
                 ProgressIndicator {
                     style: ProgressStyle::Bar,
@@ -67,10 +54,10 @@ pub fn StatusLine(
                 }
             }
             if progress == Some(ProgressLine::Busy) {
-                Label { text: "Working", style: LabelStyle::Caption }
+                Label { text: "Working", style: LabelStyle::Footnote }
             }
             if progress == Some(ProgressLine::Failed) {
-                Label { text: "Failed", style: LabelStyle::Caption }
+                Label { text: "Failed", style: LabelStyle::Footnote }
             }
             if bell {
                 Tooltip { text: "The bell rang", shown: None,

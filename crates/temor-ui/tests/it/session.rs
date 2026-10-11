@@ -867,7 +867,7 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
         let _ = t
             .write(b"\x1b[H\x1b[2K\x1b]8;;https://example.com/a?b=1\x1b\\link\x1b]8;;\x1b\\ after");
     });
-    // (column, the target shown, whether the status line must be drawn again)
+    // (column, the target shown, whether the tooltip must be drawn again)
     let table = [
         (
             1,
@@ -887,6 +887,11 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
             f.session.link_under_pointer().as_deref(),
             want,
             "column {col}"
+        );
+        assert_eq!(
+            f.session.link_tip().map(|tip| tip.target).as_deref(),
+            want,
+            "column {col}: the tooltip names the target"
         );
         assert_eq!(f.session.refresh_link(), redraw, "column {col}");
     }

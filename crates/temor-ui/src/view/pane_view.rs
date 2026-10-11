@@ -34,6 +34,7 @@ use super::handlers::{
     find_query, find_step, header_press, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
+use super::link_tip::LinkTip;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::key_handler;
@@ -217,6 +218,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| chips_for(s, &facts));
+    let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     rsx! {
         div { class: "temor-pane",
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
@@ -271,6 +273,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 }
                 if let Some(view) = chips {
                     FactChips { view }
+                }
+                if let Some(spot) = link_tip {
+                    LinkTip { spot }
                 }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}

@@ -1,5 +1,6 @@
-//! The link under the pointer (PLAN §6): hovering a hyperlink (OSC 8) shows its target in the
-//! status line, so the person sees where a click would go. Hovering never opens anything.
+//! The link under the pointer (PLAN §6): hovering a hyperlink (OSC 8) shows its target in a small
+//! tooltip by the pointer, so the person sees where a click would go. Hovering never opens
+//! anything.
 
 use temor_core::vocab::text::display_text;
 use temor_vt::{GridPoint, PointSpace};
@@ -17,7 +18,27 @@ pub enum LinkHover {
     Changed,
 }
 
+/// A hovered link's target and where the pointer is, in logical pixels from the grid's corner.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LinkTipSpot {
+    pub target: String,
+    pub x: f32,
+    pub y: f32,
+}
+
 impl Session {
+    /// The tooltip for the link under the pointer, if there is one.
+    pub fn link_tip(&self) -> Option<LinkTipSpot> {
+        let target = self.link_under_pointer()?;
+        let at = self.pointer_over?;
+        let factor = self.scale.factor();
+        Some(LinkTipSpot {
+            target,
+            x: at.x as f32 / factor,
+            y: at.y as f32 / factor,
+        })
+    }
+
     /// The target of the link under the pointer, cleaned for showing. It follows the wheel: the
     /// output moves under a pointer that did not.
     pub fn link_under_pointer(&self) -> Option<String> {
@@ -36,7 +57,7 @@ impl Session {
         (!shown.is_empty()).then_some(shown)
     }
 
-    /// Looks at the link under the pointer again; `Changed` when the status line must be drawn
+    /// Looks at the link under the pointer again; `Changed` when the tooltip must be drawn
     /// again.
     pub fn refresh_link(&mut self) -> LinkHover {
         let now = self.link_under_pointer();
