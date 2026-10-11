@@ -135,6 +135,45 @@ fn the_find_field_takes_the_keyboard_and_gives_it_back() {
     });
 }
 
+/// Every declared action is a row under a header: "spl" lists Split right and Split down under
+/// Actions, with no per-row kind caption, and picking one does what its chord does.
+#[test]
+fn the_bar_lists_window_actions_under_headers_and_runs_them() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("bar-actions", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    click_pane(&mut h);
+
+    chord(&mut h, 't');
+    let empty = h.text_of(".ds-palette").unwrap_or_default();
+    assert!(
+        empty.contains("Actions"),
+        "a header over the actions:\n{empty}"
+    );
+    for c in "spl".chars() {
+        h.send(Input::key(ShortcutKey::Char(c)));
+    }
+    h.advance(Duration::from_millis(300));
+    let listed = h.text_of(".ds-palette").unwrap_or_default();
+    assert!(
+        listed.contains("Split right") && listed.contains("Split down"),
+        "both splits are rows:\n{listed}"
+    );
+    assert!(listed.contains("Actions"), "under their header:\n{listed}");
+    assert!(
+        !listed.contains("Recent command"),
+        "no per-row kind caption:\n{listed}"
+    );
+
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(400));
+    assert!(!bar_open(&h), "a pick closes the bar");
+    assert_eq!(panes(&h), 2, "Split right split the pane");
+}
+
 /// The quick terminal hides without ending its shell: the variable set before the hide is still
 /// there after the show, which a new shell would not have.
 #[test]

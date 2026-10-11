@@ -6,6 +6,7 @@ mod model;
 mod provider_tests;
 mod providers;
 mod rank;
+mod section;
 mod step;
 #[cfg(test)]
 mod tests;
@@ -17,4 +18,5 @@ pub use model::{
 };
 pub use providers::{DirectoryUse, Sources, SpaceEntry, candidates, space_entries};
 pub use rank::rank;
+pub use section::Section;
 pub use step::{BarContext, BarIn, BarOut, BarState, OpenBar, bar_step};

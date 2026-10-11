@@ -5,6 +5,7 @@ use crate::vocab::ids::{FolderId, Seq, TabId};
 use crate::vocab::text::{CommandText, Cwd, HostAlias, PluginId};
 use ds_core::word::Word;
 use ds_style::space::list::SpaceId;
+use temor_pane::keys::Action;
 
 /// Finds a program on the person's `PATH`. The Run row exists only when this says the first
 /// word is there: a lookup, not a guess. The real one lives with the process code; tests pass
@@ -49,6 +50,8 @@ pub enum Target {
     Layout(LayoutName),
     /// Run a recent command again.
     RecentCommand(CommandText),
+    /// Do one of the window's declared actions (Split right, Zoom, ...).
+    Action(Action),
     /// Open a new tab in a folder.
     Directory {
         /// The folder.

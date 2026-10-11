@@ -13,7 +13,7 @@ use super::desk::Desk;
 use super::hosts::HostRows;
 use super::model::{Hub, HubRef};
 use crate::bar::{
-    BarModel, BarSeams, SpaceRows, closed_candidate, directory_uses, recent_commands,
+    BAR_ACTIONS, BarModel, BarSeams, SpaceRows, closed_candidate, directory_uses, recent_commands,
 };
 use crate::view::launch::Launch;
 
@@ -70,6 +70,7 @@ impl Hub {
         let now = (seams.now)();
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
         let sources = Sources {
+            actions: BAR_ACTIONS,
             spaces: &spaces,
             tabs: &self.ws.tabs.place.tabs,
             folders: &self.ws.tabs.place.folders,

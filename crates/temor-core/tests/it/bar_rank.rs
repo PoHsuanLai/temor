@@ -2,11 +2,13 @@
 
 use ds_style::space::list::SpaceId;
 use temor_core::bar::{
-    BarAction, BarRow, Candidate, Frecency, PathResolver, PluginRow, RowGroup, Target, rank,
+    BarAction, BarRow, Candidate, Frecency, PathResolver, PluginRow, RowGroup, Section, Target,
+    rank,
 };
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::{CommandText, Cwd, HostAlias, PluginId};
+use temor_pane::keys::Action;
 
 /// A `PATH` with a fixed set of programs.
 struct OnPath(&'static [&'static str]);
@@ -61,7 +63,7 @@ fn groups(rows: &[BarRow]) -> Vec<RowGroup> {
 }
 
 #[test]
-fn matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_kind() {
+fn matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_section() {
     let rows = rank("top", &candidates(), &[], &OnPath(&[]), AiSwitch::Off);
     assert_eq!(
         titles(&rows),
@@ -69,9 +71,9 @@ fn matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_kind() {
             "top",
             "Top tab",
             "~/src/top",
+            "~/src/htop-fork",
             "desktop",
-            "htop",
-            "~/src/htop-fork"
+            "htop"
         ]
     );
     assert!(rows.iter().all(|row| row.group == RowGroup::Match));
@@ -181,4 +183,47 @@ fn ai_rows_are_always_last_and_absent_when_ai_is_off() {
         vec!["New tab"],
         "no AI rows for no query, only the plain new tab"
     );
+}
+
+#[test]
+fn window_actions_are_rows_and_a_sections_rows_sit_together() {
+    let c = |title: &str, target| Candidate {
+        title: title.to_string(),
+        target,
+    };
+    let all = [
+        c("Split right", Target::Action(Action::SplitRight)),
+        c("Split down", Target::Action(Action::SplitDown)),
+        c("Zoom", Target::Action(Action::ToggleZoom)),
+        c("spline work", Target::Tab(TabId(1))),
+        c("New tab", Target::Action(Action::NewTab)),
+        c("spl-box", Target::Host(HostAlias("spl-box".into()))),
+        c("Split view", Target::Tab(TabId(2))),
+    ];
+    let rows = rank("spl", &all, &[], &OnPath(&[]), AiSwitch::Off);
+    assert_eq!(
+        titles(&rows),
+        vec![
+            "Split right",
+            "Split down",
+            "spline work",
+            "Split view",
+            "spl-box"
+        ]
+    );
+    let sections: Vec<Section> = rows.iter().map(Section::of).collect();
+    assert_eq!(
+        sections,
+        vec![
+            Section::Actions,
+            Section::Actions,
+            Section::Tabs,
+            Section::Tabs,
+            Section::Computers
+        ]
+    );
+    // The plain new tab is one row on the empty bar, whichever way it is offered.
+    let empty = rank("", &all, &[], &OnPath(&[]), AiSwitch::Off);
+    let new_tabs = empty.iter().filter(|r| r.key.0 == "new-tab").count();
+    assert_eq!((new_tabs, empty[0].action.clone()), (1, BarAction::NewTab));
 }
