@@ -1243,3 +1243,35 @@ long text; anyview's `NotOpened` offers "Open in another app"; quire v0.3.16 pin
 - [ ] Sizes (same audit, measured with the ignored `size_audit` harness test): three control sizes in the sidebar foot (New tab is `ControlSize::Small`), tab rows at 40 (155 when split) off quire's 28/32/36 ladder with no vertical padding, a 28 px tools bar on an 18 px terminal row with `--r-panel`, seven type sizes (10 to 16), the command bar's rows not concentric (quire), paddings off the 4 px grid, the closed Downloads hint overlapping the foot buttons.
 - [ ] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
   restore, keyboard-only use, resize with a menu or the bar open.
+
+## Batch 19: the design audit (2026-10-11)
+Four lanes (access, sidebar, cards, bar) from the audit; merged with one combined gate. Done:
+card header colours without dim (folder 5.92:1, branch 6.81:1 dark; 5.33 and 5.77 light); dark
+by default when appearance.toml names no theme; the sidebar hides under 720 px and Super+Shift+L
+(⌘⇧L) shows or hides it at any width; a side-by-side split keeps 40 columns per pane (60 refused
+splits in most laptop windows); a 16 px terminal inset (8 top); tabs named by program or folder
+with "branch · state"; tab rows on quire's 36 ladder; the miniature a trailing hairline glyph;
+the foot's New tab at Regular size and the closed Downloads hint laid out no more; no status
+strip (a hovered link shows in a tooltip, progress overlays the pane's bottom edge); bold
+command rows; "exit 1 · 4 ms" meta and three hover tools (copy output, re-run, more) in the card's
+header row; no typing-line fill and no repeated branch chip; no pane focus ring; find takes the
+keyboard, sits top right with a "1 of 21" count and chevrons; every action in the command bar
+with its shortcut, under section headers; a first-launch hint line.
+Merge fixes: a finished card keeps its input anchor (bold rows, and the anchor leaked); the find
+count redraws after the delayed search; tab rows set plain text (quire's Code tone is a chip);
+the bar runs the sidebar action through the desk.
+- [ ] Bottom-anchor the primary screen (the typing line pinned to the pane's bottom): needs one
+  row offset in the render view and the fit, used by every grid-to-pixel map; spike with a window.
+- [ ] `gutter_geometry` returns one padding: the meta, tools and chips rows ignore the 8 px top inset.
+- [ ] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold
+  too (the band is whole rows; start it at the input mark's column).
+- [ ] The tab's "running 2m" doesn't tick (read when the sidebar draws).
+- [ ] DropTab doesn't check the 40-column minimum.
+- [ ] In a narrow pane the hover tools cover the header's folder text; the find bar can cover a
+  card's meta.
+- [ ] `Chrome.cwd`, `title` and `link` are unread; remove.
+- [ ] The more menu unmounts with the hover tools if the pointer leaves the pane.
+- [ ] The selected card fill is still the accent at 12%; neutral once quire's selection lands.
+- quire asks (whopper, q20 → v0.3.17): flat shell ground, neutral sidebar selection, concentric
+  palette rows. New asks to send: a plain fixed-pitch text run (the Code tone is a chip, so tab
+  rows are sans), and a leading element slot on Row (the agent orb sits trailing now).
