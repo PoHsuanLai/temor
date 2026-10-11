@@ -8,6 +8,7 @@ pub fn action_of(row: &BarAction) -> Option<Action> {
     match row {
         BarAction::NewTab => Some(Action::NewTab),
         BarAction::Go(Target::Closed(_)) => Some(Action::ReopenTab),
+        BarAction::Go(Target::Action(action)) => Some(*action),
         BarAction::Go(_)
         | BarAction::Run(_)
         | BarAction::Plugin { .. }
@@ -30,6 +31,10 @@ mod tests {
             (
                 BarAction::Go(Target::Closed(Seq(3))),
                 Some(Action::ReopenTab),
+            ),
+            (
+                BarAction::Go(Target::Action(Action::SplitRight)),
+                Some(Action::SplitRight),
             ),
             (BarAction::Run(CommandText("ls".to_owned())), None),
         ];

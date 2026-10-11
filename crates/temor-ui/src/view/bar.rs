@@ -15,8 +15,8 @@ use dioxus::prelude::*;
 use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,
 };
-use ds::prelude::{AfterPick, CommandPalette, RowChord, TextLine};
-use temor_core::bar::{BarAction, BarRow, RowGroup, Target};
+use ds::prelude::{AfterPick, CommandPalette, RowChord};
+use temor_core::bar::{BarRow, Section};
 
 use crate::bar::{
     Escape, FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, escape, lift, reply,
@@ -169,61 +169,44 @@ fn rows_in(group: &PaletteGroup<Pick>) -> usize {
     }
 }
 
-/// The rows as the palette's groups, in the order they were ranked: a run of rows from one rule
-/// is one group, so the palette's numbering is the rows' own.
+/// The rows as the palette's groups, in the order they were ranked: a run of rows under one
+/// header is one group, so the palette's numbering is the rows' own. A row that is also a pane
+/// action shows its chord at its right.
 fn groups_of(rows: &[BarRow], hub: &HubRef) -> Vec<PaletteGroup<Pick>> {
-    let mut groups: Vec<(RowGroup, Vec<PaletteRow<Pick>>)> = Vec::new();
+    let mut groups: Vec<(Section, Vec<PaletteRow<Pick>>)> = Vec::new();
     for row in rows {
         let line = PaletteRow {
-            detail: kind_of(&row.action).map(TextLine::from),
-            // A row that is also a pane action shows its chord on the highlighted row.
             chord: action_of(&row.action)
                 .and_then(|action| hub.shortcut_of(action))
-                .map(RowChord::on_selected)
+                .map(RowChord::always)
                 .unwrap_or_default(),
             // The palette stays up until the bar's own step closes it, so the pick reaches the
             // palette machine once.
             after: AfterPick::KeepOpen,
             ..PaletteRow::new(Pick::Bar(row.clone()), row.title.clone())
         };
+        let section = Section::of(row);
         match groups.last_mut() {
-            Some((group, lines)) if *group == row.group => lines.push(line),
-            _ => groups.push((row.group, vec![line])),
+            Some((group, lines)) if *group == section => lines.push(line),
+            _ => groups.push((section, vec![line])),
         }
     }
     groups
         .into_iter()
-        .map(|(group, lines)| PaletteGroup::list(title_of(group), lines))
+        .map(|(section, lines)| PaletteGroup::list(title_of(section), lines))
         .collect()
 }
 
-fn title_of(group: RowGroup) -> &'static str {
-    match group {
-        RowGroup::Run => "Start",
-        RowGroup::Match => "Go to",
-        RowGroup::Plugin => "More",
-        RowGroup::Ai => "Ask",
-    }
-}
-
-/// What kind of thing a local row is, in the person's words.
-fn kind_of(action: &BarAction) -> Option<&'static str> {
-    match action {
-        BarAction::Go(target) => Some(match target {
-            Target::Space(_) => "Space",
-            Target::Tab(_) => "Tab",
-            Target::Closed(_) => "Recently closed",
-            Target::Folder(_) => "Tab group",
-            Target::Host(_) => "Computer",
-            Target::Layout(_) => "Layout",
-            Target::RecentCommand(_) => "Recent command",
-            Target::Directory { .. } => "Folder",
-        }),
-        BarAction::NewTab
-        | BarAction::Run(_)
-        | BarAction::Plugin { .. }
-        | BarAction::Suggest(_)
-        | BarAction::AskAgent(_)
-        | BarAction::AskAbout(_) => None,
+fn title_of(section: Section) -> &'static str {
+    match section {
+        Section::Actions => "Actions",
+        Section::Tabs => "Tabs",
+        Section::Spaces => "Spaces",
+        Section::Computers => "Computers",
+        Section::RecentCommands => "Recent commands",
+        Section::Folders => "Folders",
+        Section::Run => "Run",
+        Section::Plugins => "More",
+        Section::Ask => "Ask",
     }
 }

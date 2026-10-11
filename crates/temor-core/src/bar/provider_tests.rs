@@ -8,6 +8,7 @@ use crate::vocab::ai::AiSwitch;
 use crate::vocab::ids::{FolderId, PaneId, TabId};
 use crate::vocab::text::{CommandText, Cwd, HostAlias, TabTitle};
 use ds_style::space::list::SpaceId;
+use temor_pane::keys::Action;
 
 const DAY: u64 = 24 * 60 * 60;
 const NOW: u64 = 1_000_000_000;
@@ -69,7 +70,7 @@ fn tab(id: u64, title: &str) -> Tab {
 }
 
 #[test]
-fn providers_rank_by_kind_then_by_frecency_and_drop_what_cannot_be_matched() {
+fn providers_rank_by_section_then_by_frecency_and_drop_what_cannot_be_matched() {
     let spaces = [
         SpaceEntry {
             id: SpaceId(1),
@@ -102,6 +103,7 @@ fn providers_rank_by_kind_then_by_frecency_and_drop_what_cannot_be_matched() {
         },
     ];
     let sources = Sources {
+        actions: &[Action::SplitRight],
         spaces: &spaces,
         tabs: &tabs,
         folders: &folders,
@@ -114,7 +116,7 @@ fn providers_rank_by_kind_then_by_frecency_and_drop_what_cannot_be_matched() {
     let all = candidates(&sources);
     assert_eq!(
         all.len(),
-        8,
+        9,
         "an empty name and an untypable command are left out"
     );
     let rows = rank("src", &all, &[], &NoPath, AiSwitch::Off);
@@ -124,8 +126,8 @@ fn providers_rank_by_kind_then_by_frecency_and_drop_what_cannot_be_matched() {
         vec![
             "tab:7",
             "folder:2",
-            "host:src-box",
             "layout:src layout",
+            "host:src-box",
             "recent:cd src",
             "dir:~/src/new",
             "dir:~/src/old",

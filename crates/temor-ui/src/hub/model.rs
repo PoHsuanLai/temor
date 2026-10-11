@@ -66,6 +66,9 @@ pub struct Hub {
     pub(super) viewers: ViewerHub,
     /// The peek card's worker (PLAN §10).
     pub(super) peek: PeekHub,
+    /// The pane of a new window's first tab, which shows the first-launch hint until a command
+    /// runs. None in a restored session.
+    pub(super) first_hint: Option<PaneId>,
 }
 
 impl std::fmt::Debug for Hub {
@@ -112,6 +115,7 @@ impl Hub {
             remote,
             viewers: ViewerHub::default(),
             peek: PeekHub::default(),
+            first_hint: None,
         }
     }
 

@@ -15,6 +15,7 @@ pub mod convert;
 pub mod dnd;
 pub mod fact_chips;
 pub mod find_bar;
+pub mod first_hint;
 pub mod handlers;
 pub mod host_banners;
 pub mod host_words;

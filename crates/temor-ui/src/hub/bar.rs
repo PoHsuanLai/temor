@@ -7,13 +7,13 @@ use std::rc::Rc;
 
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
 use temor_core::vocab::text::{CommandText, HostAlias};
-use temor_pane::keys::Action;
+use temor_pane::keys::{Action, terminal_shortcut};
 
 use super::desk::Desk;
 use super::hosts::HostRows;
 use super::model::{Hub, HubRef};
 use crate::bar::{
-    BarModel, BarSeams, SpaceRows, closed_candidate, directory_uses, recent_commands,
+    BAR_ACTIONS, BarModel, BarSeams, SpaceRows, closed_candidate, directory_uses, recent_commands,
 };
 use crate::view::launch::Launch;
 
@@ -70,6 +70,7 @@ impl Hub {
         let now = (seams.now)();
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
         let sources = Sources {
+            actions: BAR_ACTIONS,
             spaces: &spaces,
             tabs: &self.ws.tabs.place.tabs,
             folders: &self.ws.tabs.place.folders,
@@ -175,6 +176,19 @@ impl HubRef {
     /// Whether the bar is open: its field has the keyboard, and no pane takes it back.
     pub fn bar_is_open(&self) -> bool {
         self.0.borrow().bar.model.is_open()
+    }
+
+    /// The first-launch hint for `pane`, in the person's own chords: only the first pane of a new
+    /// window (never a restored one) has one.
+    pub fn first_hint(&self, pane: temor_core::vocab::ids::PaneId) -> Option<String> {
+        let hub = self.0.borrow();
+        if hub.first_hint != Some(pane) {
+            return None;
+        }
+        let keymap = &hub.launch.keymap;
+        let bar = terminal_shortcut(keymap, Action::OpenBar)?;
+        let split = terminal_shortcut(keymap, Action::SplitRight)?;
+        Some(format!("{bar} for anything \u{b7} {split} to split"))
     }
 
     /// Lists these Spaces in the bar and switches through them.

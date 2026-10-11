@@ -5,9 +5,11 @@
 use super::model::{
     BarAction, BarRow, Candidate, PathResolver, PluginRow, RowGroup, RowKey, Target,
 };
+use super::section::{Section, section_of_target};
 use crate::vocab::ai::AiSwitch;
 use crate::vocab::text::CommandText;
 use std::collections::BTreeSet;
+use temor_pane::keys::Action;
 
 /// How well a title matches the query; better first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -66,22 +68,30 @@ fn run_row(query: &str, resolver: &dyn PathResolver) -> Option<BarRow> {
 
 fn matches(query: &str, candidates: &[Candidate]) -> Vec<BarRow> {
     let needle = query.to_lowercase();
-    let mut fitting: Vec<(Fit, usize, std::cmp::Reverse<u32>, &Candidate)> = candidates
+    let fitting: Vec<(Fit, Section, usize, std::cmp::Reverse<u32>, &Candidate)> = candidates
         .iter()
         .filter_map(|candidate| {
             let fit = fit(&needle, &candidate.title.to_lowercase())?;
             Some((
                 fit,
+                section_of_target(&candidate.target),
                 kind_order(&candidate.target),
                 frecency(&candidate.target),
                 candidate,
             ))
         })
         .collect();
-    fitting.sort_by_key(|(fit, kind, frecency, _)| (*fit, *kind, *frecency));
+    // Rows of a section sit together under its header. The section holding the best match comes
+    // first, so the first row is still the best match; equal sections keep the section order.
+    let best = |section: Section| fitting.iter().filter(|r| r.1 == section).map(|r| r.0).min();
+    let mut fitting: Vec<_> = fitting
+        .iter()
+        .map(|row| ((best(row.1), row.1), row))
+        .collect();
+    fitting.sort_by_key(|(lead, (fit, _, kind, frecency, _))| (*lead, *fit, *kind, *frecency));
     fitting
         .into_iter()
-        .map(|(_, _, _, candidate)| BarRow {
+        .map(|(_, (_, _, _, _, candidate))| BarRow {
             key: target_key(&candidate.target),
             group: RowGroup::Match,
             title: candidate.title.clone(),
@@ -117,6 +127,7 @@ fn kind_order(target: &Target) -> usize {
         Target::Layout(_) => 5,
         Target::RecentCommand(_) => 6,
         Target::Directory { .. } => 7,
+        Target::Action(_) => 8,
     }
 }
 
@@ -137,6 +148,9 @@ fn target_key(target: &Target) -> RowKey {
         Target::Layout(name) => format!("layout:{}", name.0),
         Target::RecentCommand(command) => format!("recent:{}", command.as_str()),
         Target::Directory { cwd, .. } => format!("dir:{}", cwd.as_str()),
+        // The plain new tab is the one row of the empty bar; the same key keeps it from showing twice.
+        Target::Action(Action::NewTab) => "new-tab".to_owned(),
+        Target::Action(action) => format!("action:{}", action.label()),
     })
 }
 

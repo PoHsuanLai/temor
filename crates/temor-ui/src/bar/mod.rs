@@ -2,6 +2,7 @@
 //! ranks, the providers wired at the edge, and the seams other parts of the app fill in (Spaces,
 //! hosts, the model). Pure parts here; the hub carries the picks out (`hub::bar`).
 
+mod actions;
 mod adapter;
 #[cfg(test)]
 mod adapter_tests;
@@ -15,6 +16,7 @@ mod viewer_find;
 #[cfg(test)]
 mod viewer_find_tests;
 
+pub use actions::BAR_ACTIONS;
 pub use adapter::BarModel;
 pub use resolver::PathLookup;
 pub use seams::{BarSeams, ModelRows, NoModel, NoSpaces, SpaceRows};

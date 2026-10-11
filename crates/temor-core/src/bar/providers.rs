@@ -7,6 +7,7 @@ use super::model::{Candidate, LayoutName, Target};
 use crate::space::{Folder, Project, Tab};
 use crate::vocab::text::{CommandText, Cwd, HostAlias};
 use ds_style::space::list::{Space, SpaceId};
+use temor_pane::keys::Action;
 
 /// A Space as the bar lists it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +30,8 @@ pub struct DirectoryUse {
 /// Everything the bar can offer for a query, as the window holds it now.
 #[derive(Debug, Clone, Copy)]
 pub struct Sources<'a> {
+    /// The window's declared actions (Split right, Zoom, ...), each a row.
+    pub actions: &'a [Action],
     /// The Spaces.
     pub spaces: &'a [SpaceEntry],
     /// The tabs of the Space in front.
@@ -67,6 +70,10 @@ pub fn candidates(sources: &Sources<'_>) -> Vec<Candidate> {
         })
     };
     let mut out = Vec::new();
+    let actions = sources
+        .actions
+        .iter()
+        .map(|action| named(action.label(), Target::Action(*action)));
     let spaces = sources
         .spaces
         .iter()
@@ -102,6 +109,7 @@ pub fn candidates(sources: &Sources<'_>) -> Vec<Candidate> {
             },
         )
     });
+    out.extend(actions.flatten());
     out.extend(spaces.flatten());
     out.extend(tabs.flatten());
     out.extend(folders.flatten());

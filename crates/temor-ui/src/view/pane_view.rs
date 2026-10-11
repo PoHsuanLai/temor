@@ -30,6 +30,7 @@ use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
+use super::first_hint::{FirstHint, hint_for};
 use super::handlers::{
     bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
     find_query, find_step, header_press, then_regain,
@@ -220,19 +221,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .as_ref()
         .and_then(|s| chips_for(s, &facts));
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
+    // One quiet line under a new window's first prompt, until the first command runs.
+    let hint = desk.hub.first_hint(pane).and_then(|text| {
+        slot.borrow()
+            .session
+            .as_ref()
+            .and_then(|s| hint_for(s, text))
+    });
     rsx! {
         div { class: "temor-pane",
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
             onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
-            if let Some((query, position)) = find {
-                FindBar {
-                    query,
-                    position,
-                    on_query:find_query(Rc::clone(&slot), ui, started),
-                    on_step:find_step(Rc::clone(&slot), ui),
-                    on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
-                }
-            }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),
                 on_focus,
@@ -279,6 +278,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     LinkTip { spot }
                 }
                 BlockMetas { metas: chrome.metas.clone() }
+                if let Some(view) = hint {
+                    FirstHint { view }
+                }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}
                 }
@@ -292,6 +294,16 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                         on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
                     }
+                }
+            }
+            // On the pane's top-right corner, over the grid.
+            if let Some((query, position)) = find {
+                FindBar {
+                    query,
+                    position,
+                    on_query:find_query(Rc::clone(&slot), ui, started),
+                    on_step:find_step(Rc::clone(&slot), ui),
+                    on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
                 }
             }
             if let Some(ask) = clip_ask {
