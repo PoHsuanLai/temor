@@ -1,7 +1,6 @@
 //! The colours of the command cards, derived from the grid's palette so they follow the theme:
 //! a rule is the foreground at 10% over the background, the failed fill red (ANSI 1) at 10%, the
-//! stripe red at full strength, the selected fill the accent at 12%, and the line being typed
-//! the foreground at 5%.
+//! stripe red at full strength, and the selected fill the accent at 12%.
 
 use temor_render::{Alpha, Palette, Tint};
 use temor_vt::Rgb;
@@ -17,8 +16,6 @@ pub struct CardColours {
     pub failed_stripe: Tint,
     /// Behind the selected block.
     pub selected_fill: Tint,
-    /// Behind the line being typed at the prompt.
-    pub input: Tint,
 }
 
 /// `percent` of full opacity.
@@ -48,10 +45,6 @@ impl CardColours {
                 color: accent,
                 alpha: percent(12),
             },
-            input: Tint {
-                color: palette.foreground,
-                alpha: percent(5),
-            },
         }
     }
 }
@@ -71,7 +64,6 @@ mod tests {
             (c.failed_fill, palette.ansi[1], 26),
             (c.failed_stripe, palette.ansi[1], 255),
             (c.selected_fill, accent, 31),
-            (c.input, palette.foreground, 13),
         ] {
             assert_eq!((tint.color, tint.alpha), (color, Alpha(alpha)));
         }

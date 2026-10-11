@@ -70,24 +70,17 @@ fn blocks_become_bands_by_how_they_stand() {
             )],
         ),
         (
-            "the newest block at its prompt gets the input fill and keeps its rule",
+            "the newest block at its prompt is set off by its rule alone, with no fill",
             vec![block(1, done, plain), block(4, Stage::AtPrompt, plain)],
             5,
             10,
             vec![
                 band(1, 3, [None, None, Some(c.rule)]),
-                band(4, 5, [Some(c.input), None, Some(c.rule)]),
+                band(4, 5, [None, None, Some(c.rule)]),
             ],
         ),
         (
-            "once it runs the input fill is gone",
-            vec![block(4, done, plain)],
-            7,
-            10,
-            vec![band(4, 7, [None, None, Some(c.rule)])],
-        ),
-        (
-            "selected and failed both win over the input fill",
+            "the selected fill shows on the block at its prompt",
             vec![block(3, Stage::AtPrompt, chosen)],
             4,
             10,

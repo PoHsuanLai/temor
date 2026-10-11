@@ -1,6 +1,7 @@
-//! The command cards as row bands for the renderer: a rule above every block, a stripe and a
-//! faint fill on a failed one, an accent fill on the selected one, and a faint fill on the line
-//! being typed. `bands_of` is pure; `Session::card_bands` gathers its input from the terminal.
+//! The command cards as row bands for the renderer: a rule above every block (the line being
+//! typed is set off from history by the rule above its block, with no fill of its own), a
+//! stripe and a faint fill on a failed one, an accent fill on the selected one, and the command
+//! line in bold. `bands_of` is pure; `Session::card_bands` gathers its input from the terminal.
 
 use temor_core::block::{BlockState, Outcome};
 use temor_render::{RowBand, RowSpan, RowWeight};
@@ -57,8 +58,7 @@ pub(super) fn bands_of(
         let fill = match (block.pick, block.stage) {
             (Pick::Selected, _) => Some(colours.selected_fill),
             (Pick::Unselected, Stage::Ran(Outcome::Failed(_))) => Some(colours.failed_fill),
-            (Pick::Unselected, Stage::AtPrompt) => Some(colours.input),
-            (Pick::Unselected, Stage::Ran(_)) => None,
+            (Pick::Unselected, _) => None,
         };
         let stripe = match block.stage {
             Stage::Ran(Outcome::Failed(_)) => Some(colours.failed_stripe),

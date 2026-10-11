@@ -74,10 +74,10 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
         h.advance(Duration::from_millis(50));
         let html = h.html();
         if let Some(chips) = chips_of(&html).filter(|c| c.contains("+1")) {
-            // The tab's row says the same, shorter.
+            // The tab's row says the branch.
             assert!(
-                html.matches("main \u{2022}").count() >= 2,
-                "the tab row lacks the branch and dot:\n{html}"
+                html.contains("main"),
+                "the tab row lacks the branch:\n{html}"
             );
             break chips;
         }
@@ -86,7 +86,9 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
             "no chips with the change:\n{html}"
         );
     };
-    for want in ["main \u{2022}", "+1 \u{2212}0", "1 file"] {
+    for want in ["+1 \u{2212}0", "1 file"] {
         assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
     }
+    // The prompt's header line says the branch; the chips do not repeat it.
+    assert!(!chips.contains("main"), "the branch is repeated:\n{chips}");
 }

@@ -1,8 +1,9 @@
 //! The context chips (PLAN P16): small chips at the right end of the prompt's header row, the row
-//! the newest prompt is on, stating what the pane's folder is: the git branch (with a dot when
-//! there are uncommitted changes), the lines added and removed, the files changed, the Python
+//! the newest prompt is on, stating what the pane's folder is: the lines added and removed, the files changed, the Python
 //! environment and the Node version. They sit beside the grid, so a press never reaches the
 //! terminal, and they are not drawn on a full-screen program's screen.
+//!
+//! The branch is not a chip: the prompt's own header line already says it (and the tab's row).
 
 use dioxus::prelude::*;
 use ds::components::controls::chip::{Chip, ChipVariant};
@@ -10,19 +11,10 @@ use temor_core::facts::{ChipRow, DiffStat, Facts, MOST_UNTRACKED, chips_that_fit
 
 use crate::session::Session;
 
-/// How a chip stands out.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChipTone {
-    Plain,
-    /// The folder has uncommitted changes.
-    Changed,
-}
-
 /// One chip's words.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChipText {
     pub text: String,
-    pub tone: ChipTone,
 }
 
 /// Where the chips go and what they say, placed by the window from the session.
@@ -37,8 +29,8 @@ pub struct ChipsView {
     pub inset: f32,
 }
 
-fn chip(text: String, tone: ChipTone) -> ChipText {
-    ChipText { text, tone }
+fn chip(text: String) -> ChipText {
+    ChipText { text }
 }
 
 fn files_words(files: u32) -> String {
@@ -55,28 +47,21 @@ fn untracked_words(count: u32) -> String {
     }
 }
 
-/// The chips for `facts`, in order: branch (a dot when there are changes), `+N -M`, files,
-/// new files, Python (the environment, else the version), Ruby, Go, Node. Nothing known gives none; a clean folder gives no change chips.
+/// The chips for `facts`, in order: `+N -M`, files, new files, Python (the environment, else the
+/// version), Ruby, Go, Node. Nothing known gives none; a clean folder gives no change chips.
 pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
     let mut chips = Vec::new();
-    if let Some(summary) = facts.summary() {
-        let tone = match facts.dirty() {
-            true => ChipTone::Changed,
-            false => ChipTone::Plain,
-        };
-        chips.push(chip(summary, tone));
-    }
     if let Some(DiffStat {
         files,
         added,
         removed,
     }) = facts.changes.filter(|s| s.is_dirty())
     {
-        chips.push(chip(format!("+{added} \u{2212}{removed}"), ChipTone::Plain));
-        chips.push(chip(files_words(files), ChipTone::Plain));
+        chips.push(chip(format!("+{added} \u{2212}{removed}")));
+        chips.push(chip(files_words(files)));
     }
     if let Some(untracked) = facts.untracked.filter(|u| u.0 > 0) {
-        chips.push(chip(untracked_words(untracked.0), ChipTone::Plain));
+        chips.push(chip(untracked_words(untracked.0)));
     }
     let python = match (&facts.venv, &facts.python) {
         (Some(venv), _) => Some(venv.as_str()),
@@ -84,16 +69,16 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
         (None, None) => None,
     };
     if let Some(python) = python {
-        chips.push(chip(format!("python {python}"), ChipTone::Plain));
+        chips.push(chip(format!("python {python}")));
     }
     if let Some(ruby) = &facts.ruby {
-        chips.push(chip(format!("ruby {}", ruby.as_str()), ChipTone::Plain));
+        chips.push(chip(format!("ruby {}", ruby.as_str())));
     }
     if let Some(go) = &facts.go {
-        chips.push(chip(format!("go {}", go.as_str()), ChipTone::Plain));
+        chips.push(chip(format!("go {}", go.as_str())));
     }
     if let Some(node) = &facts.node {
-        chips.push(chip(format!("node {}", node.as_str()), ChipTone::Plain));
+        chips.push(chip(format!("node {}", node.as_str())));
     }
     chips
 }
@@ -145,10 +130,7 @@ pub fn FactChips(view: ChipsView) -> Element {
             for (n, one) in view.chips.iter().enumerate() {
                 Chip {
                     key: "{n}",
-                    variant: match one.tone {
-                        ChipTone::Changed => ChipVariant::Accent,
-                        ChipTone::Plain => ChipVariant::Neutral,
-                    },
+                    variant: ChipVariant::Neutral,
                     text: one.text.clone(),
                 }
             }
