@@ -25,6 +25,7 @@ impl Hub {
         let input = self.in_project(input);
         self.book.lift(&mut self.ws);
         let input = self.ssh_prepare(input);
+        let input = self.measured(input);
         let (ws, outs) = workspace_step(self.ws.clone(), input);
         self.ws = ws;
         self.book.note(&self.ws);

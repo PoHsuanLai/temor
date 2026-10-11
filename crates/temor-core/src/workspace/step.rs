@@ -9,7 +9,9 @@ use super::step_types::{RefuseWhy, Spawn, Start, WorkspaceIn, WorkspaceOut};
 use super::step_viewer::open_viewer;
 use super::tabs::{TabSel, TabsIn, TabsState, tabs_step};
 use crate::space::{Pin, Tab};
-use crate::split::{Direction, SplitTree, TreeAfter, TreeIn, TreeOut, TreeState, tree_step};
+use crate::split::{
+    Columns, Direction, SplitTree, TreeAfter, TreeIn, TreeOut, TreeState, split_fits, tree_step,
+};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch, TabTitle};
 
@@ -19,7 +21,8 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
     let mut out = Vec::new();
     match input {
         WorkspaceIn::NewTab { cwd } => new_tab(&mut ws, cwd, &mut out),
-        WorkspaceIn::Split { towards } => split(&mut ws, towards, &mut out),
+        WorkspaceIn::Split { towards } => split(&mut ws, towards, None, &mut out),
+        WorkspaceIn::SplitIn { towards, width } => split(&mut ws, towards, Some(width), &mut out),
         WorkspaceIn::ClosePane(pane) => match pane.or_else(|| front_pane(&ws)) {
             Some(pane) => close_pane(&mut ws, pane, &mut out),
             None => out.push(WorkspaceOut::Refused(RefuseWhy::NoFront)),
@@ -180,7 +183,15 @@ fn new_tab(ws: &mut Workspace, cwd: Option<Cwd>, out: &mut Vec<WorkspaceOut>) {
     out.push(WorkspaceOut::Focused(pane));
 }
 
-fn split(ws: &mut Workspace, towards: Direction, out: &mut Vec<WorkspaceOut>) {
+fn split(
+    ws: &mut Workspace,
+    towards: Direction,
+    width: Option<Columns>,
+    out: &mut Vec<WorkspaceOut>,
+) {
+    if width.is_some_and(|width| !split_fits(width, towards)) {
+        return out.push(WorkspaceOut::Refused(RefuseWhy::TooNarrow));
+    }
     let Some(tab) = ws.front() else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::NoFront));
     };

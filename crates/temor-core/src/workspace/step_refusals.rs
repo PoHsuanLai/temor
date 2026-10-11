@@ -4,7 +4,7 @@ use super::step_tests::{one_tab, run};
 use super::{
     RefuseWhy, TabRefusal, TabsIn, TabsOut, Workspace, WorkspaceIn, WorkspaceOut, workspace_step,
 };
-use crate::split::Direction;
+use crate::split::{Columns, Direction};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Relaunch, TabTitle};
 
@@ -77,6 +77,7 @@ fn ids_at_the_top_of_the_range_refuse_instead_of_overflowing() {
         ("a new tab with no pane id left", with(|ws| ws.next_pane = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
         ("a new tab with no tab id left", with(|ws| ws.next_tab = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
         ("a split with no pane id left", with(|ws| ws.next_pane = u64::MAX), WorkspaceIn::Split { towards: Direction::Down }, refused(RefuseWhy::IdsExhausted)),
+        ("a side-by-side split of a pane under 120 columns", with(|_| {}), WorkspaceIn::SplitIn { towards: Direction::Right, width: Columns(119) }, refused(RefuseWhy::TooNarrow)),
         ("a tear with no tab id left", with(|ws| ws.next_tab = u64::MAX), WorkspaceIn::Tear(torn), refused(RefuseWhy::IdsExhausted)),
         ("a folder with no id left", with(|ws| ws.tabs.next_folder = u64::MAX), WorkspaceIn::Tabs(TabsIn::NewFolder { title: TabTitle("f".into()) }), WorkspaceOut::Tab(TabsOut::Refused(TabRefusal::IdsExhausted))),
     ];
@@ -102,4 +103,23 @@ fn a_full_tab_refuses_another_split() {
         out = o;
     }
     assert_eq!(out, vec![refused(RefuseWhy::TabFull)]);
+}
+
+#[test]
+fn a_roomy_pane_splits_the_same_whether_or_not_its_width_is_told() {
+    let (ws, _) = one_tab();
+    let plain = workspace_step(
+        ws.clone(),
+        WorkspaceIn::Split {
+            towards: Direction::Right,
+        },
+    );
+    let told = workspace_step(
+        ws,
+        WorkspaceIn::SplitIn {
+            towards: Direction::Right,
+            width: Columns(120),
+        },
+    );
+    assert_eq!(plain, told);
 }

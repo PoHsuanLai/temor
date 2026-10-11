@@ -17,6 +17,7 @@ mod facts;
 mod hosts;
 mod keys;
 mod model;
+mod narrow;
 mod offer;
 mod offer_reply;
 mod peek;
