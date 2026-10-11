@@ -99,7 +99,7 @@ fn the_header_shows_the_command_of_a_scrolled_block_and_a_press_brings_the_promp
 }
 
 #[test]
-fn hovering_a_block_shows_its_toolbar_and_copy_command_copies_the_command() {
+fn hovering_a_block_shows_its_tools_and_the_first_copies_the_output() {
     if !tools_present() {
         return;
     }
@@ -108,13 +108,33 @@ fn hovering_a_block_shows_its_toolbar_and_copy_command_copies_the_command() {
     assert!(!shows(&h.html(), TOOLS), "a toolbar with nothing hovered");
     run_to_end(&mut h, &probe, "echo hover-me", "hover-me");
     assert!(hover_until_tools(&mut h), "no toolbar:\n{}", h.html());
-    // The first button is Copy command.
+    // The first button is Copy output.
     let at = h
         .centre(&format!(".{TOOLS} .ds-button"))
         .unwrap_or_else(|| panic!("no toolbar button:\n{}", h.html()));
     h.send(Input::click(at));
     h.advance(Duration::from_millis(200));
-    assert_eq!(h.clipboard_text().as_deref(), Some("echo hover-me"));
+    let copied = h.clipboard_text().unwrap_or_default();
+    assert!(
+        copied.contains("hover-me") && !copied.contains("echo"),
+        "copied {copied:?}"
+    );
+}
+
+#[test]
+fn a_failed_card_says_its_exit_status_in_its_header_and_no_sentence() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-meta", &probe);
+    run_to_end(&mut h, &probe, "echo oops; (exit 3)", "oops");
+    let html = h.html();
+    assert!(html.contains("exit 3 \u{b7} "), "no exit status:\n{html}");
+    assert!(
+        !html.contains("Failed with status"),
+        "the status sentence is back"
+    );
 }
 
 #[test]

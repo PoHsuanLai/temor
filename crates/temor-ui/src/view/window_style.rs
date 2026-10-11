@@ -12,7 +12,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-grid { position: relative; width: 100%; height: 100%; }\
 .temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; min-width: 0; overflow: hidden; background: var(--raise); border-bottom: var(--hair) solid var(--line); }\
 .temor-fact-chips { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); pointer-events: none; overflow: hidden; }\
-.temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); }\
+.temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-3); }.temor-block-tools .ds-icon-button-group { padding: 0; }.temor-block-more { display: flex; }.temor-card-meta { position: absolute; display: flex; align-items: center; white-space: nowrap; pointer-events: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); box-shadow: var(--shadow-sheet); }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\
 .temor-quick { position: absolute; left: 8%; right: 8%; top: 4%; bottom: 24%; display: flex; flex-direction: column; background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); box-shadow: var(--shadow-sheet); overflow: hidden; }\

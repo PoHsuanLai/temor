@@ -3,8 +3,8 @@
 //! being typed. `bands_of` is pure; `Session::card_bands` gathers its input from the terminal.
 
 use temor_core::block::{BlockState, Outcome};
-use temor_render::{RowBand, RowSpan};
-use temor_vt::{PointSpace, Row};
+use temor_render::{RowBand, RowSpan, RowWeight};
+use temor_vt::{AnchorId, PointSpace, Row};
 
 use super::super::Session;
 use crate::view::card_colours::CardColours;
@@ -25,12 +25,14 @@ pub(super) enum Pick {
     Unselected,
 }
 
-/// One block: its first row in the viewport (negative above it) and how it stands.
+/// One block: its first row in the viewport (negative above it), how it stands, and the rows of
+/// its command line (OSC 133 B up to C), when they are known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct CardBlock {
     pub first: i64,
     pub stage: Stage,
     pub pick: Pick,
+    pub command: Option<(i64, i64)>,
 }
 
 /// The bands for `blocks` (oldest first) on a viewport of `rows`, the last block running to
@@ -64,20 +66,52 @@ pub(super) fn bands_of(
         };
         // A block whose first row is row 0 (or above the view) shows no rule.
         let rule = (block.first >= 1).then_some(colours.rule);
-        if fill.is_none() && stripe.is_none() && rule.is_none() {
-            continue;
+        if !(fill.is_none() && stripe.is_none() && rule.is_none()) {
+            out.push(RowBand {
+                rows: RowSpan {
+                    first: Row(top as u16),
+                    last: Row(bottom as u16),
+                },
+                fill,
+                stripe,
+                rule,
+                weight: RowWeight::Normal,
+            });
         }
-        out.push(RowBand {
-            rows: RowSpan {
-                first: Row(top as u16),
-                last: Row(bottom as u16),
-            },
-            fill,
-            stripe,
-            rule,
-        });
+        // The command line draws bold, clipped to the view.
+        if let Some((from, to)) = block.command {
+            let (from, to) = (from.max(0), to.min(i64::from(rows) - 1));
+            if from <= to {
+                out.push(RowBand {
+                    rows: RowSpan {
+                        first: Row(from as u16),
+                        last: Row(to as u16),
+                    },
+                    fill: None,
+                    stripe: None,
+                    rule: None,
+                    weight: RowWeight::Bold,
+                });
+            }
+        }
     }
     out
+}
+
+/// The rows of a command line: from the row of the input mark to the row before the output
+/// mark when that mark is at a line's start, else to the output mark's row. `output` is the
+/// mark's row and column; without it the line runs to `fallback_end`, never above `input`.
+pub(super) fn command_rows(
+    input: i64,
+    output: Option<(i64, u16)>,
+    fallback_end: i64,
+) -> (i64, i64) {
+    let last = match output {
+        Some((row, 0)) if row > input => row - 1,
+        Some((row, _)) => row,
+        None => fallback_end,
+    };
+    (input, last.max(input))
 }
 
 impl Session {
@@ -130,12 +164,23 @@ impl Session {
                 let at = term.anchor_point(anchor, PointSpace::Screen)?;
                 Some(i64::from(at.row) - top)
             };
+            let end = cursor.unwrap_or(i64::from(rows) - 1);
+            // The rows of the command typed after the input mark, up to the output mark.
+            let command_of = |input: Option<AnchorId>, output: Option<AnchorId>| {
+                let input = first_of(input?)?;
+                let output = output.and_then(|anchor| {
+                    let at = term.anchor_point(anchor, PointSpace::Screen)?;
+                    Some((i64::from(at.row) - top, at.col.0))
+                });
+                Some(command_rows(input, output, end))
+            };
             let mut blocks: Vec<CardBlock> = self
                 .blocks
                 .store
                 .iter()
                 .filter_map(|block| {
-                    let first = first_of(self.blocks.anchors.get(&block.id)?.prompt?)?;
+                    let anchors = self.blocks.anchors.get(&block.id)?;
+                    let first = first_of(anchors.prompt?)?;
                     let pick = match self.selected_block == Some(block.id) {
                         true => Pick::Selected,
                         false => Pick::Unselected,
@@ -144,6 +189,7 @@ impl Session {
                         first,
                         stage: Stage::Ran(block.outcome()),
                         pick,
+                        command: command_of(anchors.input, anchors.output),
                     })
                 })
                 .collect();
@@ -152,10 +198,10 @@ impl Session {
                     first,
                     stage: Stage::AtPrompt,
                     pick: Pick::Unselected,
+                    command: command_of(self.blocks.input, None),
                 });
             }
             blocks.sort_by_key(|b| b.first);
-            let end = cursor.unwrap_or(i64::from(rows) - 1);
             bands_of(&blocks, end, rows, colours)
         })
     }

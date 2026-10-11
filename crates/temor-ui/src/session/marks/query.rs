@@ -1,7 +1,7 @@
 //! What the gutter, the bar and the prompt jumps read from the blocks, and what a press on the
 //! gutter or a jump does to the view. Nothing here is drawn; the views decide how to show it.
 
-use temor_core::block::{Outcome, format_elapsed, next_prompt, previous_prompt};
+use temor_core::block::{Outcome, next_prompt, previous_prompt};
 use temor_core::vocab::ids::{BlockId, GridRow};
 use temor_pane::text::{CellPos, Granularity, Selection, Shape};
 use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
@@ -103,20 +103,11 @@ impl Session {
         self.block_at_row(row).and_then(|id| self.block_output(id))
     }
 
-    /// How a block ended and how long it ran, for its hover and its notices.
-    pub fn block_summary(&self, id: BlockId) -> Option<String> {
+    /// How a block ended and how long it ran, as its card header says it (`exit 1 · 4 ms`);
+    /// `None` while it runs.
+    pub fn block_meta(&self, id: BlockId) -> Option<String> {
         let block = self.blocks.store.get(id)?;
-        let took = block.elapsed_ms().map(format_elapsed);
-        Some(match (block.outcome(), took) {
-            (Outcome::Running, _) => "Still running".to_owned(),
-            (Outcome::Succeeded, Some(took)) => format!("Succeeded in {took}"),
-            (Outcome::Failed(code), Some(took)) => {
-                format!("Failed with status {} after {took}", code.0)
-            }
-            (Outcome::Stopped(_), Some(took)) => format!("Stopped after {took}"),
-            (Outcome::Unreported, Some(took)) => format!("Ended after {took}"),
-            (_, None) => "Ended".to_owned(),
-        })
+        crate::view::block_meta::meta_text(block.outcome(), block.elapsed_ms())
     }
 
     /// Moves the view to the previous or next prompt (⌘↑ and ⌘↓).
