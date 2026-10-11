@@ -13,6 +13,7 @@ mod graft_tests;
 mod layout;
 mod model;
 mod ops;
+mod room;
 mod step;
 #[cfg(test)]
 mod step_tests;
@@ -23,4 +24,5 @@ mod wire;
 pub use layout::{PaneRect, SPATIAL_UNIT, WholePx};
 pub use model::{Axis, Direction, Goto, Handle, MOST_PANES, Node, Share, SplitTree, WindowDelta};
 pub use ops::Closed;
+pub use room::{Columns, LEAST_COLUMNS, split_fits};
 pub use step::{TreeAfter, TreeIn, TreeOut, TreeState, tree_step};

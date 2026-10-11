@@ -48,9 +48,9 @@ if ($env.TEMOR_PROMPT? != "shell") {
             $relative => ([~ $relative] | path join)
         }
         let branch = (_temor_branch)
-        let branch_part = if ($branch | is-empty) { "" } else { $"  ($esc)[2;35m($branch)($esc)[0m" }
+        let branch_part = if ($branch | is-empty) { "" } else { $"  ($esc)[35m($branch)($esc)[0m" }
         let blank = if ($env.TEMOR_SEEN? | is-empty) { "" } else { "\n" }
-        $"($blank)($esc)[2m($dir)($esc)[22m($branch_part)\n"
+        $"($blank)($esc)[90m($dir)($esc)[39m($branch_part)\n"
     }
     # This file runs before config.nu, which may set a prompt of its own, so temor's is put back
     # before every prompt.

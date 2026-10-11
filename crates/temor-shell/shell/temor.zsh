@@ -37,7 +37,7 @@ _temor_encode_cwd() {
 # `git status`, which would hold the prompt back in a large repository, and temor's chips on the
 # same line already show it from a run that does not block the shell.
 #
-# Sets REPLY to the git branch of $PWD as "  <name>" in dim magenta, or empty outside a checkout.
+# Sets REPLY to the git branch of $PWD as "  <name>" in magenta, or empty outside a checkout.
 # Reads .git/HEAD directly; no git process. A .git file (a worktree) names the real directory.
 _temor_find_branch() {
     emulate -L zsh
@@ -97,13 +97,13 @@ _temor_build_prompt() {
     _temor_find_branch
     if [[ -n $REPLY ]]; then
         _temor_prompt_text $REPLY
-        branch="  %{"$'\e[2;35m'"%}$REPLY%{"$'\e[0m'"%}"
+        branch="  %{"$'\e[35m'"%}$REPLY%{"$'\e[0m'"%}"
     fi
     # Without a terminal description that can move the cursor up (an unknown TERM), zsh draws
     # nothing at all for a prompt whose last line is empty. The folder line is then printed by
     # _temor_precmd ahead of the prompt, with the end mark, and the prompt is left empty, so the
     # typing line starts at the left edge and the folder line stays visible.
-    local head="$blank%{"$'\e[2m'"%}$dir%{"$'\e[22m'"%}$branch"
+    local head="$blank%{"$'\e[90m'"%}$dir%{"$'\e[39m'"%}$branch"
     zmodload -F zsh/terminfo +p:terminfo 2>/dev/null
     if [[ -n ${terminfo[cuu1]-} ]]; then
         _temor_head=

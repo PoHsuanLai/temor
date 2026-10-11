@@ -79,9 +79,9 @@ function _temor_prompt
         end
     end
     test -n "$_temor_seen"; and echo
-    printf '\e[2m%s\e[22m' $dir
+    printf '\e[90m%s\e[39m' $dir
     set -l branch (_temor_branch)
-    test -n "$branch"; and printf '  \e[2;35m%s\e[0m' $branch
+    test -n "$branch"; and printf '  \e[35m%s\e[0m' $branch
     # The reset after the newline keeps fish from trimming the newline off the prompt.
     printf '\n\e[0m'
 end

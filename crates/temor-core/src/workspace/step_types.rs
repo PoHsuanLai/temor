@@ -1,7 +1,7 @@
 //! The workspace step's inputs, outputs and refusals.
 
 use super::tabs::{TabsIn, TabsOut};
-use crate::split::{Direction, Goto};
+use crate::split::{Columns, Direction, Goto};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch, ViewerRef};
 
@@ -50,6 +50,14 @@ pub enum WorkspaceIn {
     NewTab { cwd: Option<Cwd> },
     /// Split the focused pane of the tab in front, and focus the new pane.
     Split { towards: Direction },
+    /// [`WorkspaceIn::Split`], told how wide the focused pane is: refused when a half would be
+    /// narrower than `LEAST_COLUMNS`.
+    SplitIn {
+        /// Where the new pane goes.
+        towards: Direction,
+        /// The focused pane's width now.
+        width: Columns,
+    },
     /// Close a pane (the focused one when none is named). The last pane closes the tab.
     ClosePane(Option<PaneId>),
     /// Close a tab with all its panes; it is kept as recently closed.
@@ -130,6 +138,8 @@ pub enum WorkspaceOut {
 pub enum RefuseWhy {
     /// The tab already holds the most panes it can.
     TabFull,
+    /// A split would leave a pane too narrow to work in.
+    TooNarrow,
     /// The pane is not in any tab.
     NoSuchPane(PaneId),
     /// The tab is not in the list.

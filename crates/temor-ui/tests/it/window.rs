@@ -328,6 +328,34 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
     });
 }
 
+/// The show/hide action (Ctrl+Shift+Alt+L here) folds the sidebar away and brings it back.
+#[test]
+fn the_sidebar_action_hides_and_shows_the_sidebar() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("window-sidebar-toggle", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(200));
+    assert_eq!(rows(&h), 1, "the sidebar starts shown");
+    let toggle = |h: &mut Harness| {
+        h.send(Input::chord(
+            &[ShortcutKey::Ctrl, ShortcutKey::Shift, ShortcutKey::Alt],
+            ShortcutKey::Char('l'),
+        ));
+        h.advance(Duration::from_millis(600));
+    };
+    toggle(&mut h);
+    assert_eq!(rows(&h), 0, "hidden:\n{}", h.html());
+    toggle(&mut h);
+    assert_eq!(rows(&h), 1, "shown again");
+}
+
 /// The shell ends, the person presses Restart, and the window carries on (Blitz once panicked in
 /// `absolute_position` for a node that was gone). Frames keep running past the tooltip delay.
 #[test]

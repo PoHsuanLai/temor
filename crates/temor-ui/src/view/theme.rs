@@ -2,12 +2,14 @@
 //! accent of the root decide them, so light and dark, and the Space look that overrides the
 //! theme, all apply to the terminal too.
 
-use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, resolve};
+use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, Theme, resolve};
 use ds::style::tokens::hex::{Colour, Hex};
 use ds::style::tokens::terminal::TerminalColour;
-use ds_settings::{AppName, ConfigRoot, Store, SystemPrefsSource};
+use ds_settings::{AppName, ConfigRoot, Environment, Store, SystemPrefsSource};
 use temor_render::Palette;
 use temor_vt::Rgb;
+
+use crate::edge::ThemeChoice;
 
 /// Where the look comes from: the design system's own settings (`appearance.toml`, the person's
 /// theme, accent and motion) and the desktop's preferences. The window follows both live.
@@ -33,6 +35,15 @@ impl AppearanceSource {
             system: SystemPrefsSource::Fixed(system),
         }
     }
+}
+
+/// `env` with the theme temor defaults to: dark, when the person has named none (`choice`) and
+/// the file leaves it at "follow the desktop". An explicit `system`, `light` or `dark` wins.
+pub fn dark_by_default(mut env: Environment, choice: ThemeChoice) -> Environment {
+    if choice == ThemeChoice::Unnamed && env.settings.appearance.theme == Theme::System {
+        env.settings.appearance.theme = Theme::Dark;
+    }
+    env
 }
 
 /// The palette the root with `appearance`, `look` and `system` resolves to.

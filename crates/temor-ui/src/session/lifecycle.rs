@@ -7,7 +7,7 @@ use temor_pane::text::cwd_from_url;
 use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
-use super::model::{Lifetime, Notice, PADDING_LOGICAL};
+use super::model::{INSET, Lifetime, Notice};
 use crate::error::UiError;
 use crate::paint::PaintView;
 use crate::view::card_colours::CardColours;
@@ -68,7 +68,7 @@ impl Session {
         if pixels.width.0 == 0 || pixels.height.0 == 0 {
             return Ok(false);
         }
-        let fit = self.painter.fit(pixels, scale, PADDING_LOGICAL);
+        let fit = self.painter.fit(pixels, scale, INSET);
         let changed = self.fit.map(|f| (f.grid, f.cell)) != Some((fit.grid, fit.cell));
         if changed {
             // Recorded only once the terminal and the program have the new size.
@@ -96,7 +96,7 @@ impl Session {
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,
-            padding_logical: PADDING_LOGICAL,
+            inset: INSET,
             focus: match self.focus {
                 Focus::Focused => PaneFocus::Focused,
                 Focus::Unfocused => PaneFocus::Unfocused,

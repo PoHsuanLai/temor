@@ -41,6 +41,7 @@ temor-ssh = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
 temor-transfer = { workspace = true }
 tempfile = { workspace = true }
+toml = { workspace = true }
 temor-render = { workspace = true, features = ["ghostty"] }
 temor-vt = { workspace = true, features = ["ghostty"] }
 temor-wire = { workspace = true }

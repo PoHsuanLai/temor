@@ -3,4 +3,4 @@
 
 mod painter;
 
-pub use painter::{PaintView, Painter};
+pub use painter::{Inset, PaintView, Painter};

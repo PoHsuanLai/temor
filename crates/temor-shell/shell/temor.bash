@@ -22,7 +22,7 @@ _temor_blank=
 _temor_seen=
 # temor's prompt. The parts that change each prompt are variables, expanded by bash when it
 # draws PS1; colours are ANSI indices, so the terminal's palette themes them.
-_temor_ps1='${_temor_blank}\[\e[2m\]${_temor_pwd}\[\e[22m\]${_temor_branch}\n'
+_temor_ps1='${_temor_blank}\[\e[90m\]${_temor_pwd}\[\e[39m\]${_temor_branch}\n'
 _temor_ps1+='\[\e]133;B\e\\\]'
 
 # Percent-encodes a path for a file:// URL, byte by byte, into _temor_cwd_url.
@@ -38,7 +38,7 @@ _temor_encode_cwd() {
     _temor_cwd_url=$out
 }
 
-# Sets _temor_branch to "  <name>" (dim magenta) when $PWD is inside a git checkout, else empty.
+# Sets _temor_branch to "  <name>" (magenta) when $PWD is inside a git checkout, else empty.
 # Reads .git/HEAD directly; no git process. A .git file (a worktree) names the real directory.
 _temor_find_branch() {
     _temor_branch=
@@ -66,7 +66,7 @@ _temor_find_branch() {
         head=${head:0:7}
     fi
     # \001 and \002 tell readline the colour codes take no room.
-    _temor_branch=$'  \001\e[2;35m\002'$head$'\001\e[0m\002'
+    _temor_branch=$'  \001\e[35m\002'$head$'\001\e[0m\002'
 }
 
 # Whether temor draws the prompt: always, unless the person keeps their own.

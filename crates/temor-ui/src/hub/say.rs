@@ -6,6 +6,9 @@ use temor_core::workspace::RefuseWhy;
 pub fn refusal_text(why: &RefuseWhy) -> String {
     match why {
         RefuseWhy::TabFull => "This tab has no room for another pane".to_owned(),
+        RefuseWhy::TooNarrow => {
+            "This pane is too narrow to split; make the window wider or close a pane".to_owned()
+        }
         RefuseWhy::NoSuchPane(_) | RefuseWhy::NoSuchTab(_) | RefuseWhy::NoFront => {
             "That is no longer open".to_owned()
         }
