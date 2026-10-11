@@ -8,6 +8,8 @@ pub mod agents;
 mod bar;
 mod bar_action;
 mod bar_run;
+#[cfg(test)]
+mod bar_tests;
 mod desk;
 mod desktop;
 mod desktop_io;

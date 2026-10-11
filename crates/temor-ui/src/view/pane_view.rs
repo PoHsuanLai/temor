@@ -29,6 +29,7 @@ use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
 use super::fact_chips::{FactChips, chips_for};
 use super::find_bar::FindBar;
+use super::first_hint::{FirstHint, hint_for};
 use super::handlers::{
     bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
     find_query, find_step, header_press, then_regain,
@@ -217,6 +218,13 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| chips_for(s, &facts));
+    // One quiet line under a new window's first prompt, until the first command runs.
+    let hint = desk.hub.first_hint(pane).and_then(|text| {
+        slot.borrow()
+            .session
+            .as_ref()
+            .and_then(|s| hint_for(s, text))
+    });
     rsx! {
         div { class: "temor-pane",
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
@@ -262,6 +270,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 }
                 if let Some(view) = chips {
                     FactChips { view }
+                }
+                if let Some(view) = hint {
+                    FirstHint { view }
                 }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}

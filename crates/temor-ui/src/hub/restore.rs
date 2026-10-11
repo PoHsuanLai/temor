@@ -36,7 +36,11 @@ impl Hub {
             sidecar::clear(&dir);
             self.quiet_parked();
         }
+        let restored = !self.slots.is_empty();
         self.fill_empty();
+        if !restored {
+            self.first_hint = self.keyboard_pane();
+        }
         self.refresh_probe();
         self.sweep_old_snapshots();
     }
