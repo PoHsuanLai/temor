@@ -4,5 +4,5 @@ mod model;
 #[cfg(test)]
 mod tests;
 
-pub use model::{Alpha, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
+pub use model::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub(crate) use model::{RowBox, RowLook, look_of, push_quads};

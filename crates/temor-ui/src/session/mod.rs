@@ -26,7 +26,7 @@ pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::{LinkHover, LinkTipSpot};
-pub use marks::{BlockMark, PromptStep, ToolsHeight, desktop_note};
+pub use marks::{BlockMark, Gutter, PromptStep, ToolsHeight, desktop_note};
 pub use model::{
     Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
 };

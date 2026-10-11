@@ -13,7 +13,7 @@ use ds::prelude::*;
 use temor_core::block::{Outcome, format_elapsed};
 use temor_core::vocab::ids::BlockId;
 
-use crate::session::{BlockMark, Session};
+use crate::session::{BlockMark, Gutter, Session};
 
 /// One header row's meta, placed by the window from the session.
 #[derive(Debug, Clone, PartialEq)]
@@ -42,24 +42,25 @@ pub fn meta_text(outcome: Outcome, took_ms: Option<u64>) -> Option<String> {
 /// The header rows' meta for the blocks whose prompts are on screen, except `skip` (the block
 /// whose tools show the meta themselves).
 pub fn metas_of(session: &Session, skip: Option<BlockId>) -> Vec<MetaView> {
-    let Some((inset, cell_h)) = session.gutter_geometry() else {
+    let Some(gutter) = session.gutter_geometry() else {
         return Vec::new();
     };
     session
         .block_marks()
         .into_iter()
         .filter(|mark| Some(mark.id) != skip)
-        .filter_map(|mark| meta_of(&mark, inset, cell_h))
+        .filter_map(|mark| meta_of(&mark, gutter))
         .collect()
 }
 
-fn meta_of(mark: &BlockMark, inset: f32, cell_h: f32) -> Option<MetaView> {
+/// On the header line, beside the folder and branch.
+fn meta_of(mark: &BlockMark, gutter: Gutter) -> Option<MetaView> {
     Some(MetaView {
         id: mark.id,
         text: meta_text(mark.outcome, mark.took_ms)?,
-        top: inset + mark.row as f32 * cell_h,
-        height: cell_h,
-        inset,
+        top: gutter.row_top(mark.header),
+        height: gutter.cell_h,
+        inset: gutter.side,
     })
 }
 

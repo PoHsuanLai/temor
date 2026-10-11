@@ -15,5 +15,5 @@ mod tests;
 mod tools_height;
 
 pub use notify::desktop_note;
-pub use query::{BlockMark, PromptStep};
+pub use query::{BlockMark, Gutter, PromptStep};
 pub use tools_height::ToolsHeight;

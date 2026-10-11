@@ -2,11 +2,12 @@
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::ExitCode;
-use temor_render::{Palette, RowBand, RowSpan, RowWeight, Tint};
+use temor_pane::text::{RowText, Wrap};
+use temor_render::{Cut, Palette, RowBand, RowSpan, RowWeight, Tint};
 use temor_vt::{Rgb, Row};
 
 use super::actions::output_name;
-use super::bands::{CardBlock, Pick, Stage, bands_of, command_rows};
+use super::bands::{CardBlock, Lead, Pick, Stage, bands_of, command_rows, leads_blank};
 use crate::view::card_colours::CardColours;
 
 #[test]
@@ -19,6 +20,7 @@ fn output_names_come_from_the_command_or_a_fallback() {
 fn block(first: i64, stage: Stage, pick: Pick) -> CardBlock {
     CardBlock {
         first,
+        lead: Lead::Header,
         stage,
         pick,
         command: None,
@@ -32,6 +34,8 @@ fn band(first: u16, last: u16, parts: [Option<Tint>; 3]) -> RowBand {
             first: Row(first),
             last: Row(last),
         },
+        top: Cut::Edge,
+        bottom: Cut::Edge,
         fill,
         stripe,
         rule,
@@ -122,6 +126,84 @@ fn blocks_become_bands_by_how_they_stand() {
 }
 
 #[test]
+fn a_card_on_a_blank_line_begins_and_ends_across_that_lines_middle() {
+    let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
+    let done = Stage::Ran(Outcome::Succeeded);
+    let failed = Stage::Ran(Outcome::Failed(ExitCode(1)));
+    let blank = |first, stage| CardBlock {
+        lead: Lead::Blank,
+        ..block(first, stage, Pick::Unselected)
+    };
+    let cut = |b: RowBand, top, bottom| RowBand { top, bottom, ..b };
+    let rule = [None, None, Some(c.rule)];
+    let red = [Some(c.failed_fill), Some(c.failed_stripe), Some(c.rule)];
+    let (edge, mid) = (Cut::Edge, Cut::Middle);
+    // (what, blocks, cursor row, viewport rows, bands)
+    let cases = [
+        (
+            "each card shares the blank line with the next; the first, with no rule, has no band",
+            vec![
+                block(0, done, Pick::Unselected),
+                blank(3, failed),
+                blank(6, done),
+            ],
+            8,
+            10,
+            vec![
+                cut(band(3, 6, red), mid, mid),
+                cut(band(6, 8, rule), mid, edge),
+            ],
+        ),
+        (
+            "a blank line on row 0 still shows its rule",
+            vec![blank(0, done)],
+            4,
+            10,
+            vec![cut(band(0, 4, rule), mid, edge)],
+        ),
+        (
+            "a card scrolled above the view is clipped at the edge",
+            vec![blank(-2, failed), blank(3, done)],
+            5,
+            10,
+            vec![
+                cut(
+                    band(0, 3, [Some(c.failed_fill), Some(c.failed_stripe), None]),
+                    edge,
+                    mid,
+                ),
+                cut(band(3, 5, rule), mid, edge),
+            ],
+        ),
+        (
+            "the next blank line below the view is clipped at the edge",
+            vec![blank(2, done), blank(10, done)],
+            12,
+            10,
+            vec![cut(band(2, 9, rule), mid, edge)],
+        ),
+    ];
+    for (what, blocks, end, rows, expected) in cases {
+        assert_eq!(bands_of(&blocks, end, rows, &c), expected, "{what}");
+    }
+}
+
+#[test]
+fn a_prompt_leads_with_a_blank_line_only_when_its_header_follows() {
+    // (what, first row's text, input mark's row, lead); the prompt's first row is 4.
+    for (what, text, input, lead) in [
+        ("temor's prompt", "      ", Some(6), Lead::Blank),
+        ("a one-line prompt", "~ $ ", Some(4), Lead::Header),
+        ("a prompt with text", "~/temor main", Some(5), Lead::Header),
+        ("blank, not marked yet", "", None, Lead::Header),
+        ("blank, typed on that row", "", Some(4), Lead::Header),
+    ] {
+        let row = RowText::plain(text, Wrap::Ends);
+        assert_eq!(leads_blank(&row, input, 4), lead, "{what}");
+    }
+}
+
+#[test]
 fn the_command_line_is_a_bold_band_clipped_to_the_view() {
     let c = CardColours::of(&Palette::default(), Rgb::new(10, 20, 30));
     let done = Stage::Ran(Outcome::Succeeded);
@@ -130,6 +212,8 @@ fn the_command_line_is_a_bold_band_clipped_to_the_view() {
             first: Row(first),
             last: Row(last),
         },
+        top: Cut::Edge,
+        bottom: Cut::Edge,
         fill: None,
         stripe: None,
         rule: None,

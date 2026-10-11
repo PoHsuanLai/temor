@@ -1262,7 +1262,8 @@ count redraws after the delayed search; tab rows set plain text (quire's Code to
 the bar runs the sidebar action through the desk.
 - [ ] Bottom-anchor the primary screen (the typing line pinned to the pane's bottom): needs one
   row offset in the render view and the fit, used by every grid-to-pixel map; spike with a window.
-- [ ] `gutter_geometry` returns one padding: the meta, tools and chips rows ignore the 8 px top inset.
+- [x] `gutter_geometry` returns one padding: the meta, tools and chips rows ignore the 8 px top inset. Done: it returns the side and top insets apart (`Gutter`), and the meta and tools sit on the header line.
+- [x] Card text sat low in its card (owner): the rule ran along the top of the blank line above the header. Done: a band can begin and end across a row's middle (`Cut`), so the rule crosses that blank line and each card has half a line above its header and below its last row. Warp keeps about 14 px; ours is half a row (about 9 px).
 - [ ] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold
   too (the band is whole rows; start it at the input mark's column).
 - [ ] The tab's "running 2m" doesn't tick (read when the sidebar draws).

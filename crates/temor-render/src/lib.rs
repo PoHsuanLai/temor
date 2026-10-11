@@ -62,7 +62,7 @@ mod cpu;
 #[cfg(feature = "gpu")]
 mod gpu;
 
-pub use bands::{Alpha, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
+pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};
 pub use error::RenderError;
 pub use font::{FontConfig, FontFamily, FontSet, FontSource};

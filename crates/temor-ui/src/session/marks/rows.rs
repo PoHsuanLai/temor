@@ -7,6 +7,7 @@ use temor_core::vocab::ids::BlockId;
 use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
 
 use super::super::Session;
+use super::bands::{Lead, lead_at};
 
 #[cfg(test)]
 mod tests;
@@ -166,8 +167,23 @@ impl Session {
             return None;
         }
         let span = self.span_of(id, &view)?;
-        let reach = self.gutter_geometry().map_or(1, |(_, cell_h)| {
-            (self.tools_height.get() / cell_h.max(1.0)).ceil() as u32
+        // On the header line, under the blank line temor's prompt leaves above it.
+        let anchors = self.blocks.anchors.get(&id)?;
+        let lead = match anchors.prompt {
+            Some(prompt) => self
+                .pane
+                .with_term(|term| lead_at(term, prompt, anchors.input)),
+            None => Lead::Header,
+        };
+        let span = match lead {
+            Lead::Blank if span.first < span.last => Span {
+                first: span.first + 1,
+                ..span
+            },
+            _ => span,
+        };
+        let reach = self.gutter_geometry().map_or(1, |gutter| {
+            (self.tools_height.get() / gutter.cell_h.max(1.0)).ceil() as u32
         });
         let row = tools_row(span, &view, reach.max(1))?;
         Some(ToolsSpot {

@@ -91,10 +91,11 @@ pub fn chips_for(session: &Session, facts: &Facts) -> Option<ChipsView> {
     if chips.is_empty() {
         return None;
     }
-    let (inset, cell_h) = session.gutter_geometry()?;
+    let gutter = session.gutter_geometry()?;
+    let (inset, cell_h) = (gutter.side, gutter.cell_h);
     // The prompt being typed at, when it is in view and not on the alternate screen.
     let row = session.live_prompt_row()?;
-    let top = inset + row as f32 * cell_h;
+    let top = gutter.row_top(row);
     // A command typed on this very row runs under the chips: leave out the ones it reaches.
     let (pane_width, cell_width) = session.grid_logical()?;
     let cursor_right = session

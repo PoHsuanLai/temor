@@ -25,7 +25,7 @@ pub fn hint_for(session: &Session, text: String) -> Option<HintView> {
     if !session.block_outcomes().is_empty() {
         return None;
     }
-    let (inset, _) = session.gutter_geometry()?;
+    let inset = session.gutter_geometry()?.side;
     let [_, y, _, height] = session.cursor_logical()?;
     Some(HintView {
         text,

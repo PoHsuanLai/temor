@@ -57,39 +57,65 @@ pub enum RowWeight {
     Bold,
 }
 
+/// Where a band begins in its first row (`top`) or stops in its last (`bottom`): at the row's
+/// edge, or across its middle, so a card can share a blank row with its neighbour and keep half a
+/// row of room above and below its text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Cut {
+    #[default]
+    Edge,
+    Middle,
+}
+
 /// One band over `rows`: `fill` blends over every background across the pane's full width,
-/// `stripe` is a solid bar at the pane's left edge, `rule` is a 1 device pixel line along the
-/// top edge of `rows.first`, `weight` can make the text of the rows bold.
+/// `stripe` is a solid bar at the pane's left edge, `rule` is a 1 device pixel line where the
+/// band begins in `rows.first`, `weight` can make the text of the rows bold. `top` and `bottom`
+/// say where in its end rows the fill, stripe and rule begin and stop; the weight is per row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RowBand {
     pub rows: RowSpan,
+    pub top: Cut,
+    pub bottom: Cut,
     pub fill: Option<Tint>,
     pub stripe: Option<Tint>,
     pub rule: Option<Tint>,
     pub weight: RowWeight,
+}
+
+/// The fill and stripe over one half of a row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub(crate) struct HalfLook {
+    pub fill: Option<Tint>,
+    pub stripe: Option<Tint>,
 }
 
 /// What one row looks like under the bands: the unit change tracking compares.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub(crate) struct RowLook {
-    pub fill: Option<Tint>,
-    pub stripe: Option<Tint>,
-    /// Set on the band's first row only.
-    pub rule: Option<Tint>,
+    pub upper: HalfLook,
+    pub lower: HalfLook,
+    /// Set on a band's first row only, at its edge or across its middle.
+    pub rule: Option<(Tint, Cut)>,
     pub weight: RowWeight,
 }
 
-/// The look of `row`; where bands overlap the later one wins, per part.
+/// The look of `row`; where bands overlap the later one wins, per part and per half.
 pub(crate) fn look_of(bands: &[RowBand], row: Row) -> RowLook {
     let mut look = RowLook::default();
     for b in bands.iter().filter(|b| b.rows.contains(row)) {
-        look.fill = b.fill.or(look.fill);
-        look.stripe = b.stripe.or(look.stripe);
+        let upper = !(b.rows.first == row && b.top == Cut::Middle);
+        let lower = !(b.rows.last == row && b.bottom == Cut::Middle);
+        for (covered, half) in [(upper, &mut look.upper), (lower, &mut look.lower)] {
+            if covered {
+                half.fill = b.fill.or(half.fill);
+                half.stripe = b.stripe.or(half.stripe);
+            }
+        }
         if b.weight == RowWeight::Bold {
             look.weight = RowWeight::Bold;
         }
-        if b.rows.first == row {
-            look.rule = b.rule.or(look.rule);
+        if let (true, Some(rule)) = (b.rows.first == row, b.rule) {
+            look.rule = Some((rule, b.top));
         }
     }
     look
@@ -115,21 +141,33 @@ fn solid(x: i32, y: i32, w: u32, h: u32, tint: Tint) -> Option<Quad> {
 }
 
 /// Adds the fill to `out.bg` (after the cell backgrounds, so it tints them) and the stripe and
-/// rule to `out.fg` (over the text).
+/// rule to `out.fg` (over the text). A row whose halves look alike is painted in one piece.
 pub(crate) fn push_quads(look: &RowLook, at: RowBox, out: &mut RowScene) {
-    if let Some(q) = look
-        .fill
-        .and_then(|t| solid(0, at.y, at.pane_width, at.height, t))
-    {
-        out.bg.push(q);
+    let half = at.height / 2;
+    let mid = at.y + half as i32;
+    let pieces = match look.upper == look.lower {
+        true => [Some((at.y, at.height, look.upper)), None],
+        false => [
+            Some((at.y, half, look.upper)),
+            Some((mid, at.height - half, look.lower)),
+        ],
+    };
+    for (y, h, part) in pieces.into_iter().flatten() {
+        if let Some(q) = part.fill.and_then(|t| solid(0, y, at.pane_width, h, t)) {
+            out.bg.push(q);
+        }
+        if let Some(q) = part.stripe.and_then(|t| solid(0, y, at.stripe_width, h, t)) {
+            out.fg.push(q);
+        }
     }
-    if let Some(q) = look
-        .stripe
-        .and_then(|t| solid(0, at.y, at.stripe_width, at.height, t))
-    {
-        out.fg.push(q);
-    }
-    if let Some(q) = look.rule.and_then(|t| solid(0, at.y, at.pane_width, 1, t)) {
+    let rule = look.rule.and_then(|(t, cut)| {
+        let y = match cut {
+            Cut::Edge => at.y,
+            Cut::Middle => mid,
+        };
+        solid(0, y, at.pane_width, 1, t)
+    });
+    if let Some(q) = rule {
         out.fg.push(q);
     }
 }

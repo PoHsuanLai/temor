@@ -86,7 +86,7 @@ mod bands {
     use temor_vt::{GridSize, Px, Rgb, Row};
 
     use super::{COLS, CpuRenderer, ROWS, fonts};
-    use crate::bands::{Alpha, RowBand, RowSpan, RowWeight, Tint};
+    use crate::bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, Tint};
     use crate::frame::{PaneFrame, TermColors};
     use crate::metrics::{Padding, PixelSize, Scale};
     use crate::palette::Palette;
@@ -167,6 +167,8 @@ mod bands {
                 first: Row(row),
                 last: Row(row),
             },
+            top: Cut::Edge,
+            bottom: Cut::Edge,
             fill,
             stripe,
             rule,
@@ -212,6 +214,30 @@ mod bands {
             for x in [0, 40, b.size.width.0 - 1] {
                 assert_eq!(b.px(&px, x, y)[2], blue, "blue at ({x}, {y})");
             }
+        }
+    }
+
+    #[test]
+    fn a_band_cut_across_middles_paints_and_rules_from_the_middle() {
+        let mut b = Bench::new();
+        let mut card = band(1, tint(200, 0, 0, 255), None, tint(0, 0, 255, 255));
+        card.rows.last = Row(3);
+        (card.top, card.bottom) = (Cut::Middle, Cut::Middle);
+        let (px, _) = b.render(&[card]);
+        let half = b.cell_h / 2;
+        let (rule, end) = (b.top(1) + half, b.top(3) + half);
+        // (y, red, blue): above the rule, the rule, below it, the middle row, the last row's
+        // upper half, its lower half.
+        for (y, red, blue) in [
+            (rule - 1, 0, 0),
+            (rule, 0, 255),
+            (rule + 1, 200, 0),
+            (b.top(2) + half, 200, 0),
+            (end - 1, 200, 0),
+            (end, 0, 0),
+        ] {
+            let at = b.px(&px, 40, y);
+            assert_eq!((at[0], at[2]), (red, blue), "red and blue at y {y}");
         }
     }
 

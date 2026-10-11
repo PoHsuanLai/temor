@@ -10,7 +10,7 @@ use super::block_header::HeaderView;
 use super::block_meta::{MetaView, metas_of};
 use super::block_tools::ToolsView;
 use super::status::{ProgressLine, progress_line};
-use crate::session::Session;
+use crate::session::{Gutter, Session};
 use ds::base::text::clip::clip_chars;
 use ds::prelude::Availability;
 
@@ -30,12 +30,7 @@ pub struct Chrome {
 }
 
 /// The tools for the first of `hovered` and the selected block that has a place on screen.
-fn tools_of(
-    session: &Session,
-    hovered: Option<BlockId>,
-    pad: f32,
-    cell_h: f32,
-) -> Option<ToolsView> {
+fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: Gutter) -> Option<ToolsView> {
     [hovered, session.selected_block()]
         .into_iter()
         .flatten()
@@ -44,9 +39,9 @@ fn tools_of(
             Some(ToolsView {
                 id,
                 height: session.tools_height(),
-                top: pad + spot.row as f32 * cell_h,
-                row: cell_h,
-                inset: pad,
+                top: gutter.row_top(spot.row),
+                row: gutter.cell_h,
+                inset: gutter.side,
                 meta: session.block_meta(id),
                 output: match session.block_finished(id) {
                     true => Availability::Enabled,
@@ -70,15 +65,19 @@ fn tools_of(
 /// clears when the pointer leaves); `_hovered`, the window's signal of it, only makes the window
 /// draw again when it changes.
 pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
-    let (pad, cell_h) = session.gutter_geometry().unwrap_or((0.0, 0.0));
+    let gutter = session.gutter_geometry().unwrap_or(Gutter {
+        side: 0.0,
+        top: 0.0,
+        cell_h: 0.0,
+    });
     let columns = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
     let header = session.sticky_header().map(|header| HeaderView {
         id: header.id,
         command: clip_chars(&header.command, columns),
-        inset: pad,
-        height: pad + cell_h,
+        inset: gutter.side,
+        height: gutter.row_top(1),
     });
-    let tools = tools_of(session, session.hovered_block(), pad, cell_h);
+    let tools = tools_of(session, session.hovered_block(), gutter);
     let metas = metas_of(session, tools.as_ref().map(|tools| tools.id));
     Chrome {
         header,

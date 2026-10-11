@@ -8,6 +8,7 @@ use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
 
 use super::super::Session;
 use super::super::model::PADDING_LOGICAL;
+use super::bands::{Lead, lead_at};
 use crate::error::UiError;
 
 /// Which way a jump between prompts goes.
@@ -25,9 +26,28 @@ pub struct BlockMark {
     pub id: BlockId,
     /// The prompt's row in the viewport.
     pub row: u32,
+    /// The viewport row of the prompt's header line: the row under the prompt's first row when
+    /// that row is the blank line temor's prompt leaves above it, else the prompt's row.
+    pub header: u32,
     pub outcome: Outcome,
     /// How long it ran; `None` while it runs.
     pub took_ms: Option<u64>,
+}
+
+/// Where the grid's rows sit in the pane, in logical pixels: the inset on the left and right,
+/// the inset above the first row, and a row's height.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gutter {
+    pub side: f32,
+    pub top: f32,
+    pub cell_h: f32,
+}
+
+impl Gutter {
+    /// The top of viewport row `row`.
+    pub fn row_top(&self, row: u32) -> f32 {
+        self.top + row as f32 * self.cell_h
+    }
 }
 
 impl Session {
@@ -64,11 +84,15 @@ impl Session {
                 .store
                 .iter()
                 .filter_map(|block| {
-                    let prompt = self.blocks.anchors.get(&block.id)?.prompt?;
-                    let at = term.anchor_point(prompt, PointSpace::Viewport)?;
+                    let anchors = self.blocks.anchors.get(&block.id)?;
+                    let at = term.anchor_point(anchors.prompt?, PointSpace::Viewport)?;
                     Some(BlockMark {
                         id: block.id,
                         row: at.row,
+                        header: match lead_at(term, anchors.prompt?, anchors.input) {
+                            Lead::Blank => at.row + 1,
+                            Lead::Header => at.row,
+                        },
                         outcome: block.outcome(),
                         took_ms: block.elapsed_ms(),
                     })
@@ -154,11 +178,15 @@ impl Session {
         self.block_at_row(row)
     }
 
-    /// The pane's logical padding and cell height, for placing things beside grid rows.
-    pub fn gutter_geometry(&self) -> Option<(f32, f32)> {
+    /// Where the grid's rows sit in the pane, for placing things beside them.
+    pub fn gutter_geometry(&self) -> Option<Gutter> {
         let fit = self.fit?;
         let factor = self.scale.factor();
-        Some((PADDING_LOGICAL, fit.cell.height.0 as f32 / factor))
+        Some(Gutter {
+            side: PADDING_LOGICAL,
+            top: fit.padding.top.0 as f32 / factor,
+            cell_h: fit.cell.height.0 as f32 / factor,
+        })
     }
 
     /// A press on the gutter selects the block at that row, its output included. Returns whether
