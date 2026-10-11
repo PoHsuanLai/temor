@@ -11,7 +11,7 @@ use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
 use ds::components::content::icon_source::IconSource;
 use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::prelude::*;
-use ds::style::tokens::control_size::ControlSize;
+use ds::style::tokens::control_size::{ControlSize, SidebarSize};
 use temor_core::vocab::ids::TabId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 use temor_pane::keys::Action;
@@ -61,6 +61,8 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                 sections,
                 cursor,
                 onselect: select,
+                // The sidebar ladder's 36, with room above and below a two-line row.
+                size: SidebarSize::Large,
                 fill: SidebarFill::Clear,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
                 // Downloads sit above the Space row: the sidebar is too narrow for both in one.
@@ -73,7 +75,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                                 Button {
                                     bezel: Bezel::Toolbar,
                                     image: ImagePosition::Only,
-                                    size: ControlSize::Small,
+                                    size: ControlSize::Regular,
                                     icon: Some(IconSource::Glyph(Icon::Plus)),
                                     label: "New tab".to_owned(),
                                     title: Some(desk.hub.tooltip("New tab", Action::NewTab)),

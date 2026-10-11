@@ -1,4 +1,4 @@
-//! What a pane shows under its terminal (PLAN §6): the host banners, the offer, the status line,
+//! What a pane shows under its terminal (PLAN §6): the host banners, the offer, the progress edge,
 //! the paste question and the "shell has ended" banner.
 
 use std::cell::RefCell;
@@ -15,7 +15,7 @@ use super::handlers::{paste_cancel, paste_confirm, restart_pane};
 use super::host_banners::HostBanners;
 use super::offer::OfferBar;
 use super::slot::Slot;
-use super::status::StatusLine;
+use super::status::PaneEdge;
 use crate::hub::Desk;
 
 /// Whether the pane's shell is still there.
@@ -38,13 +38,7 @@ pub fn pane_footer(
     rsx! {
         HostBanners { pane, desk: desk.clone() }
         OfferBar { pane, desk: desk.clone() }
-        StatusLine {
-            cwd: chrome.cwd.clone(),
-            title: chrome.title.clone(),
-            progress: chrome.progress,
-            bell: chrome.bell,
-            link: chrome.link.clone(),
-        }
+        PaneEdge { progress: chrome.progress, bell: chrome.bell }
         if let Some(reason) = pending {
             PasteConfirm {
                 reason,

@@ -1,6 +1,7 @@
-//! A tab's split drawn small (PLAN §7): one tile per pane, placed where the pane is in the tab.
-//! A tile names its pane in a tooltip, focuses it when pressed, and can be dragged out of the
-//! sidebar to tear the pane off into a tab of its own.
+//! A tab's split drawn small (PLAN §7): a trailing glyph of one outlined tile per pane, placed
+//! where the pane is in the tab. It never changes the row's height. A tile names its pane in a
+//! tooltip, focuses it when pressed, and can be dragged out of the sidebar to tear the pane off
+//! into a tab of its own.
 
 use dioxus::prelude::*;
 use ds::components::overlays::tooltip::Tooltip;

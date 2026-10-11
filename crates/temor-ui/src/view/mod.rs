@@ -19,6 +19,7 @@ pub mod host_banners;
 pub mod host_words;
 pub mod ime;
 pub mod launch;
+pub mod link_tip;
 pub mod miniature;
 pub mod offer;
 pub mod palette;

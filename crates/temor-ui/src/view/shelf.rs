@@ -36,14 +36,17 @@ pub fn ShelfFoot(desk: Desk) -> Element {
                 shown: shown(),
                 on_toggle: move |next: Shown| shown.set(next),
                 label: Some(label),
-                for upload in uploads.iter().cloned() {
-                    UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
-                }
-                if view.rows.is_empty() && uploads.is_empty() {
-                    Label { text: view.empty, style: LabelStyle::Caption }
-                }
-                for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
-                    DownloadRow { key: "{id}", row, desk: desk.clone() }
+                // Closed, the disclosure lays out nothing: its hint once overlapped the foot.
+                if matches!(shown(), Shown::Visible) {
+                    for upload in uploads.iter().cloned() {
+                        UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
+                    }
+                    if view.rows.is_empty() && uploads.is_empty() {
+                        Label { text: view.empty, style: LabelStyle::Footnote }
+                    }
+                    for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
+                        DownloadRow { key: "{id}", row, desk: desk.clone() }
+                    }
                 }
             }
         }
