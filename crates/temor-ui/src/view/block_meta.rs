@@ -40,17 +40,51 @@ pub fn meta_text(outcome: Outcome, took_ms: Option<u64>) -> Option<String> {
 }
 
 /// The header rows' meta for the blocks whose prompts are on screen, except `skip` (the block
-/// whose tools show the meta themselves).
+/// whose tools show the meta themselves) and those with no room right of their header's text.
 pub fn metas_of(session: &Session, skip: Option<BlockId>) -> Vec<MetaView> {
     let Some(gutter) = session.gutter_geometry() else {
         return Vec::new();
     };
+    let row = header_row(session, gutter);
     session
         .block_marks()
         .into_iter()
         .filter(|mark| Some(mark.id) != skip)
-        .filter_map(|mark| meta_of(&mark, gutter))
+        .filter_map(|mark| {
+            meta_of(&mark, gutter)
+                .filter(|meta| row.is_some_and(|row| row.fits(mark.header_cols, &meta.text)))
+        })
         .collect()
+}
+
+/// The room on a header row, once the pane has a size.
+pub fn header_row(session: &Session, gutter: Gutter) -> Option<HeaderRow> {
+    session
+        .grid_logical()
+        .map(|(pane_width, cell_width)| HeaderRow {
+            pane_width,
+            cell_width,
+            inset: gutter.side,
+        })
+}
+
+/// A header row's room, in logical pixels.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HeaderRow {
+    pub pane_width: f32,
+    pub cell_width: f32,
+    /// The pane's padding on each side.
+    pub inset: f32,
+}
+
+impl HeaderRow {
+    /// Whether `words`, set at the row's right end, clear a header text `cols` columns long with
+    /// a column to spare. Each character is counted a terminal cell wide: the meta's type is
+    /// smaller, so what fits here fits on screen.
+    pub fn fits(self, cols: u32, words: &str) -> bool {
+        let used = cols as f32 + 1.0 + words.chars().count() as f32;
+        self.inset + used * self.cell_width <= self.pane_width - self.inset
+    }
 }
 
 /// On the header line, beside the folder and branch.
@@ -95,6 +129,26 @@ pub fn BlockMetas(metas: Vec<MetaView>) -> Element {
 mod tests {
     use super::*;
     use temor_core::vocab::ids::ExitCode;
+
+    #[test]
+    fn the_meta_shows_only_where_it_clears_the_header_text() {
+        // An 80-column pane: 8 px cells, 8 px insets, 656 px wide.
+        let row = HeaderRow {
+            pane_width: 656.0,
+            cell_width: 8.0,
+            inset: 8.0,
+        };
+        // (what, header columns, words, fits)
+        for (what, cols, words, fits) in [
+            ("a short folder", 12, "exit 1 \u{b7} 4 ms", true),
+            ("exactly to the edge", 66, "exit 1 · 4 ms", true),
+            ("one column too long", 67, "exit 1 · 4 ms", false),
+            ("a folder across the row", 80, "4 ms", false),
+            ("an empty header", 0, "4 ms", true),
+        ] {
+            assert_eq!(row.fits(cols, words), fits, "{what}");
+        }
+    }
 
     #[test]
     fn the_meta_says_how_it_ended_and_nothing_while_it_runs() {

@@ -1274,11 +1274,18 @@ the bar runs the sidebar action through the desk.
 - [x] Card text sat low in its card (owner): the rule ran along the top of the blank line above the header. Done: a band can begin and end across a row's middle (`Cut`), so the rule crosses that blank line and each card has half a line above its header and below its last row. Warp keeps about 14 px; ours is half a row (about 9 px).
 - [ ] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold
   too (the band is whole rows; start it at the input mark's column).
-- [ ] The tab's "running 2m" doesn't tick (read when the sidebar draws).
+- [x] The tab's "running 2m" doesn't tick (read when the sidebar draws).
+  (done: `hub/running_tick.rs` reads each tab's words every second and redraws when one changed;
+  `sidebar::a_running_tab_counts_up_with_no_output`)
 - [ ] DropTab doesn't check the 40-column minimum.
-- [ ] In a narrow pane the hover tools cover the header's folder text; the find bar can cover a
+- [x] In a narrow pane the hover tools cover the header's folder text; the find bar can cover a
   card's meta.
-- [ ] `Chrome.cwd`, `title` and `link` are unread; remove.
+  (done: a card's meta shows only where it clears its header line's text, counting each
+  character a terminal cell wide (`HeaderRow::fits`), and the tools leave their meta out by the
+  same rule; while the find bar is open, metas and tools on the rows under it are hidden.
+  `cards::a_card_meta_steps_aside_…`, `cards::the_find_bar_hides_…`. The tools' buttons still
+  show over a long header when hovered: they were asked for.)
+- [x] `Chrome.cwd`, `title` and `link` are unread; remove. (done)
 - [ ] The more menu unmounts with the hover tools if the pointer leaves the pane.
 - [x] The selected card fill is still the accent at 12%; neutral once quire's selection lands.
   Done: the foreground at 8%.

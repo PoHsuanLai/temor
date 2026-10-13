@@ -152,7 +152,7 @@ impl Hub {
     }
 
     /// The tab's name and what it is doing (see `tab_name`).
-    fn tab_name_and_state(
+    pub(super) fn tab_name_and_state(
         &self,
         pane: PaneId,
         made_as: &temor_core::vocab::text::TabTitle,

@@ -119,3 +119,40 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
         "{heights:?}"
     );
 }
+
+#[test]
+fn a_running_tab_counts_up_with_no_output() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-running-ticks", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(ds::prelude::Point {
+        x: ds::prelude::Px(700.0),
+        y: ds::prelude::Px(300.0),
+    }));
+    for c in "sleep 30".chars() {
+        let key = match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        };
+        h.send(Input::key(key));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    let start = std::time::Instant::now();
+    // `sleep` prints nothing: only the timer can move the words from 0s or 1s to 3s.
+    while !h.html().contains("running 3s") {
+        h.advance(Duration::from_millis(50));
+        assert!(
+            start.elapsed() < Duration::from_secs(20),
+            "the tab's words did not count up: {}",
+            h.html()
+                .rsplit("running ")
+                .next()
+                .map(|rest| rest.chars().take(4).collect::<String>())
+                .unwrap_or_default()
+        );
+    }
+    h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
+}

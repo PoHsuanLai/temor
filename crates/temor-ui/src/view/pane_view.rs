@@ -49,6 +49,9 @@ use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
 
+/// How far the find bar sits below the pane's top (`.temor-find`'s `top`, `--s-4`).
+const FIND_TOP: f32 = 4.0;
+
 /// Puts the pane on screen: it paints into `texture` from now on.
 fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {
     let mut s = slot.borrow_mut();
@@ -102,6 +105,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let ui = desk.ui;
     let preedit = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
+    let find_height = use_signal(|| 0.0_f32);
     // The ⌘-hover preview of a file path (PLAN §10).
     let peek = use_peek(pane, Rc::clone(&slot), desk.clone(), rect, signals);
 
@@ -208,13 +212,25 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| s.clipboard_ask().cloned());
+    // The find bar stands over the pane's top rows: the meta and tools there would lie under it.
+    let under_find = |top: f32| find.is_some() && top < FIND_TOP + find_height();
+    let metas: Vec<_> = chrome
+        .metas
+        .iter()
+        .filter(|meta| !under_find(meta.top))
+        .cloned()
+        .collect();
     let facts = desk.hub.facts_of(pane);
     let on_host = desk.hub.is_host_pane(pane);
     // "Edit here" is only for a pane on another computer.
-    let tools = chrome.tools.clone().map(|tools| ToolsView {
-        edit: on_host.then_some(Availability::Enabled),
-        ..tools
-    });
+    let tools = chrome
+        .tools
+        .clone()
+        .filter(|tools| !under_find(tools.top))
+        .map(|tools| ToolsView {
+            edit: on_host.then_some(Availability::Enabled),
+            ..tools
+        });
     let chips = slot
         .borrow()
         .session
@@ -277,7 +293,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
-                BlockMetas { metas: chrome.metas.clone() }
+                BlockMetas { metas }
                 if let Some(view) = hint {
                     FirstHint { view }
                 }
@@ -304,6 +320,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     on_query:find_query(Rc::clone(&slot), ui, started),
                     on_step:find_step(Rc::clone(&slot), ui),
                     on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
+                    on_height: move |height: f32| {
+                        let mut find_height = find_height;
+                        if *find_height.peek() != height {
+                            find_height.set(height);
+                        }
+                    },
                 }
             }
             if let Some(ask) = clip_ask {

@@ -29,6 +29,9 @@ pub struct BlockMark {
     /// The viewport row of the prompt's header line: the row under the prompt's first row when
     /// that row is the blank line temor's prompt leaves above it, else the prompt's row.
     pub header: u32,
+    /// How many columns the header line's text takes, up to its last non-blank cell: what is
+    /// drawn beside it on the right must start after that.
+    pub header_cols: u32,
     pub outcome: Outcome,
     /// How long it ran; `None` while it runs.
     pub took_ms: Option<u64>,
@@ -86,13 +89,19 @@ impl Session {
                 .filter_map(|block| {
                     let anchors = self.blocks.anchors.get(&block.id)?;
                     let at = term.anchor_point(anchors.prompt?, PointSpace::Viewport)?;
+                    let below = match lead_at(term, anchors.prompt?, anchors.input) {
+                        Lead::Blank => 1,
+                        Lead::Header => 0,
+                    };
+                    let header_cols = term
+                        .anchor_point(anchors.prompt?, PointSpace::Screen)
+                        .and_then(|first| term.row_text(first.row + below).ok())
+                        .map_or(0, |text| used_columns(&text.cells));
                     Some(BlockMark {
                         id: block.id,
                         row: at.row,
-                        header: match lead_at(term, anchors.prompt?, anchors.input) {
-                            Lead::Blank => at.row + 1,
-                            Lead::Header => at.row,
-                        },
+                        header: at.row + below,
+                        header_cols,
                         outcome: block.outcome(),
                         took_ms: block.elapsed_ms(),
                     })
@@ -232,4 +241,12 @@ impl Session {
         self.selection = Some(selection);
         self.mirror_selection()
     }
+}
+
+/// The columns up to and including the last cell that holds more than blank space.
+fn used_columns(cells: &[temor_pane::text::RowCell]) -> u32 {
+    cells
+        .iter()
+        .rposition(|cell| !cell.text.trim().is_empty())
+        .map_or(0, |last| u32::try_from(last + 1).unwrap_or(u32::MAX))
 }

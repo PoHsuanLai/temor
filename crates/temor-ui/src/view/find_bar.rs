@@ -6,6 +6,7 @@
 use dioxus::prelude::*;
 use ds::components::content::icon_source::IconSource;
 use ds::components::controls::button_model::{Bezel, ImagePosition};
+use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 
@@ -25,7 +26,15 @@ pub fn FindBar(
     on_query: EventHandler<String>,
     on_step: EventHandler<StepDirection>,
     on_close: EventHandler<()>,
+    /// The bar's height once laid out: what lies under it on the pane's top rows is hidden.
+    on_height: EventHandler<f32>,
 ) -> Element {
+    let probe = use_rect();
+    use_effect(move || {
+        if let Some(rect) = probe.rect() {
+            on_height.call(rect.size.height.0);
+        }
+    });
     let status = match position {
         Some((index, total)) => format!("{index} of {total}"),
         None if query.is_empty() => String::new(),
@@ -33,6 +42,7 @@ pub fn FindBar(
     };
     rsx! {
         div { class: "temor-find",
+            onmounted: move |event: MountedEvent| probe.on_mounted(event),
             div { class: "temor-find-field",
                 TextField {
                     label: "Find in terminal".to_owned(),

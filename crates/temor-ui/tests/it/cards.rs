@@ -160,3 +160,74 @@ fn neither_the_header_nor_the_toolbar_shows_on_the_alternate_screen() {
         "the toolbar stays on the alternate screen"
     );
 }
+
+/// The tops and bottoms of the elements matching `selector`, in window pixels.
+fn spans(h: &Harness, selector: &str) -> Vec<(f64, f64)> {
+    use ds_harness::DocQuery;
+    h.with_doc(|doc| {
+        doc.query_selector_all(selector)
+            .map(|found| found.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|id| doc.get_client_bounding_rect(id))
+            .map(|r| (r.y, r.y + r.height))
+            .collect()
+    })
+}
+
+#[test]
+fn a_card_meta_steps_aside_where_the_header_text_reaches_it() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-meta-room", &probe);
+    run_to_end(&mut h, &probe, "echo short; (exit 3)", "short");
+    // A command longer than the row: its header line runs to the right edge.
+    let long = format!(": {}; echo long; (exit 4)", "x".repeat(140));
+    run_to_end(&mut h, &probe, &long, "long");
+    let html = h.html();
+    assert!(
+        html.contains("exit 3 \u{b7} "),
+        "the short card's meta:\n{html}"
+    );
+    assert!(
+        !html.contains("exit 4 \u{b7} "),
+        "the long card's meta lies over its command"
+    );
+}
+
+#[test]
+fn the_find_bar_hides_the_card_meta_it_would_cover() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-meta-find", &probe);
+    run_to_end(&mut h, &probe, "echo one; (exit 3)", "one");
+    run_to_end(&mut h, &probe, "echo two; (exit 4)", "two");
+    let top_meta = |h: &Harness| spans(h, ".temor-card-meta").first().map(|s| s.0);
+    let first = top_meta(&h).expect("the first card's meta");
+    h.send(Input::chord(
+        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
+        ShortcutKey::Char('f'),
+    ));
+    h.advance(Duration::from_millis(400));
+    let bar = spans(&h, ".temor-find");
+    assert_eq!(bar.len(), 1, "the find bar opened");
+    let bottom = bar[0].1;
+    assert!(
+        first < bottom,
+        "the first card's meta starts under the bar: {first} vs {bottom}"
+    );
+    for (top, _) in spans(&h, ".temor-card-meta") {
+        assert!(
+            top >= bottom,
+            "a meta at {top} lies under the find bar (to {bottom})"
+        );
+    }
+    assert!(
+        h.html().contains("exit 4 \u{b7} "),
+        "the meta below the bar stays"
+    );
+}
