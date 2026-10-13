@@ -10,7 +10,7 @@ use crate::font::testing::fonts;
 use crate::frame::{CellDraw, CellText, TermColors};
 use crate::metrics::{CellPos, Scale};
 use crate::palette::Palette;
-use crate::renderer::{PaneFocus, SelectionOverlay, SelectionShape};
+use crate::renderer::{BlinkPhase, PaneFocus, SelectionOverlay, SelectionShape};
 
 fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
     CellDraw {
@@ -152,9 +152,62 @@ fn a_cursor_on_a_wide_blank_cell_spans_both_columns() {
     let cursor = resolve_cursor(
         Some(view),
         |_| Some(vec![(Col(2), 1), (Col(3), 2)]),
-        PaneFocus::Focused,
+        (PaneFocus::Focused, BlinkPhase::On),
         &Palette::default(),
         &term_colors(),
     );
     assert_eq!(cursor.map(|c| c.span), Some(2));
+}
+
+#[test]
+fn a_blinking_cursor_is_left_out_only_in_its_off_half_and_only_when_focused() {
+    use temor_vt::{CursorBlink, CursorCell, CursorShape, CursorView};
+    // (what, the cursor's blink, focus, blink half, drawn)
+    let rows = [
+        (
+            "blinking, on half",
+            CursorBlink::Blinking,
+            PaneFocus::Focused,
+            BlinkPhase::On,
+            true,
+        ),
+        (
+            "blinking, off half",
+            CursorBlink::Blinking,
+            PaneFocus::Focused,
+            BlinkPhase::Off,
+            false,
+        ),
+        (
+            "steady, off half",
+            CursorBlink::Steady,
+            PaneFocus::Focused,
+            BlinkPhase::Off,
+            true,
+        ),
+        (
+            "unfocused never blinks",
+            CursorBlink::Blinking,
+            PaneFocus::Unfocused,
+            BlinkPhase::Off,
+            true,
+        ),
+    ];
+    for (what, blink, focus, phase, drawn) in rows {
+        let view = CursorView {
+            col: Col(0),
+            row: Row(0),
+            shape: CursorShape::Block,
+            blink,
+            cell: CursorCell::Normal,
+        };
+        let cursor = resolve_cursor(
+            Some(view),
+            |_| Some(vec![(Col(0), 1)]),
+            (focus, phase),
+            &Palette::default(),
+            &term_colors(),
+        );
+        assert_eq!(cursor.is_some(), drawn, "{what}");
+    }
 }

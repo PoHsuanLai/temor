@@ -10,6 +10,7 @@ mod bar_action;
 mod bar_run;
 #[cfg(test)]
 mod bar_tests;
+mod blink_tick;
 mod desk;
 mod desktop;
 mod desktop_io;
@@ -83,6 +84,7 @@ pub use agents::{
     WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
 };
 pub use bar::{BarData, WindowAction};
+pub use blink_tick::spawn_blink_loop;
 pub use desk::Desk;
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;

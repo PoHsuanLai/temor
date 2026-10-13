@@ -15,6 +15,15 @@ pub enum PaneFocus {
     Unfocused,
 }
 
+/// Which half of its blink the cursor is in. Only a blinking cursor in a focused pane is left
+/// out in the `Off` half; any other cursor is drawn in both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum BlinkPhase {
+    #[default]
+    On,
+    Off,
+}
+
 /// How a selection covers cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SelectionShape {
@@ -61,6 +70,8 @@ pub struct PaneView<'a> {
     pub padding: Padding,
     pub palette: &'a Palette,
     pub focus: PaneFocus,
+    /// The cursor's blink half now.
+    pub blink: BlinkPhase,
     pub selection: Option<SelectionOverlay>,
     /// Fills, stripes and rules over runs of viewport rows (command cards); usually empty.
     pub bands: &'a [RowBand],

@@ -61,6 +61,7 @@ pub fn open_fed_session(
         clipboard: Box::new(DesktopClipboard),
         opener: default_opener(),
         notify_after: settings.notify_after,
+        cursor_blink: settings.cursor_blink,
         // TODO(quire-desktop): the desktop's notification service (quire v0.2.30 has none).
         notifier: Box::new(NoopNotifier),
         clock: Box::new(SystemClock::new()),

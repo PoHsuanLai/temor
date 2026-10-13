@@ -127,7 +127,6 @@ impl PaneFrame {
         }
     }
 
-    /// The grid the frame holds.
     /// The cursor's cell as of the last capture, when the cursor is shown.
     pub fn cursor_cell(&self) -> Option<crate::metrics::CellPos> {
         self.cursor
@@ -135,6 +134,14 @@ impl PaneFrame {
             .map(|c| crate::metrics::CellPos::new(c.col.0, c.row.0))
     }
 
+    /// Whether the cursor is shown and the terminal asks for it to blink.
+    pub fn cursor_blinks(&self) -> bool {
+        self.cursor
+            .as_ref()
+            .is_some_and(|c| c.blink == temor_vt::CursorBlink::Blinking)
+    }
+
+    /// The grid the frame holds.
     pub fn size(&self) -> GridSize {
         self.size
     }

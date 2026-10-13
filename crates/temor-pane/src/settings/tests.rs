@@ -48,6 +48,22 @@ fn settings_values_have_limits() {
 }
 
 #[test]
+fn cursor_blink_reads_on_and_off() {
+    use super::CursorBlinking;
+    // (line, what it gives, refused)
+    for (line, want, refused) in [
+        ("", CursorBlinking::On, false),
+        ("cursor.blink = off", CursorBlinking::Off, false),
+        ("cursor.blink = on", CursorBlinking::On, false),
+        ("cursor.blink = yes", CursorBlinking::On, true),
+    ] {
+        let parsed = parse_settings(line);
+        assert_eq!(parsed.settings.cursor_blink, want, "{line}");
+        assert_eq!(parsed.issues.len() == 1, refused, "{line}");
+    }
+}
+
+#[test]
 fn notify_after_reads_seconds_and_off() {
     assert_eq!(
         TerminalSettings::default().notify_after,

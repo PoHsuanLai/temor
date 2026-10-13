@@ -77,5 +77,6 @@ pub use metrics::{
 };
 pub use palette::Palette;
 pub use renderer::{
-    DamageRect, PaneFocus, PaneView, RenderStats, Renderer, SelectionOverlay, SelectionShape,
+    BlinkPhase, DamageRect, PaneFocus, PaneView, RenderStats, Renderer, SelectionOverlay,
+    SelectionShape,
 };

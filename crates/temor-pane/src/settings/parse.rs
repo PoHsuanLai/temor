@@ -2,8 +2,8 @@
 //! line is reported and skipped, so one typo never costs the rest of the file (PLAN §14).
 
 use super::value::{
-    CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice, cursor,
-    font_family, font_points, notify_after, offer_command, scrollback, shell,
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice,
+    cursor, cursor_blink, font_family, font_points, notify_after, offer_command, scrollback, shell,
 };
 use crate::error::SettingsError;
 use crate::keys::Action;
@@ -16,6 +16,8 @@ pub struct TerminalSettings {
     pub font_size: FontPoints,
     pub scrollback: ScrollbackLines,
     pub cursor: CursorStyle,
+    /// Whether the cursor blinks (`cursor.blink = on | off`).
+    pub cursor_blink: CursorBlinking,
     pub shell: ShellChoice,
     /// The person's key changes, in chordkit's line form (`temor.split-right = Primary+Alt+N`).
     /// The keymap itself is built at the app's edge from the desktop's conventions and these.
@@ -36,6 +38,7 @@ impl Default for TerminalSettings {
             font_size: FontPoints::DEFAULT,
             scrollback: ScrollbackLines::DEFAULT,
             cursor: CursorStyle::default(),
+            cursor_blink: CursorBlinking::default(),
             shell: ShellChoice::default(),
             keys: Overrides::default(),
             notify_after: NotifyAfter::DEFAULT,
@@ -109,6 +112,7 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), Setting
         "font.size" => settings.font_size = font_points(key, value)?,
         "scrollback.lines" => settings.scrollback = scrollback(key, value)?,
         "cursor.style" => settings.cursor = cursor(key, value)?,
+        "cursor.blink" => settings.cursor_blink = cursor_blink(key, value)?,
         "shell.program" => settings.shell = shell(key, value)?,
         "notify.after" => settings.notify_after = notify_after(key, value)?,
         "offer.add" => settings.offer_add.push(offer_command(key, value)?),

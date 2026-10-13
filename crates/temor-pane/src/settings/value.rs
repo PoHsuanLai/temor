@@ -63,6 +63,15 @@ pub enum CursorStyle {
     Underline,
 }
 
+/// Whether the cursor blinks. `On`: it blinks unless the program asks for a steady one (DECSCUSR,
+/// DEC mode 12), as Ghostty's does. `Off`: it never blinks, whatever the program asks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum CursorBlinking {
+    #[default]
+    On,
+    Off,
+}
+
 /// Which font the grid uses.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum FontChoice {
@@ -104,6 +113,15 @@ pub fn scrollback(key: &str, value: &str) -> Result<ScrollbackLines, SettingsErr
 /// Reads a cursor style: block, bar or underline.
 pub fn cursor(key: &str, value: &str) -> Result<CursorStyle, SettingsError> {
     CursorStyle::parse(value).ok_or_else(|| bad(key, value))
+}
+
+/// Reads whether the cursor blinks: on or off.
+pub fn cursor_blink(key: &str, value: &str) -> Result<CursorBlinking, SettingsError> {
+    match value.trim() {
+        "on" => Ok(CursorBlinking::On),
+        "off" => Ok(CursorBlinking::Off),
+        _ => Err(bad(key, value)),
+    }
 }
 
 /// Reads how long a command must run before its finish is notified: a number of seconds, where

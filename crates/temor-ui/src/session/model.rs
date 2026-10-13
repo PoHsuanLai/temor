@@ -100,6 +100,7 @@ pub struct Session {
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
     pub(super) focus: Focus,
+    pub(super) blink: super::blink::Blink,
     pub(super) notify_after: NotifyAfter,
     pub(super) limiter: Limiter,
     pub(super) notifier: Box<dyn Notifier>,
@@ -156,6 +157,8 @@ pub struct SessionParts {
     pub opener: Box<dyn Opener>,
     /// When a finished command is worth a notice.
     pub notify_after: NotifyAfter,
+    /// Whether the cursor blinks.
+    pub cursor_blink: temor_pane::settings::CursorBlinking,
     pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     /// Where "Save output" places files (the downloads shelf).
@@ -169,6 +172,8 @@ pub struct SessionKit {
     pub opener: Box<dyn Opener>,
     /// When a finished command is worth a notice.
     pub notify_after: NotifyAfter,
+    /// Whether the cursor blinks.
+    pub cursor_blink: temor_pane::settings::CursorBlinking,
     pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     /// Where "Save output" places files (the downloads shelf).

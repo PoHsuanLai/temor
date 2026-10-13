@@ -62,6 +62,27 @@ impl Terminal {
         )
     }
 
+    /// Whether the cursor a plain cursor-style reset (`CSI 0 q`) restores blinks; `None`
+    /// restores libghostty's built-in steady cursor. Programs can still change it (DECSCUSR,
+    /// DEC mode 12).
+    pub fn set_default_cursor_blink(&mut self, blink: Option<bool>) -> Result<(), VtError> {
+        let ptr = blink.as_ref().map_or(std::ptr::null(), |v| {
+            std::ptr::from_ref(v).cast::<std::ffi::c_void>()
+        });
+        // SAFETY: DEFAULT_CURSOR_BLINK takes a `bool*` (or null to reset), read during the
+        // call; `blink` outlives it.
+        check(
+            unsafe {
+                sys::ghostty_terminal_set(
+                    self.raw(),
+                    sys::TerminalOption::DEFAULT_CURSOR_BLINK,
+                    ptr,
+                )
+            },
+            "cursor blink",
+        )
+    }
+
     /// The default 256-colour palette; OSC 4 overrides single entries. `None` restores
     /// libghostty's built-in palette.
     pub fn set_default_palette(&mut self, palette: Option<&[Rgb; 256]>) -> Result<(), VtError> {

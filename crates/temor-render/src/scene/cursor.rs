@@ -1,10 +1,10 @@
 //! Where and how the cursor is drawn this frame.
 
-use temor_vt::{Col, CursorCell, CursorShape, CursorView, Rgb, Row};
+use temor_vt::{Col, CursorBlink, CursorCell, CursorShape, CursorView, Rgb, Row};
 
 use crate::frame::{CellDraw, TermColors};
 use crate::palette::Palette;
-use crate::renderer::PaneFocus;
+use crate::renderer::{BlinkPhase, PaneFocus};
 
 /// The drawn form of the cursor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -34,15 +34,18 @@ impl CursorDraw {
 
 /// The cursor to draw, if it is shown. On the right half of a wide character it moves to the
 /// character's first column; on a wide character it spans both. Unfocused, every shape becomes
-/// the hollow block.
+/// the hollow block, which never blinks; focused, a blinking cursor is left out in its off half.
 pub(crate) fn resolve_cursor(
     view: Option<CursorView>,
     row_cells: impl Fn(Row) -> Option<Vec<(Col, u8)>>,
-    focus: PaneFocus,
+    (focus, blink): (PaneFocus, BlinkPhase),
     palette: &Palette,
     colors: &TermColors,
 ) -> Option<CursorDraw> {
     let view = view?;
+    if (focus, blink, view.blink) == (PaneFocus::Focused, BlinkPhase::Off, CursorBlink::Blinking) {
+        return None;
+    }
     let col = match view.cell {
         CursorCell::WideTail => Col(view.col.0.saturating_sub(1)),
         CursorCell::Normal => view.col,

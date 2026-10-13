@@ -38,6 +38,7 @@ impl Session {
     /// Pastes the clipboard. An unsafe paste waits for [`Session::confirm_paste`]. A paste over
     /// [`PASTE_LIMIT`] is refused with a notice: it is never cut short.
     pub fn paste(&mut self) -> Result<(), UiError> {
+        self.wake_cursor();
         let Ok(text) = self.clipboard.read() else {
             return Ok(());
         };

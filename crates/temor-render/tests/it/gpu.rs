@@ -77,6 +77,7 @@ fn gpu_and_cpu_draw_the_same_frame() {
         padding: Padding::uniform(Px(PADDING)),
         palette: &pane.palette,
         focus: PaneFocus::Focused,
+        blink: temor_render::BlinkPhase::On,
         selection: None,
         bands: &[],
     };

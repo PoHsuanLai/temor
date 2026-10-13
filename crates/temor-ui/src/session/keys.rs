@@ -21,6 +21,7 @@ impl Session {
         match route_with(stroke, &self.keymap, find, kitty) {
             Routed::Action(action) => self.run(action),
             Routed::Shell(key) => {
+                self.wake_cursor();
                 if key.action == KeyAction::Press && key.code == KeyCode::Enter {
                     self.note_enter();
                 }

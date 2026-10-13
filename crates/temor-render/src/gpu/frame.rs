@@ -100,7 +100,7 @@ impl Renderer for GpuRenderer {
         let cursor = resolve_cursor(
             frame.cursor,
             |r: Row| frame.rows.get(usize::from(r.0)).map(|c| spans(c)),
-            view.focus,
+            (view.focus, view.blink),
             view.palette,
             &frame.colors,
         );

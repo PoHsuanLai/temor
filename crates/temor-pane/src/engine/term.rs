@@ -48,7 +48,11 @@ impl Term {
         cursor: CursorShape,
         palette: &Palette,
     ) -> Result<Self, PaneError> {
-        Self::assemble(size, cell, scrollback, cursor, palette, Terminal::new)
+        let mut term = Self::assemble(size, cell, scrollback, cursor, palette, Terminal::new)?;
+        // The defaults apply at a cursor-style reset: the first prompt has the chosen shape and
+        // blinks, as Ghostty's does, until a program says otherwise.
+        term.terminal.write(b"\x1b[0 q");
+        Ok(term)
     }
 
     /// A terminal restored from `snapshot` (its screen, scrollback, modes and cursor), with the
@@ -94,6 +98,7 @@ impl Term {
         let mut terminal = make(config, sink, reply)?;
         palette.apply(&mut terminal)?;
         terminal.set_default_cursor_shape(Some(cursor))?;
+        terminal.set_default_cursor_blink(Some(true))?;
         let clipboard = ClipboardMirror::default();
         terminal.set_clipboard_source(Box::new(clipboard.clone()));
         let hold = Shared::default();

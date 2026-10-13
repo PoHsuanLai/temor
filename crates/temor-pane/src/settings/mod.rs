@@ -7,4 +7,6 @@ mod tests;
 mod value;
 
 pub use parse::{ParsedSettings, TerminalSettings, parse_settings};
-pub use value::{CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice};
+pub use value::{
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice,
+};

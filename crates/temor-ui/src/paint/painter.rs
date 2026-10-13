@@ -4,9 +4,9 @@
 
 use temor_pane::{PaintSource, PaneHandle};
 use temor_render::{
-    CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit, Padding,
-    Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale, SelectionOverlay,
-    fit_grid,
+    BlinkPhase, CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit,
+    Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale,
+    SelectionOverlay, fit_grid,
 };
 
 use crate::error::UiError;
@@ -39,6 +39,8 @@ pub struct PaintView<'a> {
     pub scale: Scale,
     pub inset: Inset,
     pub focus: PaneFocus,
+    /// The cursor's blink half now.
+    pub blink: BlinkPhase,
     pub selection: Option<SelectionOverlay>,
     /// The command cards over the grid's rows.
     pub bands: &'a [RowBand],
@@ -96,6 +98,12 @@ impl Painter {
     /// Changes the palette (PLAN §5: on theme change, applied to the terminal too).
     pub fn set_palette(&mut self, palette: Palette) {
         self.palette = palette;
+    }
+
+    /// Whether the cursor of the last paint blinks: the terminal asked for a blinking cursor
+    /// and it was shown.
+    pub fn cursor_blinks(&self) -> bool {
+        self.frame.cursor_blinks()
     }
 
     /// The cursor's cell as of the last paint, when the cursor is shown.
@@ -160,6 +168,7 @@ impl Painter {
             padding: view.inset.padding(view.scale),
             palette,
             focus: view.focus,
+            blink: view.blink,
             selection: view.selection,
             bands: view.bands,
         };

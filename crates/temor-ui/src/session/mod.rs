@@ -2,6 +2,7 @@
 //! bar and the paste confirmation. The window sends it events and reads back what to show; it
 //! never touches the terminal or the PTY itself. Dioxus is not used here.
 
+mod blink;
 mod blocks;
 mod clip;
 mod clipboard;
@@ -21,6 +22,7 @@ mod read;
 mod running;
 mod viewer;
 
+pub use blink::{BLINK_MS, blink_phase};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};

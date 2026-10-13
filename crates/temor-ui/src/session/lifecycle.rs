@@ -91,6 +91,8 @@ impl Session {
         if self.pixels.width.0 == 0 || self.pixels.height.0 == 0 {
             return Ok(());
         }
+        let blink = self.blink_now();
+        self.blink.painted = blink;
         let palette = self.painter.palette();
         let bands = self.card_bands(&CardColours::of(palette));
         let view = PaintView {
@@ -101,6 +103,7 @@ impl Session {
                 Focus::Focused => PaneFocus::Focused,
                 Focus::Unfocused => PaneFocus::Unfocused,
             },
+            blink,
             selection: None,
             bands: &bands,
         };

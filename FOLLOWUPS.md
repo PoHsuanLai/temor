@@ -180,8 +180,19 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       program; a bare Ctrl chord is refused with the ⌘ forms named (review fixes). §6
 - [x] Unbound Super+letter reaches the program as text (as before P3a). Ghostty drops unbound ⌘ keys;
       decide the same here. §6 (done: dropped, f689008)
-- [ ] KWin takes Meta+T/W/D/V globally on KDE, so those Super forms never reach temor there; the
+- [x] KWin takes Meta+T/W/D/V globally on KDE, so those Super forms never reach temor there; the
       desktop's reserved chords are with whopper. §6
+      (2026-10-14, owner's choice: on Plasma temor gets keycap's `terminal` profile, Cmd+letter as
+      Ctrl+Shift+letter, which chordkit's KDE keymap reads; Cmd+D and Cmd+Shift+D arrive as one
+      chord there. Before, its class matched no list and it got `default`, so Cmd+T reached the
+      shell as Ctrl+T. Installed in ~/.local/bin/keycap-focus; keycap branch
+      `temor-plasma-terminal` (b6d5594) for its repo. The installed keycap binary (Oct 3)
+      predates the `keymap-aware` profile; reinstalling keycap is the owner's.)
+- [x] The cursor never blinked: the renderer ignored libghostty's blink flag and nothing timed
+      it. Done: the terminal's default cursor blinks (`DEFAULT_CURSOR_BLINK`, applied with a
+      cursor-style reset at start, which also applies `cursor.style` to the first prompt),
+      programs can ask for a steady one, the focused pane's cursor is left out in each off half
+      (600 ms) and shows solid from each key, paste or focus; `cursor.blink = off` turns it off.
 - [ ] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
       real check. §6
 - [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7

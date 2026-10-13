@@ -100,6 +100,7 @@ impl Pane {
             padding: Padding::uniform(Px(PADDING)),
             palette: &self.palette,
             focus,
+            blink: temor_render::BlinkPhase::On,
             selection: None,
             bands: &[],
         };

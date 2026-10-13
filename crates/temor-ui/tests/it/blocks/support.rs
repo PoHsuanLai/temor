@@ -143,6 +143,7 @@ pub(super) fn start_with(
             clipboard: Box::new(clipboard.clone()),
             opener: Box::new(NoOpener),
             notify_after: NotifyAfter::DEFAULT,
+            cursor_blink: temor_pane::settings::CursorBlinking::default(),
             notifier: Box::new(notifier.clone()),
             clock: Box::new(clock.clone()),
             shelf_dir: home.join("shelf"),

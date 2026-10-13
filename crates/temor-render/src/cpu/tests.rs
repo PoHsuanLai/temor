@@ -62,6 +62,7 @@ fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
         padding: pad,
         palette: &palette,
         focus: PaneFocus::Focused,
+        blink: crate::renderer::BlinkPhase::On,
         selection: None,
         bands: &[],
     };
@@ -133,6 +134,7 @@ mod bands {
                 padding: Padding::uniform(Px(PAD)),
                 palette: &self.palette,
                 focus: PaneFocus::Focused,
+                blink: crate::renderer::BlinkPhase::On,
                 selection: None,
                 bands,
             };

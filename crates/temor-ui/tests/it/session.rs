@@ -106,6 +106,7 @@ fn fixture(name: &str) -> Fixture {
             clipboard: Box::new(clipboard.clone()),
             opener: Box::new(NoOpener),
             notify_after: TerminalSettings::default().notify_after,
+            cursor_blink: TerminalSettings::default().cursor_blink,
             notifier: Box::new(temor_ui::edge::NoopNotifier),
             clock: Box::new(temor_ui::edge::SystemClock::new()),
             shelf_dir: home.join("shelf"),
@@ -974,4 +975,37 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
             .any(|r| r.windows(8).any(|w| w == b"SGVsbG8=")),
         "the reply carries the clipboard"
     );
+}
+
+#[test]
+fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
+    use temor_core::notify::Focus;
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-blink");
+    let shot = |session: &mut Session| {
+        let mut pixels = Vec::new();
+        session
+            .paint(|bytes, _| pixels = bytes.to_vec())
+            .expect("paint");
+        pixels
+    };
+    // Focus starts the blink over: the first paint draws the cursor.
+    f.session.set_focus(Focus::Focused);
+    let on = shot(&mut f.session);
+    assert!(!f.session.blink_due(), "nothing turned yet");
+    wait_until("the cursor's off half", || f.session.blink_due());
+    let off = shot(&mut f.session);
+    assert_ne!(on, off, "the off half leaves the cursor out");
+    // A key shows it solid again at once.
+    type_text(&mut f.session, "x");
+    wait_until("the typed x", || f.session.screen_text().contains("$ x"));
+    let typed = shot(&mut f.session);
+    assert_ne!(typed, off, "the cursor is back after the key");
+    // An unfocused pane's hollow cursor never blinks.
+    f.session.set_focus(Focus::Unfocused);
+    shot(&mut f.session);
+    std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
+    assert!(!f.session.blink_due(), "an unfocused pane does not blink");
 }
