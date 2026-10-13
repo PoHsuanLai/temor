@@ -707,7 +707,7 @@ The ranking rules:
 
 ## 10. Viewers (anyview)
 - **Peek:** hover or ⌘-click a path or link in the output. The path comes from the block's text and
-  OSC 8. `anyview_peek::peek` runs on a worker and is shown in a `Pane` popover.
+  OSC 8. `anyview_peek::peek` runs on a worker and is shown in a `Card` popover.
 - **Sequence:** the paths in an `ls`/`find`/`rg` block become anyview's `Sequence`
   (`SequenceOrigin::Results`), so you can arrow through matches.
 - **Viewer pane:** `PaneKind::Viewer` hosts `anyview_pane::ViewerPane` (design:

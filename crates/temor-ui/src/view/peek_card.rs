@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use anyview_peek::{AnyPeeked, Pane};
+use anyview_peek::{AnyPeeked, Card};
 use dioxus::prelude::*;
 use ds::components::lists::preview::content::PANE_MEDIA;
 use ds::host::measure::RectProbe;
@@ -60,7 +60,7 @@ pub fn peek_card(card: &PeekCard, measure: RectProbe) -> Element {
             class: "temor-peek",
             onmounted: move |e: MountedEvent| measure.on_mounted(e),
             style: "left:{left}px; top:{top}px; width:{PANE_MEDIA.width.0}px",
-            Pane { peeked: card.peeked.clone() }
+            Card { peeked: card.peeked.clone() }
         }
     }
 }

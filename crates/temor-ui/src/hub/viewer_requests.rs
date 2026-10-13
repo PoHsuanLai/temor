@@ -46,6 +46,8 @@ impl Desk {
             PaneRequest::NotOpened(failed) => {
                 self.settle(|hub| hub.viewer_not_opened(pane, failed.file));
             }
+            // `PaneRequest` is non-exhaustive: a request this temor does not know is ignored.
+            _ => {}
         }
     }
 }
