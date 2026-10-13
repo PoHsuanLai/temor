@@ -15,6 +15,23 @@ use temor_vt::{AnchorId, PointSpace, Row};
 use super::super::Session;
 use crate::view::card_colours::CardColours;
 
+/// Whether a prompt's header is a line of its own (temor's prompt) or the line typed on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderLine {
+    Own,
+    Shared,
+}
+
+/// The header line of the prompt being typed at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PromptHeader {
+    /// Its viewport row.
+    pub row: u32,
+    pub line: HeaderLine,
+    /// What the shell wrote on it, without trailing blanks.
+    pub text: String,
+}
+
 /// Where a block stands, as far as its card goes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Stage {
@@ -169,10 +186,10 @@ pub(super) fn command_rows(
 }
 
 impl Session {
-    /// The viewport row of the header line of the prompt being typed at: with temor's prompt,
-    /// the line above the empty typing line; with a one-line prompt, the prompt's own line.
-    /// None while a command runs, on the alternate screen, or when it is out of view.
-    pub fn live_prompt_row(&self) -> Option<u32> {
+    /// The header line of the prompt being typed at: with temor's prompt, the line above the
+    /// empty typing line; with a one-line prompt, the prompt's own line. None while a command
+    /// runs, on the alternate screen, or when it is out of view.
+    pub fn live_prompt_header(&self) -> Option<PromptHeader> {
         let typing = matches!(
             self.blocks.machine,
             BlockState::Prompting { .. } | BlockState::Typing { .. }
@@ -183,13 +200,22 @@ impl Session {
             if term.on_alternate_screen() {
                 return None;
             }
-            let start = term.anchor_point(prompt, PointSpace::Viewport)?.row;
-            let typed = input.and_then(|id| term.anchor_point(id, PointSpace::Viewport));
-            Some(match typed {
-                Some(at) if at.row > start && at.col.0 <= 1 => at.row - 1,
-                Some(at) => at.row,
-                None => start,
-            })
+            // The header in one point space: its row, and whether it is a line of its own.
+            let header_in = |space| {
+                let start = term.anchor_point(prompt, space)?.row;
+                let typed = input.and_then(|id| term.anchor_point(id, space));
+                Some(match typed {
+                    Some(at) if at.row > start && at.col.0 <= 1 => (at.row - 1, HeaderLine::Own),
+                    Some(at) => (at.row, HeaderLine::Shared),
+                    None => (start, HeaderLine::Shared),
+                })
+            };
+            let (row, line) = header_in(PointSpace::Viewport)?;
+            let text = header_in(PointSpace::Active)
+                .and_then(|(at, _)| term.row_text(at).ok())
+                .map(|text| text.text().trim_end().to_owned())
+                .unwrap_or_default();
+            Some(PromptHeader { row, line, text })
         })
     }
 

@@ -1,5 +1,6 @@
 //! The context chips in the window (PLAN P16), in ds-harness: a scratch repository with one
-//! changed file is the shell's folder, and the chips over the prompt (and the tab's row) say so.
+//! changed file is the shell's folder, and the chips over the prompt's header line (and the tab's
+//! row) say so.
 //! The DOM is read back; no pixels, no OS input, no real HOME.
 
 use std::path::Path;
@@ -46,9 +47,19 @@ fn chips_of(html: &str) -> Option<String> {
     Some(after[..end].to_owned())
 }
 
+/// Which prompt the shell draws: the plain `$ ` the other tests read, or temor's own.
+#[derive(Clone, Copy, PartialEq)]
+enum Prompt {
+    Plain,
+    Temor,
+}
+
 /// A window whose shell starts in a scratch repository with one changed file, at its prompt.
-fn changed_repository(name: &str, probe: &Probe) -> Harness {
+fn changed_repository(name: &str, probe: &Probe, prompt: Prompt) -> Harness {
     let mut h = harness_with(name, probe, None, |ambient| {
+        if prompt == Prompt::Temor {
+            ambient.env.set("TEMOR_PROMPT", "temor");
+        }
         let home = &ambient.home;
         git(home, &["init", "-q", "-b", "main"]);
         std::fs::write(home.join("a.txt"), "one\n").expect("write");
@@ -56,8 +67,29 @@ fn changed_repository(name: &str, probe: &Probe) -> Harness {
         git(home, &["commit", "-q", "-m", "first"]);
         std::fs::write(home.join("a.txt"), "one\ntwo\n").expect("write");
     });
-    wait_until(&mut h, probe, "the prompt", |s| s.contains('$'));
+    let at_prompt = move |s: &str| match prompt {
+        Prompt::Plain => s.contains('$'),
+        // temor's header line: the home folder and the branch.
+        Prompt::Temor => s.contains("~  main"),
+    };
+    wait_until(&mut h, probe, "the prompt", at_prompt);
     h
+}
+
+/// The chips row once it says the change, and the whole page then.
+fn chips_with_the_change(h: &mut Harness) -> (String, String) {
+    let start = Instant::now();
+    loop {
+        h.advance(Duration::from_millis(50));
+        let html = h.html();
+        if let Some(chips) = chips_of(&html).filter(|c| c.contains("+1")) {
+            return (chips, html);
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "no chips with the change:\n{html}"
+        );
+    }
 }
 
 #[test]
@@ -68,27 +100,52 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
     let probe = Probe::new();
     // The shell starts in the home folder, so the repository is made there, after the harness has
     // made the folder clean and before the shell is started.
-    let mut h = changed_repository("facts-chips", &probe);
-    let start = Instant::now();
-    let chips = loop {
-        h.advance(Duration::from_millis(50));
-        let html = h.html();
-        if let Some(chips) = chips_of(&html).filter(|c| c.contains("+1")) {
-            // The tab's row says the branch.
-            assert!(
-                html.contains("main"),
-                "the tab row lacks the branch:\n{html}"
-            );
-            break chips;
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "no chips with the change:\n{html}"
-        );
-    };
-    for want in ["+1 \u{2212}0", "1 file"] {
+    let mut h = changed_repository("facts-chips", &probe, Prompt::Plain);
+    let (chips, html) = chips_with_the_change(&mut h);
+    // The tab's row says the branch.
+    assert!(
+        html.contains("main"),
+        "the tab row lacks the branch:\n{html}"
+    );
+    for want in ["+1", "\u{2212}0", "1 file"] {
         assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
     }
-    // The prompt's header line says the branch; the chips do not repeat it.
-    assert!(!chips.contains("main"), "the branch is repeated:\n{chips}");
+    // A prompt of the shell's own keeps its text: the chips end at the right, without the folder
+    // and the branch.
+    assert!(
+        html.contains("data-place=\"end\""),
+        "the chips are not at the end:\n{html}"
+    );
+    for kind in ["folder", "branch"] {
+        assert!(
+            !chips.contains(&format!("data-kind=\"{kind}\"")),
+            "a {kind} chip beside the shell's own text:\n{chips}"
+        );
+    }
+}
+
+#[test]
+fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
+    if !tools_present() || !git_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = changed_repository("facts-chips-over", &probe, Prompt::Temor);
+    let (chips, html) = chips_with_the_change(&mut h);
+    assert!(
+        html.contains("data-place=\"over\""),
+        "the chips are not over the header line:\n{html}"
+    );
+    let at = |kind: &str| {
+        chips
+            .find(&format!("data-kind=\"{kind}\""))
+            .unwrap_or_else(|| panic!("no {kind} chip:\n{chips}"))
+    };
+    assert!(
+        at("folder") < at("branch") && at("branch") < at("changes"),
+        "the folder, then the branch, then the changes:\n{chips}"
+    );
+    for want in [">~<", ">main<", "+1"] {
+        assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
+    }
 }

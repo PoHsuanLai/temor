@@ -221,6 +221,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .cloned()
         .collect();
     let facts = desk.hub.facts_of(pane);
+    let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
     // "Edit here" is only for a pane on another computer.
     let tools = chrome
@@ -235,7 +236,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .and_then(|s| chips_for(s, &facts));
+        .and_then(|s| chips_for(s, &facts, folder.as_deref()));
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // One quiet line under a new window's first prompt, until the first command runs.
     let hint = desk.hub.first_hint(pane).and_then(|text| {

@@ -14,6 +14,7 @@ mod rows;
 mod tests;
 mod tools_height;
 
+pub use bands::{HeaderLine, PromptHeader};
 pub use notify::desktop_note;
 pub use query::{BlockMark, Gutter, PromptStep};
 pub use tools_height::ToolsHeight;

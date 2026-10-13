@@ -200,6 +200,17 @@ impl Hub {
             .unwrap_or_default()
     }
 
+    /// The pane's folder as its chip says it (the home folder as `~`). None on another
+    /// computer: its paths are not under this home, and its folders are not read here.
+    fn chip_folder(&self, pane: PaneId) -> Option<String> {
+        if self.host_of(pane).is_some() {
+            return None;
+        }
+        let home = &self.launch.ambient.home;
+        self.pane_folder(pane)
+            .map(|path| super::rows::tidy(&path, home))
+    }
+
     /// The pane's folder: the shell's report, else where the pane started.
     fn pane_folder(&self, pane: PaneId) -> Option<String> {
         self.live(pane, |s| s.cwd().map(str::to_owned))
@@ -212,6 +223,11 @@ impl super::HubRef {
     /// The facts last read for the pane.
     pub fn facts_of(&self, pane: PaneId) -> Facts {
         self.0.borrow().facts_of(pane)
+    }
+
+    /// The pane's folder as its chip says it, when it is on this computer.
+    pub fn chip_folder(&self, pane: PaneId) -> Option<String> {
+        self.0.borrow().chip_folder(pane)
     }
 }
 

@@ -4,3 +4,8 @@ Ghostty (MIT License), https://github.com/ghostty-org/ghostty
   Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
   Used: the byte cleaning list of input/paste.zig (crates/temor-core/src/terminal/paste.rs).
   The libghostty-vt sources and bindings are covered by crates/temor-vt-sys/NOTICE.
+
+Lucide (ISC License), https://lucide.dev
+  Copyright (c) Lucide Contributors
+  Used: the folder, git-branch and diff icons of the context chips
+  (crates/temor-ui/src/view/fact_chips.rs).

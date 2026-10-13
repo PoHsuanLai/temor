@@ -1332,3 +1332,11 @@ the bar runs the sidebar action through the desk.
   (done: the answer counts once a non-blank line is drawn below it and the whole screen is
   unchanged between two ticks, `Answer::Named` until then; a shell that named itself but shows
   no prompt by `PROBE_MS` is loaded anyway. `temor_ssh::prompt_after_answer`, `hub/offer.rs`.)
+- [ ] Chips, Warp's layout (2026-10-14): over temor's prompt the chips replace the header line
+  (folder, branch, `+N −M · F files`, then the tool chips); a one-line or own prompt keeps its
+  text and gets the fact chips at the right end. Older blocks' header lines still show the
+  shell's dim folder and magenta branch (what was true then is not kept); decide whether the
+  block header should carry the same chips from the facts at the block's start.
+- [ ] quire ask: folder, git-branch and diff glyphs in `Icon`. The chips draw Lucide's (ISC,
+  NOTICE) as symbolic SVGs until then (`view/fact_chips.rs`). A long folder is clipped at its end (no ellipsis on Blitz);
+  cutting the start (keeping the last folders) needs a start-side ellipsis.
