@@ -275,7 +275,7 @@ dependencies = [
 [[package]]
 name = "anyview-archive"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "bzip2",
@@ -293,7 +293,7 @@ dependencies = [
 [[package]]
 name = "anyview-book"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-archive",
  "anyview-core",
@@ -305,7 +305,7 @@ dependencies = [
 [[package]]
 name = "anyview-core"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "chordkit",
  "ds-core",
@@ -318,7 +318,7 @@ dependencies = [
 [[package]]
 name = "anyview-font"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "miniz_oxide 0.8.9",
@@ -329,7 +329,7 @@ dependencies = [
 [[package]]
 name = "anyview-fs"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
 ]
@@ -337,7 +337,7 @@ dependencies = [
 [[package]]
 name = "anyview-image"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "ds-core",
@@ -357,7 +357,7 @@ dependencies = [
 [[package]]
 name = "anyview-machines"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "chordkit",
@@ -367,7 +367,7 @@ dependencies = [
 [[package]]
 name = "anyview-pane"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "anyview-peek",
@@ -382,7 +382,7 @@ dependencies = [
 [[package]]
 name = "anyview-pdf"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "pdfrum",
@@ -394,7 +394,7 @@ dependencies = [
 [[package]]
 name = "anyview-peek"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-archive",
  "anyview-book",
@@ -413,7 +413,7 @@ dependencies = [
 [[package]]
 name = "anyview-store"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "rustix",
@@ -425,16 +425,16 @@ dependencies = [
 [[package]]
 name = "anyview-text"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-core",
  "anyview-fs",
  "calamine",
+ "chardetng",
  "csv",
  "ds-core",
  "encoding_rs",
  "pulldown-cmark",
- "serde",
  "serde_json",
  "syntect",
  "thiserror 2.0.21",
@@ -444,7 +444,7 @@ dependencies = [
 [[package]]
 name = "anyview-ui"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=6acc7cc95e60ecd59e2951c20d46101565ae27ba#6acc7cc95e60ecd59e2951c20d46101565ae27ba"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=e645680999ca748d7362e1413af4d71c374e1c4f#e645680999ca748d7362e1413af4d71c374e1c4f"
 dependencies = [
  "anyview-archive",
  "anyview-book",
@@ -1198,6 +1198,17 @@ name = "cfg_aliases"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
+
+[[package]]
+name = "chardetng"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13de944a44b5064ee5d3a5ceccc49a41bfec50f2580e66f82e87703acdb88b53"
+dependencies = [
+ "cfg-if",
+ "encoding_rs",
+ "memchr",
+]
 
 [[package]]
 name = "chordkit"
@@ -2039,7 +2050,7 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 [[package]]
 name = "ds"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "chordkit",
  "dioxus",
@@ -2055,7 +2066,7 @@ dependencies = [
 [[package]]
 name = "ds-behaviour"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "ds-core",
 ]
@@ -2063,7 +2074,7 @@ dependencies = [
 [[package]]
 name = "ds-blitz"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "anyrender",
  "anyrender_vello_hybrid",
@@ -2103,7 +2114,7 @@ dependencies = [
 [[package]]
 name = "ds-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "chordkit",
  "ds-core-derive",
@@ -2117,7 +2128,7 @@ dependencies = [
 [[package]]
 name = "ds-core-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2128,12 +2139,12 @@ dependencies = [
 [[package]]
 name = "ds-desktop"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 
 [[package]]
 name = "ds-harness"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "anyrender",
  "anyrender_vello_cpu",
@@ -2164,7 +2175,7 @@ dependencies = [
 [[package]]
 name = "ds-intents"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "ds-core",
 ]
@@ -2172,7 +2183,7 @@ dependencies = [
 [[package]]
 name = "ds-lint"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "cssparser",
  "ds-core",
@@ -2182,7 +2193,7 @@ dependencies = [
 [[package]]
 name = "ds-motion"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "dioxus",
  "ds-core",
@@ -2192,7 +2203,7 @@ dependencies = [
 [[package]]
 name = "ds-settings"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "dioxus",
  "ds-behaviour",
@@ -2211,7 +2222,7 @@ dependencies = [
 [[package]]
 name = "ds-settings-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2221,7 +2232,7 @@ dependencies = [
 [[package]]
 name = "ds-shell"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "dioxus",
  "ds",
@@ -2234,7 +2245,7 @@ dependencies = [
 [[package]]
 name = "ds-style"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=836084afaaa6659bb276df6e1f40d06a9dff7c9e#836084afaaa6659bb276df6e1f40d06a9dff7c9e"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=578ba6fbd0a61d7788edd370e7b1888963bb2760#578ba6fbd0a61d7788edd370e7b1888963bb2760"
 dependencies = [
  "dioxus",
  "ds-core",
@@ -5787,9 +5798,9 @@ dependencies = [
 
 [[package]]
 name = "ruzstd"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a252f5e20f038fe7b4ea53e073e65398d652c864cc162fc77c56c2f13717b888"
+checksum = "69e4ce4a039f42bf25920b95667e4d789e98749ab11bbb8d2c2936f788421bb5"
 dependencies = [
  "twox-hash",
 ]
