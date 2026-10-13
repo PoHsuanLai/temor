@@ -23,6 +23,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::bar_edit;
 use super::block_header::BlockHeader;
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState};
 use super::block_meta::BlockMetas;
 use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
@@ -40,11 +41,11 @@ use super::link_tip::LinkTip;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::key_handler;
-use super::pane_pointer::{GridPointer, grid_pointer};
+use super::pane_pointer::{GridPointer, GridState, grid_pointer};
 use super::peek::use_peek;
 use super::peek_card::peek_card;
 use super::pointer::use_pane_mouse;
-use super::slot::{Device, Display, Slot, layout};
+use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
@@ -106,6 +107,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let preedit = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
     let find_height = use_signal(|| 0.0_f32);
+    let block_menu = use_signal(|| None::<BlockMenuAt>);
     // The ⌘-hover preview of a file path (PLAN §10).
     let peek = use_peek(pane, Rc::clone(&slot), desk.clone(), rect, signals);
 
@@ -180,13 +182,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         moved: on_move,
         pressed: on_press,
         left: on_leave,
+        context: on_context,
     } = grid_pointer(
         &slot,
         &peek,
         signals,
-        hovered,
-        ui,
-        desk.notice,
+        GridState {
+            hovered,
+            ui,
+            notice: desk.notice,
+            menu: block_menu,
+        },
         mouse.down.clone(),
     );
     let _ = ui();
@@ -238,6 +244,22 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .as_ref()
         .and_then(|s| chips_for(s, &facts, folder.as_deref()));
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
+    // The block menu speaks of what is picked now.
+    let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
+        picked: s.picked_blocks().len(),
+        bookmarked: s.picks_bookmarked(),
+    });
+    let menu_pick = {
+        let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
+        move |action: temor_pane::keys::Action| {
+            menu.set(None);
+            if let Some(s) = slot.borrow_mut().session.as_mut() {
+                let _ = s.run(action);
+            }
+            ui += 1;
+            repaint(&slot);
+        }
+    };
     // One quiet line under a new window's first prompt, until the first command runs.
     let hint = desk.hub.first_hint(pane).and_then(|text| {
         slot.borrow()
@@ -270,6 +292,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     onpointerup: move |e| (mouse.up)(e),
                     onpointermove: on_move,
                     onpointerleave: on_leave,
+                    oncontextmenu: on_context,
                     onwheel: move |e| {
                         (mouse.wheel)(e);
                         // The hovered block follows the wheel; draw it again.
@@ -311,6 +334,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                         on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
                     }
+                }
+            }
+            if let (Some(at), Some(state)) = (block_menu(), menu_state) {
+                BlockMenu {
+                    at,
+                    state,
+                    onpick: then_regain(menu_pick, ime.clone(), regain),
+                    onclose: move |()| {
+                        let mut menu = block_menu;
+                        menu.set(None);
+                    },
                 }
             }
             // On the pane's top-right corner, over the grid.

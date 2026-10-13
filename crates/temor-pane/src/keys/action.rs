@@ -27,6 +27,20 @@ pub enum Action {
     PreviousPrompt,
     /// Pick the command below the picked one and bring it into view.
     NextPrompt,
+    /// Copy the picked commands only, one per line.
+    CopyCommands,
+    /// Copy the picked commands' outputs only, a blank line between them.
+    CopyOutputs,
+    /// Pick every command on the scrollback.
+    SelectAllBlocks,
+    /// Bookmark the picked commands, or take their bookmark away.
+    ToggleBookmark,
+    /// Pick the nearest bookmarked command above the picked one.
+    PreviousBookmark,
+    /// Pick the nearest bookmarked command below the picked one.
+    NextBookmark,
+    /// Put the picked commands in the prompt to run again, without running them.
+    ReinputCommands,
     /// Open a plain tab with one shell (the standard "new", ⌘N). ⌘T is the command bar, whose
     /// Enter on an empty bar also opens one.
     NewTab,
@@ -72,6 +86,12 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::ToggleQuick, "toggle-quick"),
     (Action::PreviousPrompt, "previous-prompt"),
     (Action::NextPrompt, "next-prompt"),
+    (Action::CopyCommands, "copy-commands"),
+    (Action::CopyOutputs, "copy-outputs"),
+    (Action::ToggleBookmark, "toggle-bookmark"),
+    (Action::PreviousBookmark, "previous-bookmark"),
+    (Action::NextBookmark, "next-bookmark"),
+    (Action::ReinputCommands, "reinput-commands"),
     (Action::SplitRight, "split-right"),
     (Action::SplitDown, "split-down"),
     (Action::FocusLeft, "focus-left"),
@@ -93,6 +113,9 @@ const STANDARD: &[(Action, StandardAction)] = &[
     (Action::FindNext, StandardAction::FindNext),
     (Action::FindPrevious, StandardAction::FindPrevious),
     (Action::ClosePane, StandardAction::Close),
+    // A terminal has no text field to select all of: the platform's select all picks every
+    // command, as Warp's does.
+    (Action::SelectAllBlocks, StandardAction::SelectAll),
 ];
 
 impl Action {
@@ -107,6 +130,13 @@ impl Action {
             Self::CloseFind => "Close find",
             Self::PreviousPrompt => "Select previous command",
             Self::NextPrompt => "Select next command",
+            Self::CopyCommands => "Copy commands",
+            Self::CopyOutputs => "Copy outputs",
+            Self::SelectAllBlocks => "Select all commands",
+            Self::ToggleBookmark => "Bookmark",
+            Self::PreviousBookmark => "Previous bookmark",
+            Self::NextBookmark => "Next bookmark",
+            Self::ReinputCommands => "Put commands in prompt",
             Self::NewTab => "New tab",
             Self::OpenBar => "Command bar",
             Self::ToggleQuick => "Quick terminal",
@@ -150,7 +180,7 @@ impl Action {
     }
 
     /// The pane action a chordkit action means, or `None` for one temor does not act on (the
-    /// keymap also carries the system's actions, such as Select all). The standard Cancel is
+    /// keymap also carries the system's actions, such as Undo). The standard Cancel is
     /// [`Action::CloseFind`]: it closes the find bar when one is open.
     pub fn from_chordkit(action: &Named) -> Option<Self> {
         match action {

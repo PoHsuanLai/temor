@@ -76,6 +76,34 @@ impl Session {
                 self.step_pick(PickStep::Newer);
                 Ok(())
             }
+            Action::CopyCommands => {
+                self.copy_picked_commands();
+                Ok(())
+            }
+            Action::CopyOutputs => {
+                self.copy_picked_outputs();
+                Ok(())
+            }
+            Action::SelectAllBlocks => {
+                self.pick_all();
+                Ok(())
+            }
+            Action::ToggleBookmark => {
+                self.toggle_bookmarks();
+                Ok(())
+            }
+            Action::PreviousBookmark => {
+                self.step_bookmark(PickStep::Older);
+                Ok(())
+            }
+            Action::NextBookmark => {
+                self.step_bookmark(PickStep::Newer);
+                Ok(())
+            }
+            Action::ReinputCommands => {
+                self.reinput_picked();
+                Ok(())
+            }
             // Tabs and splits belong to the window: the action waits here for it to take.
             Action::NewTab
             | Action::OpenBar

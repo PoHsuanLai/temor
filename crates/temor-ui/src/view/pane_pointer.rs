@@ -1,5 +1,5 @@
 //! The pointer over a pane's grid (PLAN §6, §10): the one handler set that feeds the peek, the
-//! block hover and the gutter press from the same events. A press or leaving puts the preview
+//! block hover, the gutter press and the block menu from the same events. A press or leaving puts the preview
 //! away.
 
 use std::cell::RefCell;
@@ -9,7 +9,8 @@ use dioxus::prelude::*;
 use ds::host::signals::HostSignals;
 use temor_core::vocab::ids::BlockId;
 
-use super::handlers::{block_hovered, gutter_pressed};
+use super::block_menu::BlockMenuAt;
+use super::handlers::{block_hovered, block_menu_opened, gutter_pressed};
 use super::peek::PeekHandles;
 use super::slot::Slot;
 use crate::session::{LinkHover, Session};
@@ -19,6 +20,8 @@ pub struct GridPointer {
     pub moved: Box<dyn FnMut(PointerEvent)>,
     pub pressed: Box<dyn FnMut(PointerEvent)>,
     pub left: Box<dyn FnMut(PointerEvent)>,
+    /// A right-click's `contextmenu`: the block menu.
+    pub context: Box<dyn FnMut(MouseEvent)>,
 }
 
 impl std::fmt::Debug for GridPointer {
@@ -27,16 +30,32 @@ impl std::fmt::Debug for GridPointer {
     }
 }
 
+/// The pane's state the grid's pointer sets.
+#[derive(Debug, Clone, Copy)]
+pub struct GridState {
+    /// The block under the pointer.
+    pub hovered: Signal<Option<BlockId>>,
+    /// Bumped to draw the pane again.
+    pub ui: Signal<u32>,
+    pub notice: Signal<Option<String>>,
+    /// Where the block menu is open.
+    pub menu: Signal<Option<BlockMenuAt>>,
+}
+
 /// The grid's pointer handlers over the pane's `slot`. `mouse_down` is the pane's own press.
 pub fn grid_pointer(
     slot: &Rc<RefCell<Slot>>,
     peek: &PeekHandles,
     signals: Option<HostSignals>,
-    hovered: Signal<Option<BlockId>>,
-    ui: Signal<u32>,
-    notice: Signal<Option<String>>,
+    state: GridState,
     mouse_down: Rc<dyn Fn(PointerEvent)>,
 ) -> GridPointer {
+    let GridState {
+        hovered,
+        ui,
+        notice,
+        menu,
+    } = state;
     let (moved, mut hover) = (
         peek.moved.clone(),
         block_hovered(Rc::clone(slot), signals, hovered),
@@ -46,6 +65,7 @@ pub fn grid_pointer(
         gutter_pressed(Rc::clone(slot), signals, ui, notice, mouse_down),
     );
     let leave = peek.gone.clone();
+    let context = block_menu_opened(Rc::clone(slot), signals, ui, menu);
     let (link_slot, link_gone) = (Rc::clone(slot), Rc::clone(slot));
     let (mut link_ui, mut gone_ui) = (ui, ui);
     GridPointer {
@@ -66,6 +86,7 @@ pub fn grid_pointer(
             gone();
             press(e);
         }),
+        context: Box::new(context),
         left: Box::new(move |_: PointerEvent| {
             leave();
             let changed = link_gone

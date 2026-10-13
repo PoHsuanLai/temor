@@ -1,6 +1,8 @@
 //! Picking blocks with clicks and arrows.
 
-use super::{PickClick, PickStep, Picks};
+use std::collections::BTreeSet;
+
+use super::{PickClick, PickStep, Picks, next_bookmark};
 use crate::vocab::ids::BlockId;
 
 fn order() -> Vec<BlockId> {
@@ -78,4 +80,38 @@ fn blocks_that_are_gone_are_left_out() {
     p.click(BlockId(3), PickClick::Toggle, &order());
     let kept: Vec<BlockId> = vec![BlockId(3), BlockId(4)];
     assert_eq!(p.in_order(&kept), [BlockId(3)]);
+}
+
+#[test]
+fn select_all_picks_every_block_and_the_arrows_start_from_the_newest() {
+    let order = order();
+    let mut p = Picks::default();
+    p.select_all(&order);
+    assert_eq!(ids(&p), [1, 2, 3, 4, 5]);
+    assert_eq!(p.active(), Some(BlockId(5)));
+    p.extend(PickStep::Newer, &order);
+    assert_eq!(ids(&p), [1, 2, 3, 4, 5]);
+    let mut empty = Picks::default();
+    empty.select_all(&[]);
+    assert!(empty.is_empty());
+}
+
+#[test]
+fn the_bookmark_keys_find_the_nearest_bookmark_each_way() {
+    let order = order();
+    let marked: BTreeSet<BlockId> = [BlockId(2), BlockId(4)].into();
+    #[rustfmt::skip]
+    let cases = [
+        ("from the prompt, up: the newest bookmark", None, PickStep::Older, Some(4)),
+        ("from the prompt, down: none", None, PickStep::Newer, None),
+        ("up from a bookmark: the one above", Some(4), PickStep::Older, Some(2)),
+        ("up from between: the one above", Some(3), PickStep::Older, Some(2)),
+        ("down from between: the one below", Some(3), PickStep::Newer, Some(4)),
+        ("up from the oldest bookmark: none", Some(2), PickStep::Older, None),
+        ("down from the newest: none", Some(5), PickStep::Newer, None),
+    ];
+    for (name, from, step, want) in cases {
+        let got = next_bookmark(&order, &marked, from.map(BlockId), step);
+        assert_eq!(got, want.map(BlockId), "{name}");
+    }
 }

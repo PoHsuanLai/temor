@@ -1347,6 +1347,12 @@ the bar runs the sidebar action through the desk.
   block, then the next ones, and bring them into view. Picked blocks take the selection colour.
   `temor_core::block::Picks`, `session/marks/picks.rs`. The gutter press picks too, instead of
   selecting the output's text.
-- [ ] Warp's other block actions, not ported: copy the picked commands only / outputs only as
-  keys (the toolbar has both for one block; Warp's Linux Ctrl+Shift+C is temor's copy), select
-  all blocks, bookmarks, reinput the picked commands, and a context menu on a block.
+- [x] Warp's other block actions (2026-10-14): copy the picked commands only (⌘⇧C, Ctrl+Shift+Alt+C
+  elsewhere; commands one per line) or outputs only (⌘⇧O; a blank line between), Select All picks
+  every block (the platform's own Select All chord), ⌘B / Ctrl+Shift+B bookmarks the pick (an
+  amber stripe that wins over the failed one) and Alt+↑/↓ at the prompt step between bookmarks,
+  ⌘I / Ctrl+Shift+I puts the picked commands back in the prompt joined with "; " (pasted, so
+  nothing runs), and a right-click on a block opens its menu (Copy, Copy Command, Copy Output,
+  Put in Prompt, Bookmark, Select All Commands). The previous/next bookmark steps are in the
+  command bar with no chord of their own. `Picks::select_all`, `next_bookmark`,
+  `session/marks/picks.rs`, `view/block_menu.rs`.

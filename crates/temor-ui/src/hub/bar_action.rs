@@ -13,10 +13,17 @@ impl Hub {
             Action::ToggleQuick => self.quick_toggle(),
             Action::JumpToWaiting => self.jump_to_waiting(),
             Action::ToggleSidebar => self.window_asks.push(action),
-            // The pane's own: the find bar and the jumps between prompts.
+            // The pane's own: the find bar and picking, copying and bookmarking commands.
             Action::Find
             | Action::PreviousPrompt
             | Action::NextPrompt
+            | Action::CopyCommands
+            | Action::CopyOutputs
+            | Action::SelectAllBlocks
+            | Action::ToggleBookmark
+            | Action::PreviousBookmark
+            | Action::NextBookmark
+            | Action::ReinputCommands
             | Action::Copy
             | Action::Paste => self.run_in_keyboard_pane(action),
             // Already closing; the bar does not open itself.

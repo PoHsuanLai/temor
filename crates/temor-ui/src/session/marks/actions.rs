@@ -48,7 +48,7 @@ impl Session {
         }
     }
 
-    fn copy_text(&mut self, text: &str) {
+    pub(super) fn copy_text(&mut self, text: &str) {
         if self.clipboard.write(text).is_err() {
             self.notice = Some("The text could not be copied.".to_owned());
         }

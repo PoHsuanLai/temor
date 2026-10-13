@@ -2,14 +2,20 @@
 //! from the last pick, Ctrl+click (⌘ on a Mac) adds or drops one, and a drag still selects text.
 //! While blocks are picked, ↑ and ↓ move the pick, Shift+↑ and Shift+↓ grow it, Escape lets go,
 //! and copy takes each picked block whole: its command, then its output. ⌘↑ picks the newest
-//! block (or the one above the pick) and ⌘↓ the one below. Any other key goes to the shell and lets go of the pick. The rules are
+//! block (or the one above the pick) and ⌘↓ the one below. ⌘A picks every block, ⌘⇧C and ⌘⇧O
+//! copy only the commands or only the outputs, ⌘I puts the commands back in the prompt, and ⌘B
+//! bookmarks the picked blocks; Alt+↑ and Alt+↓ step between bookmarks while the pane has one
+//! and is at its prompt. Any other key goes to the shell and lets go of the pick. The rules are
 //! `temor_core::block::Picks`; this reads the blocks and moves the view.
 
-use temor_core::block::{PickClick, PickStep};
+use temor_core::block::{BlockState, PickClick, PickStep, next_bookmark};
 use temor_core::vocab::ids::BlockId;
+use temor_core::vocab::text::CommandText;
+use temor_pane::paste;
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, RowCount, SurfacePoint, ViewportScroll};
 
 use super::super::Session;
+use crate::error::UiError;
 
 impl Session {
     /// The blocks that can be picked, oldest first: those the scrollback still holds.
@@ -95,9 +101,26 @@ impl Session {
     }
 
     /// A key while blocks are picked: the arrows and Escape act on the pick and are used up.
-    /// Returns whether the key was the pick's.
+    /// Alt+↑ and Alt+↓ step between bookmarks while there is one and the shell is at its prompt,
+    /// picked or not. Returns whether the key was the pick's.
     pub(in crate::session) fn pick_key(&mut self, key: &KeyInput) -> bool {
-        if self.picks.is_empty() || key.action == KeyAction::Release {
+        if key.action == KeyAction::Release {
+            return false;
+        }
+        if key.mods == Modifiers::ALT && self.bookmark_keys_live() {
+            match key.code {
+                KeyCode::ArrowUp => {
+                    self.step_bookmark(PickStep::Older);
+                    return true;
+                }
+                KeyCode::ArrowDown => {
+                    self.step_bookmark(PickStep::Newer);
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        if self.picks.is_empty() {
             return false;
         }
         let order = self.pick_order();
@@ -153,5 +176,134 @@ impl Session {
             })
             .collect();
         (!blocks.is_empty()).then(|| blocks.join("\n\n"))
+    }
+
+    /// Whether Alt+↑ and Alt+↓ are the bookmarks': some block is bookmarked and the shell is at
+    /// its prompt, on the main screen.
+    fn bookmark_keys_live(&self) -> bool {
+        let at_prompt = matches!(
+            self.blocks.machine,
+            BlockState::Prompting { .. } | BlockState::Typing { .. }
+        );
+        !self.bookmarks.is_empty()
+            && at_prompt
+            && !self.pane.with_term(|term| term.on_alternate_screen())
+    }
+
+    /// Picks the nearest bookmark `step`'s way from the pick; none that way leaves the pick.
+    pub(in crate::session) fn step_bookmark(&mut self, step: PickStep) {
+        let order = self.pick_order();
+        if let Some(id) = next_bookmark(&order, &self.bookmarks, self.picks.active(), step) {
+            self.picks.click(id, PickClick::Only, &order);
+            self.reveal_pick();
+        }
+    }
+
+    /// Whether `id` is bookmarked.
+    pub fn block_bookmarked(&self, id: BlockId) -> bool {
+        self.bookmarks.contains(&id)
+    }
+
+    /// The picked blocks' commands, as typed, oldest first.
+    fn picked_commands(&self) -> Vec<String> {
+        self.picked_blocks()
+            .into_iter()
+            .filter_map(|id| self.block_command(id))
+            .map(|command| command.trim().to_owned())
+            .filter(|command| !command.is_empty())
+            .collect()
+    }
+
+    /// ⌘⇧C: the picked commands, one per line.
+    pub(in crate::session) fn copy_picked_commands(&mut self) {
+        let commands = self.picked_commands();
+        if !commands.is_empty() {
+            self.copy_text(&commands.join("\n"));
+        }
+    }
+
+    /// ⌘⇧O: the picked blocks' outputs, a blank line between them; a block still running has
+    /// none yet.
+    pub(in crate::session) fn copy_picked_outputs(&mut self) {
+        let outputs: Vec<String> = self
+            .picked_blocks()
+            .into_iter()
+            .filter_map(|id| self.block_output(id))
+            .filter(|output| !output.is_empty())
+            .collect();
+        if !outputs.is_empty() {
+            self.copy_text(&outputs.join("\n\n"));
+        }
+    }
+
+    /// ⌘A: every block.
+    pub(in crate::session) fn pick_all(&mut self) {
+        let order = self.pick_order();
+        self.picks.select_all(&order);
+    }
+
+    /// ⌘B: bookmarks the picked blocks, or, when every one of them is bookmarked already, takes
+    /// their bookmarks away.
+    pub(in crate::session) fn toggle_bookmarks(&mut self) {
+        let picked = self.picked_blocks();
+        if picked.iter().all(|id| self.bookmarks.contains(id)) {
+            for id in &picked {
+                self.bookmarks.remove(id);
+            }
+        } else {
+            self.bookmarks.extend(picked);
+        }
+    }
+
+    /// ⌘I: the picked commands in the prompt, joined with `; ` (never a line break, so nothing
+    /// runs), through the paste path; the pick is let go. Refused with a notice when one of
+    /// them cannot be typed.
+    pub(in crate::session) fn reinput_picked(&mut self) {
+        let commands = self.picked_commands();
+        if commands.is_empty() {
+            return;
+        }
+        let line = commands.join("; ");
+        if !CommandText(line.clone()).typable() {
+            self.notice = Some("These commands cannot be typed again.".to_owned());
+            return;
+        }
+        self.picks.clear();
+        let mode = self.pane.with_term(|term| term.paste_mode());
+        self.pane.send(&paste::encode(&line, mode));
+        self.pane
+            .with_term(|term| term.scroll(ViewportScroll::Bottom));
+    }
+
+    /// A right-click at `at`: the block there, for its menu. It is picked, alone, unless it is
+    /// in the pick already (then the pick stays, so the menu acts on all of it), and no text
+    /// stays selected. None where there is no block, on a full-screen program's screen, or while
+    /// the program has the mouse: the click is the program's then.
+    pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, UiError> {
+        let (Some(fit), Ok(top)) = (self.fit, self.viewport_top()) else {
+            return Ok(None);
+        };
+        let (alternate, tracking) = self
+            .pane
+            .with_term(|term| (term.on_alternate_screen(), term.mouse_tracking()));
+        if alternate || tracking {
+            return Ok(None);
+        }
+        let row = top.saturating_add(u32::from(fit.cell_at(at).pos.row.0));
+        let Some(id) = self.block_at_row(row) else {
+            return Ok(None);
+        };
+        if !self.picks.contains(id) {
+            self.pick_block(id, PickClick::Only);
+        }
+        self.selection = None;
+        self.mirror_selection()?;
+        Ok(Some(id))
+    }
+
+    /// Whether every picked block is bookmarked (and some block is picked).
+    pub fn picks_bookmarked(&self) -> bool {
+        let picked = self.picked_blocks();
+        !picked.is_empty() && picked.iter().all(|id| self.bookmarks.contains(id))
     }
 }

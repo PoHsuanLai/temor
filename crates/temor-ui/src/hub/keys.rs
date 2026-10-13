@@ -43,6 +43,13 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::CloseFind
         | Action::PreviousPrompt
         | Action::NextPrompt
+        | Action::CopyCommands
+        | Action::CopyOutputs
+        | Action::SelectAllBlocks
+        | Action::ToggleBookmark
+        | Action::PreviousBookmark
+        | Action::NextBookmark
+        | Action::ReinputCommands
         // The window's own: the radar jumps (`Hub::jump_to_waiting`), and the Space switch goes
         // through the kit (`Desk::select_space`).
         | Action::JumpToWaiting

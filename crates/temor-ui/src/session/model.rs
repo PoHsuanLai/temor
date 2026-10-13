@@ -91,6 +91,8 @@ pub struct Session {
     pub(super) blocks: BlockLog,
     /// The blocks picked with a click or the arrows.
     pub(super) picks: temor_core::block::Picks,
+    /// The blocks bookmarked for the bookmark keys, while the pane lives.
+    pub(super) bookmarks: std::collections::BTreeSet<temor_core::vocab::ids::BlockId>,
     /// The block toolbar's measured height, written by its view.
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.

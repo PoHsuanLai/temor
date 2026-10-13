@@ -7,7 +7,7 @@ use temor_render::{Cut, Palette, RowBand, RowSpan, RowWeight, Tint};
 use temor_vt::Row;
 
 use super::actions::output_name;
-use super::bands::{CardBlock, Lead, Pick, Stage, bands_of, command_rows, leads_blank};
+use super::bands::{CardBlock, Lead, Mark, Pick, Stage, bands_of, command_rows, leads_blank};
 use crate::view::card_colours::CardColours;
 
 #[test]
@@ -23,6 +23,7 @@ fn block(first: i64, stage: Stage, pick: Pick) -> CardBlock {
         lead: Lead::Header,
         stage,
         pick,
+        mark: Mark::Plain,
         command: None,
     }
 }
@@ -71,6 +72,20 @@ fn blocks_become_bands_by_how_they_stand() {
                 2,
                 4,
                 [Some(c.selected_fill), Some(c.failed_stripe), Some(c.rule)],
+            )],
+        ),
+        (
+            "a bookmark's stripe wins over a failure's",
+            vec![CardBlock {
+                mark: Mark::Bookmarked,
+                ..block(2, failed, plain)
+            }],
+            4,
+            10,
+            vec![band(
+                2,
+                4,
+                [Some(c.failed_fill), Some(c.bookmark_stripe), Some(c.rule)],
             )],
         ),
         (

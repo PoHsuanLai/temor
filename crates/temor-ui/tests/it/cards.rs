@@ -1,9 +1,10 @@
-//! The sticky command header and the block toolbar in the window (PLAN §9 blocks), in
-//! ds-harness: events dispatched to the window, the DOM and the probe's text read back, never
-//! pixels.
+//! The sticky command header, the block toolbar, picking blocks and the block menu in the
+//! window (PLAN §9 blocks), in ds-harness: events dispatched to the window, the DOM and the
+//! probe's text read back, never pixels.
 
 use std::time::Duration;
 
+use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Driver, Harness, Input};
@@ -229,5 +230,122 @@ fn the_find_bar_hides_the_card_meta_it_would_cover() {
     assert!(
         h.html().contains("exit 4 \u{b7} "),
         "the meta below the bar stays"
+    );
+}
+
+/// The middle of the header row of the `n`th card on screen, a little into the grid: a point on
+/// that block. The row holds the card's meta, or the toolbar of the hovered card in its place.
+fn on_card(h: &Harness, n: usize) -> Point {
+    let mut rows = spans(h, ".temor-card-meta");
+    rows.extend(spans(h, ".temor-block-tools"));
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let (top, bottom) = rows
+        .get(n)
+        .copied()
+        .unwrap_or_else(|| panic!("no card {n}:\n{}", h.html()));
+    Point {
+        x: Px(300.0),
+        y: Px(((top + bottom) / 2.0) as f32),
+    }
+}
+
+/// A right-click: the press, the release and the `contextmenu` after it, as a host sends them.
+fn right_click(h: &mut Harness, at: Point) {
+    h.send(Input::button_down(at, PointerButton::Secondary));
+    h.send(Input::button_up(at, PointerButton::Secondary));
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+}
+
+fn chord(h: &mut Harness, letter: char) {
+    h.send(Input::chord(
+        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
+        ShortcutKey::Char(letter),
+    ));
+    h.advance(Duration::from_millis(200));
+}
+
+#[test]
+fn a_click_picks_a_block_and_the_copy_key_takes_it_whole_and_select_all_takes_them_all() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-pick", &probe);
+    run_to_end(&mut h, &probe, "echo pick-one", "pick-one");
+    run_to_end(&mut h, &probe, "echo pick-two", "pick-two");
+    h.send(Input::click(on_card(&h, 0)));
+    h.advance(Duration::from_millis(200));
+    chord(&mut h, 'c');
+    assert_eq!(
+        h.clipboard_text().unwrap_or_default(),
+        "echo pick-one\npick-one",
+        "the clicked block, command and output"
+    );
+    // The platform's select all picks every block.
+    chord(&mut h, 'a');
+    chord(&mut h, 'c');
+    assert_eq!(
+        h.clipboard_text().unwrap_or_default(),
+        "echo pick-one\npick-one\n\necho pick-two\npick-two"
+    );
+}
+
+#[test]
+fn a_right_click_on_a_block_opens_its_menu_and_the_menu_acts_on_the_block() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-menu", &probe);
+    run_to_end(&mut h, &probe, "echo menu-one", "menu-one");
+    run_to_end(&mut h, &probe, "echo menu-two", "menu-two");
+    let items = |h: &Harness| {
+        use ds_harness::DocQuery;
+        h.with_doc(|doc| {
+            doc.query_selector_all(".ds-menu-item")
+                .map(|found| found.into_iter().collect::<Vec<_>>())
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|id| doc.get_client_bounding_rect(id))
+                .map(|r| Point {
+                    x: Px((r.x + r.width / 2.0) as f32),
+                    y: Px((r.y + r.height / 2.0) as f32),
+                })
+                .collect::<Vec<_>>()
+        })
+    };
+    assert!(items(&h).is_empty(), "a menu before the right-click");
+    let second = on_card(&h, 1);
+    right_click(&mut h, second);
+    let html = h.html();
+    for title in [
+        "Copy Output",
+        "Put in Prompt",
+        "Bookmark",
+        "Select All Commands",
+    ] {
+        assert!(html.contains(title), "no {title:?} in the menu:\n{html}");
+    }
+    // Copy, Copy Command, Copy Output, Put in Prompt, Bookmark, Select All Commands.
+    let found = items(&h);
+    assert_eq!(found.len(), 6, "the menu's items:\n{html}");
+    h.send(Input::click(found[2]));
+    h.advance(Duration::from_millis(300));
+    assert_eq!(
+        h.clipboard_text().unwrap_or_default(),
+        "menu-two",
+        "Copy Output: the right-clicked block's output"
+    );
+    assert!(items(&h).is_empty(), "the menu closed after the pick");
+    // Bookmarked, the item turns around.
+    right_click(&mut h, second);
+    h.send(Input::click(items(&h)[4]));
+    h.advance(Duration::from_millis(300));
+    right_click(&mut h, second);
+    assert!(
+        h.html().contains("Remove Bookmark"),
+        "the bookmarked block's menu:\n{}",
+        h.html()
     );
 }

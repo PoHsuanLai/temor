@@ -19,10 +19,16 @@ pub struct Declared {
 
 /// Every action temor declares, in registration order. Tabs 1 to 9 are `Primary+1` to
 /// `Primary+9`. The Space switch and "close find" have no entry: the desktop owns Ctrl+digit,
-/// and Escape is the find bar's own key.
+/// and Escape is the find bar's own key. Nor do the bookmark steps: Alt+Up and Alt+Down are
+/// theirs only while the pane has a bookmark and sits at its prompt (`Session::pick_key`).
 pub fn declared() -> Vec<Declared> {
     const OPEN_BAR_FORGOES: &[StandardAction] = &[StandardAction::ShowFonts];
     const NEW_TAB_FORGOES: &[StandardAction] = &[StandardAction::New];
+    // A terminal has no colour panel and no text to embolden or italicise: Warp's block keys
+    // take those chords.
+    const COPY_COMMANDS_FORGOES: &[StandardAction] = &[StandardAction::ShowColors];
+    const BOLD_FORGOES: &[StandardAction] = &[StandardAction::Bold];
+    const ITALIC_FORGOES: &[StandardAction] = &[StandardAction::Italic];
     let fixed: &[(
         Action,
         &str,
@@ -41,6 +47,19 @@ pub fn declared() -> Vec<Declared> {
         (Action::FocusDown, "Primary+Alt+Down", None, &[]),
         (Action::PreviousPrompt, "Primary+Up", None, &[]),
         (Action::NextPrompt, "Primary+Down", None, &[]),
+        // Warp's block keys: ⌘⇧C copies the picked commands, ⌘B bookmarks, ⌘I puts the commands
+        // back in the prompt (⌘A, picking them all, is the standard select all). Outputs alone
+        // are ⌘⇧O: Warp's ⌥⇧⌘C has the same Ctrl+Shift+Alt form as ⌘⇧C where Ctrl+Shift is the
+        // Primary.
+        (
+            Action::CopyCommands,
+            "Primary+Shift+C",
+            None,
+            COPY_COMMANDS_FORGOES,
+        ),
+        (Action::CopyOutputs, "Primary+Shift+O", None, &[]),
+        (Action::ToggleBookmark, "Primary+B", None, BOLD_FORGOES),
+        (Action::ReinputCommands, "Primary+I", None, ITALIC_FORGOES),
         (Action::ToggleZoom, "Primary+Shift+Enter", None, &[]),
         // Where Primary is Ctrl+Shift, `=` with Shift is `+` under plain Ctrl, the program's:
         // there equalize is Primary+Alt+0 (Ctrl+Shift+Alt+0).

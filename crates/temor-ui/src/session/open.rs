@@ -105,6 +105,7 @@ impl Session {
             pending_query: None,
             blocks: BlockLog::default(),
             picks: temor_core::block::Picks::default(),
+            bookmarks: std::collections::BTreeSet::new(),
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,

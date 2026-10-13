@@ -10,9 +10,12 @@ use dioxus::prelude::*;
 use ds::base::time::FRAME_SLACK;
 use ds::base::time::clock::sleep;
 use ds::host::signals::HostSignals;
+use ds::prelude::{Point, Px};
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::keys::Action;
 
+use super::block_menu::BlockMenuAt;
+use super::convert::{device_point, scale_of};
 use super::find_bar::StepDirection;
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
@@ -71,7 +74,9 @@ pub fn find_close(
     }
 }
 
-/// A press in the pane: in the gutter it selects a block; anywhere else it is the grid's.
+/// A press in the pane: in the gutter it picks a block; a right press on a block picks it for
+/// its menu (which opens on the `contextmenu` that follows the release, see
+/// [`block_menu_opened`]); anywhere else it is the grid's.
 pub fn gutter_pressed(
     slot: Rc<RefCell<Slot>>,
     signals: Option<HostSignals>,
@@ -81,6 +86,21 @@ pub fn gutter_pressed(
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
         let at = device_at(&e, signals);
+        if e.trigger_button() == Some(dioxus::html::input_data::MouseButton::Secondary) {
+            let block = match slot.borrow_mut().session.as_mut() {
+                Some(s) => s.block_menu_press(at),
+                None => Ok(None),
+            };
+            match block {
+                Ok(Some(_)) => {
+                    ui += 1;
+                    repaint(&slot);
+                    return;
+                }
+                Ok(None) => {}
+                Err(err) => notice.set(Some(err.to_string())),
+            }
+        }
         let gutter = match slot.borrow_mut().session.as_mut() {
             Some(s) => s.gutter_press(at),
             None => Ok(false),
@@ -92,6 +112,37 @@ pub fn gutter_pressed(
             }
             Ok(false) => mouse_down(e),
             Err(err) => notice.set(Some(err.to_string())),
+        }
+    }
+}
+
+/// A right-click's `contextmenu` on the grid: over a block (picked by the press before it), the
+/// block menu opens at the pointer. Opening on the release's event, not the press, keeps the
+/// release from landing outside a menu that has just opened, and closing it.
+pub fn block_menu_opened(
+    slot: Rc<RefCell<Slot>>,
+    signals: Option<HostSignals>,
+    mut ui: Signal<u32>,
+    mut menu: Signal<Option<BlockMenuAt>>,
+) -> impl FnMut(MouseEvent) + 'static {
+    move |e: MouseEvent| {
+        let p = e.element_coordinates();
+        let at = device_point(p.x, p.y, scale_of(signals.as_ref()));
+        let block = slot
+            .borrow_mut()
+            .session
+            .as_mut()
+            .and_then(|s| s.block_menu_press(at).ok().flatten());
+        if block.is_some() {
+            let c = e.client_coordinates();
+            menu.set(Some(BlockMenuAt {
+                point: Point {
+                    x: Px(c.x as f32),
+                    y: Px(c.y as f32),
+                },
+            }));
+            ui += 1;
+            repaint(&slot);
         }
     }
 }

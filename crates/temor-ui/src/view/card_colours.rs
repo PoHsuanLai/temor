@@ -14,6 +14,8 @@ pub struct CardColours {
     pub failed_fill: Tint,
     /// The bar at a failed block's left edge.
     pub failed_stripe: Tint,
+    /// The bar at a bookmarked block's left edge.
+    pub bookmark_stripe: Tint,
     /// Behind a picked block.
     pub selected_fill: Tint,
 }
@@ -40,6 +42,11 @@ impl CardColours {
                 color: red,
                 alpha: Alpha(255),
             },
+            // Warp's bookmark is yellow; the palette's bright yellow reads on light and dark.
+            bookmark_stripe: Tint {
+                color: palette.ansi[11],
+                alpha: Alpha(255),
+            },
             // A picked block reads as selected text does: the selection's colour, lighter.
             selected_fill: Tint {
                 color: palette.selection,
@@ -63,6 +70,7 @@ mod tests {
             (c.failed_fill, palette.ansi[1], 26),
             (c.failed_stripe, palette.ansi[1], 255),
             (c.selected_fill, palette.selection, 115),
+            (c.bookmark_stripe, palette.ansi[11], 255),
         ] {
             assert_eq!((tint.color, tint.alpha), (color, Alpha(alpha)));
         }

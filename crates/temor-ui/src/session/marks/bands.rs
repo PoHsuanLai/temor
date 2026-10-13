@@ -48,6 +48,13 @@ pub(super) enum Pick {
     Unselected,
 }
 
+/// Whether the person bookmarked the block.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Mark {
+    Bookmarked,
+    Plain,
+}
+
 /// Whether a block's first row is the blank line temor's prompt leaves above its header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Lead {
@@ -63,6 +70,7 @@ pub(super) struct CardBlock {
     pub lead: Lead,
     pub stage: Stage,
     pub pick: Pick,
+    pub mark: Mark,
     pub command: Option<(i64, i64)>,
 }
 
@@ -126,9 +134,11 @@ pub(super) fn bands_of(
             (Pick::Unselected, Stage::Ran(Outcome::Failed(_))) => Some(colours.failed_fill),
             (Pick::Unselected, _) => None,
         };
-        let stripe = match block.stage {
-            Stage::Ran(Outcome::Failed(_)) => Some(colours.failed_stripe),
-            _ => None,
+        // A bookmark's stripe wins over a failure's: the person put it there.
+        let stripe = match (block.mark, block.stage) {
+            (Mark::Bookmarked, _) => Some(colours.bookmark_stripe),
+            (Mark::Plain, Stage::Ran(Outcome::Failed(_))) => Some(colours.failed_stripe),
+            (Mark::Plain, _) => None,
         };
         // A block whose first row is row 0 (or above the view) shows no rule, unless the rule
         // crosses that row's middle.
@@ -266,11 +276,16 @@ impl Session {
                         true => Pick::Selected,
                         false => Pick::Unselected,
                     };
+                    let mark = match self.bookmarks.contains(&block.id) {
+                        true => Mark::Bookmarked,
+                        false => Mark::Plain,
+                    };
                     Some(CardBlock {
                         first,
                         lead: lead_at(term, prompt, anchors.input),
                         stage: Stage::Ran(block.outcome()),
                         pick,
+                        mark,
                         command: command_of(anchors.input, anchors.output),
                     })
                 })
@@ -282,6 +297,7 @@ impl Session {
                     lead: lead_at(term, prompt, self.blocks.input),
                     stage: Stage::AtPrompt,
                     pick: Pick::Unselected,
+                    mark: Mark::Plain,
                     command: command_of(self.blocks.input, None),
                 });
             }

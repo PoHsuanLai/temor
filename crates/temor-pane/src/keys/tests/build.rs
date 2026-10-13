@@ -58,6 +58,13 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::FocusDown, "temor.focus-down"),
         (Action::PreviousPrompt, "temor.previous-prompt"),
         (Action::NextPrompt, "temor.next-prompt"),
+        (Action::CopyCommands, "temor.copy-commands"),
+        (Action::CopyOutputs, "temor.copy-outputs"),
+        (Action::SelectAllBlocks, "select-all"),
+        (Action::ToggleBookmark, "temor.toggle-bookmark"),
+        (Action::PreviousBookmark, "temor.previous-bookmark"),
+        (Action::NextBookmark, "temor.next-bookmark"),
+        (Action::ReinputCommands, "temor.reinput-commands"),
         (Action::ToggleZoom, "temor.zoom"),
         (Action::Equalize, "temor.equalize"),
         (Action::ReopenTab, "temor.reopen-tab"),
@@ -76,7 +83,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
     assert_eq!(Action::SelectTab(0).to_chordkit(), None);
     assert_eq!(Action::SelectTab(10).to_chordkit(), None);
     for id in [
-        "select-all",
+        "undo",
         "temor.nope",
         "temor.tab-0",
         "temor.tab-10",

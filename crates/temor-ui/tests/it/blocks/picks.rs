@@ -182,3 +182,74 @@ fn a_drag_selects_text_and_lets_go_of_the_pick() {
     assert!(live.session.picked_blocks().is_empty(), "the drag let go");
     assert_eq!(copied(&mut live), "echo", "the text the drag covered");
 }
+
+#[test]
+fn the_block_keys_copy_commands_or_outputs_pick_all_and_put_commands_back() {
+    let Some((mut live, [a, b, c])) = three_blocks("picks-actions") else {
+        return;
+    };
+    live.session.run(Action::SelectAllBlocks).expect("all");
+    assert_eq!(live.session.picked_blocks(), [a, b, c], "every block");
+    *live.clipboard.0.borrow_mut() = String::new();
+    live.session.run(Action::CopyCommands).expect("commands");
+    assert_eq!(*live.clipboard.0.borrow(), "echo a\necho b\necho c");
+    live.session.run(Action::CopyOutputs).expect("outputs");
+    assert_eq!(*live.clipboard.0.borrow(), "a\n\nb\n\nc");
+    // Back in the prompt, joined so that nothing runs, and the pick let go.
+    let mut clock = 0;
+    let at_b = cell(&live, 3, header_of(&live, b) + 1);
+    click(&mut live, at_b, Modifiers::NONE, &mut clock);
+    let at_c = cell(&live, 3, header_of(&live, c) + 1);
+    click(&mut live, at_c, Modifiers::SHIFT, &mut clock);
+    let before = live.session.block_outcomes().len();
+    live.session.run(Action::ReinputCommands).expect("reinput");
+    assert!(live.session.picked_blocks().is_empty(), "the pick let go");
+    pump(&mut live, "the commands in the prompt", |s| {
+        s.screen_text().contains("echo b; echo c")
+    });
+    assert_eq!(live.session.block_outcomes().len(), before, "nothing ran");
+}
+
+#[test]
+fn bookmarks_are_set_on_the_pick_and_alt_arrows_step_between_them() {
+    let Some((mut live, [a, b, c])) = three_blocks("picks-bookmarks") else {
+        return;
+    };
+    let alt_up = stroke(KeyCode::ArrowUp, Some(NamedKey::Up), Modifiers::ALT, "");
+    let alt_down = stroke(KeyCode::ArrowDown, Some(NamedKey::Down), Modifiers::ALT, "");
+    let mut clock = 0;
+    for id in [a, c] {
+        let at = cell(&live, 3, header_of(&live, id) + 1);
+        click(&mut live, at, Modifiers::NONE, &mut clock);
+        live.session.run(Action::ToggleBookmark).expect("bookmark");
+    }
+    assert!(live.session.block_bookmarked(a) && live.session.block_bookmarked(c));
+    assert!(!live.session.block_bookmarked(b));
+    live.session
+        .key(stroke(
+            KeyCode::Escape,
+            Some(NamedKey::Escape),
+            Modifiers::NONE,
+            "",
+        ))
+        .expect("escape");
+    live.session.key(alt_up.clone()).expect("alt up");
+    assert_eq!(live.session.picked_blocks(), [c], "the newest bookmark");
+    live.session.key(alt_up).expect("alt up");
+    assert_eq!(
+        live.session.picked_blocks(),
+        [a],
+        "the one above it, past b"
+    );
+    live.session.key(alt_down).expect("alt down");
+    assert_eq!(live.session.picked_blocks(), [c]);
+    // Bookmarking the pick again takes the bookmark away.
+    live.session.run(Action::ToggleBookmark).expect("unmark");
+    assert!(!live.session.block_bookmarked(c));
+    live.session.run(Action::ToggleBookmark).expect("mark");
+    // A pick of a bookmarked and a plain block: both get one.
+    let at_b = cell(&live, 3, header_of(&live, b) + 1);
+    click(&mut live, at_b, Modifiers::SHIFT, &mut clock);
+    live.session.run(Action::ToggleBookmark).expect("both");
+    assert!(live.session.block_bookmarked(b) && live.session.block_bookmarked(c));
+}
