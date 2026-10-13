@@ -24,12 +24,40 @@ pub enum ChipIcon {
     Changes,
 }
 
+/// What a chip says; each kind has its own colour from the terminal's palette.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChipKind {
+    Folder,
+    Branch,
+    Changes,
+    New,
+    Python,
+    Ruby,
+    Go,
+    Node,
+}
+
+impl ChipKind {
+    fn slug(self) -> &'static str {
+        match self {
+            ChipKind::Folder => "folder",
+            ChipKind::Branch => "branch",
+            ChipKind::Changes => "changes",
+            ChipKind::New => "new",
+            ChipKind::Python => "python",
+            ChipKind::Ruby => "ruby",
+            ChipKind::Go => "go",
+            ChipKind::Node => "node",
+        }
+    }
+}
+
 /// How a run of a chip's words is coloured.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tone {
     /// The chip's own colour.
     Plain,
-    /// What the chip is named for (the folder, the branch), a step brighter.
+    /// What the chip is named for (the folder, the branch, the tool), in the chip's colour.
     Strong,
     /// Lines added.
     Added,
@@ -55,9 +83,10 @@ pub struct ChipPart {
     pub tone: Tone,
 }
 
-/// One chip: its picture, if any, and its words.
+/// One chip: what it says, its picture, if any, and its words.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChipText {
+    pub kind: ChipKind,
     pub icon: Option<ChipIcon>,
     pub parts: Vec<ChipPart>,
 }
@@ -103,12 +132,17 @@ fn part(text: impl Into<String>, tone: Tone) -> ChipPart {
     }
 }
 
-fn chip(icon: Option<ChipIcon>, parts: Vec<ChipPart>) -> ChipText {
-    ChipText { icon, parts }
+fn chip(kind: ChipKind, icon: Option<ChipIcon>, parts: Vec<ChipPart>) -> ChipText {
+    ChipText { kind, icon, parts }
 }
 
-fn plain(text: String) -> ChipText {
-    chip(None, vec![part(text, Tone::Plain)])
+/// A tool's chip: its name in the chip's colour, then what it is set to.
+fn tool(kind: ChipKind, name: &str, value: &str) -> ChipText {
+    chip(
+        kind,
+        None,
+        vec![part(name, Tone::Strong), part(value, Tone::Plain)],
+    )
 }
 
 fn files_words(files: u32) -> String {
@@ -137,6 +171,7 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
     }) = facts.changes.filter(|s| s.is_dirty())
     {
         chips.push(chip(
+            ChipKind::Changes,
             Some(ChipIcon::Changes),
             vec![
                 part(format!("+{added}"), Tone::Added),
@@ -147,7 +182,11 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
         ));
     }
     if let Some(untracked) = facts.untracked.filter(|u| u.0 > 0) {
-        chips.push(plain(untracked_words(untracked.0)));
+        chips.push(chip(
+            ChipKind::New,
+            None,
+            vec![part(untracked_words(untracked.0), Tone::Plain)],
+        ));
     }
     let python = match (&facts.venv, &facts.python) {
         (Some(venv), _) => Some(venv.as_str()),
@@ -155,16 +194,16 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
         (None, None) => None,
     };
     if let Some(python) = python {
-        chips.push(plain(format!("python {python}")));
+        chips.push(tool(ChipKind::Python, "python", python));
     }
     if let Some(ruby) = &facts.ruby {
-        chips.push(plain(format!("ruby {}", ruby.as_str())));
+        chips.push(tool(ChipKind::Ruby, "ruby", ruby.as_str()));
     }
     if let Some(go) = &facts.go {
-        chips.push(plain(format!("go {}", go.as_str())));
+        chips.push(tool(ChipKind::Go, "go", go.as_str()));
     }
     if let Some(node) = &facts.node {
-        chips.push(plain(format!("node {}", node.as_str())));
+        chips.push(tool(ChipKind::Node, "node", node.as_str()));
     }
     chips
 }
@@ -186,11 +225,13 @@ pub fn chips_go_over(header: &PromptHeader, folder: Option<&str>) -> bool {
 /// The folder and branch chips that lead the row over temor's header line.
 pub fn lead_chips(folder: &str, facts: &Facts) -> Vec<ChipText> {
     let mut chips = vec![chip(
+        ChipKind::Folder,
         Some(ChipIcon::Folder),
         vec![part(folder, Tone::Strong)],
     )];
     if let Some(branch) = &facts.branch {
         chips.push(chip(
+            ChipKind::Branch,
             Some(ChipIcon::Branch),
             vec![part(branch.as_str(), Tone::Strong)],
         ));
@@ -263,15 +304,6 @@ fn icon_source(icon: ChipIcon) -> IconSource {
     })
 }
 
-fn icon_slug(icon: Option<ChipIcon>) -> &'static str {
-    match icon {
-        Some(ChipIcon::Folder) => "folder",
-        Some(ChipIcon::Branch) => "branch",
-        Some(ChipIcon::Changes) => "changes",
-        None => "fact",
-    }
-}
-
 /// The chips over the prompt's header row.
 #[component]
 #[allow(non_snake_case)]
@@ -289,9 +321,11 @@ pub fn FactChips(view: ChipsView) -> Element {
                 span {
                     key: "{n}",
                     class: "temor-chip",
-                    "data-kind": icon_slug(one.icon),
+                    "data-kind": one.kind.slug(),
                     if let Some(icon) = one.icon {
-                        IconView { source: icon_source(icon), size: ICON_SIZE }
+                        span { class: "temor-chip-icon",
+                            IconView { source: icon_source(icon), size: ICON_SIZE }
+                        }
                     }
                     span { class: "temor-chip-words",
                         for (m, run) in one.parts.iter().enumerate() {
