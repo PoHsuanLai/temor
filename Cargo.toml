@@ -62,11 +62,11 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "72efdae9d33151959c109c95fa13b694523614c8" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "72efdae9d33151959c109c95fa13b694523614c8" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "72efdae9d33151959c109c95fa13b694523614c8" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "72efdae9d33151959c109c95fa13b694523614c8" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "72efdae9d33151959c109c95fa13b694523614c8" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "d571cb063bf02c6935a09d1503fdeb1a7d889716" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "d571cb063bf02c6935a09d1503fdeb1a7d889716" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "d571cb063bf02c6935a09d1503fdeb1a7d889716" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "d571cb063bf02c6935a09d1503fdeb1a7d889716" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "d571cb063bf02c6935a09d1503fdeb1a7d889716" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba094c62006c280ac53c4c5df5c0e639c1226c07" }
@@ -75,14 +75,14 @@ chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "ba09
 keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "95f41dc4b613e3557f3cabc1638e53da348a09ff" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
-# docket 1695cff locks porter ee3c63e (as anyview 72efdae does), so docket and porter-client share
+# docket afe9314 locks porter bfd909a (as anyview d571cb0 does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "1695cff0bae747e9e152c7bf927d34597c86cb29", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "1695cff0bae747e9e152c7bf927d34597c86cb29" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "ee3c63ee76b7b0f720dd40f9a0810665630bdc25" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "ee3c63ee76b7b0f720dd40f9a0810665630bdc25" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "ee3c63ee76b7b0f720dd40f9a0810665630bdc25", default-features = false, features = ["dbus"] }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "afe931402213e677ed54005c61f05896f49c1e24", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "afe931402213e677ed54005c61f05896f49c1e24" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "bfd909a41ea4962526edc0bc84fd96b4819c8ff5" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "bfd909a41ea4962526edc0bc84fd96b4819c8ff5" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "bfd909a41ea4962526edc0bc84fd96b4819c8ff5", default-features = false, features = ["dbus"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"

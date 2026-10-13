@@ -1281,6 +1281,9 @@ the bar runs the sidebar action through the desk.
   as a stray mark beside "· idle"; the card's chips show the counts).
 - [x] Porter/docket batch 18 (docket 1695cff, porter ee3c63e, almanac 5678345): taken with
   anyview 5ec7c56 (#109).
+- [x] Porter/docket batch 20 (docket afe9314, porter bfd909a, almanac 4eabd9e): taken with
+  anyview d571cb0 (#115). No CheckpointList literal here, so docket's new restore-point label
+  needs no change; showing it is open.
 - [x] The nushell offer load is quadratic: the load text is one `sh -c '...'` program over many
   lines, and nushell's line editor repaints the whole open quote for every line it receives
   (6.4 MB of output for a few KB of script). Alone it finishes in well under a second; under
