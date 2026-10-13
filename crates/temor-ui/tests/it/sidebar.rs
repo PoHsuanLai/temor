@@ -1,6 +1,6 @@
 //! The sidebar in ds-harness: its controls never lie over one another (the closed Downloads
-//! disclosure once laid out its hint over the foot's buttons), and a row keeps its height whether
-//! or not its tab is split.
+//! disclosure once laid out its hint over the foot's buttons); every row is one line, a split tab
+//! is Arc's row of side-by-side panes, and the Space dots stand at the foot's centre.
 
 use std::time::Duration;
 
@@ -104,20 +104,62 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
     chord(&mut h, 'n');
     chord(&mut h, 'd');
     assert_apart(&h, "two tabs, one split");
-    // The split tab's miniature trails its row: both rows are as tall as the sidebar ladder's 36.
-    let heights: Vec<f64> = h.with_doc(|doc| {
-        doc.query_selector_all(".temor-side .temor-tab-box .ds-row")
+    // Every row is one line, on the sidebar ladder's 32, split or not.
+    let heights: Vec<f64> = rects(&h, ".temor-side .temor-tab-box .ds-row")
+        .iter()
+        .map(|r| r.bottom - r.top)
+        .collect();
+    assert_eq!(heights.len(), 2, "{heights:?}");
+    assert!(
+        heights.iter().all(|height| (*height - 32.0).abs() < 0.5),
+        "{heights:?}"
+    );
+    // The split tab is Arc's: its two panes stand side by side in the one row, as wide as each
+    // other, each with its name.
+    let segments = rects(&h, ".temor-side .temor-seg");
+    assert_eq!(segments.len(), 2, "two panes");
+    let (a, b) = (&segments[0], &segments[1]);
+    assert!(
+        (a.top - b.top).abs() < 0.5,
+        "one row: {} and {}",
+        a.top,
+        b.top
+    );
+    assert!(
+        a.right <= b.left,
+        "side by side: {} then {}",
+        a.right,
+        b.left
+    );
+    let (wa, wb) = (a.right - a.left, b.right - b.left);
+    assert!(wa > 40.0 && (wa - wb).abs() < 2.0, "even: {wa} and {wb}");
+    // The Space dots stand at the foot's centre, Downloads at its start and the chevron at its end.
+    let foot = rects(&h, ".temor-side .ds-spaces-foot");
+    let dots = rects(&h, ".temor-side .ds-spaces-dots");
+    let (foot, dots) = (&foot[0], &dots[0]);
+    let off = ((dots.left + dots.right) - (foot.left + foot.right)).abs() / 2.0;
+    assert!(off <= 1.0, "the dots are {off} px off the foot's centre");
+}
+
+/// The boxes of what `selector` finds, in document order.
+fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
+    h.with_doc(|doc| {
+        doc.query_selector_all(selector)
             .map(|found| found.into_iter().collect::<Vec<_>>())
             .unwrap_or_default()
             .into_iter()
-            .filter_map(|id| doc.get_client_bounding_rect(id).map(|r| r.height))
+            .filter_map(|id| {
+                let r = doc.get_client_bounding_rect(id)?;
+                Some(Box4 {
+                    left: r.x,
+                    top: r.y,
+                    right: r.x + r.width,
+                    bottom: r.y + r.height,
+                    what: selector.to_owned(),
+                })
+            })
             .collect()
-    });
-    assert_eq!(heights.len(), 2, "{heights:?}");
-    assert!(
-        heights.iter().all(|height| (*height - 36.0).abs() < 0.5),
-        "{heights:?}"
-    );
+    })
 }
 
 #[test]
@@ -141,17 +183,21 @@ fn a_running_tab_counts_up_with_no_output() {
     }
     h.send(Input::key(ShortcutKey::Enter));
     let start = std::time::Instant::now();
-    // `sleep` prints nothing: only the timer can move the words from 0s or 1s to 3s.
-    while !h.html().contains("running 3s") {
+    // `sleep` prints nothing: only the timer can move the row's time from 0s or 1s to 3s.
+    let time = |h: &Harness| {
+        h.with_doc(|doc| {
+            doc.query_selector(".temor-tab-time")
+                .ok()
+                .flatten()
+                .and_then(|id| doc.get_node(id).map(|node| node.text_content()))
+        })
+    };
+    while time(&h).as_deref().map(str::trim) != Some("3s") {
         h.advance(Duration::from_millis(50));
         assert!(
             start.elapsed() < Duration::from_secs(20),
-            "the tab's words did not count up: {}",
-            h.html()
-                .rsplit("running ")
-                .next()
-                .map(|rest| rest.chars().take(4).collect::<String>())
-                .unwrap_or_default()
+            "the tab's time did not count up: {:?}",
+            time(&h)
         );
     }
     h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));

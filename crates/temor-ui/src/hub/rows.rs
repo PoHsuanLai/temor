@@ -205,7 +205,11 @@ impl Hub {
                     top: percent(rect.y),
                     width: percent(rect.width),
                     height: percent(rect.height),
-                    title: self.pane_name(pane),
+                    // Named as a tab is: its folder, or what runs in it.
+                    title: match self.viewer_name(pane) {
+                        Some(name) => name,
+                        None => self.tab_name_and_state(pane, &tab.title).0,
+                    },
                     selection: match pane == focus {
                         true => Selection::Selected,
                         false => Selection::Unselected,

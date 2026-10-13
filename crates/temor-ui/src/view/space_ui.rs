@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 use ds::base::vocab::Availability;
 use ds::components::app::spaces::{
-    SpaceHead, SpaceId, SpaceMenu, SpacesFoot, SwitchChord, Switched, use_spaces,
+    NewSpace, SpaceHead, SpaceId, SpaceMenu, SpacesFoot, SwitchChord, Switched, use_spaces,
 };
 use ds::components::menus::item::item::MenuItem;
 use temor_core::space::{Place, Project, TemorSpaces};
@@ -51,18 +51,21 @@ pub fn SpaceHeader(desk: Desk) -> Element {
     rsx! { SpaceHead { handle: desk.spaces } }
 }
 
-/// The foot of the sidebar: a dot for each Space and "New Space". `leading` is the window's own
-/// button (new tab). The Space switch has no chord of its own here: the desktop owns Ctrl+digit.
+/// The foot of the sidebar: the window's `leading` (Downloads), a dot for each Space, and its
+/// `trailing` (the chevron, whose menu holds New Space: the foot draws no `+`). The Space switch
+/// has no chord of its own here: the desktop owns Ctrl+digit.
 #[component]
 #[allow(non_snake_case)]
-pub fn SpaceFoot(desk: Desk, leading: Element) -> Element {
+pub fn SpaceFoot(desk: Desk, leading: Element, trailing: Element) -> Element {
     let new_payload = use_callback(|()| Project::default());
     rsx! {
         SpacesFoot {
             handle: desk.spaces,
             new_payload,
             chord: SwitchChord::Unbound,
+            new_space: NewSpace::Hidden,
             leading,
+            trailing,
         }
     }
 }

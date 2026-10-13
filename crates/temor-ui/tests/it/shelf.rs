@@ -86,14 +86,15 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         );
     }
     assert_eq!(std::fs::read(&saved).expect("saved"), b"hello");
-    wait_for_html(&mut h, "the shelf's badge", |html| {
-        html.contains("Downloads (1)") && !html.contains("to your Downloads folder")
+    // The Downloads button at the foot carries a dot: a file arrived and is not yet opened.
+    wait_for_html(&mut h, "the shelf's dot", |html| {
+        html.contains("class=\"temor-dl-dot\"") && !html.contains("to your Downloads folder")
     });
 
     // Opening the shelf shows the file as a row.
     let trigger = h
-        .centre(".temor-dl-box .ds-disclosure-trigger")
-        .unwrap_or_else(|| panic!("no Downloads disclosure:\n{}", h.html()));
+        .centre(".temor-dl-hold .ds-button")
+        .unwrap_or_else(|| panic!("no Downloads button:\n{}", h.html()));
     h.send(Input::click(trigger));
     wait_for_html(&mut h, "the shelf's rows", |html| {
         html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in folder")

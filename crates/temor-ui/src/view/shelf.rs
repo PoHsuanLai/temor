@@ -1,15 +1,19 @@
-//! The downloads shelf in the sidebar's foot (PLAN §7, §9): a disclosure that opens the files
-//! that arrived, newest first. Each row opens its file on a press, and offers to show it in the
+//! The downloads shelf in the sidebar's foot (PLAN §7, §9), as mailo's is: a button at the foot's
+//! start, with a dot while a file arrives or one arrived unopened, that opens the files that
+//! arrived, newest first, in a popover above it. Each row opens its file on a press, and offers to show it in the
 //! folder, to jump back to its tab, and to take it off the list (the file stays). A file that is
 //! still arriving shows a bar.
 
 use dioxus::prelude::*;
+use ds::base::geometry::placement::{Align, Side};
 use ds::base::press::Press;
 use ds::base::vocab::RowState;
-use ds::components::content::label::LabelStyle;
-use ds::components::controls::disclosure::Disclosure;
+use ds::components::content::label::{LabelRole, LabelStyle};
+use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
+use ds::components::overlays::popover::Arrow;
+use ds::host::measure::{Anchor, MountedRef};
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_core::shelf::{
@@ -18,7 +22,7 @@ use temor_core::shelf::{
 
 use crate::hub::Desk;
 
-/// The Downloads disclosure for the foot of the sidebar.
+/// The Downloads button for the foot of the sidebar, and its list while it is open.
 #[component]
 #[allow(non_snake_case)]
 pub fn ShelfFoot(desk: Desk) -> Element {
@@ -26,26 +30,57 @@ pub fn ShelfFoot(desk: Desk) -> Element {
     let view = desk.hub.shelf_view();
     let uploads = desk.hub.uploads();
     let mut shown = use_signal(|| Shown::Hidden);
-    let label = match view.unseen {
-        0 => "Downloads".to_owned(),
-        n => format!("Downloads ({n})"),
+    let mut hold = use_signal(|| None::<MountedRef>);
+    let going = !uploads.is_empty()
+        || view
+            .rows
+            .iter()
+            .any(|row| !matches!(row.state, Arriving::Ready));
+    let dot = match (going, view.unseen) {
+        (true, _) => Some("temor-dl-dot going"),
+        (false, 0) => None,
+        (false, _) => Some("temor-dl-dot"),
     };
+    let anchor = hold().map_or(Anchor::Point(Point::default()), Anchor::Mounted);
     rsx! {
-        div { class: "temor-dl-box",
-            Disclosure {
-                shown: shown(),
-                on_toggle: move |next: Shown| shown.set(next),
-                label: Some(label),
-                // Closed, the disclosure lays out nothing: its hint once overlapped the foot.
-                if matches!(shown(), Shown::Visible) {
-                    for upload in uploads.iter().cloned() {
-                        UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
-                    }
-                    if view.rows.is_empty() && uploads.is_empty() {
-                        Label { text: view.empty, style: LabelStyle::Footnote }
-                    }
-                    for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
-                        DownloadRow { key: "{id}", row, desk: desk.clone() }
+        span {
+            class: "temor-dl-hold",
+            onmounted: move |event: MountedEvent| hold.set(Some(MountedRef(event.data()))),
+            Button {
+                bezel: Bezel::Toolbar,
+                image: ImagePosition::Only,
+                icon: Some(IconSource::Glyph(Icon::Download)),
+                label: "Downloads".to_owned(),
+                title: Some("Downloads".to_owned()),
+                onclick: move |_: Press| {
+                    shown.set(match shown() {
+                        Shown::Visible => Shown::Hidden,
+                        Shown::Hidden => Shown::Visible,
+                    });
+                },
+            }
+            if let Some(class) = dot {
+                span { class, aria_hidden: "true" }
+            }
+            if shown() == Shown::Visible {
+                Popover {
+                    anchor,
+                    placement: Placement::new(Side::Top, Align::Start),
+                    gap: Px(6.0),
+                    arrow: Arrow::None,
+                    common: Common { aria_label: Some("Downloads".to_owned()), ..Common::default() },
+                    onclose: move |()| shown.set(Shown::Hidden),
+                    div { class: "temor-dl-list",
+                        Label { text: "Downloads".to_owned(), role: LabelRole::Secondary }
+                        for upload in uploads.iter().cloned() {
+                            UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
+                        }
+                        if view.rows.is_empty() && uploads.is_empty() {
+                            Label { text: view.empty, style: LabelStyle::Footnote }
+                        }
+                        for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
+                            DownloadRow { key: "{id}", row, desk: desk.clone() }
+                        }
                     }
                 }
             }

@@ -33,14 +33,33 @@ pub const WINDOW_CSS: &str = "\
 .temor-quick-body { flex: 1 1 auto; min-height: 0; position: relative; }\
 .temor-side-box { width: 100%; height: 100%; }\
 .temor-side { width: 100%; height: 100%; }\
-.temor-tab-box { position: relative; min-width: 0; }\
-.temor-mini { position: relative; flex: none; width: var(--s-28); height: var(--s-16); }\
-.temor-tile-slot { position: absolute; box-sizing: border-box; }\
-.temor-tile-slot > * { display: block; width: 100%; height: 100%; }\
+.temor-tab-box { position: relative; display: flex; width: 100%; min-width: 0; }\
+.temor-new-tab { display: flex; width: 100%; min-width: 0; }\
+.temor-tab-box > *, .temor-new-tab > *, .temor-seg-slot > * { flex: 1 1 auto; min-width: 0; }\
+.temor-split { display: flex; flex-direction: row; align-items: center; width: 100%; min-width: 0; gap: var(--s-2); }\
+.temor-seg-slot { flex: 1 1 0; min-width: 0; display: flex; }\
+.temor-seg { display: flex; align-items: center; gap: var(--s-6); min-width: 0; padding: 0 var(--s-2); color: var(--ink-soft); }\
+.temor-seg[data-selected] { color: var(--ink); }\
+.temor-seg-glyph { display: flex; flex: none; }\
+.temor-seg-name { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }\
+.temor-seg-close { display: flex; flex: none; align-items: center; justify-content: center; width: var(--s-16); height: var(--s-16); border-radius: var(--r-micro); color: var(--ink-faint); visibility: hidden; }\
+.temor-seg:hover .temor-seg-close, [*|aria-selected=\"true\"] .temor-seg-close { visibility: visible; }\
+.temor-seg-close:hover { color: var(--ink); background: var(--fill-quaternary); }\
+.temor-seg-rule { flex: none; width: var(--hair); height: var(--s-14); background: var(--line); }\
 .temor-host { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--s-4); }\
 .temor-host-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }\
-.temor-tile { box-sizing: border-box; width: 100%; height: 100%; border: var(--hair) solid var(--ink-faint); }\
-.temor-tile[data-selected] { border-color: var(--ink-soft); }\
-.temor-dl-box { width: 100%; }\
+.temor-pins { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6); padding-bottom: var(--s-4); }\
+.temor-pins > * { min-width: 0; }\
+.temor-pin { position: relative; display: grid; place-items: center; height: 44px; border-radius: var(--r-tile); background: var(--f-pill-hover); color: var(--f-ink); }\
+.temor-pin:hover, .temor-pin[*|data-selected=true] { background: var(--f-pill); }\
+.temor-pin[*|data-selected=true] { box-shadow: var(--shadow-current); }\
+.temor-pin-news { position: absolute; top: var(--s-2); right: var(--s-2); display: flex; }\
+.temor-foot { flex: 1 1 auto; min-width: 0; }\
+.temor-foot .temor-foot-lead, .temor-foot .temor-foot-end { display: flex; align-items: center; flex: 1000 1 0; min-width: 0; }\
+.temor-foot-end { justify-content: flex-end; }\
+.temor-dl-hold { position: relative; display: flex; }\
+.temor-dl-dot { position: absolute; top: var(--s-3); right: var(--s-3); width: var(--s-6); height: var(--s-6); border-radius: var(--r-pill); background: var(--ok); pointer-events: none; }\
+.temor-dl-dot.going { background: var(--ink-faint); }\
+.temor-dl-list { display: flex; flex-direction: column; gap: var(--s-8); width: 320px; max-height: 420px; overflow-y: auto; padding: var(--s-8); }\
 .temor-dl { display: flex; flex-direction: column; gap: var(--s-8); min-width: 0; }\
 .temor-dl-actions { display: flex; gap: var(--s-8); }";

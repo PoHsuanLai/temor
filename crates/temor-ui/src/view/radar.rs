@@ -8,6 +8,8 @@ use ds::components::content::label::LabelStyle;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
 use temor_core::vocab::ids::TabId;
+use temor_core::vocab::text::Relaunch;
+use temor_core::workspace::{TabsIn, WorkspaceIn};
 
 use crate::hub::{
     AgentMenu, AgentPick, Desk, PointLine, RestoreMenu, SheetView, WAIT_FOR_AGENT, Where,
@@ -53,20 +55,59 @@ fn items_of(menu: &AgentMenu) -> Vec<MenuItem<AgentPick>> {
     items
 }
 
-/// The menu hung from a tab's row, opened by a secondary press on it.
+/// Whether a tab's menu pins it or lets it go: a row's pins, a pinned tile's unpins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PinAct {
+    Pin,
+    Unpin,
+}
+
+/// What a tab's menu asks for: its pin, or one of the agent's actions.
+#[derive(Debug, Clone, PartialEq)]
+enum TabPick {
+    Pin(PinAct),
+    Agent(AgentPick),
+}
+
+/// The menu hung from a tab's row or tile, opened by a secondary press on it: Pin Tab or Unpin
+/// Tab, then the agent's actions when the tab has a pane.
 #[component]
 #[allow(non_snake_case)]
-pub fn AgentTabMenu(tab: TabId, at: Rect, desk: Desk, onclose: EventHandler<()>) -> Element {
+pub fn AgentTabMenu(
+    tab: TabId,
+    at: Rect,
+    pin: PinAct,
+    desk: Desk,
+    onclose: EventHandler<()>,
+) -> Element {
     let menu = desk.hub.0.borrow().agent_menu(tab);
-    let Some(menu) = menu else {
-        return rsx! {};
+    let words = match pin {
+        PinAct::Pin => "Pin Tab",
+        PinAct::Unpin => "Unpin Tab",
     };
+    let mut items = vec![MenuItem::new(TabPick::Pin(pin), words)];
+    if let Some(menu) = menu {
+        items.push(MenuItem::Separator);
+        items.extend(
+            items_of(&menu)
+                .into_iter()
+                .map(|item| item.map(&TabPick::Agent)),
+        );
+    }
     rsx! {
         Menu {
             placement: MenuPlacement::Context,
             anchor: Anchor::Rect(at),
-            items: items_of(&menu),
-            onpick: move |pick: AgentPick| desk.agent_pick(tab, pick),
+            items,
+            onpick: move |pick: TabPick| match pick {
+                // A pinned tab opens again as a shell: it runs nothing of its own.
+                TabPick::Pin(PinAct::Pin) => desk.act(WorkspaceIn::Tabs(TabsIn::Pin {
+                    tab,
+                    relaunch: Relaunch(String::new()),
+                })),
+                TabPick::Pin(PinAct::Unpin) => desk.act(WorkspaceIn::Tabs(TabsIn::Unpin(tab))),
+                TabPick::Agent(pick) => desk.agent_pick(tab, pick),
+            },
             onclose,
         }
     }

@@ -118,7 +118,8 @@ fn type_line(h: &mut Harness, text: &str) {
 }
 
 fn rows(h: &Harness) -> usize {
-    h.html().matches("role=\"option\"").count()
+    let html = h.html();
+    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
 }
 
 fn chord(h: &mut Harness, key: char) {

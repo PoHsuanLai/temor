@@ -104,6 +104,14 @@ impl TabState {
             TabState::Running { for_ms } => format!("running {}", short(for_ms)),
         }
     }
+
+    /// How long the command has run, `2m`, while one runs.
+    pub fn elapsed(self) -> Option<String> {
+        match self {
+            TabState::Idle => None,
+            TabState::Running { for_ms } => Some(short(for_ms)),
+        }
+    }
 }
 
 /// A duration in its largest whole unit: `5s`, `2m`, `3h`.

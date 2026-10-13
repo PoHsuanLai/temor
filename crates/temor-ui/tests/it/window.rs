@@ -276,7 +276,8 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
 
 /// How many tab rows the sidebar shows.
 pub(super) fn rows(h: &Harness) -> usize {
-    h.html().matches("role=\"option\"").count()
+    let html = h.html();
+    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
 }
 
 /// How many terminal panes the tab in front shows.

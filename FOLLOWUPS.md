@@ -1356,3 +1356,23 @@ the bar runs the sidebar action through the desk.
   Put in Prompt, Bookmark, Select All Commands). The previous/next bookmark steps are in the
   command bar with no chord of their own. `Picks::select_all`, `next_bookmark`,
   `session/marks/picks.rs`, `view/block_menu.rs`.
+
+- [x] Sidebar: mailo's layout and Arc's split row (2026-10-14, owner: "the sidebar is expected to be
+  mostly matching mailo, all the icons and layout"; mailo's pass is "a quiet Dia, not an Arc").
+  232 px at first (212 to 320); rows on the ladder's 32, one line each (branch, state and the
+  agent's note on hover, the run time at the row's end while a command runs); pinned tabs as
+  square tiles at the top (Pin Tab / Unpin Tab in the row's and the tile's right-click menu, which
+  had no control before; a pinned tab reopens as a shell); Arc's New Tab row heads the loose tabs;
+  a split tab is Arc's split row (one pill cut into a segment per pane, each with its glyph, its
+  folder and an × that closes that pane, a hairline between, the pane with the keys in ink),
+  replacing the miniature; the foot is mailo's: Downloads (a button with a dot, its list in a
+  popover) at the start, the Space dots at the centre, and one chevron (New Tab, Reopen Closed Tab,
+  New Space, Hide Sidebar) at the end, no `+`. Tooltips on whole rows are quire's `Tooltip` hooked
+  to a block `HoverTarget` (`view/row_tip.rs`). `view/split_row.rs`, `pinned_tabs.rs`,
+  `side_menu.rs`, `tab_sidebar.rs`, `shelf.rs`.
+- [ ] Sidebar, after the mailo pass: (1) quire's `PinTiles` draws accounts only; a glyph face
+  (`PinFace::Glyph`) would let temor use it and its drag-to-reorder instead of its own tiles
+  (quire change: owner's OK). (2) Hidden, mailo's sidebar peeks from the window's edge (quire's
+  `EdgePeek`); temor's still snaps away. (3) Pinned tiles cannot be dragged to reorder or onto a
+  row to join a split yet. (4) Arc squeezes a split of three or four panes to glyphs; temor's
+  segments only narrow (unconfirmed from screenshots how Arc draws one unselected).

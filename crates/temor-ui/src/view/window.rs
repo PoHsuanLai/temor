@@ -294,13 +294,17 @@ pub fn App() -> Element {
     }
 }
 
-/// The sidebar's widths: quire's, but never narrower than the Spaces foot needs.
+/// The sidebar's widths, mailo's: 232 to begin with, never narrower than the Spaces foot needs.
 fn sidebar_spec() -> PaneSpec {
     PaneSpec {
+        preferred: PaneSize::Fixed(Px(SIDEBAR_WIDTH)),
         min: PaneSize::Fixed(Px(SIDEBAR_MIN_WIDTH)),
         ..PaneSpec::SIDEBAR
     }
 }
+
+/// The sidebar's width at first, as mailo's.
+const SIDEBAR_WIDTH: f32 = 232.0;
 
 /// What the drag ghost says: the tab's title and folder, or the tile's pane.
 fn ghost_text(data: &SidebarData, key: DragKey) -> (String, String) {

@@ -1,25 +1,27 @@
-//! One tab's row in the sidebar (PLAN §7): quire's `Row` led by a terminal glyph, or by the
-//! companion's orb while an agent works or waits, with the tab's name and, under it, its branch and state; trailing, a
-//! dot when it has news, and a small glyph of the split when the tab has several panes. Pressing the row
-//! brings the tab to the front; dragging it onto another row joins the two tabs.
+//! One tab's row in the sidebar (PLAN §7): quire's `Row` on one line, as mailo's and Arc's are,
+//! led by a terminal glyph, or by the companion's orb while an agent works or waits, with the
+//! tab's name and, trailing, a dot when it has news. Its branch and state are said on hover. A tab
+//! with several panes is Arc's split row instead: a segment per pane (`split_row`). Pressing the
+//! row brings the tab to the front; dragging it onto another row joins the two tabs.
 
 use dioxus::prelude::*;
 use ds::base::press::{PointerButton, Press};
 use ds::base::vocab::{Availability, CompanionPresence, DropState, Emphasis, RowState};
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
+use ds::components::content::label::{LabelRole, LabelStyle};
 use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
-use ds::components::overlays::tooltip::Tooltip;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use temor_core::presence::companion_presence;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::{Click, Dnd, is_primary, point_of};
-use super::miniature::Miniature;
-use super::radar::AgentTabMenu;
+use super::radar::{AgentTabMenu, PinAct};
+use super::row_tip::RowTip;
+use super::split_row::SplitSegments;
 use crate::hub::{Desk, DragKey, TabRow, Unread};
 
 /// The row for one tab.
@@ -52,7 +54,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         Unread::Seen => Emphasis::Plain,
     };
     // A terminal glyph leads the row, or the companion's orb while an agent works or waits (a
-    // press on it is a press on the row); the news dot and the miniature trail it. The words
+    // press on it is a press on the row); the news dot trails it. The words
     // are the row's own title and detail, so their sizes are quire's (13 and 11.5).
     let leading = match companion_presence(row.agent) {
         CompanionPresence::Idle => RowLeading::Icon(Icon::Terminal),
@@ -60,13 +62,27 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             CompanionOrb { presence, size: OrbSize::Inline }
         }),
     };
+    // While a command runs, how long it has, at the row's end: the row has no line for the state.
+    let elapsed = row.state.elapsed();
     let trail = rsx! {
+        if let Some(elapsed) = elapsed {
+            span { class: "temor-tab-time ds-mono",
+                Label { text: elapsed, role: LabelRole::Tertiary, style: LabelStyle::Footnote }
+            }
+        }
         if row.unread == Unread::Unread {
             Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
         }
-        if !row.tiles.is_empty() {
-            Miniature { tiles: row.tiles.clone(), desk: desk.clone(), dnd: dnd.clone() }
-        }
+    };
+    // A split is its segments, each with its own glyph, so the row leads with none.
+    let (leading, content) = match row.tiles.is_empty() {
+        true => (leading, None),
+        false => (
+            RowLeading::None,
+            Some(rsx! {
+                SplitSegments { tiles: row.tiles.clone(), desk: desk.clone(), dnd: dnd.clone() }
+            }),
+        ),
     };
     let overlays = rsx! {
         if drop == DropState::Target {
@@ -76,6 +92,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             AgentTabMenu {
                 tab: id,
                 at,
+                pin: PinAct::Pin,
                 desk: desk.clone(),
                 onclose: move |()| menu.set(Shown::Hidden),
             }
@@ -83,11 +100,15 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     };
     let click = dnd.click.clone();
     let selecting = desk.clone();
-    let line = rsx! {
+    let tip = hover_text(&row);
+    rsx! {
         div { class: "temor-tab-box",
+            // The branch, the state and what an agent is doing are said on hover: the row is
+            // one line.
+            RowTip { name: format!("tab{}", id.0), text: tip,
             Row {
                 title: shell_data(&row.title),
-                detail: Some(detail_of(&row)),
+                content,
                 leading,
                 accessory: Accessory::Slot(trail),
                 state: RowState {
@@ -118,15 +139,9 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                     ..Common::default()
                 },
             }
+            }
             {overlays}
         }
-    };
-    // What the agent in the tab is doing is said on hover, where the row has no line for it.
-    match row.note.clone() {
-        Some(note) => rsx! {
-            Tooltip { text: note, {line} }
-        },
-        None => line,
     }
 }
 
@@ -135,15 +150,15 @@ fn shell_data(text: &str) -> TextLine {
     TextLine::Runs(vec![TextRun::new(text, RunTone::Mono)])
 }
 
-/// The second line: the branch (shell data, fixed pitch), then what the tab is doing (temor's
-/// words, in the row's face).
-fn detail_of(row: &TabRow) -> TextLine {
+/// What hover says: the branch and the state, then what the agent in the tab is doing.
+fn hover_text(row: &TabRow) -> String {
     let state = row.state.words();
-    match &row.branch {
-        Some(branch) => TextLine::Runs(vec![
-            TextRun::new(branch.clone(), RunTone::Mono),
-            TextRun::new(format!(" \u{b7} {state}"), RunTone::Plain),
-        ]),
-        None => TextLine::Plain(state),
+    let head = match &row.branch {
+        Some(branch) => format!("{branch} \u{b7} {state}"),
+        None => state,
+    };
+    match &row.note {
+        Some(note) => format!("{head}\n{note}"),
+        None => head,
     }
 }
