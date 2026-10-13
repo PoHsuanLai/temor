@@ -18,15 +18,15 @@ use super::window::{harness_with, wait_until};
 
 const QUESTION: &str = "Show commands as blocks in this shell?";
 
-/// A window whose `ssh` reads a line of raw input into `saved`, prints a shell's name, reads 40
-/// more bytes into `saved` with `-load` added to its name, then sleeps. The first command,
-/// `ssh box`, has been typed.
+/// A window whose `ssh` reads a line of raw input into `saved`, prints a shell's name and a
+/// prompt, reads 40 more bytes into `saved` with `-load` added to its name, then sleeps. The
+/// first command, `ssh box`, has been typed.
 fn window_running_ssh(name: &str, saved: &Path) -> (Harness, Probe) {
     let bin = std::env::temp_dir().join(format!("tmr-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&bin);
     std::fs::create_dir_all(&bin).expect("bin folder");
     let script = format!(
-        "#!/bin/sh\nstty -icanon -echo\nIFS= read -r line\nprintf '%s\\n' \"$line\" > '{}'\nprintf 'temor-shell:zsh\\n'\nhead -c 40 > '{}-load'\nexec sleep 20\n",
+        "#!/bin/sh\nstty -icanon -echo\nIFS= read -r line\nprintf '%s\\n' \"$line\" > '{}'\nprintf 'temor-shell:zsh\\n$ '\nhead -c 40 > '{}-load'\nexec sleep 20\n",
         saved.display(),
         saved.display()
     );

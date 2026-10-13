@@ -16,7 +16,7 @@ use temor_core::offer::{
 };
 use temor_core::vocab::ids::PaneId;
 use temor_pane::PaneEvent;
-use temor_ssh::{InnerShell, ProbeReading, read_probe};
+use temor_ssh::{InnerShell, ProbeReading, prompt_after_answer, read_probe};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -54,9 +54,9 @@ impl Heard {
     }
 }
 
-fn line_hash(line: &str) -> u64 {
+fn line_hash(text: &str) -> u64 {
     let mut hasher = DefaultHasher::new();
-    line.hash(&mut hasher);
+    text.hash(&mut hasher);
     hasher.finish()
 }
 
@@ -69,6 +69,9 @@ pub(super) struct OfferHub {
     pub(super) lines: BTreeMap<PaneId, u64>,
     /// The shell each probed pane named, kept from the tick that heard it to the load.
     pub(super) shells: BTreeMap<PaneId, InnerShell>,
+    /// A hash of each probed pane's whole screen at the last tick: the integration is typed
+    /// once the shell's next prompt is on a screen that did not change between two ticks.
+    pub(super) screens: BTreeMap<PaneId, u64>,
     pub(super) settings_path: PathBuf,
 }
 
@@ -79,6 +82,7 @@ impl OfferHub {
             states: BTreeMap::new(),
             lines: BTreeMap::new(),
             shells: BTreeMap::new(),
+            screens: BTreeMap::new(),
             settings_path: launch.ambient.settings_path(),
         }
     }
@@ -157,11 +161,17 @@ impl Hub {
             );
             let input = match slot.borrow().session.as_ref() {
                 Some(session) if probing => {
-                    let answer = match read_probe(&session.screen_text()) {
+                    let screen = session.screen_text();
+                    let hash = line_hash(&screen);
+                    let still = self.offer.screens.insert(pane, hash) == Some(hash);
+                    let answer = match read_probe(&screen) {
                         ProbeReading::Silent => Answer::Silent,
                         ProbeReading::Known(shell) => {
                             self.offer.shells.insert(pane, shell);
-                            Answer::Known
+                            match still && prompt_after_answer(&screen) {
+                                true => Answer::Known,
+                                false => Answer::Named,
+                            }
                         }
                         ProbeReading::Other => Answer::Other,
                     };
@@ -193,6 +203,9 @@ impl Hub {
     ) -> (OfferRedraw, Vec<OfferOut>) {
         let state = self.offer.states.remove(&pane).unwrap_or_default();
         let (next, outs) = offer_step(state, input);
+        if !matches!(next, OfferState::Probing { .. }) {
+            self.offer.screens.remove(&pane);
+        }
         match next {
             OfferState::Idle => {
                 self.offer.lines.remove(&pane);

@@ -14,7 +14,7 @@ mod script;
 mod tests;
 
 pub use inner::{InnerLoadLine, LoadToken, MAX_INNER_LINE_BYTES, MAX_TTY_LINE_BYTES};
-pub use inner_probe::{ProbeReading, probe_line, read_probe};
+pub use inner_probe::{ProbeReading, probe_line, prompt_after_answer, read_probe};
 pub use inner_shell::InnerShell;
 pub use script::{
     BootstrapOptions, BootstrapScript, MAX_REMOTE_COMMAND_BYTES, TerminfoPolicy,

@@ -61,7 +61,7 @@ pub use argv::{
 pub use bootstrap::{
     BootstrapOptions, BootstrapScript, InnerLoadLine, InnerShell, LoadToken, MAX_INNER_LINE_BYTES,
     MAX_REMOTE_COMMAND_BYTES, MAX_TTY_LINE_BYTES, ProbeReading, TerminfoPolicy,
-    bootstrap_remote_command, probe_line, read_probe, wrap_script,
+    bootstrap_remote_command, probe_line, prompt_after_answer, read_probe, wrap_script,
 };
 pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
 pub use config::{

@@ -11,7 +11,8 @@ use ds_core::time::stamp::Stamp;
 pub const SETTLE_MS: u64 = 1_500;
 /// How long the output must have been quiet.
 pub const QUIET_MS: u64 = 500;
-/// How long a Yes waits for the inner shell to name itself before the offer gives up.
+/// How long a Yes waits for the inner shell to name itself and come back to its prompt. With
+/// no name by then the offer gives up; with a name but no prompt the integration is typed anyway.
 pub const PROBE_MS: u64 = 4_000;
 
 /// Where one pane stands.
@@ -82,7 +83,12 @@ pub enum Reply {
 pub enum Answer {
     /// Nothing yet.
     Silent,
-    /// A shell temor has an integration for named itself.
+    /// A shell temor has an integration for named itself, but its next prompt is not on a
+    /// still screen yet: text typed now could be lost (nushell first asks the terminal where
+    /// its cursor is).
+    Named,
+    /// A shell temor has an integration for named itself, and its next prompt is on a screen
+    /// that has stopped changing.
     Known,
     /// Some other shell named itself (dash, ash, ...).
     Other,
@@ -118,7 +124,8 @@ pub enum OfferOut {
     Redraw,
     /// Type the one-line question that makes the inner shell name itself.
     Probe,
-    /// The shell has named itself: type the integration written for it.
+    /// The shell has named itself and is back at its prompt (or the wait ran out after it
+    /// named itself): type the integration written for it.
     Load,
     /// The shell never answered, or is one temor has no integration for.
     Unsure,
@@ -186,6 +193,10 @@ pub fn offer_step(state: OfferState, input: OfferIn) -> (OfferState, Vec<OfferOu
         },
         (S::Probing { block, since }, OfferIn::Heard { at, answer }) => match answer {
             Answer::Known => (S::Settled { block }, vec![OfferOut::Load]),
+            Answer::Named if at.since(since) >= PROBE_MS => {
+                (S::Settled { block }, vec![OfferOut::Load])
+            }
+            Answer::Named => (S::Probing { block, since }, vec![]),
             Answer::Other => (S::Settled { block }, vec![OfferOut::Unsure]),
             Answer::Silent if at.since(since) >= PROBE_MS => {
                 (S::Settled { block }, vec![OfferOut::Unsure])

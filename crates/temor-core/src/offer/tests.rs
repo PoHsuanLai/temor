@@ -251,6 +251,27 @@ fn a_yes_types_the_integration_only_after_the_shell_names_itself() {
             vec![OfferOut::Load],
         ),
         (
+            "named, but its prompt is not back yet",
+            vec![heard(3_000, Answer::Named), heard(3_200, Answer::Named)],
+            false,
+            vec![],
+        ),
+        (
+            "named, then back at its prompt",
+            vec![heard(3_000, Answer::Named), heard(3_250, Answer::Known)],
+            true,
+            vec![OfferOut::Load],
+        ),
+        (
+            "named, and the prompt never came back in time",
+            vec![
+                heard(3_000, Answer::Named),
+                heard(2_000 + PROBE_MS, Answer::Named),
+            ],
+            true,
+            vec![OfferOut::Load],
+        ),
+        (
             "a shell without one",
             vec![heard(3_000, Answer::Other)],
             true,

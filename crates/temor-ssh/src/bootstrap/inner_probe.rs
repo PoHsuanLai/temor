@@ -32,16 +32,38 @@ pub enum ProbeReading {
 /// Reads the last answer on `screen`. A line counts when the word is followed by a name made of
 /// letters, digits, `.`, `_`, `-` and `/`; the typed probe line (`temor-shell:$(`) never does.
 pub fn read_probe(screen: &str) -> ProbeReading {
-    let answer = screen.lines().rev().find_map(|line| {
-        let (_, rest) = line.rsplit_once(PROBE_WORD)?;
-        let name = rest.trim();
-        let plain = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/');
-        (!name.is_empty() && name.chars().all(plain)).then_some(name)
-    });
-    match answer {
+    match last_answer(screen) {
         None => ProbeReading::Silent,
-        Some(name) => InnerShell::from_name(name).map_or(ProbeReading::Other, ProbeReading::Known),
+        Some((_, name)) => {
+            InnerShell::from_name(name).map_or(ProbeReading::Other, ProbeReading::Known)
+        }
     }
+}
+
+/// Whether the shell has drawn something below its last answer: its next prompt. A shell that
+/// is still between the answer and that prompt (nushell asks the terminal where its cursor is
+/// first) may drop what is typed meanwhile.
+pub fn prompt_after_answer(screen: &str) -> bool {
+    last_answer(screen).is_some_and(|(at, _)| {
+        screen
+            .lines()
+            .skip(at + 1)
+            .any(|line| !line.trim().is_empty())
+    })
+}
+
+/// The last answer on `screen`: its line number and the name it gives.
+fn last_answer(screen: &str) -> Option<(usize, &str)> {
+    let plain = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/');
+    screen
+        .lines()
+        .enumerate()
+        .filter_map(|(at, line)| {
+            let (_, rest) = line.rsplit_once(PROBE_WORD)?;
+            let name = rest.trim();
+            (!name.is_empty() && name.chars().all(plain)).then_some((at, name))
+        })
+        .last()
 }
 
 #[cfg(test)]
@@ -97,6 +119,24 @@ mod tests {
         ];
         for (name, screen, want) in rows {
             assert_eq!(read_probe(&screen), want, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_next_prompt_counts_only_below_the_last_answer() {
+        let rows = [
+            ("no answer", "$ ", false),
+            ("the answer is the last line", "x\ntemor-shell:nu", false),
+            ("blank lines below it", "temor-shell:nu\n\n   \n", false),
+            ("a prompt below it", "temor-shell:bash\n$ ", true),
+            (
+                "a prompt below an older answer only",
+                "temor-shell:sh\n$ \ntemor-shell:nu\n",
+                false,
+            ),
+        ];
+        for (name, screen, want) in rows {
+            assert_eq!(prompt_after_answer(screen), want, "{name}");
         }
     }
 

@@ -1298,8 +1298,11 @@ the bar runs the sidebar action through the desk.
   output. Also found: the app typed the offer with `\n`, which nushell's line editor reads as
   Ctrl+J, so the offer never ran in nushell; it now types Enter's `\r`, checked in a terminal
   for bash, zsh and fish too.)
-- [ ] The offer types the load on the tick that reads the probe's answer, which can be before
+- [x] The offer types the load on the tick that reads the probe's answer, which can be before
   nushell's next prompt (it is still waiting on its cursor answer then). One paste is less
   exposed than many lines were, but a slow ssh link could still drop it; waiting for the
   prompt needs a sign of it in a shell that has no marks yet (the screen settling, or a
   second probe word).
+  (done: the answer counts once a non-blank line is drawn below it and the whole screen is
+  unchanged between two ticks, `Answer::Named` until then; a shell that named itself but shows
+  no prompt by `PROBE_MS` is loaded anyway. `temor_ssh::prompt_after_answer`, `hub/offer.rs`.)
