@@ -104,7 +104,7 @@ impl Session {
             find_text: String::new(),
             pending_query: None,
             blocks: BlockLog::default(),
-            selected_block: None,
+            picks: temor_core::block::Picks::default(),
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,

@@ -1,24 +1,14 @@
 //! What the gutter, the bar and the prompt jumps read from the blocks, and what a press on the
 //! gutter or a jump does to the view. Nothing here is drawn; the views decide how to show it.
 
-use temor_core::block::{Outcome, next_prompt, previous_prompt};
-use temor_core::vocab::ids::{BlockId, GridRow};
-use temor_pane::text::{CellPos, Granularity, Selection, Shape};
-use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
+use temor_core::block::Outcome;
+use temor_core::vocab::ids::BlockId;
+use temor_vt::{PointSpace, SurfacePoint};
 
 use super::super::Session;
 use super::super::model::PADDING_LOGICAL;
 use super::bands::{Lead, lead_at};
 use crate::error::UiError;
-
-/// Which way a jump between prompts goes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PromptStep {
-    /// Towards older output (⌘↑).
-    Previous,
-    /// Towards the live prompt (⌘↓).
-    Next,
-}
 
 /// What the gutter shows for one block whose prompt is on screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,14 +100,14 @@ impl Session {
         })
     }
 
-    /// Clears the block the gutter selected.
+    /// Picks no block.
     pub fn clear_block_selection(&mut self) {
-        self.selected_block = None;
+        self.picks.clear();
     }
 
-    /// The block the gutter has selected (PLAN §9: a click on its gutter).
+    /// The picked block the arrows move (the last one clicked), if any.
     pub fn selected_block(&self) -> Option<BlockId> {
-        self.selected_block
+        self.picks.active()
     }
 
     /// The command a block ran, as typed.
@@ -141,33 +131,6 @@ impl Session {
     pub fn block_meta(&self, id: BlockId) -> Option<String> {
         let block = self.blocks.store.get(id)?;
         crate::view::block_meta::meta_text(block.outcome(), block.elapsed_ms())
-    }
-
-    /// Moves the view to the previous or next prompt (⌘↑ and ⌘↓).
-    pub(in crate::session) fn jump_prompt(&mut self, step: PromptStep) -> Result<(), UiError> {
-        let (prompts, top) = self.pane.with_term(|term| {
-            let prompts: Vec<(BlockId, GridRow)> = self
-                .blocks
-                .store
-                .iter()
-                .filter_map(|block| {
-                    let prompt = self.blocks.anchors.get(&block.id)?.prompt?;
-                    let at = term.anchor_point(prompt, PointSpace::Screen)?;
-                    Some((block.id, GridRow(u64::from(at.row))))
-                })
-                .collect();
-            let top = term.viewport().map_or(0, |(offset, _)| u64::from(offset));
-            (prompts, GridRow(top))
-        });
-        let target = match step {
-            PromptStep::Previous => previous_prompt(&prompts, top),
-            PromptStep::Next => next_prompt(&prompts, top),
-        };
-        if let Some((_, row)) = target.and_then(|id| prompts.iter().find(|(b, _)| *b == id)) {
-            self.pane
-                .with_term(|term| term.scroll(ViewportScroll::Row(RowCount(row.0))));
-        }
-        Ok(())
     }
 
     /// The block whose gutter is under `at` (device pixels in the pane), if the point is in the
@@ -198,48 +161,16 @@ impl Session {
         })
     }
 
-    /// A press on the gutter selects the block at that row, its output included. Returns whether
-    /// the press was a gutter press.
+    /// A press on the gutter picks the block at that row, as a click on the block does. Returns
+    /// whether the press was a gutter press.
     pub fn gutter_press(&mut self, at: SurfacePoint) -> Result<bool, UiError> {
         let Some(id) = self.gutter_block(at) else {
             return Ok(false);
         };
-        self.select_block(id)?;
-        self.selected_block = Some(id);
+        self.selection = None;
+        self.mirror_selection()?;
+        self.pick_block(id, temor_core::block::PickClick::Only);
         Ok(true)
-    }
-
-    /// Selects a finished block's output, the way a drag over it would.
-    fn select_block(&mut self, id: BlockId) -> Result<(), UiError> {
-        let Some(anchors) = self.blocks.anchors.get(&id).copied() else {
-            return Ok(());
-        };
-        let (Some(output), Some(end)) = (anchors.output, anchors.end) else {
-            return Ok(());
-        };
-        let (Some(first), Some(stop)) = (self.screen_row(output), self.screen_row(end)) else {
-            return Ok(());
-        };
-        let end_at = self
-            .pane
-            .with_term(|term| term.anchor_point(end, PointSpace::Screen));
-        // The end mark sits at the start of the line after the output, so stop one line short.
-        let last = match end_at {
-            Some(at) if at.col.0 == 0 && stop > first => stop - 1,
-            _ => stop,
-        };
-        let line = self.line(first)?;
-        let mut selection = Selection::begin(
-            CellPos::new(first, 0),
-            &line,
-            Granularity::Cells,
-            Shape::Linear,
-        );
-        let last_line = self.line(last)?;
-        let width = u16::try_from(last_line.cells.len().saturating_sub(1)).unwrap_or(u16::MAX);
-        selection.extend(CellPos::new(last, width), &last_line);
-        self.selection = Some(selection);
-        self.mirror_selection()
     }
 }
 

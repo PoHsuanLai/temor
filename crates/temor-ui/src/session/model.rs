@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use chordkit::Keymap;
 use ds_core::time::stamp::Stamp;
 use temor_core::notify::{Focus, Limiter};
-use temor_core::vocab::ids::BlockId;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::text::Finder;
 use temor_pane::text::Selection;
@@ -90,7 +89,8 @@ pub struct Session {
     pub(super) find_text: String,
     pub(super) pending_query: Option<PendingQuery>,
     pub(super) blocks: BlockLog,
-    pub(super) selected_block: Option<BlockId>,
+    /// The blocks picked with a click or the arrows.
+    pub(super) picks: temor_core::block::Picks,
     /// The block toolbar's measured height, written by its view.
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.

@@ -8,6 +8,7 @@ mod anchors;
 mod bands;
 mod mark;
 mod notify;
+mod picks;
 mod query;
 mod rows;
 #[cfg(test)]
@@ -16,5 +17,5 @@ mod tools_height;
 
 pub use bands::{HeaderLine, PromptHeader};
 pub use notify::desktop_note;
-pub use query::{BlockMark, Gutter, PromptStep};
+pub use query::{BlockMark, Gutter};
 pub use tools_height::ToolsHeight;

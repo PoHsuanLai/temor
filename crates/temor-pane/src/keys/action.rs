@@ -22,9 +22,10 @@ pub enum Action {
     /// Close the find bar. Not a keymap entry: Escape closes it only while it is open, and the
     /// system's Cancel does the same (see `route`).
     CloseFind,
-    /// Bring the previous command's prompt into view.
+    /// Pick the command above the picked one (the newest, with none picked) and bring it into
+    /// view.
     PreviousPrompt,
-    /// Bring the next command's prompt into view.
+    /// Pick the command below the picked one and bring it into view.
     NextPrompt,
     /// Open a plain tab with one shell (the standard "new", ⌘N). ⌘T is the command bar, whose
     /// Enter on an empty bar also opens one.
@@ -104,8 +105,8 @@ impl Action {
             Self::FindNext => "Find next",
             Self::FindPrevious => "Find previous",
             Self::CloseFind => "Close find",
-            Self::PreviousPrompt => "Previous prompt",
-            Self::NextPrompt => "Next prompt",
+            Self::PreviousPrompt => "Select previous command",
+            Self::NextPrompt => "Select next command",
             Self::NewTab => "New tab",
             Self::OpenBar => "Command bar",
             Self::ToggleQuick => "Quick terminal",

@@ -262,7 +262,7 @@ impl Session {
                     let anchors = self.blocks.anchors.get(&block.id)?;
                     let prompt = anchors.prompt?;
                     let first = first_of(prompt)?;
-                    let pick = match self.selected_block == Some(block.id) {
+                    let pick = match self.picks.contains(block.id) {
                         true => Pick::Selected,
                         false => Pick::Unselected,
                     };

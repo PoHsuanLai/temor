@@ -14,7 +14,7 @@ pub struct CardColours {
     pub failed_fill: Tint,
     /// The bar at a failed block's left edge.
     pub failed_stripe: Tint,
-    /// Behind the selected block.
+    /// Behind a picked block.
     pub selected_fill: Tint,
 }
 
@@ -40,9 +40,10 @@ impl CardColours {
                 color: red,
                 alpha: Alpha(255),
             },
+            // A picked block reads as selected text does: the selection's colour, lighter.
             selected_fill: Tint {
-                color: palette.foreground,
-                alpha: percent(8),
+                color: palette.selection,
+                alpha: percent(45),
             },
         }
     }
@@ -61,7 +62,7 @@ mod tests {
             (c.rule, palette.foreground, 26),
             (c.failed_fill, palette.ansi[1], 26),
             (c.failed_stripe, palette.ansi[1], 255),
-            (c.selected_fill, palette.foreground, 20),
+            (c.selected_fill, palette.selection, 115),
         ] {
             assert_eq!((tint.color, tint.alpha), (color, Alpha(alpha)));
         }

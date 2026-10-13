@@ -1,4 +1,4 @@
-//! The gutter, the prompt jumps and the block actions, driven by direct calls on a real shell.
+//! The gutter and Ctrl+Shift+Up and Down, driven by direct calls on a real shell.
 
 use chordkit::{Key, KeyInput as Pressed, Modifier, Modifiers as ChordMods, NamedKey};
 use temor_core::block::Outcome;
@@ -12,7 +12,7 @@ use super::super::support::tools_present;
 use super::support::{pump, run_line, shell_path, start};
 
 #[test]
-fn a_gutter_press_selects_the_block_output_and_copies_it() {
+fn a_gutter_press_picks_the_block_and_copy_takes_it_whole() {
     if !tools_present() {
         return;
     }
@@ -46,8 +46,12 @@ fn a_gutter_press_selects_the_block_output_and_copies_it() {
     );
     assert_eq!(live.session.selected_block(), Some(mark.id));
     live.session.run(Action::Copy).expect("copy");
-    assert_eq!(live.clipboard.0.borrow().as_str(), "one\ntwo");
-    // A press in the grid (not the gutter) is not a gutter press, and clears the block.
+    assert_eq!(
+        live.clipboard.0.borrow().as_str(),
+        "echo one; echo two\none\ntwo",
+        "the block whole: its command, then its output"
+    );
+    // A press in the grid (not the gutter) is not a gutter press.
     let grid = temor_vt::SurfacePoint {
         x: 40,
         y: y.0 as i32 + 1,
@@ -56,7 +60,7 @@ fn a_gutter_press_selects_the_block_output_and_copies_it() {
 }
 
 #[test]
-fn control_shift_up_and_down_move_between_prompts() {
+fn control_shift_up_and_down_pick_blocks_and_bring_them_into_view() {
     if !tools_present() {
         return;
     }
@@ -106,6 +110,11 @@ fn control_shift_up_and_down_move_between_prompts() {
         prompt_top(&live.session),
         Some(ids[2]),
         "the newest prompt above the live screen"
+    );
+    assert_eq!(
+        live.session.picked_blocks(),
+        [ids[2]],
+        "and its block picked"
     );
     live.session.key(up).expect("up again");
     assert_eq!(prompt_top(&live.session), Some(ids[1]));

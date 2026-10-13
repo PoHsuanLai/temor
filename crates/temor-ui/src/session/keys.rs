@@ -4,7 +4,9 @@
 use temor_pane::keys::Action;
 use temor_vt::{KeyAction, KeyCode};
 
-use super::{FindStep, PromptStep, Session};
+use temor_core::block::PickStep;
+
+use super::{FindStep, Session};
 use crate::error::UiError;
 use crate::input::{FindBar, KittyKeys, Routed, Stroke, is_altgr_text, route_with};
 
@@ -18,9 +20,13 @@ impl Session {
         let kitty = self
             .pane
             .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
+        if find == FindBar::Closed && self.pick_key(&stroke.key) {
+            return Ok(());
+        }
         match route_with(stroke, &self.keymap, find, kitty) {
             Routed::Action(action) => self.run(action),
             Routed::Shell(key) => {
+                self.key_leaves_pick(&key);
                 self.wake_cursor();
                 if key.action == KeyAction::Press && key.code == KeyCode::Enter {
                     self.note_enter();
@@ -62,8 +68,14 @@ impl Session {
                 self.finder = None;
                 Ok(())
             }
-            Action::PreviousPrompt => self.jump_prompt(PromptStep::Previous),
-            Action::NextPrompt => self.jump_prompt(PromptStep::Next),
+            Action::PreviousPrompt => {
+                self.step_pick(PickStep::Older);
+                Ok(())
+            }
+            Action::NextPrompt => {
+                self.step_pick(PickStep::Newer);
+                Ok(())
+            }
             // Tabs and splits belong to the window: the action waits here for it to take.
             Action::NewTab
             | Action::OpenBar

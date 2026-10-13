@@ -17,14 +17,15 @@ pub struct PendingPaste {
 }
 
 impl Session {
-    /// Copies the selected text to the clipboard. Nothing is selected: nothing happens.
+    /// Copies the selected text to the clipboard, else the picked blocks whole (each command and
+    /// its output). Nothing selected or picked: nothing happens.
     pub fn copy(&mut self) -> Result<(), UiError> {
-        let Some(selection) = self.selection else {
-            return Ok(());
+        let text = match self.selection {
+            Some(selection) => self
+                .pane
+                .with_term(|term| selection.text(|row| term.row_text(row).unwrap_or_default())),
+            None => self.picked_text().unwrap_or_default(),
         };
-        let text = self
-            .pane
-            .with_term(|term| selection.text(|row| term.row_text(row).unwrap_or_default()));
         if text.is_empty() {
             return Ok(());
         }

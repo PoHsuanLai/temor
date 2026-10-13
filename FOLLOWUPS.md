@@ -1340,3 +1340,13 @@ the bar runs the sidebar action through the desk.
 - [ ] quire ask: folder, git-branch and diff glyphs in `Icon`. The chips draw Lucide's (ISC,
   NOTICE) as symbolic SVGs until then (`view/fact_chips.rs`). A long folder is clipped at its end (no ellipsis on Blitz);
   cutting the start (keeping the last folders) needs a start-side ellipsis.
+- [x] Picking blocks as Warp does (2026-10-14): a click on a block picks it whole, Shift+click a
+  run, Ctrl+click (⌘ on a Mac) one in or out; a drag still selects text. With blocks picked, ↑/↓
+  move the pick, Shift+↑/↓ grow it, Escape or typing lets go, and copy takes each block's command
+  and output (a blank line between blocks). Ctrl+Shift+↑/↓ (Warp's Ctrl+↑/↓) pick the newest
+  block, then the next ones, and bring them into view. Picked blocks take the selection colour.
+  `temor_core::block::Picks`, `session/marks/picks.rs`. The gutter press picks too, instead of
+  selecting the output's text.
+- [ ] Warp's other block actions, not ported: copy the picked commands only / outputs only as
+  keys (the toolbar has both for one block; Warp's Linux Ctrl+Shift+C is temor's copy), select
+  all blocks, bookmarks, reinput the picked commands, and a context menu on a block.

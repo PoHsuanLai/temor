@@ -48,11 +48,11 @@ impl Session {
         let Some(fit) = self.fit else {
             return Ok(());
         };
-        // A press anywhere else leaves the block the gutter had selected.
-        self.selected_block = None;
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
         let shift = mods.contains(Modifiers::SHIFT);
         if tracking && !shift {
+            // The program has the mouse: nothing of the blocks is picked under it.
+            self.picks.clear();
             let surface = fit.mouse_surface();
             let input = MouseInput {
                 action: MouseAction::Press,
@@ -108,17 +108,23 @@ impl Session {
     }
 
     /// The button came up at `at`: the drag, if any, is over. A plain click that never left its
-    /// cell leaves nothing selected.
+    /// cell leaves no text selected and picks the block it landed on; a drag that selected text
+    /// lets go of the picked blocks.
     pub fn release(
         &mut self,
         at: SurfacePoint,
         button: MouseButton,
         mods: Modifiers,
     ) -> Result<(), UiError> {
-        self.drag = None;
+        let pressed = self.drag.take().is_some();
         if self.selection.is_some_and(|s| s.is_click()) {
             self.selection = None;
             self.mirror_selection()?;
+            if pressed {
+                self.pick_at(at, mods);
+            }
+        } else if self.selection.is_some() {
+            self.picks.clear();
         }
         let Some(fit) = self.fit else {
             return Ok(());
