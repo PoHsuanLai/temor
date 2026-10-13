@@ -1281,10 +1281,22 @@ the bar runs the sidebar action through the desk.
   as a stray mark beside "· idle"; the card's chips show the counts).
 - [x] Porter/docket batch 18 (docket 1695cff, porter ee3c63e, almanac 5678345): taken with
   anyview 5ec7c56 (#109).
-- [ ] The nushell offer load is quadratic: the load text is one `sh -c '...'` program over many
+- [x] The nushell offer load is quadratic: the load text is one `sh -c '...'` program over many
   lines, and nushell's line editor repaints the whole open quote for every line it receives
   (6.4 MB of output for a few KB of script). Alone it finishes in well under a second; under
   the gate's load `nushell_offer` passes its 30 s read twice in four runs. A person's slow ssh
   link would see the same flood. Fix in the offer, not the test: give nushell a load text it
   takes in one line (a nushell-native `decode base64 | save` line, then `source`), or send the
   text as one bracketed paste.
+  (done: nushell is given its script itself as one bracketed paste and one Enter, no `sh`
+  program, file or `source`, `inner::nu_text`. The gate failures were a second cause: nushell
+  asks the terminal for its cursor after every command, and lines typed ahead of the answer
+  stalled it after the first one; `nushell_offer` now sends in slow pieces and bounds the
+  output. Also found: the app typed the offer with `\n`, which nushell's line editor reads as
+  Ctrl+J, so the offer never ran in nushell; it now types Enter's `\r`, checked in a terminal
+  for bash, zsh and fish too.)
+- [ ] The offer types the load on the tick that reads the probe's answer, which can be before
+  nushell's next prompt (it is still waiting on its cursor answer then). One paste is less
+  exposed than many lines were, but a slow ssh link could still drop it; waiting for the
+  prompt needs a sign of it in a shell that has no marks yet (the screen settling, or a
+  second probe word).

@@ -12,6 +12,10 @@
 //! - The text should not stay in history. Each shell's script deletes the entries (see
 //!   `inner_shell`); zsh has no way to delete one, so a short first line makes it ignore
 //!   lines that start with a space.
+//!
+//! nushell is given its own text instead: its script, pasted as one command. Typed as the `sh`
+//! program, its line editor redrew the whole open quote for every line (megabytes of output for
+//! a few KB), and lines typed ahead stalled it between commands (see `nu_text`).
 
 use temor_shell::ShellScript;
 
@@ -91,6 +95,11 @@ impl InnerLoadLine {
         integration: &[ShellScript],
         token: &LoadToken,
     ) -> Result<Self, SshError> {
+        if only == InnerShell::Nu {
+            let text = nu_text(&only.payload(integration, token).unwrap_or_default());
+            check_sizes(&text)?;
+            return Ok(Self(text));
+        }
         let mut text = String::new();
         if only == InnerShell::Zsh {
             text.push_str(ZSH_PRELUDE);
@@ -133,6 +142,17 @@ impl InnerLoadLine {
         self.0.lines()
     }
 }
+
+/// nushell's text: its script itself, as one bracketed paste, then the newline that enters it.
+/// No other shell reads it, so it needs no quoting, no file and no `source`, and it is one
+/// command: nushell asks the terminal where its cursor is after every command, and lines typed
+/// ahead of that answer can stall it.
+fn nu_text(payload: &str) -> String {
+    format!("{}{}{}\n", PASTE.0, payload.trim_end_matches('\n'), PASTE.1)
+}
+
+/// The start and end of a bracketed paste.
+pub(super) const PASTE: (&str, &str) = ("\x1b[200~", "\x1b[201~");
 
 /// `text` cut into runs of at most `width` characters (the text is ASCII).
 pub(super) fn chunk_lines(text: &str, width: usize) -> Vec<String> {

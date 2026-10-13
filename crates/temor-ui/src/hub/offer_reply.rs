@@ -43,7 +43,7 @@ impl Hub {
         for out in outs {
             let note = match out {
                 OfferOut::Redraw => None,
-                OfferOut::Probe => self.offer_type(pane, probe_text().as_bytes()),
+                OfferOut::Probe => self.offer_type(pane, &probe_text()),
                 OfferOut::Load => self.offer_load(pane),
                 OfferOut::Unsure => {
                     self.offer.shells.remove(&pane);
@@ -56,10 +56,17 @@ impl Hub {
         notes
     }
 
-    fn offer_type(&self, pane: PaneId, bytes: &[u8]) -> Option<String> {
+    /// Types `text` into `pane`, each newline as the Enter key sends it (`\r`): a line editor
+    /// in raw mode (nushell's) reads `\n` as Ctrl+J and runs nothing, and a terminal in line
+    /// mode turns `\r` back into `\n`.
+    fn offer_type(&self, pane: PaneId, text: &str) -> Option<String> {
         let slot = self.slots.get(&pane)?;
         let guard = slot.borrow();
-        guard.session.as_ref()?.pane().send(bytes);
+        guard
+            .session
+            .as_ref()?
+            .pane()
+            .send(text.replace('\n', "\r").as_bytes());
         None
     }
 
@@ -67,7 +74,7 @@ impl Hub {
     fn offer_load(&mut self, pane: PaneId) -> Option<String> {
         let shell = self.offer.shells.remove(&pane)?;
         match load_line(shell) {
-            Ok(line) => self.offer_type(pane, line.as_str().as_bytes()),
+            Ok(line) => self.offer_type(pane, line.as_str()),
             Err(_) => Some("Could not set up blocks in this shell.".to_owned()),
         }
     }

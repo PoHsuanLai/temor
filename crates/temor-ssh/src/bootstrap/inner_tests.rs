@@ -3,7 +3,7 @@
 
 use temor_shell::{ShellScript, integration_scripts};
 
-use super::inner::{ZSH_PRELUDE, chunk_lines};
+use super::inner::{PASTE, ZSH_PRELUDE, chunk_lines};
 use super::inner_shell::InnerShell;
 use super::{InnerLoadLine, LoadToken, MAX_INNER_LINE_BYTES, MAX_TTY_LINE_BYTES};
 use crate::error::SshError;
@@ -14,10 +14,11 @@ fn token() -> LoadToken {
     LoadToken::from_words(0x0123_4567_89ab_cdef, 0xfedc_ba98_7654_3210)
 }
 
-/// The text for every shell the load can reach.
+/// The text for every shell the `sh` program reaches (nushell gets its own, below).
 fn built() -> Vec<(InnerShell, InnerLoadLine)> {
     InnerShell::ALL
         .into_iter()
+        .filter(|&shell| shell != InnerShell::Nu)
         .map(|shell| {
             let text = InnerLoadLine::build_for(shell, &integration_scripts(), &token());
             (shell, text.expect("build"))
@@ -133,7 +134,7 @@ fn each_shell_gets_its_own_script_and_its_own_way_to_forget() {
         ),
         (
             InnerShell::Nu,
-            &["osc133 = true", "osc7 = true", "^rm -f /tmp/temor-load-"],
+            &["osc133 = true", "osc7 = true"],
             &["XDG_DATA_DIRS", "history"],
         ),
     ];
@@ -173,7 +174,7 @@ fn a_missing_script_leaves_its_shell_out_and_too_much_text_is_refused() {
 #[test]
 fn text_for_a_named_shell_holds_only_what_that_shell_reads() {
     // (shell, starts with the zsh first line, the arms it holds, the arms it lacks)
-    let cases: [(InnerShell, bool, &str, [&str; 3]); 4] = [
+    let cases: [(InnerShell, bool, &str, [&str; 3]); 3] = [
         (
             InnerShell::Bash,
             false,
@@ -192,12 +193,6 @@ fn text_for_a_named_shell_holds_only_what_that_shell_reads() {
             "fish*) ",
             ["bash*) ", "zsh*) ", "nu*) "],
         ),
-        (
-            InnerShell::Nu,
-            false,
-            "nu*) ",
-            ["bash*) ", "zsh*) ", "fish*) "],
-        ),
     ];
     for (shell, prelude, has, hasnt) in cases {
         let text = InnerLoadLine::build_for(shell, &integration_scripts(), &token())
@@ -209,6 +204,26 @@ fn text_for_a_named_shell_holds_only_what_that_shell_reads() {
         for arm in hasnt {
             assert!(!text.contains(arm), "{shell:?} holds {arm:?}");
         }
+    }
+}
+
+/// nushell is given its script itself as one paste and one Enter: no `sh` program, no file.
+#[test]
+fn nushell_gets_its_script_as_one_pasted_command() {
+    let text =
+        InnerLoadLine::build_for(InnerShell::Nu, &integration_scripts(), &token()).expect("build");
+    let text = text.as_str();
+    let inside = text
+        .strip_prefix(PASTE.0)
+        .and_then(|rest| rest.strip_suffix(&format!("{}\n", PASTE.1)))
+        .expect("one paste, then Enter");
+    assert!(!inside.contains(PASTE.0) && !inside.contains(PASTE.1));
+    let payload = InnerShell::Nu
+        .payload(&integration_scripts(), &token())
+        .expect("script present");
+    assert_eq!(inside, payload.trim_end_matches('\n'));
+    for unwanted in ["sh -c", "<<E", "/tmp/", "source"] {
+        assert!(!text.contains(unwanted), "holds {unwanted:?}");
     }
 }
 

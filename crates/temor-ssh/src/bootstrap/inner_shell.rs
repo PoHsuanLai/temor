@@ -76,7 +76,7 @@ impl InnerShell {
                 fish_in_place(script.contents),
                 fish_forget(token, &path)
             ),
-            Self::Nu => format!("{}^rm -f {path}\n", nu_in_place(script.contents)),
+            Self::Nu => nu_in_place(script.contents),
         })
     }
 }
@@ -116,7 +116,7 @@ fn fish_in_place(script: &str) -> String {
 
 /// nushell: its history is cleaned by nothing here. It keeps entries in memory and in a file
 /// (plain text or SQLite) that it owns while running; `history` has no delete, and editing
-/// the file under a running nushell is not safe. The offer's lines (about ten) stay there.
+/// the file under a running nushell is not safe. The offer's one entry stays there.
 ///
 /// Only the lines that switch its own marks on; the rest restores a variable that
 /// temor's start sets, which is not set here.

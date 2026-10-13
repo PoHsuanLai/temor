@@ -2,8 +2,6 @@
 //! shell, and the text written for nushell then loads without a parse error. The terminal
 //! answers nushell's cursor-position queries (`ESC [ 6 n`), which it waits for before a prompt.
 
-use std::path::Path;
-
 use temor_pty::prepare_shell;
 use temor_shell::{ChildEnv, Shell, ShellStart, integration_scripts};
 use temor_ssh::{InnerLoadLine, InnerShell, LoadToken, probe_line};
@@ -52,12 +50,34 @@ fn nushell_names_itself_and_loads_the_text_written_for_it_without_complaint() {
         .as_str()
         .replace('\n', "\r");
     let start = term.out.len();
-    term.send(&text);
+    // A few bytes at a time, as over a slow link: nushell reads each piece as it comes.
+    for piece in text.as_bytes().chunks(64) {
+        term.send(std::str::from_utf8(piece).expect("ascii"));
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    assert!(
+        term.read_until_has(start, "\x1b]133;D;0"),
+        "the load did not finish: {:?}",
+        term.text()
+    );
+    let ended = term.out.len();
+    assert!(
+        term.read_until_has(ended, "\x1b]133;B"),
+        "no prompt after the load: {:?}",
+        term.text()
+    );
     term.send("print ('loaded-' + 'ok')\r");
     assert!(term.read_until_has(start, "loaded-ok"), "{:?}", term.text());
     let shown = String::from_utf8_lossy(&term.out[start..]).into_owned();
+    // One paste is drawn a few times (about 6 KB here); typed as a quoted program over many
+    // lines, nushell redrew the whole quote for every line (megabytes for a few KB of text).
+    assert!(
+        shown.len() < 64 * 1024,
+        "nushell drew {} bytes for {} typed",
+        shown.len(),
+        text.len()
+    );
     for complaint in ["Error", "parse", "not found", "Extra positional"] {
         assert!(!shown.contains(complaint), "nushell complained: {shown:?}");
     }
-    assert!(!Path::new(&token.path()).exists(), "the file stayed");
 }
