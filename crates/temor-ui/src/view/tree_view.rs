@@ -2,19 +2,19 @@
 //! quire's `SplitView`s with the axis of its node and the node's share as the first pane's
 //! starting size. Only this tab is drawn, so only its panes are laid out and painted.
 //!
-//! quire v0.3.1's `SplitView` takes a starting share but does not report a finished drag, so a
-//! divider the person drags is not written back to the tree: it stays where it was dragged until
-//! the tab's structure changes (a split, a close), when the tree's shares apply again. A quire ask.
+//! A divider the person drags is written back to the tree once the drag ends (`on_resized`), so
+//! it keeps its place through a split elsewhere, a tab switch and a restart.
 
 use std::time::Instant;
 
 use dioxus::prelude::*;
 use ds::components::chrome::split_view::model::{
-    PaneAt, PaneSpec, Share as ViewShare, SplitAxis, SplitPane, UnfocusedPanes,
+    PaneAt, PaneSize, PaneSpec, Share as ViewShare, SplitAxis, SplitPane, UnfocusedPanes,
 };
 use ds::components::chrome::split_view::view::SplitView;
 use temor_core::split::{Axis, Handle, Node, Share, SplitTree};
 use temor_core::vocab::ids::PaneId;
+use temor_core::workspace::WorkspaceIn;
 
 use super::pane_view::PaneView;
 use super::viewer_pane::ViewerView;
@@ -53,6 +53,8 @@ fn TreeNode(tree: SplitTree, at: Handle, focus: PaneId, desk: Desk, started: Ins
                 true => PaneAt::Pane(0),
                 false => PaneAt::Rest,
             };
+            let divider = between(&tree, first, second);
+            let dragged = desk.clone();
             let before = rsx! {
                 TreeNode { tree: tree.clone(), at: first, focus, desk: desk.clone(), started }
             };
@@ -66,6 +68,13 @@ fn TreeNode(tree: SplitTree, at: Handle, focus: PaneId, desk: Desk, started: Ins
                     axis: axis_of(axis),
                     unfocused: UnfocusedPanes::Dim,
                     focused: Some(held),
+                    on_resized: move |sizes: Vec<PaneSize>| {
+                        if let (Some((before, after)), Some(share)) =
+                            (divider, sizes.first().and_then(|size| share_of(*size)))
+                        {
+                            dragged.act(WorkspaceIn::SetShare { before, after, share });
+                        }
+                    },
                     TreeNode { tree, at: second, focus, desk, started }
                 }
             }
@@ -108,6 +117,24 @@ fn structure_key(tree: &SplitTree, at: Handle) -> String {
         .map(|pane| pane.0.to_string())
         .collect::<Vec<_>>()
         .join("-")
+}
+
+/// The panes on either side of the divider between `first` and `second`: the last pane of the
+/// one and the first of the other.
+fn between(tree: &SplitTree, first: Handle, second: Handle) -> Option<(PaneId, PaneId)> {
+    let before = panes_under(tree, first).last().copied()?;
+    let after = panes_under(tree, second).first().copied()?;
+    Some((before, after))
+}
+
+/// The tree's share for a first pane the view sized `size`; a fixed size has none.
+fn share_of(size: PaneSize) -> Option<Share> {
+    match size {
+        PaneSize::Share(ViewShare(part)) => Some(Share::new(
+            (f64::from(part) * f64::from(Share::WHOLE)).round() as i64,
+        )),
+        PaneSize::Fixed(_) => None,
+    }
 }
 
 /// The first pane's size before anyone drags it: the node's share of the split.

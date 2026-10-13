@@ -1,7 +1,7 @@
 //! The workspace step's inputs, outputs and refusals.
 
 use super::tabs::{TabsIn, TabsOut};
-use crate::split::{Columns, Direction, Goto};
+use crate::split::{Columns, Direction, Goto, Share};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch, ViewerRef};
 
@@ -68,6 +68,16 @@ pub enum WorkspaceIn {
     ToggleZoom,
     /// Even out the splits of the tab in front.
     Equalize,
+    /// Give the split of the tab in front between two neighbouring panes this share: a
+    /// divider the person dragged.
+    SetShare {
+        /// The pane before the divider.
+        before: PaneId,
+        /// The pane after it.
+        after: PaneId,
+        /// The first child's part of the split.
+        share: Share,
+    },
     /// Focus a pane wherever it is, bringing its tab to the front.
     Focus(PaneId),
     /// Drop a tab onto a pane of another tab, splitting that pane towards `towards`.

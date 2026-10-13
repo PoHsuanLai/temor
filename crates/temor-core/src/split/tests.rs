@@ -104,6 +104,31 @@ fn equalize_weighs_children_along_the_split_axis() {
 }
 
 #[test]
+fn a_dragged_divider_is_found_by_the_panes_on_either_side() {
+    let tree = l_shape();
+    let share = Share::new(300_000);
+    // (name, before, after, the split that takes the share)
+    #[rustfmt::skip]
+    let cases: &[(&str, u64, u64, Option<usize>)] = &[
+        ("the root's divider",              1, 2, Some(0)),
+        ("the inner divider",               2, 3, Some(2)),
+        ("panes not next to each other",    1, 3, None),
+        ("the wrong way round",             2, 1, None),
+        ("a pane the tab no longer holds",  2, 9, None),
+    ];
+    for (name, before, after, at) in cases {
+        let set = tree.set_share(p(*before), p(*after), share);
+        for index in [0, 2] {
+            let want = match at {
+                Some(at) if *at == index => 300_000,
+                _ => ratio_at(&tree, index),
+            };
+            assert_eq!(ratio_at(&set, index), want, "{name}: split {index}");
+        }
+    }
+}
+
+#[test]
 fn resize_scales_a_window_delta_to_the_split_and_clamps() {
     let tree = l_shape();
     // Pane 3's column split spans the window's full height: a tenth of the window is a tenth.

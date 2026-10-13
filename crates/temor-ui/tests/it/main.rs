@@ -17,6 +17,7 @@ mod offer;
 mod peek;
 mod persist;
 mod remote;
+mod resizing;
 mod session;
 mod shelf;
 mod sidebar;

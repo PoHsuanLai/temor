@@ -45,6 +45,19 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
             in_front(&mut ws, &mut out, input);
         }
         WorkspaceIn::Equalize => in_front(&mut ws, &mut out, TreeIn::Equalize),
+        WorkspaceIn::SetShare {
+            before,
+            after,
+            share,
+        } => in_front(
+            &mut ws,
+            &mut out,
+            TreeIn::SetShare {
+                before,
+                after,
+                share,
+            },
+        ),
         WorkspaceIn::Focus(pane) => focus(&mut ws, pane, &mut out),
         WorkspaceIn::DropTab {
             from,

@@ -212,9 +212,12 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       the plain tab since Batch 2)
 - [x] The pane ignores the workspace actions (`Session::run` no-op) until the window routes them
       to the workspace step. §6 (done: Batch 1, `Session::take_asked` hands them to the hub)
-- [ ] quire ask: `SplitView` reports no finished drag, so a dragged divider is not written back
+- [x] quire ask: `SplitView` reports no finished drag, so a dragged divider is not written back
       to the tree (`view/tree_view.rs`; the starting share is used, and the unread dot is quire's
       `Badge`). (check: v0.3.14's `SplitView` has `on_shown`; is that the report?)
+      (done: quire v0.3.20's `SplitView` has `on_resized`; the share goes to the tree as
+      `WorkspaceIn::SetShare`, the split found by the panes on either side of its divider;
+      `resizing::a_dragged_divider_keeps_its_place_through_a_tab_switch`)
 - [x] ⌃⌘= is bound to Ctrl+Shift+= and Ctrl+Super+=. The Ctrl+Super form is not a ⌘ chord under
       the terminal rule (it has Ctrl), so the owner should confirm this binding. §6 (obsolete: keys
       moved to chordkit; equalize is `Primary+Ctrl+=`, else ⌥⌘0 where Primary is Ctrl+Shift)
@@ -1241,8 +1244,13 @@ long text; anyview's `NotOpened` offers "Open in another app"; quire v0.3.16 pin
   app-shell look); dark by default (owner, 2026-10-11).
 - [ ] Design audit (2026-10-11, private artifact https://claude.ai/artifact/QZJUJwoLf5cSKodekfSdAh): 3 critical (five text colours under 4.5:1, the find field not taking the keyboard, no collapse or pane minimum below ~800 px), 8 high (four grounds in two temperatures, accent on six jobs, a ring around the focused pane, flat cards, the floating toolbar sentence, the typing line repeating the card, a 10 px status strip, `user@host:path` tab names), 6 medium (sidebar foot, actions missing from the bar, find bar layout, sans versus mono, the miniature, first launch).
 - [ ] Sizes (same audit, measured with the ignored `size_audit` harness test): three control sizes in the sidebar foot (New tab is `ControlSize::Small`), tab rows at 40 (155 when split) off quire's 28/32/36 ladder with no vertical padding, a 28 px tools bar on an 18 px terminal row with `--r-panel`, seven type sizes (10 to 16), the command bar's rows not concentric (quire), paddings off the 4 px grid, the closed Downloads hint overlapping the foot buttons.
-- [ ] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
+- [x] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
   restore, keyboard-only use, resize with a menu or the bar open.
+  (done, `tests/it/resizing.rs`: a dragged divider kept through a tab switch, dragged past both
+  ends, every control inside the window from 400x360 to 1920x1080 with typing after, keys alone
+  for tab, split, bar and close with no click, the bar resized while open. All pass; the kept
+  divider failed before `SetShare`. Not covered yet: sidebar collapse and restore, resize with a
+  menu open, scale 150/200%.)
 
 ## Batch 19: the design audit (2026-10-11)
 Four lanes (access, sidebar, cards, bar) from the audit; merged with one combined gate. Done:

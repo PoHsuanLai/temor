@@ -16,6 +16,13 @@ pub enum Closed {
 }
 
 /// The handle of the node at `index`; node arrays never pass `2 * MOST_PANES`, which fits.
+/// One end of a subtree's panes in reading order.
+#[derive(Clone, Copy)]
+enum End {
+    First,
+    Last,
+}
+
 fn handle_at(index: usize) -> Handle {
     Handle(u16::try_from(index).unwrap_or(u16::MAX)) // len <= 2 * MOST_PANES < u16::MAX
 }
@@ -144,6 +151,39 @@ impl SplitTree {
             nodes,
             zoomed: self.zoomed,
         })
+    }
+
+    /// The split whose divider lies between `before` and `after` (the last pane of its first
+    /// child and the first pane of its second) given `share`. Two panes next to each other in
+    /// reading order have exactly one divider between them; panes that are not (a view of the
+    /// tab that is already stale) leave the tree unchanged.
+    pub fn set_share(&self, before: PaneId, after: PaneId, share: Share) -> SplitTree {
+        let mut nodes = self.nodes.clone();
+        let between = |first: Handle, second: Handle| {
+            self.end_pane(first, End::Last) == Some(before)
+                && self.end_pane(second, End::First) == Some(after)
+        };
+        if let Some(Node::Split { ratio, .. }) = nodes.iter_mut().find(|node| match node {
+            Node::Split { first, second, .. } => between(*first, *second),
+            Node::Leaf(_) => false,
+        }) {
+            *ratio = share;
+        }
+        SplitTree {
+            nodes,
+            zoomed: self.zoomed,
+        }
+    }
+
+    /// The first or last pane under `at`.
+    fn end_pane(&self, at: Handle, end: End) -> Option<PaneId> {
+        match self.node(at)? {
+            Node::Leaf(pane) => Some(pane),
+            Node::Split { first, second, .. } => match end {
+                End::First => self.end_pane(first, end),
+                End::Last => self.end_pane(second, end),
+            },
+        }
     }
 
     /// The tree with `pane` shown over the whole tab. A tab that is not split has nothing to zoom.

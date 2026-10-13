@@ -1,6 +1,6 @@
 //! `tree_step`: a tab's split tree and its focused pane, moved by the window's split commands.
 
-use super::model::{Axis, Direction, Goto, SplitTree, WindowDelta};
+use super::model::{Axis, Direction, Goto, Share, SplitTree, WindowDelta};
 use super::ops::Closed;
 use crate::vocab::ids::PaneId;
 
@@ -44,6 +44,15 @@ pub enum TreeIn {
     },
     /// Even out every split.
     Equalize,
+    /// Give the split between two neighbouring panes this share: a divider the person dragged.
+    SetShare {
+        /// The pane before the divider.
+        before: PaneId,
+        /// The pane after it.
+        after: PaneId,
+        /// The first child's part of the split.
+        share: Share,
+    },
     /// Show `pane` over the whole tab, and focus it.
     Zoom(PaneId),
     /// Show every pane again.
@@ -90,6 +99,14 @@ pub fn tree_step(state: TreeState, input: TreeIn) -> (TreeAfter, Vec<TreeOut>) {
         },
         TreeIn::Equalize => unchanged(TreeState {
             tree: state.tree.equalize(),
+            ..state
+        }),
+        TreeIn::SetShare {
+            before,
+            after,
+            share,
+        } => unchanged(TreeState {
+            tree: state.tree.set_share(before, after, share),
             ..state
         }),
         TreeIn::Zoom(pane) => match state.tree.zoom(pane) {
