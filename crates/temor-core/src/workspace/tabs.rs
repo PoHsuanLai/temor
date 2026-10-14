@@ -107,6 +107,9 @@ pub enum TabsIn {
     NewFolder { title: TabTitle },
     /// Rename a tab.
     Rename { tab: TabId, title: TabTitle },
+    /// Move a tab to where `at` stands in the list (a drag in the sidebar): after it when the
+    /// tab came from above, before it when from below. Its pin and folder are its own.
+    Place { tab: TabId, at: TabId },
     /// The tab got news (a command ended in one of its panes). Ignored in front.
     Unread(TabId),
     /// The tab closed: it leaves the list, and the focus moves to a neighbour.
@@ -162,6 +165,7 @@ pub fn tabs_step(mut state: TabsState, input: TabsIn) -> (TabsState, Vec<TabsOut
             vec![TabsOut::Created(id)]
         }
         TabsIn::Rename { tab, title } => edit_tab(&mut state, tab, |t| t.title = title),
+        TabsIn::Place { tab, at } => place(&mut state, tab, at),
         TabsIn::Unread(tab) => unread(&mut state, tab),
         TabsIn::Remove(tab) => remove(&mut state, tab),
     };
@@ -232,6 +236,21 @@ fn move_to_folder(state: &mut TabsState, id: TabId, folder: Option<FolderId>) ->
         return refuse(TabRefusal::NoSuchFolder(wanted));
     }
     edit_tab(state, id, |t| t.folder = folder)
+}
+
+fn place(state: &mut TabsState, id: TabId, at: TabId) -> Vec<TabsOut> {
+    let tabs = &mut state.place.tabs;
+    let Some(from) = tabs.iter().position(|tab| tab.id == id) else {
+        return refuse(TabRefusal::NoSuchTab(id));
+    };
+    let Some(to) = tabs.iter().position(|tab| tab.id == at) else {
+        return refuse(TabRefusal::NoSuchTab(at));
+    };
+    // Taken out and put back at `at`'s index: below it when it came from above, as a list
+    // dragged by hand does.
+    let moved = tabs.remove(from);
+    tabs.insert(to, moved);
+    Vec::new()
 }
 
 fn unread(state: &mut TabsState, id: TabId) -> Vec<TabsOut> {

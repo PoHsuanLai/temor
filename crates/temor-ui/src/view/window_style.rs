@@ -3,7 +3,8 @@
 //! come from quire's tokens and the pane's palette, so this sheet has no design values.
 
 pub const WINDOW_CSS: &str = "\
-.temor-shell { width: 100%; height: 100%; }\
+.temor-shell { position: relative; width: 100%; height: 100%; }\
+.temor-edge-host { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }\
 .temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
 .temor-pane { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; }\
@@ -45,6 +46,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-seg-close { display: flex; flex: none; align-items: center; justify-content: center; width: var(--s-16); height: var(--s-16); border-radius: var(--r-micro); color: var(--ink-faint); visibility: hidden; }\
 .temor-seg:hover .temor-seg-close, [*|aria-selected=\"true\"] .temor-seg-close { visibility: visible; }\
 .temor-seg-close:hover { color: var(--ink); background: var(--fill-quaternary); }\
+.temor-seg-slot[*|data-glyph=true] { flex: none; }\
+.temor-seg-slot[*|data-glyph=true] .temor-seg-name, .temor-seg-slot[*|data-glyph=true] .temor-seg-close { display: none; }\
 .temor-seg-rule { flex: none; width: var(--hair); height: var(--s-14); background: var(--line); }\
 .temor-host { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--s-4); }\
 .temor-host-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }\
@@ -53,6 +56,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-pin { position: relative; display: grid; place-items: center; height: 44px; border-radius: var(--r-tile); background: var(--f-pill-hover); color: var(--f-ink); }\
 .temor-pin:hover, .temor-pin[*|data-selected=true] { background: var(--f-pill); }\
 .temor-pin[*|data-selected=true] { box-shadow: var(--shadow-current); }\
+.temor-pin[*|data-over=true] { box-shadow: 0 0 0 2px var(--accent-text); }\
 .temor-pin-news { position: absolute; top: var(--s-2); right: var(--s-2); display: flex; }\
 .temor-foot { flex: 1 1 auto; min-width: 0; }\
 .temor-foot .temor-foot-lead, .temor-foot .temor-foot-end { display: flex; align-items: center; flex: 1000 1 0; min-width: 0; }\

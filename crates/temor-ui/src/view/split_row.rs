@@ -2,7 +2,9 @@
 //! segments, a segment per pane in the order the panes stand, each with the terminal glyph, the
 //! pane's name and its own close button, a hairline between them. The pane with the keys is the
 //! segment drawn in ink. Pressing a segment focuses its pane; dragging one out of the sidebar
-//! tears the pane off into a tab of its own; its × closes that pane alone.
+//! tears the pane off into a tab of its own; its × closes that pane alone. A split of three or
+//! more panes is squeezed as Arc's is: the pane with the keys keeps its name, the others are their
+//! glyphs alone.
 
 use dioxus::prelude::*;
 use ds::prelude::{Icon, IconSize, IconSource, IconView, Selection};
@@ -20,13 +22,17 @@ const GLYPH: IconSize = IconSize::Small;
 #[component]
 #[allow(non_snake_case)]
 pub fn SplitSegments(tiles: Vec<Tile>, desk: Desk, dnd: Dnd) -> Element {
+    let squeezed = match tiles.len() > SIDE_BY_SIDE {
+        true => Squeeze::Squeezed,
+        false => Squeeze::Named,
+    };
     rsx! {
         div { class: "temor-split", role: "group", "aria-label": "Panes in this tab",
             for (index, tile) in in_reading_order(tiles).into_iter().enumerate() {
                 if index > 0 {
                     span { key: "rule{tile.pane.0}", class: "temor-seg-rule", aria_hidden: "true" }
                 }
-                {segment(tile, desk.clone(), dnd.clone())}
+                {segment(tile, squeezed, desk.clone(), dnd.clone())}
             }
         }
     }
@@ -42,16 +48,27 @@ pub fn in_reading_order(mut tiles: Vec<Tile>) -> Vec<Tile> {
     tiles
 }
 
-fn segment(tile: Tile, desk: Desk, dnd: Dnd) -> Element {
+/// How many panes stand side by side with their names; more are squeezed.
+const SIDE_BY_SIDE: usize = 2;
+
+/// Whether the panes other than the one with the keys show their names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Squeeze {
+    Named,
+    Squeezed,
+}
+
+fn segment(tile: Tile, squeeze: Squeeze, desk: Desk, dnd: Dnd) -> Element {
     let pane = tile.pane;
     let selected = match tile.selection {
         Selection::Selected => Some("true"),
         Selection::Unselected => None,
     };
+    let glyph_only = (squeeze == Squeeze::Squeezed && selected.is_none()).then_some("true");
     let click = dnd.click.clone();
     let closing = desk.clone();
     rsx! {
-        div { key: "{pane.0}", class: "temor-seg-slot",
+        div { key: "{pane.0}", class: "temor-seg-slot", "data-glyph": glyph_only,
             RowTip { name: format!("pane{}", pane.0), text: tile.title.clone(),
                 div {
                     class: "temor-seg",

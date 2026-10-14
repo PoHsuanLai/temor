@@ -1198,9 +1198,7 @@ Everything still open, one line each, with the section it lives in. The boxes in
 sections above are the lanes' own notes; this list is the one to read.
 
 ### Doing now (owner, 2026-10-14: "do 1 2 3")
-1. Sidebar: the hidden sidebar peeks from the window's edge (mailo's `EdgePeek`); pinned tiles
-   drag to reorder and onto a row to join a split; a split of three or four panes narrows its
-   segments to glyphs. (Sidebar, after the mailo pass)
+1. ~~Sidebar: edge peek, pinned tile drags, squeezed splits.~~ Done 2026-10-14.
 2. Cards: the typing line pinned to the pane's bottom (spike first); the bold prompt text on a
    one-line shell prompt's command row; the more menu closing when the pointer leaves the pane;
    DropTab checking the 40-column minimum. (Batch 19)
@@ -1386,7 +1384,13 @@ the bar runs the sidebar action through the desk.
   New Space, Hide Sidebar) at the end, no `+`. Tooltips on whole rows are quire's `Tooltip` hooked
   to a block `HoverTarget` (`view/row_tip.rs`). `view/split_row.rs`, `pinned_tabs.rs`,
   `side_menu.rs`, `tab_sidebar.rs`, `shelf.rs`.
-- [ ] Sidebar, after the mailo pass: (1) quire's `PinTiles` draws accounts only; a glyph face
+- [x] Sidebar, the rest of the mailo pass (2026-10-14): hidden, the sidebar peeks from the window's
+  edge as mailo's does (quire's `EdgePeek` in a zero-width host at the edge; a click on the edge
+  pins it); pinned tiles drag as Arc's do (onto another tile to take its place, onto a row to be
+  unpinned there, a row dropped on a tile is pinned there; `TabsIn::Place`, `dnd::resolve`); a
+  split of three or more panes keeps the focused pane's name and squeezes the others to their
+  glyphs. A pinned tab still never joins a split (the core keeps its panes).
+- [ ] Sidebar, after the mailo pass (only (1) is still open): (1) quire's `PinTiles` draws accounts only; a glyph face
   (`PinFace::Glyph`) would let temor use it and its drag-to-reorder instead of its own tiles
   (quire change: owner's OK). (2) Hidden, mailo's sidebar peeks from the window's edge (quire's
   `EdgePeek`); temor's still snaps away. (3) Pinned tiles cannot be dragged to reorder or onto a

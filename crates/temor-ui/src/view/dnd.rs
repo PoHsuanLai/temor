@@ -1,5 +1,7 @@
-//! Dragging in the sidebar (PLAN §7): a tab row dropped on another row joins its tab, a tile of a
-//! row's miniature dropped outside the sidebar tears its pane off into a tab of its own. The drag
+//! Dragging in the sidebar (PLAN §7): a tab row dropped on another row joins its tab, a pane's
+//! segment dropped outside the sidebar tears it off into a tab of its own, and pinned tabs move as
+//! Arc's do: a pinned tile dropped on another takes its place, on a row it is unpinned there, and
+//! a row dropped on a pinned tile is pinned there. The drag
 //! machine and the ghost are quire's (`use_drag`, `DragGhost`, `DropLine`); this holds where the
 //! rows are and the rule for what a release means. The rule is pure.
 
@@ -118,26 +120,42 @@ impl ClickCell {
 pub enum Dropped {
     /// Tab `from` joins the tab `onto`.
     Join { from: TabId, onto: TabId },
+    /// Pinned tab `from` moves to where pinned tab `onto` stands.
+    Place { from: TabId, onto: TabId },
+    /// Pinned tab `from` is unpinned where the tab `onto` stands.
+    Unpin { from: TabId, onto: TabId },
+    /// Tab `from` is pinned where the pinned tab `onto` stands.
+    Pin { from: TabId, onto: TabId },
     /// The pane leaves its tab for one of its own.
     Tear(PaneId),
     /// Nothing happens.
     Nothing,
 }
 
-/// What releasing a drag in `phase` means, with `over` the row under the pointer and
-/// `sidebar_right` the sidebar's right edge (when it is known). A tab dropped on another row
-/// joins it; a tile dropped on no row and past the sidebar's edge tears off.
+/// What releasing a drag in `phase` means, with `over` the row or tile under the pointer,
+/// `sidebar_right` the sidebar's right edge (when it is known) and `pinned` whether a tab is
+/// pinned. A tab dropped on another row joins it; pinned tabs move, pin or unpin instead (a pinned
+/// tab keeps its panes); a segment dropped on no row and past the sidebar's edge tears off.
 pub fn resolve(
     phase: &DragPhase<DragKey>,
     over: Option<TabId>,
     sidebar_right: Option<Px>,
+    pinned: impl Fn(TabId) -> bool,
 ) -> Dropped {
     match phase {
         DragPhase::Live {
             key: DragKey::Tab(from),
             ..
         } => match over {
-            Some(onto) if onto != *from => Dropped::Join { from: *from, onto },
+            Some(onto) if onto != *from => {
+                let from = *from;
+                match (pinned(from), pinned(onto)) {
+                    (true, true) => Dropped::Place { from, onto },
+                    (true, false) => Dropped::Unpin { from, onto },
+                    (false, true) => Dropped::Pin { from, onto },
+                    (false, false) => Dropped::Join { from, onto },
+                }
+            }
             _ => Dropped::Nothing,
         },
         DragPhase::Live {
@@ -199,7 +217,25 @@ mod tests {
             ("a press that never became a drag", DragPhase::Pending { key: DragKey::Tab(a), from: Point { x: Px(0.0), y: Px(0.0) } }, Some(b), edge, Dropped::Nothing),
         ];
         for (name, phase, over, edge, want) in rows {
-            assert_eq!(resolve(phase, *over, *edge), *want, "{name}");
+            assert_eq!(resolve(phase, *over, *edge, |_| false), *want, "{name}");
+        }
+    }
+
+    #[test]
+    fn pinned_tabs_move_pin_and_unpin_as_arcs_do() {
+        let (p, q, l, m) = (TabId(1), TabId(2), TabId(3), TabId(4));
+        let pinned = |tab: TabId| tab == p || tab == q;
+        let edge = Some(Px(200.0));
+        #[rustfmt::skip]
+        let rows: &[(&str, TabId, TabId, Dropped)] = &[
+            ("a pinned tile on another", p, q, Dropped::Place { from: p, onto: q }),
+            ("a pinned tile on a row", p, l, Dropped::Unpin { from: p, onto: l }),
+            ("a row on a pinned tile", l, q, Dropped::Pin { from: l, onto: q }),
+            ("a row on a row", l, m, Dropped::Join { from: l, onto: m }),
+        ];
+        for (name, from, onto, want) in rows {
+            let phase = live(DragKey::Tab(*from), 50.0);
+            assert_eq!(resolve(&phase, Some(*onto), edge, pinned), *want, "{name}");
         }
     }
 

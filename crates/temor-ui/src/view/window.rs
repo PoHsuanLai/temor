@@ -22,7 +22,9 @@ use ds::window::host::use_window_title;
 use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
 use ds_settings::{AppearanceFile, use_environment};
 use temor_core::split::Direction;
-use temor_core::workspace::WorkspaceIn;
+use temor_core::vocab::ids::TabId;
+use temor_core::vocab::text::Relaunch;
+use temor_core::workspace::{TabsIn, WorkspaceIn};
 
 use super::bar::BarView;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
@@ -166,7 +168,10 @@ pub fn App() -> Element {
                 dnd.click.swallow();
             }
             let edge = side.rect().map(|r| r.right());
-            match resolve(&phase, target, edge) {
+            let pins = desk.hub.sidebar().pinned;
+            let pinned = |tab: TabId| pins.iter().any(|row| row.id == tab);
+            let tabs = |input: TabsIn| desk.act(WorkspaceIn::Tabs(input));
+            match resolve(&phase, target, edge, pinned) {
                 Dropped::Join { from, onto } => {
                     if let Some(pane) = desk.hub.focus_pane_of(onto) {
                         desk.act(WorkspaceIn::DropTab {
@@ -175,6 +180,27 @@ pub fn App() -> Element {
                             towards: Direction::Right,
                         });
                     }
+                }
+                Dropped::Place { from, onto } => tabs(TabsIn::Place {
+                    tab: from,
+                    at: onto,
+                }),
+                Dropped::Unpin { from, onto } => {
+                    tabs(TabsIn::Unpin(from));
+                    tabs(TabsIn::Place {
+                        tab: from,
+                        at: onto,
+                    });
+                }
+                Dropped::Pin { from, onto } => {
+                    tabs(TabsIn::Pin {
+                        tab: from,
+                        relaunch: Relaunch(String::new()),
+                    });
+                    tabs(TabsIn::Place {
+                        tab: from,
+                        at: onto,
+                    });
                 }
                 Dropped::Tear(pane) => desk.act(WorkspaceIn::Tear(pane)),
                 Dropped::Nothing => {}
@@ -221,12 +247,20 @@ pub fn App() -> Element {
         DragPhase::Idle | DragPhase::Pending { .. } => None,
     };
     let now = env();
-    let sidebar_body = rsx! {
-        div {
-            class: "temor-side-box",
-            onmounted: move |event: MountedEvent| side.on_mounted(event),
-            TabSidebar { data: data.clone(), desk: desk.clone(), dnd: dnd.clone() }
+    // Pinned, the sidebar is the pane's body; hidden, it moves out of the pane (which clips what
+    // floats over it) into a zero-width host at the window's edge, where it peeks.
+    let side_box = |pinned: Shown| {
+        rsx! {
+            div {
+                class: "temor-side-box",
+                onmounted: move |event: MountedEvent| side.on_mounted(event),
+                TabSidebar { data: data.clone(), desk: desk.clone(), dnd: dnd.clone(), pinned }
+            }
         }
+    };
+    let sidebar_body = match sidebar() {
+        Shown::Visible => side_box(Shown::Visible),
+        Shown::Hidden => rsx! {},
     };
     rsx! {
         Ds {
@@ -280,6 +314,9 @@ pub fn App() -> Element {
                             }
                         }
                     }
+                }
+                if sidebar() == Shown::Hidden {
+                    div { class: "temor-edge-host", {side_box(Shown::Hidden)} }
                 }
             }
             SpaceMenus { desk: desk.clone() }

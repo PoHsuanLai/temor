@@ -7,6 +7,7 @@
 //! the tabs of the Space on screen.
 
 use dioxus::prelude::*;
+use ds::components::app::edge_peek::EdgePeek;
 use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
 use ds::prelude::*;
@@ -33,12 +34,12 @@ pub enum SideKey {
 /// The window's sidebar of tabs.
 #[component]
 #[allow(non_snake_case)]
-pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
+pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Element {
     let frame = use_space_frame();
     let mut sections = Vec::new();
     if !data.pinned.is_empty() {
         sections.push(SidebarSection::Custom(rsx! {
-            PinnedTabs { rows: data.pinned.clone(), desk: desk.clone() }
+            PinnedTabs { rows: data.pinned.clone(), desk: desk.clone(), dnd: dnd.clone() }
         }));
     }
     for (title, rows) in &data.folders {
@@ -66,7 +67,14 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
             SideKey::NewTab => desk.act(WorkspaceIn::NewTab { cwd: None }),
         })
     };
+    let mut sidebar = desk.sidebar;
     rsx! {
+        // Hidden, the sidebar floats over the pane from the window's edge while the pointer is
+        // there (quire's `EdgePeek`, as mailo's does), and a click on the edge pins it again.
+        EdgePeek {
+            label: "Sidebar",
+            pinned,
+            onpin: move |()| sidebar.set(Shown::Visible),
         div { class: "temor-side", style: frame.style_attr(),
             Sidebar::<SideKey> {
                 label: "Tabs",
@@ -92,6 +100,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd) -> Element {
                     }
                 },
             }
+        }
         }
     }
 }

@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds_blitz::Extent;
 use ds_harness::{DocQuery, Driver, Harness, Input};
@@ -201,4 +202,147 @@ fn a_running_tab_counts_up_with_no_output() {
         );
     }
     h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
+}
+
+/// Hidden, the sidebar waits at the window's edge: the pointer there floats it over the pane, as
+/// mailo's does, and a click on the edge pins it again.
+#[test]
+fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-peek", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let at = |x: f32, y: f32| ds::prelude::Point {
+        x: ds::prelude::Px(x),
+        y: ds::prelude::Px(y),
+    };
+    h.send(Input::click(at(700.0, 300.0)));
+    h.advance(Duration::from_millis(200));
+    let found = |h: &Harness, selector: &str| {
+        h.with_doc(|doc| doc.query_selector(selector).ok().flatten().is_some())
+    };
+    h.send(Input::chord(
+        &[ShortcutKey::Super, ShortcutKey::Shift],
+        ShortcutKey::Char('l'),
+    ));
+    h.advance(Duration::from_millis(600));
+    assert!(
+        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
+        "hidden at the edge"
+    );
+    h.send(Input::pointer_move(at(3.0, 400.0)));
+    h.advance(Duration::from_millis(900));
+    assert!(
+        found(&h, ".temor-edge-host .ds-side[data-side=peek]"),
+        "the edge peeks it"
+    );
+    let side = rects(&h, ".temor-edge-host .ds-side");
+    assert!(
+        side[0].right - side[0].left > 200.0,
+        "it floats at its width"
+    );
+    // Away from it, it slides back out; a click on the edge pins it.
+    h.send(Input::pointer_move(at(900.0, 400.0)));
+    h.advance(Duration::from_millis(900));
+    assert!(
+        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
+        "gone again"
+    );
+    h.send(Input::click(at(3.0, 400.0)));
+    h.advance(Duration::from_millis(600));
+    assert!(!found(&h, ".temor-edge-host"), "pinned: no edge host");
+    assert!(
+        found(&h, ".ds-side[data-side=shown]"),
+        "pinned in its column"
+    );
+}
+
+/// A split of three panes is squeezed as Arc's is: the pane with the keys keeps its name, the
+/// others are their glyphs alone.
+#[test]
+fn a_split_of_three_shows_one_name_and_two_glyphs() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-squeeze", &probe);
+    h.resize_window(Extent::new(1600, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'd');
+    chord(&mut h, 'd');
+    let slots = rects(&h, ".temor-side .temor-seg-slot");
+    assert_eq!(slots.len(), 3, "three panes");
+    let squeezed = rects(&h, ".temor-side .temor-seg-slot[data-glyph=true]");
+    assert_eq!(squeezed.len(), 2, "two are glyphs");
+    for slot in &squeezed {
+        assert!(
+            slot.right - slot.left < 40.0,
+            "a glyph is narrow: {}",
+            slot.right - slot.left
+        );
+    }
+    let names = rects(
+        &h,
+        ".temor-side .temor-seg-slot[data-glyph=true] .temor-seg-name",
+    );
+    assert!(
+        names.iter().all(|r| r.right - r.left < 0.5),
+        "no names on the glyphs"
+    );
+}
+
+/// Pinned tabs move as Arc's do: a row dropped on a pinned tile is pinned, a tile dropped on a row
+/// is unpinned there.
+#[test]
+fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-pin-drag", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'n');
+    chord(&mut h, 'n');
+    let centre = |b: &Box4| ds::prelude::Point {
+        x: ds::prelude::Px(((b.left + b.right) / 2.0) as f32),
+        y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
+    };
+    let rows = |h: &Harness| rects(h, ".temor-side .temor-tab-box");
+    let tiles = |h: &Harness| rects(h, ".temor-side .temor-pin");
+    assert_eq!((rows(&h).len(), tiles(&h).len()), (3, 0), "three tabs");
+    // Pin Tab heads the row's menu.
+    let first = centre(&rows(&h)[0]);
+    h.send(Input::press(first, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let item = rects(&h, ".ds-menu-item");
+    assert!(!item.is_empty(), "the row's menu opens");
+    h.send(Input::click(centre(&item[0])));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        (rows(&h).len(), tiles(&h).len()),
+        (2, 1),
+        "pinned from the menu"
+    );
+    // A row onto the tile: pinned too.
+    let (row, tile) = (centre(&rows(&h)[0]), centre(&tiles(&h)[0]));
+    h.send(Input::drag(row, tile, 12));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        (rows(&h).len(), tiles(&h).len()),
+        (1, 2),
+        "a row dropped on a tile"
+    );
+    // A tile onto the row: unpinned.
+    let (tile, row) = (centre(&tiles(&h)[0]), centre(&rows(&h)[0]));
+    h.send(Input::drag(tile, row, 12));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        (rows(&h).len(), tiles(&h).len()),
+        (2, 1),
+        "a tile dropped on a row"
+    );
 }

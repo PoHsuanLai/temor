@@ -188,3 +188,37 @@ fn removing_the_last_tab_leaves_nothing_in_front() {
     let (_, outs) = tabs_step(state, TabsIn::Select(TabSel::Next));
     assert_eq!(outs, vec![TabsOut::Refused(TabRefusal::NoTabs)]);
 }
+
+#[test]
+fn placing_a_tab_moves_it_to_where_the_other_stands() {
+    let list =
+        |state: &TabsState| -> Vec<TabId> { state.place.tabs.iter().map(|t| t.id).collect() };
+    // (tab, at, the list after)
+    #[rustfmt::skip]
+    let cases: &[(u64, u64, &[u64])] = &[
+        (1, 4, &[2, 3, 4, 1]),
+        (4, 1, &[4, 1, 2, 3]),
+        (2, 3, &[1, 3, 2, 4]),
+        (3, 2, &[1, 3, 2, 4]),
+        (2, 2, &[1, 2, 3, 4]),
+    ];
+    for (tab, at, want) in cases {
+        let (state, out) = tabs_step(
+            fixture(),
+            TabsIn::Place {
+                tab: TabId(*tab),
+                at: TabId(*at),
+            },
+        );
+        assert_eq!(out, vec![], "{tab} at {at}");
+        assert_eq!(list(&state), ids(want), "{tab} at {at}");
+    }
+    let (_, out) = tabs_step(
+        fixture(),
+        TabsIn::Place {
+            tab: TabId(9),
+            at: TabId(1),
+        },
+    );
+    assert_eq!(out, vec![TabsOut::Refused(TabRefusal::NoSuchTab(TabId(9)))]);
+}
