@@ -32,7 +32,25 @@ pub(crate) fn compose_row(
     target.clear_band(Premul::opaque(input.colors.background));
     draw_images(target, input, images, KittyLayer::BelowBackground);
     let mut sides = [RowScene::default(), RowScene::default()];
-    if !build_settled(input, row, rows, glyphs, scene, &mut sides) {
+    // The row with its neighbours, else (when the three rows' glyphs do not fit the atlases
+    // together) the row alone, its neighbours' overhang clipped as before.
+    if !build_settled(
+        input,
+        row,
+        rows,
+        glyphs,
+        scene,
+        &mut sides,
+        Neighbours::Drawn,
+    ) && !build_settled(
+        input,
+        row,
+        rows,
+        glyphs,
+        scene,
+        &mut sides,
+        Neighbours::Clipped,
+    ) {
         return Err(RenderError::GlyphsDoNotFit);
     }
     for q in &scene.bg {
@@ -50,9 +68,18 @@ pub(crate) fn compose_row(
     Ok(overhang_of(scene, y0, ch.unsigned_abs()))
 }
 
-/// Builds `row` into `own` and its neighbours into `sides` until the glyph atlases do not clear
-/// while all three are built, so every quad points at texels that are still there. Returns
-/// `false` when they keep clearing.
+/// Whether a row's band also draws its neighbours' glyphs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Neighbours {
+    /// The pieces of the rows above and below that reach into the band.
+    Drawn,
+    /// None: the band shows its own row only.
+    Clipped,
+}
+
+/// Builds `row` into `own` and, with [`Neighbours::Drawn`], its neighbours into `sides` until
+/// the glyph atlases do not clear while they are built, so every quad points at texels that are
+/// still there. Returns `false` when they keep clearing.
 fn build_settled(
     input: &SceneInput<'_>,
     row: Row,
@@ -60,11 +87,17 @@ fn build_settled(
     glyphs: &mut GlyphCache,
     own: &mut RowScene,
     sides: &mut [RowScene; 2],
+    neighbours: Neighbours,
 ) -> bool {
     let at = usize::from(row.0);
     let own_cells = rows.get(at).map_or(&[][..], |c| c.as_slice());
-    let above = at.checked_sub(1).and_then(|i| rows.get(i));
-    let below = rows.get(at + 1);
+    let (above, below) = match neighbours {
+        Neighbours::Drawn => (
+            at.checked_sub(1).and_then(|i| rows.get(i)),
+            rows.get(at + 1),
+        ),
+        Neighbours::Clipped => (None, None),
+    };
     for _ in 0..BUILD_ATTEMPTS {
         let epoch = glyphs.epoch();
         build_row(input, row, own_cells, glyphs, own);
