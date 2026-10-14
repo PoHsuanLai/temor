@@ -1238,6 +1238,21 @@ sections above are the lanes' own notes; this list is the one to read.
   hyperlink id, libghostty-rs wrappers; iTerm2 multipart files dropped before temor (check).
   (temor-vt)
 
+### Settings window (owner, 2026-10-15: settings.toml, keys in their own file, quire's page first, all four pages)
+- [x] Batch 21: settings are ds-settings tables in `~/.config/temor/settings.toml` (font, cursor,
+  scrollback, shell, notify, offer), key changes in `keys.conf` (bind refuses a held chord and
+  names its action; reset one or all), `terminal.conf` converted once and kept as
+  `terminal.conf.old`, both files followed live (font and cursor reach open panes), and
+  `temor --write-schema <dir>`. Lane notes: `/mnt/data/cargo/temor-lanes/followups-b21-settings.md`
+  (PLAN §6/§14 text to fold in, the key and label table).
+- [ ] The window: General, Appearance, Keyboard, Spaces on quire's `ds-settings-page`
+  (quire c62994d0), opened by ⌘, and a command bar row; open-or-raise copied from mailo's
+  `SettingsOpened`. Waits for anyview, keycap and sill to re-pin to quire c62994d0 and chordkit
+  55a62b2 (Whopper, after the owner's login testing).
+- Open: quire's `Page` has only the app, so General and Appearance are told apart by section;
+  `notify.after` reaches new panes only; the converter's comments vanish at the next save
+  (`terminal.conf.old` keeps everything).
+
 ### Owner's call
 - quire `PinFace::Glyph`, so pinned tabs use quire's `PinTiles` (an upstream change).
 - quire ask: folder, git-branch and diff glyphs in `Icon` (the chips and the tab glyph draw
