@@ -175,7 +175,10 @@ impl Daemon {
                 need(link, Capability::Facts)?;
                 // A session's folder is the client's to ask about: it opened the session there.
                 let cwd = self.session(session)?.info().cwd;
-                let facts = crate::facts::read_folder(std::path::Path::new(&cwd.0));
+                let facts = crate::facts::read_folder(
+                    std::path::Path::new(&cwd.0),
+                    self.config.home.as_deref(),
+                );
                 Ok(Done::Reply(Reply::Facts(facts)))
             }
             // Trial runs and the agent relay need the sandbox runner, which is not linked yet.

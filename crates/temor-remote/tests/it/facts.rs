@@ -73,6 +73,8 @@ fn a_sessions_folder_is_read_with_git_and_the_version_files_up_to_the_repository
     );
     assert_eq!(facts.folders[1].files[0].name, ".nvmrc");
     assert_eq!(facts.folders[1].files[0].text, "v20\n");
+    // The home is the helper's own, so the window can write the folder as `~/repo/src`.
+    assert_eq!(facts.home, Some(RemotePath(rig.home.display().to_string())));
 }
 
 #[test]

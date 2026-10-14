@@ -95,6 +95,7 @@ mod tests {
             dir: path("/w/app/src"),
             git,
             venv: Some(path("/w/app/src/.venv")),
+            home: Some(path("/w")),
             root: Some(path("/w/app")),
             folders,
         }

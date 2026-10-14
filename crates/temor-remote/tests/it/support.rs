@@ -50,6 +50,7 @@ impl Rig {
             },
             default_shell: bash_path(),
             runtime_dir: base.join("run"),
+            home: Some(home.clone()),
             file_roots: vec![files.clone()],
             proc_root: PathBuf::from("/proc"),
             idle: DEFAULT_IDLE,

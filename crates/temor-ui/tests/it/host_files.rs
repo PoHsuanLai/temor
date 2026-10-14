@@ -38,6 +38,7 @@ fn host(name: &str) -> Host {
         launcher: SessionLauncher::Setsid("/usr/bin/setsid".into()),
         default_shell: "/bin/sh".into(),
         runtime_dir: dir.join("run"),
+        home: Some(root.clone()),
         file_roots: vec![root.clone()],
         proc_root: "/proc".into(),
         idle: DEFAULT_IDLE,

@@ -11,6 +11,7 @@ use temor_core::worktree::Git;
 use temor_wire::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use super::facts_folder::host_folder;
 use super::model::Hub;
 use crate::edge::facts::{FactsEnv, read_facts};
 use crate::edge::facts_host::facts_from_host;
@@ -31,6 +32,8 @@ pub struct Ready {
     pane: PaneId,
     /// What was read; none when the read failed, and what the pane showed stays.
     facts: Option<Facts>,
+    /// The folder as the chip says it, for a pane on a host (none from an older helper).
+    folder: Option<String>,
 }
 
 /// One pane's rule state and what was last read.
@@ -38,6 +41,8 @@ pub struct Ready {
 struct PaneFacts {
     state: FactsState,
     facts: Facts,
+    /// The host pane's folder chip text, from its helper's last answer.
+    folder: Option<String>,
 }
 
 /// The window's facts: git (if found), what the panes last read, and the way back to the window.
@@ -96,7 +101,11 @@ impl FactsHub {
             .spawn(move || {
                 let facts = Some(read_facts(git.as_deref(), &dir, &env));
                 // A closed channel means the window is gone.
-                let _ = done.send(Ready { pane, facts });
+                let _ = done.send(Ready {
+                    pane,
+                    facts,
+                    folder: None,
+                });
             });
     }
 
@@ -107,12 +116,14 @@ impl FactsHub {
         let _ = std::thread::Builder::new()
             .name("temor-facts-host".to_owned())
             .spawn(move || {
-                let facts = conn
-                    .client()
-                    .folder_facts(session)
-                    .ok()
-                    .map(|sent| facts_from_host(&sent));
-                let _ = done.send(Ready { pane, facts });
+                let sent = conn.client().folder_facts(session).ok();
+                let folder = sent.as_ref().and_then(host_folder);
+                let facts = sent.map(|sent| facts_from_host(&sent));
+                let _ = done.send(Ready {
+                    pane,
+                    facts,
+                    folder,
+                });
             });
     }
 }
@@ -160,18 +171,27 @@ impl Hub {
 
     /// A finished read: stored, and the rule told. Results for a pane that is gone are dropped.
     pub(super) fn facts_ready(&mut self, ready: Ready) -> Shown {
-        let Ready { pane, facts } = ready;
+        let Ready {
+            pane,
+            facts,
+            folder,
+        } = ready;
         if !self.slots.contains_key(&pane) {
             self.facts.panes.remove(&pane);
             return Shown::Same;
         }
         let entry = self.facts.panes.entry(pane).or_default();
         let shown = match facts {
-            Some(facts) if entry.facts != facts => {
+            Some(facts) => {
+                let changed = entry.facts != facts || entry.folder != folder;
                 entry.facts = facts;
-                Shown::Changed
+                entry.folder = folder;
+                match changed {
+                    true => Shown::Changed,
+                    false => Shown::Same,
+                }
             }
-            Some(_) | None => Shown::Same,
+            None => Shown::Same,
         };
         self.facts_in(pane, FactsIn::RunDone);
         shown
@@ -186,11 +206,12 @@ impl Hub {
             .unwrap_or_default()
     }
 
-    /// The pane's folder as its chip says it (the home folder as `~`). None on another
-    /// computer: its paths are not under this home, and its folders are not read here.
+    /// The pane's folder as its chip says it (the home folder as `~`). On a host it is what the
+    /// helper last read, with the host's home as `~`; none until it has, and from a helper that
+    /// does not say its home.
     fn chip_folder(&self, pane: PaneId) -> Option<String> {
         if self.host_of(pane).is_some() {
-            return None;
+            return self.facts.panes.get(&pane)?.folder.clone();
         }
         let home = &self.launch.ambient.home;
         self.pane_folder(pane)
@@ -211,7 +232,7 @@ impl super::HubRef {
         self.0.borrow().facts_of(pane)
     }
 
-    /// The pane's folder as its chip says it, when it is on this computer.
+    /// The pane's folder as its chip says it.
     pub fn chip_folder(&self, pane: PaneId) -> Option<String> {
         self.0.borrow().chip_folder(pane)
     }

@@ -29,8 +29,8 @@ const MOST_PARENTS: usize = 64;
 /// Untracked entries are counted up to this many, then git is stopped (the chip shows `999+`).
 const UNTRACKED_PAST: usize = 1000;
 
-/// What there is to say about the folder `dir`.
-pub fn read_folder(dir: &Path) -> FolderFacts {
+/// What there is to say about the folder `dir`; `home` is the helper's home folder, if it has one.
+pub fn read_folder(dir: &Path, home: Option<&Path>) -> FolderFacts {
     let (folders, root) = read_versions(dir);
     let venv = dir.join(".venv");
     FolderFacts {
@@ -39,6 +39,7 @@ pub fn read_folder(dir: &Path) -> FolderFacts {
         venv: venv
             .is_dir()
             .then(|| RemotePath(venv.to_string_lossy().into_owned())),
+        home: home.map(path_text),
         root,
         folders,
     }

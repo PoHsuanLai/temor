@@ -22,6 +22,8 @@ pub struct DaemonConfig {
     pub default_shell: PathBuf,
     /// The daemon's private folder (mode 0700). Shell integration shims go in a subfolder.
     pub runtime_dir: PathBuf,
+    /// The person's home folder on this host, told to the client so it can write folders as `~`.
+    pub home: Option<PathBuf>,
     /// The folders the file service may reach before any session is opened.
     pub file_roots: Vec<PathBuf>,
     /// Where the process filesystem is mounted (normally `/proc`).

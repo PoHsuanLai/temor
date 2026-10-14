@@ -18,6 +18,7 @@ mod desktop_io;
 mod desktop_tests;
 mod events;
 mod facts;
+mod facts_folder;
 mod hosts;
 mod keys;
 mod model;

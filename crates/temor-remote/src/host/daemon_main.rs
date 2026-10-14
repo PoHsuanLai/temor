@@ -40,6 +40,7 @@ fn config(
             .filter(|shell| !shell.is_empty())
             .map_or_else(|| PathBuf::from("/bin/sh"), PathBuf::from),
         runtime_dir,
+        home: home.clone().map(PathBuf::from),
         file_roots: home.into_iter().map(PathBuf::from).collect(),
         proc_root: PathBuf::from("/proc"),
         idle: DEFAULT_IDLE,

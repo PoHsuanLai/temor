@@ -176,12 +176,14 @@ fn folder_facts() -> impl Strategy<Value = FolderFacts> {
         prop::option::of(git),
         prop::option::of(path()),
         prop::option::of(path()),
+        prop::option::of(path()),
         folders,
     )
-        .prop_map(|(dir, git, venv, root, folders)| FolderFacts {
+        .prop_map(|(dir, git, venv, home, root, folders)| FolderFacts {
             dir,
             git,
             venv,
+            home,
             root,
             folders,
         })
