@@ -1287,7 +1287,13 @@ sections above are the lanes' own notes; this list is the one to read.
 - Offer: zsh keeps the probe line; nushell history isn't cleaned (no delete in nushell). A zsh
   fix that rewrites the history (branch b20-remote, f380021) is held for the owner: it can drop
   unsaved entries under APPEND_HISTORY and misses INC_APPEND_HISTORY/SHARE_HISTORY.
-- Kitty virtual placements, selection recompose, glyph overhang. (temor-render)
+- [x] Kitty virtual placements, selection recompose, glyph overhang (Batch 23: placeholder cells
+  decoded in temor-render as libghostty doesn't expose them; a selection recomposes only its
+  changed rows; the CPU path draws overhang whole, as the GPU's). Left: each CPU band builds its
+  neighbours' scenes too (about 3x the shaping per composed row; build them only when a
+  neighbour overhangs), overhang into the outer padding is still clipped, and the lane's notes
+  in `/mnt/data/cargo/temor-lanes/followups-b23-render.md` (one of `c=`/`r=` given, placement id
+  collisions, virtual images' layer).
 - Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
 - Blocks stay in temor-core (a design choice for now). (R1b)
 - KWin takes Meta+T/W/D/V on KDE (the desktop's binding). (P3a)
