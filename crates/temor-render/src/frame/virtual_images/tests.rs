@@ -1,8 +1,11 @@
-use temor_vt::{Col, ColorRef, Generation, Rgb};
+use temor_vt::{Col, ColorRef, Generation, ImageId, Rgb};
 
 use super::super::diacritics::mark;
 use super::super::placeholder::PLACEHOLDER;
 use super::*;
+
+/// A run's slice of the fitted image: the source rectangle, the drawn size and the offset.
+type Fitted = ([u32; 4], (u32, u32), (u32, u32));
 
 fn run(col: u16, width: u32, row: u32, column: u32) -> PlaceholderRun {
     PlaceholderRun {
@@ -20,7 +23,7 @@ fn fit_of(
     grid: (u32, u32),
     image: (u32, u32),
     cell: (u32, u32),
-) -> Option<([u32; 4], (u32, u32), (u32, u32))> {
+) -> Option<Fitted> {
     fit(&run, grid, image, cell).map(|f| (f.source, f.size, f.offset))
 }
 

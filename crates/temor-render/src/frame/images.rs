@@ -9,8 +9,8 @@ use temor_vt::{
     Visibility,
 };
 
-use super::is_virtualimages::VirtualTarget;
 use super::model::{ImagePixels, ImagePlacement};
+use super::virtual_images::VirtualTarget;
 
 /// The layers in drawing order.
 const LAYERS: [KittyLayer; 3] = [

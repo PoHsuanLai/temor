@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use temor_vt::{ImageId, KittyLayer, PlacementId, Px};
+use temor_vt::{KittyLayer, PlacementId, Px};
 
 use super::model::{ImagePixels, ImagePlacement};
 use super::placeholder::{PlaceholderCell, PlaceholderRun, runs};

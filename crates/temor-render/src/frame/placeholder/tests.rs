@@ -16,6 +16,10 @@ fn cell(col: u16, marks: &[usize], fg: ColorRef) -> PlaceholderCell {
 
 const RED: ColorRef = ColorRef::Rgb(Rgb::new(0, 0, 7));
 
+/// What a placeholder cell decodes to: its image row, image column, the image id's top byte, the
+/// image id's low 24 bits, and the placement (0 without one).
+type Decoded = (Option<u32>, Option<u32>, Option<u8>, u32, u32);
+
 #[test]
 fn a_cell_decodes_by_its_marks_and_colours() {
     struct Case {
@@ -23,7 +27,7 @@ fn a_cell_decodes_by_its_marks_and_colours() {
         text: String,
         fg: ColorRef,
         underline: ColorRef,
-        want: Option<(Option<u32>, Option<u32>, Option<u8>, u32, u32)>,
+        want: Option<Decoded>,
     }
     let plain = |name, text, want| Case {
         name,
