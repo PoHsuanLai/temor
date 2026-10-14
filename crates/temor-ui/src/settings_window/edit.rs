@@ -11,7 +11,8 @@ use crate::settings::TerminalDoc;
 
 /// `doc` with `edit` applied, or in words why a setting cannot hold the value.
 pub fn applied(doc: &TerminalDoc, edit: &SettingEdit) -> Result<TerminalDoc, UiError> {
-    let values = toml::Value::try_from(doc).map_err(|why| UiError::SettingsRefused(why.to_string()))?;
+    let values =
+        toml::Value::try_from(doc).map_err(|why| UiError::SettingsRefused(why.to_string()))?;
     edit.applied_to(values)
         .try_into::<TerminalDoc>()
         .map_err(|why| UiError::SettingsRefused(refusal(edit, why.message())))

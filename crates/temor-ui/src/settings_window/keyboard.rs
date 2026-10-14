@@ -39,18 +39,19 @@ pub fn KeyboardPage() -> Element {
         move || load_view(&ambient, platform).ok()
     });
     let mut said = use_signal(|| None::<Said>);
-    let change = Callback::new(move |(about, change): (Option<Action>, KeyChange)| {
-        match change_keys(&ambient, platform, change) {
-            Ok(next) => {
-                view.set(Some(next));
-                said.set(None);
+    let change =
+        Callback::new(move |(about, change): (Option<Action>, KeyChange)| {
+            match change_keys(&ambient, platform, change) {
+                Ok(next) => {
+                    view.set(Some(next));
+                    said.set(None);
+                }
+                Err(why) => said.set(Some(Said {
+                    about,
+                    text: why.to_string(),
+                })),
             }
-            Err(why) => said.set(Some(Said {
-                about,
-                text: why.to_string(),
-            })),
-        }
-    });
+        });
     let Some(current) = view() else {
         return rsx! {
             Form {

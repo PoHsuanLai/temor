@@ -98,13 +98,7 @@ impl SpaceBoard {
 
     /// The changes sent and not yet taken, oldest first.
     pub fn take_edits(&self) -> Vec<SpaceEdit> {
-        std::mem::take(
-            &mut *self
-                .0
-                .edits
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner),
-        )
+        std::mem::take(&mut *self.0.edits.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }
 
@@ -135,7 +129,9 @@ mod tests {
         for root in ["/a", "/b"] {
             board.send(SpaceEdit {
                 space: SpaceId(1),
-                change: SpaceChange::Root(Some(temor_core::vocab::text::ProjectRoot(root.to_owned()))),
+                change: SpaceChange::Root(Some(temor_core::vocab::text::ProjectRoot(
+                    root.to_owned(),
+                ))),
             });
         }
         let taken = board.take_edits();

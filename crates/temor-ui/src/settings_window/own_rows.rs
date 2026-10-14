@@ -255,7 +255,10 @@ mod tests {
     #[test]
     fn a_list_takes_a_command_once_and_gives_one_up_by_position() {
         let list = vec!["ssh".to_owned(), "su".to_owned()];
-        assert_eq!(with_entry(list.clone(), "  kubectl   debug "), ["ssh", "su", "kubectl debug"]);
+        assert_eq!(
+            with_entry(list.clone(), "  kubectl   debug "),
+            ["ssh", "su", "kubectl debug"]
+        );
         assert_eq!(with_entry(list.clone(), "ssh"), list);
         assert_eq!(with_entry(list.clone(), "   "), list);
         assert_eq!(without_entry(list.clone(), 0), ["su"]);

@@ -7,16 +7,16 @@
 //! and a credential shows the account it is filled from.
 
 use dioxus::prelude::*;
+use ds::components::app::spaces::SpaceId;
 use ds::components::content::label::LabelRole;
 use ds::components::fields::field_row::FieldRow;
-use ds::components::app::spaces::SpaceId;
 use ds::prelude::*;
 use temor_core::vocab::text::{KeyPath, ProjectRoot, RelPath};
 
 use super::board::{SpaceBoard, SpaceEdit, SpaceRow};
 use super::space_edit::{
-    SpaceChange, dotenv_warning, optional, root_warning, route_warning, routes_edited,
-    routes_with, routes_without,
+    SpaceChange, dotenv_warning, optional, root_warning, route_warning, routes_edited, routes_with,
+    routes_without,
 };
 
 /// What a row sends: which Space, and the change.
@@ -70,7 +70,11 @@ pub fn SpacesPage() -> Element {
 fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
     let SpaceRow { id, name, project } = row;
     let change = move |change: SpaceChange| onchange.call((id, change));
-    let root = project.root.as_ref().map(|r| r.as_str().to_owned()).unwrap_or_default();
+    let root = project
+        .root
+        .as_ref()
+        .map(|r| r.as_str().to_owned())
+        .unwrap_or_default();
     let key = project
         .profile
         .ssh_identity
@@ -199,7 +203,8 @@ fn RouteRow(pattern: String, onedit: EventHandler<String>, onremove: EventHandle
         move || pattern
     });
     let stored = pattern;
-    let help = route_warning(&typed.read()).unwrap_or("New sessions that match open in this Space.");
+    let help =
+        route_warning(&typed.read()).unwrap_or("New sessions that match open in this Space.");
     rsx! {
         FieldRow { label: "Route", help: Some(TextLine::from(help)),
             TextField {

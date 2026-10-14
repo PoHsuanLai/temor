@@ -11,8 +11,8 @@ use temor_core::space::{Place, Project, TemorSpaces};
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
-use crate::settings_window::SpaceRow;
 use crate::edge::{Credentials, space_agent::SpaceAgents};
+use crate::settings_window::SpaceRow;
 
 /// The Spaces and the workspaces they keep.
 pub(super) struct SpaceBook {

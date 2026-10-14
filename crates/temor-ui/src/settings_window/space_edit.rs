@@ -127,8 +127,14 @@ mod tests {
         SpaceChange::Root(Some(ProjectRoot("/srv/work".to_owned()))).apply_to(&mut project);
         SpaceChange::Dotenv(Some(RelPath(".env".to_owned()))).apply_to(&mut project);
         SpaceChange::Routes(routes(&["ssh a", "ssh b"])).apply_to(&mut project);
-        assert_eq!(project.root.as_ref().map(ProjectRoot::as_str), Some("/srv/work"));
-        assert_eq!(project.profile.dotenv.as_ref().map(RelPath::as_str), Some(".env"));
+        assert_eq!(
+            project.root.as_ref().map(ProjectRoot::as_str),
+            Some("/srv/work")
+        );
+        assert_eq!(
+            project.profile.dotenv.as_ref().map(RelPath::as_str),
+            Some(".env")
+        );
         assert_eq!(project.routes, routes(&["ssh a", "ssh b"]));
         SpaceChange::Root(None).apply_to(&mut project);
         assert_eq!(project.root, None);
