@@ -1,16 +1,19 @@
 //! Which workspace request a pane action asks for (PLAN §6, default keys). Pure.
 
-use chordkit::Keymap;
+use std::sync::Arc;
+
+use chordkit::{ChangeCallback, Keymap, Overrides};
 use dioxus::prelude::spawn;
 use ds_core::vocab::Shortcut;
 use temor_core::split::{Direction, Goto};
 use temor_core::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn};
-use temor_pane::keys::Action;
+use temor_pane::keys::{Action, KeyIssue, build_keymap};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::SystemKeys;
+use crate::edge::{LOOK_EVERY, SystemKeys, watch_file};
 use crate::input::terminal_shortcut_of;
+use crate::settings::read_overrides;
 
 /// The workspace request for a tab or split action, or `None` for an action a pane runs itself.
 pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
@@ -82,50 +85,65 @@ impl HubRef {
 }
 
 impl Hub {
-    /// Routes keys by `keymap` from now on, in the window and in every pane that is open.
-    fn rekey(&mut self, keymap: Keymap) {
+    /// Routes keys by `keymap` from now on, in the window and in every pane that is open, and
+    /// remembers the person's changes it was built from.
+    fn rekey(&mut self, overrides: Overrides, keymap: Keymap) {
         for slot in self.slots.values() {
             if let Some(session) = slot.borrow_mut().session.as_mut() {
                 session.keymap = keymap.clone();
             }
         }
+        self.launch.settings.keys = overrides;
         self.launch.keymap = keymap;
     }
 }
 
-/// Loads the keymap again whenever the desktop's own shortcut settings change, for as long as
-/// the window lives (PLAN §6). A platform with no settings to read starts nothing. The reload
-/// runs on the watcher's thread (it may run `dconf`); the window only swaps the result in.
+/// What a reload of the keymap found: the person's changes it read, the keymap, and the problems.
+type Reloaded = (Overrides, Keymap, Vec<KeyIssue>);
+
+/// Loads the keymap again whenever the desktop's own shortcut settings or the person's own file
+/// (`keys.conf`) change, for as long as the window lives (PLAN §6). The reload runs on the
+/// watcher's thread (it may run `dconf`); the window only swaps the result in. A platform with
+/// no settings of its own to read still follows the file.
 pub fn spawn_keys_loop(desk: Desk) {
-    let (platform, overrides, keys) = {
+    let (platform, keys, keys_path) = {
         let hub = desk.hub.0.borrow();
         let platform = hub.launch.keymap.platform();
         let ambient = &hub.launch.ambient;
         let keys = SystemKeys::choose(platform, &ambient.config_home(), &ambient.runtime_dir);
-        (platform, hub.launch.settings.keys.clone(), keys)
+        (platform, keys, ambient.keys_path())
     };
-    if keys == SystemKeys::Conventions {
-        return;
-    }
     let source = keys.source();
-    let (reloaded, mut inbox) = tokio::sync::mpsc::unbounded_channel();
-    let loader = std::sync::Arc::clone(&source);
-    // A source that cannot watch leaves the keys as they were read at start.
-    let Ok(watch) = source.watch(Box::new(move || {
-        let _ = reloaded.send(temor_pane::keys::build_keymap(
-            &*loader, platform, &overrides,
-        ));
-    })) else {
-        return;
+    let (reloaded, mut inbox) = tokio::sync::mpsc::unbounded_channel::<Reloaded>();
+    let reload: Arc<dyn Fn() + Send + Sync> = {
+        let (loader, path) = (Arc::clone(&source), keys_path.clone());
+        Arc::new(move || {
+            // A file that cannot be read now leaves the keys as they were.
+            let Ok((overrides, mut issues)) = read_overrides(&path) else {
+                return;
+            };
+            let (keymap, built) = build_keymap(&*loader, platform, &overrides);
+            issues.extend(built);
+            let _ = reloaded.send((overrides, keymap, issues));
+        })
     };
+    let callback = |reload: &Arc<dyn Fn() + Send + Sync>| -> ChangeCallback {
+        let reload = Arc::clone(reload);
+        Box::new(move || reload())
+    };
+    // A source that cannot watch leaves the desktop's keys as they were read at start.
+    let desktop_watch = source.watch(callback(&reload)).ok();
+    let file_watch = watch_file(&keys_path, LOOK_EVERY, callback(&reload)).ok();
     spawn(async move {
-        // Kept for as long as the window listens; dropping it stops the watcher.
-        let _watch = watch;
-        while let Some((keymap, issues)) = inbox.recv().await {
-            desk.hub.0.borrow_mut().rekey(keymap);
-            // Lines of the person's own file were reported at start; these are the desktop's.
-            for (_, issue) in issues.into_iter().filter(|(line, _)| *line == 0) {
-                desk.say(format!("Shortcuts: {issue}"));
+        // Kept for as long as the window listens; dropping them stops the watchers.
+        let _watches = (desktop_watch, file_watch);
+        while let Some((overrides, keymap, issues)) = inbox.recv().await {
+            desk.hub.0.borrow_mut().rekey(overrides, keymap);
+            for (line, issue) in issues {
+                match line {
+                    0 => desk.say(format!("Shortcuts: {issue}")),
+                    line => desk.say(format!("Shortcuts, line {line}: {issue}")),
+                }
             }
             desk.bump();
         }

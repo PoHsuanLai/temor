@@ -109,6 +109,12 @@ impl Painter {
         self.palette = palette;
     }
 
+    /// Draws with `fonts` from now on (the font or its size changed). The next paint uses the new
+    /// cell; the caller fits the grid to it again.
+    pub fn set_fonts(&mut self, fonts: FontSet) {
+        self.renderer = CpuRenderer::new(fonts);
+    }
+
     /// Whether the cursor of the last paint blinks: the terminal asked for a blinking cursor
     /// and it was shown.
     pub fn cursor_blinks(&self) -> bool {

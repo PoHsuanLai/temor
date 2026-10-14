@@ -1009,3 +1009,49 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
     std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
     assert!(!f.session.blink_due(), "an unfocused pane does not blink");
 }
+
+#[test]
+fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
+    if !super::support::tools_present() {
+        return;
+    }
+    use temor_pane::settings::{CursorStyle, FontChoice, FontPoints};
+    use temor_ui::view::launch::load_fonts;
+
+    let mut f = ready("session-font-size");
+    let before = f.session.fit().expect("fitted");
+    let bigger = FontPoints::new(26.0).expect("in range");
+    let fonts = load_fonts(&FontChoice::SystemMonospace, bigger).expect("a monospace font");
+    f.session.set_fonts(fonts).expect("the pane takes the font");
+    let after = f.session.fit().expect("fitted");
+    assert!(
+        after.cell.width.0 > before.cell.width.0 && after.cell.height.0 > before.cell.height.0,
+        "{:?} -> {:?}",
+        before.cell,
+        after.cell
+    );
+    assert!(
+        after.grid.cols.0 < before.grid.cols.0 && after.grid.rows.0 < before.grid.rows.0,
+        "fewer, larger cells fill the same pane: {:?} -> {:?}",
+        before.grid,
+        after.grid
+    );
+    // The program is told the smaller grid.
+    let want = format!("{} {}", after.grid.rows.0, after.grid.cols.0);
+    let start = Instant::now();
+    loop {
+        type_text(&mut f.session, "stty size");
+        press_enter(&mut f.session);
+        std::thread::sleep(Duration::from_millis(200));
+        if has_line(&f.session.screen_text(), &want) {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(8),
+            "the program never saw {want}"
+        );
+    }
+    f.session
+        .set_cursor_style(CursorStyle::Bar)
+        .expect("the terminal takes the cursor");
+}

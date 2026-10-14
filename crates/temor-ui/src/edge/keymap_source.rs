@@ -23,7 +23,7 @@ use keycap_client::KeycapSource;
 use crate::platform::{ensure_private_dir, write_private_file};
 
 /// How often the watched file's modified time is looked at.
-const LOOK_EVERY: Duration = Duration::from_secs(2);
+pub const LOOK_EVERY: Duration = Duration::from_secs(2);
 
 /// A source that can be shared with the thread that loads the keymap again.
 pub type SharedSource = Arc<dyn KeymapSource + Send + Sync>;
@@ -151,21 +151,31 @@ impl<S: KeymapSource> KeymapSource for Polled<S> {
     }
 
     fn watch(&self, on_change: ChangeCallback) -> Result<Watch, SourceError> {
-        let (stop, alive) = channel::<()>();
-        let (path, every) = (self.watched.clone(), self.every);
-        // Read now, not on the thread: a change made before the thread first runs still counts.
-        let seen = modified(&path);
-        std::thread::Builder::new()
-            .name("temor-keys-watch".to_owned())
-            .spawn(move || look(&path, seen, every, &alive, &*on_change))
-            .map_err(|err| {
-                SourceError::Unsupported(format!(
-                    "couldn't watch the shortcut settings for changes: {err}"
-                ))
-            })?;
-        // Dropping the sender ends the thread at its next look.
-        Ok(Watch::holding(stop))
+        watch_file(&self.watched, self.every, on_change)
     }
+}
+
+/// Calls `on_change` whenever the file at `path` is changed, made or removed, looking at its
+/// modified time every `every`, until the returned `Watch` is dropped. The first look is taken
+/// now, not on the thread, so a change made before the thread first runs still counts.
+pub fn watch_file(
+    path: &Path,
+    every: Duration,
+    on_change: ChangeCallback,
+) -> Result<Watch, SourceError> {
+    let (stop, alive) = channel::<()>();
+    let path = path.to_path_buf();
+    let seen = modified(&path);
+    std::thread::Builder::new()
+        .name("temor-keys-watch".to_owned())
+        .spawn(move || look(&path, seen, every, &alive, &*on_change))
+        .map_err(|err| {
+            SourceError::Unsupported(format!(
+                "couldn't watch the shortcut settings for changes: {err}"
+            ))
+        })?;
+    // Dropping the sender ends the thread at its next look.
+    Ok(Watch::holding(stop))
 }
 
 fn modified(path: &Path) -> Option<SystemTime> {

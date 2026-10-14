@@ -18,6 +18,8 @@ use temor_vt::{
 };
 
 use crate::error::PaneError;
+use crate::settings::CursorStyle;
+use crate::shell::cursor_shape;
 
 /// What one write to the terminal produced: events for the window and replies for the PTY.
 #[derive(Debug, Default)]
@@ -284,6 +286,14 @@ impl Term {
 
     pub fn set_palette(&mut self, palette: &Palette) -> Result<(), PaneError> {
         palette.apply(&mut self.terminal)?;
+        Ok(())
+    }
+
+    /// Makes `style` the cursor shape the terminal falls back to: what a program that has set no
+    /// shape of its own, or resets it, gets (a program's own choice stays until it resets).
+    pub fn set_default_cursor(&mut self, style: CursorStyle) -> Result<(), PaneError> {
+        self.terminal
+            .set_default_cursor_shape(Some(cursor_shape(style)))?;
         Ok(())
     }
 

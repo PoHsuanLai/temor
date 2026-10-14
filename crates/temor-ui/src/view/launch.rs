@@ -6,8 +6,7 @@ use std::sync::Arc;
 
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
-use temor_pane::settings::FontChoice;
-use temor_pane::settings::TerminalSettings;
+use temor_pane::settings::{FontChoice, FontPoints, TerminalSettings};
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
 use temor_shell::ChildEnv;
@@ -118,17 +117,7 @@ pub fn open_session_with(
 ) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
-    let family = match &settings.font {
-        FontChoice::SystemMonospace => FontFamily::Monospace,
-        FontChoice::Named(name) => FontFamily::Named(name.clone()),
-    };
-    let fonts = FontSet::load(
-        &FontConfig {
-            family,
-            size: FontSize::new(settings.font_size.points()),
-        },
-        FontSource::System,
-    )?;
+    let fonts = load_fonts(&settings.font, settings.font_size)?;
     let launcher = match &launch.launcher {
         LauncherChoice::ThisProgram => SessionLauncher::Trampoline {
             program: std::env::current_exe().map_err(UiError::Launcher)?,
@@ -186,6 +175,21 @@ pub fn open_session_with(
     )?;
     session.set_quoting(quoting);
     Ok(session)
+}
+
+/// The fonts a pane draws with: `font` at `size`, found on this computer.
+pub fn load_fonts(font: &FontChoice, size: FontPoints) -> Result<FontSet, UiError> {
+    let family = match font {
+        FontChoice::SystemMonospace => FontFamily::Monospace,
+        FontChoice::Named(name) => FontFamily::Named(name.clone()),
+    };
+    Ok(FontSet::load(
+        &FontConfig {
+            family,
+            size: FontSize::new(size.points()),
+        },
+        FontSource::System,
+    )?)
 }
 
 /// The caps on what a program may send through the terminal: a gigabyte a file, and as many
