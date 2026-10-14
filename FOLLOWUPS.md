@@ -880,7 +880,7 @@ together.
       - untracked files aren't counted;
       - a repo with no commit shows no branch;
       - a long typed command can run under the chips.
-- [ ] Facts: host panes get no chips (also under Batch 5 Next).
+- [x] Facts: host panes get no chips (also under Batch 5 Next). (done: 8c9fce8; folder chip Batch 23)
 - [x] (Batch 5) Desk:
       - the ⌘T bar re-reads ~/.ssh/config on every keystroke (cache it);
       - the X11 token is `DESKTOP_STARTUP_ID` and isn't read;
@@ -1022,7 +1022,7 @@ together.
   tested in temor-core.
 
 ### Next
-- [ ] Host panes: no peek, no chips (both need the helper to read or report from the host).
+- [x] Host panes: no peek, no chips (both need the helper to read or report from the host). (done: 8c9fce8 and peek through the helper; folder chip Batch 23)
 - [ ] Offer: nushell history isn't cleaned and the zsh prelude prints a parse error there; dash
       prints "source: not found" once; nushell has no pty scenario; fish history deletion is only
       checked with piped input.
@@ -1277,7 +1277,7 @@ sections above are the lanes' own notes; this list is the one to read.
 - Run `search_bench` and decide on a row-text path. (Batch 18 Next)
 
 ### Small temor items left
-- Host panes: no chips and no peek (the helper would read or report from the host). (Batch 5)
+- [x] Host panes have chips and peek through the helper; the folder chip since Batch 23 (the helper reports the host's home). No hub scenario test of host facts yet.
 - Adopt quire v0.3.16 (pinned 2026-10-11 with anyview 75f1f86): SplitView `on_resized`, `Column`
   (`ColumnGap::None`), `write_soon_then`, `IconButtonGroup`, `PinnedBar`, `BannerActionRow`, menu
   tips, `DotFace::Foot`. Planned with the look work (block tools as an icon group, a pinned typing
