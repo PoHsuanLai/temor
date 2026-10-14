@@ -23,7 +23,6 @@ pub(crate) struct ViewKey {
     pub palette: Palette,
     pub colors: TermColors,
     pub focus: PaneFocus,
-    pub selection: Option<SelectionOverlay>,
 }
 
 /// A placement's identity and where it lands, in grid rows.
@@ -67,6 +66,7 @@ impl Compose {
 pub(crate) struct ChangeTracker {
     view: Option<ViewKey>,
     cursor: Option<CursorDraw>,
+    selection: Option<SelectionOverlay>,
     images: Vec<ImageKey>,
     /// How each grid row looked under the bands.
     looks: Vec<RowLook>,
@@ -83,6 +83,7 @@ impl ChangeTracker {
         view: ViewKey,
         dirty: Vec<Row>,
         cursor: Option<CursorDraw>,
+        selection: Option<SelectionOverlay>,
         images: &[ImagePlacement],
         bands: &[RowBand],
     ) -> Compose {
@@ -94,6 +95,7 @@ impl ChangeTracker {
         let old_looks = std::mem::replace(&mut self.looks, looks);
         let full = self.view != Some(view);
         let old_cursor = std::mem::replace(&mut self.cursor, cursor);
+        let old_selection = std::mem::replace(&mut self.selection, selection);
         let old_images = std::mem::replace(&mut self.images, keys);
         self.view = Some(view);
         if full {
@@ -104,6 +106,7 @@ impl ChangeTracker {
         if old_cursor != cursor {
             set.extend(old_cursor.iter().chain(cursor.iter()).map(|c| c.row.0));
         }
+        set.extend(selection_rows(old_selection, selection, view.grid));
         let changed = old_images
             .iter()
             .filter(|k| !self.images.contains(k))
@@ -121,6 +124,23 @@ impl ChangeTracker {
         set.retain(|&r| i32::from(r) < rows);
         Compose::Rows(set.into_iter().map(Row).collect())
     }
+}
+
+/// The grid rows where the selected columns differ between two selections, so a selection
+/// that grows by a line recomposes that line and not the pane.
+fn selection_rows(
+    old: Option<SelectionOverlay>,
+    new: Option<SelectionOverlay>,
+    grid: GridSize,
+) -> Vec<u16> {
+    if old == new {
+        return Vec::new();
+    }
+    let cols = grid.cols.0;
+    let span = |s: Option<SelectionOverlay>, r: u16| s.and_then(|s| s.cols_on(Row(r), cols));
+    (0..grid.rows.0)
+        .filter(|&r| span(old, r) != span(new, r))
+        .collect()
 }
 
 fn image_key(p: &ImagePlacement, ch: i32) -> ImageKey {
@@ -184,3 +204,6 @@ pub(crate) fn damage(
     }
     out
 }
+
+#[cfg(test)]
+mod tests;

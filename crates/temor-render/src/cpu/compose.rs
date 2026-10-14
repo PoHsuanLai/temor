@@ -1,43 +1,96 @@
 //! Composing one grid row into its band of the buffer, in the spike's layer order: background,
 //! `BelowBackground` images, cell backgrounds, `BelowText` images, text and decorations (and the
 //! cursor), `AboveText` images.
+//!
+//! The band is the row's only, but its glyphs are not: the pieces of the glyphs of the rows above
+//! and below that reach into the band are drawn in it (see [`super::overhang`]).
 
 use temor_vt::{KittyLayer, Row};
 
+use super::overhang::{Overhang, overhang_of};
 use super::pixels::Target;
 use crate::error::RenderError;
-use crate::font::GlyphCache;
+use crate::font::{Atlas, BUILD_ATTEMPTS, GlyphCache};
 use crate::frame::{CellDraw, ImagePlacement};
-use crate::scene::{Premul, RowScene, SceneInput, build_row_settled};
+use crate::scene::{Premul, Quad, QuadPaint, RowScene, SceneInput, build_row};
 
-/// Repaints the band of `row` (the full width, padding included). Fails when the row's glyphs
-/// do not fit the atlases.
+/// Repaints the band of `row` (the full width, padding included) from the frame's `rows`, and
+/// says whether the row's own glyphs reach outside it. Fails when the row's glyphs do not fit
+/// the atlases.
 pub(crate) fn compose_row(
     target: &mut Target<'_>,
     input: &SceneInput<'_>,
     row: Row,
-    cells: &[CellDraw],
+    rows: &[Vec<CellDraw>],
     images: &[ImagePlacement],
     glyphs: &mut GlyphCache,
     scene: &mut RowScene,
-) -> Result<(), RenderError> {
+) -> Result<Overhang, RenderError> {
     let ch = input.metrics.height() as i32;
     let y0 = input.origin.1 + i32::from(row.0) * ch;
     target.band = (y0, y0 + ch);
     target.clear_band(Premul::opaque(input.colors.background));
     draw_images(target, input, images, KittyLayer::BelowBackground);
-    if !build_row_settled(input, row, cells, glyphs, scene) {
+    let mut sides = [RowScene::default(), RowScene::default()];
+    if !build_settled(input, row, rows, glyphs, scene, &mut sides) {
         return Err(RenderError::GlyphsDoNotFit);
     }
     for q in &scene.bg {
         target.quad(q, &glyphs.alpha, &glyphs.color);
     }
     draw_images(target, input, images, KittyLayer::BelowText);
+    // Row order, as the GPU path draws: the row above's glyphs, this row's, the row below's.
+    let [above, below] = &sides;
+    draw_glyphs(target, &glyphs.alpha, &glyphs.color, above);
     for q in &scene.fg {
         target.quad(q, &glyphs.alpha, &glyphs.color);
     }
+    draw_glyphs(target, &glyphs.alpha, &glyphs.color, below);
     draw_images(target, input, images, KittyLayer::AboveText);
-    Ok(())
+    Ok(overhang_of(scene, y0, ch.unsigned_abs()))
+}
+
+/// Builds `row` into `own` and its neighbours into `sides` until the glyph atlases do not clear
+/// while all three are built, so every quad points at texels that are still there. Returns
+/// `false` when they keep clearing.
+fn build_settled(
+    input: &SceneInput<'_>,
+    row: Row,
+    rows: &[Vec<CellDraw>],
+    glyphs: &mut GlyphCache,
+    own: &mut RowScene,
+    sides: &mut [RowScene; 2],
+) -> bool {
+    let at = usize::from(row.0);
+    let own_cells = rows.get(at).map_or(&[][..], |c| c.as_slice());
+    let above = at.checked_sub(1).and_then(|i| rows.get(i));
+    let below = rows.get(at + 1);
+    for _ in 0..BUILD_ATTEMPTS {
+        let epoch = glyphs.epoch();
+        build_row(input, row, own_cells, glyphs, own);
+        let [up, down] = &mut *sides;
+        up.clear();
+        down.clear();
+        if let Some(cells) = above {
+            build_row(input, Row(row.0 - 1), cells, glyphs, up);
+        }
+        if let Some(cells) = below {
+            build_row(input, Row(row.0 + 1), cells, glyphs, down);
+        }
+        if glyphs.epoch() == epoch {
+            return true;
+        }
+    }
+    false
+}
+
+/// Draws the glyphs (not the backgrounds, rules or cursor) of a neighbouring row's scene; only
+/// the parts inside the band show.
+fn draw_glyphs(target: &mut Target<'_>, alpha: &Atlas, color: &Atlas, scene: &RowScene) {
+    let glyph = |q: &&Quad| matches!(q.paint, QuadPaint::Mask { .. } | QuadPaint::Color { .. });
+    for q in scene.fg.iter().filter(glyph) {
+        target.quad(q, alpha, color);
+    }
 }
 
 fn draw_images(
@@ -55,3 +108,6 @@ fn draw_images(
         );
     }
 }
+
+#[cfg(test)]
+mod tests;

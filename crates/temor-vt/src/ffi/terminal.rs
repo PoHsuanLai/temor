@@ -226,6 +226,11 @@ impl Terminal {
         .inspect_err(|_| self.callbacks().size.set(before))
     }
 
+    /// The cell size in pixels the terminal was last given.
+    pub fn cell_px(&self) -> CellPx {
+        self.callbacks().size.get().1
+    }
+
     /// Moves the viewport over the scrollback.
     pub fn scroll_viewport(&mut self, to: ViewportScroll) {
         use sys::TerminalScrollViewportTag as T;

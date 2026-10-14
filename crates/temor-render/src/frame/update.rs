@@ -5,6 +5,8 @@
 use temor_vt::{CursorView, GridSize, Row, VtError};
 
 use super::model::{CellDraw, ImagePlacement, PaneFrame, TermColors};
+use super::placeholder::PlaceholderCell;
+use super::virtual_images::{VirtualScene, virtual_images};
 
 /// What one capture read besides the rows.
 #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
@@ -13,6 +15,10 @@ pub(crate) struct Update {
     pub colors: TermColors,
     pub cursor: Option<CursorView>,
     pub images: Vec<ImagePlacement>,
+    /// The placeholder cells of the rows that were read (the others keep theirs).
+    pub placeholders: Vec<(Row, Vec<PlaceholderCell>)>,
+    /// The virtual placements those cells are meant to show.
+    pub virtuals: VirtualScene,
 }
 
 impl PaneFrame {
@@ -31,7 +37,12 @@ impl PaneFrame {
         for (row, cells) in rows {
             self.set_row(row, cells);
         }
+        for (row, cells) in update.placeholders {
+            self.set_placeholders(row, cells);
+        }
         self.images = update.images;
+        self.images
+            .extend(virtual_images(&self.placeholders, &update.virtuals));
         Ok(())
     }
 }
@@ -40,7 +51,12 @@ impl PaneFrame {
 mod tests {
     use super::*;
     use crate::frame::model::CellText;
-    use temor_vt::{CellStyle, Col, RowDirty, Selected};
+    use crate::frame::model::ImagePixels;
+    use crate::frame::virtual_images::VirtualTarget;
+    use std::sync::Arc;
+    use temor_vt::{
+        CellStyle, Col, ColorRef, Generation, ImageId, KittyLayer, PlacementId, RowDirty, Selected,
+    };
 
     fn cell(c: char) -> CellDraw {
         CellDraw {
@@ -60,6 +76,8 @@ mod tests {
             colors: TermColors::default(),
             cursor: None,
             images: Vec::new(),
+            placeholders: Vec::new(),
+            virtuals: VirtualScene::default(),
         }
     }
 
@@ -120,5 +138,72 @@ mod tests {
             .apply(update(4, 10), vec![Ok((Row(8), vec![blank]))])
             .expect("capture");
         assert_eq!(frame.blank_rows_below(), 1);
+    }
+
+    /// A 20 x 40 image on a 2 x 2 grid of 10 x 20 pixel cells.
+    fn scene() -> VirtualScene {
+        VirtualScene {
+            targets: vec![VirtualTarget {
+                layer: KittyLayer::AboveText,
+                image: Arc::new(ImagePixels {
+                    id: ImageId(7),
+                    generation: Generation(1),
+                    width: 20,
+                    height: 40,
+                    rgba: vec![255; 20 * 40 * 4],
+                }),
+                placement: PlacementId(0),
+                cols: 2,
+                rows: 2,
+            }],
+            cell: (10, 20),
+        }
+    }
+
+    fn placeholder(col: u16) -> PlaceholderCell {
+        let fg = ColorRef::Rgb(temor_vt::Rgb::new(0, 0, 7));
+        PlaceholderCell::decode(
+            Col(col),
+            &super::super::placeholder::PLACEHOLDER.to_string(),
+            fg,
+            ColorRef::Unset,
+        )
+        .expect("a placeholder")
+    }
+
+    #[test]
+    fn placeholder_cells_show_their_image_until_their_row_is_read_again() {
+        let mut frame = PaneFrame::new();
+        let mut first = update(4, 3);
+        first.placeholders = vec![(Row(1), vec![placeholder(0)])];
+        first.virtuals = scene();
+        frame
+            .apply(first, vec![Ok((Row(1), Vec::new()))])
+            .expect("capture");
+        let seen = |frame: &PaneFrame| -> Vec<(i32, i32, [u32; 4])> {
+            frame
+                .images
+                .iter()
+                .map(|p| (p.col, p.row, p.source))
+                .collect()
+        };
+        // The first cell with no marks is the image's top-left slice, on the cell's own row.
+        assert_eq!(seen(&frame), vec![(0, 1, [0, 0, 10, 20])]);
+
+        // A capture that read only another row keeps the cells of the rows it did not read.
+        let mut other = update(4, 3);
+        other.virtuals = scene();
+        frame
+            .apply(other, vec![Ok((Row(0), vec![cell('a')]))])
+            .expect("capture");
+        assert_eq!(seen(&frame).len(), 1);
+
+        // Reading the row again without the cell takes the image away.
+        let mut gone = update(4, 3);
+        gone.virtuals = scene();
+        frame
+            .apply(gone, vec![Ok((Row(1), vec![cell('b')]))])
+            .expect("capture");
+        assert!(seen(&frame).is_empty());
     }
 }

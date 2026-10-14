@@ -84,6 +84,102 @@ fn a_frame_drawn_through_atlas_clears_matches_one_drawn_with_room() {
     assert!(roomy == tight, "a glyph was read from a cleared atlas");
 }
 
+/// Rows of text whose accents, descenders and wide characters reach for the rows around them.
+fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {
+    let mut f = PaneFrame::new();
+    f.resize(GridSize::new(COLS, ROWS));
+    f.set_colors(TermColors {
+        foreground: Rgb::new(220, 220, 220),
+        background: Rgb::new(0, 0, 0),
+        cursor: None,
+    });
+    for (r, text) in texts.into_iter().enumerate() {
+        let cells = text
+            .chars()
+            .enumerate()
+            .map(|(c, ch)| CellDraw {
+                col: Col(c as u16),
+                span: 1,
+                text: CellText::new(&ch.to_string()),
+                fg: None,
+                bg: None,
+                style: CellStyle::default(),
+                selected: Selected::No,
+            })
+            .collect();
+        f.set_row(Row(r as u16), cells);
+    }
+    f
+}
+
+fn view(size: PixelSize, palette: &Palette) -> PaneView<'_> {
+    PaneView {
+        size,
+        scale: Scale::new(1.0),
+        padding: Padding::uniform(Px(4)),
+        palette,
+        focus: PaneFocus::Focused,
+        blink: crate::renderer::BlinkPhase::On,
+        selection: None,
+        bands: &[],
+        lower: 0,
+    }
+}
+
+#[test]
+fn recomposing_rows_draws_what_a_full_compose_draws() {
+    let before = [
+        "Åg|Ç ÿjQ",
+        "ÅÄÖ ǧ,;j",
+        "gjpqy()[]",
+        "日本語 é",
+        "ẞ@$%&",
+        "Ç",
+        "",
+        "g",
+    ];
+    let after = [
+        "Åg|Ç ÿjQ",
+        "ÅÄÖ ǧ,;j",
+        "gjpqy()[]",
+        "x",
+        "ẞ@$%&",
+        "Ç",
+        "",
+        "g",
+    ];
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let m = renderer.cell_metrics(Scale::new(1.0));
+    let size = PixelSize::new(
+        u32::from(COLS) * m.width() + 8,
+        u32::from(ROWS) * m.height() + 8,
+    );
+    let palette = Palette::default();
+    let mut frame = lines(before);
+    renderer
+        .render(&mut frame, &view(size, &palette))
+        .expect("first render");
+    // Row 3 changes alone; the rows beside it are composed too only if its glyphs reach them.
+    let next = lines(after);
+    frame.set_row(Row(3), next.rows[3].clone());
+    let incremental = renderer
+        .render(&mut frame, &view(size, &palette))
+        .expect("second render")
+        .pixels
+        .to_vec();
+    let mut fresh = CpuRenderer::new(fonts(14.0));
+    let mut whole = lines(after);
+    let full = fresh
+        .render(&mut whole, &view(size, &palette))
+        .expect("fresh render")
+        .pixels
+        .to_vec();
+    assert!(
+        incremental == full,
+        "a row recomposed alone left what a full compose would not"
+    );
+}
+
 mod bands {
     use temor_vt::{GridSize, Px, Rgb, Row};
 

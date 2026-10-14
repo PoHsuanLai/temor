@@ -1,6 +1,6 @@
 //! The `Renderer` seam: what a pane is drawn for, and what comes back.
 
-use temor_vt::Px;
+use temor_vt::{Col, Px, Row};
 
 use crate::bands::RowBand;
 use crate::error::RenderError;
@@ -57,6 +57,28 @@ impl SelectionOverlay {
                 a.row <= pos.row && pos.row <= b.row && c0 <= pos.col && pos.col <= c1
             }
         }
+    }
+
+    /// The first and last column inside the selection on `row` of a grid `cols` wide, or
+    /// `None` when the row has none of it. The same cells as [`Self::contains`] picks.
+    pub(crate) fn cols_on(&self, row: Row, cols: u16) -> Option<(Col, Col)> {
+        let (a, b) = if self.start <= self.end {
+            (self.start, self.end)
+        } else {
+            (self.end, self.start)
+        };
+        if row < a.row || row > b.row || cols == 0 {
+            return None;
+        }
+        let last = Col(cols - 1);
+        let (c0, c1) = match self.shape {
+            SelectionShape::Block => (a.col.min(b.col), a.col.max(b.col)),
+            SelectionShape::Linear => (
+                if row == a.row { a.col } else { Col(0) },
+                if row == b.row { b.col } else { last },
+            ),
+        };
+        (c0 <= c1).then_some((c0.min(last), c1.min(last)))
     }
 }
 

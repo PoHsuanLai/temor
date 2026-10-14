@@ -55,7 +55,7 @@ pub use input::{
     MouseFormat, MouseInput, MouseSurface, SurfacePoint,
 };
 pub use model::{
-    AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorScheme, Cols,
+    AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorRef, ColorScheme, Cols,
     CursorBlink, CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation,
     GridPoint, GridSize, Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState,
     PlacementId, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta,

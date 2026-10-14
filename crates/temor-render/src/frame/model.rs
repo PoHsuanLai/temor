@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use super::placeholder::PlaceholderCell;
 use temor_vt::{
     CellStyle, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px, Rgb, Row, RowDirty,
     Selected,
@@ -105,6 +106,8 @@ pub struct PaneFrame {
     pub(crate) dirty: Vec<RowDirty>,
     pub(crate) cursor: Option<CursorView>,
     pub(crate) colors: TermColors,
+    /// Each row's kitty unicode-placeholder cells, which draw no text of their own.
+    pub(crate) placeholders: Vec<Vec<PlaceholderCell>>,
     pub(crate) images: Vec<ImagePlacement>,
 }
 
@@ -123,6 +126,7 @@ impl PaneFrame {
             dirty: Vec::new(),
             cursor: None,
             colors: TermColors::default(),
+            placeholders: Vec::new(),
             images: Vec::new(),
         }
     }
@@ -181,6 +185,7 @@ impl PaneFrame {
         if size != self.size {
             self.size = size;
             self.rows = vec![Vec::new(); usize::from(size.rows.0)];
+            self.placeholders = vec![Vec::new(); usize::from(size.rows.0)];
             self.dirty = vec![RowDirty::Dirty; usize::from(size.rows.0)];
         }
     }
@@ -191,6 +196,17 @@ impl PaneFrame {
         if let (Some(slot), Some(dirty)) = (self.rows.get_mut(y), self.dirty.get_mut(y)) {
             *slot = cells;
             *dirty = RowDirty::Dirty;
+        }
+        if let Some(slot) = self.placeholders.get_mut(y) {
+            slot.clear();
+        }
+    }
+
+    /// Sets the placeholder cells of a row that was just read.
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
+    pub(crate) fn set_placeholders(&mut self, row: Row, cells: Vec<PlaceholderCell>) {
+        if let Some(slot) = self.placeholders.get_mut(usize::from(row.0)) {
+            *slot = cells;
         }
     }
 

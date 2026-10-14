@@ -3,6 +3,7 @@
 use temor_vt::Row;
 
 use super::compose::compose_row;
+use super::overhang::{Overhangs, compose_with_neighbours};
 use super::pixels::Target;
 use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
@@ -25,6 +26,7 @@ pub struct CpuRenderer {
     size: PixelSize,
     damage: Vec<DamageRect>,
     tracker: ChangeTracker,
+    overhangs: Overhangs,
     scene: RowScene,
 }
 
@@ -54,6 +56,7 @@ impl CpuRenderer {
             size: PixelSize::new(0, 0),
             damage: Vec::new(),
             tracker: ChangeTracker::default(),
+            overhangs: Overhangs::default(),
             scene: RowScene::default(),
         }
     }
@@ -116,11 +119,15 @@ impl Renderer for CpuRenderer {
             palette: *view.palette,
             colors: frame.colors,
             focus: view.focus,
-            selection: view.selection,
         };
-        let plan = self
-            .tracker
-            .plan(key, frame.take_dirty(), cursor, &frame.images, view.bands);
+        let plan = self.tracker.plan(
+            key,
+            frame.take_dirty(),
+            cursor,
+            view.selection,
+            &frame.images,
+            view.bands,
+        );
         let input = SceneInput {
             metrics,
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
@@ -147,23 +154,27 @@ impl Renderer for CpuRenderer {
             }
             Compose::Rows(rows) => rows,
         };
-        for &row in &rows {
-            let cells = frame.rows.get(usize::from(row.0)).map_or(&[][..], |c| c);
-            let composed = compose_row(
-                &mut target,
-                &input,
-                row,
-                cells,
-                &frame.images,
-                &mut self.glyphs,
-                &mut self.scene,
-            );
-            if let Err(e) = composed {
+        self.overhangs.fit(frame.size.rows.0);
+        let composed =
+            compose_with_neighbours(&rows, frame.size.rows.0, &mut self.overhangs, |row| {
+                compose_row(
+                    &mut target,
+                    &input,
+                    row,
+                    &frame.rows,
+                    &frame.images,
+                    &mut self.glyphs,
+                    &mut self.scene,
+                )
+            });
+        let rows = match composed {
+            Ok(rows) => rows,
+            Err(e) => {
                 // The plan already took the frame's dirty rows: the next frame draws everything.
                 self.tracker.invalidate();
                 return Err(e);
             }
-        }
+        };
         self.glyphs.forget_uploads();
         self.damage = damage(reach, &rows, &metrics, &fit);
         Ok(CpuFrame {

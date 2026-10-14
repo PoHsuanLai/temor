@@ -1,0 +1,86 @@
+//! Glyphs that reach outside their row (tall accents, deep descenders) are drawn whole, as on
+//! the GPU path, so a row's band shows the overhang of the rows above and below it, and a row
+//! whose glyphs overhang (now or before) takes its neighbours' bands with it when it changes.
+
+use std::collections::BTreeSet;
+
+use temor_vt::Row;
+
+use crate::scene::{QuadPaint, RowScene};
+
+/// Whether a row's glyphs stay in the row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum Overhang {
+    #[default]
+    Within,
+    /// Some glyph reaches above or below the row.
+    Beyond,
+}
+
+/// Whether any glyph of `scene` reaches outside the row spanning `y..y + height`.
+pub(crate) fn overhang_of(scene: &RowScene, y: i32, height: u32) -> Overhang {
+    let bottom = i64::from(y) + i64::from(height);
+    let beyond = scene.fg.iter().any(|q| {
+        matches!(q.paint, QuadPaint::Mask { .. } | QuadPaint::Color { .. })
+            && (q.y < y || i64::from(q.y) + i64::from(q.h) > bottom)
+    });
+    if beyond {
+        Overhang::Beyond
+    } else {
+        Overhang::Within
+    }
+}
+
+/// How each row looked the last time it was composed.
+#[derive(Debug, Default)]
+pub(crate) struct Overhangs {
+    rows: Vec<Overhang>,
+}
+
+impl Overhangs {
+    /// Forgets everything when the grid's height changed.
+    pub fn fit(&mut self, rows: u16) {
+        if self.rows.len() != usize::from(rows) {
+            self.rows = vec![Overhang::Within; usize::from(rows)];
+        }
+    }
+
+    /// Records `now` for `row` and returns what it was.
+    fn replace(&mut self, row: Row, now: Overhang) -> Overhang {
+        self.rows
+            .get_mut(usize::from(row.0))
+            .map_or(Overhang::Within, |slot| std::mem::replace(slot, now))
+    }
+}
+
+/// Composes `dirty` in order through `compose` (which reports the row's new overhang), and each
+/// dirty row's neighbours too when it overhangs now or did before: their bands hold, or are to
+/// hold, a piece of its glyphs. A neighbour composed earlier already drew the row's current
+/// glyphs. Returns the rows composed, in order.
+pub(crate) fn compose_with_neighbours<E>(
+    dirty: &[Row],
+    total: u16,
+    overhangs: &mut Overhangs,
+    mut compose: impl FnMut(Row) -> Result<Overhang, E>,
+) -> Result<Vec<Row>, E> {
+    let asked: BTreeSet<u16> = dirty.iter().map(|r| r.0).collect();
+    let mut todo = asked.clone();
+    let mut done = BTreeSet::new();
+    while let Some(r) = todo.pop_first() {
+        let now = compose(Row(r))?;
+        let before = overhangs.replace(Row(r), now);
+        done.insert(r);
+        if asked.contains(&r) && (before, now) != (Overhang::Within, Overhang::Within) {
+            let next = r.checked_add(1).filter(|n| *n < total);
+            for n in r.checked_sub(1).into_iter().chain(next) {
+                if !done.contains(&n) {
+                    todo.insert(n);
+                }
+            }
+        }
+    }
+    Ok(done.into_iter().map(Row).collect())
+}
+
+#[cfg(test)]
+mod tests;

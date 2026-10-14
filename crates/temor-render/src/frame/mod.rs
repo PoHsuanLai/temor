@@ -2,10 +2,13 @@
 
 #[cfg(feature = "ghostty")]
 mod capture;
+mod diacritics;
 #[cfg(feature = "ghostty")]
 mod images;
 mod model;
+mod placeholder;
 mod update;
+mod virtual_images;
 
 #[cfg(feature = "ghostty")]
 pub use capture::{CapturedFrame, FrameCapture};

@@ -113,11 +113,15 @@ impl Renderer for GpuRenderer {
             palette: *view.palette,
             colors: frame.colors,
             focus: view.focus,
-            selection: view.selection,
         };
-        let plan = self
-            .tracker
-            .plan(key, frame.take_dirty(), cursor, &frame.images, view.bands);
+        let plan = self.tracker.plan(
+            key,
+            frame.take_dirty(),
+            cursor,
+            view.selection,
+            &frame.images,
+            view.bands,
+        );
         let all: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
         let reach = plan.reach();
         let mut rows = match plan {
