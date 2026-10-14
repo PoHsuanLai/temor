@@ -28,6 +28,7 @@ ds = { workspace = true }
 ds-blitz = { workspace = true }
 ds-core = { workspace = true }
 ds-settings = { workspace = true, features = ["dioxus"] }
+ds-settings-page = { workspace = true }
 png = { workspace = true }
 rustix = { workspace = true }
 serde = { workspace = true }

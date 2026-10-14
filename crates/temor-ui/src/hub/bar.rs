@@ -264,13 +264,15 @@ impl Desk {
     }
 
     /// An action the window itself takes, not a pane and not the workspace: the bar, the quick
-    /// terminal, the sidebar, Downloads, the page's zoom and pinning the tab in front.
+    /// terminal, the sidebar, Downloads, Settings, the page's zoom and pinning the tab in front.
     pub fn window_action(&self, action: Action) -> WindowAction {
         match action {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
             Action::ShowDownloads => self.shelf_toggle(),
+            Action::Settings => crate::settings_window::open(),
+            Action::SettingsAt(pane) => crate::settings_window::open_at(pane),
             Action::ZoomIn => self.window.page_zoom(PageZoom::Bigger),
             Action::ZoomOut => self.window.page_zoom(PageZoom::Smaller),
             Action::ActualSize => self.window.page_zoom(PageZoom::ActualSize),

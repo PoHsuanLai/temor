@@ -11,6 +11,7 @@ use temor_core::space::{Place, Project, TemorSpaces};
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
+use crate::settings_window::SpaceRow;
 use crate::edge::{Credentials, space_agent::SpaceAgents};
 
 /// The Spaces and the workspaces they keep.
@@ -215,6 +216,22 @@ impl HubRef {
         let mut hub = self.0.borrow_mut();
         hub.spaces_changed(all);
         std::mem::take(&mut hub.notices)
+    }
+
+    /// The Spaces as the Settings window shows them: each one's name and project.
+    pub fn space_rows(&self) -> Vec<SpaceRow> {
+        self.0
+            .borrow()
+            .book
+            .spaces
+            .list()
+            .iter()
+            .map(|space| SpaceRow {
+                id: space.id,
+                name: space.name.clone(),
+                project: space.payload.clone(),
+            })
+            .collect()
     }
 
     /// The Spaces to start the kit with.

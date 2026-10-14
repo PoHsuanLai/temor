@@ -23,6 +23,7 @@ ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09
 ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
 ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
 ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }

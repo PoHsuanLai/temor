@@ -27,6 +27,9 @@ pub fn run_with(launch: Launch, desktop: Desktop) -> Result<(), ds_blitz::Launch
     .with_app_id(ds_blitz::AppId(APP_ID.to_owned()))
     .with_context(launch)
     .with_context(desktop)
+    // Both windows hold these: where Settings is asked to be, and the Spaces between them.
+    .with_context(crate::settings_window::SettingsAsked::default())
+    .with_context(crate::settings_window::SpaceBoard::default())
     // temor binds the page zoom itself, and Alt with D, H or T is the shell's.
     .with_shell_keys(ds_blitz::ShellKeys::App);
     // X11 and Windows show the window's own icon; elsewhere the desktop entry gives it.

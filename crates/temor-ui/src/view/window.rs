@@ -46,7 +46,7 @@ use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
     spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
     spawn_offer_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop, spawn_settings_loop,
-    spawn_ssh_loop, spawn_viewer_loop,
+    spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
 };
 
 /// The window's root component.
@@ -85,6 +85,9 @@ pub fn App() -> Element {
             HubRef(Rc::new(RefCell::new(hub)))
         }
     });
+    crate::settings_window::use_settings_opened();
+    let board = use_hook(|| try_consume_context::<crate::settings_window::SpaceBoard>());
+    let published = board.clone();
     let ui = use_signal(|| 0u32);
     let mut notice = use_signal({
         let hub = hub.clone();
@@ -124,6 +127,9 @@ pub fn App() -> Element {
             spawn_running_loop(desk.clone());
             spawn_blink_loop(desk.clone());
             spawn_remote_loop(desk.clone());
+            if let Some(board) = board {
+                spawn_space_edits(desk.clone(), board);
+            }
             spawn_save_loop(desk.hub);
         }
     });
@@ -237,6 +243,9 @@ pub fn App() -> Element {
     };
 
     let _ = ui();
+    if let Some(board) = &published {
+        board.publish(hub.space_rows());
+    }
     if let Some(link) = &desktop.link {
         hub.publish_to(link);
     }
