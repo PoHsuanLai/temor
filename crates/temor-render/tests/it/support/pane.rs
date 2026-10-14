@@ -103,6 +103,7 @@ impl Pane {
             blink: temor_render::BlinkPhase::On,
             selection: None,
             bands: &[],
+            lower: 0,
         };
         let out = self
             .renderer

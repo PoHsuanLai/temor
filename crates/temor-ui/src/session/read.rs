@@ -16,14 +16,20 @@ impl Session {
         &self.pane
     }
 
-    /// The grid as last fitted to the pane (`None` before the first layout).
+    /// The grid as last fitted to the pane and placed in it (`None` before the first layout):
+    /// lowered as the last paint drew it, so pixels and cells map as they are shown.
     pub fn fit(&self) -> Option<GridFit> {
-        self.fit
+        self.placed()
+    }
+
+    /// The fit as the last paint placed the grid, lowered over the empty rows under the screen.
+    pub(super) fn placed(&self) -> Option<GridFit> {
+        self.fit.map(|fit| fit.lowered(self.painter.lower()))
     }
 
     /// The pane's width and one cell's width in logical pixels (`None` before the first layout).
     pub fn grid_logical(&self) -> Option<(f32, f32)> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let factor = self.scale.factor();
         Some((
             fit.pane.width.0 as f32 / factor,
@@ -33,7 +39,7 @@ impl Session {
 
     /// The cursor's cell in pane-relative logical pixels `[x, y, width, height]`, when shown.
     pub fn cursor_logical(&self) -> Option<[f32; 4]> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let pos = self.painter.cursor_cell()?;
         let (x, y) = fit.cell_origin(pos);
         let factor = self.scale.factor();

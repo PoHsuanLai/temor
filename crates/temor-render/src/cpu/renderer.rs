@@ -94,7 +94,7 @@ impl Renderer for CpuRenderer {
         let resets = self.glyphs.epoch();
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
-        let fit = fit_grid(view.size, &metrics, view.padding);
+        let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
         if view.size != self.size {
             self.size = view.size;
             self.buf = vec![0; (w * h * 4) as usize];

@@ -45,7 +45,7 @@ impl Session {
         mods: Modifiers,
         now: Duration,
     ) -> Result<(), UiError> {
-        let Some(fit) = self.fit else {
+        let Some(fit) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
@@ -91,7 +91,7 @@ impl Session {
 
     /// The pointer moved at `at` while a button is held.
     pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), UiError> {
-        let Some(fit) = self.fit else {
+        let Some(fit) = self.placed() else {
             return Ok(());
         };
         if self.drag.is_none() {
@@ -126,7 +126,7 @@ impl Session {
         } else if self.selection.is_some() {
             self.picks.clear();
         }
-        let Some(fit) = self.fit else {
+        let Some(fit) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
@@ -159,7 +159,7 @@ impl Session {
         if lines == 0 {
             return Ok(());
         }
-        let Some(fit) = self.fit else {
+        let Some(fit) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());

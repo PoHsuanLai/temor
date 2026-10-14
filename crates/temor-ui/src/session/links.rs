@@ -43,7 +43,7 @@ impl Session {
     /// output moves under a pointer that did not.
     pub fn link_under_pointer(&self) -> Option<String> {
         let at = self.pointer_over?;
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let hit = fit.cell_at(at);
         if hit.region != temor_render::HitRegion::Grid {
             return None;

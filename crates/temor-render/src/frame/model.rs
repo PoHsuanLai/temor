@@ -141,6 +141,26 @@ impl PaneFrame {
             .is_some_and(|c| c.blink == temor_vt::CursorBlink::Blinking)
     }
 
+    /// How many rows at the bottom of the screen are empty below everything drawn and below the
+    /// cursor: nothing written in them and no colour behind them. Zero while an image is placed.
+    pub fn blank_rows_below(&self) -> u16 {
+        if !self.images.is_empty() {
+            return 0;
+        }
+        let used = |row: &Vec<CellDraw>| {
+            row.iter()
+                .any(|cell| !cell.text.is_blank() || cell.bg.is_some())
+        };
+        let last_drawn = self.rows.iter().rposition(used);
+        let cursor = self.cursor.as_ref().map(|c| usize::from(c.row.0));
+        let lowest = match (last_drawn, cursor) {
+            (None, None) => return 0,
+            (a, b) => a.max(b).unwrap_or(0),
+        };
+        let rows = usize::from(self.size.rows.0);
+        u16::try_from(rows.saturating_sub(lowest + 1)).unwrap_or(0)
+    }
+
     /// The grid the frame holds.
     pub fn size(&self) -> GridSize {
         self.size

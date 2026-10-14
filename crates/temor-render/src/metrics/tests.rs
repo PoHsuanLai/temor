@@ -86,3 +86,25 @@ fn scale_snaps_to_device_pixels_and_rejects_nonsense() {
         Padding::uniform(Px(6))
     );
 }
+
+#[test]
+fn a_lowered_grid_keeps_its_size_and_maps_pixels_lower() {
+    let fit = fit_grid(
+        PixelSize::new(100, 100),
+        &metrics(10, 20),
+        Padding::uniform(Px(5)),
+    );
+    let low = fit.lowered(2);
+    assert_eq!(low.grid, fit.grid, "the same grid");
+    assert_eq!(low.padding.top, Px(45));
+    assert_eq!(low.padding.bottom, Px(0), "the bottom padding gives way");
+    // Row 0 is drawn two rows lower, and the pixels there are row 0.
+    assert_eq!(low.cell_origin(super::CellPos::new(0, 0)), (Px(5), Px(45)));
+    let hit = low.cell_at(SurfacePoint { x: 5, y: 46 });
+    assert_eq!(hit.pos.row, Row(0));
+    assert_eq!(
+        low.mouse_surface().padding[0],
+        Px(45),
+        "mouse reports follow"
+    );
+}

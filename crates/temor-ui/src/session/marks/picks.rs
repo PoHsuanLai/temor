@@ -47,7 +47,7 @@ impl Session {
     /// A click that never left its cell, at `at`: it picks the block there (Shift: the run from
     /// the last pick; Ctrl or ⌘: in or out), or lets go of the pick where there is no block.
     pub(in crate::session) fn pick_at(&mut self, at: SurfacePoint, mods: Modifiers) {
-        let Some(fit) = self.fit else {
+        let Some(fit) = self.placed() else {
             return;
         };
         let Ok(top) = self.viewport_top() else {
@@ -280,7 +280,7 @@ impl Session {
     /// stays selected. None where there is no block, on a full-screen program's screen, or while
     /// the program has the mouse: the click is the program's then.
     pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, UiError> {
-        let (Some(fit), Ok(top)) = (self.fit, self.viewport_top()) else {
+        let (Some(fit), Ok(top)) = (self.placed(), self.viewport_top()) else {
             return Ok(None);
         };
         let (alternate, tracking) = self

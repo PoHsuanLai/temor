@@ -163,7 +163,7 @@ impl Session {
     /// The block whose gutter is under `at` (device pixels in the pane), if the point is in the
     /// left margin, on a row that belongs to a block. Never on a full-screen program's screen.
     pub fn gutter_block(&self, at: SurfacePoint) -> Option<BlockId> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let margin = i64::from(fit.padding.left.0);
         if at.x < 0 || i64::from(at.x) >= margin {
             return None;
@@ -179,7 +179,7 @@ impl Session {
 
     /// Where the grid's rows sit in the pane, for placing things beside them.
     pub fn gutter_geometry(&self) -> Option<Gutter> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let factor = self.scale.factor();
         Some(Gutter {
             side: PADDING_LOGICAL,

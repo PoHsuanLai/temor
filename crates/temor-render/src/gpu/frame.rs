@@ -79,7 +79,7 @@ impl Renderer for GpuRenderer {
         }
         let resets = self.glyphs.epoch();
         let metrics = self.metrics(view.scale);
-        let fit = fit_grid(view.size, &metrics, view.padding);
+        let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
         if view.size != self.size || self.target.is_none() {
             self.size = view.size;
             let usage = wgpu::TextureUsages::TEXTURE_BINDING

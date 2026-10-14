@@ -22,7 +22,7 @@ impl Session {
     /// The word under the pointer, as the path it most likely names.
     fn word_under_pointer(&self) -> Option<String> {
         let at = self.pointer_over?;
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let hit = fit.cell_at(at);
         let top = self.viewport_top().ok()?;
         let CellPos { row, col } = screen_cell(top, hit.pos.row.0, hit.pos.col.0);

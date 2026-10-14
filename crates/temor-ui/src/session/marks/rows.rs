@@ -132,7 +132,7 @@ impl Session {
     /// The block under a point in the pane (device pixels), anywhere in the pane. `None` on a
     /// full-screen program's screen.
     pub fn block_at_point(&self, at: SurfacePoint) -> Option<BlockId> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         let view = self.view_rows()?;
         let hit = fit.cell_at(at);
         self.block_at_row(view.top.saturating_add(u32::from(hit.pos.row.0)))

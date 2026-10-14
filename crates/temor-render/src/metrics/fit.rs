@@ -39,6 +39,20 @@ pub fn fit_grid(pane: PixelSize, metrics: &CellMetrics, min_padding: Padding) ->
 }
 
 impl GridFit {
+    /// The same grid drawn `rows` rows lower in the pane: the top padding grows by them and the
+    /// bottom one shrinks (rows pushed past the pane's bottom are clipped; they are blank).
+    pub fn lowered(self, rows: u16) -> GridFit {
+        let by = u32::from(rows) * self.cell.height.0;
+        GridFit {
+            padding: Padding {
+                top: Px(self.padding.top.0 + by),
+                bottom: Px(self.padding.bottom.0.saturating_sub(by)),
+                ..self.padding
+            },
+            ..self
+        }
+    }
+
     /// The geometry libghostty's mouse encoder needs to turn pixels into cells.
     pub fn mouse_surface(&self) -> MouseSurface {
         MouseSurface {

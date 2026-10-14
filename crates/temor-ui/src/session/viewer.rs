@@ -132,7 +132,7 @@ impl Session {
     /// the text (on a pane on another computer, a path there, unchecked). None while the program
     /// has the mouse (a ⌘-click would go to it), or where nothing names a file.
     pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
-        let fit = self.fit?;
+        let fit = self.placed()?;
         if self.pane.with_term(|term| term.mouse_tracking()) {
             return None;
         }

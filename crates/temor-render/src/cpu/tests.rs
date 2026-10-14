@@ -65,6 +65,7 @@ fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
         blink: crate::renderer::BlinkPhase::On,
         selection: None,
         bands: &[],
+        lower: 0,
     };
     let mut f = frame();
     let out = renderer.render(&mut f, &view).expect("render");
@@ -137,6 +138,7 @@ mod bands {
                 blink: crate::renderer::BlinkPhase::On,
                 selection: None,
                 bands,
+                lower: 0,
             };
             let out = self
                 .renderer

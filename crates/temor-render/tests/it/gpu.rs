@@ -80,6 +80,7 @@ fn gpu_and_cpu_draw_the_same_frame() {
         blink: temor_render::BlinkPhase::On,
         selection: None,
         bands: &[],
+        lower: 0,
     };
     let out = gpu.render(&mut pane.frame, &view).expect("gpu render");
     assert_eq!(out.stats.rows_composed, 4);

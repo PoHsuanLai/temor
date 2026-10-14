@@ -75,6 +75,9 @@ pub struct PaneView<'a> {
     pub selection: Option<SelectionOverlay>,
     /// Fills, stripes and rules over runs of viewport rows (command cards); usually empty.
     pub bands: &'a [RowBand],
+    /// How many rows the grid is drawn lower than its fit, so its last drawn row meets the
+    /// pane's bottom while the screen below it is empty (see [`PaneFrame::blank_rows_below`]).
+    pub lower: u16,
 }
 
 /// A changed rectangle of the output, in device pixels from its top-left.

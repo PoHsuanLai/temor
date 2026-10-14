@@ -1199,8 +1199,7 @@ sections above are the lanes' own notes; this list is the one to read.
 
 ### Doing now (owner, 2026-10-14: "do 1 2 3")
 1. ~~Sidebar: edge peek, pinned tile drags, squeezed splits.~~ Done 2026-10-14.
-2. Cards: the typing line pinned to the pane's bottom (spike first). The bold prompt text, the
-   more menu and the DropTab minimum are done (2026-10-14). (Batch 19)
+2. ~~Cards: bottom anchor, bold prompt, more menu, DropTab minimum.~~ Done 2026-10-14.
 3. ~~Chips on older blocks' headers.~~ Done 2026-10-14.
 
 ### Waiting on another project
@@ -1291,8 +1290,16 @@ with its shortcut, under section headers; a first-launch hint line.
 Merge fixes: a finished card keeps its input anchor (bold rows, and the anchor leaked); the find
 count redraws after the delayed search; tab rows set plain text (quire's Code tone is a chip);
 the bar runs the sidebar action through the desk.
-- [ ] Bottom-anchor the primary screen (the typing line pinned to the pane's bottom): needs one
+- [x] Bottom-anchor the primary screen (the typing line pinned to the pane's bottom): needs one
   row offset in the render view and the fit, used by every grid-to-pixel map; spike with a window.
+  (done 2026-10-14: each paint counts the empty rows under the text and the cursor
+  (`PaneFrame::blank_rows_below`; none while an image is placed or a full-screen program holds the
+  screen) and draws the grid that many rows lower (`GridFit::lowered`, `PaneView::lower`); the
+  session's hit tests, mouse reports, gutter, chips, metas and tools read the same lowered fit
+  (`Session::placed`). The grid's size never changes, so the program is not resized. The
+  first-launch hint moved over the prompt. Checked in a private window: new pane, cards, a click
+  picking the block under it. ds-harness doesn't paint, so it has no test there; the renderer has
+  unit tests.)
 - [x] `gutter_geometry` returns one padding: the meta, tools and chips rows ignore the 8 px top inset. Done: it returns the side and top insets apart (`Gutter`), and the meta and tools sit on the header line.
 - [x] Card text sat low in its card (owner): the rule ran along the top of the blank line above the header. Done: a band can begin and end across a row's middle (`Cut`), so the rule crosses that blank line and each card has half a line above its header and below its last row. Warp keeps about 14 px; ours is half a row (about 9 px).
 - [x] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold

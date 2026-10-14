@@ -75,6 +75,9 @@ pub struct Painter {
     /// The pane's hold captures when `capture` was last started: a hold capture consumes the
     /// marks `capture` reads, so when the count moves `capture` starts over.
     seen_captures: u64,
+    /// How many rows the last paint drew the grid lower than its fit: the shell's screen sits on
+    /// the pane's bottom while the rows under it are empty, as Warp keeps its input at the bottom.
+    lower: u16,
 }
 
 impl Painter {
@@ -87,7 +90,13 @@ impl Painter {
             held: PaneFrame::new(),
             showing: Showing::Live,
             seen_captures: 0,
+            lower: 0,
         })
+    }
+
+    /// How many rows the last paint drew the grid lower than its fit.
+    pub fn lower(&self) -> u16 {
+        self.lower
     }
 
     /// The palette the grid is drawn with.
@@ -139,6 +148,7 @@ impl Painter {
             held,
             showing,
             seen_captures,
+            lower,
         } = self;
         // Decided and begun under one hold of the pane's lock, so a frame is never begun in the
         // middle of a hold: while the program holds the screen the captured frame is drawn.
@@ -162,7 +172,22 @@ impl Painter {
                 _ => Draw::Nothing,
             })
         })?;
+        // The live screen sits on the pane's bottom while its last rows are empty; a full-screen
+        // program's frame fills the pane as it is.
+        let source = match draw {
+            Draw::Live(captured) => {
+                captured.finish(frame)?;
+                *lower = frame.blank_rows_below();
+                Some(Showing::Live)
+            }
+            Draw::Held => {
+                *lower = 0;
+                Some(Showing::Held)
+            }
+            Draw::Nothing => None,
+        };
         let pane_view = PaneView {
+            lower: *lower,
             size: view.pixels,
             scale: view.scale,
             padding: view.inset.padding(view.scale),
@@ -172,13 +197,10 @@ impl Painter {
             selection: view.selection,
             bands: view.bands,
         };
-        let drawn = match draw {
-            Draw::Live(captured) => {
-                captured.finish(frame)?;
-                renderer.render(frame, &pane_view)?
-            }
-            Draw::Held => renderer.render(held, &pane_view)?,
-            Draw::Nothing => return Ok(()),
+        let drawn = match source {
+            Some(Showing::Live) => renderer.render(frame, &pane_view)?,
+            Some(Showing::Held) => renderer.render(held, &pane_view)?,
+            None => return Ok(()),
         };
         show(drawn.pixels, drawn.size);
         Ok(())

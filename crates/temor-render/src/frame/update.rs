@@ -90,4 +90,35 @@ mod tests {
         assert_eq!(frame.size(), GridSize::new(6, 3));
         assert!(frame.dirty.iter().all(|d| *d == RowDirty::Dirty));
     }
+
+    #[test]
+    fn the_blank_rows_below_are_those_under_the_text_and_the_cursor() {
+        let mut frame = PaneFrame::new();
+        assert_eq!(frame.blank_rows_below(), 0, "an empty frame");
+        frame
+            .apply(update(4, 10), vec![Ok((Row(2), vec![cell('a')]))])
+            .expect("capture");
+        // Text on row 2 of 10: rows 3 to 9 are empty.
+        assert_eq!(frame.blank_rows_below(), 7);
+        // The cursor lower than the text holds its row.
+        let mut at = update(4, 10);
+        at.cursor = Some(temor_vt::CursorView {
+            col: Col(0),
+            row: Row(5),
+            shape: temor_vt::CursorShape::Block,
+            blink: temor_vt::CursorBlink::Steady,
+            cell: temor_vt::CursorCell::Normal,
+        });
+        frame
+            .apply(at, vec![Ok((Row(2), vec![cell('a')]))])
+            .expect("capture");
+        assert_eq!(frame.blank_rows_below(), 4);
+        // A coloured blank row is drawn.
+        let mut blank = cell(' ');
+        blank.bg = Some(temor_vt::Rgb::new(1, 2, 3));
+        frame
+            .apply(update(4, 10), vec![Ok((Row(8), vec![blank]))])
+            .expect("capture");
+        assert_eq!(frame.blank_rows_below(), 1);
+    }
 }
