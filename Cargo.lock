@@ -6716,6 +6716,7 @@ dependencies = [
  "keycap-client",
  "png",
  "rustix",
+ "serde",
  "serde_json",
  "similar",
  "temor-core",

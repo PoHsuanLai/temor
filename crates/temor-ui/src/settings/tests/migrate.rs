@@ -124,17 +124,17 @@ fn a_launch_converts_once_and_keeps_the_old_file() {
 #[test]
 fn nothing_is_converted_over_a_settings_file_or_without_an_old_one() {
     // An existing settings.toml wins; terminal.conf stays where it is.
-    let (_dir, ambient) = with_old("font.size = 15\n");
+    let (_dir, old) = with_old("font.size = 15\n");
     std::fs::write(
-        ambient.settings_dir().join("settings.toml"),
+        old.settings_dir().join("settings.toml"),
         "[font]\nsize = 20\n",
     )
     .expect("settings.toml");
-    let loaded = load_settings(&ambient).expect("loads");
+    let loaded = load_settings(&old).expect("loads");
     assert_eq!(loaded.settings.font_size.points(), 20.0);
     assert!(loaded.notes.is_empty(), "{:?}", loaded.notes);
-    assert!(ambient.old_settings_path().is_file());
-    assert!(!ambient.keys_path().exists());
+    assert!(old.old_settings_path().is_file());
+    assert!(!old.keys_path().exists());
 
     // Neither file: the defaults, and nothing is written.
     let dir = tempfile::tempdir().expect("scratch dir");
