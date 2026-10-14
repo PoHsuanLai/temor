@@ -1,6 +1,6 @@
 //! What a renderer reads per frame, row and cell.
 
-use super::{Col, Rgb, Row};
+use super::{Col, ColorRef, Rgb, Row};
 
 /// How much of the frame changed since it was last marked drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -120,6 +120,10 @@ pub struct CellStyle {
     pub underline: Underline,
     /// The underline colour when SGR 58 set one, resolved through the palette.
     pub underline_color: Option<Rgb>,
+    /// The foreground as the program named it (palette entry or channels).
+    pub fg_ref: ColorRef,
+    /// The underline colour as the program named it.
+    pub underline_ref: ColorRef,
 }
 
 /// One cell of a frame, borrowed for the duration of the walk.

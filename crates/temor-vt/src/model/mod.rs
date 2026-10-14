@@ -15,7 +15,7 @@ pub use cell::{
     FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, Selected, SemanticMark, StyleFlags,
     Underline, Wrap,
 };
-pub use colour::{ColorScheme, Rgb};
+pub use colour::{ColorRef, ColorScheme, Rgb};
 pub use config::TerminalConfig;
 pub use media::{
     Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementKind, PlacementRender,

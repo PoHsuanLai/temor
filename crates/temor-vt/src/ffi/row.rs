@@ -4,7 +4,7 @@ use temor_vt_sys as sys;
 
 use super::convert::{check, rgb};
 use crate::{
-    CellStyle, CellView, CellWidth, Col, Hyperlink, Rgb, Row, RowDirty, RowId, Selected,
+    CellStyle, CellView, CellWidth, Col, ColorRef, Hyperlink, Rgb, Row, RowDirty, RowId, Selected,
     SemanticMark, StyleFlags, Underline, VtError,
 };
 
@@ -246,6 +246,16 @@ fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
         sys::SgrUnderline::DASHED => Underline::Dashed,
         _ => Underline::None,
     };
+    let color_ref = |c: sys::StyleColor| {
+        // SAFETY: the tag says which union member is live.
+        unsafe {
+            match c.tag {
+                sys::StyleColorTag::RGB => ColorRef::Rgb(rgb(c.value.rgb)),
+                sys::StyleColorTag::PALETTE => ColorRef::Palette(c.value.palette),
+                _ => ColorRef::Unset,
+            }
+        }
+    };
     let c = s.underline_color;
     // SAFETY: the tag says which union member is live.
     let underline_color = unsafe {
@@ -259,5 +269,7 @@ fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
         flags,
         underline,
         underline_color,
+        fg_ref: color_ref(s.fg_color),
+        underline_ref: color_ref(s.underline_color),
     }
 }
