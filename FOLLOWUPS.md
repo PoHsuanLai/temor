@@ -1202,6 +1202,8 @@ sections above are the lanes' own notes; this list is the one to read.
 2. ~~Cards: bottom anchor, bold prompt, more menu, DropTab minimum.~~ Done 2026-10-14.
 3. ~~Chips on older blocks' headers.~~ Done 2026-10-14.
 
+### Done 2026-10-14: the terminal follows the page zoom (quire#19, pinned with anyview 4280bc2)
+
 ### Doing now (owner, 2026-10-14: "do 1 2 3, match mailo with 4")
 1. ~~One Space: no Space name in the head and no lone dot; a right click on the foot is the
    Space's menu.~~ Done 2026-10-14.
@@ -1212,9 +1214,6 @@ sections above are the lanes' own notes; this list is the one to read.
    Pane.~~ Done 2026-10-14.
 
 ### Waiting on another project
-- quire PR #19 (ds-blitz: the host's scale is the page's, window factor times zoom): once
-  merged, bump the quire pin to it. Until then a zoomed page draws the terminal at 1x (centred
-  with a gap zoomed in, cut off zoomed out). Checked on the private display against the branch.
 - blitz-shell hard-wires keys before the app hears them (in the fork and in DioxusLabs main):
   Ctrl or Super with `=`, `-`, `0` whatever else is held zooms the page, and Alt+D, Alt+H and
   Alt+T switch on its layout overlay, hover highlight and a layout dump to stdout. In temor that

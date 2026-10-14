@@ -86,8 +86,12 @@ fn each_question_is_asked_alone_and_the_answers_decide_how_ssh_starts() {
                         .is_some_and(|c| c.starts_with("sh -c 's=$(printf %s ")),
                     "{name}"
                 );
+                // The fake writes the script as it decodes it: wait for its whole setup line,
+                // not only for the file.
+                let line = format!("\ntemor_terminfo={policy}\n");
                 rig.pump("the setup to be decoded", |_| {
-                    dir.join("session-1.script").exists()
+                    std::fs::read_to_string(dir.join("session-1.script"))
+                        .is_ok_and(|script| script.contains(&line))
                 });
                 let script = rig.got("session-1.script").unwrap_or_default();
                 assert!(
