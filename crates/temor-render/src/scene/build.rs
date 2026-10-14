@@ -12,7 +12,7 @@ use crate::font::{
 use crate::frame::{CellDraw, TermColors};
 use crate::metrics::{CellMetrics, CellPos};
 use crate::palette::Palette;
-use crate::renderer::{SelectionOverlay, SelectionShape};
+use crate::renderer::SelectionOverlay;
 
 /// Everything about the pane a row needs to be built.
 #[derive(Debug, Clone, Copy)]
@@ -64,10 +64,7 @@ pub(crate) fn build_row(
     let (cw, ch) = (m.width(), m.height());
     let y0 = offset(input.origin.1, i64::from(row.0), ch);
     let x_of = |col: Col| offset(input.origin.0, i64::from(col.0), cw);
-    if let Some((c0, c1)) = input
-        .selection
-        .and_then(|s| selected_cols(&s, row, input.cols))
-    {
+    if let Some((c0, c1)) = input.selection.and_then(|s| s.cols_on(row, input.cols)) {
         let w = (u32::from(c1.0) - u32::from(c0.0) + 1) * cw;
         out.bg
             .push(Quad::solid(x_of(c0), y0, w, ch, input.palette.selection));
@@ -109,27 +106,6 @@ pub(crate) fn build_row(
     if let Some(c) = cursor {
         cursor_quads(&c, (x_of(c.col), y0), &m, out);
     }
-}
-
-/// The columns of `row` inside the selection, first and last.
-fn selected_cols(s: &SelectionOverlay, row: Row, cols: u16) -> Option<(Col, Col)> {
-    let (a, b) = if s.start <= s.end {
-        (s.start, s.end)
-    } else {
-        (s.end, s.start)
-    };
-    if row < a.row || row > b.row || cols == 0 {
-        return None;
-    }
-    let last = Col(cols - 1);
-    let (c0, c1) = match s.shape {
-        SelectionShape::Block => (a.col.min(b.col), a.col.max(b.col)),
-        SelectionShape::Linear => (
-            if row == a.row { a.col } else { Col(0) },
-            if row == b.row { b.col } else { last },
-        ),
-    };
-    (c0 <= c1).then_some((c0.min(last), c1.min(last)))
 }
 
 fn text(

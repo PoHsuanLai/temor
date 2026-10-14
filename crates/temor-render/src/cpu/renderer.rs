@@ -116,11 +116,15 @@ impl Renderer for CpuRenderer {
             palette: *view.palette,
             colors: frame.colors,
             focus: view.focus,
-            selection: view.selection,
         };
-        let plan = self
-            .tracker
-            .plan(key, frame.take_dirty(), cursor, &frame.images, view.bands);
+        let plan = self.tracker.plan(
+            key,
+            frame.take_dirty(),
+            cursor,
+            view.selection,
+            &frame.images,
+            view.bands,
+        );
         let input = SceneInput {
             metrics,
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
