@@ -268,3 +268,29 @@ fn the_quick_terminal_keeps_its_shell_when_hidden() {
         s.lines().any(|l| l.trim_end() == "kept")
     });
 }
+
+/// The page-zoom keys (Ctrl with `=`, `-` and `0`) are the window's: the shell gets none of them,
+/// so `echo a`, the three keys, then `b` prints `ab`.
+#[test]
+fn the_zoom_keys_type_nothing_into_the_shell() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("zoom-keys", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    click_pane(&mut h);
+    for c in "echo a".chars() {
+        h.send(Input::key(match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        }));
+    }
+    for key in ['=', '-', '0'] {
+        h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char(key)));
+    }
+    type_line(&mut h, "b");
+    wait_until(&mut h, &probe, "ab on its own line", |s| {
+        s.lines().any(|line| line.trim_end() == "ab")
+    });
+}

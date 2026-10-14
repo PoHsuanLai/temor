@@ -16,7 +16,7 @@ use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{place_cursor, take_notice};
 use crate::hub::{Desk, WindowAction, workspace_input};
-use crate::input::stroke;
+use crate::input::{Routed, Stroke, page_zoom, stroke};
 
 /// Every key the region hears (a press, a repeat, a release) as quire's raw key. `peek_key` is the
 /// peek's ear for it; `apply` takes what a finished composition types.
@@ -41,8 +41,10 @@ pub fn key_handler(
         if composing == Ime::Composing {
             return;
         }
-        // An unidentified key is ignored; the rest go to the session.
+        // An unidentified key is ignored, and so is one the window zooms the page on unless it
+        // is one of temor's chords; the rest go to the session.
         let outcome = match stroke(&raw, composing) {
+            Some(stroke) if page_zoom(&raw) && !is_chord(&desk, &stroke) => None,
             Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
             None => None,
         };
@@ -84,4 +86,9 @@ pub fn key_handler(
         repaint(&slot);
         place_cursor(ime.clone(), Rc::clone(&slot), rect);
     }
+}
+
+/// Whether `stroke` is one of temor's chords rather than the program's.
+fn is_chord(desk: &Desk, stroke: &Stroke) -> bool {
+    matches!(desk.hub.route_key(stroke.clone()), Routed::Action(_))
 }

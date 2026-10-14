@@ -39,6 +39,17 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
     })
 }
 
+/// Whether the window zooms the page on this key: blitz-shell takes Ctrl or Super with the `=`,
+/// `-` and `0` keys (by physical key, whatever else is held) for its zoom, so the program does
+/// not get them as well. Ghostty, Kitty and Alacritty keep the same keys for their text size.
+pub fn page_zoom(raw: &RawKey) -> bool {
+    let held = raw.modifiers;
+    let primary = held.contains(HeldMods::CONTROL)
+        || held.contains(HeldMods::SUPER)
+        || held.contains(HeldMods::META);
+    primary && matches!(raw.code, Code::Equal | Code::Minus | Code::Digit0)
+}
+
 /// A character lowercased, kept as it is when it has no single lowercase form.
 fn fold(c: char) -> char {
     let mut lower = c.to_lowercase();
