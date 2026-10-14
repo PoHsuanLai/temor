@@ -5,9 +5,11 @@
 mod action;
 mod build;
 mod declare;
+mod edit;
 #[cfg(test)]
 mod tests;
 
 pub use action::Action;
 pub use build::{KeyIssue, build_keymap, shortcut, terminal_shortcut};
 pub use declare::{Declared, declared};
+pub use edit::{bind_key, is_key_action, reset_all_keys, reset_key};

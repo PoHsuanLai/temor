@@ -41,6 +41,12 @@ pub enum SettingsError {
     /// used: the desktop switches windows with it"). The text comes from the keymap.
     #[error("{0}")]
     Key(String),
+    /// A key change was refused because another action already has the chord.
+    #[error("{chord} is already used by {held_by}")]
+    KeyHeld { chord: String, held_by: String },
+    /// The action has no place in the keymap, so it can't be given a key.
+    #[error("{0} can't be given a key")]
+    KeyNotBindable(String),
     /// A settings line names no setting this version knows.
     #[error("no setting called {0:?}")]
     UnknownSetting(String),

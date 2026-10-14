@@ -1,11 +1,14 @@
 //! The process's environment, read once at start (never `set_var`), and the directories temor
-//! reads and writes: the settings file under the config directory, and shell shims under the
+//! reads and writes: the settings files under the config directory, and shell shims under the
 //! runtime directory (never under HOME).
 
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use ds_settings::Store;
 use temor_shell::ChildEnv;
+
+use crate::settings::{APP, root_for};
 
 /// What the app needs from its surroundings.
 #[derive(Debug, Clone, PartialEq)]
@@ -62,9 +65,27 @@ impl Ambient {
             .map_or_else(|| self.home.join(".config"), std::path::Path::to_path_buf)
     }
 
-    /// The settings file's path.
-    pub fn settings_path(&self) -> PathBuf {
+    /// The old settings file's path (`terminal.conf`), which is converted once and kept as
+    /// `terminal.conf.old`.
+    pub fn old_settings_path(&self) -> PathBuf {
         self.config_dir.join("terminal.conf")
+    }
+
+    /// The store `settings.toml` lives in.
+    pub fn settings_store(&self) -> Store {
+        Store::new(root_for(&self.config_dir), APP)
+    }
+
+    /// The folder `settings.toml` and `keys.conf` are in: temor's config folder.
+    pub fn settings_dir(&self) -> PathBuf {
+        self.settings_store()
+            .dir()
+            .unwrap_or_else(|| self.config_dir.clone())
+    }
+
+    /// The key changes' file (`keys.conf`).
+    pub fn keys_path(&self) -> PathBuf {
+        self.settings_dir().join("keys.conf")
     }
 
     /// `XDG_DATA_HOME`, else `~/.local/share`.

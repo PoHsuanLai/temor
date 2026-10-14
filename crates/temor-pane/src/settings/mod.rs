@@ -8,5 +8,6 @@ mod value;
 
 pub use parse::{ParsedSettings, TerminalSettings, parse_settings};
 pub use value::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice,
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, NOTIFY_AFTER_MAX_SECONDS, NotifyAfter,
+    ScrollbackLines, ShellChoice, font_family, offer_command, shell,
 };

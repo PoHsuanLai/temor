@@ -1,13 +1,15 @@
 //! The shell offer's reads and writes outside the window (PLAN P17): the line that loads temor's
-//! integration into the inner shell, and the "never for" choice kept in the settings file.
+//! integration into the inner shell, and the "never for" choice kept in `settings.toml`.
 
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
-use std::io::Write;
-use std::path::Path;
 
+use ds_settings::Store;
 use temor_core::offer::Program;
 use temor_ssh::{InnerLoadLine, InnerShell, LoadToken, SshError, probe_line};
+
+use crate::error::UiError;
+use crate::settings::TerminalDoc;
 
 /// The one line a Yes types first: it makes the inner shell name itself.
 pub fn probe_text() -> String {
@@ -26,24 +28,14 @@ fn fresh_token() -> LoadToken {
     LoadToken::from_words(word(), word())
 }
 
-/// Adds `offer.remove = <program>` to the settings file at `path`, so the choice survives a
-/// restart. The file and its folder are made when missing; the person's other lines are kept.
-pub fn remember_never(path: &Path, program: &Program) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
+/// Adds `program` to the shell offer's "never offer for" list in `settings.toml`, so the choice
+/// survives a restart. The file and its folder are made when missing; the person's other
+/// settings are kept.
+pub fn remember_never(store: &Store, program: &Program) -> Result<(), UiError> {
+    let mut doc = store.load::<TerminalDoc>().value;
+    let name = program.to_string();
+    if !doc.offer.remove.contains(&name) {
+        doc.offer.remove.push(name);
     }
-    let existing = match std::fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(err) => return Err(err),
-    };
-    let lead = match existing.is_empty() || existing.ends_with('\n') {
-        true => "",
-        false => "\n",
-    };
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    writeln!(file, "{lead}offer.remove = {program}")
+    store.save(&doc).map_err(UiError::SettingsWrite)
 }

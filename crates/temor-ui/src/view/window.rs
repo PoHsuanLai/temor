@@ -45,8 +45,8 @@ use crate::edge::{Credentials, read_theme_choice};
 use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
     spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
-    spawn_offer_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop, spawn_ssh_loop,
-    spawn_viewer_loop,
+    spawn_offer_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop, spawn_settings_loop,
+    spawn_ssh_loop, spawn_viewer_loop,
 };
 
 /// The window's root component.
@@ -61,7 +61,7 @@ pub fn App() -> Element {
     let stored = use_environment(
         launch.appearance.store.clone(),
         launch.appearance.system.clone(),
-        spawner,
+        spawner.clone(),
     );
     // Dark unless the person's file names a theme; the file is read again when it changes.
     let choice = use_memo({
@@ -115,6 +115,7 @@ pub fn App() -> Element {
         move || {
             spawn_event_loop(desk.clone());
             spawn_keys_loop(desk.clone());
+            spawn_settings_loop(desk.clone(), spawner);
             spawn_agent_loops(desk.clone());
             spawn_facts_loop(desk.clone());
             spawn_ssh_loop(desk.clone());

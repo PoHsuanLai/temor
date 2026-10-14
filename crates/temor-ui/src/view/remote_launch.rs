@@ -5,13 +5,13 @@
 use std::sync::Arc;
 
 use temor_core::vocab::ids::PaneId;
-use temor_pane::settings::{CursorStyle, FontChoice};
+use temor_pane::settings::CursorStyle;
 use temor_pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup};
-use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
+use temor_render::Palette;
 use temor_vt::{CellPx, CursorShape, GridSize, LineCount};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::launch::{DesktopClipboard, Launch, transfer_limits};
+use super::launch::{DesktopClipboard, Launch, load_fonts, transfer_limits};
 use crate::edge::NoopNotifier;
 use crate::edge::SystemClock;
 use crate::error::UiError;
@@ -29,17 +29,7 @@ pub fn open_fed_session(
     link: Arc<dyn PaneLink>,
 ) -> Result<(Session, Feeder), UiError> {
     let settings = &launch.settings;
-    let family = match &settings.font {
-        FontChoice::SystemMonospace => FontFamily::Monospace,
-        FontChoice::Named(name) => FontFamily::Named(name.clone()),
-    };
-    let fonts = FontSet::load(
-        &FontConfig {
-            family,
-            size: FontSize::new(settings.font_size.points()),
-        },
-        FontSource::System,
-    )?;
+    let fonts = load_fonts(&settings.font, settings.font_size)?;
     let spec = FedSpec {
         link,
         grid: GridSize::new(80, 24),
