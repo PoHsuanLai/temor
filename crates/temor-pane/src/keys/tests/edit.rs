@@ -11,12 +11,12 @@ const FILE: &str = "# my keys\ntemor.split-right = Primary+Alt+N\n\nunknown.thin
 #[test]
 fn a_binding_replaces_the_actions_older_lines_and_keeps_the_rest() {
     let keymap = keymap_for(OURS);
-    let text = bind_key(FILE, &keymap, Action::SplitRight, "Primary+Alt+M").expect("free");
+    let text = bind_key(FILE, &keymap, Action::SplitRight, "Primary+Alt+J").expect("free");
     assert!(text.starts_with("# my keys\n"), "{text}");
     assert!(text.contains("unknown.thing = Primary+K\n"), "{text}");
     assert!(!text.contains("Primary+Alt+N"), "{text}");
     assert!(
-        text.ends_with("temor.split-right = Primary+Alt+M\n"),
+        text.ends_with("temor.split-right = Primary+Alt+J\n"),
         "{text}"
     );
     // It reads back as one chord on the action.
