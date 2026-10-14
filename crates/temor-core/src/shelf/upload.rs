@@ -1,6 +1,9 @@
 //! Files dropped on a pane that runs on another computer, on their way there. The downloads
 //! shelf lists them under the downloads: each is "sending", then "sent" or says why not. Pure;
-//! the window starts the copy and tells this when it ends.
+//! the window starts the copy, tells this how many bytes have gone, and when it ends.
+
+use super::view::human_size;
+use crate::vocab::ids::Bytes;
 
 /// One upload, numbered in the order the drops arrived.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -37,6 +40,10 @@ pub struct Upload {
     pub host: String,
     /// The folder on that computer.
     pub folder: String,
+    /// The file's size.
+    pub size: Bytes,
+    /// How much of it has gone.
+    pub sent: Bytes,
     pub state: UploadState,
 }
 
@@ -48,7 +55,10 @@ pub enum UploadIn {
         name: String,
         host: String,
         folder: String,
+        size: Bytes,
     },
+    /// So many bytes of the file have gone. Never moves backwards.
+    Progress { id: UploadId, sent: Bytes },
     /// The copy ended.
     Ended {
         id: UploadId,
@@ -80,7 +90,12 @@ impl Uploads {
 /// The list after `input`.
 pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
     match input {
-        UploadIn::Started { name, host, folder } => {
+        UploadIn::Started {
+            name,
+            host,
+            folder,
+            size,
+        } => {
             let id = list.next_id();
             list.next = id.0;
             list.items.insert(
@@ -90,14 +105,25 @@ pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
                     name,
                     host,
                     folder,
+                    size,
+                    sent: Bytes(0),
                     state: UploadState::Sending,
                 },
             );
         }
+        UploadIn::Progress { id, sent } => {
+            let sending = |item: &&mut Upload| item.id == id && item.state == UploadState::Sending;
+            if let Some(item) = list.items.iter_mut().find(sending) {
+                item.sent = Bytes(sent.0.max(item.sent.0).min(item.size.0));
+            }
+        }
         UploadIn::Ended { id, result } => {
             if let Some(item) = list.items.iter_mut().find(|item| item.id == id) {
                 item.state = match result {
-                    Ok(()) => UploadState::Sent,
+                    Ok(()) => {
+                        item.sent = item.size;
+                        UploadState::Sent
+                    }
                     Err(fault) => UploadState::Failed(fault),
                 };
             }
@@ -113,6 +139,11 @@ pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
 pub fn upload_detail(upload: &Upload) -> String {
     let (host, folder) = (&upload.host, &upload.folder);
     match upload.state {
+        UploadState::Sending if upload.sent.0 > 0 => format!(
+            "Sending to {host}, {folder}: {} of {}",
+            human_size(upload.sent),
+            human_size(upload.size)
+        ),
         UploadState::Sending => format!("Sending to {host}, {folder}"),
         UploadState::Sent => format!("Sent to {host}, {folder}"),
         UploadState::Failed(UploadFault::Exists) => {
@@ -139,7 +170,57 @@ mod tests {
             name: name.to_owned(),
             host: "prod".to_owned(),
             folder: "/srv".to_owned(),
+            size: Bytes(10_000),
         }
+    }
+
+    #[test]
+    fn progress_moves_forward_only_while_sending_and_shows_in_the_row() {
+        let mut list = upload_step(Uploads::default(), started("a"));
+        let id = UploadId(1);
+        let steps = [(4_000, 4_000), (2_000, 4_000)];
+        for (sent, shown) in steps {
+            list = upload_step(
+                list,
+                UploadIn::Progress {
+                    id,
+                    sent: Bytes(sent),
+                },
+            );
+            assert_eq!(list.items()[0].sent, Bytes(shown), "after {sent}");
+        }
+        assert_eq!(
+            upload_detail(&list.items()[0]),
+            "Sending to prod, /srv: 4.0 KB of 10.0 KB"
+        );
+        list = upload_step(
+            list,
+            UploadIn::Progress {
+                id,
+                sent: Bytes(99_999),
+            },
+        );
+        assert_eq!(list.items()[0].sent, Bytes(10_000), "never past the size");
+        list.items[0].sent = Bytes(4_000);
+        list = upload_step(
+            list,
+            UploadIn::Ended {
+                id,
+                result: Err(UploadFault::Refused),
+            },
+        );
+        list = upload_step(
+            list,
+            UploadIn::Progress {
+                id,
+                sent: Bytes(9_000),
+            },
+        );
+        assert_eq!(
+            list.items()[0].sent,
+            Bytes(4_000),
+            "a late report is ignored"
+        );
     }
 
     #[test]

@@ -43,6 +43,11 @@ pub enum SshEvent {
         id: temor_core::shelf::UploadId,
         result: Result<(), temor_core::shelf::UploadFault>,
     },
+    /// So many bytes of a dropped file have reached the host.
+    UploadProgress {
+        id: temor_core::shelf::UploadId,
+        sent: temor_core::vocab::ids::Bytes,
+    },
     /// The forward of the host's `remote` port is up.
     ForwardOpened { host: HostAlias, remote: Port },
     /// The forward of the host's `remote` port could not be opened.

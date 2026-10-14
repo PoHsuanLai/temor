@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use temor_core::shelf::{UploadFault, UploadId, UploadIn, upload_step};
-use temor_core::vocab::ids::PaneId;
+use temor_core::vocab::ids::{Bytes, PaneId};
 use temor_ssh::{HostAlias, RemoteFilePath};
 use temor_wire::message::RemotePath;
 
@@ -18,6 +18,7 @@ use crate::edge::upload_work::UploadJobs;
 struct Item {
     local: PathBuf,
     name: String,
+    size: Bytes,
     remote: RemoteFilePath,
 }
 
@@ -28,18 +29,19 @@ fn item_for(path: &Path, folder: &str) -> Result<Item, String> {
     if name.is_empty() {
         return Err("That file's name can't be sent".to_owned());
     }
-    match std::fs::metadata(path) {
-        Ok(meta) if meta.is_file() => {}
+    let size = match std::fs::metadata(path) {
+        Ok(meta) if meta.is_file() => meta.len(),
         Ok(meta) if meta.is_dir() => {
             return Err(format!("{shown} is a folder; send files one at a time"));
         }
         _ => return Err(format!("{shown} can't be read here")),
-    }
+    };
     let remote = RemoteFilePath::new(&format!("{}/{name}", folder.trim_end_matches('/')))
         .map_err(|_| format!("{shown} has a name that can't be sent"))?;
     Ok(Item {
         local: path.to_owned(),
         name: name.to_owned(),
+        size: Bytes(size),
         remote,
     })
 }
@@ -87,6 +89,7 @@ impl Hub {
                 name: item.name,
                 host: host.as_str().to_owned(),
                 folder: folder.to_owned(),
+                size: item.size,
             },
         );
         let jobs = UploadJobs::new(self.ssh.work.sender());
@@ -107,6 +110,12 @@ impl Hub {
     pub(super) fn on_upload(&mut self, id: UploadId, result: Result<(), UploadFault>) {
         let list = std::mem::take(&mut self.shelf.uploads);
         self.shelf.uploads = upload_step(list, UploadIn::Ended { id, result });
+    }
+
+    /// So many bytes of an upload have reached the host.
+    pub(super) fn on_upload_progress(&mut self, id: UploadId, sent: Bytes) {
+        let list = std::mem::take(&mut self.shelf.uploads);
+        self.shelf.uploads = upload_step(list, UploadIn::Progress { id, sent });
     }
 
     /// The person took an upload off the list.

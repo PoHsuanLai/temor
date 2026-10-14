@@ -111,11 +111,26 @@ impl Client {
         remote: &RemotePath,
         check: WriteCheck,
     ) -> Result<FileStamp, Error> {
+        self.upload_with(local, remote, check, &mut |_| {})
+    }
+
+    /// [`Client::upload`] that calls `sent` with the bytes each part carried once the host has
+    /// taken it, so a caller can show how far the copy got. The calls add up to the file's size
+    /// when the upload succeeds; a failed one stops short.
+    pub fn upload_with(
+        &self,
+        local: &Path,
+        remote: &RemotePath,
+        check: WriteCheck,
+        sent: &mut dyn FnMut(u64),
+    ) -> Result<FileStamp, Error> {
         let fail = |error| Error::io(format!("reading {}", local.display()), error);
         let mut file = File::open(local).map_err(fail)?;
         let mut part = fill(&mut file, PART).map_err(fail)?;
         if part.len() < PART {
-            return self.write_file(remote, check, &part);
+            let stamp = self.write_file(remote, check, &part)?;
+            sent(part.len() as u64);
+            return Ok(stamp);
         }
         let mut offset = 0u64;
         loop {
@@ -133,8 +148,11 @@ impl Client {
                 PartEnd::More
             };
             match self.write_part(remote, check, ByteOffset(offset), end, &part) {
-                Ok(Some(stamp)) => return Ok(stamp),
-                Ok(None) => {}
+                Ok(Some(stamp)) => {
+                    sent(part.len() as u64);
+                    return Ok(stamp);
+                }
+                Ok(None) => sent(part.len() as u64),
                 Err(error) => {
                     self.abort_upload(remote, offset);
                     return Err(error);

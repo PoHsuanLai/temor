@@ -77,3 +77,33 @@ fn an_upload_lands_and_the_edit_round_trip_stops_at_a_changed_file() {
         b"changed elsewhere"
     );
 }
+
+/// The part size an upload streams in (4 MiB), as the tests see it from outside.
+const PART: usize = 4 << 20;
+
+#[test]
+fn an_upload_reports_every_byte_once_and_ends_at_the_files_size() {
+    let rig = Rig::new("transfer-progress");
+    let conn = rig.connect();
+    let cases: [(&str, usize, &[u64]); 5] = [
+        ("empty", 0, &[0]),
+        ("small", 10, &[10]),
+        ("one part", PART, &[PART as u64]),
+        ("one over", PART + 1, &[PART as u64, 1]),
+        ("three", 2 * PART + 5, &[PART as u64, PART as u64, 5]),
+    ];
+    for (name, size, parts) in cases {
+        let local = rig.home.join(format!("{name}.bin"));
+        let data: Vec<u8> = (0..size).map(|n| (n % 251) as u8).collect();
+        std::fs::write(&local, &data).expect("file");
+        let remote = RemotePath(format!("{}/{name}.bin", rig.files.display()));
+        let mut seen = Vec::new();
+        conn.client
+            .upload_with(&local, &remote, WriteCheck::MustBeNew, &mut |n| {
+                seen.push(n)
+            })
+            .expect("upload");
+        assert_eq!(seen, parts, "{name}: the parts the hook saw");
+        assert_eq!(seen.iter().sum::<u64>(), size as u64, "{name}: the total");
+    }
+}

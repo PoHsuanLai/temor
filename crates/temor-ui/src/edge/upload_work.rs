@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use temor_core::shelf::{UploadFault, UploadId};
+use temor_core::vocab::ids::Bytes;
 use temor_ssh::{HostAlias, RemoteFilePath, RemoteFiles, RemoteState, SshRemoteFiles};
 use temor_wire::message::{RemotePath, WriteCheck};
 use tokio::sync::mpsc::UnboundedSender;
@@ -45,8 +46,19 @@ impl UploadJobs {
 
     /// Copies `local` to `remote` through the helper, unless a file is there already.
     pub fn via_helper(&self, id: UploadId, conn: Arc<Conn>, local: PathBuf, remote: RemotePath) {
+        let events = self.events.clone();
         self.run(id, move || {
-            match conn.client().upload(&local, &remote, WriteCheck::MustBeNew) {
+            // Bytes add up as parts arrive; the window being gone leaves nobody to tell.
+            let mut total = 0u64;
+            let mut sent = |part: u64| {
+                total += part;
+                let _ = events.send(SshEvent::UploadProgress {
+                    id,
+                    sent: Bytes(total),
+                });
+            };
+            let check = WriteCheck::MustBeNew;
+            match conn.client().upload_with(&local, &remote, check, &mut sent) {
                 Ok(_) => Ok(()),
                 Err(error) if conflict_of(&error).is_some() => Err(UploadFault::Exists),
                 Err(error) => Err(match fault_of(&error) {

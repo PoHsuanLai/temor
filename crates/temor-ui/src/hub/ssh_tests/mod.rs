@@ -7,3 +7,4 @@ mod edit;
 mod hosts;
 mod retry;
 mod support;
+mod upload;

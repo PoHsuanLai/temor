@@ -160,7 +160,7 @@ fn detail(size: Option<Bytes>, origin: &Origin) -> String {
 }
 
 /// `999 bytes`, `1.0 KB`, `12.3 MB`: powers of 1000, one decimal above bytes.
-fn human_size(size: Bytes) -> String {
+pub(super) fn human_size(size: Bytes) -> String {
     const UNITS: [&str; 4] = ["KB", "MB", "GB", "TB"];
     if size.0 < 1000 {
         return match size.0 {
