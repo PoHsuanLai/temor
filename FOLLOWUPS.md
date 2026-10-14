@@ -1193,10 +1193,19 @@ merged, fixed and gated together. anyview c91ec0a.
 - [ ] OSC 52 primary/selection clipboards (ds_blitz has no target).
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b18-*.md`.
 
-## Open now (updated after Batch 18, 2026-10-11)
-Everything still open, one line each, with the section it lives in. Every temor-side item that
-could be closed on this machine was closed in Batches 17 and 18; what is left waits on another
-project, another platform, real hardware, or the owner.
+## Open now (updated 2026-10-14)
+Everything still open, one line each, with the section it lives in. The boxes in the batch
+sections above are the lanes' own notes; this list is the one to read.
+
+### Doing now (owner, 2026-10-14: "do 1 2 3")
+1. Sidebar: the hidden sidebar peeks from the window's edge (mailo's `EdgePeek`); pinned tiles
+   drag to reorder and onto a row to join a split; a split of three or four panes narrows its
+   segments to glyphs. (Sidebar, after the mailo pass)
+2. Cards: the typing line pinned to the pane's bottom (spike first); the bold prompt text on a
+   one-line shell prompt's command row; the more menu closing when the pointer leaves the pane;
+   DropTab checking the 40-column minimum. (Batch 19)
+3. Chips: an older block's header carries the same chips as the prompt, from the facts at the
+   block's start (owner: "yes match the new chips"). (UI pass, Chips)
 
 ### Waiting on another project
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
@@ -1211,6 +1220,10 @@ project, another platform, real hardware, or the owner.
   (temor-vt)
 
 ### Owner's call
+- quire `PinFace::Glyph`, so pinned tabs use quire's `PinTiles` (an upstream change).
+- quire ask: folder, git-branch and diff glyphs in `Icon` (the chips and the tab glyph draw
+  Lucide's as symbolic SVGs until then).
+- Agent note as a tooltip; the 720 px breakpoint; the keycap branch merge.
 - Recordings in the pane (mpv-wgpu): deferred. (Batch 17 Next)
 - A "start in the same folder" setting for plain sessions. (Batch 18, tiera notes)
 - Helper binaries for other CPU kinds (packaging). (Batch 3 Next)
@@ -1230,6 +1243,7 @@ project, another platform, real hardware, or the owner.
 - Run `search_bench` and decide on a row-text path. (Batch 18 Next)
 
 ### Small temor items left
+- Host panes: no chips and no peek (the helper would read or report from the host). (Batch 5)
 - Adopt quire v0.3.16 (pinned 2026-10-11 with anyview 75f1f86): SplitView `on_resized`, `Column`
   (`ColumnGap::None`), `write_soon_then`, `IconButtonGroup`, `PinnedBar`, `BannerActionRow`, menu
   tips, `DotFace::Foot`. Planned with the look work (block tools as an icon group, a pinned typing
@@ -1249,12 +1263,14 @@ default (Fedora's /etc/bashrc set PS1, so the cards never showed; `TEMOR_PROMPT=
 person's own); a split pane no longer goes blank (the old view's drop took the new view's
 texture); a click leaves nothing selected; the status line and tab rows are spaced and fade
 long text; anyview's `NotOpened` offers "Open in another app"; quire v0.3.16 pinned.
-- [ ] The look (owner to confirm): bolder cards with padding and the run time and exit code in
+- [x] The look (owner to confirm): bolder cards with padding and the run time and exit code in
   the header; icon-only block tools; no status footer; the typing line pinned to the pane's bottom
   while the screen is not full; one surface for window, sidebar and pane (a quire ask for a flat
   app-shell look); dark by default (owner, 2026-10-11).
-- [ ] Design audit (2026-10-11, private artifact https://claude.ai/artifact/QZJUJwoLf5cSKodekfSdAh): 3 critical (five text colours under 4.5:1, the find field not taking the keyboard, no collapse or pane minimum below ~800 px), 8 high (four grounds in two temperatures, accent on six jobs, a ring around the focused pane, flat cards, the floating toolbar sentence, the typing line repeating the card, a 10 px status strip, `user@host:path` tab names), 6 medium (sidebar foot, actions missing from the bar, find bar layout, sans versus mono, the miniature, first launch).
-- [ ] Sizes (same audit, measured with the ignored `size_audit` harness test): three control sizes in the sidebar foot (New tab is `ControlSize::Small`), tab rows at 40 (155 when split) off quire's 28/32/36 ladder with no vertical padding, a 28 px tools bar on an 18 px terminal row with `--r-panel`, seven type sizes (10 to 16), the command bar's rows not concentric (quire), paddings off the 4 px grid, the closed Downloads hint overlapping the foot buttons.
+  (done in Batch 19 and the sidebar pass; the pinned typing line is under Open now.)
+- [x] Design audit (2026-10-11, private artifact https://claude.ai/artifact/QZJUJwoLf5cSKodekfSdAh): 3 critical (five text colours under 4.5:1, the find field not taking the keyboard, no collapse or pane minimum below ~800 px), 8 high (four grounds in two temperatures, accent on six jobs, a ring around the focused pane, flat cards, the floating toolbar sentence, the typing line repeating the card, a 10 px status strip, `user@host:path` tab names), 6 medium (sidebar foot, actions missing from the bar, find bar layout, sans versus mono, the miniature, first launch).
+- [x] Sizes (same audit, measured with the ignored `size_audit` harness test): three control sizes in the sidebar foot (New tab is `ControlSize::Small`), tab rows at 40 (155 when split) off quire's 28/32/36 ladder with no vertical padding, a 28 px tools bar on an 18 px terminal row with `--r-panel`, seven type sizes (10 to 16), the command bar's rows not concentric (quire), paddings off the 4 px grid, the closed Downloads hint overlapping the foot buttons.
+  (the audit and sizes: done in Batch 19 and the sidebar pass.)
 - [x] ds-harness break-it tests: window size sweep, divider drags past both ends, collapse and
   restore, keyboard-only use, resize with a menu or the bar open.
   (done, `tests/it/resizing.rs`: a dragged divider kept through a tab switch, dragged past both
@@ -1376,3 +1392,7 @@ the bar runs the sidebar action through the desk.
   `EdgePeek`); temor's still snaps away. (3) Pinned tiles cannot be dragged to reorder or onto a
   row to join a split yet. (4) Arc squeezes a split of three or four panes to glyphs; temor's
   segments only narrow (unconfirmed from screenshots how Arc draws one unselected).
+- [x] The tab's glyph (2026-10-14, owner: "too solid"): rows, pinned tiles and split segments draw
+  the bare outline prompt `>_`, as Warp's tabs do (Warp's own terminal icon is the prompt with no
+  box), not quire's solid boxed terminal. Lucide's `terminal` (ISC, NOTICE) as a symbolic mask,
+  `view/tab_glyph.rs`.
