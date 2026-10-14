@@ -65,7 +65,7 @@ pub use session_file::{
     save as save_session, save_for as save_session_for, save_with_hosts,
 };
 pub use settings_file::{ThemeChoice, read_theme_choice, theme_choice};
-pub use space_start::{CredentialFault, CredentialSource, Credentials, NoCredentials};
+pub use space_start::{CredentialFault, CredentialSource, Credentials, Held, NoCredentials};
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
 pub use ssh_env::{ArcRunner, SshEnv};
 pub use unix_now::unix_now;

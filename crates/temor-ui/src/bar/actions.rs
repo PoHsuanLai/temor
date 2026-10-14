@@ -34,6 +34,7 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::ActualSize,
     Action::JumpToWaiting,
     Action::Settings,
+    Action::SettingsAt(SettingsPane::General),
     Action::SettingsAt(SettingsPane::Appearance),
     Action::SettingsAt(SettingsPane::Keyboard),
     Action::SettingsAt(SettingsPane::Spaces),

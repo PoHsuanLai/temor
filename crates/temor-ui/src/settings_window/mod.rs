@@ -23,6 +23,9 @@ mod own_rows;
 mod pages;
 mod root;
 mod space_edit;
+mod space_fields;
+mod space_profile;
+mod space_secrets;
 mod spaces;
 mod style;
 #[cfg(test)]

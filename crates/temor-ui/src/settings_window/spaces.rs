@@ -3,8 +3,8 @@
 //! main window (`board`), which applies them through the kit's handle and writes `spaces.json`
 //! as it does for the Space menu's own edits.
 //!
-//! A profile secret is never shown: a variable's value is not on the page, only that it is set,
-//! and a credential shows the account it is filled from.
+//! Variables are plain name and value fields. A credential's secret is never shown: the page says
+//! only whether it is set, and offers Replace and Remove (`space_profile`, `space_secrets`).
 
 use dioxus::prelude::*;
 use ds::components::app::spaces::SpaceId;
@@ -15,9 +15,13 @@ use temor_core::vocab::text::{KeyPath, ProjectRoot, RelPath};
 
 use super::board::{SpaceBoard, SpaceEdit, SpaceRow};
 use super::space_edit::{
-    SpaceChange, dotenv_warning, optional, root_warning, route_warning, routes_edited, routes_with,
-    routes_without,
+    SpaceChange, dotenv_warning, env_renamed, env_valued, env_with, env_without, optional,
+    root_warning, routes_edited, routes_with, routes_without,
 };
+use super::space_fields::{AddRoute, RouteRow, SpaceText};
+use super::space_profile::{AddCredential, AddVariable, CredentialRow, VariableRow};
+use super::space_secrets;
+use crate::edge::Credentials;
 
 /// What a row sends: which Space, and the change.
 type Sent = (SpaceId, SpaceChange);
@@ -56,17 +60,29 @@ pub fn SpacesPage() -> Element {
             }
         };
     };
-    let send = Callback::new(move |(space, change): Sent| board.send(SpaceEdit { space, change }));
+    let mut said = use_signal(|| None::<String>);
+    let say = Callback::new(move |text: String| said.set(Some(text)));
+    let send = Callback::new(move |(space, change): Sent| {
+        said.set(None);
+        board.send(SpaceEdit { space, change });
+    });
     let sections: Vec<Element> = rows()
         .into_iter()
         .map(|row| {
             let id = row.id.0;
             rsx! {
-                SpaceSection { key: "{id}", row, onchange: send }
+                SpaceSection { key: "{id}", row, onchange: send, onsay: say }
             }
         })
         .collect();
     rsx! {
+        if let Some(text) = said() {
+            InlineBanner {
+                severity: Severity::Danger,
+                text,
+                onclose: move |_| said.set(None),
+            }
+        }
         Form { {sections.into_iter()} }
     }
 }
@@ -74,9 +90,21 @@ pub fn SpacesPage() -> Element {
 /// One Space.
 #[component]
 #[allow(non_snake_case)]
-fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
+fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>) -> Element {
     let SpaceRow { id, name, project } = row;
     let change = move |change: SpaceChange| onchange.call((id, change));
+    let store = use_hook(|| try_consume_context::<Credentials>().unwrap_or_default());
+    // Variables and credentials: each handler hands the new whole list on.
+    let env = project.profile.env.clone();
+    let credentials = project.profile.credentials.clone();
+    let try_env = move |next: Result<Vec<_>, String>| match next {
+        Ok(env) => change(SpaceChange::Env(env)),
+        Err(why) => onsay.call(why),
+    };
+    let try_credentials = move |next: Result<Vec<_>, String>| match next {
+        Ok(list) => change(SpaceChange::Credentials(list)),
+        Err(why) => onsay.call(why),
+    };
     let root = project
         .root
         .as_ref()
@@ -127,24 +155,61 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
                     change(SpaceChange::Dotenv(optional(&text).map(RelPath)));
                 },
             }
-            for (variable, _) in project.profile.env.iter() {
-                FieldRow {
-                    key: "env-{variable.as_str()}",
-                    label: TextLine::from(variable.as_str().to_owned()),
-                    help: Some(TextLine::from("Set in every new shell. Its value is not shown.")),
-                    Label { text: "Set".to_owned(), role: LabelRole::Secondary }
+            for (at, (variable, value)) in env.iter().enumerate() {
+                VariableRow {
+                    key: "env-{at}-{variable.as_str()}={value.0}",
+                    name: variable.as_str().to_owned(),
+                    value: value.0.clone(),
+                    onname: {
+                        let env = env.clone();
+                        move |text: String| try_env(env_renamed(env.clone(), at, &text))
+                    },
+                    onvalue: {
+                        let env = env.clone();
+                        move |text: String| try_env(Ok(env_valued(env.clone(), at, &text)))
+                    },
+                    onremove: {
+                        let env = env.clone();
+                        move |()| try_env(Ok(env_without(env.clone(), at)))
+                    },
                 }
             }
-            for credential in project.profile.credentials.iter() {
-                FieldRow {
+            AddVariable {
+                onadd: {
+                    let env = env.clone();
+                    move |(name, value): (String, String)| {
+                        try_env(env_with(env.clone(), &name, &value));
+                    }
+                },
+            }
+            for credential in credentials.iter() {
+                CredentialRow {
                     key: "credential-{credential.env.as_str()}",
-                    label: TextLine::from(credential.env.as_str().to_owned()),
-                    help: Some(TextLine::from(format!(
-                        "Filled from the {} account when a shell starts.",
-                        credential.account.as_str()
-                    ))),
-                    Label { text: "Set".to_owned(), role: LabelRole::Secondary }
+                    env: credential.env.as_str().to_owned(),
+                    account: credential.account.as_str().to_owned(),
+                    held: space_secrets::held(&*store.0, &credential.account),
+                    onset: {
+                        let (store, account) = (store.clone(), credential.account.clone());
+                        move |secret: String| {
+                            if let Err(why) = space_secrets::replace(&*store.0, &account, &secret) {
+                                onsay.call(why);
+                            }
+                        }
+                    },
+                    onremove: {
+                        let (store, list, env) =
+                            (store.clone(), credentials.clone(), credential.env.clone());
+                        move |()| try_credentials(space_secrets::remove(&*store.0, list.clone(), &env))
+                    },
                 }
+            }
+            AddCredential {
+                onadd: {
+                    let (store, list) = (store.clone(), credentials.clone());
+                    move |(name, secret): (String, String)| {
+                        try_credentials(space_secrets::add(&*store.0, id, list.clone(), &name, &secret));
+                    }
+                },
             }
             for (at, route) in routes.iter().enumerate() {
                 RouteRow {
@@ -165,101 +230,6 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
                     let routes = routes.clone();
                     move |text: String| change(SpaceChange::Routes(routes_with(routes.clone(), &text)))
                 },
-            }
-        }
-    }
-}
-
-/// A row of one line of text, kept when the caret leaves or Return is pressed.
-#[component]
-#[allow(non_snake_case)]
-fn SpaceText(
-    #[props(into)] label: String,
-    #[props(into)] help: String,
-    #[props(into)] placeholder: String,
-    warning: Option<&'static str>,
-    value: String,
-    onchange: EventHandler<String>,
-) -> Element {
-    let mut typed = use_signal({
-        let value = value.clone();
-        move || value
-    });
-    let note = warning.map_or(help.clone(), |warning| format!("{warning} {help}"));
-    rsx! {
-        FieldRow { label: TextLine::from(label.clone()), help: Some(TextLine::from(note)),
-            TextField {
-                label,
-                value: typed(),
-                placeholder,
-                oninput: move |text: String| typed.set(text),
-                onchange: move |text: String| {
-                    if text != value {
-                        onchange.call(text);
-                    }
-                },
-            }
-        }
-    }
-}
-
-/// One route: its pattern, a warning when it is empty or matches everything, and Remove.
-#[component]
-#[allow(non_snake_case)]
-fn RouteRow(pattern: String, onedit: EventHandler<String>, onremove: EventHandler<()>) -> Element {
-    let mut typed = use_signal({
-        let pattern = pattern.clone();
-        move || pattern
-    });
-    let stored = pattern;
-    let help =
-        route_warning(&typed.read()).unwrap_or("New sessions that match open in this Space.");
-    rsx! {
-        FieldRow { label: "Route", help: Some(TextLine::from(help)),
-            TextField {
-                label: "Route".to_owned(),
-                value: typed(),
-                placeholder: "ssh prod-* or ~/work".to_owned(),
-                oninput: move |text: String| typed.set(text),
-                onchange: move |text: String| {
-                    if text != stored {
-                        onedit.call(text);
-                    }
-                },
-            }
-            Button {
-                label: "Remove".to_owned(),
-                title: Some("Take this route away".to_owned()),
-                onclick: move |_| onremove.call(()),
-            }
-        }
-    }
-}
-
-/// The row that adds a route.
-#[component]
-#[allow(non_snake_case)]
-fn AddRoute(onadd: EventHandler<String>) -> Element {
-    let mut draft = use_signal(String::new);
-    let add = Callback::new(move |text: String| {
-        draft.set(String::new());
-        onadd.call(text);
-    });
-    rsx! {
-        FieldRow {
-            label: "New route",
-            help: Some(TextLine::from("A command such as ssh prod-*, or a folder such as ~/work.")),
-            TextField {
-                label: "New route".to_owned(),
-                value: draft(),
-                placeholder: "ssh prod-* or ~/work".to_owned(),
-                oninput: move |text: String| draft.set(text),
-                onsubmit: move |text: String| add.call(text),
-            }
-            Button {
-                label: "Add".to_owned(),
-                title: Some("Add this route".to_owned()),
-                onclick: move |_| add.call(draft()),
             }
         }
     }

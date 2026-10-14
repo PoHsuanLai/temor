@@ -2,8 +2,12 @@
 //! the window sends a [`SpaceChange`], the main window applies it to the live project through the
 //! kit's handle, the same way a Space menu's edits go.
 
-use temor_core::space::{Project, Route};
-use temor_core::vocab::text::{KeyPath, ProjectRoot, RelPath, RoutePattern};
+use ds::components::app::spaces::SpaceId;
+use temor_core::space::{AccountRef, Credential, Project, Route};
+use temor_core::vocab::text::{EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern};
+
+/// A profile's variables, in order.
+pub type Variables = Vec<(EnvKey, EnvValue)>;
 
 /// One change to one Space's project.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,6 +20,10 @@ pub enum SpaceChange {
     Dotenv(Option<RelPath>),
     /// The routes, in full.
     Routes(Vec<Route>),
+    /// The variables new shells get, in full.
+    Env(Variables),
+    /// The credentials (which account fills which variable), in full. Never a secret.
+    Credentials(Vec<Credential>),
 }
 
 impl SpaceChange {
@@ -26,6 +34,8 @@ impl SpaceChange {
             Self::SshIdentity(key) => project.profile.ssh_identity = key.clone(),
             Self::Dotenv(file) => project.profile.dotenv = file.clone(),
             Self::Routes(routes) => project.routes = routes.clone(),
+            Self::Env(env) => project.profile.env = env.clone(),
+            Self::Credentials(list) => project.profile.credentials = list.clone(),
         }
     }
 }
@@ -86,6 +96,96 @@ pub fn routes_edited(mut routes: Vec<Route>, at: usize, pattern: &str) -> Vec<Ro
         route.pattern = RoutePattern(pattern.trim().to_owned());
     }
     routes
+}
+
+/// A variable's name as the profile takes it, or why not, in words.
+pub fn variable_name(name: &str) -> Result<EnvKey, String> {
+    EnvKey::new(name.trim())
+        .map_err(|_| "A variable's name cannot be empty or hold an equals sign.".to_owned())
+}
+
+/// `env` with `name` set to `value`: a variable of that name has its value replaced, else it is
+/// added at the end.
+pub fn env_with(mut env: Variables, name: &str, value: &str) -> Result<Variables, String> {
+    let name = variable_name(name)?;
+    let value = EnvValue(value.to_owned());
+    match env.iter_mut().find(|(have, _)| *have == name) {
+        Some(entry) => entry.1 = value,
+        None => env.push((name, value)),
+    }
+    Ok(env)
+}
+
+/// `env` with the variable at `at` named `name` (another of that name is refused).
+pub fn env_renamed(mut env: Variables, at: usize, name: &str) -> Result<Variables, String> {
+    let name = variable_name(name)?;
+    if env
+        .iter()
+        .enumerate()
+        .any(|(i, (have, _))| i != at && *have == name)
+    {
+        return Err(format!(
+            "There is already a variable called {}.",
+            name.as_str()
+        ));
+    }
+    if let Some(entry) = env.get_mut(at) {
+        entry.0 = name;
+    }
+    Ok(env)
+}
+
+/// `env` with the value of the variable at `at` replaced.
+pub fn env_valued(mut env: Variables, at: usize, value: &str) -> Variables {
+    if let Some(entry) = env.get_mut(at) {
+        entry.1 = EnvValue(value.to_owned());
+    }
+    env
+}
+
+/// `env` without the variable at `at`.
+pub fn env_without(mut env: Variables, at: usize) -> Variables {
+    if at < env.len() {
+        env.remove(at);
+    }
+    env
+}
+
+/// The account that holds the secret a Space fills `env` from: named for the Space and the
+/// variable, so no two credentials share one. Letters, digits and `.`, `_`, `-` only, at most 64
+/// bytes.
+pub fn account_for(space: SpaceId, env: &EnvKey) -> Result<AccountRef, String> {
+    let slug: String = env
+        .as_str()
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let mut name = format!("temor.space{}.{slug}", space.0);
+    name.truncate(64);
+    AccountRef::new(name).map_err(|why| why.to_string())
+}
+
+/// `list` with a credential filling `env` from `account`, replacing one for the same variable.
+pub fn credentials_with(
+    mut list: Vec<Credential>,
+    env: EnvKey,
+    account: AccountRef,
+) -> Vec<Credential> {
+    list.retain(|have| have.env != env);
+    list.push(Credential { env, account });
+    list
+}
+
+/// `list` without the credential for `env`.
+pub fn credentials_without(mut list: Vec<Credential>, env: &EnvKey) -> Vec<Credential> {
+    list.retain(|have| have.env != *env);
+    list
 }
 
 #[cfg(test)]
@@ -162,5 +262,45 @@ mod tests {
         assert!(dotenv_warning("../.env").is_some());
         assert_eq!(optional("  "), None);
         assert_eq!(optional(" a "), Some("a".to_owned()));
+    }
+
+    #[test]
+    fn variables_are_added_renamed_valued_and_removed_by_position() {
+        let env = env_with(Vec::new(), " TOKEN_URL ", "https://a").expect("a name");
+        let env = env_with(env, "OTHER", "1").expect("a name");
+        // The same name again replaces the value rather than adding a second.
+        let env = env_with(env, "OTHER", "2").expect("a name");
+        let shown: Vec<(&str, &str)> = env
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.0.as_str()))
+            .collect();
+        assert_eq!(shown, [("TOKEN_URL", "https://a"), ("OTHER", "2")]);
+        assert!(env_with(env.clone(), "", "x").is_err());
+        assert!(env_with(env.clone(), "A=B", "x").is_err());
+        assert!(env_renamed(env.clone(), 0, "OTHER").is_err());
+        let renamed = env_renamed(env.clone(), 0, "URL").expect("free name");
+        assert_eq!(renamed[0].0.as_str(), "URL");
+        assert_eq!(env_valued(env.clone(), 1, "3")[1].1.0, "3");
+        assert_eq!(env_without(env.clone(), 0).len(), 1);
+        assert_eq!(env_without(env.clone(), 9), env);
+    }
+
+    #[test]
+    fn a_credential_is_named_for_its_space_and_variable_and_replaced_not_doubled() {
+        let key = EnvKey::new("API_KEY").expect("a name");
+        let account = account_for(SpaceId(3), &key).expect("a valid account");
+        assert_eq!(account.as_str(), "temor.space3.api-key");
+        let long = EnvKey::new("X".repeat(100)).expect("a name");
+        assert!(
+            account_for(SpaceId(3), &long)
+                .expect("cut to fit")
+                .as_str()
+                .len()
+                <= 64
+        );
+        let list = credentials_with(Vec::new(), key.clone(), account.clone());
+        let list = credentials_with(list, key.clone(), account);
+        assert_eq!(list.len(), 1);
+        assert!(credentials_without(list, &key).is_empty());
     }
 }

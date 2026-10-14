@@ -5,6 +5,7 @@
 //! main window asks: the harness has no event loop to open a window on, so the opener is a
 //! recorder and the Settings root is drawn directly.
 
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -12,11 +13,13 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px, SystemPrefs};
 use ds_harness::{Driver, Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
-use temor_core::space::Project;
-use temor_core::vocab::text::ProjectRoot;
+use temor_core::space::{AccountRef, Credential, Profile, Project};
+use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot};
 use temor_pane::keys::SettingsPane;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::edge::{Ambient, SpacesStartup, load_spaces};
+use temor_ui::edge::{
+    Ambient, CredentialFault, CredentialSource, Credentials, SpacesStartup, load_spaces,
+};
 use temor_ui::settings::TerminalDoc;
 use temor_ui::settings_window::{
     OpenSettings, SETTINGS_CSS, SettingsAsked, SettingsWindows, SpaceBoard, SpaceChange, SpaceEdit,
@@ -274,7 +277,7 @@ fn a_spaces_folder_typed_in_the_page_is_sent_to_the_main_window() {
     );
 }
 
-/// A change the Settings window sends reaches `spaces.json`: the main window applies it through
+/// A change the Settings window sends (a folder, a variable) reaches `spaces.json`: the main window applies it through
 /// the kit's handle, as a Space menu's edit goes, and the file is written.
 #[test]
 fn a_space_folder_sent_to_the_main_window_reaches_spaces_json() {
@@ -305,20 +308,24 @@ fn a_space_folder_sent_to_the_main_window_reaches_spaces_json() {
         space,
         change: SpaceChange::Root(Some(ProjectRoot("/srv/work".to_owned()))),
     });
+    board.send(SpaceEdit {
+        space,
+        change: SpaceChange::Env(vec![(key("RUST_LOG"), EnvValue("debug".to_owned()))]),
+    });
     let start = std::time::Instant::now();
     loop {
         h.advance(Duration::from_millis(100));
         if let Ok(SpacesStartup::Loaded(spaces)) = load_spaces(&state)
-            && spaces
-                .list()
-                .iter()
-                .any(|s| s.payload.root.as_ref().map(ProjectRoot::as_str) == Some("/srv/work"))
+            && spaces.list().iter().any(|s| {
+                s.payload.root.as_ref().map(ProjectRoot::as_str) == Some("/srv/work")
+                    && s.payload.profile.env == [(key("RUST_LOG"), EnvValue("debug".to_owned()))]
+            })
         {
             break;
         }
         assert!(
             start.elapsed() < super::support::SLOW_WAIT,
-            "the folder never reached spaces.json"
+            "the folder and the variable never reached spaces.json"
         );
     }
 }
@@ -336,4 +343,153 @@ fn every_page_uses_only_styled_classes() {
             .collect();
         assert!(unstyled.is_empty(), "{page:?}: {unstyled:#?}");
     }
+}
+
+fn key(name: &str) -> EnvKey {
+    EnvKey::new(name).expect("a variable name")
+}
+
+/// The Spaces page over one Space `Home` holding `profile`, and the board it publishes to.
+fn spaces_page(
+    name: &str,
+    profile: Profile,
+    extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
+) -> (Harness, SpaceBoard) {
+    let board = SpaceBoard::default();
+    board.publish(vec![home(profile)]);
+    let (h, _) = settings_window(name, SettingsPane::Spaces, {
+        let board = board.clone();
+        move |config| extra(config.with_context(board))
+    });
+    (h, board)
+}
+
+fn home(profile: Profile) -> SpaceRow {
+    SpaceRow {
+        id: ds::components::app::spaces::SpaceId(0),
+        name: "Home".to_owned(),
+        project: Project {
+            profile,
+            ..Project::default()
+        },
+    }
+}
+
+/// The change of the last edit the page sent.
+fn last_change(board: &SpaceBoard) -> SpaceChange {
+    board
+        .take_edits()
+        .pop()
+        .expect("the page sent an edit")
+        .change
+}
+
+/// A variable is added, its value edited and the variable removed from the Spaces page.
+#[test]
+fn a_variable_is_added_edited_and_removed_on_the_spaces_page() {
+    let profile = Profile {
+        env: vec![(key("A"), EnvValue("1".to_owned()))],
+        ..Profile::default()
+    };
+    let (mut h, board) = spaces_page("settings-variables", profile, |c| c);
+
+    type_into(&mut h, "input[aria-label=\"New variable name\"]", "B");
+    // Return in the value field adds the variable.
+    type_into(&mut h, "input[aria-label=\"New variable value\"]", "9");
+    assert_eq!(
+        last_change(&board),
+        SpaceChange::Env(vec![
+            (key("A"), EnvValue("1".to_owned())),
+            (key("B"), EnvValue("9".to_owned())),
+        ])
+    );
+
+    type_into(&mut h, "input[aria-label=\"Value of A\"]", "2");
+    assert_eq!(
+        last_change(&board),
+        SpaceChange::Env(vec![(key("A"), EnvValue("2".to_owned()))])
+    );
+
+    click(&mut h, "button[aria-label=\"Remove A\"]");
+    assert_eq!(last_change(&board), SpaceChange::Env(Vec::new()));
+}
+
+/// A secret store in memory.
+#[derive(Default)]
+struct Memory(Mutex<BTreeMap<String, String>>);
+
+impl Memory {
+    fn get(&self, account: &str) -> Option<String> {
+        self.0.lock().ok()?.get(account).cloned()
+    }
+}
+
+impl CredentialSource for Memory {
+    fn secret(&self, account: &AccountRef) -> Result<Option<String>, CredentialFault> {
+        Ok(self.get(account.as_str()))
+    }
+    fn set_secret(&self, account: &AccountRef, secret: &str) -> Result<(), CredentialFault> {
+        if let Ok(mut held) = self.0.lock() {
+            held.insert(account.as_str().to_owned(), secret.to_owned());
+        }
+        Ok(())
+    }
+    fn remove_secret(&self, account: &AccountRef) -> Result<(), CredentialFault> {
+        if let Ok(mut held) = self.0.lock() {
+            held.remove(account.as_str());
+        }
+        Ok(())
+    }
+}
+
+/// A credential is set, replaced and removed on the Spaces page; its secret goes to the store
+/// alone and is in neither the page nor the change sent to the main window.
+#[test]
+fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page() {
+    let store = Arc::new(Memory::default());
+    let (mut h, board) = spaces_page("settings-credentials", Profile::default(), {
+        let source = Credentials(store.clone());
+        move |config| config.with_context(source)
+    });
+    let account = "temor.space0.api-key";
+
+    type_into(&mut h, "input[aria-label=\"New secret name\"]", "API_KEY");
+    // Return in the secret field adds the credential.
+    type_into(
+        &mut h,
+        "input[aria-label=\"New secret value\"]",
+        "first-s3cret",
+    );
+    assert_eq!(store.get(account).as_deref(), Some("first-s3cret"));
+    let change = last_change(&board);
+    let credential = Credential {
+        env: key("API_KEY"),
+        account: AccountRef::new(account).expect("an account"),
+    };
+    assert_eq!(change, SpaceChange::Credentials(vec![credential.clone()]));
+    assert!(!format!("{change:?}").contains("first-s3cret"));
+    assert!(
+        !h.html().contains("first-s3cret"),
+        "the page shows no secret"
+    );
+
+    // The main window publishes the Space with the credential; the page says it is set.
+    board.publish(vec![home(Profile {
+        credentials: vec![credential],
+        ..Profile::default()
+    })]);
+    h.advance(Duration::from_millis(300));
+    assert!(h.html().contains("Replace API_KEY"), "{}", h.html());
+
+    type_into(
+        &mut h,
+        "input[aria-label=\"New value for API_KEY\"]",
+        "second-s3cret",
+    );
+    assert_eq!(store.get(account).as_deref(), Some("second-s3cret"));
+    assert!(!h.html().contains("first-s3cret") && !h.html().contains("second-s3cret"));
+
+    click(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
+    assert_eq!(store.get(account), None);
+    assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
 }
