@@ -1223,10 +1223,10 @@ sections above are the lanes' own notes; this list is the one to read.
   bar), and Equalize moved to ⌥⌘= (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift). Pins: quire
   163957e0, anyview 776abe1, chordkit 6ef5493, keycap 794f9de, Blitz 531fb43d, blitz-kit 2ecef10.
   Done 2026-10-15.
-- On our desktop keycap sends ⌘= as Ctrl+Shift+=, which reads as Ctrl++ (the program's), so Zoom
-  In there is Super+= or the command bar until chordkit can tell keycap's form from Ctrl++.
-  Ctrl+_ (Ctrl+Shift+-) never reaches the shell as undo: on GNOME, KDE and Windows it is dropped
-  as an unbound Primary chord (as before), and on our desktop it is keycap's ⌘-, Zoom Out.
+- Ctrl+_ (Ctrl+Shift+-) never reaches the shell as undo off our desktop: it is dropped as an
+  unbound Primary chord. chordkit#3 (55a62b2) folds Shift+- into `_`, so it is the program's;
+  Whopper bundles it with the next quire bump. (keycap's ⌘= and ⌘- on our desktop already work:
+  a raw press keeps Shift apart from the key, so keycap's Ctrl+Shift is read as ⌘ first.)
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)
 - chordkit: a fallback where the default collides. (Keys on chordkit)
@@ -1267,9 +1267,11 @@ sections above are the lanes' own notes; this list is the one to read.
   (`ColumnGap::None`), `write_soon_then`, `IconButtonGroup`, `PinnedBar`, `BannerActionRow`, menu
   tips, `DotFace::Foot`. Planned with the look work (block tools as an icon group, a pinned typing
   line). (UI pass, 2026-10-11)
-- Byte progress for uploads. (Batch 18 Next)
-- Mark host panes remote where `ssh.panes` gets its entry. (Batch 18 Next)
-- Offer: zsh keeps the probe line; nushell history isn't cleaned (no delete in nushell).
+- [x] Byte progress for uploads (Batch 20; scp uploads have none).
+- [x] Host panes are remote from their session's start (Batch 20).
+- Offer: zsh keeps the probe line; nushell history isn't cleaned (no delete in nushell). A zsh
+  fix that rewrites the history (branch b20-remote, f380021) is held for the owner: it can drop
+  unsaved entries under APPEND_HISTORY and misses INC_APPEND_HISTORY/SHARE_HISTORY.
 - Kitty virtual placements, selection recompose, glyph overhang. (temor-render)
 - Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
 - Blocks stay in temor-core (a design choice for now). (R1b)
