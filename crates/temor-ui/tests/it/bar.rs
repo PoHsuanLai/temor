@@ -7,10 +7,11 @@ use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, FocusState, Harness, Input, Query};
+use ds::window::vocab::PageZoom;
+use ds_harness::{Driver, FocusState, Harness, Input, Query, WindowHosting};
 use temor_ui::view::probe::Probe;
 
-use super::window::{chord, harness, panes, rows, wait_until};
+use super::window::{chord, harness, harness_hosting, panes, rows, wait_until};
 
 fn type_line(h: &mut Harness, text: &str) {
     for c in text.chars() {
@@ -269,15 +270,16 @@ fn the_quick_terminal_keeps_its_shell_when_hidden() {
     });
 }
 
-/// The page-zoom keys (Ctrl with `=`, `-` and `0`) are the window's: the shell gets none of them,
-/// so `echo a`, the three keys, then `b` prints `ab`.
+/// ⌘=, ⌘- and ⌘0 zoom the window in, out and back (the standard Bigger, Smaller and Actual
+/// Size): the window host is asked, and the shell gets none of them, so `echo a`, the three
+/// keys, then `b` prints `ab`.
 #[test]
-fn the_zoom_keys_type_nothing_into_the_shell() {
+fn the_zoom_keys_zoom_the_window_and_type_nothing() {
     if !super::support::tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("zoom-keys", &probe);
+    let mut h = harness_hosting("zoom-keys", &probe, None, |_| {}, WindowHosting::Recorded);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
     click_pane(&mut h);
     for c in "echo a".chars() {
@@ -287,10 +289,39 @@ fn the_zoom_keys_type_nothing_into_the_shell() {
         }));
     }
     for key in ['=', '-', '0'] {
-        h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char(key)));
+        h.send(Input::chord(&[ShortcutKey::Super], ShortcutKey::Char(key)));
     }
     type_line(&mut h, "b");
     wait_until(&mut h, &probe, "ab on its own line", |s| {
         s.lines().any(|line| line.trim_end() == "ab")
     });
+    assert_eq!(
+        h.page_zooms(),
+        [PageZoom::Bigger, PageZoom::Smaller, PageZoom::ActualSize]
+    );
+}
+
+/// The bar runs the zoom too: "zoom in" leads with Zoom in, and Enter asks the window.
+#[test]
+fn the_bar_zooms_the_window() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness_hosting("bar-zoom", &probe, None, |_| {}, WindowHosting::Recorded);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    click_pane(&mut h);
+    chord(&mut h, 't');
+    for c in "zoom in".chars() {
+        h.send(Input::key(match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        }));
+    }
+    h.advance(Duration::from_millis(300));
+    let rows = h.text_of(".ds-palette").unwrap_or_default();
+    assert!(rows.contains("Zoom in"), "{rows}");
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(h.page_zooms(), [PageZoom::Bigger]);
 }

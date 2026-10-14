@@ -123,6 +123,9 @@ impl Session {
             | Action::PinTab
             | Action::UnpinTab
             | Action::ShowDownloads
+            | Action::ZoomIn
+            | Action::ZoomOut
+            | Action::ActualSize
             | Action::SelectTab(_)
             | Action::SelectSpace(_) => {
                 self.asked = Some(action);

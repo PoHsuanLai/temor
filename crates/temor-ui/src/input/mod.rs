@@ -8,7 +8,7 @@ mod route;
 mod shortcut;
 
 pub use click::{Click, ClickState, next_click};
-pub use keys::{is_altgr_text, page_zoom, pressed, stroke, vt_mods};
+pub use keys::{is_altgr_text, pressed, stroke, vt_mods};
 pub use route::{FindBar, KittyKeys, Routed, Stroke, route, route_with};
 pub use shortcut::terminal_shortcut_of;
 

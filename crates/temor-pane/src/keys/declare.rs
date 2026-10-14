@@ -61,11 +61,12 @@ pub fn declared() -> Vec<Declared> {
         (Action::ToggleBookmark, "Primary+B", None, BOLD_FORGOES),
         (Action::ReinputCommands, "Primary+I", None, ITALIC_FORGOES),
         (Action::ToggleZoom, "Primary+Shift+Enter", None, &[]),
-        // Where Primary is Ctrl+Shift, `=` with Shift is `+` under plain Ctrl, the program's:
-        // there equalize is Primary+Alt+0 (Ctrl+Shift+Alt+0).
+        // Ctrl+= is the text size (Bigger). Where Primary is Ctrl+Shift, `=` with Shift and Alt is
+        // `+` under Ctrl and Alt, the program's: there equalize is Primary+Alt+0
+        // (Ctrl+Shift+Alt+0).
         (
             Action::Equalize,
-            "Primary+Ctrl+=",
+            "Primary+Alt+=",
             Some("Primary+Alt+0"),
             &[],
         ),

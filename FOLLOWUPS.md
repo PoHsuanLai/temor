@@ -1214,15 +1214,19 @@ sections above are the lanes' own notes; this list is the one to read.
    Pane.~~ Done 2026-10-14.
 
 ### Waiting on another project
-- blitz-shell hard-wires keys before the app hears them (in the fork and in DioxusLabs main):
-  Ctrl or Super with `=`, `-`, `0` whatever else is held zooms the page, and Alt+D, Alt+H and
-  Alt+T switch on its layout overlay, hover highlight and a layout dump to stdout. In temor that
-  means Equalize (Ctrl+Shift+Alt+0 here, Cmd+Ctrl+= on macOS) also zooms, Ctrl+_ (undo) zooms
-  out as well as undoing, and readline's Alt+D and Alt+T also draw debug boxes over the window
-  (seen on the private display). Proposed fix, upstream first: blitz-shell gets an option to
-  leave its built-in keys off; ds-blitz turns them off and offers zoom as a window request;
-  chordkit gets standard Zoom In, Zoom Out and Actual Size; temor binds those like any other
-  action and drops its `page_zoom` key filter.
+- [x] blitz-shell hard-wired keys before the app heard them: Ctrl or Super with `=`, `-` and `0`
+  zoomed the page whatever else was held (Equalize zoomed too, Ctrl+_ zoomed out), and Alt+D,
+  Alt+H and Alt+T drew its debug overlays. Fixed upstream: blitz-shell's `BuiltinKeys::Off`,
+  ds-blitz's `ShellKeys::App` with zoom as a window request (`WindowHost::page_zoom`), and
+  chordkit's Bigger, Smaller and Actual Size as Ctrl or ⌘ with `=` (labelled `+`), `-` and `0`,
+  also in a terminal. temor binds them as Zoom In, Zoom Out and Actual Size (also in the command
+  bar), and Equalize moved to ⌥⌘= (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift). Pins: quire
+  163957e0, anyview 776abe1, chordkit 6ef5493, keycap 794f9de, Blitz 531fb43d, blitz-kit 2ecef10.
+  Done 2026-10-15.
+- On our desktop keycap sends ⌘= as Ctrl+Shift+=, which reads as Ctrl++ (the program's), so Zoom
+  In there is Super+= or the command bar until chordkit can tell keycap's form from Ctrl++.
+  Ctrl+_ (Ctrl+Shift+-) never reaches the shell as undo: on GNOME, KDE and Windows it is dropped
+  as an unbound Primary chord (as before), and on our desktop it is keycap's ⌘-, Zoom Out.
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)
 - chordkit: a fallback where the default collides. (Keys on chordkit)

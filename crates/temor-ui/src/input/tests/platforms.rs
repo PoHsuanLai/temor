@@ -88,11 +88,18 @@ fn our_desktop_sends_command_as_super_or_ctrl_shift() {
             Went::Action(Action::SplitDown),
         ),
         row(
-            "⌃⌘= as Ctrl+Super+=",
+            "⌥⌘= as Alt+Super+=",
             ch("="),
             Code::Equal,
-            Held::CONTROL | Held::SUPER,
+            Held::ALT | Held::SUPER,
             Went::Action(Action::Equalize),
+        ),
+        row(
+            "⌘= as Super+= zooms in",
+            ch("="),
+            Code::Equal,
+            Held::SUPER,
+            Went::Action(Action::ZoomIn),
         ),
         // A ⌘ chord with no action is dropped, never a control byte for the program.
         row("⌘K has no action", ch("K"), Code::KeyK, cs, Went::Dropped),

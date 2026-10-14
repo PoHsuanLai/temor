@@ -85,7 +85,7 @@ pub use agents::{
 };
 pub use bar::{BarData, WindowAction};
 pub use blink_tick::spawn_blink_loop;
-pub use desk::Desk;
+pub use desk::{Desk, HostOf};
 pub use desktop::spawn_desktop_loop;
 pub use events::spawn_event_loop;
 pub use facts::spawn_facts_loop;

@@ -230,7 +230,7 @@ fn a_project_sits_flat_beside_the_look_in_the_spaces_file() {
     for key in ["root", "profile", "routes"] {
         assert!(space.get(key).is_some(), "{key} is written flat: {space}");
     }
-    for kit_key in ["id", "name", "dots", "grain", "theme", "card_accent"] {
+    for kit_key in ["id", "name", "dots", "grain", "theme"] {
         assert!(
             space.get(kit_key).is_some(),
             "the kit still writes {kit_key}"

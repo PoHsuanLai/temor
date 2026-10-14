@@ -15,7 +15,11 @@ impl Hub {
         match action {
             Action::ToggleQuick => self.quick_toggle(),
             Action::JumpToWaiting => self.jump_to_waiting(),
-            Action::ToggleSidebar | Action::ShowDownloads => self.window_asks.push(action),
+            Action::ToggleSidebar
+            | Action::ShowDownloads
+            | Action::ZoomIn
+            | Action::ZoomOut
+            | Action::ActualSize => self.window_asks.push(action),
             Action::PinTab | Action::UnpinTab => {
                 if let Some(input) = self.pin_input(action) {
                     self.act(input);

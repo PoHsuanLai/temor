@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use ds::window::vocab::PageZoom;
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
 use temor_core::vocab::text::{CommandText, HostAlias};
 use temor_pane::keys::{Action, terminal_shortcut};
@@ -263,13 +264,16 @@ impl Desk {
     }
 
     /// An action the window itself takes, not a pane and not the workspace: the bar, the quick
-    /// terminal, the sidebar, Downloads and pinning the tab in front.
+    /// terminal, the sidebar, Downloads, the page's zoom and pinning the tab in front.
     pub fn window_action(&self, action: Action) -> WindowAction {
         match action {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
             Action::ShowDownloads => self.shelf_toggle(),
+            Action::ZoomIn => self.window.page_zoom(PageZoom::Bigger),
+            Action::ZoomOut => self.window.page_zoom(PageZoom::Smaller),
+            Action::ActualSize => self.window.page_zoom(PageZoom::ActualSize),
             Action::PinTab | Action::UnpinTab => {
                 let input = self.hub.0.borrow().pin_input(action);
                 if let Some(input) = input {

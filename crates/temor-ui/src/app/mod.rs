@@ -26,7 +26,9 @@ pub fn run_with(launch: Launch, desktop: Desktop) -> Result<(), ds_blitz::Launch
     )
     .with_app_id(ds_blitz::AppId(APP_ID.to_owned()))
     .with_context(launch)
-    .with_context(desktop);
+    .with_context(desktop)
+    // temor binds the page zoom itself, and Alt with D, H or T is the shell's.
+    .with_shell_keys(ds_blitz::ShellKeys::App);
     // X11 and Windows show the window's own icon; elsewhere the desktop entry gives it.
     let config = match icon::window_icon() {
         Some(icon) => config.with_icon(icon),

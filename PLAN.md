@@ -341,7 +341,7 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
   - temor's own, registered under the id `temor`: `temor.new-tab` ⌘T (temor forgoes the
     offered-only standard "show fonts" and "new", so ⌘N is free); `temor.split-right` ⌘D; `temor.split-down` ⇧⌘D;
     `temor.focus-left/right/up/down` ⌥⌘ arrows; `temor.previous-prompt` / `next-prompt` ⌘↑ / ⌘↓;
-    `temor.zoom` ⇧⌘↩; `temor.equalize` ⌃⌘= (fallback ⌥⌘0 where Primary is
+    `temor.zoom` ⇧⌘↩; `temor.equalize` ⌥⌘= (fallback ⌥⌘0 where Primary is
     Ctrl+Shift, as Ctrl+Shift+Alt+0); `temor.reopen-tab` ⇧⌘T; `temor.tab-1` to `tab-9` ⌘1 to ⌘9
     (as Terminal and iTerm); the Space switch is the standard "switch to Space n" with no default of
     temor's (the desktop owns Ctrl+digit; the command bar and the Spaces menu reach it)

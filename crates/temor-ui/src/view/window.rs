@@ -18,7 +18,7 @@ use ds::components::overlays::drag_ghost::DragGhost;
 use ds::host::measure::use_rect;
 use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
-use ds::window::host::use_window_title;
+use ds::window::host::{use_window_host, use_window_title};
 use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
 use ds_settings::{AppearanceFile, use_environment};
 use temor_core::split::Direction;
@@ -43,7 +43,7 @@ use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
 use crate::edge::{Credentials, read_theme_choice};
 use crate::hub::{
-    Desk, DragKey, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
+    Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
     spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
     spawn_offer_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop, spawn_ssh_loop,
     spawn_viewer_loop,
@@ -108,6 +108,7 @@ pub fn App() -> Element {
         notice,
         spaces,
         picked_space,
+        window: HostOf(use_window_host()),
     };
     use_hook({
         let desk = desk.clone();

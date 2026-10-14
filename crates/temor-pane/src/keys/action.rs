@@ -66,6 +66,12 @@ pub enum Action {
     ToggleZoom,
     /// Even out the splits of the tab.
     Equalize,
+    /// Make the window's text and controls bigger (the standard "bigger").
+    ZoomIn,
+    /// Make the window's text and controls smaller (the standard "smaller").
+    ZoomOut,
+    /// Bring the window back to its own size (the standard "actual size").
+    ActualSize,
     /// Bring back the tab closed last.
     ReopenTab,
     /// Show the sidebar, or hide it. At every window width; a narrow window starts without it.
@@ -126,6 +132,9 @@ const STANDARD: &[(Action, StandardAction)] = &[
     // A terminal has no text field to select all of: the platform's select all picks every
     // command, as Warp's does.
     (Action::SelectAllBlocks, StandardAction::SelectAll),
+    (Action::ZoomIn, StandardAction::Bigger),
+    (Action::ZoomOut, StandardAction::Smaller),
+    (Action::ActualSize, StandardAction::ActualSize),
 ];
 
 impl Action {
@@ -159,6 +168,9 @@ impl Action {
             Self::FocusDown => "Focus down",
             Self::ToggleZoom => "Zoom",
             Self::Equalize => "Equalize",
+            Self::ZoomIn => "Zoom in",
+            Self::ZoomOut => "Zoom out",
+            Self::ActualSize => "Actual size",
             Self::ReopenTab => "Reopen tab",
             Self::JumpToWaiting => "Jump to waiting agent",
             Self::ToggleSidebar => "Sidebar",

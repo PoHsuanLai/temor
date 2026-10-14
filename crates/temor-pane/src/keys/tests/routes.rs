@@ -38,7 +38,16 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         // The bookmark steps have no chord: Alt+Up is the program's unless the pane takes it.
         ("Alt+Up", Program),
         ("Super+Shift+Enter", Ran(Action::ToggleZoom)),
-        ("Ctrl+Super+=", Ran(Action::Equalize)),
+        ("Super+Alt+=", Ran(Action::Equalize)),
+        // The page's zoom, the standard Bigger, Smaller and Actual Size: ⌘ or plain Ctrl with
+        // `=`, `-` and `0`, as in the other apps.
+        ("Super+=", Ran(Action::ZoomIn)),
+        ("Super+-", Ran(Action::ZoomOut)),
+        ("Super+0", Ran(Action::ActualSize)),
+        ("Ctrl+Shift+-", Ran(Action::ZoomOut)),
+        ("Ctrl+Shift+0", Ran(Action::ActualSize)),
+        // keycap's ⌘= reads as Ctrl++, plain Ctrl: the program's (see FOLLOWUPS).
+        ("Ctrl+Shift+=", Program),
         ("Super+Shift+T", Ran(Action::ReopenTab)),
         ("Super+Shift+U", Ran(Action::JumpToWaiting)),
         ("Super+Shift+L", Ran(Action::ToggleSidebar)),
@@ -88,6 +97,13 @@ fn the_ctrl_shift_platforms_keep_plain_ctrl_for_the_program() {
         ("Ctrl+Shift+Alt+L", Ran(Action::ToggleSidebar)),
         // Equalize's fallback: Ctrl+Shift+= would be `+` under plain Ctrl, the program's.
         ("Ctrl+Shift+Alt+0", Ran(Action::Equalize)),
+        // The page's zoom is plain Ctrl with `=`, `-` and `0`, as in the other apps; with Shift
+        // the key is the program's (Ctrl+_ is undo).
+        ("Ctrl+=", Ran(Action::ZoomIn)),
+        ("Ctrl+Shift+=", Ran(Action::ZoomIn)),
+        ("Ctrl+-", Ran(Action::ZoomOut)),
+        ("Ctrl+0", Ran(Action::ActualSize)),
+        ("Ctrl+_", Program),
         ("Ctrl+Shift+Alt+Enter", Ran(Action::ToggleZoom)),
         ("Ctrl+Shift+Alt+Left", Ran(Action::FocusLeft)),
         ("Ctrl+Shift+Up", Ran(Action::PreviousPrompt)),

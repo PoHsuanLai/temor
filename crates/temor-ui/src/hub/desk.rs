@@ -3,6 +3,8 @@
 
 use dioxus::prelude::*;
 use ds::base::vocab::Shown;
+use ds::window::host::WindowHost;
+use ds::window::vocab::PageZoom;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
@@ -26,6 +28,27 @@ pub struct Desk {
     pub sidebar: Signal<Shown>,
     /// Whether the Downloads list is open: its button flips it, and so does the command bar.
     pub shelf: Signal<Shown>,
+    /// The window itself, which zooms the page; none where nothing hosts the window.
+    pub window: HostOf,
+}
+
+/// The window's host, if there is one. Always equal: a desk holds its own window's.
+#[derive(Debug, Clone, Default)]
+pub struct HostOf(pub Option<WindowHost>);
+
+impl PartialEq for HostOf {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl HostOf {
+    /// Zooms the page one step, or back to its own size.
+    pub fn page_zoom(&self, step: PageZoom) {
+        if let Some(host) = &self.0 {
+            host.page_zoom(step);
+        }
+    }
 }
 
 impl std::fmt::Debug for Desk {

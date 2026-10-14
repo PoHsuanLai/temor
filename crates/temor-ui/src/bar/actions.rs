@@ -29,5 +29,8 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::PinTab,
     Action::UnpinTab,
     Action::ShowDownloads,
+    Action::ZoomIn,
+    Action::ZoomOut,
+    Action::ActualSize,
     Action::JumpToWaiting,
 ];
