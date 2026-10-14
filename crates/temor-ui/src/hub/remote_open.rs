@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use temor_core::host::master::OpenAs;
 use temor_core::notify::Focus;
 use temor_core::remote::HelperState;
+use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{ControlLayout, HostAlias};
 
@@ -100,6 +101,8 @@ impl Hub {
         match opened {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
+                // A pane on a host files for another computer: its paths mean nothing here.
+                session.set_site(PaneSite::Remote);
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }

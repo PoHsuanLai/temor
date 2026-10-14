@@ -21,6 +21,11 @@ impl Session {
         self.site = site;
     }
 
+    /// Whether the pane's shell runs on this computer or on another.
+    pub fn site(&self) -> PaneSite {
+        self.site
+    }
+
     /// Carries out a drop: the quoted paths are pasted, or the person is told why not.
     pub fn drop_files(&mut self, paths: &[PathBuf]) {
         let words: Vec<String> = paths

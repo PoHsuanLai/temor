@@ -7,6 +7,7 @@ use std::sync::Arc;
 use temor_core::host::consent::{ConsentIn, Who};
 use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
 use temor_core::notify::Focus;
+use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{
     Fingerprint, HostAlias, HostKey, HostName, KnownName, MasterProbe, prepare_control_dirs,
@@ -129,6 +130,8 @@ impl Hub {
                     true => Focus::Focused,
                     false => Focus::Unfocused,
                 });
+                // A pane on a host files for another computer: its paths mean nothing here.
+                session.set_site(PaneSite::Remote);
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }

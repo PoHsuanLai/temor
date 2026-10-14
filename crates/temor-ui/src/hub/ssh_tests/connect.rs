@@ -3,6 +3,7 @@
 
 use temor_core::host::consent::BootstrapAction;
 use temor_core::remote::Grant;
+use temor_core::shelf::PaneSite;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
 
@@ -352,4 +353,21 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
 
     rig.hub.act(WorkspaceIn::Focus(saved));
     rig.pump("the session once shown", |_| dir.join("session-1").exists());
+}
+
+#[test]
+fn a_new_host_pane_is_remote_from_its_first_frame() {
+    let Some(mut rig) = Rig::new("remote-site") else {
+        return;
+    };
+    rig.hub.open_host_named("fake");
+    let pane = rig.front();
+    rig.hub.answer_host(pane, Grant::Allowed);
+    rig.hub.answer_host(pane, Grant::Allowed);
+    let dir = rig.dir.clone();
+    rig.pump("the session to start", |_| dir.join("session-1").exists());
+    // No prompt or folder report has come, so no read of the pane's facts has been asked for.
+    let slot = rig.hub.slots.get(&pane).expect("the pane's slot");
+    let site = slot.borrow().session.as_ref().map(|s| s.site());
+    assert_eq!(site, Some(PaneSite::Remote));
 }
