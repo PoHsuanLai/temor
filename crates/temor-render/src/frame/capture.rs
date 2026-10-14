@@ -5,9 +5,11 @@ use temor_vt::{
     Underline,
 };
 
-use super::images::ImageCache;
-use super::model::{CellDraw, CellText, ImagePlacement, PaneFrame, TermColors};
+use super::images::{Collected, ImageCache};
+use super::model::{CellDraw, CellText, PaneFrame, TermColors};
+use super::placeholder::{PLACEHOLDER, PlaceholderCell};
 use super::update::Update;
+use super::virtual_images::VirtualScene;
 use crate::error::RenderError;
 
 /// One per terminal: libghostty's render state plus the kitty image copies.
@@ -37,7 +39,12 @@ impl FrameCapture {
         let Self { view, images } = self;
         let pending = view.begin(term)?;
         let images = images.collect(term);
-        Ok(CapturedFrame { pending, images })
+        let cell = term.cell_px();
+        Ok(CapturedFrame {
+            pending,
+            images,
+            cell: (cell.width.0, cell.height.0),
+        })
     }
 }
 
@@ -45,7 +52,9 @@ impl FrameCapture {
 #[derive(Debug)]
 pub struct CapturedFrame<'c> {
     pending: PendingFrame<'c>,
-    images: Vec<ImagePlacement>,
+    images: Collected,
+    /// One cell in pixels, as the terminal was told.
+    cell: (u32, u32),
 }
 
 impl CapturedFrame<'_> {
@@ -61,6 +70,7 @@ impl CapturedFrame<'_> {
         let cursor = f.cursor();
         let dirty = f.dirty();
         let mut rows = Vec::new();
+        let mut placeholders = Vec::new();
         if dirty != FrameDirty::Clean || resized {
             let filter = if dirty == FrameDirty::Full || resized {
                 RowFilter::All
@@ -69,14 +79,18 @@ impl CapturedFrame<'_> {
             };
             f.rows(filter, |row| {
                 let mut cells = Vec::new();
-                rows.push(
-                    row.cells(|c| {
-                        if let Some(cell) = drawable(c) {
-                            cells.push(cell);
-                        }
-                    })
-                    .map(|()| (row.row(), cells)),
-                );
+                let mut marks = Vec::new();
+                let read = row.cells(|c| {
+                    let (fg, underline) = (c.style.fg_ref, c.style.underline_ref);
+                    if let Some(mark) = PlaceholderCell::decode(c.col, c.text, fg, underline) {
+                        marks.push(mark);
+                    } else if let Some(cell) = drawable(c) {
+                        cells.push(cell);
+                    }
+                });
+                let at = row.row();
+                placeholders.push((at, marks));
+                rows.push(read.map(|()| (at, cells)));
             })?;
         }
         let update = Update {
@@ -87,7 +101,12 @@ impl CapturedFrame<'_> {
                 cursor: colors.cursor,
             },
             cursor,
-            images: self.images,
+            images: self.images.direct,
+            placeholders,
+            virtuals: VirtualScene {
+                targets: self.images.virtuals,
+                cell: self.cell,
+            },
         };
         // Not marking the frame drawn when a row failed keeps libghostty's dirty flags.
         frame.apply(update, rows)?;
@@ -96,19 +115,16 @@ impl CapturedFrame<'_> {
     }
 }
 
-/// Kitty's unicode placeholder: a cell that stands for part of an image placed virtually. The
-/// image is drawn by the placement, so the cell itself draws nothing.
-const KITTY_PLACEHOLDER: char = '\u{10EEEE}';
-
-/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders and blank
-/// narrow default cells. Blank wide cells are kept, so a cursor on one spans both columns.
+/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders (kept apart as
+/// [`PlaceholderCell`]) and blank narrow default cells. Blank wide cells are kept, so a cursor
+/// on one spans both columns.
 fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
     let span = match c.width {
         CellWidth::Narrow => 1,
         CellWidth::Wide => 2,
         CellWidth::SpacerTail | CellWidth::SpacerHead => return None,
     };
-    if c.text.starts_with(KITTY_PLACEHOLDER) {
+    if c.text.starts_with(PLACEHOLDER) {
         return None;
     }
     let text = CellText::new(c.text);

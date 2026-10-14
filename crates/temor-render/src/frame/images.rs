@@ -9,6 +9,7 @@ use temor_vt::{
     Visibility,
 };
 
+use super::is_virtualimages::VirtualTarget;
 use super::model::{ImagePixels, ImagePlacement};
 
 /// The layers in drawing order.
@@ -18,6 +19,15 @@ const LAYERS: [KittyLayer; 3] = [
     KittyLayer::AboveText,
 ];
 
+/// What one read of the placements found.
+#[derive(Debug, Default)]
+pub(crate) struct Collected {
+    /// Visible placements at a position.
+    pub direct: Vec<ImagePlacement>,
+    /// Placements (`U=1`) that appear where placeholder cells are.
+    pub virtuals: Vec<VirtualTarget>,
+}
+
 /// Premultiplied copies of kitty images, keyed by id and replaced when the generation moves.
 #[derive(Debug, Default)]
 pub(crate) struct ImageCache {
@@ -25,27 +35,39 @@ pub(crate) struct ImageCache {
 }
 
 impl ImageCache {
-    /// Every visible direct placement, by layer, in libghostty's order. Images no longer placed
-    /// are dropped from the cache.
-    pub fn collect(&mut self, term: &Terminal) -> Vec<ImagePlacement> {
+    /// Every visible direct placement, by layer, in libghostty's order, and every virtual one.
+    /// Images no longer placed are dropped from the cache.
+    pub fn collect(&mut self, term: &Terminal) -> Collected {
         let Some(kitty) = term.kitty() else {
             self.images.clear();
-            return Vec::new();
+            return Collected::default();
         };
-        let mut out = Vec::new();
+        let mut out = Collected::default();
         for layer in LAYERS {
             let Ok(placements) = kitty.placements(layer) else {
                 continue;
             };
             for p in placements {
-                if p.kind == PlacementKind::Virtual || p.render.visibility == Visibility::Hidden {
+                // Libghostty calls a virtual placement hidden: it has no position of its own.
+                let is_virtual = p.kind == PlacementKind::Virtual;
+                if !is_virtual && p.render.visibility == Visibility::Hidden {
                     continue;
                 }
                 let Some(image) = self.pixels(&p.image) else {
                     continue;
                 };
+                if is_virtual {
+                    out.virtuals.push(VirtualTarget {
+                        layer,
+                        image,
+                        placement: p.placement,
+                        cols: p.render.cols,
+                        rows: p.render.rows,
+                    });
+                    continue;
+                }
                 let r = p.render;
-                out.push(ImagePlacement {
+                out.direct.push(ImagePlacement {
                     layer,
                     image,
                     col: r.viewport_col,
@@ -57,8 +79,10 @@ impl ImageCache {
                 });
             }
         }
-        self.images
-            .retain(|id, _| out.iter().any(|p| p.image.id == *id));
+        self.images.retain(|id, _| {
+            out.direct.iter().any(|p| p.image.id == *id)
+                || out.virtuals.iter().any(|t| t.image.id == *id)
+        });
         out
     }
 
