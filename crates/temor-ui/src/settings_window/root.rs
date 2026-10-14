@@ -42,6 +42,7 @@ pub fn settings_root() -> Element {
 }
 
 #[component]
+#[allow(non_snake_case)]
 fn SettingsShell(follow: Follow) -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);

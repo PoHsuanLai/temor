@@ -51,6 +51,9 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         ("Super+Shift+T", Ran(Action::ReopenTab)),
         ("Super+Shift+U", Ran(Action::JumpToWaiting)),
         ("Super+Shift+L", Ran(Action::ToggleSidebar)),
+        // The standard Settings.
+        ("Super+,", Ran(Action::Settings)),
+        ("Ctrl+Shift+,", Ran(Action::Settings)),
         ("Super+1", Ran(Action::SelectTab(1))),
         ("Ctrl+Shift+9", Ran(Action::SelectTab(9))),
         // The system's Cancel; `route` decides whether a find bar is there to close.

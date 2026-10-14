@@ -24,6 +24,7 @@ type Sent = (SpaceId, SpaceChange);
 
 /// The page.
 #[component]
+#[allow(non_snake_case)]
 pub fn SpacesPage() -> Element {
     let board = use_hook(|| try_consume_context::<SpaceBoard>());
     let mut rows = use_signal({
@@ -56,17 +57,23 @@ pub fn SpacesPage() -> Element {
         };
     };
     let send = Callback::new(move |(space, change): Sent| board.send(SpaceEdit { space, change }));
-    rsx! {
-        Form {
-            for row in rows() {
-                SpaceSection { key: "{row.id.0}", row, onchange: send }
+    let sections: Vec<Element> = rows()
+        .into_iter()
+        .map(|row| {
+            let id = row.id.0;
+            rsx! {
+                SpaceSection { key: "{id}", row, onchange: send }
             }
-        }
+        })
+        .collect();
+    rsx! {
+        Form { {sections.into_iter()} }
     }
 }
 
 /// One Space.
 #[component]
+#[allow(non_snake_case)]
 fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
     let SpaceRow { id, name, project } = row;
     let change = move |change: SpaceChange| onchange.call((id, change));
@@ -165,6 +172,7 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>) -> Element {
 
 /// A row of one line of text, kept when the caret leaves or Return is pressed.
 #[component]
+#[allow(non_snake_case)]
 fn SpaceText(
     #[props(into)] label: String,
     #[props(into)] help: String,
@@ -197,6 +205,7 @@ fn SpaceText(
 
 /// One route: its pattern, a warning when it is empty or matches everything, and Remove.
 #[component]
+#[allow(non_snake_case)]
 fn RouteRow(pattern: String, onedit: EventHandler<String>, onremove: EventHandler<()>) -> Element {
     let mut typed = use_signal({
         let pattern = pattern.clone();
@@ -229,6 +238,7 @@ fn RouteRow(pattern: String, onedit: EventHandler<String>, onremove: EventHandle
 
 /// The row that adds a route.
 #[component]
+#[allow(non_snake_case)]
 fn AddRoute(onadd: EventHandler<String>) -> Element {
     let mut draft = use_signal(String::new);
     let add = Callback::new(move |text: String| {

@@ -30,6 +30,7 @@ fn value_at(values: &toml::Value, key: &KeySpec) -> toml::Value {
 /// One page of the schema: `pane` is General or Appearance. The document is the window's
 /// (`root`), shown from the file and replaced by what a save leaves there.
 #[component]
+#[allow(non_snake_case)]
 pub fn SchemaPage(pane: SettingsPane) -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let mut doc = use_context::<Signal<TerminalDoc>>();

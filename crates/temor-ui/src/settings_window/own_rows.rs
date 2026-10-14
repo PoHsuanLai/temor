@@ -81,6 +81,7 @@ pub fn without_entry(mut entries: Vec<String>, at: usize) -> Vec<String> {
 /// A row for `spec`, by its kind. `value` is what the file holds; `onsay` hears why a value was
 /// not taken before it reached the file.
 #[component]
+#[allow(non_snake_case)]
 pub fn OwnRow(
     spec: KeySpec,
     value: toml::Value,
@@ -107,6 +108,7 @@ fn heading(spec: &KeySpec) -> (TextLine, Option<TextLine>) {
 }
 
 #[component]
+#[allow(non_snake_case)]
 fn TextRow(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>) -> Element {
     let (label, help) = heading(&spec);
     let stored = value.as_str().unwrap_or_default().to_owned();
@@ -132,6 +134,7 @@ fn TextRow(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>)
 }
 
 #[component]
+#[allow(non_snake_case)]
 fn NumberRow(
     spec: KeySpec,
     value: toml::Value,
@@ -172,9 +175,11 @@ fn NumberRow(
 }
 
 #[component]
+#[allow(non_snake_case)]
 fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>) -> Element {
     let (label, help) = heading(&spec);
     let entries = entries_of(&value);
+    let head = label.clone();
     let mut draft = use_signal(String::new);
     let path = spec.path.clone();
     let add = Callback::new({
@@ -204,7 +209,7 @@ fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>
             FieldRow {
                 key: "{at}-{entry}",
                 label: TextLine::from(entry.clone()),
-                help: (at == 0).then(|| label.clone()),
+                help: (at == 0).then(|| head.clone()),
                 Button {
                     label: "Remove".to_owned(),
                     title: Some("Take this off the list".to_owned()),

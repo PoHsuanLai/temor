@@ -23,6 +23,7 @@ fn icon(page: SettingsPane) -> Icon {
 
 /// The sidebar of pages beside the page `page` names; a click on a page turns to it.
 #[component]
+#[allow(non_snake_case)]
 pub fn SettingsView(page: Signal<SettingsPane>) -> Element {
     let shown = page();
     let go = move |to: SettingsPane| {

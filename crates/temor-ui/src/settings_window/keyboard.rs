@@ -31,6 +31,7 @@ pub fn row_name(action: Action) -> String {
 
 /// The page.
 #[component]
+#[allow(non_snake_case)]
 pub fn KeyboardPage() -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let platform = launch.keymap.platform();
@@ -108,6 +109,7 @@ pub fn KeyboardPage() -> Element {
 
 /// One action: its name, its shortcut in a recorder, and Reset when the person changed it.
 #[component]
+#[allow(non_snake_case)]
 fn KeyRow(
     action: Action,
     value: Option<Chord>,
