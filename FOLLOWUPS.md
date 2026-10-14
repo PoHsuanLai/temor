@@ -1460,3 +1460,6 @@ the bar runs the sidebar action through the desk.
   the bare outline prompt `>_`, as Warp's tabs do (Warp's own terminal icon is the prompt with no
   box), not quire's solid boxed terminal. Lucide's `terminal` (ISC, NOTICE) as a symbolic mask,
   `view/tab_glyph.rs`.
+
+## Colours: Apple 2025 palette (owner, 2026-10-15)
+Owner picked: ANSI dark = Apple increased-contrast dark hues (normal 8E8E93 FF6165 4AD968 FEDF43 5CB8FF EA8DFF 3BDDEC D1D1D6, brights 30% toward white); light from Apple's increased-contrast light set; accent follows the system, normal value for fills, increased-contrast value for text-like uses (cursor, links, chip text); state colours: done green, waiting orange, error red, git indigo, folder secondary label, Space dots from Apple's 12 hues. Asked Whopper for the quire ds-style PR (accent_table.rs, terminal.rs, status tokens). temor uses the tokens after the next re-pin. Preview: https://claude.ai/artifact/Awot7u7G8teHqa1kTa5jLj
