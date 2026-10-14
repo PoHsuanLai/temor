@@ -6,9 +6,7 @@ use super::colors::{CellColors, UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle};
 use super::model::{Premul, Quad, QuadPaint, RowScene};
 use crate::bands::{RowBand, RowBox, RowWeight, look_of, push_quads};
-use crate::font::{
-    BUILD_ATTEMPTS, Decoration, FaceStyle, GlyphCache, GlyphKind, RunGlyph, Slant, Weight,
-};
+use crate::font::{Decoration, FaceStyle, GlyphCache, GlyphKind, RunGlyph, Slant, Weight};
 use crate::frame::{CellDraw, TermColors};
 use crate::metrics::{CellMetrics, CellPos};
 use crate::palette::Palette;
@@ -29,26 +27,6 @@ pub(crate) struct SceneInput<'a> {
     /// The pane's width and the stripe's, in device pixels.
     pub pane_width: u32,
     pub stripe_width: u32,
-}
-
-/// Builds `row` until the glyph atlases do not clear while it is built, so every quad points at
-/// texels that are still there. Returns `false` when they keep clearing; the caller then drops
-/// the frame.
-pub(crate) fn build_row_settled(
-    input: &SceneInput<'_>,
-    row: Row,
-    cells: &[CellDraw],
-    glyphs: &mut GlyphCache,
-    out: &mut RowScene,
-) -> bool {
-    for _ in 0..BUILD_ATTEMPTS {
-        let epoch = glyphs.epoch();
-        build_row(input, row, cells, glyphs, out);
-        if glyphs.epoch() == epoch {
-            return true;
-        }
-    }
-    false
 }
 
 /// Builds `row`'s quads into `out` (cleared first).

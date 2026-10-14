@@ -2,6 +2,7 @@
 //! buffer the size of the pane, with the changed bands reported for partial uploads.
 
 mod compose;
+mod overhang;
 mod pixels;
 mod renderer;
 
