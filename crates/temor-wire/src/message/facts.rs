@@ -18,6 +18,10 @@ pub struct FolderFacts {
     /// The folder's `.venv`, when it has one.
     #[serde(default)]
     pub venv: Option<RemotePath>,
+    /// The helper's home folder, so a chip can write `dir` as `~/...`. Left out by a helper that
+    /// does not say; then the chip for the folder stays hidden.
+    #[serde(default)]
+    pub home: Option<RemotePath>,
     /// The folder that holds `.git`, when the walk up from `dir` reached one.
     #[serde(default)]
     pub root: Option<RemotePath>,

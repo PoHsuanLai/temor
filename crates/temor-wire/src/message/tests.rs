@@ -213,6 +213,7 @@ fn reply_samples() -> Vec<Reply> {
             dir: path(),
             git: None,
             venv: None,
+            home: None,
             root: None,
             folders: vec![],
         }),
