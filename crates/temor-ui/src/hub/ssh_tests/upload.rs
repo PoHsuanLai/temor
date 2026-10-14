@@ -30,7 +30,7 @@ fn the_shelf_row_of_an_upload_moves_as_parts_arrive() {
             sent: Bytes(sent),
         });
         assert!(said.is_empty(), "progress tells the person nothing");
-        seen.push(rig.hub.uploads()[0].sent.0);
+        seen.push(rig.hub.shelf.uploads.items()[0].sent.0);
     }
     assert_eq!(seen, [4_000_000, 8_000_000]);
 }
