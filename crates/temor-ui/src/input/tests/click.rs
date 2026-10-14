@@ -8,7 +8,7 @@ use temor_pane::text::CellPos;
 use temor_vt::Ime;
 
 use super::super::click::{Click, MULTI_CLICK, next_click};
-use super::super::keys::stroke;
+use super::super::keys::{page_zoom, stroke};
 
 #[test]
 fn quick_presses_at_one_cell_count_up_then_wrap() {
@@ -45,4 +45,34 @@ fn an_unidentified_key_is_not_sent_as_a_space() {
         unshifted: None,
     };
     assert!(stroke(&raw, Ime::Idle).is_none());
+}
+
+/// Ctrl or Super with `=`, `-` or `0` is the page's zoom and not the program's; with Shift it is
+/// the program's (Ctrl+_ is undo), and a plain `0` is typed.
+#[test]
+fn the_zoom_keys_are_the_pages_but_not_with_shift() {
+    let key = |code: Code, modifiers: Held| RawKey {
+        phase: KeyPhase::Press,
+        key: Key::Unidentified,
+        code,
+        modifiers,
+        location: Location::Standard,
+        text: None,
+        unshifted: None,
+    };
+    for (code, modifiers, zooms) in [
+        (Code::Equal, Held::CONTROL, true),
+        (Code::Minus, Held::CONTROL, true),
+        (Code::Digit0, Held::CONTROL, true),
+        (Code::Digit0, Held::SUPER, true),
+        (Code::Minus, Held::CONTROL | Held::SHIFT, false),
+        (Code::Digit0, Held::empty(), false),
+        (Code::Digit1, Held::CONTROL, false),
+    ] {
+        assert_eq!(
+            page_zoom(&key(code, modifiers)),
+            zooms,
+            "{code:?} {modifiers:?}"
+        );
+    }
 }

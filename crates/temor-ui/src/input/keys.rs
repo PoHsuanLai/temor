@@ -39,15 +39,18 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
     })
 }
 
-/// Whether the window zooms the page on this key: blitz-shell takes Ctrl or Super with the `=`,
-/// `-` and `0` keys (by physical key, whatever else is held) for its zoom, so the program does
-/// not get them as well. Ghostty, Kitty and Alacritty keep the same keys for their text size.
+/// Whether the window zooms the page on this key and the program should not get it as well:
+/// blitz-shell takes Ctrl or Super with the `=`, `-` and `0` keys for its zoom, as Ghostty, Kitty
+/// and Alacritty take them for their text size. With Shift the key is the program's all the same
+/// (Ctrl+_ is readline's and Emacs's undo), though blitz-shell zooms on it too.
 pub fn page_zoom(raw: &RawKey) -> bool {
     let held = raw.modifiers;
     let primary = held.contains(HeldMods::CONTROL)
         || held.contains(HeldMods::SUPER)
         || held.contains(HeldMods::META);
-    primary && matches!(raw.code, Code::Equal | Code::Minus | Code::Digit0)
+    primary
+        && !held.contains(HeldMods::SHIFT)
+        && matches!(raw.code, Code::Equal | Code::Minus | Code::Digit0)
 }
 
 /// A character lowercased, kept as it is when it has no single lowercase form.

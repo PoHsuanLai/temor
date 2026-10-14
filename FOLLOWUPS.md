@@ -1215,9 +1215,15 @@ sections above are the lanes' own notes; this list is the one to read.
 - quire PR #19 (ds-blitz: the host's scale is the page's, window factor times zoom): once
   merged, bump the quire pin to it. Until then a zoomed page draws the terminal at 1x (centred
   with a gap zoomed in, cut off zoomed out). Checked on the private display against the branch.
-- Blitz's page zoom takes every Ctrl or Super chord on `=`, `-` and `0`, so temor's Equalize
-  (Ctrl+Shift+Alt+0 here, Cmd+Ctrl+= on macOS) also zooms or resets the page. Wants a way to
-  turn blitz-shell's zoom keys off and own zoom in the app, or another Equalize chord.
+- blitz-shell hard-wires keys before the app hears them (in the fork and in DioxusLabs main):
+  Ctrl or Super with `=`, `-`, `0` whatever else is held zooms the page, and Alt+D, Alt+H and
+  Alt+T switch on its layout overlay, hover highlight and a layout dump to stdout. In temor that
+  means Equalize (Ctrl+Shift+Alt+0 here, Cmd+Ctrl+= on macOS) also zooms, Ctrl+_ (undo) zooms
+  out as well as undoing, and readline's Alt+D and Alt+T also draw debug boxes over the window
+  (seen on the private display). Proposed fix, upstream first: blitz-shell gets an option to
+  leave its built-in keys off; ds-blitz turns them off and offers zoom as a window request;
+  chordkit gets standard Zoom In, Zoom Out and Actual Size; temor binds those like any other
+  action and drops its `page_zoom` key filter.
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)
 - chordkit: a fallback where the default collides. (Keys on chordkit)
