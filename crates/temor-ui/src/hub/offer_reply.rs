@@ -82,7 +82,7 @@ impl Hub {
     /// Takes `program` off the list, now and in the settings file.
     fn offer_never(&mut self, program: &Program) -> Option<String> {
         self.offer.list.remove(program);
-        remember_never(&self.offer.settings_path, program)
+        remember_never(&self.offer.settings, program)
             .err()
             .map(|_| "Could not save this choice.".to_owned())
     }

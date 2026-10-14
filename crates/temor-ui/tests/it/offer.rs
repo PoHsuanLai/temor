@@ -136,7 +136,11 @@ fn never_for_the_program_is_kept_in_the_settings_file() {
 
     press(&mut h, ".ds-inline-banner .ds-button:last-of-type");
     assert!(!h.html().contains(QUESTION));
-    let settings = scratch_path(name).join("home/config/terminal.conf");
+    // The test's config folder is not called temor, so the file is in a temor folder inside it.
+    let settings = scratch_path(name).join("home/config/temor/settings.toml");
     let text = std::fs::read_to_string(&settings).expect("the choice is written");
-    assert_eq!(text, "offer.remove = ssh\n");
+    let table: toml::Table = text.parse().expect("a settings file");
+    let remove = table["offer"]["remove"].as_array().expect("the list");
+    assert_eq!(remove.len(), 1);
+    assert_eq!(remove[0].as_str(), Some("ssh"));
 }

@@ -8,7 +8,8 @@ use std::process::ExitCode;
 
 use temor_desktop::{DesktopEnv, Request};
 use temor_ui::app::desktop::{Joined, join};
-use temor_ui::edge::{Ambient, load_keymap, load_settings, resolve_state_dir};
+use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
+use temor_ui::settings::{load_settings, write_schema};
 use temor_ui::{AppearanceSource, Launch, LauncherChoice, SESSION_LEADER_ARG};
 
 fn main() -> ExitCode {
@@ -18,6 +19,9 @@ fn main() -> ExitCode {
         let error = temor_pty::run_session_leader(args.into_iter().skip(2));
         eprintln!("temor: {error}");
         return ExitCode::from(127);
+    }
+    if let Some(code) = write_schema_flag(&args) {
+        return code;
     }
     if let Some(code) = cli::dispatch(&args) {
         return code;
@@ -56,19 +60,22 @@ fn main() -> ExitCode {
         eprintln!("temor: there is no home directory to start in");
         return ExitCode::FAILURE;
     };
-    let parsed = match load_settings(&ambient.settings_path()) {
-        Ok(parsed) => parsed,
+    let loaded = match load_settings(&ambient) {
+        Ok(loaded) => loaded,
         Err(err) => {
             eprintln!("temor: {err}");
             return ExitCode::FAILURE;
         }
     };
+    for note in &loaded.notes {
+        eprintln!("temor: {note}");
+    }
     // The keys: the desktop's conventions, then the person's changes, then temor's own actions.
-    let (keymap, key_issues) = load_keymap(&parsed.settings.keys, &ambient);
-    for (line, issue) in parsed.issues.iter().chain(&key_issues) {
+    let (keymap, key_issues) = load_keymap(&loaded.settings.keys, &ambient);
+    for (line, issue) in &key_issues {
         match *line {
             0 => eprintln!("temor: keys: {issue}"),
-            line => eprintln!("temor: settings line {line}: {issue}"),
+            line => eprintln!("temor: keys.conf line {line}: {issue}"),
         }
     }
     // The session file and its snapshots live under the XDG state home (a relative value is not used).
@@ -79,7 +86,7 @@ fn main() -> ExitCode {
     let launched = temor_ui::app::run_with(
         Launch {
             ambient,
-            settings: parsed.settings,
+            settings: loaded.settings,
             keymap,
             launcher: LauncherChoice::ThisProgram,
             appearance: AppearanceSource::desktop(),
@@ -95,4 +102,26 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// `temor --write-schema <dir>`: writes `temor.settings.toml`, the schema a Settings page draws
+/// temor's settings from, into `dir` and ends. `None` for any other command line.
+fn write_schema_flag(args: &[OsString]) -> Option<ExitCode> {
+    if args.get(1)? != "--write-schema" {
+        return None;
+    }
+    let written = match args {
+        [_, _, dir] => write_schema(std::path::Path::new(dir)),
+        _ => Err("--write-schema takes one folder to write the schema into".to_owned()),
+    };
+    Some(match written {
+        Ok(said) => {
+            print!("{said}");
+            ExitCode::SUCCESS
+        }
+        Err(message) => {
+            eprintln!("temor: {message}");
+            ExitCode::FAILURE
+        }
+    })
 }

@@ -6,11 +6,11 @@
 
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::path::PathBuf;
 use std::time::Duration;
 
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
+use ds_settings::Store;
 use temor_core::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
 };
@@ -72,7 +72,8 @@ pub(super) struct OfferHub {
     /// A hash of each probed pane's whole screen at the last tick: the integration is typed
     /// once the shell's next prompt is on a screen that did not change between two ticks.
     pub(super) screens: BTreeMap<PaneId, u64>,
-    pub(super) settings_path: PathBuf,
+    /// Where the "never for" choice is kept (`settings.toml`).
+    pub(super) settings: Store,
 }
 
 impl OfferHub {
@@ -83,7 +84,7 @@ impl OfferHub {
             lines: BTreeMap::new(),
             shells: BTreeMap::new(),
             screens: BTreeMap::new(),
-            settings_path: launch.ambient.settings_path(),
+            settings: launch.ambient.settings_store(),
         }
     }
 }

@@ -56,7 +56,7 @@ pub use agent_socket::SocketHost;
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
 pub use keymap::{keymap_for, load_keymap};
-pub use keymap_source::{SharedSource, SystemKeys};
+pub use keymap_source::{LOOK_EVERY, SharedSource, SystemKeys, watch_file};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{
@@ -64,7 +64,7 @@ pub use session_file::{
     load_for as load_session_for, load_hosts, remove_for as remove_session_for, resolve_state_dir,
     save as save_session, save_for as save_session_for, save_with_hosts,
 };
-pub use settings_file::{ThemeChoice, load_settings, read_theme_choice, theme_choice};
+pub use settings_file::{ThemeChoice, read_theme_choice, theme_choice};
 pub use space_start::{CredentialFault, CredentialSource, Credentials, NoCredentials};
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
 pub use ssh_env::{ArcRunner, SshEnv};

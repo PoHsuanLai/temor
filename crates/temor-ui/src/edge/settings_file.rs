@@ -1,20 +1,7 @@
-//! Reads the settings file. A missing file means the defaults; a file that cannot be read is an
-//! error the window shows. Bad lines are kept as issues and the rest of the file applies.
+//! Reads the theme choice from quire's `appearance.toml`. (temor's own settings load in
+//! `crate::settings`.)
 
 use std::path::Path;
-
-use temor_pane::settings::{ParsedSettings, parse_settings};
-
-use crate::error::UiError;
-
-/// The settings at `path`, over the defaults.
-pub fn load_settings(path: &Path) -> Result<ParsedSettings, UiError> {
-    match std::fs::read_to_string(path) {
-        Ok(text) => Ok(parse_settings(&text)),
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(parse_settings("")),
-        Err(source) => Err(UiError::SettingsRead(source)),
-    }
-}
 
 /// Whether the person has chosen a theme in `appearance.toml`. Quire's typed file cannot say: a
 /// missing `theme` and `theme = "system"` both read as "follow the desktop".
