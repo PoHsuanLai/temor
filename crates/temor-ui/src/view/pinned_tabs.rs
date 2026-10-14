@@ -12,12 +12,13 @@ use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::host::measure::use_rect;
-use ds::prelude::{Icon, IconSize, IconSource, IconView, Selection, Shown};
+use ds::prelude::{IconSize, IconView, Selection, Shown};
 use temor_core::presence::companion_presence;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
+use super::tab_glyph::prompt_glyph;
 use crate::hub::{Desk, TabRow, Unread};
 
 /// The pinned tabs' tiles.
@@ -46,7 +47,7 @@ fn PinTile(row: TabRow, desk: Desk) -> Element {
     };
     let face = match companion_presence(row.agent) {
         CompanionPresence::Idle => rsx! {
-            IconView { source: IconSource::Glyph(Icon::Terminal), size: IconSize::Large }
+            IconView { source: prompt_glyph(IconSize::Large), size: IconSize::Large }
         },
         presence => rsx! {
             CompanionOrb { presence, size: OrbSize::Inline }

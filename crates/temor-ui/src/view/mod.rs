@@ -50,6 +50,7 @@ pub mod space_handle;
 pub mod space_ui;
 pub mod split_row;
 pub mod status;
+pub mod tab_glyph;
 pub mod tab_row;
 pub mod tab_sidebar;
 pub mod theme;

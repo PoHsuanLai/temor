@@ -10,6 +10,7 @@ use temor_core::workspace::WorkspaceIn;
 
 use super::dnd::{Click, Dnd, is_primary, point_of};
 use super::row_tip::RowTip;
+use super::tab_glyph::prompt_glyph;
 use crate::hub::{Desk, DragKey, Tile};
 
 /// The glyph's size in a segment: the row's own leading size.
@@ -72,7 +73,7 @@ fn segment(tile: Tile, desk: Desk, dnd: Dnd) -> Element {
                         }
                     },
                     span { class: "temor-seg-glyph",
-                        IconView { source: IconSource::Glyph(Icon::Terminal), size: GLYPH }
+                        IconView { source: prompt_glyph(GLYPH), size: GLYPH }
                     }
                     span { class: "temor-seg-name ds-mono", "{tile.title}" }
                     span {

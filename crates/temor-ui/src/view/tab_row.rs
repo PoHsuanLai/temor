@@ -22,6 +22,7 @@ use super::dnd::{Click, Dnd, is_primary, point_of};
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
+use super::tab_glyph::prompt_glyph;
 use crate::hub::{Desk, DragKey, TabRow, Unread};
 
 /// The row for one tab.
@@ -53,11 +54,11 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         Unread::Unread => Emphasis::Strong,
         Unread::Seen => Emphasis::Plain,
     };
-    // A terminal glyph leads the row, or the companion's orb while an agent works or waits (a
+    // The prompt glyph leads the row, or the companion's orb while an agent works or waits (a
     // press on it is a press on the row); the news dot trails it. The words
     // are the row's own title and detail, so their sizes are quire's (13 and 11.5).
     let leading = match companion_presence(row.agent) {
-        CompanionPresence::Idle => RowLeading::Icon(Icon::Terminal),
+        CompanionPresence::Idle => RowLeading::Source(prompt_glyph(IconSize::Small)),
         presence => RowLeading::Element(rsx! {
             CompanionOrb { presence, size: OrbSize::Inline }
         }),
