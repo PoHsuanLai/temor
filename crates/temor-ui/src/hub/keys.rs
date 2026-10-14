@@ -61,6 +61,8 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::PinTab
         | Action::UnpinTab
         | Action::ShowDownloads
+        | Action::Settings
+        | Action::SettingsAt(_)
         | Action::ZoomIn
         | Action::ZoomOut
         | Action::ActualSize

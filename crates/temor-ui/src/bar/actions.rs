@@ -4,7 +4,7 @@
 //! The ones that need the keyboard for themselves (open the bar, Copy, Paste, the find stepping
 //! and the numbered tab and Space jumps) are left out.
 
-use temor_pane::keys::Action;
+use temor_pane::keys::{Action, SettingsPane};
 
 /// The actions the bar lists, in the order they show when they match equally.
 pub const BAR_ACTIONS: &[Action] = &[
@@ -33,4 +33,8 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::ZoomOut,
     Action::ActualSize,
     Action::JumpToWaiting,
+    Action::Settings,
+    Action::SettingsAt(SettingsPane::Appearance),
+    Action::SettingsAt(SettingsPane::Keyboard),
+    Action::SettingsAt(SettingsPane::Spaces),
 ];

@@ -123,6 +123,8 @@ impl Session {
             | Action::PinTab
             | Action::UnpinTab
             | Action::ShowDownloads
+            | Action::Settings
+            | Action::SettingsAt(_)
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ActualSize
