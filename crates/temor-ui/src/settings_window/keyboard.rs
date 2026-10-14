@@ -8,6 +8,7 @@ use chordkit::Chord;
 use dioxus::prelude::*;
 use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
+use ds::root::common::Common;
 use temor_pane::keys::{Action, bindable};
 
 use super::keys_edit::{KeyChange, Mine, change_keys, load_view};
@@ -92,6 +93,10 @@ pub fn KeyboardPage() -> Element {
                     Button {
                         label: "Reset All".to_owned(),
                         title: Some("Put every shortcut back as it came".to_owned()),
+                        common: Common {
+                            aria_label: Some("Reset every shortcut".to_owned()),
+                            ..Common::default()
+                        },
                         availability: if any_changed { Availability::Enabled } else { Availability::Disabled },
                         onclick: move |_| change.call((None, KeyChange::ResetAll)),
                     }
@@ -131,6 +136,10 @@ fn KeyRow(
                 Button {
                     label: "Reset".to_owned(),
                     title: Some(format!("Put {name} back as it came")),
+                    common: Common {
+                        aria_label: Some(format!("Reset {name}")),
+                        ..Common::default()
+                    },
                     onclick: move |_| onchange.call((Some(action), KeyChange::Reset(action))),
                 }
             }

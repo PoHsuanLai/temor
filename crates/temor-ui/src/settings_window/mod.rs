@@ -39,3 +39,4 @@ pub use open::{
 pub use pages::page_of;
 pub use root::{settings_root, settings_window};
 pub use space_edit::{SpaceChange, route_warning};
+pub use style::SETTINGS_CSS;

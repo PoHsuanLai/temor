@@ -19,6 +19,7 @@ mod persist;
 mod remote;
 mod resizing;
 mod session;
+mod settings;
 mod shelf;
 mod sidebar;
 mod size_audit;

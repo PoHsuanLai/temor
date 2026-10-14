@@ -10,6 +10,7 @@ use temor_pane::keys::Action;
 
 use super::edit::{applied, current, save_edit};
 use super::keys_edit::{KeyChange, Mine, change_keys, changed_text, load_view};
+use super::open::raise;
 use crate::edge::{Ambient, keymap_for};
 use crate::error::UiError;
 use crate::settings::TerminalDoc;
@@ -151,4 +152,12 @@ fn keys_conf_is_written_and_read_back_as_the_keymap_the_panes_will_build() {
 
     let cleared = change_keys(&ambient, platform, KeyChange::ResetAll).expect("reset all");
     assert!(cleared.changed.entries().is_empty());
+}
+
+#[test]
+fn a_window_that_is_opening_or_open_is_raised_and_a_closed_one_is_opened_again() {
+    use ds_blitz::WindowLife::{Closed, Open, Opening};
+    for (life, raised) in [(Opening, true), (Open, true), (Closed, false)] {
+        assert_eq!(raise(life), raised, "{life:?}");
+    }
 }

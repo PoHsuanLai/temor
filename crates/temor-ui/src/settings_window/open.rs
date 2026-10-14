@@ -111,7 +111,7 @@ fn ask(at: Option<SettingsPane>) {
 }
 
 /// Whether a window opened earlier is one to raise rather than open again.
-fn raise(life: WindowLife) -> bool {
+pub(super) fn raise(life: WindowLife) -> bool {
     matches!(life, WindowLife::Opening | WindowLife::Open)
 }
 
