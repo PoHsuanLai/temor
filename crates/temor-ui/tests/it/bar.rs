@@ -174,6 +174,56 @@ fn the_bar_lists_window_actions_under_headers_and_runs_them() {
     assert_eq!(panes(&h), 2, "Split right split the pane");
 }
 
+/// The bar pins the tab in front and lets it go again, and opens Downloads: what the sidebar
+/// shows without a button of its own is still a few keys away.
+#[test]
+fn the_bar_pins_the_tab_and_opens_downloads() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("bar-pin", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    click_pane(&mut h);
+    let tiles = |h: &Harness| h.html().matches("class=\"temor-pin\"").count();
+    let listed = |h: &mut Harness, typed: &str| {
+        chord(h, 't');
+        for c in typed.chars() {
+            h.send(Input::key(match c {
+                ' ' => ShortcutKey::Space,
+                c => ShortcutKey::Char(c),
+            }));
+        }
+        h.advance(Duration::from_millis(300));
+        h.text_of(".ds-palette").unwrap_or_default()
+    };
+
+    let rows = listed(&mut h, "pin tab");
+    assert!(
+        rows.contains("Pin tab") && !rows.contains("Unpin tab"),
+        "{rows}"
+    );
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(tiles(&h), 1, "pinned:\n{}", h.html());
+
+    let rows = listed(&mut h, "unpin");
+    assert!(rows.contains("Unpin tab"), "{rows}");
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(tiles(&h), 0, "let go:\n{}", h.html());
+
+    let rows = listed(&mut h, "downloads");
+    assert!(rows.contains("Downloads"), "{rows}");
+    h.send(Input::key(ShortcutKey::Enter));
+    h.advance(Duration::from_millis(400));
+    assert!(
+        h.html().contains("class=\"temor-dl-list\""),
+        "the Downloads list is open:\n{}",
+        h.html()
+    );
+}
+
 /// The quick terminal hides without ending its shell: the variable set before the hide is still
 /// there after the show, which a new shell would not have.
 #[test]

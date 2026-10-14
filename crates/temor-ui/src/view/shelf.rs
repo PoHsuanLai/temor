@@ -1,6 +1,6 @@
-//! The downloads shelf in the sidebar's foot (PLAN §7, §9), as mailo's is: a button at the foot's
-//! start, with a dot while a file arrives or one arrived unopened, that opens the files that
-//! arrived, newest first, in a popover above it. Each row opens its file on a press, and offers to show it in the
+//! The downloads shelf in the sidebar's head (PLAN §7, §9), as mailo's is: a button at the head's
+//! right end, with a dot while a file arrives or one arrived unopened, that opens the files that
+//! arrived, newest first, in a popover below it. The command bar's Downloads opens it too. Each row opens its file on a press, and offers to show it in the
 //! folder, to jump back to its tab, and to take it off the list (the file stays). A file that is
 //! still arriving shows a bar.
 
@@ -22,14 +22,14 @@ use temor_core::shelf::{
 
 use crate::hub::Desk;
 
-/// The Downloads button for the foot of the sidebar, and its list while it is open.
+/// The Downloads button for the head of the sidebar, and its list while it is open.
 #[component]
 #[allow(non_snake_case)]
-pub fn ShelfFoot(desk: Desk) -> Element {
+pub fn ShelfButton(desk: Desk) -> Element {
     let _ = (desk.ui)();
     let view = desk.hub.shelf_view();
     let uploads = desk.hub.uploads();
-    let mut shown = use_signal(|| Shown::Hidden);
+    let mut shown = desk.shelf;
     let mut hold = use_signal(|| None::<MountedRef>);
     let going = !uploads.is_empty()
         || view
@@ -65,7 +65,7 @@ pub fn ShelfFoot(desk: Desk) -> Element {
             if shown() == Shown::Visible {
                 Popover {
                     anchor,
-                    placement: Placement::new(Side::Top, Align::Start),
+                    placement: Placement::new(Side::Bottom, Align::End),
                     gap: Px(6.0),
                     arrow: Arrow::None,
                     common: Common { aria_label: Some("Downloads".to_owned()), ..Common::default() },

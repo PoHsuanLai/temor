@@ -50,10 +50,14 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         | Action::PreviousBookmark
         | Action::NextBookmark
         | Action::ReinputCommands
-        // The window's own: the radar jumps (`Hub::jump_to_waiting`), and the Space switch goes
-        // through the kit (`Desk::select_space`).
+        // The window's own: the radar jumps (`Hub::jump_to_waiting`), the Space switch goes
+        // through the kit (`Desk::select_space`), and pinning asks which tab is in front
+        // (`Hub::pin_input`).
         | Action::JumpToWaiting
         | Action::ToggleSidebar
+        | Action::PinTab
+        | Action::UnpinTab
+        | Action::ShowDownloads
         | Action::SelectSpace(_) => return None,
     })
 }

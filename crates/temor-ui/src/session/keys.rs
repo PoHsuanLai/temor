@@ -120,6 +120,9 @@ impl Session {
             | Action::ReopenTab
             | Action::JumpToWaiting
             | Action::ToggleSidebar
+            | Action::PinTab
+            | Action::UnpinTab
+            | Action::ShowDownloads
             | Action::SelectTab(_)
             | Action::SelectSpace(_) => {
                 self.asked = Some(action);

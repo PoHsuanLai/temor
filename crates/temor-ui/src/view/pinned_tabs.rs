@@ -104,6 +104,7 @@ fn PinTile(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                 tab: id,
                 at,
                 pin: PinAct::Unpin,
+                close: None,
                 desk: desk.clone(),
                 onclose: move |()| menu.set(Shown::Hidden),
             }

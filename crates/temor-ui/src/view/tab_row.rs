@@ -16,6 +16,7 @@ use ds::components::overlays::drag_ghost::DropLine;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use temor_core::presence::companion_presence;
+use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::{Click, Dnd, is_primary, point_of};
@@ -32,6 +33,8 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let id = row.id;
     let rect = use_rect();
     let mut menu = use_signal(|| Shown::Hidden);
+    // The pane whose segment was right-clicked: the menu offers to close it.
+    let mut menu_pane = use_signal(|| None::<PaneId>);
     // The drag finds the row under the pointer from where the rows are.
     if let Some(at) = rect.rect() {
         dnd.rects.set(id, at);
@@ -81,7 +84,19 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         false => (
             RowLeading::None,
             Some(rsx! {
-                SplitSegments { tiles: row.tiles.clone(), desk: desk.clone(), dnd: dnd.clone() }
+                SplitSegments {
+                    tiles: row.tiles.clone(),
+                    desk: desk.clone(),
+                    dnd: dnd.clone(),
+                    onmenu: {
+                        let desk = desk.clone();
+                        move |pane: PaneId| {
+                            desk.agent_menu_opened(id);
+                            menu_pane.set(Some(pane));
+                            menu.set(Shown::Visible);
+                        }
+                    },
+                }
             }),
         ),
     };
@@ -94,8 +109,12 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                 tab: id,
                 at,
                 pin: PinAct::Pin,
+                close: menu_pane(),
                 desk: desk.clone(),
-                onclose: move |()| menu.set(Shown::Hidden),
+                onclose: move |()| {
+                    menu.set(Shown::Hidden);
+                    menu_pane.set(None);
+                },
             }
         }
     };

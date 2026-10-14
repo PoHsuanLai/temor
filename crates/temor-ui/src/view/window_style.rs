@@ -43,11 +43,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-seg[data-selected] { color: var(--ink); }\
 .temor-seg-glyph { display: flex; flex: none; }\
 .temor-seg-name { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }\
-.temor-seg-close { display: flex; flex: none; align-items: center; justify-content: center; width: var(--s-16); height: var(--s-16); border-radius: var(--r-micro); color: var(--ink-faint); visibility: hidden; }\
-.temor-seg:hover .temor-seg-close, [*|aria-selected=\"true\"] .temor-seg-close { visibility: visible; }\
-.temor-seg-close:hover { color: var(--ink); background: var(--fill-quaternary); }\
 .temor-seg-slot[*|data-glyph=true] { flex: none; }\
-.temor-seg-slot[*|data-glyph=true] .temor-seg-name, .temor-seg-slot[*|data-glyph=true] .temor-seg-close { display: none; }\
+.temor-seg-slot[*|data-glyph=true] .temor-seg-name { display: none; }\
 .temor-seg-rule { flex: none; width: var(--hair); height: var(--s-14); background: var(--line); }\
 .temor-host { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--s-4); }\
 .temor-host-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }\
@@ -61,6 +58,10 @@ pub const WINDOW_CSS: &str = "\
 .temor-foot { flex: 1 1 auto; min-width: 0; }\
 .temor-foot .temor-foot-lead, .temor-foot .temor-foot-end { display: flex; align-items: center; flex: 1000 1 0; min-width: 0; }\
 .temor-foot-end { justify-content: flex-end; }\
+.temor-foot-one { display: flex; align-items: center; min-width: 0; }\
+.temor-head { display: flex; align-items: center; gap: var(--s-6); min-width: 0; }\
+.temor-head-title { flex: 1 1 auto; min-width: 0; }\
+.temor-head > .temor-dl-hold { flex: none; }\
 .temor-dl-hold { position: relative; display: flex; }\
 .temor-dl-dot { position: absolute; top: var(--s-3); right: var(--s-3); width: var(--s-6); height: var(--s-6); border-radius: var(--r-pill); background: var(--ok); pointer-events: none; }\
 .temor-dl-dot.going { background: var(--ink-faint); }\

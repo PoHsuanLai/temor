@@ -86,7 +86,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         );
     }
     assert_eq!(std::fs::read(&saved).expect("saved"), b"hello");
-    // The Downloads button at the foot carries a dot: a file arrived and is not yet opened.
+    // The Downloads button in the head carries a dot: a file arrived and is not yet opened.
     wait_for_html(&mut h, "the shelf's dot", |html| {
         html.contains("class=\"temor-dl-dot\"") && !html.contains("to your Downloads folder")
     });

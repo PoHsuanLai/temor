@@ -1,16 +1,21 @@
 //! The sidebar in ds-harness: its controls never lie over one another (the closed Downloads
 //! disclosure once laid out its hint over the foot's buttons); every row is one line, a split tab
-//! is Arc's row of side-by-side panes, and the Space dots stand at the foot's centre.
+//! is Arc's row of side-by-side panes that close from their menu, Downloads ends the head, and
+//! the Space name and dots show only once there are two Spaces.
 
 use std::time::Duration;
 
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds_blitz::Extent;
-use ds_harness::{DocQuery, Driver, Harness, Input};
+use ds_harness::{DocQuery, Driver, Harness, Input, Query};
 use temor_ui::view::probe::Probe;
 
-use super::window::{harness, wait_until};
+use ds::components::app::spaces::{SpaceId, Spaces};
+use temor_core::space::Project;
+use temor_ui::edge::save_spaces;
+
+use super::window::{harness, harness_in, wait_until};
 
 fn chord(h: &mut Harness, key: char) {
     h.send(Input::chord(
@@ -134,12 +139,107 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
     );
     let (wa, wb) = (a.right - a.left, b.right - b.left);
     assert!(wa > 40.0 && (wa - wb).abs() < 2.0, "even: {wa} and {wb}");
-    // The Space dots stand at the foot's centre, Downloads at its start and the chevron at its end.
+    // With one Space there is no Space to name or switch to: no head name and no dot. Downloads
+    // stands at the head's right end, the chevron at the foot's.
+    assert!(
+        rects(&h, ".temor-side .ds-space-head").is_empty(),
+        "no Space name"
+    );
+    assert!(
+        rects(&h, ".temor-side .ds-spaces-dots").is_empty(),
+        "no lone dot"
+    );
+    let side = &rects(&h, ".temor-side")[0];
+    let head = &rects(&h, ".temor-side .temor-head")[0];
+    let downloads = &rects(&h, ".temor-head .temor-dl-hold")[0];
+    let chevron = &rects(&h, ".temor-side .temor-foot-end .ds-button")[0];
+    assert!(
+        (head.right - downloads.right).abs() <= 1.0,
+        "Downloads ends the head: {} and {}",
+        downloads.right,
+        head.right
+    );
+    assert!(
+        (downloads.right - chevron.right).abs() <= 1.0,
+        "Downloads stands over the chevron: {} and {}",
+        downloads.right,
+        chevron.right
+    );
+    assert!(
+        chevron.top > side.top + (side.bottom - side.top) / 2.0,
+        "the chevron is at the foot"
+    );
+    // A split's panes close from their menu, never from a button on hover.
+    assert!(rects(&h, ".temor-seg-close").is_empty(), "no hover close");
+}
+
+/// With two Spaces the head names the one on screen, to the left of Downloads, and the foot's
+/// dots stand at its centre.
+#[test]
+fn two_spaces_show_their_name_and_dots() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let state = super::support::scratch("sidebar-two-spaces-state").join("state");
+    let mut spaces = Spaces::first_run([Project::default(), Project::default()], Project::default);
+    spaces.rename(SpaceId(0), "Home");
+    spaces.rename(SpaceId(1), "Work");
+    save_spaces(&state, &spaces).expect("spaces saved");
+    let probe = Probe::new();
+    let mut h = harness_in("sidebar-two-spaces", &probe, Some(state));
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    assert_eq!(
+        h.text_of(".ds-space-head").unwrap_or_default().trim(),
+        "Home"
+    );
+    let name = &rects(&h, ".temor-head .ds-space-head")[0];
+    let downloads = &rects(&h, ".temor-head .temor-dl-hold")[0];
+    assert!(name.right <= downloads.left, "the name, then Downloads");
     let foot = rects(&h, ".temor-side .ds-spaces-foot");
     let dots = rects(&h, ".temor-side .ds-spaces-dots");
     let (foot, dots) = (&foot[0], &dots[0]);
     let off = ((dots.left + dots.right) - (foot.left + foot.right)).abs() / 2.0;
     assert!(off <= 1.0, "the dots are {off} px off the foot's centre");
+}
+
+/// A right click on a pane of a split is the tab's menu with Close Pane, which closes that pane
+/// alone.
+#[test]
+fn a_split_pane_closes_from_its_menu() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-close-pane", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'd');
+    assert_eq!(rects(&h, ".temor-side .temor-seg").len(), 2, "two panes");
+    let segment = h
+        .centre(".temor-side .temor-seg")
+        .unwrap_or_else(|| panic!("no segment:\n{}", h.html()));
+    h.send(Input::press(segment, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        h.html().contains("Close Pane"),
+        "the segment's menu:\n{}",
+        h.html()
+    );
+    // Pin Tab, then Close Pane.
+    let item = rects(&h, ".ds-menu-item");
+    assert!(item.len() >= 2, "the segment's menu opens:\n{}", h.html());
+    let close = ds::prelude::Point {
+        x: ds::prelude::Px(((item[1].left + item[1].right) / 2.0) as f32),
+        y: ds::prelude::Px(((item[1].top + item[1].bottom) / 2.0) as f32),
+    };
+    h.send(Input::click(close));
+    h.advance(Duration::from_millis(400));
+    assert!(
+        rects(&h, ".temor-side .temor-seg").is_empty(),
+        "one pane left:\n{}",
+        h.html()
+    );
 }
 
 /// The boxes of what `selector` finds, in document order.

@@ -1202,6 +1202,15 @@ sections above are the lanes' own notes; this list is the one to read.
 2. ~~Cards: bottom anchor, bold prompt, more menu, DropTab minimum.~~ Done 2026-10-14.
 3. ~~Chips on older blocks' headers.~~ Done 2026-10-14.
 
+### Doing now (owner, 2026-10-14: "do 1 2 3, match mailo with 4")
+1. ~~One Space: no Space name in the head and no lone dot; a right click on the foot is the
+   Space's menu.~~ Done 2026-10-14.
+2. ~~Pin tab / Unpin tab and Downloads in the command bar (chordless actions a keys file can
+   bind).~~ Done 2026-10-14.
+3. ~~Downloads at the right end of the head row, its list opening below.~~ Done 2026-10-14.
+4. ~~No hover close on a split's panes: a right click on a pane is the tab's menu with Close
+   Pane.~~ Done 2026-10-14.
+
 ### Waiting on another project
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
 - Blitz: `text-overflow: ellipsis` (#893). (Batch 18 decisions)

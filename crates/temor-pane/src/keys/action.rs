@@ -72,6 +72,13 @@ pub enum Action {
     ToggleSidebar,
     /// Focus the agent pane that is waiting for the person, the next one after this pane.
     JumpToWaiting,
+    /// Pin the tab in front to the sidebar's tiles. No default chord: the command bar lists it.
+    PinTab,
+    /// Take the tab in front off the sidebar's tiles. No default chord: the command bar lists it.
+    UnpinTab,
+    /// Open the list of downloaded files, or close it. No default chord: the command bar lists
+    /// it, and the sidebar's head has its button.
+    ShowDownloads,
     /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
     /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
@@ -103,6 +110,9 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::ReopenTab, "reopen-tab"),
     (Action::JumpToWaiting, "jump-to-waiting"),
     (Action::ToggleSidebar, "toggle-sidebar"),
+    (Action::PinTab, "pin-tab"),
+    (Action::UnpinTab, "unpin-tab"),
+    (Action::ShowDownloads, "show-downloads"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -152,6 +162,9 @@ impl Action {
             Self::ReopenTab => "Reopen tab",
             Self::JumpToWaiting => "Jump to waiting agent",
             Self::ToggleSidebar => "Sidebar",
+            Self::PinTab => "Pin tab",
+            Self::UnpinTab => "Unpin tab",
+            Self::ShowDownloads => "Downloads",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

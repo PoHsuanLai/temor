@@ -26,5 +26,8 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::NextBookmark,
     Action::ToggleQuick,
     Action::ToggleSidebar,
+    Action::PinTab,
+    Action::UnpinTab,
+    Action::ShowDownloads,
     Action::JumpToWaiting,
 ];

@@ -2,6 +2,7 @@
 //! step decides, from the width the window tells it here.
 
 use dioxus::prelude::WritableExt;
+use ds::base::vocab::Shown;
 use temor_core::split::Columns;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
@@ -58,5 +59,18 @@ impl Desk {
         let mut sidebar = self.sidebar;
         let next = toggled(sidebar());
         sidebar.set(next);
+    }
+
+    /// Opens the Downloads list, or closes it. Its button is in the sidebar's head, so a hidden
+    /// sidebar is shown first.
+    pub(super) fn shelf_toggle(&self) {
+        let mut shelf = self.shelf;
+        if shelf() == Shown::Visible {
+            shelf.set(Shown::Hidden);
+            return;
+        }
+        let mut sidebar = self.sidebar;
+        sidebar.set(Shown::Visible);
+        shelf.set(Shown::Visible);
     }
 }

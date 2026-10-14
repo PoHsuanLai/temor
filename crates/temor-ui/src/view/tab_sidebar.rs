@@ -1,10 +1,11 @@
-//! The sidebar (PLAN §7), laid out as mailo's and Arc's are: the Space's name at the top, the
-//! pinned tabs as tiles, each folder's tabs under its name, then New Tab and the rest; at the foot,
-//! Downloads, the Space dots and one chevron that holds everything else. It is quire's `Sidebar`
-//! on the ladder's 32, each row one line. The sections' order is the model's (`hub::rows`), so a
-//! row and its ⌘1 to ⌘9 key always name the same tab. The sidebar is drawn in the Space's frame
-//! ink (`use_space_frame`), so a Space's look reaches it as it does quire's own sidebars. It shows
-//! the tabs of the Space on screen.
+//! The sidebar (PLAN §7), laid out as mailo's and Arc's are: the Space's name and Downloads at the
+//! top, the pinned tabs as tiles, each folder's tabs under its name, then New Tab and the rest; at
+//! the foot, the Space dots and one chevron that holds everything else. The name and the dots show
+//! only once there is a second Space. It is quire's `Sidebar` on the ladder's 32, each row one
+//! line. The sections' order is the model's (`hub::rows`), so a row and its ⌘1 to ⌘9 key always
+//! name the same tab. The sidebar is drawn in the Space's frame ink (`use_space_frame`), so a
+//! Space's look reaches it as it does quire's own sidebars. It shows the tabs of the Space on
+//! screen.
 
 use dioxus::prelude::*;
 use ds::components::app::edge_peek::EdgePeek;
@@ -18,7 +19,6 @@ use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 use super::dnd::Dnd;
 use super::pinned_tabs::PinnedTabs;
 use super::row_tip::RowTip;
-use super::shelf::ShelfFoot;
 use super::side_menu::SideMenu;
 use super::space_ui::{SpaceFoot, SpaceHeader};
 use super::tab_row::TabRowView;
@@ -85,14 +85,11 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
                 size: SidebarSize::Medium,
                 fill: SidebarFill::Flat,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
-                // Downloads at the start, the Space dots, and the chevron at the end.
+                // The Space dots, and the chevron at the end.
                 foot: rsx! {
                     div { class: "temor-foot",
                     SpaceFoot {
                         desk: desk.clone(),
-                        leading: rsx! {
-                            div { class: "temor-foot-lead", ShelfFoot { desk: desk.clone() } }
-                        },
                         trailing: rsx! {
                             div { class: "temor-foot-end", SideMenu { desk: desk.clone() } }
                         },

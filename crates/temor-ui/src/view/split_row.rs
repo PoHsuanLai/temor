@@ -1,13 +1,14 @@
 //! A tab with several panes, drawn as Arc draws a split in its sidebar: one row cut into equal
-//! segments, a segment per pane in the order the panes stand, each with the terminal glyph, the
-//! pane's name and its own close button, a hairline between them. The pane with the keys is the
-//! segment drawn in ink. Pressing a segment focuses its pane; dragging one out of the sidebar
-//! tears the pane off into a tab of its own; its × closes that pane alone. A split of three or
-//! more panes is squeezed as Arc's is: the pane with the keys keeps its name, the others are their
-//! glyphs alone.
+//! segments, a segment per pane in the order the panes stand, each with the terminal glyph and
+//! the pane's name, a hairline between them. The pane with the keys is the segment drawn in ink.
+//! Pressing a segment focuses its pane; dragging one out of the sidebar tears the pane off into a
+//! tab of its own; a right click is the tab's menu with Close Pane for that pane alone. Nothing
+//! closes on hover, as in mailo. A split of three or more panes is squeezed as Arc's is: the pane
+//! with the keys keeps its name, the others are their glyphs alone.
 
 use dioxus::prelude::*;
-use ds::prelude::{Icon, IconSize, IconSource, IconView, Selection};
+use ds::prelude::{IconSize, IconView, Selection};
+use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
 use super::dnd::{Click, Dnd, is_primary, point_of};
@@ -21,7 +22,12 @@ const GLYPH: IconSize = IconSize::Small;
 /// The segments of a tab with more than one pane.
 #[component]
 #[allow(non_snake_case)]
-pub fn SplitSegments(tiles: Vec<Tile>, desk: Desk, dnd: Dnd) -> Element {
+pub fn SplitSegments(
+    tiles: Vec<Tile>,
+    desk: Desk,
+    dnd: Dnd,
+    onmenu: EventHandler<PaneId>,
+) -> Element {
     let squeezed = match tiles.len() > SIDE_BY_SIDE {
         true => Squeeze::Squeezed,
         false => Squeeze::Named,
@@ -32,7 +38,7 @@ pub fn SplitSegments(tiles: Vec<Tile>, desk: Desk, dnd: Dnd) -> Element {
                 if index > 0 {
                     span { key: "rule{tile.pane.0}", class: "temor-seg-rule", aria_hidden: "true" }
                 }
-                {segment(tile, squeezed, desk.clone(), dnd.clone())}
+                {segment(tile, squeezed, desk.clone(), dnd.clone(), onmenu)}
             }
         }
     }
@@ -58,7 +64,13 @@ enum Squeeze {
     Squeezed,
 }
 
-fn segment(tile: Tile, squeeze: Squeeze, desk: Desk, dnd: Dnd) -> Element {
+fn segment(
+    tile: Tile,
+    squeeze: Squeeze,
+    desk: Desk,
+    dnd: Dnd,
+    onmenu: EventHandler<PaneId>,
+) -> Element {
     let pane = tile.pane;
     let selected = match tile.selection {
         Selection::Selected => Some("true"),
@@ -66,7 +78,6 @@ fn segment(tile: Tile, squeeze: Squeeze, desk: Desk, dnd: Dnd) -> Element {
     };
     let glyph_only = (squeeze == Squeeze::Squeezed && selected.is_none()).then_some("true");
     let click = dnd.click.clone();
-    let closing = desk.clone();
     rsx! {
         div { key: "{pane.0}", class: "temor-seg-slot", "data-glyph": glyph_only,
             RowTip { name: format!("pane{}", pane.0), text: tile.title.clone(),
@@ -81,6 +92,8 @@ fn segment(tile: Tile, squeeze: Squeeze, desk: Desk, dnd: Dnd) -> Element {
                         if is_primary(&event) {
                             dnd.click.reset();
                             dnd.drag.down(DragKey::Tile(pane), point_of(&event));
+                        } else {
+                            onmenu.call(pane);
                         }
                     },
                     onclick: move |event: MouseEvent| {
@@ -93,17 +106,6 @@ fn segment(tile: Tile, squeeze: Squeeze, desk: Desk, dnd: Dnd) -> Element {
                         IconView { source: prompt_glyph(GLYPH), size: GLYPH }
                     }
                     span { class: "temor-seg-name ds-mono", "{tile.title}" }
-                    span {
-                        class: "temor-seg-close",
-                        role: "button",
-                        "aria-label": "Close Pane",
-                        onpointerdown: move |event: PointerEvent| event.stop_propagation(),
-                        onclick: move |event: MouseEvent| {
-                            event.stop_propagation();
-                            closing.act(WorkspaceIn::ClosePane(Some(pane)));
-                        },
-                        IconView { source: IconSource::Glyph(Icon::X), size: IconSize::Micro }
-                    }
                 }
             }
         }

@@ -192,8 +192,21 @@ fn every_control_stays_inside_the_window_at_every_size() {
     ] {
         h.resize_window(Extent::new(width, height));
         h.advance(Duration::from_millis(400));
+        // The hidden sidebar waiting at the edge is laid out but never drawn
+        // (`visibility: hidden` until it peeks), so its controls are not on screen.
+        let hidden = rects(
+            &h,
+            &controls
+                .split(", ")
+                .map(|one| format!("[data-side=\"hidden\"] {one}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
         for found in rects(&h, controls) {
-            let shown = found.w >= 0.5 && found.h >= 0.5;
+            let unseen = hidden.iter().any(|other| {
+                other.x == found.x && other.y == found.y && other.w == found.w && other.h == found.h
+            });
+            let shown = !unseen && found.w >= 0.5 && found.h >= 0.5;
             let outside = found.x < -0.5 || found.right() > f64::from(width) + 0.5;
             if shown && outside {
                 wrong.push(format!("{width}x{height}: {found:?}"));

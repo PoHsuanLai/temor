@@ -69,8 +69,19 @@ impl Hub {
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
+        // Pin Tab or Unpin Tab, whichever the tab in front can take.
+        let pinned = self.front_pinned();
+        let actions: Vec<Action> = BAR_ACTIONS
+            .iter()
+            .copied()
+            .filter(|action| match action {
+                Action::PinTab => pinned == Some(false),
+                Action::UnpinTab => pinned == Some(true),
+                _ => true,
+            })
+            .collect();
         let sources = Sources {
-            actions: BAR_ACTIONS,
+            actions: &actions,
             spaces: &spaces,
             tabs: &self.ws.tabs.place.tabs,
             folders: &self.ws.tabs.place.folders,
@@ -251,13 +262,20 @@ impl Desk {
         }
     }
 
-    /// An action the window itself takes, not a pane and not the workspace: the bar and the
-    /// quick terminal.
+    /// An action the window itself takes, not a pane and not the workspace: the bar, the quick
+    /// terminal, the sidebar, Downloads and pinning the tab in front.
     pub fn window_action(&self, action: Action) -> WindowAction {
         match action {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
+            Action::ShowDownloads => self.shelf_toggle(),
+            Action::PinTab | Action::UnpinTab => {
+                let input = self.hub.0.borrow().pin_input(action);
+                if let Some(input) = input {
+                    self.act(input);
+                }
+            }
             _ => return WindowAction::NotMine,
         }
         WindowAction::Taken

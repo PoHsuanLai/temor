@@ -24,6 +24,8 @@ pub struct Desk {
     pub picked_space: PendingSwitch,
     /// Whether the sidebar is shown: the window's, which the show/hide action flips.
     pub sidebar: Signal<Shown>,
+    /// Whether the Downloads list is open: its button flips it, and so does the command bar.
+    pub shelf: Signal<Shown>,
 }
 
 impl std::fmt::Debug for Desk {

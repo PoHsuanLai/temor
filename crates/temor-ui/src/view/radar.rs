@@ -7,7 +7,7 @@ use ds::base::press::Press;
 use ds::components::content::label::LabelStyle;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
-use temor_core::vocab::ids::TabId;
+use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Relaunch;
 use temor_core::workspace::{TabsIn, WorkspaceIn};
 
@@ -62,21 +62,24 @@ pub enum PinAct {
     Unpin,
 }
 
-/// What a tab's menu asks for: its pin, or one of the agent's actions.
+/// What a tab's menu asks for: its pin, closing one of its panes, or one of the agent's actions.
 #[derive(Debug, Clone, PartialEq)]
 enum TabPick {
     Pin(PinAct),
+    ClosePane(PaneId),
     Agent(AgentPick),
 }
 
 /// The menu hung from a tab's row or tile, opened by a secondary press on it: Pin Tab or Unpin
-/// Tab, then the agent's actions when the tab has a pane.
+/// Tab, Close Pane when it was opened from one pane of a split (`close`), then the agent's
+/// actions when the tab has a pane.
 #[component]
 #[allow(non_snake_case)]
 pub fn AgentTabMenu(
     tab: TabId,
     at: Rect,
     pin: PinAct,
+    close: Option<PaneId>,
     desk: Desk,
     onclose: EventHandler<()>,
 ) -> Element {
@@ -86,6 +89,9 @@ pub fn AgentTabMenu(
         PinAct::Unpin => "Unpin Tab",
     };
     let mut items = vec![MenuItem::new(TabPick::Pin(pin), words)];
+    if let Some(pane) = close {
+        items.push(MenuItem::new(TabPick::ClosePane(pane), "Close Pane"));
+    }
     if let Some(menu) = menu {
         items.push(MenuItem::Separator);
         items.extend(
@@ -106,6 +112,7 @@ pub fn AgentTabMenu(
                     relaunch: Relaunch(String::new()),
                 })),
                 TabPick::Pin(PinAct::Unpin) => desk.act(WorkspaceIn::Tabs(TabsIn::Unpin(tab))),
+                TabPick::ClosePane(pane) => desk.act(WorkspaceIn::ClosePane(Some(pane))),
                 TabPick::Agent(pick) => desk.agent_pick(tab, pick),
             },
             onclose,

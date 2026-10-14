@@ -8,8 +8,10 @@ use ds::components::app::spaces::{
     NewSpace, SpaceHead, SpaceId, SpaceMenu, SpacesFoot, SwitchChord, Switched, use_spaces,
 };
 use ds::components::menus::item::item::MenuItem;
+use ds::prelude::{Point, Px};
 use temor_core::space::{Place, Project, TemorSpaces};
 
+use super::shelf::ShelfButton;
 use super::space_handle::SpacesOf;
 use crate::hub::{Desk, HubRef};
 
@@ -44,28 +46,59 @@ enum SpaceAct {
     MoveTabHere,
 }
 
-/// The head of the sidebar: the name of the Space on screen, with its menu on a right click.
+/// The head of the sidebar, as mailo's is: the name of the Space on screen, with its menu on a
+/// right click, and Downloads at the row's right end. With one Space there is no name: Spaces
+/// show only once a second one exists, and the row holds Downloads alone.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceHeader(desk: Desk) -> Element {
-    rsx! { SpaceHead { handle: desk.spaces } }
+    let many = desk.spaces.spaces().read().list().len() > 1;
+    rsx! {
+        div { class: "temor-head",
+            div { class: "temor-head-title",
+                if many {
+                    SpaceHead { handle: desk.spaces }
+                }
+            }
+            ShelfButton { desk: desk.clone() }
+        }
+    }
 }
 
-/// The foot of the sidebar: the window's `leading` (Downloads), a dot for each Space, and its
-/// `trailing` (the chevron, whose menu holds New Space: the foot draws no `+`). The Space switch
-/// has no chord of its own here: the desktop owns Ctrl+digit.
+/// The foot of the sidebar: a dot for each Space, and its `trailing` (the chevron, whose menu
+/// holds New Space: the foot draws no `+`). The Space switch has no chord of its own here: the
+/// desktop owns Ctrl+digit. With one Space there are no dots, and a right click on the foot is
+/// that Space's menu, which the head's name holds once there are two.
 #[component]
 #[allow(non_snake_case)]
-pub fn SpaceFoot(desk: Desk, leading: Element, trailing: Element) -> Element {
+pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
     let new_payload = use_callback(|()| Project::default());
+    let handle = desk.spaces;
+    let many = handle.spaces().read().list().len() > 1;
+    // Each end is a hold as wide as the other, so the dots stand at the foot's centre.
+    let leading = rsx! { div { class: "temor-foot-lead" } };
+    if many {
+        return rsx! {
+            SpacesFoot {
+                handle,
+                new_payload,
+                chord: SwitchChord::Unbound,
+                new_space: NewSpace::Hidden,
+                leading,
+                trailing,
+            }
+        };
+    }
     rsx! {
-        SpacesFoot {
-            handle: desk.spaces,
-            new_payload,
-            chord: SwitchChord::Unbound,
-            new_space: NewSpace::Hidden,
-            leading,
-            trailing,
+        div {
+            class: "temor-foot-one",
+            oncontextmenu: move |event: MouseEvent| {
+                event.prevent_default();
+                let at = event.client_coordinates();
+                handle.open_menu(handle.current(), Point { x: Px(at.x as f32), y: Px(at.y as f32) });
+            },
+            {leading}
+            {trailing}
         }
     }
 }

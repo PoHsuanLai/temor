@@ -99,8 +99,10 @@ pub fn App() -> Element {
         move || hub.set_bar_spaces(Rc::new(KitSpaces::new(spaces, picked)))
     });
     let mut sidebar = use_signal(|| Shown::Visible);
+    let shelf = use_signal(|| Shown::Hidden);
     let desk = Desk {
         sidebar,
+        shelf,
         hub: hub.clone(),
         ui,
         notice,
