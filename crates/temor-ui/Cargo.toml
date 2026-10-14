@@ -30,6 +30,7 @@ ds-core = { workspace = true }
 ds-settings = { workspace = true, features = ["dioxus"] }
 png = { workspace = true }
 rustix = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 similar = { workspace = true }
 temor-core = { workspace = true }

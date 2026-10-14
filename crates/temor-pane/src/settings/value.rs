@@ -148,7 +148,7 @@ pub fn offer_command(key: &str, value: &str) -> Result<String, SettingsError> {
 }
 
 /// The longest threshold a setting may name: a day.
-const NOTIFY_AFTER_MAX_SECONDS: u32 = 86_400;
+pub const NOTIFY_AFTER_MAX_SECONDS: u32 = 86_400;
 
 /// Reads a font family: "system" or a family name.
 pub fn font_family(key: &str, value: &str) -> Result<FontChoice, SettingsError> {

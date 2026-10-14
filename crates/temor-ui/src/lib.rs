@@ -12,6 +12,7 @@ pub mod paint;
 pub mod pane;
 pub mod platform;
 pub mod session;
+pub mod settings;
 pub mod view;
 
 pub use app::run;
