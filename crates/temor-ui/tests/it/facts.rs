@@ -149,3 +149,51 @@ fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
         assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
     }
 }
+
+/// An older block's header line carries the chips its prompt had: the folder, the branch and the
+/// change, over the shell's own text, as the prompt's do.
+#[test]
+fn an_older_blocks_header_keeps_its_prompts_chips() {
+    if !tools_present() || !git_present() {
+        return;
+    }
+    use ds::base::vocab::ShortcutKey;
+    use ds_harness::Input;
+    let probe = Probe::new();
+    let mut h = changed_repository("facts-chips-older", &probe, Prompt::Temor);
+    let _ = chips_with_the_change(&mut h);
+    h.send(Input::click(ds::prelude::Point {
+        x: ds::prelude::Px(700.0),
+        y: ds::prelude::Px(300.0),
+    }));
+    for c in "echo older-done".chars() {
+        h.send(Input::key(match c {
+            ' ' => ShortcutKey::Space,
+            c => ShortcutKey::Char(c),
+        }));
+    }
+    h.send(Input::key(ShortcutKey::Enter));
+    let start = Instant::now();
+    let header = loop {
+        h.advance(Duration::from_millis(50));
+        let html = h.html();
+        let found = html
+            .split("data-place=\"header\"")
+            .nth(1)
+            .map(|after| after[..after.find("</div>").unwrap_or(after.len())].to_owned());
+        if let Some(found) = found {
+            break found;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "no chips over the older block's header:\n{}",
+            probe.screen()
+        );
+    };
+    for want in [">~<", ">main<", "+1"] {
+        assert!(
+            header.contains(want),
+            "no {want:?} over the older header:\n{header}"
+        );
+    }
+}

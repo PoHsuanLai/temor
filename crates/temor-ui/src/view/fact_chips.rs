@@ -6,6 +6,9 @@
 //! something else (the person's own prompt, another computer's folder), the shell's text stays and
 //! the facts' chips end at the row's right edge instead, without the folder and branch.
 //!
+//! An older block's header line carries the chips its prompt had, kept from when it was typed at
+//! (`Session::keep_header_facts`), on the block's own ground and clear of its meta.
+//!
 //! They sit beside the grid, so a press never reaches the terminal, and they are not drawn on a
 //! full-screen program's screen.
 
@@ -14,6 +17,12 @@ use ds::prelude::{ExternalIcon, IconSize, IconSource, IconView};
 use ds::style::icon::url::IconUrl;
 use temor_core::facts::{ChipRow, DiffStat, Facts, MOST_UNTRACKED, chips_that_fit};
 
+use temor_core::block::Outcome;
+use temor_core::vocab::ids::BlockId;
+use temor_render::Palette;
+
+use super::block_meta::MetaView;
+use super::card_colours::{CardFill, card_ground};
 use crate::session::{HeaderLine, PromptHeader, Session};
 
 /// The small picture at a chip's start.
@@ -108,6 +117,8 @@ impl ChipText {
 pub enum ChipPlace {
     /// Over the whole header line, from its left: temor's prompt, whose text the chips replace.
     Over,
+    /// Over an older block's header line, from its text's start to its meta.
+    Header,
     /// At the right end, beside the shell's own text.
     End,
 }
@@ -123,6 +134,10 @@ pub struct ChipsView {
     pub height: f32,
     /// The pane's padding in logical pixels: the chips keep this far from the edge.
     pub inset: f32,
+    /// How far from the right edge the row ends, in logical pixels (an older header's meta).
+    pub reserve: f32,
+    /// The row's ground as CSS when the block has a fill; the pane's own otherwise.
+    pub ground: Option<String>,
 }
 
 fn part(text: impl Into<String>, tone: Tone) -> ChipPart {
@@ -256,6 +271,8 @@ pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Opti
             top,
             height: cell_h,
             inset,
+            reserve: inset,
+            ground: None,
         })
     };
     if let Some(folder) = folder.filter(|_| chips_go_over(&header, folder)) {
@@ -284,6 +301,49 @@ pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Opti
     view(chips, ChipPlace::End)
 }
 
+/// The chips over older blocks' header lines on screen: what each block's prompt had. A row
+/// ends before the block's meta, and takes the block's fill as its ground.
+pub fn header_chips(
+    session: &Session,
+    metas: &[MetaView],
+    palette: &Palette,
+) -> Vec<(BlockId, ChipsView)> {
+    let (Some(gutter), Some((_, cell_width))) = (session.gutter_geometry(), session.grid_logical())
+    else {
+        return Vec::new();
+    };
+    session
+        .block_marks()
+        .into_iter()
+        .filter_map(|mark| {
+            let kept = session.header_facts(mark.id)?;
+            let mut chips = lead_chips(&kept.folder, &kept.facts);
+            chips.extend(chip_texts(&kept.facts));
+            let reserve = metas
+                .iter()
+                .find(|meta| meta.id == mark.id)
+                .map_or(gutter.side, |meta| {
+                    gutter.side + (meta.text.chars().count() as f32 + 1.0) * cell_width
+                });
+            let fill = match (session.block_picked(mark.id), mark.outcome) {
+                (true, _) => CardFill::Picked,
+                (false, Outcome::Failed(_)) => CardFill::Failed,
+                (false, _) => CardFill::None,
+            };
+            let view = ChipsView {
+                chips,
+                place: ChipPlace::Header,
+                top: gutter.row_top(mark.header),
+                height: gutter.cell_h,
+                inset: gutter.side,
+                reserve,
+                ground: card_ground(palette, fill),
+            };
+            Some((mark.id, view))
+        })
+        .collect()
+}
+
 // The chips' pictures: Lucide's `folder`, `git-branch` and `diff` (lucide.dev, ISC licence,
 // Copyright (c) Lucide Contributors; see NOTICE), as masks painted in the chip's text colour.
 const FOLDER_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>"##;
@@ -308,15 +368,31 @@ fn icon_source(icon: ChipIcon) -> IconSource {
 #[component]
 #[allow(non_snake_case)]
 pub fn FactChips(view: ChipsView) -> Element {
-    let (place, pad) = match view.place {
-        ChipPlace::Over => ("over", "left"),
-        ChipPlace::End => ("end", "right"),
+    let place = match view.place {
+        ChipPlace::Over => "over",
+        ChipPlace::Header => "header",
+        ChipPlace::End => "end",
+    };
+    let at = format!("top:{}px; height:{}px", view.top, view.height);
+    let style = match view.place {
+        ChipPlace::Over => format!("{at}; padding-left:{}px", view.inset),
+        ChipPlace::End => format!("{at}; padding-right:{}px", view.inset),
+        // From the text's start, so a bookmark's or a failure's stripe at the edge still shows.
+        ChipPlace::Header => format!(
+            "{at}; left:{}px; right:{}px{}",
+            view.inset,
+            view.reserve,
+            view.ground
+                .as_ref()
+                .map(|ground| format!("; background:{ground}"))
+                .unwrap_or_default()
+        ),
     };
     rsx! {
         div {
             class: "temor-fact-chips",
             "data-place": place,
-            style: "top:{view.top}px; height:{view.height}px; padding-{pad}:{view.inset}px",
+            style,
             for (n, one) in view.chips.iter().enumerate() {
                 span {
                     key: "{n}",

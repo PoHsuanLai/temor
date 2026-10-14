@@ -10,7 +10,7 @@ use temor_core::block::{BlockState, Outcome};
 use temor_pane::Term;
 use temor_pane::text::RowText;
 use temor_render::{Cut, RowBand, RowSpan, RowWeight};
-use temor_vt::{AnchorId, PointSpace, Row};
+use temor_vt::{AnchorId, Col, PointSpace, Row};
 
 use super::super::Session;
 use crate::view::card_colours::CardColours;
@@ -71,7 +71,8 @@ pub(super) struct CardBlock {
     pub stage: Stage,
     pub pick: Pick,
     pub mark: Mark,
-    pub command: Option<(i64, i64)>,
+    /// The command's rows, first and last, and the column it starts at in the first.
+    pub command: Option<(i64, i64, u16)>,
 }
 
 /// Whether a prompt's first row is a blank line: nothing but spaces, and a row below it that the
@@ -157,9 +158,14 @@ pub(super) fn bands_of(
                 weight: RowWeight::Normal,
             });
         }
-        // The command line draws bold, clipped to the view.
-        if let Some((from, to)) = block.command {
-            let (from, to) = (from.max(0), to.min(i64::from(rows) - 1));
+        // The command line draws bold, clipped to the view, from where the command starts: a
+        // one-line prompt before it on its row stays as the shell drew it.
+        if let Some((first, to, col)) = block.command {
+            let (from, to) = (first.max(0), to.min(i64::from(rows) - 1));
+            let weight = match (from == first, col) {
+                (true, 1..) => RowWeight::BoldFrom(Col(col)),
+                _ => RowWeight::Bold,
+            };
             if from <= to {
                 out.push(RowBand {
                     rows: RowSpan {
@@ -171,7 +177,7 @@ pub(super) fn bands_of(
                     fill: None,
                     stripe: None,
                     rule: None,
-                    weight: RowWeight::Bold,
+                    weight,
                 });
             }
         }
@@ -257,12 +263,15 @@ impl Session {
             let end = cursor.unwrap_or(i64::from(rows) - 1);
             // The rows of the command typed after the input mark, up to the output mark.
             let command_of = |input: Option<AnchorId>, output: Option<AnchorId>| {
-                let input = first_of(input?)?;
+                let input = input?;
+                let col = term.anchor_point(input, PointSpace::Screen)?.col.0;
+                let input = first_of(input)?;
                 let output = output.and_then(|anchor| {
                     let at = term.anchor_point(anchor, PointSpace::Screen)?;
                     Some((i64::from(at.row) - top, at.col.0))
                 });
-                Some(command_rows(input, output, end))
+                let (from, to) = command_rows(input, output, end);
+                Some((from, to, col))
             };
             let mut blocks: Vec<CardBlock> = self
                 .blocks

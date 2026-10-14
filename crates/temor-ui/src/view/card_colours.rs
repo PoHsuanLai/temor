@@ -56,6 +56,35 @@ impl CardColours {
     }
 }
 
+/// Which fill lies behind a block's rows, as the bands paint it: a pick wins over a failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardFill {
+    None,
+    Failed,
+    Picked,
+}
+
+/// The colour a block's row shows where nothing else is drawn: the palette's background under
+/// the block's fill, as CSS. `None` without a fill (the pane's own ground shows).
+pub fn card_ground(palette: &Palette, fill: CardFill) -> Option<String> {
+    let colours = CardColours::of(palette);
+    let tint = match fill {
+        CardFill::None => return None,
+        CardFill::Failed => colours.failed_fill,
+        CardFill::Picked => colours.selected_fill,
+    };
+    let a = u32::from(tint.alpha.0);
+    let mix =
+        |under: u8, over: u8| (u32::from(under) * (255 - a) + u32::from(over) * a + 127) / 255;
+    let (bg, c) = (palette.background, tint.color);
+    Some(format!(
+        "rgb({},{},{})",
+        mix(bg.r, c.r),
+        mix(bg.g, c.g),
+        mix(bg.b, c.b)
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,5 +103,22 @@ mod tests {
         ] {
             assert_eq!((tint.color, tint.alpha), (color, Alpha(alpha)));
         }
+    }
+
+    #[test]
+    fn a_ground_is_the_background_under_the_fill() {
+        let mut ansi = Palette::default().ansi;
+        ansi[1] = temor_vt::Rgb { r: 255, g: 0, b: 0 };
+        let palette = Palette {
+            background: temor_vt::Rgb { r: 0, g: 0, b: 0 },
+            ansi,
+            ..Palette::default()
+        };
+        assert_eq!(card_ground(&palette, CardFill::None), None);
+        // Red at 10% (26 of 255) over black.
+        assert_eq!(
+            card_ground(&palette, CardFill::Failed).as_deref(),
+            Some("rgb(26,0,0)")
+        );
     }
 }

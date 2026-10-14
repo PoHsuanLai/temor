@@ -64,6 +64,15 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
             onto,
             towards,
         } => drop_tab(&mut ws, from, onto, towards, &mut out),
+        WorkspaceIn::DropTabIn {
+            from,
+            onto,
+            towards,
+            width,
+        } => match split_fits(width, towards) {
+            true => drop_tab(&mut ws, from, onto, towards, &mut out),
+            false => out.push(WorkspaceOut::Refused(RefuseWhy::TooNarrow)),
+        },
         WorkspaceIn::Tear(pane) => tear(&mut ws, pane, &mut out),
         WorkspaceIn::Activity(pane) => {
             if let Some(tab) = ws.tab_of(pane) {

@@ -23,6 +23,7 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
+pub use blocks::HeaderFacts;
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};

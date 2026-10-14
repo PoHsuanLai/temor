@@ -3,6 +3,7 @@
 
 use dioxus::prelude::WritableExt;
 use temor_core::split::Columns;
+use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
 use super::desk::Desk;
@@ -10,21 +11,41 @@ use super::model::Hub;
 use crate::view::sidebar_room::toggled;
 
 impl Hub {
-    /// `input`, with the focused pane's width in columns told to a split. A split of a pane that
-    /// has not been laid out yet (no width known) goes ahead as asked.
+    /// `input`, with the focused pane's width in columns told to a split, and the width of the
+    /// pane a tab is dropped on told to the drop. One whose pane has not been laid out yet (no
+    /// width known) goes ahead as asked.
     pub(super) fn measured(&self, input: WorkspaceIn) -> WorkspaceIn {
-        let WorkspaceIn::Split { towards } = input else {
-            return input;
-        };
-        match self.front_columns() {
-            Some(width) => WorkspaceIn::SplitIn { towards, width },
-            None => input,
+        match input {
+            WorkspaceIn::Split { towards } => match self.front_columns() {
+                Some(width) => WorkspaceIn::SplitIn { towards, width },
+                None => input,
+            },
+            // A tab dropped beside a pane splits it as a split does.
+            WorkspaceIn::DropTab {
+                from,
+                onto,
+                towards,
+            } => match self.columns_of(onto) {
+                Some(width) => WorkspaceIn::DropTabIn {
+                    from,
+                    onto,
+                    towards,
+                    width,
+                },
+                None => input,
+            },
+            other => other,
         }
     }
 
     /// The width in columns of the tab in front's focused pane, once it has been laid out.
     fn front_columns(&self) -> Option<Columns> {
         let pane = self.ws.front().and_then(|tab| self.ws.focus_of(tab))?;
+        self.columns_of(pane)
+    }
+
+    /// The width in columns of `pane`, once it has been laid out.
+    fn columns_of(&self, pane: PaneId) -> Option<Columns> {
         let slot = self.slots.get(&pane)?;
         let fit = slot.borrow().session.as_ref()?.fit()?;
         Some(Columns(u32::from(fit.grid.cols.0)))

@@ -67,8 +67,8 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: Gutter) -> Opti
 
 /// The chrome for a session. The hovered block is the session's own (it follows the wheel and
 /// clears when the pointer leaves); `_hovered`, the window's signal of it, only makes the window
-/// draw again when it changes.
-pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
+/// draw again when it changes. `held` is the block whose "more" menu is up: its tools stay.
+pub fn chrome_of(session: &Session, _hovered: Option<BlockId>, held: Option<BlockId>) -> Chrome {
     let gutter = session.gutter_geometry().unwrap_or(Gutter {
         side: 0.0,
         top: 0.0,
@@ -81,7 +81,7 @@ pub fn chrome_of(session: &Session, _hovered: Option<BlockId>) -> Chrome {
         inset: gutter.side,
         height: gutter.row_top(1),
     });
-    let tools = tools_of(session, session.hovered_block(), gutter);
+    let tools = tools_of(session, held.or(session.hovered_block()), gutter);
     let metas = metas_of(session, tools.as_ref().map(|tools| tools.id));
     Chrome {
         header,

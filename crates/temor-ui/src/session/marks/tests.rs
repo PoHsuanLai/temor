@@ -4,7 +4,7 @@ use temor_core::block::Outcome;
 use temor_core::vocab::ids::ExitCode;
 use temor_pane::text::{RowText, Wrap};
 use temor_render::{Cut, Palette, RowBand, RowSpan, RowWeight, Tint};
-use temor_vt::Row;
+use temor_vt::{Col, Row};
 
 use super::actions::output_name;
 use super::bands::{CardBlock, Lead, Mark, Pick, Stage, bands_of, command_rows, leads_blank};
@@ -234,8 +234,8 @@ fn the_command_line_is_a_bold_band_clipped_to_the_view() {
         rule: None,
         weight: RowWeight::Bold,
     };
-    let with = |first, command| CardBlock {
-        command: Some(command),
+    let with = |first, command: (i64, i64)| CardBlock {
+        command: Some((command.0, command.1, 0)),
         ..block(first, done, Pick::Unselected)
     };
     // (what, block, expected bold band)
@@ -260,6 +260,43 @@ fn the_command_line_is_a_bold_band_clipped_to_the_view() {
             .filter(|b| b.weight == RowWeight::Bold)
             .collect();
         assert_eq!(got, expected.into_iter().collect::<Vec<_>>(), "{what}");
+    }
+}
+
+#[test]
+fn a_command_after_a_one_line_prompt_is_bold_from_its_column() {
+    let c = CardColours::of(&Palette::default());
+    let done = Stage::Ran(Outcome::Succeeded);
+    let card = |first: i64, command| CardBlock {
+        command: Some(command),
+        ..block(first, done, Pick::Unselected)
+    };
+    let weights = |card: CardBlock| -> Vec<RowWeight> {
+        bands_of(&[card], 9, 10, &c)
+            .into_iter()
+            .map(|b| b.weight)
+            .filter(|w| *w != RowWeight::Normal)
+            .collect()
+    };
+    // (what, block, the bold band's weight)
+    for (what, block, want) in [
+        (
+            "after `~/temor $ `",
+            card(2, (2, 2, 10)),
+            RowWeight::BoldFrom(Col(10)),
+        ),
+        (
+            "on a typing line of its own",
+            card(2, (3, 3, 0)),
+            RowWeight::Bold,
+        ),
+        (
+            "its first row above the view",
+            card(-3, (-1, 1, 10)),
+            RowWeight::Bold,
+        ),
+    ] {
+        assert_eq!(weights(block), vec![want], "{what}");
     }
 }
 

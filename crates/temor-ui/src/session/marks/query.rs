@@ -1,11 +1,13 @@
 //! What the gutter, the bar and the prompt jumps read from the blocks, and what a press on the
 //! gutter or a jump does to the view. Nothing here is drawn; the views decide how to show it.
 
-use temor_core::block::Outcome;
+use temor_core::block::{BlockState, Outcome};
+use temor_core::facts::Facts;
 use temor_core::vocab::ids::BlockId;
 use temor_vt::{PointSpace, SurfacePoint};
 
 use super::super::Session;
+use super::super::blocks::HeaderFacts;
 use super::super::model::PADDING_LOGICAL;
 use super::bands::{Lead, lead_at};
 use crate::error::UiError;
@@ -44,6 +46,31 @@ impl Gutter {
 }
 
 impl Session {
+    /// Keeps what the chips over the prompt being typed at say, for the block it becomes: an
+    /// older block's header carries the chips its prompt had. Nothing while no prompt is typed at.
+    pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts) {
+        let typing = matches!(
+            self.blocks.machine,
+            BlockState::Prompting { .. } | BlockState::Typing { .. }
+        );
+        if !typing {
+            return;
+        }
+        let kept = HeaderFacts {
+            folder: folder.to_owned(),
+            facts: facts.clone(),
+        };
+        let id = BlockId(self.blocks.next_id);
+        if self.blocks.header_facts.get(&id) != Some(&kept) {
+            self.blocks.header_facts.insert(id, kept);
+        }
+    }
+
+    /// What the chips over a block's header line said when its prompt was typed at.
+    pub fn header_facts(&self, id: BlockId) -> Option<&HeaderFacts> {
+        self.blocks.header_facts.get(&id)
+    }
+
     /// How many primary prompts the shell has marked so far.
     pub fn prompts_seen(&self) -> usize {
         self.blocks.prompts

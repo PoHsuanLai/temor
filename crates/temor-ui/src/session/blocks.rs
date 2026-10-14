@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use temor_core::block::{BlockState, BlockStore};
+use temor_core::facts::Facts;
 use temor_core::vocab::ids::BlockId;
 use temor_vt::{AnchorId, PromptEvent};
 
@@ -47,6 +48,16 @@ pub(super) struct BlockLog {
     pub(super) prompts: usize,
     /// How many commands have finished.
     pub(super) finished: usize,
+    /// What the chips over each block's header line said when its prompt was typed at.
+    pub(super) header_facts: BTreeMap<BlockId, HeaderFacts>,
+}
+
+/// The folder and facts the chips over a prompt's header line said, kept for its block.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeaderFacts {
+    /// The folder as its chip said it.
+    pub folder: String,
+    pub facts: Facts,
 }
 
 impl Default for BlockLog {
@@ -63,6 +74,7 @@ impl Default for BlockLog {
             next_id: 1,
             prompts: 0,
             finished: 0,
+            header_facts: BTreeMap::new(),
         }
     }
 }
@@ -70,6 +82,9 @@ impl Default for BlockLog {
 impl BlockLog {
     /// Forgets the anchors of blocks the store no longer holds, returning them to release.
     pub(super) fn drop_anchors(&mut self, gone: &[BlockId]) -> Vec<AnchorId> {
+        for id in gone {
+            self.header_facts.remove(id);
+        }
         gone.iter()
             .filter_map(|id| self.anchors.remove(id))
             .flat_map(BlockAnchors::all)

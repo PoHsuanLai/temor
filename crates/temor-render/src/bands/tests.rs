@@ -1,4 +1,4 @@
-use temor_vt::{Rgb, Row};
+use temor_vt::{Col, Rgb, Row};
 
 use super::{Alpha, Cut, RowBand, RowSpan, RowWeight, Tint, look_of};
 
@@ -95,4 +95,15 @@ fn a_band_cut_across_middles_shares_its_end_rows_with_its_neighbours() {
         );
         assert_eq!(look.rule.map(|(_, cut)| cut), rule, "rule of row {row}");
     }
+}
+
+#[test]
+fn bold_from_a_column_holds_on_the_first_row_only() {
+    let mut band = band(3, 4, None, None);
+    band.weight = RowWeight::BoldFrom(Col(4));
+    let bands = [band];
+    assert_eq!(look_of(&bands, Row(3)).weight, RowWeight::BoldFrom(Col(4)));
+    assert_eq!(look_of(&bands, Row(4)).weight, RowWeight::Bold);
+    let first = look_of(&bands, Row(3)).weight;
+    assert!(!first.bolds(Col(3)) && first.bolds(Col(4)));
 }

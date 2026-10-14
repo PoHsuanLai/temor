@@ -41,6 +41,7 @@ fn refused_requests_say_why_and_change_nothing() {
         ("a pinned tab keeps its pin when dropped", &ws, WorkspaceIn::DropTab { from: TabId(2), onto: first, towards: Direction::Right }, refused(RefuseWhy::PinnedTab(TabId(2)))),
         ("drop a tab that is not there", &ws, WorkspaceIn::DropTab { from: TabId(9), onto: first, towards: Direction::Right }, refused(RefuseWhy::NoSuchTab(TabId(9)))),
         ("drop onto a pane that is not there", &ws, WorkspaceIn::DropTab { from: TabId(1), onto: PaneId(77), towards: Direction::Right }, refused(RefuseWhy::NoSuchPane(PaneId(77)))),
+        ("drop beside a pane under 80 columns", &ws, WorkspaceIn::DropTabIn { from: TabId(1), onto: PaneId(3), towards: Direction::Right, width: Columns(79) }, refused(RefuseWhy::TooNarrow)),
         ("tear a tab's only pane", &just_one, WorkspaceIn::Tear(only), refused(RefuseWhy::OnlyPane(only))),
         ("tear from a pinned tab", &ws, WorkspaceIn::Tear(PaneId(3)), refused(RefuseWhy::PinnedTab(TabId(2)))),
         ("tear a pane that is not there", &ws, WorkspaceIn::Tear(PaneId(77)), refused(RefuseWhy::NoSuchPane(PaneId(77)))),

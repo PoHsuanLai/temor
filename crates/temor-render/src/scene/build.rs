@@ -145,7 +145,7 @@ fn text(
     }
     let flags = cell.style.flags;
     let style = FaceStyle {
-        weight: if flags.contains(StyleFlags::BOLD) || weight == RowWeight::Bold {
+        weight: if flags.contains(StyleFlags::BOLD) || weight.bolds(cell.col) {
             Weight::Bold
         } else {
             Weight::Regular

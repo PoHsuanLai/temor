@@ -29,7 +29,7 @@ use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
-use super::fact_chips::{FactChips, chips_for};
+use super::fact_chips::{ChipPlace, FactChips, chips_for, header_chips};
 use super::find_bar::FindBar;
 use super::first_hint::{FirstHint, hint_for};
 use super::handlers::{
@@ -106,6 +106,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let ui = desk.ui;
     let preedit = use_signal(|| None::<String>);
     let hovered = use_signal(|| None::<BlockId>);
+    // The block whose "more" menu is up keeps its tools whatever the pointer does.
+    let held = use_signal(|| None::<BlockId>);
     let find_height = use_signal(|| 0.0_f32);
     let block_menu = use_signal(|| None::<BlockMenuAt>);
     // The ⌘-hover preview of a file path (PLAN §10).
@@ -212,7 +214,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .map_or_else(Chrome::default, |s| chrome_of(s, hovered()));
+        .map_or_else(Chrome::default, |s| chrome_of(s, hovered(), held()));
     let clip_ask = slot
         .borrow()
         .session
@@ -243,6 +245,26 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| chips_for(s, &facts, folder.as_deref()));
+    // What the prompt's chips say now is kept for the block it becomes.
+    let over = chips.as_ref().map(|c| c.place) == Some(ChipPlace::Over);
+    if let Some((folder, s)) = folder
+        .as_ref()
+        .filter(|_| over)
+        .zip(slot.borrow_mut().session.as_mut())
+    {
+        s.keep_header_facts(folder, &facts);
+    }
+    let older_chips: Vec<_> = {
+        let slot = slot.borrow();
+        let palette = slot.palette;
+        slot.session
+            .as_ref()
+            .map(|s| header_chips(s, &metas, &palette))
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|(_, view)| !under_find(view.top))
+            .collect()
+    };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // The block menu speaks of what is picked now.
     let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
@@ -314,6 +336,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(view) = chips {
                     FactChips { view }
                 }
+                for (id, view) in older_chips {
+                    FactChips { key: "{id.0}", view }
+                }
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
@@ -327,6 +352,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(tools) = tools {
                     BlockTools {
                         tools,
+                        held,
                         on_copy_command:then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_copy_output:then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_save:then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain),

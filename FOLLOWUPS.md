@@ -1199,11 +1199,9 @@ sections above are the lanes' own notes; this list is the one to read.
 
 ### Doing now (owner, 2026-10-14: "do 1 2 3")
 1. ~~Sidebar: edge peek, pinned tile drags, squeezed splits.~~ Done 2026-10-14.
-2. Cards: the typing line pinned to the pane's bottom (spike first); the bold prompt text on a
-   one-line shell prompt's command row; the more menu closing when the pointer leaves the pane;
-   DropTab checking the 40-column minimum. (Batch 19)
-3. Chips: an older block's header carries the same chips as the prompt, from the facts at the
-   block's start (owner: "yes match the new chips"). (UI pass, Chips)
+2. Cards: the typing line pinned to the pane's bottom (spike first). The bold prompt text, the
+   more menu and the DropTab minimum are done (2026-10-14). (Batch 19)
+3. ~~Chips on older blocks' headers.~~ Done 2026-10-14.
 
 ### Waiting on another project
 - quire: tell Esc from a click outside on the palette. (Batch 18 Next)
@@ -1297,12 +1295,16 @@ the bar runs the sidebar action through the desk.
   row offset in the render view and the fit, used by every grid-to-pixel map; spike with a window.
 - [x] `gutter_geometry` returns one padding: the meta, tools and chips rows ignore the 8 px top inset. Done: it returns the side and top insets apart (`Gutter`), and the meta and tools sit on the header line.
 - [x] Card text sat low in its card (owner): the rule ran along the top of the blank line above the header. Done: a band can begin and end across a row's middle (`Cut`), so the rule crosses that blank line and each card has half a line above its header and below its last row. Warp keeps about 14 px; ours is half a row (about 9 px).
-- [ ] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold
+- [x] With `TEMOR_PROMPT=shell` and a one-line prompt, the prompt text on the command row is bold
   too (the band is whole rows; start it at the input mark's column).
+  (done 2026-10-14: `RowWeight::BoldFrom(col)` bolds the band's first row from the input mark's
+  column and its other rows whole.)
 - [x] The tab's "running 2m" doesn't tick (read when the sidebar draws).
   (done: `hub/running_tick.rs` reads each tab's words every second and redraws when one changed;
   `sidebar::a_running_tab_counts_up_with_no_output`)
-- [ ] DropTab doesn't check the 40-column minimum.
+- [x] DropTab doesn't check the 40-column minimum.
+  (done 2026-10-14: the hub tells the drop the width of the pane it lands on, `DropTabIn`, and a
+  side-by-side drop under 80 columns is refused as a split is.)
 - [x] In a narrow pane the hover tools cover the header's folder text; the find bar can cover a
   card's meta.
   (done: a card's meta shows only where it clears its header line's text, counting each
@@ -1311,7 +1313,8 @@ the bar runs the sidebar action through the desk.
   `cards::a_card_meta_steps_aside_…`, `cards::the_find_bar_hides_…`. The tools' buttons still
   show over a long header when hovered: they were asked for.)
 - [x] `Chrome.cwd`, `title` and `link` are unread; remove. (done)
-- [ ] The more menu unmounts with the hover tools if the pointer leaves the pane.
+- [x] The more menu unmounts with the hover tools if the pointer leaves the pane.
+  (done 2026-10-14: while it is up its block is `held`, and the tools stay for it.)
 - [x] The selected card fill is still the accent at 12%; neutral once quire's selection lands.
   Done: the foreground at 8%.
 - [x] quire asks (q20, q21 → v0.3.17): flat sidebar (`SidebarFill::Flat`), neutral source-list
@@ -1346,11 +1349,14 @@ the bar runs the sidebar action through the desk.
   (done: the answer counts once a non-blank line is drawn below it and the whole screen is
   unchanged between two ticks, `Answer::Named` until then; a shell that named itself but shows
   no prompt by `PROBE_MS` is loaded anyway. `temor_ssh::prompt_after_answer`, `hub/offer.rs`.)
-- [ ] Chips, Warp's layout (2026-10-14): over temor's prompt the chips replace the header line
+- [x] Chips, Warp's layout (2026-10-14): over temor's prompt the chips replace the header line
   (folder, branch, `+N −M · F files`, then the tool chips); a one-line or own prompt keeps its
   text and gets the fact chips at the right end. Older blocks' header lines still show the
   shell's dim folder and magenta branch (what was true then is not kept); decide whether the
   block header should carry the same chips from the facts at the block's start.
+  (done 2026-10-14, owner: "yes match the new chips": the facts the prompt's chips showed are kept
+  for the block it becomes, `Session::keep_header_facts`, and its header line carries the same
+  chips on the block's own ground (a failed or picked block's fill) and clear of its meta.)
 - [ ] quire ask: folder, git-branch and diff glyphs in `Icon`. The chips draw Lucide's (ISC,
   NOTICE) as symbolic SVGs until then (`view/fact_chips.rs`). A long folder is clipped at its end (no ellipsis on Blitz);
   cutting the start (keeping the last folders) needs a start-side ellipsis.

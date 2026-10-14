@@ -89,6 +89,15 @@ pub enum WorkspaceIn {
         /// The side of `onto` it lands on.
         towards: Direction,
     },
+    /// [`WorkspaceIn::DropTab`], told how wide the pane dropped on is: refused when a half would
+    /// be narrower than `LEAST_COLUMNS`, as a split is.
+    DropTabIn {
+        from: TabId,
+        onto: PaneId,
+        towards: Direction,
+        /// The width of `onto` now.
+        width: Columns,
+    },
     /// Tear a pane out of its tab into a tab of its own.
     Tear(PaneId),
     /// A command ended in a pane: its tab is marked unread unless it is in front.

@@ -1,7 +1,7 @@
 //! Row bands: the tinted fill, left stripe and top rule a caller lays over runs of viewport
 //! rows (temor's command cards). Colours arrive ready-made; this crate only blends them.
 
-use temor_vt::{Rgb, Row};
+use temor_vt::{Col, Rgb, Row};
 
 use crate::scene::{Premul, Quad, QuadPaint, RowScene};
 
@@ -49,12 +49,26 @@ impl RowSpan {
 }
 
 /// How heavy a band's text is drawn. `Bold` draws every cell of the rows in the bold face, on top
-/// of what the program asked for (a card's command line); `Normal` leaves the cells alone.
+/// of what the program asked for (a card's command line); `BoldFrom` does so from that column of
+/// the band's first row on and across its other rows (a command typed after a one-line prompt,
+/// whose prompt stays as the shell drew it); `Normal` leaves the cells alone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RowWeight {
     #[default]
     Normal,
     Bold,
+    BoldFrom(Col),
+}
+
+impl RowWeight {
+    /// Whether a cell at `col` is drawn bold.
+    pub fn bolds(self, col: Col) -> bool {
+        match self {
+            RowWeight::Normal => false,
+            RowWeight::Bold => true,
+            RowWeight::BoldFrom(from) => col >= from,
+        }
+    }
 }
 
 /// Where a band begins in its first row (`top`) or stops in its last (`bottom`): at the row's
@@ -111,9 +125,11 @@ pub(crate) fn look_of(bands: &[RowBand], row: Row) -> RowLook {
                 half.stripe = b.stripe.or(half.stripe);
             }
         }
-        if b.weight == RowWeight::Bold {
-            look.weight = RowWeight::Bold;
-        }
+        look.weight = match (b.weight, b.rows.first == row) {
+            (RowWeight::Normal, _) => look.weight,
+            (RowWeight::BoldFrom(from), true) => RowWeight::BoldFrom(from),
+            (_, _) => RowWeight::Bold,
+        };
         if let (true, Some(rule)) = (b.rows.first == row, b.rule) {
             look.rule = Some((rule, b.top));
         }

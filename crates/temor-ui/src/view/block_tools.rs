@@ -105,11 +105,14 @@ fn ToolButton(
     }
 }
 
-/// The tools for one block: each action reports the block it acts on.
+/// The tools for one block: each action reports the block it acts on. While the "more" menu is
+/// up, `held` names the block, so the tools stay when the pointer leaves the pane or crosses
+/// another block on its way to the menu.
 #[component]
 #[allow(non_snake_case)]
 pub fn BlockTools(
     tools: ToolsView,
+    held: Signal<Option<BlockId>>,
     on_copy_command: EventHandler<BlockId>,
     on_copy_output: EventHandler<BlockId>,
     on_save: EventHandler<BlockId>,
@@ -160,7 +163,10 @@ pub fn BlockTools(
                         label: "More",
                         tip: "More things to do with this command",
                         availability: Availability::Enabled,
-                        onclick: move |()| menu.set(MoreMenu::Open),
+                        onclick: move |()| {
+                            held.set(Some(id));
+                            menu.set(MoreMenu::Open);
+                        },
                     }
                 }
             }
@@ -175,7 +181,10 @@ pub fn BlockTools(
                         More::View => on_view.call(id),
                         More::Edit => on_edit.call(id),
                     },
-                    onclose: move |()| menu.set(MoreMenu::Closed),
+                    onclose: move |()| {
+                        held.set(None);
+                        menu.set(MoreMenu::Closed);
+                    },
                 }
             }
         }
