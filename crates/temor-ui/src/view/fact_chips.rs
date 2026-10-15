@@ -22,6 +22,7 @@ use temor_render::Palette;
 
 use super::block_meta::MetaView;
 use super::card_colours::{CardFill, card_ground};
+use super::folder_fit::{RowRoom, fit_folder_chip};
 use crate::session::{HeaderLine, PromptHeader, Session};
 
 /// The small picture at a chip's start.
@@ -277,6 +278,14 @@ pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Opti
     if let Some(folder) = folder.filter(|_| chips_go_over(&header, folder)) {
         let mut chips = lead_chips(folder, facts);
         chips.extend(chip_texts(facts));
+        // A long folder keeps its end: the row is the pane's width less the padding.
+        if let Some((pane_width, cell_width)) = session.grid_logical() {
+            let row = RowRoom {
+                width: pane_width - inset,
+                cell_width,
+            };
+            fit_folder_chip(&mut chips, row);
+        }
         return view(chips, ChipPlace::Over);
     }
     let mut chips = chip_texts(facts);
@@ -307,7 +316,8 @@ pub fn header_chips(
     metas: &[MetaView],
     palette: &Palette,
 ) -> Vec<(BlockId, ChipsView)> {
-    let (Some(gutter), Some((_, cell_width))) = (session.gutter_geometry(), session.grid_logical())
+    let (Some(gutter), Some((pane_width, cell_width))) =
+        (session.gutter_geometry(), session.grid_logical())
     else {
         return Vec::new();
     };
@@ -324,6 +334,12 @@ pub fn header_chips(
                 .map_or(gutter.side, |meta| {
                     gutter.side + (meta.text.chars().count() as f32 + 1.0) * cell_width
                 });
+            // From the text's start to the meta: a long folder keeps its end.
+            let row = RowRoom {
+                width: pane_width - gutter.side - reserve,
+                cell_width,
+            };
+            fit_folder_chip(&mut chips, row);
             let fill = match (session.block_picked(mark.id), mark.outcome) {
                 (true, _) => CardFill::Picked,
                 (false, Outcome::Failed(_)) => CardFill::Failed,
