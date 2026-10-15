@@ -180,7 +180,7 @@ impl Renderer for CpuRenderer {
             }
         };
         self.glyphs.forget_uploads();
-        self.damage = damage(reach, &rows, &metrics, &fit);
+        self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         Ok(CpuFrame {
             pixels: &self.buf,
             size: self.size,

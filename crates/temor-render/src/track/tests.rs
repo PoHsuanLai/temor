@@ -1,7 +1,7 @@
 use temor_vt::{CellPx, GridSize, Px, Row};
 
 use super::*;
-use crate::metrics::CellPos;
+use crate::metrics::{CellPos, fit_grid};
 use crate::renderer::SelectionShape;
 
 fn key() -> ViewKey {
@@ -121,4 +121,27 @@ fn a_selection_change_adds_to_the_rows_that_are_dirty() {
         &[],
     );
     assert_eq!(plan, rows(&[0, 3]));
+}
+
+#[test]
+fn damage_bands_of_the_first_and_last_rows_take_in_the_outer_padding() {
+    let m = key().metrics;
+    // Five rows of 16 in a pane with 4 of padding on every side: grid rows span y 4..84.
+    let fit = fit_grid(PixelSize::new(88, 88), &m, Padding::uniform(Px(4)));
+    // (name, rows composed, (y, height) of each damage band)
+    let cases: [(&str, &[u16], &[(u32, u32)]); 5] = [
+        ("the first row reaches the top edge", &[0], &[(0, 20)]),
+        ("a middle row is its own", &[2], &[(36, 16)]),
+        ("the last row reaches the bottom edge", &[4], &[(68, 20)]),
+        ("neighbours merge", &[0, 1], &[(0, 36)]),
+        ("all rows are one band", &[0, 1, 2, 3, 4], &[(0, 88)]),
+    ];
+    for (name, composed, want) in cases {
+        let rows: Vec<Row> = composed.iter().copied().map(Row).collect();
+        let got: Vec<(u32, u32)> = damage(Reach::Rows, &rows, &m, &fit, 5)
+            .iter()
+            .map(|d| (d.y.0, d.height.0))
+            .collect();
+        assert_eq!(got, want, "{name}");
+    }
 }

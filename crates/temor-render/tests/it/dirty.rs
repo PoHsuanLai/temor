@@ -5,13 +5,23 @@ use temor_vt::Px;
 
 use crate::support::{PADDING, Pane};
 
+/// The damage of grid rows `first..first + rows`: the first row's band reaches up to the pane's
+/// top edge and the last row's down to its bottom edge, so glyphs overhanging into the outer
+/// padding are repainted.
 fn band(pane: &mut Pane, first: u32, rows: u32) -> DamageRect {
     let ch = pane.renderer_cell_height();
+    let total = (pane.size.height.0 - 2 * PADDING) / ch;
+    let top = if first == 0 { 0 } else { PADDING + first * ch };
+    let bottom = if first + rows == total {
+        pane.size.height.0
+    } else {
+        PADDING + (first + rows) * ch
+    };
     DamageRect {
         x: Px(0),
-        y: Px(PADDING + first * ch),
+        y: Px(top),
         width: pane.size.width,
-        height: Px(rows * ch),
+        height: Px(bottom - top),
     }
 }
 

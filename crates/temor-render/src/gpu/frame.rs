@@ -170,7 +170,7 @@ impl Renderer for GpuRenderer {
             return Err(RenderError::GlyphsDoNotFit);
         }
         let (commands, images_skipped) = self.record(frame, input.origin, &metrics)?;
-        self.damage = damage(reach, &rows, &metrics, &fit);
+        self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         let texture = self.target.as_ref().ok_or(RenderError::NoRenderTarget)?;
         Ok(GpuFrame {
             texture,

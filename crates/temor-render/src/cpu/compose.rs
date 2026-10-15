@@ -14,6 +14,7 @@ use crate::error::RenderError;
 use crate::font::{Atlas, BUILD_ATTEMPTS, GlyphCache};
 use crate::frame::{CellDraw, ImagePlacement};
 use crate::scene::{Premul, Quad, QuadPaint, RowScene, SceneInput, build_row};
+use crate::track::band_of;
 
 /// Repaints the band of `row` (the full width, padding included) from the frame's `rows`, with
 /// `beside` saying which neighbours' glyphs may reach into it, and says whether the row's own glyphs reach outside it. Fails when the row's glyphs do not fit
@@ -29,7 +30,10 @@ pub(crate) fn compose_row(
 ) -> Result<Overhang, RenderError> {
     let ch = input.metrics.height() as i32;
     let y0 = input.origin.1 + i32::from(row.0) * ch;
-    target.band = (y0, y0 + ch);
+    let total = u16::try_from(rows.len()).unwrap_or(u16::MAX);
+    // The first and last rows' bands take in the padding beside the grid, where their glyphs
+    // may overhang.
+    target.band = band_of(row, total, input.origin.1, ch, target.height as i32);
     target.clear_band(Premul::opaque(input.colors.background));
     draw_images(target, input, images, KittyLayer::BelowBackground);
     let mut sides = [RowScene::default(), RowScene::default()];

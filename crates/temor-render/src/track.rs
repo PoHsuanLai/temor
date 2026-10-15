@@ -164,13 +164,29 @@ fn image_key(p: &ImagePlacement, ch: i32) -> ImageKey {
     }
 }
 
+/// The device rows `start..end` a grid row's band covers. The first row's band reaches up to the
+/// pane's top edge and the last row's down to its bottom edge, so a glyph that overhangs the
+/// grid into the outer padding is drawn there. `top` is the grid's top in the pane.
+pub(crate) fn band_of(row: Row, rows: u16, top: i32, ch: i32, pane_height: i32) -> (i32, i32) {
+    let y = top + i32::from(row.0) * ch;
+    let start = if row.0 == 0 { 0.min(y) } else { y };
+    let end = if u32::from(row.0) + 1 >= u32::from(rows) {
+        pane_height.max(y + ch)
+    } else {
+        y + ch
+    };
+    (start, end)
+}
+
 /// The damaged rectangles: the whole pane, or each run of adjacent composed rows as a
-/// full-width band clipped to the pane.
+/// full-width band clipped to the pane. `grid_rows` is the number of rows the frame holds; the
+/// first and last band take in the padding beyond them (see [`band_of`]).
 pub(crate) fn damage(
     reach: Reach,
     rows: &[Row],
     m: &CellMetrics,
     fit: &GridFit,
+    grid_rows: u16,
 ) -> Vec<DamageRect> {
     let size = fit.pane;
     if reach == Reach::Pane {
@@ -185,13 +201,16 @@ pub(crate) fn damage(
     sorted.sort_unstable();
     sorted.dedup();
     let mut out: Vec<DamageRect> = Vec::new();
-    let ch = m.height();
+    let ch = i32::try_from(m.height()).unwrap_or(i32::MAX);
+    let top = i32::try_from(fit.padding.top.0).unwrap_or(i32::MAX);
+    let pane = i32::try_from(size.height.0).unwrap_or(i32::MAX);
     for r in sorted {
-        let y = fit.padding.top.0 + u32::from(r) * ch;
-        if y >= size.height.0 {
+        let (start, end) = band_of(Row(r), grid_rows, top, ch, pane);
+        let (start, end) = (start.max(0), end.min(pane));
+        if start >= end {
             continue;
         }
-        let height = ch.min(size.height.0 - y);
+        let (y, height) = (start as u32, (end - start) as u32);
         match out.last_mut() {
             Some(last) if last.y.0 + last.height.0 == y => last.height.0 += height,
             _ => out.push(DamageRect {
