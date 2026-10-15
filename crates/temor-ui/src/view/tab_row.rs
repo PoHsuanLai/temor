@@ -14,6 +14,7 @@ use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::host::measure::use_rect;
+use ds::prelude::IconView;
 use ds::prelude::*;
 use temor_core::presence::companion_presence;
 use temor_core::vocab::ids::PaneId;
@@ -24,7 +25,7 @@ use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
 use super::tab_glyph::prompt_glyph;
-use crate::hub::{Desk, DragKey, TabRow, Unread};
+use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread};
 
 /// The row for one tab.
 #[component]
@@ -60,9 +61,17 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     // The prompt glyph leads the row, or the companion's orb while an agent works or waits (a
     // press on it is a press on the row); the news dot trails it. The words
     // are the row's own title and detail, so their sizes are quire's (13 and 11.5).
-    let leading = match companion_presence(row.agent) {
-        CompanionPresence::Idle => RowLeading::Source(prompt_glyph(IconSize::Small)),
-        presence => RowLeading::Element(rsx! {
+    // A tab whose last command succeeded or failed wears that colour on its glyph.
+    let leading = match (companion_presence(row.agent), row.tone) {
+        (CompanionPresence::Idle, TabTone::Plain) => {
+            RowLeading::Source(prompt_glyph(IconSize::Small))
+        }
+        (CompanionPresence::Idle, tone) => RowLeading::Element(rsx! {
+            span { class: "temor-tab-glyph", "data-tone": tone.slug(),
+                IconView { source: prompt_glyph(IconSize::Small), size: IconSize::Tile }
+            }
+        }),
+        (presence, _) => RowLeading::Element(rsx! {
             CompanionOrb { presence, size: OrbSize::Inline }
         }),
     };
@@ -122,7 +131,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let selecting = desk.clone();
     let tip = hover_text(&row);
     rsx! {
-        div { class: "temor-tab-box", "data-tone": row.tone.slug(),
+        div { class: "temor-tab-box",
             // The branch, the state and what an agent is doing are said on hover: the row is
             // one line.
             RowTip { name: format!("tab{}", id.0), text: tip,

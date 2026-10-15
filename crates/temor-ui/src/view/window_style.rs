@@ -35,8 +35,9 @@ pub const WINDOW_CSS: &str = "\
 .temor-side-box { width: 100%; height: 100%; }\
 .temor-side { width: 100%; height: 100%; }\
 .temor-tab-box { position: relative; display: flex; width: 100%; min-width: 0; }\
-.temor-tab-box[*|data-tone=succeeded] .ds-row-leading { color: var(--ok) !important; }\
-.temor-tab-box[*|data-tone=failed] .ds-row-leading { color: var(--danger) !important; }\
+.temor-tab-glyph { display: grid; place-items: center; }\
+.temor-tab-glyph[*|data-tone=succeeded] { color: var(--ok); }\
+.temor-tab-glyph[*|data-tone=failed] { color: var(--danger); }\
 .temor-new-tab { display: flex; width: 100%; min-width: 0; }\
 .temor-tab-box > *, .temor-new-tab > *, .temor-seg-slot > * { flex: 1 1 auto; min-width: 0; }\
 .temor-split { display: flex; flex-direction: row; align-items: center; width: 100%; min-width: 0; gap: var(--s-2); }\

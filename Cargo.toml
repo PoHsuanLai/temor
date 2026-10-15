@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "163957e09dcff8b6273246de052eefd8a2135aac" }  # v0.3.24 + master: the host scale follows the page zoom (quire#19)
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -68,12 +68,12 @@ anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "776abe1
 anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "776abe1e4dde52713cf4b10e66c9cb50963f10b4" }
 anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "776abe1e4dde52713cf4b10e66c9cb50963f10b4" }
 anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "776abe1e4dde52713cf4b10e66c9cb50963f10b4" }
-chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "6ef54930760208ed28b81269878ded080600fd35" }
+chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
-chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "6ef54930760208ed28b81269878ded080600fd35" }
-chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "6ef54930760208ed28b81269878ded080600fd35" }
+chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
+chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 # Our desktop's keymap source (keycap's daemon and keymap files), at the rev casement reads.
-keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "794f9decfe366a5aa6a2c7d24ce0efcafec65942" }
+keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "e4dd317c8d2ed7270d486197af6083c053298ebb" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 96919f7 locks porter e05d46b (as anyview 4280bc2 does), so docket and porter-client share

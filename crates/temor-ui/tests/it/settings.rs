@@ -208,7 +208,7 @@ fn the_shell_offer_list_adds_and_removes_a_command() {
         "kubectl debug -it",
     );
     assert_eq!(settings_text(&ambient).offer.add, ["kubectl debug -it"]);
-    click(&mut h, "button[aria-label=\"Remove\"]");
+    click(&mut h, "button[aria-label=\"Remove kubectl debug -it\"]");
     assert!(settings_text(&ambient).offer.add.is_empty());
 }
 
@@ -228,15 +228,10 @@ fn a_recorded_chord_writes_keys_conf_a_held_one_is_refused_and_reset_all_clears(
         keys_text(&ambient)
     );
 
-    // Ctrl+Shift+N is New tab's.
-    record(
-        &mut h,
-        split_down,
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        'n',
-    );
+    // Split right now holds the chord it was just given.
+    record(&mut h, split_down, &all, 'n');
     assert!(
-        h.html().contains("is already used by New tab"),
+        h.html().contains("is already used by Split right"),
         "the refusal names the action that holds the chord:\n{}",
         h.html()
     );
@@ -409,6 +404,12 @@ fn a_variable_is_added_edited_and_removed_on_the_spaces_page() {
         last_change(&board),
         SpaceChange::Env(vec![(key("A"), EnvValue("2".to_owned()))])
     );
+    // The main window writes the edit and sends the Space back, as it does after every edit.
+    board.publish(vec![home(Profile {
+        env: vec![(key("A"), EnvValue("2".to_owned()))],
+        ..Profile::default()
+    })]);
+    h.advance(Duration::from_millis(200));
 
     click(&mut h, "button[aria-label=\"Remove A\"]");
     assert_eq!(last_change(&board), SpaceChange::Env(Vec::new()));

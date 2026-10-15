@@ -279,7 +279,7 @@ source = "git+https://github.com/PoHsuanLai/anyview.git?rev=776abe1e4dde52713cf4
 dependencies = [
  "anyview-core",
  "bzip2",
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "flate2",
  "lzma-rust2",
  "quick-xml",
@@ -297,7 +297,7 @@ source = "git+https://github.com/PoHsuanLai/anyview.git?rev=776abe1e4dde52713cf4
 dependencies = [
  "anyview-archive",
  "anyview-core",
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "roxmltree 0.21.1",
  "thiserror 2.0.21",
 ]
@@ -307,8 +307,8 @@ name = "anyview-core"
 version = "0.1.0-beta.1"
 source = "git+https://github.com/PoHsuanLai/anyview.git?rev=776abe1e4dde52713cf4b10e66c9cb50963f10b4#776abe1e4dde52713cf4b10e66c9cb50963f10b4"
 dependencies = [
- "chordkit",
- "ds-core",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "infer",
  "jiff",
  "serde",
@@ -340,7 +340,7 @@ version = "0.1.0-beta.1"
 source = "git+https://github.com/PoHsuanLai/anyview.git?rev=776abe1e4dde52713cf4b10e66c9cb50963f10b4#776abe1e4dde52713cf4b10e66c9cb50963f10b4"
 dependencies = [
  "anyview-core",
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "icns",
  "image",
  "img-parts",
@@ -360,8 +360,8 @@ version = "0.1.0-beta.1"
 source = "git+https://github.com/PoHsuanLai/anyview.git?rev=776abe1e4dde52713cf4b10e66c9cb50963f10b4#776abe1e4dde52713cf4b10e66c9cb50963f10b4"
 dependencies = [
  "anyview-core",
- "chordkit",
- "ds-core",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
 ]
 
 [[package]]
@@ -374,7 +374,7 @@ dependencies = [
  "anyview-store",
  "anyview-ui",
  "dioxus",
- "ds",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "futures-channel",
  "futures-util",
 ]
@@ -404,9 +404,9 @@ dependencies = [
  "anyview-image",
  "anyview-text",
  "dioxus",
- "ds",
- "ds-blitz",
- "ds-core",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-blitz 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "thiserror 2.0.21",
 ]
 
@@ -432,7 +432,7 @@ dependencies = [
  "calamine",
  "chardetng",
  "csv",
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "encoding_rs",
  "pulldown-cmark",
  "serde_json",
@@ -457,11 +457,11 @@ dependencies = [
  "anyview-peek",
  "anyview-store",
  "anyview-text",
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
  "dioxus",
- "ds",
- "ds-blitz",
- "ds-core",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-blitz 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "ds-shell",
  "futures-channel",
  "futures-util",
@@ -1214,6 +1214,14 @@ dependencies = [
 [[package]]
 name = "chordkit"
 version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "chordkit"
+version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35#6ef54930760208ed28b81269878ded080600fd35"
 dependencies = [
  "thiserror 2.0.21",
@@ -1222,9 +1230,25 @@ dependencies = [
 [[package]]
 name = "chordkit-gnome"
 version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+dependencies = [
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+]
+
+[[package]]
+name = "chordkit-gnome"
+version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35#6ef54930760208ed28b81269878ded080600fd35"
 dependencies = [
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+]
+
+[[package]]
+name = "chordkit-kde"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+dependencies = [
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
 ]
 
 [[package]]
@@ -1232,7 +1256,7 @@ name = "chordkit-kde"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35#6ef54930760208ed28b81269878ded080600fd35"
 dependencies = [
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
 ]
 
 [[package]]
@@ -2053,12 +2077,28 @@ name = "ds"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
  "dioxus",
- "ds-core",
- "ds-intents",
- "ds-motion",
- "ds-style",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-intents 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-motion 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
+name = "ds"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "dioxus",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-intents 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-motion 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "serde",
  "thiserror 2.0.21",
  "toml",
@@ -2067,9 +2107,9 @@ dependencies = [
 [[package]]
 name = "ds-behaviour"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
 dependencies = [
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
 ]
 
 [[package]]
@@ -2086,15 +2126,15 @@ dependencies = [
  "blitz-paint",
  "blitz-shell",
  "blitz-traits",
- "chordkit",
- "chordkit-gnome",
- "chordkit-kde",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+ "chordkit-gnome 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+ "chordkit-kde 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
  "dioxus",
  "dioxus-asset-resolver",
  "dioxus-native",
  "dioxus-native-dom",
- "ds",
- "ds-desktop",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-desktop 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "image",
  "keyboard-types 0.7.0",
  "parley",
@@ -2113,12 +2153,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "ds-blitz"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "anyrender",
+ "anyrender_vello_hybrid",
+ "arboard",
+ "blitz-dom",
+ "blitz-html",
+ "blitz-kit",
+ "blitz-paint",
+ "blitz-shell",
+ "blitz-traits",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "chordkit-gnome 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "chordkit-kde 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "dioxus",
+ "dioxus-asset-resolver",
+ "dioxus-native",
+ "dioxus-native-dom",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-desktop 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "image",
+ "keyboard-types 0.7.0",
+ "parley",
+ "peniko",
+ "raw-window-handle",
+ "thiserror 2.0.21",
+ "tokio",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
+ "webbrowser",
+ "wgpu",
+ "wgpu_context",
+]
+
+[[package]]
 name = "ds-core"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
- "chordkit",
- "ds-core-derive",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=6ef54930760208ed28b81269878ded080600fd35)",
+ "ds-core-derive 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "futures-timer",
+ "keyboard-types 0.7.0",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ds-core"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "ds-core-derive 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "futures-timer",
  "keyboard-types 0.7.0",
  "serde",
@@ -2138,14 +2229,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "ds-core-derive"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "ds-desktop"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 
 [[package]]
+name = "ds-desktop"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+
+[[package]]
 name = "ds-harness"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
 dependencies = [
  "anyrender",
  "anyrender_vello_cpu",
@@ -2155,12 +2262,12 @@ dependencies = [
  "blitz-kit",
  "blitz-paint",
  "blitz-traits",
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
  "dioxus",
  "dioxus-native-dom",
- "ds",
- "ds-blitz",
- "ds-core",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-blitz 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "image",
  "keyboard-types 0.7.0",
  "parley",
@@ -2178,17 +2285,25 @@ name = "ds-intents"
 version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+]
+
+[[package]]
+name = "ds-intents"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
 ]
 
 [[package]]
 name = "ds-lint"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
 dependencies = [
  "cssparser",
- "ds-core",
- "ds-style",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
 ]
 
 [[package]]
@@ -2197,20 +2312,30 @@ version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
  "dioxus",
- "ds-core",
- "ds-style",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+]
+
+[[package]]
+name = "ds-motion"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "dioxus",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
 ]
 
 [[package]]
 name = "ds-settings"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
 dependencies = [
  "dioxus",
  "ds-behaviour",
- "ds-core",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "ds-settings-derive",
- "ds-style",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "futures-timer",
  "notify",
  "serde",
@@ -2223,11 +2348,22 @@ dependencies = [
 [[package]]
 name = "ds-settings-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "ds-settings-page"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "dioxus",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-settings",
+ "toml",
 ]
 
 [[package]]
@@ -2236,10 +2372,10 @@ version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
  "dioxus",
- "ds",
- "ds-core",
- "ds-motion",
- "ds-style",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-motion 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
  "serde",
 ]
 
@@ -2249,8 +2385,21 @@ version = "0.1.0"
 source = "git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac#163957e09dcff8b6273246de052eefd8a2135aac"
 dependencies = [
  "dioxus",
- "ds-core",
- "ds-core-derive",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "ds-core-derive 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=163957e09dcff8b6273246de052eefd8a2135aac)",
+ "image",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ds-style"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4#d09b96b70917372893b740f98f369a67eb90e8d4"
+dependencies = [
+ "dioxus",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-core-derive 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "image",
  "serde",
  "serde_json",
@@ -3646,9 +3795,9 @@ dependencies = [
 [[package]]
 name = "keycap-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/keycap.git?rev=794f9decfe366a5aa6a2c7d24ce0efcafec65942#794f9decfe366a5aa6a2c7d24ce0efcafec65942"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=e4dd317c8d2ed7270d486197af6083c053298ebb#e4dd317c8d2ed7270d486197af6083c053298ebb"
 dependencies = [
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
  "keycap-protocol",
  "rustix",
 ]
@@ -3656,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "keycap-protocol"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/keycap.git?rev=794f9decfe366a5aa6a2c7d24ce0efcafec65942#794f9decfe366a5aa6a2c7d24ce0efcafec65942"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=e4dd317c8d2ed7270d486197af6083c053298ebb#e4dd317c8d2ed7270d486197af6083c053298ebb"
 dependencies = [
  "serde",
  "serde_json",
@@ -6575,8 +6724,8 @@ dependencies = [
 name = "temor-core"
 version = "0.1.0"
 dependencies = [
- "ds-core",
- "ds-style",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-style 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "icu_properties",
  "proptest",
  "serde",
@@ -6611,7 +6760,7 @@ dependencies = [
 name = "temor-pane"
 version = "0.1.0"
 dependencies = [
- "chordkit",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
  "rustix",
  "temor-pty",
  "temor-render",
@@ -6703,16 +6852,17 @@ dependencies = [
  "anyview-machines",
  "anyview-pane",
  "anyview-peek",
- "chordkit",
- "chordkit-gnome",
- "chordkit-kde",
+ "chordkit 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "chordkit-gnome 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
+ "chordkit-kde 0.1.0 (git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c)",
  "dioxus",
- "ds",
- "ds-blitz",
- "ds-core",
+ "ds 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-blitz 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
+ "ds-core 0.1.0 (git+https://github.com/PoHsuanLai/quire.git?rev=d09b96b70917372893b740f98f369a67eb90e8d4)",
  "ds-harness",
  "ds-lint",
  "ds-settings",
+ "ds-settings-page",
  "keycap-client",
  "png",
  "rustix",

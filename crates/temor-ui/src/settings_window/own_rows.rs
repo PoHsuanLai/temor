@@ -214,6 +214,7 @@ fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>
                     label: "Remove".to_owned(),
                     title: Some("Take this off the list".to_owned()),
                     onclick: move |_| remove.call(at),
+                    common: Common { aria_label: Some(format!("Remove {entry}")), ..Common::default() },
                 }
             }
         }
@@ -221,7 +222,7 @@ fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>
             TextField {
                 label: spec.label.0.clone(),
                 value: draft(),
-                placeholder: "A command, such as kubectl debug -it".to_owned(),
+                placeholder: "A command".to_owned(),
                 oninput: move |text: String| draft.set(text),
                 onsubmit: move |text: String| add.call(text),
             }

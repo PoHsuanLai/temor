@@ -161,7 +161,7 @@ fn short(ms: u64) -> String {
 mod tests {
     use std::path::Path;
 
-    use super::{Marking, NameIn, TabState, is_host_form, tab_title};
+    use super::{Marking, NameIn, TabState, TabTone, is_host_form, tab_title};
 
     fn name(running: Option<&str>, title: &str, cwd: Option<&str>, marking: Marking) -> String {
         tab_title(NameIn {
@@ -228,6 +228,23 @@ mod tests {
             (TabState::Running { for_ms: 7_300_000 }, "running 2h"),
         ] {
             assert_eq!(state.words(), want);
+        }
+    }
+
+    #[test]
+    fn a_tab_is_coloured_by_how_its_last_command_went() {
+        use temor_core::block::Outcome;
+        use temor_core::vocab::ids::ExitCode;
+        let rows = [
+            (None, TabTone::Plain),
+            (Some(Outcome::Running), TabTone::Plain),
+            (Some(Outcome::Succeeded), TabTone::Succeeded),
+            (Some(Outcome::Failed(ExitCode(1))), TabTone::Failed),
+            (Some(Outcome::Stopped(ExitCode(130))), TabTone::Plain),
+            (Some(Outcome::Unreported), TabTone::Plain),
+        ];
+        for (outcome, tone) in rows {
+            assert_eq!(TabTone::of(outcome), tone, "{outcome:?}");
         }
     }
 }

@@ -138,11 +138,8 @@ fn keys_conf_is_written_and_read_back_as_the_keymap_the_panes_will_build() {
     let text = std::fs::read_to_string(ambient.keys_path()).expect("keys.conf");
     assert!(text.contains("temor.split-right"), "{text}");
 
-    // A refusal changes nothing on disk.
-    let held = KeyChange::Bind(
-        Action::SplitDown,
-        chord(&[Modifier::Ctrl, Modifier::Shift], 'd'),
-    );
+    // A refusal changes nothing on disk: Split right holds the chord it was just given.
+    let held = KeyChange::Bind(Action::SplitDown, chord(&ctrl_shift_alt, 'n'));
     let refused = change_keys(&ambient, platform, held).expect_err("held");
     assert!(refused.to_string().contains("Split right"), "{refused}");
     assert_eq!(
