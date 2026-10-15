@@ -14,5 +14,7 @@ mod virtual_images;
 pub use capture::{CapturedFrame, FrameCapture};
 #[cfg(test)]
 pub(crate) use model::CellText;
+#[cfg(all(test, feature = "gpu"))]
+pub(crate) use model::ImagePixels;
 pub use model::PaneFrame;
 pub(crate) use model::{CellDraw, ImagePlacement, TermColors};

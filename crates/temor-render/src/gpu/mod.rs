@@ -12,5 +12,7 @@ mod device;
 mod frame;
 mod pipeline;
 mod renderer;
+#[cfg(test)]
+mod tests;
 
 pub use renderer::{GpuFrame, GpuRenderer};

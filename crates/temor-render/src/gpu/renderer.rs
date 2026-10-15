@@ -48,8 +48,25 @@ pub struct GpuFrame<'a> {
 impl GpuRenderer {
     /// A renderer on `device`, drawing with `fonts`.
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, fonts: FontSet) -> Self {
+        Self::from_glyphs(device, queue, GlyphCache::new(fonts, Scale::default()))
+    }
+
+    /// A renderer whose glyph atlases stop growing at these heights, so a test can make them
+    /// clear mid-frame.
+    #[cfg(test)]
+    pub(crate) fn with_atlas_caps(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        fonts: FontSet,
+        alpha_max: u32,
+        color_max: u32,
+    ) -> Self {
+        let glyphs = GlyphCache::with_max_heights(fonts, Scale::default(), alpha_max, color_max);
+        Self::from_glyphs(device, queue, glyphs)
+    }
+
+    fn from_glyphs(device: &wgpu::Device, queue: &wgpu::Queue, glyphs: GlyphCache) -> Self {
         let pipe = Pipeline::new(device);
-        let glyphs = GlyphCache::new(fonts, Scale::default());
         let atlases = DeviceAtlases::new(device, &pipe, &glyphs);
         let blank_tex = pipeline::texture(
             device,
