@@ -181,13 +181,58 @@ fn shell_data(text: &str) -> TextLine {
 
 /// What hover says: the branch and the state, then what the agent in the tab is doing.
 fn hover_text(row: &TabRow) -> String {
-    let state = row.state.words();
-    let head = match &row.branch {
+    hover_words(
+        row.branch.as_deref(),
+        row.state.words(),
+        row.note.as_deref(),
+    )
+}
+
+/// The hover lines for a tab's `branch`, `state` words and agent `note`.
+fn hover_words(branch: Option<&str>, state: String, note: Option<&str>) -> String {
+    let head = match branch {
         Some(branch) => format!("{branch} \u{b7} {state}"),
         None => state,
     };
-    match &row.note {
+    match note {
         Some(note) => format!("{head}\n{note}"),
         None => head,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hover_says_the_branch_and_state_then_the_agents_note() {
+        let running = "running 2m";
+        let table = [
+            ("state only", None, "idle", None, "idle"),
+            (
+                "branch",
+                Some("main"),
+                running,
+                None,
+                "main \u{b7} running 2m",
+            ),
+            (
+                "note under state",
+                None,
+                "idle",
+                Some("On branch agent/fix"),
+                "idle\nOn branch agent/fix",
+            ),
+            (
+                "all three",
+                Some("agent/fix"),
+                running,
+                Some("src/lib.rs is also changed in Docs (reads text only)"),
+                "agent/fix \u{b7} running 2m\nsrc/lib.rs is also changed in Docs (reads text only)",
+            ),
+        ];
+        for (name, branch, state, note, want) in table {
+            assert_eq!(hover_words(branch, state.to_owned(), note), want, "{name}");
+        }
     }
 }
