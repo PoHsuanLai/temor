@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d09b96b70917372893b740f98f369a67eb90e8d4" }  # master: Apple 2025 colours, SettingsPage pages
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "452021231dcce24802341eda11eb3e7df867acdb" }  # master: Apple 2025 colours, SettingsPage pages
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
