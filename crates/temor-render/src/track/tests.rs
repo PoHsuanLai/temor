@@ -129,7 +129,8 @@ fn damage_bands_of_the_first_and_last_rows_take_in_the_outer_padding() {
     // Five rows of 16 in a pane with 4 of padding on every side: grid rows span y 4..84.
     let fit = fit_grid(PixelSize::new(88, 88), &m, Padding::uniform(Px(4)));
     // (name, rows composed, (y, height) of each damage band)
-    let cases: [(&str, &[u16], &[(u32, u32)]); 5] = [
+    type Case<'a> = (&'a str, &'a [u16], &'a [(u32, u32)]);
+    let cases: [Case; 5] = [
         ("the first row reaches the top edge", &[0], &[(0, 20)]),
         ("a middle row is its own", &[2], &[(36, 16)]),
         ("the last row reaches the bottom edge", &[4], &[(68, 20)]),

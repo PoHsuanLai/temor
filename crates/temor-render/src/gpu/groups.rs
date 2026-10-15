@@ -122,7 +122,8 @@ fn upload(
     {
         let mut view = staging.get_mapped_range_mut(..);
         for (y, line) in copy.data.chunks_exact(row).enumerate() {
-            view[y * stride..y * stride + row].copy_from_slice(line);
+            view.slice(y * stride..y * stride + row)
+                .copy_from_slice(line);
         }
     }
     staging.unmap();

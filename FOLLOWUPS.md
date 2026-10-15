@@ -31,7 +31,8 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [x] nushell (the owner's shell) and other shells get no integration. nushell can emit the marks
       itself (`shell_integration` config); turn that on. §6 (done: nushell through a vendor
       autoload file, bb36e33)
-- [ ] fish 3 marks path untested (fish 4+ emits marks natively); bash 3.2 has no PS0, so no C/D marks.
+- [x] fish 3 marks path untested (fish 4+ emits marks natively); bash 3.2 has no PS0, so no C/D marks.
+      (done 2026-10-15: fish 3.7 tested; bash before 4.4 marks through a DEBUG trap)
 - [ ] A person's own `trap … EXIT` replaces the emulated-login `.bash_logout` trap; an old-style
       `zle -N zle-line-init` drops zsh's first-prompt B fallback under themes.
 - [ ] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7
@@ -194,7 +195,7 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       programs can ask for a steady one, the focused pane's cursor is left out in each off half
       (600 ms) and shows solid from each key, paste or focus; `cursor.blink = off` turns it off.
 - [ ] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
-      real check. §6
+      real check. §6 (tried 2026-10-15; see "Needs hardware": waits on a blitz-shell fix)
 - [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
 - [x] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
       (done: Batch 2 spaces, the root takes `spaces.look()` in `view/window.rs`)
@@ -626,7 +627,7 @@ Written without builds by Sonnet lanes; merged, compiled, fixed and gated togeth
 
 ### desktop
 
-- Credentials (item 5): not done. temor-desktop exposes nothing over porter for secrets, and the
+- Credentials (item 5): done since (Secret Service; see the Settings section). temor-desktop exposes nothing over porter for secrets, and the
   spaces lane's `CredentialSource` trait is not on this base. Needed from porter: a client for
   the secrets store through `porter-client` (a `Secrets`-style handle over `DbusTransport::over(conn)`
   with `get(name)` for a Space-scoped item, plus its `Denied` error), and then a `SystemSecrets` in
@@ -1245,10 +1246,10 @@ sections above are the lanes' own notes; this list is the one to read.
   `terminal.conf.old`, both files followed live (font and cursor reach open panes), and
   `temor --write-schema <dir>`. Lane notes: `/mnt/data/cargo/temor-lanes/followups-b21-settings.md`
   (PLAN §6/§14 text to fold in, the key and label table).
-- [ ] The window: General, Appearance, Keyboard, Spaces on quire's `ds-settings-page`
+- [x] The window: General, Appearance, Keyboard, Spaces on quire's `ds-settings-page`
   (quire c62994d0), opened by ⌘, and a command bar row; open-or-raise copied from mailo's
   `SettingsOpened`. Waits for anyview, keycap and sill to re-pin to quire c62994d0 and chordkit
-  55a62b2 (Whopper, after the owner's login testing).
+  55a62b2 (Whopper, after the owner's login testing). (landed: 5b7cb01)
 - Open: quire's `Page` has only the app, so General and Appearance are told apart by section.
   Closed (Batch 24): `notify.after` reaches open panes; the converter's comments vanishing at the
   next save is accepted (`terminal.conf.old` keeps everything).
@@ -1286,30 +1287,33 @@ sections above are the lanes' own notes; this list is the one to read.
 Run on this machine 2026-10-15 (RTX 5070 Ti, a scratch sshd, tools in /mnt/data/cargo/hw-tools;
 the gate now runs the GPU tests headless and has hw-tools on its PATH):
 - [x] GPU device tests: atlas clears between frames, an image past the device's limit, bands
-      against the CPU. A frame whose own glyphs outgrow the atlas is refused (`GlyphsDoNotFit`)
-      and, today, refused again every frame; only a tiny atlas cap could reach that.
+      against the CPU. A frame whose own glyphs outgrow the atlas is drawn in groups of rows
+      (Batch 25); only a single row that cannot fit is still refused (`GlyphsDoNotFit`).
 - [x] A real sshd test (`temor-ssh/tests/it/real_sshd.rs`). It found: a held local port read as
       "no connection" (fixed), and a port held on one loopback only let ssh listen on the other
       (fixed: `free_local_port` wants both free).
 - [ ] Tune wire limits and the retry policy: needs a host with real latency, not localhost.
 - [x] kitty: `st` is base64 without padding and the kitten refused temor's padded replies, so
       every `kitten transfer` into temor failed (fixed). `tt` is `simple`/`rsync`, as parsed.
-      `kitty_interop.rs` runs the real kitten end to end, by hand (ignored: running the downloaded
-      kitten from the suite was not allowed in the agent session).
+      The kitten also read a session-level STARTED as a refusal; temor now sends it first only
+      to its own sender (`temor=1`, `FirstAnswer`). `kitty_interop.rs` runs the real kitten end
+      to end, by hand (ignored), and passes.
 - [x] fish 3.7 marks; tcsh/csh as the host's login shell; zsh's Ctrl-L redraw (checked to fail
-      without the widget). bash 3.2 marks prompts and folder only, no C/D.
-- [ ] **Owner's call:** C/D marks for bash before 4.4 (macOS's /bin/bash) would need a DEBUG
-      trap, which can clash with a person's own trap. Today those commands form no blocks.
+      without the widget).
+- [x] bash before 4.4 (macOS's /bin/bash) marks C/D as Warp's bash-preexec does: a DEBUG trap
+      put in from PROMPT_COMMAND that chains a person's own trap (tested on bash 3.2).
 - [x] `search_bench`: 100,000 rows read cell by cell 1.8 s, as text 20 ms. Find now glances at
       32 rows as text and reads cells only where a match could be (a rare query: 60 ms). It also
       showed scrollback kept ~600 lines whatever the setting (libghostty's 10 KB byte cap; fixed).
 - [x] The aarch64 helper runs under qemu-aarch64 (its own argument handling answers); its plain
       start re-runs itself, which qemu without binfmt can't follow. Not run on real ARM.
-- [ ] Space secrets in a real Secret Service: `temor-desktop/tests/it/secrets.rs`, by hand in a
-      private bus with the scratch gnome-keyring (see the module notes). Not yet seen passing:
-      running the keyring was not allowed in the agent session.
-- [ ] IME candidate placement (fcitx5 5.1.23 is installed, with McBopomofo and `testim`; not
-      tried). (P3a)
+- [x] Space secrets in a real Secret Service: `temor-desktop/tests/it/secrets.rs`, by hand in a
+      private bus with the scratch gnome-keyring (see the module notes). Passes.
+- [ ] IME candidate placement, tried with fcitx5 and Bopomofo on a private display: the
+      candidates sat at the window's corner. blitz-shell turns the IME on with no capabilities,
+      so winit drops every cursor area. A one-line fix (enable with the cursor area) moved them
+      under the caret; sent to Whopper (`temor-lanes/blitz-ime-cursor-area.patch`). Close when
+      quire's blitz rev carries it. (P3a)
 
 ### Small temor items left
 - [x] Host panes have chips and peek through the helper; the folder chip since Batch 23 (the helper reports the host's home). No hub scenario test of host facts yet.
@@ -1327,7 +1331,7 @@ the gate now runs the GPU tests headless and has hw-tools on its PATH):
   decoded in temor-render as libghostty doesn't expose them; a selection recomposes only its
   changed rows; the CPU path draws overhang whole, as the GPU's). Left: each CPU band builds its
   neighbours' scenes too (about 3x the shaping per composed row; build them only when a
-  neighbour overhangs), overhang into the outer padding is still clipped, and the lane's notes
+  neighbour overhangs; done since), overhang into the outer padding (drawn since Batch 25), and the lane's notes
   in `/mnt/data/cargo/temor-lanes/followups-b23-render.md` (one of `c=`/`r=` given, placement id
   collisions, virtual images' layer).
 - Mark cuts depend on where libghostty dispatches OSC 133. (Blocks)
@@ -1447,9 +1451,10 @@ the bar runs the sidebar action through the desk.
   (done 2026-10-14, owner: "yes match the new chips": the facts the prompt's chips showed are kept
   for the block it becomes, `Session::keep_header_facts`, and its header line carries the same
   chips on the block's own ground (a failed or picked block's fill) and clear of its meta.)
-- [ ] quire ask: folder, git-branch and diff glyphs in `Icon`. The chips draw Lucide's (ISC,
+- [x] quire ask: folder, git-branch and diff glyphs in `Icon`. The chips draw Lucide's (ISC,
   NOTICE) as symbolic SVGs until then (`view/fact_chips.rs`). A long folder is clipped at its end (no ellipsis on Blitz);
-  cutting the start (keeping the last folders) needs a start-side ellipsis.
+  cutting the start (keeping the last folders) needs a start-side ellipsis. (Settled: the Lucide
+  glyphs stay; Batch 25 cuts a long folder at its start, `view/folder_fit.rs`.)
 - [x] Picking blocks as Warp does (2026-10-14): a click on a block picks it whole, Shift+click a
   run, Ctrl+click (⌘ on a Mac) one in or out; a drag still selects text. With blocks picked, ↑/↓
   move the pick, Shift+↑/↓ grow it, Escape or typing lets go, and copy takes each block's command
@@ -1486,7 +1491,7 @@ the bar runs the sidebar action through the desk.
   unpinned there, a row dropped on a tile is pinned there; `TabsIn::Place`, `dnd::resolve`); a
   split of three or more panes keeps the focused pane's name and squeezes the others to their
   glyphs. A pinned tab still never joins a split (the core keeps its panes).
-- [ ] Sidebar, after the mailo pass (only (1) is still open): (1) quire's `PinTiles` draws accounts only; a glyph face
+- [x] Sidebar, after the mailo pass (settled: temor keeps its own tiles): (1) quire's `PinTiles` draws accounts only; a glyph face
   (`PinFace::Glyph`) would let temor use it and its drag-to-reorder instead of its own tiles
   (quire change: owner's OK). (2) Hidden, mailo's sidebar peeks from the window's edge (quire's
   `EdgePeek`); temor's still snaps away. (3) Pinned tiles cannot be dragged to reorder or onto a

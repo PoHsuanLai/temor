@@ -39,7 +39,7 @@ impl GpuRenderer {
     ) -> Result<(wgpu::CommandBuffer, u32), RenderError> {
         let spans: Vec<Range<usize>> = match groups {
             Some(groups) => groups.iter().map(|g| g.rows.clone()).collect(),
-            None => vec![0..self.rows.len()],
+            None => std::iter::once(0..self.rows.len()).collect(),
         };
         let mut all: Vec<Inst> = self.rows.iter().flat_map(|r| r.0.iter().copied()).collect();
         let bg = 0..all.len() as u32;

@@ -115,6 +115,28 @@ impl ImeGlue {
         );
     }
 }
+/// Where the input method's composed text goes: the program, and the preedit line the window
+/// draws while a composition is under way.
+pub fn composed_sink(
+    slot: Rc<RefCell<Slot>>,
+    preedit: Signal<Option<String>>,
+) -> impl Fn(EditInput) + Clone + 'static {
+    move |input: EditInput| {
+        let mut preedit = preedit;
+        match input {
+            EditInput::Text(text) => send_text(&slot, &text),
+            EditInput::Composition(Composition::Update { text, .. }) => {
+                preedit.set((!text.is_empty()).then_some(text));
+            }
+            EditInput::Composition(Composition::End { text }) => {
+                preedit.set(None);
+                send_text(&slot, &text);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// The region's focus: the keyboard in (`gained`), or out, when the composition ends and the
 /// input method turns off.
 pub fn focus_handler(

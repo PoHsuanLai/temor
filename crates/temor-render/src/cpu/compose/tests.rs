@@ -116,118 +116,43 @@ fn only_the_neighbours_that_may_overhang_are_taken() {
     }
 }
 
-mod padding {
-    use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row, Selected};
-
-    use crate::cpu::CpuRenderer;
-    use crate::font::testing::fonts;
-    use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
-    use crate::metrics::{Padding, PixelSize, Scale};
-    use crate::palette::Palette;
-    use crate::renderer::{BlinkPhase, PaneFocus, PaneView, Renderer};
-
-    const PAD: u32 = 6;
-
-    /// Which strip of the pane's outer padding to look at.
-    #[derive(Clone, Copy)]
-    enum Strip {
-        Top,
-        Bottom,
-    }
-
-    /// A two-row pane drawn once, with `text` in the cell at (`row`, 0): the pixel rows of the
-    /// padding strip that hold anything but the background.
-    fn inked(row: u16, text: &str, strip: Strip) -> usize {
-        let mut renderer = CpuRenderer::new(fonts(14.0));
-        let m = renderer.cell_metrics(Scale::new(1.0));
-        let size = PixelSize::new(m.width() + 2 * PAD, 2 * m.height() + 2 * PAD);
-        let mut frame = PaneFrame::new();
-        frame.resize(GridSize::new(1, 2));
-        frame.set_colors(TermColors {
-            foreground: Rgb::new(220, 220, 220),
-            background: Rgb::new(0, 0, 0),
-            cursor: None,
-        });
-        frame.set_row(
-            Row(row),
-            vec![CellDraw {
-                col: Col(0),
-                span: 1,
-                text: CellText::new(text),
-                fg: None,
-                bg: None,
-                style: CellStyle::default(),
-                selected: Selected::No,
+/// The first and last rows' bands take in the outer padding (`band_of`), so a glyph reaching
+/// past the grid is drawn there; a middle row's band stops at its own edges. The bundled test
+/// font keeps every glyph inside its cell, so the overhang is a mask placed by hand.
+#[test]
+fn the_edge_rows_draw_their_glyphs_into_the_outer_padding() {
+    let mut alpha = Atlas::new(AtlasFormat::Alpha, 16, 16, 16);
+    let color = Atlas::new(AtlasFormat::Color, 16, 16, 16);
+    let slot = alpha.put(4, 8, &[255; 32]).expect("room");
+    let white = Premul([255; 4]);
+    // Three rows of 20 below 6 of padding: the grid spans y 6..66 in a pane 72 high.
+    let (top, ch, rows, height) = (6, 20, 3, 72);
+    // (name, row, glyph's y, a pixel row past the grid, drawn there)
+    let cases = [
+        ("above the first row", 0, 2, 3, true),
+        ("below the last row", 2, 62, 67, true),
+        ("a middle row stays in its band", 1, 22, 25, false),
+    ];
+    for (name, row, y, probe, drawn) in cases {
+        let glyph = RowScene {
+            bg: Vec::new(),
+            fg: vec![Quad {
+                x: 0,
+                y,
+                w: 4,
+                h: 8,
+                paint: QuadPaint::Mask { slot, color: white },
             }],
-        );
-        let palette = Palette::default();
-        let view = PaneView {
-            size,
-            scale: Scale::new(1.0),
-            padding: Padding::uniform(Px(PAD)),
-            palette: &palette,
-            focus: PaneFocus::Unfocused,
-            blink: BlinkPhase::On,
-            selection: None,
-            bands: &[],
-            lower: 0,
         };
-        let out = renderer.render(&mut frame, &view).expect("render");
-        let (w, h) = (size.width.0 as usize, size.height.0 as usize);
-        let rows = match strip {
-            Strip::Top => 0..PAD as usize,
-            Strip::Bottom => h - PAD as usize..h,
+        let mut data = vec![0; (WIDTH * height * 4) as usize];
+        let mut target = Target {
+            data: &mut data,
+            width: WIDTH,
+            height,
+            band: band_of(Row(row), rows, top, ch, height as i32),
         };
-        rows.filter(|&y| {
-            (0..w).any(|x| {
-                let i = (y * w + x) * 4;
-                out.pixels[i..i + 3] != [0, 0, 0]
-            })
-        })
-        .count()
-    }
-
-    /// Whether the strip holds ink.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum Ink {
-        Drawn,
-        Absent,
-    }
-
-    #[test]
-    fn glyphs_reaching_past_the_grid_draw_in_the_outer_padding() {
-        let accents = format!("A{}", "\u{301}".repeat(8));
-        let dots = format!("g{}", "\u{323}".repeat(8));
-        // (name, row, text, strip, ink)
-        let cases = [
-            (
-                "accents above the first row",
-                0,
-                accents,
-                Strip::Top,
-                Ink::Drawn,
-            ),
-            (
-                "dots below the last row",
-                1,
-                dots,
-                Strip::Bottom,
-                Ink::Drawn,
-            ),
-            (
-                "a plain letter stays inside",
-                0,
-                "A".to_owned(),
-                Strip::Top,
-                Ink::Absent,
-            ),
-        ];
-        for (name, row, text, strip, ink) in cases {
-            let got = match inked(row, &text, strip) {
-                0 => Ink::Absent,
-                _ => Ink::Drawn,
-            };
-            assert_eq!(got, ink, "{name}");
-        }
+        draw_glyphs(&mut target, &alpha, &color, &glyph);
+        let a = pixel(&data, 1, probe)[3];
+        assert_eq!(a == 255, drawn, "{name}: pixel (1, {probe}) has alpha {a}");
     }
 }
