@@ -1259,9 +1259,9 @@ sections above are the lanes' own notes; this list is the one to read.
   computer" opens a local one.
 
 ### Owner's call (closed 2026-10-15, owner: "close them out fully autonomously"; Batch 24)
-- [ ] quire `PinFace::Glyph` and `Icon::GitBranch`/`Diff` landed in quire f47b05c8; temor adopts
-  them (pinned tabs on quire's `PinTiles`, chips on quire icons) when anyview re-pins onto it
-  (asked Whopper).
+- [x] quire f47b05c8 (anyview f4c8608): the chips draw quire's Folder, GitBranch and Diff glyphs.
+  Pinned tabs keep temor's own tile: `PinTiles` has no orb face, counts instead of the news dot,
+  its own drag (temor's moves tabs between tiles and rows), and only the solid terminal glyph.
 - [x] Agent note: the tab's hover text carries it (it already did; now tested).
 - [x] The 720 px breakpoint stays: the sidebar hides under 720 px, as Mac sidebars collapse in
   narrow windows, and ⌘⇧L shows it at any width.
