@@ -309,7 +309,9 @@ pub fn App() -> Element {
                         SplitPane::new(sidebar_spec(), sidebar_body).shown(sidebar()),
                     ],
                     on_shown: move |(_, shown): (usize, Shown)| sidebar.set(shown),
-                    div { class: "temor-window",
+                    Column {
+                        gap: ColumnGap::None,
+                        extent: ColumnExtent::Fill,
                         if let Some(text) = notice() {
                             InlineBanner {
                                 severity: Severity::Warn,

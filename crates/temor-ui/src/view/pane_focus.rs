@@ -113,10 +113,10 @@ pub fn use_pane_focus(
             ime.element.replace(Some(Rc::clone(&element)));
             let (ime, gained) = (ime.clone(), gained.clone());
             let keyboard = desk.hub.keyboard_pane() == Some(pane);
-            spawn(async move {
-                ime.listen(element, heard).await;
+            let focus = ime.clone();
+            ime.listen(element, heard, move || {
                 if keyboard {
-                    ime.take_focus(EventHandler::new(move |()| gained()));
+                    focus.take_focus(EventHandler::new(move |()| gained()));
                 }
             });
         }

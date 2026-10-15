@@ -40,17 +40,16 @@ pub(super) fn send_text(slot: &RefCell<Slot>, text: &str) {
 
 /// The pane has the keyboard: the input method is on and placed at the cursor.
 pub(super) fn focus_in(ime: ImeGlue, slot: Rc<RefCell<Slot>>, rect: RectProbe) {
-    spawn(async move {
-        ime.switch(ImeSwitch::On).await;
-        ime.cursor_area(cursor_rect(&slot, rect)).await;
+    // The candidates are placed once the input method is on, where the cursor is by then.
+    let placer = ime.clone();
+    ime.switch(ImeSwitch::On, move || {
+        placer.cursor_area(cursor_rect(&slot, rect));
     });
 }
 
 /// Puts the input method's candidates at the cursor after the screen changed.
 pub(super) fn place_cursor(ime: ImeGlue, slot: Rc<RefCell<Slot>>, rect: RectProbe) {
-    spawn(async move {
-        ime.cursor_area(cursor_rect(&slot, rect)).await;
-    });
+    ime.cursor_area(cursor_rect(&slot, rect));
 }
 
 /// The cursor's cell in window logical pixels (zero until the pane is laid out and shown).

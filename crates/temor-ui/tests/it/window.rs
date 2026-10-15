@@ -61,6 +61,31 @@ pub(super) fn harness_building(
     hosting: WindowHosting,
     extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
 ) -> Harness {
+    harness_at(name, probe, (state_dir, 100), tweak, hosting, extra)
+}
+
+/// A window on a screen scaled `scale_percent` (100, 150, 200 ...).
+pub(super) fn harness_scaled(name: &str, probe: &Probe, scale_percent: u16) -> Harness {
+    harness_at(
+        name,
+        probe,
+        (None, scale_percent),
+        |_| {},
+        WindowHosting::Absent,
+        |config| config,
+    )
+}
+
+/// The window the others are made from: `(state_dir, scale_percent)` are the session file and the
+/// screen's scale.
+fn harness_at(
+    name: &str,
+    probe: &Probe,
+    (state_dir, scale_percent): (Option<PathBuf>, u16),
+    tweak: impl FnOnce(&mut Ambient),
+    hosting: WindowHosting,
+    extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
+) -> Harness {
     let home = scratch(name).join("home");
     let mut ambient = Ambient {
         home: home.clone(),
@@ -106,7 +131,7 @@ pub(super) fn harness_building(
     let config = HarnessConfig::new(Viewport {
         width: 1024,
         height: 640,
-        scale_percent: 100,
+        scale_percent,
     })
     .with_context(launch)
     .with_window_hosting(hosting);

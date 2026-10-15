@@ -4,6 +4,7 @@
 
 mod connect;
 mod edit;
+mod facts;
 mod hosts;
 mod live;
 mod local_tab;

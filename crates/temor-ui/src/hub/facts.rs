@@ -209,7 +209,7 @@ impl Hub {
     /// The pane's folder as its chip says it (the home folder as `~`). On a host it is what the
     /// helper last read, with the host's home as `~`; none until it has, and from a helper that
     /// does not say its home.
-    fn chip_folder(&self, pane: PaneId) -> Option<String> {
+    pub(super) fn chip_folder(&self, pane: PaneId) -> Option<String> {
         if self.host_of(pane).is_some() {
             return self.facts.panes.get(&pane)?.folder.clone();
         }
