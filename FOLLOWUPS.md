@@ -1508,3 +1508,16 @@ Whopper's colour batch (pending): --ok/--warn/--danger to Apple values (may step
 Landed (2026-10-15): quire 3f2b194, chordkit 55a62b2 (Ctrl+Shift+- is the program's Ctrl+_), keycap e4dd317, anyview 85d92c4; the Settings window; Apple colours; sidebar glyph green/red by the last command. quire's `SettingsPage { page }` names a page of the desktop's Settings app (`Page::App("temor")` is one page), so temor's own General/Appearance split stays in `settings_window::pages::page_of`. Setting a Space credential is refused until the porter-backed `CredentialSource` implements `set_secret`/`remove_secret`.
 - [x] Flaky forward test: it now waits for the refusal among the notices, so a held local port
   doesn't matter (checked with 3000 held).
+
+## Batch 25 (render and UI lanes, merged 2026-10-16)
+Landed: the CPU draws glyph overhang into the outer padding; the GPU draws a frame whose own glyphs
+outgrow the atlas in groups of rows; a hub test of a host pane's chips; resize tests for the
+sidebar, an open menu and 150%/200%; a long folder chip cut at its start; quire's `write_soon_then`,
+`Column` and `BannerActionRow`. Left:
+- [ ] Placement id collisions: libghostty's C API gives a placement id without its
+      internal/external tag. Upstream ask: a `PlacementData` key for the tag.
+- [ ] A grouped GPU frame redraws the whole pane and copies each group's whole atlases; a dirty
+      copy per group if a real screen ever needs it.
+- [ ] The folder chip's room is counted in grid cells while it is drawn in the smaller code font;
+      tune `CHIP_FRAME` (`view/folder_fit.rs`) if a chip is still cut at its end.
+- Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b25-*.md`.
