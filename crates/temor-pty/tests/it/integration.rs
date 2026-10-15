@@ -154,3 +154,45 @@ fn zsh_keeps_the_mark_under_a_theme_that_rebuilds_ps1() {
         .expect(".zshrc");
     });
 }
+
+/// Why: the offer's probe line (which asks a running shell its name) stayed in zsh's history.
+/// The hook keeps that one line out, nothing else, and nothing is rewritten.
+#[test]
+fn zsh_keeps_the_probe_line_out_of_history_and_everything_else_in() {
+    let test = "zsh_keeps_the_probe_line_out_of_history_and_everything_else_in";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(zsh) = program_or_skip("zsh", test) else {
+        return;
+    };
+    let scratch = Scratch::new();
+    std::fs::write(scratch.home.join(".zshrc"), "PS1='%# '\n").expect(".zshrc");
+    let spec = prepare_shell(
+        &Shell::at(zsh),
+        ShellStart::Interactive,
+        scratch.contract_env(&ChildEnv::new()),
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    let mut term = Term::spawn(&spec, &setsid());
+    assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
+
+    let probe = " sh -c 'echo temor-shell:$(cat /proc/$PPID/comm)' sh\r";
+    let start = term.out.len();
+    term.send(probe);
+    assert!(
+        term.read_until_has(start, "temor-shell:zsh"),
+        "{:?}",
+        term.text()
+    );
+    // The bracket keeps this line from matching its own count.
+    let start = term.out.len();
+    term.send("print KEPT=$(fc -l 1 | grep -c 'print KEPT')\r");
+    assert!(term.read_until_has(start, "KEPT=1"), "{:?}", term.text());
+    let start = term.out.len();
+    term.send("print PROBES=$(fc -l 1 | grep -c 'temor-shel[l]:')\r");
+    assert!(term.read_until_has(start, "PROBES=0"), "{:?}", term.text());
+}

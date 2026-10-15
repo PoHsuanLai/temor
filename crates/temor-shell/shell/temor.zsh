@@ -193,6 +193,14 @@ _temor_clear_screen() {
     zle reset-prompt
 }
 
+# temor's offer to load this script into a shell that is already running first types one line
+# that asks which shell it is. zsh calls this before it files a line in history; returning 1
+# makes it keep that line out, and the hook is added next to the person's own, which still run.
+_temor_addhistory() {
+    [[ $1 == *"sh -c 'echo temor-shell:"* ]] && return 1
+    return 0
+}
+
 autoload -Uz add-zsh-hook add-zle-hook-widget
 # Line editing loads lazily at the first prompt; it is loaded here so the widget can be hooked.
 zmodload zsh/zle 2>/dev/null && add-zle-hook-widget zle-line-init _temor_line_init
@@ -200,3 +208,4 @@ zmodload zsh/zle 2>/dev/null && add-zle-hook-widget zle-line-init _temor_line_in
 add-zsh-hook precmd _temor_save_status
 add-zsh-hook precmd _temor_precmd
 add-zsh-hook preexec _temor_preexec
+add-zsh-hook zshaddhistory _temor_addhistory
