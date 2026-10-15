@@ -16,6 +16,8 @@ mod set;
 pub(crate) mod testing;
 #[cfg(test)]
 mod tests;
+#[cfg(feature = "gpu")]
+pub(crate) use atlas::AtlasCopy;
 #[cfg(any(feature = "gpu", test))]
 pub(crate) use atlas::AtlasFormat;
 pub(crate) use atlas::{Atlas, Slot};

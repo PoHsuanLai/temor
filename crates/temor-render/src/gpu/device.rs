@@ -31,7 +31,7 @@ fn atlas_texture(device: &wgpu::Device, atlas: &Atlas) -> wgpu::Texture {
     )
 }
 
-fn bind(
+pub(super) fn bind(
     device: &wgpu::Device,
     pipe: &Pipeline,
     alpha: &wgpu::Texture,

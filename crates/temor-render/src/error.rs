@@ -15,8 +15,9 @@ pub enum RenderError {
     /// the device's texture limit for the GPU path). Shrink the pane.
     #[error("pane of {width}x{height} pixels is too large to render")]
     PaneTooLarge { width: u32, height: u32 },
-    /// The glyphs of one row (or frame) do not fit the glyph atlases even after they were built
-    /// again: the atlas cap is too small for what is on screen. Draw again next frame.
+    /// The glyphs of one row do not fit the glyph atlases on their own, even after they were
+    /// built again: the atlas cap is too small for what is on screen. (A frame whose rows fit
+    /// one at a time is drawn in groups.) Draw again next frame.
     #[error("the glyphs on screen do not fit the glyph atlas")]
     GlyphsDoNotFit,
     /// The GPU renderer has no render target for the pane it was asked to draw. This is an

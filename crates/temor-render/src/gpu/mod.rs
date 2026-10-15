@@ -10,7 +10,9 @@
 
 mod device;
 mod frame;
+mod groups;
 mod pipeline;
+mod record;
 mod renderer;
 #[cfg(test)]
 mod tests;

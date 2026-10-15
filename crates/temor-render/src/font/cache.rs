@@ -6,6 +6,8 @@ use std::sync::Arc;
 use swash::scale::ScaleContext;
 use swash::shape::ShapeContext;
 
+#[cfg(feature = "gpu")]
+use super::atlas::AtlasCopy;
 use super::atlas::{Atlas, AtlasFormat, Slot};
 use super::config::FaceStyle;
 use super::decor::Decoration;
@@ -70,6 +72,9 @@ pub(crate) struct GlyphCache {
     pub(super) specials: HashMap<Special, Option<RunGlyph>>,
     runs: HashMap<(FaceStyle, u8), RunsByText>,
     epoch: u64,
+    /// While `Some`, the atlases as they stood just before each clear a full atlas forced.
+    #[cfg(feature = "gpu")]
+    spilled: Option<Vec<(AtlasCopy, AtlasCopy)>>,
 }
 
 impl std::fmt::Debug for GlyphCache {
@@ -119,6 +124,8 @@ impl GlyphCache {
             specials: HashMap::new(),
             runs: HashMap::new(),
             epoch: 0,
+            #[cfg(feature = "gpu")]
+            spilled: None,
         }
     }
 
@@ -197,8 +204,48 @@ impl GlyphCache {
         if let Ok(slot) = self.atlas(kind).put(w, h, data) {
             return Some(slot);
         }
+        self.spill();
         self.reset();
         self.atlas(kind).put(w, h, data).ok()
+    }
+
+    /// Keeps a copy of both atlases, when asked to (see [`GlyphCache::begin_spill`]).
+    #[cfg(feature = "gpu")]
+    fn spill(&mut self) {
+        if let Some(copies) = self.spilled.as_mut() {
+            copies.push((self.alpha.copy(), self.color.copy()));
+        }
+    }
+
+    #[cfg(not(feature = "gpu"))]
+    fn spill(&mut self) {}
+
+    /// Starts keeping a copy of both atlases before each clear a full atlas forces, so a frame
+    /// whose glyphs outgrow them can still draw the rows built before the clear.
+    #[cfg(feature = "gpu")]
+    pub(crate) fn begin_spill(&mut self) {
+        self.spilled = Some(Vec::new());
+    }
+
+    /// The copies kept since the last call, oldest first.
+    #[cfg(feature = "gpu")]
+    pub(crate) fn take_spilled(&mut self) -> Vec<(AtlasCopy, AtlasCopy)> {
+        self.spilled
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
+    }
+
+    /// Stops keeping copies.
+    #[cfg(feature = "gpu")]
+    pub(crate) fn end_spill(&mut self) {
+        self.spilled = None;
+    }
+
+    /// Empties both atlases and drops every cached glyph, on purpose.
+    #[cfg(feature = "gpu")]
+    pub(crate) fn restart(&mut self) {
+        self.reset();
     }
 
     fn atlas(&mut self, kind: GlyphKind) -> &mut Atlas {

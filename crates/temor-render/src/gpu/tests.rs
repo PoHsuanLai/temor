@@ -170,8 +170,7 @@ fn differ(a: &[u8], b: &[u8], tolerance: u8) -> f64 {
 }
 
 /// A frame draws with all its glyphs in the atlas at once, so a frame that needs room clears
-/// what the last frame left and builds again; it must then match one drawn with room. (A frame
-/// whose own glyphs outgrow the atlas is refused with `GlyphsDoNotFit` and drawn next time.)
+/// what the last frame left and builds again; it must then match one drawn with room.
 #[test]
 fn a_gpu_frame_that_clears_the_last_frames_glyphs_matches_one_drawn_with_room() {
     let Some(dev) = device() else {
@@ -196,6 +195,36 @@ fn a_gpu_frame_that_clears_the_last_frames_glyphs_matches_one_drawn_with_room() 
         roomy_px == tight_px,
         "a glyph was read from a cleared atlas"
     );
+}
+
+/// A frame whose own glyphs outgrow the atlas is drawn in groups of rows, each in a pass of its
+/// own with the atlases as they were for it; the picture must match one drawn with room, and the
+/// next frame (which fits) must too.
+#[test]
+fn a_gpu_frame_whose_own_glyphs_outgrow_the_atlas_is_drawn_in_groups() {
+    let Some(dev) = device() else {
+        eprintln!("no wgpu adapter: skipped");
+        return;
+    };
+    let mut roomy = GpuRenderer::new(&dev.0, &dev.1, fonts(60.0));
+    let mut tight = GpuRenderer::with_atlas_caps(&dev.0, &dev.1, fonts(60.0), 256, 256);
+    // (name, first glyph, how many distinct glyphs the frame holds)
+    let frames = [
+        ("160 glyphs, more than the atlas holds", 0, 160),
+        ("a frame that fits again afterwards", 0, SHARE),
+    ];
+    for (name, first, count) in frames {
+        let (roomy_px, roomy_stats) = gpu_draw(&dev, &mut roomy, glyphs(first, count), &[]);
+        let (tight_px, tight_stats) = gpu_draw(&dev, &mut tight, glyphs(first, count), &[]);
+        assert_eq!(roomy_stats.atlas_resets, 0, "{name}");
+        assert!(roomy_px == tight_px, "{name}: the pictures differ");
+        if count > SHARE {
+            assert!(
+                tight_stats.atlas_resets > 0,
+                "{name}: the glyphs must not fit for this test to mean anything"
+            );
+        }
+    }
 }
 
 #[test]

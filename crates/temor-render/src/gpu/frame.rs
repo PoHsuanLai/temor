@@ -1,9 +1,8 @@
 //! `GpuRenderer`'s render: rebuild the instances of composed rows, sync the atlases, record
 //! the pass.
 
-use temor_vt::{KittyLayer, Row};
+use temor_vt::Row;
 
-use super::device::ensure_image;
 use super::pipeline::{ALPHA, COLOR, IMAGE, Inst, SOLID, texture};
 use super::{GpuFrame, GpuRenderer};
 use crate::bands::STRIPE_LOGICAL;
@@ -13,9 +12,9 @@ use crate::frame::{ImagePlacement, PaneFrame};
 use crate::metrics::{CellMetrics, Scale, fit_grid};
 use crate::renderer::{PaneView, RenderStats, Renderer};
 use crate::scene::{Quad, QuadPaint, SceneInput, build_row, resolve_cursor, spans};
-use crate::track::{Compose, ViewKey, damage};
+use crate::track::{Compose, Reach, ViewKey, damage};
 
-fn inst(q: &Quad) -> Inst {
+pub(super) fn inst(q: &Quad) -> Inst {
     let rect = [q.x as f32, q.y as f32, q.w as f32, q.h as f32];
     let f = |c: [u8; 4]| c.map(|v| f32::from(v) / 255.0);
     let uv = |s: crate::font::Slot| {
@@ -40,7 +39,7 @@ fn inst(q: &Quad) -> Inst {
     }
 }
 
-fn image_inst(p: &ImagePlacement, origin: (i32, i32), m: &CellMetrics) -> Inst {
+pub(super) fn image_inst(p: &ImagePlacement, origin: (i32, i32), m: &CellMetrics) -> Inst {
     let (iw, ih) = (p.image.width.max(1) as f32, p.image.height.max(1) as f32);
     let [sx, sy, sw, sh] = p.source.map(|v| v as f32);
     Inst {
@@ -153,10 +152,7 @@ impl Renderer for GpuRenderer {
             for &row in todo {
                 let cells = frame.rows.get(usize::from(row.0)).map_or(&[][..], |c| c);
                 build_row(&input, row, cells, &mut self.glyphs, &mut self.scene);
-                if let Some(slot) = self.rows.get_mut(usize::from(row.0)) {
-                    slot.0 = self.scene.bg.iter().map(inst).collect();
-                    slot.1 = self.scene.fg.iter().map(inst).collect();
-                }
+                self.keep_row(row);
             }
             if self.glyphs.epoch() == before {
                 self.epoch = before;
@@ -164,12 +160,25 @@ impl Renderer for GpuRenderer {
                 break;
             }
         }
-        if !settled {
-            // The plan took the dirty rows: the next frame draws everything.
-            self.tracker.invalidate();
-            return Err(RenderError::GlyphsDoNotFit);
-        }
-        let (commands, images_skipped) = self.record(frame, input.origin, &metrics)?;
+        // The frame's glyphs do not fit the atlases together: draw it in groups of rows that do,
+        // all of it, since nothing cached survives.
+        let groups = match settled {
+            true => None,
+            false => match self.build_groups(frame, &input) {
+                Ok(groups) => Some(groups),
+                Err(e) => {
+                    // The plan took the dirty rows: the next frame draws everything.
+                    self.tracker.invalidate();
+                    return Err(e);
+                }
+            },
+        };
+        let (reach, rows) = match groups {
+            Some(_) => (Reach::Pane, all),
+            None => (reach, rows),
+        };
+        let (commands, images_skipped) =
+            self.record(frame, input.origin, &metrics, groups.as_deref())?;
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         let texture = self.target.as_ref().ok_or(RenderError::NoRenderTarget)?;
         Ok(GpuFrame {
@@ -183,111 +192,5 @@ impl Renderer for GpuRenderer {
                 images_skipped,
             },
         })
-    }
-}
-
-impl GpuRenderer {
-    /// Uploads atlases, images and instances, and records the pass.
-    fn record(
-        &mut self,
-        frame: &PaneFrame,
-        origin: (i32, i32),
-        m: &CellMetrics,
-    ) -> Result<(wgpu::CommandBuffer, u32), RenderError> {
-        let mut all: Vec<Inst> = self.rows.iter().flat_map(|r| r.0.iter().copied()).collect();
-        let bg_end = all.len() as u32;
-        all.extend(self.rows.iter().flat_map(|r| r.1.iter().copied()));
-        let fg_end = all.len() as u32;
-        let mut draws: Vec<(KittyLayer, temor_vt::ImageId, u32)> = Vec::new();
-        let mut images_skipped = 0;
-        let limit = self.device.limits().max_texture_dimension_2d;
-        for p in &frame.images {
-            let uploaded = ensure_image(
-                &mut self.images,
-                &self.device,
-                &self.queue,
-                &self.pipe,
-                p,
-                limit,
-            );
-            if uploaded.is_err() {
-                // Not drawn; counted in the stats.
-                images_skipped += 1;
-                continue;
-            }
-            draws.push((p.layer, p.image.id, all.len() as u32));
-            all.push(image_inst(p, origin, m));
-        }
-        self.images
-            .retain(|id, _| frame.images.iter().any(|p| p.image.id == *id));
-        self.atlases
-            .sync(&self.device, &self.queue, &self.pipe, &mut self.glyphs);
-        let bytes: &[u8] = bytemuck::cast_slice(&all);
-        let need = (bytes.len() as u64).max(64).next_power_of_two();
-        if self.instances.as_ref().is_none_or(|b| b.size() < need) {
-            self.instances = Some(self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("temor instances"),
-                size: need,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }));
-        }
-        let (Some(buf), Some(target)) = (self.instances.as_ref(), self.target.as_ref()) else {
-            return Err(RenderError::NoRenderTarget);
-        };
-        if !bytes.is_empty() {
-            self.queue.write_buffer(buf, 0, bytes);
-        }
-        let target_view = target.create_view(&Default::default());
-        let mut enc = self.device.create_command_encoder(&Default::default());
-        {
-            let bg = frame.colors.background;
-            let c = |v: u8| f64::from(v) / 255.0;
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("temor cells"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &target_view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: c(bg.r),
-                            g: c(bg.g),
-                            b: c(bg.b),
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_pipeline(&self.pipe.pipeline);
-            pass.set_bind_group(0, &self.atlases.bind, &[]);
-            pass.set_vertex_buffer(0, buf.slice(..));
-            let images = &self.images;
-            let draw_layer = |pass: &mut wgpu::RenderPass<'_>, layer: KittyLayer| {
-                for &(l, id, at) in &draws {
-                    if let (true, Some(img)) = (l == layer, images.get(&id)) {
-                        pass.set_bind_group(1, &img.bind, &[]);
-                        pass.draw(0..4, at..at + 1);
-                    }
-                }
-            };
-            draw_layer(&mut pass, KittyLayer::BelowBackground);
-            pass.set_bind_group(1, &self.blank, &[]);
-            if bg_end > 0 {
-                pass.draw(0..4, 0..bg_end);
-            }
-            draw_layer(&mut pass, KittyLayer::BelowText);
-            pass.set_bind_group(1, &self.blank, &[]);
-            if fg_end > bg_end {
-                pass.draw(0..4, bg_end..fg_end);
-            }
-            draw_layer(&mut pass, KittyLayer::AboveText);
-        }
-        Ok((enc.finish(), images_skipped))
     }
 }

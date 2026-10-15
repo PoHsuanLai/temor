@@ -32,6 +32,16 @@ impl AtlasFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct AtlasFull;
 
+/// An atlas's texels at one moment, to be drawn from after the atlas itself has been cleared.
+#[cfg(feature = "gpu")]
+#[derive(Debug, Clone)]
+pub(crate) struct AtlasCopy {
+    pub format: AtlasFormat,
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
+}
+
 /// A shelf-packed atlas, plus the regions written since the GPU last copied it.
 #[derive(Debug)]
 pub(crate) struct Atlas {
@@ -80,6 +90,17 @@ impl Atlas {
         }
         self.dirty.push(slot);
         Ok(slot)
+    }
+
+    /// The texels as they are now.
+    #[cfg(feature = "gpu")]
+    pub fn copy(&self) -> AtlasCopy {
+        AtlasCopy {
+            format: self.format,
+            width: self.width,
+            height: self.height,
+            data: self.data.clone(),
+        }
     }
 
     /// Empties the atlas; every slot handed out before is invalid.
