@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "f47b05c88af09d4370868b6ee11988bb88386bf1" }  # master: Apple 2025 colours, SettingsPage pages
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3cfe32c4bbb05900e13f595e38a05e9d6aa941cf" }  # master: blitz 5c755366 (IME cursor area)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -63,11 +63,11 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e4de24c0c0b6015375f4855527c65724bf3b6d49" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e4de24c0c0b6015375f4855527c65724bf3b6d49" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e4de24c0c0b6015375f4855527c65724bf3b6d49" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e4de24c0c0b6015375f4855527c65724bf3b6d49" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "e4de24c0c0b6015375f4855527c65724bf3b6d49" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
@@ -109,11 +109,11 @@ vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955
 vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
 vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
 glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
-anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a1c328cc6084cd3a4580d16a7ecdc939bd68f50e" }
-anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a1c328cc6084cd3a4580d16a7ecdc939bd68f50e" }
-anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a1c328cc6084cd3a4580d16a7ecdc939bd68f50e" }
-wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a1c328cc6084cd3a4580d16a7ecdc939bd68f50e" }
-pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "a1c328cc6084cd3a4580d16a7ecdc939bd68f50e" }
+anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
 # dioxus-core 0.7.10 can spin forever in VirtualDom::wait_for_work: a task woken and then cancelled
 # before it is polled (a use_resource restart) leaves an empty entry in the dirty-task queue that
 # pop_task never removes. Fixed upstream in DioxusLabs/dioxus#5554 (0.8-alpha only); this fork

@@ -194,8 +194,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       cursor-style reset at start, which also applies `cursor.style` to the first prompt),
       programs can ask for a steady one, the focused pane's cursor is left out in each off half
       (600 ms) and shows solid from each key, paste or focus; `cursor.blink = off` turns it off.
-- [ ] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
-      real check. §6 (tried 2026-10-15; see "Needs hardware": waits on a blitz-shell fix)
+- [x] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
+      real check. §6 (done 2026-10-16 on fcitx5: quire 3cfe32c4 carries the blitz-shell fix)
 - [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
 - [x] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
       (done: Batch 2 spaces, the root takes `spaces.look()` in `view/window.rs`)
@@ -1309,11 +1309,12 @@ the gate now runs the GPU tests headless and has hw-tools on its PATH):
       start re-runs itself, which qemu without binfmt can't follow. Not run on real ARM.
 - [x] Space secrets in a real Secret Service: `temor-desktop/tests/it/secrets.rs`, by hand in a
       private bus with the scratch gnome-keyring (see the module notes). Passes.
-- [ ] IME candidate placement, tried with fcitx5 and Bopomofo on a private display: the
+- [x] IME candidate placement, tried with fcitx5 and Bopomofo on a private display: the
       candidates sat at the window's corner. blitz-shell turns the IME on with no capabilities,
       so winit drops every cursor area. A one-line fix (enable with the cursor area) moved them
       under the caret; sent to Whopper (`temor-lanes/blitz-ime-cursor-area.patch`). Close when
-      quire's blitz rev carries it. (P3a)
+      quire's blitz rev carries it. (P3a) (done: quire 3cfe32c4, blitz 5c755366; the candidates
+      open under the caret on the private display)
 
 ### Small temor items left
 - [x] Host panes have chips and peek through the helper; the folder chip since Batch 23 (the helper reports the host's home). No hub scenario test of host facts yet.
