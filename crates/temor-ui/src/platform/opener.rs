@@ -25,26 +25,61 @@ pub trait Opener {
 mod linux {
     use std::process::{Child, Command, Stdio};
 
+    use temor_desktop::{BusRoute, DesktopEnv, SystemLinks};
     use temor_pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
-    /// `xdg-open`, the freedesktop launcher every Linux desktop ships.
+    /// The desktop portal's `OpenURI` first, the way a sandboxed app must and any desktop
+    /// supports; `xdg-open`, the freedesktop launcher, when no portal takes the link.
     #[derive(Debug, Default)]
-    pub struct XdgOpen;
+    pub struct DesktopOpen {
+        pub(super) env: DesktopEnv,
+    }
 
-    impl Opener for XdgOpen {
+    impl Opener for DesktopOpen {
         fn open(&self, target: &LinkTarget) -> Result<(), OpenError> {
-            let child = Command::new("xdg-open")
-                .arg(target.as_str())
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .map_err(OpenError::Failed)?;
-            reap_later(child);
+            if self.env.session == BusRoute::Absent {
+                return xdg_open(target.as_str()).map(reap_later);
+            }
+            // The portal is a bus call: ask it off the window's thread, and fall back there.
+            let env = self.env.clone();
+            let uri = target.as_str().to_owned();
+            std::thread::spawn(move || {
+                if !through_portal(&env, &uri)
+                    && let Ok(mut child) = xdg_open(&uri)
+                {
+                    let _ = child.wait();
+                }
+            });
             Ok(())
         }
+    }
+
+    /// Whether the portal took `uri`. The call runs on a runtime of its own, on this thread.
+    fn through_portal(env: &DesktopEnv, uri: &str) -> bool {
+        let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        else {
+            return false;
+        };
+        runtime.block_on(async {
+            match SystemLinks::connect(env).await {
+                Ok(links) => links.open(uri).await.is_ok(),
+                Err(_) => false,
+            }
+        })
+    }
+
+    fn xdg_open(uri: &str) -> Result<Child, OpenError> {
+        Command::new("xdg-open")
+            .arg(uri)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(OpenError::Failed)
     }
 
     /// Waits for the opener in the background so it never stays a zombie. The helper is the
@@ -78,7 +113,9 @@ mod other {
 pub fn default_opener() -> Box<dyn Opener> {
     #[cfg(target_os = "linux")]
     {
-        Box::new(linux::XdgOpen)
+        Box::new(linux::DesktopOpen {
+            env: temor_desktop::DesktopEnv::from_process(),
+        })
     }
     #[cfg(not(target_os = "linux"))]
     {

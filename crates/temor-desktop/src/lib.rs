@@ -8,6 +8,7 @@
 //!   and hands a later launch's [`Request`] (a new window or tab) to it. The files in `dist/` let
 //!   the bus start temor when a call arrives and none runs.
 //! - **Dock badge.** [`SystemDock::show`] publishes a count, progress and attention.
+//! - **Links.** [`SystemLinks::open`] hands a link to the desktop portal's opener.
 //! - **Restore points.** [`CheckpointPort`] lists an agent run's restore points, says what a
 //!   restore would change and performs it, through docket; [`SystemCheckpoints`] is the live one.
 //! - **Tailscale.** [`SystemTailnet::hosts`] lists the person's other computers as
@@ -43,7 +44,8 @@ pub use manifest::{
     INSTANCE_BUS_NAME, MANIFEST, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ,
 };
 pub use platform::{
-    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
+    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets,
+    SystemTailnet,
 };
 pub use request::{Claim, Handover, Primary, Request};
 pub use secrets::{NoSecrets, SecretFault, SecretVault};

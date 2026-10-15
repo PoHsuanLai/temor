@@ -71,6 +71,26 @@ impl SystemDock {
     }
 }
 
+/// The desktop portal's link opener. Absent here.
+#[derive(Debug)]
+pub struct SystemLinks;
+
+impl SystemLinks {
+    /// Always [`DesktopError::Unsupported`].
+    pub async fn connect(_env: &DesktopEnv) -> Result<Self, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "link opener",
+        })
+    }
+
+    /// Never reached: there is no value of this type.
+    pub async fn open(&self, _uri: &str) -> Result<(), DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "link opener",
+        })
+    }
+}
+
 /// The Tailscale computers. Absent here: the list is empty.
 #[derive(Debug)]
 pub struct SystemTailnet;

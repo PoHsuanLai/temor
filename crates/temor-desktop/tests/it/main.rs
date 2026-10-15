@@ -7,6 +7,7 @@ mod bus;
 mod dock;
 mod instance;
 mod intents;
+mod links;
 mod secrets;
 mod tailnet;
 mod window;

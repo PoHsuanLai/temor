@@ -71,6 +71,11 @@ impl PrivateBus {
         DesktopEnv::at(self.address.clone())
     }
 
+    /// The bus's address, for a connection that serves something on it.
+    pub fn address(&self) -> &str {
+        &self.address
+    }
+
     /// A fresh connection to the bus.
     pub async fn connect(&self) -> zbus::Connection {
         zbus::connection::Builder::address(self.address.as_str())
