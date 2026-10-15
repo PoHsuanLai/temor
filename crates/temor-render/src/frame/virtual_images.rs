@@ -19,6 +19,9 @@ pub(crate) struct VirtualTarget {
     pub image: Arc<ImagePixels>,
     /// `PlacementId(0)` when the program gave none.
     pub placement: PlacementId,
+    /// The grid libghostty reports (`Placement.gridSize`): the program's own `c=`/`r=` when
+    /// given, and when only one is, the other computed from the image's aspect ratio, as
+    /// kitty's protocol says. Nothing is left to compute here.
     pub cols: u32,
     pub rows: u32,
 }
@@ -33,7 +36,9 @@ pub(crate) struct VirtualScene {
 
 impl VirtualScene {
     /// The placement a run names: the exact one when it gives a placement id, else the image's
-    /// first.
+    /// first. libghostty does not say whether a placement id is the program's or one it made up
+    /// for a placement given none (its C API hides the tag), so a made-up id N can be matched
+    /// by a run that names N.
     fn target(&self, run: &PlaceholderRun) -> Option<&VirtualTarget> {
         self.targets.iter().find(|t| {
             t.image.id == run.image
