@@ -6,6 +6,7 @@ mod connect;
 mod edit;
 mod hosts;
 mod live;
+mod local_tab;
 mod retry;
 mod support;
 mod upload;

@@ -94,6 +94,7 @@ impl Hub {
         };
         let mut all = candidates(&sources);
         all.extend(closed_candidate(&self.ws.closed));
+        all.extend(self.local_tab_candidate());
         all
     }
 
