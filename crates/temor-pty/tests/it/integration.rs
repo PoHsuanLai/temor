@@ -196,3 +196,106 @@ fn zsh_keeps_the_probe_line_out_of_history_and_everything_else_in() {
     term.send("print PROBES=$(fc -l 1 | grep -c 'temor-shel[l]:')\r");
     assert!(term.read_until_has(start, "PROBES=0"), "{:?}", term.text());
 }
+
+/// An older shell installed under another name (`fish3`, `bash32`), linked as the name temor
+/// recognises. The directory goes with the returned guard.
+fn renamed(program: &str, as_name: &str, test: &str) -> Option<(tempfile::TempDir, PathBuf)> {
+    let found = program_or_skip(program, test)?;
+    let dir = tempfile::tempdir().expect("link dir");
+    let link = dir.path().join(as_name);
+    std::os::unix::fs::symlink(found, &link).expect("link");
+    Some((dir, link))
+}
+
+/// fish before 4 does not emit the marks itself; temor's fish integration does.
+#[test]
+fn fish_3_marks_true_and_false() {
+    let test = "fish_3_marks_true_and_false";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some((_dir, fish)) = renamed("fish3", "fish", test) else {
+        return;
+    };
+    marks_around_true_and_false(fish, |_| {});
+}
+
+/// bash before 4.4 has no PS0, so nothing marks where a command's output starts: the prompt
+/// marks and OSC 7 come, C and D don't (macOS's /bin/bash is 3.2). Commands still run cleanly.
+#[test]
+fn bash_3_2_marks_its_prompts_and_folder_only() {
+    let test = "bash_3_2_marks_its_prompts_and_folder_only";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some((_dir, bash)) = renamed("bash32", "bash", test) else {
+        return;
+    };
+    let scratch = Scratch::new();
+    let spec = prepare_shell(
+        &Shell::at(bash),
+        ShellStart::Interactive,
+        scratch.contract_env(&ChildEnv::new()),
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    let mut term = Term::spawn(&spec, &setsid());
+    assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
+    for command in ["true", "false"] {
+        let start = term.out.len();
+        term.send(&format!("{command}\r"));
+        assert!(term.read_until_has(start, PROMPT_END), "{:?}", term.text());
+        let out = &term.out[start..];
+        assert!(find(out, PROMPT_START.as_bytes()).is_some(), "{out:?}");
+        assert!(find(out, b"\x1b]7;file://").is_some(), "{out:?}");
+        assert!(find(out, OUTPUT_START.as_bytes()).is_none(), "{out:?}");
+        assert!(find(out, b"\x1b]133;D").is_none(), "{out:?}");
+    }
+    let text = term.text();
+    for complaint in ["syntax error", "unbound variable", "command not found"] {
+        assert!(!text.contains(complaint), "the shell complained: {text:?}");
+    }
+}
+
+/// Under a TERM with no terminal description, temor prints zsh's folder line itself, so a
+/// screen clear (Ctrl-L) must print it again at the top or the person loses it.
+#[test]
+fn zsh_prints_the_folder_line_again_after_ctrl_l_under_an_unknown_term() {
+    let test = "zsh_prints_the_folder_line_again_after_ctrl_l_under_an_unknown_term";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(zsh) = program_or_skip("zsh", test) else {
+        return;
+    };
+    let scratch = Scratch::new();
+    // An empty .zshrc keeps the stock prompt, which temor replaces, and the wizard away.
+    std::fs::write(scratch.home.join(".zshrc"), "").expect(".zshrc");
+    let mut env = scratch.contract_env(&ChildEnv::new());
+    env.set("TERM", "temor-no-such-terminal");
+    let spec = prepare_shell(
+        &Shell::at(zsh),
+        ShellStart::Interactive,
+        env,
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    let mut term = Term::spawn(&spec, &setsid());
+    assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
+    assert!(term.text().contains("work dir"), "{:?}", term.text());
+    let start = term.out.len();
+    term.send("\x0c");
+    assert!(
+        term.read_until_has(start, "work dir"),
+        "no folder line after the clear: {:?}",
+        term.text()
+    );
+    let out = &term.out[start..];
+    let clear = find(out, b"\x1b[2J").expect("the screen is cleared");
+    let line = find(out, b"work dir").expect("folder line");
+    assert!(clear < line, "{out:?}");
+}
