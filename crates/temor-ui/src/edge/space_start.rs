@@ -32,11 +32,42 @@ impl fmt::Display for CredentialFault {
 
 impl std::error::Error for CredentialFault {}
 
+/// Whether the store holds a secret for an account. Asked instead of the secret itself wherever
+/// only "is it set" is shown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Held {
+    Set,
+    NotSet,
+}
+
 /// Where a Space's secrets come from: the account store. `Send + Sync` so it can be handed to
 /// the window as a root context.
 pub trait CredentialSource: Send + Sync {
     /// The secret of `account`, `None` when the store has no such account.
     fn secret(&self, account: &AccountRef) -> Result<Option<String>, CredentialFault>;
+
+    /// Whether the store has a secret for `account`.
+    fn holds(&self, account: &AccountRef) -> Result<Held, CredentialFault> {
+        Ok(match self.secret(account)? {
+            Some(_) => Held::Set,
+            None => Held::NotSet,
+        })
+    }
+
+    /// Keeps `secret` as the secret of `account`, replacing one that is there. The Settings
+    /// window is the only caller; the secret goes nowhere else (not to a log, not to the file).
+    fn set_secret(&self, _account: &AccountRef, _secret: &str) -> Result<(), CredentialFault> {
+        Err(CredentialFault(
+            "There is nowhere to keep secrets on this computer yet.".to_owned(),
+        ))
+    }
+
+    /// Takes the secret of `account` out of the store; none there is not an error.
+    fn remove_secret(&self, _account: &AccountRef) -> Result<(), CredentialFault> {
+        Err(CredentialFault(
+            "There is nowhere to keep secrets on this computer yet.".to_owned(),
+        ))
+    }
 }
 
 /// A store with nothing in it: the default until the desktop integration provides one.

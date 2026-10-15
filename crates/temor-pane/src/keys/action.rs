@@ -3,6 +3,8 @@
 
 use chordkit::{Action as Named, AppAction, SpaceNumber, StandardAction};
 
+use super::settings_pane::SettingsPane;
+
 /// The app id temor registers its own actions under.
 pub(super) const APP: &str = "temor";
 
@@ -85,6 +87,10 @@ pub enum Action {
     /// Open the list of downloaded files, or close it. No default chord: the command bar lists
     /// it, and the sidebar's head has its button.
     ShowDownloads,
+    /// Open the Settings window, or raise it (the standard "settings", ⌘,).
+    Settings,
+    /// Open the Settings window on this page. No chord: the command bar lists one row for each.
+    SettingsAt(SettingsPane),
     /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
     /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
@@ -135,6 +141,7 @@ const STANDARD: &[(Action, StandardAction)] = &[
     (Action::ZoomIn, StandardAction::Bigger),
     (Action::ZoomOut, StandardAction::Smaller),
     (Action::ActualSize, StandardAction::ActualSize),
+    (Action::Settings, StandardAction::Settings),
 ];
 
 impl Action {
@@ -177,13 +184,15 @@ impl Action {
             Self::PinTab => "Pin tab",
             Self::UnpinTab => "Unpin tab",
             Self::ShowDownloads => "Downloads",
+            Self::Settings => "Settings",
+            Self::SettingsAt(pane) => pane.row_label(),
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }
     }
 
     /// The chordkit action this one is bound as, or `None` for an action with no keymap entry
-    /// ([`Action::CloseFind`], or a tab or Space number outside 1 to 9).
+    /// ([`Action::CloseFind`], [`Action::SettingsAt`], or a tab or Space number outside 1 to 9).
     pub fn to_chordkit(self) -> Option<Named> {
         if let Some((_, standard)) = STANDARD.iter().find(|(ours, _)| *ours == self) {
             return Some(Named::Standard(*standard));
@@ -229,4 +238,16 @@ impl Action {
             _ => None,
         }
     }
+}
+
+/// Every action a person can give a key of their own, in the order the Keyboard page lists them:
+/// the standard ones temor runs, temor's own, then the tabs 1 to 9. The Space switch is the
+/// desktop's, and the Settings pages and "close find" have no entry.
+pub fn bindable() -> Vec<Action> {
+    STANDARD
+        .iter()
+        .map(|(ours, _)| *ours)
+        .chain(APP_SLUGS.iter().map(|(ours, _)| *ours))
+        .chain((1..=9).map(Action::SelectTab))
+        .collect()
 }

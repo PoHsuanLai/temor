@@ -2,7 +2,9 @@
 
 use chordkit::{ConventionSource, Keymap, KeymapSource, Overrides, Platform, SourceError};
 
-use super::super::{Action, build_keymap, declared, shortcut, terminal_shortcut};
+use super::super::{
+    Action, SettingsPane, bindable, build_keymap, declared, shortcut, terminal_shortcut,
+};
 use super::support::{GNOME, KDE, OTHER, OURS, Went, keymap_for, press, went};
 use crate::error::SettingsError;
 
@@ -73,6 +75,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::PinTab, "temor.pin-tab"),
         (Action::UnpinTab, "temor.unpin-tab"),
         (Action::ShowDownloads, "temor.show-downloads"),
+        (Action::Settings, "settings"),
         (Action::SelectTab(1), "temor.tab-1"),
         (Action::SelectTab(9), "temor.tab-9"),
         (Action::SelectSpace(3), "switch-to-space-3"),
@@ -83,6 +86,10 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         assert_eq!(Action::from_chordkit(&named), Some(*action), "{id}");
     }
     assert_eq!(Action::CloseFind.to_chordkit(), None);
+    assert_eq!(
+        Action::SettingsAt(SettingsPane::Keyboard).to_chordkit(),
+        None
+    );
     assert_eq!(Action::SelectTab(0).to_chordkit(), None);
     assert_eq!(Action::SelectTab(10).to_chordkit(), None);
     for id in [
@@ -186,4 +193,16 @@ fn shortcuts_are_shown_the_way_the_platform_writes_them() {
             "{platform:?} {action:?}"
         );
     }
+}
+
+#[test]
+fn every_bindable_action_has_an_entry_and_comes_back_from_it() {
+    let all = bindable();
+    for action in &all {
+        let named = action.to_chordkit().expect("bound by a keymap entry");
+        assert_eq!(Action::from_chordkit(&named), Some(*action), "{action:?}");
+    }
+    assert!(all.contains(&Action::Settings));
+    assert!(all.contains(&Action::SelectTab(9)));
+    assert!(!all.contains(&Action::SettingsAt(SettingsPane::General)));
 }

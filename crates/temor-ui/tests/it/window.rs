@@ -49,6 +49,18 @@ pub(super) fn harness_hosting(
     tweak: impl FnOnce(&mut Ambient),
     hosting: WindowHosting,
 ) -> Harness {
+    harness_building(name, probe, state_dir, tweak, hosting, |config| config)
+}
+
+/// [`harness_hosting`] where `extra` may add to the window's configuration (root contexts).
+pub(super) fn harness_building(
+    name: &str,
+    probe: &Probe,
+    state_dir: Option<PathBuf>,
+    tweak: impl FnOnce(&mut Ambient),
+    hosting: WindowHosting,
+    extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
+) -> Harness {
     let home = scratch(name).join("home");
     let mut ambient = Ambient {
         home: home.clone(),
@@ -98,7 +110,7 @@ pub(super) fn harness_hosting(
     })
     .with_context(launch)
     .with_window_hosting(hosting);
-    let mut h = Harness::new(App, config);
+    let mut h = Harness::new(App, extra(config));
     h.map();
     h
 }

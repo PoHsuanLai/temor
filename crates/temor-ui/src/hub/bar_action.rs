@@ -17,6 +17,8 @@ impl Hub {
             Action::JumpToWaiting => self.jump_to_waiting(),
             Action::ToggleSidebar
             | Action::ShowDownloads
+            | Action::Settings
+            | Action::SettingsAt(_)
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ActualSize => self.window_asks.push(action),

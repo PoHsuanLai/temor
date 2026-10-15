@@ -13,6 +13,7 @@ pub mod pane;
 pub mod platform;
 pub mod session;
 pub mod settings;
+pub mod settings_window;
 pub mod view;
 
 pub use app::run;

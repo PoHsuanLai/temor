@@ -8,6 +8,7 @@
 //!    its own (the bell's mark is a timer of the window's own, asked of quire, see FOLLOWUPS).
 
 use ds_lint::{LintConfig, Profile, Rule, assert_clean, markup};
+use temor_ui::settings_window::SETTINGS_CSS;
 use temor_ui::view::probe::Probe;
 use temor_ui::view::window_style::WINDOW_CSS;
 
@@ -31,6 +32,18 @@ fn first_frame(name: &str) -> String {
 fn our_stylesheet_lints_clean() {
     assert_clean(
         WINDOW_CSS,
+        &LintConfig {
+            profile: Profile::Strict,
+            ..LintConfig::new(&ds::kits())
+        },
+    );
+}
+
+/// Rule 1 for the Settings window's sheet.
+#[test]
+fn the_settings_stylesheet_lints_clean() {
+    assert_clean(
+        SETTINGS_CSS,
         &LintConfig {
             profile: Profile::Strict,
             ..LintConfig::new(&ds::kits())

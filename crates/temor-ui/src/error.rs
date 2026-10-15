@@ -21,6 +21,10 @@ pub enum UiError {
     /// The settings could not be written.
     #[error("the settings could not be saved: {0}")]
     SettingsWrite(#[source] ds_settings::SettingsError),
+    /// A change made in the Settings window cannot be kept: what the setting would hold is not
+    /// something it can, said in words for the person.
+    #[error("{0}")]
+    SettingsRefused(String),
     /// This program's own path is not known, so the shell cannot be started through it.
     #[error("the shell could not be started: this program's location is unknown ({0})")]
     Launcher(#[source] std::io::Error),
