@@ -63,11 +63,11 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "85d92c4a67deae2020504dbff7839391c44dc580" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "85d92c4a67deae2020504dbff7839391c44dc580" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "85d92c4a67deae2020504dbff7839391c44dc580" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "85d92c4a67deae2020504dbff7839391c44dc580" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "85d92c4a67deae2020504dbff7839391c44dc580" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "f4c86089813f8a9a564000f16c7680987fa61e75" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
