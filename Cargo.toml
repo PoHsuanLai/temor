@@ -73,7 +73,7 @@ chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b23
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "55a62b2366d6ee1994d95f7cb5a195217807099c" }
 # Our desktop's keymap source (keycap's daemon and keymap files), at the rev casement reads.
-keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "e4dd317c8d2ed7270d486197af6083c053298ebb" }
+keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "d2eae0560cc80c1d8df86e30575e59209c7c5a20" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 96919f7 locks porter e05d46b (as anyview 4280bc2 does), so docket and porter-client share

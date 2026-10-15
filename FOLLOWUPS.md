@@ -1249,18 +1249,29 @@ sections above are the lanes' own notes; this list is the one to read.
   (quire c62994d0), opened by ⌘, and a command bar row; open-or-raise copied from mailo's
   `SettingsOpened`. Waits for anyview, keycap and sill to re-pin to quire c62994d0 and chordkit
   55a62b2 (Whopper, after the owner's login testing).
-- Open: quire's `Page` has only the app, so General and Appearance are told apart by section;
-  `notify.after` reaches new panes only; the converter's comments vanish at the next save
-  (`terminal.conf.old` keeps everything).
+- Open: quire's `Page` has only the app, so General and Appearance are told apart by section.
+  Closed (Batch 24): `notify.after` reaches open panes; the converter's comments vanishing at the
+  next save is accepted (`terminal.conf.old` keeps everything).
+- [x] Space credentials are kept in the desktop's password store (Secret Service through
+  porter-secrets, namespace "temor"); a missing or locked store says so. The unlock prompt is
+  untested on a real desktop.
+- [x] A new tab from a host pane opens on the host, as a split does; the bar's "New tab on this
+  computer" opens a local one.
 
-### Owner's call
-- quire `PinFace::Glyph`, so pinned tabs use quire's `PinTiles` (an upstream change).
-- quire ask: folder, git-branch and diff glyphs in `Icon` (the chips and the tab glyph draw
-  Lucide's as symbolic SVGs until then).
-- Agent note as a tooltip; the 720 px breakpoint; the keycap branch merge.
-- Recordings in the pane (mpv-wgpu): deferred. (Batch 17 Next)
-- A "start in the same folder" setting for plain sessions. (Batch 18, tiera notes)
-- Helper binaries for other CPU kinds (packaging). (Batch 3 Next)
+### Owner's call (closed 2026-10-15, owner: "close them out fully autonomously"; Batch 24)
+- [ ] quire `PinFace::Glyph` and `Icon::GitBranch`/`Diff` landed in quire f47b05c8; temor adopts
+  them (pinned tabs on quire's `PinTiles`, chips on quire icons) when anyview re-pins onto it
+  (asked Whopper).
+- [x] Agent note: the tab's hover text carries it (it already did; now tested).
+- [x] The 720 px breakpoint stays: the sidebar hides under 720 px, as Mac sidebars collapse in
+  narrow windows, and ⌘⇧L shows it at any width.
+- [x] keycap `temor-plasma-terminal` merged as keycap d2eae05 (Whopper, owner approved); temor pins it.
+- [x] Recordings in the pane stay deferred: they open in their own app until mpv-wgpu settles.
+- [x] "New tabs start in" (General > Shell): as usual (tabs at home, splits in the pane's folder),
+  the current folder, or the home folder. A Space's project folder still wins.
+- [x] Helper builds per CPU kind: `temor-remote-<arch>` beside the program (`x86_64`,
+  `aarch64`), chosen by the probed host's CPU; a host with no build for its CPU stays on a plain
+  connection and is told so. Packaging must ship the extra builds (dist/ not done).
 
 ### Platforms (owner)
 - macOS: pty, keys (Cmd), emoji (sbix), windows/IME/CoreText check, trial sandbox, opener and
@@ -1284,9 +1295,10 @@ sections above are the lanes' own notes; this list is the one to read.
   line). (UI pass, 2026-10-11)
 - [x] Byte progress for uploads (Batch 20; scp uploads have none).
 - [x] Host panes are remote from their session's start (Batch 20).
-- Offer: zsh keeps the probe line; nushell history isn't cleaned (no delete in nushell). A zsh
-  fix that rewrites the history (branch b20-remote, f380021) is held for the owner: it can drop
-  unsaved entries under APPEND_HISTORY and misses INC_APPEND_HISTORY/SHARE_HISTORY.
+- [x] Offer: zsh keeps the probe line out of history with a `zshaddhistory` hook (Batch 24), no
+  rewriting; the held rewrite (b20-remote) is dropped. Left: the hook runs only once temor.zsh is
+  loaded, so a probe typed into a plain zsh (before integration) can still land in history;
+  nushell history isn't cleaned (no delete in nushell).
 - [x] Kitty virtual placements, selection recompose, glyph overhang (Batch 23: placeholder cells
   decoded in temor-render as libghostty doesn't expose them; a selection recomposes only its
   changed rows; the CPU path draws overhang whole, as the GPU's). Left: each CPU band builds its
@@ -1465,4 +1477,5 @@ the bar runs the sidebar action through the desk.
 Owner picked: ANSI dark = Apple increased-contrast dark hues (normal 8E8E93 FF6165 4AD968 FEDF43 5CB8FF EA8DFF 3BDDEC D1D1D6, brights 30% toward white); light from Apple's increased-contrast light set; accent follows the system, normal value for fills, increased-contrast value for text-like uses (cursor, links, chip text); state colours: done green, waiting orange, error red, git indigo, folder secondary label, Space dots from Apple's 12 hues. Asked Whopper for the quire ds-style PR (accent_table.rs, terminal.rs, status tokens). temor uses the tokens after the next re-pin. Preview: https://claude.ai/artifact/Awot7u7G8teHqa1kTa5jLj
 Whopper's colour batch (pending): --ok/--warn/--danger to Apple values (may step if a 4.5:1 gate fails); the person's accent stays macOS's eight; all 12 hues as --tag-* and --signal-*, git = --signal-git; SettingsPage gets `page: Option<Page>` (replace `pages::page_of`). On landing: the sidebar tone (preview-colours 460cd1c) uses --ok/--danger; the git chip moves to --signal-git; Space dots to --tag-*.
 Landed (2026-10-15): quire 3f2b194, chordkit 55a62b2 (Ctrl+Shift+- is the program's Ctrl+_), keycap e4dd317, anyview 85d92c4; the Settings window; Apple colours; sidebar glyph green/red by the last command. quire's `SettingsPage { page }` names a page of the desktop's Settings app (`Page::App("temor")` is one page), so temor's own General/Appearance split stays in `settings_window::pages::page_of`. Setting a Space credential is refused until the porter-backed `CredentialSource` implements `set_secret`/`remove_secret`.
-- Flaky: `hub::ssh_tests::edit::a_forward_the_host_refuses_is_told_to_the_person` asks for local port 3000 for real; when something on the machine holds 3000 the message changes and the test fails. Pick a free port in the test.
+- [x] Flaky forward test: it now waits for the refusal among the notices, so a held local port
+  doesn't matter (checked with 3000 held).
