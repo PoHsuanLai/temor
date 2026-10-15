@@ -1,13 +1,13 @@
 //! How much a find costs on a big scrollback (FOLLOWUPS: "~3 FFI calls a cell"). Ignored by
 //! default: run with `cargo test -p temor-pane --test it search_bench -- --ignored --nocapture`.
 //! It prints the time to read every row cell by cell (what the find bar does), to search the rows
-//! read, and, for comparison, to format the whole screen as one block of text. If the first
-//! dominates, the find bar should read rows through a text call instead.
+//! read, to format the whole screen as one block of text, and to find a rare query the way the
+//! find bar does: glancing at blocks of rows as text and reading only the blocks that could match.
 
 use std::time::Instant;
 
 use temor_pane::Term;
-use temor_pane::text::{RowText, find_all};
+use temor_pane::text::{RowText, find_all, may_match};
 use temor_render::Palette;
 use temor_vt::{CellPx, CursorShape, GridPoint, GridSize, LineCount, PointSpace};
 
@@ -53,6 +53,25 @@ fn searching_a_hundred_thousand_lines_prints_where_the_time_goes() {
     let searched = start.elapsed();
     assert!(!found.is_empty());
 
+    // What the find bar does: glance at 32 rows at a time as text, read only those that could
+    // match. A query found once in the whole scrollback.
+    let start = Instant::now();
+    let mut glanced = Vec::new();
+    for first in (0..rows).step_by(32) {
+        let end = (first + 32).min(rows);
+        if may_match(&term.rows_text(first..end).expect("text"), "line 4242 the") {
+            for row in first..end {
+                glanced.push((row, term.row_text(row).expect("row")));
+            }
+        }
+    }
+    let rare = find_all(
+        glanced.iter().map(|(row, line)| (*row, line)),
+        "line 4242 the",
+    );
+    let glance = start.elapsed();
+    assert_eq!(rare.len(), 1);
+
     let start = Instant::now();
     let text = term
         .text(
@@ -64,7 +83,7 @@ fn searching_a_hundred_thousand_lines_prints_where_the_time_goes() {
 
     println!(
         "{rows} rows: read cell by cell {read:?}, searched {searched:?} ({} matches), \
-         formatted as one text {formatted:?} ({} bytes)",
+         formatted as one text {formatted:?} ({} bytes); a rare query glancing at text first {glance:?}",
         found.len(),
         text.len()
     );

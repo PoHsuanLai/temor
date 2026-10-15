@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use temor_pane::text::RowText;
-use temor_pane::text::{Finder, Match, find_all};
+use temor_pane::text::{Finder, Match, find_all, may_match};
 use temor_pane::text::{Granularity, Selection, Shape};
 
 use super::Session;
@@ -15,6 +15,10 @@ use crate::error::UiError;
 
 /// How many screen rows are read per lock.
 const ROWS_PER_LOCK: u32 = 256;
+
+/// How many rows are formatted as text at once to see whether any could match; only blocks that
+/// could are read cell by cell, which costs about a hundred times more.
+const ROWS_PER_GLANCE: u32 = 32;
 
 /// How long the person must pause typing before the search runs.
 pub const QUERY_DEBOUNCE: Duration = Duration::from_millis(150);
@@ -66,9 +70,18 @@ impl Session {
         while first < rows {
             let end = first.saturating_add(ROWS_PER_LOCK).min(rows);
             let chunk = self.pane.with_term(|term| {
-                (first..end)
-                    .map(|row| term.row_text(row).map(|line| (row, line)))
-                    .collect::<Result<Vec<_>, _>>()
+                let mut chunk = Vec::new();
+                let mut block = first;
+                while block < end {
+                    let next = block.saturating_add(ROWS_PER_GLANCE).min(end);
+                    if may_match(&term.rows_text(block..next)?, query) {
+                        for row in block..next {
+                            chunk.push((row, term.row_text(row)?));
+                        }
+                    }
+                    block = next;
+                }
+                Ok::<_, temor_pane::PaneError>(chunk)
             })?;
             lines.extend(chunk);
             first = end;

@@ -9,6 +9,8 @@ mod engine;
 #[cfg(feature = "ghostty")]
 mod holds;
 #[cfg(feature = "ghostty")]
+mod search;
+#[cfg(feature = "ghostty")]
 mod search_bench;
 #[cfg(feature = "ghostty")]
 mod support;

@@ -161,3 +161,22 @@ fn wide_characters_are_two_columns_in_selection_and_search() {
     let ab = find_all([(0, &row)], "ab");
     assert_eq!((ab[0].col, ab[0].len), (5, 2));
 }
+
+#[test]
+fn the_text_glance_says_no_only_where_no_row_matches() {
+    use super::search::may_match;
+    for (text, query, could) in [
+        ("line 1 the lazy dog", "LAZY", true),
+        ("line 1 the lazy dog", "fox", false),
+        // Blank cells and trimmed ends: whitespace is ignored on both sides.
+        ("a   b", "a b", true),
+        ("a   b", "ab", true),
+        ("dog", "dog ", true),
+        ("one\ntwo", "et", true),
+        ("", "x", false),
+        ("anything", "   ", true),
+        ("日本語", "本語", true),
+    ] {
+        assert_eq!(may_match(text, query), could, "{text:?} / {query:?}");
+    }
+}

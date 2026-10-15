@@ -200,6 +200,19 @@ impl Term {
             .format(&self.terminal, TextSpan::Range { start, end })?)
     }
 
+    /// Screen rows `rows` as the terminal formats them, one formatter call: far cheaper than
+    /// reading them cell by cell (`search_bench`), but without columns.
+    pub fn rows_text(&self, rows: std::ops::Range<u32>) -> Result<String, PaneError> {
+        if rows.is_empty() {
+            return Ok(String::new());
+        }
+        let last_col = self.terminal.size().cols.0.saturating_sub(1);
+        self.text(
+            GridPoint::new(PointSpace::Screen, 0, rows.start),
+            GridPoint::new(PointSpace::Screen, last_col, rows.end - 1),
+        )
+    }
+
     /// One screen row, cell by cell, and whether it continues on the next (soft wrap).
     pub fn row_text(&self, row: u32) -> Result<RowText, PaneError> {
         let cells = self

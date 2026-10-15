@@ -59,6 +59,27 @@ pub fn find_all<'a>(rows: impl IntoIterator<Item = (u32, &'a RowText)>, query: &
     out
 }
 
+/// Whether `text` (rows as the terminal formats them) could hold a match of `query` that
+/// [`find_all`] would find in the same rows read cell by cell. Whitespace is left out on both
+/// sides (blank cells and trimmed line ends differ between the two), so it only ever says yes
+/// too often: rows it says no to need not be read.
+pub fn may_match(text: &str, query: &str) -> bool {
+    let needle: Vec<char> = query
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .map(fold)
+        .collect();
+    if needle.is_empty() {
+        return true;
+    }
+    let hay: Vec<char> = text
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .map(fold)
+        .collect();
+    hay.windows(needle.len()).any(|w| w == needle.as_slice())
+}
+
 /// Lowercases a character, keeping it when it has no single lowercase form.
 fn fold(c: char) -> char {
     let mut lower = c.to_lowercase();
