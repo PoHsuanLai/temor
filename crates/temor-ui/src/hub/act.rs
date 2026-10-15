@@ -25,12 +25,20 @@ impl Hub {
         let input = self.in_project(input);
         self.book.lift(&mut self.ws);
         let input = self.ssh_prepare(input);
+        let input = self.start_prepared(input);
         let input = self.measured(input);
+        let at_home = self.split_starts_at_home(&input);
         let (ws, outs) = workspace_step(self.ws.clone(), input);
         self.ws = ws;
         self.book.note(&self.ws);
         for out in outs {
-            self.carry_out(out);
+            match out {
+                WorkspaceOut::Spawn(spawn) if at_home => {
+                    let spawn = self.starting_at_home(spawn);
+                    self.carry_out(WorkspaceOut::Spawn(spawn));
+                }
+                other => self.carry_out(other),
+            }
         }
         self.agents_after_act();
         self.ssh.intent = None;

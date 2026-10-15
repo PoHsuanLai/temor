@@ -31,6 +31,7 @@ impl TerminalDoc {
             cursor: self.cursor.style.into(),
             cursor_blink: self.cursor.blink.into(),
             shell: program,
+            start_in: self.shell.start_in.into(),
             keys,
             notify_after: self.notify.after.0,
             offer_add,
@@ -62,6 +63,7 @@ pub fn from_terminal(settings: &TerminalSettings) -> TerminalDoc {
                 ShellChoice::Login => "login".to_owned(),
                 ShellChoice::Program(program) => program.clone(),
             },
+            start_in: settings.start_in.into(),
         },
         notify: NotifySettings {
             after: NotifySeconds(settings.notify_after),

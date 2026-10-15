@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::schema::APP;
 use super::values::{FontSize, NotifySeconds, ScrollbackSize};
-use super::words::{Blinking, CursorShape};
+use super::words::{Blinking, CursorShape, StartFolder};
 
 /// The page temor's keys are on in the Settings app: temor's own.
 fn page() -> Page {
@@ -94,12 +94,19 @@ pub struct ShellSettings {
         section = "Shell"
     )]
     pub program: String,
+    #[settings(
+        label = "New tabs start in",
+        help = "Where a new tab or a split opens: the folder of the pane in front, or the home folder. The usual way is the home folder for a tab and the same folder for a split.",
+        section = "Shell"
+    )]
+    pub start_in: StartFolder,
 }
 
 impl Default for ShellSettings {
     fn default() -> Self {
         Self {
             program: "login".to_owned(),
+            start_in: StartFolder::default(),
         }
     }
 }

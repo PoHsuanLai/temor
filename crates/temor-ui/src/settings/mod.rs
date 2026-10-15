@@ -30,4 +30,4 @@ pub use load::{Loaded, load_settings};
 pub use migrate::{Converted, convert_terminal_conf, migrate_terminal_conf};
 pub use schema::{APP, root_for, schema, write_schema};
 pub use values::{FontSize, NotifySeconds, ScrollbackSize};
-pub use words::{Blinking, CursorShape};
+pub use words::{Blinking, CursorShape, StartFolder};

@@ -70,6 +70,7 @@ mod ssh_permits;
 mod ssh_tests;
 mod ssh_view;
 mod ssh_wait;
+mod start_folder;
 mod tab_name;
 #[cfg(test)]
 mod tests;

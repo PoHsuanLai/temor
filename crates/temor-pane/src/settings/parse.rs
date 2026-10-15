@@ -1,6 +1,7 @@
 //! The pane's settings file text: one `key = value` per line, `#` lines are comments. A bad
 //! line is reported and skipped, so one typo never costs the rest of the file (PLAN §14).
 
+use super::start::StartIn;
 use super::value::{
     CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice,
     cursor, cursor_blink, font_family, font_points, notify_after, offer_command, scrollback, shell,
@@ -19,6 +20,8 @@ pub struct TerminalSettings {
     /// Whether the cursor blinks (`cursor.blink = on | off`).
     pub cursor_blink: CursorBlinking,
     pub shell: ShellChoice,
+    /// Where a new tab and a split start (`shell.start_in` in `settings.toml`).
+    pub start_in: StartIn,
     /// The person's key changes, in chordkit's line form (`temor.split-right = Primary+Alt+N`).
     /// The keymap itself is built at the app's edge from the desktop's conventions and these.
     pub keys: Overrides,
@@ -40,6 +43,7 @@ impl Default for TerminalSettings {
             cursor: CursorStyle::default(),
             cursor_blink: CursorBlinking::default(),
             shell: ShellChoice::default(),
+            start_in: StartIn::default(),
             keys: Overrides::default(),
             notify_after: NotifyAfter::DEFAULT,
             offer_add: Vec::new(),

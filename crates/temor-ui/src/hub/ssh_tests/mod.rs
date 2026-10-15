@@ -8,5 +8,6 @@ mod hosts;
 mod live;
 mod local_tab;
 mod retry;
+mod start_in;
 mod support;
 mod upload;

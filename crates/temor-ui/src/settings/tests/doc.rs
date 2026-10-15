@@ -5,10 +5,10 @@ use chordkit::Overrides;
 use ds_settings::schema::{KeyKind, Schema};
 use ds_settings::{ConfigRoot, Store};
 use temor_pane::settings::{
-    CursorBlinking, CursorStyle, FontChoice, NotifyAfter, ShellChoice, TerminalSettings,
+    CursorBlinking, CursorStyle, FontChoice, NotifyAfter, ShellChoice, StartIn, TerminalSettings,
 };
 
-use crate::settings::{APP, TerminalDoc, from_terminal, schema};
+use crate::settings::{APP, StartFolder, TerminalDoc, from_terminal, schema};
 
 fn store_with(text: &str) -> (tempfile::TempDir, Store) {
     let dir = tempfile::tempdir().expect("scratch dir");
@@ -41,6 +41,7 @@ fn the_schema_survives_its_own_file_and_names_every_setting_once() {
         cursor: _,
         cursor_blink: _,
         shell: _,
+        start_in: _,
         keys: _,
         notify_after: _,
         offer_add: _,
@@ -56,6 +57,7 @@ fn the_schema_survives_its_own_file_and_names_every_setting_once() {
             "cursor.blink",
             "scrollback.lines",
             "shell.program",
+            "shell.start_in",
             "notify.after",
             "offer.add",
             "offer.remove",
@@ -86,6 +88,7 @@ blink = "off"
 lines = 500
 [shell]
 program = "/bin/zsh"
+start_in = "current"
 [notify]
 after = 30
 [offer]
@@ -106,6 +109,7 @@ remove = ["su"]
     assert_eq!(settings.cursor_blink, CursorBlinking::Off);
     assert_eq!(settings.scrollback.lines(), 500);
     assert_eq!(settings.shell, ShellChoice::Program("/bin/zsh".to_owned()));
+    assert_eq!(settings.start_in, StartIn::Current);
     assert_eq!(settings.notify_after, NotifyAfter::Seconds(30));
     assert_eq!(settings.offer_add, ["kubectl debug -it", "kubectl exec"]);
     assert_eq!(settings.offer_remove, ["su"]);
@@ -155,4 +159,28 @@ fn names_the_pane_cannot_use_are_problems_and_fall_back() {
     assert_eq!(settings.shell, ShellChoice::Login);
     assert_eq!(settings.offer_add, ["ok one"]);
     assert_eq!(problems.len(), 3, "{problems:?}");
+}
+
+#[test]
+fn start_in_reads_each_word_and_a_bad_one_costs_only_itself() {
+    // (the file, the setting read, the key refused)
+    let rows = [
+        ("usual", StartIn::Usual, None),
+        ("current", StartIn::Current, None),
+        ("home", StartIn::Home, None),
+        ("elsewhere", StartIn::Usual, Some("shell.start_in")),
+    ];
+    for (word, want, refused) in rows {
+        let (_dir, store) = store_with(&format!("[shell]\nstart_in = \"{word}\"\n"));
+        let loaded = store.load::<TerminalDoc>();
+        let bad: Vec<&str> = loaded.invalid.iter().map(|k| k.path.as_str()).collect();
+        assert_eq!(bad, refused.into_iter().collect::<Vec<_>>(), "{word}");
+        let (settings, _) = loaded.value.terminal(Overrides::default());
+        assert_eq!(settings.start_in, want, "{word}");
+        assert_eq!(
+            from_terminal(&settings).shell.start_in,
+            StartFolder::from(want),
+            "{word}"
+        );
+    }
 }
