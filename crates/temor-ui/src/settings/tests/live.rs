@@ -1,11 +1,13 @@
 //! What a change of settings means for open panes.
 
-use temor_pane::settings::{CursorBlinking, CursorStyle, FontChoice, FontPoints, TerminalSettings};
+use temor_pane::settings::{
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, TerminalSettings,
+};
 
 use crate::settings::{LiveChange, live_changes};
 
 #[test]
-fn only_the_look_reaches_open_panes() {
+fn the_look_and_the_notice_threshold_reach_open_panes() {
     let old = TerminalSettings::default();
     let size = FontPoints::new(20.0).expect("in range");
     // (what changes, what open panes are told)
@@ -30,6 +32,16 @@ fn only_the_look_reaches_open_panes() {
             LiveChange {
                 cursor: Some(CursorStyle::Bar),
                 blink: Some(CursorBlinking::Off),
+                ..LiveChange::default()
+            },
+        ),
+        (
+            TerminalSettings {
+                notify_after: NotifyAfter::Seconds(30),
+                ..old.clone()
+            },
+            LiveChange {
+                notify: Some(NotifyAfter::Seconds(30)),
                 ..LiveChange::default()
             },
         ),

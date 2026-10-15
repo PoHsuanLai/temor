@@ -5,6 +5,7 @@
 mod connect;
 mod edit;
 mod hosts;
+mod live;
 mod retry;
 mod support;
 mod upload;

@@ -39,6 +39,11 @@ impl Session {
         }
     }
 
+    /// Changes how long a command must run before its finish is announced, from the next one.
+    pub fn set_notify_after(&mut self, after: NotifyAfter) {
+        self.notify_after = after;
+    }
+
     /// The notify setting the session uses.
     pub fn notify_after(&self) -> NotifyAfter {
         self.notify_after

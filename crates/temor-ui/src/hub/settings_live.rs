@@ -1,6 +1,6 @@
 //! Following `settings.toml` while the window lives (PLAN §14): the font and the cursor apply to
-//! every pane that is open; the scrollback, the shell, the notice threshold and the shell offer's
-//! lists apply to the panes that start next. (`keys.conf` is followed with the keymap, in
+//! every pane that is open, and so does the notice threshold; the scrollback, the shell and the
+//! shell offer's lists apply to the panes that start next. (`keys.conf` is followed with the keymap, in
 //! `hub::keys`.)
 
 use std::sync::Arc;
@@ -43,6 +43,9 @@ impl Hub {
             }
             if let Some(blink) = change.blink {
                 session.set_cursor_blink(blink);
+            }
+            if let Some(after) = change.notify {
+                session.set_notify_after(after);
             }
         }
         self.offer.list = OfferList::new(&new.offer_add, &new.offer_remove);

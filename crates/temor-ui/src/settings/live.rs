@@ -1,8 +1,10 @@
-//! What a change of settings means for the panes (PLAN §14). The font and the cursor apply to
-//! every pane that is open; the scrollback, the shell, the notice threshold and the shell offer's
+//! What a change of settings means for the panes (PLAN §14). The font, the cursor and the notice
+//! threshold apply to every pane that is open; the scrollback, the shell and the shell offer's
 //! lists are read when a pane starts, so they reach the panes that come next. Pure.
 
-use temor_pane::settings::{CursorBlinking, CursorStyle, FontChoice, FontPoints, TerminalSettings};
+use temor_pane::settings::{
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, TerminalSettings,
+};
 
 /// What to apply to the open panes: each part is there only when it changed.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -10,6 +12,7 @@ pub struct LiveChange {
     pub font: Option<(FontChoice, FontPoints)>,
     pub cursor: Option<CursorStyle>,
     pub blink: Option<CursorBlinking>,
+    pub notify: Option<NotifyAfter>,
 }
 
 impl LiveChange {
@@ -27,5 +30,6 @@ pub fn live_changes(old: &TerminalSettings, new: &TerminalSettings) -> LiveChang
             .then(|| (new.font.clone(), new.font_size)),
         cursor: (old.cursor != new.cursor).then_some(new.cursor),
         blink: (old.cursor_blink != new.cursor_blink).then_some(new.cursor_blink),
+        notify: (old.notify_after != new.notify_after).then_some(new.notify_after),
     }
 }
