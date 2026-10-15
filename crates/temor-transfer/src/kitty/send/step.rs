@@ -2,7 +2,7 @@
 
 use super::model::{CHUNK, ChunkEnd, Phase, SendEffect, SendEnd, SendFile, SendInput, SendSession};
 use crate::kitty::model::{
-    Action, FileId, FileType, KittyId, Message, Reply, ReplyStatus, Transmission,
+    Action, FileId, FileType, FirstAnswer, KittyId, Message, Reply, ReplyStatus, Transmission,
 };
 use crate::units::Bytes;
 
@@ -11,7 +11,7 @@ impl SendSession {
     pub fn new(id: KittyId, files: Vec<SendFile>) -> (Self, Vec<SendEffect>) {
         let offer = Message {
             transmission: Some(Transmission::Simple),
-            early_answer: true,
+            first_answer: FirstAnswer::StartedAtOnce,
             ..Message::new(Action::Send, id.clone())
         };
         let session = Self {

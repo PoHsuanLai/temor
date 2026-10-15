@@ -33,8 +33,8 @@ pub use drive::{Link, Waits, drive_receive, drive_send};
 pub use frames::FrameScanner;
 pub use io::{apply_write, wire_code};
 pub use model::{
-    Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
-    Transmission, UnixNanos, WriteKind,
+    Action, Compression, ErrorCode, FileId, FileType, FirstAnswer, KittyId, Message, Mode, Reply,
+    ReplyStatus, Transmission, UnixNanos, WriteKind,
 };
 pub use receive::{Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp};
 pub use send::{

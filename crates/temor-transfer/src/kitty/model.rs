@@ -207,6 +207,17 @@ wire_words!(Compression {
 });
 
 /// One decoded message. Absent fields are `None`; `data` is empty when there was none.
+/// When an offer is first answered. kitty's kitten reads any first answer but `OK` as a refusal,
+/// so it gets none until the person decides. temor's own sender writes `temor=1` (kitty ignores
+/// it) to hear `STARTED` at once, and so tells a terminal that takes part from one that does not
+/// while the person is still deciding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum FirstAnswer {
+    #[default]
+    WhenDecided,
+    StartedAtOnce,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message {
     pub action: Action,
@@ -222,10 +233,8 @@ pub struct Message {
     pub compression: Option<Compression>,
     pub transmission: Option<Transmission>,
     pub data: Vec<u8>,
-    /// `temor=1`, which only temor's own sender writes (kitty ignores it): that sender wants
-    /// `STARTED` at once, before the person decides, to tell a terminal that takes part from one
-    /// that does not. kitty's kitten reads any first answer but `OK` as a refusal.
-    pub early_answer: bool,
+    /// When the sender wants its first answer: `temor=1` asks for `STARTED` at once.
+    pub first_answer: FirstAnswer,
 }
 
 impl Message {
@@ -244,7 +253,7 @@ impl Message {
             compression: None,
             transmission: None,
             data: Vec::new(),
-            early_answer: false,
+            first_answer: FirstAnswer::WhenDecided,
         }
     }
 }

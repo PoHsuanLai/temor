@@ -2,8 +2,8 @@
 //! form; unknown keys are ignored, as the protocol asks.
 
 use super::model::{
-    Action, Compression, ErrorCode, FileId, FileType, KittyId, Message, Mode, Reply, ReplyStatus,
-    Transmission, UnixNanos,
+    Action, Compression, ErrorCode, FileId, FileType, FirstAnswer, KittyId, Message, Mode, Reply,
+    ReplyStatus, Transmission, UnixNanos,
 };
 use crate::base64;
 use crate::error::{Malformed, TransferError};
@@ -114,7 +114,10 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
             base64::decode_capped(v, limits.max_bytes())
         })?
         .unwrap_or_default(),
-        early_answer: find(&pairs, &["temor"]).is_some_and(|v| v == b"1"),
+        first_answer: match find(&pairs, &["temor"]) {
+            Some(b"1") => FirstAnswer::StartedAtOnce,
+            _ => FirstAnswer::WhenDecided,
+        },
     })
 }
 
@@ -223,7 +226,7 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
     if !message.data.is_empty() {
         fields.push(format!("d={}", base64::encode_unpadded(&message.data)));
     }
-    if message.early_answer {
+    if message.first_answer == FirstAnswer::StartedAtOnce {
         fields.push("temor=1".to_owned());
     }
     frame(&fields.join(";"))

@@ -5,7 +5,7 @@ use super::helpers::{close, discards, ended, failed, reply, with_phase};
 use super::model::{Effect, EndWhy, Input, Phase, ReceiveSession, SavedFile, WriteOp};
 use crate::consent::Consent;
 use crate::kitty::model::{
-    Action, ErrorCode, FileId, KittyId, Message, ReplyStatus, Transmission, WriteKind,
+    Action, ErrorCode, FileId, FirstAnswer, KittyId, Message, ReplyStatus, Transmission, WriteKind,
 };
 use crate::units::Bytes;
 
@@ -52,7 +52,7 @@ fn offer(session: ReceiveSession, message: Message) -> (ReceiveSession, Vec<Effe
     // temor's sender wants STARTED first, to tell a terminal that takes part from one that does
     // not within moments, while the person is still deciding. kitty's kitten must not get it.
     let mut effects = Vec::new();
-    if message.early_answer {
+    if message.first_answer == FirstAnswer::StartedAtOnce {
         effects.push(reply(&message.id, None, ReplyStatus::Started));
     }
     effects.push(Effect::AskConsent(session.origin.clone()));

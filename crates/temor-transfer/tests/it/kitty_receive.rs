@@ -1,7 +1,8 @@
 //! The receive machine's core flow: consent, files, folders, names and links.
 
 use temor_transfer::kitty::{
-    Action, Effect, EndWhy, FileType, Input, LinkPolicy, Message, Mode, ReplyStatus, WriteOp,
+    Action, Effect, EndWhy, FileType, FirstAnswer, Input, LinkPolicy, Message, Mode, ReplyStatus,
+    WriteOp,
 };
 use temor_transfer::{Bytes, Consent, RelPath};
 
@@ -17,7 +18,7 @@ fn an_offer_asks_for_consent_and_only_temors_sender_hears_started_first() {
     assert!(writes(&effects).is_empty());
 
     let temors = Message {
-        early_answer: true,
+        first_answer: FirstAnswer::StartedAtOnce,
         ..msg(Action::Send)
     };
     let (_, effects) = session(1024).step(Input::Frame(temors));
