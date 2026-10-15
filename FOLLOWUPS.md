@@ -54,7 +54,7 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       (done: Batch 2, temor-pane `engine/xfer/receive.rs`)
 - [ ] Upload by drop (`SendSession`) is not built. §9
 - [ ] Kitty `prm` is ignored (files 0o644, folders 0o755); in-root symlinks are refused, not made.
-- [ ] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9
+- [x] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9 (unpadded; fixed)
 - [ ] A malformed frame with no open files only replies; the transfer continues.
 
 ## temor-render (lane/render, reviewed at f4ead2c)
@@ -1188,7 +1188,7 @@ merged, fixed and gated together. anyview c91ec0a.
 - [ ] quire ask: tell Esc from a click outside on the palette (`onclose` covers both).
 - [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
 - [ ] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it).
-- [ ] Run `search_bench` and decide on a row-text path for search.
+- [x] Run `search_bench` and decide on a row-text path for search (2026-10-15: glance as text).
 - [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned.
 - [ ] OSC 52 primary/selection clipboards (ds_blitz has no target).
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b18-*.md`.
@@ -1283,12 +1283,33 @@ sections above are the lanes' own notes; this list is the one to read.
 - Ubuntu 24.04+: AppArmor and user namespaces; detect and document. (Platform)
 
 ### Needs hardware, a real host, or a shell this machine lacks
-- GPU device tests (atlas retries, oversize images, bands). (temor-render; Look batch)
-- Tune wire limits and retry policy on real hosts; a real sshd test. (temor-wire; temor-ssh)
-- Check kitty `st`/`tt` against a running kitty. (temor-transfer)
-- fish 3, bash 3.2, csh/tcsh marks; a real zsh for the Ctrl-L redraw. (temor-pty; Batch 18)
-- IME candidate placement (needs an IME host in the harness). (P3a)
-- Run `search_bench` and decide on a row-text path. (Batch 18 Next)
+Run on this machine 2026-10-15 (RTX 5070 Ti, a scratch sshd, tools in /mnt/data/cargo/hw-tools;
+the gate now runs the GPU tests headless and has hw-tools on its PATH):
+- [x] GPU device tests: atlas clears between frames, an image past the device's limit, bands
+      against the CPU. A frame whose own glyphs outgrow the atlas is refused (`GlyphsDoNotFit`)
+      and, today, refused again every frame; only a tiny atlas cap could reach that.
+- [x] A real sshd test (`temor-ssh/tests/it/real_sshd.rs`). It found: a held local port read as
+      "no connection" (fixed), and a port held on one loopback only let ssh listen on the other
+      (fixed: `free_local_port` wants both free).
+- [ ] Tune wire limits and the retry policy: needs a host with real latency, not localhost.
+- [x] kitty: `st` is base64 without padding and the kitten refused temor's padded replies, so
+      every `kitten transfer` into temor failed (fixed). `tt` is `simple`/`rsync`, as parsed.
+      `kitty_interop.rs` runs the real kitten end to end, by hand (ignored: running the downloaded
+      kitten from the suite was not allowed in the agent session).
+- [x] fish 3.7 marks; tcsh/csh as the host's login shell; zsh's Ctrl-L redraw (checked to fail
+      without the widget). bash 3.2 marks prompts and folder only, no C/D.
+- [ ] **Owner's call:** C/D marks for bash before 4.4 (macOS's /bin/bash) would need a DEBUG
+      trap, which can clash with a person's own trap. Today those commands form no blocks.
+- [x] `search_bench`: 100,000 rows read cell by cell 1.8 s, as text 20 ms. Find now glances at
+      32 rows as text and reads cells only where a match could be (a rare query: 60 ms). It also
+      showed scrollback kept ~600 lines whatever the setting (libghostty's 10 KB byte cap; fixed).
+- [x] The aarch64 helper runs under qemu-aarch64 (its own argument handling answers); its plain
+      start re-runs itself, which qemu without binfmt can't follow. Not run on real ARM.
+- [ ] Space secrets in a real Secret Service: `temor-desktop/tests/it/secrets.rs`, by hand in a
+      private bus with the scratch gnome-keyring (see the module notes). Not yet seen passing:
+      running the keyring was not allowed in the agent session.
+- [ ] IME candidate placement (fcitx5 5.1.23 is installed, with McBopomofo and `testim`; not
+      tried). (P3a)
 
 ### Small temor items left
 - [x] Host panes have chips and peek through the helper; the folder chip since Batch 23 (the helper reports the host's home). No hub scenario test of host facts yet.
