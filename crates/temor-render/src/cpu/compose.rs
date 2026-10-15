@@ -21,8 +21,7 @@ use crate::scene::{Premul, Quad, QuadPaint, RowScene, SceneInput, build_row};
 pub(crate) fn compose_row(
     target: &mut Target<'_>,
     input: &SceneInput<'_>,
-    row: Row,
-    beside: Sides,
+    (row, beside): (Row, Sides),
     rows: &[Vec<CellDraw>],
     images: &[ImagePlacement],
     glyphs: &mut GlyphCache,

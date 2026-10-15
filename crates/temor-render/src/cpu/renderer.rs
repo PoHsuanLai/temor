@@ -163,8 +163,7 @@ impl Renderer for CpuRenderer {
                 compose_row(
                     &mut target,
                     &input,
-                    row,
-                    beside,
+                    (row, beside),
                     &frame.rows,
                     &frame.images,
                     &mut self.glyphs,
