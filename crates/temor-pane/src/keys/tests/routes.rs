@@ -44,7 +44,8 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         ("Super+=", Ran(Action::ZoomIn)),
         ("Super+-", Ran(Action::ZoomOut)),
         ("Super+0", Ran(Action::ActualSize)),
-        ("Ctrl+Shift+-", Ran(Action::ZoomOut)),
+        // Shift+- is `_`, so Ctrl+Shift+- is the program's Ctrl+_ (undo in the shell).
+        ("Ctrl+Shift+-", Program),
         ("Ctrl+Shift+0", Ran(Action::ActualSize)),
         // keycap's ⌘= reads as Ctrl++, plain Ctrl: the program's (see FOLLOWUPS).
         ("Ctrl+Shift+=", Program),
