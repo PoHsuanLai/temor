@@ -27,6 +27,7 @@ mod error;
 mod manifest;
 mod platform;
 mod request;
+mod secrets;
 mod tailnet;
 mod window;
 
@@ -41,8 +42,11 @@ pub use manifest::{
     APP_BUS_NAME, COMMAND_LIST, COMMAND_READ, COMMAND_RUN_IN_PANE, COMMAND_RUN_SANDBOXED,
     INSTANCE_BUS_NAME, MANIFEST, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ,
 };
-pub use platform::{SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet};
+pub use platform::{
+    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
+};
 pub use request::{Claim, Handover, Primary, Request};
+pub use secrets::{NoSecrets, SecretFault, SecretVault};
 pub use tailnet::TailnetChanges;
 pub use window::{
     CommandInfo, CommandRef, Exit, Focus, LineRange, Network, PaneInfo, PaneKind, PaneOpen,

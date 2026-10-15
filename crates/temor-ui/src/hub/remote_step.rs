@@ -2,7 +2,7 @@
 //! found, the person's answer, the upload, the dial. `helper_step` decides; this runs what it
 //! names. The connection's life after that is in `remote_link`.
 
-use temor_core::remote::{Grant, HelperIn, HelperOut, HelperState, helper_step};
+use temor_core::remote::{CacheDir, Grant, HelperIn, HelperOut, HelperState, HostOs, helper_step};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::HelperHash;
 use temor_ssh::HostAlias;
@@ -11,6 +11,7 @@ use temor_wire::link::{Attempt, LinkState};
 
 use super::model::Hub;
 use super::remote::Busy;
+use crate::edge::remote_builds::no_build_words;
 use crate::edge::remote_event::{RemoteEvent, Wanted};
 use crate::edge::remote_install::Found;
 
@@ -95,8 +96,15 @@ impl Hub {
 
     /// Moves `host`'s helper along and does what it asks.
     fn feed_helper(&mut self, host: &HostAlias, input: HelperIn) {
-        let Some(wanted) = self.remote.blob().map(|blob| blob.name()) else {
-            return self.remote_fallback_all(host);
+        if let HelperIn::Probed(probe) = &input {
+            self.remote.lines.entry(host.clone()).or_default().arch = Some(probe.arch);
+        }
+        let arch = self.remote.lines.get(host).and_then(|line| line.arch);
+        let Some(wanted) = arch
+            .and_then(|arch| self.remote.builds.for_host(arch))
+            .map(|blob| blob.name())
+        else {
+            return self.remote_without_build(host, &input);
         };
         let grant = self.helper_grant(host);
         let line = self.remote.lines.entry(host.clone()).or_default();
@@ -109,7 +117,10 @@ impl Hub {
                 HelperOut::AskPerson => {}
                 HelperOut::Remember(grant) => self.remember_helper(host, grant),
                 HelperOut::Upload(_) => {
-                    if let Some(blob) = self.remote.blob().cloned() {
+                    if let Some(blob) = arch
+                        .and_then(|arch| self.remote.builds.for_host(arch))
+                        .cloned()
+                    {
                         self.remote.work.install(&self.ssh.env, host.clone(), blob);
                     }
                 }
@@ -124,11 +135,27 @@ impl Hub {
         }
     }
 
+    /// The host's kind of processor has no helper build here: it stays on a plain connection.
+    /// A computer the helper could otherwise run on is told why; any other was never offered it.
+    fn remote_without_build(&mut self, host: &HostAlias, input: &HelperIn) {
+        if let Some(line) = self.remote.lines.get_mut(host) {
+            line.helper = HelperState::Unsupported;
+        }
+        if let HelperIn::Probed(probe) = input
+            && probe.os == HostOs::Linux
+            && probe.cache == CacheDir::Usable
+        {
+            self.notices.push(no_build_words(host.as_str()));
+        }
+        self.remote_fallback_all(host);
+    }
+
     /// Looks at a host with panes waiting, or opens their sessions when the connection is up.
     pub(super) fn remote_advance(&mut self, host: &HostAlias) {
-        let Some(wanted) = self.remote.blob().map(|blob| blob.name()) else {
+        if !self.remote.builds.any() {
             return self.remote_fallback_all(host);
-        };
+        }
+        let ours = self.remote.builds.names();
         let line = self.remote.lines.entry(host.clone()).or_default();
         let up = line.conn.is_some() && matches!(line.link, LinkState::Connected { .. });
         if up {
@@ -141,7 +168,7 @@ impl Hub {
             HelperState::Ready(_) => self.remote_dial_first(host),
             HelperState::Absent => {
                 line.busy = Busy::Probing;
-                self.remote.work.probe(&self.ssh.env, host.clone(), wanted);
+                self.remote.work.probe(&self.ssh.env, host.clone(), ours);
             }
             HelperState::Offered | HelperState::Uploading => {}
             HelperState::Refused | HelperState::Unsupported => self.remote_fallback_all(host),
@@ -161,7 +188,11 @@ impl Hub {
     /// Starts a connection attempt for `host`: a new generation with a new router, so what the
     /// last connection says afterwards is ignored.
     pub(super) fn remote_dial(&mut self, host: &HostAlias) {
-        let Some(blob) = self.remote.blob().cloned() else {
+        let arch = self.remote.lines.get(host).and_then(|line| line.arch);
+        let Some(blob) = arch
+            .and_then(|arch| self.remote.builds.for_host(arch))
+            .cloned()
+        else {
             return self.remote_fallback_all(host);
         };
         let line = self.remote.lines.entry(host.clone()).or_default();

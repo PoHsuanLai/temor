@@ -6,6 +6,7 @@ use crate::checkpoints::{
     CheckpointPort, PlanDigest, PointId, PointList, PointPlan, Rewind, SessionKey, TurnHow,
     TurnMark,
 };
+use crate::secrets::{SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
 use crate::{Badge, Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
 use std::sync::Arc;
@@ -159,5 +160,32 @@ impl CheckpointPort for SystemCheckpoints {
 
     fn close(&self, _session: &SessionKey) -> Result<(), DesktopError> {
         Ok(())
+    }
+}
+
+/// A Space's secrets. Absent here: nothing is kept and every ask finds nothing.
+/// TODO(platform:macos): the Keychain through porter's keyring store.
+/// TODO(platform:windows): the Credential Manager through the same.
+#[derive(Debug)]
+pub struct SystemSecrets;
+
+impl SystemSecrets {
+    /// Always [`SecretFault::NoStore`].
+    pub fn new(_runtime: tokio::runtime::Handle) -> Result<Self, SecretFault> {
+        Err(SecretFault::NoStore)
+    }
+}
+
+impl SecretVault for SystemSecrets {
+    fn get(&self, _account: &str) -> Result<Option<String>, SecretFault> {
+        Ok(None)
+    }
+
+    fn put(&self, _account: &str, _secret: &str) -> Result<(), SecretFault> {
+        Err(SecretFault::NoStore)
+    }
+
+    fn delete(&self, _account: &str) -> Result<(), SecretFault> {
+        Err(SecretFault::NoStore)
     }
 }

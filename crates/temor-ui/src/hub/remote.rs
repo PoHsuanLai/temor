@@ -5,10 +5,10 @@
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use temor_core::remote::{Grant, HelperState};
+use temor_core::remote::{Grant, HelperState, HostArch};
 use temor_core::vocab::ids::PaneId;
 use temor_pane::Feeder;
 use temor_ssh::HostAlias;
@@ -19,10 +19,11 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use crate::edge::Ambient;
 use crate::edge::remote::RemoteWork;
+use crate::edge::remote_builds::{HelperBuilds, arch_of};
 use crate::edge::remote_conn::Conn;
 use crate::edge::remote_event::{Generation, RemoteEvent};
 use crate::edge::remote_grants;
-use crate::edge::remote_install::{HelperBlob, HostLogin, blob_path, read_blob};
+use crate::edge::remote_install::HostLogin;
 use crate::edge::remote_link::Target;
 use crate::edge::remote_route::Router;
 
@@ -82,6 +83,8 @@ pub(super) struct RemoteLine {
     pub ports: Vec<ListeningPort>,
     /// The host's login variables, from the probe.
     pub login: HostLogin,
+    /// The host's kind of processor, from the probe; none before it.
+    pub arch: Option<HostArch>,
     /// Panes waiting for the connection to open their sessions.
     pub waiting: Vec<PaneId>,
 }
@@ -100,6 +103,7 @@ impl Default for RemoteLine {
             router: Router::default(),
             ports: Vec::new(),
             login: HostLogin::default(),
+            arch: None,
             waiting: Vec::new(),
         }
     }
@@ -117,8 +121,8 @@ pub(super) struct RemoteHub {
     /// The sessions panes were saved with, until each pane has its session again or is told the
     /// host lost it.
     pub saved: BTreeMap<PaneId, SessionId>,
-    blob: OnceLock<Option<HelperBlob>>,
-    blob_at: Option<PathBuf>,
+    /// The helper builds this temor carries, one per kind of processor.
+    pub builds: HelperBuilds,
     started: Instant,
 }
 
@@ -136,20 +140,13 @@ impl RemoteHub {
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
             saved: BTreeMap::new(),
-            blob: OnceLock::new(),
-            blob_at: blob_path(
+            builds: HelperBuilds::new(
+                arch_of(std::env::consts::ARCH),
                 ambient.env.get("TEMOR_REMOTE_HELPER"),
                 std::env::current_exe().ok().as_deref(),
             ),
             started: Instant::now(),
         }
-    }
-
-    /// The helper build this temor carries, read the first time it is asked for.
-    pub(super) fn blob(&self) -> Option<&HelperBlob> {
-        self.blob
-            .get_or_init(|| self.blob_at.as_deref().and_then(read_blob))
-            .as_ref()
     }
 
     /// Now, on the clock the connection's machine reads.

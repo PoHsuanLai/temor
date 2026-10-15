@@ -47,9 +47,9 @@ pub fn connect_argv(alias: &HostAlias, layout: &ControlLayout) -> Vec<String> {
 impl Hub {
     /// What a session on `alias` runs on, given what the person answered and what is known.
     pub(super) fn remote_tier(&self, alias: &HostAlias) -> Tier {
-        let blob = match self.remote.blob() {
-            Some(_) => Blob::Have,
-            None => Blob::Missing,
+        let blob = match self.remote.builds.any() {
+            true => Blob::Have,
+            false => Blob::Missing,
         };
         let grant = self.helper_grant(alias);
         let absent = HelperState::Absent;

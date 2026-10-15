@@ -18,6 +18,7 @@ quire-desktop = [
   "dep:prov",
   "dep:porter-core",
   "dep:porter-client",
+  "dep:porter-secrets",
   "dep:zbus",
   "dep:toml",
 ]
@@ -34,9 +35,13 @@ docket-client = { workspace = true, optional = true }
 docket-core = { workspace = true, optional = true }
 porter-client = { workspace = true, optional = true }
 porter-core = { workspace = true, optional = true }
+porter-secrets = { workspace = true, optional = true }
 prov = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 zbus = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+porter-secrets = { workspace = true, features = ["testing"] }
 
 [dev-dependencies]
 serde = { workspace = true }

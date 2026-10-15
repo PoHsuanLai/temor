@@ -7,8 +7,9 @@
 use std::sync::Arc;
 
 use temor_desktop::{
-    Badge, BadgeCount, CheckpointPort, Claim, DesktopEnv, DesktopError, NoCheckpoints, Primary,
-    Request, SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet,
+    Badge, BadgeCount, CheckpointPort, Claim, DesktopEnv, DesktopError, NoCheckpoints, NoSecrets,
+    Primary, Request, SecretVault, SystemCheckpoints, SystemDock, SystemInstance, SystemIntents,
+    SystemSecrets, SystemTailnet,
 };
 use tokio::runtime::Handle;
 use tokio::sync::watch;
@@ -26,6 +27,8 @@ pub struct Desktop {
     pub tailnet: Arc<dyn TailnetFeed>,
     /// An agent run's restore points; none are listed without the agent layer.
     pub checkpoints: Arc<dyn CheckpointPort>,
+    /// Where a Space's secrets are kept; nothing is kept without a desktop.
+    pub secrets: Arc<dyn SecretVault>,
 }
 
 impl Desktop {
@@ -35,6 +38,7 @@ impl Desktop {
             link: None,
             tailnet: Arc::new(NoTailnet),
             checkpoints: Arc::new(NoCheckpoints),
+            secrets: Arc::new(NoSecrets),
         }
     }
 }
@@ -98,11 +102,17 @@ fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
             Ok(live) => Arc::new(live),
             Err(_) => Arc::new(NoCheckpoints),
         };
+    // Without a password store, Spaces keep no secrets and say so when asked to.
+    let secrets: Arc<dyn SecretVault> = match SystemSecrets::new(runtime.clone()) {
+        Ok(live) => Arc::new(live),
+        Err(_) => Arc::new(NoSecrets),
+    };
     runtime.spawn(follow_tailnet(env, tailnet.clone()));
     Desktop {
         link: Some(link),
         tailnet: Arc::new(tailnet),
         checkpoints,
+        secrets,
     }
 }
 

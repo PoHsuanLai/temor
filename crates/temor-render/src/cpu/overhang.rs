@@ -31,6 +31,14 @@ pub(crate) fn overhang_of(scene: &RowScene, y: i32, height: u32) -> Overhang {
     }
 }
 
+/// What is known of the rows beside the one being composed: whether their glyphs may reach into
+/// it. [`Overhang::Within`] is certain; [`Overhang::Beyond`] means "build their glyphs to see".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Sides {
+    pub above: Overhang,
+    pub below: Overhang,
+}
+
 /// How each row looked the last time it was composed.
 #[derive(Debug, Default)]
 pub(crate) struct Overhangs {
@@ -45,6 +53,11 @@ impl Overhangs {
         }
     }
 
+    /// How `row` looked the last time it was composed; a row off the grid stays within.
+    fn get(&self, row: u16) -> Overhang {
+        self.rows.get(usize::from(row)).copied().unwrap_or_default()
+    }
+
     /// Records `now` for `row` and returns what it was.
     fn replace(&mut self, row: Row, now: Overhang) -> Overhang {
         self.rows
@@ -53,21 +66,35 @@ impl Overhangs {
     }
 }
 
-/// Composes `dirty` in order through `compose` (which reports the row's new overhang), and each
+/// Composes `dirty` in order through `compose` (which is told what is known of the rows beside
+/// the one it composes, and reports that row's new overhang), and each
 /// dirty row's neighbours too when it overhangs now or did before: their bands hold, or are to
 /// hold, a piece of its glyphs. A neighbour composed earlier already drew the row's current
-/// glyphs. Returns the rows composed, in order.
+/// glyphs. A row beside the one composed counts as overhanging when it overhung when last
+/// composed, or when it is still to be composed in this pass (what it was is then no guide).
+/// Returns the rows composed, in order.
 pub(crate) fn compose_with_neighbours<E>(
     dirty: &[Row],
     total: u16,
     overhangs: &mut Overhangs,
-    mut compose: impl FnMut(Row) -> Result<Overhang, E>,
+    mut compose: impl FnMut(Row, Sides) -> Result<Overhang, E>,
 ) -> Result<Vec<Row>, E> {
     let asked: BTreeSet<u16> = dirty.iter().map(|r| r.0).collect();
     let mut todo = asked.clone();
     let mut done = BTreeSet::new();
     while let Some(r) = todo.pop_first() {
-        let now = compose(Row(r))?;
+        let reach = |n: u16| match asked.contains(&n) && !done.contains(&n) {
+            true => Overhang::Beyond,
+            false => overhangs.get(n),
+        };
+        let sides = Sides {
+            above: r.checked_sub(1).map_or(Overhang::Within, reach),
+            below: r
+                .checked_add(1)
+                .filter(|n| *n < total)
+                .map_or(Overhang::Within, reach),
+        };
+        let now = compose(Row(r), sides)?;
         let before = overhangs.replace(Row(r), now);
         done.insert(r);
         if asked.contains(&r) && (before, now) != (Overhang::Within, Overhang::Within) {

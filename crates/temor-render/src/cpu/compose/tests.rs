@@ -1,5 +1,7 @@
 use super::*;
 use crate::font::AtlasFormat;
+use crate::frame::CellText;
+use temor_vt::{CellStyle, Col, Selected};
 
 const WIDTH: u32 = 8;
 
@@ -55,5 +57,61 @@ fn a_neighbours_glyph_shows_inside_the_band_and_nothing_else_of_it() {
     ] {
         let a = pixel(&data, x, y)[3];
         assert_eq!(a == 255, drawn, "pixel ({x}, {y}) has alpha {a}");
+    }
+}
+
+/// Four rows, row `i` holding `i + 1` cells, so a row can be told by its length.
+fn grid() -> Vec<Vec<CellDraw>> {
+    (0..4u16)
+        .map(|r| {
+            (0..=r)
+                .map(|c| CellDraw {
+                    col: Col(c),
+                    span: 1,
+                    text: CellText::new("a"),
+                    fg: None,
+                    bg: None,
+                    style: CellStyle::default(),
+                    selected: Selected::No,
+                })
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn only_the_neighbours_that_may_overhang_are_taken() {
+    use Overhang::{Beyond, Within};
+    let rows = grid();
+    // (name, row, above, below) -> lengths of the neighbours taken
+    let cases = [
+        (
+            "none overhang: none are shaped",
+            1,
+            Within,
+            Within,
+            [None, None],
+        ),
+        ("the one above", 1, Beyond, Within, [Some(1), None]),
+        ("the one below", 1, Within, Beyond, [None, Some(3)]),
+        ("both", 1, Beyond, Beyond, [Some(1), Some(3)]),
+        (
+            "the top row has no row above",
+            0,
+            Beyond,
+            Beyond,
+            [None, Some(2)],
+        ),
+        (
+            "the last row has no row below",
+            3,
+            Beyond,
+            Beyond,
+            [Some(3), None],
+        ),
+    ];
+    for (name, at, above, below, want) in cases {
+        let got = neighbour_cells(&rows, at, Sides { above, below }).map(|c| c.map(Vec::len));
+        assert_eq!(got, want, "{name}");
     }
 }

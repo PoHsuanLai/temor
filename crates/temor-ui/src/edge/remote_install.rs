@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use temor_core::remote::{CacheDir, HostArch, HostOs, Probe};
 use temor_core::vocab::text::HelperHash;
 use temor_ssh::{ControlLayout, HostAlias};
+
+use super::remote_builds::arch_of;
 use temor_wire::digest::ContentHash;
 
 /// Where the helper build `hash` lives on the host (the login shell expands the `~`).
@@ -40,8 +42,9 @@ pub fn read_blob(path: &Path) -> Option<HelperBlob> {
     })
 }
 
-/// Where the helper build is looked for: `TEMOR_REMOTE_HELPER`, else `temor-remote` beside the
-/// running program.
+/// Where the helper build for this computer's own kind of processor is looked for:
+/// `TEMOR_REMOTE_HELPER`, else `temor-remote` beside the running program. The builds for other
+/// kinds are looked for beside it (see `remote_builds`).
 pub fn blob_path(explicit: Option<&std::ffi::OsStr>, exe: Option<&Path>) -> Option<PathBuf> {
     match explicit.filter(|path| !path.is_empty()) {
         Some(path) => Some(PathBuf::from(path)),
@@ -110,22 +113,15 @@ pub struct Found {
     pub login: HostLogin,
 }
 
-/// Reads the probe's output. `local_arch` is this computer's (`std::env::consts::ARCH`): the
-/// build temor carries runs only on a host of the same kind. `wanted` picks which installed
-/// build is reported when several are there.
-pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Found {
+/// Reads the probe's output. `ours` are the builds this temor carries (`HelperBuilds::names`):
+/// of the builds installed on the host, one of ours is the one reported, else any.
+pub fn parse_probe(text: &str, ours: &[HelperHash]) -> Found {
     let mut lines = text.lines().map(str::trim);
     let os = match lines.next() {
         Some("Linux") => HostOs::Linux,
         _ => HostOs::Other,
     };
-    let arch = match lines.next() {
-        Some(host) if arch_name(host) == Some(local_arch) => match local_arch {
-            "x86_64" => HostArch::X86_64,
-            _ => HostArch::Aarch64,
-        },
-        _ => HostArch::Other,
-    };
+    let arch = lines.next().map_or(HostArch::Other, arch_of);
     let cache = match lines.next() {
         Some("writable") => CacheDir::Usable,
         _ => CacheDir::Unusable,
@@ -141,7 +137,7 @@ pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Found {
     }
     let installed = found
         .iter()
-        .find(|hash| *hash == wanted)
+        .find(|hash| ours.contains(hash))
         .or_else(|| found.first())
         .cloned();
     Found {
@@ -152,15 +148,6 @@ pub fn parse_probe(text: &str, local_arch: &str, wanted: &HelperHash) -> Found {
             installed,
         },
         login: HostLogin(login),
-    }
-}
-
-/// `uname -m` as the two kinds the helper is built for.
-fn arch_name(host: &str) -> Option<&'static str> {
-    match host {
-        "x86_64" | "amd64" => Some("x86_64"),
-        "aarch64" | "arm64" => Some("aarch64"),
-        _ => None,
     }
 }
 

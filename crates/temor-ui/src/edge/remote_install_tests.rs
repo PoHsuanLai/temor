@@ -10,22 +10,22 @@ fn the_probe_reads_the_system_the_folder_and_the_builds_there() {
     let cases = [
         (
             "Linux\nx86_64\nwritable\n".to_owned(),
-            "x86_64",
             (HostOs::Linux, HostArch::X86_64, CacheDir::Usable, None),
         ),
         (
             "Linux\narm64\nwritable\n".to_owned(),
-            "x86_64",
+            (HostOs::Linux, HostArch::Aarch64, CacheDir::Usable, None),
+        ),
+        (
+            "Linux\nriscv64\nwritable\n".to_owned(),
             (HostOs::Linux, HostArch::Other, CacheDir::Usable, None),
         ),
         (
             "Darwin\narm64\nwritable\n".to_owned(),
-            "aarch64",
             (HostOs::Other, HostArch::Aarch64, CacheDir::Usable, None),
         ),
         (
             "Linux\nx86_64\nreadonly\n".to_owned(),
-            "x86_64",
             (HostOs::Linux, HostArch::X86_64, CacheDir::Unusable, None),
         ),
         (
@@ -34,7 +34,6 @@ fn the_probe_reads_the_system_the_folder_and_the_builds_there() {
                 name('b').0,
                 wanted.0
             ),
-            "x86_64",
             (
                 HostOs::Linux,
                 HostArch::X86_64,
@@ -44,7 +43,6 @@ fn the_probe_reads_the_system_the_folder_and_the_builds_there() {
         ),
         (
             format!("Linux\nx86_64\nwritable\n{}\n", name('b').0),
-            "x86_64",
             (
                 HostOs::Linux,
                 HostArch::X86_64,
@@ -54,16 +52,15 @@ fn the_probe_reads_the_system_the_folder_and_the_builds_there() {
         ),
         (
             "".to_owned(),
-            "x86_64",
             (HostOs::Other, HostArch::Other, CacheDir::Unusable, None),
         ),
     ];
-    for (text, local, (os, arch, cache, installed)) in cases {
-        let probe = parse_probe(&text, local, &wanted).probe;
+    for (text, (os, arch, cache, installed)) in cases {
+        let probe = parse_probe(&text, std::slice::from_ref(&wanted)).probe;
         assert_eq!(
             (probe.os, probe.arch, probe.cache, probe.installed),
             (os, arch, cache, installed),
-            "{text:?} on a {local} computer"
+            "{text:?}"
         );
     }
 }
@@ -72,7 +69,7 @@ fn the_probe_reads_the_system_the_folder_and_the_builds_there() {
 fn a_session_gets_the_hosts_login_variables_and_says_what_terminal_it_is() {
     let text = "Linux\nx86_64\nwritable\nenv:HOME=/home/me\nenv:PATH=/usr/bin:/bin\n\
 env:TERM=dumb\nsome noise\n";
-    let found = parse_probe(text, "x86_64", &name('a'));
+    let found = parse_probe(text, &[name('a')]);
     assert_eq!(found.login.home(), Some("/home/me"));
     let env = found.login.session_env();
     assert!(env.contains(&("PATH".to_owned(), "/usr/bin:/bin".to_owned())));
