@@ -35,8 +35,8 @@ pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Ve
 }
 
 /// An offer. Only the simple transmission type is implemented; anything else is refused before
-/// the person is asked. An accepted offer is answered `STARTED` at once and `OK` once the person
-/// has decided.
+/// the person is asked. An accepted offer is answered `OK` once the person has decided, and also
+/// `STARTED` at once when temor's own sender asked for it (`temor=1`).
 fn offer(session: ReceiveSession, message: Message) -> (ReceiveSession, Vec<Effect>) {
     if message
         .transmission
@@ -49,14 +49,14 @@ fn offer(session: ReceiveSession, message: Message) -> (ReceiveSession, Vec<Effe
         );
         return close(session, &message.id, status, EndWhy::Failed);
     }
-    // STARTED goes out first, so a sender can tell a terminal that takes part from one that
-    // does not within moments, while the person is still deciding.
-    let started = reply(&message.id, None, ReplyStatus::Started);
-    let ask = Effect::AskConsent(session.origin.clone());
-    (
-        with_phase(session, Phase::Asking(message.id)),
-        vec![started, ask],
-    )
+    // temor's sender wants STARTED first, to tell a terminal that takes part from one that does
+    // not within moments, while the person is still deciding. kitty's kitten must not get it.
+    let mut effects = Vec::new();
+    if message.early_answer {
+        effects.push(reply(&message.id, None, ReplyStatus::Started));
+    }
+    effects.push(Effect::AskConsent(session.origin.clone()));
+    (with_phase(session, Phase::Asking(message.id)), effects)
 }
 
 fn on_frame(

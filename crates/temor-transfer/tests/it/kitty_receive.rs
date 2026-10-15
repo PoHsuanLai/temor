@@ -7,12 +7,22 @@ use temor_transfer::{Bytes, Consent, RelPath};
 
 use crate::receive_support::*;
 
+/// kitty's kitten reads any first answer but `OK` as a refusal, so an offer gets none until the
+/// person decides; temor's own sender asks for `STARTED` at once with `temor=1`.
 #[test]
-fn an_offer_is_answered_started_then_asks_for_consent_and_writes_nothing() {
+fn an_offer_asks_for_consent_and_only_temors_sender_hears_started_first() {
     let (_, effects) = send(session(1024));
-    assert_eq!(replies(&effects), vec![ReplyStatus::Started]);
+    assert!(replies(&effects).is_empty());
     assert_eq!(effects.last(), Some(&Effect::AskConsent(origin())));
     assert!(writes(&effects).is_empty());
+
+    let temors = Message {
+        early_answer: true,
+        ..msg(Action::Send)
+    };
+    let (_, effects) = session(1024).step(Input::Frame(temors));
+    assert_eq!(replies(&effects), vec![ReplyStatus::Started]);
+    assert_eq!(effects.last(), Some(&Effect::AskConsent(origin())));
 }
 
 #[test]

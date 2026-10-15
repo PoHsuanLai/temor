@@ -189,8 +189,8 @@ fn only_the_simple_transmission_type_is_offered_to_the_person() {
         ..msg(Action::Send)
     };
     let (_, effects) = ReceiveSession::new(origin(), limits(1024)).step(Input::Frame(simple));
-    // STARTED goes first, so the sender is not left waiting while the person is asked.
-    assert_eq!(replies(&effects), vec![ReplyStatus::Started]);
+    // Nothing until the person decides: kitty's kitten reads an early answer as a refusal.
+    assert!(replies(&effects).is_empty());
     assert_eq!(effects.last(), Some(&Effect::AskConsent(origin())));
 }
 

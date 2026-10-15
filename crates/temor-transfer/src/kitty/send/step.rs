@@ -11,6 +11,7 @@ impl SendSession {
     pub fn new(id: KittyId, files: Vec<SendFile>) -> (Self, Vec<SendEffect>) {
         let offer = Message {
             transmission: Some(Transmission::Simple),
+            early_answer: true,
             ..Message::new(Action::Send, id.clone())
         };
         let session = Self {

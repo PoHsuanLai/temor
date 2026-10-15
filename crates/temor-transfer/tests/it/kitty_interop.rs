@@ -1,7 +1,8 @@
 //! kitty's own `kitten transfer` sending a file into temor's receive machine: the kitten runs
-//! under `script`, which gives it a terminal, and what it writes there is answered as temor
-//! answers it. Run by hand (it is ignored): `cargo test -p temor-transfer --test it
-//! kitty_interop -- --ignored` with kitten on PATH. Skipped where kitten or script is missing.
+//! under python's `pty.spawn`, which gives it a terminal, and what it writes there is answered as temor
+//! answers it. (Its pty has no size, so the kitten panics on a divide by zero once the file is
+//! across; that is the harness, not the transfer.) Run by hand (it is ignored): `cargo test -p temor-transfer --test it
+//! kitty_interop -- --ignored` with kitten on PATH. Skipped where kitten or python3 is missing.
 
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -36,10 +37,11 @@ struct Kitten {
 
 impl Kitten {
     /// `kitten transfer <src> <dest>` in `cwd`, which is also its HOME.
-    fn start(kitten: &Path, script: &Path, src: &str, dest: &str, cwd: &Path) -> Self {
-        let command = format!("{} transfer {src} {dest}", kitten.display());
-        let mut child = Command::new(script)
-            .args(["-q", "-e", "-c", &command, "/dev/null"])
+    fn start(kitten: &Path, python: &Path, src: &str, dest: &str, cwd: &Path) -> Self {
+        let mut child = Command::new(python)
+            .args(["-I", "-c", "import pty, sys; pty.spawn(sys.argv[1:])"])
+            .arg(kitten)
+            .args(["transfer", src, dest])
             .current_dir(cwd)
             .env("TERM", "xterm-kitty")
             .env("HOME", cwd)
@@ -88,13 +90,13 @@ impl Drop for Kitten {
 #[test]
 #[ignore = "runs a downloaded kitten: by hand, with kitten on PATH, `-- --ignored`"]
 fn kittys_own_kitten_sends_a_file_into_temor() {
-    let (Some(kitten), Some(script)) = (tool("kitten"), tool("script")) else {
+    let (Some(kitten), Some(python)) = (tool("kitten"), tool("python3")) else {
         return;
     };
     let from = tempfile::tempdir().expect("from");
     let into = tempfile::tempdir().expect("into");
     std::fs::write(from.path().join("notes.txt"), b"sent by the real kitten\n").expect("file");
-    let link = Kitten::start(&kitten, &script, "notes.txt", "notes.txt", from.path());
+    let link = Kitten::start(&kitten, &python, "notes.txt", "notes.txt", from.path());
     let terminal = terminal_takes(link, into.path().to_path_buf());
     terminal.join().expect("the terminal side");
     assert_eq!(

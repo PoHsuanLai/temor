@@ -114,6 +114,7 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
             base64::decode_capped(v, limits.max_bytes())
         })?
         .unwrap_or_default(),
+        early_answer: find(&pairs, &["temor"]).is_some_and(|v| v == b"1"),
     })
 }
 
@@ -221,6 +222,9 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
     }
     if !message.data.is_empty() {
         fields.push(format!("d={}", base64::encode_unpadded(&message.data)));
+    }
+    if message.early_answer {
+        fields.push("temor=1".to_owned());
     }
     frame(&fields.join(";"))
 }

@@ -222,6 +222,10 @@ pub struct Message {
     pub compression: Option<Compression>,
     pub transmission: Option<Transmission>,
     pub data: Vec<u8>,
+    /// `temor=1`, which only temor's own sender writes (kitty ignores it): that sender wants
+    /// `STARTED` at once, before the person decides, to tell a terminal that takes part from one
+    /// that does not. kitty's kitten reads any first answer but `OK` as a refusal.
+    pub early_answer: bool,
 }
 
 impl Message {
@@ -240,6 +244,7 @@ impl Message {
             compression: None,
             transmission: None,
             data: Vec::new(),
+            early_answer: false,
         }
     }
 }
