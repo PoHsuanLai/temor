@@ -46,8 +46,10 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       never speaks the wire)
 - [ ] `Unknown` catch-alls on wire enums and the `u32::MAX` no-payload marker are additions to §3;
       a request carrying a nested newer enum is answered `Unreadable` (safe, not precise).
-- [ ] Tune snapshot and file-size limits and the retry policy (1 s base, 60 s cap, 30 tries) against
-      real hosts. §9b, §14
+- [x] Tune snapshot and file-size limits and the retry policy (1 s base, 60 s cap, 30 tries) against
+      real hosts. §9b, §14 (2026-10-16, over a simulated line of 150 ms and 1 MB/s: file pieces
+      are 256 KiB, two in flight, so a keystroke waits about 0.5 s, not 3.8 s; the retry and ping
+      policies hold at that latency; `temor-remote/tests/it/slow_link.rs`)
 
 ## temor-transfer (lane/transfer, reviewed at 39cc6df)
 - [x] Edge contract for the app: feed back every write failure (`WriteFailed{op}`) and every
@@ -1190,7 +1192,8 @@ merged, fixed and gated together. anyview c91ec0a.
 - [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
 - [ ] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it).
 - [x] Run `search_bench` and decide on a row-text path for search (2026-10-15: glance as text).
-- [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned.
+- [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned. (2026-10-16: no probe at all
+      when the command line names the shell, as Warp does; plain `ssh host` still asks.)
 - [ ] OSC 52 primary/selection clipboards (ds_blitz has no target).
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b18-*.md`.
 
@@ -1292,7 +1295,9 @@ the gate now runs the GPU tests headless and has hw-tools on its PATH):
 - [x] A real sshd test (`temor-ssh/tests/it/real_sshd.rs`). It found: a held local port read as
       "no connection" (fixed), and a port held on one loopback only let ssh listen on the other
       (fixed: `free_local_port` wants both free).
-- [ ] Tune wire limits and the retry policy: needs a host with real latency, not localhost.
+- [x] Tune wire limits and the retry policy: done over a simulated thin line (see temor-wire above).
+      Uploads on this machine's /mnt/data are slow for another reason: one fsync of 8 MiB takes
+      8-17 s on that full, busy disk.
 - [x] kitty: `st` is base64 without padding and the kitten refused temor's padded replies, so
       every `kitten transfer` into temor failed (fixed). `tt` is `simple`/`rsync`, as parsed.
       The kitten also read a session-level STARTED as a refusal; temor now sends it first only
@@ -1515,8 +1520,9 @@ Landed: the CPU draws glyph overhang into the outer padding; the GPU draws a fra
 outgrow the atlas in groups of rows; a hub test of a host pane's chips; resize tests for the
 sidebar, an open menu and 150%/200%; a long folder chip cut at its start; quire's `write_soon_then`,
 `Column` and `BannerActionRow`. Left:
-- [ ] Placement id collisions: libghostty's C API gives a placement id without its
-      internal/external tag. Upstream ask: a `PlacementData` key for the tag.
+- [x] Placement id collisions: Ghostty now comes from our fork (github.com/PoHsuanLai/ghostty,
+      branch `temor`), whose `INTERNAL_ID` placement key tells the terminal's ids from the
+      program's; placeholders match the program's only, as Ghostty's own renderer does.
 - [ ] A grouped GPU frame redraws the whole pane and copies each group's whole atlases; a dirty
       copy per group if a real screen ever needs it.
 - [ ] The folder chip's room is counted in grid cells while it is drawn in the smaller code font;
