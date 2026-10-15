@@ -8,7 +8,12 @@ use temor_vt::Px;
 use crate::support::{PADDING, Pane, fixture, fonts};
 
 fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+    // The primary backends only: dropping a GL (EGL) instance while another test's Vulkan
+    // device binds memory deadlocks inside NVIDIA's driver, and the renderer never uses GL.
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::PRIMARY,
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
+    });
     let adapter =
         pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
             .ok()?;
