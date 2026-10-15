@@ -2,6 +2,8 @@
 //! Filesystem tests use temporary directories only.
 
 mod fuzz;
+#[cfg(target_os = "linux")]
+mod kitty_interop;
 mod kitty_receive;
 mod kitty_receive_limits;
 mod kitty_receive_names;

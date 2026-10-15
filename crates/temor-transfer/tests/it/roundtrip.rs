@@ -65,7 +65,10 @@ fn host() -> Origin {
 
 /// A terminal that takes whatever one client sends: the first frame starts a receive session
 /// that says yes, and the files land in `dir`.
-fn terminal_takes(mut link: Chan, dir: std::path::PathBuf) -> thread::JoinHandle<()> {
+pub(crate) fn terminal_takes(
+    mut link: impl Link + Send + 'static,
+    dir: std::path::PathBuf,
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let root = Root::open(&dir).expect("root");
         let mut session = ReceiveSession::new(host(), limits(1 << 20));

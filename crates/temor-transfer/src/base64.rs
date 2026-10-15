@@ -83,6 +83,14 @@ pub(crate) fn encode(input: &[u8]) -> String {
     out
 }
 
+/// Encodes `input` as standard base64 without the `=` padding, as kitty's file transfer
+/// protocol writes it: its kitten refuses padded values ("illegal base64 data").
+pub(crate) fn encode_unpadded(input: &[u8]) -> String {
+    let mut out = encode(input);
+    out.truncate(out.trim_end_matches('=').len());
+    out
+}
+
 /// Decodes `text` under `cap`, mapping the decoder's failures onto the crate's error.
 pub(crate) fn decode_capped(text: &[u8], cap: Bytes) -> Result<Vec<u8>, TransferError> {
     decode(text, cap).map_err(|err| match err {

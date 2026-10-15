@@ -112,10 +112,11 @@ fn replies_carry_their_status_in_base64() {
         file: Some(FileId::parse("4").expect("fid")),
         status: ReplyStatus::Ok,
     });
+    // Unpadded, as kitty writes it: its kitten refuses `T0s=`.
     assert!(
         String::from_utf8(ok)
             .expect("ascii")
-            .contains("fid=4;st=T0s=")
+            .ends_with("fid=4;st=T0s\x1b\\")
     );
 }
 
@@ -173,4 +174,22 @@ fn a_frame_that_does_not_parse_keeps_its_readable_id() {
         readable_header(b"5113;ac=file", limits(64)).is_none(),
         "no id readable"
     );
+}
+
+/// What kitty 0.48.1's own `FileTransmissionCommand.serialize` writes for these statuses: no
+/// base64 padding. Its kitten refuses a padded `st` ("illegal base64 data at input byte 3").
+#[test]
+fn status_replies_are_written_byte_for_byte_as_kitty_writes_them() {
+    let x = KittyId::parse("x").expect("id");
+    for (status, kitty) in [
+        (ReplyStatus::Cancelled, "ac=status;id=x;st=Q0FOQ0VMRUQ"),
+        (ReplyStatus::Ok, "ac=status;id=x;st=T0s"),
+    ] {
+        let wire = encode_reply(&Reply {
+            id: x.clone(),
+            file: None,
+            status,
+        });
+        assert_eq!(wire, format!("\x1b]5113;{kitty}\x1b\\").into_bytes());
+    }
 }

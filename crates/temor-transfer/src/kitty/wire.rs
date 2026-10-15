@@ -199,7 +199,7 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
         fields.push(format!("pr={}", parent.as_str()));
     }
     if let Some(name) = &message.name {
-        fields.push(format!("n={}", base64::encode(name.as_bytes())));
+        fields.push(format!("n={}", base64::encode_unpadded(name.as_bytes())));
     }
     if let Some(file_type) = message.file_type {
         fields.push(format!("ft={file_type}"));
@@ -220,12 +220,13 @@ pub fn encode_message(message: &Message) -> Vec<u8> {
         fields.push(format!("tt={}", transmission.word()));
     }
     if !message.data.is_empty() {
-        fields.push(format!("d={}", base64::encode(&message.data)));
+        fields.push(format!("d={}", base64::encode_unpadded(&message.data)));
     }
     frame(&fields.join(";"))
 }
 
-/// Encodes a status reply. The status text is base64 in the `st` field, since it can hold spaces.
+/// Encodes a status reply. The status text is base64 in the `st` field, since it can hold spaces,
+/// unpadded as kitty writes it (the kitten refuses padding).
 pub fn encode_reply(reply: &Reply) -> Vec<u8> {
     let status = match &reply.status {
         ReplyStatus::Ok => "OK".to_owned(),
@@ -240,7 +241,7 @@ pub fn encode_reply(reply: &Reply) -> Vec<u8> {
     if let Some(file) = &reply.file {
         fields.push(format!("fid={}", file.as_str()));
     }
-    fields.push(format!("st={}", base64::encode(status.as_bytes())));
+    fields.push(format!("st={}", base64::encode_unpadded(status.as_bytes())));
     frame(&fields.join(";"))
 }
 
