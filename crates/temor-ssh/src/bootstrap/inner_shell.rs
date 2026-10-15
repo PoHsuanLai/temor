@@ -35,6 +35,28 @@ impl InnerShell {
         })
     }
 
+    /// The shell a command line starts by name: its last word is exactly a shell's name, by
+    /// file name (`docker exec -it web zsh`, `ssh -t host /bin/zsh`), and is not the only word
+    /// after the leading words of the listed command `program` (`ssh bash` reaches a host
+    /// called bash). Nothing is guessed: any other last word names no shell.
+    pub fn named_in(command: &str, program: &str) -> Option<Self> {
+        let lead = program.split_whitespace().filter(|w| !w.starts_with('-'));
+        let words: Vec<&str> = command
+            .split_whitespace()
+            .skip_while(|word| word.contains('=') && !word.starts_with('-'))
+            .collect();
+        let after = words
+            .iter()
+            .skip(lead.count())
+            .filter(|w| !w.starts_with('-'))
+            .count();
+        let last = words.last()?.rsplit('/').next()?;
+        let shell = Self::ALL
+            .into_iter()
+            .find(|shell| shell.pattern().trim_end_matches('*') == last)?;
+        (after >= 2).then_some(shell)
+    }
+
     /// The `case` pattern for the shell's process name.
     pub(super) fn pattern(self) -> &'static str {
         match self {

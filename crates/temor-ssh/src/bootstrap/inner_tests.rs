@@ -241,3 +241,35 @@ fn process_names_map_to_shells() {
         assert_eq!(InnerShell::from_name(name), want, "{name:?}");
     }
 }
+
+#[test]
+fn a_command_line_names_its_shell_only_by_its_exact_last_word() {
+    // (command line, listed command) -> the shell it names
+    let rows = [
+        (
+            "docker exec -it web zsh",
+            "docker exec",
+            Some(InnerShell::Zsh),
+        ),
+        (
+            "kubectl exec -it pod -- bash",
+            "kubectl exec",
+            Some(InnerShell::Bash),
+        ),
+        ("ssh -t host /usr/bin/fish", "ssh", Some(InnerShell::Fish)),
+        (
+            "TERM=xterm docker run -it ubuntu nu",
+            "docker run -it",
+            Some(InnerShell::Nu),
+        ),
+        ("ssh bash", "ssh", None),
+        ("ssh host", "ssh", None),
+        ("docker exec -it web zsh -l", "docker exec", None),
+        ("docker exec -it web zsh-5.9", "docker exec", None),
+        ("docker exec -it web sh", "docker exec", None),
+        ("sudo -s", "sudo -s", None),
+    ];
+    for (command, program, want) in rows {
+        assert_eq!(InnerShell::named_in(command, program), want, "{command:?}");
+    }
+}

@@ -15,6 +15,14 @@ impl Session {
         self.clock.now()
     }
 
+    /// The running command's line, as the shell marked it.
+    pub fn running_command(&self) -> Option<&str> {
+        match &self.blocks.machine {
+            BlockState::Running(block) => Some(block.command.as_str()),
+            _ => None,
+        }
+    }
+
     /// The running command's block, when its command is on `list`, and which entry matched.
     pub fn running_listed(&self, list: &OfferList) -> Option<(BlockId, Program)> {
         match &self.blocks.machine {

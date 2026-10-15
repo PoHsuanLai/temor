@@ -329,3 +329,37 @@ fn a_reply_with_no_offer_does_nothing_and_a_new_command_starts_over() {
     ]);
     assert_eq!(state.asking(), program("su").as_ref());
 }
+
+#[test]
+fn a_yes_for_a_command_that_names_its_shell_loads_without_asking() {
+    // (name, inputs) -> outputs after the offer appeared
+    let rows: Vec<(&str, Vec<OfferIn>, Vec<OfferOut>)> = vec![
+        (
+            "while the offer shows: the integration, and no question",
+            vec![
+                running(4, "docker exec", 0),
+                tick(2_000),
+                OfferIn::YesNamed(at(2_000)),
+            ],
+            vec![OfferOut::Redraw, OfferOut::Load],
+        ),
+        (
+            "with no offer showing: nothing",
+            vec![running(4, "docker exec", 0), OfferIn::YesNamed(at(100))],
+            vec![],
+        ),
+    ];
+    for (name, inputs, want) in rows {
+        let (state, outs) = run(inputs);
+        let after: Vec<OfferOut> = outs
+            .into_iter()
+            .skip_while(|out| *out == OfferOut::Redraw)
+            .collect();
+        let want: Vec<OfferOut> = want
+            .into_iter()
+            .skip_while(|out| *out == OfferOut::Redraw)
+            .collect();
+        assert_eq!(after, want, "{name}");
+        assert!(!asking(&state), "{name}");
+    }
+}

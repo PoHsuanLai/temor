@@ -113,6 +113,9 @@ pub enum OfferIn {
     },
     /// The person answered, at this time.
     Reply(Reply, Stamp),
+    /// The person said Yes, and the command line already names the inner shell
+    /// (`docker exec -it web zsh`): nothing needs asking, so nothing lands in its history.
+    YesNamed(Stamp),
     /// Time passed while the question to the inner shell is out; what the screen shows of it.
     Heard { at: Stamp, answer: Answer },
 }
@@ -191,6 +194,9 @@ pub fn offer_step(state: OfferState, input: OfferIn) -> (OfferState, Vec<OfferOu
                 vec![OfferOut::Redraw, OfferOut::Never(program)],
             ),
         },
+        (S::Asking { block, .. }, OfferIn::YesNamed(_)) => {
+            (S::Settled { block }, vec![OfferOut::Redraw, OfferOut::Load])
+        }
         (S::Probing { block, since }, OfferIn::Heard { at, answer }) => match answer {
             Answer::Known => (S::Settled { block }, vec![OfferOut::Load]),
             Answer::Named if at.since(since) >= PROBE_MS => {

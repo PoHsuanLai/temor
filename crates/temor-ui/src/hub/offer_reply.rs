@@ -2,23 +2,36 @@
 //! line that makes the inner shell name itself; once the tick has heard the name, the
 //! integration written for that shell is typed. Nothing is typed before a Yes.
 
-use temor_core::offer::{Line, OfferIn, OfferOut, Program, Reply, Screen};
+use temor_core::offer::{Line, OfferIn, OfferOut, OfferState, Program, Reply, Screen};
 use temor_core::vocab::ids::PaneId;
 
 use super::model::Hub;
+use temor_ssh::InnerShell;
+
 use crate::edge::offer::{load_line, probe_text, remember_never};
 use crate::session::Session;
 
 impl Hub {
     /// The person answered the offer in `pane`. A Yes types a one-line question into it; the
-    /// integration follows once the shell has answered (see [`Hub::offer_tick`]). Returns what
-    /// the person should be told.
+    /// integration follows once the shell has answered (see [`Hub::offer_tick`]). When the
+    /// command line already names the shell (`docker exec -it web zsh`) the integration is typed
+    /// at once, with no question to land in the shell's history. Returns what the person should
+    /// be told.
     pub fn offer_reply(&mut self, pane: PaneId, reply: Reply) -> Vec<String> {
         let Some(slot) = self.slots.get(&pane).cloned() else {
             return Vec::new();
         };
-        let (at, busy) = match slot.borrow().session.as_ref() {
-            Some(session) => (session.now(), Self::offer_busy(session)),
+        let named = self.offer.states.get(&pane).and_then(OfferState::asking);
+        let (at, busy, shell) = match slot.borrow().session.as_ref() {
+            Some(session) => (
+                session.now(),
+                Self::offer_busy(session),
+                named
+                    .zip(session.running_command())
+                    .and_then(|(program, command)| {
+                        InnerShell::named_in(command, &program.to_string())
+                    }),
+            ),
             None => return Vec::new(),
         };
         let (reply, mut notes) = match (reply, busy) {
@@ -28,7 +41,14 @@ impl Hub {
             ),
             (reply, _) => (reply, Vec::new()),
         };
-        let (_, outs) = self.offer_feed(pane, OfferIn::Reply(reply, at));
+        let input = match (reply, shell) {
+            (Reply::Yes, Some(shell)) => {
+                self.offer.shells.insert(pane, shell);
+                OfferIn::YesNamed(at)
+            }
+            (reply, _) => OfferIn::Reply(reply, at),
+        };
+        let (_, outs) = self.offer_feed(pane, input);
         notes.extend(self.offer_outs(pane, outs));
         notes
     }
