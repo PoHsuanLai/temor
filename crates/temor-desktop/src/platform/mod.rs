@@ -7,8 +7,10 @@ mod linux;
 mod unsupported;
 
 #[cfg(all(target_os = "linux", feature = "quire-desktop"))]
-pub use linux::{SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet};
+pub use linux::{
+    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
+};
 #[cfg(not(all(target_os = "linux", feature = "quire-desktop")))]
 pub use unsupported::{
-    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemTailnet,
+    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
 };

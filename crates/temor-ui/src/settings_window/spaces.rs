@@ -21,7 +21,8 @@ use super::space_edit::{
 use super::space_fields::{AddRoute, RouteRow, SpaceText};
 use super::space_profile::{AddCredential, AddVariable, CredentialRow, VariableRow};
 use super::space_secrets;
-use crate::edge::Credentials;
+use crate::app::Desktop;
+use crate::edge::{Credentials, VaultCredentials};
 
 /// What a row sends: which Space, and the change.
 type Sent = (SpaceId, SpaceChange);
@@ -93,7 +94,12 @@ pub fn SpacesPage() -> Element {
 fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>) -> Element {
     let SpaceRow { id, name, project } = row;
     let change = move |change: SpaceChange| onchange.call((id, change));
-    let store = use_hook(|| try_consume_context::<Credentials>().unwrap_or_default());
+    let store = use_hook(|| match try_consume_context::<Credentials>() {
+        Some(given) => given,
+        None => try_consume_context::<Desktop>()
+            .map(|desktop| VaultCredentials::credentials(desktop.secrets.clone()))
+            .unwrap_or_default(),
+    });
     // Variables and credentials: each handler hands the new whole list on.
     let env = project.profile.env.clone();
     let credentials = project.profile.credentials.clone();

@@ -41,7 +41,7 @@ use super::transfer_ask::TransferAsk;
 use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
-use crate::edge::{Credentials, read_theme_choice};
+use crate::edge::{Credentials, VaultCredentials, read_theme_choice};
 use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
     spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
@@ -76,8 +76,14 @@ pub fn App() -> Element {
         let launch = launch.clone();
         move || {
             let mut hub = Hub::new(launch);
-            hub.set_credentials(try_consume_context::<Credentials>().unwrap_or_default());
-            if let Some(desktop) = try_consume_context::<Desktop>() {
+            let desktop = try_consume_context::<Desktop>();
+            // One handed to the window wins; else the desktop's password store.
+            hub.set_credentials(match (try_consume_context::<Credentials>(), &desktop) {
+                (Some(given), _) => given,
+                (None, Some(desktop)) => VaultCredentials::credentials(desktop.secrets.clone()),
+                (None, None) => Credentials::default(),
+            });
+            if let Some(desktop) = desktop {
                 hub.set_tailnet(desktop.tailnet.clone());
                 hub.set_checkpoints(desktop.checkpoints.clone());
             }

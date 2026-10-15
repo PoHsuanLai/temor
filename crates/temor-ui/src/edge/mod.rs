@@ -41,6 +41,7 @@ pub mod shelf_files;
 pub mod sidecar;
 pub mod space_agent;
 pub mod space_start;
+pub mod space_vault;
 mod spaces_file;
 mod ssh_env;
 mod ssh_hosts_cache;
@@ -66,6 +67,7 @@ pub use session_file::{
 };
 pub use settings_file::{ThemeChoice, read_theme_choice, theme_choice};
 pub use space_start::{CredentialFault, CredentialSource, Credentials, Held, NoCredentials};
+pub use space_vault::VaultCredentials;
 pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
 pub use ssh_env::{ArcRunner, SshEnv};
 pub use unix_now::unix_now;

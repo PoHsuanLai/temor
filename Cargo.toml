@@ -84,6 +84,8 @@ docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "96919f7
 prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2" }
 porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2" }
 porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2", default-features = false, features = ["dbus"] }
+# The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
+porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
