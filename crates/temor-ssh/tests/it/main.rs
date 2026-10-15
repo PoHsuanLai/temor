@@ -1,6 +1,6 @@
 //! temor-ssh's integration tests: the bootstrap run by a real `sh` under a scratch HOME, and the
-//! argv parsed by the system `ssh` with `-G` (which never connects). No test contacts a host and
-//! none reads the real `~/.ssh`. The harness uses unix APIs (symlinks, file modes), so these
+//! argv parsed by the system `ssh` with `-G` (which never connects), and a real sshd on
+//! 127.0.0.1 with scratch keys and a scratch HOME (`real_sshd`). None reads the real `~/.ssh`. The harness uses unix APIs (symlinks, file modes), so these
 //! modules exist only on unix; the library itself has no such gate.
 
 #[cfg(unix)]
@@ -17,6 +17,8 @@ mod inner_load;
 mod master;
 #[cfg(unix)]
 mod nu;
+#[cfg(unix)]
+mod real_sshd;
 #[cfg(unix)]
 mod shells;
 #[cfg(unix)]

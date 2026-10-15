@@ -252,11 +252,13 @@ pub fn edit_fault(err: &SshError) -> EditFault {
     }
 }
 
-/// Why `ssh -O forward` failed, from what it printed.
+/// Why `ssh -O forward` failed, from what it printed. A running master that cannot listen on
+/// the port says "Port forwarding failed" (checked against a real sshd); one that is gone says
+/// its control socket is missing.
 pub fn forward_fault(stderr: &str) -> ForwardFault {
     let said = stderr.to_ascii_lowercase();
     let has = |needle: &str| said.contains(needle);
-    if has("address already in use") || has("cannot listen") {
+    if has("address already in use") || has("cannot listen") || has("port forwarding failed") {
         ForwardFault::LocalPortTaken
     } else if has("control socket") || has("mux_client") || has("no such file") {
         ForwardFault::NoConnection
@@ -265,11 +267,20 @@ pub fn forward_fault(stderr: &str) -> ForwardFault {
     }
 }
 
-/// A port on this computer to forward to: `preferred` when it is free, else any free one.
+/// A port on this computer to forward to: `preferred` when it is free, else any free one. Free
+/// means free on both loopbacks, as ssh listens on both for `localhost` and the person is shown
+/// `localhost`: a port held on one would send them to the other program. A machine without
+/// IPv6 checks 127.0.0.1 alone.
 pub fn free_local_port(preferred: Port) -> Option<Port> {
-    let listen = |port: u16| TcpListener::bind(("127.0.0.1", port)).ok();
-    let chosen = listen(preferred.get())
-        .and_then(|l| l.local_addr().ok())
-        .or_else(|| listen(0).and_then(|l| l.local_addr().ok()))?;
-    Port::parse(&chosen.port().to_string())
+    let free = |port: u16| -> Option<u16> {
+        let v4 = TcpListener::bind(("127.0.0.1", port)).ok()?;
+        let port = v4.local_addr().ok()?.port();
+        match TcpListener::bind(("::1", port)) {
+            Ok(_) => Some(port),
+            Err(e) if e.kind() == std::io::ErrorKind::AddrNotAvailable => Some(port),
+            Err(_) => None,
+        }
+    };
+    let chosen = free(preferred.get()).or_else(|| (0..8).find_map(|_| free(0)))?;
+    Port::parse(&chosen.to_string())
 }
