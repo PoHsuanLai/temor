@@ -86,6 +86,40 @@ fn folder_name(cwd: &str, home: &Path) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// How the tab's last command went, which colours its glyph in the sidebar: one colour, one
+/// meaning, as the chips use them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TabTone {
+    /// Nothing ran yet, it runs now, or it was stopped or ended unsaid: no colour of its own.
+    #[default]
+    Plain,
+    /// The last command succeeded.
+    Succeeded,
+    /// The last command failed.
+    Failed,
+}
+
+impl TabTone {
+    /// The tone of a tab whose newest command stands at `outcome`.
+    pub fn of(outcome: Option<temor_core::block::Outcome>) -> TabTone {
+        use temor_core::block::Outcome;
+        match outcome {
+            Some(Outcome::Succeeded) => TabTone::Succeeded,
+            Some(Outcome::Failed(_)) => TabTone::Failed,
+            _ => TabTone::Plain,
+        }
+    }
+
+    /// The word the stylesheet reads.
+    pub fn slug(self) -> &'static str {
+        match self {
+            TabTone::Plain => "plain",
+            TabTone::Succeeded => "succeeded",
+            TabTone::Failed => "failed",
+        }
+    }
+}
+
 /// What the tab is doing, for its second line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TabState {

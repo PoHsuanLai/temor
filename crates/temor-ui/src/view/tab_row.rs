@@ -122,7 +122,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let selecting = desk.clone();
     let tip = hover_text(&row);
     rsx! {
-        div { class: "temor-tab-box",
+        div { class: "temor-tab-box", "data-tone": row.tone.slug(),
             // The branch, the state and what an agent is doing are said on hover: the row is
             // one line.
             RowTip { name: format!("tab{}", id.0), text: tip,

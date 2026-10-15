@@ -86,7 +86,7 @@ pub fn App() -> Element {
         }
     });
     crate::settings_window::use_settings_opened();
-    let board = use_hook(|| try_consume_context::<crate::settings_window::SpaceBoard>());
+    let board = use_hook(try_consume_context::<crate::settings_window::SpaceBoard>);
     let published = board.clone();
     let ui = use_signal(|| 0u32);
     let mut notice = use_signal({

@@ -83,6 +83,12 @@ impl std::fmt::Debug for SettingsWindows {
 #[derive(Clone, Default)]
 pub struct SettingsOpened(Rc<RefCell<Option<WindowHandle>>>);
 
+impl std::fmt::Debug for SettingsOpened {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SettingsOpened")
+    }
+}
+
 /// Keep the Settings window this one opens. Called once, from `App`.
 pub fn use_settings_opened() {
     use_context_provider(SettingsOpened::default);

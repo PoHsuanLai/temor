@@ -27,4 +27,13 @@ impl Session {
             for_ms: self.clock.now().since(block.started),
         })
     }
+
+    /// How the newest command stands; none before the first, or where the shell marks none.
+    pub fn last_outcome(&self) -> Option<Outcome> {
+        self.blocks
+            .store
+            .iter()
+            .next_back()
+            .map(|block| block.outcome())
+    }
 }

@@ -30,7 +30,7 @@ type Sent = (SpaceId, SpaceChange);
 #[component]
 #[allow(non_snake_case)]
 pub fn SpacesPage() -> Element {
-    let board = use_hook(|| try_consume_context::<SpaceBoard>());
+    let board = use_hook(try_consume_context::<SpaceBoard>);
     let mut rows = use_signal({
         let board = board.clone();
         move || board.as_ref().map(SpaceBoard::rows).unwrap_or_default()

@@ -11,7 +11,7 @@ use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::sidebar_plan;
 
 use super::model::{Hub, HubRef};
-use super::tab_name::{Marking, NameIn, TabState, tab_title};
+use super::tab_name::{Marking, NameIn, TabState, TabTone, tab_title};
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -57,6 +57,8 @@ pub struct TabRow {
     pub branch: Option<String>,
     /// Whether a command runs in the tab's pane, for the row's second line.
     pub state: TabState,
+    /// How the last command in the tab's pane went, for the glyph's colour.
+    pub tone: TabTone,
     /// Selected when the tab is in front.
     pub selection: Selection,
     /// The pane with the keys in this tab.
@@ -136,6 +138,7 @@ impl Hub {
             true => self.tiles(id, pane),
             false => Vec::new(),
         };
+        let tone = TabTone::of(self.live(pane, |s| s.last_outcome()).flatten());
         Some(TabRow {
             id,
             title,
@@ -145,6 +148,7 @@ impl Hub {
             note: self.agent_note(id),
             branch: self.facts_of(pane).branch.as_ref().map(ToString::to_string),
             state,
+            tone,
             selection,
             pane,
             tiles,
