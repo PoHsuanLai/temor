@@ -48,6 +48,27 @@ fn viewport_scrolls_over_scrollback() {
     assert_eq!(t.scrollbar().expect("scrollbar"), bottom);
 }
 
+/// The scrollback keeps as many lines as the setting says (10,000 by default), no fewer: left
+/// alone, libghostty also caps it at 10,000 bytes, about 600 lines.
+#[test]
+fn scrollback_keeps_the_lines_it_was_set_to_keep() {
+    let (mut t, _rx) = term(120, 40);
+    let lines = |from: u32, to: u32| -> String {
+        (from..to)
+            .map(|i| format!("line {i} the quick brown fox jumps over the lazy dog\r\n"))
+            .collect()
+    };
+    t.write(lines(0, 5_000).as_bytes());
+    let kept = t.scrollbar().expect("scrollbar").total.0;
+    assert!(kept >= 5_000, "kept {kept} of 5,000 lines");
+    t.write(lines(5_000, 30_000).as_bytes());
+    let kept = t.scrollbar().expect("scrollbar").total.0;
+    assert!(
+        (9_000..11_000).contains(&kept),
+        "kept {kept} lines, set to about 10,000 (pruned by whole pages)"
+    );
+}
+
 #[test]
 fn two_phase_update_reports_only_changed_rows() {
     let (mut t, _rx) = term(20, 6);

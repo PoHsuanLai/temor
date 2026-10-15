@@ -9,7 +9,7 @@ pub struct TerminalConfig {
     pub size: GridSize,
     /// One cell in pixels; image placement and pixel reports use it.
     pub cell_px: CellPx,
-    /// The most scrollback lines to keep (libghostty prunes by whole pages, so a little more
+    /// The scrollback lines to keep (libghostty prunes by whole pages, so a page more or fewer
     /// may be kept).
     pub scrollback: LineCount,
     /// The most bytes kitty images may use; zero turns kitty graphics off.

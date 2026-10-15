@@ -164,6 +164,19 @@ impl Terminal {
             sys::TerminalOption::SCROLLBACK_MAX_LINES,
             config.scrollback.0,
         )?;
+        // libghostty also caps scrollback at 10,000 bytes unless told otherwise, about one page:
+        // the line count above is the only limit.
+        // SAFETY: a null value removes the byte limit.
+        check(
+            unsafe {
+                sys::ghostty_terminal_set(
+                    term.raw(),
+                    sys::TerminalOption::SCROLLBACK_MAX_BYTES,
+                    std::ptr::null(),
+                )
+            },
+            "limit",
+        )?;
         let kitty = config.kitty_image_storage.0 as u64;
         // SAFETY: the option takes a `uint64_t*`, valid for the call.
         check(
