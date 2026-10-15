@@ -202,12 +202,18 @@ fn check_zig() {
     let version = match out {
         Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_owned(),
         _ => {
-            panic!("temor-vt-sys: `zig` was not found on PATH; Zig {ZIG_MAJOR_MINOR}.x is required")
+            panic!(
+                "temor-vt-sys: `zig` was not found on PATH; Zig {ZIG_MAJOR_MINOR}.x is required. \
+                 crates/temor-vt-sys/scripts/fetch-zig.sh <dir> fetches the pinned one from \
+                 ziglang.org (checked against its SHA-256) and prints the PATH line to use"
+            )
         }
     };
     assert!(
         version.starts_with(&format!("{ZIG_MAJOR_MINOR}.")),
-        "temor-vt-sys: Ghostty {GHOSTTY_COMMIT} needs Zig {ZIG_MAJOR_MINOR}.x, found {version}"
+        "temor-vt-sys: Ghostty {GHOSTTY_COMMIT} needs Zig {ZIG_MAJOR_MINOR}.x, found {version}. \
+         crates/temor-vt-sys/scripts/fetch-zig.sh <dir> fetches the pinned one from ziglang.org \
+         and prints the PATH line to use"
     );
 }
 

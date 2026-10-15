@@ -5,7 +5,7 @@ Raw bindings to libghostty-vt, linked statically, for `temor-vt` only.
 | Pin | Value |
 |---|---|
 | Ghostty | `7f617dc799cd200f88231899c36f45682d4f7678` (github.com/PoHsuanLai/ghostty branch `temor`: main 7ec9e26 of 2026-10-08 plus a placement-data key, `INTERNAL_ID`) — `GHOSTTY_COMMIT` in `src/lib.rs` |
-| Zig | 0.16.x on `PATH` (Ghostty's `build.zig` requires the same major.minor) |
+| Zig | 0.16.x on `PATH` (Ghostty's `build.zig` requires the same major.minor); `scripts/fetch-zig.sh` fetches 0.16.0 from ziglang.org and checks its pinned sha256 |
 | bindgen | 0.72.1, run by hand through `scripts/gen-bindings.sh`; never by `build.rs` |
 
 ## Building
@@ -15,6 +15,13 @@ fully offline build, Zig's package store for it. Fetch both once (this is the on
 
 ```sh
 crates/temor-vt-sys/scripts/fetch-ghostty.sh /mnt/data/cargo/<lane>-temor/ghostty
+```
+
+A machine without Zig 0.16 (most distributions package an older one) gets it the same way; the
+script prints the `PATH` line to use:
+
+```sh
+crates/temor-vt-sys/scripts/fetch-zig.sh /mnt/data/cargo/<lane>-temor/zig
 ```
 
 then build with:
