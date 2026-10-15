@@ -17,7 +17,7 @@ fn composed(before: &[u16], now: &[u16], dirty: &[u16]) -> Vec<Row> {
         state.replace(Row(r), Beyond);
     }
     let mut asked = Vec::new();
-    let got = compose_with_neighbours::<Infallible>(&rows(dirty), 8, &mut state, |row| {
+    let got = compose_with_neighbours::<Infallible>(&rows(dirty), 8, &mut state, |row, _| {
         asked.push(row);
         Ok(if now.contains(&row.0) { Beyond } else { Within })
     })
@@ -86,7 +86,7 @@ fn the_overhang_of_a_row_is_remembered_for_the_next_change() {
     let mut state = Overhangs::default();
     state.fit(4);
     let mut run = |now: Overhang, dirty: u16| {
-        compose_with_neighbours::<Infallible>(&rows(&[dirty]), 4, &mut state, |_| Ok(now))
+        compose_with_neighbours::<Infallible>(&rows(&[dirty]), 4, &mut state, |_, _| Ok(now))
             .expect("composes")
             .len()
     };
@@ -136,5 +136,75 @@ fn only_glyphs_that_leave_the_row_overhang() {
             fg: vec![q],
         };
         assert_eq!(overhang_of(&scene, 100, 20), want, "{name}");
+    }
+}
+
+/// The `Sides` each composed row is told, for 6 rows where `kept` overhung when last composed,
+/// `now` overhang now, and `dirty` are asked.
+fn told(kept: &[u16], now: &[u16], dirty: &[u16]) -> Vec<(u16, Overhang, Overhang)> {
+    let mut state = Overhangs::default();
+    state.fit(6);
+    for &r in kept {
+        state.replace(Row(r), Beyond);
+    }
+    let mut seen = Vec::new();
+    compose_with_neighbours::<Infallible>(&rows(dirty), 6, &mut state, |row, sides| {
+        seen.push((row.0, sides.above, sides.below));
+        Ok(if now.contains(&row.0) { Beyond } else { Within })
+    })
+    .expect("composes");
+    seen
+}
+
+#[test]
+fn a_row_is_told_which_neighbours_may_reach_into_it() {
+    // (name, overhung before, overhang now, dirty) -> (row, above, below) for each row composed
+    let cases = [
+        (
+            "nothing overhangs: no neighbour is built",
+            vec![],
+            vec![],
+            vec![2],
+            vec![(2, Within, Within)],
+        ),
+        (
+            "a clean neighbour that overhung is built",
+            vec![1],
+            vec![1],
+            vec![2],
+            vec![(2, Beyond, Within)],
+        ),
+        (
+            "the grid's edges have no neighbour to build",
+            vec![],
+            vec![],
+            vec![0, 5],
+            vec![(0, Within, Within), (5, Within, Within)],
+        ),
+        (
+            "a neighbour still to be composed is built, whatever it was",
+            vec![],
+            vec![],
+            vec![2, 3],
+            vec![(2, Within, Beyond), (3, Within, Within)],
+        ),
+        (
+            "a neighbour composed already is told by what it is now",
+            vec![],
+            vec![2],
+            vec![2, 3],
+            vec![
+                (2, Within, Beyond),
+                (3, Beyond, Within),
+                (1, Within, Beyond),
+            ],
+        ),
+    ];
+    for (name, kept, now, dirty, want) in cases {
+        let mut got = told(&kept, &now, &dirty);
+        let mut want = want;
+        got.sort_by_key(|t| t.0);
+        want.sort_by_key(|t| t.0);
+        assert_eq!(got, want, "{name}");
     }
 }

@@ -155,18 +155,23 @@ impl Renderer for CpuRenderer {
             Compose::Rows(rows) => rows,
         };
         self.overhangs.fit(frame.size.rows.0);
-        let composed =
-            compose_with_neighbours(&rows, frame.size.rows.0, &mut self.overhangs, |row| {
+        let composed = compose_with_neighbours(
+            &rows,
+            frame.size.rows.0,
+            &mut self.overhangs,
+            |row, beside| {
                 compose_row(
                     &mut target,
                     &input,
                     row,
+                    beside,
                     &frame.rows,
                     &frame.images,
                     &mut self.glyphs,
                     &mut self.scene,
                 )
-            });
+            },
+        );
         let rows = match composed {
             Ok(rows) => rows,
             Err(e) => {

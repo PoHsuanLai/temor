@@ -180,6 +180,44 @@ fn recomposing_rows_draws_what_a_full_compose_draws() {
     );
 }
 
+#[test]
+fn a_neighbour_that_gains_an_overhang_in_the_same_frame_is_still_drawn_whole() {
+    // Rows 2 and 3 change together: row 3 gains tall accents that reach up into row 2, which is
+    // composed first, before row 3's overhang is known.
+    let before = ["Åg|Ç", "ÅÄÖ", "gjpqy", "x", "", "", "", ""];
+    let after = ["Åg|Ç", "ÅÄÖ", "y", "ÅÄÖǧ", "", "", "", ""];
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let m = renderer.cell_metrics(Scale::new(1.0));
+    let size = PixelSize::new(
+        u32::from(COLS) * m.width() + 8,
+        u32::from(ROWS) * m.height() + 8,
+    );
+    let palette = Palette::default();
+    let mut frame = lines(before);
+    renderer
+        .render(&mut frame, &view(size, &palette))
+        .expect("first render");
+    let next = lines(after);
+    for r in [2, 3] {
+        frame.set_row(Row(r), next.rows[usize::from(r)].clone());
+    }
+    let incremental = renderer
+        .render(&mut frame, &view(size, &palette))
+        .expect("second render")
+        .pixels
+        .to_vec();
+    let mut whole = lines(after);
+    let full = CpuRenderer::new(fonts(14.0))
+        .render(&mut whole, &view(size, &palette))
+        .expect("fresh render")
+        .pixels
+        .to_vec();
+    assert!(
+        incremental == full,
+        "a row composed before its neighbour's overhang was known lost a piece of it"
+    );
+}
+
 mod bands {
     use temor_vt::{GridSize, Px, Rgb, Row};
 

@@ -3,24 +3,26 @@
 //! cursor), `AboveText` images.
 //!
 //! The band is the row's only, but its glyphs are not: the pieces of the glyphs of the rows above
-//! and below that reach into the band are drawn in it (see [`super::overhang`]).
+//! and below that reach into the band are drawn in it (see [`super::overhang`]); a neighbour whose
+//! glyphs are known to stay in its row is not even shaped.
 
 use temor_vt::{KittyLayer, Row};
 
-use super::overhang::{Overhang, overhang_of};
+use super::overhang::{Overhang, Sides, overhang_of};
 use super::pixels::Target;
 use crate::error::RenderError;
 use crate::font::{Atlas, BUILD_ATTEMPTS, GlyphCache};
 use crate::frame::{CellDraw, ImagePlacement};
 use crate::scene::{Premul, Quad, QuadPaint, RowScene, SceneInput, build_row};
 
-/// Repaints the band of `row` (the full width, padding included) from the frame's `rows`, and
-/// says whether the row's own glyphs reach outside it. Fails when the row's glyphs do not fit
+/// Repaints the band of `row` (the full width, padding included) from the frame's `rows`, with
+/// `beside` saying which neighbours' glyphs may reach into it, and says whether the row's own glyphs reach outside it. Fails when the row's glyphs do not fit
 /// the atlases.
 pub(crate) fn compose_row(
     target: &mut Target<'_>,
     input: &SceneInput<'_>,
     row: Row,
+    beside: Sides,
     rows: &[Vec<CellDraw>],
     images: &[ImagePlacement],
     glyphs: &mut GlyphCache,
@@ -41,7 +43,7 @@ pub(crate) fn compose_row(
         glyphs,
         scene,
         &mut sides,
-        Neighbours::Drawn,
+        Neighbours::Drawn(beside),
     ) && !build_settled(
         input,
         row,
@@ -71,8 +73,9 @@ pub(crate) fn compose_row(
 /// Whether a row's band also draws its neighbours' glyphs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Neighbours {
-    /// The pieces of the rows above and below that reach into the band.
-    Drawn,
+    /// The pieces of the rows above and below that reach into the band, for the sides whose
+    /// glyphs may.
+    Drawn(Sides),
     /// None: the band shows its own row only.
     Clipped,
 }
@@ -91,12 +94,9 @@ fn build_settled(
 ) -> bool {
     let at = usize::from(row.0);
     let own_cells = rows.get(at).map_or(&[][..], |c| c.as_slice());
-    let (above, below) = match neighbours {
-        Neighbours::Drawn => (
-            at.checked_sub(1).and_then(|i| rows.get(i)),
-            rows.get(at + 1),
-        ),
-        Neighbours::Clipped => (None, None),
+    let [above, below] = match neighbours {
+        Neighbours::Drawn(beside) => neighbour_cells(rows, at, beside),
+        Neighbours::Clipped => [None, None],
     };
     for _ in 0..BUILD_ATTEMPTS {
         let epoch = glyphs.epoch();
@@ -115,6 +115,23 @@ fn build_settled(
         }
     }
     false
+}
+
+/// The cells of the rows above and below row `at`, for those sides of `beside` whose glyphs may
+/// reach into it. A row that is off the grid has none.
+fn neighbour_cells(
+    rows: &[Vec<CellDraw>],
+    at: usize,
+    beside: Sides,
+) -> [Option<&Vec<CellDraw>>; 2] {
+    let reaching = |side: Overhang, row: Option<usize>| match side {
+        Overhang::Beyond => row.and_then(|i| rows.get(i)),
+        Overhang::Within => None,
+    };
+    [
+        reaching(beside.above, at.checked_sub(1)),
+        reaching(beside.below, at.checked_add(1)),
+    ]
 }
 
 /// Draws the glyphs (not the backgrounds, rules or cursor) of a neighbouring row's scene; only
