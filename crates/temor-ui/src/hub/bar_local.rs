@@ -1,10 +1,9 @@
 //! A local tab from a host pane. A new tab made while a host pane is in front opens on that
 //! host, as a split does (`ssh_prepare`); the bar lists "New tab on this computer" beside it, so
-//! this computer's own shell is one pick away. A tab given a folder is never taken to the host,
-//! so the row is a tab in the home folder.
+//! this computer's own shell is one pick away (`Target::LocalTab`, a tab in the home folder: a
+//! tab given a folder is never taken to the host).
 
-use temor_core::bar::{Candidate, Frecency, Target};
-use temor_core::vocab::text::Cwd;
+use temor_core::bar::{Candidate, Target};
 
 use super::model::Hub;
 
@@ -19,13 +18,9 @@ impl Hub {
         if !self.ssh.panes.contains_key(&pane) {
             return None;
         }
-        let home = self.launch.ambient.home.to_str()?;
         Some(Candidate {
             title: LOCAL_TAB_TITLE.to_owned(),
-            target: Target::Directory {
-                cwd: Cwd(home.to_owned()),
-                frecency: Frecency(0),
-            },
+            target: Target::LocalTab,
         })
     }
 }

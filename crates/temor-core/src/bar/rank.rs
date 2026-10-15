@@ -127,7 +127,7 @@ fn kind_order(target: &Target) -> usize {
         Target::Layout(_) => 5,
         Target::RecentCommand(_) => 6,
         Target::Directory { .. } => 7,
-        Target::Action(_) => 8,
+        Target::Action(_) | Target::LocalTab => 8,
     }
 }
 
@@ -148,6 +148,7 @@ fn target_key(target: &Target) -> RowKey {
         Target::Layout(name) => format!("layout:{}", name.0),
         Target::RecentCommand(command) => format!("recent:{}", command.as_str()),
         Target::Directory { cwd, .. } => format!("dir:{}", cwd.as_str()),
+        Target::LocalTab => "local-tab".to_owned(),
         // The plain new tab is the one row of the empty bar; the same key keeps it from showing twice.
         Target::Action(Action::NewTab) => "new-tab".to_owned(),
         Target::Action(action) => format!("action:{}", action.label()),

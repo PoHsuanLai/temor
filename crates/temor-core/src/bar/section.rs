@@ -42,7 +42,7 @@ impl Section {
 /// The section a local target sits under.
 pub(super) fn section_of_target(target: &Target) -> Section {
     match target {
-        Target::Action(_) | Target::Closed(_) => Section::Actions,
+        Target::Action(_) | Target::Closed(_) | Target::LocalTab => Section::Actions,
         Target::Tab(_) | Target::Folder(_) => Section::Tabs,
         Target::Space(_) | Target::Layout(_) => Section::Spaces,
         Target::Host(_) => Section::Computers,

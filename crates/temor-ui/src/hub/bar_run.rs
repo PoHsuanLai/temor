@@ -74,6 +74,13 @@ impl Hub {
                 self.note_visit(&cwd);
                 self.act(WorkspaceIn::NewTab { cwd: Some(cwd) });
             }
+            // A tab given a folder is never taken to the host: this computer's shell, at home.
+            Target::LocalTab => {
+                let home = self.launch.ambient.home.to_string_lossy().into_owned();
+                self.act(WorkspaceIn::NewTab {
+                    cwd: Some(Cwd(home)),
+                });
+            }
             // Saved layouts are not stored anywhere yet, so none is offered.
             Target::Layout(_) => {}
         }

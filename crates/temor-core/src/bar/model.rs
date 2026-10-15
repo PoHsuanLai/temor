@@ -52,6 +52,8 @@ pub enum Target {
     RecentCommand(CommandText),
     /// Do one of the window's declared actions (Split right, Zoom, ...).
     Action(Action),
+    /// Open a new tab with a shell on this computer, while the pane in front is on a host.
+    LocalTab,
     /// Open a new tab in a folder.
     Directory {
         /// The folder.
