@@ -89,12 +89,12 @@ fn a_kitty_transfer_waits_for_yes_then_receives_its_files() {
     }
     let home = scratch("xfer-kitty").join("home");
     let (pane, events) = pane_with_transfers(&home);
-    // The program offers (with the line discipline out of the way, so replies reach `read`), waits for the terminal's STARTED and then its OK (each ends in the
-    // backslash of `ESC \`), and sends `a.txt` holding "hello".
+    // The program offers (with the line discipline out of the way, so replies reach `read`), waits
+    // for the terminal's OK (it ends in the backslash of `ESC \`; kitty's own client hears nothing
+    // before the person decides), and sends `a.txt` holding "hello".
     let script = "\
 stty -icanon -echo
 printf '\\033]5113;ac=send;id=p1\\033\\\\'
-read -r -d '\\' -t 10 started
 read -r -d '\\' -t 10 answer
 printf '\\033]5113;ac=file;id=p1;fid=1;n=YS50eHQ=;ft=regular;sz=5\\033\\\\'
 printf '\\033]5113;ac=end_data;id=p1;fid=1;d=aGVsbG8=\\033\\\\'

@@ -2,8 +2,8 @@
 //! reports, and the replies and events come out. Files land in a scratch staging folder.
 
 use temor_transfer::kitty::{
-    Action, FileId, FileType, KittyId, Message, ReplyStatus, Transmission, encode_message,
-    parse_reply,
+    Action, FileId, FileType, FirstAnswer, KittyId, Message, ReplyStatus, Transmission,
+    encode_message, parse_reply,
 };
 use temor_transfer::osc1337::{Delivery, encode_file};
 use temor_transfer::{Bytes, Consent, Count, Limits};
@@ -56,13 +56,19 @@ fn statuses(reaction: &Reaction) -> Vec<ReplyStatus> {
         .collect()
 }
 
+/// An offer from kitty's own client, which hears nothing until the person decides.
 fn offered(t: &mut Transfers) -> OfferId {
+    offered_by(t, FirstAnswer::WhenDecided, &[])
+}
+
+fn offered_by(t: &mut Transfers, first: FirstAnswer, replies: &[ReplyStatus]) -> OfferId {
     let offer = Message {
         transmission: Some(Transmission::Simple),
+        first_answer: first,
         ..Message::new(Action::Send, id())
     };
     let reaction = kitty(t, &offer);
-    assert_eq!(statuses(&reaction), vec![ReplyStatus::Started]);
+    assert_eq!(statuses(&reaction), replies);
     match reaction.events.as_slice() {
         [TransferEvent::Offered { offer, kind }] => {
             assert_eq!(*kind, OfferKind::Files);
@@ -244,4 +250,11 @@ fn a_request_is_served_from_the_shelf_only_after_yes() {
             .windows(b"ac=send".len())
             .any(|w| w == b"ac=send")
     );
+}
+
+#[test]
+fn temors_own_sender_hears_started_at_once() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut t = transfers(dir.path());
+    offered_by(&mut t, FirstAnswer::StartedAtOnce, &[ReplyStatus::Started]);
 }
