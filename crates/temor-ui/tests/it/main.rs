@@ -18,6 +18,7 @@ mod peek;
 mod persist;
 mod remote;
 mod resizing;
+mod resizing_chrome;
 mod session;
 mod settings;
 mod shelf;

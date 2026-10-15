@@ -1,6 +1,7 @@
 //! The window pushed by size (a break-it pass): a divider dragged and kept through a tab switch,
-//! dragged past both ends, a sweep of window sizes with every control kept inside the window,
-//! and the pane still taking typing afterwards.
+//! dragged past both ends, a sweep of window sizes (at 100%, 150% and 200%) with every control
+//! kept inside the window, and the pane still taking typing afterwards. The sidebar and the open
+//! menu are in `resizing_chrome`.
 
 use std::time::Duration;
 
@@ -10,26 +11,26 @@ use ds_blitz::Extent;
 use ds_harness::{DocQuery, Driver, Harness, Input};
 use temor_ui::view::probe::Probe;
 
-use super::window::{harness, wait_until};
+use super::window::{harness, harness_scaled, wait_until};
 
 /// The panes' split view (the sidebar has one of its own).
 const PANES: &str = ".ds-split[aria-label=\"Panes\"]";
 
 /// A box: left, top, width, height.
 #[derive(Debug, Clone, Copy)]
-struct Rect {
-    x: f64,
-    y: f64,
-    w: f64,
-    h: f64,
+pub(super) struct Rect {
+    pub(super) x: f64,
+    pub(super) y: f64,
+    pub(super) w: f64,
+    pub(super) h: f64,
 }
 
 impl Rect {
-    fn right(self) -> f64 {
+    pub(super) fn right(self) -> f64 {
         self.x + self.w
     }
 
-    fn centre(self) -> Point {
+    pub(super) fn centre(self) -> Point {
         Point {
             x: Px((self.x + self.w / 2.0) as f32),
             y: Px((self.y + self.h / 2.0) as f32),
@@ -37,7 +38,7 @@ impl Rect {
     }
 }
 
-fn rects(h: &Harness, selector: &str) -> Vec<Rect> {
+pub(super) fn rects(h: &Harness, selector: &str) -> Vec<Rect> {
     h.with_doc(|doc| {
         doc.query_selector_all(selector)
             .map(|found| found.into_iter().collect::<Vec<_>>())
@@ -54,13 +55,13 @@ fn rects(h: &Harness, selector: &str) -> Vec<Rect> {
     })
 }
 
-fn rect(h: &Harness, selector: &str) -> Rect {
+pub(super) fn rect(h: &Harness, selector: &str) -> Rect {
     let found = rects(h, selector);
     assert_eq!(found.len(), 1, "one {selector}: {found:?}");
     found[0]
 }
 
-fn chord(h: &mut Harness, key: char) {
+pub(super) fn chord(h: &mut Harness, key: char) {
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Shift],
         ShortcutKey::Char(key),
@@ -170,39 +171,37 @@ fn a_divider_dragged_past_either_end_stops_at_its_limit() {
     answers(&mut h, &probe, "ends");
 }
 
-#[test]
-fn every_control_stays_inside_the_window_at_every_size() {
-    if !super::support::tools_present() {
-        return;
-    }
-    let probe = Probe::new();
-    let mut h = split_window("resize-sweep", &probe);
-    chord(&mut h, 'n');
+/// The sizes the sweeps go through, wide and narrow, short and tall.
+const SWEEP: [(u32, u32); 8] = [
+    (400, 360),
+    (600, 480),
+    (760, 520),
+    (1000, 640),
+    (1280, 800),
+    (1920, 1080),
+    (400, 1080),
+    (1920, 360),
+];
+
+/// Resizes through `sizes` and says each control that ends outside the window, and each pane of
+/// negative size.
+fn out_of_bounds(h: &mut Harness, sizes: &[(u32, u32)]) -> Vec<String> {
     let controls = "button, [role=\"button\"], input, .ds-row";
     let mut wrong = Vec::new();
-    for (width, height) in [
-        (400, 360),
-        (600, 480),
-        (760, 520),
-        (1000, 640),
-        (1280, 800),
-        (1920, 1080),
-        (400, 1080),
-        (1920, 360),
-    ] {
+    for &(width, height) in sizes {
         h.resize_window(Extent::new(width, height));
         h.advance(Duration::from_millis(400));
         // The hidden sidebar waiting at the edge is laid out but never drawn
         // (`visibility: hidden` until it peeks), so its controls are not on screen.
         let hidden = rects(
-            &h,
+            h,
             &controls
                 .split(", ")
                 .map(|one| format!("[data-side=\"hidden\"] {one}"))
                 .collect::<Vec<_>>()
                 .join(", "),
         );
-        for found in rects(&h, controls) {
+        for found in rects(h, controls) {
             let unseen = hidden.iter().any(|other| {
                 other.x == found.x && other.y == found.y && other.w == found.w && other.h == found.h
             });
@@ -212,7 +211,7 @@ fn every_control_stays_inside_the_window_at_every_size() {
                 wrong.push(format!("{width}x{height}: {found:?}"));
             }
         }
-        for pane in rects(&h, ".ds-split-pane, .ds-split-rest") {
+        for pane in rects(h, ".ds-split-pane, .ds-split-rest") {
             if pane.w < 0.0 || pane.h < 0.0 {
                 wrong.push(format!(
                     "{width}x{height}: a pane of negative size {pane:?}"
@@ -220,6 +219,18 @@ fn every_control_stays_inside_the_window_at_every_size() {
             }
         }
     }
+    wrong
+}
+
+#[test]
+fn every_control_stays_inside_the_window_at_every_size() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = split_window("resize-sweep", &probe);
+    chord(&mut h, 'n');
+    let wrong = out_of_bounds(&mut h, &SWEEP);
     assert!(
         wrong.is_empty(),
         "controls outside the window:\n{}",
@@ -228,6 +239,30 @@ fn every_control_stays_inside_the_window_at_every_size() {
     h.resize_window(Extent::new(1024, 640));
     h.advance(Duration::from_millis(400));
     answers(&mut h, &probe, "sweep");
+}
+
+/// The same sweep on a screen scaled up: layout is in logical pixels, so nothing may end outside
+/// the window at 150% or 200% either.
+#[test]
+fn every_control_stays_inside_the_window_on_a_scaled_screen() {
+    if !super::support::tools_present() {
+        return;
+    }
+    for scale in [150, 200] {
+        let probe = Probe::new();
+        let mut h = harness_scaled(&format!("resize-scaled-{scale}"), &probe, scale);
+        wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+        chord(&mut h, 'n');
+        let wrong = out_of_bounds(&mut h, &SWEEP);
+        assert!(
+            wrong.is_empty(),
+            "at {scale}%, controls outside the window:\n{}",
+            wrong.join("\n")
+        );
+        h.resize_window(Extent::new(1024, 640));
+        h.advance(Duration::from_millis(400));
+        answers(&mut h, &probe, "scaled");
+    }
 }
 
 #[test]
