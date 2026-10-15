@@ -78,8 +78,8 @@ fn an_upload_lands_and_the_edit_round_trip_stops_at_a_changed_file() {
     );
 }
 
-/// The part size an upload streams in (4 MiB), as the tests see it from outside.
-const PART: usize = 4 << 20;
+/// The part size an upload streams in (256 KiB), as the tests see it from outside.
+const PART: usize = 256 << 10;
 
 #[test]
 fn an_upload_reports_every_byte_once_and_ends_at_the_files_size() {

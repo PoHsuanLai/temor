@@ -17,6 +17,8 @@ mod revision;
 #[cfg(feature = "ghostty")]
 mod sessions;
 #[cfg(feature = "ghostty")]
+mod slow_link;
+#[cfg(feature = "ghostty")]
 mod support;
 #[cfg(feature = "ghostty")]
 mod sweep;

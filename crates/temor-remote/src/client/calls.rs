@@ -2,7 +2,7 @@
 //! before anything is sent.
 
 use std::sync::atomic::Ordering;
-use std::sync::mpsc::RecvTimeoutError;
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
 use temor_wire::hello::Capability;
@@ -16,6 +16,20 @@ use temor_wire::units::{ByteCount, ByteRange, CellPx, Size};
 use super::connect::Client;
 use super::pending::Answer;
 use crate::error::Error;
+
+/// A request on the line whose answer has not been read yet.
+#[derive(Debug)]
+pub(super) struct InFlight {
+    id: RequestId,
+    waiting: Receiver<Result<Answer, Error>>,
+}
+
+impl InFlight {
+    /// Stops waiting: the answer, when it comes, is dropped.
+    pub(super) fn forget(self, client: &Client) {
+        client.pending.forget(self.id);
+    }
+}
 
 /// A session the client attached to: its size, and the snapshot of its screen. The live output
 /// follows as [`ClientEvent::Output`](super::ClientEvent::Output) events.
@@ -69,6 +83,17 @@ impl Client {
         payload: Option<&[u8]>,
         within: Option<Duration>,
     ) -> Result<Answer, Error> {
+        let sent = self.send_call(body, payload)?;
+        self.answer_of(sent, within)
+    }
+
+    /// Sends a request without waiting for its answer, so several can be on the line at once;
+    /// [`Client::answer_of`] waits for it.
+    pub(super) fn send_call(
+        &self,
+        body: Request,
+        payload: Option<&[u8]>,
+    ) -> Result<InFlight, Error> {
         let id = RequestId(self.next.fetch_add(1, Ordering::Relaxed) + 1);
         let waiting = self.pending.register(id)?;
         let message = temor_wire::message::Message::Request { id, body };
@@ -81,6 +106,16 @@ impl Client {
             self.pending.forget(id);
             return Err(error);
         }
+        Ok(InFlight { id, waiting })
+    }
+
+    /// The answer to a request [`Client::send_call`] sent. `None` waits for as long as the link
+    /// lives.
+    pub(super) fn answer_of(
+        &self,
+        InFlight { id, waiting }: InFlight,
+        within: Option<Duration>,
+    ) -> Result<Answer, Error> {
         let answer = match within {
             None => waiting.recv().map_err(|_| Error::LinkClosed),
             Some(within) => waiting.recv_timeout(within).map_err(|error| match error {
@@ -191,12 +226,23 @@ impl Client {
 
     /// A span of a remote file.
     pub fn read_range(&self, path: &RemotePath, range: ByteRange) -> Result<ReadChunk, Error> {
+        let sent = self.send_read(path, range)?;
+        self.read_answer(sent)
+    }
+
+    /// Asks for a span of a remote file without waiting; [`Client::read_answer`] reads it.
+    pub(super) fn send_read(&self, path: &RemotePath, range: ByteRange) -> Result<InFlight, Error> {
         self.offered(Capability::Files)?;
         let request = Request::ReadFile {
             path: path.clone(),
             range,
         };
-        let answer = self.call(request, None)?;
+        self.send_call(request, None)
+    }
+
+    /// The span a [`Client::send_read`] asked for.
+    pub(super) fn read_answer(&self, sent: InFlight) -> Result<ReadChunk, Error> {
+        let answer = self.answer_of(sent, None)?;
         match (answer.outcome.map_err(Error::Remote)?, answer.payload) {
             (Reply::Read { stamp, total }, Some(bytes)) => Ok(ReadChunk {
                 stamp,

@@ -10,6 +10,7 @@ use temor_wire::message::{
 };
 use temor_wire::units::ByteOffset;
 
+use super::calls::InFlight;
 use super::connect::Client;
 use crate::error::Error;
 
@@ -50,13 +51,35 @@ impl Client {
         end: PartEnd,
         bytes: &[u8],
     ) -> Result<Option<FileStamp>, Error> {
+        let sent = self.send_part(path, check, offset, end, bytes)?;
+        self.part_answer(sent, end)
+    }
+
+    /// Sends one part of an upload without waiting; [`Client::part_answer`] reads the answer.
+    pub(super) fn send_part(
+        &self,
+        path: &RemotePath,
+        check: WriteCheck,
+        offset: ByteOffset,
+        end: PartEnd,
+        bytes: &[u8],
+    ) -> Result<InFlight, Error> {
         self.offered(Capability::Files)?;
         let request = Request::WriteFile {
             path: path.clone(),
             check,
             mode: WriteMode::Part { offset, end },
         };
-        let answer = self.call(request, Some(bytes))?;
+        self.send_call(request, Some(bytes))
+    }
+
+    /// The answer to a part [`Client::send_part`] sent: the file's stamp after the last part.
+    pub(super) fn part_answer(
+        &self,
+        sent: InFlight,
+        end: PartEnd,
+    ) -> Result<Option<FileStamp>, Error> {
+        let answer = self.answer_of(sent, None)?;
         match (answer.outcome.map_err(Error::Remote)?, end) {
             (Reply::Written(stamp), PartEnd::Last) => Ok(Some(stamp)),
             (Reply::Ack, PartEnd::More | PartEnd::Abort) => Ok(None),

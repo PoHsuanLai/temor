@@ -69,6 +69,25 @@ impl Rig {
         self.connect_with(hello(HELPER, &DAEMON_CAPS))
     }
 
+    /// A connection over `line` both ways (see [`crate::slow_link`]).
+    pub fn connect_over(&self, line: crate::slow_link::Line) -> Conn {
+        let (served_in, slow_out) = std::io::pipe().expect("pipe");
+        let (slow_in, client_out) = std::io::pipe().expect("pipe");
+        let (client_in, slow_back_out) = std::io::pipe().expect("pipe");
+        let (slow_back_in, served_out) = std::io::pipe().expect("pipe");
+        crate::slow_link::carry(slow_in, slow_out, line);
+        crate::slow_link::carry(slow_back_in, slow_back_out, line);
+        let daemon = Arc::clone(&self.daemon);
+        let serving = std::thread::spawn(move || daemon.serve(served_in, served_out));
+        let (client, events) =
+            Client::connect(client_in, client_out, hello(HELPER, &DAEMON_CAPS)).expect("connect");
+        Conn {
+            client,
+            watch: Watch::new(events),
+            serving,
+        }
+    }
+
     pub fn connect_with(&self, ours: temor_wire::hello::Hello) -> Conn {
         let (served_in, client_out) = std::io::pipe().expect("pipe");
         let (client_in, served_out) = std::io::pipe().expect("pipe");
