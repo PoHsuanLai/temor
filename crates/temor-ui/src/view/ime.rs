@@ -1,23 +1,20 @@
 //! The input method's glue: the IME listener on the terminal region, the cursor area it places
 //! its candidates at, the composition state the keys wait for, and the keyboard focus. The
 //! composition machine and the focus write are quire's (`ds::edit::composition`,
-//! `ds::focus::soon`); the IME host seams are retried here while the document is busy, since
-//! quire's `write_soon` is crate-private at v0.3.1 (an ask in the report).
+//! `ds::focus::soon`), and so is the retry of the IME host seams while the document is busy
+//! (`write_soon_then`).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use dioxus::prelude::*;
-use ds::base::time::FRAME_SLACK;
-use ds::base::time::clock::sleep;
+use ds::components::editor::write_soon::{write_soon, write_soon_then};
 use ds::edit::composition::{Composing, on_ime, settle};
 use ds::edit::input::{Composition, EditInput};
 use ds::focus::select::Select;
 use ds::focus::soon::focus_soon_told;
 use ds::host::document::DocumentHost;
 use ds::host::ime::{ImeEvent, ImeListener, ImeSwitch};
-use ds::host::parts::EditHost;
-use ds::host::probe::Probe;
 use ds::prelude::Rect;
 
 use super::slot::Slot;
@@ -65,22 +62,28 @@ impl ImeGlue {
         ended.into_iter().for_each(apply);
     }
 
-    /// Turns the input method on or off for the region.
-    pub async fn switch(&self, to: ImeSwitch) -> bool {
+    /// Turns the input method on or off for the region, a frame later while the document is
+    /// busy. `then` runs once the host has answered (or given up).
+    pub fn switch(&self, to: ImeSwitch, then: impl FnOnce() + 'static) {
         let Some(el) = self.element.borrow().clone() else {
-            return false;
+            return then();
         };
-        with_edit(&self.host, |e| e.ime().switch(&el, to))
-            .await
-            .is_some()
+        write_soon_then(
+            Rc::clone(&self.host),
+            el,
+            move |edit, el| edit.ime().switch(el, to),
+            move |_| then(),
+        );
     }
 
     /// Places the input method's candidates at `area` (window logical pixels).
-    pub async fn cursor_area(&self, area: Rect) {
+    pub fn cursor_area(&self, area: Rect) {
         let Some(el) = self.element.borrow().clone() else {
             return;
         };
-        let _ = with_edit(&self.host, |e| e.ime().cursor_area(&el, area)).await;
+        write_soon(Rc::clone(&self.host), el, move |edit, el| {
+            edit.ime().cursor_area(el, area)
+        });
     }
 
     /// Gives the region the keyboard, a frame later while the document is busy (quire's
@@ -92,35 +95,26 @@ impl ImeGlue {
         }
     }
 
-    /// Registers the region for IME events.
-    pub async fn listen(&self, element: Rc<MountedData>, heard: EventHandler<ImeEvent>) {
-        let listener = with_edit(&self.host, |e| e.ime().listen(&element, heard)).await;
-        *self.listener.borrow_mut() = listener;
+    /// Registers the region for IME events. `then` runs once the host has answered (or given
+    /// up).
+    pub fn listen(
+        &self,
+        element: Rc<MountedData>,
+        heard: EventHandler<ImeEvent>,
+        then: impl FnOnce() + 'static,
+    ) {
+        let slot = Rc::clone(&self.listener);
+        write_soon_then(
+            Rc::clone(&self.host),
+            element,
+            move |edit, el| edit.ime().listen(el, heard),
+            move |listener| {
+                *slot.borrow_mut() = listener;
+                then();
+            },
+        );
     }
 }
-
-/// Where the input method's composed text goes: the program, and the preedit line the window
-/// draws while a composition is under way.
-pub fn composed_sink(
-    slot: Rc<RefCell<Slot>>,
-    preedit: Signal<Option<String>>,
-) -> impl Fn(EditInput) + Clone + 'static {
-    move |input: EditInput| {
-        let mut preedit = preedit;
-        match input {
-            EditInput::Text(text) => send_text(&slot, &text),
-            EditInput::Composition(Composition::Update { text, .. }) => {
-                preedit.set((!text.is_empty()).then_some(text));
-            }
-            EditInput::Composition(Composition::End { text }) => {
-                preedit.set(None);
-                send_text(&slot, &text);
-            }
-            _ => {}
-        }
-    }
-}
-
 /// The region's focus: the keyboard in (`gained`), or out, when the composition ends and the
 /// input method turns off.
 pub fn focus_handler(
@@ -134,28 +128,9 @@ pub fn focus_handler(
         EditFocus::Out => {
             set_focus(&slot, Focus::Unfocused);
             ime.settle(&apply);
-            let ime = ime.clone();
-            spawn(async move {
-                ime.switch(ImeSwitch::Off).await;
-            });
+            ime.switch(ImeSwitch::Off, || {});
         }
     }
-}
-
-/// A host write, retried while the document is busy (quire's `write_soon` is crate-private).
-pub async fn with_edit<T>(
-    host: &Rc<dyn DocumentHost>,
-    f: impl Fn(&dyn EditHost) -> Probe<T>,
-) -> Option<T> {
-    for _ in 0..16 {
-        let edit = host.edit()?;
-        match f(edit) {
-            Probe::Found(v) => return Some(v),
-            Probe::Busy => sleep(FRAME_SLACK).await,
-            Probe::Unknown => return None,
-        }
-    }
-    None
 }
 
 impl std::fmt::Debug for ImeGlue {

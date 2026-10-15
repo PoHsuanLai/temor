@@ -133,13 +133,16 @@ fn Tools(
     let typed = port();
     let opens_direct = view.direct == Direct::Available;
     rsx! {
-        div { class: "temor-host-line",
-            TextField {
-                label: "Port on the computer".to_owned(),
-                value: typed.clone(),
-                placeholder: "Port".to_owned(),
-                oninput: move |text: String| port.set(text),
-            }
+        BannerActionRow {
+            label: "Forward a port",
+            field: rsx! {
+                TextField {
+                    label: "Port on the computer".to_owned(),
+                    value: typed.clone(),
+                    placeholder: "Port".to_owned(),
+                    oninput: move |text: String| port.set(text),
+                }
+            },
             Button {
                 label: "Forward port…".to_owned(),
                 title: Some("Reach this computer's port from here".to_owned()),
@@ -157,13 +160,16 @@ fn Tools(
                 }
             }
         }
-        div { class: "temor-host-line",
-            TextField {
-                label: "File on the computer".to_owned(),
-                value: file(),
-                placeholder: "File, like notes.txt or /etc/hosts".to_owned(),
-                oninput: move |text: String| file.set(text),
-            }
+        BannerActionRow {
+            label: "Edit a file",
+            field: rsx! {
+                TextField {
+                    label: "File on the computer".to_owned(),
+                    value: file(),
+                    placeholder: "File, like notes.txt or /etc/hosts".to_owned(),
+                    oninput: move |text: String| file.set(text),
+                }
+            },
             Button {
                 label: "Edit locally".to_owned(),
                 title: Some("Open a copy here and save it back".to_owned()),

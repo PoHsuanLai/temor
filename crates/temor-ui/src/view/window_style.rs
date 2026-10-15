@@ -5,7 +5,6 @@
 pub const WINDOW_CSS: &str = "\
 .temor-shell { position: relative; width: 100%; height: 100%; }\
 .temor-edge-host { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }\
-.temor-window { display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
 .temor-pane { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; }\
 .temor-edge { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--s-4); padding: 0 var(--s-4); pointer-events: none; }\
