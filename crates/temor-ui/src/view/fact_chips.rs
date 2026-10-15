@@ -13,8 +13,7 @@
 //! full-screen program's screen.
 
 use dioxus::prelude::*;
-use ds::prelude::{ExternalIcon, IconSize, IconSource, IconView};
-use ds::style::icon::url::IconUrl;
+use ds::prelude::{Icon, IconSize, IconSource, IconView};
 use temor_core::facts::{ChipRow, DiffStat, Facts, MOST_UNTRACKED, chips_that_fit};
 
 use temor_core::block::Outcome;
@@ -344,23 +343,15 @@ pub fn header_chips(
         .collect()
 }
 
-// The chips' pictures: Lucide's `folder`, `git-branch` and `diff` (lucide.dev, ISC licence,
-// Copyright (c) Lucide Contributors; see NOTICE), as masks painted in the chip's text colour.
-const FOLDER_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>"##;
-const BRANCH_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>"##;
-const CHANGES_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M5 10h14"/><path d="M5 21h14"/></svg>"##;
-
 const ICON_SIZE: IconSize = IconSize::Tiny;
 
+/// The chips' pictures: quire's outline folder, git branch and diff (plus over minus) glyphs,
+/// stroked in the chip's text colour.
 fn icon_source(icon: ChipIcon) -> IconSource {
-    let svg = match icon {
-        ChipIcon::Folder => FOLDER_SVG,
-        ChipIcon::Branch => BRANCH_SVG,
-        ChipIcon::Changes => CHANGES_SVG,
-    };
-    IconSource::Symbolic(ExternalIcon {
-        url: IconUrl::svg(svg),
-        size: ICON_SIZE,
+    IconSource::Glyph(match icon {
+        ChipIcon::Folder => Icon::Folder,
+        ChipIcon::Branch => Icon::GitBranch,
+        ChipIcon::Changes => Icon::Diff,
     })
 }
 
