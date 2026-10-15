@@ -16,7 +16,7 @@ impl Session {
     }
 
     /// The running command's line, as the shell marked it.
-    pub fn running_command(&self) -> Option<&str> {
+    pub fn running_line(&self) -> Option<&str> {
         match &self.blocks.machine {
             BlockState::Running(block) => Some(block.command.as_str()),
             _ => None,

@@ -27,7 +27,7 @@ impl Hub {
                 session.now(),
                 Self::offer_busy(session),
                 named
-                    .zip(session.running_command())
+                    .zip(session.running_line())
                     .and_then(|(program, command)| {
                         InnerShell::named_in(command, &program.to_string())
                     }),
