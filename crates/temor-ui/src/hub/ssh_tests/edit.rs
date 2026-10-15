@@ -185,10 +185,15 @@ fn a_forward_the_host_refuses_is_told_to_the_person() {
         return;
     };
     rig.put("control-exit", "1");
-    rig.hub.forward_port(pane, "3000");
+    // A port this computer holds free, so no "already in use" notice comes before the refusal.
+    let free = std::net::TcpListener::bind(("127.0.0.1", 0))
+        .and_then(|l| l.local_addr())
+        .expect("a free port")
+        .port();
+    rig.hub.forward_port(pane, &free.to_string());
     rig.pump("the refusal", |hub| !hub.notices.is_empty());
     assert!(
-        rig.hub.notices[0].contains("wouldn't forward port 3000"),
+        rig.hub.notices[0].contains(&format!("wouldn't forward port {free}")),
         "{:?}",
         rig.hub.notices
     );
