@@ -60,7 +60,7 @@ impl RemoteWork {
     }
 
     /// Asks what `host` has, when it can run the helper.
-    pub fn probe(&self, env: &SshEnv, host: HostAlias, wanted: HelperHash) {
+    pub fn probe(&self, env: &SshEnv, host: HostAlias, ours: Vec<HelperHash>) {
         let (env, none) = (env.clone(), probed(&host, None));
         self.run(
             move |events| {
@@ -69,7 +69,7 @@ impl RemoteWork {
                     let out = env.runner.run(&env.tools.ssh, &argv).ok()?;
                     (out.code == Some(0)).then(|| {
                         let text = String::from_utf8_lossy(&out.stdout);
-                        parse_probe(&text, std::env::consts::ARCH, &wanted)
+                        parse_probe(&text, &ours)
                     })
                 });
                 let _ = events.send(probed(&host, found));

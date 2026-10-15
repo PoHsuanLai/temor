@@ -20,6 +20,7 @@ pub mod peek_mail;
 pub mod remote;
 pub mod remote_adopt;
 pub mod remote_attach;
+pub mod remote_builds;
 pub mod remote_calls;
 pub mod remote_conn;
 pub mod remote_edit;
