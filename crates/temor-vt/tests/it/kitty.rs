@@ -1,7 +1,9 @@
 //! `kitty_png.bin` (f=100, decoded by temor's PNG decoder) and `kitty_rgba.bin` (f=32): both
 //! place a 2x2 image whose pixels read back exactly.
 
-use temor_vt::{ImageId, KittyLayer, KittyPixelFormat, KittyPixels, Visibility};
+use temor_vt::{
+    ImageId, KittyLayer, KittyPixelFormat, KittyPixels, PlacementId, PlacementIdFrom, Visibility,
+};
 
 use crate::support::{fixture, term};
 
@@ -65,4 +67,33 @@ fn layers_filter_placements() {
             .count(),
         0
     );
+}
+
+#[test]
+fn a_placement_given_no_id_is_told_from_the_programs_own() {
+    let (mut t, _rx) = term(80, 24);
+    // A 1x2 RGB image, placed once with no id (the terminal makes one up) and once as p=1.
+    t.write(b"\x1b_Ga=t,t=d,f=24,i=1,s=1,v=2;////////\x1b\\");
+    t.write(b"\x1b_Ga=p,i=1,c=10,r=1;\x1b\\");
+    t.write(b"\x1b_Ga=p,i=1,p=1,c=5,r=1;\x1b\\");
+    let images = t.kitty().expect("kitty graphics on");
+    let mut got: Vec<(PlacementIdFrom, u32)> = images
+        .placements(KittyLayer::All)
+        .expect("placements")
+        .map(|p| (p.id_from, p.render.cols))
+        .collect();
+    got.sort();
+    assert_eq!(
+        got,
+        vec![
+            (PlacementIdFrom::Program, 5),
+            (PlacementIdFrom::Terminal, 10)
+        ]
+    );
+    let named = images
+        .placements(KittyLayer::All)
+        .expect("placements")
+        .find(|p| p.id_from == PlacementIdFrom::Program)
+        .expect("the program's placement");
+    assert_eq!(named.placement, PlacementId(1));
 }

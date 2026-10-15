@@ -61,6 +61,7 @@ impl ImageCache {
                         layer,
                         image,
                         placement: p.placement,
+                        id_from: p.id_from,
                         cols: p.render.cols,
                         rows: p.render.rows,
                     });

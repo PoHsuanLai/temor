@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use temor_vt::{KittyLayer, PlacementId, Px};
+use temor_vt::{KittyLayer, PlacementId, PlacementIdFrom, Px};
 
 use super::model::{ImagePixels, ImagePlacement};
 use super::placeholder::{PlaceholderCell, PlaceholderRun, runs};
@@ -17,8 +17,10 @@ use super::placeholder::{PlaceholderCell, PlaceholderRun, runs};
 pub(crate) struct VirtualTarget {
     pub layer: KittyLayer,
     pub image: Arc<ImagePixels>,
-    /// `PlacementId(0)` when the program gave none.
     pub placement: PlacementId,
+    /// Whether `placement` is the program's id or one the terminal made up for a placement
+    /// given none.
+    pub id_from: PlacementIdFrom,
     /// The grid libghostty reports (`Placement.gridSize`): the program's own `c=`/`r=` when
     /// given, and when only one is, the other computed from the image's aspect ratio, as
     /// kitty's protocol says. Nothing is left to compute here.
@@ -35,15 +37,19 @@ pub(crate) struct VirtualScene {
 }
 
 impl VirtualScene {
-    /// The placement a run names: the exact one when it gives a placement id, else the image's
-    /// first. libghostty does not say whether a placement id is the program's or one it made up
-    /// for a placement given none (its C API hides the tag), so a made-up id N can be matched
-    /// by a run that names N.
+    /// The placement a run names, as libghostty's own renderer picks it
+    /// (`ImageStorage.placeholderTarget`): the program's placement with that id, or, when the run
+    /// names none, the image's placement the program named over one the terminal did, and the
+    /// lower id within each.
     fn target(&self, run: &PlaceholderRun) -> Option<&VirtualTarget> {
-        self.targets.iter().find(|t| {
-            t.image.id == run.image
-                && (run.placement == PlacementId(0) || t.placement == run.placement)
-        })
+        let image = self.targets.iter().filter(|t| t.image.id == run.image);
+        if run.placement == PlacementId(0) {
+            image.min_by_key(|t| (t.id_from, t.placement))
+        } else {
+            image
+                .filter(|t| t.id_from == PlacementIdFrom::Program)
+                .find(|t| t.placement == run.placement)
+        }
     }
 }
 

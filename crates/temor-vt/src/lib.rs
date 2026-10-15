@@ -58,10 +58,10 @@ pub use model::{
     AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorRef, ColorScheme, Cols,
     CursorBlink, CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation,
     GridPoint, GridSize, Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState,
-    PlacementId, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta,
-    RowDirty, RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape, SemanticMark,
-    StyleFlags, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan, Underline,
-    ViewportScroll, Visibility, Wrap, ZIndex,
+    PlacementId, PlacementIdFrom, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row,
+    RowCount, RowDelta, RowDirty, RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape,
+    SemanticMark, StyleFlags, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan,
+    Underline, ViewportScroll, Visibility, Wrap, ZIndex,
 };
 pub use vt::Vt;
 

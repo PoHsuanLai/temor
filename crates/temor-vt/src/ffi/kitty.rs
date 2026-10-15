@@ -5,8 +5,8 @@ use temor_vt_sys as sys;
 use super::convert::check;
 use super::terminal::Terminal;
 use crate::{
-    Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementKind, PlacementRender,
-    Px, Visibility, VtError, ZIndex,
+    Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementIdFrom, PlacementKind,
+    PlacementRender, Px, Visibility, VtError, ZIndex,
 };
 
 /// The kitty image storage of a terminal's active screen, borrowed until the terminal is next
@@ -41,6 +41,7 @@ pub enum KittyPixels<'t> {
 #[derive(Debug, Clone, Copy)]
 pub struct KittyPlacement<'t> {
     pub placement: PlacementId,
+    pub id_from: PlacementIdFrom,
     pub kind: PlacementKind,
     pub z: ZIndex,
     pub render: PlacementRender,
@@ -130,7 +131,7 @@ impl<'t> KittyImages<'t> {
     fn placement(&self, iter: sys::KittyGraphicsPlacementIterator) -> Option<KittyPlacement<'t>> {
         use sys::KittyGraphicsPlacementData as P;
         let (mut image_id, mut placement_id, mut is_virtual, mut z) = (0u32, 0u32, false, 0i32);
-        let (mut x_offset, mut y_offset) = (0u32, 0u32);
+        let (mut x_offset, mut y_offset, mut internal_id) = (0u32, 0u32, false);
         // SAFETY: the iterator is positioned on a placement; each key writes its documented type.
         let image = unsafe {
             sys::ghostty_kitty_graphics_placement_get(
@@ -149,6 +150,11 @@ impl<'t> KittyImages<'t> {
                 (&raw mut is_virtual).cast(),
             );
             sys::ghostty_kitty_graphics_placement_get(iter, P::Z, (&raw mut z).cast());
+            sys::ghostty_kitty_graphics_placement_get(
+                iter,
+                P::INTERNAL_ID,
+                (&raw mut internal_id).cast(),
+            );
             sys::ghostty_kitty_graphics_placement_get(
                 iter,
                 P::X_OFFSET,
@@ -179,6 +185,11 @@ impl<'t> KittyImages<'t> {
         }
         Some(KittyPlacement {
             placement: PlacementId(placement_id),
+            id_from: if internal_id {
+                PlacementIdFrom::Terminal
+            } else {
+                PlacementIdFrom::Program
+            },
             kind: if is_virtual {
                 PlacementKind::Virtual
             } else {

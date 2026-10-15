@@ -18,8 +18,8 @@ pub use cell::{
 pub use colour::{ColorRef, ColorScheme, Rgb};
 pub use config::TerminalConfig;
 pub use media::{
-    Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementKind, PlacementRender,
-    TextFormat, TextSpan, Visibility, ZIndex,
+    Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementIdFrom, PlacementKind,
+    PlacementRender, TextFormat, TextSpan, Visibility, ZIndex,
 };
 #[cfg(feature = "ghostty")]
 pub(crate) use mode::ModeFamily;

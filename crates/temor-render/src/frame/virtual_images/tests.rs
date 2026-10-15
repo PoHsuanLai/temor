@@ -1,4 +1,4 @@
-use temor_vt::{Col, ColorRef, Generation, ImageId, Rgb};
+use temor_vt::{Col, ColorRef, Generation, ImageId, PlacementIdFrom, Rgb};
 
 use super::super::diacritics::mark;
 use super::super::placeholder::PLACEHOLDER;
@@ -97,6 +97,7 @@ fn target(layer: KittyLayer, placement: u32, cols: u32, rows: u32) -> VirtualTar
             rgba: vec![255; 20 * 40 * 4],
         }),
         placement: PlacementId(placement),
+        id_from: PlacementIdFrom::Program,
         cols,
         rows,
     }
@@ -183,4 +184,52 @@ fn a_placeholder_naming_no_placement_or_image_draws_nothing() {
     }
     let none = VirtualScene::default();
     assert!(virtual_images(&[vec![cell(0, &[], ColorRef::Unset)]], &none).is_empty());
+}
+
+#[test]
+fn a_placeholder_names_the_programs_placement_and_never_the_terminals() {
+    // The program's placements draw above text and the terminal's (made up for placements
+    // given no id) below, so the layer tells which one a run met. The terminal's 3 and the
+    // program's 3 are different placements.
+    let program = |placement| target(KittyLayer::AboveText, placement, 2, 2);
+    let terminal = |placement| VirtualTarget {
+        id_from: PlacementIdFrom::Terminal,
+        ..target(KittyLayer::BelowText, placement, 2, 2)
+    };
+    // (name, placements, the run's underline colour) -> the layer drawn, or nothing
+    let cases = [
+        (
+            "the program's 3, not the terminal's",
+            vec![terminal(3), program(3)],
+            ColorRef::Palette(3),
+            Some(KittyLayer::AboveText),
+        ),
+        (
+            "only the terminal's 3: nothing",
+            vec![terminal(3)],
+            ColorRef::Palette(3),
+            None,
+        ),
+        (
+            "no id named: the program's placement before the terminal's",
+            vec![terminal(1), program(4)],
+            ColorRef::Unset,
+            Some(KittyLayer::AboveText),
+        ),
+        (
+            "no id named and only the terminal's: drawn",
+            vec![terminal(2)],
+            ColorRef::Unset,
+            Some(KittyLayer::BelowText),
+        ),
+    ];
+    for (name, targets, underline, want) in cases {
+        let scene = VirtualScene {
+            targets,
+            cell: (10, 20),
+        };
+        let rows = vec![vec![cell(0, &[0, 0], underline)]];
+        let got = virtual_images(&rows, &scene).first().map(|p| p.layer);
+        assert_eq!(got, want, "{name}");
+    }
 }

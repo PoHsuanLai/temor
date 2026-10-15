@@ -14,8 +14,8 @@
 # src/lib.rs and README.md.
 set -eu
 
-GHOSTTY_REPO="https://github.com/ghostty-org/ghostty.git"
-GHOSTTY_COMMIT="7ec9e26a29399b30ef78f06985fc75045b3cecb6"
+GHOSTTY_REPO="https://github.com/PoHsuanLai/ghostty.git"
+GHOSTTY_COMMIT="7f617dc799cd200f88231899c36f45682d4f7678"
 ZIG_WANT="0.16"
 
 if [ $# -ne 1 ]; then

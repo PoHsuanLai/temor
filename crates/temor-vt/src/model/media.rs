@@ -31,6 +31,15 @@ pub struct ImageId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PlacementId(pub u32);
 
+/// Who chose a placement's id. The terminal makes one up for a placement the program gave none;
+/// the two are separate sets of numbers, so the terminal's 5 and the program's 5 are different
+/// placements. A Unicode placeholder only ever names the program's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PlacementIdFrom {
+    Program,
+    Terminal,
+}
+
 /// A placement's stacking order (`z=`): negative draws under text, below -1,073,741,824 under
 /// cell backgrounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
