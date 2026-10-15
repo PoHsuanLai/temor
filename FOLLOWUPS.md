@@ -1271,7 +1271,10 @@ sections above are the lanes' own notes; this list is the one to read.
   the current folder, or the home folder. A Space's project folder still wins.
 - [x] Helper builds per CPU kind: `temor-remote-<arch>` beside the program (`x86_64`,
   `aarch64`), chosen by the probed host's CPU; a host with no build for its CPU stays on a plain
-  connection and is told so. Packaging must ship the extra builds (dist/ not done).
+  connection and is told so. `temor-remote-aarch64` is built static with
+  `cargo zigbuild --target aarch64-unknown-linux-musl` (`temor-lanes/build-helpers.sh`) and sits
+  in temor-lanes/bin; not yet run on a real ARM host (no emulator here). Packaging must ship the
+  extra builds (dist/ not done).
 
 ### Platforms (owner)
 - macOS: pty, keys (Cmd), emoji (sbix), windows/IME/CoreText check, trial sandbox, opener and
