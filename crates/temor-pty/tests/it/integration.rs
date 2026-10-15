@@ -220,11 +220,25 @@ fn fish_3_marks_true_and_false() {
     marks_around_true_and_false(fish, |_| {});
 }
 
-/// bash before 4.4 has no PS0, so nothing marks where a command's output starts: the prompt
-/// marks and OSC 7 come, C and D don't (macOS's /bin/bash is 3.2). Commands still run cleanly.
+/// bash before 4.4 has no PS0: the output mark comes from a DEBUG trap, as Warp's bash-preexec
+/// does (macOS's /bin/bash is 3.2), so its commands are marked as newer bash's are.
 #[test]
-fn bash_3_2_marks_its_prompts_and_folder_only() {
-    let test = "bash_3_2_marks_its_prompts_and_folder_only";
+fn bash_3_2_marks_true_and_false() {
+    let test = "bash_3_2_marks_true_and_false";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some((_dir, bash)) = renamed("bash32", "bash", test) else {
+        return;
+    };
+    marks_around_true_and_false(bash, |_| {});
+}
+
+/// A DEBUG trap the person set in their startup files keeps running beside temor's on bash 3.2,
+/// once per command, and an empty line marks nothing.
+#[test]
+fn bash_3_2_keeps_the_persons_own_debug_trap() {
+    let test = "bash_3_2_keeps_the_persons_own_debug_trap";
     if crate::support::pty_unsupported(test) {
         return;
     }
@@ -232,6 +246,11 @@ fn bash_3_2_marks_its_prompts_and_folder_only() {
         return;
     };
     let scratch = Scratch::new();
+    std::fs::write(
+        scratch.home.join(".bashrc"),
+        "_mine=0\ntrap '_mine=$((_mine + 1))' DEBUG\n",
+    )
+    .expect(".bashrc");
     let spec = prepare_shell(
         &Shell::at(bash),
         ShellStart::Interactive,
@@ -243,20 +262,27 @@ fn bash_3_2_marks_its_prompts_and_folder_only() {
     .expect("prepare shell");
     let mut term = Term::spawn(&spec, &setsid());
     assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
-    for command in ["true", "false"] {
-        let start = term.out.len();
-        term.send(&format!("{command}\r"));
-        assert!(term.read_until_has(start, PROMPT_END), "{:?}", term.text());
-        let out = &term.out[start..];
-        assert!(find(out, PROMPT_START.as_bytes()).is_some(), "{out:?}");
-        assert!(find(out, b"\x1b]7;file://").is_some(), "{out:?}");
-        assert!(find(out, OUTPUT_START.as_bytes()).is_none(), "{out:?}");
-        assert!(find(out, b"\x1b]133;D").is_none(), "{out:?}");
-    }
-    let text = term.text();
-    for complaint in ["syntax error", "unbound variable", "command not found"] {
-        assert!(!text.contains(complaint), "the shell complained: {text:?}");
-    }
+    let start = term.out.len();
+    term.send("\r");
+    assert!(term.read_until_has(start, PROMPT_END), "{:?}", term.text());
+    assert!(
+        find(&term.out[start..], OUTPUT_START.as_bytes()).is_none(),
+        "an empty line was marked"
+    );
+    let start = term.out.len();
+    term.send("_before=$_mine; true; echo MINE=$((_mine - _before))\r");
+    let done = "\x1b]133;D;0";
+    assert!(
+        term.read_until_has(start, done) && term.read_until_has(start, PROMPT_END),
+        "{:?}",
+        term.text()
+    );
+    let out = String::from_utf8_lossy(&term.out[start..]).into_owned();
+    assert_eq!(out.matches("\x1b]133;C").count(), 1, "{out:?}");
+    assert!(
+        !out.contains("MINE=0"),
+        "the person's trap stopped running: {out:?}"
+    );
 }
 
 /// Under a TERM with no terminal description, temor prints zsh's folder line itself, so a

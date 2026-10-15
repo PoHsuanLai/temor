@@ -1,4 +1,5 @@
-# temor shell integration for bash (bash 4.4 or newer for the command mark).
+# temor shell integration for bash. The command mark comes from PS0 (bash 4.4 or newer), or
+# from a DEBUG trap on older bash, as Warp's bash-preexec does.
 #
 # Marks prompts and commands with OSC 133 (A prompt start, B prompt end, C output start,
 # D;<status> command finished) and reports the working directory with OSC 7. temor sources this
@@ -104,13 +105,52 @@ _temor_prompt() {
     # are put back before every prompt.
     # Every expansion has a default, so this stays quiet under `set -u`.
     [[ ${PS1-} == *'\e]133;B'* ]] || PS1="${PS1-}"'\[\e]133;B\e\\\]'
-    [[ ${PS0-} == *'_temor_executing=1'* ]] ||
-        PS0="${PS0-}"'${_temor_mark[_temor_executing=1]-}\e]133;C\e\\'
+    if [[ -n ${_temor_debug_trap-} ]]; then
+        _temor_ready=1
+    else
+        [[ ${PS0-} == *'_temor_executing=1'* ]] ||
+            PS0="${PS0-}"'${_temor_mark[_temor_executing=1]-}\e]133;C\e\\'
+    fi
+    return "$_temor_status"
+}
+
+# bash before 4.4 has no PS0, so the output mark comes from a DEBUG trap, which runs before
+# every simple command. The prompt sets _temor_ready and the first command of the typed line
+# takes it, so a pipeline or a list is marked once; an empty line reaches PROMPT_COMMAND's
+# first command instead, and completion is left alone.
+_temor_preexec() {
+    [[ -n ${COMP_LINE-} || -z ${_temor_ready-} ]] && return 0
+    _temor_ready=
+    [[ $BASH_COMMAND == _temor_save_status ]] && return 0
+    _temor_executing=1
+    printf '\e]133;C\e\\'
+}
+
+# The trap is installed by the first prompt, from PROMPT_COMMAND, and not here: bash 3.2 hides the
+# shell's DEBUG trap inside a sourced file or a function, and puts it back when one sets its own.
+# A DEBUG trap set before then (in the person's startup files) keeps running, first, so it sees
+# the command's own $? and $_. One set later replaces temor's, as with any other DEBUG trap.
+_temor_install_debug='[[ -n ${_temor_debug_trap-} ]] || {
+_temor_debug_trap=$(trap -p DEBUG)
+if [[ -n $_temor_debug_trap ]]; then
+_temor_debug_trap=${_temor_debug_trap#"trap -- "}
+eval "_temor_debug_trap=${_temor_debug_trap%" DEBUG"}"
+trap '\''eval "$_temor_debug_trap"; _temor_preexec'\'' DEBUG
+else
+_temor_debug_trap=:
+trap _temor_preexec DEBUG
+fi
+}
+_temor_keep_status'
+
+_temor_keep_status() {
     return "$_temor_status"
 }
 
 if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == 'declare -a'* ]]; then
     PROMPT_COMMAND=(_temor_save_status "${PROMPT_COMMAND[@]}" _temor_prompt)
+elif ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
+    PROMPT_COMMAND=$'_temor_save_status\n'"$_temor_install_debug"$'\n'"${PROMPT_COMMAND-}"$'\n_temor_prompt'
 else
     # Joined with newlines, not "; ": a value ending in ";" or a newline stays valid.
     PROMPT_COMMAND=$'_temor_save_status\n'"${PROMPT_COMMAND-}"$'\n_temor_prompt'
