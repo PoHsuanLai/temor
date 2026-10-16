@@ -98,12 +98,19 @@ pub enum TrialAttempt {
     AfterFailure,
 }
 
+/// Which ask this is, counted by the proposal flow itself: a turn can hold two Asks, and a
+/// [`TurnRef`] alone would give both the same trial id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct AskNo(pub u32);
+
 /// Which trial a result belongs to: the ask and the answer within it. A result whose id is not
 /// the trial under way is dropped, so a late result can never be shown with a newer command.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TrialId {
-    /// The ask.
+    /// The ask's turn.
     pub turn: TurnRef,
+    /// The ask, counted within the flow.
+    pub ask: AskNo,
     /// Which answer.
     pub attempt: TrialAttempt,
 }
@@ -127,6 +134,8 @@ pub struct ProposalState {
     pub phase: ProposalPhase,
     /// The proposal waiting in the prompt for the person's Enter.
     pub typed: Option<Cleaned>,
+    /// How many Asks have been made; the next Ask takes the next number.
+    pub asks: AskNo,
 }
 
 impl ProposalState {
@@ -134,6 +143,7 @@ impl ProposalState {
     pub const OFF: ProposalState = ProposalState {
         phase: ProposalPhase::Off,
         typed: None,
+        asks: AskNo(0),
     };
 }
 

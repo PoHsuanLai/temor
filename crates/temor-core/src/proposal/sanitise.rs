@@ -8,7 +8,7 @@
 //! other C0 and C1 controls and DEL; bidirectional controls, which can make the shown text
 //! differ from what runs; and every Default_Ignorable_Code_Point (zero-width characters, fillers,
 //! tags, variation selectors), which can carry text the person never sees. Look-alike spaces
-//! (General_Category Zs other than U+0020) become a plain space, so what the person reads as two
+//! (General_Category Zs other than U+0020, and the braille blank U+2800) become a plain space, so what the person reads as two
 //! words is two words to the shell. The Unicode tables are generated (`ucd_tables.rs`).
 
 use super::ucd_tables::{DEFAULT_IGNORABLE, SPACE_SEPARATORS};
@@ -151,6 +151,9 @@ fn fate_of(c: char) -> Fate {
         // Interlinear annotation marks hide the text between them, and are not default-ignorable.
         '\u{fff9}'..='\u{fffb}' => Fate::Remove(CharClass::Invisible),
         ' ' => Fate::Keep,
+        // The braille blank draws as a space but is a letter (So) to the tables, so a shell
+        // would see one word where the person reads two.
+        '\u{2800}' => Fate::Plain(CharClass::Space),
         c if within(c, DEFAULT_IGNORABLE) => Fate::Remove(CharClass::Invisible),
         c if within(c, SPACE_SEPARATORS) => Fate::Plain(CharClass::Space),
         _ => Fate::Keep,

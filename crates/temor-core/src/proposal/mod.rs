@@ -10,7 +10,7 @@ mod tests;
 mod ucd_tables;
 
 pub use model::{
-    ChangeKind, Cleaned, FileChange, FileChanges, Proposal, ProposalPhase, ProposalState,
+    AskNo, ChangeKind, Cleaned, FileChange, FileChanges, Proposal, ProposalPhase, ProposalState,
     TrialAttempt, TrialId, TrialVerdict, UncheckedWhy,
 };
 pub use sanitise::{CharClass, Sanitised, SanitisedLine, sanitise};

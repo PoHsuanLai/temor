@@ -48,6 +48,7 @@ fn sanitise_removes_each_unsafe_class_and_reports_it() {
         ("interlinear annotation",           "a\u{fff9}b\u{fffb}",         "ab", &[Invisible]),
         ("no-break space becomes a space",   "rm\u{a0}-rf",                 "rm -rf", &[Space]),
         ("wide and thin spaces",             "a\u{3000}b\u{2009}c\u{2000}d\u{200a}e", "a b c d e", &[Space]),
+        ("the braille blank becomes a space", "rm\u{2800}-rf\u{2800}x", "rm -rf x", &[Space]),
         ("other Zs spaces",                  "a\u{1680}b\u{202f}c\u{205f}d", "a b c d", &[Space]),
         ("classes reported once, in order",  "\u{202e}a\nb\u{1b}[0m\nc\u{202e}\t", "abc", &[Bidi, Newline, EscapeSequence, Tab]),
         ("an escape string swallows newlines inside it", "\u{1b}]0;a\nb\u{07}ok", "ok", &[EscapeSequence]),
