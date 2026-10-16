@@ -16,6 +16,7 @@ use temor_core::vocab::text::ViewerRef;
 use temor_core::workspace::{ViewerOpen, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
+use crate::bar::Finding;
 use crate::edge::viewer_workers::ViewerWorkers;
 use crate::session::ViewAsk;
 
@@ -33,6 +34,8 @@ pub(super) struct ViewerHub {
     /// The viewers whose file could not be opened (anyview's failure card is up), with that file,
     /// which another app may still open. A later open of any file clears it.
     not_opened: BTreeMap<PaneId, anyview_pane::FilePath>,
+    /// Whether the bar that is about to open starts as a search of the viewer's file (⌘F).
+    find_wanted: Finding,
     /// The files fetched from other computers, and the copies the viewers show.
     pub(super) host: super::viewer_host::HostCopies,
 }
@@ -267,6 +270,20 @@ impl HubRef {
     /// The palette handle of the viewer pane that has the keyboard.
     pub fn keyboard_viewer(&self) -> Option<PaneHandle> {
         self.0.borrow().keyboard_viewer()
+    }
+
+    /// ⌘F in a viewer pane: the bar about to open starts as a search of the file ("In This File").
+    /// Nothing is asked when no viewer has the keyboard.
+    pub fn want_find_in_viewer(&self) {
+        let mut hub = self.0.borrow_mut();
+        if hub.keyboard_viewer().is_some() {
+            hub.viewers.find_wanted = Finding::On;
+        }
+    }
+
+    /// What the bar that just opened starts as; asking clears it, so the next ⌘T opens plain.
+    pub fn take_finding_wanted(&self) -> Finding {
+        std::mem::take(&mut self.0.borrow_mut().viewers.find_wanted)
     }
 
     /// How the keymap routes `stroke` in a pane that is not a terminal: only a chord of temor's is

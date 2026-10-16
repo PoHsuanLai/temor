@@ -150,6 +150,11 @@ fn chord(desk: &Desk, action: Action) {
     match action {
         Action::SelectSpace(number) => desk.select_space(number),
         Action::JumpToWaiting => desk.jump_to_waiting(),
+        // The viewer's own find lives in the bar, as its "In This File" group.
+        Action::Find => {
+            desk.hub.want_find_in_viewer();
+            desk.bar_toggle();
+        }
         other => {
             if desk.window_action(other) == WindowAction::Taken {
                 return;

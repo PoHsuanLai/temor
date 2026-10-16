@@ -65,7 +65,8 @@ pub enum UnknownKind {
     Apc,
     /// An operating system command libghostty does not implement (`ESC ] ... ST`).
     Osc,
-    /// An iTerm2 inline file (`ESC ] 1337 ; File= ... BEL|ST`).
+    /// An iTerm2 inline file (`ESC ] 1337 ; File= ... BEL|ST`) or a piece of a multipart one
+    /// (`MultipartFile=`, `FilePart=`, `FileEnd`).
     Osc1337File,
 }
 

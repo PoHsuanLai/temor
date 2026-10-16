@@ -41,10 +41,15 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
     let (typed, selected, picked, closed) =
         (desk.clone(), desk.clone(), desk.clone(), desk.clone());
     let handle = desk.hub.keyboard_viewer();
-    let mut finding = use_signal(Finding::default);
-    let mut list = use_signal(HitList::default);
+    // ⌘F in a viewer opens the bar already searching that file.
+    let wanted = use_hook(|| desk.hub.take_finding_wanted());
+    let mut finding = use_signal(|| wanted);
+    let mut list = use_signal(|| match wanted {
+        Finding::On => HitList::Brief,
+        Finding::Off => HitList::default(),
+    });
     // The viewer whose find is up; the bar putting it away is the bar going, however it goes.
-    let searched = use_hook(|| Rc::new(Cell::new(None::<PaneHandle>)));
+    let searched = use_hook(|| Rc::new(Cell::new(handle.filter(|_| wanted == Finding::On))));
     use_drop({
         let searched = Rc::clone(&searched);
         move || {
