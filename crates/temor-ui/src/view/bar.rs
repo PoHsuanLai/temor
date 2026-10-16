@@ -10,7 +10,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use anyview_pane::{HitList, PaneCommand, PaneHandle};
+use anyview_pane::{HitList, PaneCommand};
 use dioxus::prelude::*;
 use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,

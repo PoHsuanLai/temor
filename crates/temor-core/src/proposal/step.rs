@@ -248,7 +248,11 @@ fn left_prompt(state: ProposalState, command: &CommandText) -> (ProposalState, V
         let as_run = classify(typed.proposal.text.as_str(), command.as_str());
         out.push(ProposalOut::Ran { typed, as_run });
     }
-    (ProposalState::OFF, out)
+    let state = ProposalState {
+        asks: state.asks,
+        ..ProposalState::OFF
+    };
+    (state, out)
 }
 
 fn dismissed(phase: &ProposalPhase) -> Vec<ProposalOut> {

@@ -137,6 +137,14 @@ fn a_proposal_goes_from_ask_to_trial_to_prompt() {
         ("nothing moves while off", ProposalState::OFF, ProposalIn::Accept, ProposalState::OFF, vec![]),
     ];
     for (name, from, input, want, outs) in cases {
+        // Only an Ask moves the count; every other step keeps the one it was given.
+        let want = match input {
+            ProposalIn::Ask(_) => want,
+            _ => ProposalState {
+                asks: from.asks,
+                ..want
+            },
+        };
         let (state, out) = proposal_step(from, input, AiSwitch::On);
         assert_eq!(state, want, "{name}: state");
         assert_eq!(out, outs, "{name}: outputs");
@@ -213,7 +221,13 @@ fn with_ai_off_nothing_reaches_a_model() {
     let (state, out) = proposal_step(asking(First), answer("ls", T), AiSwitch::Off);
     assert_eq!(
         (state, out),
-        (ProposalState::OFF, vec![ProposalOut::Dismissed])
+        (
+            ProposalState {
+                asks: A1,
+                ..ProposalState::OFF
+            },
+            vec![ProposalOut::Dismissed]
+        )
     );
 }
 
@@ -256,6 +270,7 @@ fn escape_and_ctrl_c_always_reach_the_shell() {
 fn a_tainted_answer_keeps_its_taint() {
     let input = ProposalIn::ModelAnswer {
         turn: T,
+        ask: A1,
         text: "rm x".into(),
         taint: Taint::ReadUntrusted,
     };
