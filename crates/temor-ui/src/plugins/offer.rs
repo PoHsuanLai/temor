@@ -47,7 +47,7 @@ impl OfferBook {
     /// title carries the plugin's name, since the bar lists plugin rows together.
     pub fn plugin_rows(&self) -> Vec<PluginRow> {
         let mut ordered: Vec<&Offered> = self.rows.iter().collect();
-        ordered.sort_by(|a, b| b.item.score.cmp(&a.item.score));
+        ordered.sort_by_key(|row| std::cmp::Reverse(row.item.score));
         ordered
             .into_iter()
             .map(|offered| PluginRow {

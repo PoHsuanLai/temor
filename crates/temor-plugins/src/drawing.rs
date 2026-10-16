@@ -103,7 +103,8 @@ mod tests {
 
     #[test]
     fn a_picture_has_exactly_the_bytes_its_size_says() {
-        let table: &[(&str, u32, u32, usize, Result<(), BadDrawing>)] = &[
+        type Row = (&'static str, u32, u32, usize, Result<(), BadDrawing>);
+        let table: &[Row] = &[
             ("one pixel", 1, 1, 4, Ok(())),
             ("two by three", 2, 3, 24, Ok(())),
             ("no width", 0, 3, 0, Err(BadDrawing::Empty)),

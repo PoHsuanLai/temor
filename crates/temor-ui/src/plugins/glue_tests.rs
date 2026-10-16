@@ -124,7 +124,8 @@ impl Hands for Spy {
 fn a_plugins_facts_join_the_pane_and_a_failing_plugin_adds_nothing() {
     let pane = PaneId(1);
     // fault arguments, the facts the pane ends with
-    let table: Vec<(&str, Vec<&str>, Vec<(&str, &str)>)> = vec![
+    type Row<'a> = (&'a str, Vec<&'a str>, Vec<(&'a str, &'a str)>);
+    let table: Vec<Row> = vec![
         ("a plugin that answers", vec![], vec![("cluster", "prod")]),
         (
             "a plugin that crashes",

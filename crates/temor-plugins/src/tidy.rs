@@ -62,7 +62,7 @@ pub fn tidy_batch(batch: Batch, generation: u64) -> Option<Batch> {
         return None;
     }
     let mut items: Vec<Item> = batch.items.into_iter().filter_map(tidy_item).collect();
-    items.sort_by(|a, b| b.score.cmp(&a.score));
+    items.sort_by_key(|item| std::cmp::Reverse(item.score));
     items.truncate(MOST_ROWS);
     Some(Batch { generation, items })
 }

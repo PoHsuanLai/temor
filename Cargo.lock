@@ -802,6 +802,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
+name = "bayonet"
+version = "0.2.0"
+source = "git+https://github.com/PoHsuanLai/bayonet.git?rev=fe489cf7533015e18161dc36854c53152c385839#fe489cf7533015e18161dc36854c53152c385839"
+dependencies = [
+ "rustix",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6866,6 +6878,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-plugins"
+version = "0.1.0"
+dependencies = [
+ "bayonet",
+ "serde",
+ "temor-plugins",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "temor-pty"
 version = "0.1.0"
 dependencies = [
@@ -6966,6 +6989,7 @@ dependencies = [
  "temor-core",
  "temor-desktop",
  "temor-pane",
+ "temor-plugins",
  "temor-pty",
  "temor-remote",
  "temor-render",

@@ -67,7 +67,8 @@ mod tests {
     fn plugin_facts_follow_the_branch_on_the_sidebar_row() {
         let one = vec![fact("cluster", "prod")];
         let two = vec![fact("cluster", "prod"), fact("region", "eu")];
-        let table: &[(&str, Option<&str>, &[PluginFact], Option<&str>)] = &[
+        type Row<'a> = (&'a str, Option<&'a str>, &'a [PluginFact], Option<&'a str>);
+        let table: &[Row] = &[
             ("nothing", None, &[], None),
             ("branch alone", Some("main"), &[], Some("main")),
             ("facts alone", None, &one, Some("cluster prod")),
