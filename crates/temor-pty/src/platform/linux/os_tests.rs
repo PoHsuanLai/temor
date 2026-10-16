@@ -10,6 +10,8 @@ struct Proc {
     pid: i32,
     comm: &'static str,
     group: i32,
+    /// Clock ticks since boot when it started (`stat` field 22).
+    start: u64,
 }
 
 fn write_proc(root: &Path, procs: &[Proc], children_of_shell: &str) {
@@ -20,7 +22,14 @@ fn write_proc(root: &Path, procs: &[Proc], children_of_shell: &str) {
         // The name may hold spaces and parentheses; fields count from its last `)`.
         std::fs::write(
             dir.join("stat"),
-            format!("{} ({} (x)) S 10 {} 10 0 -1\n", p.pid, p.comm, p.group),
+            format!(
+                "{} ({} (x)) S 10 {} 10 0 -1 {}{}\n",
+                p.pid,
+                p.comm,
+                p.group,
+                "0 ".repeat(13),
+                p.start
+            ),
         )
         .expect("stat");
     }
@@ -40,8 +49,14 @@ fn a_pipeline_is_named_for_its_last_command() {
         pid: 10,
         comm: "bash",
         group: 10,
+        start: 1,
     };
-    let job = |pid, comm, group| Proc { pid, comm, group };
+    let job = |pid, comm, group| Proc {
+        pid,
+        comm,
+        group,
+        start: u64::try_from(pid).unwrap_or(0),
+    };
     // (name, children of the shell, processes besides the shell, the foreground group, the name)
     let cases: Vec<Case> = vec![
         (
@@ -50,6 +65,26 @@ fn a_pipeline_is_named_for_its_last_command() {
             vec![job(11, "cat", 11), job(12, "grep", 11), job(13, "less", 11)],
             11,
             Some("less"),
+        ),
+        (
+            "pids wrapped: the one started last wins, not the higher pid",
+            "30 12",
+            vec![
+                Proc {
+                    pid: 30,
+                    comm: "cat",
+                    group: 30,
+                    start: 500,
+                },
+                Proc {
+                    pid: 12,
+                    comm: "wc",
+                    group: 30,
+                    start: 501,
+                },
+            ],
+            30,
+            Some("wc"),
         ),
         (
             "a command alone",
@@ -86,6 +121,7 @@ fn a_pipeline_is_named_for_its_last_command() {
             pid: shell.pid,
             comm: shell.comm,
             group: shell.group,
+            start: shell.start,
         }];
         procs.extend(others);
         write_proc(scratch.path(), &procs, children);

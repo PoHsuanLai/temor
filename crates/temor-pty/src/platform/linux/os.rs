@@ -32,8 +32,13 @@ impl Os for Linux {
         children
             .split_whitespace()
             .filter_map(|word| word.parse::<i32>().ok().map(ProcessId))
-            .filter(|child| process_group(proc, *child) == Some(group))
+            .filter_map(|child| {
+                let (child_group, start) = stat_group_and_start(proc, child)?;
+                (child_group == group).then_some((start, child))
+            })
+            // Started last, then the higher pid: pids wrap, start times do not.
             .max()
+            .map(|(_, child)| child)
     }
 
     fn current_user() -> Option<UserId> {
@@ -47,15 +52,14 @@ impl Os for Linux {
     }
 }
 
-/// The process group of `pid`, from the third field after the command name in `stat`. The name
-/// may hold spaces and parentheses, so the fields are counted from its last `)`.
-fn process_group(proc: &ProcRoot, pid: ProcessId) -> Option<ProcessId> {
+/// The process group and start time (clock ticks since boot) of `pid`, from `stat`: the third
+/// and twentieth fields after the command name, which may hold spaces and parentheses, so the
+/// fields are counted from its last `)`. A start time that is missing reads as 0.
+fn stat_group_and_start(proc: &ProcRoot, pid: ProcessId) -> Option<(ProcessId, u64)> {
     let stat = std::fs::read_to_string(proc.0.join(pid.0.to_string()).join("stat")).ok()?;
     let after = &stat[stat.rfind(')')? + 1..];
-    after
-        .split_whitespace()
-        .nth(2)?
-        .parse::<i32>()
-        .ok()
-        .map(ProcessId)
+    let mut fields = after.split_whitespace();
+    let group = fields.nth(2)?.parse::<i32>().ok().map(ProcessId)?;
+    let start = fields.nth(16).and_then(|f| f.parse::<u64>().ok());
+    Some((group, start.unwrap_or(0)))
 }
