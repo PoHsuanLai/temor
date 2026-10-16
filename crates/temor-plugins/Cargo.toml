@@ -1,0 +1,32 @@
+[package]
+name = "temor-plugins"
+description = "temor's plugins (PLAN D14, P11): its four capabilities, their messages, and the host side that finds a plugin, runs it for one request and reads its answer. Built on bayonet; a plugin is a program that is run, never linked."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+# bayonet's fake plugin, for the example program the tests run.
+testing = ["bayonet/testing"]
+
+[dependencies]
+bayonet = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+temor-plugins = { workspace = true, features = ["testing"] }
+tempfile = { workspace = true }
+
+[[example]]
+name = "fake_plugin"
+required-features = ["testing"]
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true
