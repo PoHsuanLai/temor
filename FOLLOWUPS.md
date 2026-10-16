@@ -1528,3 +1528,18 @@ sidebar, an open menu and 150%/200%; a long folder chip cut at its start; quire'
 - [ ] The folder chip's room is counted in grid cells while it is drawn in the smaller code font;
       tune `CHIP_FRAME` (`view/folder_fit.rs`) if a chip is still cut at its end.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b25-*.md`.
+
+## Scrollback clears (PR #3, #4; 2026-10-16)
+A running command's `CSI 3 J` erases only its own rows (Ghostty fork `eraseHistoryFrom`); the
+person's `clear` (shell integrations print `ESC ] 7502;clear BEL` first) ends every anchor. Left:
+- [ ] `clear -x` (keep the scrollback) still prints the mark, so the screen's anchors end although
+      their text may be pushed into the scrollback (libghostty does that when the screen ends at a
+      prompt).
+- [ ] Ctrl+L, or a program's `CSI 2 J` without `CSI 3 J`, on a screen that does not end at a prompt:
+      libghostty clears it in place, so earlier blocks' anchors stay on blank rows under the next
+      prompt. Pre-existing; only the person's `clear` is handled.
+- [ ] Hardening: check an anchor against the row's `semantic_prompt` flag before a card is drawn
+      from it, so a misplaced anchor draws nothing.
+- [ ] Upkeep: the Ghostty fork (github.com/PoHsuanLai/ghostty, branch `temor`) carries two commits,
+      the `INTERNAL_ID` placement key and `ghostty_terminal_erase_history_from`; rebase both when
+      the pin moves to a newer Ghostty.
