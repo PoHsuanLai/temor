@@ -172,3 +172,18 @@ fn a_file_that_could_not_be_opened_is_offered_to_another_app_until_an_open_succe
     hub.viewer_family(viewer, Text);
     assert_eq!(hub.viewer_failed_file(viewer), None);
 }
+
+#[test]
+fn find_in_a_file_is_asked_only_when_a_viewer_has_the_keyboard() {
+    use std::{cell::RefCell, rc::Rc};
+
+    use super::model::HubRef;
+    use crate::bar::Finding;
+
+    // A terminal has the keyboard: ⌘F there is the terminal's own find, so the bar opens plain.
+    let hub = HubRef(Rc::new(RefCell::new(hub_after(vec![
+        WorkspaceIn::NewTab { cwd: None },
+    ]))));
+    hub.want_find_in_viewer();
+    assert_eq!(hub.take_finding_wanted(), Finding::Off);
+}
