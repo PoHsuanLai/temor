@@ -4,19 +4,34 @@
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::Shutdown;
-use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 
 use crate::error::Error;
 
-/// Makes `path` (and its parents) if they are missing, readable by the person only.
+/// Makes `path` (and its parents) if they are missing, readable by the person only. A folder
+/// that is already there and is ours is tightened to 0700 (a mode like 0300 or 0000 would
+/// otherwise fail the socket later); one that is not ours, or is a link, is refused.
 pub fn ensure_private_dir(path: &Path) -> Result<(), Error> {
     fs::DirBuilder::new()
         .recursive(true)
         .mode(0o700)
         .create(path)
-        .map_err(|error| Error::io(format!("making {}", path.display()), error))
+        .map_err(|error| Error::io(format!("making {}", path.display()), error))?;
+    let meta = fs::symlink_metadata(path)
+        .map_err(|error| Error::io(format!("looking at {}", path.display()), error))?;
+    if !meta.is_dir() || meta.uid() != rustix::process::getuid().as_raw() {
+        return Err(Error::io(
+            format!("using {}", path.display()),
+            io::Error::new(io::ErrorKind::PermissionDenied, "the folder is not ours"),
+        ));
+    }
+    if meta.mode() & 0o777 != 0o700 {
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+            .map_err(|error| Error::io(format!("restricting {}", path.display()), error))?;
+    }
+    Ok(())
 }
 
 /// One end of a connection. `Send`; clone it for the other direction with [`Half::duplicate`].
@@ -83,4 +98,27 @@ pub fn connect(path: &Path) -> Result<Half, Error> {
     UnixStream::connect(path)
         .map(Half)
         .map_err(|error| Error::io(format!("connecting to {}", path.display()), error))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_folder_of_ours_with_any_mode_is_tightened_and_a_file_in_its_place_is_refused() {
+        let base = std::env::temp_dir().join(format!("temor-remote-dir-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let dir = base.join("sockets");
+        ensure_private_dir(&dir).expect("made");
+        for mode in [0o300, 0o000, 0o755, 0o700] {
+            fs::set_permissions(&dir, fs::Permissions::from_mode(mode)).expect("chmod");
+            ensure_private_dir(&dir).unwrap_or_else(|err| panic!("{mode:o}: {err}"));
+            let now = fs::metadata(&dir).expect("dir").permissions().mode() & 0o777;
+            assert_eq!(now, 0o700, "from {mode:o}");
+        }
+        let file = base.join("a-file");
+        fs::write(&file, "x").expect("file");
+        assert!(ensure_private_dir(&file).is_err());
+        let _ = fs::remove_dir_all(&base);
+    }
 }
