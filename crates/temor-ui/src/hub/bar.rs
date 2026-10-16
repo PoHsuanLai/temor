@@ -116,7 +116,7 @@ impl Hub {
     }
 
     /// Runs `step` on the bar with the context of now.
-    fn bar_apply(&mut self, step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel) {
+    pub(super) fn bar_apply(&mut self, step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel) {
         let candidates = self.bar_candidates();
         let cx = BarContext {
             candidates: &candidates,
@@ -129,17 +129,21 @@ impl Hub {
 
     /// ⌘T.
     pub fn bar_toggle(&mut self) {
+        self.plugins_stop();
         self.bar_apply(|model, cx| model.toggled(cx));
     }
 
     /// Escape, or a click outside the bar.
     pub fn bar_close(&mut self) {
+        self.plugins_stop();
         self.bar_apply(|model, cx| model.closed(cx));
     }
 
     /// The field changed.
     pub fn bar_typed(&mut self, text: String) {
+        let asked = text.clone();
         self.bar_apply(|model, cx| model.typed(text, cx));
+        self.plugins_ask(&asked);
     }
 
     /// The highlight moved to the row at `index`.
@@ -168,6 +172,7 @@ impl Hub {
         if let Some(row) = row {
             self.run_bar_row(row);
         }
+        self.plugins_stop();
     }
 
     /// What the bar's view draws, while it is open.

@@ -25,6 +25,7 @@ temor-transfer 0
 temor-ssh 0
 temor-render 1
 temor-pane 1
+temor-plugins 1
 temor-core 2
 temor-ui 3
 temor-desktop 3

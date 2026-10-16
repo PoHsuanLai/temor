@@ -11,6 +11,7 @@ pub mod input;
 pub mod paint;
 pub mod pane;
 pub mod platform;
+pub mod plugins;
 pub mod session;
 pub mod settings;
 pub mod settings_window;

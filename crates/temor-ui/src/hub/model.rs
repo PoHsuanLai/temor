@@ -26,6 +26,7 @@ use super::spaces::SpaceBook;
 use super::ssh::SshHub;
 use super::viewers::ViewerHub;
 use crate::edge::SavePace;
+use crate::plugins::PluginHub;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
 
@@ -61,6 +62,8 @@ pub struct Hub {
     pub(super) ssh: SshHub,
     /// What the panes' folders have in them (branch, changes, environments).
     pub(super) facts: FactsHub,
+    /// What plugins gave the window and the way to ask them (PLAN P11).
+    pub(super) plugins: PluginHub,
     /// The shell offer's state for every pane.
     pub(super) offer: OfferHub,
     /// Sessions on hosts' helpers (Tier B).
@@ -90,6 +93,7 @@ impl Hub {
         let agents = Agents::new(&launch, events.clone());
         let ssh = SshHub::new(&launch.ambient);
         let facts = FactsHub::new(&launch);
+        let plugins = PluginHub::new(&launch);
         let offer = OfferHub::new(&launch);
         let remote = RemoteHub::new(&launch.ambient, launch.state_dir.clone());
         Hub {
@@ -115,6 +119,7 @@ impl Hub {
             agents,
             ssh,
             facts,
+            plugins,
             offer,
             remote,
             viewers: ViewerHub::default(),
