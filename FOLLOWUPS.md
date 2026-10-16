@@ -3,23 +3,23 @@
 Review leftovers that didn't block a merge. Each one names the lane it came from and the PLAN section.
 
 ## temor-core (lane/core, reviewed at 03031e9)
-- [ ] `TrialId` is only as unique as `TurnRef`: every Ask must get a fresh `TurnRef` (document it, or
-      add a counter). §8.3
+- [x] `TrialId` is only as unique as `TurnRef`: every Ask must get a fresh `TurnRef` (document it, or
+      add a counter). §8.3 (Batch 26: an ask counter, `AskNo`)
 - [x] `Origin::LocalStream` emits `Remember(Grant)`, but no consent store exists for local panes
       (`HostConsent` is per host). Add one at the edge, or always ask. §9
       (done: Batch 2 shelf, `ShelfHub` grants per stream in `hub/shelf.rs`, kept until quit)
-- [ ] A typed proposal deleted by hand and replaced by the person's own command still logs
-      `Ran{Edited}`. Tell "edited" apart from "replaced". §8.3
-- [ ] U+2800 (braille blank) looks like a space but isn't default-ignorable. Consider treating it as
-      a space. §8.3
+- [x] A typed proposal deleted by hand and replaced by the person's own command still logs
+      `Ran{Edited}`. Tell "edited" apart from "replaced". §8.3 (Batch 26: `AsRun::Replaced`, rule in proposal/as_run.rs)
+- [x] U+2800 (braille blank) looks like a space but isn't default-ignorable. Consider treating it as
+      a space. §8.3 (Batch 26)
 
 ## temor-vt (lane/vt, reviewed at 8d586df)
-- [ ] iTerm2 `MultipartFile=` / `FilePart=` / `FileEnd` (imgcat inside tmux): temor-pane reads the
+- [x] iTerm2 `MultipartFile=` / `FilePart=` / `FileEnd` (imgcat inside tmux): temor-pane reads the
       pieces when they arrive as an unknown OSC (`engine/xfer/state.rs`), but temor-vt's pre-scan
-      catches only `File=`, and its notes say Ghostty drops the rest. §9 (check)
-- [ ] `RENDER_HOLD`: capture a frame when a hold starts, as Ghostty recommends; the hold timeout is the
-      UI's job. §4b
-- [ ] OSC 52 clipboard reads (`CLIPBOARD_READ`) are not wired. §6, §9
+      catches only `File=`, and its notes say Ghostty drops the rest. §9 (check) (Batch 26: the pre-scan takes all four)
+- [x] `RENDER_HOLD`: capture a frame when a hold starts, as Ghostty recommends; the hold timeout is the
+      UI's job. §4b (done: the hold hook)
+- [x] OSC 52 clipboard reads (`CLIPBOARD_READ`) are not wired. §6, §9 (done: ffi/clipboard_read.rs)
 - [ ] No vttest captures in the conformance fixtures yet; DA2/DA3 use libghostty's defaults. §13
 - [ ] Upstream (only with the owner's OK): Ghostty reporting OSC 1337 `File=` through
       UNKNOWN_SEQUENCE; a per-cell hyperlink id; libghostty-rs taking the `Send` and new-callback
@@ -33,9 +33,9 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       autoload file, bb36e33)
 - [x] fish 3 marks path untested (fish 4+ emits marks natively); bash 3.2 has no PS0, so no C/D marks.
       (done 2026-10-15: fish 3.7 tested; bash before 4.4 marks through a DEBUG trap)
-- [ ] A person's own `trap … EXIT` replaces the emulated-login `.bash_logout` trap; an old-style
-      `zle -N zle-line-init` drops zsh's first-prompt B fallback under themes.
-- [ ] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7
+- [x] A person's own `trap … EXIT` replaces the emulated-login `.bash_logout` trap; an old-style
+      `zle -N zle-line-init` drops zsh's first-prompt B fallback under themes. (Batch 26: `_temor_chain_exit`; zsh already re-hooks zle-line-init)
+- [x] Foreground name/cwd come from the group leader, so a pipeline reports its first command. §7 (done: `pipeline_last`, by start time since Batch 26)
 - [x] Send `integration_scripts()` with the SSH Tier A bootstrap. §9b (done: Batch 2 ssh,
       `hub/ssh_connect.rs`)
 
@@ -55,10 +55,10 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [x] Edge contract for the app: feed back every write failure (`WriteFailed{op}`) and every
       successful Finish (`WriteDone`); hold the `Root` for the transfer's lifetime. §9
       (done: Batch 2, temor-pane `engine/xfer/receive.rs`)
-- [ ] Upload by drop (`SendSession`) is not built. §9
-- [ ] Kitty `prm` is ignored (files 0o644, folders 0o755); in-root symlinks are refused, not made.
+- [x] Upload by drop (`SendSession`) is not built. §9 (done: kitty/drive/send.rs)
+- [x] Kitty `prm` is ignored (files 0o644, folders 0o755); in-root symlinks are refused, not made. (done: prm applied; in-root symlinks made under `LinkPolicy::Make`)
 - [x] Verify the kitty `st` reply encoding and `tt` values against a real kitty. §9 (unpadded; fixed)
-- [ ] A malformed frame with no open files only replies; the transfer continues.
+- [x] A malformed frame with no open files only replies; the transfer continues. (done: it ends the transfer)
 
 ## temor-render (lane/render, reviewed at f4ead2c)
 - [x] The app must call `Palette::apply` on every new terminal before its first frame and on theme
@@ -68,8 +68,8 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
       wired through `use_gpu` in `view/pane_view.rs`). §5
 - [ ] A capture error after a resize leaves the new size applied; harmless while libghostty reports
       Full after resize. §5
-- [ ] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
-      whole pane; CPU clips glyph overhang to the row, GPU does not. §5
+- [x] Kitty unicode-placeholder (virtual) placements are not drawn; selection changes recompose the
+      whole pane; CPU clips glyph overhang to the row, GPU does not. §5 (done: Batch 23)
 
 ## quire v0.3.1 (b9b9c03b) — bump in R1, features in P3
 - [x] Bump the pin to `rev = "b9b9c03bf166f0e2be834518b2dd1ee76b4de7f5"  # v0.3.1` (done in R1a; the
@@ -97,9 +97,9 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [x] quire asks (whopper offline; saved in /mnt/data/cargo/temor-lanes/pending-quire-asks.md): IME
       cursor area API, runtime window title, theme-change signal, consumer coherence test. Now in
       quire v0.3.1 and used (5f852bf, fefac1e, 5bccf7d, e318913). §6
-- [ ] OSC 52 writes are received and dropped (`TODO(P9)` in `session/lifecycle.rs`), and the
+- [x] OSC 52 writes are received and dropped (`TODO(P9)` in `session/lifecycle.rs`), and the
       hyperlink hover target preview is not built. Bell, title, notifications, cwd and progress
-      are shown (P2, P3). §6, §7
+      are shown (P2, P3). §6, §7 (done: session/osc52.rs; link hover tip in view/link_tip.rs)
 - [ ] Settings are temor's own typed file at $XDG_CONFIG_HOME/temor/terminal.conf; move to
       ds-settings when quire provides it. §6 (check: ds-settings is already used for the theme in
       `view/theme.rs`; is it ready for temor's own keys?)
@@ -111,13 +111,13 @@ Review leftovers that didn't block a merge. Each one names the lane it came from
 - [x] P13 wiring: host list in ⌘T (plus tailnet machines, D22), opening panes through the shared
       master, consent per host, `HostId::same_machine` for the gate. §9b (done: Batch 2 ssh, and
       the bar's host rows in P18, 79ebb19)
-- [ ] HostAlias rejects `:`, `[`, `]`: IPv6 literals need a HostName in ssh_config; say so in the UI.
+- [x] HostAlias rejects `:`, `[`, `]`: IPv6 literals need a HostName in ssh_config; say so in the UI. (done: the HostName hint, also for `host:path` since Batch 26)
 - [x] Nushell on the host: the bootstrap places `temor.nu` under `nu/nushell/vendor/autoload`; P13 adds the `nu` case that starts nushell with `XDG_DATA_DIRS` pointing there (same as temor-pty's local plan). §9b
       (done: the `nu|nushell` case in temor-ssh `sh/bootstrap.sh`, tested in `tests/it/nu.rs`)
 - [ ] IdentityFile and ProxyJump values must be validated before any `-i`/`-J` builder uses them.
 - [ ] fish 4.9 prints no marks on piped stdin, so fish marks over SSH aren't asserted; no real sshd
       test yet (only `ssh -G`); csh/tcsh login shells untested. §13
-- [ ] A bootstrap dir owned by us with mode 0300/0000 fails closed (EACCES) instead of tightening.
+- [x] A bootstrap dir owned by us with mode 0300/0000 fails closed (EACCES) instead of tightening. (done in temor-ssh; temor-remote's socket folder too since Batch 26)
 
 ## Platform (owner): OS-specific stubs to implement on real machines
 Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
@@ -163,8 +163,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       doctests. Have `scripts/gen-bindings.sh` fence them as `text` (or set `doctest = false` on the
       -sys lib), then add a crate-root example. (done: `doctest = false`; PLAN R1 exempts the
       bindings from the example, d5621cd)
-- [ ] temor-vt `row_wraps` still returns `bool` (temor-vt can't see temor-core's `Wrap`); give temor-vt
-      its own two-variant enum when R1b touches rows.
+- [x] temor-vt `row_wraps` still returns `bool` (temor-vt can't see temor-core's `Wrap`); give temor-vt
+      its own two-variant enum when R1b touches rows. (done: `Wrap`)
 
 ## R1b (lane/r1b)
 - [ ] Blocks stay in temor-core (L2) because they use `vocab` ids and quire's `Stamp`. An embedder of
@@ -198,7 +198,7 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       (600 ms) and shows solid from each key, paste or focus; `cursor.blink = off` turns it off.
 - [x] IME candidate placement is untested: ds-harness has no IME host, and the owner's fcitx5 is the only
       real check. §6 (done 2026-10-16 on fcitx5: quire 3cfe32c4 carries the blitz-shell fix)
-- [ ] The window title is untested in the harness (no window host there); only the rule is tested. §7
+- [x] The window title is untested in the harness (no window host there); only the rule is tested. §7 (done: tests/it/window_title.rs)
 - [x] Per-workspace Space looks: the window draws `SpaceLook::default()` until sill publishes them. §5
       (done: Batch 2 spaces, the root takes `spaces.look()` in `view/window.rs`)
 - [x] The palette follows the Space look (read inside `Ds`, `view/palette.rs`) but not
@@ -560,14 +560,14 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 - [x] chordkit 338b717 (ba094c6 fixes the fallback where the default is plain Ctrl in a terminal): temor forgoes "show fonts" and "new", so ⌘T is new tab (⌘N free); equalize has the fallback ⌥⌘0 (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift); a person's chord revives an action refused at start (focus left/right on "Other" Linux, where Ctrl+Alt arrows switch Spaces).
 - [ ] chordkit FINDINGS: a fallback applies only where the default has no live form, not where it collides; focus left/right stay refused by default on "Other" Linux.
 - [x] keycap 0d9abbf adds the `keymap-aware` profile (⌘ arrives as Super); temor's desktop entry asks for it with `X-Keycap-Profile=keymap-aware`. A still-remapped window falls back to chordkit's Ctrl+Shift alias, where ⌘⇧D reads as ⌘D.
-- [ ] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop.
-- [ ] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register.
+- [x] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop. (done: input/route.rs)
+- [x] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register. (done: edge/keymap_source.rs)
 - [x] quire v0.3.6 (8ce6d4b, chordkit ba094c6, maps ALT_GRAPH): one chordkit in the tree. temor still routes its own window keys; moving to quire's `ds::keys` resolver is a later step.
-- [ ] Wire `keys::{shortcut, terminal_shortcut}` into menus when they show shortcuts.
+- [x] Wire `keys::{shortcut, terminal_shortcut}` into menus when they show shortcuts. (Batch 26: the sidebar and more menus; quire draws none in context menus)
 - [ ] The old `keys.<action> = ctrl+shift+c` lines now report "no setting called"; say so in the user docs when settings are documented.
-- [ ] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds
+- [x] Space switch: `SelectSpace(n)` is chordkit's switch-to-space standard action; no platform binds
       it live in a terminal, so it is reached from the Spaces menu only. The bar has no Space rows
-      yet: nothing sets `BarSeams::spaces`, so it stays `NoSpaces` (Batch 2 bar).
+      yet: nothing sets `BarSeams::spaces`, so it stays `NoSpaces` (Batch 2 bar). (done: `KitSpaces` rows in the bar)
 - [x] temor-ssh `files::an_awkward_path_is_fetched_edited_and_written_back` flaked once with ETXTBSY (a fake `ssh` script written while another test thread forked). Retry the spawn on ExecutableFileBusy in the test helper, or write the fakes before the threads start.
       (done: d5a9d6f, the spawn retries on ExecutableFileBusy in `tests/it/harness.rs`)
 
@@ -681,15 +681,15 @@ Written without builds by Sonnet lanes; merged, compiled, fixed and gated togeth
       Today `Hub::ssh_prepare` makes every `NewTab { cwd: None }` from a host pane a host session.
 - [x] `Desk::open_host(&HostRow)` / `Hub::open_host_named(text)` are the entries for the bar's host rows and
       for a typed destination. (done: `hub/bar_run.rs` uses both)
-- [ ] "Edit locally" from a block: the entry is `Hub::edit_remote(Some(pane), "host:/path" | "path")`; the
+- [x] "Edit locally" from a block: the entry is `Hub::edit_remote(Some(pane), "host:/path" | "path")`; the
       block bar has no such button yet (a path in a block's output needs picking out of text). The host
-      banner has a "File on the computer" field + "Edit locally" button meanwhile.
+      banner has a "File on the computer" field + "Edit locally" button meanwhile. (Batch 26: Edit Locally in a host pane's block menu)
 
 ## Known gaps
-- [ ] The check URL is found by reading the pane's screen text (`Session::screen_text`) after each repaint,
+- [x] The check URL is found by reading the pane's screen text (`Session::screen_text`) after each repaint,
       not the raw bytes (the pane engine does not hand raw bytes out). Stopped at the first folder report
       (OSC 7), the connection coming up, or the session ending; OSC 133 alone does not stop it. A raw tap in
-      temor-pane (`PaneEvent::Raw` or an `EventSink` hook, before `Term::write`) would match the spec exactly.
+      temor-pane (`PaneEvent::Raw` or an `EventSink` hook, before `Term::write`) would match the spec exactly. (done: `ByteTap` in temor-pane, `RawCheck`)
 - [ ] Established is detected by polling `ssh -O check` every ~900 ms while the first session connects (a
       probe thread per poll), not from the host key being verified in the pane. A master that dies later is
       only noticed when a joined `ssh` exits 255.
@@ -699,18 +699,18 @@ Written without builds by Sonnet lanes; merged, compiled, fixed and gated togeth
       "Server host key: … SHA256:…" would be exact.
 - [ ] A plain session (consent refused) cannot start in the pane's folder (no remote command to carry it).
 - [ ] The restored tab of a host reconnects on launch and may ask for a password then.
-- [ ] A reopened closed tab (`Start::Scrollback`) loses its host (the mapping is dropped with the pane).
+- [x] A reopened closed tab (`Start::Scrollback`) loses its host (the mapping is dropped with the pane). (done: `ssh_note_closed`/`ssh_reclaim`)
 - [ ] Offline tailnet rows are `Availability::Disabled` (quire dims them and takes no press); a machine that
       is offline in the tailnet but reachable another way cannot be opened from the list.
 - [ ] The forward row's local port is any free port when the same number is taken; the person is not asked.
 - [ ] `ForwardFault::LocalPortTaken` has no message path in practice (a free port is picked first).
-- [ ] Local copies of edited files stay in `<runtime>/edit/<id>/` until the runtime dir is cleared; "Done"
-      stops watching but does not delete them.
+- [x] Local copies of edited files stay in `<runtime>/edit/<id>/` until the runtime dir is cleared; "Done"
+      stops watching but does not delete them. (done: Done deletes them, and keeps one while a conflict waits since Batch 26)
 - [ ] Remote edit conflicts show Replace theirs / Use theirs / Decide later; no diff.
 - [ ] HostRow/Edit/Forward banners are drawn above the status line of each host pane; they are not in the
       sidebar. No unread mark for a pending question in a background tab.
-- [ ] `Hub::edit_remote` needs the host's connection up; there is no "connect, then edit" for `host:path`
-      typed in the bar for a host with no open pane.
+- [x] `Hub::edit_remote` needs the host's connection up; there is no "connect, then edit" for `host:path`
+      typed in the bar for a host with no open pane. (done: `edit_when_up`)
 - [ ] OSC 52 / transfers / notifications consent stays in `remote::HostConsent` (FOLLOWUPS Batch 1 ssh).
 
 ## Quire asks
@@ -814,11 +814,11 @@ Nothing was compiled or run (batch rule). The orchestrator's first build will fi
 ## Look batch: Warp-style cards (merged 2026-10-10)
 Studied Warp's design (AGPL; no code copied). D5 stays: the shell keeps its own line editor, and
 there is no input box of temor's own (Warp's needs its own vim emulation and completer, all AGPL).
-- [ ] Hover goes stale after a wheel scroll or when the pointer leaves the pane. Clear it on
-      pointer leave of `.temor-keys` and recompute on wheel.
-- [ ] `card_bands` reads the cursor row from the previous paint, so the last block's extent lags
-      one frame. Compute the bands after the capture.
-- [ ] `TOOLS_HEIGHT_LOGICAL` (28.0) is an estimate; measure it with `use_rect`.
+- [x] Hover goes stale after a wheel scroll or when the pointer leaves the pane. Clear it on
+      pointer leave of `.temor-keys` and recompute on wheel. (done; harness test in Batch 26)
+- [x] `card_bands` reads the cursor row from the previous paint, so the last block's extent lags
+      one frame. Compute the bands after the capture. (done: it reads the live cursor first)
+- [x] `TOOLS_HEIGHT_LOGICAL` (28.0) is an estimate; measure it with `use_rect`. (done: measured, session/marks/tools_height.rs)
 - [ ] No GPU pixel test for bands (needs an adapter); the CPU tests cover the shared scene path.
 - [ ] Prompt: nushell is left alone (there's no reliable stock-prompt test). fish 3 and older were not run.
       In fish, Enter on an empty line before any command has no blank line above it. The branch is
@@ -869,8 +869,8 @@ together.
       helper and typing is held while the link is down; Tier A keeps scp and forwards stay on
       `ssh -O` by design)
 - [x] (Batch 5) Helper consent is in its own `remote.json`; fold it into the consent book.
-- [ ] The helper binary comes from `TEMOR_REMOTE_HELPER` or the folder beside temor, for the same
-      CPU kind only. Packaging a helper per architecture is open.
+- [x] The helper binary comes from `TEMOR_REMOTE_HELPER` or the folder beside temor, for the same
+      CPU kind only. Packaging a helper per architecture is open. (done: Batch 24, `temor-remote-<arch>`)
 - [x] (Batch 5) Offer:
       - fish and nushell inner shells: Yes does nothing yet (`temor.fish` can't be sourced in
         place);
@@ -1032,7 +1032,7 @@ together.
 - [x] (Batch 17) Remote: no ds-harness scenario for Retry (needs a fake ssh that asks for a password);
       `edge/remote_install.rs` is 307 lines; a half-received send can repeat after a reconnect.
 - [x] (Batch 17) Edit: stream large files; conflict wording could name the "same time, other contents" case.
-- [ ] Facts: `.python-version` and `pyproject.toml` aren't read; a huge untracked tree is slow.
+- [x] Facts: `.python-version` and `pyproject.toml` aren't read; a huge untracked tree is slow. (done)
 - [x] (Batch 17) Peek: OSC 8 `file://` links show no card; the card's size is estimated; `view/pane_view.rs`
       is over 300 lines (split the pointer and key wiring).
 - [x] (Batch 17) Desk: an `Include`d ssh config edited in place isn't noticed; quire ask: confirm
@@ -1045,10 +1045,10 @@ quire v0.3.14 (c404fb0), docket 312cd27, porter 83ac0fa, anyview 6c325c9, and al
 stoker 4a0bd9e, blitz-kit 25b5099 and chordkit ba094c6 through the lock. One copy each; no code
 changes.
 
-- [ ] anyview #100: find in a viewer pane. `PaneHandle::find(query)` / `end_find()` and
+- [x] anyview #100: find in a viewer pane. `PaneHandle::find(query)` / `end_find()` and
       `hits(HitList::Brief | Whole)` (an "In This File" palette group whose rows run through
       `run`). anyview suggests ⌘T feeds its query to the viewer in a "find in pane" mode; ⌘F stays
-      temor's.
+      temor's. (done: "Find in This File"; ⌘F in a viewer pane since Batch 26)
 - [ ] Batch 17: take anyview be8c91c (same lock as 6c325c9). It adds #98 (a recording plays in a pane
       given a player, else opens elsewhere: pairs with the `player` follow-up above) and #99 (one
       remembering policy, `anyview_machines::{Remembering, Noted, REMEMBER_EVERY}`; a pane flushes
@@ -1108,8 +1108,8 @@ fixed and gated together. anyview be8c91c.
       2026-10-11). Recordings open in their own app. Revisit when mpv-wgpu settles or the owner
       wants video inside temor: an additive lane (the `player` feature, one `MediaHub` per window
       on temor's tokio runtime, an mpv locator).
-- [ ] "Edit locally" from a block's output in a host pane: the hub entry exists
-      (`Desk::host_edit`); the block menu item and which text it passes are open.
+- [x] "Edit locally" from a block's output in a host pane: the hub entry exists
+      (`Desk::host_edit`); the block menu item and which text it passes are open. (Batch 26)
 - [ ] Find in the bar: Esc closes the whole bar; no harness scenario (needs a mounted viewer).
 - [ ] quire asks: `Column` with a zero gap and a fill option; a `write_soon` that returns its value.
       `focus_landing_told` no longer calls `told`, so temor keeps its own.
@@ -1186,11 +1186,11 @@ merged, fixed and gated together. anyview c91ec0a.
 ### Next
 - [ ] quire v0.3.16 (one re-pin): adopt the finished-drag report, `Column`, `write_soon`, the
       icon-button group, the offer-bar overlay, the menu tooltips and the banner row.
-- [ ] Byte progress for uploads (a progress hook on temor-remote's `Client::upload`).
+- [x] Byte progress for uploads (a progress hook on temor-remote's `Client::upload`). (done: Batch 20)
 - [x] anyview ask: a "could not be opened" request, so a failed file offers another app (anyview 75f1f86, `PaneRequest::NotOpened`; done 2026-10-11).
 - [ ] quire ask: tell Esc from a click outside on the palette (`onclose` covers both).
 - [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
-- [ ] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it).
+- [x] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it). (done: Batch 20)
 - [x] Run `search_bench` and decide on a row-text path for search (2026-10-15: glance as text).
 - [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned. (2026-10-16: no probe at all
       when the command line names the shell, as Warp does; plain `ssh host` still asks.)
@@ -1543,3 +1543,24 @@ person's `clear` (shell integrations print `ESC ] 7502;clear BEL` first) ends ev
 - [ ] Upkeep: the Ghostty fork (github.com/PoHsuanLai/ghostty, branch `temor`) carries two commits,
       the `INTERNAL_ID` placement key and `ghostty_terminal_erase_history_from`; rebase both when
       the pin moves to a newer Ghostty.
+
+## Batch 26 (merged 2026-10-17: everything left that needs temor code)
+Five lanes (core, ssh, ui, term, plugins) plus the orchestrator's clear fixes; most open boxes
+above turned out already done and are ticked with where. Landed: proposals count their Asks and
+tell an edit from a replacement, U+2800 reads as a space, pipelines named by their last command
+(start time), a later `trap … EXIT` chained before .bash_logout, iTerm2 multipart files caught
+before Ghostty drops them, ⌘F in a viewer pane, Edit Locally in a host pane's block menu, menu
+shortcuts in the sidebar and more menus, a `host:path` with an IPv6 address told to use a HostName,
+temor-remote's socket folder tightened, the edit copy kept while a conflict waits, and **P11
+plugins** (crate `temor-plugins` on bayonet fe489cf: `row.facts` on the sidebar row, `open.provider`
+rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
+- [ ] Plugins, the drawing side (view/): plugin facts as chips (`ChipKind::Plugin`), the lens item in
+      the block menu and its picture under the block, per-plugin bar headers (`Section::Plugin`).
+- [ ] Plugins: the built-in Claude Code and git adapters rewritten as plugins; detent's Extensions
+      page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
+- [ ] Ubuntu 24.04+ user namespaces → `NoSandbox`: belongs beside bulkhead's runner, which temor does
+      not link yet (P8).
+- [ ] Done while a save is checking or uploading still deletes the local copy; only a conflict waits.
+- [ ] No end-to-end test of iTerm2 multipart files through temor-pane's reader; ⌘F in a viewer pane
+      is unit-tested only without a viewer.
+- Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b26-*.md`.
