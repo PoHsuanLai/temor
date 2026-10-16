@@ -5,6 +5,7 @@
 //! a second failure is shown with an offer to ask an agent. Escape and Ctrl-C go through
 //! [`proposal_key`], which always hands the key on to the shell.
 
+use super::as_run::classify;
 use super::model::{
     AskNo, Cleaned, Proposal, ProposalPhase, ProposalState, TrialAttempt, TrialId, TrialVerdict,
 };
@@ -244,40 +245,10 @@ fn new_ask(
 fn left_prompt(state: ProposalState, command: &CommandText) -> (ProposalState, Vec<ProposalOut>) {
     let mut out = dismissed(&state.phase);
     if let Some(typed) = state.typed {
-        let as_run = as_run(typed.proposal.text.as_str(), command.as_str());
+        let as_run = classify(typed.proposal.text.as_str(), command.as_str());
         out.push(ProposalOut::Ran { typed, as_run });
     }
     (ProposalState::OFF, out)
-}
-
-/// How `ran` relates to `proposed`. Exactly equal is as proposed. Otherwise it is an edit when
-/// the common prefix and the common suffix (counted in characters, not overlapping, the braille
-/// blank read as a space) together cover at least half of the proposal; anything less means the
-/// person wiped the proposal and typed their own command.
-fn as_run(proposed: &str, ran: &str) -> AsRun {
-    let plain = |text: &str| -> Vec<char> {
-        text.chars()
-            .map(|c| if c == '\u{2800}' { ' ' } else { c })
-            .collect()
-    };
-    let (a, b) = (plain(proposed), plain(ran));
-    if a == b {
-        return AsRun::AsProposed;
-    }
-    let prefix = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
-    let room = a.len().min(b.len()) - prefix;
-    let suffix = a
-        .iter()
-        .rev()
-        .zip(b.iter().rev())
-        .take(room)
-        .take_while(|(x, y)| x == y)
-        .count();
-    if (prefix + suffix) * 2 >= a.len() {
-        AsRun::Edited
-    } else {
-        AsRun::Replaced
-    }
 }
 
 fn dismissed(phase: &ProposalPhase) -> Vec<ProposalOut> {

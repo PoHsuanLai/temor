@@ -1,5 +1,6 @@
 //! Proposals in your prompt (§8.3): sanitising, the trial verdict and the machine.
 
+mod as_run;
 mod model;
 mod sanitise;
 #[cfg(test)]
