@@ -12,6 +12,7 @@ use ds::components::controls::press::Propagation;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
+use ds_core::vocab::Shortcut;
 use temor_core::vocab::ids::BlockId;
 
 use super::block_meta::MetaText;
@@ -40,6 +41,8 @@ pub struct ToolsView {
     /// "Edit here" on a pane on another computer: `None` on any other pane, where there is
     /// nothing to fetch.
     pub edit: Option<Availability>,
+    /// What a person presses for "Copy Command" (the keymap's chord for it), shown in the menu.
+    pub copy_command_key: Option<Shortcut>,
 }
 
 /// Whether the "more" menu is up.
@@ -60,9 +63,13 @@ enum More {
 
 /// The menu's items: each with a tip saying what it does.
 fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
+    let copy = MenuItem::new(More::CopyCommand, "Copy Command")
+        .with_tip("Copy this command to the clipboard");
     let mut items = vec![
-        MenuItem::new(More::CopyCommand, "Copy Command")
-            .with_tip("Copy this command to the clipboard"),
+        match tools.copy_command_key.clone() {
+            Some(key) => copy.with_key(key),
+            None => copy,
+        },
         MenuItem::new(More::Save, "Save Output")
             .with_tip("Save this command's output to Downloads")
             .with_availability(tools.output),

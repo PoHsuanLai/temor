@@ -49,6 +49,7 @@ use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
+use temor_pane::keys::Action;
 
 /// How far the find bar sits below the pane's top (`.temor-find`'s `top`, `--s-4`).
 const FIND_TOP: f32 = 4.0;
@@ -238,6 +239,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .filter(|tools| !under_find(tools.top))
         .map(|tools| ToolsView {
             edit: on_host.then_some(Availability::Enabled),
+            copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
             ..tools
         });
     let chips = slot

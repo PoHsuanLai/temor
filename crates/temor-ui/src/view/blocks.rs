@@ -61,6 +61,7 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: Gutter) -> Opti
                 },
                 // The window knows which panes are on another computer.
                 edit: None,
+                copy_command_key: None,
             })
         })
 }
