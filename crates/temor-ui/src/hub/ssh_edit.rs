@@ -73,6 +73,11 @@ impl Hub {
     /// Opens a host's file in a local editor. `typed` is `host:/path`, or a path on the host of
     /// `pane` (absolute, or relative to the pane's folder).
     pub fn edit_remote(&mut self, pane: Option<PaneId>, typed: &str) {
+        // An address like 2001:db8::1:/etc/hosts would otherwise read as a relative path.
+        if let Some(address) = super::ssh_connect::ipv6_host_of(typed) {
+            self.notices.push(super::ssh_connect::not_a_name(address));
+            return;
+        }
         let on_pane = pane.and_then(|p| {
             let host = self.ssh.panes.get(&p)?.alias.clone();
             let cwd = self.ws.cwds.get(&p).map(|c| c.as_str().to_owned());
@@ -188,7 +193,20 @@ impl Hub {
 
     /// The person is done with the edit; its local copy goes (a save that has not reached the
     /// host yet is the person's to finish first).
+    ///
+    /// While a changed file waits for the person's choice the copy stays: it holds the only
+    /// copy of their edits.
     pub fn close_edit(&mut self, id: EditId) {
+        if self
+            .ssh
+            .edits
+            .get(&id)
+            .is_some_and(|edit| matches!(edit.state, Edit::Conflict { .. }))
+        {
+            self.notices
+                .push("Choose what to do about the changed file first".to_owned());
+            return;
+        }
         self.on_edit(id, EditIn::Closed);
         if let Some(edit) = self.ssh.edits.remove(&id) {
             forget_copy(&edit.local);
