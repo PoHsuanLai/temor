@@ -41,6 +41,7 @@ temor-remote = { workspace = true }
 temor-shell = { workspace = true }
 temor-ssh = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
+temor-plugins = { workspace = true }
 temor-transfer = { workspace = true }
 tempfile = { workspace = true }
 toml = { workspace = true }

@@ -160,7 +160,10 @@ impl Hub {
             return;
         }
         match self.pane_folder(pane) {
-            Some(dir) => self.facts.spawn(pane, dir),
+            Some(dir) => {
+                self.plugin_facts_start(pane, &dir);
+                self.facts.spawn(pane, dir);
+            }
             None => {
                 // The rule only ever answers `Run` to `RunDone` after a trigger, so this cannot
                 // loop: a `Stale` run is started once more, finds no folder, and goes idle.
@@ -219,7 +222,7 @@ impl Hub {
     }
 
     /// The pane's folder: the shell's report, else where the pane started.
-    fn pane_folder(&self, pane: PaneId) -> Option<String> {
+    pub(super) fn pane_folder(&self, pane: PaneId) -> Option<String> {
         self.live(pane, |s| s.cwd().map(str::to_owned))
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))

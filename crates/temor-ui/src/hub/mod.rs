@@ -29,6 +29,9 @@ mod offer_reply;
 mod peek;
 pub mod peek_step;
 mod persist;
+// Plugins in the hub: a child module so it reaches the hub's fields (the file lives with them).
+#[path = "../plugins/glue.rs"]
+mod plugin_glue;
 mod quick;
 mod remote;
 mod remote_attach;
@@ -99,6 +102,7 @@ pub use keys::{spawn_keys_loop, workspace_input};
 pub use model::{Hub, HubRef};
 pub use offer::spawn_offer_loop;
 pub use persist::spawn_save_loop;
+pub use plugin_glue::spawn_plugins_loop;
 pub use remote_loop::spawn_remote_loop;
 pub use remote_view::{PortRow, RemoteStage, RemoteView};
 pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};

@@ -26,6 +26,10 @@ impl Default for BarModel {
     }
 }
 
+// The plugins' rows come in through a child module so it can reach the model's fields.
+#[path = "../plugins/provider_rows.rs"]
+mod provider_rows;
+
 type PaletteStep = (PaletteState<BarRow>, Vec<PaletteOut<BarRow>>);
 
 /// The palette after `input` over `rows`. It keeps no timer, so the time is nothing.

@@ -26,8 +26,7 @@ impl Hub {
             BarAction::NewTab => self.act(WorkspaceIn::NewTab { cwd: None }),
             BarAction::Run(command) => self.command_in_new_tab(&command, Submit::Enter),
             BarAction::Go(target) => self.go_to(target),
-            // No plugin host exists yet, so no plugin row can be shown.
-            BarAction::Plugin { .. } => {}
+            BarAction::Plugin { plugin, item } => self.plugin_pick(plugin, item),
             ask @ (BarAction::Suggest(_) | BarAction::AskAgent(_) | BarAction::AskAbout(_)) => {
                 if let Err(why) = self.bar.seams.model.ask(&ask) {
                     self.notices.push(why);

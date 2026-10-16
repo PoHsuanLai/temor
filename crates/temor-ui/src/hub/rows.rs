@@ -12,6 +12,7 @@ use temor_core::workspace::sidebar_plan;
 
 use super::model::{Hub, HubRef};
 use super::tab_name::{Marking, NameIn, TabState, TabTone, tab_title};
+use crate::plugins::facts::with_summary;
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -146,7 +147,10 @@ impl Hub {
             unread,
             agent,
             note: self.agent_note(id),
-            branch: self.facts_of(pane).branch.as_ref().map(ToString::to_string),
+            branch: with_summary(
+                self.facts_of(pane).branch.as_ref().map(ToString::to_string),
+                self.plugin_facts_summary(pane),
+            ),
             state,
             tone,
             selection,
