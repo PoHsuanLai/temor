@@ -117,7 +117,8 @@ pub fn block_step(state: BlockState, input: BlockIn) -> (BlockState, Vec<BlockOu
                 out,
             )
         }
-        (S::Prompting { prompt }, BlockIn::CommandStart { row }) => (
+        // A prompt drawn again (Ctrl+L, a resize) sends its input mark again: typing starts there.
+        (S::Prompting { prompt } | S::Typing { prompt }, BlockIn::CommandStart { row }) => (
             S::Typing {
                 prompt: prompt.reaching(row),
             },

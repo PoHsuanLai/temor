@@ -35,12 +35,19 @@ pub struct Terminal {
     pub(super) holds: SeqCuts,
     /// Where the scrollback is erased (`CSI 3 J`), carried across writes.
     pub(super) erases: SeqCuts,
+    /// Where the screen is erased (`CSI 2 J`), carried across writes.
+    pub(super) screen_erases: SeqCuts,
     /// Where the person's own `clear` is announced, carried across writes.
     pub(super) person_clears: SeqCuts,
     /// The running command's output mark, while its output runs: a `CSI 3 J` then erases the
     /// scrollback only from that mark down, so earlier commands stay. None at a prompt and
     /// after the person's own `clear`.
     pub(super) floor: Option<AnchorId>,
+    /// The prompt being typed at, while no command runs: its prompt mark and its input mark. A
+    /// screen erase at the prompt is the shell's own (Ctrl+L), and the shell draws the prompt
+    /// again at the top.
+    pub(super) prompt: Option<AnchorId>,
+    pub(super) input: Option<AnchorId>,
     /// Captures the frame when a hold begins.
     pub(super) hold_hook: Option<Box<dyn super::HoldHook>>,
     /// The number of the last mark cut (see `VtEvent::MarkBegin`).
@@ -161,8 +168,11 @@ impl Terminal {
             marks: MarkCuts::new(),
             holds: SeqCuts::hold_start(),
             erases: SeqCuts::erase_history(),
+            screen_erases: SeqCuts::erase_screen(),
             person_clears: SeqCuts::person_clears(),
             floor: None,
+            prompt: None,
+            input: None,
             hold_hook: None,
             mark_seq: 0,
             anchors: Anchors::default(),

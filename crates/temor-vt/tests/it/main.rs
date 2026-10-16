@@ -12,6 +12,8 @@ mod anchors;
 mod cells;
 mod colors;
 #[cfg(feature = "ghostty")]
+mod erases;
+#[cfg(feature = "ghostty")]
 mod graphemes;
 #[cfg(feature = "ghostty")]
 mod holds;

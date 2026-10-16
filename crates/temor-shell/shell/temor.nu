@@ -72,12 +72,13 @@ if ($env.TEMOR_PROMPT? != "shell") {
 }
 
 # A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
-# blocks above it stay. Your own `clear` should take them all, so it says so to temor first. It
+# blocks above it stay. Your own `clear` should take them all, so it says so to temor first
+# (not `clear -x`, which keeps the scrollback). It
 # clears the way nushell's own does; a `clear` defined in your config.nu, which runs later, wins.
 def clear [
     --keep-scrollback (-k) # Clear only the screen, not the scrollback
 ] {
-    print -n $"(ansi esc)]7502;clear(char bel)"
+    if not $keep_scrollback { print -n $"(ansi esc)]7502;clear(char bel)" }
     if $keep_scrollback {
         print -n $"(ansi esc)[H(ansi esc)[2J"
     } else {

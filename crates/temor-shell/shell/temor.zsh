@@ -211,11 +211,12 @@ add-zsh-hook preexec _temor_preexec
 add-zsh-hook zshaddhistory _temor_addhistory
 
 # A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
-# blocks above it stay. Your own `clear` should take them all, so it says so to temor first.
+# blocks above it stay. Your own `clear` should take them all, so it says so to temor first
+# (not `clear -x`, which keeps the scrollback).
 # A `clear` you defined yourself is left alone.
 if (( ! $+functions[clear] && ! $+aliases[clear] )); then
     clear() {
-        printf '\e]7502;clear\a'
+        (( ${@[(Ie)-x]} )) || printf '\e]7502;clear\a'
         command clear "$@"
     }
 fi

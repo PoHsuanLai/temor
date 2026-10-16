@@ -1532,12 +1532,12 @@ sidebar, an open menu and 150%/200%; a long folder chip cut at its start; quire'
 ## Scrollback clears (PR #3, #4; 2026-10-16)
 A running command's `CSI 3 J` erases only its own rows (Ghostty fork `eraseHistoryFrom`); the
 person's `clear` (shell integrations print `ESC ] 7502;clear BEL` first) ends every anchor. Left:
-- [ ] `clear -x` (keep the scrollback) still prints the mark, so the screen's anchors end although
-      their text may be pushed into the scrollback (libghostty does that when the screen ends at a
-      prompt).
-- [ ] Ctrl+L, or a program's `CSI 2 J` without `CSI 3 J`, on a screen that does not end at a prompt:
-      libghostty clears it in place, so earlier blocks' anchors stay on blank rows under the next
-      prompt. Pre-existing; only the person's `clear` is handled.
+- [x] `clear -x` (keep the scrollback) no longer prints the mark (nushell: `clear -k`); its
+      `CSI 2 J` is handled as below.
+- [x] Ctrl+L, or a program's `CSI 2 J`, on a screen that does not end at a prompt (libghostty blanks
+      it in place): the anchors left on blank rows end, except the prompt being typed at (moved to
+      the top, where the shell draws it again) and a running command's output (goes on from the
+      top). The block machine takes the input mark the redrawn prompt sends again.
 - [ ] Hardening: check an anchor against the row's `semantic_prompt` flag before a card is drawn
       from it, so a misplaced anchor draws nothing.
 - [ ] Upkeep: the Ghostty fork (github.com/PoHsuanLai/ghostty, branch `temor`) carries two commits,

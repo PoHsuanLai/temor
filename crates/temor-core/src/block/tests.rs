@@ -64,6 +64,7 @@ fn osc_133_marks_make_blocks() {
     let cases: Vec<(&str, BlockState, BlockIn, BlockState, Vec<BlockOut>)> = vec![
         ("A starts a prompt", BlockState::Idle, a(1), prompting.clone(), vec![BlockOut::PromptShown]),
         ("B starts typing", prompting.clone(), b(1), typing.clone(), vec![]),
+        ("B again while typing, from a prompt drawn again", typing.clone(), b(1), typing.clone(), vec![]),
         ("C runs the command", typing.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(running())]),
         ("C without B still runs", prompting.clone(), c(2), run.clone(), vec![BlockOut::CommandStarted(running())]),
         ("D finishes with its exit", run.clone(), d(5, Some(1)),

@@ -30,6 +30,8 @@ enum Cut {
     Hold,
     /// The scrollback is erased (`CSI 3 J`) once the offset's last byte is written.
     EraseHistory,
+    /// The screen is erased (`CSI 2 J`) once the offset's last byte is written.
+    EraseScreen,
     /// The person's own `clear` is about to run: the screen's anchors end.
     PersonClears,
 }
@@ -85,6 +87,12 @@ impl Terminal {
                 .map(|at| (at, Cut::EraseHistory)),
         );
         cuts.extend(
+            self.screen_erases
+                .feed(bytes)
+                .into_iter()
+                .map(|at| (at, Cut::EraseScreen)),
+        );
+        cuts.extend(
             self.person_clears
                 .feed(bytes)
                 .into_iter()
@@ -104,9 +112,17 @@ impl Terminal {
                         self.callbacks().send(VtEvent::Anchor { seq, anchor });
                     }
                     match self.callbacks().mark.take() {
-                        Some(MarkKind::Output) => self.floor = anchor,
-                        Some(MarkKind::Prompt | MarkKind::End) => self.floor = None,
-                        Some(MarkKind::Input) | None => {}
+                        Some(MarkKind::Prompt) => {
+                            (self.floor, self.prompt, self.input) = (None, anchor, None);
+                        }
+                        Some(MarkKind::Input) => self.input = anchor,
+                        Some(MarkKind::Output) => {
+                            (self.floor, self.prompt, self.input) = (anchor, None, None);
+                        }
+                        Some(MarkKind::End) => {
+                            (self.floor, self.prompt, self.input) = (None, None, None)
+                        }
+                        None => {}
                     }
                 }
                 Cut::Hold => {
@@ -143,6 +159,12 @@ impl Terminal {
                         }
                     }
                 }
+                Cut::EraseScreen => {
+                    self.vt_write(&bytes[start..end - 1]);
+                    let shown = self.anchors_on_screen();
+                    self.vt_write(&bytes[end - 1..end]);
+                    self.screen_erased(&shown);
+                }
                 Cut::PersonClears => {
                     self.vt_write(&bytes[start..end]);
                     self.floor = None;
@@ -168,6 +190,34 @@ impl Terminal {
         if let Some(mut hook) = self.hold_hook.take() {
             hook.held(self);
             self.hold_hook = Some(hook);
+        }
+    }
+
+    /// The screen was erased, and `shown` were the anchors on it just before. libghostty pushes
+    /// the screen into the scrollback when it ends at a prompt, and the anchors go with their
+    /// rows; otherwise it blanks the rows in place, and an anchor still on the screen marks
+    /// nothing. Those end, except the ones whose text is drawn again from the top: the prompt
+    /// being typed at (the shell redraws it, and sends its input mark again) and the running
+    /// command's output (it goes on from the top).
+    fn screen_erased(&mut self, shown: &[AnchorId]) {
+        if self.on_alternate_screen() {
+            return;
+        }
+        if let Some(prompt) = self.prompt {
+            self.move_anchor_to_top(prompt);
+        }
+        for &anchor in shown {
+            if Some(anchor) == self.prompt || Some(anchor) == self.input {
+                continue;
+            }
+            if self.anchor_point(anchor, PointSpace::Active).is_none() {
+                continue;
+            }
+            if Some(anchor) == self.floor {
+                self.move_anchor_to_top(anchor);
+            } else {
+                self.release_anchor(anchor);
+            }
         }
     }
 

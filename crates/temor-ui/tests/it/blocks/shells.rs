@@ -137,3 +137,41 @@ fn the_persons_own_clear_takes_every_block() {
         "a block the person cleared away is still there: {left:?}"
     );
 }
+
+#[test]
+fn the_shells_screen_clear_takes_the_blocks_it_blanked_and_the_next_command_is_whole() {
+    if !tools_present() {
+        return;
+    }
+    let Some(bash) = shell_path("bash") else {
+        return;
+    };
+    let mut live = start("blocks-ctrl-l", &bash);
+    run_line(&live, "echo before");
+    pump(&mut live, "the first block", |s| {
+        s.block_outcomes()
+            .first()
+            .is_some_and(|b| b.1 != Outcome::Running)
+    });
+    pump(&mut live, "the next prompt", |s| s.prompts_seen() >= 2);
+    // Ctrl+L: readline blanks the screen and draws the prompt again at the top.
+    live.session.pane().send(b"\x0c");
+    pump(&mut live, "the cleared screen", |s| {
+        !s.screen_text().contains("before")
+    });
+    run_line(&live, "echo after");
+    pump(&mut live, "the block after", |s| {
+        s.block_outcomes()
+            .last()
+            .is_some_and(|b| b.1 != Outcome::Running)
+            && s.prompts_seen() >= 3
+    });
+    assert_eq!(
+        blocks(&live),
+        [("echo after".to_owned(), Outcome::Succeeded)]
+    );
+    let id = live.session.block_outcomes()[0].0;
+    assert_eq!(live.session.block_output(id).as_deref(), Some("after"));
+    let marks = live.session.block_marks();
+    assert_eq!(marks.first().map(|m| m.row), Some(0), "{marks:?}");
+}
