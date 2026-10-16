@@ -73,6 +73,11 @@ impl Hub {
     /// Opens a host's file in a local editor. `typed` is `host:/path`, or a path on the host of
     /// `pane` (absolute, or relative to the pane's folder).
     pub fn edit_remote(&mut self, pane: Option<PaneId>, typed: &str) {
+        // An address like 2001:db8::1:/etc/hosts would otherwise read as a relative path.
+        if let Some(address) = super::ssh_connect::ipv6_host_of(typed) {
+            self.notices.push(super::ssh_connect::not_a_name(address));
+            return;
+        }
         let on_pane = pane.and_then(|p| {
             let host = self.ssh.panes.get(&p)?.alias.clone();
             let cwd = self.ws.cwds.get(&p).map(|c| c.as_str().to_owned());

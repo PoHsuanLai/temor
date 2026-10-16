@@ -93,6 +93,13 @@ fn a_file_of_a_host_that_is_not_connected_connects_first_and_opens_when_it_is_up
         rig.hub.notices
     );
     rig.hub.notices.clear();
+    rig.hub.edit_remote(None, "[2001:db8::1]:/etc/hosts");
+    assert!(
+        rig.hub.notices[0].contains("HostName"),
+        "{:?}",
+        rig.hub.notices
+    );
+    rig.hub.notices.clear();
 
     let remote = rig.dir.join("later.txt");
     std::fs::write(&remote, "there\n").expect("remote file");
