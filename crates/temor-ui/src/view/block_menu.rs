@@ -14,6 +14,21 @@ pub struct BlockMenuAt {
     pub point: Point,
 }
 
+/// Whether the pane is a session on another computer: the menu then offers to edit a file
+/// there on this one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaneKind {
+    ThisComputer,
+    OnHost,
+}
+
+/// What a pick in the menu asks for: a pane action, or the one item with no key of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockPick {
+    Do(Action),
+    EditLocally,
+}
+
 /// What the menu says, read from the session when it opens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockMenuState {
@@ -21,10 +36,12 @@ pub struct BlockMenuState {
     pub picked: usize,
     /// Whether every picked block is bookmarked: the item then takes the bookmarks away.
     pub bookmarked: bool,
+    pub pane: PaneKind,
 }
 
-/// The menu's items, each the action its key runs.
-pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Action>> {
+/// The menu's items, each the action its key runs, and on a pane on another computer "Edit
+/// Locally": it edits the selected text, else the last path in the block's command.
+pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
     let many = state.picked > 1;
     let (commands, outputs) = match many {
         true => ("Copy Commands", "Copy Outputs"),
@@ -34,7 +51,7 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Action>> {
         true => "Remove Bookmark",
         false => "Bookmark",
     };
-    vec![
+    let mut items = vec![
         MenuItem::new(Action::Copy, "Copy").with_tip("Copy the commands and their output"),
         MenuItem::new(Action::CopyCommands, commands),
         MenuItem::new(Action::CopyOutputs, outputs),
@@ -46,6 +63,18 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Action>> {
         MenuItem::Separator,
         MenuItem::new(Action::SelectAllBlocks, "Select All Commands"),
     ]
+    .into_iter()
+    .map(|item| item.map(&BlockPick::Do))
+    .collect::<Vec<_>>();
+    if state.pane == PaneKind::OnHost {
+        items.push(MenuItem::Separator);
+        items.push(
+            MenuItem::new(BlockPick::EditLocally, "Edit Locally").with_tip(
+                "Open the selected file, or the last file in the command, in an editor here",
+            ),
+        );
+    }
+    items
 }
 
 /// The menu at the right-click.
@@ -54,7 +83,7 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Action>> {
 pub fn BlockMenu(
     at: BlockMenuAt,
     state: BlockMenuState,
-    onpick: EventHandler<Action>,
+    onpick: EventHandler<BlockPick>,
     onclose: EventHandler<()>,
 ) -> Element {
     rsx! {
@@ -62,7 +91,7 @@ pub fn BlockMenu(
             placement: MenuPlacement::Context,
             anchor: Anchor::Point(at.point),
             items: block_menu_items(state),
-            onpick: move |action: Action| onpick.call(action),
+            onpick: move |pick: BlockPick| onpick.call(pick),
             onclose: move |()| onclose.call(()),
         }
     }
@@ -87,6 +116,7 @@ mod tests {
         let one = titles(BlockMenuState {
             picked: 1,
             bookmarked: false,
+            pane: PaneKind::ThisComputer,
         });
         assert_eq!(
             one,
@@ -102,8 +132,12 @@ mod tests {
         let many = titles(BlockMenuState {
             picked: 3,
             bookmarked: true,
+            pane: PaneKind::OnHost,
         });
         assert!(many.contains(&"Copy Commands".to_owned()));
         assert!(many.contains(&"Remove Bookmark".to_owned()));
+        // Only a pane on another computer offers to edit a file here.
+        assert_eq!(many.last().map(String::as_str), Some("Edit Locally"));
+        assert!(!one.contains(&"Edit Locally".to_owned()));
     }
 }
