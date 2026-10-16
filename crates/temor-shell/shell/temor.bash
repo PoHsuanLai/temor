@@ -81,6 +81,9 @@ _temor_save_status() {
 }
 
 _temor_prompt() {
+    # In a login start (temor-bashrc), the person's own `trap ... EXIT` since the last prompt
+    # replaced the one that runs ~/.bash_logout; chain theirs in front of it again.
+    ! declare -F _temor_chain_exit >/dev/null || _temor_chain_exit
     if [[ -n $_temor_executing ]]; then
         printf '\e]133;D;%s\e\\' "$_temor_status"
         _temor_executing=

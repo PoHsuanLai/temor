@@ -19,12 +19,23 @@ if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
         fi
     done
     unset _temor_file
-    # The exit trap is set after the person's files ran, so one of theirs is kept: it runs
-    # first, then ~/.bash_logout, as a login shell would.
-    _temor_user_exit=$(trap -p EXIT)
-    _temor_user_exit=${_temor_user_exit% EXIT}
-    [[ -n $_temor_user_exit ]] && eval "_temor_user_exit=${_temor_user_exit#trap -- }"
-    trap '[[ -n ${_temor_user_exit-} ]] && eval "$_temor_user_exit"; [[ -r ~/.bash_logout ]] && . ~/.bash_logout' EXIT
+    # A login shell runs ~/.bash_logout on exit. It goes into the EXIT trap after the person's
+    # files ran, and the trap they had keeps running first. One set later at the prompt
+    # replaces ours, so every prompt puts it back (see _temor_chain_exit in temor.bash).
+    _temor_logout() {
+        [[ -r ~/.bash_logout ]] && . ~/.bash_logout
+        return 0
+    }
+    _temor_chain_exit() {
+        local current
+        current=$(trap -p EXIT)
+        [[ $current == *_temor_logout* ]] && return 0
+        current=${current% EXIT}
+        [[ -n $current ]] && eval "current=${current#trap -- }"
+        _temor_user_exit=$current
+        trap '[[ -n ${_temor_user_exit-} ]] && eval "$_temor_user_exit"; _temor_logout' EXIT
+    }
+    _temor_chain_exit
 else
     [[ -r ~/.bashrc ]] && . ~/.bashrc
 fi
