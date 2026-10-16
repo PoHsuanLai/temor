@@ -123,6 +123,38 @@ fn hovering_a_block_shows_its_tools_and_the_first_copies_the_output() {
 }
 
 #[test]
+fn the_toolbar_goes_when_the_pointer_leaves_the_pane_and_the_wheel_keeps_it_on_what_is_under_it() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = ready("cards-leave", &probe);
+    run_to_end(&mut h, &probe, "echo leave-me", "leave-me");
+    assert!(hover_until_tools(&mut h), "no toolbar:\n{}", h.html());
+    // The wheel turns with the pointer still: the hover is recomputed, not dropped.
+    h.send(Input::Wheel {
+        at: Point {
+            x: Px(500.0),
+            y: Px(200.0),
+        },
+        dx: Px(0.0),
+        dy: Px(0.0),
+    });
+    h.advance(Duration::from_millis(50));
+    // Out over the sidebar: nothing is hovered any more.
+    h.send(Input::pointer_move(Point {
+        x: Px(20.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    assert!(
+        !shows(&h.html(), TOOLS),
+        "the toolbar stays after the pointer left:\n{}",
+        h.html()
+    );
+}
+
+#[test]
 fn a_failed_card_says_its_exit_status_in_its_header_and_no_sentence() {
     if !tools_present() {
         return;
