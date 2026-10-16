@@ -43,6 +43,22 @@ const CASES: &[(&str, &str, &str, &[&str])] = &[
         &["1337;File=:QQ=="],
     ),
     (
+        "multipart pieces are taken out in order",
+        "\x1b]1337;MultipartFile=name=eA==;size=2\x07\x1b]1337;FilePart=QQ==\x07\x1b]1337;FileEnd\x1b\\z",
+        "z",
+        &[
+            "1337;MultipartFile=name=eA==;size=2",
+            "1337;FilePart=QQ==",
+            "1337;FileEnd",
+        ],
+    ),
+    (
+        "a near miss of a multipart key passes",
+        "\x1b]1337;FilePath=x\x07\x1b]1337;Fil\x07",
+        "\x1b]1337;FilePath=x\x07\x1b]1337;Fil\x07",
+        &[],
+    ),
+    (
         "other osc passes",
         "\x1b]133;A\x07$ ",
         "\x1b]133;A\x07$ ",

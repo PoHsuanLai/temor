@@ -1,11 +1,18 @@
-//! A byte-at-a-time recogniser for `ESC ] 1337 ; File= ... BEL|ST`, safe across chunk splits.
+//! A byte-at-a-time recogniser for `ESC ] 1337 ; File= ... BEL|ST` and iTerm2's multipart forms
+//! (`MultipartFile=`, `FilePart=`, `FileEnd`), safe across chunk splits. Ghostty parses OSC 1337
+//! itself and drops all four as unimplemented, so all four are taken out here.
 
 use crate::{ByteCount, Truncation};
 
-/// The introducer the scanner looks for.
-const PREFIX: &[u8] = b"\x1b]1337;File=";
-/// What a payload starts with: everything after `ESC ]`, as libghostty reports unknown OSCs.
-const PAYLOAD_HEAD: &[u8] = b"1337;File=";
+/// The introducers the scanner looks for. None is a prefix of another.
+const INTRODUCERS: &[&[u8]] = &[
+    b"\x1b]1337;File=",
+    b"\x1b]1337;MultipartFile=",
+    b"\x1b]1337;FilePart=",
+    b"\x1b]1337;FileEnd",
+];
+/// `ESC ]`: a payload is everything after it, as libghostty reports unknown OSCs.
+const OSC_HEAD: usize = 2;
 
 const BEL: u8 = 0x07;
 const ESC: u8 = 0x1b;
@@ -28,8 +35,8 @@ pub(crate) enum Scanned<'a> {
 enum State {
     /// Passing bytes through.
     Ground,
-    /// The first `n` bytes of [`PREFIX`] are held back, possibly from an earlier chunk.
-    Prefix(usize),
+    /// The bytes in `held` start an introducer and are held back, possibly from an earlier chunk.
+    Prefix,
     /// Inside the payload.
     Payload,
     /// Inside the payload, right after an ESC (the start of ST, or an abort).
@@ -40,7 +47,11 @@ enum State {
 #[derive(Debug)]
 pub(crate) struct InlineFileScanner {
     state: State,
+    /// The introducer bytes held back while in [`State::Prefix`].
+    held: Vec<u8>,
     payload: Vec<u8>,
+    /// Payload bytes kept past the introducer's own length.
+    head: usize,
     max: ByteCount,
     truncation: Truncation,
 }
@@ -50,7 +61,9 @@ impl InlineFileScanner {
     pub(crate) fn new(max: ByteCount) -> Self {
         Self {
             state: State::Ground,
+            held: Vec::new(),
             payload: Vec::new(),
+            head: 0,
             max,
             truncation: Truncation::Complete,
         }
@@ -59,7 +72,7 @@ impl InlineFileScanner {
     /// Splits `input` into pass-through bytes and complete inline files, in order.
     ///
     /// Bytes that may start a sequence are held back, not passed on: a chunk ending in a lone
-    /// ESC, or in any prefix of `ESC ] 1337 ; File=`, reaches libghostty only when a later chunk
+    /// ESC, or in any prefix of an introducer such as `ESC ] 1337 ; File=`, reaches libghostty only when a later chunk
     /// shows it is not an inline file. A program that stops right there (an ESC as the very last
     /// byte it ever writes) leaves those few bytes unprocessed until more output arrives.
     pub(crate) fn feed<'a>(&mut self, input: &'a [u8], mut out: impl FnMut(Scanned<'a>)) {
@@ -74,22 +87,23 @@ impl InlineFileScanner {
                         if esc > run_start {
                             out(Scanned::Bytes(&input[run_start..esc]));
                         }
-                        self.state = State::Prefix(1);
+                        self.begin_prefix();
                         i = esc + 1;
                     }
                 },
-                State::Prefix(n) => {
-                    if input[i] == PREFIX[n] {
+                State::Prefix => {
+                    self.held.push(input[i]);
+                    if INTRODUCERS.iter().any(|k| k.starts_with(&self.held)) {
                         i += 1;
-                        self.state = if n + 1 == PREFIX.len() {
+                        if INTRODUCERS.contains(&self.held.as_slice()) {
                             self.start_payload();
-                            State::Payload
-                        } else {
-                            State::Prefix(n + 1)
-                        };
+                            self.state = State::Payload;
+                        }
                     } else {
                         // Not ours: release what was held and look at this byte afresh.
-                        out(Scanned::Bytes(&PREFIX[..n]));
+                        self.held.pop();
+                        out(Scanned::Bytes(release(&self.held)));
+                        self.held.clear();
                         self.state = State::Ground;
                         run_start = i;
                     }
@@ -130,7 +144,7 @@ impl InlineFileScanner {
                         // ESC not followed by `\` cancels the sequence and starts a new one,
                         // which may itself be an inline file.
                         self.cancel();
-                        self.state = State::Prefix(1);
+                        self.begin_prefix();
                     }
                 }
             }
@@ -151,14 +165,23 @@ impl InlineFileScanner {
         self.payload.len()
     }
 
+    /// An ESC was seen: it may start an introducer.
+    fn begin_prefix(&mut self) {
+        self.held.clear();
+        self.held.push(ESC);
+        self.state = State::Prefix;
+    }
+
     fn start_payload(&mut self) {
         self.payload.clear();
-        self.payload.extend_from_slice(PAYLOAD_HEAD);
+        self.payload.extend_from_slice(&self.held[OSC_HEAD..]);
+        self.head = self.payload.len();
+        self.held.clear();
         self.truncation = Truncation::Complete;
     }
 
     fn push(&mut self, bytes: &[u8]) {
-        let room = (self.max.0 + PAYLOAD_HEAD.len()).saturating_sub(self.payload.len());
+        let room = (self.max.0 + self.head).saturating_sub(self.payload.len());
         if bytes.len() > room {
             self.truncation = Truncation::Truncated;
         }
@@ -172,4 +195,13 @@ impl InlineFileScanner {
             truncation: self.truncation,
         }
     }
+}
+
+/// The held introducer bytes as a slice with the lifetime of the static introducers, so they can
+/// be handed on as pass-through bytes: they are always a prefix of one of [`INTRODUCERS`].
+fn release(held: &[u8]) -> &'static [u8] {
+    INTRODUCERS
+        .iter()
+        .find(|k| k.starts_with(held))
+        .map_or(&[][..], |k| &k[..held.len()])
 }
