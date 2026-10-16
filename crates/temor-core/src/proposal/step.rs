@@ -5,8 +5,9 @@
 //! a second failure is shown with an offer to ask an agent. Escape and Ctrl-C go through
 //! [`proposal_key`], which always hands the key on to the shell.
 
+use super::as_run::classify;
 use super::model::{
-    Cleaned, Proposal, ProposalPhase, ProposalState, TrialAttempt, TrialId, TrialVerdict,
+    AskNo, Cleaned, Proposal, ProposalPhase, ProposalState, TrialAttempt, TrialId, TrialVerdict,
 };
 use super::sanitise::{Sanitised, SanitisedLine, sanitise};
 use crate::block::Taint;
@@ -23,15 +24,22 @@ pub enum ProposalIn {
     Ask(TurnRef),
     /// The model answered an ask.
     ModelAnswer {
-        /// Which ask.
+        /// Which ask's turn.
         turn: TurnRef,
+        /// Which ask, as [`ProposalOut::CallModel`] named it.
+        ask: AskNo,
         /// Its raw text.
         text: String,
         /// Whether the turn read untrusted text.
         taint: Taint,
     },
     /// The model could not answer.
-    ModelFailed(TurnRef),
+    ModelFailed {
+        /// Which ask's turn.
+        turn: TurnRef,
+        /// Which ask, as [`ProposalOut::CallModel`] named it.
+        ask: AskNo,
+    },
     /// A trial run finished.
     TrialResult {
         /// The trial, as [`ProposalOut::RunTrial`] named it.
@@ -50,8 +58,10 @@ pub enum ProposalIn {
 pub enum AsRun {
     /// Exactly the proposal.
     AsProposed,
-    /// The person changed it first.
+    /// The person changed it first: most of the proposal is still in what ran.
     Edited,
+    /// The person wiped the proposal and ran a command of their own.
+    Replaced,
 }
 
 /// What a proposal wants done.
@@ -59,8 +69,10 @@ pub enum AsRun {
 pub enum ProposalOut {
     /// Ask the model; after a failed trial, with the error it printed.
     CallModel {
-        /// The ask.
+        /// The ask's turn.
         turn: TurnRef,
+        /// The ask, to come back with the answer.
+        ask: AskNo,
         /// The failed trial's first error, shown to the model once.
         failed: Option<ErrorLine>,
     },
@@ -109,9 +121,16 @@ pub fn proposal_step(
         };
         return (state, out);
     }
-    let ProposalState { phase, typed } = state;
+    let ProposalState { phase, typed, asks } = state;
+    let (asks, input) = match input {
+        ProposalIn::Ask(turn) => {
+            let next = AskNo(asks.0.wrapping_add(1));
+            return new_ask(typed, next, turn);
+        }
+        other => (asks, other),
+    };
     let (phase, typed, out) = flow(phase, typed, input);
-    (ProposalState { phase, typed }, out)
+    (ProposalState { phase, typed, asks }, out)
 }
 
 /// Escape or Ctrl-C while a proposal is up: the chip goes, and the key goes on to the shell
@@ -135,6 +154,7 @@ pub fn proposal_key(
     let state = ProposalState {
         phase: ProposalPhase::Off,
         typed,
+        ..state
     };
     (state, out, PassThrough(key))
 }
@@ -146,15 +166,15 @@ fn flow(
 ) -> (ProposalPhase, Option<Cleaned>, Vec<ProposalOut>) {
     use ProposalPhase as P;
     match (phase, input) {
-        (_, ProposalIn::Ask(turn)) => (
-            P::Asking(TrialId {
+        (
+            P::Asking(id),
+            ProposalIn::ModelAnswer {
                 turn,
-                attempt: TrialAttempt::First,
-            }),
-            typed,
-            vec![ProposalOut::CallModel { turn, failed: None }],
-        ),
-        (P::Asking(id), ProposalIn::ModelAnswer { turn, text, taint }) if turn == id.turn => {
+                ask,
+                text,
+                taint,
+            },
+        ) if (turn, ask) == (id.turn, id.ask) => {
             let (line, sanitised) = sanitise(&text);
             if line.as_str().trim().is_empty() {
                 return (P::Off, typed, vec![ProposalOut::NothingToPropose]);
@@ -171,7 +191,9 @@ fn flow(
             };
             (phase, typed, out)
         }
-        (P::Asking(id), ProposalIn::ModelFailed(turn)) if turn == id.turn => {
+        (P::Asking(id), ProposalIn::ModelFailed { turn, ask })
+            if (turn, ask) == (id.turn, id.ask) =>
+        {
             (P::Off, typed, vec![ProposalOut::NothingToPropose])
         }
         (
@@ -194,16 +216,36 @@ fn flow(
     }
 }
 
+/// A new Ask: it takes the next number, so an answer or a trial result of an earlier Ask in the
+/// same turn is dropped.
+fn new_ask(
+    typed: Option<Cleaned>,
+    asks: AskNo,
+    turn: TurnRef,
+) -> (ProposalState, Vec<ProposalOut>) {
+    let state = ProposalState {
+        phase: ProposalPhase::Asking(TrialId {
+            turn,
+            ask: asks,
+            attempt: TrialAttempt::First,
+        }),
+        typed,
+        asks,
+    };
+    let out = vec![ProposalOut::CallModel {
+        turn,
+        ask: asks,
+        failed: None,
+    }];
+    (state, out)
+}
+
 /// The shell left the prompt: a typed proposal ran (as typed or edited), and whatever was under
 /// way no longer fits the prompt.
 fn left_prompt(state: ProposalState, command: &CommandText) -> (ProposalState, Vec<ProposalOut>) {
     let mut out = dismissed(&state.phase);
     if let Some(typed) = state.typed {
-        let as_run = if command.as_str() == typed.proposal.text.as_str() {
-            AsRun::AsProposed
-        } else {
-            AsRun::Edited
-        };
+        let as_run = classify(typed.proposal.text.as_str(), command.as_str());
         out.push(ProposalOut::Ran { typed, as_run });
     }
     (ProposalState::OFF, out)
@@ -227,10 +269,12 @@ fn trialled(
     {
         let out = vec![ProposalOut::CallModel {
             turn: id.turn,
+            ask: id.ask,
             failed: Some(first_error.clone()),
         }];
         let again = TrialId {
             turn: id.turn,
+            ask: id.ask,
             attempt: TrialAttempt::AfterFailure,
         };
         return (ProposalPhase::Asking(again), out);

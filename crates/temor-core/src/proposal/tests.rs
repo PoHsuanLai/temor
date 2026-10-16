@@ -1,7 +1,7 @@
 use super::{
-    AsRun, Cleaned, FileChanges, Proposal, ProposalIn, ProposalOut, ProposalPhase, ProposalState,
-    Sanitised, SanitisedLine, TrialAttempt, TrialId, TrialVerdict, UncheckedWhy, proposal_key,
-    proposal_step, sanitise,
+    AsRun, AskNo, Cleaned, FileChanges, Proposal, ProposalIn, ProposalOut, ProposalPhase,
+    ProposalState, Sanitised, SanitisedLine, TrialAttempt, TrialId, TrialVerdict, UncheckedWhy,
+    proposal_key, proposal_step, sanitise,
 };
 use crate::block::Taint;
 use crate::key::{PassThrough, ShellKey};
@@ -11,9 +11,14 @@ use crate::vocab::text::{CommandText, ErrorLine};
 use TrialAttempt::{AfterFailure, First};
 
 const T: TurnRef = TurnRef(1);
+const A1: AskNo = AskNo(1);
 
 fn id(attempt: TrialAttempt) -> TrialId {
-    TrialId { turn: T, attempt }
+    TrialId {
+        turn: T,
+        ask: A1,
+        attempt,
+    }
 }
 fn line(text: &str) -> SanitisedLine {
     sanitise(text).0
@@ -41,7 +46,11 @@ fn cleaned(verdict: TrialVerdict) -> Cleaned {
     }
 }
 fn at(phase: ProposalPhase) -> ProposalState {
-    ProposalState { phase, typed: None }
+    ProposalState {
+        phase,
+        typed: None,
+        asks: A1,
+    }
 }
 fn asking(attempt: TrialAttempt) -> ProposalState {
     at(ProposalPhase::Asking(id(attempt)))
@@ -61,11 +70,13 @@ fn typed() -> ProposalState {
     ProposalState {
         phase: ProposalPhase::Off,
         typed: Some(cleaned(clean())),
+        asks: A1,
     }
 }
 fn answer(text: &str, turn: TurnRef) -> ProposalIn {
     ProposalIn::ModelAnswer {
         turn,
+        ask: A1,
         text: text.into(),
         taint: Taint::Clean,
     }
@@ -88,13 +99,13 @@ fn a_proposal_goes_from_ask_to_trial_to_prompt() {
     #[rustfmt::skip]
     let cases: Vec<(&str, ProposalState, ProposalIn, ProposalState, Vec<ProposalOut>)> = vec![
         ("ask calls the model", ProposalState::OFF, ProposalIn::Ask(T), asking(First),
-            vec![ProposalOut::CallModel { turn: T, failed: None }]),
+            vec![ProposalOut::CallModel { turn: T, ask: A1, failed: None }]),
         ("an answer is cleaned and trialled", asking(First), answer("ls -la", T), trialling(First),
             vec![ProposalOut::RunTrial { id: id(First), line: line("ls -la") }]),
         ("an answer to an old ask is ignored", asking(First), answer("ls -la", TurnRef(0)), asking(First), vec![]),
         ("an answer that cleans to nothing", asking(First), answer("\n\u{1b}[0m \t", T), ProposalState::OFF,
             vec![ProposalOut::NothingToPropose]),
-        ("the model failing", asking(First), ProposalIn::ModelFailed(T), ProposalState::OFF,
+        ("the model failing", asking(First), ProposalIn::ModelFailed { turn: T, ask: A1 }, ProposalState::OFF,
             vec![ProposalOut::NothingToPropose]),
         ("a clean trial shows the chip", trialling(First), result(First, clean()), shown(clean()),
             vec![ProposalOut::Show(cleaned(clean()).proposal)]),
@@ -102,7 +113,7 @@ fn a_proposal_goes_from_ask_to_trial_to_prompt() {
             shown(TrialVerdict::Unchecked(UncheckedWhy::NoSandbox)),
             vec![ProposalOut::Show(cleaned(TrialVerdict::Unchecked(UncheckedWhy::NoSandbox)).proposal)]),
         ("a first failure goes back to the model once", trialling(First), result(First, failed()), asking(AfterFailure),
-            vec![ProposalOut::CallModel { turn: T, failed: Some(ErrorLine("no such file".into())) }]),
+            vec![ProposalOut::CallModel { turn: T, ask: A1, failed: Some(ErrorLine("no such file".into())) }]),
         ("a second failure is shown with the agent offer", trialling(AfterFailure), result(AfterFailure, failed()), shown(failed()),
             vec![ProposalOut::Show(cleaned(failed()).proposal), ProposalOut::OfferAgent]),
         ("a late result of the first trial is dropped", trialling(AfterFailure), result(First, clean()), trialling(AfterFailure), vec![]),
@@ -112,6 +123,14 @@ fn a_proposal_goes_from_ask_to_trial_to_prompt() {
             vec![ran(AsRun::AsProposed)]),
         ("running an edit is logged as edited", typed(), ProposalIn::LeftPrompt(CommandText("ls -l".into())), ProposalState::OFF,
             vec![ran(AsRun::Edited)]),
+        ("an edit that adds to the end is still edited", typed(), ProposalIn::LeftPrompt(CommandText("ls -la /tmp".into())), ProposalState::OFF,
+            vec![ran(AsRun::Edited)]),
+        ("a braille blank counts as a space", typed(), ProposalIn::LeftPrompt(CommandText("ls\u{2800}-la".into())), ProposalState::OFF,
+            vec![ran(AsRun::AsProposed)]),
+        ("a command of their own replaces it", typed(), ProposalIn::LeftPrompt(CommandText("make".into())), ProposalState::OFF,
+            vec![ran(AsRun::Replaced)]),
+        ("an emptied line is a replacement", typed(), ProposalIn::LeftPrompt(CommandText(String::new())), ProposalState::OFF,
+            vec![ran(AsRun::Replaced)]),
         ("running something else dismisses the chip", shown(clean()), ProposalIn::LeftPrompt(CommandText("make".into())), ProposalState::OFF,
             vec![ProposalOut::Dismissed]),
         ("accept before the trial does nothing", trialling(First), ProposalIn::Accept, trialling(First), vec![]),
@@ -134,6 +153,31 @@ fn a_stale_trial_result_is_never_shown_with_a_newer_command() {
     let before = state.clone();
     let (state, out) = proposal_step(state, result(First, clean()), AiSwitch::On);
     assert_eq!((state, out), (before, vec![]), "t1's result is dropped");
+}
+
+#[test]
+fn two_asks_in_one_turn_never_share_a_trial_id() {
+    let (state, out) = proposal_step(ProposalState::OFF, ProposalIn::Ask(T), AiSwitch::On);
+    let first = out.clone();
+    let (state, out) = proposal_step(state, answer("ls", T), AiSwitch::On);
+    let ProposalOut::RunTrial { id: first_id, .. } = out[0] else {
+        panic!("{out:?}")
+    };
+    let (state, again) = proposal_step(state, ProposalIn::Ask(T), AiSwitch::On);
+    assert_ne!(first, again, "the second Ask is numbered apart");
+    let ProposalPhase::Asking(second_id) = state.phase.clone() else {
+        panic!("{state:?}")
+    };
+    assert_ne!(first_id, second_id);
+    // The first Ask's late answer and trial result are both dropped.
+    let late = ProposalIn::ModelAnswer {
+        turn: T,
+        ask: first_id.ask,
+        text: "rm x".into(),
+        taint: Taint::Clean,
+    };
+    let (kept, out) = proposal_step(state.clone(), late, AiSwitch::On);
+    assert_eq!((kept, out), (state, vec![]));
 }
 
 #[test]
