@@ -82,3 +82,29 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
     assert_eq!(live.session.block_command(id), Some("echo rp-test"));
     assert_eq!(live.session.block_output(id).as_deref(), Some("rp-test"));
 }
+
+#[test]
+fn a_program_that_clears_the_scrollback_leaves_no_block_where_its_rows_were() {
+    if !tools_present() {
+        return;
+    }
+    let Some(bash) = shell_path("bash") else {
+        return;
+    };
+    let mut live = start("blocks-clear", &bash);
+    run_line(&live, "echo before");
+    pump(&mut live, "the first block", |s| {
+        s.block_outcomes()
+            .first()
+            .is_some_and(|b| b.1 != Outcome::Running)
+    });
+    // A frame taller than the screen, then the screen and the scrollback cleared, as Claude Code
+    // does when it redraws: both commands' rows are gone, so neither block has a place left.
+    run_line(&live, "seq 80; printf '\\033[2J\\033[3J\\033[H'");
+    pump(&mut live, "the prompt after it", |s| s.prompts_seen() >= 3);
+    let marks = live.session.block_marks();
+    assert!(
+        marks.is_empty(),
+        "blocks drawn where nothing is left: {marks:?}"
+    );
+}

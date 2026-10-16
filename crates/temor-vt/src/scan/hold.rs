@@ -8,20 +8,33 @@
 
 const START: &[u8] = b"\x1b[?2026h";
 const END: &[u8] = b"\x1b[?2026l";
+const ERASE_HISTORY: &[u8] = b"\x1b[3J";
 const ESC: u8 = 0x1b;
 
-/// The cut-point scanner's state between chunks: how much of the start sequence has matched.
-#[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct HoldCuts {
+/// Where a fixed sequence ends, across chunks: how much of it has matched so far. The sequence
+/// has one ESC, at its front: the start of a hold, or the erase of the scrollback (`CSI 3 J`).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SeqCuts {
+    seq: &'static [u8],
     matched: usize,
 }
 
-impl HoldCuts {
-    pub(crate) fn new() -> Self {
-        Self::default()
+impl SeqCuts {
+    /// Finds the start of a synchronized update.
+    pub(crate) fn hold_start() -> Self {
+        Self::of(START)
     }
 
-    /// The offsets in `input` just after each start sequence, in order.
+    /// Finds the erase of the scrollback, `CSI 3 J`.
+    pub(crate) fn erase_history() -> Self {
+        Self::of(ERASE_HISTORY)
+    }
+
+    fn of(seq: &'static [u8]) -> Self {
+        Self { seq, matched: 0 }
+    }
+
+    /// The offsets in `input` just after each whole sequence, in order.
     pub(crate) fn feed(&mut self, input: &[u8]) -> Vec<usize> {
         let mut cuts = Vec::new();
         let mut i = 0;
@@ -33,23 +46,23 @@ impl HoldCuts {
                     None => break,
                 }
             }
-            self.matched = next(self.matched, input[i]);
+            self.matched = self.next(input[i]);
             i += 1;
-            if self.matched == START.len() {
+            if self.matched == self.seq.len() {
                 cuts.push(i);
                 self.matched = 0;
             }
         }
         cuts
     }
-}
 
-/// The matched length after `b`. The start sequence has one ESC, at its front, so a mismatch
-/// falls back to 1 on an ESC and to 0 otherwise.
-fn next(matched: usize, b: u8) -> usize {
-    match b == START[matched] {
-        true => matched + 1,
-        false => usize::from(b == ESC),
+    /// The matched length after `b`. The sequence has one ESC, at its front, so a mismatch
+    /// falls back to 1 on an ESC and to 0 otherwise.
+    fn next(&self, b: u8) -> usize {
+        match b == self.seq[self.matched] {
+            true => self.matched + 1,
+            false => usize::from(b == ESC),
+        }
     }
 }
 

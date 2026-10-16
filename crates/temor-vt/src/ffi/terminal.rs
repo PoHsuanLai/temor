@@ -11,7 +11,7 @@ use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
-use crate::scan::{HoldCuts, InlineFileScanner, MarkCuts};
+use crate::scan::{InlineFileScanner, MarkCuts, SeqCuts};
 use crate::{
     CellPx, EventSink, GridSize, ModeState, RenderHold, ReplySink, TerminalConfig, TerminalMode,
     ViewportScroll, VtError,
@@ -32,7 +32,9 @@ pub struct Terminal {
     /// Where OSC 133 marks end, carried across writes.
     pub(super) marks: MarkCuts,
     /// Where synchronized updates start, carried across writes.
-    pub(super) holds: HoldCuts,
+    pub(super) holds: SeqCuts,
+    /// Where the scrollback is erased (`CSI 3 J`), carried across writes.
+    pub(super) erases: SeqCuts,
     /// Captures the frame when a hold begins.
     pub(super) hold_hook: Option<Box<dyn super::HoldHook>>,
     /// The number of the last mark cut (see `VtEvent::MarkBegin`).
@@ -150,7 +152,8 @@ impl Terminal {
             callbacks,
             scanner: InlineFileScanner::new(config.inline_file_max),
             marks: MarkCuts::new(),
-            holds: HoldCuts::new(),
+            holds: SeqCuts::hold_start(),
+            erases: SeqCuts::erase_history(),
             hold_hook: None,
             mark_seq: 0,
             anchors: Anchors::default(),

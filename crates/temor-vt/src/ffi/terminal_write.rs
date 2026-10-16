@@ -15,6 +15,8 @@ enum Cut {
     Mark,
     /// A synchronized update started.
     Hold,
+    /// The scrollback is erased (`CSI 3 J`) once the offset's last byte is written.
+    EraseHistory,
 }
 
 impl Terminal {
@@ -49,7 +51,10 @@ impl Terminal {
     /// announced by `MarkBegin` with its number, so the mark's own events sit between that and
     /// its `Anchor` (the cursor where the mark stood). A missed anchor leaves no `Anchor` behind,
     /// so the numbers keep the next mark's events from pairing with the missed one. The start of a
-    /// synchronized update is cut too, so the frame can be captured where the hold began.
+    /// synchronized update is cut too, so the frame can be captured where the hold began, and so
+    /// is the erase of the scrollback: libghostty moves an erased row's anchor to the top-left
+    /// cell rather than ending it, so the anchors in the scrollback are ended here instead, as the
+    /// scrollback dropping their rows would.
     fn write_marked(&mut self, bytes: &[u8], later: &[Scanned<'_>]) {
         let mut cuts: Vec<(usize, Cut)> = self
             .marks
@@ -58,6 +63,12 @@ impl Terminal {
             .map(|at| (at, Cut::Mark))
             .collect();
         cuts.extend(self.holds.feed(bytes).into_iter().map(|at| (at, Cut::Hold)));
+        cuts.extend(
+            self.erases
+                .feed(bytes)
+                .into_iter()
+                .map(|at| (at, Cut::EraseHistory)),
+        );
         cuts.sort_by_key(|(at, _)| *at);
         let mut start = 0;
         for (end, cut) in cuts {
@@ -84,6 +95,15 @@ impl Terminal {
                             all
                         });
                     self.hold_began(&rest);
+                }
+                Cut::EraseHistory => {
+                    // Every byte but the final `J`: the rows to be erased are still there.
+                    self.vt_write(&bytes[start..end - 1]);
+                    let erased = self.anchors_in_history();
+                    self.vt_write(&bytes[end - 1..end]);
+                    for anchor in erased {
+                        self.release_anchor(anchor);
+                    }
                 }
             }
             start = end;

@@ -169,3 +169,72 @@ fn the_alternate_screen_is_reported_while_a_full_screen_program_runs() {
     t.write(b"\x1b[?1049l");
     assert!(!t.on_alternate_screen());
 }
+
+#[test]
+fn erasing_the_scrollback_ends_the_anchors_in_it_and_keeps_the_screens() {
+    // A command's marks scroll into history under a tall frame, then the program clears the
+    // scrollback, alone or after the screen, as Claude Code does when it redraws. libghostty's
+    // `CSI 2 J` moves the screen's rows into the scrollback first, so then the prompt on the
+    // screen goes too.
+    let clears: [(&str, &[u8], bool); 4] = [
+        ("3J", b"\x1b[3J", true),
+        ("3J split", b"\x1b[3", true),
+        ("2J 3J", b"\x1b[2J\x1b[3J\x1b[H", false),
+        ("H 2J 3J", b"\x1b[H\x1b[2J\x1b[3J", false),
+    ];
+    for (name, clear, prompt_stays) in clears {
+        let (mut t, rx) = term_with_scrollback(20, 6, 1000);
+        t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07claude\r\n\x1b]133;C\x07");
+        let gone = anchors(&drain(&rx));
+        for i in 0..8 {
+            t.write(format!("frame {i}\r\n").as_bytes());
+        }
+        t.write(b"\x1b]133;A\x07$ ");
+        let kept = anchors(&drain(&rx))[0].1;
+        t.write(clear);
+        if name == "3J split" {
+            t.write(b"J");
+        }
+        for (_, id) in &gone {
+            assert_eq!(t.anchor_point(*id, PointSpace::Screen), None, "{name}");
+        }
+        assert_eq!(
+            t.anchor_point(kept, PointSpace::Screen).is_some(),
+            prompt_stays,
+            "{name}: the prompt's anchor"
+        );
+    }
+}
+
+#[test]
+fn erasing_only_the_screen_or_below_the_cursor_keeps_every_anchor() {
+    for (name, clear) in [
+        ("2J", &b"\x1b[2J\x1b[H"[..]),
+        ("up and erase", &b"\x1b[3A\r\x1b[J"[..]),
+    ] {
+        let (mut t, rx) = term_with_scrollback(20, 6, 1000);
+        t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07claude\r\n\x1b]133;C\x07");
+        let ids = anchors(&drain(&rx));
+        t.write(b"frame 1\r\nframe 2\r\n");
+        t.write(clear);
+        for (_, id) in &ids {
+            assert!(t.anchor_point(*id, PointSpace::Screen).is_some(), "{name}");
+        }
+    }
+}
+
+#[test]
+fn a_full_reset_ends_every_anchor() {
+    let (mut t, rx) = term_with_scrollback(20, 6, 1000);
+    t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07claude\r\n\x1b]133;C\x07");
+    let ids = anchors(&drain(&rx));
+    for i in 0..8 {
+        t.write(format!("frame {i}\r\n").as_bytes());
+    }
+    t.write(b"\x1b]133;A\x07$ ");
+    let on_screen = anchors(&drain(&rx));
+    t.write(b"\x1bc");
+    for (_, id) in ids.iter().chain(&on_screen) {
+        assert_eq!(t.anchor_point(*id, PointSpace::Screen), None);
+    }
+}

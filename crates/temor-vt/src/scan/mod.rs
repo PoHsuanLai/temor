@@ -17,7 +17,7 @@ mod status;
 mod tests;
 
 #[cfg(feature = "ghostty")]
-pub(crate) use hold::{HoldCuts, ends_within};
+pub(crate) use hold::{SeqCuts, ends_within};
 pub(crate) use inline_file::{InlineFileScanner, Scanned};
 #[cfg(feature = "ghostty")]
 pub(crate) use marks::MarkCuts;

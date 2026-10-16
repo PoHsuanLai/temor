@@ -257,11 +257,14 @@ mod marks {
 
 #[cfg(feature = "ghostty")]
 mod holds {
-    use super::super::{HoldCuts, ends_within};
+    use super::super::{SeqCuts, ends_within};
 
     /// The cut offsets over `chunks`, as absolute offsets into their concatenation.
     fn cuts(chunks: &[&[u8]]) -> Vec<usize> {
-        let mut scanner = HoldCuts::new();
+        cuts_with(SeqCuts::hold_start(), chunks)
+    }
+
+    fn cuts_with(mut scanner: SeqCuts, chunks: &[&[u8]]) -> Vec<usize> {
         let mut at = 0;
         let mut out = Vec::new();
         for chunk in chunks {
@@ -286,6 +289,19 @@ mod holds {
         assert!(cuts(&[b"\x1b[?2026l \x1b[?2004h \x1b[?202h"]).is_empty());
         // An ESC in the middle of a near-match starts over.
         assert_eq!(cuts(&[b"\x1b[?20\x1b[?2026h"]), vec![13]);
+    }
+
+    #[test]
+    fn an_erase_of_the_scrollback_is_cut_after_its_final_byte_and_others_are_not() {
+        let whole = b"a\x1b[2J\x1b[3Jb\x1b[J\x1b[3J";
+        for split in 0..=whole.len() {
+            let (a, b) = whole.split_at(split);
+            assert_eq!(
+                cuts_with(SeqCuts::erase_history(), &[a, b]),
+                vec![9, 17],
+                "split at {split}"
+            );
+        }
     }
 
     #[test]

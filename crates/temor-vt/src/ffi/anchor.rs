@@ -103,6 +103,23 @@ impl Terminal {
         })
     }
 
+    /// The anchors whose rows are in the scrollback of the screen in use, the rows `CSI 3 J`
+    /// erases. None while the alternate screen is in use: it has no scrollback.
+    pub(super) fn anchors_in_history(&self) -> Vec<AnchorId> {
+        if self.on_alternate_screen() {
+            return Vec::new();
+        }
+        self.anchors()
+            .live
+            .keys()
+            .map(|&id| AnchorId(id))
+            .filter(|&id| {
+                self.anchor_point(id, PointSpace::Screen).is_some()
+                    && self.anchor_point(id, PointSpace::Active).is_none()
+            })
+            .collect()
+    }
+
     /// The cursor's row on the active screen, now (row 0 is the active screen's top), without
     /// waiting for a frame. `None` when libghostty will not say.
     pub fn cursor_row(&self) -> Option<u16> {
