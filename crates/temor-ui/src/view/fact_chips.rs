@@ -14,7 +14,7 @@
 
 use dioxus::prelude::*;
 use ds::prelude::{Icon, IconSize, IconSource, IconView};
-use temor_core::facts::{ChipRow, DiffStat, Facts, MOST_UNTRACKED, chips_that_fit};
+use temor_core::facts::{ChipRow, Facts, chips_that_fit};
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::BlockId;
@@ -22,6 +22,7 @@ use temor_render::Palette;
 
 use super::block_meta::MetaView;
 use super::card_colours::{CardFill, card_ground};
+pub use super::chip_texts::{chip_texts, lead_chips};
 use super::folder_fit::{RowRoom, fit_folder_chip};
 use crate::session::{HeaderLine, PromptHeader, Session};
 
@@ -140,89 +141,6 @@ pub struct ChipsView {
     pub ground: Option<String>,
 }
 
-fn part(text: impl Into<String>, tone: Tone) -> ChipPart {
-    ChipPart {
-        text: text.into(),
-        tone,
-    }
-}
-
-fn chip(kind: ChipKind, icon: Option<ChipIcon>, parts: Vec<ChipPart>) -> ChipText {
-    ChipText { kind, icon, parts }
-}
-
-/// A tool's chip: its name in the chip's colour, then what it is set to.
-fn tool(kind: ChipKind, name: &str, value: &str) -> ChipText {
-    chip(
-        kind,
-        None,
-        vec![part(name, Tone::Strong), part(value, Tone::Plain)],
-    )
-}
-
-fn files_words(files: u32) -> String {
-    match files {
-        1 => "1 file".to_owned(),
-        n => format!("{n} files"),
-    }
-}
-
-fn untracked_words(count: u32) -> String {
-    match count > MOST_UNTRACKED {
-        true => format!("{MOST_UNTRACKED}+ new"),
-        false => format!("{count} new"),
-    }
-}
-
-/// The chips for `facts`, in order: the changes (`+N -M · F files`), new files, Python (the
-/// environment, else the version), Ruby, Go, Node. Nothing known gives none; a clean folder gives
-/// no change chip.
-pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
-    let mut chips = Vec::new();
-    if let Some(DiffStat {
-        files,
-        added,
-        removed,
-    }) = facts.changes.filter(|s| s.is_dirty())
-    {
-        chips.push(chip(
-            ChipKind::Changes,
-            Some(ChipIcon::Changes),
-            vec![
-                part(format!("+{added}"), Tone::Added),
-                part(format!("\u{2212}{removed}"), Tone::Removed),
-                part("\u{b7}", Tone::Plain),
-                part(files_words(files), Tone::Plain),
-            ],
-        ));
-    }
-    if let Some(untracked) = facts.untracked.filter(|u| u.0 > 0) {
-        chips.push(chip(
-            ChipKind::New,
-            None,
-            vec![part(untracked_words(untracked.0), Tone::Plain)],
-        ));
-    }
-    let python = match (&facts.venv, &facts.python) {
-        (Some(venv), _) => Some(venv.as_str()),
-        (None, Some(version)) => Some(version.as_str()),
-        (None, None) => None,
-    };
-    if let Some(python) = python {
-        chips.push(tool(ChipKind::Python, "python", python));
-    }
-    if let Some(ruby) = &facts.ruby {
-        chips.push(tool(ChipKind::Ruby, "ruby", ruby.as_str()));
-    }
-    if let Some(go) = &facts.go {
-        chips.push(tool(ChipKind::Go, "go", go.as_str()));
-    }
-    if let Some(node) = &facts.node {
-        chips.push(tool(ChipKind::Node, "node", node.as_str()));
-    }
-    chips
-}
-
 /// Whether the chips stand over the header line: it is a line of its own and starts with the
 /// folder as temor's prompt writes it (the person's own prompt, or a folder the shell names
 /// differently, keeps its text). `folder` is None on another computer.
@@ -235,23 +153,6 @@ pub fn chips_go_over(header: &PromptHeader, folder: Option<&str>) -> bool {
             .text
             .strip_prefix(folder)
             .is_some_and(|rest| rest.is_empty() || rest.starts_with(' '))
-}
-
-/// The folder and branch chips that lead the row over temor's header line.
-pub fn lead_chips(folder: &str, facts: &Facts) -> Vec<ChipText> {
-    let mut chips = vec![chip(
-        ChipKind::Folder,
-        Some(ChipIcon::Folder),
-        vec![part(folder, Tone::Strong)],
-    )];
-    if let Some(branch) = &facts.branch {
-        chips.push(chip(
-            ChipKind::Branch,
-            Some(ChipIcon::Branch),
-            vec![part(branch.as_str(), Tone::Strong)],
-        ));
-    }
-    chips
 }
 
 /// The chips and their place for a session: on the header line of the prompt being typed at,

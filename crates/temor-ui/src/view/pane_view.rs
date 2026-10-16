@@ -21,9 +21,9 @@ use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::remote::Grant;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
-use super::block_edit::bar_edit;
+use super::block_edit::{bar_edit, file_to_edit};
 use super::block_header::BlockHeader;
-use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState};
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind};
 use super::block_meta::BlockMetas;
 use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
@@ -49,6 +49,7 @@ use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
+use temor_pane::keys::Action;
 
 /// How far the find bar sits below the pane's top (`.temor-find`'s `top`, `--s-4`).
 const FIND_TOP: f32 = 4.0;
@@ -238,6 +239,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .filter(|tools| !under_find(tools.top))
         .map(|tools| ToolsView {
             edit: on_host.then_some(Availability::Enabled),
+            copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
             ..tools
         });
     let chips = slot
@@ -270,13 +272,34 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
         picked: s.picked_blocks().len(),
         bookmarked: s.picks_bookmarked(),
+        pane: match on_host {
+            true => PaneKind::OnHost,
+            false => PaneKind::ThisComputer,
+        },
     });
     let menu_pick = {
         let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
-        move |action: temor_pane::keys::Action| {
+        let desk = desk.clone();
+        move |pick: BlockPick| {
             menu.set(None);
-            if let Some(s) = slot.borrow_mut().session.as_mut() {
-                let _ = s.run(action);
+            match pick {
+                BlockPick::Do(action) => {
+                    if let Some(s) = slot.borrow_mut().session.as_mut() {
+                        let _ = s.run(action);
+                    }
+                }
+                BlockPick::EditLocally => {
+                    let text = slot
+                        .borrow()
+                        .session
+                        .as_ref()
+                        .and_then(|s| s.block_text_to_edit());
+                    match file_to_edit(text) {
+                        Ok(text) => desk.host_edit(pane, &text),
+                        Err(words) => desk.say(words.to_owned()),
+                    }
+                    desk.bump();
+                }
             }
             ui += 1;
             repaint(&slot);

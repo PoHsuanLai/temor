@@ -8,6 +8,7 @@ use ds::components::menus::item::item::MenuItem;
 use ds::components::menus::pull_down_button::{PullDownButton, PullDownFace};
 use ds::host::measure::{MountedRef, client_rect};
 use ds::prelude::*;
+use ds_core::vocab::Shortcut;
 use temor_core::space::Project;
 use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
@@ -24,14 +25,25 @@ pub enum SidePick {
 }
 
 /// The menu's rows, in order.
-pub fn side_items() -> Vec<MenuItem<SidePick>> {
+/// Rows whose action has a chord show it, as `shortcut_of` gives it.
+pub fn side_items(shortcut_of: impl Fn(Action) -> Option<Shortcut>) -> Vec<MenuItem<SidePick>> {
+    let keyed = |item: MenuItem<SidePick>, action: Action| match shortcut_of(action) {
+        Some(key) => item.with_key(key),
+        None => item,
+    };
     vec![
-        MenuItem::new(SidePick::NewTab, "New Tab"),
-        MenuItem::new(SidePick::ReopenTab, "Reopen Closed Tab"),
+        keyed(MenuItem::new(SidePick::NewTab, "New Tab"), Action::NewTab),
+        keyed(
+            MenuItem::new(SidePick::ReopenTab, "Reopen Closed Tab"),
+            Action::ReopenTab,
+        ),
         MenuItem::Separator,
         MenuItem::new(SidePick::NewSpace, "New Space"),
         MenuItem::Separator,
-        MenuItem::new(SidePick::HideSidebar, "Hide Sidebar"),
+        keyed(
+            MenuItem::new(SidePick::HideSidebar, "Hide Sidebar"),
+            Action::ToggleSidebar,
+        ),
     ]
 }
 
@@ -44,7 +56,7 @@ pub fn SideMenu(desk: Desk) -> Element {
     rsx! {
         PullDownButton::<SidePick> {
             face: PullDownFace::Chevron,
-            items: side_items(),
+            items: side_items(|action| desk.hub.shortcut_of(action)),
             common: Common {
                 aria_label: Some("Sidebar Menu".to_owned()),
                 mounted: Some(EventHandler::new(move |event: MountedEvent| {
@@ -78,5 +90,38 @@ pub fn SideMenu(desk: Desk) -> Element {
                 }
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ds_core::vocab::ShortcutKey;
+
+    use super::*;
+
+    /// The rows with their key equivalents, by title.
+    fn keyed(shortcut_of: impl Fn(Action) -> Option<Shortcut>) -> Vec<(String, Option<Shortcut>)> {
+        side_items(shortcut_of)
+            .into_iter()
+            .filter_map(|item| match item {
+                MenuItem::Item { title, key, .. } => Some((title, key)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn rows_with_an_action_show_its_chord_and_the_others_show_none() {
+        let t = Shortcut(vec![ShortcutKey::Char('t')]);
+        let rows = keyed(|action| (action == Action::NewTab).then(|| t.clone()));
+        assert_eq!(
+            rows,
+            [
+                ("New Tab".to_owned(), Some(t)),
+                ("Reopen Closed Tab".to_owned(), None),
+                ("New Space".to_owned(), None),
+                ("Hide Sidebar".to_owned(), None),
+            ]
+        );
     }
 }

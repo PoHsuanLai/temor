@@ -10,6 +10,7 @@ pub mod block_meta;
 pub mod block_tools;
 pub mod blocks;
 pub mod card_colours;
+mod chip_texts;
 pub mod clipboard_ask;
 pub mod confirm;
 pub mod convert;
