@@ -1,7 +1,7 @@
 //! Editing a host's file locally and forwarding its ports, through the stand-in `ssh` and `scp`
 //! (the stand-in `ssh` runs the file calls on this computer, so the "host" is a scratch folder).
 
-use temor_core::host::edit::Resolution;
+use temor_core::host::edit::{Edit, Found, Resolution};
 use temor_core::remote::Grant;
 use temor_core::workspace::WorkspaceIn;
 use temor_ssh::Port;
@@ -71,6 +71,27 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
     );
     rig.hub.resolve_edit(id, Resolution::Overwrite);
     until_remote(&mut rig, &remote, "edited again, here\n");
+
+    // Done while a changed file waits for the person's choice keeps the copy.
+    let stat = temor_ssh::RemoteStat {
+        mtime: temor_ssh::UnixSeconds(1),
+        size: temor_ssh::ByteCount(1),
+    };
+    let kept = rig.hub.ssh.edits.get_mut(&id).map(|edit| {
+        let before = edit.state;
+        edit.state = Edit::Conflict {
+            base: stat,
+            found: Found::Deleted,
+        };
+        before
+    });
+    rig.hub.close_edit(id);
+    assert!(local.exists(), "the copy stays while a conflict is pending");
+    if let Some(edit) = rig.hub.ssh.edits.get_mut(&id)
+        && let Some(before) = kept
+    {
+        edit.state = before;
+    }
 
     // Done: the copy goes, and so does the folder made for it.
     rig.hub.close_edit(id);

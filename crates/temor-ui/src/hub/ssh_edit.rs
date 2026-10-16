@@ -193,7 +193,20 @@ impl Hub {
 
     /// The person is done with the edit; its local copy goes (a save that has not reached the
     /// host yet is the person's to finish first).
+    ///
+    /// While a changed file waits for the person's choice the copy stays: it holds the only
+    /// copy of their edits.
     pub fn close_edit(&mut self, id: EditId) {
+        if self
+            .ssh
+            .edits
+            .get(&id)
+            .is_some_and(|edit| matches!(edit.state, Edit::Conflict { .. }))
+        {
+            self.notices
+                .push("Choose what to do about the changed file first".to_owned());
+            return;
+        }
         self.on_edit(id, EditIn::Closed);
         if let Some(edit) = self.ssh.edits.remove(&id) {
             forget_copy(&edit.local);
