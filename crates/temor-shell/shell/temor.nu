@@ -71,6 +71,20 @@ if ($env.TEMOR_PROMPT? != "shell") {
     )
 }
 
+# A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
+# blocks above it stay. Your own `clear` should take them all, so it says so to temor first. It
+# clears the way nushell's own does; a `clear` defined in your config.nu, which runs later, wins.
+def clear [
+    --keep-scrollback (-k) # Clear only the screen, not the scrollback
+] {
+    print -n $"(ansi esc)]7502;clear(char bel)"
+    if $keep_scrollback {
+        print -n $"(ansi esc)[H(ansi esc)[2J"
+    } else {
+        print -n $"(ansi esc)[H(ansi esc)[2J(ansi esc)[3J"
+    }
+}
+
 # Take temor's folder back out of XDG_DATA_DIRS, so programs started from this shell never see
 # it: restore the value temor found, or unset the variable when it was unset.
 if ("TEMOR_NU_XDG_DATA_DIRS" in $env) {

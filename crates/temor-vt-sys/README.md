@@ -4,7 +4,7 @@ Raw bindings to libghostty-vt, linked statically, for `temor-vt` only.
 
 | Pin | Value |
 |---|---|
-| Ghostty | `7f617dc799cd200f88231899c36f45682d4f7678` (github.com/PoHsuanLai/ghostty branch `temor`: main 7ec9e26 of 2026-10-08 plus a placement-data key, `INTERNAL_ID`) — `GHOSTTY_COMMIT` in `src/lib.rs` |
+| Ghostty | `a5df6bc683d47342b773eb113df10e36acd42da9` (github.com/PoHsuanLai/ghostty branch `temor`: main 7ec9e26 of 2026-10-08 plus two additions: a placement-data key, `INTERNAL_ID`, and `ghostty_terminal_erase_history_from`) — `GHOSTTY_COMMIT` in `src/lib.rs` |
 | Zig | 0.16.x on `PATH` (Ghostty's `build.zig` requires the same major.minor); `scripts/fetch-zig.sh` fetches 0.16.0 from ziglang.org and checks its pinned sha256 |
 | bindgen | 0.72.1, run by hand through `scripts/gen-bindings.sh`; never by `build.rs` |
 

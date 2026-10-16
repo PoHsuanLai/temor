@@ -155,3 +155,13 @@ else
     # Joined with newlines, not "; ": a value ending in ";" or a newline stays valid.
     PROMPT_COMMAND=$'_temor_save_status\n'"${PROMPT_COMMAND-}"$'\n_temor_prompt'
 fi
+
+# A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
+# blocks above it stay. Your own `clear` should take them all, so it says so to temor first.
+# A `clear` you defined yourself is left alone.
+if ! declare -F clear >/dev/null && ! alias clear >/dev/null 2>&1; then
+    clear() {
+        printf '\e]7502;clear\a'
+        command clear "$@"
+    }
+fi

@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Keep in step with `GHOSTTY_COMMIT` in src/lib.rs, scripts/fetch-ghostty.sh and README.md.
-const GHOSTTY_COMMIT: &str = "7f617dc799cd200f88231899c36f45682d4f7678";
+const GHOSTTY_COMMIT: &str = "a5df6bc683d47342b773eb113df10e36acd42da9";
 const ZIG_MAJOR_MINOR: &str = "0.16";
 
 fn main() {

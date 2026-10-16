@@ -17,7 +17,8 @@ use super::signals::{
     on_unknown, on_write_pty,
 };
 use crate::{
-    CellPx, ClipboardSource, ColorScheme, EventSink, GridSize, RenderHold, ReplySink, VtEvent,
+    CellPx, ClipboardSource, ColorScheme, EventSink, GridSize, PromptEvent, RenderHold, ReplySink,
+    VtEvent,
 };
 
 /// Whether the title changed during the current write; libghostty only lets the title be read
@@ -42,6 +43,32 @@ pub(super) struct Callbacks {
     pub(super) clipboard: RefCell<Option<Box<dyn ClipboardSource>>>,
     /// Callbacks that panicked (in a sink or in their own body); their event was dropped.
     pub(super) dropped: Cell<u64>,
+    /// The shell mark libghostty reported last; the terminal takes it right after cutting one.
+    pub(super) mark: Cell<Option<MarkKind>>,
+}
+
+/// Which OSC 133 mark was reported.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MarkKind {
+    /// A: a prompt starts.
+    Prompt,
+    /// B: the person's input starts.
+    Input,
+    /// C: a command's output starts.
+    Output,
+    /// D: a command ended.
+    End,
+}
+
+impl MarkKind {
+    pub(super) fn of(event: &PromptEvent) -> Self {
+        match event {
+            PromptEvent::PromptStart(_) => Self::Prompt,
+            PromptEvent::InputStart => Self::Input,
+            PromptEvent::OutputStart { .. } => Self::Output,
+            PromptEvent::CommandEnd { .. } => Self::End,
+        }
+    }
 }
 
 impl Callbacks {

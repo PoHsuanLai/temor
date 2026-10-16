@@ -120,6 +120,45 @@ impl Terminal {
             .collect()
     }
 
+    /// The anchors whose rows are on the screen in use.
+    pub(super) fn anchors_on_screen(&self) -> Vec<AnchorId> {
+        self.anchors()
+            .live
+            .keys()
+            .map(|&id| AnchorId(id))
+            .filter(|&id| self.anchor_point(id, PointSpace::Active).is_some())
+            .collect()
+    }
+
+    /// Erases the scrollback from `row` of the screen space down, keeping the rows above it and
+    /// the screen. Anchors in the erased rows end.
+    pub(super) fn erase_history_from(&mut self, row: u32) {
+        let mut value = sys::PointValue::default();
+        value.coordinate = sys::PointCoordinate { x: 0, y: row };
+        let point = sys::Point {
+            tag: sys::PointTag::SCREEN,
+            value,
+        };
+        // SAFETY: the terminal is live; the call only reads the point.
+        let code = unsafe { sys::ghostty_terminal_erase_history_from(self.raw(), point) };
+        // An out-of-range row erases nothing, which is the most that can be done with it.
+        let _ = check(code, "erase the scrollback from a row");
+    }
+
+    /// Moves a live anchor to the screen's top-left cell. Nothing happens to one already released.
+    pub(super) fn move_anchor_to_top(&mut self, id: AnchorId) {
+        let Some(&tracked) = self.anchors().live.get(&id.0) else {
+            return;
+        };
+        let point = sys::Point {
+            tag: sys::PointTag::ACTIVE,
+            value: sys::PointValue::default(),
+        };
+        // SAFETY: `tracked` is live (it is in the map) and belongs to this terminal.
+        let code = unsafe { sys::ghostty_tracked_grid_ref_set(tracked, self.raw(), point) };
+        let _ = check(code, "move an anchor");
+    }
+
     /// The cursor's row on the active screen, now (row 0 is the active screen's top), without
     /// waiting for a frame. `None` when libghostty will not say.
     pub fn cursor_row(&self) -> Option<u16> {

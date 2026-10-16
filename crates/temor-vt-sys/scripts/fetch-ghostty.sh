@@ -15,7 +15,7 @@
 set -eu
 
 GHOSTTY_REPO="https://github.com/PoHsuanLai/ghostty.git"
-GHOSTTY_COMMIT="7f617dc799cd200f88231899c36f45682d4f7678"
+GHOSTTY_COMMIT="a5df6bc683d47342b773eb113df10e36acd42da9"
 ZIG_WANT="0.16"
 
 if [ $# -ne 1 ]; then

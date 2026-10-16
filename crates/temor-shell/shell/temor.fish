@@ -140,3 +140,13 @@ function _temor_postexec --on-event fish_postexec
         set -g _temor_executing
     end
 end
+
+# A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
+# blocks above it stay. Your own `clear` should take them all, so it says so to temor first.
+# A `clear` you defined yourself is left alone.
+if not functions -q clear
+    function clear
+        printf '\e]7502;clear\a'
+        command clear $argv
+    end
+end

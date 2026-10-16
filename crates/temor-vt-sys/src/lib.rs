@@ -15,7 +15,7 @@ mod bindings;
 pub use bindings::*;
 
 /// The Ghostty commit the bindings and the linked library come from.
-pub const GHOSTTY_COMMIT: &str = "7f617dc799cd200f88231899c36f45682d4f7678";
+pub const GHOSTTY_COMMIT: &str = "a5df6bc683d47342b773eb113df10e36acd42da9";
 
 /// A zeroed C "sized" struct with its `size` field set, as the C API's `GHOSTTY_INIT_SIZED`.
 #[macro_export]

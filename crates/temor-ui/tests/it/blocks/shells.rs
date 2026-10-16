@@ -84,7 +84,7 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
 }
 
 #[test]
-fn a_program_that_clears_the_scrollback_leaves_no_block_where_its_rows_were() {
+fn a_program_that_clears_the_scrollback_takes_only_its_own_rows() {
     if !tools_present() {
         return;
     }
@@ -99,12 +99,41 @@ fn a_program_that_clears_the_scrollback_leaves_no_block_where_its_rows_were() {
             .is_some_and(|b| b.1 != Outcome::Running)
     });
     // A frame taller than the screen, then the screen and the scrollback cleared, as Claude Code
-    // does when it redraws: both commands' rows are gone, so neither block has a place left.
-    run_line(&live, "seq 80; printf '\\033[2J\\033[3J\\033[H'");
+    // does when it redraws: only the frame goes, the block before it and its own line stay.
+    let clearing = "seq 80; printf '\\033[2J\\033[3J\\033[H'";
+    run_line(&live, clearing);
     pump(&mut live, "the prompt after it", |s| s.prompts_seen() >= 3);
-    let marks = live.session.block_marks();
+    assert_eq!(
+        blocks(&live)
+            .into_iter()
+            .map(|(command, _)| command)
+            .collect::<Vec<_>>(),
+        ["echo before", clearing]
+    );
+    let first = live.session.block_outcomes()[0].0;
+    assert_eq!(live.session.block_output(first).as_deref(), Some("before"));
+}
+
+#[test]
+fn the_persons_own_clear_takes_every_block() {
+    if !tools_present() {
+        return;
+    }
+    let Some(bash) = shell_path("bash") else {
+        return;
+    };
+    let mut live = start("blocks-person-clear", &bash);
+    run_line(&live, "echo before");
+    pump(&mut live, "the first block", |s| {
+        s.block_outcomes()
+            .first()
+            .is_some_and(|b| b.1 != Outcome::Running)
+    });
+    run_line(&live, "clear");
+    pump(&mut live, "the prompt after it", |s| s.prompts_seen() >= 3);
+    let left = blocks(&live);
     assert!(
-        marks.is_empty(),
-        "blocks drawn where nothing is left: {marks:?}"
+        left.iter().all(|(command, _)| command != "echo before"),
+        "a block the person cleared away is still there: {left:?}"
     );
 }

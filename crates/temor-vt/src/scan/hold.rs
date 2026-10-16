@@ -9,6 +9,8 @@
 const START: &[u8] = b"\x1b[?2026h";
 const END: &[u8] = b"\x1b[?2026l";
 const ERASE_HISTORY: &[u8] = b"\x1b[3J";
+/// temor's shell integration sends this before the person's own `clear` runs.
+const PERSON_CLEARS: &[u8] = b"\x1b]7502;clear\x07";
 const ESC: u8 = 0x1b;
 
 /// Where a fixed sequence ends, across chunks: how much of it has matched so far. The sequence
@@ -28,6 +30,11 @@ impl SeqCuts {
     /// Finds the erase of the scrollback, `CSI 3 J`.
     pub(crate) fn erase_history() -> Self {
         Self::of(ERASE_HISTORY)
+    }
+
+    /// Finds temor's mark for the person's own `clear` (`OSC 7502;clear`, ended by BEL).
+    pub(crate) fn person_clears() -> Self {
+        Self::of(PERSON_CLEARS)
     }
 
     fn of(seq: &'static [u8]) -> Self {

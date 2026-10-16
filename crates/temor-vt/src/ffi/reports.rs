@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use temor_vt_sys as sys;
 
-use super::callbacks::guarded;
+use super::callbacks::{MarkKind, guarded};
 use super::convert::string;
 use crate::{
     ExitCode, ExitStatus, Notification, Percent, ProgramState, ProgramStatus, ProgramWait,
@@ -149,6 +149,7 @@ impl super::callbacks::Callbacks {
             },
             _ => return,
         };
+        self.mark.set(Some(MarkKind::of(&event)));
         self.send(VtEvent::Prompt(event));
     }
 }

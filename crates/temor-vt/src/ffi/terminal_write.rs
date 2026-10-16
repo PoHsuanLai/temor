@@ -3,10 +3,23 @@
 
 use temor_vt_sys as sys;
 
-use super::callbacks::TitleChange;
+use super::callbacks::{MarkKind, TitleChange};
 use super::terminal::Terminal;
 use crate::scan::{Scanned, ends_within};
-use crate::{RenderHold, UnknownKind, VtEvent};
+use crate::{AnchorId, PointSpace, RenderHold, UnknownKind, VtEvent};
+
+/// Cancels the control sequence being parsed (DEC: CAN aborts it and does nothing else).
+const CAN: u8 = 0x18;
+
+/// How much of the scrollback a `CSI 3 J` erases.
+enum Floor {
+    /// All of it: no command is running, or the person cleared.
+    None,
+    /// None of it: the running command's output starts on the screen.
+    Above,
+    /// From the running command's output mark, at `row` of the screen space, down.
+    From { anchor: AnchorId, row: u32 },
+}
 
 /// Why the input is cut at an offset.
 #[derive(Debug, Clone, Copy)]
@@ -17,6 +30,8 @@ enum Cut {
     Hold,
     /// The scrollback is erased (`CSI 3 J`) once the offset's last byte is written.
     EraseHistory,
+    /// The person's own `clear` is about to run: the screen's anchors end.
+    PersonClears,
 }
 
 impl Terminal {
@@ -69,6 +84,12 @@ impl Terminal {
                 .into_iter()
                 .map(|at| (at, Cut::EraseHistory)),
         );
+        cuts.extend(
+            self.person_clears
+                .feed(bytes)
+                .into_iter()
+                .map(|at| (at, Cut::PersonClears)),
+        );
         cuts.sort_by_key(|(at, _)| *at);
         let mut start = 0;
         for (end, cut) in cuts {
@@ -78,8 +99,14 @@ impl Terminal {
                     let seq = self.mark_seq;
                     self.callbacks().send(VtEvent::MarkBegin { seq });
                     self.vt_write(&bytes[start..end]);
-                    if let Some(anchor) = self.anchor_cursor() {
+                    let anchor = self.anchor_cursor();
+                    if let Some(anchor) = anchor {
                         self.callbacks().send(VtEvent::Anchor { seq, anchor });
+                    }
+                    match self.callbacks().mark.take() {
+                        Some(MarkKind::Output) => self.floor = anchor,
+                        Some(MarkKind::Prompt | MarkKind::End) => self.floor = None,
+                        Some(MarkKind::Input) | None => {}
                     }
                 }
                 Cut::Hold => {
@@ -99,9 +126,30 @@ impl Terminal {
                 Cut::EraseHistory => {
                     // Every byte but the final `J`: the rows to be erased are still there.
                     self.vt_write(&bytes[start..end - 1]);
-                    let erased = self.anchors_in_history();
-                    self.vt_write(&bytes[end - 1..end]);
-                    for anchor in erased {
+                    match self.erase_floor() {
+                        Floor::None => {
+                            let erased = self.anchors_in_history();
+                            self.vt_write(&bytes[end - 1..end]);
+                            for anchor in erased {
+                                self.release_anchor(anchor);
+                            }
+                        }
+                        Floor::Above => self.vt_write(&[CAN]),
+                        Floor::From { anchor, row } => {
+                            self.vt_write(&[CAN]);
+                            self.erase_history_from(row);
+                            // The output now starts on the first row left, the screen's top.
+                            self.move_anchor_to_top(anchor);
+                        }
+                    }
+                }
+                Cut::PersonClears => {
+                    self.vt_write(&bytes[start..end]);
+                    self.floor = None;
+                    // libghostty clears a screen that does not end at a prompt in place, so the
+                    // anchors there would stay on blank rows under the next prompt. The ones in
+                    // the scrollback end with the erase that follows.
+                    for anchor in self.anchors_on_screen() {
                         self.release_anchor(anchor);
                     }
                 }
@@ -120,6 +168,28 @@ impl Terminal {
         if let Some(mut hook) = self.hold_hook.take() {
             hook.held(self);
             self.hold_hook = Some(hook);
+        }
+    }
+
+    /// How much of the scrollback a `CSI 3 J` arriving now erases. While a command's output runs
+    /// on the shell's screen, only its own rows: the ones from its output mark down.
+    fn erase_floor(&self) -> Floor {
+        let Some(anchor) = self.floor else {
+            return Floor::None;
+        };
+        if self.on_alternate_screen() {
+            return Floor::None;
+        }
+        match (
+            self.anchor_point(anchor, PointSpace::Screen),
+            self.anchor_point(anchor, PointSpace::Active),
+        ) {
+            (Some(_), Some(_)) => Floor::Above,
+            (Some(at), None) => Floor::From {
+                anchor,
+                row: at.row,
+            },
+            (None, _) => Floor::None,
         }
     }
 
