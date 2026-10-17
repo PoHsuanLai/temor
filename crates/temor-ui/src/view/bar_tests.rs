@@ -41,7 +41,7 @@ fn each_plugin_has_a_header_with_its_name_and_the_rest_keep_their_words() {
     assert_eq!(
         headers,
         [
-            ("Run".to_owned(), 1),
+            ("Actions".to_owned(), 1),
             ("GitHub".to_owned(), 2),
             ("kube".to_owned(), 1)
         ]
