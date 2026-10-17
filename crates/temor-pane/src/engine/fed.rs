@@ -209,4 +209,47 @@ mod tests {
         assert_eq!(*link.sent.lock().expect("not poisoned"), b"ls\r");
         assert_eq!(*link.sizes.lock().expect("not poisoned"), vec![(30, 10)]);
     }
+
+    /// An anchor taken before a restore (the cursor where Enter was pressed while the link was
+    /// still coming up) must not name an anchor of the restored terminal: releasing the old one
+    /// would take the new prompt's anchor with it, and its command would get no card.
+    #[test]
+    fn anchors_taken_after_a_restore_never_reuse_an_earlier_anchors_id() {
+        let (events_tx, events) = channel();
+        let (handle, runner, feeder) =
+            start_fed(spec(Arc::new(Recording::default())), Arc::new(events_tx))
+                .expect("a fed pane starts without a program");
+        let thread = std::thread::spawn(move || runner.run());
+
+        let before = handle
+            .with_term(Term::anchor_cursor)
+            .expect("the cursor anchors before the restore");
+        let snapshot = handle
+            .with_term(|term| term.snapshot())
+            .expect("the screen encodes");
+        feeder.restore(snapshot);
+        loop {
+            match events.recv_timeout(Duration::from_secs(5)) {
+                Ok(PaneEvent::Reset) => break,
+                Ok(_) => {}
+                Err(_) => panic!("the pane never reported the restore"),
+            }
+        }
+
+        let after = handle
+            .with_term(Term::anchor_cursor)
+            .expect("the cursor anchors after the restore");
+        assert_ne!(after, before, "a restored terminal reused an anchor id");
+        handle.with_term(|term| term.release_anchor(before));
+        assert!(
+            handle
+                .with_term(|term| term.anchor_point(after, temor_vt::PointSpace::Screen))
+                .is_some(),
+            "releasing the anchor from before the restore released a new one"
+        );
+
+        feeder.end(None);
+        let _ = until_exited(&events);
+        thread.join().expect("the loop ends");
+    }
 }

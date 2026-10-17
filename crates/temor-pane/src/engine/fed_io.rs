@@ -98,8 +98,14 @@ fn restore(io: &mut Io, snapshot: &Snapshot) {
         &setup.palette,
     );
     // A snapshot that cannot be read leaves the old screen; the live output still follows.
-    if let Ok(term) = restored {
-        *lock_term(&io.term) = term;
+    if let Ok(mut term) = restored {
+        {
+            let mut current = lock_term(&io.term);
+            // The window may still hold anchors of the old terminal (where Enter was pressed
+            // while the link came up): the new one numbers past them, so none names its own.
+            term.number_anchors_after(&current);
+            *current = term;
+        }
         send(io, PaneEvent::Reset);
         signal_dirty(io);
     }

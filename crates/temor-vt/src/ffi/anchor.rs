@@ -170,6 +170,15 @@ impl Terminal {
         self.anchors().live.len()
     }
 
+    /// Numbers this terminal's anchors after every anchor `earlier` handed out. A terminal that
+    /// replaces another (a screen restored from a snapshot) then never reuses an id the window may
+    /// still hold from the old one, so releasing that old id cannot free one of the new anchors.
+    pub fn number_anchors_after(&mut self, earlier: &Terminal) {
+        let next = earlier.anchors().next;
+        let anchors = self.anchors_mut();
+        anchors.next = anchors.next.max(next);
+    }
+
     /// Frees an anchor. Releasing one twice, or one that never existed, does nothing.
     pub fn release_anchor(&mut self, id: AnchorId) {
         self.anchors_mut().release(id);

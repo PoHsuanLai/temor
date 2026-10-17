@@ -161,6 +161,20 @@ fn anchor_cursor_works_without_a_mark_and_is_counted() {
 }
 
 #[test]
+fn a_terminal_numbered_after_another_never_reuses_its_anchor_ids() {
+    let (mut old, _old_rx) = term_with_scrollback(20, 5, 100);
+    let taken = [old.anchor_cursor(), old.anchor_cursor()].map(|id| id.expect("anchored"));
+    let (mut new, _new_rx) = term_with_scrollback(20, 5, 100);
+    new.number_anchors_after(&old);
+    let fresh = new.anchor_cursor().expect("anchored");
+    assert!(!taken.contains(&fresh), "{fresh:?} reuses one of {taken:?}");
+    for id in taken {
+        new.release_anchor(id);
+    }
+    assert!(new.anchor_point(fresh, PointSpace::Active).is_some());
+}
+
+#[test]
 fn the_alternate_screen_is_reported_while_a_full_screen_program_runs() {
     let (mut t, _rx) = term_with_scrollback(20, 5, 100);
     assert!(!t.on_alternate_screen());
