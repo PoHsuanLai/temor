@@ -36,6 +36,27 @@ fn wait_for_html(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) {
     }
 }
 
+/// Where `selector` is drawn once the list has finished opening: the same over two frames, and a
+/// press there lands on it. Clicking earlier can land on whatever was under the list.
+fn settled_centre(h: &mut Harness, selector: &str) -> Point {
+    let start = Instant::now();
+    loop {
+        let before = h.centre(selector);
+        h.advance(Duration::from_millis(50));
+        if let Some(at) = h.centre(selector)
+            && before == Some(at)
+            && h.hits(at, selector)
+        {
+            return at;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "{selector} never settled:\n{}",
+            h.html()
+        );
+    }
+}
+
 #[test]
 fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_shelf() {
     if !super::support::tools_present() {
@@ -103,9 +124,10 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
 
     // Paste path types the quoted path into the terminal the person was using and puts the list
     // away; nothing runs.
-    let paste = h
-        .centre(".temor-dl-actions .ds-button[aria-description=\"Type the file's path into the terminal you were using\"]")
-        .unwrap_or_else(|| panic!("no Paste path button:\n{}", h.html()));
+    let paste = settled_centre(
+        &mut h,
+        ".temor-dl-actions .ds-button[aria-description=\"Type the file's path into the terminal you were using\"]",
+    );
     h.send(Input::click(paste));
     wait_until(&mut h, &probe, "the pasted path", |s| {
         s.replace('\n', "").contains("Downloads/note.txt")
@@ -124,7 +146,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
     wait_for_html(&mut h, "the shelf's rows", |html| {
         html.contains("Show in folder")
     });
-    let row = h.centre(".temor-dl").expect("the row");
+    let row = settled_centre(&mut h, ".temor-dl");
     h.send(Input::press(row, PointerButton::Secondary));
     wait_for_html(&mut h, "the row's menu", |html| {
         html.contains("ds-menu-item")
