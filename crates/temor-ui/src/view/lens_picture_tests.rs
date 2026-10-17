@@ -13,13 +13,56 @@ const GUTTER: Gutter = Gutter {
 fn a_picture_takes_whole_rows_under_the_blocks_last_row_and_never_grows() {
     // (name, size in device pixels, factor, last row, pane width, want (top, width, rows))
     #[rustfmt::skip]
-    let cases: &[(&str, (u32, u32), f32, i64, f32, (f32, f32, u32))] = &[
-        ("small, on a plain screen", (100, 30), 1.0, 5, 400.0, (124.0, 100.0, 2)),
-        ("twice the pixels, half the size", (200, 60), 2.0, 5, 400.0, (124.0, 100.0, 2)),
-        ("exactly one row", (100, 20), 1.0, 0, 400.0, (24.0, 100.0, 1)),
-        ("wider than the pane shrinks to the room", (760, 100), 1.0, 2, 400.0, (64.0, 380.0, 3)),
-        ("too tall stops at the most rows", (100, 5000), 1.0, 0, 400.0, (24.0, 100.0, MOST_ROWS)),
-        ("a block that ended above the view starts above it", (100, 20), 1.0, -3, 400.0, (-36.0, 100.0, 1)),
+    type Case = (&'static str, (u32, u32), f32, i64, f32, (f32, f32, u32));
+    let cases: &[Case] = &[
+        (
+            "small, on a plain screen",
+            (100, 30),
+            1.0,
+            5,
+            400.0,
+            (124.0, 100.0, 2),
+        ),
+        (
+            "twice the pixels, half the size",
+            (200, 60),
+            2.0,
+            5,
+            400.0,
+            (124.0, 100.0, 2),
+        ),
+        (
+            "exactly one row",
+            (100, 20),
+            1.0,
+            0,
+            400.0,
+            (24.0, 100.0, 1),
+        ),
+        (
+            "wider than the pane shrinks to the room",
+            (760, 100),
+            1.0,
+            2,
+            400.0,
+            (64.0, 380.0, 3),
+        ),
+        (
+            "too tall stops at the most rows",
+            (100, 5000),
+            1.0,
+            0,
+            400.0,
+            (24.0, 100.0, MOST_ROWS),
+        ),
+        (
+            "a block that ended above the view starts above it",
+            (100, 20),
+            1.0,
+            -3,
+            400.0,
+            (-36.0, 100.0, 1),
+        ),
     ];
     for (name, size, factor, last, pane, (top, width, rows)) in cases {
         let spot = lens_spot(*size, *factor, *last, GUTTER, *pane);

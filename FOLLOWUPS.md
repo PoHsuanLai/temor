@@ -1554,8 +1554,11 @@ shortcuts in the sidebar and more menus, a `host:path` with an IPv6 address told
 temor-remote's socket folder tightened, the edit copy kept while a conflict waits, and **P11
 plugins** (crate `temor-plugins` on bayonet fe489cf: `row.facts` on the sidebar row, `open.provider`
 rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
-- [ ] Plugins, the drawing side (view/): plugin facts as chips (`ChipKind::Plugin`), the lens item in
-      the block menu and its picture under the block, per-plugin bar headers (`Section::Plugin`).
+- [x] Plugins, the drawing side (Batch 27): a header per plugin in the bar (`Section::Plugin`),
+      plugin facts as chips (`ChipKind::Plugin`, kept on older headers), "Show with <plugin>" and
+      "Hide" in the block menu, and the picture drawn under the block (at most 24 rows).
+- [ ] A lens picture covers the rows below its block instead of pushing them down: the grid is one
+      texture, so this needs a row gap in temor-render (`followups-b27-plugview.md`).
 - [ ] Plugins: the built-in Claude Code and git adapters rewritten as plugins; detent's Extensions
       page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
 - [ ] Ubuntu 24.04+ user namespaces → `NoSandbox`: belongs beside bulkhead's runner, which temor does
