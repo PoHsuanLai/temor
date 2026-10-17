@@ -192,6 +192,20 @@ impl Session {
         })
     }
 
+    /// The viewport row of a block's last row: negative above the view, past the last row below
+    /// it. Where a picture under the block starts is the row after. `None` on a full-screen
+    /// program's screen and for a block with no rows.
+    pub fn block_last_row(&self, id: BlockId) -> Option<i64> {
+        let view = self.view_rows()?;
+        let span = self.span_of(id, &view)?;
+        Some(i64::from(span.last) - i64::from(view.top))
+    }
+
+    /// Device pixels to a logical pixel on this pane's screen.
+    pub fn scale_factor(&self) -> f32 {
+        self.scale.factor()
+    }
+
     /// Scrolls so a block's prompt is the top row.
     pub fn scroll_block_to_top(&mut self, id: BlockId) {
         let Some((first, _)) = self.block_rows(id) else {

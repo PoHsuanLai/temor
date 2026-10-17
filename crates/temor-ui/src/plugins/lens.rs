@@ -5,6 +5,9 @@
 //! under the block read from here (`Hub::block_lenses`, `Hub::lens_image_of`).
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use ds::prelude::ImageSource;
 
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_plugins::{Drawing, Plugin};
@@ -35,6 +38,33 @@ pub struct LensImage {
     pub plugin: String,
     /// The picture.
     pub drawing: Drawing,
+    /// The picture as the page draws it (a PNG as a `data:` address), made once when it arrives.
+    pub source: Arc<str>,
+}
+
+/// What the window needs to draw one block's picture: its size in device pixels and its address.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LensPicture {
+    /// The block it sits under.
+    pub block: BlockId,
+    /// Pixels across.
+    pub width: u32,
+    /// Pixels down.
+    pub height: u32,
+    /// The picture as a `data:` address.
+    pub source: Arc<str>,
+}
+
+/// The drawing as a PNG, or `None` when it can't be written.
+fn png_of(drawing: &Drawing) -> Option<Vec<u8>> {
+    let mut bytes = Vec::new();
+    let mut encoder = png::Encoder::new(&mut bytes, drawing.width(), drawing.height());
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().ok()?;
+    writer.write_image_data(drawing.rgba()).ok()?;
+    writer.finish().ok()?;
+    Some(bytes)
 }
 
 /// Whether a picture that arrived was asked for and is still wanted.
@@ -67,10 +97,36 @@ impl LensBook {
         }
     }
 
-    /// Keeps the picture `plugin` drew for the block; a later one replaces it.
+    /// Keeps the picture `plugin` drew for the block; a later one replaces it. A picture that
+    /// can't be turned into a PNG is not kept.
     pub fn put(&mut self, pane: PaneId, block: BlockId, plugin: String, drawing: Drawing) {
+        let Some(bytes) = png_of(&drawing) else {
+            self.images.remove(&(pane, block));
+            return;
+        };
+        let source = Arc::from(ImageSource::png(&bytes).0);
+        self.images.insert(
+            (pane, block),
+            LensImage {
+                plugin,
+                drawing,
+                source,
+            },
+        );
+    }
+
+    /// The pictures of a pane, for drawing.
+    pub fn pictures(&self, pane: PaneId) -> Vec<LensPicture> {
         self.images
-            .insert((pane, block), LensImage { plugin, drawing });
+            .iter()
+            .filter(|((owner, _), _)| *owner == pane)
+            .map(|((_, block), image)| LensPicture {
+                block: *block,
+                width: image.drawing.width(),
+                height: image.drawing.height(),
+                source: Arc::clone(&image.source),
+            })
+            .collect()
     }
 
     /// The picture for the block.

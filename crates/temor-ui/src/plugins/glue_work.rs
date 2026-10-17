@@ -10,7 +10,7 @@ use temor_plugins::{Generations, Plugin, lens_block};
 use super::{Desk, Hub, HubRef};
 use crate::plugins::adapter::{Follow, follow, status_line};
 use crate::plugins::host::{Done, log_trouble};
-use crate::plugins::lens::{LensImage, LensOffer};
+use crate::plugins::lens::{LensImage, LensOffer, LensPicture};
 use crate::plugins::state::Running;
 
 /// Milliseconds since the epoch: the start of an adapter run's sequence numbers, so a run after
@@ -180,11 +180,26 @@ impl HubRef {
     pub fn lens_image_of(&self, pane: PaneId, block: BlockId) -> Option<LensImage> {
         self.0.borrow().lens_image_of(pane, block)
     }
+
+    /// The pictures lenses drew in the pane, as the window draws them.
+    pub fn lens_pictures(&self, pane: PaneId) -> Vec<LensPicture> {
+        self.0.borrow().plugins.lens.pictures(pane)
+    }
+
+    /// Whether a lens drew a picture for the block (the menu then offers to hide it).
+    pub fn lens_shown(&self, pane: PaneId, block: BlockId) -> bool {
+        self.0.borrow().plugins.lens.image(pane, block).is_some()
+    }
 }
 
 impl Desk {
     /// Asks a lens to draw a block, and draws the window again when it has.
     pub fn lens_run(&self, pane: PaneId, block: BlockId, lens: &str, width: u32) {
         self.settle(|hub| hub.lens_run(pane, block, lens, width));
+    }
+
+    /// Takes a block's picture away, and draws the window again.
+    pub fn lens_hide(&self, pane: PaneId, block: BlockId) {
+        self.settle(|hub| hub.lens_hide(pane, block));
     }
 }
