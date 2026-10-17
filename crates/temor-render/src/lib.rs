@@ -24,7 +24,8 @@
 //! one, at a logical size. swash shapes and rasterises into glyph atlases; COLRv1 emoji are
 //! painted through vello_cpu (skrifa's colour painter) into the colour atlas; box drawing, block
 //! elements and Powerline arrows are drawn procedurally. [`CellMetrics`] and [`GridFit`] size the
-//! grid in whole device pixels and map pixels to cells.
+//! grid in whole device pixels and map pixels to cells. [`RowLayout`] shows the drawn grid in
+//! slices with room between rows (a picture under a command's output) without redrawing it.
 //!
 //! # Example
 //!
@@ -72,8 +73,8 @@ pub use frame::{CapturedFrame, FrameCapture};
 #[cfg(feature = "gpu")]
 pub use gpu::{GpuFrame, GpuRenderer};
 pub use metrics::{
-    CellHit, CellMetrics, CellPos, CellSide, FontSize, GridFit, HitRegion, Padding, PixelSize,
-    Scale, fit_grid,
+    CellHit, CellMetrics, CellPos, CellSide, FontSize, Gap, GridFit, GridHit, HitRegion, Insert,
+    LayoutParams, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
 };
 pub use palette::Palette;
 pub use renderer::{
