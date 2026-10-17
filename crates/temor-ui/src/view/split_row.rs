@@ -1,13 +1,19 @@
 //! A tab with several panes, drawn as Arc draws a split in its sidebar: one row cut into equal
 //! segments, a segment per pane in the order the panes stand, each with the terminal glyph and
 //! the pane's name, a hairline between them. The pane with the keys is the segment drawn in ink.
+//! A pane where an agent works or waits shows the companion's orb in place of its glyph, so the
+//! row says which pane wants the person.
 //! Pressing a segment focuses its pane; dragging one out of the sidebar tears the pane off into a
 //! tab of its own; a right click is the tab's menu with Close Pane for that pane alone. Nothing
 //! closes on hover, as in mailo. A split of three or more panes is squeezed as Arc's is: the pane
 //! with the keys keeps its name, the others are their glyphs alone.
 
 use dioxus::prelude::*;
+use ds::base::vocab::CompanionPresence;
+use ds::components::companion::orb::model::OrbSize;
+use ds::components::companion::orb::view::CompanionOrb;
 use ds::prelude::{IconSize, IconView, Selection};
+use temor_core::presence::companion_presence;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
 
@@ -103,7 +109,14 @@ fn segment(
                         }
                     },
                     span { class: "temor-seg-glyph",
-                        IconView { source: prompt_glyph(GLYPH), size: GLYPH }
+                        match companion_presence(tile.agent) {
+                            CompanionPresence::Idle => rsx! {
+                                IconView { source: prompt_glyph(GLYPH), size: GLYPH }
+                            },
+                            presence => rsx! {
+                                CompanionOrb { presence, size: OrbSize::Inline }
+                            },
+                        }
                     }
                     span { class: "temor-seg-name ds-mono", "{tile.title}" }
                 }

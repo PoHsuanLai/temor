@@ -41,6 +41,8 @@ pub struct Tile {
     pub title: String,
     /// Selected when this pane has the keys in its tab.
     pub selection: Selection,
+    /// The agent in this pane, if one works or waits there: its segment shows the orb.
+    pub agent: AgentState,
 }
 
 /// One tab's row.
@@ -222,6 +224,7 @@ impl Hub {
                         true => Selection::Selected,
                         false => Selection::Unselected,
                     },
+                    agent: self.agents.radar.most_urgent([pane]),
                 }
             })
             .collect()
