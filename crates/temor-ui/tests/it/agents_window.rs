@@ -9,12 +9,12 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input};
+use ds_harness::{Driver, Harness, Input, Query};
 use temor_pane::report::{ReportState, StatusLine, encode_hello, encode_status};
 use temor_ui::view::probe::Probe;
 
 use super::support::{scratch_path, tools_present};
-use super::window::{harness, wait_until};
+use super::window::{chord, harness, wait_until};
 
 /// How many tab rows show `presence` (`idle`, `working`, `waiting`). An idle tab has no orb (a
 /// terminal glyph leads it): the tabs that show neither of the others.
@@ -145,4 +145,34 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
     wait_until(&mut h, &probe, "the waiting pane to have the keys", |s| {
         s.contains("7501")
     });
+}
+
+/// A tab split in two draws its panes as segments; the pane whose program says it waits still
+/// shows as a waiting orb in the sidebar (found by the end-to-end workflow test: a split tab's
+/// row draws each segment's prompt glyph and drops the tab's orb).
+#[test]
+fn a_waiting_program_in_a_split_tab_still_shows_its_orb() {
+    if !tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("ag-split-orb", &probe);
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    h.send(Input::click(Point {
+        x: Px(300.0),
+        y: Px(200.0),
+    }));
+    h.advance(Duration::from_millis(100));
+    // ⌘D: the tab splits, and the new pane has the keys.
+    chord(&mut h, 'd');
+    assert_eq!(
+        h.count("[aria-label=\"Terminal\"]"),
+        2,
+        "the tab did not split"
+    );
+    type_line(
+        &mut h,
+        "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
+    );
+    wait_for_orbs(&mut h, "a waiting orb on the split tab", &[("waiting", 1)]);
 }
