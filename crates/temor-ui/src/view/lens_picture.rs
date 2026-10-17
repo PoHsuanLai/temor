@@ -1,9 +1,9 @@
 //! The picture a lens drew, under its block (PLAN P11). It is an `<img>` beside the grid, like
-//! the chips and the block header: the grid is one texture of cells, so a picture inside it would
-//! need rows the terminal does not have. Beside the grid it is placed by the block's last row
-//! each time the pane is drawn, so it follows the block as it scrolls, and a layer that clips to
-//! the pane keeps it from being drawn outside. The picture takes whole rows (its extent), and
-//! never more than [`MOST_ROWS`].
+//! the chips and the block header, set in the room the session makes under the block's last row
+//! (the grid is shown in slices around it, `session::room`). It is placed each time the pane is
+//! drawn, so it follows the block as it scrolls, and a layer that clips to the pane keeps it from
+//! being drawn outside. The picture takes whole rows (its extent), and never more than
+//! [`MOST_ROWS`]; while its block's last row is off the screen there is no room and no picture.
 
 use dioxus::prelude::*;
 use ds::prelude::ImageSource;
@@ -13,12 +13,12 @@ use crate::plugins::lens::LensPicture;
 use crate::session::{Gutter, Session};
 
 /// The most rows a picture takes under its block.
-pub const MOST_ROWS: u32 = 24;
+pub const MOST_ROWS: u32 = crate::session::LENS_MOST_ROWS;
 
 /// Where one picture goes and how much room it takes, in logical pixels in the pane.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LensSpot {
-    /// The top of the first row under the block.
+    /// The top of the room under the block.
     pub top: f32,
     /// The left edge: the pane's padding.
     pub left: f32,
@@ -39,31 +39,31 @@ pub struct LensView {
 }
 
 /// How big a picture is drawn: its own size, in logical pixels, shrunk to the room between the
-/// pane's paddings (never enlarged), and the rows that takes, at most [`MOST_ROWS`].
+/// pane's paddings (never enlarged), and the rows that takes, at most [`MOST_ROWS`]. It goes in
+/// the room under viewport row `last_row`; `None` where there is none.
 pub fn lens_spot(
     size: (u32, u32),
-    factor: f32,
     last_row: i64,
-    gutter: Gutter,
+    gutter: &Gutter,
     pane_width: f32,
-) -> LensSpot {
-    let factor = factor.max(f32::EPSILON);
+) -> Option<LensSpot> {
+    let factor = gutter.factor.max(f32::EPSILON);
     let (width, height) = (size.0 as f32 / factor, size.1 as f32 / factor);
     let room = (pane_width - 2.0 * gutter.side).max(1.0);
     let shrink = (room / width.max(1.0)).min(1.0);
     let cell_h = gutter.cell_h.max(1.0);
     let rows = ((height * shrink / cell_h).ceil() as u32).clamp(1, MOST_ROWS);
-    LensSpot {
-        top: gutter.top + (last_row + 1) as f32 * cell_h,
+    Some(LensSpot {
+        top: gutter.insert_top(last_row)?,
         left: gutter.side,
         width: width * shrink,
         height: rows as f32 * cell_h,
         rows,
-    }
+    })
 }
 
 /// The width a lens is asked to draw in, in device pixels: the room between the pane's paddings.
-pub fn request_width(pane_width: f32, gutter: Gutter, factor: f32) -> u32 {
+pub fn request_width(pane_width: f32, gutter: &Gutter, factor: f32) -> u32 {
     ((pane_width - 2.0 * gutter.side).max(1.0) * factor).round() as u32
 }
 
@@ -74,7 +74,7 @@ pub fn lens_request(session: &Session) -> Option<(BlockId, u32)> {
     let gutter = session.gutter_geometry()?;
     Some((
         block,
-        request_width(pane_width, gutter, session.scale_factor()),
+        request_width(pane_width, &gutter, session.scale_factor()),
     ))
 }
 
@@ -84,20 +84,13 @@ pub fn lens_views(session: &Session, pictures: Vec<LensPicture>) -> Vec<LensView
     else {
         return Vec::new();
     };
-    let factor = session.scale_factor();
     pictures
         .into_iter()
         .filter_map(|picture| {
             let last = session.block_last_row(picture.block)?;
             Some(LensView {
                 block: picture.block,
-                spot: lens_spot(
-                    (picture.width, picture.height),
-                    factor,
-                    last,
-                    gutter,
-                    pane_width,
-                ),
+                spot: lens_spot((picture.width, picture.height), last, &gutter, pane_width)?,
                 source: ImageSource(picture.source.to_string()),
             })
         })

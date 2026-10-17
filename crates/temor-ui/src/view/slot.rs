@@ -11,7 +11,7 @@ use ds_blitz::{PixelFormat, Pixels, TextureHandle};
 use temor_render::{Palette, PixelSize, Scale};
 
 use super::probe::Probe;
-use crate::session::Session;
+use crate::session::{Relaid, Session};
 
 /// What the window keeps for one pane between renders.
 #[derive(Default)]
@@ -56,8 +56,9 @@ pub enum Display {
 }
 
 /// Repaints the pane's texture (when it is shown and the device exists) and publishes the screen
-/// to the probe.
-pub fn repaint(slot: &RefCell<Slot>) {
+/// to the probe. Whether the rows moved around the room under blocks: the window then draws its
+/// slices of the texture again.
+pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
     let mut slot = slot.borrow_mut();
     let Slot {
         session,
@@ -68,13 +69,14 @@ pub fn repaint(slot: &RefCell<Slot>) {
         ..
     } = &mut *slot;
     let Some(session) = session.as_mut() else {
-        return;
+        return Relaid::Same;
     };
+    let mut relaid = Relaid::Same;
     if *device == Device::Ready
         && *display == Display::Shown
         && let Some(texture) = texture.as_ref()
     {
-        let _ = session.paint(|bytes, size| {
+        let painted = session.paint(|bytes, size| {
             if let Ok(pixels) = Pixels::new(
                 PixelFormat::Rgba8Premultiplied,
                 size.width.0,
@@ -84,10 +86,12 @@ pub fn repaint(slot: &RefCell<Slot>) {
                 let _ = texture.update(&pixels);
             }
         });
+        relaid = painted.unwrap_or(Relaid::Same);
     }
     if let Some(probe) = probe {
         probe.publish(session.screen_text());
     }
+    relaid
 }
 
 impl Slot {

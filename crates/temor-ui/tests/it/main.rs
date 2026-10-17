@@ -13,6 +13,7 @@ mod coherence;
 mod desktop;
 mod facts;
 mod host_files;
+mod lens_room;
 mod offer;
 mod peek;
 mod persist;

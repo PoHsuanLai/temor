@@ -18,7 +18,7 @@ use temor_pane::{Hold, PaneEvent, TransferEvent};
 use super::desk::Desk;
 use super::model::Hub;
 use super::offer::{Heard, OfferRedraw};
-use crate::session::{BELL_MARK, Notice};
+use crate::session::{BELL_MARK, Notice, Relaid};
 use crate::view::slot::{Slot, release_hold_later, repaint};
 
 /// What a batch of events asks the window to do.
@@ -172,12 +172,15 @@ pub fn spawn_event_loop(desk: Desk) {
             for (slot, generation) in holds {
                 release_hold_later(slot, generation);
             }
+            // Rows that moved around the room under a block need their slices drawn again.
+            let mut moved = false;
             for pane in &paint {
                 if let Some(slot) = desk.hub.slot(*pane) {
-                    repaint(&slot);
+                    moved |= repaint(&slot) == Relaid::Moved;
                 }
             }
-            let redraw = heard
+            let redraw = moved
+                || heard
                 || !chrome.is_empty()
                 || !bell.is_empty()
                 || !asks.is_empty()

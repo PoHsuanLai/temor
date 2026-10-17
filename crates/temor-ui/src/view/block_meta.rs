@@ -45,20 +45,20 @@ pub fn metas_of(session: &Session, skip: Option<BlockId>) -> Vec<MetaView> {
     let Some(gutter) = session.gutter_geometry() else {
         return Vec::new();
     };
-    let row = header_row(session, gutter);
+    let row = header_row(session, &gutter);
     session
         .block_marks()
         .into_iter()
         .filter(|mark| Some(mark.id) != skip)
         .filter_map(|mark| {
-            meta_of(&mark, gutter)
+            meta_of(&mark, &gutter)
                 .filter(|meta| row.is_some_and(|row| row.fits(mark.header_cols, &meta.text)))
         })
         .collect()
 }
 
 /// The room on a header row, once the pane has a size.
-pub fn header_row(session: &Session, gutter: Gutter) -> Option<HeaderRow> {
+pub fn header_row(session: &Session, gutter: &Gutter) -> Option<HeaderRow> {
     session
         .grid_logical()
         .map(|(pane_width, cell_width)| HeaderRow {
@@ -88,7 +88,7 @@ impl HeaderRow {
 }
 
 /// On the header line, beside the folder and branch.
-fn meta_of(mark: &BlockMark, gutter: Gutter) -> Option<MetaView> {
+fn meta_of(mark: &BlockMark, gutter: &Gutter) -> Option<MetaView> {
     Some(MetaView {
         id: mark.id,
         text: meta_text(mark.outcome, mark.took_ms)?,

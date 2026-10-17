@@ -96,6 +96,7 @@ impl Hub {
             } => {
                 if self.plugins.lens.arrived(pane, block) == Wanted::Yes {
                     self.plugins.lens.put(pane, block, plugin, drawing);
+                    self.lens_room(pane);
                 }
             }
             Done::AdapterEnded { pane, run } => {

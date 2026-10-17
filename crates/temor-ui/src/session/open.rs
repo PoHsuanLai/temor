@@ -89,6 +89,8 @@ impl Session {
             clipboard: kit.clipboard,
             opener: kit.opener,
             fit: None,
+            inserts: Vec::new(),
+            layout: None,
             scale: Scale::new(1.0),
             pixels: PixelSize::new(0, 0),
             selection: None,

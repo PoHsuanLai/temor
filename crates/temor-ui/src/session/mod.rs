@@ -20,6 +20,7 @@ mod open;
 mod osc52;
 mod pointer;
 mod read;
+mod room;
 mod running;
 mod viewer;
 
@@ -36,5 +37,6 @@ pub use model::{
 };
 pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
+pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
 pub use viewer::ViewAsk;

@@ -27,7 +27,7 @@ pub struct Chrome {
 /// The tools for the first of `hovered` and the selected block that has a place on screen. Their
 /// meta is left out where it would reach the header's text; the buttons show whatever the room,
 /// since the person asked for them.
-fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: Gutter) -> Option<ToolsView> {
+fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Option<ToolsView> {
     [hovered, session.selected_block()]
         .into_iter()
         .flatten()
@@ -70,19 +70,20 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: Gutter) -> Opti
 /// clears when the pointer leaves); `_hovered`, the window's signal of it, only makes the window
 /// draw again when it changes. `held` is the block whose "more" menu is up: its tools stay.
 pub fn chrome_of(session: &Session, _hovered: Option<BlockId>, held: Option<BlockId>) -> Chrome {
-    let gutter = session.gutter_geometry().unwrap_or(Gutter {
-        side: 0.0,
-        top: 0.0,
-        cell_h: 0.0,
-    });
+    let gutter = session.gutter_geometry();
     let columns = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
+    // Over the first row shown whole and everything above it.
     let header = session.sticky_header().map(|header| HeaderView {
         id: header.id,
         command: clip_chars(&header.command, columns),
-        inset: gutter.side,
-        height: gutter.row_top(1),
+        inset: gutter.as_ref().map_or(0.0, |g| g.side),
+        height: gutter
+            .as_ref()
+            .map_or(0.0, |g| g.row_top(g.first_shown() + 1)),
     });
-    let tools = tools_of(session, held.or(session.hovered_block()), gutter);
+    let tools = gutter
+        .as_ref()
+        .and_then(|g| tools_of(session, held.or(session.hovered_block()), g));
     let metas = metas_of(session, tools.as_ref().map(|tools| tools.id));
     Chrome {
         header,

@@ -4,7 +4,8 @@
 use temor_core::block::{BlockState, Outcome};
 use temor_core::facts::Facts;
 use temor_core::vocab::ids::BlockId;
-use temor_vt::{PointSpace, SurfacePoint};
+use temor_render::RowLayout;
+use temor_vt::{PointSpace, Row, SurfacePoint};
 
 use super::super::Session;
 use super::super::blocks::HeaderFacts;
@@ -31,18 +32,37 @@ pub struct BlockMark {
 }
 
 /// Where the grid's rows sit in the pane, in logical pixels: the inset on the left and right,
-/// the inset above the first row, and a row's height.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// the inset above the first row as drawn, a row's height, and where the rows are shown around
+/// the room under blocks with pictures.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Gutter {
     pub side: f32,
     pub top: f32,
     pub cell_h: f32,
+    /// Device pixels to a logical pixel.
+    pub factor: f32,
+    pub layout: RowLayout,
 }
 
 impl Gutter {
-    /// The top of viewport row `row`.
+    /// The top of viewport row `row` as it is shown.
     pub fn row_top(&self, row: u32) -> f32 {
-        self.top + row as f32 * self.cell_h
+        let shift = self
+            .layout
+            .row_shift(Row(u16::try_from(row).unwrap_or(u16::MAX)));
+        self.top + row as f32 * self.cell_h + shift as f32 / self.factor.max(f32::EPSILON)
+    }
+
+    /// The first viewport row shown whole (rows above it are cut by the room below them).
+    pub fn first_shown(&self) -> u32 {
+        u32::from(self.layout.visible_rows().start)
+    }
+
+    /// Where the room under viewport row `after` begins, when a picture has room there.
+    pub fn insert_top(&self, after: i64) -> Option<f32> {
+        let row = u16::try_from(after).ok()?;
+        let top = self.layout.insert_top(Row(row))?;
+        Some(top as f32 / self.factor.max(f32::EPSILON))
     }
 }
 
@@ -165,15 +185,15 @@ impl Session {
     /// The block whose gutter is under `at` (device pixels in the pane), if the point is in the
     /// left margin, on a row that belongs to a block. Never on a full-screen program's screen.
     pub fn gutter_block(&self, at: SurfacePoint) -> Option<BlockId> {
-        let fit = self.placed()?;
-        let margin = i64::from(fit.padding.left.0);
+        let placed = self.placed()?;
+        let margin = i64::from(placed.fit.padding.left.0);
         if at.x < 0 || i64::from(at.x) >= margin {
             return None;
         }
         if self.pane.with_term(|term| term.on_alternate_screen()) {
             return None;
         }
-        let hit = fit.cell_at(at);
+        let hit = placed.cell_at(at);
         let top = self.viewport_top().ok()?;
         let row = top.saturating_add(u32::from(hit.pos.row.0));
         self.block_at_row(row)
@@ -181,12 +201,14 @@ impl Session {
 
     /// Where the grid's rows sit in the pane, for placing things beside them.
     pub fn gutter_geometry(&self) -> Option<Gutter> {
-        let fit = self.placed()?;
-        let factor = self.scale.factor();
+        let placed = self.placed()?;
+        let (fit, factor) = (placed.fit, self.scale.factor());
         Some(Gutter {
             side: PADDING_LOGICAL,
             top: fit.padding.top.0 as f32 / factor,
             cell_h: fit.cell.height.0 as f32 / factor,
+            factor,
+            layout: placed.layout,
         })
     }
 

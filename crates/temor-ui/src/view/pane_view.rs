@@ -17,7 +17,7 @@ use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
-use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
+use ds_blitz::use_gpu;
 use temor_core::remote::Grant;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
@@ -34,6 +34,7 @@ use super::convert::scale_of;
 use super::fact_chips::{ChipPlace, FactChips, chips_for, header_chips};
 use super::find_bar::FindBar;
 use super::first_hint::{FirstHint, hint_for};
+use super::grid_slices::{GridTexture, grid_cut};
 use super::handlers::{
     bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
     find_query, find_step, header_press, then_regain,
@@ -272,6 +273,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             .collect()
     };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
+    // The grid in slices around the room under blocks with pictures, as the last paint laid it out.
+    let cut = slot.borrow().session.as_ref().and_then(grid_cut);
     // The block menu speaks of what is picked now.
     let menu_block = match block_menu() {
         Some(_) => slot
@@ -397,7 +400,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         let mut ui = ui;
                         ui += 1;
                     },
-                    TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
+                    GridTexture { texture: texture.clone(), cut: cut.clone() }
                     if let Some(text) = preedit() {
                         div { class: "temor-preedit", "{text}" }
                     }

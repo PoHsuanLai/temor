@@ -6,5 +6,6 @@ mod gutter;
 mod marks;
 mod notify;
 mod picks;
+mod room;
 mod shells;
 mod support;

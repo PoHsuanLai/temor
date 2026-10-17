@@ -6,6 +6,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::PaneEvent;
 use temor_plugins::message::LensBlock;
 use temor_plugins::{Generations, Plugin, lens_block};
+use temor_vt::Px;
 
 use super::{Desk, Hub, HubRef};
 use crate::plugins::adapter::{Follow, follow, status_line};
@@ -97,6 +98,24 @@ impl Hub {
     /// Takes the block's picture away.
     pub fn lens_hide(&mut self, pane: PaneId, block: BlockId) {
         self.plugins.lens.remove(pane, block);
+        self.lens_room(pane);
+    }
+
+    /// Tells the pane's session which blocks have a picture under them and how tall each is, so
+    /// it makes room for them between the rows.
+    pub(in crate::hub) fn lens_room(&self, pane: PaneId) {
+        let inserts = self
+            .plugins
+            .lens
+            .pictures(pane)
+            .into_iter()
+            .map(|picture| (picture.block, Px(picture.height)))
+            .collect();
+        if let Some(slot) = self.slots.get(&pane)
+            && let Some(session) = slot.borrow_mut().session.as_mut()
+        {
+            session.set_inserts(inserts);
+        }
     }
 
     /// The agent in `pane` changed from `was` to `is`: the adapter for the old one stops and the

@@ -47,13 +47,13 @@ impl Session {
     /// A click that never left its cell, at `at`: it picks the block there (Shift: the run from
     /// the last pick; Ctrl or ⌘: in or out), or lets go of the pick where there is no block.
     pub(in crate::session) fn pick_at(&mut self, at: SurfacePoint, mods: Modifiers) {
-        let Some(fit) = self.placed() else {
+        let Some(placed) = self.placed() else {
             return;
         };
         let Ok(top) = self.viewport_top() else {
             return;
         };
-        let row = top.saturating_add(u32::from(fit.cell_at(at).pos.row.0));
+        let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
         let alternate = self.pane.with_term(|term| term.on_alternate_screen());
         match self.block_at_row(row).filter(|_| !alternate) {
             Some(id) => {
@@ -280,7 +280,7 @@ impl Session {
     /// stays selected. None where there is no block, on a full-screen program's screen, or while
     /// the program has the mouse: the click is the program's then.
     pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, UiError> {
-        let (Some(fit), Ok(top)) = (self.placed(), self.viewport_top()) else {
+        let (Some(placed), Ok(top)) = (self.placed(), self.viewport_top()) else {
             return Ok(None);
         };
         let (alternate, tracking) = self
@@ -289,7 +289,7 @@ impl Session {
         if alternate || tracking {
             return Ok(None);
         }
-        let row = top.saturating_add(u32::from(fit.cell_at(at).pos.row.0));
+        let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
         let Some(id) = self.block_at_row(row) else {
             return Ok(None);
         };

@@ -8,6 +8,7 @@ use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Lifetime, Notice};
+use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
 use crate::view::card_colours::CardColours;
@@ -74,6 +75,7 @@ impl Session {
             // Recorded only once the terminal and the program have the new size.
             self.pane.resize(fit.grid, fit.cell)?;
             self.fit = Some(fit);
+            self.relayout();
         }
         Ok(changed)
     }
@@ -86,10 +88,11 @@ impl Session {
         Ok(())
     }
 
-    /// Draws the pane when it has a size, handing its pixels to `show`.
-    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<(), UiError> {
+    /// Draws the pane when it has a size, handing its pixels to `show`, and lays its rows out
+    /// around the room under blocks with pictures. Whether the rows moved.
+    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<Relaid, UiError> {
         if self.pixels.width.0 == 0 || self.pixels.height.0 == 0 {
-            return Ok(());
+            return Ok(Relaid::Same);
         }
         let blink = self.blink_now();
         self.blink.painted = blink;
@@ -109,7 +112,8 @@ impl Session {
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_pane::PaintSource`).
-        self.painter.paint(&self.pane, view, show)
+        self.painter.paint(&self.pane, view, show)?;
+        Ok(self.relayout())
     }
 
     /// What one event from the pane means for the window. Output is never blocked on it.

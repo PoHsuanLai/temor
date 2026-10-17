@@ -19,6 +19,7 @@ pub mod fact_chips;
 pub mod find_bar;
 pub mod first_hint;
 pub mod folder_fit;
+pub mod grid_slices;
 pub mod handlers;
 pub mod host_banners;
 pub mod host_words;

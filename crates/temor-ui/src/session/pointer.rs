@@ -45,7 +45,7 @@ impl Session {
         mods: Modifiers,
         now: Duration,
     ) -> Result<(), UiError> {
-        let Some(fit) = self.placed() else {
+        let Some(placed) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
@@ -53,12 +53,12 @@ impl Session {
         if tracking && !shift {
             // The program has the mouse: nothing of the blocks is picked under it.
             self.picks.clear();
-            let surface = fit.mouse_surface();
+            let surface = placed.fit.mouse_surface();
             let input = MouseInput {
                 action: MouseAction::Press,
                 button: Some(button),
                 mods,
-                at,
+                at: placed.drawn_point(at),
             };
             let bytes = self
                 .pane
@@ -66,7 +66,7 @@ impl Session {
             self.pane.send(&bytes);
             return Ok(());
         }
-        let hit = fit.cell_at(at);
+        let hit = placed.cell_at(at);
         let top = self.viewport_top()?;
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
         if mods.contains(Modifiers::CTRL) && mods.contains(Modifiers::SHIFT) {
@@ -91,13 +91,13 @@ impl Session {
 
     /// The pointer moved at `at` while a button is held.
     pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), UiError> {
-        let Some(fit) = self.placed() else {
+        let Some(placed) = self.placed() else {
             return Ok(());
         };
         if self.drag.is_none() {
             return Ok(());
         }
-        let hit = fit.cell_at(at);
+        let hit = placed.cell_at(at);
         let top = self.viewport_top()?;
         let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
         let line = self.line(cell.row)?;
@@ -126,17 +126,17 @@ impl Session {
         } else if self.selection.is_some() {
             self.picks.clear();
         }
-        let Some(fit) = self.placed() else {
+        let Some(placed) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
         if tracking && !mods.contains(Modifiers::SHIFT) {
-            let surface = fit.mouse_surface();
+            let surface = placed.fit.mouse_surface();
             let input = MouseInput {
                 action: MouseAction::Release,
                 button: Some(button),
                 mods,
-                at,
+                at: placed.drawn_point(at),
             };
             let bytes = self
                 .pane
@@ -159,7 +159,7 @@ impl Session {
         if lines == 0 {
             return Ok(());
         }
-        let Some(fit) = self.placed() else {
+        let Some(placed) = self.placed() else {
             return Ok(());
         };
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
@@ -168,12 +168,12 @@ impl Session {
                 WheelDirection::Up => MouseButton::WheelUp,
                 WheelDirection::Down => MouseButton::WheelDown,
             };
-            let surface = fit.mouse_surface();
+            let surface = placed.fit.mouse_surface();
             let input = MouseInput {
                 action: MouseAction::Press,
                 button: Some(button),
                 mods,
-                at,
+                at: placed.drawn_point(at),
             };
             for _ in 0..lines.min(10) {
                 let bytes = self

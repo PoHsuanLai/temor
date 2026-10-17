@@ -124,6 +124,10 @@ pub struct Session {
     pub(super) clip_mirror: temor_pane::ClipboardMirror,
     /// A clipboard question waiting for the person.
     pub(super) clip_pending: Option<super::osc52::PendingClipboard>,
+    /// The blocks with a picture under them and its height in device pixels (see `room`).
+    pub(super) inserts: Vec<(temor_core::vocab::ids::BlockId, temor_vt::Px)>,
+    /// Where the rows were shown at the last paint, around the room under those blocks.
+    pub(super) layout: Option<temor_render::RowLayout>,
 }
 
 /// A find query typed but not yet run, and when it was last typed.

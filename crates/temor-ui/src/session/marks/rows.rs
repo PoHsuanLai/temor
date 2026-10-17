@@ -105,6 +105,19 @@ impl Session {
         })
     }
 
+    /// The viewport as it is shown: its top is the first row shown whole, below the rows the
+    /// room under a block pushed out of the pane.
+    fn shown_rows(&self, view: ViewRows) -> ViewRows {
+        let first = self
+            .layout
+            .as_ref()
+            .map_or(0, |layout| u32::from(layout.visible_rows().start));
+        ViewRows {
+            top: view.top.saturating_add(first).min(view.bottom),
+            ..view
+        }
+    }
+
     /// A block's rows. A running block ends at the cursor's row, or at the viewport's bottom
     /// when the cursor is not shown; a finished one ends on the row before its end mark when
     /// that mark is at a line's start.
@@ -132,9 +145,9 @@ impl Session {
     /// The block under a point in the pane (device pixels), anywhere in the pane. `None` on a
     /// full-screen program's screen.
     pub fn block_at_point(&self, at: SurfacePoint) -> Option<BlockId> {
-        let fit = self.placed()?;
+        let placed = self.placed()?;
         let view = self.view_rows()?;
-        let hit = fit.cell_at(at);
+        let hit = placed.cell_at(at);
         self.block_at_row(view.top.saturating_add(u32::from(hit.pos.row.0)))
     }
 
@@ -142,7 +155,7 @@ impl Session {
     /// prompt is above the viewport and enough of it shows. `None` on a full-screen program's
     /// screen and for a block with no command.
     pub fn sticky_header(&self) -> Option<StickyHeader> {
-        let view = self.view_rows()?;
+        let view = self.shown_rows(self.view_rows()?);
         let id = self.block_at_row(view.top)?;
         let span = self.span_of(id, &view)?;
         if !heads_viewport(span, &view) {
@@ -185,7 +198,7 @@ impl Session {
         let reach = self.gutter_geometry().map_or(1, |gutter| {
             (self.tools_height.get() / gutter.cell_h.max(1.0)).ceil() as u32
         });
-        let row = tools_row(span, &view, reach.max(1))?;
+        let row = tools_row(span, &self.shown_rows(view), reach.max(1))?;
         Some(ToolsSpot {
             id,
             row: row - view.top,
