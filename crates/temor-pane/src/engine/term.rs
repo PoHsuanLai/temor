@@ -287,6 +287,12 @@ impl Term {
         self.terminal.on_alternate_screen()
     }
 
+    /// Numbers this terminal's anchors after `earlier`'s, for a terminal that replaces it: an id
+    /// from the old terminal then names nothing here.
+    pub(super) fn number_anchors_after(&mut self, earlier: &Term) {
+        self.terminal.number_anchors_after(&earlier.terminal);
+    }
+
     /// Frees an anchor the window no longer needs.
     pub fn release_anchor(&mut self, id: AnchorId) {
         self.terminal.release_anchor(id);
