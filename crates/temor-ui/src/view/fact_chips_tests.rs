@@ -4,7 +4,8 @@ use temor_core::facts::{
     BranchName, DiffStat, EnvName, Facts, NodeVersion, ToolVersion, Untracked,
 };
 
-use super::{ChipIcon, Tone, chip_texts, chips_go_over, lead_chips};
+use super::{ChipIcon, ChipKind, Tone, all_chips, chip_texts, chips_go_over, lead_chips};
+use crate::plugins::facts::PluginFact;
 use crate::session::{HeaderLine, PromptHeader};
 
 fn words(facts: &Facts) -> Vec<String> {
@@ -120,5 +121,36 @@ fn the_chips_cover_only_a_header_line_that_says_the_folder() {
     ];
     for (name, header, folder, want) in cases {
         assert_eq!(chips_go_over(&header, folder), want, "{name}");
+    }
+}
+
+#[test]
+fn plugin_chips_come_after_the_built_in_ones_and_stand_alone_in_a_folder_with_nothing_else() {
+    let fact = |label: &str, value: &str| PluginFact {
+        plugin: "Kube".to_owned(),
+        label: label.to_owned(),
+        value: value.to_owned(),
+    };
+    let node = Facts {
+        node: Some(NodeVersion("20".to_owned())),
+        ..Facts::default()
+    };
+    let both = [fact("cluster", "prod"), fact("region", "eu")];
+    #[rustfmt::skip]
+    let cases: Vec<(&str, Facts, &[PluginFact], Vec<&str>)> = vec![
+        ("nothing at all", Facts::default(), &[], vec![]),
+        ("only plugin facts still make chips", Facts::default(), &both, vec!["cluster prod", "region eu"]),
+        ("built-in first, then the plugins in the order given", node, &both, vec!["node 20", "cluster prod", "region eu"]),
+    ];
+    for (name, facts, plugin, want) in cases {
+        let chips = all_chips(&facts, plugin);
+        let said: Vec<String> = chips.iter().map(|c| c.text()).collect();
+        assert_eq!(said, want, "{name}");
+        let kinds = chips.iter().filter(|c| c.kind == ChipKind::Plugin).count();
+        assert_eq!(
+            kinds,
+            plugin.len(),
+            "{name}: one chip of the plugin kind per fact"
+        );
     }
 }

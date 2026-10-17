@@ -7,7 +7,7 @@
 //! the facts' chips end at the row's right edge instead, without the folder and branch.
 //!
 //! An older block's header line carries the chips its prompt had, kept from when it was typed at
-//! (`Session::keep_header_facts`), on the block's own ground and clear of its meta.
+//! (`Session::keep_header_facts`, with the plugins' facts beside the built-in ones), on the block's own ground and clear of its meta.
 //!
 //! They sit beside the grid, so a press never reaches the terminal, and they are not drawn on a
 //! full-screen program's screen.
@@ -22,8 +22,9 @@ use temor_render::Palette;
 
 use super::block_meta::MetaView;
 use super::card_colours::{CardFill, card_ground};
-pub use super::chip_texts::{chip_texts, lead_chips};
+pub use super::chip_texts::{all_chips, chip_texts, lead_chips, plugin_chips};
 use super::folder_fit::{RowRoom, fit_folder_chip};
+use crate::plugins::facts::PluginFact;
 use crate::session::{HeaderLine, PromptHeader, Session};
 
 /// The small picture at a chip's start.
@@ -45,6 +46,8 @@ pub enum ChipKind {
     Ruby,
     Go,
     Node,
+    /// A fact a plugin gave.
+    Plugin,
 }
 
 impl ChipKind {
@@ -58,6 +61,7 @@ impl ChipKind {
             ChipKind::Ruby => "ruby",
             ChipKind::Go => "go",
             ChipKind::Node => "node",
+            ChipKind::Plugin => "plugin",
         }
     }
 }
@@ -159,7 +163,12 @@ pub fn chips_go_over(header: &PromptHeader, folder: Option<&str>) -> bool {
 /// when it is on screen. `folder` is the pane's folder as its chip says it, None on another
 /// computer. `None` when there is nothing to say, on a full-screen program's screen, or before
 /// the first layout.
-pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Option<ChipsView> {
+pub fn chips_for(
+    session: &Session,
+    facts: &Facts,
+    plugin: &[PluginFact],
+    folder: Option<&str>,
+) -> Option<ChipsView> {
     let gutter = session.gutter_geometry()?;
     let (inset, cell_h) = (gutter.side, gutter.cell_h);
     // The prompt being typed at, when it is in view and not on the alternate screen.
@@ -178,7 +187,7 @@ pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Opti
     };
     if let Some(folder) = folder.filter(|_| chips_go_over(&header, folder)) {
         let mut chips = lead_chips(folder, facts);
-        chips.extend(chip_texts(facts));
+        chips.extend(all_chips(facts, plugin));
         // A long folder keeps its end: the row is the pane's width less the padding.
         if let Some((pane_width, cell_width)) = session.grid_logical() {
             let row = RowRoom {
@@ -189,7 +198,7 @@ pub fn chips_for(session: &Session, facts: &Facts, folder: Option<&str>) -> Opti
         }
         return view(chips, ChipPlace::Over);
     }
-    let mut chips = chip_texts(facts);
+    let mut chips = all_chips(facts, plugin);
     // A command typed on this very row runs under the chips: leave out the ones it reaches.
     let (pane_width, cell_width) = session.grid_logical()?;
     let cursor_right = session
@@ -228,7 +237,7 @@ pub fn header_chips(
         .filter_map(|mark| {
             let kept = session.header_facts(mark.id)?;
             let mut chips = lead_chips(&kept.folder, &kept.facts);
-            chips.extend(chip_texts(&kept.facts));
+            chips.extend(all_chips(&kept.facts, &kept.plugin));
             let reserve = metas
                 .iter()
                 .find(|meta| meta.id == mark.id)

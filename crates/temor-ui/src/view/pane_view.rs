@@ -230,6 +230,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .cloned()
         .collect();
     let facts = desk.hub.facts_of(pane);
+    let plugin_facts = desk.hub.plugin_facts_of(pane);
     let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
     // "Edit here" is only for a pane on another computer.
@@ -246,7 +247,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .and_then(|s| chips_for(s, &facts, folder.as_deref()));
+        .and_then(|s| chips_for(s, &facts, &plugin_facts, folder.as_deref()));
     // What the prompt's chips say now is kept for the block it becomes.
     let over = chips.as_ref().map(|c| c.place) == Some(ChipPlace::Over);
     if let Some((folder, s)) = folder
@@ -254,7 +255,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .filter(|_| over)
         .zip(slot.borrow_mut().session.as_mut())
     {
-        s.keep_header_facts(folder, &facts);
+        s.keep_header_facts(folder, &facts, &plugin_facts);
     }
     let older_chips: Vec<_> = {
         let slot = slot.borrow();
