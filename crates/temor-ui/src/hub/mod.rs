@@ -109,7 +109,7 @@ pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};
 pub use running_tick::spawn_running_loop;
 pub use say::refusal_text;
 pub use settings_live::spawn_settings_loop;
-pub use shelf::{Ask, AskKind, AskView};
+pub use shelf::{Ask, AskKind, AskView, PaneTarget};
 pub use space_edits::spawn_space_edits;
 pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;

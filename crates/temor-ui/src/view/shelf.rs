@@ -1,8 +1,10 @@
 //! The downloads shelf in the sidebar's head (PLAN §7, §9), as mailo's is: a button at the head's
 //! right end, with a dot while a file arrives or one arrived unopened, that opens the files that
 //! arrived, newest first, in a popover below it. The command bar's Downloads opens it too. Each row opens its file on a press, and offers to show it in the
-//! folder, to jump back to its tab, and to take it off the list (the file stays). A file that is
-//! still arriving shows a bar.
+//! folder, to paste its path into the terminal the person was using (or send the file there when
+//! that terminal is on another computer), to jump back to its tab, and to take it off the list
+//! (the file stays). A secondary press opens all of these, and Copy Path, as a menu. A file that
+//! is still arriving shows a bar.
 
 use dioxus::prelude::*;
 use ds::base::geometry::placement::{Align, Side};
@@ -13,14 +15,14 @@ use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
 use ds::components::overlays::popover::Arrow;
-use ds::host::measure::{Anchor, MountedRef};
+use ds::host::measure::{Anchor, MountedRef, use_rect};
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_core::shelf::{
     Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
 };
 
-use crate::hub::Desk;
+use crate::hub::{Desk, PaneTarget};
 
 /// The Downloads button for the head of the sidebar, and its list while it is open.
 #[component]
@@ -119,6 +121,39 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         let act = act.clone();
         EventHandler::new(move |_: Press| act(Act::Open))
     });
+    // Use in pane puts the list away, so the person is back in the terminal it typed into.
+    let mut shown = desk.shelf;
+    let mut give = {
+        let act = act.clone();
+        move || {
+            act(Act::UseInPane);
+            shown.set(Shown::Hidden);
+        }
+    };
+    let target = desk.hub.shelf_target();
+    let words = give_words(&target);
+    let give_button = can(Act::UseInPane).then_some(words.clone()).flatten();
+    let rect = use_rect();
+    let mut menu = use_signal(|| Shown::Hidden);
+    let has_menu = !row.actions.is_empty();
+    let mut items = Vec::new();
+    for action in &row.actions {
+        let label = match action {
+            Act::Open => "Open".to_owned(),
+            Act::Reveal => "Show in Folder".to_owned(),
+            Act::UseInPane => match &words {
+                Some((_, _, menu)) => menu.clone(),
+                None => continue,
+            },
+            Act::CopyPath => "Copy Path".to_owned(),
+            Act::ShowInTab(_) => "Show Tab".to_owned(),
+            Act::Clear => "Remove from List".to_owned(),
+        };
+        if *action == Act::Clear {
+            items.push(MenuItem::Separator);
+        }
+        items.push(MenuItem::new(*action, label));
+    }
     let percent = match &row.state {
         Arriving::Receiving { percent } => *percent,
         _ => None,
@@ -131,7 +166,15 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         _ => row.detail.clone(),
     };
     rsx! {
-        div { class: "temor-dl",
+        div {
+            class: "temor-dl",
+            onmounted: move |event: MountedEvent| rect.on_mounted(event),
+            oncontextmenu: move |event: MouseEvent| {
+                event.prevent_default();
+                if has_menu {
+                    menu.set(Shown::Visible);
+                }
+            },
             Row {
                 leading: RowLeading::Icon(Icon::Download),
                 title: row.title.clone(),
@@ -159,6 +202,17 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                         },
                     }
                 }
+                if let Some((label, title, _)) = give_button {
+                    Button {
+                        label,
+                        size: ControlSize::Small,
+                        title: Some(title),
+                        onclick: {
+                            let mut give = give.clone();
+                            move |_: Press| give()
+                        },
+                    }
+                }
                 if let Some(tab) = tab {
                     Button {
                         label: "Show tab".to_owned(),
@@ -172,6 +226,36 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                 }
             }
         }
+        if let (Shown::Visible, Some(at)) = (menu(), rect.rect()) {
+            Menu {
+                placement: MenuPlacement::Context,
+                anchor: Anchor::Rect(at),
+                items,
+                onpick: move |pick: Act| match pick {
+                    Act::UseInPane => give(),
+                    pick => act(pick),
+                },
+                onclose: move |()| menu.set(Shown::Hidden),
+            }
+        }
+    }
+}
+
+/// The words for Use in pane: the button's label, its hover text and the menu's item. Nothing
+/// when no terminal has the keyboard.
+fn give_words(target: &PaneTarget) -> Option<(String, String, String)> {
+    match target {
+        PaneTarget::Nowhere => None,
+        PaneTarget::Here => Some((
+            "Paste path".to_owned(),
+            "Type the file's path into the terminal you were using".to_owned(),
+            "Paste Path".to_owned(),
+        )),
+        PaneTarget::Host(host) => Some((
+            format!("Send to {host}"),
+            format!("Copy the file to {host}, into the folder of the terminal you were using"),
+            format!("Send to {host}"),
+        )),
     }
 }
 

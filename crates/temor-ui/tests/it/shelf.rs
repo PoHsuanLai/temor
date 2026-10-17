@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Driver, Harness, Input};
@@ -99,4 +100,43 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
     wait_for_html(&mut h, "the shelf's rows", |html| {
         html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in folder")
     });
+
+    // Paste path types the quoted path into the terminal the person was using and puts the list
+    // away; nothing runs.
+    let paste = h
+        .centre(".temor-dl-actions .ds-button[aria-description=\"Type the file's path into the terminal you were using\"]")
+        .unwrap_or_else(|| panic!("no Paste path button:\n{}", h.html()));
+    h.send(Input::click(paste));
+    wait_until(&mut h, &probe, "the pasted path", |s| {
+        s.replace('\n', "").contains("Downloads/note.txt")
+    });
+    assert!(
+        !h.html().contains("Show in folder"),
+        "the list is put away:\n{}",
+        h.html()
+    );
+
+    // A secondary press on the row opens every action as a menu.
+    let trigger = h
+        .centre(".temor-dl-hold .ds-button")
+        .expect("Downloads button");
+    h.send(Input::click(trigger));
+    wait_for_html(&mut h, "the shelf's rows", |html| {
+        html.contains("Show in folder")
+    });
+    let row = h.centre(".temor-dl").expect("the row");
+    h.send(Input::press(row, PointerButton::Secondary));
+    wait_for_html(&mut h, "the row's menu", |html| {
+        html.contains("ds-menu-item")
+    });
+    let html = h.html();
+    for item in [
+        "Open",
+        "Show in Folder",
+        "Paste Path",
+        "Copy Path",
+        "Remove from List",
+    ] {
+        assert!(html.contains(item), "the menu has {item}:\n{html}");
+    }
 }

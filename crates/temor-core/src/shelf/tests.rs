@@ -195,6 +195,8 @@ fn failures_and_clearing() {
         vec![
             RowAction::Open,
             RowAction::Reveal,
+            RowAction::UseInPane,
+            RowAction::CopyPath,
             RowAction::ShowInTab(TabId(1)),
             RowAction::Clear
         ]

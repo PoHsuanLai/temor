@@ -57,4 +57,11 @@ impl Session {
             DropAction::Nothing => {}
         }
     }
+
+    /// Puts a file's path on the clipboard.
+    pub fn copy_path(&mut self, path: &str) {
+        if self.clipboard.write(path).is_err() {
+            self.notice = Some("The path could not be copied".to_owned());
+        }
+    }
 }

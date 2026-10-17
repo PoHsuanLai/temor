@@ -12,6 +12,11 @@ pub enum RowAction {
     Open,
     /// Show the file in the file manager.
     Reveal,
+    /// Give the file to the pane the person was typing in: its path typed there, or the file
+    /// sent there when that pane is on another computer (as a drop on the pane does).
+    UseInPane,
+    /// Put the file's path on the clipboard.
+    CopyPath,
     /// Jump back to the tab it came from.
     ShowInTab(TabId),
     /// Take it off the shelf (the file stays).
@@ -93,6 +98,8 @@ fn row(item: &ShelfItem) -> Row {
     if matches!(item.state, ItemState::Ready { .. }) {
         actions.push(RowAction::Open);
         actions.push(RowAction::Reveal);
+        actions.push(RowAction::UseInPane);
+        actions.push(RowAction::CopyPath);
     }
     if let Some(tab) = tab_of(&item.origin) {
         actions.push(RowAction::ShowInTab(tab));

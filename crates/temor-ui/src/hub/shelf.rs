@@ -32,6 +32,17 @@ pub enum AskKind {
     Request { name: Option<String> },
 }
 
+/// Where Use in pane sends a file: the pane the person was typing in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaneTarget {
+    /// No pane has the keyboard.
+    Nowhere,
+    /// A pane on this computer: the path is typed there.
+    Here,
+    /// A pane on this host: the file is sent there.
+    Host(String),
+}
+
 /// One question waiting for the person. The front one is on screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ask {
@@ -218,10 +229,88 @@ impl Hub {
                 self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab))));
                 Vec::new()
             }
+            RowAction::UseInPane => {
+                self.use_in_pane(id);
+                Vec::new()
+            }
+            RowAction::CopyPath => {
+                self.copy_path(id);
+                Vec::new()
+            }
         };
         for out in outs {
             self.carry_out_shelf(&out);
         }
+    }
+
+    /// Where Use in pane would send a file now.
+    pub fn shelf_target(&self) -> PaneTarget {
+        match self.keyboard_pane() {
+            None => PaneTarget::Nowhere,
+            Some(pane) => match self.host_of(pane) {
+                Some(host) => PaneTarget::Host(host.to_owned()),
+                None => PaneTarget::Here,
+            },
+        }
+    }
+
+    /// The saved file of row `id`, when it has finished arriving.
+    fn ready_path(&self, id: DownloadId) -> Option<PathBuf> {
+        let view = self.shelf_view();
+        let row = view.rows.into_iter().find(|row| row.id == id)?;
+        row.actions
+            .contains(&RowAction::UseInPane)
+            .then(|| PathBuf::from(row.path.as_str()))
+    }
+
+    /// Gives row `id`'s file to the pane with the keyboard, as a drop on that pane would.
+    fn use_in_pane(&mut self, id: DownloadId) {
+        let (Some(path), Some(pane)) = (self.ready_path(id), self.keyboard_pane()) else {
+            return;
+        };
+        let told = self.drop_on(pane, &[path]);
+        self.notices.extend(told);
+    }
+
+    /// Puts row `id`'s path on the clipboard, through the pane with the keyboard when there is
+    /// one.
+    fn copy_path(&mut self, id: DownloadId) {
+        let Some(path) = self.ready_path(id) else {
+            return;
+        };
+        let text = path.display().to_string();
+        let pane = self.keyboard_pane();
+        let said = pane.and_then(|pane| self.slots.get(&pane)).map(|slot| {
+            let mut slot = slot.borrow_mut();
+            slot.session.as_mut().and_then(|session| {
+                session.copy_path(&text);
+                session.take_notice()
+            })
+        });
+        match said {
+            Some(said) => self.notices.extend(said),
+            None => {
+                use crate::session::Clipboard;
+                if crate::view::launch::DesktopClipboard.write(&text).is_err() {
+                    self.notices.push("The path could not be copied".to_owned());
+                }
+            }
+        }
+    }
+
+    /// Files dropped on `pane`: sent there when it is on another computer, else their paths are
+    /// typed. What the person should be told comes back.
+    pub(super) fn drop_on(&mut self, pane: PaneId, paths: &[PathBuf]) -> Vec<String> {
+        if self.is_host_pane(pane) {
+            return self.upload_drop(pane, paths);
+        }
+        let said = self.slots.get(&pane).and_then(|slot| {
+            let mut slot = slot.borrow_mut();
+            let session = slot.session.as_mut()?;
+            session.drop_files(paths);
+            session.take_notice()
+        });
+        said.into_iter().collect()
     }
 
     fn carry_out_shelf(&mut self, out: &ShelfOut) {
@@ -265,17 +354,12 @@ impl HubRef {
     /// Files were dropped on a pane; what the person should be told comes back. On a pane that
     /// runs on another computer they are sent there; anywhere else their paths are typed.
     pub fn drop_files(&self, pane: PaneId, paths: Vec<PathBuf>) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        if hub.is_host_pane(pane) {
-            return hub.upload_drop(pane, &paths);
-        }
-        let said = hub.slots.get(&pane).and_then(|slot| {
-            let mut slot = slot.borrow_mut();
-            let session = slot.session.as_mut()?;
-            session.drop_files(&paths);
-            session.take_notice()
-        });
-        said.into_iter().collect()
+        self.0.borrow_mut().drop_on(pane, &paths)
+    }
+
+    /// Where Use in pane would send a file now.
+    pub fn shelf_target(&self) -> PaneTarget {
+        self.0.borrow().shelf_target()
     }
 
     /// Whether `pane` is a session on another computer.
