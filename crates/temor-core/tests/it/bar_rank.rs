@@ -49,6 +49,7 @@ fn candidates() -> Vec<Candidate> {
 fn plugin_rows() -> Vec<PluginRow> {
     vec![PluginRow {
         plugin: PluginId("git".into()),
+        name: "Git".into(),
         item: "b1".into(),
         title: "top branch".into(),
     }]
@@ -226,4 +227,42 @@ fn window_actions_are_rows_and_a_sections_rows_sit_together() {
     let empty = rank("", &all, &[], &OnPath(&[]), AiSwitch::Off);
     let new_tabs = empty.iter().filter(|r| r.key.0 == "new-tab").count();
     assert_eq!((new_tabs, empty[0].action.clone()), (1, BarAction::NewTab));
+}
+
+#[test]
+fn each_plugin_gets_its_own_section_after_the_built_in_ones_ordered_by_name() {
+    let row = |plugin: &str, name: &str, item: &str| PluginRow {
+        plugin: PluginId(plugin.into()),
+        name: name.into(),
+        item: item.into(),
+        title: item.into(),
+    };
+    // Arrival order interleaves the two plugins; ids sort the other way round from the names.
+    let offered = [
+        row("a-id", "Zebra", "z1"),
+        row("z-id", "Apple", "a1"),
+        row("a-id", "Zebra", "z2"),
+        row("z-id", "Apple", "a2"),
+    ];
+    let rows = rank("top", &candidates(), &offered, &OnPath(&[]), AiSwitch::On);
+    let tail: Vec<(Section, &str)> = rows
+        .iter()
+        .skip_while(|row| row.group != RowGroup::Plugin)
+        .take_while(|row| row.group == RowGroup::Plugin)
+        .map(|row| (Section::of(row), row.title.as_str()))
+        .collect();
+    assert_eq!(
+        tail,
+        vec![
+            (Section::Plugin(PluginId("z-id".into())), "a1"),
+            (Section::Plugin(PluginId("z-id".into())), "a2"),
+            (Section::Plugin(PluginId("a-id".into())), "z1"),
+            (Section::Plugin(PluginId("a-id".into())), "z2"),
+        ]
+    );
+    assert_eq!(
+        Section::of(rows.last().expect("AI rows")),
+        Section::Ask,
+        "the AI rows stay last"
+    );
 }

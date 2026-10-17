@@ -1,5 +1,7 @@
 //! `open.provider`: the rows plugins offered for the text in the bar.
 
+use std::collections::BTreeMap;
+
 use temor_core::bar::PluginRow;
 use temor_core::vocab::text::PluginId;
 use temor_plugins::Plugin;
@@ -19,6 +21,9 @@ pub struct Offered {
 #[derive(Debug, Clone, Default)]
 pub struct OfferBook {
     rows: Vec<Offered>,
+    /// Names of the plugins that offered rows, kept when the rows are cleared so a header does
+    /// not change to an id while the next keystroke's rows are on their way.
+    names: BTreeMap<String, String>,
 }
 
 impl OfferBook {
@@ -29,6 +34,8 @@ impl OfferBook {
 
     /// Adds a batch. A row whose id the plugin gave before takes the place of the earlier one.
     pub fn add(&mut self, plugin: &Plugin, items: Vec<Item>) {
+        self.names
+            .insert(plugin.id().to_owned(), plugin.name().to_owned());
         for item in items {
             let same = |offered: &Offered| {
                 offered.plugin.id() == plugin.id() && offered.item.id == item.id
@@ -43,8 +50,8 @@ impl OfferBook {
         }
     }
 
-    /// The rows for the bar, best score first; equal scores keep the order they arrived in. The
-    /// title carries the plugin's name, since the bar lists plugin rows together.
+    /// The rows for the bar, best score first; equal scores keep the order they arrived in. Each row
+    /// carries its plugin's name: the bar puts a header with it over the plugin's rows.
     pub fn plugin_rows(&self) -> Vec<PluginRow> {
         let mut ordered: Vec<&Offered> = self.rows.iter().collect();
         ordered.sort_by_key(|row| std::cmp::Reverse(row.item.score));
@@ -52,10 +59,16 @@ impl OfferBook {
             .into_iter()
             .map(|offered| PluginRow {
                 plugin: PluginId(offered.plugin.id().to_owned()),
+                name: offered.plugin.name().to_owned(),
                 item: offered.item.id.clone(),
-                title: format!("{} \u{b7} {}", offered.plugin.name(), offered.item.title),
+                title: offered.item.title.clone(),
             })
             .collect()
+    }
+
+    /// The name of the plugin `id`, once it has offered a row.
+    pub fn name_of(&self, id: &str) -> Option<String> {
+        self.names.get(id).cloned()
     }
 
     /// The row `item` of the plugin `plugin`, if it is still on offer.

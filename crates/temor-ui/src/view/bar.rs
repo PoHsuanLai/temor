@@ -17,6 +17,7 @@ use ds::components::menus::palette::palette_group::{
 };
 use ds::prelude::{AfterPick, CommandPalette, RowChord};
 use temor_core::bar::{BarRow, Section};
+use temor_core::vocab::text::PluginId;
 
 use crate::bar::{
     Escape, FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, escape, lift, reply,
@@ -178,32 +179,42 @@ fn rows_in(group: &PaletteGroup<Pick>) -> usize {
 /// header is one group, so the palette's numbering is the rows' own. A row that is also a pane
 /// action shows its chord at its right.
 fn groups_of(rows: &[BarRow], hub: &HubRef) -> Vec<PaletteGroup<Pick>> {
-    let mut groups: Vec<(Section, Vec<PaletteRow<Pick>>)> = Vec::new();
-    for row in rows {
-        let line = PaletteRow {
-            chord: action_of(&row.action)
-                .and_then(|action| hub.shortcut_of(action))
-                .map(RowChord::always)
-                .unwrap_or_default(),
-            // The palette stays up until the bar's own step closes it, so the pick reaches the
-            // palette machine once.
-            after: AfterPick::KeepOpen,
-            ..PaletteRow::new(Pick::Bar(row.clone()), row.title.clone())
-        };
-        let section = Section::of(row);
-        match groups.last_mut() {
-            Some((group, lines)) if *group == section => lines.push(line),
-            _ => groups.push((section, vec![line])),
-        }
-    }
-    groups
+    runs(rows)
         .into_iter()
-        .map(|(section, lines)| PaletteGroup::list(title_of(section), lines))
+        .map(|(section, run)| {
+            let lines = run
+                .into_iter()
+                .map(|row| PaletteRow {
+                    chord: action_of(&row.action)
+                        .and_then(|action| hub.shortcut_of(action))
+                        .map(RowChord::always)
+                        .unwrap_or_default(),
+                    // The palette stays up until the bar's own step closes it, so the pick
+                    // reaches the palette machine once.
+                    after: AfterPick::KeepOpen,
+                    ..PaletteRow::new(Pick::Bar(row.clone()), row.title.clone())
+                })
+                .collect();
+            PaletteGroup::list(title_of(&section, |id| hub.plugin_name_of(id)), lines)
+        })
         .collect()
 }
 
-fn title_of(section: Section) -> &'static str {
-    match section {
+/// The rows split where the section changes, each run with its section.
+fn runs(rows: &[BarRow]) -> Vec<(Section, Vec<&BarRow>)> {
+    let mut runs: Vec<(Section, Vec<&BarRow>)> = Vec::new();
+    for row in rows {
+        let section = Section::of(row);
+        match runs.last_mut() {
+            Some((last, run)) if *last == section => run.push(row),
+            _ => runs.push((section, vec![row])),
+        }
+    }
+    runs
+}
+
+fn title_of(section: &Section, name_of: impl Fn(&PluginId) -> String) -> String {
+    let fixed = match section {
         Section::Actions => "Actions",
         Section::Tabs => "Tabs",
         Section::Spaces => "Spaces",
@@ -211,7 +222,12 @@ fn title_of(section: Section) -> &'static str {
         Section::RecentCommands => "Recent commands",
         Section::Folders => "Folders",
         Section::Run => "Run",
-        Section::Plugins => "More",
+        Section::Plugin(plugin) => return name_of(plugin),
         Section::Ask => "Ask",
-    }
+    };
+    fixed.to_owned()
 }
+
+#[cfg(test)]
+#[path = "bar_tests.rs"]
+mod tests;
