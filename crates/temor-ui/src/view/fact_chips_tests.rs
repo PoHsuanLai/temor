@@ -136,11 +136,12 @@ fn plugin_chips_come_after_the_built_in_ones_and_stand_alone_in_a_folder_with_no
         ..Facts::default()
     };
     let both = [fact("cluster", "prod"), fact("region", "eu")];
+    let (both, none): (&[PluginFact], &[PluginFact]) = (&both, &[]);
     #[rustfmt::skip]
     let cases: Vec<(&str, Facts, &[PluginFact], Vec<&str>)> = vec![
-        ("nothing at all", Facts::default(), &[], vec![]),
-        ("only plugin facts still make chips", Facts::default(), &both, vec!["cluster prod", "region eu"]),
-        ("built-in first, then the plugins in the order given", node, &both, vec!["node 20", "cluster prod", "region eu"]),
+        ("nothing at all", Facts::default(), none, vec![]),
+        ("only plugin facts still make chips", Facts::default(), both, vec!["cluster prod", "region eu"]),
+        ("built-in first, then the plugins in the order given", node, both, vec!["node 20", "cluster prod", "region eu"]),
     ];
     for (name, facts, plugin, want) in cases {
         let chips = all_chips(&facts, plugin);
