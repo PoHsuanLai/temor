@@ -136,7 +136,8 @@ fn plugin_chips_come_after_the_built_in_ones_and_stand_alone_in_a_folder_with_no
         ..Facts::default()
     };
     let both = [fact("cluster", "prod"), fact("region", "eu")];
-    let (both, none): (&[PluginFact], &[PluginFact]) = (&both, &[]);
+    let both: &[PluginFact] = &both;
+    let none: &[PluginFact] = &[];
     #[rustfmt::skip]
     let cases: Vec<(&str, Facts, &[PluginFact], Vec<&str>)> = vec![
         ("nothing at all", Facts::default(), none, vec![]),
