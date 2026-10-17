@@ -30,6 +30,7 @@ mod support;
 mod viewer;
 mod window;
 mod window_title;
+mod workflow;
 mod worktree_git;
 
 #[test]
