@@ -17,6 +17,8 @@ pub(crate) trait Os {
     fn pipeline_last(proc: &ProcRoot, shell: ProcessId, group: ProcessId) -> Option<ProcessId>;
     /// The real user id of this process.
     fn current_user() -> Option<UserId>;
+    /// The login shell of user `uid`, from the system's account lookup.
+    fn login_shell(uid: UserId) -> Option<PathBuf>;
     /// Whether `path` is a file this user may run.
     fn is_executable(path: &Path) -> bool;
 }

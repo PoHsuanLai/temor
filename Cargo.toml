@@ -96,6 +96,9 @@ toml = "1"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
+# temor-pty: the person's login shell through the system's account lookup (NSS: files, LDAP, sssd,
+# systemd-homed), not by reading /etc/passwd.
+nix = { version = "0.31", default-features = false, features = ["user"] }
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
 tempfile = "3"
 # The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).

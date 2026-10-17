@@ -33,6 +33,11 @@ impl Os for Windows {
         None
     }
 
+    // TODO(platform:windows): the login shell from the system's account lookup.
+    fn login_shell(_uid: UserId) -> Option<PathBuf> {
+        None
+    }
+
     // TODO(platform:windows): the executable check; any file counts for now.
     fn is_executable(path: &Path) -> bool {
         path.is_file()

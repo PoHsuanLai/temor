@@ -5,8 +5,7 @@ use std::path::{Path, PathBuf};
 
 use temor_pane::PaneSpec;
 use temor_pane::settings::{ShellChoice, TerminalSettings};
-use temor_pty::{ProgramVersion, SessionLauncher, current_user};
-use temor_shell::passwd_login_shell;
+use temor_pty::{ProgramVersion, SessionLauncher, login_shell};
 use temor_vt::{CellPx, GridSize};
 
 use crate::edge::Ambient;
@@ -48,7 +47,7 @@ pub fn shell_pane_with_socket(
 ) -> Result<PaneSpec, UiError> {
     // The passwd file is read only when the login shell is asked for.
     let passwd_shell = match settings.shell {
-        ShellChoice::Login => login_shell_from_passwd(),
+        ShellChoice::Login => login_shell(),
         ShellChoice::Program(_) => None,
     };
     let input = temor_pane::ShellPaneInput::new(
@@ -65,11 +64,4 @@ pub fn shell_pane_with_socket(
     .grid(grid, cell)
     .palette(palette);
     Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)
-}
-
-/// The person's login shell from `/etc/passwd`, when the passwd lookup finds it.
-fn login_shell_from_passwd() -> Option<PathBuf> {
-    let uid = current_user()?;
-    let text = std::fs::read_to_string("/etc/passwd").ok()?;
-    passwd_login_shell(&text, uid)
 }

@@ -45,6 +45,12 @@ impl Os for Linux {
         Some(UserId(rustix::process::getuid().as_raw()))
     }
 
+    fn login_shell(uid: UserId) -> Option<PathBuf> {
+        // getpwuid_r through NSS, so accounts from LDAP, sssd or systemd-homed are found too.
+        let user = nix::unistd::User::from_uid(nix::unistd::Uid::from_raw(uid.0)).ok()??;
+        (!user.shell.as_os_str().is_empty()).then_some(user.shell)
+    }
+
     fn is_executable(path: &Path) -> bool {
         use std::os::unix::fs::PermissionsExt;
         std::fs::metadata(path)

@@ -13,4 +13,4 @@ pub use model::{
     SignalKind, SpawnSpec, WriteOutcome,
 };
 pub use shell::prepare_shell;
-pub use user::current_user;
+pub use user::{current_user, login_shell};

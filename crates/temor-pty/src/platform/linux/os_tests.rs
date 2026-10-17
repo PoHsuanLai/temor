@@ -131,3 +131,28 @@ fn a_pipeline_is_named_for_its_last_command() {
         assert_eq!(got.group, ProcessId(group), "{name}");
     }
 }
+
+#[test]
+fn the_login_shell_is_what_the_system_account_lookup_says() {
+    // getent goes through the same lookup (NSS) as getpwuid_r, so the two must agree.
+    let Some(uid) = <super::os::Linux as crate::platform::Os>::current_user() else {
+        return;
+    };
+    let Ok(out) = std::process::Command::new("getent")
+        .args(["passwd", &uid.0.to_string()])
+        .output()
+    else {
+        return;
+    };
+    let line = String::from_utf8_lossy(&out.stdout);
+    let want = line
+        .trim_end()
+        .rsplit(':')
+        .next()
+        .filter(|shell| !shell.is_empty())
+        .map(std::path::PathBuf::from);
+    assert_eq!(
+        <super::os::Linux as crate::platform::Os>::login_shell(uid),
+        want
+    );
+}
