@@ -26,11 +26,16 @@ tables = ["folder"]
 
 /// The example `fake_plugin`, built beside the tests.
 pub fn fake_program() -> PathBuf {
+    example_program("fake_plugin")
+}
+
+/// The example program `name`, built beside the tests.
+pub fn example_program(name: &str) -> PathBuf {
     let exe = std::env::current_exe().unwrap();
     let program = exe
         .parent()
         .and_then(Path::parent)
-        .map(|profile| profile.join("examples").join("fake_plugin"))
+        .map(|profile| profile.join("examples").join(name))
         .unwrap();
     assert!(
         program.is_file(),

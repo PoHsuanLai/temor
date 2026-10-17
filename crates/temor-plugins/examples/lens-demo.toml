@@ -1,0 +1,13 @@
+# The demo lens (examples/lens_demo.rs). Copy this file to ~/.local/share/temor/plugins/ and the
+# built program beside it; `path` must be the program's absolute path (see the crate's README).
+id = "lens-demo"
+name = "Line bars"
+protocol = 1
+
+[program]
+path = "/home/pohsuanlai/.local/share/temor/plugins/lens_demo"
+args = []
+
+[[provides]]
+capability = "block.lens"
+trigger = "ls"
