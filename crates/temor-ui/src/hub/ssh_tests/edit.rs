@@ -1,13 +1,14 @@
 //! Editing a host's file locally and forwarding its ports, through the stand-in `ssh` and `scp`
 //! (the stand-in `ssh` runs the file calls on this computer, so the "host" is a scratch folder).
 
-use temor_core::host::edit::{Edit, Found, Resolution};
+use temor_core::host::edit::{Edit, EditIn, Found, Queued, Resolution};
 use temor_core::remote::Grant;
 use temor_core::workspace::WorkspaceIn;
 use temor_ssh::Port;
 
 use super::support::Rig;
 use crate::edge::ssh_work::EditId;
+use crate::hub::ssh::DoneAsked;
 use crate::hub::ssh_view::{EditStatus, Stage};
 
 /// A rig whose first host pane is connected.
@@ -93,9 +94,40 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
         edit.state = before;
     }
 
-    // Done: the copy goes, and so does the folder made for it.
+    // Done while a save is on its way waits for it. A save that does not get there keeps the
+    // copy (and Done has to be pressed again).
+    let uploading = Edit::Uploading {
+        base: stat,
+        queued: Queued::Nothing,
+    };
+    let set = |rig: &mut Rig, state: Edit| {
+        if let Some(edit) = rig.hub.ssh.edits.get_mut(&id) {
+            edit.state = state;
+        }
+    };
+    set(&mut rig, uploading);
     rig.hub.close_edit(id);
-    assert!(!local.exists(), "the copy is deleted on Done");
+    assert!(local.exists(), "Done waits for the save on its way");
+    rig.hub.on_edit(id, EditIn::Conflicted(Found::Deleted));
+    assert!(
+        local.exists(),
+        "a save that did not get there keeps the copy"
+    );
+    assert_eq!(
+        rig.hub.ssh.edits.get(&id).map(|edit| edit.done),
+        Some(DoneAsked::No),
+        "the earlier Done does not carry over"
+    );
+
+    // Done: once the save is on the host, the copy goes, and so does the folder made for it.
+    set(&mut rig, uploading);
+    rig.hub.close_edit(id);
+    assert!(local.exists(), "still on its way");
+    rig.hub.on_edit(id, EditIn::Stored { stat });
+    assert!(
+        !local.exists(),
+        "the copy is deleted once the save is on the host"
+    );
     assert!(
         local.parent().is_some_and(|dir| !dir.exists()),
         "and its folder"

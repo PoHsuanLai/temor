@@ -1560,7 +1560,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
 - [ ] Ubuntu 24.04+ user namespaces → `NoSandbox`: belongs beside bulkhead's runner, which temor does
       not link yet (P8).
-- [ ] Done while a save is checking or uploading still deletes the local copy; only a conflict waits.
+- [x] Done while a save is checking or uploading waits for it and closes after, as an editor does;
+      a save that does not get there keeps the copy and says so (owner: "standard behavior").
 - [ ] No end-to-end test of iTerm2 multipart files through temor-pane's reader; ⌘F in a viewer pane
       is unit-tested only without a viewer.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b26-*.md`.

@@ -82,6 +82,13 @@ pub(super) enum Opened {
     Yes,
 }
 
+/// Whether the person pressed Done while a save was still on its way to the host.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DoneAsked {
+    No,
+    Yes,
+}
+
 /// One remote file open for editing.
 pub(super) struct RemoteEdit {
     pub host: HostAlias,
@@ -99,6 +106,8 @@ pub(super) struct RemoteEdit {
     pub seen: Option<FileStamp>,
     /// Set once the person chose to overwrite, for the one write that follows.
     pub overwrite: Overwrite,
+    /// Done waits for a save on its way; the edit closes once it reaches the host.
+    pub done: DoneAsked,
 }
 
 /// The hub's SSH state.

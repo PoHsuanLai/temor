@@ -15,7 +15,7 @@ use temor_ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use super::remote_edit::{EditTier, Job, Overwrite};
-use super::ssh::{Opened, RemoteEdit};
+use super::ssh::{DoneAsked, Opened, RemoteEdit};
 use crate::edge::ssh_work::EditId;
 use crate::platform::ensure_private_dir;
 
@@ -126,6 +126,7 @@ impl Hub {
                 tier,
                 seen: None,
                 overwrite: Overwrite::No,
+                done: DoneAsked::No,
             },
         );
         self.start_job(id, Job::Fetch);
@@ -146,6 +147,32 @@ impl Hub {
             edit.asking = None;
         }
         self.carry_out_edit(id, outs);
+        self.finish_done(id);
+    }
+
+    /// Done was pressed while a save was on its way: close once it has reached the host, or
+    /// keep the copy and say so when it could not.
+    fn finish_done(&mut self, id: EditId) {
+        let Some(edit) = self.ssh.edits.get_mut(&id) else {
+            return;
+        };
+        if edit.done == DoneAsked::No {
+            return;
+        }
+        match edit.state {
+            Edit::Checking { .. } | Edit::Uploading { .. } => {}
+            Edit::Open { .. } => {
+                edit.done = DoneAsked::No;
+                self.close_edit(id);
+            }
+            _ => {
+                edit.done = DoneAsked::No;
+                let host = edit.host.as_str().to_owned();
+                self.notices.push(format!(
+                    "The save didn't reach {host}, so the copy here is kept"
+                ));
+            }
+        }
     }
 
     fn carry_out_edit(&mut self, id: EditId, outs: Vec<EditOut>) {
@@ -191,21 +218,27 @@ impl Hub {
         self.on_edit(id, EditIn::Resolved(choice));
     }
 
-    /// The person is done with the edit; its local copy goes (a save that has not reached the
-    /// host yet is the person's to finish first).
+    /// The person is done with the edit; its local copy goes. A save still on its way to the
+    /// host finishes first, and the edit closes after it, as an editor finishes saving before it
+    /// closes a file.
     ///
     /// While a changed file waits for the person's choice the copy stays: it holds the only
     /// copy of their edits.
     pub fn close_edit(&mut self, id: EditId) {
-        if self
-            .ssh
-            .edits
-            .get(&id)
-            .is_some_and(|edit| matches!(edit.state, Edit::Conflict { .. }))
-        {
-            self.notices
-                .push("Choose what to do about the changed file first".to_owned());
+        let Some(edit) = self.ssh.edits.get_mut(&id) else {
             return;
+        };
+        match edit.state {
+            Edit::Conflict { .. } => {
+                self.notices
+                    .push("Choose what to do about the changed file first".to_owned());
+                return;
+            }
+            Edit::Checking { .. } | Edit::Uploading { .. } => {
+                edit.done = DoneAsked::Yes;
+                return;
+            }
+            _ => {}
         }
         self.on_edit(id, EditIn::Closed);
         if let Some(edit) = self.ssh.edits.remove(&id) {
