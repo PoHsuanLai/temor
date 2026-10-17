@@ -68,6 +68,9 @@ pub enum Target {
 pub struct PluginRow {
     /// The plugin.
     pub plugin: PluginId,
+    /// The plugin's name from its manifest: the header its rows sit under, and what orders the
+    /// plugins.
+    pub name: String,
     /// The plugin's own id for the item.
     pub item: String,
     /// What the row says.

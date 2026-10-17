@@ -177,8 +177,8 @@ fn the_bar_lists_what_a_provider_offered_for_the_text_and_choosing_a_row_copies(
     assert_eq!(
         rows,
         [
-            ("plugin:fake:high", "Fake \u{b7} pr high"),
-            ("plugin:fake:low", "Fake \u{b7} pr low")
+            ("plugin:fake:high", "pr high"),
+            ("plugin:fake:low", "pr low")
         ]
     );
 

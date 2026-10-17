@@ -37,7 +37,10 @@ pub fn rank(
     rows.extend(new_tab_row(query));
     rows.extend(run_row(query, resolver));
     rows.extend(matches(query, candidates));
-    rows.extend(plugins.iter().map(plugin_row));
+    // Each plugin's rows sit together under its name; within a plugin they keep the order given.
+    let mut offered: Vec<&PluginRow> = plugins.iter().collect();
+    offered.sort_by(|a, b| (&a.name, &a.plugin).cmp(&(&b.name, &b.plugin)));
+    rows.extend(offered.into_iter().map(plugin_row));
     if ai == AiSwitch::On && !query.is_empty() {
         rows.extend(ai_rows(query));
     }
@@ -83,12 +86,19 @@ fn matches(query: &str, candidates: &[Candidate]) -> Vec<BarRow> {
         .collect();
     // Rows of a section sit together under its header. The section holding the best match comes
     // first, so the first row is still the best match; equal sections keep the section order.
-    let best = |section: Section| fitting.iter().filter(|r| r.1 == section).map(|r| r.0).min();
+    let best = |section: &Section| {
+        fitting
+            .iter()
+            .filter(|r| r.1 == *section)
+            .map(|r| r.0)
+            .min()
+    };
     let mut fitting: Vec<_> = fitting
         .iter()
-        .map(|row| ((best(row.1), row.1), row))
+        .map(|row| ((best(&row.1), row.1.clone()), row))
         .collect();
-    fitting.sort_by_key(|(lead, (fit, _, kind, frecency, _))| (*lead, *fit, *kind, *frecency));
+    fitting
+        .sort_by_key(|(lead, (fit, _, kind, frecency, _))| (lead.clone(), *fit, *kind, *frecency));
     fitting
         .into_iter()
         .map(|(_, (_, _, _, _, candidate))| BarRow {

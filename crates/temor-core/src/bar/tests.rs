@@ -101,6 +101,7 @@ fn a_picked_row_runs_and_an_unknown_one_changes_nothing() {
 fn provider_rows_for_an_old_query_are_dropped() {
     let plugin = PluginRow {
         plugin: PluginId("git".into()),
+        name: "Git".into(),
         item: "x".into(),
         title: "logs branch".into(),
     };

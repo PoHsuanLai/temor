@@ -212,6 +212,16 @@ impl Hub {
 }
 
 impl HubRef {
+    /// The name the bar's header over a plugin's rows shows (the plugin's id when it has no row
+    /// on offer any more).
+    pub fn plugin_name_of(&self, plugin: &PluginId) -> String {
+        let hub = self.0.borrow();
+        hub.plugins
+            .offers
+            .name_of(plugin.as_str())
+            .unwrap_or_else(|| plugin.as_str().to_owned())
+    }
+
     /// The facts plugins gave for the pane's folder.
     pub fn plugin_facts_of(&self, pane: PaneId) -> Vec<PluginFact> {
         self.0.borrow().plugin_facts_of(pane)

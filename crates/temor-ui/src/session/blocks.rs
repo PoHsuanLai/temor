@@ -9,6 +9,8 @@ use temor_core::facts::Facts;
 use temor_core::vocab::ids::BlockId;
 use temor_vt::{AnchorId, PromptEvent};
 
+use crate::plugins::facts::PluginFact;
+
 /// The anchors of one block: where its prompt, its typed command, its output and its end are.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) struct BlockAnchors {
@@ -58,6 +60,8 @@ pub struct HeaderFacts {
     /// The folder as its chip said it.
     pub folder: String,
     pub facts: Facts,
+    /// The facts plugins gave beside them.
+    pub plugin: Vec<PluginFact>,
 }
 
 impl Default for BlockLog {

@@ -24,6 +24,7 @@ pub mod host_banners;
 pub mod host_words;
 pub mod ime;
 pub mod launch;
+pub mod lens_picture;
 pub mod link_tip;
 pub mod offer;
 pub mod palette;

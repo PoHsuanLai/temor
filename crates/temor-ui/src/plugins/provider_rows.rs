@@ -44,8 +44,9 @@ mod tests {
     fn row(item: &str) -> PluginRow {
         PluginRow {
             plugin: PluginId("gh".to_owned()),
+            name: "GitHub".to_owned(),
             item: item.to_owned(),
-            title: format!("GitHub \u{b7} {item}"),
+            title: item.to_owned(),
         }
     }
 

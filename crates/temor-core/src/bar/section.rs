@@ -2,9 +2,10 @@
 //! follows from what it does, so the ranking and the view agree without a second field to keep.
 
 use super::model::{BarAction, BarRow, Target};
+use crate::vocab::text::PluginId;
 
 /// Which header a row sits under, in the order the headers are listed when matches fit equally.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Section {
     /// Window actions (Split right, Zoom, New tab, Reopen tab).
     Actions,
@@ -20,8 +21,9 @@ pub enum Section {
     Folders,
     /// The command typed, to run in a new tab.
     Run,
-    /// What plugins offered.
-    Plugins,
+    /// What one plugin offered, under a header with the plugin's name. The sections of plugins
+    /// sit after the built-in ones, in the order `rank` lists the plugins (by name).
+    Plugin(PluginId),
     /// The AI rows, always last.
     Ask,
 }
@@ -33,7 +35,7 @@ impl Section {
             BarAction::NewTab => Section::Actions,
             BarAction::Run(_) => Section::Run,
             BarAction::Go(target) => section_of_target(target),
-            BarAction::Plugin { .. } => Section::Plugins,
+            BarAction::Plugin { plugin, .. } => Section::Plugin(plugin.clone()),
             BarAction::Suggest(_) | BarAction::AskAgent(_) | BarAction::AskAbout(_) => Section::Ask,
         }
     }

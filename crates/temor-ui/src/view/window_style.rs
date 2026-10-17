@@ -16,6 +16,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; }\
 .temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; min-width: 0; overflow: hidden; background: var(--raise); border-bottom: var(--hair) solid var(--line); }\
+.temor-lens-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }\
+.temor-lens { position: absolute; display: block; object-fit: contain; object-position: left top; }\
 .temor-fact-chips { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: var(--s-6); pointer-events: none; overflow: hidden; }\
 .temor-fact-chips[data-place=over], .temor-fact-chips[data-place=header] { justify-content: flex-start; background: var(--term-bg); }\
 .temor-chip { display: flex; flex: none; align-items: center; gap: var(--s-5); box-sizing: border-box; height: calc(100% - var(--s-2)); max-height: var(--s-22); padding: 0 var(--s-6); border-radius: var(--r-micro); background: var(--fill-quaternary); border: var(--hair) solid var(--line-soft); color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-small); white-space: nowrap; }\

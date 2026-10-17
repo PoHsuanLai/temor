@@ -23,7 +23,9 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::{bar_edit, file_to_edit};
 use super::block_header::BlockHeader;
-use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind};
+use super::block_menu::{
+    BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
+};
 use super::block_meta::BlockMetas;
 use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
@@ -37,6 +39,7 @@ use super::handlers::{
     find_query, find_step, header_press, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
+use super::lens_picture::{LensPictures, lens_request, lens_views};
 use super::link_tip::LinkTip;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
@@ -230,6 +233,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .cloned()
         .collect();
     let facts = desk.hub.facts_of(pane);
+    let plugin_facts = desk.hub.plugin_facts_of(pane);
     let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
     // "Edit here" is only for a pane on another computer.
@@ -246,7 +250,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .and_then(|s| chips_for(s, &facts, folder.as_deref()));
+        .and_then(|s| chips_for(s, &facts, &plugin_facts, folder.as_deref()));
     // What the prompt's chips say now is kept for the block it becomes.
     let over = chips.as_ref().map(|c| c.place) == Some(ChipPlace::Over);
     if let Some((folder, s)) = folder
@@ -254,7 +258,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .filter(|_| over)
         .zip(slot.borrow_mut().session.as_mut())
     {
-        s.keep_header_facts(folder, &facts);
+        s.keep_header_facts(folder, &facts, &plugin_facts);
     }
     let older_chips: Vec<_> = {
         let slot = slot.borrow();
@@ -269,6 +273,24 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // The block menu speaks of what is picked now.
+    let menu_block = match block_menu() {
+        Some(_) => slot
+            .borrow()
+            .session
+            .as_ref()
+            .and_then(|s| s.selected_block()),
+        None => None,
+    };
+    let (lenses, picture) = match menu_block {
+        Some(block) => (
+            desk.hub.block_lenses(pane, block),
+            match desk.hub.lens_shown(pane, block) {
+                true => PictureShown::Yes,
+                false => PictureShown::No,
+            },
+        ),
+        None => (Vec::new(), PictureShown::No),
+    };
     let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
         picked: s.picked_blocks().len(),
         bookmarked: s.picks_bookmarked(),
@@ -276,7 +298,22 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             true => PaneKind::OnHost,
             false => PaneKind::ThisComputer,
         },
+        lenses,
+        picture,
     });
+    // Pictures lenses drew, each under its block.
+    let lens_pictures = {
+        let pictures = desk.hub.lens_pictures(pane);
+        match pictures.is_empty() {
+            true => Vec::new(),
+            false => slot
+                .borrow()
+                .session
+                .as_ref()
+                .map(|s| lens_views(s, pictures))
+                .unwrap_or_default(),
+        }
+    };
     let menu_pick = {
         let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
         let desk = desk.clone();
@@ -286,6 +323,22 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 BlockPick::Do(action) => {
                     if let Some(s) = slot.borrow_mut().session.as_mut() {
                         let _ = s.run(action);
+                    }
+                }
+                BlockPick::Lens(lens) => {
+                    let asked = slot.borrow().session.as_ref().and_then(lens_request);
+                    if let Some((block, width)) = asked {
+                        desk.lens_run(pane, block, &lens, width);
+                    }
+                }
+                BlockPick::HidePicture => {
+                    let block = slot
+                        .borrow()
+                        .session
+                        .as_ref()
+                        .and_then(|s| s.selected_block());
+                    if let Some(block) = block {
+                        desk.lens_hide(pane, block);
                     }
                 }
                 BlockPick::EditLocally => {
@@ -350,6 +403,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     }
                 }
                 // Beside the grid, not in it: a press on these never reaches the terminal.
+                if !lens_pictures.is_empty() {
+                    LensPictures { views: lens_pictures }
+                }
                 if let Some(header) = chrome.header.clone() {
                     BlockHeader {
                         header,

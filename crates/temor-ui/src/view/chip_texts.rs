@@ -5,6 +5,7 @@
 use temor_core::facts::{DiffStat, Facts, MOST_UNTRACKED};
 
 use super::fact_chips::{ChipIcon, ChipKind, ChipPart, ChipText, Tone};
+use crate::plugins::facts::{PluginFact, chip_words};
 
 fn part(text: impl Into<String>, tone: Tone) -> ChipPart {
     ChipPart {
@@ -86,6 +87,25 @@ pub fn chip_texts(facts: &Facts) -> Vec<ChipText> {
     if let Some(node) = &facts.node {
         chips.push(tool(ChipKind::Node, "node", node.as_str()));
     }
+    chips
+}
+
+/// A chip for each fact plugins gave, in the order they gave them: the label in the chip's
+/// colour, then the value.
+pub fn plugin_chips(plugin: &[PluginFact]) -> Vec<ChipText> {
+    plugin
+        .iter()
+        .map(|fact| {
+            let (label, value) = chip_words(fact);
+            tool(ChipKind::Plugin, label, value)
+        })
+        .collect()
+}
+
+/// Every chip after the folder and branch: the built-in ones, then the plugins'.
+pub fn all_chips(facts: &Facts, plugin: &[PluginFact]) -> Vec<ChipText> {
+    let mut chips = chip_texts(facts);
+    chips.extend(plugin_chips(plugin));
     chips
 }
 

@@ -11,6 +11,7 @@ use super::super::blocks::HeaderFacts;
 use super::super::model::PADDING_LOGICAL;
 use super::bands::{Lead, lead_at};
 use crate::error::UiError;
+use crate::plugins::facts::PluginFact;
 
 /// What the gutter shows for one block whose prompt is on screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,7 +49,7 @@ impl Gutter {
 impl Session {
     /// Keeps what the chips over the prompt being typed at say, for the block it becomes: an
     /// older block's header carries the chips its prompt had. Nothing while no prompt is typed at.
-    pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts) {
+    pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts, plugin: &[PluginFact]) {
         let typing = matches!(
             self.blocks.machine,
             BlockState::Prompting { .. } | BlockState::Typing { .. }
@@ -59,6 +60,7 @@ impl Session {
         let kept = HeaderFacts {
             folder: folder.to_owned(),
             facts: facts.clone(),
+            plugin: plugin.to_vec(),
         };
         let id = BlockId(self.blocks.next_id);
         if self.blocks.header_facts.get(&id) != Some(&kept) {
