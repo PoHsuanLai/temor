@@ -40,7 +40,7 @@ impl Launcher {
     ) -> Result<Session<Wire>, PluginError> {
         Ok(self
             .runner
-            .open::<Wire, _>(plugin.installed(), capability, request, payload_limit)?)
+            .open::<Wire>(plugin.installed(), capability, request, payload_limit)?)
     }
 }
 
@@ -52,7 +52,7 @@ impl From<RunError<Cap>> for PluginError {
             | RunError::Protocol { plugin, .. }
             | RunError::Version { plugin, .. }
             | RunError::Lacks { plugin, .. }
-            | RunError::Cancelled { plugin } => plugin.clone(),
+            | RunError::Cancelled { plugin } => plugin.to_string(),
             RunError::Spawn { program, .. } => program.clone(),
             _ => String::new(),
         };

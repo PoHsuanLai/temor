@@ -2,7 +2,7 @@
 
 use bayonet::run::{Greeting, Protocol};
 
-use crate::capability::Cap;
+use crate::capability::{Cap, Provision};
 use crate::catalog::PROTOCOL;
 use crate::message::{Message, Request};
 
@@ -11,7 +11,7 @@ use crate::message::{Message, Request};
 pub struct Wire;
 
 impl Protocol for Wire {
-    type Capability = Cap;
+    type Provides = Provision;
     type Request = Request;
     type Message = Message;
     const VERSION: u32 = PROTOCOL;

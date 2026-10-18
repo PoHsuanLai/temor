@@ -5,7 +5,7 @@ use dioxus::html::{Code, Key, Modifiers as Held};
 use temor_pane::keys::Action;
 
 use super::super::route::FindBar;
-use super::table::{KDE, OURS, Row, Went, ch, check, row};
+use super::table::{KDE, OURS, Went, ch, check, row};
 
 /// Key events as our desktop delivers them, through the stroke and the router: ⌘ arrives as
 /// Super, or as Ctrl+Shift when keycap remaps it for a terminal window. Shifted keys come with
