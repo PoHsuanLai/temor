@@ -64,7 +64,6 @@ mod tests {
             modifiers: held,
             location: Location::Standard,
             text: None,
-            unshifted: None,
         }
     }
 

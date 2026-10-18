@@ -36,24 +36,14 @@ fn our_desktop_sends_command_as_super_or_ctrl_shift() {
             Went::Action(Action::Copy),
         ),
         row(
-            "⌘1, no unshifted key",
+            "⌘1 under Shift",
             ch("!"),
             Code::Digit1,
             cs,
             Went::Action(Action::SelectTab(1)),
         ),
-        Row {
-            unshifted: Some("1"),
-            ..row(
-                "⌘1, unshifted key given",
-                ch("!"),
-                Code::Digit1,
-                cs,
-                Went::Action(Action::SelectTab(1)),
-            )
-        },
         row(
-            "⌘9, no unshifted key",
+            "⌘9 under Shift",
             ch("("),
             Code::Digit9,
             cs,

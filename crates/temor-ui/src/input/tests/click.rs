@@ -42,7 +42,6 @@ fn an_unidentified_key_is_not_sent_as_a_space() {
         modifiers: Held::empty(),
         location: Location::Standard,
         text: None,
-        unshifted: None,
     };
     assert!(stroke(&raw, Ime::Idle).is_none());
 }

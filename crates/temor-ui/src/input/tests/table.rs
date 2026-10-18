@@ -24,7 +24,6 @@ pub(super) struct Row {
     pub(super) key: Key,
     pub(super) code: Code,
     pub(super) held: Held,
-    pub(super) unshifted: Option<&'static str>,
     pub(super) text: &'static str,
     pub(super) want: Went,
 }
@@ -39,7 +38,6 @@ pub(super) fn row(name: &'static str, key: Key, code: Code, held: Held, want: We
         key,
         code,
         held,
-        unshifted: None,
         text: "",
         want,
     }
@@ -57,7 +55,6 @@ pub(super) fn went_with(keymap: &Keymap, row: &Row, find: FindBar, kitty: KittyK
         modifiers: row.held,
         location: Location::Standard,
         text: (!row.text.is_empty()).then(|| row.text.to_owned()),
-        unshifted: row.unshifted.map(ch),
     };
     let stroke = stroke(&raw, Ime::Idle).unwrap_or_else(|| panic!("{}: no stroke", row.name));
     match route_with(stroke, keymap, find, kitty) {

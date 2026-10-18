@@ -19,12 +19,7 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
         KeyPhase::Repeat => KeyAction::Repeat,
         KeyPhase::Release => KeyAction::Release,
     };
-    let unshifted = raw
-        .unshifted
-        .as_ref()
-        .or(Some(&raw.key))
-        .and_then(logical_char)
-        .map(fold);
+    let unshifted = logical_char(&raw.key).map(fold);
     let key = KeyInput {
         code,
         action,
@@ -49,12 +44,9 @@ fn fold(c: char) -> char {
 }
 
 /// The key a chord is made from: the layout's key with no modifier held, so Ctrl+Shift+1 is the
-/// chord `1` with Shift in the modifiers, not `!`. When the platform reports no unshifted key, a
-/// digit or punctuation key under Shift falls back to its US base character by physical code.
+/// chord `1` with Shift in the modifiers, not `!`. A digit or punctuation key under Shift takes
+/// its US base character by physical code.
 fn chord_key(raw: &RawKey) -> Key {
-    if let Some(unshifted) = &raw.unshifted {
-        return unshifted.clone();
-    }
     let shifted = raw.modifiers.contains(HeldMods::SHIFT);
     match (&raw.key, shifted, code_char(&raw.code)) {
         (Key::Character(_), true, Some(base)) => Key::Character(base.to_string()),
