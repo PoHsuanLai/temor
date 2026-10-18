@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "3882bc95979b9fcb65aa17d596f6628c1bb982b8" }  # v0.3.33 (blitz 4b236792)
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -54,7 +54,7 @@ temor-shell = { path = "crates/temor-shell" }
 temor-pane = { path = "crates/temor-pane", default-features = false }
 temor-ui = { path = "crates/temor-ui" }
 # temor-plugins (lane plugins): P11 on bayonet. A plugin is run, never linked.
-bayonet = { git = "https://github.com/PoHsuanLai/bayonet.git", rev = "fe489cf7533015e18161dc36854c53152c385839" }
+bayonet = { git = "https://github.com/PoHsuanLai/bayonet.git", rev = "2c5038dfdaa9352b0438c568856b5326eb95b818" }
 temor-plugins = { path = "crates/temor-plugins" }
 # temor-transfer (lane blocks): the downloads shelf's store, for "Save output".
 temor-transfer = { path = "crates/temor-transfer" }
@@ -66,36 +66,36 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "8db9048e28e1ab66104e66f06735fc63fda18ed6" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "8db9048e28e1ab66104e66f06735fc63fda18ed6" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "8db9048e28e1ab66104e66f06735fc63fda18ed6" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "8db9048e28e1ab66104e66f06735fc63fda18ed6" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "8db9048e28e1ab66104e66f06735fc63fda18ed6" }
-chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "934a2d71f6516bee5919ee29278003702a4ea5e1" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
-chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "934a2d71f6516bee5919ee29278003702a4ea5e1" }
-chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "934a2d71f6516bee5919ee29278003702a4ea5e1" }
+chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
+chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
 # Our desktop's keymap source (keycap's daemon and keymap files), at the rev casement reads.
-keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "b04bf0696a7af0b2086d5930bf821b092e34cd6d" }
+keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "52c66c7c768eac3b9ad6749f22ec3a43b08bd48f" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5388a851eb608a8598451acebdb186f1080b1029", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5388a851eb608a8598451acebdb186f1080b1029" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2" }
 # Who may call temor's provider (intentd's unit), and the stand-in a test names for it.
-docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5388a851eb608a8598451acebdb186f1080b1029" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "232f5376c7e3e33f917ebf91b7f8be6a347ec0e8" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "232f5376c7e3e33f917ebf91b7f8be6a347ec0e8" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "232f5376c7e3e33f917ebf91b7f8be6a347ec0e8", default-features = false, features = ["dbus"] }
+docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", default-features = false, features = ["dbus"] }
 # The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
-porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "232f5376c7e3e33f917ebf91b7f8be6a347ec0e8", features = ["oo7"] }
+porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 # peephole: which program is calling (a pinned process judged against a table), as porter and
 # docket use it, by the same tag; temor-desktop checks the caller of `org.quire.Temor1.Run` with it.
-peephole-bus = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.6", default-features = false, features = ["tokio"] }
-peephole-core = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.6" }
+peephole-bus = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.8", default-features = false, features = ["tokio"] }
+peephole-core = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.8" }
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
 # The tests of temor-desktop read bus signals as streams.
