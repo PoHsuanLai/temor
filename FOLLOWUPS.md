@@ -1610,3 +1610,9 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       file: a checkout, or no session bus), the launch is the window itself and lives until temor
       quits, not until its tab closes. Installed temor has the activation file, so this is the
       checkout's case only.
+- [ ] Releases (`scripts/package.sh`, `scripts/install.sh`): the tarball is built for this
+      computer's processor only, so an x86_64 release has no aarch64 tarball and no
+      `temor-remote-aarch64` for arm hosts (a cross build, or an arm runner, is the next step).
+      There is no macOS or Windows release; `install.sh` sends those to `scripts/dev-setup.sh`,
+      which is untested on both (their desktop layer is stubs). `--uninstall` removes the files it
+      installed and leaves the folders they were in.

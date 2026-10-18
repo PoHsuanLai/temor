@@ -1,6 +1,7 @@
 #!/bin/sh
 # Fetch the Zig that builds the pinned Ghostty, from ziglang.org, checked against its pinned SHA-256.
-# For hosts whose package manager has no Zig 0.16 (Ubuntu 24.04 has none; others drift).
+# For hosts whose package manager has no Zig 0.16 (Ubuntu 24.04 has none; others drift). Linux,
+# macOS, and Windows from Git Bash (MSYS), where the download is a zip and needs `unzip`.
 #
 #   scripts/fetch-zig.sh <dest>
 #
@@ -27,6 +28,7 @@ esac
 case "$(uname -s)" in
   Linux) os=linux ;;
   Darwin) os=macos ;;
+  MINGW* | MSYS* | CYGWIN*) os=windows ;;
   *) echo "no pinned Zig for this system ($(uname -s))" >&2; exit 1 ;;
 esac
 
@@ -35,19 +37,26 @@ case "$arch-$os" in
   aarch64-linux) sum=ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17 ;;
   x86_64-macos) sum=0387557ed1877bc6a2e1802c8391953baddba76081876301c522f52977b52ba7 ;;
   aarch64-macos) sum=b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489 ;;
+  x86_64-windows) sum=68659eb5f1e4eb1437a722f1dd889c5a322c9954607f5edcf337bc3684a75a7e ;;
+  aarch64-windows) sum=aee38316ee4111717900f45dd3130145c39289e105541d737eb8c5ed653c78ef ;;
 esac
 
 name="zig-$arch-$os-$ZIG_VERSION"
-url="https://ziglang.org/download/$ZIG_VERSION/$name.tar.xz"
+# Windows builds come as a zip, every other one as a tar.xz; the compiler is zig.exe there.
+case "$os" in
+  windows) ext=zip zig=zig.exe ;;
+  *) ext=tar.xz zig=zig ;;
+esac
+url="https://ziglang.org/download/$ZIG_VERSION/$name.$ext"
 
 mkdir -p "$1"
 dest=$(CDPATH='' cd -- "$1" && pwd)
-if [ -x "$dest/$name/zig" ]; then
+if [ -x "$dest/$name/$zig" ]; then
   echo "export PATH=$dest/$name:\$PATH"
   exit 0
 fi
 
-tarball="$dest/$name.tar.xz"
+tarball="$dest/$name.$ext"
 curl --fail --location --proto '=https' --tlsv1.2 --output "$tarball.part" "$url"
 if command -v sha256sum >/dev/null 2>&1; then
   have=$(sha256sum "$tarball.part" | cut -d' ' -f1)
@@ -60,9 +69,12 @@ if [ "$have" != "$sum" ]; then
   exit 1
 fi
 mv "$tarball.part" "$tarball"
-tar -xJf "$tarball" -C "$dest"
+case "$ext" in
+  zip) unzip -q "$tarball" -d "$dest" ;;
+  *) tar -xJf "$tarball" -C "$dest" ;;
+esac
 rm -f "$tarball"
-test "$("$dest/$name/zig" version)" = "$ZIG_VERSION"
+test "$("$dest/$name/$zig" version)" = "$ZIG_VERSION"
 
 echo
 echo "export PATH=$dest/$name:\$PATH"
