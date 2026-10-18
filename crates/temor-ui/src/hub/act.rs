@@ -132,7 +132,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
-        self.run.panes.remove(&pane);
+        self.run_closed(pane);
         self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
@@ -160,6 +160,7 @@ impl Hub {
         let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
+        self.run_restarted(pane);
         let run = self.run.panes.get(&pane).cloned();
         match open_session_with(
             &self.launch,

@@ -86,6 +86,7 @@ pub fn App() -> Element {
             if let Some(desktop) = desktop {
                 hub.set_tailnet(desktop.tailnet.clone());
                 hub.set_checkpoints(desktop.checkpoints.clone());
+                hub.set_run_ends(desktop.run_ends.clone());
             }
             hub.start();
             HubRef(Rc::new(RefCell::new(hub)))

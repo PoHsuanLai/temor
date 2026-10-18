@@ -1,7 +1,8 @@
 //! A program run in a tab of its own in place of the shell (`temor -e`, the terminal-exec
 //! convention): the launch that asked gives its words, its folder and its environment, and the tab
 //! keeps them so Restart runs the same program again. The tab stays when the program ends, until
-//! the person closes it.
+//! the person closes it; then the launch, which waits on its ticket, hears the status to exit
+//! with: the program's last, or a hang-up's when the tab closed while it ran.
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -10,7 +11,8 @@ use std::path::{Path, PathBuf};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
-use temor_desktop::RunRequest;
+use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnds, RunRequest, RunTicket};
+use temor_pty::ChildExit;
 use temor_shell::ChildEnv;
 
 use super::model::Hub;
@@ -25,6 +27,8 @@ pub struct Run {
     pub cwd: Option<PathBuf>,
     /// The environment it runs with, over temor's own.
     pub env: ChildEnv,
+    /// The launch waiting for the tab to close, if one waits.
+    pub ticket: Option<RunTicket>,
 }
 
 impl From<RunRequest> for Run {
@@ -33,6 +37,7 @@ impl From<RunRequest> for Run {
             argv: request.argv,
             cwd: request.cwd,
             env: request.env.into_iter().collect(),
+            ticket: request.ticket,
         }
     }
 }
@@ -45,6 +50,9 @@ pub(super) struct Found {
     pub env: ChildEnv,
     /// The name the person knows it by, for "… has ended".
     pub name: String,
+    pub ticket: Option<RunTicket>,
+    /// How the program last ended; `None` while it runs.
+    pub status: Option<i32>,
 }
 
 impl Found {
@@ -63,6 +71,8 @@ pub(super) struct RunHub {
     /// Taken by the next pane that starts.
     pub intent: Option<Found>,
     pub panes: BTreeMap<PaneId, Found>,
+    /// Where a closed run tab is told to its waiting launch.
+    pub ends: RunEnds,
 }
 
 impl Hub {
@@ -70,6 +80,10 @@ impl Hub {
     /// said, and no tab opens. Returns whether the tab opened.
     pub fn run_in_tab(&mut self, run: Run) -> bool {
         let Some(found) = self.find_run(&run) else {
+            // As a shell says it: the launch exits at once, with no tab to wait for.
+            if let Some(ticket) = run.ticket {
+                self.run.ends.ended(ticket, NOT_FOUND);
+            }
             return false;
         };
         self.run.intent = Some(found);
@@ -110,6 +124,8 @@ impl Hub {
             args: args.to_vec(),
             env: run.env.clone(),
             name: shown_name(&name),
+            ticket: run.ticket,
+            status: None,
         })
     }
 
@@ -118,6 +134,37 @@ impl Hub {
         let found = self.run.intent.take()?;
         self.run.panes.insert(pane, found.clone());
         Some(found)
+    }
+
+    /// Where a closed run tab is told to the launch that waits on it.
+    pub fn set_run_ends(&mut self, ends: RunEnds) {
+        self.run.ends = ends;
+    }
+
+    /// `pane`'s program ended `exit`; a run tab keeps it for its launch.
+    pub(super) fn run_ended(&mut self, pane: PaneId, exit: Option<ChildExit>) {
+        if let Some(found) = self.run.panes.get_mut(&pane) {
+            found.status = Some(status_of(exit));
+        }
+    }
+
+    /// `pane`'s program is starting again (Restart): it runs, so nothing has ended yet.
+    pub(super) fn run_restarted(&mut self, pane: PaneId) {
+        if let Some(found) = self.run.panes.get_mut(&pane) {
+            found.status = None;
+        }
+    }
+
+    /// `pane` is gone: a run tab's launch stops waiting.
+    pub(super) fn run_closed(&mut self, pane: PaneId) {
+        let Some(found) = self.run.panes.remove(&pane) else {
+            return;
+        };
+        if let Some(ticket) = found.ticket {
+            self.run
+                .ends
+                .ended(ticket, found.status.unwrap_or(CLOSED_WHILE_RUNNING));
+        }
     }
 
     /// The name of the program `pane` runs in place of the shell, if it does.
@@ -137,4 +184,14 @@ fn within(dir: Option<&Path>, path: &Path) -> PathBuf {
 /// The last part of what was typed: `htop` for `/usr/bin/htop`.
 fn shown_name(name: &str) -> String {
     name.rsplit('/').next().unwrap_or(name).to_owned()
+}
+
+/// The status a shell would report for `exit`: the code, 128 plus a signal, or a hang-up's when
+/// it could not be read.
+fn status_of(exit: Option<ChildExit>) -> i32 {
+    match exit {
+        Some(ChildExit::Exited(code)) => code,
+        Some(ChildExit::Signaled(signal)) => 128 + signal,
+        None => CLOSED_WHILE_RUNNING,
+    }
 }

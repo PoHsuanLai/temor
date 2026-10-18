@@ -26,6 +26,7 @@ pub fn launch_request(
         argv,
         cwd,
         env: env.into_iter().collect(),
+        ticket: None,
     }))
 }
 
@@ -51,6 +52,7 @@ mod tests {
                 argv: words(&["claude", "--resume", "-e"]),
                 cwd: Some(PathBuf::from("/work")),
                 env,
+                ticket: None,
             }))
         );
     }

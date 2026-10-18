@@ -24,6 +24,7 @@ quire-desktop = [
   "dep:toml",
   "dep:peephole-bus",
   "dep:peephole-core",
+  "dep:futures-util",
 ]
 
 # `SystemIntents::serve_for_router`: a private bus's stand-in for intentd. Only this crate's own
@@ -45,6 +46,7 @@ tokio = { workspace = true, features = ["rt"] }
 docket-client = { workspace = true, optional = true }
 docket-core = { workspace = true, optional = true }
 docket-dbus = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
 peephole-bus = { workspace = true, optional = true }
 peephole-core = { workspace = true, optional = true }
 porter-client = { workspace = true, optional = true }

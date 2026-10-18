@@ -24,6 +24,15 @@ impl SystemInstance {
     }
 
     /// This launch is the primary; nothing will ever send it a request.
+    /// No bus: no running temor to hand a run to; this launch is the window itself.
+    pub async fn run_and_wait(
+        &self,
+        _run: &crate::RunRequest,
+        _token: Option<&str>,
+    ) -> Result<Option<i32>, DesktopError> {
+        Ok(None)
+    }
+
     pub async fn claim(&self, _request: &Request) -> Result<Claim, DesktopError> {
         let (_sender, requests) = unbounded_channel();
         Ok(Claim::Primary(Primary::new(requests, Box::new(()))))

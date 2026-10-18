@@ -7,7 +7,7 @@ mod run_arg;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use temor_desktop::{DesktopEnv, Request};
+use temor_desktop::{DesktopEnv, Request, SystemInstance};
 use temor_ui::app::desktop::{Joined, join};
 use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
 use temor_ui::settings::{load_settings, write_schema};
@@ -50,14 +50,29 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    // A launcher or a notification click hands the new process a one-use token that lets the
+    // running window take the keyboard on Wayland.
+    let token =
+        temor_ui::app::desktop::launch_token(std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref());
+    // `temor -e` lives as long as its tab, as a terminal's process does: the program runs in the
+    // temor that is running (or that the bus starts), and this launch exits with its status once
+    // the tab closes. With no temor to reach, this launch is the window.
+    if let Request::Run(run) = &request {
+        let instance = SystemInstance::new(DesktopEnv::from_process());
+        match runtime.block_on(instance.run_and_wait(run, token.as_deref())) {
+            Ok(Some(status)) => return ExitCode::from(u8::try_from(status).unwrap_or(1)),
+            Ok(None) => {}
+            Err(err) => {
+                eprintln!("temor: {err}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     let desktop = match join(
         runtime.handle(),
         DesktopEnv::from_process(),
         &request,
-        // A launcher or a notification click hands the new process a one-use token that lets
-        // the running window take the keyboard on Wayland.
-        temor_ui::app::desktop::launch_token(std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref())
-            .as_deref(),
+        token.as_deref(),
     ) {
         Joined::Handed => return ExitCode::SUCCESS,
         Joined::First { desktop, trouble } => {

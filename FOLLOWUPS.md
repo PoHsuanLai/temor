@@ -1605,3 +1605,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       `temor -e` aimed at a running checkout temor is refused too, and that launch then starts as
       a window of its own (`join` treats a failed claim as no desktop). If that gets in the way of
       development, peephole's developer rows are the seam, in debug builds only.
+- [ ] `temor -e` waits for its tab (Temor1.Run returns a ticket; `RunEnded(ticket, status)` goes to
+      the waiting launch alone). When no temor runs and the bus cannot start one (no activation
+      file: a checkout, or no session bus), the launch is the window itself and lives until temor
+      quits, not until its tab closes. Installed temor has the activation file, so this is the
+      checkout's case only.

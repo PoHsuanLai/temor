@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use temor_desktop::{
     Badge, BadgeCount, CheckpointPort, Claim, DesktopEnv, DesktopError, NoCheckpoints, NoSecrets,
-    Primary, Request, SecretVault, SystemCheckpoints, SystemDock, SystemInstance, SystemIntents,
-    SystemSecrets, SystemTailnet,
+    Primary, Request, RunEnds, SecretVault, SystemCheckpoints, SystemDock, SystemInstance,
+    SystemIntents, SystemSecrets, SystemTailnet,
 };
 use tokio::runtime::Handle;
 use tokio::sync::watch;
@@ -29,6 +29,8 @@ pub struct Desktop {
     pub checkpoints: Arc<dyn CheckpointPort>,
     /// Where a Space's secrets are kept; nothing is kept without a desktop.
     pub secrets: Arc<dyn SecretVault>,
+    /// Where a run tab's closing is told to the `temor -e` launch waiting on it.
+    pub run_ends: RunEnds,
 }
 
 impl Desktop {
@@ -39,6 +41,7 @@ impl Desktop {
             tailnet: Arc::new(NoTailnet),
             checkpoints: Arc::new(NoCheckpoints),
             secrets: Arc::new(NoSecrets),
+            run_ends: RunEnds::default(),
         }
     }
 }
@@ -93,6 +96,7 @@ fn trouble_of(error: &DesktopError) -> Option<String> {
 
 fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
     let (port, link, count) = desktop_pair();
+    let run_ends = primary.run_ends();
     let tailnet = LiveTailnet::default();
     runtime.spawn(hear_and_serve(env.clone(), primary, port, link.clone()));
     runtime.spawn(show_badge(env.clone(), count));
@@ -113,6 +117,7 @@ fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
         tailnet: Arc::new(tailnet),
         checkpoints,
         secrets,
+        run_ends,
     }
 }
 

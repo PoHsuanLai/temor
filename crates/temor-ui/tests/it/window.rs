@@ -11,8 +11,10 @@ use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Driver, Harness, HarnessConfig, Query, Viewport, WindowHosting};
+use temor_desktop::RunEnds;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
+use temor_ui::app::desktop::Desktop;
 use temor_ui::edge::Ambient;
 use temor_ui::hub::Run;
 use temor_ui::view::App;
@@ -67,13 +69,22 @@ pub(super) fn harness_building(
 
 /// A window whose first launch was asked to run `run` (`temor -e`).
 pub(super) fn harness_running(name: &str, probe: &Probe, run: Run) -> Harness {
+    harness_running_to(name, probe, run, RunEnds::default())
+}
+
+/// [`harness_running`] on a desktop that tells `ends` when a run's tab closed.
+pub(super) fn harness_running_to(name: &str, probe: &Probe, run: Run, ends: RunEnds) -> Harness {
+    let desktop = Desktop {
+        run_ends: ends,
+        ..Desktop::none()
+    };
     harness_at(
         name,
         probe,
         (None, 100, Some(run)),
         |_| {},
         WindowHosting::Absent,
-        |config| config,
+        move |config| config.with_context(desktop),
     )
 }
 

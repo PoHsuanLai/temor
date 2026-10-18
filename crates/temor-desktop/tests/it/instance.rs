@@ -8,7 +8,7 @@ use std::ffi::OsString;
 use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 use std::time::Duration;
-use temor_desktop::{Claim, Primary, Request, RunRequest, SystemInstance};
+use temor_desktop::{Claim, Primary, Request, RunRequest, RunTicket, SystemInstance};
 
 async fn first(bus: &PrivateBus) -> Primary {
     match SystemInstance::new(bus.env())
@@ -93,6 +93,7 @@ fn a_run() -> Request {
         ],
         cwd: Some(PathBuf::from("/tmp/work")),
         env: vec![(OsString::from("TOOL_SESSION"), OsString::from("abc 123"))],
+        ticket: None,
     })
 }
 
@@ -111,7 +112,75 @@ async fn a_run_from_temors_own_launch_is_heard_with_its_words_intact() {
         .await
         .expect("temor's own launch may run");
     let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
-    assert_eq!(heard.unwrap(), Some(a_run()));
+    let Some(Request::Run(heard)) = heard.unwrap() else {
+        panic!("a run");
+    };
+    assert!(heard.ticket.is_some(), "the launch waits on a ticket");
+    assert_eq!(
+        Request::Run(RunRequest {
+            ticket: None,
+            ..heard
+        }),
+        a_run()
+    );
+}
+
+/// The waiting side of `temor -e`, on a vouched-for connection of the test's.
+async fn waiting_launch(
+    bus: &PrivateBus,
+    instance: &SystemInstance,
+) -> tokio::task::JoinHandle<Result<i32, temor_desktop::DesktopError>> {
+    let launch = bus.connect().await;
+    instance.vouch_for(launch.unique_name().expect("a unique name").as_str());
+    let Request::Run(run) = a_run() else {
+        unreachable!()
+    };
+    tokio::spawn(async move { SystemInstance::run_and_wait_for_tests(&launch, &run, None).await })
+}
+
+#[tokio::test]
+async fn a_waiting_launch_exits_with_the_status_its_tab_closed_with() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let instance = SystemInstance::new(bus.env());
+    let Claim::Primary(mut primary) = instance.claim(&Request::NewWindow).await.unwrap() else {
+        panic!("the first launch must own the name");
+    };
+    let waiting = waiting_launch(&bus, &instance).await;
+    let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
+    let Some(Request::Run(RunRequest {
+        ticket: Some(ticket),
+        ..
+    })) = heard.unwrap()
+    else {
+        panic!("a run with a ticket");
+    };
+    // Another ticket's end is not this launch's.
+    primary.run_ends().ended(RunTicket(ticket.0 + 100), 9);
+    primary.run_ends().ended(ticket, 3);
+    let status = tokio::time::timeout(Duration::from_secs(5), waiting).await;
+    assert_eq!(status.unwrap().unwrap().unwrap(), 3);
+}
+
+#[tokio::test]
+async fn a_waiting_launch_ends_as_hung_up_when_temor_goes_away() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let instance = SystemInstance::new(bus.env());
+    let Claim::Primary(mut primary) = instance.claim(&Request::NewWindow).await.unwrap() else {
+        panic!("the first launch must own the name");
+    };
+    let waiting = waiting_launch(&bus, &instance).await;
+    let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
+    assert!(matches!(heard.unwrap(), Some(Request::Run(_))));
+    drop(primary);
+    let status = tokio::time::timeout(Duration::from_secs(5), waiting).await;
+    assert_eq!(
+        status.unwrap().unwrap().unwrap(),
+        temor_desktop::CLOSED_WHILE_RUNNING
+    );
 }
 
 #[tokio::test]

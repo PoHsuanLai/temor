@@ -5,7 +5,7 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 /// What a second launch (or the desktop, through the bus) asks the running temor for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,6 +30,46 @@ pub struct RunRequest {
     pub cwd: Option<PathBuf>,
     /// The asking launch's environment.
     pub env: Vec<(OsString, OsString)>,
+    /// The asking launch's wait, when it waits for the tab to close: the window tells
+    /// [`RunEnds`] this ticket once the tab is gone.
+    pub ticket: Option<RunTicket>,
+}
+
+/// One `temor -e` launch's wait for its tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RunTicket(pub u64);
+
+/// The status a waiting `temor -e` exits with when its tab closed while the program was still
+/// running (or temor itself went away): a terminal's hang-up, as a shell reports it (128 + 1).
+pub const CLOSED_WHILE_RUNNING: i32 = 129;
+
+/// The status for a program that could not be found, as a shell reports it.
+pub const NOT_FOUND: i32 = 127;
+
+/// A run's tab is gone: the launch that waits on `ticket` exits with `status`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RunEnd {
+    pub ticket: RunTicket,
+    pub status: i32,
+}
+
+/// Where the window says a run's tab closed. Cheap to clone; the default tells no one (a window
+/// without the bus, or a run nobody waits on).
+#[derive(Debug, Clone, Default)]
+pub struct RunEnds(Option<UnboundedSender<RunEnd>>);
+
+impl RunEnds {
+    /// Ends that go to `sender`.
+    pub fn new(sender: UnboundedSender<RunEnd>) -> RunEnds {
+        RunEnds(Some(sender))
+    }
+
+    /// The tab of `ticket` is gone, its program having ended with `status`.
+    pub fn ended(&self, ticket: RunTicket, status: i32) {
+        if let Some(sender) = &self.0 {
+            let _ = sender.send(RunEnd { ticket, status });
+        }
+    }
 }
 
 /// A request and the activation token its sender was started with (a launcher, a notification
@@ -46,6 +86,7 @@ pub struct Handover {
 /// Dropping it gives the name up.
 pub struct Primary {
     requests: UnboundedReceiver<Handover>,
+    run_ends: RunEnds,
     _guard: Box<dyn Any + Send + Sync>,
 }
 
@@ -54,8 +95,19 @@ impl Primary {
     pub fn new(requests: UnboundedReceiver<Handover>, guard: Box<dyn Any + Send + Sync>) -> Self {
         Self {
             requests,
+            run_ends: RunEnds::default(),
             _guard: guard,
         }
+    }
+
+    /// The same, telling `run_ends` where waiting launches hear that their tab closed.
+    pub fn with_run_ends(self, run_ends: RunEnds) -> Self {
+        Self { run_ends, ..self }
+    }
+
+    /// Where the window says a run's tab closed.
+    pub fn run_ends(&self) -> RunEnds {
+        self.run_ends.clone()
     }
 
     /// The next request, or `None` once nothing can send one.

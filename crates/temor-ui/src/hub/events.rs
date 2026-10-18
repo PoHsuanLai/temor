@@ -68,6 +68,7 @@ impl Hub {
                     out.paint.insert(pane);
                 }
                 Notice::Ended(exit) => {
+                    self.run_ended(pane, exit);
                     self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
                     out.chrome.insert(pane);
