@@ -1575,3 +1575,11 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       `<name>.bad-<seconds>`) before writing a new one. temor's three save calls (the Settings
       window, the settings migration, the shell offer's "never for") drop that; the person should be
       told where the old file went.
+- [ ] The edge strip's click may not pin a hidden sidebar, depending on how the frames fall
+      (quire `EdgePeek` with `HoverIntent`). `sidebar::a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it`
+      passes 10 of 10 when the harness advances 600–900 ms per step; driven in 25 ms steps (waiting
+      until the press would land on `.ds-edge`), the click leaves it peeking, unpinned, 8 runs in 10.
+      The test keeps its steps and waits on the pin itself. Raised with Whopper for quire.
+- [ ] `blocks::shells::real_shells_make_one_block_per_command_with_its_output_and_status` failed once
+      at its block comparison (shells.rs:27) in six full `it` runs; 8 runs alone passed. The message
+      was not kept; catch it the next time it shows.

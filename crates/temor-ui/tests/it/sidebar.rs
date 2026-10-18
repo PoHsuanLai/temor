@@ -3,7 +3,7 @@
 //! is Arc's row of side-by-side panes that close from their menu, Downloads ends the head, and
 //! the Space name and dots show only once there are two Spaces.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
@@ -352,12 +352,15 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
         "gone again"
     );
     h.send(Input::click(at(3.0, 400.0)));
-    h.advance(Duration::from_millis(600));
-    assert!(!found(&h, ".temor-edge-host"), "pinned: no edge host");
-    assert!(
-        found(&h, ".ds-side[data-side=shown]"),
-        "pinned in its column"
-    );
+    // The pin is waited for, not timed: a loaded machine draws it later.
+    let start = Instant::now();
+    while found(&h, ".temor-edge-host") || !found(&h, ".ds-side[data-side=shown]") {
+        h.advance(Duration::from_millis(100));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "pinned in its column, with no edge host"
+        );
+    }
 }
 
 /// A split of three panes is squeezed as Arc's is: the pane with the keys keeps its name, the

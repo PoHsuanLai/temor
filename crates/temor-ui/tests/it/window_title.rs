@@ -62,11 +62,10 @@ fn the_title_is_the_programs_then_the_folder() {
     wait_for_title(&mut h, "the program's title", |t| t == "scenario title");
 
     // It clears the title: the window falls back to the folder the shell reported (the scratch
-    // home the window starts in).
+    // home the window starts in). The prompt between the two commands may set its own title
+    // first, so the wait is for the folder itself.
     type_line(&mut h, "printf '\\033]2;\\007'; sleep 3");
-    let folder = wait_for_title(&mut h, "the folder", |t| t != "scenario title");
-    assert!(
-        folder.ends_with("/home"),
-        "the folder the shell is in, not {folder:?}"
-    );
+    wait_for_title(&mut h, "the folder the shell is in", |t| {
+        t.ends_with("/home")
+    });
 }
