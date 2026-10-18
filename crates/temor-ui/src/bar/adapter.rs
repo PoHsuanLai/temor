@@ -14,7 +14,7 @@ use temor_core::bar::{BarContext, BarIn, BarOut, BarRow, BarState, RowKey, bar_s
 #[derive(Debug, Clone, PartialEq)]
 pub struct BarModel {
     bar: BarState,
-    palette: PaletteState<BarRow>,
+    palette: PaletteState,
 }
 
 impl Default for BarModel {
@@ -30,13 +30,11 @@ impl Default for BarModel {
 #[path = "../plugins/provider_rows.rs"]
 mod provider_rows;
 
-type PaletteStep = (PaletteState<BarRow>, Vec<PaletteOut<BarRow>>);
+type PaletteStep = (PaletteState, Vec<PaletteOut>);
 
 /// The palette after `input` over `rows`. It keeps no timer, so the time is nothing.
-fn walk(state: PaletteState<BarRow>, input: PaletteIn, rows: &[BarRow]) -> PaletteStep {
-    let params = PaletteParams {
-        rows: rows.to_vec(),
-    };
+fn walk(state: PaletteState, input: PaletteIn, rows: &[BarRow]) -> PaletteStep {
+    let params = PaletteParams { rows: rows.len() };
     state.step(input, Stamp(0), &params, &())
 }
 
@@ -136,7 +134,7 @@ impl BarModel {
         };
         let (palette, outs) = walk(self.palette, PaletteIn::Pick(PaletteIndex(index)), &rows);
         let ran = outs.into_iter().find_map(|out| match out {
-            PaletteOut::Run(row) => Some(row),
+            PaletteOut::Run(row) => rows.get(row.0).cloned(),
             PaletteOut::Opened | PaletteOut::Closed => None,
         });
         let Some(ran) = ran else {
