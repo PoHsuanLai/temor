@@ -66,11 +66,11 @@ temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "fd6fc2cf387493cac97e160db453ed5bff3ff2dc" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "fd6fc2cf387493cac97e160db453ed5bff3ff2dc" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "fd6fc2cf387493cac97e160db453ed5bff3ff2dc" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "fd6fc2cf387493cac97e160db453ed5bff3ff2dc" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "fd6fc2cf387493cac97e160db453ed5bff3ff2dc" }
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "934a2d71f6516bee5919ee29278003702a4ea5e1" }
 # The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
 chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "934a2d71f6516bee5919ee29278003702a4ea5e1" }
@@ -82,15 +82,15 @@ keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "b04bf
 # docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "4ec8abba952a846f40a970597fdeb9e7b86e4018", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "4ec8abba952a846f40a970597fdeb9e7b86e4018" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5a218b46a36c5457f0e374b01ecef1ed52cdddea", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5a218b46a36c5457f0e374b01ecef1ed52cdddea" }
 # Who may call temor's provider (intentd's unit), and the stand-in a test names for it.
-docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "4ec8abba952a846f40a970597fdeb9e7b86e4018" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "125272e095943b6556a21994dc503171c795172b" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "125272e095943b6556a21994dc503171c795172b" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "125272e095943b6556a21994dc503171c795172b", default-features = false, features = ["dbus"] }
+docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "5a218b46a36c5457f0e374b01ecef1ed52cdddea" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "8769181d206a579f283cd966ab9c53f5e7017a42" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "8769181d206a579f283cd966ab9c53f5e7017a42" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "8769181d206a579f283cd966ab9c53f5e7017a42", default-features = false, features = ["dbus"] }
 # The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
-porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "125272e095943b6556a21994dc503171c795172b", features = ["oo7"] }
+porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "8769181d206a579f283cd966ab9c53f5e7017a42", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
