@@ -35,6 +35,14 @@ pub fn pane_footer(
     pending: Option<UnsafeReason>,
     shell: Shell,
 ) -> Element {
+    // A tab that runs a program in place of the shell names it, and Restart runs it again.
+    let ended = match desk.hub.0.borrow().run_name(pane) {
+        Some(name) => (format!("{name} has ended."), format!("Run {name} again")),
+        None => (
+            "The shell has ended.".to_owned(),
+            "Start a new shell".to_owned(),
+        ),
+    };
     rsx! {
         HostBanners { pane, desk: desk.clone() }
         OfferBar { pane, desk: desk.clone() }
@@ -49,11 +57,11 @@ pub fn pane_footer(
         if shell == Shell::Ended {
             InlineBanner {
                 severity: Severity::Warn,
-                text: "The shell has ended.".to_owned(),
+                text: ended.0,
                 actions: rsx! {
                     Button {
                         label: "Restart".to_owned(),
-                        title: Some("Start a new shell".to_owned()),
+                        title: Some(ended.1),
                         onclick:restart_pane(desk.clone(), pane),
                     }
                 },

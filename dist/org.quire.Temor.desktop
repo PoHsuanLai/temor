@@ -9,6 +9,8 @@ Terminal=false
 Categories=TerminalEmulator;System;
 StartupWMClass=org.quire.Temor
 StartupNotify=true
+# `temor -e program args…` runs a program in a tab of its own (xdg-terminal-exec).
+X-TerminalArgExec=-e
 DBusActivatable=true
 # keycap passes ⌘ through as Super: temor reads the keymap itself (chordkit), so ⌘D and ⌘⇧D stay apart.
 X-Keycap-Profile=keymap-aware

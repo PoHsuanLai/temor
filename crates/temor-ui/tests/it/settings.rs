@@ -81,6 +81,7 @@ fn settings_window(
         probe: None,
         state_dir: None,
         first_words: Default::default(),
+        first_run: Default::default(),
     };
     let asked = SettingsAsked::default();
     asked.ask(page);

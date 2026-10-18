@@ -14,9 +14,10 @@ use ds_harness::{Driver, Harness, HarnessConfig, Query, Viewport, WindowHosting}
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::Ambient;
+use temor_ui::hub::Run;
 use temor_ui::view::App;
 use temor_ui::view::probe::Probe;
-use temor_ui::{AppearanceSource, Launch, LauncherChoice};
+use temor_ui::{AppearanceSource, Launch, LauncherChoice, TakeOnce};
 
 use super::support::scratch;
 
@@ -61,7 +62,19 @@ pub(super) fn harness_building(
     hosting: WindowHosting,
     extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
 ) -> Harness {
-    harness_at(name, probe, (state_dir, 100), tweak, hosting, extra)
+    harness_at(name, probe, (state_dir, 100, None), tweak, hosting, extra)
+}
+
+/// A window whose first launch was asked to run `run` (`temor -e`).
+pub(super) fn harness_running(name: &str, probe: &Probe, run: Run) -> Harness {
+    harness_at(
+        name,
+        probe,
+        (None, 100, Some(run)),
+        |_| {},
+        WindowHosting::Absent,
+        |config| config,
+    )
 }
 
 /// A window on a screen scaled `scale_percent` (100, 150, 200 ...).
@@ -69,19 +82,19 @@ pub(super) fn harness_scaled(name: &str, probe: &Probe, scale_percent: u16) -> H
     harness_at(
         name,
         probe,
-        (None, scale_percent),
+        (None, scale_percent, None),
         |_| {},
         WindowHosting::Absent,
         |config| config,
     )
 }
 
-/// The window the others are made from: `(state_dir, scale_percent)` are the session file and the
-/// screen's scale.
+/// The window the others are made from: `(state_dir, scale_percent, run)` are the session file,
+/// the screen's scale and a program the first launch was asked to run.
 fn harness_at(
     name: &str,
     probe: &Probe,
-    (state_dir, scale_percent): (Option<PathBuf>, u16),
+    (state_dir, scale_percent, run): (Option<PathBuf>, u16, Option<Run>),
     tweak: impl FnOnce(&mut Ambient),
     hosting: WindowHosting,
     extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
@@ -127,6 +140,7 @@ fn harness_at(
         probe: Some(probe.clone()),
         state_dir,
         first_words: Default::default(),
+        first_run: TakeOnce::new(run),
     };
     // Wide enough that a pane splits side by side (two halves of at least 40 columns).
     let config = HarnessConfig::new(Viewport {

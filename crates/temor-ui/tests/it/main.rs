@@ -19,6 +19,7 @@ mod persist;
 mod remote;
 mod resizing;
 mod resizing_chrome;
+mod run_mode;
 mod session;
 mod settings;
 mod shelf;

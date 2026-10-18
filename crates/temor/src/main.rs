@@ -2,6 +2,7 @@
 //! that starts a shell (`--temor-session-leader`, see temor-pty's trampoline).
 
 mod cli;
+mod run_arg;
 
 use std::ffi::OsString;
 use std::process::ExitCode;
@@ -10,7 +11,9 @@ use temor_desktop::{DesktopEnv, Request};
 use temor_ui::app::desktop::{Joined, join};
 use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
 use temor_ui::settings::{load_settings, write_schema};
-use temor_ui::{AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG};
+use temor_ui::{
+    AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG, TakeOnce,
+};
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
@@ -26,6 +29,14 @@ fn main() -> ExitCode {
     if let Some(code) = cli::dispatch(&args) {
         return code;
     }
+    let request =
+        match run_arg::launch_request(&args, std::env::current_dir().ok(), std::env::vars_os()) {
+            Ok(request) => request,
+            Err(said) => {
+                eprintln!("temor: {said}");
+                return ExitCode::FAILURE;
+            }
+        };
     // The bus side runs on its own small runtime, kept until the window closes. A second launch
     // hands its request to the first temor and ends here, before reading any file.
     let runtime = match tokio::runtime::Builder::new_multi_thread()
@@ -42,7 +53,7 @@ fn main() -> ExitCode {
     let desktop = match join(
         runtime.handle(),
         DesktopEnv::from_process(),
-        &Request::NewWindow,
+        &request,
         // A launcher or a notification click hands the new process a one-use token that lets
         // the running window take the keyboard on Wayland.
         temor_ui::app::desktop::launch_token(std::env::var("XDG_ACTIVATION_TOKEN").ok().as_deref())
@@ -95,6 +106,10 @@ fn main() -> ExitCode {
             probe: None,
             state_dir,
             first_words: FirstWords::new(told.sentences()),
+            first_run: TakeOnce::new(match request {
+                Request::Run(run) => Some(run.into()),
+                _ => None,
+            }),
         },
         desktop,
     );

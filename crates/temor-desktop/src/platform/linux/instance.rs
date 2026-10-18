@@ -1,9 +1,13 @@
 //! Single instance over the session bus: the first launch owns `org.quire.Temor1`, and a later
-//! launch calls `NewWindow` or `NewTab` on it. The `.service` files in `dist/` let the bus start
+//! launch calls `NewWindow`, `NewTab` or `Run` on it. The `.service` files in `dist/` let the bus start
 //! temor when someone calls either name while none runs.
 
 use super::bus::session_builder;
-use crate::{Claim, DesktopEnv, DesktopError, Handover, INSTANCE_BUS_NAME, Primary, Request};
+use crate::{
+    Claim, DesktopEnv, DesktopError, Handover, INSTANCE_BUS_NAME, Primary, Request, RunRequest,
+};
+use std::ffi::{OsStr, OsString};
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use zbus::{fdo, interface};
@@ -95,6 +99,24 @@ async fn forward(
                 )
                 .await
         }
+        Request::Run(run) => {
+            let argv: Vec<&[u8]> = run.argv.iter().map(|arg| arg.as_bytes()).collect();
+            let cwd = run.cwd.as_deref().map(|path| path.as_os_str().as_bytes());
+            let env: Vec<(&[u8], &[u8])> = run
+                .env
+                .iter()
+                .map(|(key, value)| (key.as_bytes(), value.as_bytes()))
+                .collect();
+            connection
+                .call_method(
+                    Some(INSTANCE_BUS_NAME),
+                    OBJECT_PATH,
+                    Some(INSTANCE_BUS_NAME),
+                    "Run",
+                    &(argv, cwd.unwrap_or_default(), env, token),
+                )
+                .await
+        }
     };
     reply
         .map(drop)
@@ -126,5 +148,28 @@ impl Service {
     fn new_tab(&self, cwd: String, token: String) -> fdo::Result<()> {
         let cwd = (!cwd.is_empty()).then(|| PathBuf::from(cwd));
         self.hand_over(Request::NewTab { cwd }, token)
+    }
+
+    /// Run `argv` in a new tab in place of the shell, in `cwd` (empty: the default folder) with
+    /// `env`. Each is the caller's bytes, as the system keeps them.
+    fn run(
+        &self,
+        argv: Vec<Vec<u8>>,
+        cwd: Vec<u8>,
+        env: Vec<(Vec<u8>, Vec<u8>)>,
+        token: String,
+    ) -> fdo::Result<()> {
+        if argv.first().is_none_or(Vec::is_empty) {
+            return Err(fdo::Error::InvalidArgs("no program to run".to_owned()));
+        }
+        let run = RunRequest {
+            argv: argv.into_iter().map(OsString::from_vec).collect(),
+            cwd: (!cwd.is_empty()).then(|| PathBuf::from(OsStr::from_bytes(&cwd))),
+            env: env
+                .into_iter()
+                .map(|(key, value)| (OsString::from_vec(key), OsString::from_vec(value)))
+                .collect(),
+        };
+        self.hand_over(Request::Run(run), token)
     }
 }

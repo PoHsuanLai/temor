@@ -45,6 +45,7 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
         probe: None,
         state_dir: None,
         first_words: Default::default(),
+        first_run: Default::default(),
     }
 }
 

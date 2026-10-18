@@ -86,14 +86,16 @@ impl Hub {
         let start = self.space_start();
         let cwd = spawn.cwd.clone().or(start.cwd);
         let socket = self.open_socket(spawn.pane);
+        // A program run in place of the shell brings its own environment, not the Space's.
+        let run = self.run_claims(spawn.pane);
         let opened = open_session_with(
             &self.launch,
             self.palette,
             (spawn.pane, cwd.as_ref(), snapshot.as_ref()),
             self.events.clone(),
-            &start.env,
+            run.as_ref().map_or(&start.env, |run| &run.env),
             socket.as_deref(),
-            None,
+            run.as_ref().map(|run| run.program()),
         );
         let mut slot = Slot {
             palette: self.palette,
@@ -130,6 +132,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
+        self.run.panes.remove(&pane);
         self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
@@ -156,14 +159,16 @@ impl Hub {
         let start = self.space_start();
         let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
+        // A tab that ran a program runs it again.
+        let run = self.run.panes.get(&pane).cloned();
         match open_session_with(
             &self.launch,
             self.palette,
             (pane, cwd.as_ref(), None),
             self.events.clone(),
-            &start.env,
+            run.as_ref().map_or(&start.env, |run| &run.env),
             socket.as_deref(),
-            None,
+            run.as_ref().map(|run| run.program()),
         ) {
             Ok(session) => {
                 if let Some(slot) = self.slots.get(&pane) {

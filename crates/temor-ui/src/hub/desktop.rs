@@ -100,6 +100,9 @@ impl Hub {
     /// Carries out one message from the desktop services.
     pub(super) fn serve(&mut self, ask: Ask) {
         match ask {
+            Ask::Launch(Request::Run(run), _token) => {
+                self.run_in_tab(run.into());
+            }
             Ask::Launch(request, _token) => self.act(new_tab_for(request)),
             Ask::Act(act, reply) => {
                 let _ = reply.send(self.perform(act));
@@ -201,12 +204,16 @@ fn cwd_of(path: &std::path::Path) -> Cwd {
     Cwd(path.to_string_lossy().into_owned())
 }
 
-/// What a second launch asks for. temor has one window, so a new window is a new tab.
+/// What a second launch asks for. temor has one window, so a new window is a new tab. A run is
+/// a tab too, and [`Hub::run_in_tab`] starts its program; here it is only its folder.
 pub(super) fn new_tab_for(request: Request) -> WorkspaceIn {
     match request {
         Request::NewWindow => WorkspaceIn::NewTab { cwd: None },
         Request::NewTab { cwd } => WorkspaceIn::NewTab {
             cwd: cwd.as_deref().map(cwd_of),
+        },
+        Request::Run(run) => WorkspaceIn::NewTab {
+            cwd: run.cwd.as_deref().map(cwd_of),
         },
     }
 }

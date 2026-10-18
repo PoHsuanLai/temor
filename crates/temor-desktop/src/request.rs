@@ -2,6 +2,7 @@
 //! the claim.
 
 use std::any::Any;
+use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -16,6 +17,19 @@ pub enum Request {
         /// The folder to start in.
         cwd: Option<PathBuf>,
     },
+    /// Run a program in a new tab in place of the shell (`temor -e`).
+    Run(RunRequest),
+}
+
+/// A program to run in a tab of its own, as the launch that asked for it would have run it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunRequest {
+    /// The program and its arguments; never empty.
+    pub argv: Vec<OsString>,
+    /// The folder the asking launch was in.
+    pub cwd: Option<PathBuf>,
+    /// The asking launch's environment.
+    pub env: Vec<(OsString, OsString)>,
 }
 
 /// A request and the activation token its sender was started with (a launcher, a notification

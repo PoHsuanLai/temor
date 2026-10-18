@@ -4,9 +4,11 @@
 #![cfg(all(target_os = "linux", feature = "quire-desktop"))]
 
 use crate::bus::PrivateBus;
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 use std::time::Duration;
-use temor_desktop::{Claim, Primary, Request, SystemInstance};
+use temor_desktop::{Claim, Primary, Request, RunRequest, SystemInstance};
 
 async fn first(bus: &PrivateBus) -> Primary {
     match SystemInstance::new(bus.env())
@@ -30,7 +32,17 @@ async fn a_second_launch_hands_its_request_to_the_first_and_exits() {
     let tab = Request::NewTab {
         cwd: Some(PathBuf::from("/tmp/work")),
     };
-    for request in [Request::NewWindow, tab, Request::NewTab { cwd: None }] {
+    // A run keeps its words as the system has them, even ones that are not text.
+    let run = Request::Run(RunRequest {
+        argv: vec![
+            OsString::from("claude"),
+            OsString::from("--resume"),
+            OsString::from_vec(vec![b'i', 0xff, b'd']),
+        ],
+        cwd: Some(PathBuf::from("/tmp/work")),
+        env: vec![(OsString::from("TOOL_SESSION"), OsString::from("abc 123"))],
+    });
+    for request in [Request::NewWindow, tab, Request::NewTab { cwd: None }, run] {
         let claim = second.claim(&request).await.unwrap();
         assert!(matches!(claim, Claim::Forwarded), "{claim:?}");
         let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;

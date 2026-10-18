@@ -1593,3 +1593,10 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       3 and the edit tests 5 of 5 after. Separately, every `hub::ssh_tests::edit` test fails when
       TMPDIR is long (the ssh sockets outgrow 107 bytes), as the window tests did before
       `support::socket_root`; the lib tests want the same fit.
+- [ ] `temor -e` (run mode): a tab that ran a program comes back as a shell when the session is
+      restored after a restart; the session file does not keep what it ran. Decide whether a run
+      tab is saved at all.
+- [ ] Checkpoint.WatchAgent (agent's docket branch hd4-terminal-handoff): call it in place of
+      Checkpoint.Watch when temor starts or recognises an agent-app session, and mark on
+      `TerminalRequest.handoff` for a window the companion opened. Waits for hd4 on docket master
+      and a batch that carries it.

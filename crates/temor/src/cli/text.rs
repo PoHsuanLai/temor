@@ -7,7 +7,8 @@ use temor_transfer::TransferError;
 pub const USAGE: &str = "\
 temor save <file>...   Send files to your Downloads shelf
 temor get [name]       Bring a file from your shelf into this folder
-temor view <file>      Open a file with its viewer";
+temor view <file>      Open a file with its viewer
+temor -e <program>...  Run a program in a new tab";
 
 /// What the receiving side says when the person turned a transfer down.
 const REFUSED_BY_PERSON: &str = "User refused the transfer";

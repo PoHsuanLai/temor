@@ -47,7 +47,7 @@ pub use platform::{
     SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets,
     SystemTailnet,
 };
-pub use request::{Claim, Handover, Primary, Request};
+pub use request::{Claim, Handover, Primary, Request, RunRequest};
 pub use secrets::{NoSecrets, SecretFault, SecretVault};
 pub use tailnet::TailnetChanges;
 pub use window::{

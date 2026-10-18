@@ -19,6 +19,7 @@ use super::theme::AppearanceSource;
 use crate::app::shell_pane_with_socket;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
+use crate::hub::Run;
 use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
@@ -58,6 +59,39 @@ pub struct Launch {
     pub state_dir: Option<PathBuf>,
     /// What the first window says when it opens: the settings that are not in force.
     pub first_words: FirstWords,
+    /// A program the first window opens a tab for (`temor -e` when no temor was running).
+    pub first_run: TakeOnce<Run>,
+}
+
+/// A value the first window takes. Every clone of the launch holds the same one, so the window
+/// opened next finds it gone.
+#[derive(Debug)]
+pub struct TakeOnce<T>(Arc<Mutex<Option<T>>>);
+
+impl<T> TakeOnce<T> {
+    pub fn new(value: Option<T>) -> TakeOnce<T> {
+        TakeOnce(Arc::new(Mutex::new(value)))
+    }
+
+    /// The value, the first time.
+    pub fn take(&self) -> Option<T> {
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+    }
+}
+
+impl<T> Clone for TakeOnce<T> {
+    fn clone(&self) -> Self {
+        TakeOnce(Arc::clone(&self.0))
+    }
+}
+
+impl<T> Default for TakeOnce<T> {
+    fn default() -> Self {
+        TakeOnce::new(None)
+    }
 }
 
 /// Sentences for the first window to show, once. Every clone of the launch holds the same ones,

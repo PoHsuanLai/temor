@@ -21,6 +21,7 @@ use super::facts::FactsHub;
 use super::offer::OfferHub;
 use super::peek::PeekHub;
 use super::remote::RemoteHub;
+use super::run::RunHub;
 use super::shelf::ShelfHub;
 use super::spaces::SpaceBook;
 use super::ssh::SshHub;
@@ -75,6 +76,8 @@ pub struct Hub {
     /// The pane of a new window's first tab, which shows the first-launch hint until a command
     /// runs. None in a restored session.
     pub(super) first_hint: Option<PaneId>,
+    /// Programs run in tabs of their own in place of the shell (`temor -e`).
+    pub(super) run: RunHub,
 }
 
 impl std::fmt::Debug for Hub {
@@ -131,6 +134,8 @@ impl Hub {
             viewers: ViewerHub::default(),
             peek: PeekHub::default(),
             first_hint: None,
+
+            run: RunHub::default(),
         }
     }
 

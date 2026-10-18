@@ -66,5 +66,5 @@ pub mod window;
 pub mod window_help;
 pub mod window_style;
 
-pub use launch::{FirstWords, Launch, SESSION_LEADER_ARG};
+pub use launch::{FirstWords, Launch, SESSION_LEADER_ARG, TakeOnce};
 pub use window::App;
