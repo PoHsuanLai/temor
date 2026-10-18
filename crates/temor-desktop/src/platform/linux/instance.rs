@@ -15,7 +15,7 @@ use crate::{
 };
 use futures_util::StreamExt;
 use peephole_bus::peephole_core::{PinNeed, Proof, Requirement, RoleName, Table};
-use peephole_bus::{BusPeers, ManagerCheck, Tokio};
+use peephole_bus::{BusPeers, ManagerCheck, Offload};
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
@@ -62,7 +62,7 @@ fn run_callers() -> [Requirement; 1] {
 }
 
 /// The callers of the primary's bus connection, once it has one.
-type Peers = Arc<OnceLock<BusPeers<peephole_bus::peephole::RealProc, Tokio>>>;
+type Peers = Arc<OnceLock<BusPeers<peephole_bus::peephole::RealProc>>>;
 
 /// Single instance on the session bus.
 #[derive(Debug, Clone)]
@@ -191,7 +191,7 @@ impl SystemInstance {
                 // A connection of its own: the served object holds the callers, so the primary's
                 // connection there would keep itself, and the name, alive.
                 let asking = super::bus::connect(&self.env).await?;
-                let peers = BusPeers::new(asking, table, manager).with_offload(Tokio);
+                let peers = BusPeers::new(asking, table, manager).with_offload(Offload::Tokio);
                 let _ = self.peers.set(peers);
                 let (ends, heard) = unbounded_channel();
                 tokio::spawn(tell_waiting(connection.clone(), waiting, heard));
