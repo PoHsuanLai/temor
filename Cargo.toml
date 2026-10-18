@@ -110,6 +110,19 @@ tempfile = "3"
 # The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).
 similar = { version = "2", default-features = false, features = ["text"] }
 
+# Release binaries carry no symbol table (a third of temor's size, never loaded; a panic still
+# names its file and line). Same speed.
+[profile.release]
+strip = true
+
+# What a published release is built with (scripts/package.sh): one codegen unit and thin LTO let
+# the compiler work across crates, for a binary about 11% smaller and as fast or faster, at about
+# three more minutes of linking and a 5 GB peak. Day-to-day release builds stay on `release`.
+[profile.dist]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
 # quire-filters): the colour matrix filter, multi-threaded filter layers and CSS filter lists, so

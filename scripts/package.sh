@@ -7,8 +7,9 @@
 # The build runs in a podman container with its storage, Rust, Zig, Ghostty and target folders all
 # under <work-dir> (several GB; the first run fetches about 1 GB). The container builds through
 # scripts/dev-setup.sh, so a release also checks that the from-source setup works on a clean
-# system. It links with the system linker, never mold or clang. Writes <out-dir>/temor-<arch>-linux.tar.gz and its .sha256 (default <work-dir>/out),
-# plus install.sh beside them, which is what a release carries.
+# system. It links with the system linker, never mold or clang, in the `dist` profile (Cargo.toml).
+# Writes <out-dir>/temor-<arch>-linux.tar.gz and its .sha256 (default <work-dir>/out), plus
+# install.sh beside them, which is what a release carries.
 set -eu
 
 [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: $0 <work-dir> [<out-dir>]" >&2; exit 2; }
@@ -48,12 +49,12 @@ pod run --rm --network=host \
     cd /src
     sh scripts/dev-setup.sh --deps /deps --no-build --system-linker
     . /deps/env.sh
-    cargo build -q --locked --release -p temor -p temor-remote --bins
+    cargo build -q --locked --profile dist -p temor -p temor-remote --bins
   '
 
 # A release links with the system linker (GNU ld); mold and lld sign the binaries they link.
 for bin in temor temor-remote; do
-  if readelf -p .comment "$work/target/release/$bin" 2>/dev/null | grep -qiE 'mold|lld'; then
+  if readelf -p .comment "$work/target/dist/$bin" 2>/dev/null | grep -qiE 'mold|lld'; then
     echo "$bin was not linked with the system linker" >&2
     exit 1
   fi
@@ -62,7 +63,7 @@ done
 stage=$work/stage/$name
 rm -rf "$work/stage"
 mkdir -p "$stage/bin"
-cp "$work/target/release/temor" "$work/target/release/temor-remote" "$stage/bin/"
+cp "$work/target/dist/temor" "$work/target/dist/temor-remote" "$stage/bin/"
 cp -R "$root/dist" "$stage/share"
 rm -rf "$stage/share/windows" "$stage/share/icons/source"
 cp "$root/LICENSE"* "$stage/" 2>/dev/null || true
