@@ -9,6 +9,7 @@
 
 mod convert;
 mod doc;
+mod kept;
 mod keys_file;
 mod live;
 mod load;
@@ -24,6 +25,7 @@ pub use doc::{
     CursorSettings, FontSettings, NotifySettings, OfferSettings, ScrollbackSettings, ShellSettings,
     TerminalDoc,
 };
+pub use kept::kept_aside;
 pub use keys_file::{overrides_of, read_keys_text, read_overrides, write_keys};
 pub use live::{LiveChange, live_changes};
 pub use load::{Loaded, load_settings};

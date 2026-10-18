@@ -11,6 +11,7 @@ use temor_pane::settings::parse_settings;
 
 use super::convert::from_terminal;
 use super::doc::TerminalDoc;
+use super::kept::kept_aside;
 use super::keys_file::write_keys;
 use crate::edge::Ambient;
 use crate::error::UiError;
@@ -79,7 +80,7 @@ pub fn migrate_terminal_conf(ambient: &Ambient) -> Result<Vec<String>, UiError> 
     if !keys.exists() {
         write_keys(&keys, &converted.keys_text)?;
     }
-    store.save(&converted.doc).map_err(UiError::SettingsWrite)?;
+    let saved = store.save(&converted.doc).map_err(UiError::SettingsWrite)?;
     if let Some(path) = store.path::<TerminalDoc>() {
         append(&path, &converted.settings_notes)?;
     }
@@ -89,6 +90,7 @@ pub fn migrate_terminal_conf(ambient: &Ambient) -> Result<Vec<String>, UiError> 
         "your settings were moved to settings.toml and keys.conf; the old file is kept as {}",
         kept.display()
     )];
+    said.extend(saved.kept_at.as_deref().map(kept_aside));
     said.extend(
         converted
             .issues

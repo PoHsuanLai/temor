@@ -65,7 +65,9 @@ fn an_edit_reaches_the_document_or_is_refused_in_words() {
 fn a_saved_edit_lands_in_the_file_over_what_it_holds_now() {
     let dir = tempfile::tempdir().expect("scratch");
     let ambient = ambient(dir.path());
-    let first = save_edit(&ambient, &edit("font.size", toml::Value::Float(20.0))).expect("saved");
+    let first = save_edit(&ambient, &edit("font.size", toml::Value::Float(20.0)))
+        .expect("saved")
+        .doc;
     assert_eq!(first.font.size.0.points(), 20.0);
     // Another program changes the cursor; the next edit from this window keeps it.
     let mut other = current(&ambient);
@@ -75,7 +77,8 @@ fn a_saved_edit_lands_in_the_file_over_what_it_holds_now() {
         &ambient,
         &edit("shell.program", toml::Value::String("fish".into())),
     )
-    .expect("saved");
+    .expect("saved")
+    .doc;
     assert_eq!(next.cursor.style, crate::settings::CursorShape::Bar);
     assert_eq!(current(&ambient), next);
     assert_eq!(next.font.size.0.points(), 20.0);
@@ -157,4 +160,28 @@ fn a_window_that_is_opening_or_open_is_raised_and_a_closed_one_is_opened_again()
     for (life, raised) in [(Opening, true), (Open, true), (Closed, false)] {
         assert_eq!(raise(life), raised, "{life:?}");
     }
+}
+
+#[test]
+fn an_edit_over_an_unreadable_file_keeps_it_aside_and_says_where() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let ambient = ambient(dir.path());
+    let path = ambient
+        .settings_store()
+        .path::<TerminalDoc>()
+        .expect("a settings path");
+    std::fs::create_dir_all(path.parent().expect("a folder")).expect("folder");
+    std::fs::write(&path, "font = [ this is not\n").expect("written");
+    let edited = save_edit(&ambient, &edit("font.size", toml::Value::Float(20.0))).expect("saved");
+    let kept = edited.kept.expect("the old file was set aside");
+    assert_eq!(
+        std::fs::read_to_string(&kept).expect("kept"),
+        "font = [ this is not\n"
+    );
+    assert_eq!(current(&ambient).font.size.0.points(), 20.0);
+    let said = crate::settings::kept_aside(&kept);
+    assert!(said.contains(&kept.display().to_string()), "{said}");
+    // The next edit finds a good file and sets nothing aside.
+    let again = save_edit(&ambient, &edit("font.size", toml::Value::Float(18.0))).expect("saved");
+    assert_eq!(again.kept, None);
 }

@@ -3,6 +3,8 @@
 //! written back. The live follow (`hub::settings_live`) then puts it in force in the panes; the
 //! window never applies a setting itself.
 
+use std::path::PathBuf;
+
 use ds_settings_page::SettingEdit;
 
 use crate::edge::Ambient;
@@ -24,16 +26,26 @@ fn refusal(edit: &SettingEdit, why: &str) -> String {
     format!("{key} was not changed: {why}")
 }
 
-/// Reads `settings.toml` as it is now, applies `edit` and saves it. Returns what the file holds
-/// after. A file that cannot be written is an error and nothing changes.
-pub fn save_edit(ambient: &Ambient, edit: &SettingEdit) -> Result<TerminalDoc, UiError> {
+/// What a saved edit left: the document the file holds, and where an unreadable file was set
+/// aside to make room for it, if one was.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Edited {
+    pub doc: TerminalDoc,
+    pub kept: Option<PathBuf>,
+}
+
+/// Reads `settings.toml` as it is now, applies `edit` and saves it. A file that cannot be written
+/// is an error and nothing changes.
+pub fn save_edit(ambient: &Ambient, edit: &SettingEdit) -> Result<Edited, UiError> {
     let store = ambient.settings_store();
     let current = store.load::<TerminalDoc>().value;
     let next = applied(&current, edit)?;
-    if next != current {
-        store.save(&next).map_err(UiError::SettingsWrite)?;
-    }
-    Ok(next)
+    let kept = if next == current {
+        None
+    } else {
+        store.save(&next).map_err(UiError::SettingsWrite)?.kept_at
+    };
+    Ok(Edited { doc: next, kept })
 }
 
 /// The document `settings.toml` holds now, as the window shows it.

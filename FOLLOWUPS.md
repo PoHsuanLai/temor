@@ -1571,10 +1571,13 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 
 ## quire v0.3.33 (2026-10-18)
 
-- [ ] A save that found `settings.toml` damaged now moves it aside (`Saved::kept_at`,
-      `<name>.bad-<seconds>`) before writing a new one. temor's three save calls (the Settings
-      window, the settings migration, the shell offer's "never for") drop that; the person should be
-      told where the old file went.
+- [x] A save that found `settings.toml` damaged moves it aside (`Saved::kept_at`,
+      `<name>.bad-<seconds>`) before writing a new one, and the person is told where it went: a
+      banner with Show in Folder in the Settings window, the window's notice for the shell offer's
+      "never for", and the launch notes for the migration (`settings::kept_aside`).
+- [ ] The launch notes (`settings::Loaded::notes`: a `settings.toml` that cannot be read, a refused
+      value, a refused `keys.conf` line, the migration) go only to stderr, so someone who starts
+      temor from the desktop is never told their settings are not in force.
 - [ ] The edge strip's click may not pin a hidden sidebar, depending on how the frames fall
       (quire `EdgePeek` with `HoverIntent`). `sidebar::a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it`
       passes 10 of 10 when the harness advances 600–900 ms per step; driven in 25 ms steps (waiting

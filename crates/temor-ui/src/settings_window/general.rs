@@ -5,8 +5,11 @@
 //! and changes nothing; one that works is followed live by the panes (`hub::settings_live`), so
 //! nothing here applies a setting.
 
+use std::path::PathBuf;
+
 use dioxus::prelude::*;
 use ds::prelude::*;
+use ds::style::tokens::control_size::ControlSize;
 use ds_settings::schema::KeySpec;
 use ds_settings_page::{SectionRows, SettingEdit, SettingsPage};
 use temor_pane::keys::SettingsPane;
@@ -14,7 +17,8 @@ use temor_pane::keys::SettingsPane;
 use super::edit::{save_edit, values_of};
 use super::own_rows::OwnRow;
 use super::pages::{own_sections, page_schema};
-use crate::settings::TerminalDoc;
+use crate::platform::default_file_shell;
+use crate::settings::{TerminalDoc, kept_aside};
 use crate::view::launch::Launch;
 
 /// The value at `key`'s path in `values`, else the key's default.
@@ -35,13 +39,17 @@ pub fn SchemaPage(pane: SettingsPane) -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let mut doc = use_context::<Signal<TerminalDoc>>();
     let mut said = use_signal(|| None::<String>);
+    let mut kept = use_signal(|| None::<PathBuf>);
     let values = values_of(&doc.read());
     let save = Callback::new({
         let ambient = launch.ambient.clone();
         move |edit: SettingEdit| match save_edit(&ambient, &edit) {
-            Ok(next) => {
-                doc.set(next);
+            Ok(edited) => {
+                doc.set(edited.doc);
                 said.set(None);
+                if edited.kept.is_some() {
+                    kept.set(edited.kept);
+                }
             }
             Err(why) => said.set(Some(why.to_string())),
         }
@@ -65,6 +73,22 @@ pub fn SchemaPage(pane: SettingsPane) -> Element {
         })
         .collect();
     rsx! {
+        if let Some(path) = kept() {
+            InlineBanner {
+                severity: Severity::Warn,
+                text: kept_aside(&path),
+                actions: rsx! {
+                    Button {
+                        label: "Show in Folder".to_owned(),
+                        size: ControlSize::Small,
+                        onclick: move |_| {
+                            let _ = default_file_shell().reveal(&path);
+                        },
+                    }
+                },
+                onclose: move |_| kept.set(None),
+            }
+        }
         if let Some(text) = said() {
             InlineBanner {
                 severity: Severity::Danger,

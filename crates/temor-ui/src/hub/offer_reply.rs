@@ -10,6 +10,7 @@ use temor_ssh::InnerShell;
 
 use crate::edge::offer::{load_line, probe_text, remember_never};
 use crate::session::Session;
+use crate::settings::kept_aside;
 
 impl Hub {
     /// The person answered the offer in `pane`. A Yes types a one-line question into it; the
@@ -102,8 +103,9 @@ impl Hub {
     /// Takes `program` off the list, now and in the settings file.
     fn offer_never(&mut self, program: &Program) -> Option<String> {
         self.offer.list.remove(program);
-        remember_never(&self.offer.settings, program)
-            .err()
-            .map(|_| "Could not save this choice.".to_owned())
+        match remember_never(&self.offer.settings, program) {
+            Ok(kept) => kept.as_deref().map(kept_aside),
+            Err(_) => Some("Could not save this choice.".to_owned()),
+        }
     }
 }

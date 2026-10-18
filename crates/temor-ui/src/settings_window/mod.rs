@@ -33,7 +33,7 @@ mod tests;
 mod view;
 
 pub use board::{SpaceBoard, SpaceEdit, SpaceRow};
-pub use edit::{applied, save_edit};
+pub use edit::{Edited, applied, save_edit};
 pub use keys_edit::{KeyChange, change_keys, load_view};
 pub use open::{
     OpenSettings, SettingsAsked, SettingsOpened, SettingsWindows, TITLE, open, open_at,
