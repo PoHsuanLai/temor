@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "accesskit_xplat"
 version = "0.2.0"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -157,7 +157,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 [[package]]
 name = "almanac-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/almanac?rev=48e4ef1aafb40778ca466d8c4ea4a77f0e8c9954#48e4ef1aafb40778ca466d8c4ea4a77f0e8c9954"
+source = "git+https://github.com/PoHsuanLai/almanac?rev=723443b010a396b0266cf0b530a7f4249ac346cc#723443b010a396b0266cf0b530a7f4249ac346cc"
 dependencies = [
  "porter-core",
  "prov",
@@ -287,7 +287,7 @@ dependencies = [
 [[package]]
 name = "anyview-archive"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "bzip2",
@@ -305,11 +305,10 @@ dependencies = [
 [[package]]
 name = "anyview-book"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-archive",
  "anyview-core",
- "ds-core",
  "roxmltree 0.21.1",
  "thiserror 2.0.21",
 ]
@@ -317,7 +316,7 @@ dependencies = [
 [[package]]
 name = "anyview-core"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "chordkit",
  "ds-core",
@@ -330,7 +329,7 @@ dependencies = [
 [[package]]
 name = "anyview-font"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "miniz_oxide 0.8.9",
@@ -341,15 +340,17 @@ dependencies = [
 [[package]]
 name = "anyview-fs"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
+ "ds-helpers",
+ "rustix",
 ]
 
 [[package]]
 name = "anyview-image"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "ds-core",
@@ -369,7 +370,7 @@ dependencies = [
 [[package]]
 name = "anyview-machines"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "chordkit",
@@ -379,7 +380,7 @@ dependencies = [
 [[package]]
 name = "anyview-pane"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "anyview-peek",
@@ -389,12 +390,13 @@ dependencies = [
  "ds",
  "futures-channel",
  "futures-util",
+ "log",
 ]
 
 [[package]]
 name = "anyview-pdf"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "pdfrum",
@@ -409,7 +411,7 @@ dependencies = [
 [[package]]
 name = "anyview-peek"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-archive",
  "anyview-book",
@@ -422,15 +424,18 @@ dependencies = [
  "ds",
  "ds-blitz",
  "ds-core",
+ "log",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "anyview-store"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
+ "ds-helpers",
+ "log",
  "rustix",
  "serde",
  "serde_json",
@@ -440,7 +445,7 @@ dependencies = [
 [[package]]
 name = "anyview-text"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-core",
  "anyview-fs",
@@ -454,12 +459,13 @@ dependencies = [
  "syntect",
  "thiserror 2.0.21",
  "unicode-segmentation",
+ "zip",
 ]
 
 [[package]]
 name = "anyview-ui"
 version = "0.1.0-beta.1"
-source = "git+https://github.com/PoHsuanLai/anyview.git?rev=c543a432858fd485408d8358d2e8685b422658fa#c543a432858fd485408d8358d2e8685b422658fa"
+source = "git+https://github.com/PoHsuanLai/anyview.git?rev=0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a#0927e4a8fcb9ad92f54aeeeddd7c983a13ecc20a"
 dependencies = [
  "anyview-archive",
  "anyview-book",
@@ -480,6 +486,7 @@ dependencies = [
  "ds-shell",
  "futures-channel",
  "futures-util",
+ "log",
  "thiserror 2.0.21",
 ]
 
@@ -885,7 +892,7 @@ dependencies = [
 [[package]]
 name = "blitz-dom"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "accesskit",
  "anyrender",
@@ -896,7 +903,7 @@ dependencies = [
  "color",
  "cssparser",
  "cursor-icon",
- "debug_timer 0.1.3 (git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623)",
+ "debug_timer 0.1.3 (git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341)",
  "euclid",
  "html-escape",
  "image",
@@ -929,7 +936,7 @@ dependencies = [
 [[package]]
 name = "blitz-html"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "blitz-dom",
  "blitz-traits",
@@ -940,7 +947,7 @@ dependencies = [
 [[package]]
 name = "blitz-kit"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/blitz-kit?rev=009232ce6eabe768dc9dfc2b46a464acfa865c48#009232ce6eabe768dc9dfc2b46a464acfa865c48"
+source = "git+https://github.com/PoHsuanLai/blitz-kit?rev=8570d0fe81e08f63cf7792e3b782150c02d5698e#8570d0fe81e08f63cf7792e3b782150c02d5698e"
 dependencies = [
  "blitz-dom",
  "blitz-traits",
@@ -954,7 +961,7 @@ dependencies = [
 [[package]]
 name = "blitz-paint"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "anyrender",
  "anyrender_svg",
@@ -975,7 +982,7 @@ dependencies = [
 [[package]]
 name = "blitz-shell"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "accesskit",
  "accesskit_xplat",
@@ -997,7 +1004,7 @@ dependencies = [
 [[package]]
 name = "blitz-traits"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "atomic_refcell",
  "bitflags 2.13.2",
@@ -1273,7 +1280,7 @@ dependencies = [
 [[package]]
 name = "chordkit"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=934a2d71f6516bee5919ee29278003702a4ea5e1#934a2d71f6516bee5919ee29278003702a4ea5e1"
 dependencies = [
  "thiserror 2.0.21",
 ]
@@ -1281,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "chordkit-gnome"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=934a2d71f6516bee5919ee29278003702a4ea5e1#934a2d71f6516bee5919ee29278003702a4ea5e1"
 dependencies = [
  "chordkit",
 ]
@@ -1289,7 +1296,7 @@ dependencies = [
 [[package]]
 name = "chordkit-kde"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=55a62b2366d6ee1994d95f7cb5a195217807099c#55a62b2366d6ee1994d95f7cb5a195217807099c"
+source = "git+https://github.com/PoHsuanLai/chordkit.git?rev=934a2d71f6516bee5919ee29278003702a4ea5e1#934a2d71f6516bee5919ee29278003702a4ea5e1"
 dependencies = [
  "chordkit",
 ]
@@ -1551,7 +1558,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 3.0.6",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1578,7 +1585,7 @@ dependencies = [
 [[package]]
 name = "cua-action"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=7537c6d2232ec95e7fd7236b6633ab5b7c59530c#7537c6d2232ec95e7fd7236b6633ab5b7c59530c"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
 dependencies = [
  "keyboard-types 0.7.0",
  "serde",
@@ -1674,7 +1681,7 @@ checksum = "da220af51a1a335e9a930beaaef53d261e41ea9eecfb3d973a3ddae1a7284b9c"
 [[package]]
 name = "debug_timer"
 version = "0.1.3"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 
 [[package]]
 name = "debug_unsafe"
@@ -1930,7 +1937,7 @@ dependencies = [
 [[package]]
 name = "dioxus-native"
 version = "0.7.0"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "android-activity",
  "anyrender",
@@ -1962,7 +1969,7 @@ dependencies = [
 [[package]]
 name = "dioxus-native-dom"
 version = "0.7.0"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "blitz-dom",
  "blitz-traits",
@@ -2059,7 +2066,7 @@ dependencies = [
 [[package]]
 name = "docket-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=96919f71a48d88245c5b795f438220c40a2aac7f#96919f71a48d88245c5b795f438220c40a2aac7f"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=4ec8abba952a846f40a970597fdeb9e7b86e4018#4ec8abba952a846f40a970597fdeb9e7b86e4018"
 dependencies = [
  "docket-core",
  "docket-dbus",
@@ -2074,12 +2081,13 @@ dependencies = [
 [[package]]
 name = "docket-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=96919f71a48d88245c5b795f438220c40a2aac7f#96919f71a48d88245c5b795f438220c40a2aac7f"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=4ec8abba952a846f40a970597fdeb9e7b86e4018#4ec8abba952a846f40a970597fdeb9e7b86e4018"
 dependencies = [
  "almanac-core",
  "cua-action",
  "model-provider",
  "porter-core",
+ "porter-infer",
  "prov",
  "serde",
  "serde_json",
@@ -2089,12 +2097,14 @@ dependencies = [
 [[package]]
 name = "docket-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=96919f71a48d88245c5b795f438220c40a2aac7f#96919f71a48d88245c5b795f438220c40a2aac7f"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=4ec8abba952a846f40a970597fdeb9e7b86e4018#4ec8abba952a846f40a970597fdeb9e7b86e4018"
 dependencies = [
  "docket-core",
+ "porter-core",
  "porter-dbus",
  "prov",
  "thiserror 2.0.21",
+ "tracing",
  "zbus",
 ]
 
@@ -2122,7 +2132,7 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 [[package]]
 name = "ds"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "chordkit",
  "dioxus",
@@ -2138,7 +2148,7 @@ dependencies = [
 [[package]]
 name = "ds-behaviour"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "ds-core",
 ]
@@ -2146,7 +2156,7 @@ dependencies = [
 [[package]]
 name = "ds-blitz"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "anyrender",
  "anyrender_vello_hybrid",
@@ -2166,6 +2176,7 @@ dependencies = [
  "dioxus-native-dom",
  "ds",
  "ds-desktop",
+ "ds-helpers",
  "image",
  "keyboard-types 0.7.0",
  "parley",
@@ -2186,7 +2197,7 @@ dependencies = [
 [[package]]
 name = "ds-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "chordkit",
  "ds-core-derive",
@@ -2200,7 +2211,7 @@ dependencies = [
 [[package]]
 name = "ds-core-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2211,12 +2222,15 @@ dependencies = [
 [[package]]
 name = "ds-desktop"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
+dependencies = [
+ "ds-peer",
+]
 
 [[package]]
 name = "ds-harness"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "anyrender",
  "anyrender_vello_cpu",
@@ -2245,9 +2259,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ds-helpers"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
+dependencies = [
+ "ds-peer",
+ "rustix",
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
 name = "ds-intents"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "ds-core",
 ]
@@ -2255,7 +2281,7 @@ dependencies = [
 [[package]]
 name = "ds-lint"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "cssparser",
  "ds-core",
@@ -2265,7 +2291,7 @@ dependencies = [
 [[package]]
 name = "ds-motion"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "dioxus",
  "ds-core",
@@ -2273,13 +2299,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ds-peer"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
+dependencies = [
+ "futures-timer",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ds-settings"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "dioxus",
  "ds-behaviour",
  "ds-core",
+ "ds-helpers",
+ "ds-peer",
  "ds-settings-derive",
  "ds-style",
  "futures-timer",
@@ -2288,13 +2325,14 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "toml",
+ "toml_edit",
  "zbus",
 ]
 
 [[package]]
 name = "ds-settings-derive"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2304,7 +2342,7 @@ dependencies = [
 [[package]]
 name = "ds-settings-page"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "dioxus",
  "ds",
@@ -2315,7 +2353,7 @@ dependencies = [
 [[package]]
 name = "ds-shell"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "dioxus",
  "ds",
@@ -2323,12 +2361,13 @@ dependencies = [
  "ds-motion",
  "ds-style",
  "serde",
+ "zeroize",
 ]
 
 [[package]]
 name = "ds-style"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=3cfe32c4bbb05900e13f595e38a05e9d6aa941cf#3cfe32c4bbb05900e13f595e38a05e9d6aa941cf"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=3882bc95979b9fcb65aa17d596f6628c1bb982b8#3882bc95979b9fcb65aa17d596f6628c1bb982b8"
 dependencies = [
  "dioxus",
  "ds-core",
@@ -2463,7 +2502,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2783,7 +2822,7 @@ dependencies = [
 [[package]]
 name = "genai-names"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=7537c6d2232ec95e7fd7236b6633ab5b7c59530c#7537c6d2232ec95e7fd7236b6633ab5b7c59530c"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
 
 [[package]]
 name = "generational-box"
@@ -3756,7 +3795,7 @@ dependencies = [
 [[package]]
 name = "keycap-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/keycap.git?rev=d2eae0560cc80c1d8df86e30575e59209c7c5a20#d2eae0560cc80c1d8df86e30575e59209c7c5a20"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=b04bf0696a7af0b2086d5930bf821b092e34cd6d#b04bf0696a7af0b2086d5930bf821b092e34cd6d"
 dependencies = [
  "chordkit",
  "keycap-protocol",
@@ -3766,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "keycap-protocol"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/keycap.git?rev=d2eae0560cc80c1d8df86e30575e59209c7c5a20#d2eae0560cc80c1d8df86e30575e59209c7c5a20"
+source = "git+https://github.com/PoHsuanLai/keycap.git?rev=b04bf0696a7af0b2086d5930bf821b092e34cd6d#b04bf0696a7af0b2086d5930bf821b092e34cd6d"
 dependencies = [
  "serde",
  "serde_json",
@@ -4216,7 +4255,7 @@ dependencies = [
 [[package]]
 name = "model-provider"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=7537c6d2232ec95e7fd7236b6633ab5b7c59530c#7537c6d2232ec95e7fd7236b6633ab5b7c59530c"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
 dependencies = [
  "base64 0.22.1",
  "cua-action",
@@ -4331,6 +4370,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -4827,7 +4867,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
@@ -4925,9 +4965,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0219aedc87a3d9473e39deecdda755e74483dbf8fe9e9050f9d51e64e378357f"
+checksum = "eb4cb7c691cef28e120e33cd5c63a847d2c82bd235f0099c5029139b1ed91bc4"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -4950,9 +4990,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-anyrender"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e804abdf03c94467344728b54b697a6a6e60dff267a7c985a2d3e86186893cb3"
+checksum = "350949b5f4be3c833e64cc8b089d665d5a13a8a312f4474774e38674b7f1a3fe"
 dependencies = [
  "anyrender",
  "pdfrum-common",
@@ -4964,9 +5004,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-cmap"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10f5823bbf2ed2af0368f7feab0cfbc4db65bf8a7b8d46c99385442ad61d3332"
+checksum = "1e73e6244dc6554b2d11c091368bab6e02a6ac9b7247f2a715588abd585424e2"
 dependencies = [
  "pdfrum-common",
  "pdfrum-object",
@@ -4975,18 +5015,18 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-common"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d29037dc447311f491609cfabcb64816c106f4508c51b9b775fc9ecf640d769"
+checksum = "8085a06ea0cd26d607b71519182f7c918608ae18d9d8378d2156ec258119cad6"
 dependencies = [
  "kurbo",
 ]
 
 [[package]]
 name = "pdfrum-crypt"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24cb81671b14b6c4036bca4c3ae3884aef1bdc5f670af4d35f4d31506b98aeb8"
+checksum = "a1535b6048e3ae440f6685d3125a0501f55008c847b68af4cc52b9e2a5d6cbb5"
 dependencies = [
  "aes 0.9.3",
  "cbc 0.2.1",
@@ -5003,9 +5043,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-doc"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba009851966b4b51c7dd6b6a173ea63833bf371f159c9931cb71e0341fec5a34"
+checksum = "5b83c9d8d5a232d7c1f88b8f537581d495f79284207b34c4724065260d481139"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -5020,9 +5060,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-edit"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aefff548e3093c1ab253e2cc9daf7eca2db0f12885c259f9a971c8e3265bf2c6"
+checksum = "24126dbc46a0c9f726d17b7cbcc5c34e07272a1a6de01d59c2073a7be126e9c1"
 dependencies = [
  "getrandom 0.4.3",
  "kurbo",
@@ -5046,9 +5086,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-filters"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2bd7328a19108046fd7e1eaca71c2f982b680d0c28851790dfacb7a7e99a9b3"
+checksum = "8b79b93c83172528e827d15f2b54d5d5c9884ef1c3327a9fd6c4622c8294b1a5"
 dependencies = [
  "miniz_oxide 0.9.1",
  "pdfrum-common",
@@ -5059,9 +5099,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-font"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5c7e0a05f24458ecc37a93237a47f49c80b35d527612bfba13ec694ba44ee71"
+checksum = "b77a8a5b34a8d46472c15c1195d094058c4b37e2fefcd777e3c8792c62fac7bd"
 dependencies = [
  "pdfrum-cmap",
  "pdfrum-common",
@@ -5076,9 +5116,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-form"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c70915071151e8e9851727495934e9117c5076f057f86929a807dbc24efdbd3"
+checksum = "cd9b430fed6b283b455bb83c1c27b9e492a0114f4b85625fa5bba2a177d0570a"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -5091,9 +5131,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-markdown"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "453de2a489242bc7e3b1510b1ecb089cc9e5f85b67e71dda00f70f77b2b7714b"
+checksum = "0b8d5a725aa1f9595adf84283bcdfc428a29f9d643051a6df03be945e8a971dc"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -5105,9 +5145,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-object"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6f9f0c758ef076bca8f492ee128e4a663cf30760fd4d05ab7ff34c9b47334ee"
+checksum = "e23add408d2db170b76f9e920b71341da0ca9dadc06c4b7d9f53c6f17d406227"
 dependencies = [
  "bytes",
  "pdfrum-common",
@@ -5117,9 +5157,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-page"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22e2a43e0ce71fccc819c96ebd59dfe24fa950d38f5b1ed663fbb44c21b9a58e"
+checksum = "50d857e6426f5cb016f6d6874b00eb4196389e574c8734d0f11c0eab0e399bfe"
 dependencies = [
  "kurbo",
  "moxcms 0.9.1",
@@ -5134,9 +5174,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-parser"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d0daf0a1fe7386da03dcca2a49ad90f230ba090c40ea7f805746dc4f4faaf41"
+checksum = "ca70723ed7c04ae9d5710c6d1a6f4f6c909d86b7cb5f34101ed6c2b14fecd90d"
 dependencies = [
  "pdfrum-common",
  "pdfrum-crypt",
@@ -5147,9 +5187,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-raster-vello-cpu"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d9f083a84af44ccfd9dab6be193c82e93b7e5274649173ebb2a88b15576a5a0"
+checksum = "80f50c84943d5ca85f9628791c3a8b1d51fcdf4608360677969a8e6deb05c3d1"
 dependencies = [
  "kurbo",
  "pdfrum-page",
@@ -5160,9 +5200,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-render"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e036cab291a7c3abc89cab44038496a678703394f98d3914994ab4d74dc5a80"
+checksum = "a74649a9c76d3163941f11982a377c5f8fe7b3903d2ca2d69310867c8e459255"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -5176,9 +5216,9 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-text"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d76751173dde106ebc628391cd3fe91eeead51a6798faf1ec0f873af58242408"
+checksum = "0f961a96ca2e0a23b64e40a1378063340d566d8362b13f039675e444e3e34c72"
 dependencies = [
  "kurbo",
  "pdfrum-common",
@@ -5191,13 +5231,47 @@ dependencies = [
 
 [[package]]
 name = "pdfrum-type1"
-version = "0.5.0"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85f59c5e3c5d5af7ef40e124401cfc5f7d249e88e6602197377461ff7b15dd2b"
+checksum = "26d1c1d4896097f7aa47076b3fbcd71bd597d8c3b407795b7fb5e2c6069bb432"
 dependencies = [
  "pdfrum-common",
  "read-fonts 0.44.0",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "peephole"
+version = "0.1.6"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.6#87a3d225d7526d03f16acff2245374cb00a27e24"
+dependencies = [
+ "nix",
+ "peephole-core",
+ "rustix",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "peephole-bus"
+version = "0.1.6"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.6#87a3d225d7526d03f16acff2245374cb00a27e24"
+dependencies = [
+ "futures-timer",
+ "peephole",
+ "peephole-core",
+ "thiserror 2.0.21",
+ "tokio",
+ "zbus",
+]
+
+[[package]]
+name = "peephole-core"
+version = "0.1.6"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.6#87a3d225d7526d03f16acff2245374cb00a27e24"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
 ]
 
 [[package]]
@@ -5441,7 +5515,7 @@ dependencies = [
 [[package]]
 name = "porter-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
 dependencies = [
  "porter-core",
  "porter-dbus",
@@ -5457,7 +5531,7 @@ dependencies = [
 [[package]]
 name = "porter-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
 dependencies = [
  "serde",
  "serde_json",
@@ -5468,25 +5542,42 @@ dependencies = [
 [[package]]
 name = "porter-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
 dependencies = [
+ "peephole",
+ "peephole-bus",
+ "peephole-core",
  "porter-core",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "toml",
  "zbus",
 ]
 
 [[package]]
 name = "porter-fs"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
+
+[[package]]
+name = "porter-infer"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
+dependencies = [
+ "base64 0.22.1",
+ "cua-action",
+ "porter-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "porter-secrets"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
 dependencies = [
  "oo7",
  "porter-core",
@@ -5600,7 +5691,7 @@ dependencies = [
 [[package]]
 name = "prov"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2#e05d46b37b0f1c03e2dd85e5035b3f48c21c5ad2"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=125272e095943b6556a21994dc503171c795172b#125272e095943b6556a21994dc503171c795172b"
 dependencies = [
  "porter-core",
  "serde",
@@ -6026,7 +6117,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -6438,7 +6529,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -6646,7 +6737,7 @@ dependencies = [
 [[package]]
 name = "stylo_taffy"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/PoHsuanLai/blitz?rev=5c75536652955da94704bddee09f5928a2ca9623#5c75536652955da94704bddee09f5928a2ca9623"
+source = "git+https://github.com/PoHsuanLai/blitz?rev=4b2367921b33981189e4255184dad74c96fc3341#4b2367921b33981189e4255184dad74c96fc3341"
 dependencies = [
  "bitflags 2.13.2",
  "stylo",
@@ -6859,6 +6950,7 @@ version = "0.1.0"
 dependencies = [
  "docket-client",
  "docket-core",
+ "docket-dbus",
  "futures-util",
  "porter-client",
  "porter-core",
@@ -7048,10 +7140,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -7069,7 +7161,7 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8c27177b12a6399ffc08b98f76f7c9a1f4fe9fc967c784c5a071fa8d93cf7e1"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -7281,6 +7373,7 @@ dependencies = [
  "indexmap",
  "toml_datetime",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 
@@ -7374,7 +7467,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -7619,7 +7712,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vision-prep"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=7537c6d2232ec95e7fd7236b6633ab5b7c59530c#7537c6d2232ec95e7fd7236b6633ab5b7c59530c"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
 dependencies = [
  "cua-action",
  "serde",
@@ -8199,7 +8292,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

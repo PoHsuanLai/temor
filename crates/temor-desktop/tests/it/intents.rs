@@ -1,5 +1,5 @@
-//! temor offered to the agent layer: a call from "the router" (a connection that owns the name a
-//! provider trusts, on a bus of its own) reaches the window, and nobody else is answered.
+//! temor offered to the agent layer: a call from "the router" (the connection the test names as
+//! intentd, on a bus of its own) reaches the window, and nobody else is answered.
 
 #![cfg(all(target_os = "linux", feature = "quire-desktop"))]
 
@@ -18,7 +18,6 @@ use zbus::zvariant::Value as BusValue;
 
 const PROVIDER_PATH: &str = "/org/quire/IntentProvider1";
 const PROVIDER_INTERFACE: &str = "org.quire.IntentProvider1";
-const ROUTER_NAME: &str = "org.quire.Intents1";
 
 fn invocation(action: &str, args: &[(&str, Value)]) -> String {
     let args: Args = args
@@ -88,11 +87,12 @@ struct Served {
 async fn served() -> Option<Served> {
     let bus = PrivateBus::start()?;
     let window = Arc::new(FakeWindow::default());
-    let served = SystemIntents::serve(&bus.env(), window.clone())
+    // The router is known by its unit, which a private bus has none of: the test names it.
+    let router = bus.connect().await;
+    let unique = router.unique_name().expect("a unique name").to_string();
+    let served = SystemIntents::serve_for_router(&bus.env(), window.clone(), &unique)
         .await
         .unwrap();
-    let router = bus.connect().await;
-    router.request_name(ROUTER_NAME).await.unwrap();
     Some(Served {
         _bus: bus,
         window,

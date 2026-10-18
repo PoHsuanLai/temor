@@ -37,5 +37,6 @@ pub fn remember_never(store: &Store, program: &Program) -> Result<(), UiError> {
     if !doc.offer.remove.contains(&name) {
         doc.offer.remove.push(name);
     }
-    store.save(&doc).map_err(UiError::SettingsWrite)
+    store.save(&doc).map_err(UiError::SettingsWrite)?;
+    Ok(())
 }

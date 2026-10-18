@@ -53,6 +53,17 @@ impl SystemIntents {
             what: "agent layer",
         })
     }
+
+    /// Always [`DesktopError::Unsupported`].
+    pub async fn serve_for_router<W: WindowPort>(
+        _env: &DesktopEnv,
+        _window: Arc<W>,
+        _router: &str,
+    ) -> Result<Self, DesktopError> {
+        Err(DesktopError::Unsupported {
+            what: "agent layer",
+        })
+    }
 }
 
 /// The dock badge. Absent here.

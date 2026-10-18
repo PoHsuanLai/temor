@@ -1568,3 +1568,10 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [ ] No end-to-end test of iTerm2 multipart files through temor-pane's reader; ⌘F in a viewer pane
       is unit-tested only without a viewer.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b26-*.md`.
+
+## quire v0.3.33 (2026-10-18)
+
+- [ ] A save that found `settings.toml` damaged now moves it aside (`Saved::kept_at`,
+      `<name>.bad-<seconds>`) before writing a new one. temor's three save calls (the Settings
+      window, the settings migration, the shell offer's "never for") drop that; the person should be
+      told where the old file went.

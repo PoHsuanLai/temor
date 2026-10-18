@@ -15,6 +15,7 @@ default = ["quire-desktop"]
 quire-desktop = [
   "dep:docket-client",
   "dep:docket-core",
+  "dep:docket-dbus",
   "dep:prov",
   "dep:porter-core",
   "dep:porter-client",
@@ -33,6 +34,7 @@ tokio = { workspace = true, features = ["rt"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 docket-client = { workspace = true, optional = true }
 docket-core = { workspace = true, optional = true }
+docket-dbus = { workspace = true, optional = true }
 porter-client = { workspace = true, optional = true }
 porter-core = { workspace = true, optional = true }
 porter-secrets = { workspace = true, optional = true }
