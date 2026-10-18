@@ -55,6 +55,7 @@ impl SystemIntents {
     }
 
     /// Always [`DesktopError::Unsupported`].
+    #[cfg(feature = "router-for-tests")]
     pub async fn serve_for_router<W: WindowPort>(
         _env: &DesktopEnv,
         _window: Arc<W>,

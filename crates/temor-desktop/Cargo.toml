@@ -24,6 +24,10 @@ quire-desktop = [
   "dep:toml",
 ]
 
+# `SystemIntents::serve_for_router`: a private bus's stand-in for intentd. Only this crate's own
+# tests turn it on (the dev-dependency below), so no build of the window contains it.
+router-for-tests = ["quire-desktop"]
+
 [dependencies]
 serde_json = { workspace = true }
 temor-ssh = { workspace = true }
@@ -46,6 +50,7 @@ zbus = { workspace = true, optional = true }
 porter-secrets = { workspace = true, features = ["testing"] }
 
 [dev-dependencies]
+temor-desktop = { path = ".", features = ["router-for-tests"] }
 serde = { workspace = true }
 futures-util = { workspace = true }
 tempfile = { workspace = true }

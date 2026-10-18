@@ -39,7 +39,8 @@ impl SystemIntents {
 
     /// [`serve`](Self::serve) on a test's private bus, where every connection is one process and
     /// no unit names intentd: the connection whose unique name is `router` stands in for it.
-    /// The window never calls this.
+    /// Built only with `router-for-tests`, which nothing but this crate's tests turns on.
+    #[cfg(feature = "router-for-tests")]
     pub async fn serve_for_router<W: WindowPort>(
         env: &DesktopEnv,
         window: Arc<W>,

@@ -6958,6 +6958,7 @@ dependencies = [
  "prov",
  "serde",
  "serde_json",
+ "temor-desktop",
  "temor-ssh",
  "tempfile",
  "thiserror 2.0.21",
