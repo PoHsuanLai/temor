@@ -6,7 +6,7 @@
 
 use crate::vocab::ids::Attempt;
 use ds_core::machine::{Elapsed, Machine};
-use ds_core::time::stamp::Stamp;
+use ds_core::time::stamp::{Ms, Stamp};
 
 /// Where a host's connection stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -96,9 +96,9 @@ impl Default for LinkParams {
 
 impl LinkParams {
     /// The wait after try `attempt`.
-    pub fn wait(&self, attempt: Attempt) -> u64 {
+    pub fn wait(&self, attempt: Attempt) -> Ms {
         let doubled = self.first_wait_ms.saturating_mul(1u64 << attempt.0.min(32));
-        doubled.min(self.longest_wait_ms)
+        Ms(doubled.min(self.longest_wait_ms))
     }
 }
 
