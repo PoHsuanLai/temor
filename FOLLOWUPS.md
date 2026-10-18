@@ -1600,3 +1600,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       Checkpoint.Watch when temor starts or recognises an agent-app session, and mark on
       `TerminalRequest.handoff` for a window the companion opened. Waits for hd4 on docket master
       and a batch that carries it.
+- [ ] `org.quire.Temor1.Run` answers only temor's installed image (peephole, `Exe`, pinned at
+      connect; `instance::CALLERS`). A temor the person built is refused, so a checkout's
+      `temor -e` aimed at a running checkout temor is refused too, and that launch then starts as
+      a window of its own (`join` treats a failed claim as no desktop). If that gets in the way of
+      development, peephole's developer rows are the seam, in debug builds only.

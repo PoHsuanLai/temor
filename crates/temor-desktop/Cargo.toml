@@ -22,11 +22,17 @@ quire-desktop = [
   "dep:porter-secrets",
   "dep:zbus",
   "dep:toml",
+  "dep:peephole-bus",
+  "dep:peephole-core",
 ]
 
 # `SystemIntents::serve_for_router`: a private bus's stand-in for intentd. Only this crate's own
 # tests turn it on (the dev-dependency below), so no build of the window contains it.
 router-for-tests = ["quire-desktop"]
+
+# `SystemInstance::vouch_for`: a test names its own connection as temor's, since a test binary
+# is no installed temor. peephole's `fake` seam; only this crate's own tests turn it on.
+callers-for-tests = ["quire-desktop", "peephole-bus/fake"]
 
 [dependencies]
 serde_json = { workspace = true }
@@ -39,6 +45,8 @@ tokio = { workspace = true, features = ["rt"] }
 docket-client = { workspace = true, optional = true }
 docket-core = { workspace = true, optional = true }
 docket-dbus = { workspace = true, optional = true }
+peephole-bus = { workspace = true, optional = true }
+peephole-core = { workspace = true, optional = true }
 porter-client = { workspace = true, optional = true }
 porter-core = { workspace = true, optional = true }
 porter-secrets = { workspace = true, optional = true }
@@ -50,7 +58,7 @@ zbus = { workspace = true, optional = true }
 porter-secrets = { workspace = true, features = ["testing"] }
 
 [dev-dependencies]
-temor-desktop = { path = ".", features = ["router-for-tests"] }
+temor-desktop = { path = ".", features = ["router-for-tests", "callers-for-tests"] }
 serde = { workspace = true }
 futures-util = { workspace = true }
 tempfile = { workspace = true }

@@ -6952,6 +6952,8 @@ dependencies = [
  "docket-core",
  "docket-dbus",
  "futures-util",
+ "peephole-bus",
+ "peephole-core",
  "porter-client",
  "porter-core",
  "porter-secrets",

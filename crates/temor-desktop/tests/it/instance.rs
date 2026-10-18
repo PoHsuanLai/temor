@@ -32,17 +32,7 @@ async fn a_second_launch_hands_its_request_to_the_first_and_exits() {
     let tab = Request::NewTab {
         cwd: Some(PathBuf::from("/tmp/work")),
     };
-    // A run keeps its words as the system has them, even ones that are not text.
-    let run = Request::Run(RunRequest {
-        argv: vec![
-            OsString::from("claude"),
-            OsString::from("--resume"),
-            OsString::from_vec(vec![b'i', 0xff, b'd']),
-        ],
-        cwd: Some(PathBuf::from("/tmp/work")),
-        env: vec![(OsString::from("TOOL_SESSION"), OsString::from("abc 123"))],
-    });
-    for request in [Request::NewWindow, tab, Request::NewTab { cwd: None }, run] {
+    for request in [Request::NewWindow, tab, Request::NewTab { cwd: None }] {
         let claim = second.claim(&request).await.unwrap();
         assert!(matches!(claim, Claim::Forwarded), "{claim:?}");
         let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
@@ -91,4 +81,61 @@ async fn the_name_is_free_again_once_the_first_launch_is_gone() {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     panic!("the name was never released");
+}
+
+/// A run with words that are not text, as the system keeps them.
+fn a_run() -> Request {
+    Request::Run(RunRequest {
+        argv: vec![
+            OsString::from("claude"),
+            OsString::from("--resume"),
+            OsString::from_vec(vec![b'i', 0xff, b'd']),
+        ],
+        cwd: Some(PathBuf::from("/tmp/work")),
+        env: vec![(OsString::from("TOOL_SESSION"), OsString::from("abc 123"))],
+    })
+}
+
+#[tokio::test]
+async fn a_run_from_temors_own_launch_is_heard_with_its_words_intact() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let instance = SystemInstance::new(bus.env());
+    let Claim::Primary(mut primary) = instance.claim(&Request::NewWindow).await.unwrap() else {
+        panic!("the first launch must own the name");
+    };
+    let launch = bus.connect().await;
+    instance.vouch_for(launch.unique_name().expect("a unique name").as_str());
+    SystemInstance::forward_for_tests(&launch, &a_run(), None)
+        .await
+        .expect("temor's own launch may run");
+    let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
+    assert_eq!(heard.unwrap(), Some(a_run()));
+}
+
+#[tokio::test]
+async fn a_run_from_anyone_else_is_refused_and_a_tab_is_still_theirs_to_ask() {
+    let Some(bus) = PrivateBus::start() else {
+        return;
+    };
+    let mut primary = first(&bus).await;
+    // Any other program on the bus, a sandboxed app included.
+    let intruder = bus.connect().await;
+    let refused = SystemInstance::forward_for_tests(&intruder, &a_run(), None).await;
+    let said = format!(
+        "{:?}",
+        refused.expect_err("an unknown caller must be refused")
+    );
+    assert!(said.contains("AccessDenied"), "{said}");
+    // A temor the person built is an image they can write: its own launch is refused too.
+    let built = SystemInstance::new(bus.env()).claim(&a_run()).await;
+    assert!(built.is_err(), "{built:?}");
+    // Nothing reached the window; a new tab still does.
+    let tab = Request::NewTab { cwd: None };
+    SystemInstance::forward_for_tests(&intruder, &tab, None)
+        .await
+        .expect("a tab is open to anyone");
+    let heard = tokio::time::timeout(Duration::from_secs(5), primary.next()).await;
+    assert_eq!(heard.unwrap(), Some(tab));
 }

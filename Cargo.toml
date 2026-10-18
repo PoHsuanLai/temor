@@ -92,6 +92,10 @@ porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "87691
 # The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
 porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "8769181d206a579f283cd966ab9c53f5e7017a42", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
+# peephole: which program is calling (a pinned process judged against a table), as porter and
+# docket use it, by the same tag; temor-desktop checks the caller of `org.quire.Temor1.Run` with it.
+peephole-bus = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.6", default-features = false, features = ["tokio"] }
+peephole-core = { git = "https://github.com/PoHsuanLai/peephole", tag = "v0.1.6" }
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 toml = "1"
 # The tests of temor-desktop read bus signals as streams.
