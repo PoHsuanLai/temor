@@ -1588,3 +1588,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [ ] `blocks::shells::real_shells_make_one_block_per_command_with_its_output_and_status` failed once
       at its block comparison (shells.rs:27) in six full `it` runs; 8 runs alone passed. The message
       was not kept; catch it the next time it shows.
+- [ ] `hub::ssh_tests::edit::a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first` timed
+      out once in a full gate ("timed out waiting for the question", 20 s); the lib suite passed 3 of
+      3 and the edit tests 5 of 5 after. Separately, every `hub::ssh_tests::edit` test fails when
+      TMPDIR is long (the ssh sockets outgrow 107 bytes), as the window tests did before
+      `support::socket_root`; the lib tests want the same fit.
