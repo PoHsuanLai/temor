@@ -4,7 +4,7 @@
 use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
-use ds_harness::{Driver, Harness, Input, WindowHosting};
+use ds_harness::{Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
 use super::window::{harness_hosting, wait_until};

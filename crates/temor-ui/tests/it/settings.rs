@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px, SystemPrefs};
-use ds_harness::{Driver, Harness, HarnessConfig, Input, Viewport, WindowHosting};
+use ds_harness::{Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
 use temor_core::space::{AccountRef, Credential, Profile, Project};
 use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot};

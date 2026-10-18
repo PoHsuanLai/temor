@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input, Query};
+use ds_harness::{Harness, Input};
 use temor_pane::report::{ReportState, StatusLine, encode_hello, encode_status};
 use temor_ui::view::probe::Probe;
 

@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input};
+use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::support::{scratch_path, tools_present};

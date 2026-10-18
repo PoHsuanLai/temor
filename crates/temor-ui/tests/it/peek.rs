@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use dioxus::html::Modifiers;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input, PointerAction, PointerInput};
+use ds_harness::{Harness, Input, PointerAction, PointerInput};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;

@@ -5,7 +5,7 @@
 use std::ffi::OsString;
 use std::time::{Duration, Instant};
 
-use ds_harness::{Driver, Harness, Input};
+use ds_harness::{Harness, Input};
 use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnd, RunEnds, RunTicket};
 use temor_shell::ChildEnv;
 use temor_ui::hub::Run;

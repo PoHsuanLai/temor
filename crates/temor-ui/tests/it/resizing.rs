@@ -8,7 +8,7 @@ use std::time::Duration;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
-use ds_harness::{DocQuery, Driver, Harness, Input};
+use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::window::{harness, harness_scaled, wait_until};

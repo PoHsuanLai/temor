@@ -24,7 +24,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::file_drop::drag::{FileDragInput, Offer};
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
-use ds_harness::{Driver, Harness, Input, Query};
+use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::support::{ScratchRoot, heavy, socket_root, tools_present};

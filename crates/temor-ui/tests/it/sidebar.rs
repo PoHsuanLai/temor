@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds_blitz::Extent;
-use ds_harness::{DocQuery, Driver, Harness, Input, Query};
+use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use ds::components::app::spaces::{SpaceId, Spaces};

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use ds::components::app::spaces::{SpaceId, Spaces};
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input, Query};
+use ds_harness::{Harness, Input};
 use temor_core::space::{Place, Profile, Project, Route};
 use temor_core::split::Direction;
 use temor_core::vocab::ids::TabId;

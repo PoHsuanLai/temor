@@ -7,7 +7,7 @@ use std::time::Duration;
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Driver, Harness, Input};
+use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;
@@ -196,7 +196,6 @@ fn neither_the_header_nor_the_toolbar_shows_on_the_alternate_screen() {
 
 /// The tops and bottoms of the elements matching `selector`, in window pixels.
 fn spans(h: &Harness, selector: &str) -> Vec<(f64, f64)> {
-    use ds_harness::DocQuery;
     h.with_doc(|doc| {
         doc.query_selector_all(selector)
             .map(|found| found.into_iter().collect::<Vec<_>>())
@@ -333,7 +332,6 @@ fn a_right_click_on_a_block_opens_its_menu_and_the_menu_acts_on_the_block() {
     run_to_end(&mut h, &probe, "echo menu-one", "menu-one");
     run_to_end(&mut h, &probe, "echo menu-two", "menu-two");
     let items = |h: &Harness| {
-        use ds_harness::DocQuery;
         h.with_doc(|doc| {
             doc.query_selector_all(".ds-menu-item")
                 .map(|found| found.into_iter().collect::<Vec<_>>())

@@ -7,7 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use ds_harness::{Driver, Harness, Input};
+use ds_harness::{Harness, Input};
 use temor_core::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
 use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::remote::Grant;

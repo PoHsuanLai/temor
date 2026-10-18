@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use ds_harness::{Driver, Harness};
+use ds_harness::Harness;
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;

@@ -10,7 +10,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::SystemPrefs;
 use ds::prelude::{Point, Px};
 use ds_harness::Input;
-use ds_harness::{Driver, Harness, HarnessConfig, Query, Viewport, WindowHosting};
+use ds_harness::{Harness, HarnessConfig, Viewport, WindowHosting};
 use temor_desktop::RunEnds;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;

@@ -8,7 +8,7 @@ use std::time::Duration;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds::window::vocab::PageZoom;
-use ds_harness::{Driver, FocusState, Harness, Input, Query, WindowHosting};
+use ds_harness::{FocusState, Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
 use super::window::{chord, harness, harness_hosting, panes, rows, wait_until};
