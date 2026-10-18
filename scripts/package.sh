@@ -7,7 +7,7 @@
 # The build runs in a podman container with its storage, Rust, Zig, Ghostty and target folders all
 # under <work-dir> (several GB; the first run fetches about 1 GB). The container builds through
 # scripts/dev-setup.sh, so a release also checks that the from-source setup works on a clean
-# system. Writes <out-dir>/temor-<arch>-linux.tar.gz and its .sha256 (default <work-dir>/out),
+# system. It links with the system linker, never mold or clang. Writes <out-dir>/temor-<arch>-linux.tar.gz and its .sha256 (default <work-dir>/out),
 # plus install.sh beside them, which is what a release carries.
 set -eu
 
@@ -42,14 +42,22 @@ pod run --rm --network=host \
   -e HOME=/home/build -e CARGO_TARGET_DIR=/target -e DEBIAN_FRONTEND=noninteractive \
   "$image" sh -euc '
     apt-get update -qq >/dev/null
-    apt-get install -y -qq --no-install-recommends ca-certificates curl git build-essential clang mold python3 \
+    apt-get install -y -qq --no-install-recommends ca-certificates curl git build-essential python3 \
       pkg-config libfontconfig-dev libfreetype-dev xz-utils unzip >/dev/null
     git config --global --add safe.directory "*"
     cd /src
-    sh scripts/dev-setup.sh --deps /deps --no-build
+    sh scripts/dev-setup.sh --deps /deps --no-build --system-linker
     . /deps/env.sh
     cargo build -q --locked --release -p temor -p temor-remote --bins
   '
+
+# A release links with the system linker (GNU ld); mold and lld sign the binaries they link.
+for bin in temor temor-remote; do
+  if readelf -p .comment "$work/target/release/$bin" 2>/dev/null | grep -qiE 'mold|lld'; then
+    echo "$bin was not linked with the system linker" >&2
+    exit 1
+  fi
+done
 
 stage=$work/stage/$name
 rm -rf "$work/stage"

@@ -2,7 +2,7 @@
 # Set up a computer to build temor from source: check the tools, fetch the pinned Zig and Ghostty,
 # write an env file, and build.
 #
-#   scripts/dev-setup.sh [--deps <dir>] [--no-build]
+#   scripts/dev-setup.sh [--deps <dir>] [--no-build] [--system-linker]
 #   curl -fsSL https://raw.githubusercontent.com/PoHsuanLai/temor/main/scripts/dev-setup.sh | sh
 #
 # Run from a checkout, or from anywhere to clone one into ./temor first. Linux, macOS, and Windows
@@ -15,18 +15,22 @@
 #   . <checkout>/.deps/env.sh
 #   cargo run -p temor
 #
-# Running it again is cheap: what is already fetched at the pin is kept.
+# Running it again is cheap: what is already fetched at the pin is kept. --system-linker links with
+# the system's cc in place of mold through clang (.cargo/config.toml), so neither is needed; the
+# release build uses it.
 set -eu
 
 REPO="https://github.com/PoHsuanLai/temor.git"
 
 deps=""
 build=1
+system_linker=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --deps) deps=$2; shift 2 ;;
     --no-build) build=0; shift ;;
-    -h | --help) sed -n '2,17p' "$0"; exit 0 ;;
+    --system-linker) system_linker=1; shift ;;
+    -h | --help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -66,7 +70,7 @@ case "$os" in
     have pkg-config || missing="$missing pkg-config"
     have xz || missing="$missing xz"
     # .cargo/config.toml links x86_64 Linux with mold through clang.
-    if [ "$(uname -m)" = x86_64 ]; then
+    if [ "$(uname -m)" = x86_64 ] && [ "$system_linker" = 0 ]; then
       have clang || missing="$missing clang"
       have mold || missing="$missing mold"
     fi
@@ -129,6 +133,12 @@ export PATH="$zig_dir:\$HOME/.cargo/bin:\$PATH"
 export GHOSTTY_SOURCE_DIR="$deps/ghostty/src"
 export GHOSTTY_ZIG_SYSTEM_DIR="$deps/ghostty/zig-store/p"
 export ZIG_GLOBAL_CACHE_DIR="$deps/zig-cache"
+EOF
+# Cargo's environment form of target.<triple>.linker and .rustflags wins over the config file (an
+# empty one does not), and the last -fuse-ld wins over rustc's own lld: GNU ld, the system's.
+[ "$system_linker" = 0 ] || cat >>"$env_file" <<EOF
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=cc
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-arg=-fuse-ld=bfd"
 EOF
 . "$env_file"
 say "wrote $env_file"
