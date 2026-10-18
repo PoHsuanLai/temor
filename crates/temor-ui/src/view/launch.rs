@@ -2,7 +2,7 @@
 //! environment, the fonts, and the desktop's clipboard.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
@@ -56,6 +56,29 @@ pub struct Launch {
     /// Where the session file and its snapshots are kept (see `edge::resolve_state_dir`); `None`
     /// saves and restores nothing.
     pub state_dir: Option<PathBuf>,
+    /// What the first window says when it opens: the settings that are not in force.
+    pub first_words: FirstWords,
+}
+
+/// Sentences for the first window to show, once. Every clone of the launch holds the same ones,
+/// so the window opened next says nothing again.
+#[derive(Debug, Clone, Default)]
+pub struct FirstWords(Arc<Mutex<Vec<String>>>);
+
+impl FirstWords {
+    pub fn new(sentences: Vec<String>) -> FirstWords {
+        FirstWords(Arc::new(Mutex::new(sentences)))
+    }
+
+    /// The sentences as one notice, the first time; `None` after, or when there were none.
+    pub fn take(&self) -> Option<String> {
+        let mut held = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let said = std::mem::take(&mut *held);
+        (!said.is_empty()).then(|| said.join(" "))
+    }
 }
 
 /// The desktop's clipboard, through the window toolkit's clipboard.

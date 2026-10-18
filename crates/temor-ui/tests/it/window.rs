@@ -126,6 +126,7 @@ fn harness_at(
         ),
         probe: Some(probe.clone()),
         state_dir,
+        first_words: Default::default(),
     };
     // Wide enough that a pane splits side by side (two halves of at least 40 columns).
     let config = HarnessConfig::new(Viewport {

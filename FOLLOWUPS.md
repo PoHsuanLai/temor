@@ -1575,9 +1575,11 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       `<name>.bad-<seconds>`) before writing a new one, and the person is told where it went: a
       banner with Show in Folder in the Settings window, the window's notice for the shell offer's
       "never for", and the launch notes for the migration (`settings::kept_aside`).
-- [ ] The launch notes (`settings::Loaded::notes`: a `settings.toml` that cannot be read, a refused
-      value, a refused `keys.conf` line, the migration) go only to stderr, so someone who starts
-      temor from the desktop is never told their settings are not in force.
+- [x] The launch notes reach the person: the first window's notice says, in plain words
+      (`settings::Told`), that the file could not be read, which settings are back to their
+      defaults (by their Settings window labels), how many shortcuts could not be used, and where
+      a converted `terminal.conf` went. The exact lines still go to stderr for the log. A key the
+      version does not read is not mentioned.
 - [ ] The edge strip's click may not pin a hidden sidebar, depending on how the frames fall
       (quire `EdgePeek` with `HoverIntent`). `sidebar::a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it`
       passes 10 of 10 when the harness advances 600–900 ms per step; driven in 25 ms steps (waiting

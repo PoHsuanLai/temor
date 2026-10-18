@@ -169,6 +169,7 @@ impl Rig {
             ambient,
             probe: None,
             state_dir: None,
+            first_words: Default::default(),
         };
         let mut hub = Hub::new(launch);
         let (links, files) = (RecordLinks::default(), RecordFiles::default());

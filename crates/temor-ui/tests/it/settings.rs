@@ -80,6 +80,7 @@ fn settings_window(
         launcher: LauncherChoice::ThisProgram,
         probe: None,
         state_dir: None,
+        first_words: Default::default(),
     };
     let asked = SettingsAsked::default();
     asked.ask(page);

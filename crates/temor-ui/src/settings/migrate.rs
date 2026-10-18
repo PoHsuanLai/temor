@@ -56,23 +56,51 @@ pub fn convert_terminal_conf(text: &str) -> Converted {
     }
 }
 
-/// Converts the old `terminal.conf` when there is one and no `settings.toml` yet. Returns the
-/// lines worth telling the person; nothing to convert is nothing to tell.
+/// What a conversion of `terminal.conf` did.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Migrated {
+    /// Where the old file was renamed to.
+    pub kept: PathBuf,
+    /// Where an unreadable `settings.toml` in the way was set aside, if one was.
+    pub set_aside: Option<PathBuf>,
+    /// Each old line that could not be carried over, by its line number.
+    pub issues: Vec<(usize, SettingsError)>,
+}
+
+impl Migrated {
+    /// One line each for the log: the move, a file set aside, each line not carried over.
+    pub fn notes(&self) -> Vec<String> {
+        let mut said = vec![format!(
+            "your settings were moved to settings.toml and keys.conf; the old file is kept as {}",
+            self.kept.display()
+        )];
+        said.extend(self.set_aside.as_deref().map(kept_aside));
+        said.extend(
+            self.issues
+                .iter()
+                .map(|(line, issue)| format!("terminal.conf line {line}: {issue}")),
+        );
+        said
+    }
+}
+
+/// Converts the old `terminal.conf` when there is one and no `settings.toml` yet. `None` when
+/// there was nothing to convert.
 ///
 /// The keys file goes first and the old file is renamed last, so a stop half way converts again
 /// next time and loses nothing. A `keys.conf` that already exists is left as it is.
-pub fn migrate_terminal_conf(ambient: &Ambient) -> Result<Vec<String>, UiError> {
+pub fn migrate_terminal_conf(ambient: &Ambient) -> Result<Option<Migrated>, UiError> {
     let store = ambient.settings_store();
     let old = ambient.old_settings_path();
     if store
         .path::<TerminalDoc>()
         .is_some_and(|path| path.exists())
     {
-        return Ok(Vec::new());
+        return Ok(None);
     }
     let text = match std::fs::read_to_string(&old) {
         Ok(text) => text,
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(source) => return Err(UiError::SettingsRead(source)),
     };
     let converted = convert_terminal_conf(&text);
@@ -86,18 +114,11 @@ pub fn migrate_terminal_conf(ambient: &Ambient) -> Result<Vec<String>, UiError> 
     }
     let kept = unused_old_name(&old);
     std::fs::rename(&old, &kept).map_err(UiError::SettingsRead)?;
-    let mut said = vec![format!(
-        "your settings were moved to settings.toml and keys.conf; the old file is kept as {}",
-        kept.display()
-    )];
-    said.extend(saved.kept_at.as_deref().map(kept_aside));
-    said.extend(
-        converted
-            .issues
-            .iter()
-            .map(|(line, issue)| format!("terminal.conf line {line}: {issue}")),
-    );
-    Ok(said)
+    Ok(Some(Migrated {
+        kept,
+        set_aside: saved.kept_at,
+        issues: converted.issues,
+    }))
 }
 
 /// `terminal.conf.old`, or the first `terminal.conf.old.N` that is free: nothing is overwritten.

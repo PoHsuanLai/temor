@@ -7,7 +7,8 @@ use std::path::Path;
 /// What the person reads after a save set the unreadable file aside at `kept`.
 pub fn kept_aside(kept: &Path) -> String {
     format!(
-        "settings.toml could not be read, so a new one was written; the old file is kept as {}",
+        "Your settings couldn't be read, so temor started a fresh settings file. The old one is \
+         kept as {}.",
         kept.display()
     )
 }

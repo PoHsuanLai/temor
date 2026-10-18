@@ -90,6 +90,12 @@ impl Hub {
     pub fn new(launch: Launch) -> Hub {
         let (events, inbox) = unbounded_channel();
         let (shelf, trouble) = ShelfHub::open(&launch);
+        let notices = launch
+            .first_words
+            .take()
+            .into_iter()
+            .chain(trouble)
+            .collect();
         let agents = Agents::new(&launch, events.clone());
         let ssh = SshHub::new(&launch.ambient);
         let facts = FactsHub::new(&launch);
@@ -113,7 +119,7 @@ impl Hub {
             launch,
             palette: Palette::default(),
             pace: SavePace::new(SAVE_EVERY),
-            notices: trouble.into_iter().collect(),
+            notices,
             window_asks: Vec::new(),
             shelf,
             agents,

@@ -10,7 +10,7 @@ use temor_desktop::{DesktopEnv, Request};
 use temor_ui::app::desktop::{Joined, join};
 use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
 use temor_ui::settings::{load_settings, write_schema};
-use temor_ui::{AppearanceSource, Launch, LauncherChoice, SESSION_LEADER_ARG};
+use temor_ui::{AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG};
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
@@ -78,6 +78,8 @@ fn main() -> ExitCode {
             line => eprintln!("temor: keys.conf line {line}: {issue}"),
         }
     }
+    let mut told = loaded.told;
+    told.key_issues(&key_issues);
     // The session file and its snapshots live under the XDG state home (a relative value is not used).
     let state_dir = resolve_state_dir(
         ambient.env.get("XDG_STATE_HOME").map(std::path::Path::new),
@@ -92,6 +94,7 @@ fn main() -> ExitCode {
             appearance: AppearanceSource::desktop(),
             probe: None,
             state_dir,
+            first_words: FirstWords::new(told.sentences()),
         },
         desktop,
     );

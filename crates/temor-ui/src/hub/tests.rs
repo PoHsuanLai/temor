@@ -44,6 +44,7 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
         ),
         probe: None,
         state_dir: None,
+        first_words: Default::default(),
     }
 }
 
@@ -446,4 +447,20 @@ fn a_refused_or_broken_transfer_leaves_no_row_waiting_and_no_question() {
         view.rows[0].state,
         temor_core::shelf::RowState::Failed { .. }
     ));
+}
+
+#[test]
+fn the_first_window_says_what_the_settings_need_and_the_next_says_nothing() {
+    let mut launch = launch();
+    launch.first_words = crate::view::FirstWords::new(vec![
+        "Your settings couldn't be read.".to_owned(),
+        "Two shortcuts couldn't be used.".to_owned(),
+    ]);
+    let mut first = Hub::new(launch.clone());
+    assert_eq!(
+        first.take_notice().as_deref(),
+        Some("Your settings couldn't be read. Two shortcuts couldn't be used.")
+    );
+    let mut next = Hub::new(launch);
+    assert_eq!(next.take_notice(), None);
 }
