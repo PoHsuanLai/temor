@@ -26,6 +26,53 @@ pub fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+/// The longest path a unix socket takes (`sun_path` is 108 bytes with its final NUL).
+const SOCKET_PATH_MAX: usize = 107;
+/// What a shared connection adds below its runtime folder: `/ssh/`, ssh's 40-digit `%C` hash,
+/// and the 17-byte suffix of the name a master listens under before it renames the socket.
+const CONTROL_SOCKET_TAIL: usize = "/ssh/".len() + 40 + 17;
+
+/// A scratch folder outside the build directory, emptied when it is made and removed when it
+/// is dropped, a failing test's included.
+pub struct ScratchRoot(PathBuf);
+
+impl std::ops::Deref for ScratchRoot {
+    type Target = std::path::Path;
+
+    fn deref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for ScratchRoot {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// A scratch root for a test whose shared connection keeps its sockets in `<root>/<runtime>`.
+/// It goes under the temporary folder when the sockets fit there, else under `/tmp`, so a long
+/// `TMPDIR` cannot turn the test into a timeout. Panics when even `/tmp` is too long for them.
+pub fn socket_root(name: &str, runtime: &str) -> ScratchRoot {
+    let leaf = format!("tmr-{}-{name}", std::process::id());
+    let fits = |base: &std::path::Path| {
+        base.join(&leaf).join(runtime).as_os_str().len() + CONTROL_SOCKET_TAIL <= SOCKET_PATH_MAX
+    };
+    let temp = std::env::temp_dir();
+    let base = match fits(&temp) {
+        true => temp,
+        false => PathBuf::from("/tmp"),
+    };
+    assert!(
+        fits(&base),
+        "the scratch root for {name} leaves no room for a socket path under {}",
+        base.display()
+    );
+    let root = base.join(leaf);
+    let _ = std::fs::remove_dir_all(&root);
+    ScratchRoot(root)
+}
+
 /// Where `scratch(name)` put its files, without making them again.
 pub fn scratch_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name)

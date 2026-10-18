@@ -16,15 +16,17 @@ use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, wor
 use temor_ui::edge::save_with_hosts;
 use temor_ui::view::probe::Probe;
 
-use super::support::tools_present;
+use super::support::{ScratchRoot, socket_root, tools_present};
 use super::window::{harness_with, wait_until};
+
+/// temor's runtime folder below the scratch root.
+const RUNTIME: &str = "xdg/temor";
 
 /// Scratch folders with a stand-in `ssh` running `body`, and a session file with one tab whose
 /// pane is a session on `fake`, with `book` as the remembered answers. The root is short because
 /// a shared connection's socket path has to fit a unix socket.
-fn setup(name: &str, body: &str, book: ConsentBook) -> (PathBuf, PathBuf) {
-    let root = std::env::temp_dir().join(format!("tmr-{}-{name}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+fn setup(name: &str, body: &str, book: ConsentBook) -> (ScratchRoot, PathBuf) {
+    let root = socket_root(name, RUNTIME);
     let bin = root.join("bin");
     std::fs::create_dir_all(&bin).expect("bin folder");
     std::fs::create_dir_all(root.join("xdg")).expect("runtime folder");
@@ -50,7 +52,7 @@ fn setup(name: &str, body: &str, book: ConsentBook) -> (PathBuf, PathBuf) {
 }
 
 fn window(name: &str, probe: &Probe, root: &std::path::Path, state: PathBuf) -> Harness {
-    let (bin, runtime) = (root.join("bin"), root.join("xdg").join("temor"));
+    let (bin, runtime) = (root.join("bin"), root.join(RUNTIME));
     harness_with(name, probe, Some(state), move |ambient| {
         ambient
             .env
@@ -114,7 +116,6 @@ fn the_questions_before_a_first_connection_come_one_at_a_time_and_then_ssh_start
         s.contains("FAKE-SSH-SESSION")
     });
     assert!(!h.html().contains("Add it"));
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
@@ -141,5 +142,4 @@ fn the_browser_check_shows_a_row_and_opens_nothing_by_itself() {
         html.contains("in your browser")
     });
     assert!(!h.html().contains("Plain connection"), "nothing is asked");
-    let _ = std::fs::remove_dir_all(root);
 }

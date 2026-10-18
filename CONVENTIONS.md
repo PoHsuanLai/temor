@@ -28,6 +28,11 @@ Additions for temor:
 - Tests never touch the real system: private bus, scratch `HOME`, no real `~/.config`.
 
 ## Gate
+Anything that links libghostty (every build but `--no-default-features`) needs the pinned Ghostty
+tree and Zig's package store: `GHOSTTY_SOURCE_DIR`, `GHOSTTY_ZIG_SYSTEM_DIR` and
+`ZIG_GLOBAL_CACHE_DIR`, set up once as `crates/temor-vt-sys/README.md` § Building says. A tree at
+another commit is refused.
+
 Run from the repo root with `TEMOR_REQUIRE_TOOLS=1`, the shells and `dbus-daemon` (temor-desktop's and
 temor-ui's private-bus tests) on `PATH`:
 - `cargo fmt --all --check`
@@ -38,6 +43,11 @@ temor-ui's private-bus tests) on `PATH`:
 - `bash scripts/check-fork-patches.sh`: temor's `[patch.crates-io]` block equals quire's canonical
   `docs/fork-patches.toml` at the rev in `Cargo.toml` (run from quire's cargo checkout, or `git show`
   of the rev; nothing is vendored).
+
+Not in the gate or CI: `scripts/e2e-workflow.sh`, one person's working session end to end (a local
+project, `rsync` to a scratch sshd on 127.0.0.1, a host tab, an agent, uploads and downloads). It
+takes minutes and needs `sshd`, `ssh`, `ssh-keygen` and `rsync`; it builds the host helper itself.
+Run it before a release or after changing the host, transfer or shelf code.
 
 ## Tests (desktop test-cut rule, owner 2026-10-10: `~/rs-wt/test-cut/RUBRIC.md`)
 - A test earns its place only if it can catch a real regression no other test catches.

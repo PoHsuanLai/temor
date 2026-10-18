@@ -7,6 +7,15 @@
 # ~/.ssh or reaches another computer. `WF_STEPS=W3,W9` runs only those steps.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+for var in GHOSTTY_SOURCE_DIR GHOSTTY_ZIG_SYSTEM_DIR ZIG_GLOBAL_CACHE_DIR; do
+    if [ -z "${!var:-}" ]; then
+        echo "$var is not set; see crates/temor-vt-sys/README.md (Building) for the Ghostty tree and Zig store" >&2
+        exit 2
+    fi
+done
+for tool in sshd ssh ssh-keygen rsync; do
+    command -v "$tool" >/dev/null || { echo "$tool is not installed; this test needs it" >&2; exit 2; }
+done
 # The host helper the test installs on the scratch host; `cargo test` does not build it.
 cargo build -p temor-remote --features ghostty
 exec env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \

@@ -27,7 +27,7 @@ use ds_blitz::Extent;
 use ds_harness::{Driver, Harness, Input, Query};
 use temor_ui::view::probe::Probe;
 
-use super::support::{heavy, tools_present};
+use super::support::{ScratchRoot, heavy, socket_root, tools_present};
 use super::window::{chord, harness_with, rows};
 
 const NAME: &str = "workflow";
@@ -45,7 +45,7 @@ struct Sshd {
     /// The scratch HOME the forced command gives every session on `realhost`.
     remote_home: PathBuf,
     /// temor's runtime folder: short, as the shared connection's socket path must fit 108 bytes.
-    sockets: PathBuf,
+    sockets: ScratchRoot,
     child: Child,
 }
 
@@ -56,14 +56,13 @@ impl Drop for Sshd {
         // The helper daemon and its shells outlive sshd (they are detached by design), as does
         // the shared connection's ssh master; they run from the scratch HOME under `root` or on
         // a socket under `sockets`, so only this fixture's processes match.
-        for dir in [&self.root, &self.sockets] {
+        for dir in [self.root.as_path(), &self.sockets] {
             let _ = Command::new("pkill")
                 .arg("-f")
                 .arg(format!("{}/", dir.display()))
                 .status();
         }
         let _ = fs::remove_dir_all(&self.root);
-        let _ = fs::remove_dir_all(&self.sockets);
     }
 }
 
@@ -93,7 +92,7 @@ fn sshd() -> Result<Sshd, String> {
         tools.push(which(name).ok_or_else(|| format!("{name} is not installed"))?);
     }
     let (sshd, ssh, ssh_keygen, bash) = (&tools[0], &tools[1], &tools[2], &tools[5]);
-    // Short: the control sockets of temor's shared connection live under it.
+    // The scratch host and its HOME; temor's own sockets go under `socket_root`.
     let root = std::env::temp_dir().join(format!("twf-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     let (work, bin) = (root.join("w"), root.join("bin"));
@@ -168,8 +167,7 @@ fn sshd() -> Result<Sshd, String> {
         .stderr(log)
         .spawn()
         .map_err(|e| format!("sshd did not start: {e}"))?;
-    let sockets = PathBuf::from(format!("/tmp/twf-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&sockets);
+    let sockets = socket_root("workflow", "");
     let fixture = Sshd {
         sockets,
         root,
@@ -441,7 +439,11 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
         eprintln!("GAP: no temor-remote helper build beside the tests; the host stays on Tier A");
     }
     let probe = Probe::new();
-    let (bin, config, runtime) = (host.bin.clone(), host.config.clone(), host.sockets.clone());
+    let (bin, config, runtime) = (
+        host.bin.clone(),
+        host.config.clone(),
+        host.sockets.to_path_buf(),
+    );
     let mut h = harness_with(NAME, &probe, None, move |ambient| {
         let home = ambient.home.clone();
         // The project: a repository in the home folder, with proj/ to send.

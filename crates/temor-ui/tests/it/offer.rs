@@ -22,7 +22,8 @@ const QUESTION: &str = "Show commands as blocks in this shell?";
 /// prompt, reads 40 more bytes into `saved` with `-load` added to its name, then sleeps. The
 /// first command, `ssh box`, has been typed.
 fn window_running_ssh(name: &str, saved: &Path) -> (Harness, Probe) {
-    let bin = std::env::temp_dir().join(format!("tmr-{}-{name}", std::process::id()));
+    // Beside the window's scratch folder, which `harness_with` empties when it starts.
+    let bin = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("{name}-bin"));
     let _ = std::fs::remove_dir_all(&bin);
     std::fs::create_dir_all(&bin).expect("bin folder");
     let script = format!(
