@@ -280,10 +280,8 @@ fn on_card(h: &Harness, n: usize) -> Point {
     }
 }
 
-/// A right-click: the press, the release and the `contextmenu` after it, as a host sends them.
+/// One right-click: the move, the press and the release, which Blitz delivers as `contextmenu`.
 fn right_click(h: &mut Harness, at: Point) {
-    h.send(Input::button_down(at, PointerButton::Secondary));
-    h.send(Input::button_up(at, PointerButton::Secondary));
     h.send(Input::press(at, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
 }

@@ -70,7 +70,13 @@ fn a_worktree_gets_the_ignored_files_the_project_lists_and_nothing_else() {
     );
     assert!(wt.join("local/config.toml").exists());
     assert!(!wt.join("local/cache.bin").exists() && !wt.join("build.log").exists());
-    assert!(one.worktree.path.starts_with(&s.data));
+    // Recorded as its real path, as git lists it.
+    let data = path(&fs::canonicalize(&s.data).expect("real data path"));
+    assert!(
+        one.worktree.path.starts_with(&data),
+        "{}",
+        one.worktree.path
+    );
     assert!(one.worktree.path.contains("/worktrees/my-space/"));
 
     // The next one takes the next free name, from the same repository.

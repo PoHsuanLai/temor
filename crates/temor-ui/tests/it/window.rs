@@ -112,8 +112,10 @@ fn harness_at(
 ) -> Harness {
     let home = scratch(name).join("home");
     // The person's own prompt, set where a person sets it: Debian and Ubuntu's bash reads
-    // /etc/bash.bashrc first, and its `user@host:path$ ` would replace the PS1 below.
+    // /etc/bash.bashrc first (through /etc/profile in a login shell), and its `user@host:path$ `
+    // would replace the PS1 below. ~/.profile reads ~/.bashrc, as their default one does.
     std::fs::write(home.join(".bashrc"), "PS1='$ '\n").expect("scratch .bashrc");
+    std::fs::write(home.join(".profile"), ". ~/.bashrc\n").expect("scratch .profile");
     let mut ambient = Ambient {
         home: home.clone(),
         env: [

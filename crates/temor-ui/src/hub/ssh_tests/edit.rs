@@ -57,6 +57,12 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
     // A save in the editor goes back to the host.
     std::fs::write(&local, "edited here\n").expect("save");
     until_remote(&mut rig, &remote, "edited here\n");
+    // The write-back's own stat is the next base; a change made before it is read would be
+    // taken for the edit's own.
+    rig.pump("the save to settle", |hub| {
+        hub.host_view(pane)
+            .is_some_and(|v| v.edits.iter().any(|e| e.status == EditStatus::Open))
+    });
 
     // The host's file changes behind the editor's back; the next save asks.
     std::fs::write(&remote, "changed there, longer\n").expect("remote change");
