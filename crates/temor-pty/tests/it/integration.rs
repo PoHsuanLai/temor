@@ -59,15 +59,21 @@ fn marks_around_true_and_false(shell: PathBuf, prepare: impl Fn(&Scratch)) {
     for (command, status) in [("true", 0), ("false", 1)] {
         let start = term.out.len();
         term.send(&format!("{command}\r"));
-        let done = format!("\x1b]133;D;{status}");
+        // The status, then the mark's end: ST or BEL as the shell chooses.
+        let ends = [
+            format!("\x1b]133;D;{status}\x1b\\"),
+            format!("\x1b]133;D;{status}\x07"),
+        ];
+        let done = |out: &[u8]| ends.iter().find_map(|end| find(out, end.as_bytes()));
         assert!(
-            term.read_until_has(start, &done) && term.read_until_has(start, PROMPT_END),
+            term.read_until(|out| done(&out[start..]).is_some())
+                && term.read_until_has(start, PROMPT_END),
             "{command}: no D;{status} and prompt: {:?}",
             term.text()
         );
         let out = &term.out[start..];
         let c = find(out, OUTPUT_START.as_bytes()).expect("C");
-        let d = find(out, done.as_bytes()).expect("D");
+        let d = done(out).expect("D");
         let a = find(&out[d..], PROMPT_START.as_bytes()).expect("A after D") + d;
         let seven = find(&out[d..], osc7.as_bytes()).expect("OSC 7 after D") + d;
         let b = find(&out[a..], PROMPT_END.as_bytes()).expect("B after A") + a;

@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   # Debug builds of this workspace (Blitz, stylo, wgpu, Ghostty) are large; no incremental state
