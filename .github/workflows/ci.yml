@@ -92,7 +92,11 @@ jobs:
   distros:
     name: distros (${{ matrix.name }})
     runs-on: ubuntu-latest
-    container: ${{ matrix.image }}
+    container:
+      image: ${{ matrix.image }}
+      # An init as PID 1 reaps what a killed process group leaves, as a real system's does; the
+      # terminal tests check that a killed job is gone.
+      options: --init
     strategy:
       fail-fast: false
       matrix:
@@ -101,12 +105,13 @@ jobs:
             image: fedora:latest
             install: >-
               dnf install -y git curl tar xz unzip gcc gcc-c++ make clang mold python3
-              pkgconf-pkg-config fontconfig-devel freetype-devel util-linux zsh fish
+              pkgconf-pkg-config fontconfig-devel freetype-devel dejavu-sans-fonts
+              dejavu-sans-mono-fonts util-linux hostname zsh fish
           - name: arch
             image: archlinux:latest
             install: >-
               pacman -Syu --noconfirm --needed git curl tar xz unzip base-devel clang mold
-              python pkgconf fontconfig freetype2 util-linux zsh fish
+              python pkgconf fontconfig freetype2 ttf-dejavu util-linux inetutils zsh fish
     timeout-minutes: 60
     # The tests run as a person, not as root: the shells draw `#` for root where the tests wait for
     # their `$`, and nobody runs temor as root. Rust and its caches live in that person's home.
@@ -115,7 +120,7 @@ jobs:
       RUSTUP_HOME: /home/tester/.rustup
     steps:
       # Before the checkout, because the images carry neither git nor a compiler.
-      - name: System libraries, the shells the tests drive, and the person who runs them
+      - name: System libraries, fonts, the shells the tests drive, and the person who runs them
         run: |
           ${{ matrix.install }}
           useradd -m tester
@@ -124,6 +129,17 @@ jobs:
         with:
           path: .deps
           key: ghostty-${{ matrix.name }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh') }}
+      # Rust first, so the cache below can read the toolchain it keys on.
+      - name: Zig, Ghostty and Rust, as the person
+        run: |
+          chown -R tester "$GITHUB_WORKSPACE" /home/tester
+          runuser -u tester -- env HOME=/home/tester sh -euc '
+            git config --global --add safe.directory "$PWD"
+            sh scripts/dev-setup.sh --deps .deps --no-build
+            . .deps/env.sh
+            rustup toolchain install
+          '
+          echo /home/tester/.cargo/bin >> "$GITHUB_PATH"
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.name }}
@@ -132,10 +148,7 @@ jobs:
         run: |
           chown -R tester "$GITHUB_WORKSPACE" /home/tester
           runuser -u tester -- env HOME=/home/tester sh -euc '
-            git config --global --add safe.directory "$PWD"
-            sh scripts/dev-setup.sh --deps .deps --no-build
             . .deps/env.sh
-            rustup toolchain install
             cargo test --workspace --no-fail-fast
           '
 
