@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Debug builds of this workspace (Blitz, stylo, wgpu, Ghostty) are large; no incremental state
+  # keeps the cache useful without the size. .cargo/config.toml already keeps debug info to line
+  # tables, so a failing test's backtrace still names file and line.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # The gates that need no window, no real host and no network beyond the fetches. Everything here
+  # must pass for every push; it is the lanes' gate (gate.sh) on a hosted runner.
+  check:
+    runs-on: ubuntu-latest
+    # Every job has a timeout: the default is six hours, and a deadlocked test does not fail, it
+    # waits. Cold, this job builds Ghostty and the window stack twice (clippy, then the tests).
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # To build: clang and mold (.cargo/config.toml links with them), python3 (stylo's code
+      # generator), fontconfig and freetype. To test: the shells and tools the terminal and ssh
+      # tests drive. TEMOR_REQUIRE_TOOLS=1 below turns a missing one into a failure rather than a
+      # skip, so these tests cannot pass here by not running.
+      - name: System libraries, and the shells the tests drive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang mold python3 pkg-config \
+            libfontconfig1-dev libfreetype-dev xz-utils unzip \
+            zsh fish dash tcsh util-linux openssh-client openssh-server rsync
+
+      - uses: ./.github/actions/ghostty
+      # Saved even when a step fails, so a cold run that ends red still leaves the dependencies
+      # built for the next one.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      # `-D warnings` here rather than in `RUSTFLAGS`, which would reach dependencies too.
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        env:
+          TEMOR_REQUIRE_TOOLS: "1"
+        run: cargo test --workspace --no-fail-fast
+
+      # The GPU renderer is off by default. Its tests skip where wgpu finds no adapter, as on a
+      # hosted runner; the build and clippy still hold it.
+      - name: GPU renderer
+        run: |
+          cargo clippy -p temor-render --features gpu --all-targets -- -D warnings
+          cargo test -p temor-render --features gpu
+
+      # The portable core builds without our desktop's extras (zbus, docket, porter): the proxy,
+      # beside the macOS runner below, for "no session bus needed".
+      - name: Portable build (no desktop extras)
+        run: cargo check --workspace --no-default-features
+
+      # The [patch] block is quire's fork block exactly, checked against quire's own
+      # docs/fork-patches.toml at the pinned rev.
+      - name: The fork patches are quire's
+        run: ./scripts/check-fork-patches.sh
+
+      # The layer rules (PLAN §2): checked mechanically, because a person reading Cargo.toml will
+      # not notice a transitive edge.
+      - name: The layers
+        run: ./scripts/check-layers.sh
+
+  # The same build and tests on Fedora and Arch, inside their own images: a package name or a
+  # library version only one distribution has shows up here rather than on a person's machine.
+  # Skips are allowed here (no TEMOR_REQUIRE_TOOLS); `check` is the one that insists on the tools.
+  distros:
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: fedora:latest
+            install: >-
+              dnf install -y git curl tar xz unzip gcc gcc-c++ make clang mold python3
+              pkgconf-pkg-config fontconfig-devel freetype-devel util-linux zsh fish
+          - image: archlinux:latest
+            install: >-
+              pacman -Syu --noconfirm --needed git curl tar xz unzip base-devel clang mold
+              python pkgconf fontconfig freetype2 util-linux zsh fish
+    timeout-minutes: 60
+    steps:
+      # Before the checkout, because the images carry neither git nor a compiler.
+      - name: System libraries, and the shells the tests drive
+        run: ${{ matrix.install }}
+      - uses: actions/checkout@v4
+      - name: Trust the checkout (the container runs as root, the files are the runner's)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: ./.github/actions/ghostty
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.image }}
+          cache-on-failure: true
+      - name: Tests
+        run: cargo test --workspace --no-fail-fast
+
+  # The whole workspace on macOS: clippy and the tests. temor's macOS layer is still stubs (every
+  # crate's platform/ module, TODO(platform:macos)): no terminal opens there yet, and the tests that
+  # need one say so themselves (temor-pty's `pty_unsupported`). What this holds is that the
+  # workspace builds and its portable half passes, so the stubs cannot drift from the Linux side.
+  #
+  # Windows is not here yet: temor-vt-sys has no Zig target for it (crates/temor-vt-sys/build.rs,
+  # `zig_target`), so nothing past Ghostty compiles. Add windows-latest to the matrix with that.
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ghostty
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      # `--no-default-features`: the `quire-desktop` feature (zbus, docket, porter) is our desktop's
+      # extras; here the portable build is what is built and tested (quire design/36 rule 3).
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+      - name: Tests
+        run: cargo test --workspace --no-default-features --no-fail-fast
+      # The default features on a Mac: what a plain `cargo build` compiles, which the two steps
+      # above never do. Only checked, not run.
+      - name: Default features
+        run: cargo check --workspace --all-targets
+
+  # The release tarball, on every push to main and by hand: scripts/package.sh, the same script a
+  # release is made with (Ubuntu 22.04 in podman, the system linker, the dist profile). An artifact
+  # of the run, not a release: nothing here publishes anything.
+  package:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    # One thin-LTO release build of the whole program, cold, inside a container.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release tarball
+        run: ./scripts/package.sh "$RUNNER_TEMP/package" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: temor-linux
+          path: out/*
+          if-no-files-found: error
+
+  # Dependency licences: a dependency whose licence is not on deny.toml's allow-list fails here
+  # rather than being noticed later by somebody reading Cargo.lock.
+  licences:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses

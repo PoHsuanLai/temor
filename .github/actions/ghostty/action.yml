@@ -1,0 +1,39 @@
+name: Zig and Ghostty
+description: >-
+  The pinned Zig and Ghostty checkout temor-vt-sys builds from, through scripts/dev-setup.sh (the
+  same path a person takes), cached on the two fetch scripts that carry the pins. Exports the
+  build environment for the steps after it.
+inputs:
+  setup-flags:
+    description: Extra flags for scripts/dev-setup.sh (--system-linker where mold is not installed).
+    default: ""
+runs:
+  using: composite
+  steps:
+    # About 1 GB fetched cold; the pins live in the fetch scripts, so a re-pin is a new key.
+    - uses: actions/cache@v4
+      with:
+        path: .deps
+        key: ghostty-${{ runner.os }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh') }}
+    - name: Fetch Zig and Ghostty
+      shell: bash
+      run: |
+        sh scripts/dev-setup.sh --deps .deps --no-build ${{ inputs.setup-flags }}
+        . .deps/env.sh
+        {
+          echo "GHOSTTY_SOURCE_DIR=$GHOSTTY_SOURCE_DIR"
+          echo "GHOSTTY_ZIG_SYSTEM_DIR=$GHOSTTY_ZIG_SYSTEM_DIR"
+          echo "ZIG_GLOBAL_CACHE_DIR=$ZIG_GLOBAL_CACHE_DIR"
+          [ -z "${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER:-}" ] \
+            || echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER"
+          [ -z "${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS:-}" ] \
+            || echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS=$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS"
+        } >> "$GITHUB_ENV"
+        dirname "$(command -v zig)" >> "$GITHUB_PATH"
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    # rust-toolchain.toml names the version and its components.
+    - name: The pinned Rust
+      shell: bash
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustup toolchain install
