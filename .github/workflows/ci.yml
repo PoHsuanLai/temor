@@ -34,6 +34,16 @@ jobs:
           sudo apt-get install -y --no-install-recommends clang mold python3 pkg-config \
             libfontconfig1-dev libfreetype-dev xz-utils unzip \
             zsh fish dash tcsh util-linux openssh-client openssh-server rsync
+      # nushell has no Ubuntu package; the release the lanes test with.
+      - name: nushell
+        run: |
+          curl -fsSL https://github.com/nushell/nushell/releases/download/0.115.1/nu-0.115.1-x86_64-unknown-linux-gnu.tar.gz \
+            | sudo tar -xz -C /usr/local/bin --strip-components=1 nu-0.115.1-x86_64-unknown-linux-gnu/nu
+      # The runner leaves zsh's function folders group-writable, so Ubuntu's zshrc stops at
+      # compinit's "insecure directories" question instead of drawing a prompt. A person's machine
+      # has them root-owned and closed, as here after this.
+      - name: zsh's function folders as a person's machine has them
+        run: zsh -c 'autoload -U compaudit && compaudit' | xargs -r sudo chmod go-w
 
       - uses: ./.github/actions/ghostty
       # Saved even when a step fails, so a cold run that ends red still leaves the dependencies
@@ -80,35 +90,54 @@ jobs:
   # library version only one distribution has shows up here rather than on a person's machine.
   # Skips are allowed here (no TEMOR_REQUIRE_TOOLS); `check` is the one that insists on the tools.
   distros:
+    name: distros (${{ matrix.name }})
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: fedora:latest
+          - name: fedora
+            image: fedora:latest
             install: >-
               dnf install -y git curl tar xz unzip gcc gcc-c++ make clang mold python3
               pkgconf-pkg-config fontconfig-devel freetype-devel util-linux zsh fish
-          - image: archlinux:latest
+          - name: arch
+            image: archlinux:latest
             install: >-
               pacman -Syu --noconfirm --needed git curl tar xz unzip base-devel clang mold
               python pkgconf fontconfig freetype2 util-linux zsh fish
     timeout-minutes: 60
+    # The tests run as a person, not as root: the shells draw `#` for root where the tests wait for
+    # their `$`, and nobody runs temor as root. Rust and its caches live in that person's home.
+    env:
+      CARGO_HOME: /home/tester/.cargo
+      RUSTUP_HOME: /home/tester/.rustup
     steps:
       # Before the checkout, because the images carry neither git nor a compiler.
-      - name: System libraries, and the shells the tests drive
-        run: ${{ matrix.install }}
+      - name: System libraries, the shells the tests drive, and the person who runs them
+        run: |
+          ${{ matrix.install }}
+          useradd -m tester
       - uses: actions/checkout@v4
-      - name: Trust the checkout (the container runs as root, the files are the runner's)
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: ./.github/actions/ghostty
+      - uses: actions/cache@v4
+        with:
+          path: .deps
+          key: ghostty-${{ matrix.name }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh') }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.image }}
+          key: ${{ matrix.name }}
           cache-on-failure: true
       - name: Tests
-        run: cargo test --workspace --no-fail-fast
+        run: |
+          chown -R tester "$GITHUB_WORKSPACE" /home/tester
+          runuser -u tester -- env HOME=/home/tester sh -euc '
+            git config --global --add safe.directory "$PWD"
+            sh scripts/dev-setup.sh --deps .deps --no-build
+            . .deps/env.sh
+            rustup toolchain install
+            cargo test --workspace --no-fail-fast
+          '
 
   # The whole workspace on macOS: clippy and the tests. temor's macOS layer is still stubs (every
   # crate's platform/ module, TODO(platform:macos)): no terminal opens there yet, and the tests that

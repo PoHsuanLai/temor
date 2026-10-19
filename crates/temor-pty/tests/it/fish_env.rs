@@ -70,9 +70,10 @@ fn fish_keeps_what_an_earlier_snippet_added() {
     let Some(line) = data_dirs_in_fish(Some(snippet)) else {
         return;
     };
+    // Vendor snippets that run later (Ubuntu's snapd.fish) may append their own entries after it.
     assert!(!line.contains("shell-integration"), "{line:?}");
     assert!(
-        line.ends_with("/usr/local/share:/usr/share:/opt/extra] set"),
+        line.contains("/usr/local/share:/usr/share:/opt/extra") && line.ends_with("] set"),
         "{line:?}"
     );
 }
