@@ -15,6 +15,10 @@ fn big() -> Vec<u8> {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "receiving files (temor-transfer's confined create) is Linux-only so far"
+)]
 fn a_download_arrives_whole_in_the_downloads_folder_and_a_failed_one_leaves_nothing() {
     let rig = Rig::new("transfer-down");
     let data = big();
@@ -43,6 +47,10 @@ fn a_download_arrives_whole_in_the_downloads_folder_and_a_failed_one_leaves_noth
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn an_upload_lands_and_the_edit_round_trip_stops_at_a_changed_file() {
     let rig = Rig::new("transfer-up");
     let conn = rig.connect();
@@ -82,6 +90,10 @@ fn an_upload_lands_and_the_edit_round_trip_stops_at_a_changed_file() {
 const PART: usize = 256 << 10;
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn an_upload_reports_every_byte_once_and_ends_at_the_files_size() {
     let rig = Rig::new("transfer-progress");
     let conn = rig.connect();

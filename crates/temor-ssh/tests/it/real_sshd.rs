@@ -190,6 +190,10 @@ impl Host {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private runtime folder is Linux-only so far"
+)]
 fn the_bootstrap_runs_on_a_real_host_and_leaves_a_shared_connection() {
     let Some(host) = host() else {
         return;
@@ -217,6 +221,10 @@ fn the_bootstrap_runs_on_a_real_host_and_leaves_a_shared_connection() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private runtime folder is Linux-only so far"
+)]
 fn forwards_open_carry_close_and_fail_with_the_words_temor_reads() {
     let Some(host) = host() else {
         return;

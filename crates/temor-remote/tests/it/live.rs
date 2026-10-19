@@ -14,6 +14,10 @@ use crate::support::{Rig, tools_present};
 const SPARSE_LEN: u64 = 4 << 30;
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn a_slow_file_request_does_not_make_the_link_look_dead() {
     let rig = Rig::new("live-slow");
     let big = rig.files.join("big.bin");

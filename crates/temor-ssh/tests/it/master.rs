@@ -10,18 +10,28 @@ use temor_ssh::{
 
 use crate::harness::{RetryRunner, make_bin, scratch};
 
-fn layout_in(root: &std::path::Path) -> ControlLayout {
-    ControlLayout::new(
-        RuntimeDir::new(&root.join("temor")).expect("runtime"),
+/// A layout under a short folder of its own: a socket path must fit `sun_path`, and the system's
+/// temp folder alone takes most of macOS's 104 bytes. Keep the folder while the layout is used.
+fn layout() -> (tempfile::TempDir, ControlLayout) {
+    let root = tempfile::Builder::new()
+        .prefix("tm")
+        .tempdir_in("/tmp")
+        .expect("short root");
+    let layout = ControlLayout::new(
+        RuntimeDir::new(&root.path().join("temor")).expect("runtime"),
         ControlPersist::Forever,
     )
-    .expect("layout")
+    .expect("layout");
+    (root, layout)
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private runtime folder is Linux-only so far"
+)]
 fn the_socket_directories_are_made_private_and_made_again_harmlessly() {
-    let s = scratch();
-    let layout = layout_in(&s.work);
+    let (_root, layout) = layout();
     prepare_control_dirs(&layout).expect("first");
     prepare_control_dirs(&layout).expect("second");
     for dir in [layout.runtime_dir().to_path_buf(), layout.socket_dir()] {
@@ -31,9 +41,12 @@ fn the_socket_directories_are_made_private_and_made_again_harmlessly() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private runtime folder is Linux-only so far"
+)]
 fn a_master_is_ready_when_a_finished_socket_appears_not_its_temporary_name() {
-    let s = scratch();
-    let layout = layout_in(&s.work);
+    let (_root, layout) = layout();
     prepare_control_dirs(&layout).expect("dirs");
     let old = "a".repeat(40);
     let new = "b".repeat(40);
@@ -67,7 +80,7 @@ fn a_master_is_ready_when_a_finished_socket_appears_not_its_temporary_name() {
 fn a_probe_reads_the_exit_of_ssh_dash_o_check() {
     let s = scratch();
     let alias = HostAlias::new("prod").expect("alias");
-    let layout = layout_in(&s.work);
+    let (_root, layout) = layout();
     // Stand-ins that answer like ssh does to `-O check`, and refuse anything else (exit 64).
     let guard = "[ \"$1 $2\" = '-O check' ] || exit 64\n";
     for (name, exit, want) in [
@@ -88,9 +101,12 @@ fn a_probe_reads_the_exit_of_ssh_dash_o_check() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private runtime folder is Linux-only so far"
+)]
 fn a_directory_of_ours_with_no_read_permission_is_tightened_not_refused() {
-    let s = scratch();
-    let layout = layout_in(&s.work);
+    let (_root, layout) = layout();
     prepare_control_dirs(&layout).expect("first");
     let socket_dir = layout.socket_dir();
     for mode in [0o300, 0o000, 0o755] {

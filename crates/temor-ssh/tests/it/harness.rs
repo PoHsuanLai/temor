@@ -23,7 +23,8 @@ pub struct Scratch {
 
 pub fn scratch() -> Scratch {
     let root = tempfile::tempdir().expect("temp root");
-    let base = root.path().to_path_buf();
+    // Made real, as a shell sees it from getcwd (macOS's temp folder is under /var, a symlink).
+    let base = root.path().canonicalize().expect("temp root path");
     let s = Scratch {
         home: base.join("home"),
         tmp: base.join("tmp"),

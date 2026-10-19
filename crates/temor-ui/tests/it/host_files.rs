@@ -78,6 +78,10 @@ fn copy(host: &Host, path: &Path, local: &Path, cap: Cap) -> CopyOutcome {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn a_file_of_the_host_is_copied_whole_or_as_its_first_bytes_and_true_length() {
     let host = host("host-files-copy");
     let text: Vec<u8> = (0..5000u32).map(|i| b'a' + (i % 26) as u8).collect();
@@ -99,6 +103,10 @@ fn a_file_of_the_host_is_copied_whole_or_as_its_first_bytes_and_true_length() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn what_is_not_a_file_there_leaves_no_copy_and_says_why() {
     let host = host("host-files-not");
     std::fs::create_dir(host.root.join("dir")).expect("folder");

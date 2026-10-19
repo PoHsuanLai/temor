@@ -9,7 +9,9 @@ use temor_shell::{ChildEnv, Shell, ShellStart};
 use crate::support::{Scratch, Term, find, program_or_skip, setsid, size};
 
 const PROMPT_START: &[u8] = b"\x1b]133;A";
-const PROMPT_END: &[u8] = b"\x1b]133;B\x1b\\";
+// The marks end with ST or BEL as the shell chooses (fish 4 changed which), so only the
+// mark itself is matched.
+const PROMPT_END: &[u8] = b"\x1b]133;B";
 
 const SHELLS: [&str; 4] = ["bash", "zsh", "fish", "nu"];
 
@@ -87,6 +89,8 @@ fn plain(bytes: &[u8]) -> String {
                     i += 1;
                 }
             }
+            // A character set chosen (`ESC ( B`, which fish 3 sends with every colour reset).
+            0x1b if matches!(bytes.get(i + 1), Some(b'(' | b')')) => i += 2,
             0x1b => i += 1,
             b'\r' => {}
             b => out.push(b),
@@ -143,9 +147,21 @@ fn failing(shell: &str) -> &'static str {
 fn run_command(term: &mut Term, command: &str, status: u8) {
     let from = term.out.len();
     term.send(&format!("{command}\r"));
-    let done = format!("\x1b]133;D;{status}\x1b\\");
-    assert!(term.read_until_has(from, &done), "no D: {:?}", term.text());
-    let at = find(&term.out[from..], done.as_bytes()).expect("D") + from;
+    // The status, then the mark's end: ST or BEL.
+    let ends = [
+        format!("\x1b]133;D;{status}\x1b\\"),
+        format!("\x1b]133;D;{status}\x07"),
+    ];
+    let found = |out: &[u8]| {
+        ends.iter()
+            .find_map(|done| find(&out[from..], done.as_bytes()))
+    };
+    assert!(
+        term.read_until(|out| found(out).is_some()),
+        "no D: {:?}",
+        term.text()
+    );
+    let at = found(&term.out).expect("D") + from;
     assert!(
         term.read_until(|out| find(&out[at..], PROMPT_END).is_some()),
         "no prompt after {command}: {:?}",

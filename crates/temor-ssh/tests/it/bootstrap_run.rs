@@ -98,10 +98,40 @@ fn terminfo_is_compiled_into_the_home_when_the_host_lacks_it() {
     let path = s.bin.display().to_string();
     let ran = run(&s, &path, &bash(), &format!("{PRINT_TERM}exit\n"));
     assert!(ran.status.success());
+    // tic files the entry under its first letter, or on macOS under its hex code.
+    let terminfo = s.home.join(".terminfo");
     assert!(
-        s.home.join(".terminfo/x/xterm-ghostty").is_file(),
+        terminfo.join("x/xterm-ghostty").is_file() || terminfo.join("78/xterm-ghostty").is_file(),
         "tic did not write ~/.terminfo"
     );
+    assert!(contains(&ran.text, "T=xterm-ghostty"));
+}
+
+/// Why: macOS's tic files entries under the letter's hex code (`78/`), so the entry it compiled
+/// was never found and a Mac host fell back to xterm-256color every time.
+#[test]
+fn a_tic_that_files_by_hex_code_is_installed_the_same_way() {
+    let s = scratch();
+    // `tic -x -o <dir> <source>`, filing the entry as macOS's does.
+    make_bin(
+        &s.bin,
+        &[
+            "bash", "sh", "cat", "mkdir", "mktemp", "rm", "cp", "rmdir", "uname", "hostname",
+            "base64", "printf",
+        ],
+        &[
+            ("infocmp", "#!/bin/sh\nexit 1\n"),
+            (
+                "tic",
+                "#!/bin/sh\nmkdir -p \"$3/78\" && echo entry > \"$3/78/xterm-ghostty\"\n",
+            ),
+        ],
+    );
+    let path = s.bin.display().to_string();
+    let ran = run(&s, &path, &bash(), &format!("{PRINT_TERM}exit\n"));
+    assert!(ran.status.success());
+    assert!(s.home.join(".terminfo/78/xterm-ghostty").is_file());
+    assert!(!s.home.join(".terminfo/x").exists());
     assert!(contains(&ran.text, "T=xterm-ghostty"));
 }
 
@@ -186,7 +216,8 @@ fn a_hostile_host_name_stays_data() {
 fn zsh_and_fish_load_their_shims_when_installed() {
     for (name, input) in [
         ("zsh", "print -r -- \"Z=$ZDOTDIR\"\nexit\n"),
-        ("fish", "echo F=$XDG_DATA_DIRS\nexit\n"),
+        // Quoted: fish expands an unquoted `F=$var` of an unset variable to no word at all.
+        ("fish", "echo \"F=$XDG_DATA_DIRS\"\nexit\n"),
     ] {
         let Some(shell) = require(name) else {
             continue;
@@ -203,7 +234,11 @@ fn zsh_and_fish_load_their_shims_when_installed() {
             // fish 4 draws no prompt on piped stdin, with or without temor. Its shim removes
             // temor's XDG_DATA_DIRS entry at startup, so the temp path must be gone here.
             let tmp = s.tmp.display().to_string();
-            assert!(contains(&ran.text, "F="), "fish did not run its input");
+            assert!(
+                contains(&ran.text, "F="),
+                "fish did not run its input: {:?}",
+                String::from_utf8_lossy(&ran.text)
+            );
             assert!(
                 !contains(&ran.text, &tmp),
                 "fish kept temor's XDG_DATA_DIRS entry"

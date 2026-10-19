@@ -69,6 +69,10 @@ fn read_some(stream: &mut UnixStream) -> String {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private report socket is Linux-only so far"
+)]
 fn a_client_reports_through_the_pump_and_bad_input_is_answered() {
     let dir = tempfile::tempdir().expect("tempdir");
     let key = PaneKey::new("p-12").expect("key");

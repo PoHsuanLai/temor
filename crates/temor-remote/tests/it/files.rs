@@ -28,6 +28,10 @@ fn remote(error: Error) -> RemoteError {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn listing_stat_and_ranged_reads() {
     let rig = Rig::new("files-read");
     std::fs::write(rig.files.join("a.txt"), b"abc").expect("file");
@@ -62,6 +66,10 @@ fn listing_stat_and_ranged_reads() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn a_write_back_is_refused_when_the_file_changed_even_with_the_same_time() {
     let rig = Rig::new("files-write");
     let file = path(&rig, "doc.txt");
@@ -132,6 +140,10 @@ fn a_write_back_is_refused_when_the_file_changed_even_with_the_same_time() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn nothing_outside_the_granted_folders_is_reachable() {
     let rig = Rig::new("files-confine");
     std::fs::write(rig.files.join("a.txt"), b"abc").expect("file");
@@ -203,6 +215,10 @@ fn nothing_outside_the_granted_folders_is_reachable() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn watches_report_a_file_appearing_changing_and_going() {
     let rig = Rig::new("files-watch");
     let mut conn = rig.connect();

@@ -8,7 +8,7 @@ use std::path::Path;
 use temor_core::worktree::{GitCommand, MergeOutcome, resolve_commit, run_ok};
 use temor_ui::hub::agents::{
     MakeRequest, discard, find_leftovers, listed_as_worktree, make_worktree, merge_back,
-    snapshot_tree, toplevel,
+    snapshot_tree, toplevel, unused_worktrees,
 };
 
 use super::worktree_git::{Scratch, path, scratch};
@@ -144,4 +144,33 @@ fn work_left_uncommitted_is_merged_back_and_the_old_tip_is_kept() {
     )
     .expect("branches");
     assert!(branches.stdout.is_empty());
+}
+
+/// Why: git lists a worktree's real path while a tab's shell reports the path it was reached by,
+/// so under a symlinked data folder (Fedora Atomic's `/home` is `/var/home`) a worktree a tab
+/// was working in was offered as a leftover, and discarding it would have removed that work.
+#[test]
+fn a_worktree_a_tab_reached_through_a_symlink_is_not_a_leftover() {
+    let Some(s) = scratch() else { return };
+    let link = tempfile::tempdir().expect("link dir");
+    let data = link.path().join("data");
+    std::os::unix::fs::symlink(&s.data, &data).expect("symlinked data folder");
+    let made = make_worktree(
+        &s.git,
+        &MakeRequest {
+            data_dir: path(&data),
+            ..request(&s)
+        },
+    )
+    .expect("worktree");
+    let listed = find_leftovers(&s.git, &s.repo, &data).expect("list");
+    assert_eq!(listed.len(), 1, "{listed:?}");
+    // The worktree is recorded as git lists it.
+    assert_eq!(listed[0].path, made.worktree.path);
+
+    let name = Path::new(&made.worktree.path).file_name().expect("name");
+    let reached = data.join("worktrees/my-space").join(name).join("src");
+    let free = unused_worktrees(listed.clone(), &[path(&reached)]);
+    assert!(free.is_empty(), "a tab works in it: {free:?}");
+    assert_eq!(unused_worktrees(listed, &[]).len(), 1);
 }

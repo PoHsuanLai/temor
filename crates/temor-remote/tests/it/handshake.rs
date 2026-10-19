@@ -16,6 +16,10 @@ fn the_agreement_carries_the_helper_and_the_shared_capabilities() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn a_client_without_a_capability_cannot_use_it() {
     let rig = Rig::new("hello-caps");
     let conn = rig.connect_with(hello(HELPER, &[Capability::Files]));

@@ -9,7 +9,9 @@ use crate::support::{Scratch, Term, find, program_or_skip, setsid, size, url_pat
 
 // fish 4 adds options (`A;click_events=1`, `C;cmdline_url=…`), so A and C match as prefixes.
 const PROMPT_START: &str = "\x1b]133;A";
-const PROMPT_END: &str = "\x1b]133;B\x1b\\";
+// The marks end with ST or BEL as the shell chooses (fish 4 changed which), so only the
+// mark itself is matched.
+const PROMPT_END: &str = "\x1b]133;B";
 const OUTPUT_START: &str = "\x1b]133;C";
 
 /// Runs `true` then `false` in `shell` and checks C, then D with the status, then the next
@@ -57,7 +59,7 @@ fn marks_around_true_and_false(shell: PathBuf, prepare: impl Fn(&Scratch)) {
     for (command, status) in [("true", 0), ("false", 1)] {
         let start = term.out.len();
         term.send(&format!("{command}\r"));
-        let done = format!("\x1b]133;D;{status}\x1b\\");
+        let done = format!("\x1b]133;D;{status}");
         assert!(
             term.read_until_has(start, &done) && term.read_until_has(start, PROMPT_END),
             "{command}: no D;{status} and prompt: {:?}",

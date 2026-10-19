@@ -111,6 +111,9 @@ fn harness_at(
     extra: impl FnOnce(HarnessConfig) -> HarnessConfig,
 ) -> Harness {
     let home = scratch(name).join("home");
+    // The person's own prompt, set where a person sets it: Debian and Ubuntu's bash reads
+    // /etc/bash.bashrc first, and its `user@host:path$ ` would replace the PS1 below.
+    std::fs::write(home.join(".bashrc"), "PS1='$ '\n").expect("scratch .bashrc");
     let mut ambient = Ambient {
         home: home.clone(),
         env: [

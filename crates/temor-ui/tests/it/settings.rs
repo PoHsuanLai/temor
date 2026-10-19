@@ -180,6 +180,10 @@ fn command_comma_and_the_bars_page_rows_ask_for_the_window() {
 /// A font size typed into the page is written to `settings.toml`; one out of range is refused in
 /// words and the file is left alone.
 #[test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "the harness's Backspace deletes nothing in a text field on macOS (quire builds text editing per OS)"
+)]
 fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
     let (mut h, ambient) = settings_window("settings-font", SettingsPane::Appearance, |c| c);
     let size = "input[aria-label=\"Font size\"]";
@@ -383,6 +387,10 @@ fn last_change(board: &SpaceBoard) -> SpaceChange {
 
 /// A variable is added, its value edited and the variable removed from the Spaces page.
 #[test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "the harness's Backspace deletes nothing in a text field on macOS (quire builds text editing per OS)"
+)]
 fn a_variable_is_added_edited_and_removed_on_the_spaces_page() {
     let profile = Profile {
         env: vec![(key("A"), EnvValue("1".to_owned()))],

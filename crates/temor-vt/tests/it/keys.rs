@@ -9,6 +9,13 @@ fn key(code: KeyCode, mods: Modifiers, text: &str) -> KeyInput {
     KeyInput::press(code, mods, text)
 }
 
+/// Alt+B. On macOS Ghostty's encoder types Option+letter as the letter, the system's way, unless
+/// option-as-alt is set; temor has no such setting yet (TODO(platform:macos)).
+#[cfg(not(target_os = "macos"))]
+const ALT_B: &[u8] = b"\x1bb";
+#[cfg(target_os = "macos")]
+const ALT_B: &[u8] = b"b";
+
 /// (case, key, bytes)
 fn legacy_cases() -> Vec<(&'static str, KeyInput, &'static [u8])> {
     vec![
@@ -26,7 +33,7 @@ fn legacy_cases() -> Vec<(&'static str, KeyInput, &'static [u8])> {
             key(KeyCode::ArrowRight, Modifiers::SHIFT, ""),
             b"\x1b[1;2C",
         ),
-        ("alt letter", key(KeyCode::B, Modifiers::ALT, "b"), b"\x1bb"),
+        ("alt letter", key(KeyCode::B, Modifiers::ALT, "b"), ALT_B),
         ("f5", key(KeyCode::F5, Modifiers::NONE, ""), b"\x1b[15~"),
     ]
 }

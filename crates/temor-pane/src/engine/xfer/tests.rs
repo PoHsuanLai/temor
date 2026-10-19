@@ -97,6 +97,10 @@ fn file_frames(name: &str, data: &[u8]) -> [Message; 3] {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "receiving files (temor-transfer's confined create) is Linux-only so far"
+)]
 fn a_kitty_offer_waits_for_yes_then_stages_the_file_and_reports_it() {
     let dir = tempfile::tempdir().expect("scratch");
     let mut t = transfers(dir.path());
@@ -152,6 +156,10 @@ fn a_refused_offer_writes_nothing_and_tells_the_program() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "receiving files (temor-transfer's confined create) is Linux-only so far"
+)]
 fn an_iterm_file_is_kept_back_until_yes_and_not_at_all_after_no() {
     let dir = tempfile::tempdir().expect("scratch");
     let mut t = transfers(dir.path());

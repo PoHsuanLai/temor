@@ -83,6 +83,10 @@ fn wait_until_gone(path: &Path) {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private agent socket is Linux-only so far"
+)]
 fn a_programs_report_reaches_the_window_tagged_with_its_pane_over_a_private_socket() {
     let runtime = scratch("ag-sock").join("run");
     std::fs::create_dir_all(&runtime).expect("runtime");

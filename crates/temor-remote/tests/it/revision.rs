@@ -93,6 +93,10 @@ fn staged_files(rig: &Rig) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn parts_land_once_at_the_end_and_a_bad_part_or_a_refused_check_leaves_nothing() {
     let rig = Rig::new("parts");
     let conn = rig.connect();
@@ -148,6 +152,10 @@ fn parts_land_once_at_the_end_and_a_bad_part_or_a_refused_check_leaves_nothing()
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn an_upload_bigger_than_one_part_streams() {
     let rig = Rig::new("upload-big");
     let conn = rig.connect();

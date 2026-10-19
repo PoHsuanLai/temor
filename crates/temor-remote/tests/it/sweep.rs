@@ -41,6 +41,10 @@ fn names(dir: &std::path::Path) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn starting_clears_old_staged_parts_and_nothing_else() {
     let rig = Rig::new("sweep-start");
     let day = Duration::from_secs(24 * 60 * 60);
@@ -63,6 +67,10 @@ fn starting_clears_old_staged_parts_and_nothing_else() {
 }
 
 #[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "confined file access is Linux-only so far"
+)]
 fn an_upload_over_a_changed_file_is_refused_and_leaves_no_staged_part() {
     let rig = Rig::new("sweep-refused");
     let conn = rig.connect();
