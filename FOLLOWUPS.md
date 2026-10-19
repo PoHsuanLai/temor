@@ -1193,8 +1193,9 @@ merged, fixed and gated together. anyview c91ec0a.
 - [ ] keycap-client is gone (2026-10-19): the desktop's shortcuts come from quire's
       `system_key_source`, as mailo's do, so temor builds on macOS and Windows past it. On our desktop
       a person's own keycap bindings no longer reach temor's keymap; the ⌘-style conventions do, and
-      `X-Keycap-Profile=keymap-aware` still keeps ⌘ apart from Ctrl. A launcher that plugs keycap's
-      source in (quire's `with_keymap_source`) is where that comes back.
+      `X-Keycap-Profile=keymap-aware` still keeps ⌘ apart from Ctrl. temor builds its keymap on
+      `system_key_source` itself, so a source a launcher injects (quire's `with_keymap_source`) does
+      not reach it; bringing keycap's bindings back means building on the injected `KeySource`.
 - [x] Mark host panes remote where `ssh.panes` gets its entry (today the facts read does it). (done: Batch 20)
 - [x] Run `search_bench` and decide on a row-text path for search (2026-10-15: glance as text).
 - [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned. (2026-10-16: no probe at all

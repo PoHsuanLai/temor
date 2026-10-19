@@ -104,43 +104,46 @@ impl Hub {
 type Reloaded = (Overrides, Keymap, Vec<KeyIssue>);
 
 /// Loads the keymap again whenever the desktop's own shortcut settings or the person's own file
-/// (`keys.conf`) change, for as long as the window lives (PLAN §6). The reload runs on the
-/// watcher's thread (it may run `dconf`); the window only swaps the result in. A platform with
-/// no settings of its own to read still follows the file.
+/// (`keys.conf`) change, for as long as the window lives (PLAN §6). Reading the desktop's settings
+/// may run `dconf`, so the source and its watchers are set up on a thread of their own and the
+/// reloads run on the watchers' threads; the window only swaps the result in. A platform with no
+/// settings of its own to read still follows the file.
 pub fn spawn_keys_loop(desk: Desk) {
-    let (platform, keys, keys_path) = {
+    let (platform, ambient) = {
         let hub = desk.hub.0.borrow();
-        let platform = hub.launch.keymap.platform();
-        let ambient = &hub.launch.ambient;
-        (
-            platform,
-            system_keys(platform, ambient),
-            ambient.keys_path(),
-        )
+        (hub.launch.keymap.platform(), hub.launch.ambient.clone())
     };
     let (reloaded, mut inbox) = tokio::sync::mpsc::unbounded_channel::<Reloaded>();
-    let reload: Arc<dyn Fn() + Send + Sync> = {
-        let (loader, path) = (keys.clone(), keys_path.clone());
-        Arc::new(move || {
-            // A file that cannot be read now leaves the keys as they were.
-            let Ok((overrides, mut issues)) = read_overrides(&path) else {
-                return;
+    let (watching, watches) = tokio::sync::oneshot::channel();
+    // A thread that cannot start leaves the keys as they were read at start.
+    let _ = std::thread::Builder::new()
+        .name("temor-keys".to_owned())
+        .spawn(move || {
+            let (keys, keys_path) = (system_keys(platform, &ambient), ambient.keys_path());
+            let reload: Arc<dyn Fn() + Send + Sync> = {
+                let (loader, path) = (keys.clone(), keys_path.clone());
+                Arc::new(move || {
+                    // A file that cannot be read now leaves the keys as they were.
+                    let Ok((overrides, mut issues)) = read_overrides(&path) else {
+                        return;
+                    };
+                    let (keymap, built) = build_keymap(loader.source(), platform, &overrides);
+                    issues.extend(built);
+                    let _ = reloaded.send((overrides, keymap, issues));
+                })
             };
-            let (keymap, built) = build_keymap(loader.source(), platform, &overrides);
-            issues.extend(built);
-            let _ = reloaded.send((overrides, keymap, issues));
-        })
-    };
-    let callback = |reload: &Arc<dyn Fn() + Send + Sync>| -> ChangeCallback {
-        let reload = Arc::clone(reload);
-        Box::new(move || reload())
-    };
-    // A source that cannot watch leaves the desktop's keys as they were read at start.
-    let desktop_watch = keys.watch(callback(&reload)).ok();
-    let file_watch = watch_file(&keys_path, LOOK_EVERY, callback(&reload)).ok();
+            let callback = |reload: &Arc<dyn Fn() + Send + Sync>| -> ChangeCallback {
+                let reload = Arc::clone(reload);
+                Box::new(move || reload())
+            };
+            // A source that cannot watch leaves the desktop's keys as they were read at start.
+            let desktop_watch = keys.watch(callback(&reload)).ok();
+            let file_watch = watch_file(&keys_path, LOOK_EVERY, callback(&reload)).ok();
+            let _ = watching.send((desktop_watch, file_watch));
+        });
     spawn(async move {
         // Kept for as long as the window listens; dropping them stops the watchers.
-        let _watches = (desktop_watch, file_watch);
+        let _watches = watches.await;
         while let Some((overrides, keymap, issues)) = inbox.recv().await {
             desk.hub.0.borrow_mut().rekey(overrides, keymap);
             for (line, issue) in issues {

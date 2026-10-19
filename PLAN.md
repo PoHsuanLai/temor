@@ -303,8 +303,9 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
 - **Keys are chordkit's** (the desktop's portable keymap core, pinned in the workspace
   `Cargo.toml`). temor owns no chord, modifier, keymap or Command-versus-Ctrl type or rule:
   - **Platform and source:** the L3 edge (`temor_ui::edge::load_keymap`) reads
-    `chordkit::detect_process()` once, loads the platform's conventions (`ConventionSource`; the
-    desktop's own settings come later: keycap on our desktop, the KDE source on Plasma), lays the
+    `chordkit::detect_process()` once, loads the desktop's keymap through quire's
+    `ds_blitz::system_key_source` (kdeglobals on Plasma, a dconf dump on GNOME, the platform's
+    conventions elsewhere, our desktop included), lays the
     person's changes over them (`Overrides::parse` + `with_overrides`), then registers temor's
     actions (`temor_pane::keys::build_keymap`, pure).
   - **Primary per platform:** defaults are written `Primary+…`. In a terminal Primary is Super on
