@@ -8,9 +8,9 @@
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]
-pub use linux::{SystemOpener, open_tty};
+pub use linux::{SystemError, SystemOpener, open_tty};
 
 #[cfg(not(target_os = "linux"))]
 mod unsupported;
 #[cfg(not(target_os = "linux"))]
-pub use unsupported::{SystemOpener, open_tty};
+pub use unsupported::{SystemError, SystemOpener, open_tty};

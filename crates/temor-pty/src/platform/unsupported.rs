@@ -53,6 +53,9 @@ impl Pty {
     pub fn signal_group(&self, _signal: SignalKind) -> Result<(), PtyError> {
         match self.never {}
     }
+    pub fn hang_up(&self) -> Result<(), PtyError> {
+        match self.never {}
+    }
     pub fn kill(&mut self) -> Result<ChildExit, PtyError> {
         match self.never {}
     }

@@ -7,9 +7,16 @@ use swash::zeno::Format;
 use super::{BitmapEmojiSource, ColorBitmap};
 
 /// Bitmap colour glyphs through swash.
-#[derive(Default)]
 pub(crate) struct SystemBitmapEmoji {
     scale: ScaleContext,
+}
+
+impl SystemBitmapEmoji {
+    pub(crate) fn new() -> Self {
+        Self {
+            scale: ScaleContext::new(),
+        }
+    }
 }
 
 impl std::fmt::Debug for SystemBitmapEmoji {

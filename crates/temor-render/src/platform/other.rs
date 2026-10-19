@@ -3,8 +3,14 @@
 use super::{BitmapEmojiSource, ColorBitmap};
 
 /// No bitmap colour glyphs on this platform yet.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct SystemBitmapEmoji;
+
+impl SystemBitmapEmoji {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+}
 
 impl BitmapEmojiSource for SystemBitmapEmoji {
     // TODO(platform:macos): draw Apple Color Emoji (sbix) through Core Text, or check that

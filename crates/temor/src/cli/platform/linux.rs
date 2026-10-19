@@ -2,7 +2,7 @@
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -13,6 +13,23 @@ use temor_transfer::kitty::Link;
 
 use crate::cli::error::CliError;
 use crate::cli::opener::Opener;
+
+/// What can go wrong with the terminal or the opener on Linux. Every message is for a person.
+#[derive(Debug, thiserror::Error)]
+pub enum SystemError {
+    #[error("This only works in a terminal window")]
+    NoTerminal,
+    #[error("Couldn't talk to the terminal: {0}")]
+    Terminal(#[source] io::Error),
+    #[error("There is no program on this computer to open {}", .0.display())]
+    NoOpener(PathBuf),
+    #[error("Couldn't open {}: {}", .path.display(), .source)]
+    Open {
+        path: PathBuf,
+        #[source]
+        source: io::Error,
+    },
+}
 
 /// The controlling terminal in raw mode, so replies are read byte for byte and nothing echoes.
 /// Interrupt (Ctrl+C) still works. The old settings come back when this is dropped. One thread
@@ -30,13 +47,13 @@ pub fn open_tty() -> Result<Tty, CliError> {
         .read(true)
         .write(true)
         .open("/dev/tty")
-        .map_err(|_| CliError::NoTerminal)?;
-    let saved = tcgetattr(&file).map_err(|errno| CliError::Terminal(errno.into()))?;
+        .map_err(|_| SystemError::NoTerminal)?;
+    let saved = tcgetattr(&file).map_err(|errno| SystemError::Terminal(errno.into()))?;
     let mut raw = saved.clone();
     raw.make_raw();
     raw.local_modes.insert(LocalModes::ISIG);
     tcsetattr(&file, OptionalActions::Flush, &raw)
-        .map_err(|errno| CliError::Terminal(errno.into()))?;
+        .map_err(|errno| SystemError::Terminal(errno.into()))?;
     Ok(Tty { file, saved })
 }
 
@@ -91,12 +108,13 @@ impl Opener for SystemOpener {
         match started {
             Ok(_child) => Ok(()),
             Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                Err(CliError::NoOpener(path.to_path_buf()))
+                Err(SystemError::NoOpener(path.to_path_buf()).into())
             }
-            Err(source) => Err(CliError::Open {
+            Err(source) => Err(SystemError::Open {
                 path: path.to_path_buf(),
                 source,
-            }),
+            }
+            .into()),
         }
     }
 }

@@ -119,7 +119,7 @@ impl GlyphCache {
             color: Atlas::new(AtlasFormat::Color, COLOR_ATLAS.0, COLOR_ATLAS.1, color_max),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
-            bitmaps: SystemBitmapEmoji::default(),
+            bitmaps: SystemBitmapEmoji::new(),
             rasters: HashMap::new(),
             specials: HashMap::new(),
             runs: HashMap::new(),
