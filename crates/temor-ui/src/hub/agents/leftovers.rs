@@ -19,9 +19,11 @@ impl Hub {
             return;
         };
         let data_dir = self.agents.data_dir.clone();
+        let used = self.worktrees_in_use();
         self.agents.jobs.run(move |git| {
             let repo = work::toplevel(git, &cwd).unwrap_or(cwd);
-            let result = work::find_leftovers(git, &repo, &data_dir);
+            let result = work::find_leftovers(git, &repo, &data_dir)
+                .map(|listed| work::unused_worktrees(listed, &used));
             Done::Listed { repo, result }
         });
     }
@@ -32,35 +34,32 @@ impl Hub {
         result: Result<Vec<ListedWorktree>, UiError>,
     ) {
         match result {
-            Ok(listed) => {
-                let in_use = |w: &ListedWorktree| self.worktree_in_use(&w.path);
-                let free: Vec<ListedWorktree> = listed.into_iter().filter(|w| !in_use(w)).collect();
-                match free.is_empty() {
-                    true => self
-                        .notices
-                        .push("There are no leftover branches".to_owned()),
-                    false => {
-                        self.agents.trees.leftovers = free;
-                        self.agents.sheet = Some(Sheet::Leftovers { repo });
-                    }
+            Ok(free) => match free.is_empty() {
+                true => self
+                    .notices
+                    .push("There are no leftover branches".to_owned()),
+                false => {
+                    self.agents.trees.leftovers = free;
+                    self.agents.sheet = Some(Sheet::Leftovers { repo });
                 }
-            }
+            },
             Err(err) => self
                 .notices
                 .push(format!("The branches could not be listed: {err}")),
         }
     }
 
-    /// Whether a tab works in the worktree at `path`.
-    fn worktree_in_use(&self, path: &str) -> bool {
-        let inside = |cwd: &str| cwd == path || cwd.starts_with(&format!("{path}/"));
-        self.ws.cwds.values().any(|c| inside(c.as_str()))
-            || self
-                .agents
-                .trees
-                .by_tab
-                .values()
-                .any(|t| t.worktree.path == path)
+    /// The folders tabs work in, and the worktrees tabs were given: a leftover under any of them
+    /// is in use.
+    fn worktrees_in_use(&self) -> Vec<String> {
+        let tabs = self.ws.cwds.values().map(|cwd| cwd.as_str().to_owned());
+        let given = self
+            .agents
+            .trees
+            .by_tab
+            .values()
+            .map(|t| t.worktree.path.clone());
+        tabs.chain(given).collect()
     }
 
     /// A leftover opens in a tab of its own.

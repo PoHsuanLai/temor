@@ -9,9 +9,9 @@
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]
-pub use linux::{ensure_private_dir, open_regular};
+pub use linux::{SOCKET_PATH_MAX, ensure_private_dir, open_regular};
 
 #[cfg(not(target_os = "linux"))]
 mod unsupported;
 #[cfg(not(target_os = "linux"))]
-pub use unsupported::{ensure_private_dir, open_regular};
+pub use unsupported::{SOCKET_PATH_MAX, ensure_private_dir, open_regular};

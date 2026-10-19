@@ -4,14 +4,13 @@ use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::SshError;
+use crate::platform::SOCKET_PATH_MAX;
 
 /// ssh's `%C` hash is 40 hex digits (SHA-1).
 const HASH_LEN: usize = 40;
 /// ssh writes a master's socket under a temporary name with a 17-byte suffix (`.` and 16
 /// random characters) before it renames it into place.
 const SUFFIX_LEN: usize = 17;
-/// `sun_path` is 108 bytes including the terminating NUL.
-const SOCKET_PATH_MAX: usize = 107;
 
 /// The runtime directory temor owns (for example `$XDG_RUNTIME_DIR/temor`). Absolute, with
 /// only characters that need no quoting inside an `ssh -o` value.

@@ -55,12 +55,18 @@ temor_encode() {
         temor_enc_in=${temor_enc_in#?}
         case $temor_enc_ch in
             [a-zA-Z0-9/._~-]) temor_enc_out=$temor_enc_out$temor_enc_ch ;;
-            *) temor_enc_out=$temor_enc_out$(printf '%%%02X' "'$temor_enc_ch") ;;
+            # A shell whose characters are signed gives a byte over 0x7F as negative; the mask
+            # keeps the byte (as temor.bash keeps the last two digits).
+            *)
+                temor_enc_byte=$(printf '%d' "'$temor_enc_ch")
+                temor_enc_out=$temor_enc_out$(printf '%%%02X' $((temor_enc_byte & 255)))
+                ;;
         esac
     done
 }
 
-# Succeeds when xterm-ghostty is already on this host.
+# Succeeds when xterm-ghostty is already on this host. tic files an entry under its first letter
+# (`x/`), or on macOS under that letter's hex code (`78/`).
 temor_have_ghostty() {
     if command -v infocmp >/dev/null 2>&1; then
         infocmp xterm-ghostty >/dev/null 2>&1
@@ -68,7 +74,7 @@ temor_have_ghostty() {
     fi
     for temor_dir in "${HOME:-/nonexistent}/.terminfo" /etc/terminfo /lib/terminfo \
         /usr/share/terminfo /usr/lib/terminfo /usr/local/share/terminfo; do
-        [ -f "$temor_dir/x/xterm-ghostty" ] && return 0
+        [ -f "$temor_dir/x/xterm-ghostty" ] || [ -f "$temor_dir/78/xterm-ghostty" ] && return 0
     done
     return 1
 }
@@ -80,12 +86,15 @@ if temor_have_ghostty; then
     temor_term=xterm-ghostty
 elif [ "$temor_terminfo" = install ] && command -v tic >/dev/null 2>&1 && [ -n "${HOME:-}" ]; then
 #@TERMINFO@
-    if tic -x -o "$temor_tmp/terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1 \
-        && mkdir -p "$HOME/.terminfo/x" 2>/dev/null \
-        && cp "$temor_tmp/terminfo/x/xterm-ghostty" "$HOME/.terminfo/x/xterm-ghostty" 2>/dev/null; then
+    temor_sub=x
+    tic -x -o "$temor_tmp/terminfo" "$temor_tmp/xterm-ghostty.src" >/dev/null 2>&1 \
+        && [ -f "$temor_tmp/terminfo/78/xterm-ghostty" ] && temor_sub=78
+    if [ -f "$temor_tmp/terminfo/$temor_sub/xterm-ghostty" ] \
+        && mkdir -p "$HOME/.terminfo/$temor_sub" 2>/dev/null \
+        && cp "$temor_tmp/terminfo/$temor_sub/xterm-ghostty" "$HOME/.terminfo/$temor_sub/xterm-ghostty" 2>/dev/null; then
         temor_term=xterm-ghostty
     else
-        rmdir "$HOME/.terminfo/x" "$HOME/.terminfo" 2>/dev/null
+        rmdir "$HOME/.terminfo/$temor_sub" "$HOME/.terminfo" 2>/dev/null
     fi
 fi
 export TERM=$temor_term COLORTERM=truecolor

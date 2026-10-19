@@ -38,5 +38,5 @@ pub use radar::{Alert, Changed, Radar};
 pub use state::{Agents, Sheet};
 pub use work::{
     Made, MakeRequest, discard, find_leftovers, listed_as_worktree, make_worktree, merge_back,
-    safe_join, snapshot_tree, sweep_snapshots, toplevel,
+    safe_join, snapshot_tree, sweep_snapshots, toplevel, unused_worktrees,
 };

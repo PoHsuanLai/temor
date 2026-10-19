@@ -71,7 +71,8 @@ pub fn make_worktree(git: &dyn Git, request: &MakeRequest) -> Result<Made, UiErr
         &CreateParams {
             tab: TabId(0),
             repo: root.clone(),
-            data_dir: request.data_dir.clone(),
+            // Made real, so the path recorded here is the one git lists later.
+            data_dir: real(Path::new(&request.data_dir)),
             space: request.space.clone(),
             name,
             base_ref,
@@ -211,9 +212,45 @@ pub fn find_leftovers(
     repo: &str,
     data_dir: &Path,
 ) -> Result<Vec<ListedWorktree>, UiError> {
-    let real = fs::canonicalize(data_dir).unwrap_or_else(|_| data_dir.to_path_buf());
     let listed = list_worktrees(git, repo)?;
-    Ok(agent_worktrees(listed, &real.to_string_lossy()))
+    Ok(agent_worktrees(listed, &real(data_dir)))
+}
+
+/// Of `listed`, the worktrees no tab works in. `used` holds the tabs' folders as their shells
+/// report them, which keep any symlink in the path while git lists the real path, so both are
+/// compared made real (a data folder under a symlinked home, as Fedora Atomic's `/home` is).
+pub fn unused_worktrees(listed: Vec<ListedWorktree>, used: &[String]) -> Vec<ListedWorktree> {
+    let used: Vec<String> = used.iter().map(|path| real(Path::new(path))).collect();
+    listed
+        .into_iter()
+        .filter(|w| {
+            let path = real(Path::new(&w.path));
+            !used
+                .iter()
+                .any(|cwd| *cwd == path || cwd.starts_with(&format!("{path}/")))
+        })
+        .collect()
+}
+
+/// `path` with every symlink resolved. The part not made yet (or gone) is kept as written, under
+/// its deepest folder that is there, made real.
+fn real(path: &Path) -> String {
+    let mut rest = Vec::new();
+    let mut there = path;
+    let resolved = loop {
+        if let Ok(found) = fs::canonicalize(there) {
+            break found;
+        }
+        match (there.parent(), there.file_name()) {
+            (Some(parent), Some(name)) => {
+                rest.push(name);
+                there = parent;
+            }
+            _ => return path.to_string_lossy().into_owned(),
+        }
+    };
+    let whole = rest.iter().rev().fold(resolved, |at, name| at.join(name));
+    whole.to_string_lossy().into_owned()
 }
 
 /// A listed worktree as the one to remove: only its repository, path and branch matter.

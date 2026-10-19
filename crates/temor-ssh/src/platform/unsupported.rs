@@ -11,6 +11,10 @@ use std::path::Path;
 
 use crate::error::SshError;
 
+/// The longest unix socket path: `sun_path` is 104 bytes on macOS and the BSDs, including the
+/// terminating NUL (Windows' is 108, so the smaller one holds everywhere here).
+pub const SOCKET_PATH_MAX: usize = 103;
+
 /// Not yet implemented on this system; always `Err(Unsupported)`.
 pub fn ensure_private_dir(_path: &Path) -> Result<(), SshError> {
     Err(SshError::Unsupported("create a private runtime directory"))

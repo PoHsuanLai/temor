@@ -15,8 +15,8 @@ pub enum SshError {
     /// A value cannot go into an `ssh -o` option or a `-L` spec without quoting.
     #[error("`{0}` has characters that cannot be passed to ssh here")]
     UnsafeValue(String),
-    /// The shared control socket path is too long for a unix socket (108 bytes including the
-    /// terminating NUL, and ssh adds a 17-byte suffix while it sets up a master).
+    /// The shared control socket path is too long for a unix socket (the system's `sun_path`
+    /// limit, and ssh adds a 17-byte suffix while it sets up a master).
     #[error(
         "the control socket path needs {len} bytes, more than the {limit} a unix socket allows"
     )]
