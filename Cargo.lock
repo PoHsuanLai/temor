@@ -6940,7 +6940,7 @@ dependencies = [
 
 [[package]]
 name = "temor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rustix",
  "temor-desktop",
@@ -6953,7 +6953,7 @@ dependencies = [
 
 [[package]]
 name = "temor-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ds-core",
  "ds-style",
@@ -6969,7 +6969,7 @@ dependencies = [
 
 [[package]]
 name = "temor-desktop"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "docket-client",
  "docket-core",
@@ -6994,7 +6994,7 @@ dependencies = [
 
 [[package]]
 name = "temor-pane"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chordkit",
  "rustix",
@@ -7009,7 +7009,7 @@ dependencies = [
 
 [[package]]
 name = "temor-plugins"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bayonet",
  "serde",
@@ -7020,7 +7020,7 @@ dependencies = [
 
 [[package]]
 name = "temor-pty"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nix",
  "rustix",
@@ -7032,7 +7032,7 @@ dependencies = [
 
 [[package]]
 name = "temor-remote"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rustix",
  "sha2 0.10.9",
@@ -7046,7 +7046,7 @@ dependencies = [
 
 [[package]]
 name = "temor-render"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bytemuck",
  "fontique",
@@ -7062,7 +7062,7 @@ dependencies = [
 
 [[package]]
 name = "temor-shell"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "tempfile",
  "thiserror 2.0.21",
@@ -7070,7 +7070,7 @@ dependencies = [
 
 [[package]]
 name = "temor-ssh"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rustix",
  "temor-shell",
@@ -7081,7 +7081,7 @@ dependencies = [
 
 [[package]]
 name = "temor-transfer"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proptest",
  "rustix",
@@ -7093,7 +7093,7 @@ dependencies = [
 
 [[package]]
 name = "temor-ui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyview-core",
  "anyview-fs",
@@ -7137,7 +7137,7 @@ dependencies = [
 
 [[package]]
 name = "temor-vt"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "png",
  "temor-vt",
@@ -7147,11 +7147,11 @@ dependencies = [
 
 [[package]]
 name = "temor-vt-sys"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "temor-wire"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proptest",
  "serde",
