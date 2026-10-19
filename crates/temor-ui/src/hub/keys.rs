@@ -11,7 +11,7 @@ use temor_pane::keys::{Action, KeyIssue, build_keymap};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::{LOOK_EVERY, SystemKeys, watch_file};
+use crate::edge::{LOOK_EVERY, system_keys, watch_file};
 use crate::input::terminal_shortcut_of;
 use crate::settings::read_overrides;
 
@@ -112,19 +112,21 @@ pub fn spawn_keys_loop(desk: Desk) {
         let hub = desk.hub.0.borrow();
         let platform = hub.launch.keymap.platform();
         let ambient = &hub.launch.ambient;
-        let keys = SystemKeys::choose(platform, &ambient.config_home(), &ambient.runtime_dir);
-        (platform, keys, ambient.keys_path())
+        (
+            platform,
+            system_keys(platform, ambient),
+            ambient.keys_path(),
+        )
     };
-    let source = keys.source();
     let (reloaded, mut inbox) = tokio::sync::mpsc::unbounded_channel::<Reloaded>();
     let reload: Arc<dyn Fn() + Send + Sync> = {
-        let (loader, path) = (Arc::clone(&source), keys_path.clone());
+        let (loader, path) = (keys.clone(), keys_path.clone());
         Arc::new(move || {
             // A file that cannot be read now leaves the keys as they were.
             let Ok((overrides, mut issues)) = read_overrides(&path) else {
                 return;
             };
-            let (keymap, built) = build_keymap(&*loader, platform, &overrides);
+            let (keymap, built) = build_keymap(loader.source(), platform, &overrides);
             issues.extend(built);
             let _ = reloaded.send((overrides, keymap, issues));
         })
@@ -134,7 +136,7 @@ pub fn spawn_keys_loop(desk: Desk) {
         Box::new(move || reload())
     };
     // A source that cannot watch leaves the desktop's keys as they were read at start.
-    let desktop_watch = source.watch(callback(&reload)).ok();
+    let desktop_watch = keys.watch(callback(&reload)).ok();
     let file_watch = watch_file(&keys_path, LOOK_EVERY, callback(&reload)).ok();
     spawn(async move {
         // Kept for as long as the window listens; dropping them stops the watchers.

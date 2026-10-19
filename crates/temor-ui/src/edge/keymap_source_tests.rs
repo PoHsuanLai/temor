@@ -1,105 +1,90 @@
-//! Choosing the desktop's store, reading kdeglobals through it, and noticing a change.
+//! The desktop's settings read through quire with temor's own folders, and `keys.conf` watched.
 
+use std::ffi::OsString;
 use std::sync::mpsc::channel;
 use std::time::{Duration, SystemTime};
 
-use chordkit::{Action, Chord, Context, Desktop, KeymapSource, Platform, StandardAction};
+use chordkit::{Action, Chord, Context, Desktop, Platform, StandardAction};
 
-use super::{Polled, SystemKeys};
+use super::{system_keys, watch_file};
+use crate::edge::Ambient;
 
 const KDE: Platform = Platform::Linux {
     desktop: Desktop::Kde,
 };
-const GNOME: Platform = Platform::Linux {
-    desktop: Desktop::Gnome,
-};
 
-#[test]
-fn each_desktop_reads_its_own_store() {
-    let config = std::path::Path::new("/cfg");
-    let run = std::path::Path::new("/run/temor");
-    let rows = [
-        (
-            "Plasma",
-            KDE,
-            SystemKeys::Kde {
-                kdeglobals: "/cfg/kdeglobals".into(),
-            },
-        ),
-        (
-            "GNOME",
-            GNOME,
-            SystemKeys::Gnome {
-                database: "/cfg/dconf/user".into(),
-                dump: "/run/temor/keys/dconf.dump".into(),
-            },
-        ),
-        (
-            "our desktop",
-            Platform::Linux {
-                desktop: Desktop::Ours,
-            },
-            SystemKeys::Keycap {
-                config_home: config.to_owned(),
-            },
-        ),
-        (
-            "another Linux desktop",
-            Platform::Linux {
-                desktop: Desktop::Other,
-            },
-            SystemKeys::Conventions,
-        ),
-        ("a Mac", Platform::MacOs, SystemKeys::Conventions),
-        ("Windows", Platform::Windows, SystemKeys::Conventions),
-    ];
-    for (name, platform, want) in rows {
-        assert_eq!(SystemKeys::choose(platform, config, run), want, "{name}");
-    }
+/// An `Ambient` whose home is `home`, with nothing else from the process.
+fn ambient_in(home: &std::path::Path) -> Ambient {
+    let vars = [(OsString::from("HOME"), home.as_os_str().to_owned())];
+    Ambient::from_vars(vars).expect("an ambient")
+}
+
+fn redo_chords(platform: Platform, ambient: &Ambient) -> Vec<String> {
+    let redo = Action::Standard(StandardAction::Redo);
+    let keymap = system_keys(platform, ambient)
+        .source()
+        .load(platform)
+        .expect("load");
+    keymap
+        .chords_in(&redo, Context::Normal)
+        .into_iter()
+        .map(Chord::canonical)
+        .collect()
 }
 
 #[test]
-fn the_persons_kde_shortcuts_replace_the_conventions() {
-    let dir = tempfile::tempdir().expect("scratch dir");
-    let redo = Action::Standard(StandardAction::Redo);
+fn the_persons_kde_shortcuts_come_from_temors_config_home() {
+    let home = tempfile::tempdir().expect("scratch home");
+    let ambient = ambient_in(home.path());
     let canonical = |text: &str| text.parse::<Chord>().expect("a chord").canonical();
-    // (name, kdeglobals text or none for no file, Redo's chord)
-    let rows = [
-        ("changed", Some("[Shortcuts]\nRedo=Ctrl+Y\n"), "Ctrl+Y"),
-        ("no file", None, "Ctrl+Shift+Z"),
-    ];
-    for (name, text, want) in rows {
-        let path = dir.path().join(format!("kdeglobals-{name}"));
-        if let Some(text) = text {
-            std::fs::write(&path, text).expect("write kdeglobals");
-        }
-        let keys = SystemKeys::Kde { kdeglobals: path };
-        let keymap = keys.source().load(KDE).expect("load");
-        let got: Vec<String> = keymap
-            .chords_in(&redo, Context::Normal)
-            .into_iter()
-            .map(Chord::canonical)
-            .collect();
-        assert_eq!(got, [canonical(want)], "{name}");
+    assert_eq!(
+        redo_chords(KDE, &ambient),
+        [canonical("Ctrl+Shift+Z")],
+        "no file"
+    );
+    let config = home.path().join(".config");
+    std::fs::create_dir_all(&config).expect("config home");
+    std::fs::write(config.join("kdeglobals"), "[Shortcuts]\nRedo=Ctrl+Y\n").expect("write");
+    assert_eq!(redo_chords(KDE, &ambient), [canonical("Ctrl+Y")], "changed");
+}
+
+#[test]
+fn our_desktop_and_the_others_take_their_conventions() {
+    let home = tempfile::tempdir().expect("scratch home");
+    let ambient = ambient_in(home.path());
+    let ours = Platform::Linux {
+        desktop: Desktop::Ours,
+    };
+    for platform in [ours, Platform::MacOs, Platform::Windows] {
+        let redo = Action::Standard(StandardAction::Redo);
+        let conventional =
+            chordkit::Keymap::conventional(platform).chords_in(&redo, Context::Normal);
+        assert_eq!(system_keys(platform, &ambient).platform(), platform);
+        assert_eq!(
+            redo_chords(platform, &ambient),
+            conventional
+                .into_iter()
+                .map(Chord::canonical)
+                .collect::<Vec<_>>(),
+            "{platform:?}"
+        );
     }
 }
 
 #[test]
 fn a_changed_file_calls_back_and_a_dropped_watch_stops() {
     let dir = tempfile::tempdir().expect("scratch dir");
-    let path = dir.path().join("kdeglobals");
-    std::fs::write(&path, "[Shortcuts]\n").expect("write");
-    let source = Polled {
-        inner: chordkit::ConventionSource,
-        watched: path.clone(),
-        every: Duration::from_millis(20),
-    };
+    let path = dir.path().join("keys.conf");
+    std::fs::write(&path, "").expect("write");
     let (told, heard) = channel::<()>();
-    let watch = source
-        .watch(Box::new(move || {
+    let watch = watch_file(
+        &path,
+        Duration::from_millis(20),
+        Box::new(move || {
             let _ = told.send(());
-        }))
-        .expect("watch");
+        }),
+    )
+    .expect("watch");
     // A later modified time is a change, whatever the clock's resolution.
     let file = std::fs::File::options()
         .write(true)

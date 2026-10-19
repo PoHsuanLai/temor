@@ -8,7 +8,7 @@ use chordkit::{Chord, Context, Keymap, Overrides, Platform};
 use temor_pane::SettingsError;
 use temor_pane::keys::{Action, bind_key, build_keymap, portable_chord, reset_all_keys, reset_key};
 
-use crate::edge::{Ambient, SystemKeys};
+use crate::edge::{Ambient, system_keys};
 use crate::error::UiError;
 use crate::settings::{overrides_of, read_keys_text, write_keys};
 
@@ -81,9 +81,7 @@ pub fn changed_text(
 /// The keymap `text` means on `platform`, with the desktop's own shortcut settings under it.
 fn view_of(ambient: &Ambient, platform: Platform, text: &str) -> KeysView {
     let (changed, _) = overrides_of(text);
-    let source =
-        SystemKeys::choose(platform, &ambient.config_home(), &ambient.runtime_dir).source();
-    let (keymap, _) = build_keymap(&*source, platform, &changed);
+    let (keymap, _) = build_keymap(system_keys(platform, ambient).source(), platform, &changed);
     KeysView { keymap, changed }
 }
 

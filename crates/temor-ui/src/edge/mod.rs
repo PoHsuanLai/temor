@@ -58,7 +58,7 @@ pub use agent_socket::SocketHost;
 pub use ambient::Ambient;
 pub use clock::{Clock, FakeClock, SystemClock};
 pub use keymap::{keymap_for, load_keymap};
-pub use keymap_source::{LOOK_EVERY, SharedSource, SystemKeys, watch_file};
+pub use keymap_source::{LOOK_EVERY, system_keys, watch_file};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use save_pace::{Pace, SavePace};
 pub use session_file::{

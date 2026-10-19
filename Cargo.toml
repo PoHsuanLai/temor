@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9ddcbceecbb2490526a2f5a2f3344334333d72be" }  # v0.3.33 (blitz 4b236792)
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -64,19 +64,15 @@ temor-wire = { path = "crates/temor-wire" }
 # temor-ui (lane remote): the helper's client, for Tier B sessions in the window.
 temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
-# The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "cf3753beaa162567714b081552f8db374b5eb520" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+# The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
+# The desktop's shortcuts come from quire (ds_blitz::system_key_source).
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
-# The desktop shortcut sources (temor-ui reads kdeglobals and a dconf dump through them).
-chordkit-gnome = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
-chordkit-kde = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
-# Our desktop's keymap source (keycap's daemon and keymap files), at the rev casement reads.
-keycap-client = { git = "https://github.com/PoHsuanLai/keycap.git", rev = "52c66c7c768eac3b9ad6749f22ec3a43b08bd48f" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
