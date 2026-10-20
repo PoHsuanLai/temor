@@ -1,5 +1,4 @@
-//! TODO(platform:macos), TODO(platform:windows): the controlling terminal (`/dev/tty` and
-//! termios on macOS, the console on Windows) and the opener (`open`, `start`).
+//! TODO(platform:windows): the controlling terminal (the console) and the opener (`start`).
 
 use std::io;
 use std::path::Path;

@@ -1,4 +1,4 @@
-//! Linux: the controlling terminal at `/dev/tty` in raw mode, and `xdg-open`.
+//! Linux and macOS: the controlling terminal at `/dev/tty` in raw mode, and `xdg-open` or `open`.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
@@ -6,15 +6,21 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
+#[cfg(target_os = "linux")]
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
+#[cfg(target_os = "linux")]
 use rustix::io::Errno;
+#[cfg(target_os = "macos")]
+use rustix::termios::SpecialCodeIndex;
 use rustix::termios::{LocalModes, OptionalActions, Termios, tcgetattr, tcsetattr};
+#[cfg(target_os = "macos")]
+use std::time::Instant;
 use temor_transfer::kitty::Link;
 
 use crate::cli::error::CliError;
 use crate::cli::opener::Opener;
 
-/// What can go wrong with the terminal or the opener on Linux. Every message is for a person.
+/// What can go wrong with the terminal or the opener. Every message is for a person.
 #[derive(Debug, thiserror::Error)]
 pub enum SystemError {
     #[error("This only works in a terminal window")]
@@ -52,6 +58,14 @@ pub fn open_tty() -> Result<Tty, CliError> {
     let mut raw = saved.clone();
     raw.make_raw();
     raw.local_modes.insert(LocalModes::ISIG);
+    // macOS cannot `poll` a terminal device (it answers `POLLNVAL`), so a read there waits in the
+    // terminal driver instead: it gives up after a tenth of a second with no byte (`VMIN` 0,
+    // `VTIME` 1) and `read` loops until its own timeout.
+    #[cfg(target_os = "macos")]
+    {
+        raw.special_codes[SpecialCodeIndex::VMIN] = 0;
+        raw.special_codes[SpecialCodeIndex::VTIME] = 1;
+    }
     tcsetattr(&file, OptionalActions::Flush, &raw)
         .map_err(|errno| SystemError::Terminal(errno.into()))?;
     Ok(Tty { file, saved })
@@ -70,6 +84,23 @@ impl Link for Tty {
         self.file.flush()
     }
 
+    #[cfg(target_os = "macos")]
+    fn read(&mut self, timeout: Duration) -> io::Result<Option<Vec<u8>>> {
+        let until = Instant::now() + timeout;
+        let mut buf = [0_u8; 8192];
+        loop {
+            // With `VMIN` 0, no byte within `VTIME` reads as 0: that is a pause, not the end.
+            match self.file.read(&mut buf) {
+                Ok(0) if Instant::now() >= until => return Ok(None),
+                Ok(0) => {}
+                Ok(n) => return Ok(Some(buf[..n].to_vec())),
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => return Ok(None),
+                Err(err) => return Err(err),
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
     fn read(&mut self, timeout: Duration) -> io::Result<Option<Vec<u8>>> {
         let limit = Timespec {
             tv_sec: timeout.as_secs().try_into().unwrap_or(i64::MAX),
@@ -93,13 +124,18 @@ impl Link for Tty {
     }
 }
 
-/// Opens files with `xdg-open`.
+#[cfg(target_os = "linux")]
+const OPENER: &str = "xdg-open";
+#[cfg(target_os = "macos")]
+const OPENER: &str = "/usr/bin/open";
+
+/// Opens files with `xdg-open`, or `open` on macOS.
 #[derive(Debug, Clone, Copy)]
 pub struct SystemOpener;
 
 impl Opener for SystemOpener {
     fn open(&self, path: &Path) -> Result<(), CliError> {
-        let started = Command::new("xdg-open")
+        let started = Command::new(OPENER)
             .arg(path)
             .stdin(Stdio::null())
             .stdout(Stdio::null())

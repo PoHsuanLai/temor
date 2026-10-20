@@ -26,8 +26,8 @@ pub struct AgentPlan {
 
 /// The agent `space` needs, or none when its profile names no key. The socket is
 /// `<runtime>/temor/agent-<space id>.sock`: one per Space, under temor's own folder.
-// TODO(platform:macos) and TODO(platform:windows): the runtime folder and the socket kind
-// differ there; the edge supplies a `RuntimeDir` and this stays text.
+// TODO(platform:windows): the agent is a named pipe there; the edge supplies a `RuntimeDir` and this
+// stays text.
 pub fn agent_plan(
     space: SpaceId,
     profile: &Profile,
