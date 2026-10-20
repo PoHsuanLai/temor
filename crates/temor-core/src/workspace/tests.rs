@@ -71,6 +71,7 @@ fn a_tab_in_a_missing_folder_is_still_reachable() {
     let mut state = fixture();
     state.place.folders.clear();
     assert_eq!(order(&state), ids(&[2, 1, 4, 3]));
+    assert_eq!(sidebar_plan(&state).loose, ids(&[1, 4, 3]));
 }
 
 #[test]
