@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use temor_wire::ids::SessionId;
 
 use super::session::Session;
+use crate::sync::lock;
 
 /// The live sessions by id. `Send` and `Sync`.
 #[derive(Debug, Default)]
@@ -39,8 +40,6 @@ impl Registry {
     }
 
     fn lock(&self) -> MutexGuard<'_, BTreeMap<SessionId, Arc<Session>>> {
-        self.sessions
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.sessions)
     }
 }

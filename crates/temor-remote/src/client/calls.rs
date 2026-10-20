@@ -15,6 +15,7 @@ use temor_wire::units::{ByteCount, ByteRange, CellPx, Size};
 use super::connect::Client;
 use super::pending::Answer;
 use crate::error::Error;
+use crate::sync::lock;
 
 /// A request on the line whose answer has not been read yet.
 #[derive(Debug)]
@@ -100,11 +101,7 @@ impl Client {
         let id = RequestId(self.next.fetch_add(1, Ordering::Relaxed) + 1);
         let waiting = self.pending.register(id)?;
         let message = temor_wire::message::Message::Request { id, body };
-        let sent = self
-            .writer
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .send(&message, payload);
+        let sent = lock(&self.writer).send(&message, payload);
         if let Err(error) = sent {
             self.pending.forget(id);
             return Err(error);

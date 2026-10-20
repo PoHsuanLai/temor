@@ -6,6 +6,7 @@ use temor_vt::{EventSink, ReplySink, VtEvent};
 
 use super::cwd::parse_cwd_url;
 use super::input::Input;
+use crate::sync::lock;
 
 /// Keeps the latest working directory the program reported.
 pub(super) struct CwdSink(pub(super) Arc<Mutex<String>>);
@@ -15,7 +16,7 @@ impl EventSink for CwdSink {
         if let VtEvent::Cwd(url) = event
             && let Some(path) = parse_cwd_url(&url)
         {
-            *self.0.lock().unwrap_or_else(|p| p.into_inner()) = path;
+            *lock(&self.0) = path;
         }
     }
 }

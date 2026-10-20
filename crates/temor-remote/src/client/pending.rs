@@ -8,6 +8,7 @@ use temor_wire::ids::RequestId;
 use temor_wire::message::{RemoteError, Reply};
 
 use crate::error::Error;
+use crate::sync::lock;
 
 /// A response: the reply or the typed error, and the payload that came with it.
 #[derive(Debug)]
@@ -67,8 +68,6 @@ impl Pending {
     }
 
     fn lock(&self) -> MutexGuard<'_, Option<Waiting>> {
-        self.calls
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.calls)
     }
 }

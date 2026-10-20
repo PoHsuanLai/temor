@@ -11,6 +11,7 @@ use super::core::Daemon;
 use super::link::Link;
 use super::session::Session;
 use crate::error::Error;
+use crate::sync::lock;
 
 /// How a request was answered.
 pub(super) enum Done {
@@ -94,10 +95,7 @@ impl Daemon {
                 Ok(Done::Reply(Reply::Sessions(sessions)))
             }
             Request::SetIdleLimit { limit } => {
-                *self
-                    .idle
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = limit;
+                *lock(&self.idle) = limit;
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::ListPorts => Ok(Done::Reply(Reply::Ports(self.scan_ports().map_err(wire)?))),
@@ -139,17 +137,11 @@ impl Daemon {
             }
             Request::Watch { path } => {
                 let seen = self.files.observe(&path).map_err(wire)?;
-                let watch = link
-                    .watches
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .add(path, seen);
+                let watch = lock(&link.watches).add(path, seen);
                 Ok(Done::Reply(Reply::Watching { watch }))
             }
             Request::Unwatch { watch } => {
-                link.watches
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                lock(&link.watches)
                     .remove(watch)
                     .ok_or(RemoteError::NoSuchWatch { watch })?;
                 Ok(Done::Reply(Reply::Ack))

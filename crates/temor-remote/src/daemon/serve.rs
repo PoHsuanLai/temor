@@ -14,6 +14,7 @@ use super::files_worker::{FileWorker, Job, is_file_request};
 use super::link::{Link, LinkId, Outgoing, QUEUE, run_writer};
 use crate::error::Error;
 use crate::protocol::{DAEMON_CAPS, hello};
+use crate::sync::lock;
 use crate::transport::{FrameReader, greet};
 
 impl Daemon {
@@ -89,11 +90,7 @@ impl Daemon {
         if !link.has(temor_wire::hello::Capability::Ports) {
             return Ok(());
         }
-        let known = self
-            .ports
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone();
+        let known = lock(&self.ports).clone();
         if known.is_empty() {
             return Ok(());
         }

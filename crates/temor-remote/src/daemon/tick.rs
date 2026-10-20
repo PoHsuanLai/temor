@@ -6,6 +6,7 @@ use temor_wire::message::{Event, Message};
 
 use super::core::Daemon;
 use crate::idle::{IdleVerdict, idle_step};
+use crate::sync::lock;
 
 impl Daemon {
     /// Does one round of periodic work. The caller's timer calls it about once a second; nothing
@@ -17,10 +18,7 @@ impl Daemon {
     }
 
     fn sweep_idle(&self) {
-        let limit = *self
-            .idle
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let limit = *lock(&self.idle);
         let now = self.config.clock.now();
         for session in self.registry.all() {
             let Some(since) = session.detached_since() else {
@@ -38,10 +36,7 @@ impl Daemon {
             return;
         };
         {
-            let mut last = self
-                .ports
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut last = lock(&self.ports);
             if *last == now {
                 return;
             }
@@ -52,21 +47,13 @@ impl Daemon {
 
     fn poll_watches(&self) {
         for link in self.links_snapshot() {
-            let watched = link
-                .watches
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .paths();
+            let watched = lock(&link.watches).paths();
             for (id, path) in watched {
                 // A path that cannot be looked at (outside the folders, say) is left as it was.
                 let Ok(now) = self.files.observe(&path) else {
                     continue;
                 };
-                let change = link
-                    .watches
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .apply(id, now);
+                let change = lock(&link.watches).apply(id, now);
                 if let Some((path, kind)) = change {
                     let event = Message::Event(Event::FileChanged {
                         watch: id,
