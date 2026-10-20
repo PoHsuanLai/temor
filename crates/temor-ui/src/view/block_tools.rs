@@ -14,6 +14,7 @@ use ds_core::vocab::Shortcut;
 use temor_core::vocab::ids::BlockId;
 
 use super::block_meta::MetaText;
+use super::menu_key::with_key_opt;
 use super::tool_button::ToolButton;
 use crate::session::ToolsHeight;
 
@@ -65,10 +66,7 @@ fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
     let copy = MenuItem::new(More::CopyCommand, "Copy Command")
         .with_tip("Copy this command to the clipboard");
     let mut items = vec![
-        match tools.copy_command_key.clone() {
-            Some(key) => copy.with_key(key),
-            None => copy,
-        },
+        with_key_opt(copy, tools.copy_command_key.clone()),
         MenuItem::new(More::Save, "Save Output")
             .with_tip("Save this command's output to Downloads")
             .with_availability(tools.output),

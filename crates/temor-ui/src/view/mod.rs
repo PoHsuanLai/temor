@@ -25,6 +25,7 @@ pub mod host_banners;
 pub mod host_words;
 pub mod ime;
 pub mod launch;
+pub mod menu_key;
 pub mod names;
 pub mod lens_picture;
 pub mod link_tip;
