@@ -23,7 +23,7 @@ mod tests {
         let start = format!("sh -c 'echo {PROBE_WORD}");
         assert!(probe_line().contains(&start), "{}", probe_line());
         assert!(
-            ZSH_SCRIPT.contents.contains(&format!("*\\"{start}\\"*")),
+            ZSH_SCRIPT.contents.contains(&format!("*\"{start}\"*")),
             "temor.zsh no longer matches the probe line"
         );
     }

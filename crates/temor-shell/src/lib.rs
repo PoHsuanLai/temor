@@ -26,10 +26,11 @@ mod shell;
 
 pub use env::ChildEnv;
 pub use error::ShellError;
-pub use quote::sh_quote;
-pub use platform::{SOCKET_PATH_MAX, ensure_private_dir};
 pub use osc7::{cwd_from_url, percent_decode_strict};
+pub use platform::{SOCKET_PATH_MAX, ensure_private_dir};
+pub use quote::sh_quote;
 pub use shell::{
-    IntegrationPlan, IntegrationState, Shell, ShellKind, ShellScript, ShellStart, ShimFile, UserId,
-    PROBE_WORD, XDG_DATA_DIRS_DEFAULT, integration_scripts, probe_line, passwd_login_shell, plan_integration, resolve_shell, write_shims,
+    IntegrationPlan, IntegrationState, PROBE_WORD, Shell, ShellKind, ShellScript, ShellStart,
+    ShimFile, UserId, XDG_DATA_DIRS_DEFAULT, integration_scripts, passwd_login_shell,
+    plan_integration, probe_line, resolve_shell, write_shims,
 };

@@ -5,13 +5,13 @@ use std::collections::BTreeSet;
 
 use temor_shell::{ShellScript, XDG_DATA_DIRS_DEFAULT, sh_quote};
 
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD;
 use super::files::TERMINFO_SOURCE;
 use super::quote::heredoc_write;
 use crate::argv::RemoteCommand;
 use crate::error::SshError;
 use crate::files::RemoteFilePath;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 
 /// The template, with `#@INTEGRATION@` and `#@TERMINFO@` lines replaced by heredocs.
 const TEMPLATE: &str = include_str!("../../sh/bootstrap.sh");
@@ -120,7 +120,9 @@ impl BootstrapScript {
                 }
             }
         }
-        Ok(Self(script.replace(XDG_DEFAULT_MARK, XDG_DATA_DIRS_DEFAULT)))
+        Ok(Self(
+            script.replace(XDG_DEFAULT_MARK, XDG_DATA_DIRS_DEFAULT),
+        ))
     }
 
     /// The script text.

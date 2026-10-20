@@ -13,8 +13,8 @@ use temor_vt::{CellPx, GridSize, KeyInput};
 
 use super::event::PaneEvent;
 use super::io::{Command, map_event};
-use super::poison::lock;
 use super::outbox::Outbox;
+use super::poison::lock;
 use super::sink::EventSink;
 use super::term::Term;
 use super::xfer::OfferId;

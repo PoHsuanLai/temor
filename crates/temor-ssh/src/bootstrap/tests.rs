@@ -24,9 +24,7 @@ fn built_script_places_every_file_and_no_marks_remain() {
     assert!(!text.contains("#@OPTIONS@"));
     assert!(!text.contains("#@DIRS@"));
     assert!(!text.contains("#@XDG_DATA_DIRS_DEFAULT@"));
-    assert!(text.contains(&format!(
-        "${{XDG_DATA_DIRS:-{XDG_DATA_DIRS_DEFAULT}}}"
-    )));
+    assert!(text.contains(&format!("${{XDG_DATA_DIRS:-{XDG_DATA_DIRS_DEFAULT}}}")));
     assert!(text.contains("\ntemor_terminfo=install\n"));
     for target in [
         "\"$temor_tmp/bash/temor-bashrc\"",

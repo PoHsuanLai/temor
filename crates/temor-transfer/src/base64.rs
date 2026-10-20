@@ -31,7 +31,10 @@ pub(crate) fn decode(input: &[u8], cap: Bytes) -> Result<Vec<u8>, DecodeError> {
         .copied()
         .filter(|byte| !byte.is_ascii_whitespace())
         .collect();
-    let digits = body.iter().rposition(|&byte| byte != b'=').map_or(0, |i| i + 1);
+    let digits = body
+        .iter()
+        .rposition(|&byte| byte != b'=')
+        .map_or(0, |i| i + 1);
     // The decoded length, from the digits alone: three bytes a group, one or two for a short one.
     let wanted = digits / 4 * 3 + [0, 0, 1, 2][digits % 4];
     if wanted as u64 > cap.get() {

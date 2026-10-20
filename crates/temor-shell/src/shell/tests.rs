@@ -58,11 +58,22 @@ fn every_script_has_one_place_under_the_shim_root() {
             ("temor-bashrc", "bash/temor-bashrc".to_owned()),
             ("temor.zsh", "zsh/temor.zsh".to_owned()),
             ("zshenv", "zsh/.zshenv".to_owned()),
-            ("temor.fish", "fish/fish/vendor_conf.d/temor.fish".to_owned()),
-            ("temor.nu", "nushell/nushell/vendor/autoload/temor.nu".to_owned()),
+            (
+                "temor.fish",
+                "fish/fish/vendor_conf.d/temor.fish".to_owned()
+            ),
+            (
+                "temor.nu",
+                "nushell/nushell/vendor/autoload/temor.nu".to_owned()
+            ),
         ]
     );
-    for kind in [ShellKind::Bash, ShellKind::Zsh, ShellKind::Fish, ShellKind::Nushell] {
+    for kind in [
+        ShellKind::Bash,
+        ShellKind::Zsh,
+        ShellKind::Fish,
+        ShellKind::Nushell,
+    ] {
         assert!(kind.script().is_some(), "{kind:?}");
     }
     assert!(ShellKind::Other.script().is_none());
@@ -81,7 +92,10 @@ fn nushell_plan_prepends_its_folder_and_keeps_the_real_value() {
         plan.env.get("XDG_DATA_DIRS"),
         Some("/run/temor/shell-integration/nushell:/opt/share".as_ref())
     );
-    assert_eq!(plan.env.get("TEMOR_NU_XDG_DATA_DIRS"), Some("/opt/share".as_ref()));
+    assert_eq!(
+        plan.env.get("TEMOR_NU_XDG_DATA_DIRS"),
+        Some("/opt/share".as_ref())
+    );
     assert_eq!(
         plan.files[0].path,
         rt.join("shell-integration/nushell/nushell/vendor/autoload/temor.nu")

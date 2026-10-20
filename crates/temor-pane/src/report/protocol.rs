@@ -20,8 +20,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use temor_shell::percent_decode_strict;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
+use temor_shell::percent_decode_strict;
 
 /// The protocol version this library speaks.
 pub const VERSION: u32 = 1;
@@ -69,10 +69,16 @@ impl FromStr for ReportState {
     type Err = ReportRefusal;
 
     fn from_str(word: &str) -> Result<Self, ReportRefusal> {
-        [Self::Idle, Self::Working, Self::Waiting, Self::Done, Self::Failed]
-            .into_iter()
-            .find(|state| state.as_str() == word)
-            .ok_or(ReportRefusal::Syntax)
+        [
+            Self::Idle,
+            Self::Working,
+            Self::Waiting,
+            Self::Done,
+            Self::Failed,
+        ]
+        .into_iter()
+        .find(|state| state.as_str() == word)
+        .ok_or(ReportRefusal::Syntax)
     }
 }
 

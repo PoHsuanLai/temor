@@ -19,10 +19,10 @@
 
 use temor_shell::ShellScript;
 
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD;
 use super::inner_shell::InnerShell;
 use crate::error::SshError;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 
 /// The longest text built, all lines together.
 pub const MAX_INNER_LINE_BYTES: usize = 64 * 1024;

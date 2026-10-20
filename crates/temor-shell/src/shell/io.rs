@@ -29,7 +29,8 @@ fn write_one(file: &ShimFile) -> Result<(), ShellError> {
     };
     let mut temp = tempfile::NamedTempFile::new_in(dir).map_err(shims)?;
     temp.write_all(file.contents.as_bytes()).map_err(shims)?;
-    temp.persist(&file.path).map_err(|error| shims(error.error))?;
+    temp.persist(&file.path)
+        .map_err(|error| shims(error.error))?;
     Ok(())
 }
 

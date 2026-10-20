@@ -1,8 +1,8 @@
 //! Parses one OSC 1337 payload (the bytes between `ESC ]` and the terminator) into a command.
 
 use crate::base64;
-use crate::fields::{MAX_NAME_TEXT, ascii, pairs, parse_value};
 use crate::error::{Malformed, TransferError};
+use crate::fields::{MAX_NAME_TEXT, ascii, pairs, parse_value};
 use crate::name::FileName;
 use crate::units::{Bytes, Limits};
 

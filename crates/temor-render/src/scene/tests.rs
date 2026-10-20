@@ -6,11 +6,11 @@ use super::colors::{UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle, resolve_cursor};
 use super::model::{QuadPaint, RowScene};
 use crate::font::GlyphCache;
-use crate::testing::fonts;
 use crate::frame::{CellDraw, CellText, TermColors};
 use crate::metrics::{CellPos, Scale};
 use crate::palette::Palette;
 use crate::renderer::{BlinkPhase, PaneFocus, SelectionOverlay, SelectionShape};
+use crate::testing::fonts;
 
 fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
     CellDraw {

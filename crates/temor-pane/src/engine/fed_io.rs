@@ -8,8 +8,8 @@ use temor_render::Palette;
 use temor_vt::{CellPx, CursorShape, LineCount, Snapshot};
 
 use super::event::PaneEvent;
-use super::poison::lock;
 use super::io::{Command, Io, carry_out, decide, deliver, send, serve, signal_dirty};
+use super::poison::lock;
 use super::term::Term;
 use super::xfer::Transfers;
 

@@ -40,7 +40,10 @@ fn a_link_or_a_file_in_its_place_is_refused() {
     fs::write(&file, "").expect("file");
     for path in [link, file] {
         assert!(
-            matches!(ensure_private_dir(&path), Err(ShellError::PrivateDir { .. })),
+            matches!(
+                ensure_private_dir(&path),
+                Err(ShellError::PrivateDir { .. })
+            ),
             "{path:?}"
         );
     }
