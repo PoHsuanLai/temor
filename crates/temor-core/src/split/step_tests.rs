@@ -97,3 +97,18 @@ fn focusing_another_pane_while_zoomed_unzooms() {
         "focusing the zoomed pane keeps the zoom"
     );
 }
+
+/// Closing a pane gives focus to the pane it was split from or beside, not to whichever comes
+/// next in reading order: with 1 above 2 and 3 split off 1's right, closing 3 focuses 1.
+#[test]
+fn closing_a_pane_focuses_the_one_it_was_split_beside() {
+    let tree = super::SplitTree::single(p(1))
+        .split(p(1), p(2), Direction::Down)
+        .and_then(|t| t.split(p(1), p(3), Direction::Right))
+        .unwrap();
+    let state = TreeState { tree, focus: p(3) };
+    let (TreeAfter::Open(after), out) = tree_step(state, TreeIn::Close(p(3))) else {
+        panic!("one pane closed of three")
+    };
+    assert_eq!((after.focus, out), (p(1), vec![TreeOut::Focused(p(1))]));
+}

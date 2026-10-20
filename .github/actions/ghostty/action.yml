@@ -10,11 +10,11 @@ inputs:
 runs:
   using: composite
   steps:
-    # About 1 GB fetched cold; the pins live in the fetch scripts, so a re-pin is a new key.
+    # About 1 GB fetched cold; the pins live in ghostty.pin and zig.pin, so a re-pin is a new key.
     - uses: actions/cache@v4
       with:
         path: .deps
-        key: ghostty-${{ runner.os }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh') }}
+        key: ghostty-${{ runner.os }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh', 'crates/temor-vt-sys/*.pin') }}
     - name: Fetch Zig and Ghostty
       shell: bash
       run: |

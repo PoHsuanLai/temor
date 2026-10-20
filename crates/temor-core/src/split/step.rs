@@ -139,13 +139,16 @@ pub fn tree_step(state: TreeState, input: TreeIn) -> (TreeAfter, Vec<TreeOut>) {
     }
 }
 
-/// Closing the focused pane moves focus to the pane before it in reading order, else the one
-/// after.
+/// Closing the focused pane moves focus to the pane before it in the tree, else the one after:
+/// the pane it was split from or beside, not whichever sits next on screen.
 fn close(state: TreeState, pane: PaneId) -> (TreeAfter, Vec<TreeOut>) {
-    let heir = state
-        .tree
-        .goto(pane, Goto::Previous)
-        .or_else(|| state.tree.goto(pane, Goto::Next));
+    let panes = state.tree.panes();
+    let heir = panes.iter().position(|p| *p == pane).and_then(|at| {
+        at.checked_sub(1)
+            .and_then(|before| panes.get(before))
+            .or_else(|| panes.get(at + 1))
+            .copied()
+    });
     match state.tree.remove(pane) {
         Ok(Closed::Last) => (TreeAfter::Emptied, vec![]),
         Ok(Closed::Remaining(tree)) if pane == state.focus => match heir {

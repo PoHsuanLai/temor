@@ -131,7 +131,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .deps
-          key: ghostty-${{ matrix.name }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh') }}
+          key: ghostty-${{ matrix.name }}-${{ hashFiles('crates/temor-vt-sys/scripts/fetch-*.sh', 'crates/temor-vt-sys/*.pin') }}
       # Rust first, so the cache below can read the toolchain it keys on.
       - name: Zig, Ghostty and Rust, as the person
         run: |

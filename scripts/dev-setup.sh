@@ -118,7 +118,7 @@ zig_dir=$(sh "$scripts/fetch-zig.sh" "$deps/zig" | sed -n 's/^export PATH=\(.*\)
 [ -n "$zig_dir" ] || die "fetch-zig.sh did not say where Zig went"
 PATH="$zig_dir:$PATH"
 
-pin=$(sed -n 's/^GHOSTTY_COMMIT="\(.*\)"$/\1/p' "$scripts/fetch-ghostty.sh")
+pin=$(cat "$root/crates/temor-vt-sys/ghostty.pin")
 if [ "$(git -C "$deps/ghostty/src" rev-parse HEAD 2>/dev/null)" = "$pin" ] && [ -d "$deps/ghostty/zig-store/p" ]; then
   say "Ghostty $pin is already fetched"
 else
