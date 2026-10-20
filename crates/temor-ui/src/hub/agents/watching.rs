@@ -3,8 +3,9 @@
 //! shows up, a point is taken when it starts working, the turn ends when it stops, and the watch
 //! closes when the agent or its pane goes. A session the assistant already holds (a window it
 //! handed to the terminal) is never closed here, and one docket recognised as an app's
-//! conversation stays open after the agent exits, until the pane ends. The calls run on worker threads in the order they
-//! were wanted (see `watch`); a failure is written down once per pane and not shown.
+//! conversation stays open after the agent exits, until the pane ends. The calls run on worker
+//! threads in the order they were wanted (see `watch`); a failure is written down once per pane
+//! and not shown.
 
 use std::sync::Arc;
 
@@ -15,7 +16,7 @@ use temor_desktop::{DesktopError, TurnMark, WatchAsk, Watching};
 
 use super::checkpoints::words;
 use super::jobs::Done;
-use super::watch::{Call, Closing, Edge, Need, Want, edge, rewind_for};
+use super::watch::{Call, Closing, Edge, Need, Opening, Want, edge, rewind_for};
 use crate::hub::model::Hub;
 
 /// Whether the pane's restore points are read again after an answer.
@@ -67,18 +68,21 @@ impl Hub {
             Some(title) => format!("{agent} in {title}"),
             None => agent.to_owned(),
         };
-        let ask = WatchAsk {
-            workspace,
-            label,
-            rewind: rewind_for(agent),
-            seen: self.agents.radar.command_of(pane).cloned(),
+        let opening = Opening {
+            program: agent.to_owned(),
+            ask: WatchAsk {
+                workspace,
+                label,
+                rewind: rewind_for(agent),
+                seen: self.agents.radar.command_of(pane).cloned(),
+            },
         };
-        match self.agents.watches.need(pane, &ask) {
+        match self.agents.watches.need(pane, &opening) {
             Need::Nothing => {}
-            Need::Open => self.agents.watches.want(pane, Want::Open(ask)),
+            Need::Open => self.agents.watches.want(pane, Want::Open(opening)),
             Need::Replace | Need::Upgrade => {
                 self.agents.watches.want(pane, Want::Close(Closing::Always));
-                self.agents.watches.want(pane, Want::Open(ask));
+                self.agents.watches.want(pane, Want::Open(opening));
             }
         }
     }

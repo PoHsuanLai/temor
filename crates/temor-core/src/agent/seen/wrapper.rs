@@ -33,7 +33,7 @@ fn word_at(tokens: &[String], at: usize) -> Option<usize> {
     (at < tokens.len()).then_some(at)
 }
 
-fn is_option(word: &str) -> bool {
+pub(super) fn is_option(word: &str) -> bool {
     word.starts_with('-') && word.len() > 1
 }
 
@@ -50,7 +50,8 @@ fn env(tokens: &[String], mut at: usize) -> Option<usize> {
     loop {
         let word = tokens.get(at)?.as_str();
         at += match word {
-            "--" => return word_at(tokens, at + 1),
+            // Assignments still come after `--`: `env -- A=b zsh` runs `zsh`.
+            "--" => return past_assignments(tokens, at + 1),
             "-" | "-i" | "--ignore-environment" | "-0" | "--null" => 1,
             "-u" | "--unset" | "-C" | "--chdir" => 2,
             _ if word.starts_with("--unset=") || word.starts_with("--chdir=") => 1,
@@ -61,6 +62,15 @@ fn env(tokens: &[String], mut at: usize) -> Option<usize> {
             _ => return Some(at),
         };
     }
+}
+
+/// The first word from `at` on that is not a `NAME=value` assignment.
+fn past_assignments(tokens: &[String], at: usize) -> Option<usize> {
+    let skipped = tokens[at.min(tokens.len())..]
+        .iter()
+        .take_while(|w| w.contains('='))
+        .count();
+    word_at(tokens, at + skipped)
 }
 
 /// How many arguments a `bwrap` option takes.
@@ -221,22 +231,4 @@ fn timeout(tokens: &[String], mut at: usize) -> Option<usize> {
 fn program_after_duration(tokens: &[String], at: usize) -> Option<usize> {
     tokens.get(at)?;
     word_at(tokens, at + 1)
-}
-
-/// The script `node` runs: its first argument that is not an option. `None` when it runs code
-/// given on the command line, or an option is not known.
-pub(super) fn node_script(tokens: &[String], node_at: usize) -> Option<&str> {
-    let mut at = node_at + 1;
-    loop {
-        let word = tokens.get(at)?.as_str();
-        at += match word {
-            "--" => return tokens.get(at + 1).map(String::as_str),
-            "-r" | "--require" | "--import" | "--loader" | "--experimental-loader" => 2,
-            "-e" | "--eval" | "-p" | "--print" | "-c" | "--check" | "-i" | "--interactive" => {
-                return None;
-            }
-            _ if is_option(word) => 1,
-            _ => return Some(word),
-        };
-    }
 }

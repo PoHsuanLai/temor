@@ -7,7 +7,7 @@ use temor_vt::ProgramState;
 
 use super::points::RestoreMenu;
 use super::watch::{Edge, edge, rewind_for};
-use super::watch_scene::{Scene, in_front, program, sandboxed};
+use super::watch_scene::{CLAUDE_SEEN, Scene, in_front, program, sandboxed};
 use super::{AgentPick, SheetView};
 
 #[test]
@@ -151,11 +151,8 @@ fn a_session_the_assistant_holds_is_marked_but_never_closed() {
             false => scene.hear(&in_front("zsh")),
             true => scene.hub.agent_pane_ended(scene.pane),
         }
-        assert_eq!(
-            scene.fake.writes(),
-            ["watch /work [claude in Shell] Agent", "mark w-1"],
-            "{name}"
-        );
+        scene.quiet();
+        assert_eq!(scene.fake.writes(), [CLAUDE_SEEN, "mark w-1"], "{name}");
     }
 }
 
@@ -169,32 +166,29 @@ fn a_recognised_apps_session_outlives_the_agent_until_the_pane_ends_or_another_a
     // The agent exits: the session stays open, and the same command picks it up again.
     scene.hear(&in_front("zsh"));
     scene.hear(&sandboxed("claude"));
-    assert_eq!(
-        scene.fake.writes(),
-        ["watch /work [claude in Shell] Agent"],
-        "the same agent again"
-    );
+    scene.quiet();
+    assert_eq!(scene.fake.writes(), [CLAUDE_SEEN], "the same agent again");
 
-    // Another agent takes the pane: the old session is closed, a new one opened.
+    // Another agent takes the pane, its command line not read (as under `sudo`): the program
+    // alone tells it apart, so the old session is closed and a new one opened.
     scene.hear(&in_front("zsh"));
-    scene.hear(&sandboxed("codex"));
-    scene.settle(1);
-    scene.settle(2);
+    scene.hear(&in_front("codex"));
+    scene.quiet();
     assert_eq!(
         scene.fake.writes(),
         [
-            "watch /work [claude in Shell] Agent",
+            CLAUDE_SEEN,
             "close w-1",
             "watch /work [codex in Shell] Docket"
         ],
         "a different agent"
     );
 
-    // The pane ends: the session is closed.
+    // The pane ends: the new session is closed.
     scene.hub.agent_pane_ended(scene.pane);
-    scene.settle(1);
+    scene.quiet();
     assert_eq!(
         scene.fake.writes().last().map(String::as_str),
-        Some("close w-1")
+        Some("close w-2")
     );
 }

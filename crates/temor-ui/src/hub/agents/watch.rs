@@ -8,9 +8,10 @@ use std::collections::{BTreeMap, VecDeque};
 
 use temor_core::agent::seen::CommandLine;
 use temor_core::vocab::ids::PaneId;
-use temor_desktop::{Named, SessionKey, TurnHow, TurnMark, WatchAsk, WatchOwner, Watching};
+use temor_desktop::{Named, SessionKey, TurnMark, WatchOwner, Watching};
 
 pub(super) use super::turns::{Edge, edge, rewind_for};
+pub(super) use super::watch_calls::{Call, Need, Opening, Want};
 
 /// When a watch's session is closed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,41 +25,13 @@ pub(super) enum Closing {
     Always,
 }
 
-/// What a new agent in a pane needs of its watch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Need {
-    /// Open a session.
-    Open,
-    /// The pane keeps the session of an earlier, different agent: close it, then open one.
-    Replace,
-    /// The session was opened plain, before the agent's command line was known, and the line is
-    /// known now: close it, then open one that can be recognised.
-    Upgrade,
-    /// What is open serves, or an open is already on its way.
-    Nothing,
-}
-
-/// A call wanted of the port.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Want {
-    Open(WatchAsk),
-    Mark,
-    End(TurnHow),
-    Close(Closing),
-}
-
-/// A call ready to run, with what it needs.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Call {
-    Open(WatchAsk),
-    Mark(SessionKey),
-    End(SessionKey, TurnMark, TurnHow),
-    Close(SessionKey),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Flight {
     Free,
+    /// An open is on its way.
+    Opening,
+    /// A mark is on its way: a turn begins.
+    Marking,
     Busy,
 }
 
@@ -83,6 +56,8 @@ struct Watch {
     /// Who closes the session, and whether its app was recognised; read once it is open.
     owner: WatchOwner,
     named: Named,
+    /// The agent program the open session is for.
+    program: String,
     /// What the agent of the open session was started with.
     seen: Option<CommandLine>,
     turn: Option<TurnMark>,
@@ -98,6 +73,7 @@ impl Watch {
             session: None,
             owner: WatchOwner::Terminal,
             named: Named::Unknown,
+            program: String::new(),
             seen: None,
             turn: None,
             queue: VecDeque::new(),
@@ -114,17 +90,32 @@ impl Watch {
         self.owner == WatchOwner::Terminal && self.named == Named::App
     }
 
-    /// What the open session needs when an agent is seen with `seen` as its command line. A
-    /// command line not known never changes anything (a status report says nothing of it). A
-    /// recognised app's session stays after its agent exits: the same command picks it up again,
-    /// another one replaces it. A plain session opened with no command line is upgraded once
-    /// the line is known; one the assistant holds, or already named, never is.
-    fn need_for(&self, seen: Option<&CommandLine>) -> Need {
+    /// Whether a turn runs on the open session, or is about to: the last mark or end wanted
+    /// says, else the call on its way and the turn known.
+    fn mid_turn(&self) -> bool {
+        let wanted = self.queue.iter().rev().find_map(|w| match w {
+            Want::Mark => Some(true),
+            Want::End(_) => Some(false),
+            _ => None,
+        });
+        wanted.unwrap_or(self.turn.is_some() || self.flight == Flight::Marking)
+    }
+
+    /// What the open session needs when `program` is seen with `seen` as its command line. Another
+    /// program replaces it, even with no line (one under `sudo` cannot be read); an unknown line
+    /// changes nothing else. A recognised app's session stays after its agent exits: the same
+    /// line picks it up, another replaces it. A plain session is upgraded once its line is known
+    /// and no turn runs; one the assistant holds, or already named, never is.
+    fn need_for(&self, program: &str, seen: Option<&CommandLine>) -> Need {
+        if self.program != program {
+            return Need::Replace;
+        }
         let Some(seen) = seen else {
             return Need::Nothing;
         };
         match (self.seen.as_ref(), self.owner, self.named) {
             (Some(open), _, _) if open == seen => Need::Nothing,
+            (None, WatchOwner::Terminal, Named::Unknown) if self.mid_turn() => Need::Nothing,
             (None, WatchOwner::Terminal, Named::Unknown) => Need::Upgrade,
             (Some(_), WatchOwner::Terminal, Named::App) => Need::Replace,
             _ => Need::Nothing,
@@ -153,18 +144,18 @@ pub(super) struct Watches {
 }
 
 impl Watches {
-    /// What an agent just seen in `pane`, asking `ask`, needs of its watch.
-    pub(super) fn need(&self, pane: PaneId, ask: &WatchAsk) -> Need {
+    /// What an agent just seen in `pane`, as `opening` asks, needs of its watch.
+    pub(super) fn need(&self, pane: PaneId, opening: &Opening) -> Need {
         let Some(watch) = self.panes.get(&pane) else {
             return Need::Open;
         };
         let queued = watch.queue.iter().any(|w| matches!(w, Want::Open(_)));
-        if queued || watch.flight == Flight::Busy {
+        if queued || watch.flight == Flight::Opening {
             return Need::Nothing;
         }
         match &watch.session {
             None => Need::Open,
-            Some(_) => watch.need_for(ask.seen.as_ref()),
+            Some(_) => watch.need_for(&opening.program, opening.ask.seen.as_ref()),
         }
     }
 
@@ -195,15 +186,16 @@ impl Watches {
     /// cannot run (no session yet, no turn to end) is dropped.
     pub(super) fn next(&mut self, pane: PaneId) -> Option<Call> {
         let watch = self.panes.get_mut(&pane)?;
-        if watch.flight == Flight::Busy {
+        if watch.flight != Flight::Free {
             return None;
         }
         let mut found = None;
         while let Some(want) = watch.queue.pop_front() {
             found = match want {
-                Want::Open(ask) if watch.session.is_none() && watch.life == Life::Live => {
-                    watch.seen = ask.seen.clone();
-                    Some(Call::Open(ask))
+                Want::Open(opening) if watch.session.is_none() && watch.life == Life::Live => {
+                    watch.program = opening.program;
+                    watch.seen = opening.ask.seen.clone();
+                    Some(Call::Open(opening.ask))
                 }
                 Want::Mark => watch.session.clone().map(Call::Mark),
                 Want::End(how) => match (watch.session.clone(), watch.turn.take()) {
@@ -213,8 +205,12 @@ impl Watches {
                 Want::Close(closing) => watch.close_call(closing),
                 Want::Open(_) => None,
             };
-            if found.is_some() {
-                watch.flight = Flight::Busy;
+            if let Some(call) = &found {
+                watch.flight = match call {
+                    Call::Open(_) => Flight::Opening,
+                    Call::Mark(_) => Flight::Marking,
+                    Call::End(..) | Call::Close(_) => Flight::Busy,
+                };
                 break;
             }
         }

@@ -1631,6 +1631,16 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       opened before the line was known is opened again once with it. Waits for the
       docket batch that carries `recognise`, `SeenCommand` and `checkpoint_watch_agent`, and a
       relock of temor-desktop (it now names temor-pty).
+- [ ] The watch sends docket the agent's command line from its program word on, so the agent's
+      own arguments still go: a prompt given on the command line, `codex -c key=…`, and node's
+      `--require` / `--env-file` paths when the agent runs as `node …/cli.js`. docket only reads
+      the program and the conversation id from it and never stores or logs it, but the words
+      cross the bus. Cutting to the words `agents.toml`'s `resume` template names needs that
+      template on temor's side, or a docket call that takes the program word alone first.
+- [ ] A plain watch (opened from an agent's status report before its command line was read) is
+      upgraded to the recognised one only when no turn runs, by closing it and opening another:
+      the turns marked on the plain session leave the Restore list. Naming the open session in
+      place needs a docket call (the router's `name_watched_agent` is not on the bus).
 - [ ] `org.quire.Temor1.Run` answers only temor's installed image (peephole, `Exe`, pinned at
       connect; `instance::CALLERS`). A temor the person built is refused, so a checkout's
       `temor -e` aimed at a running checkout temor is refused too, and that launch then starts as

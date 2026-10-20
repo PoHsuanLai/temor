@@ -1,6 +1,6 @@
 use temor_pane::CommandLine;
 
-use super::wrapper;
+use super::{node, wrapper};
 
 /// Programs temor knows as agents by their process name (lowercase, exact). The weakest evidence:
 /// a program's own report (OSC 7501 or the pane socket) counts as well.
@@ -66,7 +66,7 @@ pub fn agent_of(comm: &str, command: Option<&CommandLine>) -> Option<Sighting> {
     let program_at = wrapper::program_at(tokens)?;
     let file = wrapper::file_name(tokens.get(program_at)?);
     let agent = AgentName::known(file).or_else(|| {
-        let script = wrapper::node_script(tokens, program_at).filter(|_| file == "node")?;
+        let script = node::node_script(tokens, program_at).filter(|_| file == "node")?;
         script_agent(script)
     })?;
     Some(Sighting { agent, program_at })
