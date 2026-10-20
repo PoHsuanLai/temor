@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -150,4 +150,3 @@ dioxus-core-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615f
 generational-box = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
 subsecond = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
 subsecond-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
-
