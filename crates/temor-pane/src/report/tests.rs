@@ -72,7 +72,7 @@ fn read_some(stream: &mut UnixStream) -> String {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private report socket is Linux-only so far"
 )]
 fn a_socket_folder_whose_parent_is_missing_is_said_to_be_missing() {
@@ -88,7 +88,7 @@ fn a_socket_folder_whose_parent_is_missing_is_said_to_be_missing() {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private report socket is Linux-only so far"
 )]
 fn a_client_reports_through_the_pump_and_bad_input_is_answered() {

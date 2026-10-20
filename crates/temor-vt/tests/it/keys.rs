@@ -10,7 +10,7 @@ fn key(code: KeyCode, mods: Modifiers, text: &str) -> KeyInput {
 }
 
 /// Alt+B. On macOS Ghostty's encoder types Option+letter as the letter, the system's way, unless
-/// option-as-alt is set; temor has no such setting yet (TODO(platform:macos)).
+/// option-as-alt is set (`KeyEncoder::set_option_as_alt`; see `option_as_alt_makes_option_an_alt`).
 #[cfg(not(target_os = "macos"))]
 const ALT_B: &[u8] = b"\x1bb";
 #[cfg(target_os = "macos")]
@@ -46,6 +46,24 @@ fn legacy_keys_encode() {
     for (name, input, want) in legacy_cases() {
         assert_eq!(enc.encode(&input).expect("encode"), want, "case {name}");
     }
+}
+
+/// On macOS, Option as Alt sends the escape prefix, and the choice survives `sync`, which resets it.
+#[cfg(target_os = "macos")]
+#[test]
+fn option_as_alt_makes_option_an_alt_and_survives_sync() {
+    use temor_vt::OptionAsAlt;
+    let (t, _rx) = term(80, 24);
+    let mut enc = KeyEncoder::new().expect("encoder");
+    let alt_b = key(KeyCode::B, Modifiers::ALT, "b");
+    enc.sync(&t);
+    assert_eq!(enc.encode(&alt_b).expect("encode"), b"b");
+    enc.set_option_as_alt(OptionAsAlt::Both);
+    assert_eq!(enc.encode(&alt_b).expect("encode"), b"\x1bb");
+    enc.sync(&t);
+    assert_eq!(enc.encode(&alt_b).expect("encode"), b"\x1bb");
+    enc.set_option_as_alt(OptionAsAlt::Off);
+    assert_eq!(enc.encode(&alt_b).expect("encode"), b"b");
 }
 
 #[test]

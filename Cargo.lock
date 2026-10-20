@@ -7120,6 +7120,7 @@ dependencies = [
  "serde_json",
  "temor-desktop",
  "temor-pty",
+ "temor-shell",
  "temor-ssh",
  "temor-testkit",
  "tempfile",
@@ -7134,6 +7135,7 @@ name = "temor-pane"
 version = "0.1.1"
 dependencies = [
  "chordkit",
+ "nix",
  "percent-encoding",
  "rustix",
  "temor-pty",

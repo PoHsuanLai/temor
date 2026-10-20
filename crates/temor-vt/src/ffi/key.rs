@@ -7,13 +7,14 @@ use temor_vt_sys as sys;
 use super::convert::check;
 use super::key_code::ghostty_key;
 use super::terminal::Terminal;
-use crate::{Ime, KeyAction, KeyInput, KittyKeyFlags, VtError};
+use crate::{Ime, KeyAction, KeyInput, KittyKeyFlags, OptionAsAlt, VtError};
 
 /// Encodes key events. Call [`KeyEncoder::sync`] with the terminal before encoding so the
 /// program's modes (cursor keys, keypad, kitty flags) apply.
 pub struct KeyEncoder {
     encoder: NonNull<sys::KeyEncoderImpl>,
     event: NonNull<sys::KeyEventImpl>,
+    option_as_alt: OptionAsAlt,
 }
 
 // SAFETY: the encoder and event are plain libghostty memory owned by this value, with no
@@ -44,7 +45,11 @@ impl KeyEncoder {
             })
         };
         match (made, NonNull::new(encoder), NonNull::new(event)) {
-            (Ok(()), Some(encoder), Some(event)) => Ok(Self { encoder, event }),
+            (Ok(()), Some(encoder), Some(event)) => Ok(Self {
+                encoder,
+                event,
+                option_as_alt: OptionAsAlt::default(),
+            }),
             (made, ..) => {
                 // SAFETY: both frees accept null.
                 unsafe {
@@ -56,10 +61,36 @@ impl KeyEncoder {
         }
     }
 
-    /// Takes the terminal's current key modes (cursor keys, keypad, kitty flags, ...).
+    /// Takes the terminal's current key modes (cursor keys, keypad, kitty flags, ...). The
+    /// Option-as-Alt choice is the caller's, not the terminal's, so it is put back afterwards.
     pub fn sync(&mut self, term: &Terminal) {
         // SAFETY: both handles are live.
         unsafe { sys::ghostty_key_encoder_setopt_from_terminal(self.encoder.as_ptr(), term.raw()) };
+        self.apply_option_as_alt();
+    }
+
+    /// Whether macOS's Option key acts as Alt. It holds across [`KeyEncoder::sync`]. Systems
+    /// without an Option key ignore it.
+    pub fn set_option_as_alt(&mut self, option: OptionAsAlt) {
+        self.option_as_alt = option;
+        self.apply_option_as_alt();
+    }
+
+    fn apply_option_as_alt(&mut self) {
+        let value: sys::OptionAsAlt::Type = match self.option_as_alt {
+            OptionAsAlt::Off => sys::OptionAsAlt::FALSE,
+            OptionAsAlt::Both => sys::OptionAsAlt::TRUE,
+            OptionAsAlt::Left => sys::OptionAsAlt::LEFT,
+            OptionAsAlt::Right => sys::OptionAsAlt::RIGHT,
+        };
+        // SAFETY: MACOS_OPTION_AS_ALT takes a `GhosttyOptionAsAlt*` (an `int`).
+        unsafe {
+            sys::ghostty_key_encoder_setopt(
+                self.encoder.as_ptr(),
+                sys::KeyEncoderOption::MACOS_OPTION_AS_ALT,
+                (&raw const value).cast(),
+            )
+        };
     }
 
     /// Overrides the kitty keyboard flags.

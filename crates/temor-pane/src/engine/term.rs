@@ -105,9 +105,11 @@ impl Term {
         terminal.set_clipboard_source(Box::new(clipboard.clone()));
         let hold = Shared::default();
         terminal.set_hold_hook(Box::new(HoldCapture::new(Arc::clone(&hold))));
+        let mut keys = KeyEncoder::new()?;
+        keys.set_option_as_alt(crate::platform::OPTION_AS_ALT);
         Ok(Self {
             terminal,
-            keys: KeyEncoder::new()?,
+            keys,
             mouse: MouseEncoder::new()?,
             events,
             replies,

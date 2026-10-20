@@ -101,7 +101,7 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # temor-pty: openpty, spawn, resize and process groups without `unsafe` (rustix is already in quire's tree).
 # temor-pty: the person's login shell through the system's account lookup (NSS: files, LDAP, sssd,
 # systemd-homed), not by reading /etc/passwd.
-nix = { version = "0.31", default-features = false, features = ["user", "term", "process"] }
+nix = { version = "0.31", default-features = false, features = ["user", "term", "process", "socket"] }
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
 # temor-pty on macOS: process name, directory, children and start time through proc_pidinfo (safe wrappers).
 libproc = "0.14"

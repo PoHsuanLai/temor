@@ -52,7 +52,7 @@ pub use event::{
 };
 pub use input::{
     Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,
-    MouseFormat, MouseInput, MouseSurface, SurfacePoint,
+    MouseFormat, MouseInput, MouseSurface, OptionAsAlt, SurfacePoint,
 };
 pub use model::{
     AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorRef, ColorScheme, Cols,

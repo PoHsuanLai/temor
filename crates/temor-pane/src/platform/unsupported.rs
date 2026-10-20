@@ -1,6 +1,5 @@
 //! Other systems: nothing is created and no peer is trusted, so no connection is accepted.
 //!
-//! TODO(platform:macos): read the peer with `getpeereid` (or `LOCAL_PEERCRED`).
 //! TODO(platform:windows): named pipes with an ACL for the current user replace the socket.
 
 use std::io;

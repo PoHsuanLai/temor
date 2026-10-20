@@ -84,7 +84,7 @@ fn wait_until_gone(path: &Path) {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private agent socket is Linux-only so far"
 )]
 fn a_programs_report_reaches_the_window_tagged_with_its_pane_over_a_private_socket() {

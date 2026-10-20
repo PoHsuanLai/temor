@@ -27,7 +27,7 @@ fn layout() -> (tempfile::TempDir, ControlLayout) {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private runtime folder is Linux-only so far"
 )]
 fn the_socket_directories_are_made_private_and_made_again_harmlessly() {
@@ -42,7 +42,7 @@ fn the_socket_directories_are_made_private_and_made_again_harmlessly() {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private runtime folder is Linux-only so far"
 )]
 fn a_master_is_ready_when_a_finished_socket_appears_not_its_temporary_name() {
@@ -102,7 +102,7 @@ fn a_probe_reads_the_exit_of_ssh_dash_o_check() {
 
 #[test]
 #[cfg_attr(
-    not(target_os = "linux"),
+    not(any(target_os = "linux", target_os = "macos")),
     ignore = "the private runtime folder is Linux-only so far"
 )]
 fn a_directory_of_ours_with_no_read_permission_is_tightened_not_refused() {

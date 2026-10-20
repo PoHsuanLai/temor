@@ -183,6 +183,22 @@ impl KittyKeyFlags {
     }
 }
 
+/// Whether macOS's Option key acts as Alt (sends an escape prefix, so Option+B moves back a word)
+/// or types what the layout makes of it (`∫`). Other systems have no such key and ignore it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum OptionAsAlt {
+    /// Option types what the layout makes of it.
+    #[default]
+    Off,
+    /// Both Option keys are Alt.
+    Both,
+    /// Only the left Option key is Alt.
+    Left,
+    /// Only the right Option key is Alt.
+    Right,
+}
+
 /// One key event for the program.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KeyInput {
