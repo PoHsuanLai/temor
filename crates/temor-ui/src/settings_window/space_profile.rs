@@ -9,8 +9,9 @@ use ds::components::fields::field_row::FieldRow;
 use ds::components::fields::text_field_model::{FieldKind, FieldText};
 use ds::prelude::*;
 
-use super::row_parts::{AddButton, KeptField, RemoveButton, named};
+use super::row_parts::{AddButton, KeptField, RemoveButton};
 use crate::edge::Held;
+use crate::view::names::named;
 
 /// One variable: its name, its value, and Remove.
 #[component]

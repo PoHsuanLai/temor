@@ -22,6 +22,7 @@ use temor_core::shelf::{
     Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
 };
 
+use super::names::named;
 use crate::hub::{Desk, PaneTarget};
 
 /// The Downloads button for the head of the sidebar, and its list while it is open.
@@ -70,7 +71,7 @@ pub fn ShelfButton(desk: Desk) -> Element {
                     placement: Placement::new(Side::Bottom, Align::End),
                     gap: Px(6.0),
                     arrow: Arrow::None,
-                    common: Common { aria_label: Some("Downloads".to_owned()), ..Common::default() },
+                    common: named("Downloads"),
                     onclose: move |()| shown.set(Shown::Hidden),
                     div { class: "temor-dl-list",
                         Label { text: "Downloads".to_owned(), role: LabelRole::Secondary }
@@ -187,7 +188,7 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                 ProgressIndicator {
                     style: ProgressStyle::Bar,
                     progress: Share::Known(Fraction(u16::from(percent) * 10)),
-                    common: Common { aria_label: Some("Download progress".to_owned()), ..Common::default() },
+                    common: named("Download progress"),
                 }
             }
             div { class: "temor-dl-actions",

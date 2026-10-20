@@ -4,13 +4,7 @@
 use dioxus::prelude::*;
 use ds::prelude::*;
 
-/// A button named for what it does to whom, for assistive technology and tests.
-pub fn named(name: impl Into<String>) -> Common {
-    Common {
-        aria_label: Some(name.into()),
-        ..Common::default()
-    }
-}
+use crate::view::names::named;
 
 /// "Remove" on a row. `what` names the row for assistive technology ("Remove {what}"), so a list
 /// of several rows has a button for each that says which it takes away; `tip` is the hover hint.

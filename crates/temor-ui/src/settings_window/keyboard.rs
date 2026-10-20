@@ -8,11 +8,11 @@ use chordkit::Chord;
 use dioxus::prelude::*;
 use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
-use ds::root::common::Common;
 use temor_pane::keys::{Action, bindable};
 
 use super::keys_edit::{KeyChange, Mine, change_keys, load_view};
 use crate::view::launch::Launch;
+use crate::view::names::named;
 
 /// What the page says, and under which row (Reset All's when `about` is none).
 #[derive(Debug, Clone, PartialEq)]
@@ -94,10 +94,7 @@ pub fn KeyboardPage() -> Element {
                     Button {
                         label: "Reset All".to_owned(),
                         title: Some("Put every shortcut back as it came".to_owned()),
-                        common: Common {
-                            aria_label: Some("Reset every shortcut".to_owned()),
-                            ..Common::default()
-                        },
+                        common: named("Reset every shortcut"),
                         availability: if any_changed { Availability::Enabled } else { Availability::Disabled },
                         onclick: move |_| change.call((None, KeyChange::ResetAll)),
                     }
@@ -138,10 +135,7 @@ fn KeyRow(
                 Button {
                     label: "Reset".to_owned(),
                     title: Some(format!("Put {name} back as it came")),
-                    common: Common {
-                        aria_label: Some(format!("Reset {name}")),
-                        ..Common::default()
-                    },
+                    common: named(format!("Reset {name}")),
                     onclick: move |_| onchange.call((Some(action), KeyChange::Reset(action))),
                 }
             }
