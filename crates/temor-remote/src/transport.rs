@@ -4,7 +4,8 @@
 use std::io::{self, Read, Write};
 
 use temor_wire::frame::{Decoder, FrameLimit, encode};
-use temor_wire::message::{Incoming, Message};
+use temor_wire::hello::{Agreement, Hello, Negotiation, negotiate};
+use temor_wire::message::{Frame, Incoming, Message};
 
 use crate::error::Error;
 
@@ -84,6 +85,68 @@ impl<W: Write> FrameWriter<W> {
         self.inner
             .write_all(bytes)
             .and_then(|()| self.inner.flush())
-            .map_err(|error| Error::io("writing the link", error))
+            .map_err(|_| Error::LinkClosed)
+    }
+}
+
+/// The greeting exchange both ends make: `send_hello` puts `ours` on the link, then the first
+/// frame back must be the other end's greeting (else [`Error::NoGreeting`]) and the two must
+/// share a protocol version (else [`Error::Incompatible`]).
+pub fn greet<R: Read>(
+    ours: &Hello,
+    send_hello: impl FnOnce(&Message) -> Result<(), Error>,
+    reader: &mut FrameReader<R>,
+) -> Result<Agreement, Error> {
+    send_hello(&Message::Hello(ours.clone()))?;
+    let theirs = match reader.next_frame()? {
+        Some(Incoming::Frame(Frame {
+            message: Message::Hello(theirs),
+            ..
+        })) => theirs,
+        _ => return Err(Error::NoGreeting),
+    };
+    match negotiate(ours, &theirs) {
+        Negotiation::Agreed(agreement) => Ok(agreement),
+        Negotiation::Incompatible { reason } => Err(Error::Incompatible(reason)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{self, Write};
+
+    use temor_wire::frame::FrameLimit;
+    use temor_wire::ids::RequestId;
+    use temor_wire::message::{Message, Request};
+
+    use super::FrameWriter;
+    use crate::error::Error;
+
+    struct Broken;
+
+    impl Write for Broken {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+            Err(io::ErrorKind::BrokenPipe.into())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_write_to_a_dead_link_reads_as_the_link_being_lost() {
+        let mut writer = FrameWriter::new(Broken, FrameLimit::DEFAULT);
+        let error = writer
+            .send(
+                &Message::Request {
+                    id: RequestId(1),
+                    body: Request::Ping,
+                },
+                None,
+            )
+            .expect_err("the pipe is broken");
+        assert!(matches!(error, Error::LinkClosed), "{error:?}");
+        assert!(error.is_link_lost());
     }
 }

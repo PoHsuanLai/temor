@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::mpsc::sync_channel;
 
 use temor_wire::frame::FrameLimit;
-use temor_wire::hello::{Negotiation, negotiate};
 use temor_wire::ids::RequestId;
 use temor_wire::message::{Event, Frame, Incoming, Message, RemoteError, Request};
 
@@ -15,7 +14,7 @@ use super::files_worker::{FileWorker, Job, is_file_request};
 use super::link::{Link, LinkId, Outgoing, QUEUE, run_writer};
 use crate::error::Error;
 use crate::protocol::{DAEMON_CAPS, hello};
-use crate::transport::FrameReader;
+use crate::transport::{FrameReader, greet};
 
 impl Daemon {
     /// Serves one connection until it ends. `reader` and `writer` are the two directions of an
@@ -44,19 +43,8 @@ impl Daemon {
             .map_err(|error| Error::io("starting the connection's writer", error))?;
 
         let ours = hello(self.config.helper, &DAEMON_CAPS);
-        link.send(&Message::Hello(ours.clone()), None)?;
         let mut reader = FrameReader::new(reader, limit);
-        let theirs = match reader.next_frame()? {
-            Some(Incoming::Frame(Frame {
-                message: Message::Hello(theirs),
-                ..
-            })) => theirs,
-            _ => return Err(Error::NoGreeting),
-        };
-        match negotiate(&ours, &theirs) {
-            Negotiation::Agreed(agreement) => link.agree(agreement.caps),
-            Negotiation::Incompatible { reason } => return Err(Error::Incompatible(reason)),
-        }
+        link.agree(greet(&ours, |hello| link.send(hello, None), &mut reader)?.caps);
 
         self.lock_links().push(Arc::clone(&link));
         let result = self.serve_requests(&link, &mut reader);

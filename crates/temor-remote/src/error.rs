@@ -113,6 +113,14 @@ impl Error {
         }
     }
 
+    /// Whether the link itself is gone or unreadable, rather than the request being refused.
+    pub fn is_link_lost(&self) -> bool {
+        matches!(
+            self,
+            Self::LinkClosed | Self::Wire(_) | Self::NoAnswer | Self::NoGreeting
+        )
+    }
+
     /// The typed error a response carries for this failure.
     pub fn to_wire(&self) -> RemoteError {
         match self {

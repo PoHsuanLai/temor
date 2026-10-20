@@ -28,9 +28,7 @@ pub fn stat_of(stamp: FileStamp, len: u64) -> RemoteStat {
 pub fn fault_of(error: &Error) -> EditFault {
     match error {
         Error::NotFound { .. } | Error::Remote(RemoteError::NotFound { .. }) => EditFault::Gone,
-        Error::LinkClosed | Error::Wire(_) | Error::NoAnswer | Error::NoGreeting => {
-            EditFault::NoConnection
-        }
+        other if other.is_link_lost() => EditFault::NoConnection,
         _ => EditFault::Refused,
     }
 }

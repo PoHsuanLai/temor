@@ -7,13 +7,13 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 
 use temor_wire::frame::FrameLimit;
-use temor_wire::hello::{Agreement, Hello, Negotiation, negotiate};
+use temor_wire::hello::{Agreement, Hello};
 use temor_wire::message::{Frame, Incoming, Message};
 
 use super::events::ClientEvent;
 use super::pending::{Answer, Pending};
 use crate::error::Error;
-use crate::transport::{FrameReader, FrameWriter};
+use crate::transport::{FrameReader, FrameWriter, greet};
 
 /// A connection to a helper. `Send` and `Sync`: requests from several threads take turns on the
 /// link. What the helper says unasked arrives on the receiver [`Client::connect`] returns.
@@ -52,19 +52,8 @@ impl Client {
     {
         let limit = FrameLimit::DEFAULT;
         let mut writer = FrameWriter::new(Box::new(writer) as Box<dyn Write + Send>, limit);
-        writer.send(&Message::Hello(ours.clone()), None)?;
         let mut reader = FrameReader::new(reader, limit);
-        let theirs = match reader.next_frame()? {
-            Some(Incoming::Frame(Frame {
-                message: Message::Hello(theirs),
-                ..
-            })) => theirs,
-            _ => return Err(Error::NoGreeting),
-        };
-        let agreement = match negotiate(&ours, &theirs) {
-            Negotiation::Agreed(agreement) => agreement,
-            Negotiation::Incompatible { reason } => return Err(Error::Incompatible(reason)),
-        };
+        let agreement = greet(&ours, |hello| writer.send(hello, None), &mut reader)?;
         let pending = Arc::new(Pending::new());
         let (events_in, events) = channel();
         let reading = Arc::clone(&pending);
