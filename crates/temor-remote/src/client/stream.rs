@@ -3,7 +3,6 @@
 
 use std::time::Duration;
 
-use temor_wire::hello::Capability;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{
     FileStamp, Palette, PartEnd, RemotePath, Reply, Request, WriteCheck, WriteMode,
@@ -33,10 +32,7 @@ impl Client {
     /// Sets the colours a session's terminal answers colour queries with, so programs on the host
     /// that ask get the window's.
     pub fn set_palette(&self, session: SessionId, palette: Palette) -> Result<(), Error> {
-        self.ack(
-            Capability::Sessions,
-            Request::SetPalette { session, palette },
-        )
+        self.ack(Request::SetPalette { session, palette })
     }
 
     /// Sends one part of a streamed write: `bytes` go at `offset` in the file. Parts must come in
@@ -64,7 +60,6 @@ impl Client {
         end: PartEnd,
         bytes: &[u8],
     ) -> Result<InFlight, Error> {
-        self.offered(Capability::Files)?;
         let request = Request::WriteFile {
             path: path.clone(),
             check,

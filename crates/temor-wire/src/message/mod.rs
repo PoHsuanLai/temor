@@ -11,6 +11,7 @@ mod facts;
 mod files;
 mod incoming;
 mod kinds;
+mod need;
 mod palette;
 mod ports;
 mod relay;
