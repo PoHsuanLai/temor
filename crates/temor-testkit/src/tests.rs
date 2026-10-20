@@ -67,3 +67,13 @@ fn a_socket_root_leaves_room_for_the_longest_socket_and_goes_when_dropped() {
     drop(root);
     assert!(!path.exists());
 }
+
+#[test]
+fn git_makes_a_repository_in_a_scratch_folder() {
+    if program_or_skip("git", "git_makes_a_repository_in_a_scratch_folder").is_none() {
+        return;
+    }
+    let scratch = Scratch::new();
+    git(&scratch.root, &["init", "-q"]);
+    assert!(scratch.root.join(".git").is_dir());
+}

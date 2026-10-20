@@ -3,42 +3,14 @@
 //! row) say so.
 //! The DOM is read back; no pixels, no OS input, no real HOME.
 
-use std::path::Path;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use ds_harness::Harness;
+use temor_testkit::{git, program_or_skip};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;
 use super::window::{harness_with, wait_until};
-
-/// Runs the real git in `dir` with a fixed identity and no global configuration.
-fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
-        .args(["-c", "commit.gpgsign=false"])
-        .args(args)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .output()
-        .expect("git runs");
-    assert!(
-        out.status.success(),
-        "git {args:?}: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-}
-
-fn git_present() -> bool {
-    let found = temor_pty::find_program("git", std::ffi::OsStr::new("/usr/bin:/bin")).is_some();
-    if !found && std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1") {
-        panic!("git is required (TEMOR_REQUIRE_TOOLS=1)");
-    }
-    found
-}
 
 /// The markup of the chips row, or none while it is not drawn.
 fn chips_of(html: &str) -> Option<String> {
@@ -94,7 +66,7 @@ fn chips_with_the_change(h: &mut Harness) -> (String, String) {
 
 #[test]
 fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab() {
-    if !tools_present() || !git_present() {
+    if !tools_present() || program_or_skip("git", "facts").is_none() {
         return;
     }
     let probe = Probe::new();
@@ -126,7 +98,7 @@ fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab
 
 #[test]
 fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
-    if !tools_present() || !git_present() {
+    if !tools_present() || program_or_skip("git", "facts").is_none() {
         return;
     }
     let probe = Probe::new();
@@ -154,7 +126,7 @@ fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
 /// change, over the shell's own text, as the prompt's do.
 #[test]
 fn an_older_blocks_header_keeps_its_prompts_chips() {
-    if !tools_present() || !git_present() {
+    if !tools_present() || program_or_skip("git", "facts").is_none() {
         return;
     }
     use ds::base::vocab::ShortcutKey;

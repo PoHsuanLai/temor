@@ -115,8 +115,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
     }
     let dir = scratch("remote-pane");
     let home = dir.join("home");
-    let setsid =
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid");
+    let setsid = super::support::setsid_path();
     let daemon = Daemon::new(DaemonConfig {
         helper: HELPER,
         launcher: SessionLauncher::Setsid(setsid),

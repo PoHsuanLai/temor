@@ -166,10 +166,7 @@ fn harness_at(
             &chordkit::Overrides::default(),
         )
         .0,
-        launcher: LauncherChoice::Setsid(
-            temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
-                .expect("util-linux setsid is installed"),
-        ),
+        launcher: LauncherChoice::Setsid(super::support::setsid_path()),
         probe: Some(probe.clone()),
         state_dir,
         first_words: Default::default(),

@@ -76,8 +76,7 @@ fn fixture(name: &str) -> Fixture {
         shell: ShellChoice::Program(super::support::bash_path().display().to_string()),
         ..TerminalSettings::default()
     };
-    let setsid =
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid");
+    let setsid = super::support::setsid_path();
     let spec = shell_pane(
         &ambient,
         &settings,

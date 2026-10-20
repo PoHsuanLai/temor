@@ -144,9 +144,7 @@ fn a_shell_is_told_where_its_socket_is() {
         shell: temor_pane::settings::ShellChoice::Program(bash_path().display().to_string()),
         ..temor_pane::settings::TerminalSettings::default()
     };
-    let launcher = SessionLauncher::Setsid(
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid"),
-    );
+    let launcher = SessionLauncher::Setsid(super::support::setsid_path());
     let spec_for = |socket: Option<std::path::PathBuf>| {
         shell_pane_with_socket(
             &ambient,

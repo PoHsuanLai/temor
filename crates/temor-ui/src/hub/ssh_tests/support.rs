@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use temor_core::vocab::ids::PaneId;
 use temor_pane::PaneEvent;
 use temor_pane::text::LinkTarget;
+use temor_testkit::{ScratchRoot, program_or_skip};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::edge::Ambient;
@@ -111,24 +112,16 @@ pub(super) struct Rig {
     pub dir: PathBuf,
     pub links: RecordLinks,
     pub files: RecordFiles,
-    root: PathBuf,
+    _root: ScratchRoot,
 }
 
 impl Rig {
     /// A rig in scratch folders named `name`; `None` when `setsid` is missing (the tests that
     /// need it skip, unless `TEMOR_REQUIRE_TOOLS=1`).
     pub fn new(name: &str) -> Option<Rig> {
-        let path = std::ffi::OsStr::new("/usr/bin:/bin");
-        let Some(setsid) = temor_pty::find_program("setsid", path) else {
-            if std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1") {
-                panic!("setsid is required (TEMOR_REQUIRE_TOOLS=1)");
-            }
-            eprintln!("SKIPPED: needs util-linux setsid");
-            return None;
-        };
+        let setsid = program_or_skip("setsid", "the ssh rig")?;
         // Short, because a shared connection's socket path has to fit a unix socket.
-        let root = std::env::temp_dir().join(format!("tmr-{}-{name}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let root = ScratchRoot::for_control_sockets(name, "xdg/temor");
         let (home, bin, dir) = (root.join("home"), root.join("bin"), root.join("d"));
         for folder in [&home, &bin, &dir, &root.join("xdg")] {
             std::fs::create_dir_all(folder).expect("scratch folder");
@@ -186,7 +179,7 @@ impl Rig {
             dir,
             links,
             files,
-            root,
+            _root: root,
         })
     }
 
@@ -241,12 +234,6 @@ impl Rig {
     /// The file `name` of the stand-ins' folder, once it exists.
     pub fn got(&self, name: &str) -> Option<String> {
         std::fs::read_to_string(self.dir.join(name)).ok()
-    }
-}
-
-impl Drop for Rig {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.root);
     }
 }
 

@@ -3,7 +3,6 @@
 //! this process over pipes; nothing here reaches a network.
 
 use std::path::Path;
-use std::process::Command;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -14,6 +13,7 @@ use temor_remote::{
     Client, ClientEvent, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
 };
 use temor_ssh::HostAlias;
+use temor_testkit::{git, program_or_skip};
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 use temor_wire::message::{EnvVar, OpenSession, RemotePath};
@@ -27,20 +27,6 @@ use crate::view::fact_chips::{ChipKind, chip_texts, lead_chips};
 use crate::view::remote_launch::open_fed_session;
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([4; 32]));
-
-fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
-        .args(["-c", "commit.gpgsign=false"])
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .status()
-        .expect("git runs");
-    assert!(status.success(), "git {args:?}");
-}
 
 /// A helper in this process serving `home`, a connection to it, and a session in `cwd`.
 fn helper_session(
@@ -97,8 +83,7 @@ fn a_host_panes_folder_branch_and_changes_from_its_helper_show_as_its_chips() {
     let Some(mut rig) = Rig::new("host-chips") else {
         return;
     };
-    if Command::new("git").arg("--version").output().is_err() {
-        eprintln!("SKIPPED: needs git");
+    if program_or_skip("git", "a_host_panes_folder_branch_and_changes").is_none() {
         return;
     }
     let home = rig.dir.join("hosthome");

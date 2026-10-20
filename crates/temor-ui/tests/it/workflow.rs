@@ -25,6 +25,7 @@ use ds::file_drop::drag::{FileDragInput, Offer};
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
+use temor_testkit::git;
 use temor_ui::view::probe::Probe;
 
 use super::support::{ScratchRoot, heavy, socket_root, tools_present};
@@ -400,20 +401,6 @@ fn downloads(home: &Path) -> Vec<String> {
 /// `report.csv` holding "a,b\n1,2\n", printed through the terminal as iTerm2's File= sends it.
 const PRINT_REPORT: &str =
     "printf '\\033]1337;File=name=cmVwb3J0LmNzdg==;size=8:YSxiCjEsMgo=\\033\\\\'";
-
-fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
-        .args(["-c", "commit.gpgsign=false"])
-        .args(args)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .output()
-        .expect("git runs");
-    assert!(out.status.success(), "git {args:?}");
-}
 
 // ---------------------------------------------------------------- the session
 

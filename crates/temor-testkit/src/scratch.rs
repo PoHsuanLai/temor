@@ -142,6 +142,18 @@ impl ScratchRoot {
     }
 }
 
+/// What a shared ssh connection adds below its runtime folder: `/ssh/`, ssh's 40-digit `%C`
+/// hash, and the 17-byte suffix of the name a master listens under before it renames the socket.
+const CONTROL_SOCKET_TAIL: usize = "/ssh/".len() + 40 + 17;
+
+impl ScratchRoot {
+    /// A root for a test whose shared ssh connection keeps its sockets in `<root>/<runtime>`
+    /// (see [`ScratchRoot::for_sockets`]).
+    pub fn for_control_sockets(name: &str, runtime: &str) -> Self {
+        Self::for_sockets(name, 1 + runtime.len() + CONTROL_SOCKET_TAIL)
+    }
+}
+
 impl std::ops::Deref for ScratchRoot {
     type Target = Path;
 

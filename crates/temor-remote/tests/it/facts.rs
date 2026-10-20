@@ -1,11 +1,11 @@
 //! A session's folder read for the chips: git's text and the version files, through the link.
 
 use temor_remote::{Error, hello};
+use temor_testkit::git;
 use temor_wire::hello::Capability;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{RemoteError, RemotePath};
 
-use crate::fixtures::git;
 use crate::support::{HELPER, Rig, tools_present};
 
 #[test]

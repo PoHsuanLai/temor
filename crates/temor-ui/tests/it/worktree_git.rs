@@ -32,10 +32,7 @@ fn git_runner() -> Option<ProcessGit> {
     match git.run(&GitCommand::new(".", &["--version"])) {
         Ok(out) if out.code == 0 => Some(git),
         _ => {
-            assert!(
-                std::env::var_os("TEMOR_REQUIRE_TOOLS").is_none(),
-                "git is required but missing"
-            );
+            temor_testkit::skip("git", "worktree_git");
             None
         }
     }

@@ -5,16 +5,18 @@
 //!   fail it when `TEMOR_REQUIRE_TOOLS=1`;
 //! - [`Scratch`] and [`ScratchRoot`] are scratch HOME and XDG folders, removed when dropped;
 //! - [`eventually`], [`eventually_some`] and [`pid_from_file`] poll until a deadline;
-//! - [`PrivateBus`] is a private session bus;
+//! - [`PrivateBus`] is a private session bus, and [`git()`] runs git on a scratch repository;
 //! - [`assert_modules_declared`] is the "every test module is in `main.rs`" check.
 
 mod bus;
+mod git;
 mod modules;
 mod program;
 mod scratch;
 mod wait;
 
 pub use bus::PrivateBus;
+pub use git::git;
 pub use modules::assert_modules_declared;
 pub use program::{
     find_program, optional_program, program_or_skip, programs_or_skip, skip, tools_required,

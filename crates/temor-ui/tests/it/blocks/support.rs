@@ -61,8 +61,7 @@ pub(super) struct Live {
 
 /// Where a shell is, if the test can run it: PATH, then the shells the lanes keep.
 pub(super) fn shell_path(name: &str) -> Option<PathBuf> {
-    let path = std::env::var_os("PATH").unwrap_or_else(|| "/usr/bin:/bin".into());
-    temor_pty::find_program(name, &path).or_else(|| {
+    temor_testkit::find_program(name).or_else(|| {
         let shelf = PathBuf::from("/mnt/data/cargo/pty-temor/shells/bin").join(name);
         shelf.is_file().then_some(shelf)
     })
@@ -103,8 +102,7 @@ pub(super) fn start_with(
         shell: ShellChoice::Program(shell.display().to_string()),
         ..TerminalSettings::default()
     };
-    let setsid =
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid");
+    let setsid = super::super::support::setsid_path();
     let spec = shell_pane(
         &ambient,
         &settings,
@@ -247,7 +245,7 @@ pub(super) fn shells() -> Vec<(&'static str, PathBuf)> {
         .filter_map(|name| match shell_path(name) {
             Some(path) => Some((name, path)),
             None => {
-                println!("note: block marks for {name} skipped: {name} is not installed");
+                temor_testkit::skip(name, "block marks");
                 None
             }
         })

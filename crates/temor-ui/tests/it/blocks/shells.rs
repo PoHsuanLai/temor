@@ -50,11 +50,7 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
         return;
     }
     let Some(zsh) = shell_path("zsh") else {
-        assert!(
-            !std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1"),
-            "zsh is required for the right-prompt test (TEMOR_REQUIRE_TOOLS=1)"
-        );
-        println!("SKIPPED: zsh right prompt needs zsh (set TEMOR_REQUIRE_TOOLS=1 to fail instead)");
+        temor_testkit::skip("zsh", "the zsh right prompt");
         return;
     };
     let mut live = start_with("blocks-rprompt", &zsh, |home| {
@@ -89,6 +85,7 @@ fn a_program_that_clears_the_scrollback_takes_only_its_own_rows() {
         return;
     }
     let Some(bash) = shell_path("bash") else {
+        temor_testkit::skip("bash", "clearing the screen");
         return;
     };
     let mut live = start("blocks-clear", &bash);
@@ -120,6 +117,7 @@ fn the_persons_own_clear_takes_every_block() {
         return;
     }
     let Some(bash) = shell_path("bash") else {
+        temor_testkit::skip("bash", "clearing the screen");
         return;
     };
     let mut live = start("blocks-person-clear", &bash);
@@ -144,6 +142,7 @@ fn the_shells_screen_clear_takes_the_blocks_it_blanked_and_the_next_command_is_w
         return;
     }
     let Some(bash) = shell_path("bash") else {
+        temor_testkit::skip("bash", "clearing the screen");
         return;
     };
     let mut live = start("blocks-ctrl-l", &bash);
