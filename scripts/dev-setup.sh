@@ -6,8 +6,9 @@
 #   curl -fsSL https://raw.githubusercontent.com/PoHsuanLai/temor/main/scripts/dev-setup.sh | sh
 #
 # Run from a checkout, or from anywhere to clone one into ./temor first. Linux, macOS, and Windows
-# from Git Bash (MSYS2). Only Linux has a working desktop layer today; on macOS and Windows the
-# workspace builds against stubs (crates/temor-desktop/src/platform), which is where that work goes.
+# from Git Bash (MSYS2). Linux has the whole desktop layer; macOS has the terminal, the Keychain, the
+# Dock badge, single instance and the app bundle (scripts/package-macos.sh); on Windows the workspace
+# builds against stubs (crates/temor-desktop/src/platform), which is where that work goes.
 #
 # Zig and Ghostty go to <deps> (default <checkout>/.deps, about 1 GB, ignored by git), the build
 # to $CARGO_TARGET_DIR (default <checkout>/target). Afterwards, in a new shell:

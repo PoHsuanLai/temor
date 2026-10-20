@@ -124,30 +124,42 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [x] macOS keymap: the primary modifier is Cmd (bind Cmd chords, not keycap's Ctrl+Shift);
       temor-core terminal/chord.rs and keymap.rs defaults. §6 (done: keys on chordkit, Primary per
       platform; `macos_uses_command_only` in temor-ui input tests)
-- [ ] Link opener and private runtime dir: temor-ui platform/opener.rs and private_dir non-unix
-      stubs. §6
-- [ ] macOS emoji: Apple Color Emoji is sbix (bitmap); implement `SystemBitmapEmoji` in
-      temor-render platform/other.rs. §5
-- [ ] macOS pty: `Pty::spawn` and `run_session_leader` (platform/unsupported.rs); process name, cwd,
-      current user and `is_executable` (platform/macos.rs) through `proc_pidinfo`. temor-pty
+- [x] Link opener and private runtime dir (macOS: `open`, `open -R`, temor-shell's 0700 folder; the
+      Windows stubs remain). §6
+- [x] macOS emoji: Apple Color Emoji draws through swash's sbix strikes (temor-render
+      platform/strikes.rs, shared with Linux's CBDT); checked by eye in the window. §5
+- [x] macOS pty: the Unix pty is shared with Linux (temor-pty platform/unix_pty); process name,
+      directory and pipeline come from libproc (platform/macos.rs). Still open: a running program's
+      command line (`sysctl` `KERN_PROCARGS2`; libproc has no wrapper and `unsafe` is denied), so
+      callers see none.
 - [ ] macOS trial sandbox: none (bwrap is Linux-only), so proposals say "not checked". Decide whether
-      anything replaces it. §8.3
+      anything replaces it (`sandbox-exec` is deprecated). §8.3
 - [x] (done in bulkhead 0467c14: `CannotSandbox::RestrictedByAppArmor` reads
       `kernel.apparmor_restrict_unprivileged_userns` when the probe fails; temor shows it once it links bulkhead, P8) Ubuntu 24.04+: unprivileged user namespaces are restricted by AppArmor; detect this, report
       `NoSandbox`, and document the profile. §8.3
-- [ ] macOS: verify quire windows and IME (winit) and fontique's CoreText path; consider a
+- [ ] macOS: the window, a tab and a shell, color emoji and CJK, a second launch adding a tab, and
+      the app bundle were looked at on one Mac. Not yet checked: IME composition, fullscreen and
+      resizing, Dock badge and Keychain against the real system (their unit tests use fakes), and
+      touchpad scrolling (quire's scroll-latched-lift, PR 49). Consider a
       `cargo check --target aarch64-apple-darwin` CI job (Zig can cross-build libghostty).
-- [ ] macOS/Windows transfer edge: `temor-transfer` platform/unsupported.rs refuses all writes
-      (needs an openat2-like safe open), `sync_folder` is a no-op, and the duplicate-name key must be
-      case-folded/normalised; Windows `RelPath` must refuse `:` components. §9
-- [ ] temor-ssh private runtime dir and regular-file reads: platform/unsupported.rs stubs
-      (macOS, Windows). §9b
+- [x] macOS transfer edge: `temor-transfer` receives files through one-name-at-a-time `openat` with
+      `O_NOFOLLOW` (platform/unix.rs). Still open: `sync_folder` syncs, but a case-insensitive
+      volume sees `Report.txt` and `report.txt` as one name (the second create fails `EEXIST`
+      instead of being refused as a repeat); Windows `RelPath` must refuse `:` components. §9
+- [x] temor-ssh private runtime dir and regular-file reads on macOS. §9b
+- [ ] macOS: `temor-remote` (the helper for Linux hosts) has no macOS build; macOS hosts stay Tier A.
+      Its tests are ignored there. §9b
+- [ ] macOS: the agent layer's transport (docket has none here), so restore points and the agent
+      socket are absent; `temor -e` is never handed to a running temor (no bus, and the socket takes
+      only a new window or tab).
+- [ ] macOS: Option-as-Alt is on for both Option keys (temor-pane platform/mod.rs); make it a setting
+      (off, left, right, both). Right Option then types the layout's characters.
 - [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
       side are unsupported today.
 
 ## App icon (in dist/, wire up when packaging)
 - Linux: `dist/icons/hicolor/<N>x<N>/apps/org.quire.Temor.png` (16–512) installs under `$prefix/share/icons/hicolor/`; the desktop entry already says `Icon=org.quire.Temor`. Window icon at runtime: set from the 256/512 PNG once quire lands its window-icon setter (queued: launch-config field plus `WindowHost::set_icon`).
-- macOS (owner): build `.icns` from `dist/icons/source/org.quire.Temor-1024.png`.
+- macOS: `scripts/package-macos.sh` builds `.icns` from `dist/icons/source/org.quire.Temor-1024.png` into temor.app (ad-hoc signed; a Developer ID signature and notarisation are the owner's).
 - Windows (owner): `dist/windows/temor.ico` (6 sizes) into the exe resources.
 
 ## Blocks (lane/blocks, P2, reviewed at 08c5ce2 plus orchestrator fixes)
