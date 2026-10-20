@@ -4,34 +4,35 @@
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::Shutdown;
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
+
+use temor_shell::ShellError;
 
 use crate::error::Error;
 
 /// Makes `path` (and its parents) if they are missing, readable by the person only. A folder
 /// that is already there and is ours is tightened to 0700 (a mode like 0300 or 0000 would
-/// otherwise fail the socket later); one that is not ours, or is a link, is refused.
+/// otherwise fail the socket later); one that is not ours, or is a link, is refused. The check
+/// is temor-shell's.
 pub fn ensure_private_dir(path: &Path) -> Result<(), Error> {
-    fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(path)
-        .map_err(|error| Error::io(format!("making {}", path.display()), error))?;
-    let meta = fs::symlink_metadata(path)
-        .map_err(|error| Error::io(format!("looking at {}", path.display()), error))?;
-    if !meta.is_dir() || meta.uid() != rustix::process::getuid().as_raw() {
-        return Err(Error::io(
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(parent)
+            .map_err(|error| Error::io(format!("making {}", parent.display()), error))?;
+    }
+    temor_shell::ensure_private_dir(path).map_err(|error| match error {
+        ShellError::PrivateDir { source, .. } => {
+            Error::io(format!("making {}", path.display()), source)
+        }
+        other => Error::io(
             format!("using {}", path.display()),
-            io::Error::new(io::ErrorKind::PermissionDenied, "the folder is not ours"),
-        ));
-    }
-    if meta.mode() & 0o777 != 0o700 {
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-            .map_err(|error| Error::io(format!("restricting {}", path.display()), error))?;
-    }
-    Ok(())
+            io::Error::new(io::ErrorKind::PermissionDenied, other.to_string()),
+        ),
+    })
 }
 
 /// One end of a connection. `Send`; clone it for the other direction with [`Half::duplicate`].

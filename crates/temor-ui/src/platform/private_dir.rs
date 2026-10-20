@@ -5,18 +5,50 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-/// Makes `dir` for this user alone and checks it: it must be a real directory owned by the
-/// current user. Its mode is set to 0700. Other systems have no ownership check yet.
-// TODO(platform:macos), TODO(platform:windows): ACL-based check for the owner-only directory.
+use temor_shell::ShellError;
+
+/// Makes `dir` (and the parents it lacks) for this user alone and checks it: it must be a real
+/// directory owned by the current user. Its mode is set to 0700. The check is temor-shell's; a
+/// system it has no check for yet falls back to [`unchecked_private_dir`].
 pub fn ensure_private_dir(dir: &Path) -> io::Result<()> {
+    if let Some(parent) = dir.parent().filter(|p| !p.as_os_str().is_empty()) {
+        make_parents(parent)?;
+    }
+    match temor_shell::ensure_private_dir(dir) {
+        Ok(()) => Ok(()),
+        Err(ShellError::Unsupported { .. }) => unchecked_private_dir(dir),
+        Err(ShellError::PrivateDir { source, .. }) => Err(source),
+        Err(ShellError::NotPrivate { .. }) => Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "the folder is not this user's own",
+        )),
+        Err(other) => Err(io::Error::other(other)),
+    }
+}
+
+#[cfg(unix)]
+fn make_parents(parent: &Path) -> io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(parent)
+}
+
+#[cfg(not(unix))]
+fn make_parents(parent: &Path) -> io::Result<()> {
+    fs::create_dir_all(parent)
+}
+
+/// Where temor-shell has no private-folder check yet: the folder is made 0700 and must be this
+/// user's own. Other systems than unix have no ownership check.
+// TODO(platform:macos), TODO(platform:windows): move onto temor-shell's check when it has one.
+fn unchecked_private_dir(dir: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
         if !dir.exists() {
-            fs::DirBuilder::new()
-                .recursive(true)
-                .mode(0o700)
-                .create(dir)?;
+            fs::DirBuilder::new().mode(0o700).create(dir)?;
         }
         let meta = fs::symlink_metadata(dir)?;
         let owner = rustix::process::getuid().as_raw();

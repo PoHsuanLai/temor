@@ -1,7 +1,6 @@
 //! The private runtime directory, made by temor-shell (the one copy of that check) and reported
 //! in this crate's words.
 
-use std::io::ErrorKind;
 use std::path::Path;
 
 use temor_shell::ShellError;
@@ -18,7 +17,7 @@ pub fn ensure_private_dir(path: &Path) -> Result<(), SshError> {
             path,
             reason: "another user owns it",
         },
-        ShellError::PrivateDir { source, .. } if source.kind() == ErrorKind::Unsupported => {
+        ShellError::Unsupported { .. } => {
             SshError::Unsupported("create a private runtime directory")
         }
         ShellError::PrivateDir { path, source } => SshError::Io { path, source },

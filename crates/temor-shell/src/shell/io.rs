@@ -46,9 +46,7 @@ fn create_private_dirs(dir: &Path, owner: Option<UserId>) -> Result<(), ShellErr
     chain
         .into_iter()
         .try_for_each(|path| match ensure_private_dir(path) {
-            Err(ShellError::PrivateDir { source, .. })
-                if source.kind() == io::ErrorKind::Unsupported =>
-            {
+            Err(ShellError::Unsupported { .. }) => {
                 plain_private_dir(path, owner).map_err(|source| ShellError::PrivateDir {
                     path: path.to_path_buf(),
                     source,
