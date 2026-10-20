@@ -112,23 +112,17 @@ pub fn drain(events: &mut Receiver<PaneEvent>) -> bool {
 }
 
 /// Whether the tools these tests drive are present: bash, util-linux `setsid`, and `/proc`.
-/// Where one is missing the test returns early (with a note) instead of failing.
+/// Where one is missing the test returns early (with a note), or fails under
+/// `TEMOR_REQUIRE_TOOLS=1`.
 pub fn tools_present() -> bool {
-    let path = std::ffi::OsStr::new("/usr/bin:/bin");
-    let found = temor_pty::find_program("bash", path).is_some()
-        && temor_pty::find_program("setsid", path).is_some()
-        && std::path::Path::new("/proc/self").exists();
-    if !found {
-        // TEMOR_REQUIRE_TOOLS=1 (set by the lane's gate on a machine that has the tools) turns the
-        // skip into a failure, so the tests cannot pass silently there.
-        if std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1") {
-            panic!("bash, setsid and /proc are required (TEMOR_REQUIRE_TOOLS=1)");
-        }
-        eprintln!(
-            "SKIPPED: needs bash, setsid and /proc (set TEMOR_REQUIRE_TOOLS=1 to fail instead)"
-        );
+    if temor_testkit::programs_or_skip(&["bash", "setsid"], "temor-pane").is_none() {
+        return false;
     }
-    found
+    let proc = std::path::Path::new("/proc/self").exists();
+    if !proc {
+        temor_testkit::skip("/proc", "temor-pane");
+    }
+    proc
 }
 
 /// Counts the events waiting on the channel, consuming them.

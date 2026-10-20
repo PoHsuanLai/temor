@@ -3,9 +3,10 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use temor_pane::paste::{PasteMode, encode};
+use temor_testkit::{eventually, pid_from_file, proc_alive};
 use temor_vt::{CellPx, GridSize, KeyCode, KeyInput, Modifiers};
 
 use super::support::{bash_spec, count_events, scratch, screen, spawn_bash, wait_for};
@@ -49,18 +50,11 @@ fn a_resize_changes_the_grid_and_the_program_size() {
     assert_eq!(shell.pane.with_term(|t| t.size()), GridSize::new(100, 30));
     // The program learns its size on the I/O thread, a moment after `resize` returns; ask again
     // until its answer shows the new size.
-    let start = Instant::now();
-    loop {
+    eventually("the program to see 30 100", Duration::from_secs(8), || {
         shell.pane.send(b"stty size\r");
         std::thread::sleep(Duration::from_millis(200));
-        if screen(&shell.pane).lines().any(|l| l == "30 100") {
-            break;
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(8),
-            "the program never saw 30 100"
-        );
-    }
+        screen(&shell.pane).lines().any(|l| l == "30 100")
+    });
 }
 
 #[test]
@@ -72,14 +66,9 @@ fn bracketed_paste_is_framed_when_the_program_asks_for_it() {
     let mut shell = spawn_bash(&home, 80, 24);
     wait_for(&mut shell, "the prompt", |s| s.contains("$"));
     // bash turns bracketed paste on at its prompt (readline's `\e[?2004h`).
-    let start = Instant::now();
-    while shell.pane.with_term(|t| t.paste_mode()) != PasteMode::Bracketed {
-        assert!(
-            start.elapsed() < Duration::from_secs(8),
-            "bracketed paste never turned on"
-        );
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    eventually("bracketed paste to turn on", Duration::from_secs(8), || {
+        shell.pane.with_term(|t| t.paste_mode()) == PasteMode::Bracketed
+    });
     let frame = encode("echo pasted", PasteMode::Bracketed);
     shell.pane.send(&frame);
     shell.pane.send(b"\r");
@@ -99,25 +88,13 @@ fn the_program_is_reaped_when_the_pane_is_dropped() {
     shell
         .pane
         .send(format!("echo $$ > {}\r", pid_file.display()).as_bytes());
-    let start = Instant::now();
-    while !pid_file.exists() && start.elapsed() < Duration::from_secs(8) {
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    let pid: i32 = std::fs::read_to_string(&pid_file)
-        .expect("pid written")
-        .trim()
-        .parse()
-        .expect("pid is a number");
+    let pid = pid_from_file(&pid_file, Duration::from_secs(8));
     drop(shell);
     // The I/O thread hangs bash up and kills it after the grace period.
-    let alive = |pid: i32| std::path::Path::new(&format!("/proc/{pid}")).exists();
-    let start = Instant::now();
-    while alive(pid) && start.elapsed() < Duration::from_secs(8) {
-        std::thread::sleep(Duration::from_millis(20));
-    }
-    assert!(
-        !alive(pid),
-        "bash {pid} still running after its pane was dropped"
+    eventually(
+        &format!("bash {pid} to end after its pane was dropped"),
+        Duration::from_secs(8),
+        || !proc_alive(pid),
     );
 }
 
@@ -167,19 +144,11 @@ fn a_flood_of_output_costs_a_bounded_number_of_events() {
     count_events(&mut shell.events);
     shell.pane.send(b"seq 1 200000\r");
     // Count every event while the output streams; `wait_for` would consume them.
-    let start = Instant::now();
     let mut events = 0;
-    loop {
+    eventually("the flood to finish", Duration::from_secs(20), || {
         events += count_events(&mut shell.events);
-        if screen(&shell.pane).lines().any(|l| l == "200000") {
-            break;
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(20),
-            "the flood never finished"
-        );
-        std::thread::sleep(Duration::from_millis(5));
-    }
+        screen(&shell.pane).lines().any(|l| l == "200000")
+    });
     events += count_events(&mut shell.events);
     // Nothing repaints in this test, so at most one repaint request is in flight: two hundred
     // thousand lines of output are a handful of events, not one per read.
@@ -203,23 +172,10 @@ fn a_runner_dropped_before_it_runs_reaps_the_program() {
     ];
     let (tx, _events) = std::sync::mpsc::channel();
     let (handle, runner) = temor_pane::start(spec, Arc::new(tx)).expect("pane starts");
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let pid = loop {
-        if let Some(pid) = std::fs::read_to_string(&pidfile)
-            .ok()
-            .and_then(|text| text.trim().parse::<u32>().ok())
-        {
-            break pid;
-        }
-        assert!(Instant::now() < deadline, "the program never wrote its pid");
-        std::thread::sleep(Duration::from_millis(20));
-    };
+    let pid = pid_from_file(&pidfile, Duration::from_secs(5));
     // Dropping the runner unrun hangs up and reaps; by the time drop returns the pid is gone
     // (not even a zombie left in the process table).
     drop(runner);
-    assert!(
-        !std::path::Path::new(&format!("/proc/{pid}")).exists(),
-        "the program was left behind"
-    );
+    assert!(!proc_alive(pid), "the program was left behind");
     drop(handle);
 }
