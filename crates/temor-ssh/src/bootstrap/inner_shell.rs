@@ -3,10 +3,11 @@
 //! ones temor ships; the changes are small and made on the text here, so one copy of each script
 //! stays the truth.
 
-use temor_shell::ShellScript;
+use std::path::Path;
+
+use temor_shell::{PROBE_WORD, ShellKind, ShellScript};
 
 use super::inner::LoadToken;
-use super::inner_probe::PROBE_WORD;
 
 /// A shell the load text can reach. Any other shell gets nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,14 +26,29 @@ impl InnerShell {
     pub(super) const ALL: [InnerShell; 4] = [Self::Bash, Self::Zsh, Self::Fish, Self::Nu];
 
     /// The shell a process name stands for (`zsh`, `-zsh`, `/bin/bash`, `nu`), or `None` for
-    /// any other shell.
+    /// any other shell. The rule is [`ShellKind::from_process_name`]'s: a name that starts with a
+    /// shell's name counts.
     pub fn from_name(name: &str) -> Option<Self> {
-        let name = name.trim().rsplit('/').next().unwrap_or_default();
-        let name = name.trim_start_matches('-');
-        Self::ALL.into_iter().find(|shell| {
-            let stem = shell.pattern().trim_end_matches('*');
-            name.starts_with(stem)
-        })
+        Self::of_kind(ShellKind::from_process_name(name))
+    }
+
+    fn of_kind(kind: ShellKind) -> Option<Self> {
+        match kind {
+            ShellKind::Bash => Some(Self::Bash),
+            ShellKind::Zsh => Some(Self::Zsh),
+            ShellKind::Fish => Some(Self::Fish),
+            ShellKind::Nushell => Some(Self::Nu),
+            _ => None,
+        }
+    }
+
+    fn kind(self) -> ShellKind {
+        match self {
+            Self::Bash => ShellKind::Bash,
+            Self::Zsh => ShellKind::Zsh,
+            Self::Fish => ShellKind::Fish,
+            Self::Nu => ShellKind::Nushell,
+        }
     }
 
     /// The shell a command line starts by name: its last word is exactly a shell's name, by
@@ -50,10 +66,7 @@ impl InnerShell {
             .skip(lead.count())
             .filter(|w| !w.starts_with('-'))
             .count();
-        let last = words.last()?.rsplit('/').next()?;
-        let shell = Self::ALL
-            .into_iter()
-            .find(|shell| shell.pattern().trim_end_matches('*') == last)?;
+        let shell = Self::of_kind(ShellKind::of(Path::new(words.last()?)))?;
         (after >= 2).then_some(shell)
     }
 
@@ -67,20 +80,12 @@ impl InnerShell {
         }
     }
 
-    fn script_name(self) -> &'static str {
-        match self {
-            Self::Bash => "temor.bash",
-            Self::Zsh => "temor.zsh",
-            Self::Fish => "temor.fish",
-            Self::Nu => "temor.nu",
-        }
-    }
-
     /// The file the shell sources, or `None` when `integration` lacks its script.
     pub(super) fn payload(self, integration: &[ShellScript], token: &LoadToken) -> Option<String> {
+        let wanted = self.kind().script()?;
         let script = integration
             .iter()
-            .find(|script| script.name == self.script_name())?;
+            .find(|script| script.name == wanted.name)?;
         let path = token.path();
         Some(match self {
             Self::Bash => format!(

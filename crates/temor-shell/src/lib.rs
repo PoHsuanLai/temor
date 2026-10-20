@@ -29,5 +29,5 @@ pub use platform::{SOCKET_PATH_MAX, ensure_private_dir};
 pub use osc7::{cwd_from_url, percent_decode_strict};
 pub use shell::{
     IntegrationPlan, IntegrationState, Shell, ShellKind, ShellScript, ShellStart, ShimFile, UserId,
-    integration_scripts, passwd_login_shell, plan_integration, resolve_shell, write_shims,
+    PROBE_WORD, XDG_DATA_DIRS_DEFAULT, integration_scripts, probe_line, passwd_login_shell, plan_integration, resolve_shell, write_shims,
 };

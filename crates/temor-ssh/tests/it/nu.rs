@@ -52,7 +52,12 @@ fn nushell_starts_as_a_login_shell_with_temors_folder_first_in_the_data_dirs() {
         assert_eq!(line(&text, "ARGS="), "-l", "{name}: {text}");
         let x = line(&text, "X=");
         assert!(x.starts_with(&format!("{tmp}/temor.")), "{name}: {x}");
-        assert!(x.ends_with(&format!("/nu{tail}")), "{name}: {x}");
+        // The folder is the one the local shims use too (temor-shell owns the layout).
+        let folder = temor_shell::ShellKind::Nushell
+            .script()
+            .expect("a nushell script")
+            .folder;
+        assert!(x.ends_with(&format!("/{folder}{tail}")), "{name}: {x}");
         assert_eq!(line(&text, "R="), restore, "{name}");
         assert!(
             text.contains("temor.nu\n"),

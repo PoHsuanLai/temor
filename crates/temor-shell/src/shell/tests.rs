@@ -25,6 +25,70 @@ fn shell_kind_reads_the_file_name() {
 }
 
 #[test]
+fn shell_kind_reads_a_process_name_by_its_start() {
+    const CASES: &[(&str, ShellKind)] = &[
+        ("bash", ShellKind::Bash),
+        ("-bash", ShellKind::Bash),
+        ("/bin/zsh", ShellKind::Zsh),
+        ("zsh-5.9", ShellKind::Zsh),
+        ("fish", ShellKind::Fish),
+        ("nu", ShellKind::Nushell),
+        ("nushell", ShellKind::Nushell),
+        ("sh", ShellKind::Other),
+        ("dash", ShellKind::Other),
+        ("", ShellKind::Other),
+    ];
+    for (name, kind) in CASES {
+        assert_eq!(ShellKind::from_process_name(name), *kind, "{name}");
+    }
+    // A path to a program is stricter: the file name is the shell's name exactly.
+    assert_eq!(ShellKind::of(Path::new("/opt/zsh-5.9")), ShellKind::Other);
+}
+
+#[test]
+fn every_script_has_one_place_under_the_shim_root() {
+    let places: Vec<(&str, String)> = integration_scripts()
+        .iter()
+        .map(|script| (script.name, script.relative_path()))
+        .collect();
+    assert_eq!(
+        places,
+        [
+            ("temor.bash", "bash/temor.bash".to_owned()),
+            ("temor-bashrc", "bash/temor-bashrc".to_owned()),
+            ("temor.zsh", "zsh/temor.zsh".to_owned()),
+            ("zshenv", "zsh/.zshenv".to_owned()),
+            ("temor.fish", "fish/fish/vendor_conf.d/temor.fish".to_owned()),
+            ("temor.nu", "nushell/nushell/vendor/autoload/temor.nu".to_owned()),
+        ]
+    );
+    for kind in [ShellKind::Bash, ShellKind::Zsh, ShellKind::Fish, ShellKind::Nushell] {
+        assert!(kind.script().is_some(), "{kind:?}");
+    }
+    assert!(ShellKind::Other.script().is_none());
+}
+
+#[test]
+fn nushell_plan_prepends_its_folder_and_keeps_the_real_value() {
+    let rt = Path::new("/run/temor");
+    let plan = plan_integration(
+        &Shell::at("/usr/bin/nu"),
+        ShellStart::Interactive,
+        env(&[("XDG_DATA_DIRS", "/opt/share")]),
+        rt,
+    );
+    assert_eq!(
+        plan.env.get("XDG_DATA_DIRS"),
+        Some("/run/temor/shell-integration/nushell:/opt/share".as_ref())
+    );
+    assert_eq!(plan.env.get("TEMOR_NU_XDG_DATA_DIRS"), Some("/opt/share".as_ref()));
+    assert_eq!(
+        plan.files[0].path,
+        rt.join("shell-integration/nushell/nushell/vendor/autoload/temor.nu")
+    );
+}
+
+#[test]
 fn resolve_prefers_passwd_then_shell_var_then_sh() {
     let all = |_: &Path| true;
     let shell_var = env(&[("SHELL", "/usr/bin/fish")]);

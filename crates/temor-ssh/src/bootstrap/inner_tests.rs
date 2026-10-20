@@ -164,6 +164,8 @@ fn a_missing_script_leaves_its_shell_out_and_too_much_text_is_refused() {
     let big: &'static str = Box::leak("echo x\n".repeat(20_000).into_boxed_str());
     let scripts = [ShellScript {
         name: "temor.bash",
+        folder: "bash",
+        path: "temor.bash",
         contents: big,
     }];
     let err =

@@ -5,18 +5,12 @@
 //! name; only the answer counts. The rule is deterministic: nothing is guessed from the typed
 //! command.
 
+use temor_shell::PROBE_WORD;
+
 use super::inner_shell::InnerShell;
 
-/// The word that leads the answer.
-pub(super) const PROBE_WORD: &str = "temor-shell:";
-
-/// The line to type, newline included. Leading space: shells that ignore such lines keep it
-/// out of history. Nothing between the quotes is a quote, a backslash or a history mark.
-pub fn probe_line() -> String {
-    format!(
-        " sh -c 'echo {PROBE_WORD}$(cat /proc/$PPID/comm 2>/dev/null || ps -p $PPID -o comm= 2>/dev/null)' sh\n"
-    )
-}
+// The probe's text is temor-shell's: temor.zsh has to match it to keep it out of history.
+pub use temor_shell::probe_line;
 
 /// What the screen shows of the answer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
