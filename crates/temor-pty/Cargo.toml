@@ -17,6 +17,7 @@ nix = { workspace = true }
 rustix = { workspace = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 temor-ssh = { workspace = true }
 
 [[bin]]

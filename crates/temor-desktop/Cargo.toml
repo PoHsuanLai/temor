@@ -61,6 +61,7 @@ zbus = { workspace = true, optional = true }
 porter-secrets = { workspace = true, features = ["testing"] }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 temor-desktop = { path = ".", features = ["router-for-tests", "callers-for-tests"] }
 serde = { workspace = true }
 futures-util = { workspace = true }

@@ -20,6 +20,7 @@ thiserror = { workspace = true }
 rustix = { workspace = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 temor-ssh = { workspace = true, features = ["testing"] }
 tempfile = { workspace = true }
 

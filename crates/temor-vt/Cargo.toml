@@ -21,6 +21,7 @@ png = { workspace = true, optional = true }
 temor-vt-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 # Turns on `testing` for this crate's own tests.
 temor-vt = { workspace = true, features = ["testing"] }
 

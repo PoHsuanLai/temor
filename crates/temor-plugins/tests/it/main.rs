@@ -9,3 +9,8 @@ mod facts;
 mod lens;
 mod provider;
 mod support;
+
+#[test]
+fn every_module_in_this_directory_is_declared() {
+    temor_testkit::assert_modules_declared(env!("CARGO_MANIFEST_DIR"));
+}

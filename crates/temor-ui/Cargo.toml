@@ -49,6 +49,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 ds-harness = { workspace = true }
 ds-lint = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }

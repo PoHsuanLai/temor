@@ -17,6 +17,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 temor-plugins = { workspace = true, features = ["testing"] }
 tempfile = { workspace = true }
 

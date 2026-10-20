@@ -30,6 +30,9 @@ name = "temor-remote"
 path = "src/bin/temor-remote.rs"
 required-features = ["ghostty"]
 
+[dev-dependencies]
+temor-testkit = { workspace = true }
+
 [[test]]
 name = "it"
 path = "tests/it/main.rs"

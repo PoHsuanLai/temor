@@ -31,6 +31,7 @@ bytemuck = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 temor-render = { workspace = true, features = ["testing"] }
 png = { workspace = true }
 

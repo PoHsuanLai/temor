@@ -19,6 +19,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+temor-testkit = { workspace = true }
 ds-core = { workspace = true, features = ["testing"] }
 icu_properties = { workspace = true }
 proptest = { workspace = true }
