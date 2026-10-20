@@ -6,6 +6,7 @@
 
 use std::collections::BTreeSet;
 
+use ds_core::word::Word;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestRng, TestRunner};
 
@@ -44,12 +45,6 @@ enum Op {
     Remove(usize),
 }
 
-const DIRECTIONS: [Direction; 4] = [
-    Direction::Left,
-    Direction::Right,
-    Direction::Up,
-    Direction::Down,
-];
 const GOTOS: [Goto; 6] = [
     Goto::Previous,
     Goto::Next,
@@ -60,7 +55,7 @@ const GOTOS: [Goto; 6] = [
 ];
 
 fn op() -> impl Strategy<Value = Op> {
-    let dir = || prop::sample::select(DIRECTIONS.to_vec());
+    let dir = || prop::sample::select(Direction::ALL.to_vec());
     let at = || 0usize..12;
     prop_oneof![
         4 => Just(Op::NewTab),

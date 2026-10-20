@@ -7,6 +7,8 @@ use ds_style::space::list::{SpaceId, Spaces};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
+use temor_core::agent::approval::{AsksLevel, SandboxMode};
+use temor_core::agent::context::{ChipKind, EntryPoint};
 use temor_core::block::{Author, Block, Taint};
 use temor_core::pane::{CliGate, PaneKind, TerminalPane, TerminalRole};
 use temor_core::presence::{AgentState, Seen, StatusReport, StatusSource, WaitKind};
@@ -23,6 +25,7 @@ use temor_core::transfer::{Download, Origin, Transfer};
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::*;
 use temor_core::vocab::text::*;
+use temor_core::worktree::{CloseChoice, MergeMethod, Placement};
 
 fn round_trips<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(value: &T) -> Value {
     let json = serde_json::to_value(value).unwrap();
@@ -86,6 +89,13 @@ fn closed_sets_serialise_as_their_slugs() {
     word_matches_serde::<CharClass>();
     word_matches_serde::<Grant>();
     word_matches_serde::<AiSwitch>();
+    word_matches_serde::<AsksLevel>();
+    word_matches_serde::<SandboxMode>();
+    word_matches_serde::<ChipKind>();
+    word_matches_serde::<EntryPoint>();
+    word_matches_serde::<CloseChoice>();
+    word_matches_serde::<MergeMethod>();
+    word_matches_serde::<Placement>();
 }
 
 #[test]

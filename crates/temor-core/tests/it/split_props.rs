@@ -1,18 +1,12 @@
 //! Property tests for the split tree: reachability, split/remove inverse, equalize idempotent,
 //! resize clamped, spatial goto symmetric where the geometry allows, and exact tiling.
 
+use ds_core::word::Word;
 use proptest::prelude::*;
 use temor_core::split::{
     Axis, Closed, Direction, Goto, Node, Share, SplitTree, WholePx, WindowDelta,
 };
 use temor_core::vocab::ids::PaneId;
-
-const DIRECTIONS: [Direction; 4] = [
-    Direction::Left,
-    Direction::Right,
-    Direction::Up,
-    Direction::Down,
-];
 
 #[derive(Debug, Clone)]
 enum Op {
@@ -22,8 +16,8 @@ enum Op {
 }
 
 fn op() -> impl Strategy<Value = Op> {
-    let direction = prop::sample::select(DIRECTIONS.to_vec());
-    let axis = prop::sample::select(vec![Axis::Row, Axis::Column]);
+    let direction = prop::sample::select(Direction::ALL.to_vec());
+    let axis = prop::sample::select(Axis::ALL.to_vec());
     prop_oneof![
         3 => (any::<usize>(), direction).prop_map(|(at, d)| Op::Split(at, d)),
         1 => any::<usize>().prop_map(Op::Remove),
@@ -130,11 +124,11 @@ proptest! {
     }
 
     #[test]
-    fn split_then_remove_gives_back_the_original(tree in tree(), at in any::<usize>(), d in 0usize..4) {
+    fn split_then_remove_gives_back_the_original(tree in tree(), at in any::<usize>(), d in 0..Direction::ALL.len()) {
         let panes = tree.panes();
         let pane = panes[at % panes.len()];
         let new = PaneId(u64::MAX);
-        let split = tree.split(pane, new, DIRECTIONS[d]).unwrap();
+        let split = tree.split(pane, new, Direction::ALL[d]).unwrap();
         prop_assert_eq!(split.panes().len(), panes.len() + 1);
         prop_assert_eq!(split.remove(new), Ok(Closed::Remaining(tree)));
     }
@@ -177,7 +171,7 @@ proptest! {
     fn spatial_goto_is_symmetric_in_an_even_grid(columns in 1u64..6, rows in 1u64..6) {
         let grid = grid(columns, rows);
         for pane in grid.panes() {
-            for d in DIRECTIONS {
+            for &d in Direction::ALL {
                 // A move round the edge lands by Ghostty's wrapped-corner rule, which has no
                 // inverse; a move to a neighbour does.
                 let there = grid.goto(pane, Goto::Spatial(d)).filter(|there| lies_beyond(&grid, pane, *there, d));
