@@ -13,6 +13,7 @@ use temor_shell::{ChildEnv, Shell, ShellStart, resolve_shell};
 use temor_vt::{CellPx, CursorShape, GridSize, LineCount};
 
 use crate::PaneSpec;
+use crate::engine::pty_size;
 use crate::error::PaneError;
 use crate::settings::{CursorStyle, ShellChoice, TerminalSettings};
 
@@ -164,10 +165,7 @@ pub fn shell_pane(
         env,
         &input.runtime_dir,
         input.home,
-        temor_pty::GridSize::cells(
-            temor_pty::Cols(input.grid.cols.0),
-            temor_pty::Rows(input.grid.rows.0),
-        ),
+        pty_size(input.grid, input.cell),
     )?;
     Ok(PaneSpec {
         spawn,

@@ -25,6 +25,7 @@ pub use handle::PaneHandle;
 pub use hold::PaintSource;
 pub use io::PaneRunner;
 pub use sink::EventSink;
+pub(crate) use spawn::pty_size;
 pub use spawn::{PaneSpec, start, start_restored};
 pub use tap::ByteTap;
 pub use term::{Output, Term};
