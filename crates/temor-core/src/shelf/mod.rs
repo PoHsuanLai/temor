@@ -18,4 +18,4 @@ pub use step::{ShelfIn, ShelfOut, shelf_step};
 pub use upload::{
     Upload, UploadFault, UploadId, UploadIn, UploadState, Uploads, upload_detail, upload_step,
 };
-pub use view::{Row, RowAction, RowState, ShelfView, shelf_view};
+pub use view::{Row, RowAction, RowState, ShelfView, human_size, shelf_view};

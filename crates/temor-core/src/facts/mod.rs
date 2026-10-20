@@ -12,7 +12,7 @@ mod step;
 mod tests;
 mod versions;
 
-pub use fit::{ChipRow, chips_that_fit};
+pub use fit::{CHIP_FRAME, CHIP_GAP, ChipRow, chips_that_fit};
 pub use model::{
     BranchName, DiffStat, EnvName, Facts, MOST_UNTRACKED, NodeVersion, ToolVersion, Untracked,
 };

@@ -28,5 +28,12 @@ pub fn undo_ref_numbers(listing: &str) -> Vec<UndoRef> {
 pub fn next_undo(git: &dyn Git, repo: &str) -> Result<UndoRef, CoreError> {
     let cmd = GitCommand::new(repo, &["for-each-ref", "--format=%(refname)", PREFIX]);
     let found = undo_ref_numbers(&run_ok(git, &cmd)?.text());
-    Ok(found.last().map_or(UndoRef(0), |n| UndoRef(n.0 + 1)))
+    match found.last() {
+        None => Ok(UndoRef(0)),
+        Some(last) => last
+            .0
+            .checked_add(1)
+            .map(UndoRef)
+            .ok_or(CoreError::IdsExhausted),
+    }
 }
