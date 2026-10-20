@@ -187,7 +187,7 @@ pub(super) fn refocus_after_agent_open(held: Option<PaneId>, opened: PaneId) -> 
 }
 
 /// The folder a request names, as the workspace keeps it.
-fn cwd_of(path: &std::path::Path) -> Cwd {
+pub(super) fn cwd_of(path: &std::path::Path) -> Cwd {
     Cwd(path.to_string_lossy().into_owned())
 }
 
