@@ -4,9 +4,9 @@ use std::collections::BTreeSet;
 
 use super::closed::{ClosedIn, ClosedOut, ClosedState, ClosedTab, closed_step};
 use super::model::Workspace;
-use super::step::{relaunch_for, store_tree_state, take, tree_state};
+use super::step::{relaunch_for, store_tree_state, tree_state};
 use super::step_types::{RefuseWhy, Spawn, Start, ViewerOpen, WorkspaceOut};
-use super::tabs::{TabSel, TabsIn, TabsOut, tabs_step};
+use super::tabs::{TabsIn, TabsOut};
 use crate::split::{TreeAfter, TreeIn, tree_step};
 use crate::vocab::ids::{PaneId, TabId};
 
@@ -21,8 +21,7 @@ pub(super) fn close_pane(ws: &mut Workspace, pane: PaneId, out: &mut Vec<Workspa
         TreeAfter::Open(next) => {
             let focus = next.focus;
             store_tree_state(ws, tab, next);
-            ws.cwds.remove(&pane);
-            ws.viewers.remove(&pane);
+            ws.forget_pane(pane);
             out.push(WorkspaceOut::Snapshot(pane));
             out.push(WorkspaceOut::End(pane));
             out.push(WorkspaceOut::Focused(focus));
@@ -43,8 +42,7 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
     for pane in &panes {
         out.push(WorkspaceOut::End(*pane));
     }
-    let (tabs, tab_outs) = tabs_step(take(&mut ws.tabs), TabsIn::Remove(tab));
-    ws.tabs = tabs;
+    let tab_outs = ws.tabs_do(TabsIn::Remove(tab));
     ws.focus.remove(&tab);
     for t in tab_outs {
         match t {
@@ -70,8 +68,7 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
     for c in closed_outs {
         if let ClosedOut::Evicted(gone) = c {
             for pane in &gone {
-                ws.cwds.remove(pane);
-                ws.viewers.remove(pane);
+                ws.forget_pane(*pane);
             }
             out.push(WorkspaceOut::Forgotten(gone));
         }
@@ -91,10 +88,7 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
         Some(ClosedOut::Reopened(ClosedTab { tab, focus, .. })) => {
             let id = tab.id;
             let panes = tab.tree.panes();
-            ws.focus.insert(id, focus);
-            ws.tabs.place.tabs.push(tab);
-            let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(id)));
-            ws.tabs = tabs;
+            ws.open_tab(tab, focus);
             for pane in &panes {
                 if let Some(file) = ws.viewers.get(pane) {
                     out.push(WorkspaceOut::Viewer(ViewerOpen {
@@ -135,13 +129,11 @@ pub fn leave_out(ws: &Workspace, panes: &BTreeSet<PaneId>) -> Workspace {
         match tree_step(state, TreeIn::Close(pane)).0 {
             TreeAfter::Open(next) => store_tree_state(&mut kept, tab, next),
             TreeAfter::Emptied => {
-                let (tabs, _) = tabs_step(take(&mut kept.tabs), TabsIn::Remove(tab));
-                kept.tabs = tabs;
+                kept.tabs_do(TabsIn::Remove(tab));
                 kept.focus.remove(&tab);
             }
         }
-        kept.cwds.remove(&pane);
-        kept.viewers.remove(&pane);
+        kept.forget_pane(pane);
     }
     kept
 }
