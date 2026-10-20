@@ -2,6 +2,7 @@
 //! the last file named in a block's command. The window hands it to the host-file editor, which
 //! resolves it against the pane's folder on the host.
 
+use temor_core::host::target::resolvable;
 use temor_core::vocab::ids::BlockId;
 
 use super::Session;
@@ -45,7 +46,7 @@ pub fn last_path_argument(command: &str) -> Option<String> {
         .map(|word| word.trim_matches(|c| c == '\'' || c == '"'))
         .take_while(|word| !word.contains(['|', '&', ';', '<', '>']))
         .filter(|word| !word.starts_with('-') && !word.contains("://"))
-        .filter(|word| looks_like_path(word) && host_can_resolve(word))
+        .filter(|word| looks_like_path(word) && resolvable(word))
         .last()
         .map(str::to_owned)
 }
@@ -55,16 +56,6 @@ fn looks_like_path(word: &str) -> bool {
         .rsplit_once('.')
         .is_some_and(|(stem, ext)| !stem.is_empty() && !ext.is_empty());
     word.contains('/') || word.starts_with(['~', '.']) || extension
-}
-
-/// Whether the window can resolve `word` on the host: core refuses `~` (the host would have to
-/// expand it) and any `..` in a path that is not absolute (see `temor_core::host::resolve_in`).
-fn host_can_resolve(word: &str) -> bool {
-    if word.starts_with('/') {
-        return true;
-    }
-    let bare = word.strip_prefix("./").unwrap_or(word);
-    !bare.starts_with('~') && !bare.split('/').any(|part| part == "..")
 }
 
 #[cfg(test)]

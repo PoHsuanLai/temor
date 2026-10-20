@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use temor_core::shelf::PaneSite;
-use temor_core::viewer::{candidates, output_paths, resolve, token_at};
+use temor_core::viewer::{candidates, first_file, output_paths, resolve, token_at};
 use temor_core::vocab::ids::BlockId;
 use temor_pane::text::{CellPos, cwd_from_url};
 use temor_vt::{GridPoint, PointSpace, SurfacePoint};
@@ -91,10 +91,7 @@ impl Session {
         let cwd = self.cwd.as_deref();
         Ok(match self.site {
             PaneSite::Remote => host_path(cwd, &token),
-            PaneSite::Local => candidates(&token)
-                .iter()
-                .filter_map(|candidate| resolve(cwd, candidate))
-                .find(|path| is_file(path)),
+            PaneSite::Local => first_file(&token, cwd, &is_file),
         })
     }
 

@@ -3,6 +3,8 @@
 //! against that room: the start goes, with a leading "…", and the last folders stay, since the
 //! end is what tells folders apart.
 
+use temor_core::facts::{CHIP_FRAME, CHIP_GAP};
+
 use super::fact_chips::{ChipKind, ChipText};
 
 /// What replaces the cut start.
@@ -10,9 +12,6 @@ const ELLIPSIS: char = '\u{2026}';
 
 /// The fewest characters the folder chip is cut down to, so it never shrinks to nothing.
 const LEAST_ROOM: usize = 4;
-
-/// A chip's picture and padding, in cells (as `chips_that_fit` counts them).
-const CHIP_FRAME: f32 = 2.0;
 
 /// The row the chips stand on, in logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -56,7 +55,7 @@ pub fn folder_room(row: RowRoom, others: &[usize]) -> usize {
         return usize::MAX;
     }
     let cells = row.width / row.cell_width;
-    let beside: f32 = others.iter().map(|&n| n as f32 + CHIP_FRAME + 1.0).sum();
+    let beside: f32 = others.iter().map(|&n| n as f32 + CHIP_FRAME + CHIP_GAP).sum();
     let room = (cells - beside - CHIP_FRAME).floor();
     (room.max(0.0) as usize).max(LEAST_ROOM)
 }

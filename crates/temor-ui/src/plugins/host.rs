@@ -5,7 +5,7 @@ use std::sync::Arc;
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_plugins::message::Item;
 use temor_plugins::{
-    CancelKind, Catalog, DataDirs, Drawing, Effect, Generations, Launcher, Plugin, PluginError,
+    CancelKind, Catalog, Drawing, Effect, Generations, Launcher, Plugin, PluginError,
     Waits,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
@@ -91,10 +91,7 @@ impl PluginHost {
     /// directory first, then the system's. A manifest or program that cannot be used is logged
     /// once, here.
     pub fn new(launch: &Launch) -> PluginHost {
-        let env = &launch.ambient.env;
-        let get = |key: &str| env.get(key).and_then(|v| v.to_str()).map(str::to_owned);
-        let dirs = DataDirs::from_env(&launch.ambient.home, &get);
-        let catalog = Catalog::discover(&dirs);
+        let catalog = Catalog::discover(&launch.ambient.plugin_dirs());
         for problem in catalog.problems() {
             eprintln!("temor: plugin set aside: {problem}");
         }

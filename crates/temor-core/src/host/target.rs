@@ -30,12 +30,24 @@ pub fn resolve_in(cwd: Option<&str>, typed: &str) -> Option<RemoteFilePath> {
     if typed.starts_with('/') {
         return RemoteFilePath::new(typed).ok();
     }
-    let bare = typed.strip_prefix("./").unwrap_or(typed);
-    if bare.is_empty() || bare.starts_with('~') || bare.split('/').any(|part| part == "..") {
+    if !resolvable(typed) {
         return None;
     }
+    let bare = typed.strip_prefix("./").unwrap_or(typed);
     let base = cwd?.trim_end_matches('/');
     RemoteFilePath::new(&format!("{base}/{bare}")).ok()
+}
+
+/// Whether `typed` can be resolved on a host at all, given a folder to resolve against: an
+/// absolute path, or a relative one without `~` or `..`, which the host would have to expand.
+/// What [`resolve_in`] accepts, before it looks at the folder.
+pub fn resolvable(typed: &str) -> bool {
+    let typed = typed.trim();
+    if typed.starts_with('/') {
+        return true;
+    }
+    let bare = typed.strip_prefix("./").unwrap_or(typed);
+    !bare.is_empty() && !bare.starts_with('~') && !bare.split('/').any(|part| part == "..")
 }
 
 /// The title of a host's tab: `host:folder`, or the host alone before its folder is known.
@@ -48,7 +60,7 @@ pub fn host_title(alias: &str, cwd: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{host_title, parse_host_path, resolve_in};
+    use super::{host_title, parse_host_path, resolvable, resolve_in};
 
     #[test]
     fn a_host_path_needs_a_usable_host_and_an_absolute_path() {
@@ -87,6 +99,10 @@ mod tests {
         for (cwd, typed, want) in rows {
             let got = resolve_in(cwd, typed);
             assert_eq!(got.as_ref().map(|p| p.as_str()), want, "{cwd:?} {typed:?}");
+            // With a folder, a path resolves exactly when it is `resolvable`.
+            if cwd.is_some() {
+                assert_eq!(resolvable(typed), want.is_some(), "{typed:?}");
+            }
         }
     }
 

@@ -57,17 +57,18 @@ pub trait CredentialSource: Send + Sync {
     /// Keeps `secret` as the secret of `account`, replacing one that is there. The Settings
     /// window is the only caller; the secret goes nowhere else (not to a log, not to the file).
     fn set_secret(&self, _account: &AccountRef, _secret: &str) -> Result<(), CredentialFault> {
-        Err(CredentialFault(
-            "There is nowhere to keep secrets on this computer yet.".to_owned(),
-        ))
+        Err(no_store())
     }
 
     /// Takes the secret of `account` out of the store; none there is not an error.
     fn remove_secret(&self, _account: &AccountRef) -> Result<(), CredentialFault> {
-        Err(CredentialFault(
-            "There is nowhere to keep secrets on this computer yet.".to_owned(),
-        ))
+        Err(no_store())
     }
+}
+
+/// The fault a store that is not there gives, in the words temor-desktop uses for it.
+fn no_store() -> CredentialFault {
+    CredentialFault(temor_desktop::SecretFault::NoStore.to_string())
 }
 
 /// A store with nothing in it: the default until the desktop integration provides one.
