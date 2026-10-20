@@ -3,6 +3,8 @@
 //! UI carries out what the outputs ask (spawning and ending panes, saving the session).
 
 mod closed;
+#[cfg(test)]
+mod leave_out_tests;
 mod model;
 pub mod restore;
 #[cfg(test)]

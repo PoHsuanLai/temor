@@ -1567,6 +1567,12 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [x] (done 2026-10-20: temor-render `RowLayout` leaves room between rows; the picture takes it, and
       every row and point site reads the layout) A lens picture covers the rows below its block instead of pushing them down: the grid is one
       texture, so this needs a row gap in temor-render (`followups-b27-plugview.md`).
+- [ ] Lens room edges (review of the row-gap batch, 2026-10-20): a full screen with no scrollback yet
+      keeps `Pin::Bottom`, so room pushes its top rows out of reach (kept: the prompt stays in view;
+      `session/room.rs` pin choice); a picture wider than the pane is shrunk but its room is counted
+      from the unshrunk height (`room.rs` `whole_rows` vs `view/lens_picture.rs`), leaving blank room
+      under it; room under the grid's last row sits below the bottom padding (`metrics/layout.rs`
+      `band_of`).
 - [ ] Plugins: the built-in Claude Code and git adapters rewritten as plugins; detent's Extensions
       page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
 - [x] (done in bulkhead 0467c14: `CannotSandbox::RestrictedByAppArmor` reads

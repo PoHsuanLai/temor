@@ -2,8 +2,9 @@
 
 use temor_vt::{CellPx, Px, Row, SurfacePoint};
 
-use super::{Gap, GridHit, Insert, LayoutParams, Pin, RowLayout, Screen, Slice};
+use super::RowLayout;
 use crate::metrics::{CellMetrics, Padding, PixelSize, fit_grid};
+use crate::metrics::{Gap, GridHit, Insert, LayoutParams, Pin, Screen, Slice};
 
 /// A 100 by 200 pane of 10 by 20 cells with 5 pixels of padding: 9 rows from y 5 to 185, 15
 /// pixels of padding below.

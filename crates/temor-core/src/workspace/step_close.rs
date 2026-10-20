@@ -120,9 +120,9 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
     }
 }
 
-/// `ws` without `panes`, as it is saved when they are not to come back: each leaves its split, a
-/// tab left with none goes (not into the recently closed), and a closed tab holding one is
-/// dropped. Nothing is told: the live workspace keeps them.
+/// `ws` without `panes`, as it is saved when they are not to come back: each leaves its split, and
+/// a tab left with none goes (not into the recently closed, which is never saved). Nothing is
+/// told: the live workspace keeps them.
 pub fn leave_out(ws: &Workspace, panes: &BTreeSet<PaneId>) -> Workspace {
     let mut kept = ws.clone();
     for &pane in panes {
@@ -143,8 +143,5 @@ pub fn leave_out(ws: &Workspace, panes: &BTreeSet<PaneId>) -> Workspace {
         kept.cwds.remove(&pane);
         kept.viewers.remove(&pane);
     }
-    kept.closed
-        .tabs
-        .retain(|closed| !closed.tab.tree.panes().iter().any(|p| panes.contains(p)));
     kept
 }

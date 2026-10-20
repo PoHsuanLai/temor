@@ -3,7 +3,7 @@
 
 use super::{
     ClosedState, KeepClosed, NthTab, RefuseWhy, Spawn, Start, TabSel, TabsIn, TabsOut, Workspace,
-    WorkspaceIn, WorkspaceOut, leave_out, workspace_step,
+    WorkspaceIn, WorkspaceOut, workspace_step,
 };
 use crate::space::Pin;
 use crate::split::Direction;
@@ -290,39 +290,4 @@ fn selecting_tabs_through_the_workspace_follows_the_sidebar() {
             "{name}"
         );
     }
-}
-
-#[test]
-fn a_pane_left_out_leaves_its_split_and_a_tab_left_empty_goes_without_a_trace() {
-    let (ws, first) = one_tab();
-    let (ws, _) = run(
-        ws,
-        vec![
-            WorkspaceIn::Split {
-                towards: Direction::Right,
-            },
-            WorkspaceIn::NewTab { cwd: None },
-            WorkspaceIn::NewTab { cwd: None },
-        ],
-    );
-    let panes = |ws: &Workspace, tab: u64| ws.tabs.tab(TabId(tab)).map(|t| t.tree.panes());
-    let split = panes(&ws, 1).expect("the split tab");
-    let alone = panes(&ws, 2).expect("the second tab")[0];
-    let closing = panes(&ws, 3).expect("the third tab")[0];
-    // A tab closed earlier with a left-out pane in it is not offered again either.
-    let (ws, _) = run(ws, vec![WorkspaceIn::ClosePane(Some(closing))]);
-    assert_eq!(ws.closed.tabs.len(), 1);
-
-    let kept = leave_out(&ws, &[first, alone, closing].into_iter().collect());
-    let other = split
-        .into_iter()
-        .find(|p| *p != first)
-        .expect("the other half");
-    assert_eq!(kept.tabs.place.tabs.len(), 1);
-    assert_eq!(panes(&kept, 1), Some(vec![other]));
-    assert_eq!(kept.focus_of(TabId(1)), Some(other));
-    assert!(kept.closed.tabs.is_empty());
-    assert!(!kept.cwds.contains_key(&first));
-    // The live workspace is untouched.
-    assert_eq!(ws.tabs.place.tabs.len(), 2);
 }
