@@ -2,12 +2,10 @@
 //! selected one, right of how it ended (`block_meta`), a dense group of three icon buttons (copy
 //! the output, type the command again, more) and a menu behind "more" with the rest: copy the
 //! command, save the output to Downloads, show the files it listed, and on a pane on another
-//! computer, edit here. Typing the command again never runs it.
+//! computer, edit it locally. Typing the command again never runs it.
 //! It sits beside the grid, not in it, so a press on it never reaches the terminal.
 
 use dioxus::prelude::*;
-use ds::components::content::icon_source::IconSource;
-use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::press::Propagation;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
@@ -16,6 +14,8 @@ use ds_core::vocab::Shortcut;
 use temor_core::vocab::ids::BlockId;
 
 use super::block_meta::MetaText;
+use super::menu_key::with_key_opt;
+use super::tool_button::ToolButton;
 use crate::session::ToolsHeight;
 
 /// What the tools show and do for one block.
@@ -38,7 +38,7 @@ pub struct ToolsView {
     pub rerun: Availability,
     /// Whether the output can be searched for files to show (the command has finished).
     pub view: Availability,
-    /// "Edit here" on a pane on another computer: `None` on any other pane, where there is
+    /// "Edit Locally" on a pane on another computer: `None` on any other pane, where there is
     /// nothing to fetch.
     pub edit: Option<Availability>,
     /// What a person presses for "Copy Command" (the keymap's chord for it), shown in the menu.
@@ -66,10 +66,7 @@ fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
     let copy = MenuItem::new(More::CopyCommand, "Copy Command")
         .with_tip("Copy this command to the clipboard");
     let mut items = vec![
-        match tools.copy_command_key.clone() {
-            Some(key) => copy.with_key(key),
-            None => copy,
-        },
+        with_key_opt(copy, tools.copy_command_key.clone()),
         MenuItem::new(More::Save, "Save Output")
             .with_tip("Save this command's output to Downloads")
             .with_availability(tools.output),
@@ -79,37 +76,14 @@ fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
     ];
     if let Some(availability) = tools.edit {
         items.push(
-            MenuItem::new(More::Edit, "Edit Here")
-                .with_tip("Open the selected file from this computer in an editor here")
+            MenuItem::new(More::Edit, "Edit Locally")
+                .with_tip(
+                    "Open the selected file, or the last file in the command, in an editor here",
+                )
                 .with_availability(availability),
         );
     }
     items
-}
-
-/// One icon button of the group. `label` names it; `tip` is the hover hint.
-#[component]
-#[allow(non_snake_case)]
-fn ToolButton(
-    icon: Icon,
-    label: &'static str,
-    tip: &'static str,
-    availability: Availability,
-    onclick: EventHandler<()>,
-) -> Element {
-    rsx! {
-        Button {
-            bezel: Bezel::Toolbar,
-            image: ImagePosition::Only,
-            size: ControlSize::Mini,
-            icon: Some(IconSource::Glyph(icon)),
-            label: label.to_owned(),
-            title: Some(tip.to_owned()),
-            availability,
-            propagation: Propagation::Stop,
-            onclick: move |_| onclick.call(()),
-        }
-    }
 }
 
 /// The tools for one block: each action reports the block it acts on. While the "more" menu is
@@ -150,6 +124,8 @@ pub fn BlockTools(
             IconButtonGroup { label: "Command tools", size: ControlSize::Mini,
                 ToolButton {
                     icon: Icon::Clipboard,
+                    size: ControlSize::Mini,
+                    propagation: Propagation::Stop,
                     label: "Copy output",
                     tip: "Copy this command's output",
                     availability: tools.output,
@@ -157,6 +133,8 @@ pub fn BlockTools(
                 }
                 ToolButton {
                     icon: Icon::Restart,
+                    size: ControlSize::Mini,
+                    propagation: Propagation::Stop,
                     label: "Re-run",
                     tip: "Put this command in the prompt. Press Return to run it",
                     availability: tools.rerun,
@@ -167,6 +145,8 @@ pub fn BlockTools(
                     onmounted: move |event: MountedEvent| more_probe.on_mounted(event),
                     ToolButton {
                         icon: Icon::Ellipsis,
+                        size: ControlSize::Mini,
+                        propagation: Propagation::Stop,
                         label: "More",
                         tip: "More things to do with this command",
                         availability: Availability::Enabled,

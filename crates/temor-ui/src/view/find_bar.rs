@@ -4,11 +4,11 @@
 //! and gives the keyboard back to the pane.
 
 use dioxus::prelude::*;
-use ds::components::content::icon_source::IconSource;
-use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
+
+use super::tool_button::ToolButton;
 
 /// Which way the find bar steps through matches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -25,6 +25,9 @@ pub fn FindBar(
     position: Option<(usize, usize)>,
     on_query: EventHandler<String>,
     on_step: EventHandler<StepDirection>,
+    /// The hover hints of the two steps, with the chords that do the same.
+    previous_tip: String,
+    next_tip: String,
     on_close: EventHandler<()>,
     /// The bar's height once laid out: what lies under it on the pane's top rows is hidden.
     on_height: EventHandler<f32>,
@@ -41,7 +44,7 @@ pub fn FindBar(
         None => "No matches".to_owned(),
     };
     rsx! {
-        div { class: "temor-find",
+        div { class: "temor-find temor-sheet",
             onmounted: move |event: MountedEvent| probe.on_mounted(event),
             div { class: "temor-find-field",
                 TextField {
@@ -61,23 +64,19 @@ pub fn FindBar(
                 }
             }
             Label { text: status }
-            Button {
-                label: "Previous match".to_owned(),
-                title: Some("Previous match".to_owned()),
-                bezel: Bezel::Toolbar,
-                image: ImagePosition::Only,
+            ToolButton {
+                icon: Icon::ChevronUp,
+                label: "Previous match",
+                tip: previous_tip,
                 size: ControlSize::Regular,
-                icon: Some(IconSource::Glyph(Icon::ChevronUp)),
-                onclick: move |_| on_step.call(StepDirection::Backward),
+                onclick: move |()| on_step.call(StepDirection::Backward),
             }
-            Button {
-                label: "Next match".to_owned(),
-                title: Some("Next match".to_owned()),
-                bezel: Bezel::Toolbar,
-                image: ImagePosition::Only,
+            ToolButton {
+                icon: Icon::ChevronDown,
+                label: "Next match",
+                tip: next_tip,
                 size: ControlSize::Regular,
-                icon: Some(IconSource::Glyph(Icon::ChevronDown)),
-                onclick: move |_| on_step.call(StepDirection::Forward),
+                onclick: move |()| on_step.call(StepDirection::Forward),
             }
         }
     }

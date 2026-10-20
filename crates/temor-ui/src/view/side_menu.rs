@@ -10,40 +10,34 @@ use ds::host::measure::{MountedRef, client_rect};
 use ds::prelude::*;
 use ds_core::vocab::Shortcut;
 use temor_core::space::Project;
-use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 
-use crate::hub::Desk;
+use super::menu_key::with_key_opt;
+use crate::hub::{Desk, WindowAction, workspace_input};
 
-/// What the menu's rows ask for.
+/// What the menu's rows ask for: an action the keys have too, or a new Space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidePick {
-    NewTab,
-    ReopenTab,
+    Do(Action),
     NewSpace,
-    HideSidebar,
 }
 
 /// The menu's rows, in order.
 /// Rows whose action has a chord show it, as `shortcut_of` gives it.
 pub fn side_items(shortcut_of: impl Fn(Action) -> Option<Shortcut>) -> Vec<MenuItem<SidePick>> {
-    let keyed = |item: MenuItem<SidePick>, action: Action| match shortcut_of(action) {
-        Some(key) => item.with_key(key),
-        None => item,
+    let keyed = |title: &str, action: Action| {
+        with_key_opt(
+            MenuItem::new(SidePick::Do(action), title),
+            shortcut_of(action),
+        )
     };
     vec![
-        keyed(MenuItem::new(SidePick::NewTab, "New Tab"), Action::NewTab),
-        keyed(
-            MenuItem::new(SidePick::ReopenTab, "Reopen Closed Tab"),
-            Action::ReopenTab,
-        ),
+        keyed("New Tab", Action::NewTab),
+        keyed("Reopen Closed Tab", Action::ReopenTab),
         MenuItem::Separator,
         MenuItem::new(SidePick::NewSpace, "New Space"),
         MenuItem::Separator,
-        keyed(
-            MenuItem::new(SidePick::HideSidebar, "Hide Sidebar"),
-            Action::ToggleSidebar,
-        ),
+        keyed("Hide Sidebar", Action::ToggleSidebar),
     ]
 }
 
@@ -65,10 +59,13 @@ pub fn SideMenu(desk: Desk) -> Element {
                 ..Common::default()
             },
             onpick: move |pick: SidePick| match pick {
-                SidePick::NewTab => desk.act(WorkspaceIn::NewTab { cwd: None }),
-                SidePick::ReopenTab => desk.act(WorkspaceIn::Reopen),
-                SidePick::HideSidebar => {
-                    let _ = desk.window_action(Action::ToggleSidebar);
+                // The window's actions first, then the workspace's: the way the keys reach them.
+                SidePick::Do(action) => {
+                    if desk.window_action(action) == WindowAction::NotMine
+                        && let Some(input) = workspace_input(action)
+                    {
+                        desk.act(input);
+                    }
                 }
                 SidePick::NewSpace => {
                     if handle.editing().is_some() {

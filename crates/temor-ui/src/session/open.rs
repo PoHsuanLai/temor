@@ -31,18 +31,7 @@ impl Session {
         sink: Arc<dyn EventSink>,
         snapshot: Option<&Snapshot>,
     ) -> Result<Self, UiError> {
-        let SessionParts {
-            spec,
-            fonts,
-            keymap,
-            clipboard,
-            opener,
-            notify_after,
-            cursor_blink,
-            notifier,
-            clock,
-            shelf_dir,
-        } = parts;
+        let SessionParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
         let (pane, runner) = match snapshot {
             Some(snapshot) => start_restored(spec, snapshot, sink)?,
@@ -52,16 +41,6 @@ impl Session {
             .name("temor-pane-io".to_owned())
             .spawn(move || runner.run())
             .map_err(UiError::Thread)?;
-        let kit = SessionKit {
-            keymap,
-            clipboard,
-            opener,
-            notify_after,
-            cursor_blink,
-            notifier,
-            clock,
-            shelf_dir,
-        };
         Ok(Self::assemble(pane, painter, kit))
     }
 

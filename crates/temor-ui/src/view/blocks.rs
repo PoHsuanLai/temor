@@ -24,6 +24,14 @@ pub struct Chrome {
     pub bell: bool,
 }
 
+/// A tool is on when its condition holds, and off when it does not.
+fn available(on: bool) -> Availability {
+    match on {
+        true => Availability::Enabled,
+        false => Availability::Disabled,
+    }
+}
+
 /// The tools for the first of `hovered` and the selected block that has a place on screen. Their
 /// meta is left out where it would reach the header's text; the buttons show whatever the room,
 /// since the person asked for them.
@@ -33,6 +41,8 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Opt
         .flatten()
         .find_map(|id| {
             let spot = session.tools_spot(id)?;
+            // The output and the files in it are there once the command has finished.
+            let finished = session.block_finished(id);
             Some(ToolsView {
                 id,
                 height: session.tools_height(),
@@ -47,18 +57,9 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Opt
                         .map_or(0, |mark| mark.header_cols);
                     header_row(session, gutter).is_some_and(|row| row.fits(cols, words))
                 }),
-                output: match session.block_finished(id) {
-                    true => Availability::Enabled,
-                    false => Availability::Disabled,
-                },
-                rerun: match session.block_command(id).is_some_and(|c| !c.is_empty()) {
-                    true => Availability::Enabled,
-                    false => Availability::Disabled,
-                },
-                view: match session.block_finished(id) {
-                    true => Availability::Enabled,
-                    false => Availability::Disabled,
-                },
+                output: available(finished),
+                rerun: available(session.block_command(id).is_some_and(|c| !c.is_empty())),
+                view: available(finished),
                 // The window knows which panes are on another computer.
                 edit: None,
                 copy_command_key: None,

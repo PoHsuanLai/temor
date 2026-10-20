@@ -9,17 +9,14 @@
 //! with the keys keeps its name, the others are their glyphs alone.
 
 use dioxus::prelude::*;
-use ds::base::vocab::CompanionPresence;
-use ds::components::companion::orb::model::OrbSize;
-use ds::components::companion::orb::view::CompanionOrb;
-use ds::prelude::{IconSize, IconView, Selection};
-use temor_core::presence::companion_presence;
-use temor_core::vocab::ids::PaneId;
+use ds::prelude::IconSize;
+use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
 
-use super::dnd::{Click, Dnd, is_primary, point_of};
+use super::dnd::Dnd;
 use super::row_tip::RowTip;
-use super::tab_glyph::prompt_glyph;
+use super::tab_glyph::presence_face;
+use super::tab_wiring::{drag_press, selected_attr, tab_menu_trigger};
 use crate::hub::{Desk, DragKey, Tile};
 
 /// The glyph's size in a segment: the row's own leading size.
@@ -29,6 +26,7 @@ const GLYPH: IconSize = IconSize::Small;
 #[component]
 #[allow(non_snake_case)]
 pub fn SplitSegments(
+    tab: TabId,
     tiles: Vec<Tile>,
     desk: Desk,
     dnd: Dnd,
@@ -44,7 +42,7 @@ pub fn SplitSegments(
                 if index > 0 {
                     span { key: "rule{tile.pane.0}", class: "temor-seg-rule", aria_hidden: "true" }
                 }
-                {segment(tile, squeezed, desk.clone(), dnd.clone(), onmenu)}
+                {segment(tile, squeezed, tab, desk.clone(), dnd.clone(), onmenu)}
             }
         }
     }
@@ -73,17 +71,18 @@ enum Squeeze {
 fn segment(
     tile: Tile,
     squeeze: Squeeze,
+    tab: TabId,
     desk: Desk,
     dnd: Dnd,
     onmenu: EventHandler<PaneId>,
 ) -> Element {
     let pane = tile.pane;
-    let selected = match tile.selection {
-        Selection::Selected => Some("true"),
-        Selection::Unselected => None,
-    };
+    let selected = selected_attr(tile.selection);
     let glyph_only = (squeeze == Squeeze::Squeezed && selected.is_none()).then_some("true");
     let click = dnd.click.clone();
+    // A right click on a segment is the tab's menu, with Close Pane for this pane alone.
+    let opening = tab_menu_trigger(&desk, tab, move || onmenu.call(pane));
+    let mut press = drag_press(&dnd, DragKey::Tile(pane));
     rsx! {
         div { key: "{pane.0}", class: "temor-seg-slot", "data-glyph": glyph_only,
             RowTip { name: format!("pane{}", pane.0), text: tile.title.clone(),
@@ -95,29 +94,14 @@ fn segment(
                     onpointerdown: move |event: PointerEvent| {
                         // A press on a segment is the segment's: the row under it starts no drag.
                         event.stop_propagation();
-                        if is_primary(&event) {
-                            dnd.click.reset();
-                            dnd.drag.down(DragKey::Tile(pane), point_of(&event));
-                        } else {
-                            onmenu.call(pane);
-                        }
+                        press(event);
                     },
                     onclick: move |event: MouseEvent| {
                         event.stop_propagation();
-                        if click.take() == Click::Counts {
-                            desk.act(WorkspaceIn::Focus(pane));
-                        }
+                        click.counted(|| desk.act(WorkspaceIn::Focus(pane)));
                     },
-                    span { class: "temor-seg-glyph",
-                        match companion_presence(tile.agent) {
-                            CompanionPresence::Idle => rsx! {
-                                IconView { source: prompt_glyph(GLYPH), size: GLYPH }
-                            },
-                            presence => rsx! {
-                                CompanionOrb { presence, size: OrbSize::Inline }
-                            },
-                        }
-                    }
+                    oncontextmenu: opening,
+                    span { class: "temor-seg-glyph", {presence_face(tile.agent, GLYPH)} }
                     span { class: "temor-seg-name ds-mono", "{tile.title}" }
                 }
             }

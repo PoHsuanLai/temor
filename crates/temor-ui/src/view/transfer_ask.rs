@@ -40,9 +40,9 @@ pub fn TransferAsk(desk: Desk) -> Element {
                     onclick: allow,
                 }
                 Button {
-                    label: "Don\u{2019}t allow".to_owned(),
+                    label: "Don't allow".to_owned(),
                     size: ControlSize::Small,
-                    title: Some("Refuse, and don\u{2019}t ask again for this program".to_owned()),
+                    title: Some("Refuse, and don't ask again for this program".to_owned()),
                     onclick: refuse,
                 }
             },

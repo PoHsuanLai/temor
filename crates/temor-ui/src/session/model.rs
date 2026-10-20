@@ -158,17 +158,7 @@ impl std::fmt::Debug for Session {
 pub struct SessionParts {
     pub spec: PaneSpec,
     pub fonts: FontSet,
-    pub keymap: Keymap,
-    pub clipboard: Box<dyn Clipboard>,
-    pub opener: Box<dyn Opener>,
-    /// When a finished command is worth a notice.
-    pub notify_after: NotifyAfter,
-    /// Whether the cursor blinks.
-    pub cursor_blink: temor_pane::settings::CursorBlinking,
-    pub notifier: Box<dyn Notifier>,
-    pub clock: Box<dyn Clock>,
-    /// Where "Save output" places files (the downloads shelf).
-    pub shelf_dir: PathBuf,
+    pub kit: SessionKit,
 }
 
 /// What a session is made from besides its pane: the fonts, the keys, the surroundings.

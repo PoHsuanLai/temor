@@ -11,7 +11,6 @@ use ds::base::geometry::placement::{Align, Side};
 use ds::base::press::Press;
 use ds::base::vocab::RowState;
 use ds::components::content::label::{LabelRole, LabelStyle};
-use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
 use ds::components::overlays::popover::Arrow;
@@ -22,7 +21,11 @@ use temor_core::shelf::{
     Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
 };
 
-use crate::hub::{Desk, PaneTarget};
+use super::names::named;
+use super::shelf_words::{ActWords, REMOVE_FROM_LIST, act_words};
+use super::tool_button::ToolButton;
+use crate::hub::Desk;
+use temor_pane::keys::Action;
 
 /// The Downloads button for the head of the sidebar, and its list while it is open.
 #[component]
@@ -32,6 +35,7 @@ pub fn ShelfButton(desk: Desk) -> Element {
     let view = desk.hub.shelf_view();
     let uploads = desk.hub.uploads();
     let mut shown = desk.shelf;
+    let toggling = desk.clone();
     let mut hold = use_signal(|| None::<MountedRef>);
     let going = !uploads.is_empty()
         || view
@@ -48,17 +52,14 @@ pub fn ShelfButton(desk: Desk) -> Element {
         span {
             class: "temor-dl-hold",
             onmounted: move |event: MountedEvent| hold.set(Some(MountedRef(event.data()))),
-            Button {
-                bezel: Bezel::Toolbar,
-                image: ImagePosition::Only,
-                icon: Some(IconSource::Glyph(Icon::Download)),
-                label: "Downloads".to_owned(),
-                title: Some("Downloads".to_owned()),
-                onclick: move |_: Press| {
-                    shown.set(match shown() {
-                        Shown::Visible => Shown::Hidden,
-                        Shown::Hidden => Shown::Visible,
-                    });
+            ToolButton {
+                icon: Icon::Download,
+                label: Action::ShowDownloads.label(),
+                tip: desk.hub.tooltip(Action::ShowDownloads.label(), Action::ShowDownloads),
+                // The same path as the chord and the bar: it shows a sidebar that is only peeking
+                // before it opens the list.
+                onclick: move |()| {
+                    let _ = toggling.window_action(Action::ShowDownloads);
                 },
             }
             if let Some(class) = dot {
@@ -70,10 +71,10 @@ pub fn ShelfButton(desk: Desk) -> Element {
                     placement: Placement::new(Side::Bottom, Align::End),
                     gap: Px(6.0),
                     arrow: Arrow::None,
-                    common: Common { aria_label: Some("Downloads".to_owned()), ..Common::default() },
+                    common: named(Action::ShowDownloads.label()),
                     onclose: move |()| shown.set(Shown::Hidden),
                     div { class: "temor-dl-list",
-                        Label { text: "Downloads".to_owned(), role: LabelRole::Secondary }
+                        Label { text: Action::ShowDownloads.label(), role: LabelRole::Secondary }
                         for upload in uploads.iter().cloned() {
                             UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
                         }
@@ -113,7 +114,7 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         let act = act.clone();
         RowAction::new(
             Icon::X,
-            "Remove from the list",
+            REMOVE_FROM_LIST,
             EventHandler::new(move |_: Press| act(Act::Clear)),
         )
     });
@@ -131,23 +132,15 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         }
     };
     let target = desk.hub.shelf_target();
-    let words = give_words(&target);
-    let give_button = can(Act::UseInPane).then_some(words.clone()).flatten();
+    let words = |action: Act| act_words(action, &target);
+    let give_button = can(Act::UseInPane).then(|| words(Act::UseInPane)).flatten();
     let rect = use_rect();
     let mut menu = use_signal(|| Shown::Hidden);
     let has_menu = !row.actions.is_empty();
     let mut items = Vec::new();
     for action in &row.actions {
-        let label = match action {
-            Act::Open => "Open".to_owned(),
-            Act::Reveal => "Show in Folder".to_owned(),
-            Act::UseInPane => match &words {
-                Some((_, _, menu)) => menu.clone(),
-                None => continue,
-            },
-            Act::CopyPath => "Copy Path".to_owned(),
-            Act::ShowInTab(_) => "Show Tab".to_owned(),
-            Act::Clear => "Remove from List".to_owned(),
+        let Some(ActWords { label, .. }) = words(*action) else {
+            continue;
         };
         if *action == Act::Clear {
             items.push(MenuItem::Separator);
@@ -187,37 +180,39 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                 ProgressIndicator {
                     style: ProgressStyle::Bar,
                     progress: Share::Known(Fraction(u16::from(percent) * 10)),
-                    common: Common { aria_label: Some("Download progress".to_owned()), ..Common::default() },
+                    common: named("Download progress"),
                 }
             }
             div { class: "temor-dl-actions",
-                if can(Act::Reveal) {
+                if let Some(ActWords { label, tip }) = words(Act::Reveal).filter(|_| can(Act::Reveal)) {
                     Button {
-                        label: "Show in folder".to_owned(),
+                        label,
                         size: ControlSize::Small,
-                        title: Some("Show the file in your files".to_owned()),
+                        title: Some(tip),
                         onclick: {
                             let act = act.clone();
                             move |_: Press| act(Act::Reveal)
                         },
                     }
                 }
-                if let Some((label, title, _)) = give_button {
+                if let Some(ActWords { label, tip }) = give_button {
                     Button {
                         label,
                         size: ControlSize::Small,
-                        title: Some(title),
+                        title: Some(tip),
                         onclick: {
                             let mut give = give.clone();
                             move |_: Press| give()
                         },
                     }
                 }
-                if let Some(tab) = tab {
+                if let Some((tab, ActWords { label, tip })) = tab.and_then(|tab| {
+                    words(Act::ShowInTab(tab)).map(|w| (tab, w))
+                }) {
                     Button {
-                        label: "Show tab".to_owned(),
+                        label,
                         size: ControlSize::Small,
-                        title: Some("Go back to the tab it came from".to_owned()),
+                        title: Some(tip),
                         onclick: {
                             let act = act.clone();
                             move |_: Press| act(Act::ShowInTab(tab))
@@ -241,24 +236,6 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
     }
 }
 
-/// The words for Use in pane: the button's label, its hover text and the menu's item. Nothing
-/// when no terminal has the keyboard.
-fn give_words(target: &PaneTarget) -> Option<(String, String, String)> {
-    match target {
-        PaneTarget::Nowhere => None,
-        PaneTarget::Here => Some((
-            "Paste path".to_owned(),
-            "Type the file's path into the terminal you were using".to_owned(),
-            "Paste Path".to_owned(),
-        )),
-        PaneTarget::Host(host) => Some((
-            format!("Send to {host}"),
-            format!("Copy the file to {host}, into the folder of the terminal you were using"),
-            format!("Send to {host}"),
-        )),
-    }
-}
-
 /// One file on its way to another computer.
 #[component]
 #[allow(non_snake_case)]
@@ -267,7 +244,7 @@ fn UploadRow(upload: Upload, desk: Desk) -> Element {
     let remove = (upload.state != UploadState::Sending).then(|| {
         RowAction::new(
             Icon::X,
-            "Remove from the list",
+            REMOVE_FROM_LIST,
             EventHandler::new(move |_: Press| {
                 desk.hub.clear_upload(id);
                 desk.bump();

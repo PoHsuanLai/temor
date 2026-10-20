@@ -19,7 +19,7 @@ use temor_ui::app::shell_pane;
 use temor_ui::edge::{Ambient, keymap_for};
 use temor_ui::input::{FindBar, Routed, Stroke, route};
 use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
+use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::support::scratch;
@@ -102,14 +102,16 @@ fn fixture(name: &str) -> Fixture {
         SessionParts {
             spec,
             fonts,
-            keymap: keymap_for(OURS, &Overrides::default()).0,
-            clipboard: Box::new(clipboard.clone()),
-            opener: Box::new(NoOpener),
-            notify_after: TerminalSettings::default().notify_after,
-            cursor_blink: TerminalSettings::default().cursor_blink,
-            notifier: Box::new(temor_ui::edge::NoopNotifier),
-            clock: Box::new(temor_ui::edge::SystemClock::new()),
-            shelf_dir: home.join("shelf"),
+            kit: SessionKit {
+                keymap: keymap_for(OURS, &Overrides::default()).0,
+                clipboard: Box::new(clipboard.clone()),
+                opener: Box::new(NoOpener),
+                notify_after: TerminalSettings::default().notify_after,
+                cursor_blink: TerminalSettings::default().cursor_blink,
+                notifier: Box::new(temor_ui::edge::NoopNotifier),
+                clock: Box::new(temor_ui::edge::SystemClock::new()),
+                shelf_dir: home.join("shelf"),
+            },
         },
         tx,
     )

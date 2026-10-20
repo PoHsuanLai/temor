@@ -9,6 +9,8 @@ use temor_pane::paste;
 use temor_vt::ViewportScroll;
 
 use super::Session;
+use super::osc52::Copied;
+use crate::words::notices;
 
 impl Session {
     /// Says how the pane's shell quotes a word (from the shell the pane runs).
@@ -60,8 +62,8 @@ impl Session {
 
     /// Puts a file's path on the clipboard.
     pub fn copy_path(&mut self, path: &str) {
-        if self.clipboard.write(path).is_err() {
-            self.notice = Some("The path could not be copied".to_owned());
+        if self.put_on_clipboard(path) == Copied::No {
+            self.notice = Some(notices::PATH_NOT_COPIED.to_owned());
         }
     }
 }

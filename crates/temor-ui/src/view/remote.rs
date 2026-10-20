@@ -10,6 +10,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_remote::PortAction;
 use temor_ssh::Port;
 
+use super::host_words::{REMEMBER_TIP, TRY_AGAIN};
 use super::remote_words::{
     ASK_DETAIL, HELPER_ASK, ask_line, port_action_words, port_line, stage_line, typing_line,
 };
@@ -35,7 +36,7 @@ pub fn RemoteBanners(pane: PaneId, desk: Desk) -> Element {
                 actions: rsx! {
                     Button {
                         label: HELPER_ASK.allow.to_owned(),
-                        title: Some("Remember this for this computer".to_owned()),
+                        title: Some(REMEMBER_TIP.to_owned()),
                         onclick: move |_| yes.remote_answer(pane, Grant::Allowed),
                     }
                     Button {
@@ -51,8 +52,8 @@ pub fn RemoteBanners(pane: PaneId, desk: Desk) -> Element {
                 Label { text, style: LabelStyle::Caption }
                 if view.stage == RemoteStage::Lost {
                     Button {
-                        label: "Retry".to_owned(),
-                        title: Some("Connect again".to_owned()),
+                        label: TRY_AGAIN.label,
+                        title: TRY_AGAIN.title(),
                         onclick: move |_| retry.remote_retry(pane),
                     }
                 }

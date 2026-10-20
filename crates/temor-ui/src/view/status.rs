@@ -10,6 +10,8 @@ use ds::components::overlays::tooltip::Tooltip;
 use ds::prelude::*;
 use temor_vt::{Progress, ProgressState};
 
+use super::names::named;
+
 /// A progress report as the pane's edge shows it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressLine {
@@ -50,7 +52,7 @@ pub fn PaneEdge(progress: Option<ProgressLine>, bell: bool) -> Element {
                 ProgressIndicator {
                     style: ProgressStyle::Bar,
                     progress: Share::Known(Fraction(u16::from(percent) * 10)),
-                    common: Common { aria_label: Some("Progress".to_owned()), ..Common::default() },
+                    common: named("Progress"),
                 }
             }
             if progress == Some(ProgressLine::Busy) {

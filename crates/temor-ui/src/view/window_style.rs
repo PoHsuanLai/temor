@@ -10,7 +10,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-edge { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--s-4); padding: 0 var(--s-4); pointer-events: none; }\
 .temor-link-tip { position: absolute; width: var(--s-1); height: var(--s-16); pointer-events: none; }\
 .temor-link-tip-spot { display: block; width: var(--s-1); height: var(--s-16); }\
-.temor-find { position: absolute; top: var(--s-4); right: var(--s-4); display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4); background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-item); box-shadow: var(--shadow-sheet); }\
+.temor-sheet { background: var(--raise); border: var(--hair) solid var(--line); box-shadow: var(--shadow-sheet); }\
+.temor-find { position: absolute; top: var(--s-4); right: var(--s-4); display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4); border-radius: var(--r-item); }\
 .temor-find-field { width: calc(var(--s-16) * 12); }\
 .temor-first-hint { position: absolute; pointer-events: none; white-space: nowrap; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
@@ -22,17 +23,17 @@ pub const WINDOW_CSS: &str = "\
 .temor-lens { position: absolute; display: block; object-fit: contain; object-position: left top; }\
 .temor-fact-chips { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: var(--s-6); pointer-events: none; overflow: hidden; }\
 .temor-fact-chips[data-place=over], .temor-fact-chips[data-place=header] { justify-content: flex-start; background: var(--term-bg); }\
-.temor-chip { display: flex; flex: none; align-items: center; gap: var(--s-5); box-sizing: border-box; height: calc(100% - var(--s-2)); max-height: var(--s-22); padding: 0 var(--s-6); border-radius: var(--r-micro); background: var(--fill-quaternary); border: var(--hair) solid var(--line-soft); color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-small); white-space: nowrap; }\
-.temor-chip[data-kind=folder] { flex: 0 1 auto; min-width: 0; }\
+.temor-chip { display: flex; flex: none; align-items: center; gap: var(--s-5); box-sizing: border-box; height: calc(100% - var(--s-2)); max-height: var(--s-22); padding: 0 var(--s-6); border-radius: var(--r-micro); background: var(--fill-quaternary); border: var(--hair) solid var(--line-soft); color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-small); white-space: nowrap; --chip-hue: var(--ink); }\
+.temor-chip[data-kind=folder] { flex: 0 1 auto; min-width: 0; --chip-hue: var(--term-ansi-12); }\
 .temor-chip-words { display: flex; gap: 0.6ch; min-width: 0; overflow: hidden; }.temor-chip-words > span { flex: none; }.temor-chip[data-kind=folder] .temor-chip-words > span { flex: 0 1 auto; min-width: 0; overflow: hidden; }\
 .temor-chip-icon { display: flex; color: var(--chip-hue); }.temor-chip [data-tone=strong] { color: var(--chip-hue); font-weight: 600; }\
-.temor-chip { --chip-hue: var(--ink); }.temor-chip[data-kind=folder] { --chip-hue: var(--term-ansi-12); }.temor-chip[data-kind=branch] { --chip-hue: var(--term-ansi-13); }.temor-chip[data-kind=changes] { --chip-hue: var(--ink-soft); }.temor-chip[data-kind=new] { --chip-hue: var(--term-ansi-3); color: var(--chip-hue); }\
+.temor-chip[data-kind=branch] { --chip-hue: var(--term-ansi-13); }.temor-chip[data-kind=changes] { --chip-hue: var(--ink-soft); }.temor-chip[data-kind=new] { --chip-hue: var(--term-ansi-3); color: var(--chip-hue); }\
 .temor-chip[data-kind=python] { --chip-hue: var(--term-ansi-11); }.temor-chip[data-kind=ruby] { --chip-hue: var(--term-ansi-9); }.temor-chip[data-kind=go] { --chip-hue: var(--term-ansi-14); }.temor-chip[data-kind=node] { --chip-hue: var(--term-ansi-10); }.temor-chip [data-tone=added] { color: var(--ok); }.temor-chip [data-tone=removed] { color: var(--danger); }\
 .temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }.temor-card-meta { position: absolute; display: flex; align-items: center; white-space: nowrap; pointer-events: none; }\
 .temor-keys:focus { outline: none; }\
-.temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); box-shadow: var(--shadow-sheet); }\
+.temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\
-.temor-quick { position: absolute; left: 8%; right: 8%; top: 4%; bottom: 24%; display: flex; flex-direction: column; background: var(--raise); border: var(--hair) solid var(--line); border-radius: var(--r-panel); box-shadow: var(--shadow-sheet); overflow: hidden; }\
+.temor-quick { position: absolute; left: 8%; right: 8%; top: 4%; bottom: 24%; display: flex; flex-direction: column; border-radius: var(--r-panel); overflow: hidden; }\
 .temor-quick-head { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-8); padding: var(--s-8); }\
 .temor-quick-body { flex: 1 1 auto; min-height: 0; position: relative; }\
 .temor-side-box { width: 100%; height: 100%; }\

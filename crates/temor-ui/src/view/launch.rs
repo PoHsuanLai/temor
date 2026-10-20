@@ -22,7 +22,7 @@ use crate::error::UiError;
 use crate::hub::Run;
 use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
-use crate::session::{Clipboard, ClipboardFailed, Session, SessionParts};
+use crate::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_core::shelf::Quoting;
 use temor_pane::{ByteTap, PaneEvent, TransferSetup};
 use temor_shell::ShellKind;
@@ -182,8 +182,7 @@ pub fn open_session_with(
         },
         LauncherChoice::Setsid(path) => SessionLauncher::Setsid(path.clone()),
     };
-    let grid = GridSize::new(80, 24);
-    let cell = CellPx::new(8, 16);
+    let (grid, cell) = first_size();
     // The shell starts in the pane's folder when it is still there.
     let mut ambient = launch.ambient.clone();
     ambient.env = ambient.env.overlay(env);
@@ -217,21 +216,37 @@ pub fn open_session_with(
         SessionParts {
             spec,
             fonts,
-            keymap: launch.keymap.clone(),
-            clipboard: Box::new(DesktopClipboard),
-            opener: default_opener(),
-            notify_after: settings.notify_after,
-            cursor_blink: settings.cursor_blink,
-            // TODO(quire-desktop): the desktop's notification service (quire v0.2.30 has none).
-            notifier: Box::new(NoopNotifier),
-            clock: Box::new(SystemClock::new()),
-            shelf_dir: launch.ambient.shelf_dir(),
+            kit: session_kit(launch),
         },
         Arc::new(TaggedSink::new(pane, events)),
         snapshot,
     )?;
     session.set_quoting(quoting);
     Ok(session)
+}
+
+/// The size a pane starts at, in cells, and a cell's in pixels: 80 by 24 of 8 by 16. The first
+/// layout refits both.
+pub(super) fn first_size() -> (GridSize, CellPx) {
+    (GridSize::new(80, 24), CellPx::new(8, 16))
+}
+
+/// What every session is made from besides its pane: the keys, the clipboard and opener, the
+/// notice settings and the downloads folder. A session on this computer's terminal and one on a
+/// host's helper take the same.
+pub(super) fn session_kit(launch: &Launch) -> SessionKit {
+    let settings = &launch.settings;
+    SessionKit {
+        keymap: launch.keymap.clone(),
+        clipboard: Box::new(DesktopClipboard),
+        opener: default_opener(),
+        notify_after: settings.notify_after,
+        cursor_blink: settings.cursor_blink,
+        // TODO(quire-desktop): the desktop's notification service (quire v0.2.30 has none).
+        notifier: Box::new(NoopNotifier),
+        clock: Box::new(SystemClock::new()),
+        shelf_dir: launch.ambient.shelf_dir(),
+    }
 }
 
 /// The fonts a pane draws with: `font` at `size`, found on this computer.

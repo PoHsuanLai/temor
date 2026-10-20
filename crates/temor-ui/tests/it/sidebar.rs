@@ -295,6 +295,29 @@ fn a_split_pane_closes_from_its_menu() {
     );
 }
 
+/// A middle press on a pane of a split opens no menu: only a right click does, as on a row.
+#[test]
+fn a_middle_press_on_a_split_pane_opens_no_menu() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-middle-segment", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'd');
+    let segment = h
+        .centre(".temor-side .temor-seg")
+        .unwrap_or_else(|| panic!("no segment:\n{}", h.html()));
+    h.send(Input::press(segment, PointerButton::Middle));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        !h.html().contains("Close Pane"),
+        "no menu from a middle press:\n{}",
+        h.html()
+    );
+}
+
 /// The boxes of what `selector` finds, in document order.
 fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
     h.with_doc(|doc| {

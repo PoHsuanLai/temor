@@ -119,7 +119,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         .unwrap_or_else(|| panic!("no Downloads button:\n{}", h.html()));
     h.send(Input::click(trigger));
     wait_for_html(&mut h, "the shelf's rows", |html| {
-        html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in folder")
+        html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in Folder")
     });
 
     // Paste path types the quoted path into the terminal the person was using and puts the list
@@ -133,7 +133,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         s.replace('\n', "").contains("Downloads/note.txt")
     });
     assert!(
-        !h.html().contains("Show in folder"),
+        !h.html().contains("Show in Folder"),
         "the list is put away:\n{}",
         h.html()
     );
@@ -144,7 +144,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         .expect("Downloads button");
     h.send(Input::click(trigger));
     wait_for_html(&mut h, "the shelf's rows", |html| {
-        html.contains("Show in folder")
+        html.contains("Show in Folder")
     });
     let row = settled_centre(&mut h, ".temor-dl");
     h.send(Input::press(row, PointerButton::Secondary));

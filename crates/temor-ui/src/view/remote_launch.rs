@@ -8,16 +8,13 @@ use temor_core::vocab::ids::PaneId;
 use temor_pane::settings::CursorStyle;
 use temor_pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup};
 use temor_render::Palette;
-use temor_vt::{CellPx, CursorShape, GridSize, LineCount};
+use temor_vt::{CursorShape, LineCount};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::launch::{DesktopClipboard, Launch, load_fonts, transfer_limits};
-use crate::edge::NoopNotifier;
-use crate::edge::SystemClock;
+use super::launch::{Launch, first_size, load_fonts, session_kit, transfer_limits};
 use crate::error::UiError;
 use crate::pane::TaggedSink;
-use crate::platform::default_opener;
-use crate::session::{FedParts, Session, SessionKit};
+use crate::session::{FedParts, Session};
 
 /// Opens a session for pane `pane` at 80 by 24 cells (the first layout refits it) whose input
 /// and size go to `link`. The returned feeder is how the host's output reaches the pane.
@@ -30,10 +27,11 @@ pub fn open_fed_session(
 ) -> Result<(Session, Feeder), UiError> {
     let settings = &launch.settings;
     let fonts = load_fonts(&settings.font, settings.font_size)?;
+    let (grid, cell) = first_size();
     let spec = FedSpec {
         link,
-        grid: GridSize::new(80, 24),
-        cell: CellPx::new(8, 16),
+        grid,
+        cell,
         scrollback: LineCount(settings.scrollback.lines() as usize),
         palette,
         cursor: match settings.cursor {
@@ -46,19 +44,12 @@ pub fn open_fed_session(
             limits: transfer_limits(),
         }),
     };
-    let kit = SessionKit {
-        keymap: launch.keymap.clone(),
-        clipboard: Box::new(DesktopClipboard),
-        opener: default_opener(),
-        notify_after: settings.notify_after,
-        cursor_blink: settings.cursor_blink,
-        // TODO(quire-desktop): the desktop's notification service (quire v0.2.30 has none).
-        notifier: Box::new(NoopNotifier),
-        clock: Box::new(SystemClock::new()),
-        shelf_dir: launch.ambient.shelf_dir(),
-    };
     Session::open_fed(
-        FedParts { spec, fonts, kit },
+        FedParts {
+            spec,
+            fonts,
+            kit: session_kit(launch),
+        },
         Arc::new(TaggedSink::new(pane, events)),
     )
 }

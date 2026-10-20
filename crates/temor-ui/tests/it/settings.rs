@@ -13,8 +13,8 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px, SystemPrefs};
 use ds_harness::{Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
-use temor_core::space::{AccountRef, Credential, Profile, Project};
-use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot};
+use temor_core::space::{AccountRef, Credential, Profile, Project, Route};
+use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot, RoutePattern};
 use temor_pane::keys::SettingsPane;
 use temor_pane::settings::TerminalSettings;
 use temor_ui::edge::{
@@ -423,6 +423,33 @@ fn a_variable_is_added_edited_and_removed_on_the_spaces_page() {
 
     click(&mut h, "button[aria-label=\"Remove A\"]");
     assert_eq!(last_change(&board), SpaceChange::Env(Vec::new()));
+}
+
+/// Each route's Remove button is named for its route, so one of several is the one that goes.
+#[test]
+fn each_route_has_its_own_named_remove_button() {
+    let route = |pattern: &str| Route {
+        pattern: RoutePattern(pattern.to_owned()),
+    };
+    let project = Project {
+        routes: vec![route("ssh a"), route("ssh b")],
+        ..Project::default()
+    };
+    let board = SpaceBoard::default();
+    board.publish(vec![SpaceRow {
+        id: ds::components::app::spaces::SpaceId(0),
+        name: "Home".to_owned(),
+        project,
+    }]);
+    let (mut h, _) = settings_window("settings-routes", SettingsPane::Spaces, {
+        let board = board.clone();
+        move |config| config.with_context(board)
+    });
+    click(&mut h, "button[aria-label=\"Remove route ssh a\"]");
+    assert_eq!(
+        last_change(&board),
+        SpaceChange::Routes(vec![route("ssh b")])
+    );
 }
 
 /// A secret store in memory.

@@ -16,6 +16,13 @@ use super::clip::PASTE_LIMIT;
 use super::lifecycle::sanitise_title;
 use super::model::Notice;
 
+/// Whether the desktop clipboard took a copy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Copied {
+    Yes,
+    No,
+}
+
 /// What to do with a program's clipboard write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum WriteVerdict {
@@ -93,7 +100,10 @@ impl Session {
             return Notice::Quiet;
         }
         match write_verdict(self.site, self.clip_write, write.grant) {
-            WriteVerdict::Write => self.put_on_clipboard(&text),
+            WriteVerdict::Write => {
+                // A program's copy that the desktop refuses simply did not happen.
+                let _ = self.put_on_clipboard(&text);
+            }
             WriteVerdict::Drop => {}
             WriteVerdict::Ask if self.clip_pending.is_some() => {}
             WriteVerdict::Ask => {
@@ -133,7 +143,7 @@ impl Session {
             ClipboardUse::Copy => {
                 self.clip_write = grant;
                 if grant == Grant::Allowed {
-                    self.put_on_clipboard(&pending.text);
+                    let _ = self.put_on_clipboard(&pending.text);
                 }
             }
             ClipboardUse::Read => {
@@ -148,11 +158,16 @@ impl Session {
         }
     }
 
-    /// Puts `text` on the desktop clipboard and keeps the pane's copy in step.
-    fn put_on_clipboard(&mut self, text: &str) {
-        // A clipboard that refuses is not the pane's failure: the copy simply did not happen.
-        if self.clipboard.write(text).is_ok() {
-            self.refresh_clipboard_copy();
+    /// Puts `text` on the desktop clipboard and keeps the pane's copy in step: every copy to the
+    /// clipboard goes through here. A clipboard that refuses is not the pane's failure: the copy
+    /// simply did not happen, and the caller says so if it wants to.
+    pub(super) fn put_on_clipboard(&mut self, text: &str) -> Copied {
+        match self.clipboard.write(text) {
+            Ok(()) => {
+                self.refresh_clipboard_copy();
+                Copied::Yes
+            }
+            Err(_) => Copied::No,
         }
     }
 

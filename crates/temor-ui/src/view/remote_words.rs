@@ -3,6 +3,7 @@
 
 use temor_remote::PortAction;
 
+use super::host_words::{FORWARD_PORT, OPEN_DIRECT_TIP};
 use crate::edge::remote_hold::Typing;
 use crate::hub::RemoteStage;
 
@@ -57,14 +58,10 @@ pub fn port_line(program: &str, port: u16) -> String {
 /// A button's label and tooltip for what can be done about a port.
 pub fn port_action_words(action: &PortAction) -> (String, &'static str) {
     match action {
-        PortAction::OpenAt { name, port } => (
-            format!("Open at {name}:{}", port.0),
-            "Open it over your tailnet, with no forward",
-        ),
-        PortAction::Forward { .. } => (
-            "Forward port…".to_owned(),
-            "Reach this port from this computer",
-        ),
+        PortAction::OpenAt { name, port } => {
+            (format!("Open at {name}:{}", port.0), OPEN_DIRECT_TIP)
+        }
+        PortAction::Forward { .. } => (FORWARD_PORT.label.to_owned(), FORWARD_PORT.tip),
     }
 }
 

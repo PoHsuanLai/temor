@@ -22,6 +22,7 @@ mod open;
 mod own_rows;
 mod pages;
 mod root;
+mod row_parts;
 mod space_edit;
 mod space_fields;
 mod space_profile;

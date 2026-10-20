@@ -13,6 +13,7 @@ use temor_vt::{GridPoint, PointSpace, SurfacePoint};
 use super::Session;
 use super::pointer::screen_cell;
 use crate::error::UiError;
+use crate::words::notices;
 
 /// A file to show, with the files the same output lists (the viewer's arrows walk them).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,7 +152,7 @@ impl Session {
             return;
         }
         let Some(output) = self.block_output(id) else {
-            self.notice = Some("The output is not finished yet.".to_owned());
+            self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return;
         };
         let around = output_paths(&output, self.cwd.as_deref(), is_file);

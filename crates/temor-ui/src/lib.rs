@@ -16,6 +16,7 @@ pub mod session;
 pub mod settings;
 pub mod settings_window;
 pub mod view;
+pub mod words;
 
 pub use app::run;
 pub use view::launch::LauncherChoice;

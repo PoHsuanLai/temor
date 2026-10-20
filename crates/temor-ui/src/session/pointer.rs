@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use temor_pane::text::RowText;
 use temor_pane::text::{CellPos, Granularity, Selection, Shape};
-use temor_pane::text::{LinkVerdict, check_link};
 use temor_vt::{
     GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
@@ -15,6 +14,7 @@ use temor_vt::{
 use super::{Drag, Session};
 use crate::error::UiError;
 use crate::input::{Click, next_click};
+use crate::platform::open_link;
 
 impl Session {
     /// The pointer is over the grid at `at`.
@@ -216,15 +216,8 @@ impl Session {
         if self.view_link(&target) {
             return Ok(());
         }
-        match check_link(&target) {
-            LinkVerdict::Open(link) => {
-                if self.opener.open(&link).is_err() {
-                    self.notice = Some("That link could not be opened.".to_owned());
-                }
-            }
-            LinkVerdict::Refused(_) => {
-                self.notice = Some("This pane only opens web and email links.".to_owned());
-            }
+        if let Err(words) = open_link(&*self.opener, &target) {
+            self.notice = Some(words.to_owned());
         }
         Ok(())
     }

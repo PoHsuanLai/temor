@@ -1,8 +1,10 @@
 //! Opening a link in the desktop's own handler (PLAN §6: ⌘-click on a hyperlink). The caller
 //! checks the link first (`temor_pane::link`); this only hands it over.
 
-use temor_pane::text::LinkTarget;
+use temor_pane::text::{LinkTarget, LinkVerdict, check_link};
 use thiserror::Error;
+
+use crate::words::notices;
 
 /// Why a link could not be opened.
 #[derive(Debug, Error)]
@@ -19,6 +21,15 @@ pub enum OpenError {
 /// Hands a checked link to the desktop. Implemented by the platform's own handler.
 pub trait Opener {
     fn open(&self, target: &LinkTarget) -> Result<(), OpenError>;
+}
+
+/// Checks `target` and hands it to `opener`: the one way a link opens, from a click in a pane, a
+/// plugin or the viewer. The error is the sentence to tell the person (`crate::words::notices`).
+pub fn open_link(opener: &dyn Opener, target: &str) -> Result<(), &'static str> {
+    match check_link(target) {
+        LinkVerdict::Open(link) => opener.open(&link).map_err(|_| notices::LINK_NOT_OPENED),
+        LinkVerdict::Refused(_) => Err(notices::LINK_REFUSED),
+    }
 }
 
 #[cfg(target_os = "linux")]

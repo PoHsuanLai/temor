@@ -17,7 +17,7 @@ use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelS
 use temor_ui::app::shell_pane;
 use temor_ui::edge::{Ambient, FakeClock, RecordingNotifier};
 use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionParts};
+use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::super::support::scratch;
@@ -133,20 +133,22 @@ pub(super) fn start_with(
         SessionParts {
             spec,
             fonts,
-            keymap: temor_ui::edge::keymap_for(
-                Platform::Linux {
-                    desktop: Desktop::Ours,
-                },
-                &Overrides::default(),
-            )
-            .0,
-            clipboard: Box::new(clipboard.clone()),
-            opener: Box::new(NoOpener),
-            notify_after: NotifyAfter::DEFAULT,
-            cursor_blink: temor_pane::settings::CursorBlinking::default(),
-            notifier: Box::new(notifier.clone()),
-            clock: Box::new(clock.clone()),
-            shelf_dir: home.join("shelf"),
+            kit: SessionKit {
+                keymap: temor_ui::edge::keymap_for(
+                    Platform::Linux {
+                        desktop: Desktop::Ours,
+                    },
+                    &Overrides::default(),
+                )
+                .0,
+                clipboard: Box::new(clipboard.clone()),
+                opener: Box::new(NoOpener),
+                notify_after: NotifyAfter::DEFAULT,
+                cursor_blink: temor_pane::settings::CursorBlinking::default(),
+                notifier: Box::new(notifier.clone()),
+                clock: Box::new(clock.clone()),
+                shelf_dir: home.join("shelf"),
+            },
         },
         tx,
     )
