@@ -2,9 +2,9 @@
 
 use std::sync::{Arc, Mutex};
 
+use temor_shell::cwd_from_url;
 use temor_vt::{EventSink, ReplySink, VtEvent};
 
-use super::cwd::parse_cwd_url;
 use super::input::Input;
 use crate::sync::lock;
 
@@ -14,7 +14,7 @@ pub(super) struct CwdSink(pub(super) Arc<Mutex<String>>);
 impl EventSink for CwdSink {
     fn send(&self, event: VtEvent) {
         if let VtEvent::Cwd(url) = event
-            && let Some(path) = parse_cwd_url(&url)
+            && let Some(path) = cwd_from_url(&url)
         {
             *lock(&self.0) = path;
         }

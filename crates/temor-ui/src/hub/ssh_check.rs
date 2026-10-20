@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex, Weak};
 
 use temor_core::vocab::ids::PaneId;
 use temor_pane::ByteTap;
-use temor_pane::text::{LinkVerdict, check_link};
 use temor_ssh::{CheckScan, CheckUrl, PreShellEvent};
 
 use super::model::Hub;
@@ -112,15 +111,6 @@ impl Hub {
         else {
             return;
         };
-        match check_link(url.as_str()) {
-            LinkVerdict::Open(target) => {
-                if let Err(err) = self.ssh.opener.open(&target) {
-                    self.notices.push(err.to_string());
-                }
-            }
-            _ => self
-                .notices
-                .push("That confirmation page can't be opened".to_owned()),
-        }
+        self.open_url(url.as_str());
     }
 }

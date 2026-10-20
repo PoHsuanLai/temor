@@ -38,7 +38,7 @@ impl Pending {
         let (sender, receiver) = channel();
         self.lock()
             .as_mut()
-            .ok_or(Error::LinkClosed)?
+            .ok_or(Error::LinkClosed(None))?
             .insert(id, sender);
         Ok(receiver)
     }
@@ -63,7 +63,7 @@ impl Pending {
     pub(super) fn close(&self) {
         let calls = self.lock().take().unwrap_or_default();
         for (_, sender) in calls {
-            let _ = sender.send(Err(Error::LinkClosed));
+            let _ = sender.send(Err(Error::LinkClosed(None)));
         }
     }
 

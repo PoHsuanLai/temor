@@ -210,7 +210,7 @@ mod tests {
                 Error::Remote(RemoteError::NotFound { path: missing() }),
                 EditFault::Gone,
             ),
-            ("link ended", Error::LinkClosed, EditFault::NoConnection),
+            ("link ended", Error::LinkClosed(None), EditFault::NoConnection),
             ("no answer", Error::NoAnswer, EditFault::NoConnection),
             ("permission", Error::Remote(denied()), EditFault::Refused),
             (
@@ -244,7 +244,7 @@ mod tests {
                 Some(Some(now)),
             ),
             ("permission", Error::Remote(denied()), None),
-            ("link ended", Error::LinkClosed, None),
+            ("link ended", Error::LinkClosed(None), None),
         ];
         for (why, error, want) in cases {
             assert_eq!(conflict_of(&error), want, "{why}");

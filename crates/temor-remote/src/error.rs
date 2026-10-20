@@ -14,9 +14,9 @@ pub enum Error {
     /// The framing or the messages were wrong.
     #[error("the link broke: {0}")]
     Wire(#[from] WireError),
-    /// The link ended.
+    /// The link ended; the write error that showed it, when there was one.
     #[error("the link ended")]
-    LinkClosed,
+    LinkClosed(#[source] Option<io::Error>),
     /// The first message from the other end was not its greeting.
     #[error("the other end did not start with a greeting")]
     NoGreeting,
@@ -117,7 +117,7 @@ impl Error {
     pub fn is_link_lost(&self) -> bool {
         matches!(
             self,
-            Self::LinkClosed | Self::Wire(_) | Self::NoAnswer | Self::NoGreeting
+            Self::LinkClosed(_) | Self::Wire(_) | Self::NoAnswer | Self::NoGreeting
         )
     }
 

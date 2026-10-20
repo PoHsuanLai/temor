@@ -79,7 +79,7 @@ impl Hub {
             return;
         }
         let on_pane = pane.and_then(|p| {
-            let host = self.ssh.panes.get(&p)?.alias.clone();
+            let host = self.alias_of(p)?;
             let cwd = self.ws.cwds.get(&p).map(|c| c.as_str().to_owned());
             Some((host, cwd))
         });

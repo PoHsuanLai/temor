@@ -112,7 +112,7 @@ impl Hub {
         let Some(pane) = self.keyboard_pane() else {
             return input;
         };
-        let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = self.alias_of(pane) else {
             return input;
         };
         self.ssh.intent = Some(alias);
@@ -192,7 +192,7 @@ impl Hub {
 
     /// Asks the next open question, or starts the session when every one is answered.
     pub(super) fn gate_host(&mut self, pane: PaneId) {
-        let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = self.alias_of(pane) else {
             return;
         };
         let verdict = gate(&self.ssh.book, &self.who_of(&alias));

@@ -6,6 +6,7 @@ mod closed;
 #[cfg(test)]
 mod leave_out_tests;
 mod model;
+mod pinning;
 pub mod restore;
 #[cfg(test)]
 mod restore_tests;

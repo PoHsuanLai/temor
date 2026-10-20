@@ -214,18 +214,11 @@ fn runs(rows: &[BarRow]) -> Vec<(Section, Vec<&BarRow>)> {
 }
 
 fn title_of(section: &Section, name_of: impl Fn(&PluginId) -> String) -> String {
-    let fixed = match section {
-        Section::Actions => "Actions",
-        Section::Tabs => "Tabs",
-        Section::Spaces => "Spaces",
-        Section::Computers => "Computers",
-        Section::RecentCommands => "Recent commands",
-        Section::Folders => "Folders",
-        Section::Run => "Run",
-        Section::Plugin(plugin) => return name_of(plugin),
-        Section::Ask => "Ask",
-    };
-    fixed.to_owned()
+    match (section.title(), section) {
+        (Some(fixed), _) => fixed.to_owned(),
+        (None, Section::Plugin(plugin)) => name_of(plugin),
+        (None, _) => String::new(),
+    }
 }
 
 #[cfg(test)]

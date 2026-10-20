@@ -62,6 +62,6 @@ impl FileWorker {
 
     /// Queues a request, waiting for room.
     pub(super) fn submit(&self, job: Job) -> Result<(), Error> {
-        self.jobs.send(job).map_err(|_| Error::LinkClosed)
+        self.jobs.send(job).map_err(|_| Error::LinkClosed(None))
     }
 }

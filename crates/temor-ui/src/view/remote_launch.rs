@@ -5,10 +5,9 @@
 use std::sync::Arc;
 
 use temor_core::vocab::ids::PaneId;
-use temor_pane::settings::CursorStyle;
-use temor_pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup};
+use temor_pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup, cursor_shape};
 use temor_render::Palette;
-use temor_vt::{CursorShape, LineCount};
+use temor_vt::LineCount;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::launch::{Launch, first_size, load_fonts, session_kit, transfer_limits};
@@ -34,11 +33,7 @@ pub fn open_fed_session(
         cell,
         scrollback: LineCount(settings.scrollback.lines() as usize),
         palette,
-        cursor: match settings.cursor {
-            CursorStyle::Block => CursorShape::Block,
-            CursorStyle::Bar => CursorShape::Bar,
-            CursorStyle::Underline => CursorShape::Underline,
-        },
+        cursor: cursor_shape(settings.cursor),
         transfers: Some(TransferSetup {
             staging: launch.ambient.staging_dir(pane.0),
             limits: transfer_limits(),

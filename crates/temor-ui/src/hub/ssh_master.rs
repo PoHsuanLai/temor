@@ -18,6 +18,8 @@ use super::remote::Tier;
 use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
 use super::ssh_connect::session_args;
+use crate::error::UiError;
+use crate::session::Session;
 use crate::view::launch::{Program, open_session_with};
 
 impl Hub {
@@ -123,6 +125,22 @@ impl Hub {
             None,
             Some(program),
         );
+        let phase = match how {
+            OpenAs::First => Phase::Connecting,
+            OpenAs::Join => Phase::Up,
+        };
+        self.host_session_opened(alias, pane, opened, (phase, scan));
+    }
+
+    /// The end of every `ssh` start: the session fills the pane's slot and the pane moves to
+    /// `phase`, or the connection's turn fails.
+    pub(super) fn host_session_opened(
+        &mut self,
+        alias: &HostAlias,
+        pane: PaneId,
+        opened: Result<Session, UiError>,
+        (phase, scan): (Phase, Option<Arc<RawCheck>>),
+    ) {
         match opened {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
@@ -132,10 +150,7 @@ impl Hub {
                     slot.borrow_mut().session = Some(session);
                 }
                 if let Some(host) = self.ssh.panes.get_mut(&pane) {
-                    host.phase = match how {
-                        OpenAs::First => Phase::Connecting,
-                        OpenAs::Join => Phase::Up,
-                    };
+                    host.phase = phase;
                     host.scan = scan;
                 }
             }

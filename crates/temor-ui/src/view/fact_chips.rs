@@ -14,7 +14,7 @@
 
 use dioxus::prelude::*;
 use ds::prelude::{Icon, IconSize, IconSource, IconView};
-use temor_core::facts::{ChipRow, Facts, chips_that_fit};
+use temor_core::facts::{CHIP_FRAME, ChipRow, Facts, chips_that_fit};
 
 use temor_core::block::Outcome;
 use temor_core::vocab::ids::BlockId;
@@ -205,10 +205,10 @@ pub fn chips_for(
         .cursor_logical()
         .filter(|[_, y, _, h]| (y - top).abs() < h / 2.0)
         .map(|[x, _, w, _]| x + w);
-    // A chip's picture takes about two cells.
+    // A chip's picture takes about as many cells as its frame.
     let words: Vec<usize> = chips
         .iter()
-        .map(|c| c.text().chars().count() + 2 * usize::from(c.icon.is_some()))
+        .map(|c| c.text().chars().count() + CHIP_FRAME as usize * usize::from(c.icon.is_some()))
         .collect();
     let geometry = ChipRow {
         pane_width,

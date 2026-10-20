@@ -7,6 +7,7 @@ use crate::consent::Consent;
 use crate::kitty::model::{
     Action, ErrorCode, FileId, FirstAnswer, KittyId, Message, ReplyStatus, Transmission, WriteKind,
 };
+use crate::kitty::words::REFUSED_BY_PERSON;
 use crate::units::Bytes;
 
 pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Vec<Effect>) {
@@ -20,7 +21,7 @@ pub(crate) fn step(session: ReceiveSession, input: Input) -> (ReceiveSession, Ve
             (with_phase(session, Phase::Receiving(id)), vec![ok])
         }
         (Phase::Asking(id), Input::Decided(Consent::Refuse)) => {
-            let status = failed(ErrorCode::Eperm, "User refused the transfer");
+            let status = failed(ErrorCode::Eperm, REFUSED_BY_PERSON);
             close(session, &id, status, EndWhy::Refused)
         }
         (Phase::Receiving(id), Input::Frame(message)) => on_frame(session, &id, message),

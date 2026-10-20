@@ -39,6 +39,6 @@ pub use engine::{
 };
 pub use error::{PaneError, SettingsError};
 #[cfg(feature = "ghostty")]
-pub use shell::{ShellPaneInput, shell_pane};
+pub use shell::{ShellPaneInput, cursor_shape, shell_pane};
 // The command line of a foreground process; the hub and temor-core name it through here.
 pub use temor_pty::CommandLine;

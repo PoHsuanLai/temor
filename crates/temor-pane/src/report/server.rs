@@ -92,7 +92,14 @@ impl PaneSocket {
             path: dir.to_path_buf(),
             source,
         };
-        temor_shell::ensure_private_dir(dir)?;
+        temor_shell::ensure_private_dir(dir).map_err(|error| match error {
+            temor_shell::ShellError::PrivateDir { source, .. }
+                if source.kind() == ErrorKind::NotFound =>
+            {
+                PaneError::SocketDirMissing(dir.to_path_buf())
+            }
+            other => PaneError::from(other),
+        })?;
         let path = dir.join(format!("{}.sock", key.as_str()));
         if path.as_os_str().len() > temor_shell::SOCKET_PATH_MAX {
             return Err(PaneError::SocketPathTooLong(path));

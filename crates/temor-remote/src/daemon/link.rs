@@ -74,7 +74,7 @@ impl Link {
     /// Queues a frame, waiting for room. For answers.
     pub(super) fn send(&self, message: &Message, payload: Option<&[u8]>) -> Result<(), Error> {
         let bytes = encode(message, payload, self.limit)?;
-        self.tx.send(bytes).map_err(|_| Error::LinkClosed)
+        self.tx.send(bytes).map_err(|_| Error::LinkClosed(None))
     }
 
     /// Queues a frame without waiting. A full queue hangs the connection up. For events.
@@ -84,9 +84,9 @@ impl Link {
             Ok(()) => Ok(()),
             Err(TrySendError::Full(_)) => {
                 self.hang_up();
-                Err(Error::LinkClosed)
+                Err(Error::LinkClosed(None))
             }
-            Err(TrySendError::Disconnected(_)) => Err(Error::LinkClosed),
+            Err(TrySendError::Disconnected(_)) => Err(Error::LinkClosed(None)),
         }
     }
 

@@ -85,7 +85,7 @@ impl<W: Write> FrameWriter<W> {
         self.inner
             .write_all(bytes)
             .and_then(|()| self.inner.flush())
-            .map_err(|_| Error::LinkClosed)
+            .map_err(|error| Error::LinkClosed(Some(error)))
     }
 }
 
@@ -146,7 +146,10 @@ mod tests {
                 None,
             )
             .expect_err("the pipe is broken");
-        assert!(matches!(error, Error::LinkClosed), "{error:?}");
+        assert!(
+            matches!(&error, Error::LinkClosed(Some(cause)) if cause.kind() == std::io::ErrorKind::BrokenPipe),
+            "{error:?}"
+        );
         assert!(error.is_link_lost());
     }
 }

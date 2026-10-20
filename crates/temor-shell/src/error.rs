@@ -21,6 +21,9 @@ pub enum ShellError {
         #[source]
         source: io::Error,
     },
+    /// This system has no private-folder support yet.
+    #[error("private folders are not supported on this system yet ({path})")]
+    Unsupported { path: PathBuf },
     /// A folder meant for this user alone is another user's.
     #[error("{path} belongs to another user")]
     NotPrivate { path: PathBuf },
