@@ -14,6 +14,8 @@ pub enum Command {
     View { file: PathBuf },
     /// Print how to use it.
     Help,
+    /// Print which temor this is.
+    Version,
 }
 
 /// Why the command line did not make sense.
@@ -42,6 +44,8 @@ pub fn parse(args: &[OsString]) -> Option<Result<Command, UsageError>> {
         "save" => Some(save(rest)),
         "get" => Some(get(rest)),
         "view" => Some(view(rest)),
+        "-h" | "--help" => Some(Ok(Command::Help)),
+        "-V" | "--version" => Some(Ok(Command::Version)),
         _ => None,
     }
 }

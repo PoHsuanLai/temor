@@ -18,6 +18,10 @@ pub fn dispatch(args: &[OsString]) -> Option<ExitCode> {
             println!("{USAGE}");
             return Some(ExitCode::SUCCESS);
         }
+        Ok(Command::Version) => {
+            println!("temor {}", env!("CARGO_PKG_VERSION"));
+            return Some(ExitCode::SUCCESS);
+        }
         Ok(command) => command,
         Err(usage) => return Some(fail(&CliError::Usage(usage))),
     };

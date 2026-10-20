@@ -24,7 +24,7 @@ fn files(names: &[&str]) -> Vec<PathBuf> {
 
 #[test]
 fn the_command_line_is_read() {
-    use Command::{Get, Help, Save, View};
+    use Command::{Get, Help, Save, Version, View};
     #[rustfmt::skip]
     #[allow(clippy::type_complexity)] // a table of named rows
     let cases: Vec<(&str, Vec<&str>, Option<Result<Command, UsageError>>)> = vec![
@@ -44,6 +44,9 @@ fn the_command_line_is_read() {
         ("view one at a time", vec!["view", "a", "b"], Some(Err(UsageError::OneFileToView))),
         ("help", vec!["get", "--help"], Some(Ok(Help))),
         ("short help", vec!["view", "-h"], Some(Ok(Help))),
+        ("help alone", vec!["--help"], Some(Ok(Help))),
+        ("the version", vec!["--version"], Some(Ok(Version))),
+        ("the short version", vec!["-V"], Some(Ok(Version))),
     ];
     for (name, words, want) in cases {
         assert_eq!(parse(&argv(&words)), want, "{name}");

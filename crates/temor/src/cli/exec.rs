@@ -35,7 +35,7 @@ const WAITS: Waits = Waits {
 
 pub fn run(command: Command, context: &Context, opener: &impl Opener) -> Result<String, CliError> {
     match command {
-        Command::Help => Ok(String::new()),
+        Command::Help | Command::Version => Ok(String::new()),
         Command::Save { files } => save(&files, context),
         Command::Get { name } => get(name, context),
         Command::View { file } => match plan(file, context.at) {
