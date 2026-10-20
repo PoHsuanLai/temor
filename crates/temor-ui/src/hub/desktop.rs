@@ -99,9 +99,7 @@ impl Hub {
     /// Carries out one message from the desktop services.
     pub(super) fn serve(&mut self, ask: Ask) {
         match ask {
-            Ask::Launch(Request::Run(run), _token) => {
-                self.run_in_tab(run.into());
-            }
+            Ask::Launch(Request::Run(run), _token) => self.run_in_tab(run.into()),
             Ask::Launch(request, _token) => self.act(new_tab_for(request)),
             Ask::Act(act, reply) => {
                 let _ = reply.send(self.perform(act));
