@@ -206,9 +206,13 @@ fn zsh_keeps_the_probe_line_out_of_history_and_everything_else_in() {
 }
 
 /// An older shell installed under another name (`fish3`, `bash32`), linked as the name temor
-/// recognises. The directory goes with the returned guard.
+/// recognises. The directory goes with the returned guard. These are extras a machine may have, so
+/// a missing one skips the test even where `TEMOR_REQUIRE_TOOLS` is set.
 fn renamed(program: &str, as_name: &str, test: &str) -> Option<(tempfile::TempDir, PathBuf)> {
-    let found = program_or_skip(program, test)?;
+    let Some(found) = crate::support::program(program) else {
+        println!("note: {test} skipped: {program} is not installed");
+        return None;
+    };
     let dir = tempfile::tempdir().expect("link dir");
     let link = dir.path().join(as_name);
     std::os::unix::fs::symlink(found, &link).expect("link");
