@@ -6,9 +6,7 @@ use super::project::Profile;
 use crate::error::CoreError;
 use crate::vocab::text::{EnvKey, EnvValue, KeyPath};
 use ds_style::space::list::SpaceId;
-
-/// The most bytes a Unix socket path may have (`sun_path` is 108 with its final NUL).
-const MOST_SOCKET_BYTES: usize = 107;
+use temor_shell::SOCKET_PATH_MAX;
 
 /// The person's runtime folder (`$XDG_RUNTIME_DIR`, such as `/run/user/1000`), given by the
 /// edge: the core reads no environment.
@@ -40,10 +38,10 @@ pub fn agent_plan(
     };
     let base = runtime.0.trim_end_matches('/');
     let socket = format!("{base}/temor/agent-{}.sock", space.0);
-    if socket.len() > MOST_SOCKET_BYTES {
+    if socket.len() > SOCKET_PATH_MAX {
         return Err(CoreError::SocketPathTooLong {
             len: socket.len(),
-            max: MOST_SOCKET_BYTES,
+            max: SOCKET_PATH_MAX,
         });
     }
     let env = (EnvKey::new("SSH_AUTH_SOCK")?, EnvValue(socket.clone()));

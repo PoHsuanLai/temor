@@ -9,7 +9,6 @@
 mod colours;
 mod config;
 mod core;
-mod cwd;
 mod dispatch;
 mod exit;
 mod files_worker;

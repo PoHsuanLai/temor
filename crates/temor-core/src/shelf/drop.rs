@@ -75,7 +75,7 @@ pub fn drop_action(dropped: &Dropped) -> DropAction {
 /// One word, quoted so the shell reads it back as the same text.
 pub fn quote(text: &str, quoting: Quoting) -> String {
     match quoting {
-        Quoting::Posix => format!("'{}'", text.replace('\'', "'\\''")),
+        Quoting::Posix => temor_shell::sh_quote(text),
         Quoting::Fish => format!("'{}'", text.replace('\\', "\\\\").replace('\'', "\\'")),
         Quoting::Nushell => {
             if !text.contains('\'') {
