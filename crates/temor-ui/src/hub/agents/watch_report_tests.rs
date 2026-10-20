@@ -6,7 +6,7 @@
 use temor_desktop::{Named, WatchOwner};
 use temor_vt::ProgramState;
 
-use super::watch_scene::{CLAUDE_SEEN, Scene, program, sandboxed};
+use super::watch_scene::{CLAUDE_SEEN, Scene, in_front, program, sandboxed};
 
 /// The plain watch a status report asks for: no command line.
 const PLAIN: &str = "watch /work [claude in Shell] Agent";
@@ -74,6 +74,39 @@ fn a_plain_session_is_upgraded_once_after_the_turn_it_was_marked_in() {
             .all(|call| !call.starts_with("watch ") && !call.starts_with("close ")),
         "{writes:?}"
     );
+}
+
+#[test]
+fn a_turn_whose_mark_has_not_come_back_is_still_mid_turn() {
+    // The command line shows up while the turn's mark is still queued behind the list read, or
+    // still on its way: the plain session is not closed before the turn ends on it.
+    for (name, settled) in [("mark queued", 1), ("mark in flight", 2)] {
+        let mut scene = Scene::start();
+        scene
+            .fake
+            .answer_watch_seen(WatchOwner::Terminal, Named::App);
+        scene.hear(&in_front("claude"));
+        scene.settle(settled);
+        scene.hear(&program(ProgramState::Working));
+        scene.hear(&sandboxed("claude"));
+        scene.quiet();
+        assert_eq!(scene.fake.writes(), [PLAIN, "mark w-1"], "{name}: mid-turn");
+        scene.hear(&program(ProgramState::Done));
+        scene.hear(&program(ProgramState::Working));
+        scene.quiet();
+        assert_eq!(
+            scene.fake.writes(),
+            [
+                PLAIN,
+                "mark w-1",
+                "ended w-1 7 Answered",
+                "close w-1",
+                CLAUDE_SEEN,
+                "mark w-2",
+            ],
+            "{name}: upgraded after the turn"
+        );
+    }
 }
 
 #[test]

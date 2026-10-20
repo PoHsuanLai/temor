@@ -54,7 +54,8 @@ const NODE_VALUED: &[&str] = &[
     "--policy-integrity",
 ];
 
-/// `node` options that take no value; with `--no-…`, `--experimental-…` and `--trace-…`.
+/// `node` options that take no value; with `--no-…`. Other `--experimental-…` and `--trace-…`
+/// options are not taken by prefix: some of them take a value.
 const NODE_FLAGS: &[&str] = &[
     "--enable-source-maps",
     "--expose-gc",
@@ -80,15 +81,17 @@ const NODE_FLAGS: &[&str] = &[
     "--report-uncaught-exception",
     "--report-on-fatalerror",
     "--report-compact",
+    "--experimental-vm-modules",
+    "--experimental-require-module",
+    "--trace-warnings",
+    "--trace-deprecation",
+    "--trace-uncaught",
 ];
 
 /// How many words a `node` option is, its value included; `None` when it is not known (a
 /// value-taking option read as a flag would take its value for the script).
 fn node_option_words(word: &str) -> Option<usize> {
-    let flag = NODE_FLAGS.contains(&word)
-        || ["--no-", "--experimental-", "--trace-"]
-            .iter()
-            .any(|p| word.starts_with(p));
+    let flag = NODE_FLAGS.contains(&word) || word.starts_with("--no-");
     match word {
         _ if NODE_VALUED.contains(&word) => Some(2),
         _ if word.starts_with("--") && word.contains('=') => Some(1),

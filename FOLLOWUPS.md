@@ -1641,6 +1641,10 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       upgraded to the recognised one only when no turn runs, by closing it and opening another:
       the turns marked on the plain session leave the Restore list. Naming the open session in
       place needs a docket call (the router's `name_watched_agent` is not on the bus).
+- [ ] A different program in front always replaces the watch (`Need::Replace`), so an agent run
+      by another agent (claude running codex in the same pane) closes the outer agent's session
+      and its turns leave the Restore list. Keeping the outer session needs a rule for nested
+      foregrounds (the outer one's session stays while an inner program runs).
 - [ ] `org.quire.Temor1.Run` answers only temor's installed image (peephole, `Exe`, pinned at
       connect; `instance::CALLERS`). A temor the person built is refused, so a checkout's
       `temor -e` aimed at a running checkout temor is refused too, and that launch then starts as
