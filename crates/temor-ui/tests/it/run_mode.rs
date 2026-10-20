@@ -5,6 +5,7 @@
 use std::ffi::OsString;
 use std::time::{Duration, Instant};
 
+use ds::base::vocab::ShortcutKey;
 use ds_harness::{Harness, Input};
 use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnd, RunEnds, RunTicket};
 use temor_shell::ChildEnv;
@@ -12,7 +13,9 @@ use temor_ui::hub::Run;
 use temor_ui::view::probe::Probe;
 
 use super::support::{scratch, tools_present};
-use super::window::{chord, harness_running, harness_running_to, rows, wait_until};
+use super::window::{
+    chord, harness_in, harness_running, harness_running_in, harness_running_to, rows, wait_until,
+};
 
 fn wait_for_html(h: &mut Harness, what: &str, text: &str) {
     let start = Instant::now();
@@ -172,4 +175,46 @@ fn a_program_that_cannot_be_found_ends_its_launch_at_once() {
             status: NOT_FOUND
         }
     );
+}
+
+#[test]
+fn a_run_tab_is_not_brought_back_after_a_restart_and_the_shells_beside_it_are() {
+    if !tools_present() {
+        return;
+    }
+    let state = scratch("run-mode-saved-state").join("state");
+    let run = Run {
+        argv: vec![
+            OsString::from("bash"),
+            OsString::from("-c"),
+            OsString::from("echo ran-once"),
+        ],
+        cwd: None,
+        env: ChildEnv::new(),
+        ticket: None,
+    };
+    let probe = Probe::new();
+    let mut h = harness_running_in("run-mode-saved", &probe, run, state.clone());
+    wait_for_html(&mut h, "the ended banner", "bash has ended.");
+    // ⌘T opens the bar; Enter there opens a shell tab.
+    chord(&mut h, 't');
+    h.send(Input::key(ShortcutKey::Enter));
+    let start = Instant::now();
+    while rows(&h) < 2 {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "no second tab:\n{}",
+            h.html()
+        );
+    }
+    drop(h);
+
+    let probe = Probe::new();
+    let mut h = harness_in("run-mode-restored", &probe, Some(state));
+    wait_until(&mut h, &probe, "the restored shell's prompt", |s| {
+        s.contains('$')
+    });
+    assert_eq!(rows(&h), 1, "{}", h.html());
+    assert!(!h.html().contains("bash has ended."), "{}", h.html());
 }

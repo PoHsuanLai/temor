@@ -1604,7 +1604,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       (temor-remote) timed out once on Fedora CI waiting for a listener to go after Ctrl-C; it is
       removed. A later connection being told the known ports is still tested; forgetting a stopped
       listener has no end-to-end test now.
-- [ ] `temor -e` (run mode): a tab that ran a program comes back as a shell when the session is
+- [x] (done 2026-10-20, owner: not restored; `workspace::leave_out` keeps run panes out of the
+      saved session and the closed list) `temor -e` (run mode): a tab that ran a program comes back as a shell when the session is
       restored after a restart; the session file does not keep what it ran. Decide whether a run
       tab is saved at all.
 - [ ] Checkpoint.WatchAgent (agent's docket branch hd4-terminal-handoff): call it in place of

@@ -2,9 +2,12 @@
 //! the window polls on a timer and the pace lets one write through per interval. The last
 //! write and the snapshots of the live panes happen when the hub is dropped, at quit.
 
+use std::collections::BTreeSet;
 use std::time::Instant;
 
 use ds::components::app::spaces::SpaceId;
+use temor_core::vocab::ids::PaneId;
+use temor_core::workspace::leave_out;
 
 use super::model::Hub;
 use crate::edge::{Pace, save_session_for, save_spaces, save_with_hosts, sidecar};
@@ -35,17 +38,20 @@ impl Hub {
 
     /// Writes every Space's session and the Spaces file; what could not be written, as text.
     fn save_all(&self, dir: &std::path::Path) -> Vec<String> {
+        // A tab that ran a program (`temor -e`) is not brought back: it was that launch's.
+        let runs: BTreeSet<PaneId> = self.run.panes.keys().copied().collect();
         let sessions = self
             .book
             .parked
             .iter()
             .map(|(id, ws)| (*id, ws))
-            .chain([(self.book.active, &self.ws)]);
+            .chain([(self.book.active, &self.ws)])
+            .map(|(id, ws)| (id, leave_out(ws, &runs)));
         let mut failures: Vec<String> = sessions
             .filter_map(|(id, ws)| match id {
                 // The first Space's file also keeps the hosts (answers and panes on hosts).
-                SpaceId(0) => save_with_hosts(dir, ws, &self.hosts_file()).err(),
-                _ => save_session_for(dir, id, ws).err(),
+                SpaceId(0) => save_with_hosts(dir, &ws, &self.hosts_file()).err(),
+                _ => save_session_for(dir, id, &ws).err(),
             })
             .map(|err| err.to_string())
             .collect();
@@ -67,8 +73,8 @@ impl Drop for Hub {
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         for (pane, slot) in &self.slots {
-            // The quick terminal is a throwaway: kept while temor runs, never saved.
-            if self.is_quick(*pane) {
+            // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
+            if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
                 continue;
             }
             let snapshot = slot.borrow().session.as_ref().and_then(Session::snapshot);

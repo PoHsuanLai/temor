@@ -1,5 +1,7 @@
 //! Closing panes and tabs, and bringing a closed tab back.
 
+use std::collections::BTreeSet;
+
 use super::closed::{ClosedIn, ClosedOut, ClosedState, ClosedTab, closed_step};
 use super::model::Workspace;
 use super::step::{relaunch_for, store_tree_state, take, tree_state};
@@ -116,4 +118,33 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
         }
         _ => out.push(WorkspaceOut::Refused(RefuseWhy::NothingClosed)),
     }
+}
+
+/// `ws` without `panes`, as it is saved when they are not to come back: each leaves its split, a
+/// tab left with none goes (not into the recently closed), and a closed tab holding one is
+/// dropped. Nothing is told: the live workspace keeps them.
+pub fn leave_out(ws: &Workspace, panes: &BTreeSet<PaneId>) -> Workspace {
+    let mut kept = ws.clone();
+    for &pane in panes {
+        let Some(tab) = kept.tab_of(pane) else {
+            continue;
+        };
+        let Some(state) = tree_state(&kept, tab) else {
+            continue;
+        };
+        match tree_step(state, TreeIn::Close(pane)).0 {
+            TreeAfter::Open(next) => store_tree_state(&mut kept, tab, next),
+            TreeAfter::Emptied => {
+                let (tabs, _) = tabs_step(take(&mut kept.tabs), TabsIn::Remove(tab));
+                kept.tabs = tabs;
+                kept.focus.remove(&tab);
+            }
+        }
+        kept.cwds.remove(&pane);
+        kept.viewers.remove(&pane);
+    }
+    kept.closed
+        .tabs
+        .retain(|closed| !closed.tab.tree.panes().iter().any(|p| panes.contains(p)));
+    kept
 }

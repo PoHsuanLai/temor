@@ -29,5 +29,6 @@ pub use closed::{ClosedIn, ClosedOut, ClosedState, ClosedTab, KeepClosed, closed
 pub use model::Workspace;
 pub use sidebar::{SidebarPlan, order, sidebar_plan};
 pub use step::workspace_step;
+pub use step_close::leave_out;
 pub use step_types::{RefuseWhy, Spawn, Start, ViewerOpen, WorkspaceIn, WorkspaceOut};
 pub use tabs::{NthTab, TabRefusal, TabSel, TabsIn, TabsOut, TabsState, tabs_step};

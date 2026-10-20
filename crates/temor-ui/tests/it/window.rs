@@ -72,6 +72,23 @@ pub(super) fn harness_running(name: &str, probe: &Probe, run: Run) -> Harness {
     harness_running_to(name, probe, run, RunEnds::default())
 }
 
+/// [`harness_running`] whose session file lives in `state_dir`.
+pub(super) fn harness_running_in(
+    name: &str,
+    probe: &Probe,
+    run: Run,
+    state_dir: PathBuf,
+) -> Harness {
+    harness_at(
+        name,
+        probe,
+        (Some(state_dir), 100, Some(run)),
+        |_| {},
+        WindowHosting::Absent,
+        |config| config,
+    )
+}
+
 /// [`harness_running`] on a desktop that tells `ends` when a run's tab closed.
 pub(super) fn harness_running_to(name: &str, probe: &Probe, run: Run, ends: RunEnds) -> Harness {
     let desktop = Desktop {
