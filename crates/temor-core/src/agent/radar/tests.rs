@@ -90,18 +90,16 @@ fn the_sources_follow_their_rules_over_time() {
 }
 
 #[test]
-fn outputs_carry_the_orb_and_one_notification() {
+fn a_blocked_program_gives_one_notification() {
     let params = RadarParams::default();
     let state = RadarState::new(Unfocused);
-    let (state, out) = radar_step(state, Millis(0), fact("", ProgramKind::Working), &params);
-    assert_eq!(out[0], RadarOut::Orb(Orb::Working));
+    let (state, _) = radar_step(state, Millis(0), fact("", ProgramKind::Working), &params);
     let (_, out) = radar_step(
         state,
         Millis(1000),
         fact("", ProgramKind::Blocked(Some(WaitKind::Permission))),
         &params,
     );
-    assert_eq!(out[0], RadarOut::Orb(Orb::WaitingForYou));
     assert!(out.iter().any(|o| matches!(
         o,
         RadarOut::Presence(PresenceOut::Notify { note: Some(Note(n)), .. }) if n == "m"

@@ -1,6 +1,6 @@
 //! Radar inputs and outputs: typed facts, no raw sequences.
 
-use crate::presence::{AgentState, PaneFocus, PresenceOut, StatusReport, WaitKind};
+use crate::presence::{PaneFocus, PresenceOut, StatusReport, WaitKind};
 use crate::vocab::ids::ExitCode;
 use crate::vocab::text::Note;
 
@@ -94,34 +94,6 @@ impl Default for RadarParams {
 /// What follows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RadarOut {
-    /// The orb changed.
-    Orb(Orb),
     /// What `presence_step` asks for: the state changed, or notify.
     Presence(PresenceOut),
-}
-
-/// The sidebar orb.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Orb {
-    /// Nothing under way.
-    Idle,
-    /// Working.
-    Working,
-    /// Waiting for you.
-    WaitingForYou,
-    /// Finished.
-    Done,
-    /// Failed.
-    Failed,
-}
-
-/// The orb for a state.
-pub fn orb(state: AgentState) -> Orb {
-    match state {
-        AgentState::Idle => Orb::Idle,
-        AgentState::Working => Orb::Working,
-        AgentState::Waiting(_) => Orb::WaitingForYou,
-        AgentState::Done(_) => Orb::Done,
-        AgentState::Failed(_) => Orb::Failed,
-    }
 }
