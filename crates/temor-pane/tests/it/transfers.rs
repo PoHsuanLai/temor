@@ -147,10 +147,10 @@ printf '\\033'; sleep 0.05; printf '\\\\'\n"
     };
     format!(
         "data='{MULTIPART_BODY}'\n\
-b64=$(printf '%s' \"$data\" | base64 -w0)\n\
+b64=$(printf '%s' \"$data\" | base64 | tr -d '\\n')\n\
 step={step}\n\
-size=$(printf '%s' \"$data\" | wc -c)\n\
-printf '\\033]1337;MultipartFile=name=%s;size=%s\\033\\\\' \"$(printf parts.txt | base64 -w0)\" \"$size\"\n\
+size=$(($(printf '%s' \"$data\" | wc -c)))\n\
+printf '\\033]1337;MultipartFile=name=%s;size=%s\\033\\\\' \"$(printf parts.txt | base64 | tr -d '\\n')\" \"$size\"\n\
 i=0\n\
 while [ $i -lt ${{#b64}} ]; do\n\
 {part}\
