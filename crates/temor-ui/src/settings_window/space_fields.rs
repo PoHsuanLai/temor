@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
 
+use super::row_parts::{AddButton, KeptField, RemoveButton};
 use super::space_edit::route_warning;
 
 /// A row of one line of text, kept when the caret leaves or Return is pressed.
@@ -18,24 +19,10 @@ pub fn SpaceText(
     value: String,
     onchange: EventHandler<String>,
 ) -> Element {
-    let mut typed = use_signal({
-        let value = value.clone();
-        move || value
-    });
     let note = warning.map_or(help.clone(), |warning| format!("{warning} {help}"));
     rsx! {
         FieldRow { label: TextLine::from(label.clone()), help: Some(TextLine::from(note)),
-            TextField {
-                label,
-                value: typed(),
-                placeholder,
-                oninput: move |text: String| typed.set(text),
-                onchange: move |text: String| {
-                    if text != value {
-                        onchange.call(text);
-                    }
-                },
-            }
+            KeptField { label, value, placeholder, onchange }
         }
     }
 }
@@ -52,26 +39,21 @@ pub fn RouteRow(
         let pattern = pattern.clone();
         move || pattern
     });
-    let stored = pattern;
     let help =
         route_warning(&typed.read()).unwrap_or("New sessions that match open in this Space.");
     rsx! {
         FieldRow { label: "Route", help: Some(TextLine::from(help)),
-            TextField {
-                label: "Route".to_owned(),
-                value: typed(),
-                placeholder: "ssh prod-* or ~/work".to_owned(),
+            KeptField {
+                label: "Route",
+                value: pattern.clone(),
+                placeholder: "ssh prod-* or ~/work",
                 oninput: move |text: String| typed.set(text),
-                onchange: move |text: String| {
-                    if text != stored {
-                        onedit.call(text);
-                    }
-                },
+                onchange: onedit,
             }
-            Button {
-                label: "Remove".to_owned(),
-                title: Some("Take this route away".to_owned()),
-                onclick: move |_| onremove.call(()),
+            RemoveButton {
+                what: format!("route {pattern}"),
+                tip: "Take this route away",
+                onclick: onremove,
             }
         }
     }
@@ -97,10 +79,10 @@ pub fn AddRoute(onadd: EventHandler<String>) -> Element {
                 oninput: move |text: String| draft.set(text),
                 onsubmit: move |text: String| add.call(text),
             }
-            Button {
-                label: "Add".to_owned(),
-                title: Some("Add this route".to_owned()),
-                onclick: move |_| add.call(draft()),
+            AddButton {
+                what: "route",
+                tip: "Add this route",
+                onclick: move |()| add.call(draft()),
             }
         }
     }

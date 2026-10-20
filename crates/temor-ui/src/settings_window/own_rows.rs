@@ -11,6 +11,8 @@ use ds::prelude::*;
 use ds_settings::schema::{KeyKind, KeySpec};
 use ds_settings_page::SettingEdit;
 
+use super::row_parts::{AddButton, RemoveButton};
+
 /// What a number field takes, in words: `a number from 6 to 72 points`.
 pub fn number_wanted(min: i64, max: i64, unit: Option<&str>) -> String {
     match unit {
@@ -210,11 +212,10 @@ fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>
                 key: "{at}-{entry}",
                 label: TextLine::from(entry.clone()),
                 help: (at == 0).then(|| head.clone()),
-                Button {
-                    label: "Remove".to_owned(),
-                    title: Some("Take this off the list".to_owned()),
-                    onclick: move |_| remove.call(at),
-                    common: Common { aria_label: Some(format!("Remove {entry}")), ..Common::default() },
+                RemoveButton {
+                    what: entry.clone(),
+                    tip: "Take this off the list",
+                    onclick: move |()| remove.call(at),
                 }
             }
         }
@@ -226,10 +227,10 @@ fn ListRows(spec: KeySpec, value: toml::Value, onedit: EventHandler<SettingEdit>
                 oninput: move |text: String| draft.set(text),
                 onsubmit: move |text: String| add.call(text),
             }
-            Button {
-                label: "Add".to_owned(),
-                title: Some("Add this command to the list".to_owned()),
-                onclick: move |_| add.call(draft()),
+            AddButton {
+                what: "command",
+                tip: "Add this command to the list",
+                onclick: move |()| add.call(draft()),
             }
         }
     }

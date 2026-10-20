@@ -8,17 +8,9 @@ use ds::components::content::label::LabelRole;
 use ds::components::fields::field_row::FieldRow;
 use ds::components::fields::text_field_model::{FieldKind, FieldText};
 use ds::prelude::*;
-use ds::root::common::Common;
 
+use super::row_parts::{AddButton, KeptField, RemoveButton, named};
 use crate::edge::Held;
-
-/// A button named for what it does to whom, for assistive technology and tests.
-fn named(name: String) -> Common {
-    Common {
-        aria_label: Some(name),
-        ..Common::default()
-    }
-}
 
 /// One variable: its name, its value, and Remove.
 #[component]
@@ -30,44 +22,16 @@ pub fn VariableRow(
     onvalue: EventHandler<String>,
     onremove: EventHandler<()>,
 ) -> Element {
-    let mut typed_name = use_signal({
-        let name = name.clone();
-        move || name
-    });
-    let mut typed_value = use_signal({
-        let value = value.clone();
-        move || value
-    });
-    let (stored_name, stored_value, subject) = (name.clone(), value, name.clone());
     rsx! {
         FieldRow {
             label: "Variable",
             help: Some(TextLine::from("Set in every new shell.")),
-            TextField {
-                label: format!("Name of {name}"),
-                value: typed_name(),
-                oninput: move |text: String| typed_name.set(text),
-                onchange: move |text: String| {
-                    if text != stored_name {
-                        onname.call(text);
-                    }
-                },
-            }
-            TextField {
-                label: format!("Value of {subject}"),
-                value: typed_value(),
-                oninput: move |text: String| typed_value.set(text),
-                onchange: move |text: String| {
-                    if text != stored_value {
-                        onvalue.call(text);
-                    }
-                },
-            }
-            Button {
-                label: "Remove".to_owned(),
-                title: Some("Take this variable away".to_owned()),
-                common: named(format!("Remove {name}")),
-                onclick: move |_| onremove.call(()),
+            KeptField { label: format!("Name of {name}"), value: name.clone(), onchange: onname }
+            KeptField { label: format!("Value of {name}"), value, onchange: onvalue }
+            RemoveButton {
+                what: name,
+                tip: "Take this variable away",
+                onclick: onremove,
             }
         }
     }
@@ -100,11 +64,10 @@ pub fn AddVariable(onadd: EventHandler<(String, String)>) -> Element {
                 oninput: move |text: String| value.set(text),
                 onsubmit: move |_| add.call(()),
             }
-            Button {
-                label: "Add".to_owned(),
-                title: Some("Add this variable".to_owned()),
-                common: named("Add variable".to_owned()),
-                onclick: move |_| add.call(()),
+            AddButton {
+                what: "variable",
+                tip: "Add this variable",
+                onclick: move |()| add.call(()),
             }
         }
     }
@@ -150,11 +113,10 @@ pub fn CredentialRow(
                 common: named(format!("{act} {env}")),
                 onclick: move |_| give.call(()),
             }
-            Button {
-                label: "Remove".to_owned(),
-                title: Some("Forget this secret and stop filling the variable".to_owned()),
-                common: named(format!("Remove credential {env}")),
-                onclick: move |_| onremove.call(()),
+            RemoveButton {
+                what: format!("credential {env}"),
+                tip: "Forget this secret and stop filling the variable",
+                onclick: onremove,
             }
         }
     }
@@ -189,11 +151,10 @@ pub fn AddCredential(onadd: EventHandler<(String, String)>) -> Element {
                 oninput: move |text: String| secret.set(text),
                 onsubmit: move |_| add.call(()),
             }
-            Button {
-                label: "Add".to_owned(),
-                title: Some("Keep this secret and fill the variable with it".to_owned()),
-                common: named("Add secret".to_owned()),
-                onclick: move |_| add.call(()),
+            AddButton {
+                what: "secret",
+                tip: "Keep this secret and fill the variable with it",
+                onclick: move |()| add.call(()),
             }
         }
     }
