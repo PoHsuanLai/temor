@@ -6,6 +6,23 @@
 use super::files::RemotePath;
 use serde::{Deserialize, Serialize};
 
+/// The files whose text the chips read, wherever they are in the folder and above it. A pane on
+/// this computer and a pane on a host read the same ones.
+pub const FACT_FILE_NAMES: [&str; 6] = [
+    ".nvmrc",
+    ".node-version",
+    ".tool-versions",
+    "package.json",
+    ".python-version",
+    "pyproject.toml",
+];
+
+/// The longest a version file may be and still be read: a chip never needs more.
+pub const MOST_FACT_BYTES: u64 = 32 * 1024;
+
+/// The most parent folders looked in for version files: a guard against a loop of links.
+pub const MOST_FACT_PARENTS: usize = 64;
+
 /// What the helper read about a session's folder. A part it could not read is left out; nothing
 /// here is an error the person sees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -23,7 +23,10 @@ mod trial;
 
 pub use envelope::Message;
 pub use event::Event;
-pub use facts::{FactFile, FolderFacts, FolderFiles, GitText};
+pub use facts::{
+    FACT_FILE_NAMES, FactFile, FolderFacts, FolderFiles, GitText, MOST_FACT_BYTES,
+    MOST_FACT_PARENTS,
+};
 pub use files::{
     DirEntry, EntryKind, FileMeta, FileStamp, PartEnd, RemotePath, WatchChange, WriteCheck,
     WriteMode,
