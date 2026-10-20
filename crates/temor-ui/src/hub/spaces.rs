@@ -63,6 +63,14 @@ impl SpaceBook {
         next
     }
 
+    /// A copy of the parked workspace of `id`, or an empty one when it has none yet.
+    pub(super) fn parked_or_empty(&self, id: SpaceId) -> Workspace {
+        self.parked
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(empty_workspace)
+    }
+
     /// `ws` with its pane counter past every pane any Space has.
     pub(super) fn lift(&self, ws: &mut Workspace) {
         ws.next_pane = ws.next_pane.max(self.floor);
@@ -136,10 +144,8 @@ impl Hub {
         if to == self.book.active {
             return;
         }
-        if let Some(slot) = self.keyboard_pane().and_then(|pane| self.slots.get(&pane))
-            && let Some(session) = slot.borrow_mut().session.as_mut()
-        {
-            session.set_focus(Focus::Unfocused);
+        if let Some(pane) = self.keyboard_pane() {
+            self.set_pane_focus(pane, Focus::Unfocused);
         }
         self.swap_to(to);
         self.fill_empty();

@@ -8,6 +8,7 @@ use ds::prelude::{Emphasis, Selection};
 use temor_core::presence::{AgentState, attention};
 use temor_core::split::WholePx;
 use temor_core::vocab::ids::{PaneId, TabId};
+use temor_core::vocab::text::HostAlias;
 use temor_core::workspace::sidebar_plan;
 
 use super::model::{Hub, HubRef};
@@ -249,6 +250,22 @@ impl Hub {
             .get(&pane)
             .and_then(|c| c.as_str().rsplit('/').find(|part| !part.is_empty()))
             .map_or_else(|| "Shell".to_owned(), str::to_owned)
+    }
+
+    /// The host `pane` is a session on, if it is one.
+    pub(super) fn alias_of(&self, pane: PaneId) -> Option<HostAlias> {
+        self.ssh.panes.get(&pane).map(|host| host.alias.clone())
+    }
+
+    /// Changes the pane's session, if it has one. The mutable twin of [`Hub::live`].
+    pub(super) fn live_mut<T>(
+        &self,
+        pane: PaneId,
+        change: impl FnOnce(&mut crate::session::Session) -> T,
+    ) -> Option<T> {
+        let slot = self.slots.get(&pane)?;
+        let mut slot = slot.borrow_mut();
+        slot.session.as_mut().map(change)
     }
 
     /// Reads something from the pane's session, if it has one.

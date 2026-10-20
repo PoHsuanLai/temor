@@ -17,6 +17,11 @@ mod desktop;
 mod desktop_io;
 #[cfg(test)]
 mod desktop_tests;
+mod dispatch;
+#[cfg(test)]
+mod dispatch_tests;
+#[cfg(test)]
+mod drop_pane_tests;
 mod events;
 mod facts;
 mod facts_folder;
@@ -26,6 +31,8 @@ mod model;
 mod narrow;
 mod offer;
 mod offer_reply;
+#[cfg(test)]
+mod open_tab_tests;
 mod peek;
 pub mod peek_step;
 mod persist;
@@ -79,6 +86,7 @@ mod tab_name;
 #[cfg(test)]
 mod tests;
 mod transfers;
+mod typing;
 mod uploads;
 mod viewer_changes;
 mod viewer_diff;
@@ -93,9 +101,11 @@ pub use agents::{
     WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
 };
 pub use bar::{BarData, WindowAction};
+pub use bar_action::{pin_as_shell, select_tab};
 pub use blink_tick::spawn_blink_loop;
 pub use desk::{Desk, HostOf};
 pub use desktop::spawn_desktop_loop;
+pub use dispatch::Origin;
 pub use events::spawn_event_loop;
 pub use facts::spawn_facts_loop;
 pub use hosts::HostRows;

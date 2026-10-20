@@ -4,20 +4,12 @@
 
 use temor_core::bar::{BarAction, BarRow, Target, Visits};
 use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_core::workspace::WorkspaceIn;
 
+use super::bar_action::select_tab;
 use super::hosts::HostRows;
 use super::model::Hub;
-use crate::session::Session;
-
-/// Whether a command typed into a new tab is submitted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Submit {
-    /// Enter is sent: the row said it runs.
-    Enter,
-    /// The command waits at the prompt for the person's Enter.
-    Wait,
-}
+use super::typing::{Submit, type_command};
 
 impl Hub {
     /// Does what `row` says.
@@ -37,9 +29,10 @@ impl Hub {
 
     fn go_to(&mut self, target: Target) {
         match target {
-            Target::Tab(tab) => self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab)))),
+            Target::Tab(tab) => self.act(select_tab(tab)),
             Target::Closed(_) => self.act(WorkspaceIn::Reopen),
-            Target::Action(action) => self.run_window_action(action),
+            // The desk runs it once the bar's pick is over: an action needs the window.
+            Target::Action(action) => self.bar_actions.push(action),
             Target::Folder(folder) => {
                 let first = self
                     .ws
@@ -50,7 +43,7 @@ impl Hub {
                     .find(|tab| tab.folder == Some(folder))
                     .map(|tab| tab.id);
                 if let Some(tab) = first {
-                    self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab))));
+                    self.act(select_tab(tab));
                 }
             }
             Target::Space(space) => {
@@ -102,28 +95,17 @@ impl Hub {
             .insert(cwd.as_str().to_owned(), before.visited(now));
     }
 
-    /// Opens a tab and types `command` into its shell.
+    /// Opens a tab and types `command` into its shell. The tab's own pane gets it, whatever
+    /// has the keyboard (the bar can be open over the quick terminal). A tab that is not a shell
+    /// yet (a host still connecting) has no session to type into.
     fn command_in_new_tab(&mut self, command: &CommandText, submit: Submit) {
-        self.act(WorkspaceIn::NewTab { cwd: None });
-        let Some(slot) = self.keyboard_pane().and_then(|pane| self.slots.get(&pane)) else {
+        let Some(pane) = self.open_tab(None) else {
             return;
         };
-        if let Some(session) = slot.borrow().session.as_ref() {
-            type_into(session, command, submit);
+        if let Some(slot) = self.slots.get(&pane)
+            && let Some(session) = slot.borrow().session.as_ref()
+        {
+            type_command(session, command, submit);
         }
     }
-}
-
-/// Types a command the person chose. A control character in it is never sent.
-fn type_into(session: &Session, command: &CommandText, submit: Submit) {
-    if !command.typable() {
-        return;
-    }
-    let tail = match submit {
-        Submit::Enter => "\n",
-        Submit::Wait => "",
-    };
-    session
-        .pane()
-        .send(format!("{}{tail}", command.as_str()).as_bytes());
 }

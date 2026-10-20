@@ -2,7 +2,6 @@
 //! draw (its panes, commands, context and the dock count), and how it carries out what they ask
 //! (open or close a pane, type a command, read text, and the second launch's new tab).
 
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
@@ -154,16 +153,8 @@ impl Hub {
                 ));
             }
         };
-        let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
         let held = self.ws.front().and_then(|tab| self.ws.focus_of(tab));
-        self.act(input);
-        match self
-            .ws
-            .tabs
-            .panes()
-            .into_iter()
-            .find(|p| !before.contains(p))
-        {
+        match self.act_for_new_pane(input) {
             Some(pane) => {
                 self.hand_keyboard_back(held, pane);
                 Ok(PaneRef(pane.0))
@@ -185,11 +176,7 @@ impl Hub {
             return;
         };
         self.act(WorkspaceIn::Focus(held));
-        if let Some(slot) = self.slots.get(&opened)
-            && let Some(session) = slot.borrow_mut().session.as_mut()
-        {
-            session.set_focus(NoteFocus::Unfocused);
-        }
+        self.set_pane_focus(opened, NoteFocus::Unfocused);
     }
 }
 
@@ -200,7 +187,7 @@ pub(super) fn refocus_after_agent_open(held: Option<PaneId>, opened: PaneId) -> 
 }
 
 /// The folder a request names, as the workspace keeps it.
-fn cwd_of(path: &std::path::Path) -> Cwd {
+pub(super) fn cwd_of(path: &std::path::Path) -> Cwd {
     Cwd(path.to_string_lossy().into_owned())
 }
 
@@ -241,15 +228,7 @@ pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink, window: Option<WindowHa
             if let (Ask::Launch(_, token), Some(window)) = (&ask, &window) {
                 window.focus_with_token(token.clone());
             }
-            let notices = {
-                let mut hub = desk.hub.0.borrow_mut();
-                hub.serve(ask);
-                std::mem::take(&mut hub.notices)
-            };
-            for text in notices {
-                desk.say(text);
-            }
-            desk.bump();
+            desk.settle(|hub| hub.serve(ask));
         }
     });
 }

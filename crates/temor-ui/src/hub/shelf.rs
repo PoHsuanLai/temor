@@ -10,11 +10,12 @@ use temor_core::remote::Grant;
 use temor_core::shelf::{Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, shelf_view};
 use temor_core::transfer::Origin;
 use temor_core::vocab::ids::{DownloadId, PaneId};
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_core::workspace::WorkspaceIn;
 use temor_pane::OfferId;
 use temor_transfer::Consent;
 use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
 
+use super::bar_action::select_tab;
 use super::model::{Hub, HubRef};
 use crate::edge::shelf_files::{persist, restore};
 use crate::platform::{FileShell, default_file_shell};
@@ -198,20 +199,14 @@ impl Hub {
 
     fn serve_request(&mut self, ask: &Ask, consent: Consent) {
         let shelf = crate::edge::shelf_files::offered(&self.shelf.shelf);
-        if let Some(slot) = self.slots.get(&ask.pane)
-            && let Some(session) = slot.borrow().session.as_ref()
-        {
+        self.live(ask.pane, |session| {
             session.pane().serve(ask.offer, consent, shelf);
-        }
+        });
     }
 
     /// Tells a pane the person's answer to its offer.
     pub(super) fn decide(&mut self, pane: PaneId, offer: OfferId, consent: Consent) {
-        if let Some(slot) = self.slots.get(&pane)
-            && let Some(session) = slot.borrow().session.as_ref()
-        {
-            session.pane().decide(offer, consent);
-        }
+        self.live(pane, |session| session.pane().decide(offer, consent));
     }
 
     /// The person did something with a row of the shelf.
@@ -226,7 +221,7 @@ impl Hub {
                 outs
             }
             RowAction::ShowInTab(tab) => {
-                self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab))));
+                self.act(select_tab(tab));
                 Vec::new()
             }
             RowAction::UseInPane => {
@@ -280,9 +275,8 @@ impl Hub {
         };
         let text = path.display().to_string();
         let pane = self.keyboard_pane();
-        let said = pane.and_then(|pane| self.slots.get(&pane)).map(|slot| {
-            let mut slot = slot.borrow_mut();
-            slot.session.as_mut().and_then(|session| {
+        let said = pane.and_then(|pane| {
+            self.live_mut(pane, |session| {
                 session.copy_path(&text);
                 session.take_notice()
             })

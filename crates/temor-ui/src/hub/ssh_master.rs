@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use temor_core::host::consent::{ConsentIn, Who};
 use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
-use temor_core::notify::Focus;
 use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{
@@ -126,10 +125,7 @@ impl Hub {
         );
         match opened {
             Ok(mut session) => {
-                session.set_focus(match self.keyboard_pane() == Some(pane) {
-                    true => Focus::Focused,
-                    false => Focus::Unfocused,
-                });
+                session.set_focus(self.focus_of(pane));
                 // A pane on a host files for another computer: its paths mean nothing here.
                 session.set_site(PaneSite::Remote);
                 if let Some(slot) = self.slots.get(&pane) {

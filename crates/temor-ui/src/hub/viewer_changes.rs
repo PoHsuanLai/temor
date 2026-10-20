@@ -92,14 +92,6 @@ impl Hub {
 impl Desk {
     /// The conflict question's "Show changes" for the edit `id`.
     pub fn host_show_changes(&self, id: EditId) {
-        let notes = {
-            let mut hub = self.hub.0.borrow_mut();
-            hub.show_edit_changes(id);
-            std::mem::take(&mut hub.notices)
-        };
-        for note in notes {
-            self.say(note);
-        }
-        self.bump();
+        self.settle(|hub| hub.show_edit_changes(id));
     }
 }

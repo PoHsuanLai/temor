@@ -6,7 +6,6 @@
 use std::sync::{Arc, Mutex};
 
 use temor_core::host::master::OpenAs;
-use temor_core::notify::Focus;
 use temor_core::remote::HelperState;
 use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
@@ -118,13 +117,6 @@ impl Hub {
         }
     }
 
-    fn focus_of(&self, pane: PaneId) -> Focus {
-        match self.keyboard_pane() == Some(pane) {
-            true => Focus::Focused,
-            false => Focus::Unfocused,
-        }
-    }
-
     /// The shared connection is up: the pane becomes a session on the helper.
     pub(super) fn remote_begin(&mut self, pane: PaneId) {
         let Some(host) = self.ssh.panes.get_mut(&pane) else {
@@ -201,7 +193,7 @@ impl Hub {
 
     /// The pane gives up the helper and becomes a plain `ssh` session.
     pub(super) fn remote_fallback(&mut self, pane: PaneId) {
-        let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = self.alias_of(pane) else {
             return;
         };
         self.remote_drop_pane(pane);

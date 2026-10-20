@@ -70,19 +70,21 @@ impl Desk {
         notice.set(Some(text));
     }
 
-    /// Runs a workspace request, shows what it has to say, and draws the window again.
-    pub fn act(&self, input: WorkspaceIn) {
-        for text in self.hub.act(input) {
+    /// Shows `notes` to the person, and draws the window again.
+    pub fn tell(&self, notes: impl IntoIterator<Item = String>) {
+        for text in notes {
             self.say(text);
         }
         self.bump();
     }
 
+    /// Runs a workspace request, shows what it has to say, and draws the window again.
+    pub fn act(&self, input: WorkspaceIn) {
+        self.tell(self.hub.act(input));
+    }
+
     /// Starts a new shell in a pane whose program ended.
     pub fn restart(&self, pane: PaneId) {
-        for text in self.hub.restart(pane) {
-            self.say(text);
-        }
-        self.bump();
+        self.tell(self.hub.restart(pane));
     }
 }

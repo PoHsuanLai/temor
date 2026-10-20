@@ -51,9 +51,9 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: SavePace,
     pub(super) notices: Vec<String>,
-    /// Window actions picked in the command bar that the window, not the hub, carries out (the
-    /// sidebar is a signal of the window's): the desk runs them once the pick has settled.
-    pub(super) window_asks: Vec<temor_pane::keys::Action>,
+    /// Actions picked in the command bar, which the desk runs once the pick has settled: the
+    /// window runs all of them one way (`Desk::run_action`).
+    pub(super) bar_actions: Vec<temor_pane::keys::Action>,
     pub(super) bar: BarSlot,
     /// The quick terminal: never part of the workspace, so never saved with the session.
     pub(super) quick: QuickState,
@@ -123,7 +123,7 @@ impl Hub {
             palette: Palette::default(),
             pace: SavePace::new(SAVE_EVERY),
             notices,
-            window_asks: Vec::new(),
+            bar_actions: Vec::new(),
             shelf,
             agents,
             ssh,

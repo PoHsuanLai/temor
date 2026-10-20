@@ -106,7 +106,7 @@ impl Hub {
 
     /// Fetches `path` of the host `from` is a session on, and opens it in a viewer beside `from`.
     pub fn open_host_viewer(&mut self, from: PaneId, path: &str) {
-        let Some(host) = self.ssh.panes.get(&from).map(|pane| pane.alias.clone()) else {
+        let Some(host) = self.alias_of(from) else {
             self.notices
                 .push("That file is on a computer that isn't connected".to_owned());
             return;
@@ -238,10 +238,7 @@ pub fn spawn_viewer_loop(desk: Desk) {
     spawn(async move {
         while let Some(event) = inbox.recv().await {
             let notes = desk.hub.0.borrow_mut().host_copy_done(event);
-            for note in notes {
-                desk.say(note);
-            }
-            desk.bump();
+            desk.tell(notes);
         }
     });
 }

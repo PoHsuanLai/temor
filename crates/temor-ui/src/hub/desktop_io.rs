@@ -2,9 +2,11 @@
 //! printed is somebody else's words: it goes out as text and is never interpreted here.
 
 use temor_core::vocab::ids::BlockId;
+use temor_core::vocab::text::CommandText;
 use temor_desktop::{CommandRef, LineRange, PaneRef, PortRefusal};
 
 use super::model::Hub;
+use super::typing::{Submit, type_command};
 use crate::session::Session;
 
 /// The most rows one read returns.
@@ -73,13 +75,14 @@ impl Hub {
     /// Types `line` and Enter into the pane, as the person would. A line with a line break or
     /// another control character is refused: it would run more than the one command asked for.
     pub(super) fn type_line(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal> {
-        if line.is_empty() || line.chars().any(char::is_control) {
+        let line = CommandText(line.to_owned());
+        if !line.typable() {
             return Err(PortRefusal::Failed(
                 "a command must be one line of plain text".to_owned(),
             ));
         }
         self.with_session(pane, |session| {
-            session.pane().send(format!("{line}\n").as_bytes());
+            type_command(session, &line, Submit::Enter);
             Ok(())
         })
     }
