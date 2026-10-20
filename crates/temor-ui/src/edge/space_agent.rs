@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use ds::components::app::spaces::SpaceId;
 use temor_core::space::AgentPlan;
+use temor_core::vocab::home::expand_home;
 
 use crate::error::UiError;
 use crate::platform::ensure_private_dir;
@@ -70,10 +71,7 @@ pub fn start(plan: &AgentPlan, home: &Path) -> Result<RunningAgent, UiError> {
         }
         std::thread::sleep(Duration::from_millis(20));
     }
-    let key = match plan.identity.as_str().strip_prefix("~/") {
-        Some(rest) => home.join(rest),
-        None => PathBuf::from(plan.identity.as_str()),
-    };
+    let key = PathBuf::from(expand_home(plan.identity.as_str(), &home.to_string_lossy()));
     let added = Command::new("ssh-add")
         .arg(&key)
         .env("SSH_AUTH_SOCK", &agent.socket)

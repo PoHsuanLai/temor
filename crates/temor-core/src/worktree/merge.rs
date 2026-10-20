@@ -98,10 +98,7 @@ fn conflicted(
     let unmerged = GitCommand::new(dir, &["diff", "--name-only", "--diff-filter=U", "-z"]);
     let files = parse_names(&run_ok(git, &unmerged)?.stdout);
     match files.is_empty() {
-        true => Err(CoreError::GitFailed {
-            what: cmd.what(),
-            stderr: stderr.chars().take(300).collect(),
-        }),
+        true => Err(CoreError::git_failed(cmd.what(), &stderr)),
         false => Ok(MergeOutcome::Conflicted {
             dir: dir.to_owned(),
             files,

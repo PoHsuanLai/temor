@@ -2,6 +2,7 @@
 //! are temor's agent worktrees that no tab is using any more ("Leftover branches", D19).
 
 use super::git::{Git, GitCommand, run_ok};
+use super::model::{AGENT_BRANCH_PREFIX, worktrees_root};
 use crate::error::CoreError;
 
 /// One worktree git lists.
@@ -57,12 +58,14 @@ pub fn list_worktrees(git: &dyn Git, repo: &str) -> Result<Vec<ListedWorktree>, 
 /// Of `listed`, the ones temor made: under `<data_dir>/worktrees/` and on an `agent/` branch.
 /// `data_dir` should be the real path (git prints real paths).
 pub fn agent_worktrees(listed: Vec<ListedWorktree>, data_dir: &str) -> Vec<ListedWorktree> {
-    let prefix = format!("{}/worktrees/", data_dir.trim_end_matches('/'));
+    let prefix = format!("{}/", worktrees_root(data_dir));
     listed
         .into_iter()
         .filter(|w| {
             w.path.starts_with(&prefix)
-                && w.branch.as_deref().is_some_and(|b| b.starts_with("agent/"))
+                && w.branch
+                    .as_deref()
+                    .is_some_and(|b| b.starts_with(AGENT_BRANCH_PREFIX))
         })
         .collect()
 }

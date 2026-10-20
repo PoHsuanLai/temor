@@ -1,9 +1,9 @@
 //! Moving panes between tabs: tearing one off, and dropping a whole tab onto a pane.
 
 use super::model::Workspace;
-use super::step::{mint_tab, take, tree_state};
+use super::step::{mint_tab, tree_state};
 use super::step_types::{RefuseWhy, WorkspaceOut};
-use super::tabs::{TabSel, TabsIn, tabs_step};
+use super::tabs::TabsIn;
 use crate::error::CoreError;
 use crate::space::{Pin, Tab};
 use crate::split::Direction;
@@ -41,16 +41,16 @@ pub(super) fn tear(ws: &mut Workspace, pane: PaneId, out: &mut Vec<WorkspaceOut>
         t.tree = rest;
     }
     ws.focus.insert(tab, rest_focus);
-    ws.tabs.place.tabs.push(Tab {
-        id: new_id,
-        title: source.title,
-        pin: Pin::Loose,
-        folder: source.folder,
-        tree: alone,
-    });
-    ws.focus.insert(new_id, pane);
-    let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(new_id)));
-    ws.tabs = tabs;
+    ws.open_tab(
+        Tab {
+            id: new_id,
+            title: source.title,
+            pin: Pin::Loose,
+            folder: source.folder,
+            tree: alone,
+        },
+        pane,
+    );
     out.push(WorkspaceOut::Focused(pane));
 }
 
@@ -89,9 +89,7 @@ pub(super) fn drop_tab(
     }
     ws.focus.insert(target, focus);
     ws.focus.remove(&from);
-    let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Remove(from));
-    ws.tabs = tabs;
-    let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(target)));
-    ws.tabs = tabs;
+    ws.tabs_do(TabsIn::Remove(from));
+    ws.bring_forward(target);
     out.push(WorkspaceOut::Focused(focus));
 }

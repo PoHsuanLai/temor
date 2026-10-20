@@ -6,7 +6,7 @@
 use crate::error::CoreError;
 use crate::space::Tab;
 use crate::vocab::ids::TabId;
-use crate::workspace::{TabsIn, Workspace, tabs_step};
+use crate::workspace::{TabsIn, Workspace};
 
 /// `from` without `tab`, and `to` with it at the end of its tabs (loose, with a new tab id from
 /// `to`'s counter, in no folder); `to`'s front tab stays in front unless it had none. The pane
@@ -34,8 +34,7 @@ pub fn carry_tab(
         dst.next_pane = dst.next_pane.max(past);
     }
 
-    let (tabs, _) = tabs_step(std::mem::take(&mut src.tabs), TabsIn::Remove(tab));
-    src.tabs = tabs;
+    src.tabs_do(TabsIn::Remove(tab));
     src.focus.remove(&tab);
     for pane in &panes {
         if let Some(cwd) = src.cwds.remove(pane) {

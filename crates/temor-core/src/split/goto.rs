@@ -48,7 +48,7 @@ impl SplitTree {
     /// The pane focus moves to from `from`, or none when there is nowhere to go. A pane not in
     /// the tree goes nowhere.
     pub fn goto(&self, from: PaneId, to: Goto) -> Option<PaneId> {
-        let panes = self.panes();
+        let panes = self.reading_order();
         let at = panes.iter().position(|pane| *pane == from)?;
         let last = panes.len() - 1;
         match to {

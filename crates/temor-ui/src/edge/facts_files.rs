@@ -1,6 +1,7 @@
 //! The facts that come from files: the Python virtualenv, and the versions of Node, Python, Ruby
 //! and Go a project asks for. Anything unreadable is left out.
 
+use std::io::Read;
 use std::path::Path;
 
 use temor_core::facts::{
@@ -8,10 +9,9 @@ use temor_core::facts::{
     python_from_pyproject, python_from_version_file, tool_versions, venv_name,
 };
 
-use super::facts::FactsEnv;
+use temor_wire::message::{MOST_FACT_BYTES, MOST_FACT_PARENTS};
 
-/// The most parent folders looked in for a version: a guard against a loop of links.
-const MOST_PARENTS: usize = 64;
+use super::facts::FactsEnv;
 
 /// The versions found, each from the nearest folder that names it.
 #[derive(Debug, Default)]
@@ -48,7 +48,14 @@ struct OnDisk;
 
 impl FolderSource for OnDisk {
     fn read(&self, folder: &Path, file: &str) -> Option<String> {
-        std::fs::read_to_string(folder.join(file)).ok()
+        // The same cap the host's helper reads under, so a big file gives a chip on neither.
+        let opened = std::fs::File::open(folder.join(file)).ok()?;
+        let mut text = String::new();
+        opened
+            .take(MOST_FACT_BYTES + 1)
+            .read_to_string(&mut text)
+            .ok()?;
+        (text.len() as u64 <= MOST_FACT_BYTES).then_some(text)
     }
 
     fn is_root(&self, folder: &Path) -> bool {
@@ -70,7 +77,7 @@ pub(super) fn runtimes_in(dir: &Path, source: &dyn FolderSource) -> Runtimes {
     let read = |folder: &Path, file: &str| source.read(folder, file);
     let mut out = Runtimes::default();
     let mut required = None;
-    for folder in dir.ancestors().take(MOST_PARENTS) {
+    for folder in dir.ancestors().take(MOST_FACT_PARENTS) {
         let tools = read(folder, ".tool-versions")
             .map(|text| tool_versions(&text))
             .unwrap_or_default();

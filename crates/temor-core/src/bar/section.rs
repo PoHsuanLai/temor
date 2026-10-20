@@ -29,6 +29,21 @@ pub enum Section {
 }
 
 impl Section {
+    /// The header's words, for every section but a plugin's (which takes its plugin's name).
+    pub fn title(&self) -> Option<&'static str> {
+        match self {
+            Section::Actions => Some("Actions"),
+            Section::Tabs => Some("Tabs"),
+            Section::Spaces => Some("Spaces"),
+            Section::Computers => Some("Computers"),
+            Section::RecentCommands => Some("Recent commands"),
+            Section::Folders => Some("Folders"),
+            Section::Run => Some("Run"),
+            Section::Plugin(_) => None,
+            Section::Ask => Some("Ask"),
+        }
+    }
+
     /// The section `row` sits under.
     pub fn of(row: &BarRow) -> Section {
         match &row.action {

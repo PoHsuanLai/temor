@@ -8,14 +8,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use temor_pty::SessionLauncher;
 use temor_wire::units::UnixMillis;
 
+use super::command::LEADER;
 use super::env::HostEnv;
-use super::identity::hash_executable;
-use super::paths::{runtime_dir, socket_path};
+use super::socket::{SocketSpot, socket_spot};
 use crate::clock::SystemClock;
 use crate::daemon::{Daemon, DaemonConfig};
 use crate::error::Error;
 use crate::idle::DEFAULT_IDLE;
-use crate::platform::{Listener, connect, ensure_private_dir};
+use crate::platform::{Listener, connect};
 
 /// How often the daemon does its periodic work.
 const TICK: Duration = Duration::from_secs(1);
@@ -32,7 +32,7 @@ fn config(
         helper,
         launcher: SessionLauncher::Trampoline {
             program: env.exe.clone(),
-            args: vec![OsString::from("leader")],
+            args: vec![OsString::from(LEADER)],
         },
         default_shell: env
             .shell
@@ -68,14 +68,11 @@ fn sweep_in_background(daemon: &Arc<Daemon>) {
 /// Runs the daemon until the process is killed. Returns at once, with `Ok`, if a daemon of this
 /// version is already listening.
 pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
-    let helper = hash_executable(&env.exe)?;
-    let dir = runtime_dir(env.xdg_runtime_dir.as_deref(), env.home.as_deref()).ok_or(
-        Error::Unsupported {
-            feature: "a private folder for the socket",
-        },
-    )?;
-    ensure_private_dir(&dir)?;
-    let socket = socket_path(&dir, &helper);
+    let SocketSpot {
+        helper,
+        dir,
+        socket,
+    } = socket_spot(env)?;
     if socket.exists() {
         if connect(&socket).is_ok() {
             return Ok(());

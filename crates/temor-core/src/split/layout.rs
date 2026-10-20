@@ -101,6 +101,25 @@ impl SplitTree {
             .collect()
     }
 
+    /// The panes in reading order: left to right, then top to bottom, by where each pane's
+    /// top-left corner stands on screen. This is the one order for the sidebar's segments and for
+    /// moving focus to the next or previous pane. (The tree's own order, [`SplitTree::panes`],
+    /// is the order the tree nests in.)
+    pub fn reading_order(&self) -> Vec<PaneId> {
+        let mut leaves: Vec<(u64, u64, PaneId)> = self
+            .nodes
+            .iter()
+            .zip(self.spatial())
+            .filter_map(|(node, slot)| match node {
+                Node::Leaf(pane) => Some((slot.x, slot.y, *pane)),
+                Node::Split { .. } => None,
+            })
+            .collect();
+        // Stable, and two panes never share a corner.
+        leaves.sort_by_key(|&(x, y, _)| (x, y));
+        leaves.into_iter().map(|(_, _, pane)| pane).collect()
+    }
+
     /// Every node's place in the normalised square, indexed like the node array.
     pub(super) fn spatial(&self) -> Vec<Slot> {
         self.slots(SPATIAL_UNIT, SPATIAL_UNIT)

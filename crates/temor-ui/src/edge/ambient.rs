@@ -6,8 +6,10 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use ds_settings::Store;
+use temor_plugins::DataDirs;
 use temor_shell::ChildEnv;
 
+use super::session_file::resolve_state_dir;
 use crate::settings::{APP, root_for};
 
 /// What the app needs from its surroundings.
@@ -34,18 +36,13 @@ impl Ambient {
     pub fn from_vars(vars: impl IntoIterator<Item = (OsString, OsString)>) -> Option<Self> {
         let env: ChildEnv = vars.into_iter().collect();
         let home = PathBuf::from(env.get("HOME").filter(|h| !h.is_empty())?);
-        let config_home = env
-            .get("XDG_CONFIG_HOME")
-            .filter(|d| !d.is_empty())
-            .map_or_else(|| home.join(".config"), PathBuf::from);
+        let config_home = xdg_dir(&env, "XDG_CONFIG_HOME").unwrap_or_else(|| home.join(".config"));
         // Never the shared temporary directory: shims written there could be planted by others.
         // Without a runtime directory, temor keeps its own under the cache directory.
-        let runtime_dir = match env.get("XDG_RUNTIME_DIR").filter(|d| !d.is_empty()) {
-            Some(runtime) => PathBuf::from(runtime).join("temor"),
-            None => env
-                .get("XDG_CACHE_HOME")
-                .filter(|d| !d.is_empty())
-                .map_or_else(|| home.join(".cache"), PathBuf::from)
+        let runtime_dir = match xdg_dir(&env, "XDG_RUNTIME_DIR") {
+            Some(runtime) => runtime.join("temor"),
+            None => xdg_dir(&env, "XDG_CACHE_HOME")
+                .unwrap_or_else(|| home.join(".cache"))
                 .join("temor")
                 .join("run"),
         };
@@ -90,10 +87,27 @@ impl Ambient {
 
     /// `XDG_DATA_HOME`, else `~/.local/share`.
     fn data_home(&self) -> PathBuf {
-        self.env
-            .get("XDG_DATA_HOME")
-            .filter(|d| !d.is_empty())
-            .map_or_else(|| self.home.join(".local").join("share"), PathBuf::from)
+        xdg_dir(&self.env, "XDG_DATA_HOME")
+            .unwrap_or_else(|| self.home.join(".local").join("share"))
+    }
+
+    /// The folder the session file and its snapshots live in: `$XDG_STATE_HOME/temor`, else
+    /// `~/.local/state/temor`. `None` only when there is no home (no saving then).
+    pub fn state_dir(&self) -> Option<PathBuf> {
+        let state_home = xdg_dir(&self.env, "XDG_STATE_HOME");
+        resolve_state_dir(state_home.as_deref(), Some(&self.home))
+    }
+
+    /// Where plugin manifests are looked for: the person's data directory, then the system's.
+    /// The one place the plugin folders read the environment.
+    pub fn plugin_dirs(&self) -> DataDirs {
+        let get = |key: &str| {
+            self.env
+                .get(key)
+                .and_then(|v| v.to_str())
+                .map(str::to_owned)
+        };
+        DataDirs::from_env(&self.home, &get)
     }
 
     /// temor's own data directory: outside every repository, where agent worktrees live.
@@ -118,10 +132,10 @@ impl Ambient {
     /// `XDG_DOWNLOAD_DIR` variable wins, then the `user-dirs.dirs` file under the config
     /// directory (`user_dirs` is its text, read by the caller), then `~/Downloads`.
     pub fn downloads_dir(&self, user_dirs: Option<&str>) -> PathBuf {
-        let from_env = self.env.get("XDG_DOWNLOAD_DIR").filter(|d| !d.is_empty());
+        let from_env = xdg_dir(&self.env, "XDG_DOWNLOAD_DIR");
         let from_file = user_dirs.and_then(|text| user_dir(text, "XDG_DOWNLOAD_DIR", &self.home));
         match (from_env, from_file) {
-            (Some(dir), _) => PathBuf::from(dir),
+            (Some(dir), _) => dir,
             (None, Some(dir)) => dir,
             (None, None) => self.home.join("Downloads"),
         }
@@ -141,6 +155,15 @@ impl Ambient {
             .join("incoming")
             .join(format!("pane-{pane}"))
     }
+}
+
+/// A folder named by an XDG variable: set, not empty and absolute, as the XDG spec says. A
+/// relative value is ignored, so every folder temor derives from the environment agrees on it.
+fn xdg_dir(env: &ChildEnv, key: &str) -> Option<PathBuf> {
+    env.get(key)
+        .filter(|d| !d.is_empty())
+        .map(PathBuf::from)
+        .filter(|dir| dir.is_absolute())
 }
 
 /// One `NAME="$HOME/Downloads"` line of `user-dirs.dirs`: the folder, with `$HOME` filled in.

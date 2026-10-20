@@ -17,6 +17,7 @@ use super::session::Session;
 use crate::error::Error;
 use crate::files::{FileService, STALE_AFTER, Scope};
 use crate::platform;
+use crate::sync::lock;
 
 /// A session daemon. `Send` and `Sync`; share it as an `Arc`.
 #[derive(Debug)]
@@ -110,8 +111,6 @@ impl Daemon {
     }
 
     pub(super) fn lock_links(&self) -> MutexGuard<'_, Vec<Arc<Link>>> {
-        self.links
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.links)
     }
 }

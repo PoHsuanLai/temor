@@ -16,7 +16,7 @@
 use std::collections::BTreeMap;
 
 use super::hint::{TitleHint, title_hint};
-use super::model::{Millis, ProcessFact, RadarIn, RadarOut, RadarParams, orb};
+use super::model::{Millis, ProcessFact, RadarIn, RadarOut, RadarParams};
 use super::records::Records;
 use crate::presence::{
     AgentState, PaneFocus, PresenceIn, PresenceState, StatusReport, StatusSource, WaitKind,
@@ -73,7 +73,6 @@ pub fn radar_step(
     input: RadarIn,
     params: &RadarParams,
 ) -> (RadarState, Vec<RadarOut>) {
-    let before = state.presence.state;
     let mut state = state;
     let mut presence_in = Vec::new();
     match input {
@@ -141,9 +140,6 @@ pub fn radar_step(
         let (next, outs) = presence_step(state.presence.clone(), input);
         state.presence = next;
         out.extend(outs.into_iter().map(RadarOut::Presence));
-    }
-    if orb(before) != orb(state.presence.state) {
-        out.insert(0, RadarOut::Orb(orb(state.presence.state)));
     }
     (state, out)
 }

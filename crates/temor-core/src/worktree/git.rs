@@ -65,10 +65,7 @@ impl GitOutput {
     pub fn expect_code(self, cmd: &GitCommand, ok: &[i32]) -> Result<GitOutput, CoreError> {
         match ok.contains(&self.code) {
             true => Ok(self),
-            false => Err(CoreError::GitFailed {
-                what: cmd.what(),
-                stderr: self.stderr.chars().take(300).collect(),
-            }),
+            false => Err(CoreError::git_failed(cmd.what(), &self.stderr)),
         }
     }
 }

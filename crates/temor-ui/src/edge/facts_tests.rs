@@ -152,6 +152,22 @@ fn node_comes_from_the_nearest_file_up_to_the_repository_root() {
 }
 
 #[test]
+fn a_version_file_over_the_cap_is_not_read_here_as_on_a_host() {
+    let scratch = tempfile::tempdir().expect("tempdir");
+    let root = scratch.path();
+    let node = || {
+        read_facts(None, &dir(root), &FactsEnv::default())
+            .node
+            .map(|n| n.as_str().to_owned())
+    };
+    std::fs::write(root.join(".nvmrc"), "v20\n").expect("write");
+    assert_eq!(node(), Some("v20".to_owned()));
+    let padding = " ".repeat(usize::try_from(temor_wire::message::MOST_FACT_BYTES).unwrap_or(0));
+    std::fs::write(root.join(".nvmrc"), format!("v20\n{padding}")).expect("write");
+    assert_eq!(node(), None, "over the cap reads as no file, as on a host");
+}
+
+#[test]
 fn runtime_versions_come_from_the_nearest_files() {
     let scratch = tempfile::tempdir().expect("tempdir");
     let root = scratch.path();

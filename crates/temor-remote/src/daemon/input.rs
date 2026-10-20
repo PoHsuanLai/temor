@@ -5,6 +5,7 @@
 use std::collections::VecDeque;
 use std::sync::{Mutex, MutexGuard};
 
+use crate::sync::lock;
 use temor_pty::{PtyError, PtyIo, WriteOutcome};
 
 /// The most reply bytes that may wait (1 MiB).
@@ -81,9 +82,7 @@ impl Input {
     }
 
     fn lock(&self) -> MutexGuard<'_, VecDeque<u8>> {
-        self.queue
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.queue)
     }
 }
 

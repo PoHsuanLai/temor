@@ -2,7 +2,7 @@
 //! -b agent/<name> <base>`, with the base commit recorded.
 
 use super::git::{Git, GitCommand, run_ok};
-use super::model::{AgentWorktree, Oid, WorktreeName};
+use super::model::{AgentWorktree, Oid, WorktreeName, worktrees_root};
 use crate::error::CoreError;
 use crate::vocab::ids::TabId;
 
@@ -32,8 +32,8 @@ pub fn worktree_path(
 ) -> Result<String, CoreError> {
     let space = WorktreeName::from_task(space)?;
     Ok(format!(
-        "{}/worktrees/{}/{}",
-        data_dir.trim_end_matches('/'),
+        "{}/{}/{}",
+        worktrees_root(data_dir),
         space.as_str(),
         name.as_str()
     ))
@@ -47,7 +47,7 @@ pub fn resolve_commit(git: &dyn Git, repo: &str, rev: &str) -> Result<Oid, CoreE
     let out = git.run(&cmd)?;
     match out.code {
         0 => Oid::parse(&out.text()),
-        _ => Err(CoreError::NotACommit(rev.chars().take(80).collect())),
+        _ => Err(CoreError::not_a_commit(rev)),
     }
 }
 

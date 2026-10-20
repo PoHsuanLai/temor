@@ -11,21 +11,11 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
-use temor_wire::message::{FactFile, FolderFacts, FolderFiles, GitText, RemotePath};
+use temor_wire::message::{
+    FACT_FILE_NAMES, FactFile, FolderFacts, FolderFiles, GitText, MOST_FACT_BYTES,
+    MOST_FACT_PARENTS, RemotePath,
+};
 
-/// The files whose text the chips read, wherever they are in the folder and above it.
-const FILE_NAMES: [&str; 6] = [
-    ".nvmrc",
-    ".node-version",
-    ".tool-versions",
-    "package.json",
-    ".python-version",
-    "pyproject.toml",
-];
-/// The longest a version file may be and still be sent: a chip never needs more.
-const MOST_BYTES: u64 = 32 * 1024;
-/// The most parent folders looked in: a guard against a loop of links.
-const MOST_PARENTS: usize = 64;
 /// Untracked entries are counted up to this many, then git is stopped (the chip shows `999+`).
 const UNTRACKED_PAST: usize = 1000;
 
@@ -53,8 +43,8 @@ fn path_text(path: &Path) -> RemotePath {
 /// holds `.git` (which is returned too).
 fn read_versions(dir: &Path) -> (Vec<FolderFiles>, Option<RemotePath>) {
     let mut folders = Vec::new();
-    for folder in dir.ancestors().take(MOST_PARENTS) {
-        let files: Vec<FactFile> = FILE_NAMES
+    for folder in dir.ancestors().take(MOST_FACT_PARENTS) {
+        let files: Vec<FactFile> = FACT_FILE_NAMES
             .iter()
             .filter_map(|name| {
                 read_small(&folder.join(name)).map(|text| FactFile {
@@ -74,12 +64,14 @@ fn read_versions(dir: &Path) -> (Vec<FolderFiles>, Option<RemotePath>) {
     (folders, None)
 }
 
-/// The text of a file, if it is there, is text, and is not longer than [`MOST_BYTES`].
+/// The text of a file, if it is there, is text, and is not longer than [`MOST_FACT_BYTES`].
 fn read_small(path: &Path) -> Option<String> {
     let file = std::fs::File::open(path).ok()?;
     let mut text = String::new();
-    file.take(MOST_BYTES + 1).read_to_string(&mut text).ok()?;
-    (text.len() as u64 <= MOST_BYTES).then_some(text)
+    file.take(MOST_FACT_BYTES + 1)
+        .read_to_string(&mut text)
+        .ok()?;
+    (text.len() as u64 <= MOST_FACT_BYTES).then_some(text)
 }
 
 fn git(dir: &Path, args: &[&str]) -> Command {

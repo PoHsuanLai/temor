@@ -24,7 +24,11 @@ pub fn resolve(cwd: Option<&str>, candidate: &str) -> Option<PathBuf> {
 }
 
 /// The first of `token`'s candidates that `is_file` accepts, resolved from `cwd`.
-fn first_file(token: &str, cwd: Option<&str>, is_file: &impl Fn(&Path) -> bool) -> Option<PathBuf> {
+pub fn first_file(
+    token: &str,
+    cwd: Option<&str>,
+    is_file: &impl Fn(&Path) -> bool,
+) -> Option<PathBuf> {
     candidates(token)
         .iter()
         .filter_map(|candidate| resolve(cwd, candidate))

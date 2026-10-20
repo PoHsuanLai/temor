@@ -113,6 +113,34 @@ impl Error {
         }
     }
 
+    /// Whether the link itself is gone or unreadable, rather than the request being refused.
+    pub fn is_link_lost(&self) -> bool {
+        matches!(
+            self,
+            Self::LinkClosed | Self::Wire(_) | Self::NoAnswer | Self::NoGreeting
+        )
+    }
+
+    /// Whether the file or folder asked for is not there, however the failure arrived: the
+    /// helper's typed answer or this crate's own.
+    pub fn is_not_found(&self) -> bool {
+        matches!(
+            self,
+            Self::NotFound { .. } | Self::Remote(RemoteError::NotFound { .. })
+        )
+    }
+
+    /// For a write the file's state refused: the file's stamp now (`None` if it is gone). `None`
+    /// for any other failure.
+    pub fn conflict(&self) -> Option<Option<FileStamp>> {
+        match self {
+            Self::Conflict { current } | Self::Remote(RemoteError::Conflict { current }) => {
+                Some(*current)
+            }
+            _ => None,
+        }
+    }
+
     /// The typed error a response carries for this failure.
     pub fn to_wire(&self) -> RemoteError {
         match self {

@@ -5,7 +5,6 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
-use temor_wire::hello::Capability;
 use temor_wire::ids::{RequestId, SessionId, WatchId};
 use temor_wire::message::{
     DirEntry, FileMeta, FileStamp, IdleLimit, ListeningPort, OpenSession, RemotePath, Reply,
@@ -16,6 +15,7 @@ use temor_wire::units::{ByteCount, ByteRange, CellPx, Size};
 use super::connect::Client;
 use super::pending::Answer;
 use crate::error::Error;
+use crate::sync::lock;
 
 /// A request on the line whose answer has not been read yet.
 #[derive(Debug)]
@@ -63,11 +63,14 @@ pub struct ReadChunk {
 }
 
 impl Client {
-    pub(super) fn offered(&self, capability: Capability) -> Result<(), Error> {
-        if self.agreement.caps.contains(&capability) {
-            Ok(())
-        } else {
-            Err(Error::NotOffered(capability))
+    /// Refuses a request the helper did not agree to serve: the capability it needs is in
+    /// [`Request::capability`], the one table the helper checks too.
+    fn offered(&self, body: &Request) -> Result<(), Error> {
+        match body.capability() {
+            Some(capability) if !self.agreement.caps.contains(&capability) => {
+                Err(Error::NotOffered(capability))
+            }
+            _ => Ok(()),
         }
     }
 
@@ -94,14 +97,11 @@ impl Client {
         body: Request,
         payload: Option<&[u8]>,
     ) -> Result<InFlight, Error> {
+        self.offered(&body)?;
         let id = RequestId(self.next.fetch_add(1, Ordering::Relaxed) + 1);
         let waiting = self.pending.register(id)?;
         let message = temor_wire::message::Message::Request { id, body };
-        let sent = self
-            .writer
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .send(&message, payload);
+        let sent = lock(&self.writer).send(&message, payload);
         if let Err(error) = sent {
             self.pending.forget(id);
             return Err(error);
@@ -129,14 +129,13 @@ impl Client {
         answer?
     }
 
-    pub(super) fn ask(&self, capability: Capability, body: Request) -> Result<Reply, Error> {
-        self.offered(capability)?;
+    pub(super) fn ask(&self, body: Request) -> Result<Reply, Error> {
         self.call(body, None)?.outcome.map_err(Error::Remote)
     }
 
     /// The sessions the host holds for this person.
     pub fn list_sessions(&self) -> Result<Vec<SessionInfo>, Error> {
-        match self.ask(Capability::Sessions, Request::ListSessions)? {
+        match self.ask(Request::ListSessions)? {
             Reply::Sessions(sessions) => Ok(sessions),
             _ => Err(Error::UnexpectedReply),
         }
@@ -144,7 +143,7 @@ impl Client {
 
     /// Starts a session. It begins detached: [`Client::attach`] it to see its screen.
     pub fn open_session(&self, request: OpenSession) -> Result<SessionId, Error> {
-        match self.ask(Capability::Sessions, Request::OpenSession(request))? {
+        match self.ask(Request::OpenSession(request))? {
             Reply::Opened { session } => Ok(session),
             _ => Err(Error::UnexpectedReply),
         }
@@ -153,7 +152,6 @@ impl Client {
     /// Attaches to a session: its screen as a snapshot, and from then on its output as events.
     /// Attaching a session another link holds takes it over.
     pub fn attach(&self, session: SessionId) -> Result<Attached, Error> {
-        self.offered(Capability::Sessions)?;
         let answer = self.call(Request::AttachSession { session }, None)?;
         match (answer.outcome.map_err(Error::Remote)?, answer.payload) {
             (Reply::Attached { session, size }, Some(snapshot)) => Ok(Attached {
@@ -167,42 +165,38 @@ impl Client {
 
     /// Detaches: the session keeps running with its screen.
     pub fn detach(&self, session: SessionId) -> Result<(), Error> {
-        self.ack(Capability::Sessions, Request::DetachSession { session })
+        self.ack(Request::DetachSession { session })
     }
 
     /// Ends a session: its program is hung up and nothing of it survives.
     pub fn close_session(&self, session: SessionId) -> Result<(), Error> {
-        self.ack(Capability::Sessions, Request::Close { session })
+        self.ack(Request::Close { session })
     }
 
     /// Resizes a session's screen and terminal. `cell` is one cell in pixels, for the program's
     /// pixel size reports.
     pub fn resize(&self, session: SessionId, size: Size, cell: CellPx) -> Result<(), Error> {
-        self.ack(
-            Capability::Sessions,
-            Request::ResizeSession {
-                session,
-                size,
-                cell,
-            },
-        )
+        self.ack(Request::ResizeSession {
+            session,
+            size,
+            cell,
+        })
     }
 
     /// Sends keys, a paste or a mouse report to a session's program.
     pub fn send_input(&self, session: SessionId, bytes: &[u8]) -> Result<(), Error> {
-        self.offered(Capability::Sessions)?;
         let answer = self.call(Request::SendInput { session }, Some(bytes))?;
         answer.outcome.map(drop).map_err(Error::Remote)
     }
 
     /// Sets how long detached sessions are kept.
     pub fn set_idle_limit(&self, limit: IdleLimit) -> Result<(), Error> {
-        self.ack(Capability::Sessions, Request::SetIdleLimit { limit })
+        self.ack(Request::SetIdleLimit { limit })
     }
 
     /// The listening ports of this person's sessions now.
     pub fn list_ports(&self) -> Result<Vec<ListeningPort>, Error> {
-        match self.ask(Capability::Ports, Request::ListPorts)? {
+        match self.ask(Request::ListPorts)? {
             Reply::Ports(ports) => Ok(ports),
             _ => Err(Error::UnexpectedReply),
         }
@@ -210,7 +204,7 @@ impl Client {
 
     /// The entries of a remote folder, by name.
     pub fn list_dir(&self, path: &RemotePath) -> Result<Vec<DirEntry>, Error> {
-        match self.ask(Capability::Files, Request::ListDir { path: path.clone() })? {
+        match self.ask(Request::ListDir { path: path.clone() })? {
             Reply::Listing(entries) => Ok(entries),
             _ => Err(Error::UnexpectedReply),
         }
@@ -218,7 +212,7 @@ impl Client {
 
     /// A remote path's metadata.
     pub fn stat(&self, path: &RemotePath) -> Result<FileMeta, Error> {
-        match self.ask(Capability::Files, Request::Stat { path: path.clone() })? {
+        match self.ask(Request::Stat { path: path.clone() })? {
             Reply::Stat(meta) => Ok(meta),
             _ => Err(Error::UnexpectedReply),
         }
@@ -232,7 +226,6 @@ impl Client {
 
     /// Asks for a span of a remote file without waiting; [`Client::read_answer`] reads it.
     pub(super) fn send_read(&self, path: &RemotePath, range: ByteRange) -> Result<InFlight, Error> {
-        self.offered(Capability::Files)?;
         let request = Request::ReadFile {
             path: path.clone(),
             range,
@@ -261,7 +254,6 @@ impl Client {
         check: WriteCheck,
         bytes: &[u8],
     ) -> Result<FileStamp, Error> {
-        self.offered(Capability::Files)?;
         let request = Request::WriteFile {
             path: path.clone(),
             check,
@@ -280,7 +272,7 @@ impl Client {
     /// Watches a remote path; changes arrive as
     /// [`ClientEvent::FileChanged`](super::ClientEvent::FileChanged).
     pub fn watch(&self, path: &RemotePath) -> Result<WatchId, Error> {
-        match self.ask(Capability::Files, Request::Watch { path: path.clone() })? {
+        match self.ask(Request::Watch { path: path.clone() })? {
             Reply::Watching { watch } => Ok(watch),
             _ => Err(Error::UnexpectedReply),
         }
@@ -288,11 +280,11 @@ impl Client {
 
     /// Stops watching.
     pub fn unwatch(&self, watch: WatchId) -> Result<(), Error> {
-        self.ack(Capability::Files, Request::Unwatch { watch })
+        self.ack(Request::Unwatch { watch })
     }
 
-    pub(super) fn ack(&self, capability: Capability, body: Request) -> Result<(), Error> {
-        match self.ask(capability, body)? {
+    pub(super) fn ack(&self, body: Request) -> Result<(), Error> {
+        match self.ask(body)? {
             Reply::Ack => Ok(()),
             _ => Err(Error::UnexpectedReply),
         }

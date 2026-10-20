@@ -11,6 +11,7 @@ use super::core::Daemon;
 use super::link::Link;
 use super::session::Session;
 use crate::error::Error;
+use crate::sync::lock;
 
 /// How a request was answered.
 pub(super) enum Done {
@@ -49,24 +50,23 @@ impl Daemon {
         body: Request,
         payload: Option<&[u8]>,
     ) -> Result<Done, RemoteError> {
+        if let Some(capability) = body.capability() {
+            need(link, capability)?;
+        }
         match body {
             Request::OpenSession(request) => {
-                need(link, Capability::Sessions)?;
                 let session = self.open_session(&request).map_err(wire)?;
                 Ok(Done::Reply(Reply::Opened { session }))
             }
             Request::AttachSession { session } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?.attach(link, id).map_err(wire)?;
                 Ok(Done::Sent)
             }
             Request::DetachSession { session } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?.detach(Some(link.id));
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::Close { session } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?.close();
                 Ok(Done::Reply(Reply::Ack))
             }
@@ -75,12 +75,10 @@ impl Daemon {
                 size,
                 cell,
             } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?.resize(size, cell).map_err(wire)?;
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::SetPalette { session, palette } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?.set_palette(&palette).map_err(wire)?;
                 Ok(Done::Reply(Reply::Ack))
             }
@@ -88,28 +86,19 @@ impl Daemon {
             // slow download never looks like a dead link.
             Request::Ping => Ok(Done::Reply(Reply::Pong)),
             Request::SendInput { session } => {
-                need(link, Capability::Sessions)?;
                 self.session(session)?
                     .send_input(payload.unwrap_or_default());
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::ListSessions => {
-                need(link, Capability::Sessions)?;
                 let sessions = self.registry.all().iter().map(|s| s.info()).collect();
                 Ok(Done::Reply(Reply::Sessions(sessions)))
             }
             Request::SetIdleLimit { limit } => {
-                need(link, Capability::Sessions)?;
-                *self
-                    .idle
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = limit;
+                *lock(&self.idle) = limit;
                 Ok(Done::Reply(Reply::Ack))
             }
-            Request::ListPorts => {
-                need(link, Capability::Ports)?;
-                Ok(Done::Reply(Reply::Ports(self.scan_ports().map_err(wire)?)))
-            }
+            Request::ListPorts => Ok(Done::Reply(Reply::Ports(self.scan_ports().map_err(wire)?))),
             other => self.handle_files(link, other, payload),
         }
     }
@@ -122,23 +111,17 @@ impl Daemon {
     ) -> Result<Done, RemoteError> {
         match body {
             Request::ListDir { path } => {
-                need(link, Capability::Files)?;
                 let entries = self.files.list_dir(&path).map_err(wire)?;
                 Ok(Done::Reply(Reply::Listing(entries)))
             }
-            Request::Stat { path } => {
-                need(link, Capability::Files)?;
-                Ok(Done::Reply(Reply::Stat(
-                    self.files.stat(&path).map_err(wire)?,
-                )))
-            }
+            Request::Stat { path } => Ok(Done::Reply(Reply::Stat(
+                self.files.stat(&path).map_err(wire)?,
+            ))),
             Request::ReadFile { path, range } => {
-                need(link, Capability::Files)?;
                 let (stamp, total, bytes) = self.files.read(&path, range).map_err(wire)?;
                 Ok(Done::Payload(Reply::Read { stamp, total }, bytes))
             }
             Request::WriteFile { path, check, mode } => {
-                need(link, Capability::Files)?;
                 let bytes = payload.unwrap_or_default();
                 let staged = match mode {
                     WriteMode::Part { offset, end } => self
@@ -153,26 +136,17 @@ impl Daemon {
                 }))
             }
             Request::Watch { path } => {
-                need(link, Capability::Files)?;
                 let seen = self.files.observe(&path).map_err(wire)?;
-                let watch = link
-                    .watches
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .add(path, seen);
+                let watch = lock(&link.watches).add(path, seen);
                 Ok(Done::Reply(Reply::Watching { watch }))
             }
             Request::Unwatch { watch } => {
-                need(link, Capability::Files)?;
-                link.watches
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                lock(&link.watches)
                     .remove(watch)
                     .ok_or(RemoteError::NoSuchWatch { watch })?;
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::Facts { session } => {
-                need(link, Capability::Facts)?;
                 // A session's folder is the client's to ask about: it opened the session there.
                 let cwd = self.session(session)?.info().cwd;
                 let facts = crate::facts::read_folder(

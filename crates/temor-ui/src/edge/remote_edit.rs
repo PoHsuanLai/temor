@@ -9,7 +9,7 @@ use std::sync::Arc;
 use temor_core::host::edit::{EditFault, EditIn, Found};
 use temor_remote::Error;
 use temor_ssh::{ByteCount, RemoteStat, RemoteState, UnixSeconds};
-use temor_wire::message::{EntryKind, FileStamp, RemoteError, RemotePath, WriteCheck};
+use temor_wire::message::{EntryKind, FileStamp, RemotePath, WriteCheck};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::remote_conn::Conn;
@@ -27,10 +27,8 @@ pub fn stat_of(stamp: FileStamp, len: u64) -> RemoteStat {
 /// How a failed call reads to the person.
 pub fn fault_of(error: &Error) -> EditFault {
     match error {
-        Error::NotFound { .. } | Error::Remote(RemoteError::NotFound { .. }) => EditFault::Gone,
-        Error::LinkClosed | Error::Wire(_) | Error::NoAnswer | Error::NoGreeting => {
-            EditFault::NoConnection
-        }
+        other if other.is_not_found() => EditFault::Gone,
+        other if other.is_link_lost() => EditFault::NoConnection,
         _ => EditFault::Refused,
     }
 }
@@ -38,12 +36,7 @@ pub fn fault_of(error: &Error) -> EditFault {
 /// What a refused write says about the file now: `Some(None)` if it is gone, `Some(Some(stamp))`
 /// if it changed, and `None` if the write failed for another reason.
 pub fn conflict_of(error: &Error) -> Option<Option<FileStamp>> {
-    match error {
-        Error::Remote(RemoteError::Conflict { current }) | Error::Conflict { current } => {
-            Some(*current)
-        }
-        _ => None,
-    }
+    error.conflict()
 }
 
 /// Starts the jobs of edits on a helper. Cloning shares the channel.
@@ -174,6 +167,7 @@ impl Reporter {
 mod tests {
     use super::*;
     use temor_wire::digest::ContentHash;
+    use temor_wire::message::RemoteError;
     use temor_wire::units::UnixMillis;
 
     fn stamp(millis: i64) -> FileStamp {

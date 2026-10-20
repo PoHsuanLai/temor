@@ -15,6 +15,7 @@ use super::watch::Observed;
 use super::write::{WriteDecision, write_decision};
 use crate::error::Error;
 use crate::platform::{Beneath, RawStat};
+use crate::sync::lock;
 
 /// The most bytes one read returns, so a reply always fits in a frame.
 pub const MAX_READ: u64 = 32 << 20;
@@ -47,27 +48,16 @@ impl FileService {
 
     /// Adds a folder the client may reach (a session's working folder, a relay workspace).
     pub fn grant(&self, root: &Path) -> Result<(), Error> {
-        self.scope
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .grant(root)
+        lock(&self.scope).grant(root)
     }
 
     /// The folders the client may reach now.
     pub(super) fn roots(&self) -> Vec<std::path::PathBuf> {
-        self.scope
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .roots()
-            .to_vec()
+        lock(&self.scope).roots().to_vec()
     }
 
     pub(super) fn target(&self, path: &RemotePath) -> Result<Target, Error> {
-        let resolved = self
-            .scope
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .resolve(path)?;
+        let resolved = lock(&self.scope).resolve(path)?;
         Ok(Target {
             beneath: Beneath::open(&resolved.root)?,
             rel: resolved.rel,

@@ -3,24 +3,23 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use temor_wire::hello::HelperVersion;
+use temor_wire::hello::{HELPER_CACHE_FOLDER, HelperVersion};
 
 /// The private folder for the socket: `$XDG_RUNTIME_DIR/temor-remote`, or where there is no
 /// runtime directory `~/.cache/temor-remote/run`. `None` when neither can be told.
 pub fn runtime_dir(xdg_runtime_dir: Option<&OsStr>, home: Option<&OsStr>) -> Option<PathBuf> {
     let usable = |value: &OsStr| (!value.is_empty()).then(|| PathBuf::from(value));
     if let Some(runtime) = xdg_runtime_dir.and_then(usable) {
-        return Some(runtime.join("temor-remote"));
+        return Some(runtime.join(HELPER_CACHE_FOLDER));
     }
     home.and_then(usable)
-        .map(|home| home.join(".cache").join("temor-remote").join("run"))
+        .map(|home| home.join(".cache").join(HELPER_CACHE_FOLDER).join("run"))
 }
 
 /// The socket for one helper version: `<dir>/<first 16 hex digits of its hash>.sock`. A new
 /// version listens elsewhere, so an update never talks to an old daemon by mistake.
 pub fn socket_path(dir: &Path, helper: &HelperVersion) -> PathBuf {
-    let hex = helper.0.to_hex();
-    dir.join(format!("{}.sock", &hex[..16]))
+    dir.join(format!("{}.sock", helper.0.short()))
 }
 
 #[cfg(test)]

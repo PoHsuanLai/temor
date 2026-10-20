@@ -23,6 +23,7 @@ use super::sinks::{CwdSink, Replies};
 use super::sizes::{check, pty_size, screen_cell, screen_size, usable};
 use crate::clock::Clock;
 use crate::error::Error;
+use crate::sync::lock;
 
 /// How long a program may take to leave after its terminal hangs up, and how often that is polled.
 const GRACE: Duration = Duration::from_millis(500);
@@ -202,7 +203,7 @@ impl Session {
 
     pub(super) fn info(&self) -> SessionInfo {
         let shared = self.lock();
-        let cwd = self.cwd.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        let cwd = lock(&self.cwd).clone();
         SessionInfo {
             session: self.id,
             cwd: RemotePath(cwd),
@@ -259,14 +260,10 @@ impl Session {
     }
 
     fn lock(&self) -> MutexGuard<'_, Shared> {
-        self.shared
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.shared)
     }
 
     fn pty(&self) -> MutexGuard<'_, Pty> {
-        self.pty
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.pty)
     }
 }

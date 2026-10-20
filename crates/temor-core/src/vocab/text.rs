@@ -150,7 +150,7 @@ impl CommandText {
         let text: String = raw
             .chars()
             .map(|c| if c == '\t' { ' ' } else { c })
-            .filter(|c| !c.is_control() && !is_bidi_override(*c))
+            .filter(|c| !c.is_control() && !is_bidi_control(*c))
             .collect();
         Self(text.trim_end().to_owned())
     }
@@ -165,14 +165,18 @@ impl CommandText {
 /// overrides removed, and at most `max` characters kept.
 pub fn display_text(raw: &str, max: usize) -> String {
     raw.chars()
-        .filter(|c| !c.is_control() && !is_bidi_override(*c))
+        .filter(|c| !c.is_control() && !is_bidi_control(*c))
         .take(max)
         .collect()
 }
 
-/// Bidirectional embedding, override and isolate controls: they reorder what is shown.
-fn is_bidi_override(c: char) -> bool {
-    matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{200E}' | '\u{200F}')
+/// The Unicode Bidi_Control characters (the Arabic letter mark, the left and right marks, the
+/// embeddings, overrides and isolates): they reorder what is shown. The one table for core.
+pub(crate) fn is_bidi_control(c: char) -> bool {
+    matches!(
+        c,
+        '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
 }
 
 #[cfg(test)]
@@ -193,6 +197,7 @@ mod tests {
     fn other_control_characters_are_dropped_and_blanks_trimmed() {
         let text = CommandText::from_shell("echo\t\x03hi\x1b[0m  ");
         assert_eq!(text.0, "echo hi[0m");
+        assert_eq!(CommandText::from_shell("a\u{061C}b").0, "ab");
         assert!(text.typable());
     }
 
@@ -200,5 +205,10 @@ mod tests {
     fn display_text_drops_controls_and_bidi_and_is_bounded() {
         assert_eq!(display_text("/a\u{202E}b\x07c", 100), "/abc");
         assert_eq!(display_text("abcdef", 3), "abc");
+        assert_eq!(
+            display_text("a\u{061C}b", 100),
+            "ab",
+            "the Arabic letter mark"
+        );
     }
 }

@@ -1,7 +1,7 @@
 //! The Python version a project asks for, from `.python-version` or `pyproject.toml`.
 
 use super::model::ToolVersion;
-use super::node::chip_text;
+use super::node::{chip_text, first_value_line};
 
 fn chip(text: &str) -> Option<ToolVersion> {
     chip_text(text).map(|t| ToolVersion(t.to_owned()))
@@ -10,9 +10,7 @@ fn chip(text: &str) -> Option<ToolVersion> {
 /// The version from the text of a `.python-version` file (pyenv): its first non-comment line.
 /// `system` says nothing a chip can show.
 pub fn python_from_version_file(text: &str) -> Option<ToolVersion> {
-    text.lines()
-        .map(str::trim)
-        .find(|l| !l.is_empty() && !l.starts_with('#'))
+    first_value_line(text)
         .filter(|l| *l != "system")
         .and_then(chip)
 }

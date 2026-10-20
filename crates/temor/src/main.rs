@@ -7,9 +7,9 @@ mod run_arg;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use temor_desktop::{DesktopEnv, Request, SystemInstance};
+use temor_desktop::{DesktopEnv, NOT_FOUND, Request, SystemInstance};
 use temor_ui::app::desktop::{Joined, join};
-use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
+use temor_ui::edge::{Ambient, load_keymap};
 use temor_ui::settings::{load_settings, write_schema};
 use temor_ui::{
     AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG, TakeOnce,
@@ -21,7 +21,7 @@ fn main() -> ExitCode {
         // Becomes the session leader on the terminal and execs the shell; returns only on failure.
         let error = temor_pty::run_session_leader(args.into_iter().skip(2));
         eprintln!("temor: {error}");
-        return ExitCode::from(127);
+        return ExitCode::from(u8::try_from(NOT_FOUND).unwrap_or(127));
     }
     if let Some(code) = write_schema_flag(&args) {
         return code;
@@ -107,10 +107,7 @@ fn main() -> ExitCode {
     let mut told = loaded.told;
     told.key_issues(&key_issues);
     // The session file and its snapshots live under the XDG state home (a relative value is not used).
-    let state_dir = resolve_state_dir(
-        ambient.env.get("XDG_STATE_HOME").map(std::path::Path::new),
-        Some(&ambient.home),
-    );
+    let state_dir = ambient.state_dir();
     let launched = temor_ui::app::run_with(
         Launch {
             ambient,

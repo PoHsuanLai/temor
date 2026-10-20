@@ -7,5 +7,5 @@ mod token;
 #[cfg(test)]
 mod tests;
 
-pub use output::{MAX_PATHS, output_paths, resolve};
+pub use output::{MAX_PATHS, first_file, output_paths, resolve};
 pub use token::{candidates, token_at};

@@ -201,6 +201,21 @@ fn goto_moves_in_reading_order_and_on_screen() {
     }
 }
 
+/// Pane 1 split down into 1 over 2, then the top 1 split right into 1 and 3: the tree nests
+/// 1, 3, 2 but the screen reads 1, 2, 3 (left to right, then top to bottom).
+#[test]
+fn reading_order_is_by_screen_position_and_focus_follows_it() {
+    let tree = SplitTree::single(p(1))
+        .split(p(1), p(2), Direction::Down)
+        .and_then(|t| t.split(p(1), p(3), Direction::Right))
+        .unwrap();
+    assert_eq!(tree.reading_order(), vec![p(1), p(2), p(3)]);
+    assert_eq!(tree.goto(p(1), Goto::Next), Some(p(2)));
+    assert_eq!(tree.goto(p(2), Goto::Next), Some(p(3)));
+    assert_eq!(tree.goto(p(3), Goto::Next), None);
+    assert_eq!(tree.goto(p(1), Goto::PreviousWrapped), Some(p(3)));
+}
+
 #[test]
 fn layout_gives_whole_pixel_rects_that_tile() {
     let rects = l_shape().layout(WholePx(101), WholePx(51));

@@ -10,6 +10,7 @@ use temor_wire::digest::ContentHash;
 
 use crate::error::Error;
 use crate::platform::RawStat;
+use crate::sync::lock;
 
 /// How many hashes are kept before the memory is cleared.
 const REMEMBERED: usize = 512;
@@ -59,9 +60,7 @@ impl StampCache {
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<Key, ContentHash>> {
-        self.known
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.known)
     }
 }
 

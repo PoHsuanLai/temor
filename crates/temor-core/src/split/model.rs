@@ -196,7 +196,8 @@ impl SplitTree {
         self.zoomed
     }
 
-    /// The panes in reading order (left to right, top to bottom, as the tree nests them).
+    /// The panes in the order the tree nests them. For reading order on screen, which is what a
+    /// person sees and what moving focus follows, use [`SplitTree::reading_order`].
     pub fn panes(&self) -> Vec<PaneId> {
         self.nodes
             .iter()

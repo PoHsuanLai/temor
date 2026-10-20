@@ -12,6 +12,7 @@
 //! words is two words to the shell. The Unicode tables are generated (`ucd_tables.rs`).
 
 use super::ucd_tables::{DEFAULT_IGNORABLE, SPACE_SEPARATORS};
+use crate::vocab::text::is_bidi_control;
 use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
 
@@ -143,11 +144,7 @@ fn fate_of(c: char) -> Fate {
         }
         '\t' => Fate::Remove(CharClass::Tab),
         '\u{00}'..='\u{1f}' | '\u{7f}'..='\u{9f}' => Fate::Remove(CharClass::Control),
-        '\u{061c}'
-        | '\u{200e}'
-        | '\u{200f}'
-        | '\u{202a}'..='\u{202e}'
-        | '\u{2066}'..='\u{2069}' => Fate::Remove(CharClass::Bidi),
+        c if is_bidi_control(c) => Fate::Remove(CharClass::Bidi),
         // Interlinear annotation marks hide the text between them, and are not default-ignorable.
         '\u{fff9}'..='\u{fffb}' => Fate::Remove(CharClass::Invisible),
         ' ' => Fate::Keep,

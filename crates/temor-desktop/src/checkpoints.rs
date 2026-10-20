@@ -191,6 +191,9 @@ pub trait CheckpointPort: Send + Sync + fmt::Debug {
     fn close(&self, session: &SessionKey) -> Result<(), DesktopError>;
 }
 
+/// What the unsupported-feature error calls docket's restore points.
+pub(crate) const RESTORE_POINTS: &str = "restore points";
+
 /// No agent layer: nothing is listed and nothing can be restored. The default.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoCheckpoints;
@@ -202,7 +205,7 @@ impl CheckpointPort for NoCheckpoints {
 
     fn plan(&self, _session: &SessionKey, _id: PointId) -> Result<PointPlan, DesktopError> {
         Err(DesktopError::Unsupported {
-            what: "restore points",
+            what: RESTORE_POINTS,
         })
     }
 
@@ -213,19 +216,19 @@ impl CheckpointPort for NoCheckpoints {
         _digest: &PlanDigest,
     ) -> Result<(), DesktopError> {
         Err(DesktopError::Unsupported {
-            what: "restore points",
+            what: RESTORE_POINTS,
         })
     }
 
     fn watch(&self, _ask: &WatchAsk) -> Result<Watching, DesktopError> {
         Err(DesktopError::Unsupported {
-            what: "restore points",
+            what: RESTORE_POINTS,
         })
     }
 
     fn mark(&self, _session: &SessionKey) -> Result<TurnMark, DesktopError> {
         Err(DesktopError::Unsupported {
-            what: "restore points",
+            what: RESTORE_POINTS,
         })
     }
 

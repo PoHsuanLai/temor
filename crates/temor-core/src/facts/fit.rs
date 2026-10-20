@@ -1,6 +1,12 @@
 //! Keeping the chips off the typing line: a long command typed on the chips' own row runs under
 //! them, so the ones it reaches are left out (the last, least important, first).
 
+/// A chip's picture and padding, in cells, added to its text length.
+pub const CHIP_FRAME: f32 = 2.0;
+
+/// The gap between two chips, in cells.
+pub const CHIP_GAP: f32 = 1.0;
+
 /// Where the chips sit on their row, in logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChipRow {
@@ -23,9 +29,9 @@ pub fn chips_that_fit(chars: &[usize], row: ChipRow, cursor_right: Option<f32>) 
     let left_of = |kept: usize| {
         let widths: f32 = chars[..kept]
             .iter()
-            .map(|&n| (n as f32 + 2.0) * row.cell_width)
+            .map(|&n| (n as f32 + CHIP_FRAME) * row.cell_width)
             .sum();
-        let gaps = kept.saturating_sub(1) as f32 * row.cell_width;
+        let gaps = kept.saturating_sub(1) as f32 * CHIP_GAP * row.cell_width;
         row.pane_width - row.inset - widths - gaps
     };
     (0..=chars.len())

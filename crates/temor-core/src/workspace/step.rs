@@ -7,13 +7,13 @@ use super::step_close::{close_pane, close_tab, reopen};
 use super::step_move::{drop_tab, tear};
 use super::step_types::{RefuseWhy, Spawn, Start, WorkspaceIn, WorkspaceOut};
 use super::step_viewer::open_viewer;
-use super::tabs::{TabSel, TabsIn, TabsState, tabs_step};
+use super::tabs::TabsIn;
 use crate::space::{Pin, Tab};
 use crate::split::{
-    Columns, Direction, SplitTree, TreeAfter, TreeIn, TreeOut, TreeState, split_fits, tree_step,
+    Columns, Direction, TreeAfter, TreeIn, TreeOut, TreeState, split_fits, tree_step,
 };
 use crate::vocab::ids::{PaneId, TabId};
-use crate::vocab::text::{Cwd, Relaunch, TabTitle};
+use crate::vocab::text::{Cwd, Relaunch};
 
 /// The workspace after `input`, and what the window must do.
 pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<WorkspaceOut>) {
@@ -76,8 +76,7 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
         WorkspaceIn::Tear(pane) => tear(&mut ws, pane, &mut out),
         WorkspaceIn::Activity(pane) => {
             if let Some(tab) = ws.tab_of(pane) {
-                let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Unread(tab));
-                ws.tabs = tabs;
+                ws.tabs_do(TabsIn::Unread(tab));
             }
         }
         WorkspaceIn::Cwd { pane, cwd } => {
@@ -96,8 +95,7 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
             out.push(WorkspaceOut::Refused(RefuseWhy::UseCloseTab));
         }
         WorkspaceIn::Tabs(input) => {
-            let (tabs, outs) = tabs_step(take(&mut ws.tabs), input);
-            ws.tabs = tabs;
+            let outs = ws.tabs_do(input);
             out.extend(outs.into_iter().map(WorkspaceOut::Tab));
         }
     }
@@ -105,10 +103,6 @@ pub fn workspace_step(mut ws: Workspace, input: WorkspaceIn) -> (Workspace, Vec<
         out.push(WorkspaceOut::Changed);
     }
     (ws, out)
-}
-
-pub(super) fn take(tabs: &mut TabsState) -> TabsState {
-    std::mem::take(tabs)
 }
 
 fn front_tab(ws: &Workspace) -> Option<&Tab> {
@@ -188,19 +182,7 @@ fn new_tab(ws: &mut Workspace, cwd: Option<Cwd>, out: &mut Vec<WorkspaceOut>) {
     let (Some(tab_id), Some(pane)) = (mint_tab(ws), mint_pane(ws)) else {
         return;
     };
-    ws.tabs.place.tabs.push(Tab {
-        id: tab_id,
-        title: TabTitle("Shell".to_owned()),
-        pin: Pin::Loose,
-        folder: None,
-        tree: SplitTree::single(pane),
-    });
-    ws.focus.insert(tab_id, pane);
-    if let Some(cwd) = cwd.clone() {
-        ws.cwds.insert(pane, cwd);
-    }
-    let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(tab_id)));
-    ws.tabs = tabs;
+    ws.open_shell_tab(tab_id, pane, cwd.clone());
     spawn_fresh(ws, tab_id, pane, cwd, out);
     out.push(WorkspaceOut::Focused(pane));
 }
@@ -247,8 +229,7 @@ pub(super) fn focus(ws: &mut Workspace, pane: PaneId, out: &mut Vec<WorkspaceOut
         return out.push(WorkspaceOut::Refused(RefuseWhy::NoSuchPane(pane)));
     };
     if ws.front() != Some(tab) {
-        let (tabs, _) = tabs_step(take(&mut ws.tabs), TabsIn::Select(TabSel::Id(tab)));
-        ws.tabs = tabs;
+        ws.bring_forward(tab);
     }
     if let Some(state) = tree_state(ws, tab) {
         let (after, _) = tree_step(state, TreeIn::Focus(pane));

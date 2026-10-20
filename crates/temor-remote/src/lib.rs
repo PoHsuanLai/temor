@@ -50,6 +50,7 @@ mod idle;
 mod platform;
 pub mod ports;
 mod protocol;
+mod sync;
 mod transport;
 
 pub use client::{Attached, Client, ClientEvent, HostReach, PortAction, ReadChunk, port_actions};

@@ -49,12 +49,15 @@ pub fn rank(
     rows
 }
 
+/// The key of the plain new tab, whether it comes as the empty bar's row or as the action.
+const NEW_TAB_KEY: &str = "new-tab";
+
 /// With nothing typed the top row is a plain new tab, so Enter on an empty bar opens one.
 fn new_tab_row(query: &str) -> Option<BarRow> {
     query.is_empty().then(|| BarRow {
-        key: RowKey("new-tab".to_string()),
+        key: RowKey(NEW_TAB_KEY.to_string()),
         group: RowGroup::Run,
-        title: "New tab".to_string(),
+        title: Action::NewTab.label().to_string(),
         action: BarAction::NewTab,
     })
 }
@@ -160,7 +163,7 @@ fn target_key(target: &Target) -> RowKey {
         Target::Directory { cwd, .. } => format!("dir:{}", cwd.as_str()),
         Target::LocalTab => "local-tab".to_owned(),
         // The plain new tab is the one row of the empty bar; the same key keeps it from showing twice.
-        Target::Action(Action::NewTab) => "new-tab".to_owned(),
+        Target::Action(Action::NewTab) => NEW_TAB_KEY.to_owned(),
         Target::Action(action) => format!("action:{}", action.label()),
     })
 }
