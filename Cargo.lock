@@ -6977,6 +6977,7 @@ name = "temor-pane"
 version = "0.1.1"
 dependencies = [
  "chordkit",
+ "percent-encoding",
  "rustix",
  "temor-pty",
  "temor-render",
@@ -7034,6 +7035,7 @@ dependencies = [
  "png",
  "pollster",
  "swash",
+ "temor-render",
  "temor-vt",
  "thiserror 2.0.21",
  "vello_cpu 0.1.0",
@@ -7044,6 +7046,8 @@ dependencies = [
 name = "temor-shell"
 version = "0.1.1"
 dependencies = [
+ "percent-encoding",
+ "rustix",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7052,6 +7056,7 @@ dependencies = [
 name = "temor-ssh"
 version = "0.1.1"
 dependencies = [
+ "base64 0.22.1",
  "rustix",
  "temor-shell",
  "temor-ssh",
@@ -7063,6 +7068,7 @@ dependencies = [
 name = "temor-transfer"
 version = "0.1.1"
 dependencies = [
+ "base64 0.22.1",
  "proptest",
  "rustix",
  "serde",
@@ -7116,6 +7122,7 @@ dependencies = [
 name = "temor-vt"
 version = "0.1.1"
 dependencies = [
+ "base64 0.22.1",
  "png",
  "temor-vt",
  "temor-vt-sys",

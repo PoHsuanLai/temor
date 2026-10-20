@@ -8,7 +8,7 @@ use ds::prelude::{Emphasis, Selection};
 use temor_core::presence::{AgentState, attention};
 use temor_core::split::WholePx;
 use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::HostAlias;
+use temor_ssh::HostAlias;
 use temor_core::workspace::sidebar_plan;
 
 use super::model::{Hub, HubRef};

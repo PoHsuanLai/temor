@@ -10,7 +10,6 @@ use temor_core::remote::Grant;
 use temor_core::shelf::{Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, shelf_view};
 use temor_core::transfer::Origin;
 use temor_core::vocab::ids::{DownloadId, PaneId};
-use temor_core::workspace::WorkspaceIn;
 use temor_pane::OfferId;
 use temor_transfer::Consent;
 use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};

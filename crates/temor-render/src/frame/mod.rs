@@ -12,7 +12,7 @@ mod virtual_images;
 
 #[cfg(feature = "ghostty")]
 pub use capture::{CapturedFrame, FrameCapture};
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub(crate) use model::CellText;
 #[cfg(all(test, feature = "gpu"))]
 pub(crate) use model::ImagePixels;

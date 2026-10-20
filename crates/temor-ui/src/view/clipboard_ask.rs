@@ -5,7 +5,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use dioxus::prelude::*;
-use ds::prelude::*;
 use temor_core::remote::Grant;
 
 use super::confirm::two_button_alert;
