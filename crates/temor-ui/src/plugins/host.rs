@@ -5,8 +5,7 @@ use std::sync::Arc;
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_plugins::message::Item;
 use temor_plugins::{
-    CancelKind, Catalog, Drawing, Effect, Generations, Launcher, Plugin, PluginError,
-    Waits,
+    CancelKind, Catalog, Drawing, Effect, Generations, Launcher, Plugin, PluginError, Waits,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 

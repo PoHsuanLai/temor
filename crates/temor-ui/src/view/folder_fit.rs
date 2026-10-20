@@ -55,7 +55,10 @@ pub fn folder_room(row: RowRoom, others: &[usize]) -> usize {
         return usize::MAX;
     }
     let cells = row.width / row.cell_width;
-    let beside: f32 = others.iter().map(|&n| n as f32 + CHIP_FRAME + CHIP_GAP).sum();
+    let beside: f32 = others
+        .iter()
+        .map(|&n| n as f32 + CHIP_FRAME + CHIP_GAP)
+        .sum();
     let room = (cells - beside - CHIP_FRAME).floor();
     (room.max(0.0) as usize).max(LEAST_ROOM)
 }

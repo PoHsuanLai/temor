@@ -66,10 +66,10 @@ mod space_edits;
 mod space_launch;
 mod space_move;
 mod space_route;
-#[cfg(test)]
-mod split_order_tests;
 mod space_rows;
 mod spaces;
+#[cfg(test)]
+mod split_order_tests;
 mod ssh;
 mod ssh_check;
 mod ssh_connect;
@@ -103,7 +103,7 @@ pub use agents::{
     WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
 };
 pub use bar::{BarData, WindowAction};
-pub use bar_action::{pin_as_shell, select_tab};
+pub use bar_action::select_tab;
 pub use blink_tick::spawn_blink_loop;
 pub use desk::{Desk, HostOf};
 pub use desktop::spawn_desktop_loop;

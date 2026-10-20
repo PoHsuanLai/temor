@@ -13,7 +13,6 @@ use temor_pane::keys::Action;
 
 use crate::hub::{
     AgentMenu, AgentPick, Desk, PointLine, RestoreMenu, SheetView, WAIT_FOR_AGENT, Where,
-    pin_as_shell,
 };
 
 /// The choices of a tab's menu as quire's menu items.
@@ -111,7 +110,7 @@ pub fn AgentTabMenu(
             items,
             onpick: move |pick: TabPick| match pick {
                 // A pinned tab opens again as a shell: it runs nothing of its own.
-                TabPick::Pin(PinAct::Pin) => desk.act(WorkspaceIn::Tabs(pin_as_shell(tab))),
+                TabPick::Pin(PinAct::Pin) => desk.act(WorkspaceIn::Tabs(TabsIn::pin_as_shell(tab))),
                 TabPick::Pin(PinAct::Unpin) => desk.act(WorkspaceIn::Tabs(TabsIn::Unpin(tab))),
                 TabPick::ClosePane(pane) => desk.act(WorkspaceIn::ClosePane(Some(pane))),
                 TabPick::Agent(pick) => desk.agent_pick(tab, pick),

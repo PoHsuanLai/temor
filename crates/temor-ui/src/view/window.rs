@@ -42,10 +42,10 @@ use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
 use crate::edge::{Credentials, VaultCredentials, read_theme_choice};
 use crate::hub::{
-    Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, pin_as_shell,
-    spawn_agent_loops, spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop,
-    spawn_keys_loop, spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_running_loop,
-    spawn_save_loop, spawn_settings_loop, spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
+    Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
+    spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
+    spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop,
+    spawn_settings_loop, spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
 };
 
 /// The window's root component.
@@ -210,7 +210,7 @@ pub fn App() -> Element {
                     });
                 }
                 Dropped::Pin { from, onto } => {
-                    tabs(pin_as_shell(from));
+                    tabs(TabsIn::pin_as_shell(from));
                     tabs(TabsIn::Place {
                         tab: from,
                         at: onto,

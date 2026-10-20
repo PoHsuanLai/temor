@@ -3,19 +3,10 @@
 
 use temor_core::space::Pin;
 use temor_core::vocab::ids::TabId;
-use temor_core::vocab::text::Relaunch;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 use temor_pane::keys::Action;
 
 use super::model::Hub;
-
-/// The request that pins `tab`. A pinned tab opens again as a shell: it runs nothing of its own.
-pub fn pin_as_shell(tab: TabId) -> TabsIn {
-    TabsIn::Pin {
-        tab,
-        relaunch: Relaunch(String::new()),
-    }
-}
 
 /// The request that brings `tab` to the front.
 pub fn select_tab(tab: TabId) -> WorkspaceIn {
@@ -28,7 +19,7 @@ impl Hub {
     pub(super) fn pin_input(&self, action: Action) -> Option<WorkspaceIn> {
         let tab = self.ws.front()?;
         let tabs = match action {
-            Action::PinTab => pin_as_shell(tab),
+            Action::PinTab => TabsIn::pin_as_shell(tab),
             Action::UnpinTab => TabsIn::Unpin(tab),
             _ => return None,
         };

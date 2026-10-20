@@ -210,7 +210,11 @@ mod tests {
                 Error::Remote(RemoteError::NotFound { path: missing() }),
                 EditFault::Gone,
             ),
-            ("link ended", Error::LinkClosed(None), EditFault::NoConnection),
+            (
+                "link ended",
+                Error::LinkClosed(None),
+                EditFault::NoConnection,
+            ),
             ("no answer", Error::NoAnswer, EditFault::NoConnection),
             ("permission", Error::Remote(denied()), EditFault::Refused),
             (

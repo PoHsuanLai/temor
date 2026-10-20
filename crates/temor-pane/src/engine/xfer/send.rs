@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use temor_transfer::Bytes;
 use temor_transfer::Consent;
 use temor_transfer::kitty::{
-    ErrorCode, KittyId, Message, Offered, REFUSED_BY_PERSON, Reply, SendEffect, SendEnd,
-    SendInput, SendSession, encode_message, read_chunk, serve,
+    ErrorCode, KittyId, Message, Offered, REFUSED_BY_PERSON, Reply, SendEffect, SendEnd, SendInput,
+    SendSession, encode_message, read_chunk, serve,
 };
 
 use super::event::{OfferId, TransferEnd};
