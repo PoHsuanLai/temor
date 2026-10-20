@@ -3,7 +3,8 @@
 
 use temor_shell::ShellScript;
 
-use super::base64;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 use super::files::{TERMINFO_SOURCE, remote_path};
 use super::quote::heredoc_write;
 use crate::argv::RemoteCommand;
@@ -130,7 +131,7 @@ pub fn bootstrap_remote_command(script: &BootstrapScript) -> Result<RemoteComman
 /// The bootstrap uses it, and tests use it to check the transport with a known payload.
 #[doc(hidden)]
 pub fn wrap_script(script: &str) -> Result<RemoteCommand, SshError> {
-    let encoded = base64::encode(script.as_bytes());
+    let encoded = STANDARD.encode(script.as_bytes());
     // Only base64 characters and plain shell syntax sit between the quotes (no `'` or `\`). The
     // decoder falls back to openssl for hosts without GNU or BusyBox base64, and a host with
     // neither says so and fails instead of ending the session silently.

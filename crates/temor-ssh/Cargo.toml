@@ -12,6 +12,7 @@ publish = false
 testing = []
 
 [dependencies]
+base64 = { workspace = true }
 temor-shell = { workspace = true }
 thiserror = { workspace = true }
 

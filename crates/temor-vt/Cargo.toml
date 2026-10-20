@@ -12,10 +12,11 @@ default = ["ghostty"]
 # The real terminal on libghostty-vt (needs Zig and GHOSTTY_SOURCE_DIR; see temor-vt-sys).
 ghostty = ["dep:temor-vt-sys", "temor-vt-sys/native", "dep:png"]
 # `FakeVt`: a tiny in-Rust terminal implementing `Vt`, for other crates' tests without Zig.
-testing = []
+testing = ["dep:base64"]
 
 [dependencies]
 thiserror = { workspace = true }
+base64 = { workspace = true, optional = true }
 png = { workspace = true, optional = true }
 temor-vt-sys = { workspace = true, optional = true }
 

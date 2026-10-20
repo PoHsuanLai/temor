@@ -102,6 +102,10 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 nix = { version = "0.31", default-features = false, features = ["user"] }
 rustix = { version = "1.1", default-features = false, features = ["std", "pty", "termios", "process", "fs", "event"] }
 tempfile = "3"
+# Small shared codecs (temor-transfer, temor-ssh, temor-vt's fake, temor-pane): base64 and
+# percent coding, at the versions already in the lock file.
+base64 = "0.22"
+percent-encoding = "2"
 # The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).
 similar = { version = "2", default-features = false, features = ["text"] }
 

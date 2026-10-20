@@ -18,6 +18,10 @@
 //!   bytes decoded for `title` and `msg`;
 //! - `7501;?` is the support query, not a report, and gives `None` here.
 
+use ::base64::Engine as _;
+use ::base64::alphabet;
+use ::base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
+
 use crate::{Percent, ProgramState, ProgramStatus, ProgramWait};
 
 const ID_MAX: usize = 256;
@@ -99,28 +103,14 @@ fn decoded(value: &str) -> Option<String> {
     Some(text.chars().filter(|c| !c.is_control()).collect())
 }
 
-/// Standard base64, padding optional.
+/// Standard base64, padding optional, as libghostty's decoder takes it: a length of 1 mod 4 or
+/// spare bits in the last character are refused.
 fn base64(value: &str) -> Option<Vec<u8>> {
-    let trimmed = value.trim_end_matches('=');
-    let mut out = Vec::with_capacity(trimmed.len() * 3 / 4);
-    let (mut acc, mut bits) = (0u32, 0u32);
-    for c in trimmed.bytes() {
-        let v = match c {
-            b'A'..=b'Z' => c - b'A',
-            b'a'..=b'z' => c - b'a' + 26,
-            b'0'..=b'9' => c - b'0' + 52,
-            b'+' => 62,
-            b'/' => 63,
-            _ => return None,
-        };
-        acc = (acc << 6) | u32::from(v);
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push(((acc >> bits) & 0xff) as u8);
-        }
-    }
-    Some(out)
+    const READER: GeneralPurpose = GeneralPurpose::new(
+        &alphabet::STANDARD,
+        GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
+    );
+    READER.decode(value).ok()
 }
 
 #[cfg(test)]
@@ -162,6 +152,10 @@ mod tests {
             b"7501;state=sleeping",
             b"7501;state=idle:msg=!!!",
             b"7501;state=idle:msg=/w==",
+            // One character too many for a whole byte, and spare bits in the last one: the
+            // decoder in libghostty refuses both.
+            b"7501;state=idle:msg=Q",
+            b"7501;state=idle:msg=QR==",
             b"9;state=idle",
         ] {
             assert_eq!(
