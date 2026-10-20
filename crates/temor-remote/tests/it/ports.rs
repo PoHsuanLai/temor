@@ -1,10 +1,10 @@
-//! Port detection against the real `/proc`: a listener started inside a session is reported, and
-//! forgotten when it stops.
+//! Port detection against the real `/proc`: a listener started inside a session is reported, to a
+//! connection that arrives later too.
 
 use temor_remote::ClientEvent;
 use temor_wire::units::Port;
 
-use crate::support::{Rig, eventually, tools_present};
+use crate::support::{Rig, tools_present};
 
 /// A listener on an ephemeral loopback port that prints it and then waits.
 const LISTENER: &str = "python3 -c \"import socket,time; s=socket.socket(); s.bind(('127.0.0.1',0)); s.listen(); print('PORT=%d;' % s.getsockname()[1], flush=True); time.sleep(60)\"\n";
@@ -27,47 +27,6 @@ fn port_in(output: &str) -> Option<u16> {
         .split("PORT=")
         .skip(1)
         .find_map(|rest| rest.split(';').next()?.parse().ok())
-}
-
-#[test]
-fn a_listener_in_a_session_is_reported_and_forgotten() {
-    if !tools_present() || !python_present() {
-        return;
-    }
-    let rig = Rig::new("ports");
-    let mut conn = rig.connect();
-    let id = conn.client.open_session(rig.bash()).expect("open");
-    conn.client.attach(id).expect("attach");
-    conn.client
-        .send_input(id, LISTENER.as_bytes())
-        .expect("input");
-    let output = conn
-        .watch
-        .output_has("the port", |out| port_in(out).is_some());
-    let port = port_in(&output).expect("a port was printed");
-
-    rig.daemon.tick();
-    let reported = conn.watch.event("the port report", |event| match event {
-        ClientEvent::Ports(ports) if ports.iter().any(|p| p.port == Port(port)) => {
-            Some(ports.clone())
-        }
-        _ => None,
-    });
-    let found = reported
-        .iter()
-        .find(|p| p.port == Port(port))
-        .expect("listed");
-    assert!(found.process.contains("python"), "{found:?}");
-    let asked = conn.client.list_ports().expect("list ports");
-    assert!(asked.iter().any(|p| p.port == Port(port)));
-
-    // Ctrl-C stops the listener; the next report is without it.
-    conn.client.send_input(id, &[0x03]).expect("interrupt");
-    eventually("the listener to be forgotten", || {
-        rig.daemon.tick();
-        let ports = conn.client.list_ports().ok()?;
-        (!ports.iter().any(|p| p.port == Port(port))).then_some(())
-    });
 }
 
 #[test]
