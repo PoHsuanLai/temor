@@ -46,29 +46,45 @@ enum SpaceAct {
     MoveTabHere,
 }
 
-/// The head of the sidebar, as mailo's is: the name of the Space on screen, with its menu on a
-/// right click, and Downloads at the row's right end. With one Space there is no name: Spaces
-/// show only once a second one exists, and the row holds Downloads alone.
+/// The head of the sidebar, as mailo's is: the name of the Space on screen, one Space or several,
+/// so it says where you are; Downloads stands at the row's right end.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceHeader(desk: Desk) -> Element {
-    let many = desk.spaces.spaces().read().list().len() > 1;
     rsx! {
         div { class: "temor-head",
             div { class: "temor-head-title",
-                if many {
-                    SpaceHead { handle: desk.spaces }
-                }
+                SpaceHead { handle: desk.spaces }
             }
             ShelfButton { desk: desk.clone() }
         }
     }
 }
 
-/// The foot of the sidebar: a dot for each Space, and its `trailing` (the chevron, whose menu
-/// holds New Space: the foot draws no `+`). The Space switch has no chord of its own here: the
-/// desktop owns Ctrl+digit. With one Space there are no dots, and a right click on the foot is
-/// that Space's menu, which the head's name holds once there are two.
+/// A right click anywhere in the sidebar is the current Space's menu, as mailo's is, unless what
+/// it landed on has a menu of its own (a tab, a Space's dot, a download), which takes the click
+/// (its `prevent_default`) before it gets here.
+pub fn space_menu_on(desk: &Desk) -> impl FnMut(MouseEvent) + 'static {
+    let handle = desk.spaces;
+    move |event: MouseEvent| {
+        if !event.default_action_enabled() {
+            return;
+        }
+        event.prevent_default();
+        let at = event.client_coordinates();
+        handle.open_menu(
+            handle.current(),
+            Point {
+                x: Px(at.x as f32),
+                y: Px(at.y as f32),
+            },
+        );
+    }
+}
+
+/// The foot of the sidebar: a dot for each Space once there are several (quire's `SpacesFoot`
+/// draws none for one), and its `trailing` (the chevron, whose menu holds New Space: the foot
+/// draws no `+`). The Space switch has no chord of its own here: the desktop owns Ctrl+digit.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
@@ -90,13 +106,7 @@ pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
         };
     }
     rsx! {
-        div {
-            class: "temor-foot-one",
-            oncontextmenu: move |event: MouseEvent| {
-                event.prevent_default();
-                let at = event.client_coordinates();
-                handle.open_menu(handle.current(), Point { x: Px(at.x as f32), y: Px(at.y as f32) });
-            },
+        div { class: "temor-foot-one",
             {leading}
             {trailing}
         }

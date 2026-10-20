@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
+use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
@@ -139,11 +140,12 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
     );
     let (wa, wb) = (a.right - a.left, b.right - b.left);
     assert!(wa > 40.0 && (wa - wb).abs() < 2.0, "even: {wa} and {wb}");
-    // With one Space there is no Space to name or switch to: no head name and no dot. Downloads
-    // stands at the head's right end, the chevron at the foot's.
-    assert!(
-        rects(&h, ".temor-side .ds-space-head").is_empty(),
-        "no Space name"
+    // With one Space its name still heads the sidebar (it says where you are), but there is no
+    // dot to switch to. Downloads stands at the head's right end, the chevron at the foot's.
+    assert_eq!(
+        rects(&h, ".temor-side .temor-head .ds-space-head").len(),
+        1,
+        "the Space's name"
     );
     assert!(
         rects(&h, ".temor-side .ds-spaces-dots").is_empty(),
@@ -201,6 +203,57 @@ fn two_spaces_show_their_name_and_dots() {
     let (foot, dots) = (&foot[0], &dots[0]);
     let off = ((dots.left + dots.right) - (foot.left + foot.right)).abs() / 2.0;
     assert!(off <= 1.0, "the dots are {off} px off the foot's centre");
+}
+
+/// A right click on the sidebar's bare part is the Space's menu, as mailo's is; on a tab it is the
+/// tab's own menu alone.
+#[test]
+fn a_right_click_on_the_bare_sidebar_opens_the_space_s_menu_and_on_a_tab_the_tab_s() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-space-menu", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let tab = &rects(&h, ".temor-side .temor-tab-box")[0];
+    let side = &rects(&h, ".temor-side")[0];
+    // Below the rows, above the foot: nothing there has a menu of its own.
+    let bare = Point {
+        x: Px(((side.left + side.right) / 2.0) as f32),
+        y: Px(((tab.bottom + side.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(bare, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        h.html().contains("Edit Space\u{2026}"),
+        "the Space's menu:\n{}",
+        h.html()
+    );
+    assert!(!h.html().contains("Pin Tab"), "only the Space's menu");
+    h.send(Input::key(ShortcutKey::Escape));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        !h.html().contains("Edit Space\u{2026}"),
+        "closed:\n{}",
+        h.html()
+    );
+
+    let on_tab = Point {
+        x: Px(((tab.left + tab.right) / 2.0) as f32),
+        y: Px(((tab.top + tab.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(on_tab, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        h.html().contains("Pin Tab"),
+        "the tab's menu:\n{}",
+        h.html()
+    );
+    assert!(
+        !h.html().contains("Edit Space\u{2026}"),
+        "not the Space's menu too"
+    );
 }
 
 /// A right click on a pane of a split is the tab's menu with Close Pane, which closes that pane

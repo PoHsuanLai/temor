@@ -20,7 +20,7 @@ use super::dnd::Dnd;
 use super::pinned_tabs::PinnedTabs;
 use super::row_tip::RowTip;
 use super::side_menu::SideMenu;
-use super::space_ui::{SpaceFoot, SpaceHeader};
+use super::space_ui::{SpaceFoot, SpaceHeader, space_menu_on};
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow};
 
@@ -75,7 +75,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
             label: "Sidebar",
             pinned,
             onpin: move |()| sidebar.set(Shown::Visible),
-        div { class: "temor-side", style: frame.style_attr(),
+        div { class: "temor-side", style: frame.style_attr(), oncontextmenu: space_menu_on(&desk),
             Sidebar::<SideKey> {
                 label: "Tabs",
                 sections,
