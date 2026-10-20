@@ -1,4 +1,5 @@
 use super::{Master, MasterIn, MasterOut, OpenAs, master_step};
+use crate::test_support::run_steps;
 use crate::vocab::ids::PaneId;
 use temor_ssh::MasterProbe;
 
@@ -10,14 +11,7 @@ fn open(pane: u64, how: OpenAs) -> MasterOut {
 }
 
 fn run(from: Master, inputs: &[MasterIn]) -> (Master, Vec<MasterOut>) {
-    let mut state = from;
-    let mut outs = Vec::new();
-    for input in inputs {
-        let (next, more) = master_step(state, *input);
-        state = next;
-        outs.extend(more);
-    }
-    (state, outs)
+    run_steps(from, inputs.iter().copied(), master_step)
 }
 
 fn wanted(pane: u64) -> MasterIn {

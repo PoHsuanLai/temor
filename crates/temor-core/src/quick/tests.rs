@@ -2,11 +2,10 @@
 
 use super::{QuickIn, QuickOut, QuickState, QuickTerm, adopt, quick_step};
 use crate::error::CoreError;
+use crate::test_support::fresh_workspace;
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::Cwd;
-use crate::workspace::{
-    ClosedState, KeepClosed, Workspace, WorkspaceIn, WorkspaceOut, workspace_step,
-};
+use crate::workspace::{Workspace, WorkspaceIn, WorkspaceOut, workspace_step};
 use ds_style::space::list::SpaceId;
 
 fn cwd(path: &str) -> Option<Cwd> {
@@ -65,7 +64,7 @@ fn quick_terminal_steps() {
 }
 
 fn workspace_with_two_panes() -> Workspace {
-    let ws = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
+    let ws = fresh_workspace();
     let (ws, _) = workspace_step(ws, WorkspaceIn::NewTab { cwd: None });
     workspace_step(ws, WorkspaceIn::NewTab { cwd: None }).0
 }

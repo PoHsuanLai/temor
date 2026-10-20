@@ -2,6 +2,7 @@ use super::{
     Edit, EditFault, EditIn, EditOut, Found, LocalStamp, Queued, Resolution, Watch, edit_step,
     watch_step,
 };
+use crate::test_support::run_steps;
 use temor_ssh::{ByteCount, RemoteStat, RemoteState, UnixSeconds};
 
 fn stat(mtime: u64, size: u64) -> RemoteStat {
@@ -18,14 +19,7 @@ const V1: RemoteStat = RemoteStat {
 
 /// Runs `inputs` from `from`, returning the state and every output in order.
 fn run(from: Edit, inputs: &[EditIn]) -> (Edit, Vec<EditOut>) {
-    let mut state = from;
-    let mut outs = Vec::new();
-    for input in inputs {
-        let (next, more) = edit_step(state, *input);
-        state = next;
-        outs.extend(more);
-    }
-    (state, outs)
+    run_steps(from, inputs.iter().copied(), edit_step)
 }
 
 #[test]

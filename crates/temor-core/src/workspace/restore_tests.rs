@@ -1,14 +1,14 @@
 //! The session file: round trips, versions, and the lenient rebuild.
 
 use super::restore::{FreshWhy, Restored, decode, encode, launch_plan};
-use super::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
+use super::{Workspace, WorkspaceIn, workspace_step};
 use crate::space::Pin;
 use crate::split::Direction;
+use crate::test_support::{fresh_workspace, run_steps};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch, ViewerRef};
 
 fn built() -> Workspace {
-    let mut ws = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
     let steps = vec![
         WorkspaceIn::NewTab {
             cwd: Some(Cwd("/home/a".into())),
@@ -24,10 +24,7 @@ fn built() -> Workspace {
             relaunch: Relaunch("htop".into()),
         }),
     ];
-    for step in steps {
-        ws = workspace_step(ws, step).0;
-    }
-    ws
+    run_steps(fresh_workspace(), steps, workspace_step).0
 }
 
 fn loaded(text: &str) -> Workspace {

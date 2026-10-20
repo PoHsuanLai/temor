@@ -24,3 +24,6 @@ pub mod viewer;
 pub mod vocab;
 pub mod workspace;
 pub mod worktree;
+
+#[cfg(test)]
+mod test_support;

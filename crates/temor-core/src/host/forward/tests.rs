@@ -1,4 +1,5 @@
 use super::{ForwardFault, ForwardIn, ForwardOut, Forwards, PortOffer, forward_step, offers};
+use crate::test_support::run_steps;
 use temor_ssh::{Forward, Port, RemoteHost};
 
 fn port(n: u16) -> Port {
@@ -15,14 +16,7 @@ fn fwd(local: u16, remote: u16) -> Forward {
 }
 
 fn run(from: Forwards, inputs: &[ForwardIn]) -> (Forwards, Vec<ForwardOut>) {
-    let mut state = from;
-    let mut outs = Vec::new();
-    for input in inputs {
-        let (next, more) = forward_step(state, *input);
-        state = next;
-        outs.extend(more);
-    }
-    (state, outs)
+    run_steps(from, inputs.iter().copied(), forward_step)
 }
 
 #[test]

@@ -2,6 +2,7 @@ use super::{
     Answer, Line, OfferIn, OfferList, OfferOut, OfferState, PROBE_MS, Program, Reply, Screen,
     asks_for_secret, offer_step,
 };
+use crate::test_support::run_steps;
 use crate::vocab::ids::BlockId;
 use ds_core::time::stamp::Stamp;
 
@@ -95,14 +96,7 @@ fn tick(ms: u64) -> OfferIn {
 
 /// Feeds `inputs` in order; returns the final state and every output.
 fn run(inputs: Vec<OfferIn>) -> (OfferState, Vec<OfferOut>) {
-    let mut state = OfferState::Idle;
-    let mut outs = Vec::new();
-    for input in inputs {
-        let (next, mut out) = offer_step(state, input);
-        state = next;
-        outs.append(&mut out);
-    }
-    (state, outs)
+    run_steps(OfferState::Idle, inputs, offer_step)
 }
 
 fn asking(state: &OfferState) -> bool {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_support::run_steps;
 use crate::transfer::Origin;
 use crate::vocab::ids::{Bytes, DownloadId, TabId};
 use crate::vocab::text::{HostName, ShelfPath};
@@ -26,13 +27,7 @@ fn local() -> Origin {
 }
 
 fn run(start: Shelf, inputs: Vec<ShelfIn>) -> (Shelf, Vec<ShelfOut>) {
-    inputs
-        .into_iter()
-        .fold((start, Vec::new()), |(s, mut all), i| {
-            let (next, out) = shelf_step(s, i);
-            all.extend(out);
-            (next, all)
-        })
+    run_steps(start, inputs, shelf_step)
 }
 
 #[test]

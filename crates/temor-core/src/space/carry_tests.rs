@@ -4,15 +4,13 @@ use super::carry_tab;
 use crate::error::CoreError;
 use crate::space::Pin;
 use crate::split::Direction;
+use crate::test_support::{fresh_workspace, run_steps};
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::Cwd;
-use crate::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
+use crate::workspace::{Workspace, WorkspaceIn, workspace_step};
 
 fn built(steps: Vec<WorkspaceIn>) -> Workspace {
-    steps.into_iter().fold(
-        Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
-        |ws, step| workspace_step(ws, step).0,
-    )
+    run_steps(fresh_workspace(), steps, workspace_step).0
 }
 
 fn tab_in(cwd: &str) -> WorkspaceIn {
@@ -64,7 +62,7 @@ fn a_tab_keeps_its_panes_and_folders_and_takes_a_new_id_in_the_other_workspace()
 #[test]
 fn an_empty_workspace_shows_the_tab_it_is_given_and_a_missing_tab_is_refused() {
     let work = built(vec![tab_in("/w")]);
-    let empty = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
+    let empty = fresh_workspace();
     let (work_after, got) = carry_tab(&work, TabId(1), &empty).expect("moved");
     assert!(work_after.tabs.place.tabs.is_empty());
     assert_eq!(got.tabs.place.focused, Some(TabId(1)));

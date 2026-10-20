@@ -7,21 +7,14 @@ use super::{
 };
 use crate::space::Pin;
 use crate::split::Direction;
+use crate::test_support::run_steps;
 use crate::vocab::ids::{PaneId, TabId};
 use crate::vocab::text::{Cwd, Relaunch};
 
-pub(super) fn fresh() -> Workspace {
-    Workspace::new(ClosedState::new(KeepClosed::DEFAULT))
-}
+pub(super) use crate::test_support::fresh_workspace as fresh;
 
 pub(super) fn run(ws: Workspace, inputs: Vec<WorkspaceIn>) -> (Workspace, Vec<WorkspaceOut>) {
-    inputs
-        .into_iter()
-        .fold((ws, Vec::new()), |(ws, mut all), input| {
-            let (next, out) = workspace_step(ws, input);
-            all.extend(out);
-            (next, all)
-        })
+    run_steps(ws, inputs, workspace_step)
 }
 
 pub(super) fn one_tab() -> (Workspace, PaneId) {
