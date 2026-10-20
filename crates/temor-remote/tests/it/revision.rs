@@ -2,12 +2,13 @@
 
 use std::time::Duration;
 
+use temor_remote::files::STAGE_PREFIX;
 use temor_remote::{DAEMON_CAPS, Error, hello};
 use temor_wire::hello::Capability;
 use temor_wire::message::{Palette, PartEnd, RemoteError, RemotePath, Rgb, WriteCheck};
 use temor_wire::units::ByteOffset;
 
-use crate::support::{HELPER, Rig, tools_present};
+use crate::support::{HELPER, Rig, pattern, tools_present};
 
 const SOON: Duration = Duration::from_secs(10);
 
@@ -88,7 +89,7 @@ fn staged_files(rig: &Rig) -> Vec<String> {
     std::fs::read_dir(&rig.files)
         .expect("folder")
         .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
-        .filter(|name| name.starts_with(".temor-part-"))
+        .filter(|name| name.starts_with(STAGE_PREFIX))
         .collect()
 }
 
@@ -100,7 +101,7 @@ fn staged_files(rig: &Rig) -> Vec<String> {
 fn parts_land_once_at_the_end_and_a_bad_part_or_a_refused_check_leaves_nothing() {
     let rig = Rig::new("parts");
     let conn = rig.connect();
-    let path = RemotePath(format!("{}/streamed.bin", rig.files.display()));
+    let path = rig.remote("streamed.bin");
     let target = rig.files.join("streamed.bin");
 
     // In order: nothing shows until the last part, then the whole file does.
@@ -160,12 +161,10 @@ fn an_upload_bigger_than_one_part_streams() {
     let rig = Rig::new("upload-big");
     let conn = rig.connect();
     // Two and a bit parts of a pattern that shows a part landing in the wrong place.
-    let data: Vec<u8> = (0..9_500_000u32)
-        .map(|n| (n % 251) as u8 ^ (n / 4093) as u8)
-        .collect();
+    let data = pattern(9_500_000);
     let local = rig.home.join("big.bin");
     std::fs::write(&local, &data).expect("file");
-    let remote = RemotePath(format!("{}/big.bin", rig.files.display()));
+    let remote = rig.remote("big.bin");
 
     let stamp = conn
         .client

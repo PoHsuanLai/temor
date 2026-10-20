@@ -9,10 +9,6 @@ use temor_wire::units::{ByteCount, ByteOffset, ByteRange};
 
 use crate::support::{Rig, tools_present};
 
-fn path(rig: &Rig, below: &str) -> RemotePath {
-    RemotePath(format!("{}/{below}", rig.files.display()))
-}
-
 fn span(offset: u64, len: u64) -> ByteRange {
     ByteRange {
         offset: ByteOffset(offset),
@@ -38,7 +34,7 @@ fn listing_stat_and_ranged_reads() {
     std::fs::create_dir(rig.files.join("sub")).expect("folder");
     let conn = rig.connect();
 
-    let listing = conn.client.list_dir(&path(&rig, "")).expect("list");
+    let listing = conn.client.list_dir(&rig.remote("")).expect("list");
     let seen: Vec<(&str, EntryKind, u64)> = listing
         .iter()
         .map(|e| (e.name.as_str(), e.kind, e.len.0))
@@ -47,7 +43,7 @@ fn listing_stat_and_ranged_reads() {
     assert_eq!(seen[1].0, "sub");
     assert_eq!(seen[1].1, EntryKind::Directory);
 
-    let meta = conn.client.stat(&path(&rig, "a.txt")).expect("stat");
+    let meta = conn.client.stat(&rig.remote("a.txt")).expect("stat");
     assert_eq!((meta.kind, meta.len), (EntryKind::File, ByteCount(3)));
     // SHA-256("abc"), the FIPS 180-2 vector: the wire's hash is this one.
     let want =
@@ -58,7 +54,7 @@ fn listing_stat_and_ranged_reads() {
     for (offset, len, expect) in cases {
         let chunk = conn
             .client
-            .read_range(&path(&rig, "a.txt"), span(offset, len))
+            .read_range(&rig.remote("a.txt"), span(offset, len))
             .expect("read");
         assert_eq!(chunk.bytes, expect.as_bytes(), "{offset}+{len}");
         assert_eq!((chunk.total, chunk.stamp), (ByteCount(3), meta.stamp));
@@ -72,7 +68,7 @@ fn listing_stat_and_ranged_reads() {
 )]
 fn a_write_back_is_refused_when_the_file_changed_even_with_the_same_time() {
     let rig = Rig::new("files-write");
-    let file = path(&rig, "doc.txt");
+    let file = rig.remote("doc.txt");
     let conn = rig.connect();
 
     let made = conn
@@ -166,9 +162,9 @@ fn nothing_outside_the_granted_folders_is_reachable() {
         RemotePath(rig.home.join("secret").display().to_string()),
         RemotePath("/etc/passwd".to_string()),
         // A link out of the folder, whole or on the way, however deep.
-        path(&rig, "etc-link/passwd"),
-        path(&rig, "file-link"),
-        path(&rig, "real/out"),
+        rig.remote("etc-link/passwd"),
+        rig.remote("file-link"),
+        rig.remote("real/out"),
     ];
     for p in outside {
         assert!(
@@ -176,7 +172,7 @@ fn nothing_outside_the_granted_folders_is_reachable() {
             "{p:?}"
         );
     }
-    let listing = conn.client.list_dir(&path(&rig, "etc-link"));
+    let listing = conn.client.list_dir(&rig.remote("etc-link"));
     assert!(matches!(
         remote(listing.expect_err("refused")),
         RemoteError::PermissionDenied { .. }
@@ -198,7 +194,7 @@ fn nothing_outside_the_granted_folders_is_reachable() {
     }
 
     // A link is reported as a link, never followed.
-    let meta = conn.client.stat(&path(&rig, "file-link")).expect("stat");
+    let meta = conn.client.stat(&rig.remote("file-link")).expect("stat");
     assert_eq!(meta.kind, EntryKind::Symlink);
 
     // A session's folder is something the client asked for, so its files open up.
@@ -222,7 +218,7 @@ fn nothing_outside_the_granted_folders_is_reachable() {
 fn watches_report_a_file_appearing_changing_and_going() {
     let rig = Rig::new("files-watch");
     let mut conn = rig.connect();
-    let file = path(&rig, "w.txt");
+    let file = rig.remote("w.txt");
     let watch = conn.client.watch(&file).expect("watch");
 
     #[allow(clippy::type_complexity)] // a table of named rows

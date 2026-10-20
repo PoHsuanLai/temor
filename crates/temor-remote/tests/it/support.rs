@@ -7,6 +7,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use crate::pipes::{Line, one_way};
 use temor_pty::SessionLauncher;
 use temor_remote::{
     Client, ClientEvent, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, Error, ManualClock, hello,
@@ -69,32 +70,22 @@ impl Rig {
         self.connect_with(hello(HELPER, &DAEMON_CAPS))
     }
 
-    /// A connection over `line` both ways (see [`crate::slow_link`]).
-    pub fn connect_over(&self, line: crate::slow_link::Line) -> Conn {
-        let (served_in, slow_out) = std::io::pipe().expect("pipe");
-        let (slow_in, client_out) = std::io::pipe().expect("pipe");
-        let (client_in, slow_back_out) = std::io::pipe().expect("pipe");
-        let (slow_back_in, served_out) = std::io::pipe().expect("pipe");
-        crate::slow_link::carry(slow_in, slow_out, line);
-        crate::slow_link::carry(slow_back_in, slow_back_out, line);
-        let daemon = Arc::clone(&self.daemon);
-        let serving = std::thread::spawn(move || daemon.serve(served_in, served_out));
-        let (client, events) =
-            Client::connect(client_in, client_out, hello(HELPER, &DAEMON_CAPS)).expect("connect");
-        Conn {
-            client,
-            watch: Watch::new(events),
-            serving,
-        }
+    /// A connection over `line` both ways (see [`crate::pipes`]).
+    pub fn connect_over(&self, line: Line) -> Conn {
+        self.link(hello(HELPER, &DAEMON_CAPS), Some(line))
     }
 
     pub fn connect_with(&self, ours: temor_wire::hello::Hello) -> Conn {
-        let (served_in, client_out) = std::io::pipe().expect("pipe");
-        let (client_in, served_out) = std::io::pipe().expect("pipe");
+        self.link(ours, None)
+    }
+
+    /// A connection that greets with `ours`, over `line` when there is one.
+    fn link(&self, ours: temor_wire::hello::Hello, line: Option<Line>) -> Conn {
+        let (served_in, client_out) = one_way(line);
+        let (client_in, served_out) = one_way(line);
         let daemon = Arc::clone(&self.daemon);
         let serving = std::thread::spawn(move || daemon.serve(served_in, served_out));
-        let result = Client::connect(client_in, client_out, ours);
-        match result {
+        match Client::connect(client_in, client_out, ours) {
             Ok((client, events)) => Conn {
                 client,
                 watch: Watch::new(events),
@@ -102,6 +93,11 @@ impl Rig {
             },
             Err(error) => panic!("connect failed: {error}"),
         }
+    }
+
+    /// `below` in the folder the daemon serves files from, as the client names it.
+    pub fn remote(&self, below: &str) -> RemotePath {
+        RemotePath(format!("{}/{below}", self.files.display()))
     }
 
     /// A bash in the scratch HOME with a fixed prompt, 80 by 24, and temor's shell integration
@@ -239,15 +235,31 @@ impl Watch {
 }
 
 /// Polls `check` until it returns `Some`, or panics naming `what`.
-pub fn eventually<T>(what: &str, mut check: impl FnMut() -> Option<T>) -> T {
-    let deadline = Instant::now() + PATIENCE;
-    loop {
-        if let Some(found) = check() {
-            return found;
-        }
-        assert!(Instant::now() < deadline, "timed out waiting for {what}");
-        std::thread::sleep(Duration::from_millis(25));
-    }
+pub fn eventually<T>(what: &str, check: impl FnMut() -> Option<T>) -> T {
+    temor_testkit::eventually_some(what, PATIENCE, check)
+}
+
+/// A recognisable, non-repeating pattern of `len` bytes, for a file whose parts must land in
+/// order.
+pub fn pattern(len: u32) -> Vec<u8> {
+    (0..len)
+        .map(|n| (n % 251) as u8 ^ (n / 4093) as u8)
+        .collect()
+}
+
+/// Runs git in `dir` as a test user, with no config of the person's.
+pub fn git(dir: &Path, args: &[&str]) {
+    let status = std::process::Command::new("git")
+        .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
+        .args(["-c", "commit.gpgsign=false"])
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .status()
+        .expect("git runs");
+    assert!(status.success(), "git {args:?}");
 }
 
 /// The screen a snapshot holds, as text: scrollback and screen, trailing blanks trimmed.
@@ -281,13 +293,12 @@ pub fn bash_path() -> PathBuf {
 /// Whether bash and `/proc` are there. Where not, the terminal tests return early with a note,
 /// or fail under TEMOR_REQUIRE_TOOLS=1 so a gate that has the tools cannot pass silently.
 pub fn tools_present() -> bool {
-    let found = bash_path().exists() && Path::new("/proc/self").exists();
-    if !found {
-        assert!(
-            !std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1"),
-            "bash and /proc are required (TEMOR_REQUIRE_TOOLS=1)"
-        );
-        eprintln!("SKIPPED: needs bash and /proc (set TEMOR_REQUIRE_TOOLS=1 to fail instead)");
+    if temor_testkit::program_or_skip("bash", "temor-remote").is_none() {
+        return false;
     }
-    found
+    let proc = Path::new("/proc/self").exists();
+    if !proc {
+        temor_testkit::skip("/proc", "temor-remote");
+    }
+    proc
 }

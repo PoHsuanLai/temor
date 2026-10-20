@@ -1,36 +1,15 @@
 //! A session's folder read for the chips: git's text and the version files, through the link.
 
-use std::path::Path;
-use std::process::Command;
-
 use temor_remote::{Error, hello};
 use temor_wire::hello::Capability;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{RemoteError, RemotePath};
 
-use crate::support::{HELPER, Rig, tools_present};
-
-fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
-        .args(["-c", "commit.gpgsign=false"])
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .status()
-        .expect("git runs");
-    assert!(status.success(), "git {args:?}");
-}
-
-fn have_git() -> bool {
-    Command::new("git").arg("--version").output().is_ok()
-}
+use crate::support::{HELPER, Rig, git, tools_present};
 
 #[test]
 fn a_sessions_folder_is_read_with_git_and_the_version_files_up_to_the_repository() {
-    if !tools_present() || !have_git() {
+    if !tools_present() || temor_testkit::program_or_skip("git", "facts").is_none() {
         return;
     }
     let rig = Rig::new("facts-folder");

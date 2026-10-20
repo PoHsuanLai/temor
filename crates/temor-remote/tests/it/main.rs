@@ -11,6 +11,8 @@ mod handshake;
 #[cfg(feature = "ghostty")]
 mod live;
 #[cfg(feature = "ghostty")]
+mod pipes;
+#[cfg(feature = "ghostty")]
 mod ports;
 #[cfg(feature = "ghostty")]
 mod revision;

@@ -3,16 +3,9 @@
 
 use temor_remote::Error;
 use temor_transfer::{RelPath, Root};
-use temor_wire::message::{RemoteError, RemotePath, WriteCheck};
+use temor_wire::message::{RemoteError, WriteCheck};
 
-use crate::support::Rig;
-
-/// More than two chunks of a recognisable, non-repeating pattern.
-fn big() -> Vec<u8> {
-    (0..2_600_000u32)
-        .map(|n| (n % 251) as u8 ^ (n / 4093) as u8)
-        .collect()
-}
+use crate::support::{Rig, pattern};
 
 #[test]
 #[cfg_attr(
@@ -21,7 +14,7 @@ fn big() -> Vec<u8> {
 )]
 fn a_download_arrives_whole_in_the_downloads_folder_and_a_failed_one_leaves_nothing() {
     let rig = Rig::new("transfer-down");
-    let data = big();
+    let data = pattern(2_600_000);
     std::fs::write(rig.files.join("big.bin"), &data).expect("file");
     let shelf = rig.home.join("shelf");
     std::fs::create_dir(&shelf).expect("folder");
@@ -29,7 +22,7 @@ fn a_download_arrives_whole_in_the_downloads_folder_and_a_failed_one_leaves_noth
 
     let root = Root::open(&shelf).expect("root");
     let rel = RelPath::parse("got/big.bin").expect("path");
-    let remote = RemotePath(format!("{}/big.bin", rig.files.display()));
+    let remote = rig.remote("big.bin");
     let stamp = conn
         .client
         .download(&remote, &root, &rel)
@@ -40,7 +33,7 @@ fn a_download_arrives_whole_in_the_downloads_folder_and_a_failed_one_leaves_noth
     );
     assert_eq!(conn.client.stat(&remote).expect("stat").stamp, stamp);
 
-    let missing = RemotePath(format!("{}/missing.bin", rig.files.display()));
+    let missing = rig.remote("missing.bin");
     let gone = RelPath::parse("got/missing.bin").expect("path");
     assert!(conn.client.download(&missing, &root, &gone).is_err());
     assert!(!shelf.join("got/missing.bin").exists());
@@ -56,7 +49,7 @@ fn an_upload_lands_and_the_edit_round_trip_stops_at_a_changed_file() {
     let conn = rig.connect();
     let local = rig.home.join("up.txt");
     std::fs::write(&local, b"from here").expect("file");
-    let remote = RemotePath(format!("{}/up.txt", rig.files.display()));
+    let remote = rig.remote("up.txt");
 
     let stamp = conn
         .client
@@ -108,7 +101,7 @@ fn an_upload_reports_every_byte_once_and_ends_at_the_files_size() {
         let local = rig.home.join(format!("{name}.bin"));
         let data: Vec<u8> = (0..size).map(|n| (n % 251) as u8).collect();
         std::fs::write(&local, &data).expect("file");
-        let remote = RemotePath(format!("{}/{name}.bin", rig.files.display()));
+        let remote = rig.remote(&format!("{name}.bin"));
         let mut seen = Vec::new();
         conn.client
             .upload_with(&local, &remote, WriteCheck::MustBeNew, &mut |n| {

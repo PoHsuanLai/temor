@@ -1,8 +1,6 @@
 //! A link with a fixed one-way delay and a byte rate, between a client and the daemon, as a far
 //! host over a thin line would be: what the person feels when typing while a file moves.
 
-use std::io::{Read, Write};
-use std::sync::mpsc::channel;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -10,51 +8,8 @@ use temor_remote::Client;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{RemotePath, WriteCheck};
 
+use crate::pipes::Line;
 use crate::support::{Conn, Rig, tools_present};
-
-/// One direction of the line.
-#[derive(Debug, Clone, Copy)]
-pub struct Line {
-    pub one_way: Duration,
-    pub bytes_per_sec: u64,
-}
-
-/// Carries `from` to `to` as `line` would: each chunk leaves once the ones before it have gone
-/// and its own bytes have had their time at the rate, and arrives `one_way` after that.
-pub fn carry(
-    mut from: impl Read + Send + 'static,
-    mut to: impl Write + Send + 'static,
-    line: Line,
-) {
-    let (tx, rx) = channel::<(Instant, Vec<u8>)>();
-    thread::spawn(move || {
-        let mut buf = vec![0u8; 16 << 10];
-        let mut free_at = Instant::now();
-        while let Ok(n) = from.read(&mut buf) {
-            if n == 0 {
-                break;
-            }
-            let start = free_at.max(Instant::now());
-            free_at = start + Duration::from_secs_f64(n as f64 / line.bytes_per_sec as f64);
-            if tx
-                .send((free_at + line.one_way, buf[..n].to_vec()))
-                .is_err()
-            {
-                break;
-            }
-        }
-    });
-    thread::spawn(move || {
-        for (due, bytes) in rx {
-            if let Some(wait) = due.checked_duration_since(Instant::now()) {
-                thread::sleep(wait);
-            }
-            if to.write_all(&bytes).and_then(|()| to.flush()).is_err() {
-                break;
-            }
-        }
-    });
-}
 
 /// How long a typed line takes to come back on the screen.
 fn echo_after(conn: &mut Conn, id: SessionId, n: u32) -> Duration {
