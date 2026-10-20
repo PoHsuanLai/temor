@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
-use ds_harness::{Backdrop, Backend, Driver, Harness, Input, WindowHosting};
+use ds_harness::{Backdrop, Backend, Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
 use super::support::tools_present;
@@ -25,7 +25,6 @@ fn demo_lens() -> Option<PathBuf> {
 
 /// Rectangles `(left, top, width, height)` of the elements matching `selector`.
 fn rects(h: &Harness, selector: &str) -> Vec<(f64, f64, f64, f64)> {
-    use ds_harness::DocQuery;
     h.with_doc(|doc| {
         doc.query_selector_all(selector)
             .map(|found| found.into_iter().collect::<Vec<_>>())
