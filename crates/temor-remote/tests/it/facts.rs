@@ -5,7 +5,8 @@ use temor_wire::hello::Capability;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{RemoteError, RemotePath};
 
-use crate::support::{HELPER, Rig, git, tools_present};
+use crate::fixtures::git;
+use crate::support::{HELPER, Rig, tools_present};
 
 #[test]
 fn a_sessions_folder_is_read_with_git_and_the_version_files_up_to_the_repository() {

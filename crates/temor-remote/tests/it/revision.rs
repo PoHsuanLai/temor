@@ -8,7 +8,8 @@ use temor_wire::hello::Capability;
 use temor_wire::message::{Palette, PartEnd, RemoteError, RemotePath, Rgb, WriteCheck};
 use temor_wire::units::ByteOffset;
 
-use crate::support::{HELPER, Rig, pattern, tools_present};
+use crate::fixtures::pattern;
+use crate::support::{HELPER, Rig, tools_present};
 
 const SOON: Duration = Duration::from_secs(10);
 

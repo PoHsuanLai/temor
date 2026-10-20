@@ -5,7 +5,8 @@ use temor_remote::Error;
 use temor_transfer::{RelPath, Root};
 use temor_wire::message::{RemoteError, WriteCheck};
 
-use crate::support::{Rig, pattern};
+use crate::fixtures::pattern;
+use crate::support::Rig;
 
 #[test]
 #[cfg_attr(

@@ -7,6 +7,8 @@ mod facts;
 #[cfg(feature = "ghostty")]
 mod files;
 #[cfg(feature = "ghostty")]
+mod fixtures;
+#[cfg(feature = "ghostty")]
 mod handshake;
 #[cfg(feature = "ghostty")]
 mod live;
