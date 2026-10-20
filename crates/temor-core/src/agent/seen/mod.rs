@@ -2,6 +2,7 @@
 //! named in its command line when a wrapper such as `bwrap` or `env` runs it.
 
 mod agent;
+mod node;
 #[cfg(test)]
 mod tests;
 mod wrapper;

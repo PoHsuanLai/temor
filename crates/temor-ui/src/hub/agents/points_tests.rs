@@ -2,18 +2,18 @@
 //! sheet, the restore performed with the plan's digest, and Restore held back while docket's list
 //! says a turn is running. Each test waits for the job it started.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
 use temor_desktop::{
-    CheckpointPort, DesktopError, Named, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
-    PointPlan, PointRow, PointState, RunState, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk,
-    WatchOwner, Watching,
+    NotSavedWhy, PlanDigest, PointFault, PointId, PointList, PointPlan, PointRow, PointState,
+    RunState, SessionKey, TurnNo,
 };
 use temor_ssh::UnixSeconds;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use super::fake_port::Fake;
 use super::jobs::Done;
 use super::points::{PointLine, RestoreMenu, WAIT_FOR_AGENT, restore_menu};
 use super::{AgentPick, SheetView};
@@ -98,134 +98,6 @@ fn the_menu_lists_the_points_and_says_why_a_turn_has_none() {
     };
     assert_eq!(lines.len(), 12);
     assert_eq!(lines[0], choice(4, "Before turn 4"));
-}
-
-/// A port that answers from fixed data and writes down every call.
-#[derive(Debug)]
-pub(super) struct Fake {
-    list: Mutex<PointList>,
-    plan: PointPlan,
-    calls: Mutex<Vec<String>>,
-    /// What a watch answers: who holds its session, and whether the app was recognised.
-    answer: Mutex<(WatchOwner, Named)>,
-    /// What a watch asked with a command line answers instead, when set (a recognised app).
-    answer_seen: Mutex<Option<(WatchOwner, Named)>>,
-}
-
-impl Fake {
-    pub(super) fn new(list: PointList, plan: PointPlan) -> Fake {
-        Fake {
-            list: Mutex::new(list),
-            plan,
-            calls: Mutex::new(Vec::new()),
-            answer: Mutex::new((WatchOwner::Terminal, Named::Unknown)),
-            answer_seen: Mutex::new(None),
-        }
-    }
-
-    /// From now on a watch answers with a session `owner` closes, for an app that is `named`.
-    pub(super) fn answer_watch(&self, owner: WatchOwner, named: Named) {
-        *self.answer.lock().unwrap_or_else(|p| p.into_inner()) = (owner, named);
-    }
-
-    /// From now on a watch asked with a command line answers with a session `owner` closes, for
-    /// an app that is `named`; one asked without keeps the plain answer.
-    pub(super) fn answer_watch_seen(&self, owner: WatchOwner, named: Named) {
-        *self.answer_seen.lock().unwrap_or_else(|p| p.into_inner()) = Some((owner, named));
-    }
-
-    fn log(&self, call: String) {
-        self.calls
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .push(call);
-    }
-
-    pub(super) fn calls(&self) -> Vec<String> {
-        self.calls.lock().unwrap_or_else(|p| p.into_inner()).clone()
-    }
-
-    /// The calls other than reading the list: those come in an order the threads decide.
-    pub(super) fn writes(&self) -> Vec<String> {
-        let mut calls = self.calls();
-        calls.retain(|call| !call.starts_with("list "));
-        calls
-    }
-
-    fn set_turn(&self, turn: RunState) {
-        self.list.lock().unwrap_or_else(|p| p.into_inner()).turn = turn;
-    }
-}
-
-impl CheckpointPort for Fake {
-    fn list(&self, session: &SessionKey) -> Result<PointList, DesktopError> {
-        self.log(format!("list {}", session.as_str()));
-        Ok(self.list.lock().unwrap_or_else(|p| p.into_inner()).clone())
-    }
-
-    fn plan(&self, session: &SessionKey, id: PointId) -> Result<PointPlan, DesktopError> {
-        self.log(format!("plan {} {}", session.as_str(), id.0));
-        Ok(self.plan.clone())
-    }
-
-    fn restore(
-        &self,
-        session: &SessionKey,
-        id: PointId,
-        digest: &PlanDigest,
-    ) -> Result<(), DesktopError> {
-        self.log(format!(
-            "restore {} {} {}",
-            session.as_str(),
-            id.0,
-            digest.0
-        ));
-        match digest.0.as_str() {
-            "stale" => Err(DesktopError::Checkpoint(PointFault::PlanStale)),
-            _ => Ok(()),
-        }
-    }
-
-    fn watch(&self, ask: &WatchAsk) -> Result<Watching, DesktopError> {
-        let WatchAsk {
-            workspace,
-            label,
-            rewind,
-            seen,
-        } = ask;
-        self.log(format!("watch {workspace} [{label}] {rewind:?}"));
-        let recognised = *self.answer_seen.lock().unwrap_or_else(|p| p.into_inner());
-        let plain = *self.answer.lock().unwrap_or_else(|p| p.into_inner());
-        let (owner, named) = recognised.filter(|_| seen.is_some()).unwrap_or(plain);
-        let session = SessionKey::new("w-1").ok_or(DesktopError::Checkpoint(PointFault::Failed))?;
-        Ok(Watching {
-            session,
-            owner,
-            named,
-        })
-    }
-
-    fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {
-        self.log(format!("mark {}", session.as_str()));
-        self.set_turn(RunState::Running);
-        Ok(TurnMark(7))
-    }
-
-    fn turn_ended(
-        &self,
-        session: &SessionKey,
-        turn: TurnMark,
-        how: TurnHow,
-    ) -> Result<(), DesktopError> {
-        self.log(format!("ended {} {} {how:?}", session.as_str(), turn.0));
-        self.set_turn(RunState::Idle);
-        Ok(())
-    }
-
-    fn close(&self, session: &SessionKey) -> Result<(), DesktopError> {
-        self.log(format!("close {}", session.as_str()));
-        Ok(())
-    }
 }
 
 /// The list a fake starts with: a point, and a turn that was not saved.

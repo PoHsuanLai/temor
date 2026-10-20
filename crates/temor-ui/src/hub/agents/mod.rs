@@ -7,6 +7,8 @@ mod convert;
 mod desk;
 mod done;
 mod ending;
+#[cfg(test)]
+mod fake_port;
 mod jobs;
 mod leftovers;
 mod loops;
@@ -26,6 +28,7 @@ mod tests;
 mod trees;
 mod turns;
 mod watch;
+mod watch_calls;
 #[cfg(test)]
 mod watch_report_tests;
 #[cfg(test)]

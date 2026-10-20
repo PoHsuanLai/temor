@@ -1,4 +1,5 @@
-use super::wrapper::{node_script, program_at};
+use super::node::node_script;
+use super::wrapper::program_at;
 
 fn words(line: &str) -> Vec<String> {
     line.split(' ').map(str::to_owned).collect()
@@ -15,6 +16,8 @@ fn a_wrapper_is_read_by_its_own_options_to_the_program_word() {
         ("env unset", "env -u A --unset B --unset=C zsh", Some(6)),
         ("env chdir", "env -C /x --chdir /y --chdir=/z zsh", Some(6)),
         ("env double dash", "env A=b -- zsh", Some(3)),
+        ("env assignments after a double dash", "env -- A=b C=d zsh", Some(4)),
+        ("env only assignments after a double dash", "env -- A=b", None),
         ("env split string", "env -S a_b zsh", None),
         ("env unknown option", "env --frob zsh", None),
         ("env with no program", "env -i A=b", None),
@@ -57,6 +60,11 @@ fn node_runs_the_first_argument_that_is_not_an_option() {
         ("a script", "node /x/cli.js --a", Some("/x/cli.js")),
         ("after options", "node --no-warnings -r pre /x/cli.js", Some("/x/cli.js")),
         ("after a double dash", "node -- /x/cli.js", Some("/x/cli.js")),
+        ("a value option's value is no script", "node --title claude /x/cli.js", Some("/x/cli.js")),
+        ("short and long values", "node -C dev --conditions x /x/cli.js", Some("/x/cli.js")),
+        ("a value after =", "node --title=claude /x/cli.js", Some("/x/cli.js")),
+        ("flags by prefix", "node --no-warnings --experimental-vm-modules /x/cli.js", Some("/x/cli.js")),
+        ("an unknown option", "node --frob claude.js", None),
         ("code given", "node -e code", None),
         ("a repl", "node", None),
     ];

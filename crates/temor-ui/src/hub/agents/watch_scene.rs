@@ -10,8 +10,9 @@ use temor_pane::PaneEvent;
 use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use super::fake_port::Fake;
 use super::jobs::Done;
-use super::points_tests::{Fake, first_list, first_plan};
+use super::points_tests::{first_list, first_plan};
 use super::tests::{front, front_running};
 use crate::hub::model::Hub;
 use crate::hub::tests::hub_after;
@@ -39,6 +40,9 @@ pub(super) fn program(state: ProgramState) -> PaneEvent {
 pub(super) fn in_front(name: &str) -> PaneEvent {
     front(name)
 }
+
+/// The watch `sandboxed("claude")` asks for, with the command line docket gets.
+pub(super) const CLAUDE_SEEN: &str = "watch /work [claude in Shell] Agent | claude --resume 1";
 
 /// A sandbox wrapper in front, as `claude --resume 1` or `codex` runs under one.
 pub(super) fn sandboxed(agent: &str) -> PaneEvent {
