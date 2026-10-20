@@ -5,10 +5,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use dioxus::prelude::*;
-use ds::components::overlays::alert_model::{AlertButton, AlertRole};
 use ds::prelude::*;
 use temor_core::remote::Grant;
 
+use super::confirm::two_button_alert;
 use super::slot::Slot;
 use crate::session::{ClipboardAsk, ClipboardUse};
 
@@ -42,26 +42,12 @@ pub fn ClipboardConfirm(
     on_refuse: EventHandler<()>,
 ) -> Element {
     let (title, message) = ask_words(&ask);
-    rsx! {
-        Alert {
-            title,
-            message: Some(message.into()),
-            buttons: vec![
-                AlertButton {
-                    label: "Allow".to_owned(),
-                    role: AlertRole::Normal,
-                    onpress: Callback::new(move |_| on_allow.call(())),
-                    common: Common::default(),
-                },
-                AlertButton {
-                    label: "Don't Allow".to_owned(),
-                    role: AlertRole::Cancel,
-                    onpress: Callback::new(move |_| on_refuse.call(())),
-                    common: Common::default(),
-                },
-            ],
-        }
-    }
+    two_button_alert(
+        title,
+        message,
+        ("Allow", on_allow),
+        ("Don't Allow", on_refuse),
+    )
 }
 
 /// The question's answer, then a redraw.

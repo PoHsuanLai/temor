@@ -25,21 +25,37 @@ pub fn PasteConfirm(
     on_paste: EventHandler<()>,
     on_cancel: EventHandler<()>,
 ) -> Element {
+    two_button_alert(
+        "Paste this text?",
+        reason_text(reason),
+        ("Paste", on_paste),
+        ("Cancel", on_cancel),
+    )
+}
+
+/// A question with an answer to go on (`yes`) and one to turn back (`no`, the Cancel button), each
+/// a label and what hears the press. The paste, the clipboard and the like all ask this way.
+pub fn two_button_alert(
+    title: &str,
+    message: impl Into<TextLine>,
+    (yes, on_yes): (&str, EventHandler<()>),
+    (no, on_no): (&str, EventHandler<()>),
+) -> Element {
     rsx! {
         Alert {
-            title: "Paste this text?",
-            message: Some(reason_text(reason).into()),
+            title,
+            message: Some(message.into()),
             buttons: vec![
                 AlertButton {
-                    label: "Paste".to_owned(),
+                    label: yes.to_owned(),
                     role: AlertRole::Normal,
-                    onpress: Callback::new(move |_| on_paste.call(())),
+                    onpress: Callback::new(move |_| on_yes.call(())),
                     common: Common::default(),
                 },
                 AlertButton {
-                    label: "Cancel".to_owned(),
+                    label: no.to_owned(),
                     role: AlertRole::Cancel,
-                    onpress: Callback::new(move |_| on_cancel.call(())),
+                    onpress: Callback::new(move |_| on_no.call(())),
                     common: Common::default(),
                 },
             ],

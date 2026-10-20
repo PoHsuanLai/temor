@@ -41,7 +41,7 @@ pub fn OfferBar(pane: PaneId, desk: Desk) -> Element {
                 Button {
                     label: format!("Never for {program}"),
                     size: ControlSize::Small,
-                    title: Some("Don\u{2019}t ask again for this command".to_owned()),
+                    title: Some("Don't ask again for this command".to_owned()),
                     onclick: move |_| never.offer_answer(pane, Reply::Never),
                 }
             },
