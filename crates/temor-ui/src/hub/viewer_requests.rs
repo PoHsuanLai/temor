@@ -5,10 +5,10 @@
 use anyview_pane::{FileRequest, PaneRequest};
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::WorkspaceIn;
-use temor_pane::text::{LinkVerdict, check_link};
 
 use super::desk::Desk;
 use super::model::Hub;
+use crate::platform::open_link;
 
 impl Desk {
     /// Answers one request of the viewer pane `pane`.
@@ -92,17 +92,9 @@ impl Hub {
     /// file shows in the file manager; everything that would change the file is declined.
     fn viewer_file_request(&mut self, request: FileRequest) {
         let note = match request {
-            FileRequest::OpenUri(address) => match check_link(&address) {
-                LinkVerdict::Open(link) => self
-                    .ssh
-                    .opener
-                    .open(&link)
-                    .err()
-                    .map(|_| "That link could not be opened.".to_owned()),
-                LinkVerdict::Refused(_) => {
-                    Some("Only web and email links open from here.".to_owned())
-                }
-            },
+            FileRequest::OpenUri(address) => open_link(&*self.ssh.opener, &address)
+                .err()
+                .map(str::to_owned),
             FileRequest::Reveal(file) => self
                 .ssh
                 .file_opener
