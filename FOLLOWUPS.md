@@ -1657,18 +1657,27 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       There is no macOS or Windows release; `install.sh` sends those to `scripts/dev-setup.sh`,
       which is untested on both (their desktop layer is stubs). `--uninstall` removes the files it
       installed and leaves the folders they were in.
-- [ ] Duplication fixes, wave 2. This is the rest of the four audits (`audit-dup-*.md`) plus the
-      wave-1 lanes' leftovers. The leftovers are in `followups-{dup-base,dup-dispatch,core,views}.md`
-      under /mnt/data/cargo/temor-lanes.
-      - The new `temor-testkit` crate for the shared test helpers.
-      - The terminal keys, viewer keys and side menu still do `window_action` then
-        `workspace_input` themselves. They should go through `Desk::run_action` as the bar does.
-        Until then a Space chord typed in a terminal uses `desk.select_space`, which ignores a
-        Space being edited, while the bar refuses with "Finish changing the Space first".
-      - The sidebar keeps its own `in_reading_order` sort, on the 1000 px miniature. It should
-        take core's `SplitTree::reading_order()`; two left edges closer than 1/1000 can tie there
-        and order differently.
-      - temor-ui's and temor-remote's private-folder checks move onto temor-shell's.
+- [ ] Leftovers from the duplication fixes (wave 2 is on main; the lanes' notes are in
+      /mnt/data/cargo/temor-lanes/followups-dup2-*.md).
+      - No test covers a Space chord refused while a Space is being renamed or edited
+        (`Desk::switch_to_number`). On Linux the terminal keymap binds no Space chord: chordkit's
+        GNOME and CUA conventions leave Switch to Space unbound, and only mac and KDE bind it. A
+        test needs one of those keymaps in the harness, or a way to open the Space's Rename from
+        a test.
+      - The bar's Run row on a tab that becomes a host pane types nothing. `HostPane` needs a
+        queued command that is typed when the host session is up.
+      - `tools_present` in the remote, ui and pane test support looks bash up on the test's PATH,
+        while the tests run `/usr/bin/bash`. A machine with bash only elsewhere (Nix, Homebrew)
+        runs those tests instead of skipping them.
+      - The private-folder errors changed wording. A link in place of the folder reads "Too many
+        levels of symbolic links" (temor-remote), and `NotPrivate` names the path twice. The old
+        "not this user's own" sentence was plainer.
+      - Nothing tests that temor-testkit's `program_or_skip` fails under `TEMOR_REQUIRE_TOOLS=1`.
+        `hub/open_tab_tests.rs` still reads that variable by hand.
+      - Over 300 lines: temor-ui `hub/tests.rs` (526) and `hub/shelf.rs` (379), and temor-core
+        `tests/it/serde_shapes.rs` (311).
+      - The pane and ui `scratch(name)` helpers keep fixed names. Moving them to
+        `temor_testkit::Scratch` means holding a guard in about 40 tests.
 - [ ] Small leftovers from the wave-1 review.
       - temor-ssh maps any `Unsupported` I/O error from the private-folder check to "not supported
         here". A dedicated `ShellError::Unsupported` would keep an odd file system's EOPNOTSUPP an

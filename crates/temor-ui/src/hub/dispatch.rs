@@ -14,6 +14,8 @@ use super::model::Hub;
 pub enum Origin {
     /// A key in a terminal. The terminal has run the pane's own actions by now.
     Terminal,
+    /// A key in the quick terminal, which has run its own actions too, and has no tabs or splits.
+    Quick,
     /// A key in a file viewer, which has no pane actions of its own.
     Viewer,
     /// A row of the ⌘T bar, which has closed: the pane that has the keyboard is the one it is for.
@@ -23,10 +25,14 @@ pub enum Origin {
 }
 
 impl Origin {
-    /// Whether the person acts on the quick terminal when it is shown: they typed at it, or the
-    /// bar they opened over it picked the row.
-    fn on_quick(self) -> bool {
-        matches!(self, Origin::Terminal | Origin::Bar)
+    /// Whether the person acts on the quick terminal: they typed at it, or the bar they opened
+    /// over it picked the row. A key in a pane behind it is that pane's.
+    pub(super) fn on_quick(self, quick_shown: bool) -> bool {
+        match self {
+            Origin::Quick => true,
+            Origin::Bar => quick_shown,
+            Origin::Terminal | Origin::Viewer | Origin::Menu => false,
+        }
     }
 }
 
@@ -49,7 +55,7 @@ impl Desk {
                         self.settle(|hub| hub.run_in_keyboard_pane(action))
                     }
                     // A terminal ran its own already; a viewer has none.
-                    Origin::Terminal | Origin::Viewer => {}
+                    Origin::Terminal | Origin::Quick | Origin::Viewer => {}
                 },
             },
         }
@@ -62,7 +68,7 @@ impl Desk {
 
     fn run_workspace_action(&self, action: Action, from: Origin) {
         // The quick terminal has no tabs or splits of its own.
-        if from.on_quick() && self.hub.quick_shown().is_some() {
+        if from.on_quick(self.hub.quick_shown().is_some()) {
             if from == Origin::Bar {
                 self.say("The quick terminal has no tabs or splits of its own.".to_owned());
             }

@@ -25,7 +25,7 @@ pub fn key_handler(
     apply: impl Fn(EditInput) + Clone + 'static,
     desk: Desk,
     peek_key: Rc<dyn Fn(&RawKey)>,
-    _pane: PaneId,
+    pane: PaneId,
     rect: RectProbe,
 ) -> impl FnMut(RawKey) + 'static {
     move |raw: RawKey| {
@@ -59,7 +59,12 @@ pub fn key_handler(
             .as_mut()
             .and_then(|s| s.take_asked());
         if let Some(action) = asked {
-            desk.run_action(action, Origin::Terminal);
+            let from = if desk.hub.is_quick(pane) {
+                Origin::Quick
+            } else {
+                Origin::Terminal
+            };
+            desk.run_action(action, from);
             return;
         }
         desk.bump();
