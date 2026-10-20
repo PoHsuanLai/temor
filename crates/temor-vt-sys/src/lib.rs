@@ -15,7 +15,8 @@ mod bindings;
 pub use bindings::*;
 
 /// The Ghostty commit the bindings and the linked library come from.
-pub const GHOSTTY_COMMIT: &str = "a5df6bc683d47342b773eb113df10e36acd42da9";
+/// Read from `ghostty.pin` by `build.rs`, which the fetch script and `gen-bindings.sh` read too.
+pub const GHOSTTY_COMMIT: &str = env!("TEMOR_GHOSTTY_COMMIT");
 
 /// A zeroed C "sized" struct with its `size` field set, as the C API's `GHOSTTY_INIT_SIZED`.
 #[macro_export]

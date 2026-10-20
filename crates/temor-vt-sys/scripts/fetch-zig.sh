@@ -9,11 +9,12 @@
 #
 #   export PATH=<dest>/zig-<arch>-<os>-<version>:$PATH
 #
-# Keep ZIG_VERSION in step with ZIG_MAJOR_MINOR in build.rs. The sums are ziglang.org's own
-# (https://ziglang.org/download/index.json).
+# The version is zig.pin's, which build.rs and fetch-ghostty.sh read too; change the sums below
+# with it. The sums are ziglang.org's own (https://ziglang.org/download/index.json).
 set -eu
 
-ZIG_VERSION="0.16.0"
+here=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+ZIG_VERSION=$(cat "$here/zig.pin")
 
 if [ $# -ne 1 ]; then
   echo "usage: $0 <dest>" >&2

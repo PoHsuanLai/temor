@@ -4,8 +4,8 @@ Raw bindings to libghostty-vt, linked statically, for `temor-vt` only.
 
 | Pin | Value |
 |---|---|
-| Ghostty | `a5df6bc683d47342b773eb113df10e36acd42da9` (github.com/PoHsuanLai/ghostty branch `temor`: main 7ec9e26 of 2026-10-08 plus two additions: a placement-data key, `INTERNAL_ID`, and `ghostty_terminal_erase_history_from`) — `GHOSTTY_COMMIT` in `src/lib.rs` |
-| Zig | 0.16.x on `PATH` (Ghostty's `build.zig` requires the same major.minor); `scripts/fetch-zig.sh` fetches 0.16.0 from ziglang.org and checks its pinned sha256 |
+| Ghostty | the commit in `ghostty.pin` (github.com/PoHsuanLai/ghostty branch `temor`: main 7ec9e26 of 2026-10-08 plus two additions: a placement-data key, `INTERNAL_ID`, and `ghostty_terminal_erase_history_from`); `build.rs`, the scripts and `GHOSTTY_COMMIT` in `src/lib.rs` all read that file |
+| Zig | the version in `zig.pin` on `PATH`, by major.minor (Ghostty's `build.zig` requires it); `scripts/fetch-zig.sh` fetches that version from ziglang.org and checks its pinned sha256 |
 | bindgen | 0.72.1, run by hand through `scripts/gen-bindings.sh`; never by `build.rs` |
 
 ## Building
@@ -58,8 +58,8 @@ libghostty needs the variables above.
 
 ## Bumping the pin
 
-1. Change `GHOSTTY_COMMIT` in `src/lib.rs`, `build.rs` and `scripts/fetch-ghostty.sh`, and the
-   table above.
+1. Change the commit in `ghostty.pin` (and `zig.pin`, with the sums in `scripts/fetch-zig.sh`, if
+   Zig moves). Nothing else names it.
 2. Run `scripts/fetch-ghostty.sh <dest>` and `GHOSTTY_SOURCE_DIR=<dest>/src scripts/gen-bindings.sh`.
 3. Fix `temor-vt` against the new bindings and pass its conformance tests (`tests/it`).
 
