@@ -42,8 +42,8 @@ fn a_sidebar_hidden_and_shown_again_keeps_the_width_it_was_dragged_to() {
     for round in 1..=2 {
         for _ in 0..2 {
             h.send(Input::chord(
-                &[ShortcutKey::Super, ShortcutKey::Shift],
-                ShortcutKey::Char('l'),
+                &[ShortcutKey::Ctrl, ShortcutKey::Super],
+                ShortcutKey::Char('s'),
             ));
             h.advance(Duration::from_millis(600));
         }
