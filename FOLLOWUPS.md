@@ -1657,3 +1657,24 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       There is no macOS or Windows release; `install.sh` sends those to `scripts/dev-setup.sh`,
       which is untested on both (their desktop layer is stubs). `--uninstall` removes the files it
       installed and leaves the folders they were in.
+- [ ] Duplication fixes, wave 2. This is the rest of the four audits (`audit-dup-*.md`) plus the
+      wave-1 lanes' leftovers. The leftovers are in `followups-{dup-base,dup-dispatch,core,views}.md`
+      under /mnt/data/cargo/temor-lanes.
+      - The new `temor-testkit` crate for the shared test helpers.
+      - The terminal keys, viewer keys and side menu still do `window_action` then
+        `workspace_input` themselves. They should go through `Desk::run_action` as the bar does.
+        Until then a Space chord typed in a terminal uses `desk.select_space`, which ignores a
+        Space being edited, while the bar refuses with "Finish changing the Space first".
+      - The sidebar keeps its own `in_reading_order` sort, on the 1000 px miniature. It should
+        take core's `SplitTree::reading_order()`; two left edges closer than 1/1000 can tie there
+        and order differently.
+      - temor-ui's and temor-remote's private-folder checks move onto temor-shell's.
+- [ ] Small leftovers from the wave-1 review.
+      - temor-ssh maps any `Unsupported` I/O error from the private-folder check to "not supported
+        here". A dedicated `ShellError::Unsupported` would keep an odd file system's EOPNOTSUPP an
+        I/O error.
+      - The helper link's FrameWriter returns `LinkClosed` for every write error and drops the
+        cause.
+      - `PaneError::SocketDir` says "not private" when the folder's parent is simply missing.
+      - `run_in_tab`'s answer is now "a pane was added", and no caller reads it.
+      - `temor-vt-sys/src/lib.rs` still says Zig 0.16.
