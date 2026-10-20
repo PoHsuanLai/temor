@@ -1,5 +1,5 @@
 //! A tab with several panes, drawn as Arc draws a split in its sidebar: one row cut into equal
-//! segments, a segment per pane in the order the panes stand, each with the terminal glyph and
+//! segments, a segment per pane in the order the panes stand (the hub lists them so), each with the terminal glyph and
 //! the pane's name, a hairline between them. The pane with the keys is the segment drawn in ink.
 //! A pane where an agent works or waits shows the companion's orb in place of its glyph, so the
 //! row says which pane wants the person.
@@ -38,7 +38,7 @@ pub fn SplitSegments(
     };
     rsx! {
         div { class: "temor-split", role: "group", "aria-label": "Panes in this tab",
-            for (index, tile) in in_reading_order(tiles).into_iter().enumerate() {
+            for (index, tile) in tiles.into_iter().enumerate() {
                 if index > 0 {
                     span { key: "rule{tile.pane.0}", class: "temor-seg-rule", aria_hidden: "true" }
                 }
@@ -46,16 +46,6 @@ pub fn SplitSegments(
             }
         }
     }
-}
-
-/// The panes as they stand: left to right, then top to bottom.
-pub fn in_reading_order(mut tiles: Vec<Tile>) -> Vec<Tile> {
-    tiles.sort_by(|a, b| {
-        (a.left, a.top)
-            .partial_cmp(&(b.left, b.top))
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    tiles
 }
 
 /// How many panes stand side by side with their names; more are squeezed.

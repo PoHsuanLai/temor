@@ -66,6 +66,8 @@ mod space_edits;
 mod space_launch;
 mod space_move;
 mod space_route;
+#[cfg(test)]
+mod split_order_tests;
 mod space_rows;
 mod spaces;
 mod ssh;
