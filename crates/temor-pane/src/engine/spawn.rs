@@ -42,7 +42,7 @@ pub struct PaneSpec {
 }
 
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
-pub(super) fn pty_size(grid: GridSize, cell: CellPx) -> temor_pty::GridSize {
+pub(crate) fn pty_size(grid: GridSize, cell: CellPx) -> temor_pty::GridSize {
     temor_pty::GridSize {
         cols: Cols(grid.cols.0),
         rows: Rows(grid.rows.0),

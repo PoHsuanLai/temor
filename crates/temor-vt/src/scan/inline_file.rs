@@ -2,6 +2,7 @@
 //! (`MultipartFile=`, `FilePart=`, `FileEnd`), safe across chunk splits. Ghostty parses OSC 1337
 //! itself and drops all four as unimplemented, so all four are taken out here.
 
+use super::controls::{BEL, ESC, ends_osc};
 use crate::{ByteCount, Truncation};
 
 /// The introducers the scanner looks for. None is a prefix of another.
@@ -13,11 +14,6 @@ const INTRODUCERS: &[&[u8]] = &[
 ];
 /// `ESC ]`: a payload is everything after it, as libghostty reports unknown OSCs.
 const OSC_HEAD: usize = 2;
-
-const BEL: u8 = 0x07;
-const ESC: u8 = 0x1b;
-const CAN: u8 = 0x18;
-const SUB: u8 = 0x1a;
 
 /// What one chunk turns into, in order.
 #[derive(Debug, PartialEq, Eq)]
@@ -110,9 +106,7 @@ impl InlineFileScanner {
                 }
                 State::Payload => {
                     let rest = &input[i..];
-                    let stop = rest
-                        .iter()
-                        .position(|&b| matches!(b, BEL | ESC | CAN | SUB));
+                    let stop = rest.iter().position(|&b| ends_osc(b));
                     let body = &rest[..stop.unwrap_or(rest.len())];
                     self.push(body);
                     i += body.len();

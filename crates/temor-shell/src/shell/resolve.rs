@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use super::scripts::{BASH_SCRIPT, FISH_SCRIPT, NU_SCRIPT, ShellScript, ZSH_SCRIPT};
 use crate::env::ChildEnv;
 
 /// The shells temor has integration for, and everything else.
@@ -16,7 +17,16 @@ pub enum ShellKind {
 }
 
 impl ShellKind {
-    /// The kind named by a shell's path (`/usr/bin/zsh`, `-bash`, `fish`).
+    /// Each shell and the name its program has (nushell also answers to `nushell`).
+    const NAMED: [(ShellKind, &'static str); 4] = [
+        (Self::Bash, "bash"),
+        (Self::Zsh, "zsh"),
+        (Self::Fish, "fish"),
+        (Self::Nushell, "nu"),
+    ];
+
+    /// The kind named by a shell's path (`/usr/bin/zsh`, `-bash`, `fish`). The file name is the
+    /// shell's name exactly: `zsh-5.9` is not zsh.
     pub fn of(path: &Path) -> Self {
         let name = path
             .file_name()
@@ -24,11 +34,35 @@ impl ShellKind {
             .unwrap_or_default()
             .trim_start_matches('-');
         match name {
-            "bash" => Self::Bash,
-            "zsh" => Self::Zsh,
-            "fish" => Self::Fish,
-            "nu" | "nushell" => Self::Nushell,
-            _ => Self::Other,
+            "nushell" => Self::Nushell,
+            _ => Self::NAMED
+                .into_iter()
+                .find(|(_, stem)| *stem == name)
+                .map_or(Self::Other, |(kind, _)| kind),
+        }
+    }
+
+    /// The kind a running process's name stands for (`zsh`, `-zsh`, `/bin/bash`, `zsh-5.9`). A
+    /// name that starts with a shell's name counts, since a process list shows what the program
+    /// calls itself (`comm`), which can carry a version; for a path to choose a shell, use
+    /// [`ShellKind::of`].
+    pub fn from_process_name(name: &str) -> Self {
+        let name = name.trim().rsplit('/').next().unwrap_or_default();
+        let name = name.trim_start_matches('-');
+        Self::NAMED
+            .into_iter()
+            .find(|(_, stem)| name.starts_with(stem))
+            .map_or(Self::Other, |(kind, _)| kind)
+    }
+
+    /// The integration script this shell sources, or `None` for a shell temor has none for.
+    pub fn script(self) -> Option<ShellScript> {
+        match self {
+            Self::Bash => Some(BASH_SCRIPT),
+            Self::Zsh => Some(ZSH_SCRIPT),
+            Self::Fish => Some(FISH_SCRIPT),
+            Self::Nushell => Some(NU_SCRIPT),
+            Self::Other => None,
         }
     }
 }

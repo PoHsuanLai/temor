@@ -19,9 +19,10 @@
 
 use temor_shell::ShellScript;
 
-use super::base64;
 use super::inner_shell::InnerShell;
 use crate::error::SshError;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 
 /// The longest text built, all lines together.
 pub const MAX_INNER_LINE_BYTES: usize = 64 * 1024;
@@ -118,7 +119,7 @@ impl InnerLoadLine {
             };
             text.push_str(shell.pattern());
             text.push_str(") dec >$f <<E\n");
-            for line in chunk_lines(&base64::encode(payload.as_bytes()), CHUNK_BYTES) {
+            for line in chunk_lines(&STANDARD.encode(payload.as_bytes()), CHUNK_BYTES) {
                 text.push_str(&line);
                 text.push('\n');
             }

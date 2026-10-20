@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use temor_shell::sh_quote;
+
 use super::path::RemoteFilePath;
 use crate::argv::ControlLayout;
 use crate::bootstrap::wrap_script;
@@ -33,12 +35,6 @@ fn through_master(layout: &ControlLayout) -> Vec<String> {
         .map(str::to_owned)
         .chain([layout.control_path_option()])
         .collect()
-}
-
-/// Single-quotes `text` for `sh`. The result only ever sits inside a script that travels
-/// base64-encoded, so the host's login shell never reads it.
-fn sh_quote(text: &str) -> String {
-    format!("'{}'", text.replace('\'', "'\\''"))
 }
 
 /// `ssh` arguments that print `missing`, or `<mtime> <size>` for `path` (GNU stat, else BSD).

@@ -13,8 +13,6 @@ mod place;
 mod raster;
 mod set;
 #[cfg(test)]
-pub(crate) mod testing;
-#[cfg(test)]
 mod tests;
 #[cfg(feature = "gpu")]
 pub(crate) use atlas::AtlasCopy;

@@ -138,6 +138,7 @@ _temor_precmd() {
         if [[ -n ${_temor_executing-} ]]; then
             printf '\e]133;D;%s\e\\' "${_temor_status-0}"
             _temor_executing=
+            _temor_seen=1
         fi
         local REPLY
         _temor_encode_cwd "$PWD"
@@ -150,7 +151,6 @@ _temor_precmd() {
                 print -Pr -- "$_temor_head"
                 printf '\e]133;B\e\\'
             fi
-            _temor_seen=1
         fi
     fi
     [[ ${PS1-} == *$'\e]133;B'* ]] || PS1+=$'%{\e]133;B\e\\%}'

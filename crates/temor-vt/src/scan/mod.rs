@@ -4,6 +4,7 @@
 //! and reported as [`crate::UnknownKind::Osc1337File`] (temor-pane's reader tells the forms apart
 //! by the payload).
 
+mod controls;
 #[cfg(feature = "ghostty")]
 mod hold;
 mod inline_file;

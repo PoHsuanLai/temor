@@ -7,22 +7,12 @@ use super::model::{
 };
 use crate::base64;
 use crate::error::{Malformed, TransferError};
+use crate::fields::{MAX_NAME_TEXT, ascii, pairs, parse_value};
 use crate::units::{Bytes, Limits};
 
 const PREFIX: &[u8] = b"5113;";
 const OSC: &[u8] = b"\x1b]";
 const ST: &[u8] = b"\x1b\\";
-const MAX_NAME_TEXT: u64 = 4096;
-
-/// Splits a payload into `(key, value)` pairs. Pairs with no `=` are skipped.
-fn pairs(rest: &[u8]) -> Vec<(&[u8], &[u8])> {
-    rest.split(|&byte| byte == b';')
-        .filter_map(|pair| {
-            let eq = pair.iter().position(|&byte| byte == b'=')?;
-            Some((&pair[..eq], &pair[eq + 1..]))
-        })
-        .collect()
-}
 
 /// The last value given for any of `names` (the long and short forms of one key).
 fn find<'a>(pairs: &[(&'a [u8], &'a [u8])], names: &[&str]) -> Option<&'a [u8]> {
@@ -33,31 +23,12 @@ fn find<'a>(pairs: &[(&'a [u8], &'a [u8])], names: &[&str]) -> Option<&'a [u8]> 
         .map(|(_, value)| *value)
 }
 
-fn ascii<'a>(value: &'a [u8], key: &'static str) -> Result<&'a str, TransferError> {
-    std::str::from_utf8(value)
-        .ok()
-        .filter(|text| text.bytes().all(|byte| byte.is_ascii_graphic()))
-        .ok_or_else(|| Malformed::BadValue { key }.into())
-}
-
 fn optional<T>(
     pairs: &[(&[u8], &[u8])],
     names: &[&str],
     parse: impl FnOnce(&[u8]) -> Result<T, TransferError>,
 ) -> Result<Option<T>, TransferError> {
     find(pairs, names).map(parse).transpose()
-}
-
-fn word<W: std::str::FromStr>(value: &[u8], key: &'static str) -> Result<W, TransferError> {
-    ascii(value, key)?
-        .parse()
-        .map_err(|_| Malformed::BadValue { key }.into())
-}
-
-fn number<T: std::str::FromStr>(value: &[u8], key: &'static str) -> Result<T, TransferError> {
-    ascii(value, key)?
-        .parse()
-        .map_err(|_| Malformed::BadValue { key }.into())
 }
 
 /// Parses one payload (the bytes between `ESC ]` and the terminator). The action and id are
@@ -92,19 +63,19 @@ pub fn parse_message(payload: &[u8], limits: Limits) -> Result<Message, Transfer
             String::from_utf8(raw).map_err(|_| Malformed::BadValue { key: "n" }.into())
         })?,
         file_type: optional(&pairs, &["ft", "file_type", "ftype"], |v| {
-            word::<FileType>(v, "ft")
+            parse_value::<FileType>(v, "ft")
         })?,
         size: optional(&pairs, &["sz", "size"], |v| {
-            Ok(Bytes::new(number(v, "sz")?))
+            Ok(Bytes::new(parse_value(v, "sz")?))
         })?,
         mtime: optional(&pairs, &["mod", "mtime"], |v| {
-            Ok(UnixNanos::new(number(v, "mod")?))
+            Ok(UnixNanos::new(parse_value(v, "mod")?))
         })?,
         permissions: optional(&pairs, &["prm", "permissions"], |v| {
-            Ok(Mode::new(number(v, "prm")?))
+            Ok(Mode::new(parse_value(v, "prm")?))
         })?,
         compression: optional(&pairs, &["zip", "compression"], |v| {
-            word::<Compression>(v, "zip")
+            parse_value::<Compression>(v, "zip")
         })?,
         transmission: optional(&pairs, &["tt", "transmission"], |v| {
             let text = ascii(v, "tt")?;

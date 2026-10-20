@@ -8,12 +8,11 @@ use temor_ssh::{
     ControlLayout, ControlPersist, HostAlias, RuntimeDir, Seconds, check_argv, session_argv,
 };
 
-use crate::harness::{remote, scratch, tool, write};
+use crate::harness::{remote, require, scratch, write};
 
 #[test]
 fn ssh_accepts_the_session_and_control_vectors() {
-    let Some(ssh) = tool("ssh") else {
-        eprintln!("skipping: no ssh on this machine");
+    let Some(ssh) = require("ssh") else {
         return;
     };
     let s = scratch();

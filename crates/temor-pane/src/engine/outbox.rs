@@ -10,6 +10,7 @@ use temor_pty::{PtyIo, WriteOutcome};
 use temor_vt::{CellPx, GridSize};
 
 use super::fed::PaneLink;
+use super::poison::lock;
 use super::spawn::pty_size;
 
 /// The most reply bytes that may wait for the program (1 MiB).
@@ -174,10 +175,7 @@ impl Outbox {
     }
 
     fn lock(&self) -> MutexGuard<'_, Queue> {
-        // A poisoned queue still holds the bytes; the pane keeps going rather than dropping them.
-        self.queue
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.queue)
     }
 }
 

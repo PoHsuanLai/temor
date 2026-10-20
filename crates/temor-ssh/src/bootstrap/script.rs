@@ -1,20 +1,26 @@
 //! Assembles the bootstrap from the embedded template and the integration scripts, and wraps
 //! it as the remote command.
 
-use temor_shell::ShellScript;
+use std::collections::BTreeSet;
 
-use super::base64;
-use super::files::{TERMINFO_SOURCE, remote_path};
+use temor_shell::{ShellScript, XDG_DATA_DIRS_DEFAULT, sh_quote};
+
+use super::files::TERMINFO_SOURCE;
 use super::quote::heredoc_write;
 use crate::argv::RemoteCommand;
 use crate::error::SshError;
 use crate::files::RemoteFilePath;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 
 /// The template, with `#@INTEGRATION@` and `#@TERMINFO@` lines replaced by heredocs.
 const TEMPLATE: &str = include_str!("../../sh/bootstrap.sh");
+const DIRS_MARK: &str = "#@DIRS@";
 const INTEGRATION_MARK: &str = "#@INTEGRATION@";
 const TERMINFO_MARK: &str = "#@TERMINFO@";
 const OPTIONS_MARK: &str = "#@OPTIONS@";
+/// Where `XDG_DATA_DIRS` points when the host leaves it unset, written inline in the template.
+const XDG_DEFAULT_MARK: &str = "#@XDG_DATA_DIRS_DEFAULT@";
 
 /// Whether the bootstrap may add Ghostty's terminal description to the host's `~/.terminfo`
 /// when the host lacks it. Without it the host gets `xterm-256color`. This is the one change
@@ -76,14 +82,22 @@ impl BootstrapScript {
         start_dir: Option<&RemoteFilePath>,
     ) -> Result<Self, SshError> {
         let mut placed = String::new();
+        let mut folders = BTreeSet::new();
         for script in integration {
-            if let Some(rel) = remote_path(script) {
-                placed.push_str(&heredoc_write(
-                    &format!("\"$temor_tmp/{rel}\""),
-                    script.contents,
-                )?);
+            let rel = script.relative_path();
+            if let Some((folder, _)) = rel.rsplit_once('/') {
+                folders.insert(format!("\"$temor_tmp/{folder}\""));
             }
+            placed.push_str(&heredoc_write(
+                &format!("\"$temor_tmp/{rel}\""),
+                script.contents,
+            )?);
         }
+        let folders: Vec<String> = folders.into_iter().collect();
+        let make_folders = match folders.is_empty() {
+            true => String::new(),
+            false => format!("mkdir -p {} || exit 1\n", folders.join(" ")),
+        };
         let (terminfo, policy) = match options.terminfo {
             TerminfoPolicy::Install => (
                 heredoc_write("\"$temor_tmp/xterm-ghostty.src\"", TERMINFO_SOURCE)?,
@@ -91,11 +105,12 @@ impl BootstrapScript {
             ),
             TerminfoPolicy::Skip => (String::new(), "skip"),
         };
-        let dir = start_dir.map_or_else(String::new, |dir| single_quoted(dir.as_str()));
+        let dir = start_dir.map_or_else(String::new, |dir| sh_quote(dir.as_str()));
         let options_line = format!("temor_terminfo={policy}\ntemor_start_dir={dir}\n");
         let mut script = String::with_capacity(TEMPLATE.len() + placed.len() + terminfo.len());
         for line in TEMPLATE.lines() {
             match line.trim() {
+                DIRS_MARK => script.push_str(&make_folders),
                 INTEGRATION_MARK => script.push_str(&placed),
                 TERMINFO_MARK => script.push_str(&terminfo),
                 OPTIONS_MARK => script.push_str(&options_line),
@@ -105,18 +120,15 @@ impl BootstrapScript {
                 }
             }
         }
-        Ok(Self(script))
+        Ok(Self(
+            script.replace(XDG_DEFAULT_MARK, XDG_DATA_DIRS_DEFAULT),
+        ))
     }
 
     /// The script text.
     pub fn as_str(&self) -> &str {
         &self.0
     }
-}
-
-/// `text` in single quotes for `sh`; the script travels base64-encoded, so no login shell reads it.
-fn single_quoted(text: &str) -> String {
-    format!("'{}'", text.replace('\'', "'\\''"))
 }
 
 /// The remote command for `script`. The login shell only sees plain ASCII: the script travels
@@ -130,7 +142,7 @@ pub fn bootstrap_remote_command(script: &BootstrapScript) -> Result<RemoteComman
 /// The bootstrap uses it, and tests use it to check the transport with a known payload.
 #[doc(hidden)]
 pub fn wrap_script(script: &str) -> Result<RemoteCommand, SshError> {
-    let encoded = base64::encode(script.as_bytes());
+    let encoded = STANDARD.encode(script.as_bytes());
     // Only base64 characters and plain shell syntax sit between the quotes (no `'` or `\`). The
     // decoder falls back to openssl for hosts without GNU or BusyBox base64, and a host with
     // neither says so and fails instead of ending the session silently.

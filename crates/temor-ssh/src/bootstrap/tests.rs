@@ -1,9 +1,8 @@
 //! The bootstrap's text: heredocs, the placement of the integration files and the transport.
 //! The script's behaviour is tested by running it, in `tests/it`.
 
-use temor_shell::integration_scripts;
+use temor_shell::{XDG_DATA_DIRS_DEFAULT, integration_scripts};
 
-use super::files::remote_path;
 use super::quote::heredoc_write;
 use super::{BootstrapOptions, BootstrapScript, TerminfoPolicy};
 use super::{MAX_REMOTE_COMMAND_BYTES, wrap_script};
@@ -17,23 +16,15 @@ fn heredoc_bodies_cannot_end_early() {
 }
 
 #[test]
-fn every_pty_integration_script_has_a_place() {
-    for script in integration_scripts() {
-        assert!(
-            remote_path(&script).is_some(),
-            "no place for {}",
-            script.name
-        );
-    }
-}
-
-#[test]
 fn built_script_places_every_file_and_no_marks_remain() {
     let script = BootstrapScript::build(&integration_scripts()).expect("build");
     let text = script.as_str();
     assert!(!text.contains("#@INTEGRATION@"));
     assert!(!text.contains("#@TERMINFO@"));
     assert!(!text.contains("#@OPTIONS@"));
+    assert!(!text.contains("#@DIRS@"));
+    assert!(!text.contains("#@XDG_DATA_DIRS_DEFAULT@"));
+    assert!(text.contains(&format!("${{XDG_DATA_DIRS:-{XDG_DATA_DIRS_DEFAULT}}}")));
     assert!(text.contains("\ntemor_terminfo=install\n"));
     for target in [
         "\"$temor_tmp/bash/temor-bashrc\"",
@@ -41,6 +32,7 @@ fn built_script_places_every_file_and_no_marks_remain() {
         "\"$temor_tmp/zsh/.zshenv\"",
         "\"$temor_tmp/zsh/temor.zsh\"",
         "\"$temor_tmp/fish/fish/vendor_conf.d/temor.fish\"",
+        "\"$temor_tmp/nushell/nushell/vendor/autoload/temor.nu\"",
         "\"$temor_tmp/xterm-ghostty.src\"",
     ] {
         assert!(
@@ -48,6 +40,18 @@ fn built_script_places_every_file_and_no_marks_remain() {
             "missing {target}"
         );
     }
+    // The folders are made before the files go in, and the case arms start the shells pointed at
+    // the same folders the scripts were put in.
+    for folder in ["bash", "zsh", "fish", "nushell"] {
+        assert!(
+            text.contains(&format!("\"$temor_tmp/{folder}")),
+            "no folder {folder}"
+        );
+    }
+    assert!(text.contains("XDG_DATA_DIRS=\"$temor_tmp/nushell:"));
+    assert!(text.contains("XDG_DATA_DIRS=\"$temor_tmp/fish:"));
+    assert!(text.contains("ZDOTDIR=\"$temor_tmp/zsh\""));
+    assert!(text.contains("--rcfile \"$temor_tmp/bash/temor-bashrc\""));
 }
 
 #[test]

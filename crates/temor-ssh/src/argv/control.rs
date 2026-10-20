@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::SshError;
-use crate::platform::SOCKET_PATH_MAX;
+use temor_shell::SOCKET_PATH_MAX;
 
 /// ssh's `%C` hash is 40 hex digits (SHA-1).
 const HASH_LEN: usize = 40;

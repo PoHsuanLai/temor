@@ -10,13 +10,15 @@
 #   export GHOSTTY_ZIG_SYSTEM_DIR=<dest>/zig-store/p
 #   export ZIG_GLOBAL_CACHE_DIR=<a writable dir outside $HOME>
 #
-# This is the only step that needs the network. Keep the commit in step with GHOSTTY_COMMIT in
-# src/lib.rs and README.md.
+# This is the only step that needs the network. The commit and the Zig version come from
+# ghostty.pin and zig.pin, the one place each is written.
 set -eu
 
+here=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+
 GHOSTTY_REPO="https://github.com/PoHsuanLai/ghostty.git"
-GHOSTTY_COMMIT="a5df6bc683d47342b773eb113df10e36acd42da9"
-ZIG_WANT="0.16"
+GHOSTTY_COMMIT=$(cat "$here/ghostty.pin")
+ZIG_WANT=$(cut -d. -f1,2 "$here/zig.pin")
 
 if [ $# -ne 1 ]; then
   echo "usage: $0 <dest>" >&2

@@ -7,7 +7,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
@@ -18,6 +18,7 @@ use temor_vt::{RenderHold, Snapshot, VtEvent};
 use super::event::PaneEvent;
 use super::fed_io::{FedSetup, pump_fed};
 use super::outbox::Outbox;
+use super::poison::lock;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
 use super::sink::EventSink;
 use super::tap::ByteTap;
@@ -188,7 +189,7 @@ pub(super) fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offe
 
 /// Feeds program output to the terminal, sends its replies to the PTY and its events on.
 pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
-    let output = lock_term(&io.term).write(bytes);
+    let output = lock(&io.term).write(bytes);
     for reply in output.replies {
         let _ = io.outbox.push_reply(&reply);
     }
@@ -287,9 +288,4 @@ fn reap(io: &mut Io) -> Option<ChildExit> {
 pub(super) fn send(io: &Io, event: PaneEvent) {
     // A closed channel means the window is gone; the sink drops the event.
     io.events.send(event);
-}
-
-/// Locks a pane's terminal. A poisoned lock still holds the terminal, so the pane keeps going.
-pub(super) fn lock_term(term: &Mutex<Term>) -> MutexGuard<'_, Term> {
-    term.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }

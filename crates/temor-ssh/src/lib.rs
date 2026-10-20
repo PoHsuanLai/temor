@@ -47,6 +47,7 @@ mod hosts;
 mod identity;
 mod master;
 mod platform;
+mod private_dir;
 mod tailnet;
 
 /// In-memory config fixtures for tests; built with the `testing` feature.
@@ -80,5 +81,5 @@ pub use identity::{
     keygen_lookup_argv, known_name_from_resolved, resolve_argv,
 };
 pub use master::{MasterProbe, prepare_control_dirs, probe_master, socket_appeared};
-pub use platform::ensure_private_dir;
+pub use private_dir::ensure_private_dir;
 pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};

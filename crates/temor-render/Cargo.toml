@@ -14,6 +14,10 @@ ghostty = ["temor-vt/ghostty"]
 # The instanced wgpu renderer. Off by default: its frames must be submitted on the window's
 # render thread, which waits for quire's render hook (v0.2.32).
 gpu = ["dep:wgpu", "dep:bytemuck"]
+# Fixtures for this crate's tests and its users' (`temor_render::testing`): the bundled fonts, a
+# frame of box-drawing characters, and with `gpu` a headless device. Turned on for this crate's
+# own tests by the dev-dependency on itself below.
+testing = ["dep:pollster"]
 
 [dependencies]
 thiserror = { workspace = true }
@@ -24,10 +28,11 @@ vello_cpu = { workspace = true }
 icu_properties = { workspace = true }
 wgpu = { workspace = true, optional = true }
 bytemuck = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
 
 [dev-dependencies]
+temor-render = { workspace = true, features = ["testing"] }
 png = { workspace = true }
-pollster = { workspace = true }
 
 [lints]
 workspace = true

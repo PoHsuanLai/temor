@@ -8,10 +8,10 @@
 set -eu
 here=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 : "${GHOSTTY_SOURCE_DIR:?set GHOSTTY_SOURCE_DIR to the pinned Ghostty tree (scripts/fetch-ghostty.sh)}"
-want=$(sed -n 's/^pub const GHOSTTY_COMMIT: &str = "\([0-9a-f]*\)";/\1/p' "$here/src/lib.rs")
+want=$(cat "$here/ghostty.pin")
 have=$(git -C "$GHOSTTY_SOURCE_DIR" rev-parse HEAD)
 if [ "$want" != "$have" ]; then
-  echo "GHOSTTY_SOURCE_DIR is at $have but src/lib.rs pins $want; update GHOSTTY_COMMIT first" >&2
+  echo "GHOSTTY_SOURCE_DIR is at $have but ghostty.pin pins $want; update ghostty.pin first" >&2
   exit 1
 fi
 out="$here/src/bindings.rs"

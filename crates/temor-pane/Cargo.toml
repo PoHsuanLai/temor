@@ -15,6 +15,7 @@ ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render
 
 [dependencies]
 chordkit = { workspace = true }
+percent-encoding = { workspace = true }
 temor-pty = { workspace = true }
 temor-shell = { workspace = true }
 # Files the program sends (OSC 1337, OSC 5113): decoded and staged here, shelved by the window.

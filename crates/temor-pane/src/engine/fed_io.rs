@@ -8,7 +8,8 @@ use temor_render::Palette;
 use temor_vt::{CellPx, CursorShape, LineCount, Snapshot};
 
 use super::event::PaneEvent;
-use super::io::{Command, Io, carry_out, decide, deliver, lock_term, send, serve, signal_dirty};
+use super::io::{Command, Io, carry_out, decide, deliver, send, serve, signal_dirty};
+use super::poison::lock;
 use super::term::Term;
 use super::xfer::Transfers;
 
@@ -100,7 +101,7 @@ fn restore(io: &mut Io, snapshot: &Snapshot) {
     // A snapshot that cannot be read leaves the old screen; the live output still follows.
     if let Ok(mut term) = restored {
         {
-            let mut current = lock_term(&io.term);
+            let mut current = lock(&io.term);
             // The window may still hold anchors of the old terminal (where Enter was pressed
             // while the link came up): the new one numbers past them, so none names its own.
             term.number_anchors_after(&current);

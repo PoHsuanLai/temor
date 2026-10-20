@@ -62,6 +62,8 @@ mod track;
 mod cpu;
 #[cfg(feature = "gpu")]
 mod gpu;
+#[cfg(feature = "testing")]
+pub mod testing;
 
 pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};

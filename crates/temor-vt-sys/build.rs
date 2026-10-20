@@ -13,12 +13,23 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Keep in step with `GHOSTTY_COMMIT` in src/lib.rs, scripts/fetch-ghostty.sh and README.md.
-const GHOSTTY_COMMIT: &str = "a5df6bc683d47342b773eb113df10e36acd42da9";
-const ZIG_MAJOR_MINOR: &str = "0.16";
+/// The pinned Ghostty commit: `ghostty.pin`, which the scripts and `GHOSTTY_COMMIT` in src/lib.rs
+/// (through `TEMOR_GHOSTTY_COMMIT`) read too.
+fn ghostty_commit() -> &'static str {
+    include_str!("ghostty.pin").trim()
+}
+
+/// Ghostty's Zig major.minor (`0.16`), from `zig.pin` (`0.16.0`), which fetch-zig.sh reads too.
+fn zig_major_minor() -> String {
+    let version = include_str!("zig.pin").trim();
+    version.splitn(3, '.').take(2).collect::<Vec<_>>().join(".")
+}
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=ghostty.pin");
+    println!("cargo:rerun-if-changed=zig.pin");
+    println!("cargo:rustc-env=TEMOR_GHOSTTY_COMMIT={}", ghostty_commit());
     for var in [
         "GHOSTTY_SOURCE_DIR",
         "GHOSTTY_ZIG_SYSTEM_DIR",
@@ -134,10 +145,11 @@ fn main() {
 /// The pinned Ghostty tree. There is no network fallback: fetching belongs to
 /// scripts/fetch-ghostty.sh, which also fills the offline Zig package store.
 fn ghostty_source_dir() -> PathBuf {
+    let commit = ghostty_commit();
     let Some(dir) = env::var_os("GHOSTTY_SOURCE_DIR").filter(|v| !v.is_empty()) else {
         panic!(
             "\n\ntemor-vt-sys: GHOSTTY_SOURCE_DIR is not set.\n\
-             It must point at a Ghostty checkout at commit {GHOSTTY_COMMIT}.\n\
+             It must point at a Ghostty checkout at commit {commit}.\n\
              Fetch it (and the offline Zig package store) once with:\n\n    \
              crates/temor-vt-sys/scripts/fetch-ghostty.sh <dest>\n\n\
              then export GHOSTTY_SOURCE_DIR=<dest>/src, GHOSTTY_ZIG_SYSTEM_DIR=<dest>/zig-store/p\n\
@@ -159,25 +171,26 @@ fn ghostty_source_dir() -> PathBuf {
 /// any other tree can silently mismatch the C ABI. A tree at another commit, or one that is not
 /// a git checkout at all, fails the build unless `TEMOR_GHOSTTY_ALLOW_UNPINNED=1`.
 fn check_pin(dir: &Path) {
+    let commit = ghostty_commit();
     if let Some(git_dir) = git(dir, &["rev-parse", "--absolute-git-dir"]) {
         // A checkout of another commit rewrites HEAD; rebuild then.
         println!("cargo:rerun-if-changed={git_dir}/HEAD");
     }
     let problem = match git(dir, &["rev-parse", "HEAD"]) {
-        Some(head) if head == GHOSTTY_COMMIT => return,
+        Some(head) if head == commit => return,
         Some(head) => format!("is at {head}"),
         None => "is not a git checkout, so its commit cannot be checked".to_owned(),
     };
     if env::var("TEMOR_GHOSTTY_ALLOW_UNPINNED").as_deref() == Ok("1") {
         println!(
-            "cargo:warning=GHOSTTY_SOURCE_DIR {problem}; temor pins {GHOSTTY_COMMIT} \
+            "cargo:warning=GHOSTTY_SOURCE_DIR {problem}; temor pins {commit} \
              (allowed by TEMOR_GHOSTTY_ALLOW_UNPINNED=1, the bindings may not match)"
         );
         return;
     }
     panic!(
         "\n\ntemor-vt-sys: GHOSTTY_SOURCE_DIR ({}) {problem}, but the checked-in bindings are \
-         for {GHOSTTY_COMMIT}.\nFetch the pinned tree with crates/temor-vt-sys/scripts/\
+         for {commit}.\nFetch the pinned tree with crates/temor-vt-sys/scripts/\
          fetch-ghostty.sh, or set TEMOR_GHOSTTY_ALLOW_UNPINNED=1 to build anyway (for a pin \
          bump, before regenerating the bindings).\n",
         dir.display()
@@ -198,20 +211,22 @@ fn git(dir: &Path, args: &[&str]) -> Option<String> {
 
 /// Ghostty's build.zig requires the same Zig major.minor it was written for.
 fn check_zig() {
+    let commit = ghostty_commit();
+    let zig = zig_major_minor();
     let out = Command::new("zig").arg("version").output();
     let version = match out {
         Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_owned(),
         _ => {
             panic!(
-                "temor-vt-sys: `zig` was not found on PATH; Zig {ZIG_MAJOR_MINOR}.x is required. \
+                "temor-vt-sys: `zig` was not found on PATH; Zig {zig}.x is required. \
                  crates/temor-vt-sys/scripts/fetch-zig.sh <dir> fetches the pinned one from \
                  ziglang.org (checked against its SHA-256) and prints the PATH line to use"
             )
         }
     };
     assert!(
-        version.starts_with(&format!("{ZIG_MAJOR_MINOR}.")),
-        "temor-vt-sys: Ghostty {GHOSTTY_COMMIT} needs Zig {ZIG_MAJOR_MINOR}.x, found {version}. \
+        version.starts_with(&format!("{zig}.")),
+        "temor-vt-sys: Ghostty {commit} needs Zig {zig}.x, found {version}. \
          crates/temor-vt-sys/scripts/fetch-zig.sh <dir> fetches the pinned one from ziglang.org \
          and prints the PATH line to use"
     );

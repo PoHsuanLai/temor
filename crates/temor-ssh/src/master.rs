@@ -10,7 +10,7 @@ use crate::argv::{ControlLayout, check_argv};
 use crate::config::HostAlias;
 use crate::error::SshError;
 use crate::files::{CommandRunner, FileTools};
-use crate::platform::ensure_private_dir;
+use crate::private_dir::ensure_private_dir;
 
 /// Whether a host's master is running.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

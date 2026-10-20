@@ -41,8 +41,7 @@ trap : HUP INT QUIT TERM
 printf '%s\n' "$$" > "$temor_tmp/pid"
 : > "$temor_tmp/temor-bootstrap"
 
-mkdir -p "$temor_tmp/bash" "$temor_tmp/zsh" "$temor_tmp/fish/fish/vendor_conf.d" \
-    "$temor_tmp/nu/nushell/vendor/autoload" || exit 1
+#@DIRS@
 #@INTEGRATION@
 
 # Sets temor_enc_out to $1 percent-encoded for a file:// URL, byte by byte. Callers run it in a
@@ -131,7 +130,7 @@ case ${temor_shell##*/} in
             TEMOR_FISH_XDG_DATA_DIRS=$XDG_DATA_DIRS
             export TEMOR_FISH_XDG_DATA_DIRS
         fi
-        XDG_DATA_DIRS="$temor_tmp/fish:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
+        XDG_DATA_DIRS="$temor_tmp/fish:${XDG_DATA_DIRS:-#@XDG_DATA_DIRS_DEFAULT@}" \
             "$temor_shell" -l -i ;;
     nu|nushell)
         # nushell reads vendor autoload files from XDG_DATA_DIRS; temor.nu takes this entry back
@@ -140,7 +139,7 @@ case ${temor_shell##*/} in
             TEMOR_NU_XDG_DATA_DIRS=$XDG_DATA_DIRS
             export TEMOR_NU_XDG_DATA_DIRS
         fi
-        XDG_DATA_DIRS="$temor_tmp/nu:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" \
+        XDG_DATA_DIRS="$temor_tmp/nushell:${XDG_DATA_DIRS:-#@XDG_DATA_DIRS_DEFAULT@}" \
             "$temor_shell" -l ;;
     *)
         "$temor_shell" ;;
