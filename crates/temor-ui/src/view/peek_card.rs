@@ -57,7 +57,7 @@ pub fn peek_card(card: &PeekCard, measure: RectProbe) -> Element {
     let (left, top) = place(card.pointer, card.room, size);
     rsx! {
         div {
-            class: "temor-peek",
+            class: "temor-peek temor-sheet",
             onmounted: move |e: MountedEvent| measure.on_mounted(e),
             style: "left:{left}px; top:{top}px; width:{PANE_MEDIA.width.0}px",
             Card { peeked: card.peeked.clone() }

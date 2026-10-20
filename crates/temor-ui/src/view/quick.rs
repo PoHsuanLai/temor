@@ -30,7 +30,7 @@ pub fn QuickView(pane: PaneId, spaces: Vec<SpaceEntry>, desk: Desk, started: Ins
     };
     let hide = desk.clone();
     rsx! {
-        div { class: "temor-quick", "aria-label": "Quick terminal",
+        div { class: "temor-quick temor-sheet", "aria-label": "Quick terminal",
             div { class: "temor-quick-head",
                 for (space, label) in places {
                     Button {

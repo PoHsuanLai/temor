@@ -44,7 +44,7 @@ pub fn FindBar(
         None => "No matches".to_owned(),
     };
     rsx! {
-        div { class: "temor-find",
+        div { class: "temor-find temor-sheet",
             onmounted: move |event: MountedEvent| probe.on_mounted(event),
             div { class: "temor-find-field",
                 TextField {
