@@ -39,7 +39,8 @@ impl Hub {
         match target {
             Target::Tab(tab) => self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab)))),
             Target::Closed(_) => self.act(WorkspaceIn::Reopen),
-            Target::Action(action) => self.run_window_action(action),
+            // The desk runs it once the bar's pick is over: an action needs the window.
+            Target::Action(action) => self.bar_actions.push(action),
             Target::Folder(folder) => {
                 let first = self
                     .ws

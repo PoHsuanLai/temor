@@ -17,6 +17,9 @@ mod desktop;
 mod desktop_io;
 #[cfg(test)]
 mod desktop_tests;
+mod dispatch;
+#[cfg(test)]
+mod dispatch_tests;
 #[cfg(test)]
 mod drop_pane_tests;
 mod events;
@@ -95,9 +98,11 @@ pub use agents::{
     WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
 };
 pub use bar::{BarData, WindowAction};
+pub use bar_action::pin_as_shell;
 pub use blink_tick::spawn_blink_loop;
 pub use desk::{Desk, HostOf};
 pub use desktop::spawn_desktop_loop;
+pub use dispatch::Origin;
 pub use events::spawn_event_loop;
 pub use facts::spawn_facts_loop;
 pub use hosts::HostRows;

@@ -11,6 +11,7 @@ use temor_core::vocab::text::{CommandText, HostAlias};
 use temor_pane::keys::{Action, terminal_shortcut};
 
 use super::desk::Desk;
+use super::dispatch::Origin;
 use super::hosts::HostRows;
 use super::model::{Hub, HubRef};
 use crate::bar::{
@@ -263,14 +264,15 @@ impl Desk {
     pub fn bar_pick(&self, key: &RowKey) {
         self.settle(|hub| hub.bar_pick(key));
         self.switch_to_picked_space();
-        let asks = std::mem::take(&mut self.hub.0.borrow_mut().window_asks);
-        for action in asks {
-            self.window_action(action);
+        let asked = std::mem::take(&mut self.hub.0.borrow_mut().bar_actions);
+        for action in asked {
+            self.run_action(action, Origin::Bar);
         }
     }
 
-    /// An action the window itself takes, not a pane and not the workspace: the bar, the quick
-    /// terminal, the sidebar, Downloads, Settings, the page's zoom and pinning the tab in front.
+    /// An action the window itself takes (`Owner::Window`), not a pane and not the workspace: the
+    /// bar, the quick terminal, the sidebar, Downloads, Settings, the page's zoom, pinning the
+    /// tab in front, the radar's jump and the Space switch.
     pub fn window_action(&self, action: Action) -> WindowAction {
         match action {
             Action::OpenBar => self.bar_toggle(),
@@ -282,6 +284,8 @@ impl Desk {
             Action::ZoomIn => self.window.page_zoom(PageZoom::Bigger),
             Action::ZoomOut => self.window.page_zoom(PageZoom::Smaller),
             Action::ActualSize => self.window.page_zoom(PageZoom::ActualSize),
+            Action::JumpToWaiting => self.jump_to_waiting(),
+            Action::SelectSpace(number) => self.switch_to_number(number),
             Action::PinTab | Action::UnpinTab => {
                 let input = self.hub.0.borrow().pin_input(action);
                 if let Some(input) = input {

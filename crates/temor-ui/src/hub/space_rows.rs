@@ -57,6 +57,9 @@ impl SpaceRows for KitSpaces {
     }
 }
 
+/// What the person is told when a switch is refused: a Space's part is open.
+const FINISH_FIRST: &str = "Finish changing the Space first, then switch.";
+
 impl Desk {
     /// Switches to the Space the bar's last pick asked for, if it asked for one.
     pub(super) fn switch_to_picked_space(&self) {
@@ -64,8 +67,22 @@ impl Desk {
             return;
         };
         if space != self.spaces.current() && self.spaces.switch(space).is_none() {
-            self.say("Finish changing the Space first, then switch.".to_owned());
+            self.say(FINISH_FIRST.to_owned());
         }
         self.bump();
+    }
+
+    /// Switches to the Space with number `number` (1 to 9), as the Space chords count them. A
+    /// number with no Space does nothing; a switch the kit refuses is said, as the bar's is.
+    pub(super) fn switch_to_number(&self, number: u8) {
+        let Some(index) = usize::from(number).checked_sub(1) else {
+            return;
+        };
+        if self.spaces.editing().is_some() {
+            self.say(FINISH_FIRST.to_owned());
+            self.bump();
+            return;
+        }
+        let _ = self.spaces.switch_index(index);
     }
 }

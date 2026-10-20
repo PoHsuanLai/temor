@@ -7,7 +7,7 @@ use dioxus::prelude::spawn;
 use ds_core::vocab::Shortcut;
 use temor_core::split::{Direction, Goto};
 use temor_core::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn};
-use temor_pane::keys::{Action, KeyIssue, build_keymap};
+use temor_pane::keys::{Action, KeyIssue, Owner, build_keymap};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -15,8 +15,12 @@ use crate::edge::{LOOK_EVERY, system_keys, watch_file};
 use crate::input::terminal_shortcut_of;
 use crate::settings::read_overrides;
 
-/// The workspace request for a tab or split action, or `None` for an action a pane runs itself.
+/// The workspace request for a tab or split action, or `None` for an action that is not the
+/// workspace's (`Action::owner`): a pane runs its own, and the window takes the rest.
 pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
+    if action.owner() != Owner::Workspace {
+        return None;
+    }
     Some(match action {
         Action::NewTab => WorkspaceIn::NewTab { cwd: None },
         Action::ClosePane => WorkspaceIn::ClosePane(None),
@@ -34,39 +38,9 @@ pub fn workspace_input(action: Action) -> Option<WorkspaceIn> {
         Action::Equalize => WorkspaceIn::Equalize,
         Action::ReopenTab => WorkspaceIn::Reopen,
         Action::SelectTab(n) => WorkspaceIn::Tabs(TabsIn::Select(TabSel::Nth(NthTab::new(n)?))),
-        // The command bar and the quick terminal are the window's own, not the workspace's
-        // (`hub::bar`, `hub::quick`).
-        Action::OpenBar
-        | Action::ToggleQuick
-        | Action::Copy
-        | Action::Paste
-        | Action::Find
-        | Action::FindNext
-        | Action::FindPrevious
-        | Action::CloseFind
-        | Action::PreviousPrompt
-        | Action::NextPrompt
-        | Action::CopyCommands
-        | Action::CopyOutputs
-        | Action::SelectAllBlocks
-        | Action::ToggleBookmark
-        | Action::PreviousBookmark
-        | Action::NextBookmark
-        | Action::ReinputCommands
-        // The window's own: the radar jumps (`Hub::jump_to_waiting`), the Space switch goes
-        // through the kit (`Desk::select_space`), the page's zoom is the window host's, and pinning asks which tab is in front
-        // (`Hub::pin_input`).
-        | Action::JumpToWaiting
-        | Action::ToggleSidebar
-        | Action::PinTab
-        | Action::UnpinTab
-        | Action::ShowDownloads
-        | Action::Settings
-        | Action::SettingsAt(_)
-        | Action::ZoomIn
-        | Action::ZoomOut
-        | Action::ActualSize
-        | Action::SelectSpace(_) => return None,
+        // A workspace action this table forgot would be dropped silently; a test walks every
+        // bound action to catch it.
+        _ => return None,
     })
 }
 
