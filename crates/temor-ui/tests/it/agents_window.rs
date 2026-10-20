@@ -15,7 +15,6 @@ use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, focus_pane, started, type_line, wait_until};
 use super::support::{scratch_path, tools_present};
-use super::window::harness;
 
 /// How many tab rows show `presence` (`idle`, `working`, `waiting`). An idle tab has no orb (a
 /// terminal glyph leads it): the tabs that show neither of the others.

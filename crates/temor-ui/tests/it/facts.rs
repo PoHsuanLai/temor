@@ -130,7 +130,6 @@ fn an_older_blocks_header_keeps_its_prompts_chips() {
     if !tools_present() || program_or_skip("git", "facts").is_none() {
         return;
     }
-    use ds::base::vocab::ShortcutKey;
     use ds_harness::Input;
     let probe = Probe::new();
     let mut h = changed_repository("facts-chips-older", &probe, Prompt::Temor);

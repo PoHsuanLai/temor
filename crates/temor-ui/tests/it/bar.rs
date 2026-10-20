@@ -12,7 +12,7 @@ use ds_harness::{FocusState, Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, type_text, wait_until};
-use super::window::{harness, harness_hosting};
+use super::window::harness_hosting;
 
 fn bar_open(h: &Harness) -> bool {
     // The element, not the stylesheet that names its class.

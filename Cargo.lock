@@ -6941,7 +6941,9 @@ dependencies = [
  "serde",
  "serde_json",
  "temor-pane",
+ "temor-shell",
  "temor-ssh",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -6965,6 +6967,7 @@ dependencies = [
  "temor-desktop",
  "temor-pty",
  "temor-ssh",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -6982,6 +6985,7 @@ dependencies = [
  "temor-pty",
  "temor-render",
  "temor-shell",
+ "temor-testkit",
  "temor-transfer",
  "temor-vt",
  "tempfile",
@@ -6995,6 +6999,7 @@ dependencies = [
  "bayonet",
  "serde",
  "temor-plugins",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7007,6 +7012,7 @@ dependencies = [
  "rustix",
  "temor-shell",
  "temor-ssh",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7019,6 +7025,7 @@ dependencies = [
  "sha2 0.10.9",
  "temor-pty",
  "temor-shell",
+ "temor-testkit",
  "temor-transfer",
  "temor-vt",
  "temor-wire",
@@ -7036,6 +7043,7 @@ dependencies = [
  "pollster",
  "swash",
  "temor-render",
+ "temor-testkit",
  "temor-vt",
  "thiserror 2.0.21",
  "vello_cpu 0.1.0",
@@ -7060,8 +7068,16 @@ dependencies = [
  "rustix",
  "temor-shell",
  "temor-ssh",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "temor-testkit"
+version = "0.1.1"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]
@@ -7073,6 +7089,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7109,6 +7126,7 @@ dependencies = [
  "temor-render",
  "temor-shell",
  "temor-ssh",
+ "temor-testkit",
  "temor-transfer",
  "temor-vt",
  "temor-wire",
@@ -7124,6 +7142,7 @@ version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "png",
+ "temor-testkit",
  "temor-vt",
  "temor-vt-sys",
  "thiserror 2.0.21",
@@ -7140,6 +7159,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-testkit",
  "thiserror 2.0.21",
 ]
 

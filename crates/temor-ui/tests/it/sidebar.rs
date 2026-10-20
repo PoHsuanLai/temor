@@ -17,7 +17,7 @@ use temor_core::space::Project;
 use temor_ui::edge::save_spaces;
 
 use super::drive;
-use super::drive::{chord, rows, started, type_line, wait_until};
+use super::drive::{chord, started, type_line, wait_until};
 use super::window::{harness, harness_in};
 
 /// A box in the window: left, top, right, bottom, and what it is.

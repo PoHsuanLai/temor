@@ -12,7 +12,6 @@ use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, ready, type_line, wait_until};
 use super::support::tools_present;
-use super::window::harness;
 
 const HEADER: &str = "temor-block-header";
 const TOOLS: &str = "temor-block-tools";

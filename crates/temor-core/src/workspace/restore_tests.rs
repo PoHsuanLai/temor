@@ -1,7 +1,7 @@
 //! The session file: round trips, versions, and the lenient rebuild.
 
 use super::restore::{FreshWhy, Restored, decode, encode, launch_plan};
-use super::{Workspace, WorkspaceIn, workspace_step};
+use super::{KeepClosed, Workspace, WorkspaceIn, workspace_step};
 use crate::space::Pin;
 use crate::split::Direction;
 use crate::test_support::{fresh_workspace, run_steps};

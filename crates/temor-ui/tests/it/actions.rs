@@ -11,8 +11,9 @@ use temor_core::space::Project;
 use temor_ui::edge::save_spaces;
 use temor_ui::view::probe::Probe;
 
+use super::drive::wait_until;
 use super::support::scratch;
-use super::window::{harness_in, wait_until};
+use super::window::harness_in;
 
 fn head(h: &Harness) -> String {
     h.text_of(".ds-space-head")
