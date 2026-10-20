@@ -9,7 +9,7 @@ use std::process::ExitCode;
 
 use temor_desktop::{DesktopEnv, Request, SystemInstance};
 use temor_ui::app::desktop::{Joined, join};
-use temor_ui::edge::{Ambient, load_keymap, resolve_state_dir};
+use temor_ui::edge::{Ambient, load_keymap};
 use temor_ui::settings::{load_settings, write_schema};
 use temor_ui::{
     AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG, TakeOnce,
@@ -107,10 +107,7 @@ fn main() -> ExitCode {
     let mut told = loaded.told;
     told.key_issues(&key_issues);
     // The session file and its snapshots live under the XDG state home (a relative value is not used).
-    let state_dir = resolve_state_dir(
-        ambient.env.get("XDG_STATE_HOME").map(std::path::Path::new),
-        Some(&ambient.home),
-    );
+    let state_dir = ambient.state_dir();
     let launched = temor_ui::app::run_with(
         Launch {
             ambient,
