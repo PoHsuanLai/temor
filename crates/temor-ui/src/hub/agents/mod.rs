@@ -11,6 +11,9 @@ mod jobs;
 mod leftovers;
 mod loops;
 mod menu;
+mod naming;
+#[cfg(test)]
+mod naming_tests;
 mod observe;
 mod points;
 #[cfg(test)]
@@ -21,7 +24,12 @@ mod sweep;
 #[cfg(test)]
 mod tests;
 mod trees;
+mod turns;
 mod watch;
+#[cfg(test)]
+mod watch_report_tests;
+#[cfg(test)]
+mod watch_scene;
 #[cfg(test)]
 mod watch_tests;
 mod watching;

@@ -15,6 +15,7 @@ mod secrets_tests;
 mod tailnet;
 #[cfg(test)]
 mod tests;
+mod watching;
 
 pub use checkpoints::SystemCheckpoints;
 pub use dock::SystemDock;

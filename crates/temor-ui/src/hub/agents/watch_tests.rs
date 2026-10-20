@@ -1,26 +1,14 @@
 //! Watched agents: the turn edges and the rewind rule as tables, and a hub with a fake port that
 //! follows an agent from its first sight to its exit.
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
 use temor_core::presence::{AgentState, Seen, WaitKind};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
 use temor_desktop::{Named, PointId, Rewind, TurnHow, WatchOwner};
-use temor_pane::PaneEvent;
-use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
-use tokio::sync::mpsc::UnboundedReceiver;
+use temor_vt::ProgramState;
 
-use super::jobs::Done;
 use super::points::RestoreMenu;
-use super::points_tests::{Fake, first_list, first_plan};
-use super::tests::{front, front_running};
 use super::watch::{Edge, edge, rewind_for};
+use super::watch_scene::{Scene, in_front, program, sandboxed};
 use super::{AgentPick, SheetView};
-use crate::hub::model::Hub;
-use crate::hub::tests::hub_after;
 
 #[test]
 fn a_turn_begins_from_rest_and_ends_into_rest_but_waiting_is_the_middle() {
@@ -54,76 +42,6 @@ fn only_an_agent_that_keeps_its_own_history_is_left_to_it() {
         ("unknown", Rewind::Docket),
     ] {
         assert_eq!(rewind_for(agent), want, "{agent}");
-    }
-}
-
-struct Scene {
-    hub: Hub,
-    inbox: UnboundedReceiver<Done>,
-    fake: Arc<Fake>,
-    tab: TabId,
-    pane: PaneId,
-}
-
-fn program(state: ProgramState) -> PaneEvent {
-    PaneEvent::Program(ProgramStatus {
-        state,
-        wait: ProgramWait::Unspecified,
-        percent: None,
-        record: String::new(),
-        app: "claude".to_owned(),
-        title: String::new(),
-        message: String::new(),
-    })
-}
-
-fn in_front(name: &str) -> PaneEvent {
-    front(name)
-}
-
-/// A sandbox wrapper in front, as `claude --resume 1` or `codex` runs under one.
-fn sandboxed(agent: &str) -> PaneEvent {
-    front_running("bwrap", &["/usr/bin/bwrap", "--", agent, "--resume", "1"])
-}
-
-impl Scene {
-    /// A hub with one tab in `/work`, over a fake port.
-    fn start() -> Scene {
-        let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
-        let tab = hub.ws.front().expect("a tab");
-        let pane = hub.ws.focus_of(tab).expect("a pane");
-        hub.ws.cwds.insert(pane, Cwd("/work".to_owned()));
-        let inbox = hub.agents.jobs.take_inbox().expect("the inbox");
-        let fake = Arc::new(Fake::new(first_list(), first_plan("digest-1")));
-        hub.set_checkpoints(fake.clone());
-        Scene {
-            hub,
-            inbox,
-            fake,
-            tab,
-            pane,
-        }
-    }
-
-    fn hear(&mut self, event: &PaneEvent) {
-        self.hub.agents_observe(self.pane, event);
-    }
-
-    /// Carries on from the next `count` finished jobs, waiting up to ten seconds for each.
-    fn settle(&mut self, count: usize) {
-        for _ in 0..count {
-            let until = Instant::now() + Duration::from_secs(10);
-            let done = loop {
-                match self.inbox.try_recv() {
-                    Ok(done) => break done,
-                    Err(_) if Instant::now() < until => {
-                        std::thread::sleep(Duration::from_millis(2))
-                    }
-                    Err(_) => panic!("a job did not report"),
-                }
-            };
-            self.hub.agent_done(done);
-        }
     }
 }
 

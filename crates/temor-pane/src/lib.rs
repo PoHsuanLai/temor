@@ -38,7 +38,7 @@ pub use engine::{
     Term, TransferEnd, TransferEvent, TransferSetup, start, start_fed, start_restored,
 };
 pub use error::{PaneError, SettingsError};
-// The command line of a foreground process; the hub and temor-core name it through here.
 #[cfg(feature = "ghostty")]
 pub use shell::{ShellPaneInput, shell_pane};
+// The command line of a foreground process; the hub and temor-core name it through here.
 pub use temor_pty::CommandLine;

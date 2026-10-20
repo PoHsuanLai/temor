@@ -1619,12 +1619,16 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       tab is saved at all.
 - [x] (2026-10-20) Checkpoint.WatchAgent: the pane's foreground now carries its command line
       (`/proc/<pid>/cmdline`, bounded; `temor_pty::CommandLine`, shown by count only), so an agent
-      under `env`/`bwrap` is seen (`temor_core::agent::seen::agent_of`). `CheckpointPort::watch`
-      takes a `WatchAsk` and answers a `Watching { session, held, named }`: the live port asks the
-      companion's Terminals `Recognise` first and, on an answer, calls `Checkpoint.WatchAgent`;
-      otherwise the plain `Checkpoint.Watch`. A `Held::Companion` session (a window the assistant
-      handed to the terminal) is marked but never closed; a named `Held::Terminal` session
-      outlives the agent until the pane ends or a different agent takes the pane. Waits for the
+      under `env`/`bwrap` is seen (`temor_core::agent::seen::agent_of`: the program word is found
+      through the wrappers' own option grammars, so `rg claude` is not an agent; only the
+      program word on is kept and sent). `CheckpointPort::watch` takes a `WatchAsk` and answers a
+      `Watching { session, owner, named }`: the live port asks the companion's Terminals
+      `Recognise` first and, on an answer, calls `Checkpoint.WatchAgent` (the plain
+      `Checkpoint.Watch` when that fails or nothing is recognised). A `WatchOwner::Companion`
+      session (a window the assistant handed to the terminal) is marked but never closed; a named
+      `WatchOwner::Terminal` session outlives the agent until the pane ends or a different agent
+      takes the pane. A status report never clears a known command line, and a plain session
+      opened before the line was known is opened again once with it. Waits for the
       docket batch that carries `recognise`, `SeenCommand` and `checkpoint_watch_agent`, and a
       relock of temor-desktop (it now names temor-pty).
 - [ ] `org.quire.Temor1.Run` answers only temor's installed image (peephole, `Exe`, pinned at

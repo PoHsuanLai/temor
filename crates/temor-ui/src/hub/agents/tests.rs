@@ -19,11 +19,11 @@ use super::work::safe_join;
 
 const P1: PaneId = PaneId(1);
 
-fn status(state: ProgramState, wait: ProgramWait) -> PaneEvent {
+pub(super) fn status(state: ProgramState, wait: ProgramWait) -> PaneEvent {
     status_of("claude", state, wait)
 }
 
-fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> PaneEvent {
+pub(super) fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> PaneEvent {
     PaneEvent::Program(ProgramStatus {
         state,
         wait,
@@ -206,58 +206,6 @@ fn a_pane_that_needs_you_while_unfocused_asks_for_a_notification_with_its_words(
         Some("Run cargo test?")
     );
     assert!(radar.take_alerts().is_empty(), "taken once");
-}
-
-#[test]
-fn only_named_agents_count_as_agents() {
-    let mut radar = Radar::new(RadarParams::default());
-    let build = status_of("cargo", ProgramState::Working, ProgramWait::Unspecified);
-    radar.observe(PaneId(1), Millis(0), &build);
-    radar.observe(
-        PaneId(2),
-        Millis(0),
-        &status(ProgramState::Working, ProgramWait::Unspecified),
-    );
-    assert_eq!(
-        radar.agent_of(PaneId(1)),
-        None,
-        "a build tool is not an agent"
-    );
-    assert_eq!(radar.agent_of(PaneId(2)), Some("claude"));
-    // Its status still shows on its row.
-    assert_eq!(radar.state_of(PaneId(1)), Working);
-}
-
-#[test]
-fn an_agent_seen_by_its_process_is_gone_when_another_program_is_in_front() {
-    let mut radar = Radar::new(RadarParams::default());
-    // Seen by what it reported: another program in front does not end it.
-    radar.observe(
-        PaneId(1),
-        Millis(0),
-        &status(ProgramState::Idle, ProgramWait::Unspecified),
-    );
-    radar.observe(PaneId(1), Millis(0), &front("node"));
-    assert_eq!(radar.agent_of(PaneId(1)), Some("claude"));
-    // Seen in front: the shell coming back ends it.
-    radar.observe(PaneId(2), Millis(0), &front("Claude"));
-    assert_eq!(radar.agent_of(PaneId(2)), Some("claude"));
-    radar.observe(PaneId(2), Millis(1), &front("zsh"));
-    assert_eq!(radar.agent_of(PaneId(2)), None);
-    // Under a sandbox the name is the wrapper's; the program shows in the command line, and the
-    // radar keeps the line for the watch.
-    let wrapped = front_running(
-        "bwrap",
-        &["/usr/bin/bwrap", "--", "claude", "--resume", "x"],
-    );
-    radar.observe(PaneId(3), Millis(0), &wrapped);
-    assert_eq!(radar.agent_of(PaneId(3)), Some("claude"));
-    assert_eq!(
-        radar.command_of(PaneId(3)).map(|c| c.tokens().len()),
-        Some(5)
-    );
-    radar.observe(PaneId(3), Millis(1), &front("zsh"));
-    assert_eq!(radar.agent_of(PaneId(3)), None);
 }
 
 #[test]

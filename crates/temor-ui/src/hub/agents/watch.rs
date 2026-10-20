@@ -6,40 +6,11 @@
 
 use std::collections::{BTreeMap, VecDeque};
 
-use temor_core::agent::rewind::{self, rewind_of};
 use temor_core::agent::seen::CommandLine;
-use temor_core::presence::AgentState;
 use temor_core::vocab::ids::PaneId;
-use temor_desktop::{Named, Rewind, SessionKey, TurnHow, TurnMark, WatchAsk, WatchOwner, Watching};
+use temor_desktop::{Named, SessionKey, TurnHow, TurnMark, WatchAsk, WatchOwner, Watching};
 
-/// What changed about a turn between two states of the same agent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Edge {
-    /// The agent started a turn.
-    Begin,
-    /// The agent's turn is over.
-    End(TurnHow),
-}
-
-/// The turn edge between two states, if there is one. Waiting is the middle of a turn: coming
-/// out of it into work is not a new turn.
-pub(super) fn edge(before: AgentState, after: AgentState) -> Option<Edge> {
-    use AgentState::{Done, Failed, Idle, Waiting, Working};
-    match (before, after) {
-        (Idle | Done(_) | Failed(_), Working) => Some(Edge::Begin),
-        (Working | Waiting(_), Idle | Done(_)) => Some(Edge::End(TurnHow::Answered)),
-        (Working | Waiting(_), Failed(_)) => Some(Edge::End(TurnHow::Failed)),
-        _ => None,
-    }
-}
-
-/// What docket is told about who keeps the history of the agent program `agent`.
-pub(super) fn rewind_for(agent: &str) -> Rewind {
-    match rewind_of(agent) {
-        rewind::Rewind::Own => Rewind::Agent,
-        rewind::Rewind::Docket => Rewind::Docket,
-    }
-}
+pub(super) use super::turns::{Edge, edge, rewind_for};
 
 /// When a watch's session is closed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +31,9 @@ pub(super) enum Need {
     Open,
     /// The pane keeps the session of an earlier, different agent: close it, then open one.
     Replace,
+    /// The session was opened plain, before the agent's command line was known, and the line is
+    /// known now: close it, then open one that can be recognised.
+    Upgrade,
     /// What is open serves, or an open is already on its way.
     Nothing,
 }
@@ -140,6 +114,23 @@ impl Watch {
         self.owner == WatchOwner::Terminal && self.named == Named::App
     }
 
+    /// What the open session needs when an agent is seen with `seen` as its command line. A
+    /// command line not known never changes anything (a status report says nothing of it). A
+    /// recognised app's session stays after its agent exits: the same command picks it up again,
+    /// another one replaces it. A plain session opened with no command line is upgraded once
+    /// the line is known; one the assistant holds, or already named, never is.
+    fn need_for(&self, seen: Option<&CommandLine>) -> Need {
+        let Some(seen) = seen else {
+            return Need::Nothing;
+        };
+        match (self.seen.as_ref(), self.owner, self.named) {
+            (Some(open), _, _) if open == seen => Need::Nothing,
+            (None, WatchOwner::Terminal, Named::Unknown) => Need::Upgrade,
+            (Some(_), WatchOwner::Terminal, Named::App) => Need::Replace,
+            _ => Need::Nothing,
+        }
+    }
+
     /// The call that closes the session when `closing` says so. A session the assistant holds is
     /// forgotten and never closed.
     fn close_call(&mut self, closing: Closing) -> Option<Call> {
@@ -173,10 +164,7 @@ impl Watches {
         }
         match &watch.session {
             None => Need::Open,
-            // A recognised app's session stays after its agent exits: the same command picks
-            // it up again, another one replaces it.
-            Some(_) if watch.kept_open() && watch.seen != ask.seen => Need::Replace,
-            Some(_) => Need::Nothing,
+            Some(_) => watch.need_for(ask.seen.as_ref()),
         }
     }
 

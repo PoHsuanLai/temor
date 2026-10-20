@@ -46,10 +46,11 @@ impl Hub {
     pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, event: &PaneEvent) -> Changed {
         let now = self.agents.now();
         let was = self.agent_and_state(pane);
+        let command_was = self.agents.radar.command_of(pane).cloned();
         let changed = self.agents.radar.observe(pane, now, event);
         let is = self.agent_and_state(pane);
         let (was_agent, is_agent) = (was.0.clone(), is.0.clone());
-        self.watch_follows(pane, was, is);
+        self.watch_follows(pane, was, is, command_was);
         self.plugin_adapter_follows(pane, was_agent, is_agent);
         changed
     }

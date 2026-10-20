@@ -29,6 +29,14 @@ impl CommandLine {
         (tokens.len() <= MAX_TOKENS).then_some(Self(tokens))
     }
 
+    /// The command line from the word at `at` on: the program a wrapper runs and its arguments,
+    /// without the wrapper's own words (an `env` assignment can hold a secret). `None` when
+    /// there is no word at `at`.
+    pub fn from_program(&self, at: usize) -> Option<Self> {
+        let rest = self.0.get(at..).filter(|rest| !rest.is_empty())?;
+        Some(Self(rest.to_vec()))
+    }
+
     /// The arguments, program first.
     pub fn tokens(&self) -> &[String] {
         &self.0

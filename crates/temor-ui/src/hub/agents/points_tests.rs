@@ -108,6 +108,8 @@ pub(super) struct Fake {
     calls: Mutex<Vec<String>>,
     /// What a watch answers: who holds its session, and whether the app was recognised.
     answer: Mutex<(WatchOwner, Named)>,
+    /// What a watch asked with a command line answers instead, when set (a recognised app).
+    answer_seen: Mutex<Option<(WatchOwner, Named)>>,
 }
 
 impl Fake {
@@ -117,12 +119,19 @@ impl Fake {
             plan,
             calls: Mutex::new(Vec::new()),
             answer: Mutex::new((WatchOwner::Terminal, Named::Unknown)),
+            answer_seen: Mutex::new(None),
         }
     }
 
     /// From now on a watch answers with a session `owner` closes, for an app that is `named`.
     pub(super) fn answer_watch(&self, owner: WatchOwner, named: Named) {
         *self.answer.lock().unwrap_or_else(|p| p.into_inner()) = (owner, named);
+    }
+
+    /// From now on a watch asked with a command line answers with a session `owner` closes, for
+    /// an app that is `named`; one asked without keeps the plain answer.
+    pub(super) fn answer_watch_seen(&self, owner: WatchOwner, named: Named) {
+        *self.answer_seen.lock().unwrap_or_else(|p| p.into_inner()) = Some((owner, named));
     }
 
     fn log(&self, call: String) {
@@ -182,10 +191,12 @@ impl CheckpointPort for Fake {
             workspace,
             label,
             rewind,
-            ..
+            seen,
         } = ask;
         self.log(format!("watch {workspace} [{label}] {rewind:?}"));
-        let (owner, named) = *self.answer.lock().unwrap_or_else(|p| p.into_inner());
+        let recognised = *self.answer_seen.lock().unwrap_or_else(|p| p.into_inner());
+        let plain = *self.answer.lock().unwrap_or_else(|p| p.into_inner());
+        let (owner, named) = recognised.filter(|_| seen.is_some()).unwrap_or(plain);
         let session = SessionKey::new("w-1").ok_or(DesktopError::Checkpoint(PointFault::Failed))?;
         Ok(Watching {
             session,

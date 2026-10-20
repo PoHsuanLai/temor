@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use temor_core::agent::seen::CommandLine;
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::PaneId;
 use temor_desktop::{DesktopError, TurnMark, WatchAsk, Watching};
@@ -25,12 +26,14 @@ pub(super) enum Refresh {
 }
 
 impl Hub {
-    /// What a pane event did to `pane`'s agent and its state: the watch follows.
+    /// What a pane event did to `pane`'s agent and its state: the watch follows. `command_was` is
+    /// the agent's command line before the event; one learned since may upgrade the watch.
     pub(super) fn watch_follows(
         &mut self,
         pane: PaneId,
         was: (Option<String>, AgentState),
         now: (Option<String>, AgentState),
+        command_was: Option<CommandLine>,
     ) {
         let ((was_agent, before), (agent, after)) = (was, now);
         let Some(agent) = agent else {
@@ -40,7 +43,8 @@ impl Hub {
             return;
         };
         let turn = edge(before, after);
-        if was_agent.is_none() || turn == Some(Edge::Begin) {
+        let learned = self.agents.radar.command_of(pane) != command_was.as_ref();
+        if was_agent.is_none() || turn == Some(Edge::Begin) || learned {
             self.open_watch(pane, &agent);
         }
         match turn {
@@ -52,7 +56,8 @@ impl Hub {
     }
 
     /// Wants a session for `agent` in `pane`, unless it has one or no folder is known. A pane
-    /// that still holds the session of an earlier, different agent closes it first.
+    /// that still holds the session of an earlier, different agent closes it first, and a plain
+    /// session opened before the agent's command line was known is opened again with it.
     fn open_watch(&mut self, pane: PaneId, agent: &str) {
         let Some(workspace) = self.pane_cwd(pane) else {
             return;
@@ -71,7 +76,7 @@ impl Hub {
         match self.agents.watches.need(pane, &ask) {
             Need::Nothing => {}
             Need::Open => self.agents.watches.want(pane, Want::Open(ask)),
-            Need::Replace => {
+            Need::Replace | Need::Upgrade => {
                 self.agents.watches.want(pane, Want::Close(Closing::Always));
                 self.agents.watches.want(pane, Want::Open(ask));
             }
