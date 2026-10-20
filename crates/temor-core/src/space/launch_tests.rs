@@ -67,7 +67,7 @@ fn the_agent_socket_must_fit_in_a_socket_address() {
     let long = RuntimeDir(format!("/run/{}", "x".repeat(100)));
     assert!(matches!(
         agent_plan(SpaceId(1), &profile, &long),
-        Err(CoreError::SocketPathTooLong { max: 107, .. })
+        Err(CoreError::SocketPathTooLong { max, .. }) if max == temor_shell::SOCKET_PATH_MAX
     ));
     let start = launch(SpaceId(1), &project(), None, &long);
     assert_eq!(start.agent, None);
