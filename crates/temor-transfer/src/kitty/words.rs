@@ -5,6 +5,10 @@
 #[error("{0:?} is not a word of this set")]
 pub struct UnknownWord(pub String);
 
+/// The failure text a transfer the person turned down is answered with. Both ends of temor's own
+/// transfers compare against it, so the sender can tell a "no" from a broken link.
+pub const REFUSED_BY_PERSON: &str = "User refused the transfer";
+
 /// `Display` writes a closed set's protocol word; `FromStr` reads it back.
 macro_rules! wire_words {
     ($ty:ident { $($variant:ident => $word:literal),+ $(,)? }) => {

@@ -42,4 +42,4 @@ pub use send::{
     read_chunk, serve,
 };
 pub use wire::{encode_message, encode_reply, parse_message, parse_reply, readable_header};
-pub use words::UnknownWord;
+pub use words::{REFUSED_BY_PERSON, UnknownWord};

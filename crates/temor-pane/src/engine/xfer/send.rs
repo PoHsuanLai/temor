@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use temor_transfer::Bytes;
 use temor_transfer::Consent;
 use temor_transfer::kitty::{
-    ErrorCode, KittyId, Message, Offered, Reply, SendEffect, SendEnd, SendInput, SendSession,
-    encode_message, read_chunk, serve,
+    ErrorCode, KittyId, Message, Offered, REFUSED_BY_PERSON, Reply, SendEffect, SendEnd,
+    SendInput, SendSession, encode_message, read_chunk, serve,
 };
 
 use super::event::{OfferId, TransferEnd};
@@ -40,7 +40,7 @@ impl Transfers {
         out: &mut Reaction,
     ) {
         if consent == Consent::Refuse {
-            out.refuse(request.id, ErrorCode::Eperm, "User refused the transfer");
+            out.refuse(request.id, ErrorCode::Eperm, REFUSED_BY_PERSON);
             out.events.push(ended(offer, TransferEnd::Refused));
             return;
         }
