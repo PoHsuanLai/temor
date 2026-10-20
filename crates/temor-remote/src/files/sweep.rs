@@ -8,7 +8,7 @@ use temor_wire::message::EntryKind;
 use temor_wire::units::UnixMillis;
 
 use super::service::FileService;
-use super::write::STAGE_PREFIX;
+use super::write::{REPLACE_PREFIX, STAGE_PREFIX};
 use crate::platform::Beneath;
 
 /// A staged file this old has no writer left.
@@ -31,7 +31,7 @@ pub fn is_stale_stage(
     older_than: Duration,
 ) -> bool {
     let limit = i64::try_from(older_than.as_millis()).unwrap_or(i64::MAX);
-    name.starts_with(STAGE_PREFIX)
+    (name.starts_with(STAGE_PREFIX) || name.starts_with(REPLACE_PREFIX))
         && kind == EntryKind::File
         && now.0.saturating_sub(mtime.0) > limit
 }
@@ -99,6 +99,13 @@ mod tests {
             (
                 "a day and a second",
                 staged,
+                EntryKind::File,
+                DAY_MS + 1000,
+                true,
+            ),
+            (
+                "a replace left by a crash",
+                ".temor-write-4242-7",
                 EntryKind::File,
                 DAY_MS + 1000,
                 true,

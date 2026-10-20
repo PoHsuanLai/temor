@@ -15,6 +15,7 @@ use rustix::io::Errno;
 
 use super::stat::raw;
 use crate::error::Error;
+use crate::files::REPLACE_PREFIX;
 use crate::platform::RawStat;
 
 const FILE_MODE: u32 = 0o644;
@@ -160,7 +161,7 @@ impl Beneath {
         })?;
         let parent = self.open_at(folders, folder_flags(), Mode::empty(), shown)?;
         let mode = existing_mode(&parent, leaf, shown)?;
-        let temp = format!(".temor-write-{}-{nonce}", std::process::id());
+        let temp = format!("{REPLACE_PREFIX}{}-{nonce}", std::process::id());
         let flags = OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC;
         let fd = openat2(
             &parent,

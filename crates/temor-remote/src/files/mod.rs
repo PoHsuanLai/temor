@@ -15,4 +15,4 @@ pub use service::FileService;
 pub use stamp::sha256;
 pub use sweep::{STALE_AFTER, is_stale_stage};
 pub use watch::{Observed, WatchTable, watch_step};
-pub use write::{STAGE_PREFIX, WriteDecision, stage_name, write_decision};
+pub use write::{REPLACE_PREFIX, STAGE_PREFIX, WriteDecision, stage_name, write_decision};

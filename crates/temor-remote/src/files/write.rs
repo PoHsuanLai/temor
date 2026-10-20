@@ -6,6 +6,10 @@ use temor_wire::message::{FileStamp, WriteCheck};
 /// What every staging file's name starts with.
 pub const STAGE_PREFIX: &str = ".temor-part-";
 
+/// What the name of a whole-file replace's temporary starts with, when it is renamed over the
+/// target. A crash between the write and the rename leaves one behind.
+pub const REPLACE_PREFIX: &str = ".temor-write-";
+
 /// The name of the hidden file a streamed write stages in, beside its target. Derived from the
 /// target's name so each target has its own and a retry finds the same one.
 pub fn stage_name(leaf: &str) -> String {
