@@ -2,8 +2,8 @@
 //! Settings page can draw them from the schema `temor --write-schema <dir>` writes. The tables
 //! and keys are the ones `terminal.conf` had (`font.family`, `cursor.style`, ...), now as TOML.
 //!
-//! Two pages' worth of keys, told apart by section: General (Shell, History, Notices, Shell
-//! offer) and Appearance (Text, Cursor). The theme is quire's (`appearance.toml`) and is not
+//! Two pages' worth of keys, told apart by section: General (Shell, Notices, Shell offer) and
+//! Appearance (Text, Cursor, History; `settings_window::page_of` is the one place that says). The theme is quire's (`appearance.toml`) and is not
 //! here.
 
 use ds_settings::schema::Page;
