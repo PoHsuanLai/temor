@@ -5,10 +5,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use temor_core::facts::{Facts, parse_branch, parse_shortstat, parse_untracked, venv_name};
-use temor_wire::message::FolderFacts;
-
-use super::facts_files::{FolderSource, runtimes_in};
+use temor_core::facts::{
+    Facts, FolderSource, parse_branch, parse_shortstat, parse_untracked, runtimes_in, venv_name,
+};
+use temor_wire::message::{FolderFacts, MOST_FACT_PARENTS};
 
 /// The version files the helper sent, by folder.
 struct Sent {
@@ -50,7 +50,7 @@ pub fn facts_from_host(sent: &FolderFacts) -> Facts {
             .collect(),
         root: sent.root.as_ref().map(|root| PathBuf::from(&root.0)),
     };
-    let runtimes = runtimes_in(Path::new(&sent.dir.0), &files);
+    let runtimes = runtimes_in(Path::new(&sent.dir.0), &files, MOST_FACT_PARENTS);
     Facts {
         branch,
         changes: git
