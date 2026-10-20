@@ -3,6 +3,7 @@
 //! so no key here may be `id`, `name`, `dots`, `grain`, `theme` or `card_accent`.
 
 use super::credential::Credential;
+use crate::vocab::home::expand_home;
 use crate::vocab::lenient::{lenient_list, lenient_or_default};
 use crate::vocab::text::{EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -20,6 +21,17 @@ pub struct Project {
     /// Which new sessions open in this Space.
     #[serde(default, deserialize_with = "lenient_list")]
     pub routes: Vec<Route>,
+}
+
+impl Project {
+    /// This project with a root written `~/work` made absolute under `home`, so the shell's
+    /// folder and the dotenv file's path are both the folder the person meant.
+    pub fn with_home(mut self, home: &str) -> Self {
+        self.root = self
+            .root
+            .map(|root| ProjectRoot(expand_home(root.as_str(), home)));
+        self
+    }
 }
 
 /// The environment a Space's new shells get (D10). Applies to new shells only; credentials come

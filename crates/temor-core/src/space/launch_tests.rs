@@ -116,3 +116,16 @@ fn account_references_are_slugs() {
         assert!(AccountRef::new(bad).is_err(), "{bad}");
     }
 }
+
+#[test]
+fn a_root_written_with_a_tilde_is_the_home_for_the_folder_and_the_dotenv_file() {
+    let mut project = project();
+    project.root = Some(ProjectRoot("~/ops".into()));
+    let project = project.with_home("/home/me");
+    assert_eq!(
+        dotenv_path(&project).unwrap(),
+        Some("/home/me/ops/.env".to_owned())
+    );
+    let start = launch(SpaceId(2), &project, None, &RuntimeDir("/run".into()));
+    assert_eq!(start.cwd.map(|c| c.0), Some("/home/me/ops".to_owned()));
+}
