@@ -17,7 +17,6 @@ use ds::prelude::IconView;
 use ds::prelude::*;
 use temor_core::presence::companion_presence;
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
@@ -25,7 +24,7 @@ use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
 use super::tab_glyph::prompt_glyph;
 use super::tab_wiring::{drag_press, tab_menu_trigger, use_drag_target};
-use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread};
+use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread, select_tab};
 
 /// The row for one tab.
 #[component]
@@ -145,7 +144,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                         return;
                     }
                     click.counted(|| {
-                        selecting.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(id))));
+                        selecting.act(select_tab(id));
                     });
                 },
                 onpointerdown: dragging,

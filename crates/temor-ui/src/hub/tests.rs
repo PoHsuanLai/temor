@@ -12,7 +12,7 @@ use temor_transfer::Consent;
 use super::keys::workspace_input;
 use super::model::Hub;
 use super::rows::{Unread, tidy};
-use super::shelf::AskKind;
+use super::shelf::{Ask, AskKind};
 use crate::edge::Ambient;
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
@@ -264,6 +264,37 @@ mod spaces {
     }
 
     #[test]
+    fn a_root_written_with_a_tilde_is_the_home_folder_for_the_shell_and_its_variables_file() {
+        use temor_core::space::Profile;
+        use temor_core::vocab::text::{ProjectRoot, RelPath};
+
+        let home = tempfile::tempdir().expect("scratch home");
+        std::fs::create_dir_all(home.path().join("app")).expect("app folder");
+        std::fs::write(home.path().join("app/.env"), "FROM_DOTENV=found\n").expect("dotenv");
+        let mut hub = Hub::new(super::launch_in(home.path().to_path_buf()));
+        hub.book.spaces = Spaces::first_run(
+            [Project {
+                root: Some(ProjectRoot("~/app".to_owned())),
+                profile: Profile {
+                    dotenv: Some(RelPath(".env".to_owned())),
+                    ..Profile::default()
+                },
+                ..Project::default()
+            }],
+            Project::default,
+        );
+        hub.book.active = hub.book.spaces.current().id;
+        let start = hub.space_start();
+        let folder = home.path().join("app").display().to_string();
+        assert_eq!(start.cwd, Some(Cwd(folder)));
+        let found = start
+            .env
+            .get("FROM_DOTENV")
+            .map(|v| v.to_string_lossy().into_owned());
+        assert_eq!(found.as_deref(), Some("found"), "{:?}", hub.notices);
+    }
+
+    #[test]
     fn only_a_leading_tilde_is_the_home_folder() {
         let home = std::path::Path::new("/home/someone");
         #[rustfmt::skip]
@@ -464,4 +495,32 @@ fn the_first_window_says_what_the_settings_need_and_the_next_says_nothing() {
     );
     let mut next = Hub::new(launch);
     assert_eq!(next.take_notice(), None);
+}
+
+#[test]
+fn an_ask_for_one_file_says_its_size_the_way_the_shelf_does() {
+    #[rustfmt::skip]
+    let rows: &[(u64, &str)] = &[
+        (1, "1 byte."),
+        (999, "999 bytes."),
+        (1_500, "1.5 KB."),
+        (12_300_000, "12.3 MB."),
+    ];
+    for (size, want) in rows {
+        let ask = Ask {
+            pane: PaneId(1),
+            offer: OfferId(1),
+            kind: AskKind::File {
+                name: "a.txt".to_owned(),
+                size: *size,
+            },
+            from: "a program".to_owned(),
+            stream: String::new(),
+        };
+        assert!(
+            ask.view().detail.starts_with(want),
+            "{size}: {:?}",
+            ask.view()
+        );
+    }
 }

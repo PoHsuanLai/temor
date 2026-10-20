@@ -2,6 +2,7 @@
 //! direct calls (keys, pointer, paste, find), and the window in ds-harness (event dispatch only,
 //! never OS input).
 
+mod actions;
 mod agents_git;
 mod agents_socket;
 mod agents_window;

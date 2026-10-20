@@ -58,25 +58,36 @@ pub struct BlockMenuState {
 /// Locally": it edits the selected text, else the last path in the block's command.
 pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
     let many = state.picked > 1;
+    // The wording follows how many blocks are picked: the action's title is the plural.
     let (commands, outputs) = match many {
-        true => ("Copy Commands", "Copy Outputs"),
+        true => (
+            Action::CopyCommands.menu_title(),
+            Action::CopyOutputs.menu_title(),
+        ),
         false => ("Copy Command", "Copy Output"),
     };
     let bookmark = match state.bookmarked {
         true => "Remove Bookmark",
-        false => "Bookmark",
+        false => Action::ToggleBookmark.menu_title(),
     };
     let mut items = vec![
-        MenuItem::new(Action::Copy, "Copy").with_tip("Copy the commands and their output"),
+        MenuItem::new(Action::Copy, Action::Copy.menu_title())
+            .with_tip("Copy the commands and their output"),
         MenuItem::new(Action::CopyCommands, commands),
         MenuItem::new(Action::CopyOutputs, outputs),
         MenuItem::Separator,
-        MenuItem::new(Action::ReinputCommands, "Put in Prompt")
-            .with_tip("Type the commands into the prompt. Press Return to run them"),
+        MenuItem::new(
+            Action::ReinputCommands,
+            Action::ReinputCommands.menu_title(),
+        )
+        .with_tip("Type the commands into the prompt. Press Return to run them"),
         MenuItem::new(Action::ToggleBookmark, bookmark)
             .with_tip("Alt+Up and Alt+Down step between bookmarks"),
         MenuItem::Separator,
-        MenuItem::new(Action::SelectAllBlocks, "Select All Commands"),
+        MenuItem::new(
+            Action::SelectAllBlocks,
+            Action::SelectAllBlocks.menu_title(),
+        ),
     ]
     .into_iter()
     .map(|item| item.map(&BlockPick::Do))

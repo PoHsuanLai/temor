@@ -2,8 +2,6 @@
 //! then the rest), each with the title and folder of its focused pane, its unread mark, and a
 //! miniature of its splits. Read from the hub; the view draws it and decides nothing.
 
-use std::collections::BTreeSet;
-
 use ds::prelude::{Emphasis, Selection};
 use temor_core::presence::{AgentState, attention};
 use temor_core::split::WholePx;
@@ -86,28 +84,16 @@ impl Hub {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
         let plan = sidebar_plan(&self.ws.tabs);
-        let mut listed = BTreeSet::new();
-        let mut take = |ids: &[TabId]| -> Vec<TabRow> {
-            ids.iter()
-                .filter_map(|id| self.row(*id))
-                .inspect(|row| {
-                    listed.insert(row.id);
-                })
-                .collect()
-        };
+        let take =
+            |ids: &[TabId]| -> Vec<TabRow> { ids.iter().filter_map(|id| self.row(*id)).collect() };
         let pinned = take(&plan.pinned);
         let folders = plan
             .folders
             .iter()
             .map(|(folder, ids)| (folder.title.as_str().to_owned(), take(ids)))
             .collect();
-        let mut loose = take(&plan.loose);
-        // A tab in a folder that is gone is still a tab: it is listed with the rest.
-        for tab in &self.ws.tabs.place.tabs {
-            if !listed.contains(&tab.id) && !loose.iter().any(|row| row.id == tab.id) {
-                loose.extend(self.row(tab.id));
-            }
-        }
+        // The plan's loose tabs include those whose folder is gone.
+        let loose = take(&plan.loose);
         SidebarData {
             pinned,
             folders,
@@ -205,12 +191,15 @@ impl Hub {
             return Vec::new();
         };
         let whole = MINIATURE as f32;
+        let rects = tab.tree.layout(WholePx(MINIATURE), WholePx(MINIATURE));
+        // The panes as they stand, which is the order the focus steps through them (⌘]).
         tab.tree
-            .layout(WholePx(MINIATURE), WholePx(MINIATURE))
+            .reading_order()
             .into_iter()
-            .map(|(pane, rect)| {
+            .filter_map(|pane| {
+                let (_, rect) = rects.iter().find(|(at, _)| *at == pane)?;
                 let percent = |v: WholePx| v.0 as f32 * 100.0 / whole;
-                Tile {
+                Some(Tile {
                     pane,
                     left: percent(rect.x),
                     top: percent(rect.y),
@@ -226,7 +215,7 @@ impl Hub {
                         false => Selection::Unselected,
                     },
                     agent: self.agents.radar.most_urgent([pane]),
-                }
+                })
             })
             .collect()
     }

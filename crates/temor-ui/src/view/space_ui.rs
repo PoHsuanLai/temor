@@ -140,13 +140,6 @@ pub fn SpaceMenus(desk: Desk) -> Element {
 }
 
 impl Desk {
-    /// Switches to the Space with number `number` (1 to 9), as the Space chords count them.
-    pub fn select_space(&self, number: u8) {
-        if let Some(index) = usize::from(number).checked_sub(1) {
-            let _ = self.spaces.switch_index(index);
-        }
-    }
-
     /// Moves the tab in front to `space`.
     pub fn move_front_tab_to(&self, space: SpaceId) {
         if let Some((tab, _, _)) = self.hub.front() {

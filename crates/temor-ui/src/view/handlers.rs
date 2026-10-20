@@ -21,6 +21,7 @@ use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
 use crate::hub::Desk;
+use crate::session::Session;
 
 /// The find bar's query, run once typing pauses.
 pub fn find_query(
@@ -182,30 +183,42 @@ pub fn block_unhovered(
     }
 }
 
-/// The block toolbar's copy of a command.
-pub fn bar_copy_command(
+/// Whether a session call changes what the grid shows. A copy does not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Redraw {
+    /// The window is drawn again; the grid is as it was.
+    WindowOnly,
+    /// The grid is painted again too.
+    WithGrid,
+}
+
+/// The handler for a press that calls `call` on the pane's session with the press's value, then
+/// asks for the window (and, with `redraw`, the grid) to be drawn again.
+fn on_session<T: 'static>(
     slot: Rc<RefCell<Slot>>,
     mut ui: Signal<u32>,
-) -> impl FnMut(BlockId) + 'static {
-    move |id: BlockId| {
+    redraw: Redraw,
+    call: impl Fn(&mut Session, T) + 'static,
+) -> impl FnMut(T) + 'static {
+    move |value: T| {
         if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.copy_command(id);
+            call(s, value);
         }
         ui += 1;
+        if redraw == Redraw::WithGrid {
+            repaint(&slot);
+        }
     }
 }
 
+/// The block toolbar's copy of a command.
+pub fn bar_copy_command(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_command(id))
+}
+
 /// The block toolbar's copy of an output.
-pub fn bar_copy_output(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
-) -> impl FnMut(BlockId) + 'static {
-    move |id: BlockId| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.copy_output(id);
-        }
-        ui += 1;
-    }
+pub fn bar_copy_output(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_output(id))
 }
 
 /// The block toolbar's save of an output to Downloads.
@@ -228,25 +241,15 @@ pub fn bar_save(
 }
 
 /// The block toolbar's re-run: the command is typed, never run.
-pub fn bar_rerun(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    move |id: BlockId| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.rerun(id);
-        }
-        ui += 1;
-        repaint(&slot);
-    }
+pub fn bar_rerun(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, id| s.rerun(id))
 }
 
 /// The sticky header's press: the block's prompt scrolls to the top of the pane.
-pub fn header_press(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    move |id: BlockId| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.scroll_block_to_top(id);
-        }
-        ui += 1;
-        repaint(&slot);
-    }
+pub fn header_press(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, id| {
+        s.scroll_block_to_top(id)
+    })
 }
 
 /// A header or toolbar press, then the keyboard back to the terminal: the button the person
@@ -263,24 +266,13 @@ pub fn then_regain<T: 'static>(
 }
 
 /// The paste confirmation's paste.
-pub fn paste_confirm(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    move |_: ()| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.confirm_paste();
-        }
-        ui += 1;
-        repaint(&slot);
-    }
+pub fn paste_confirm(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.confirm_paste())
 }
 
 /// The paste confirmation's cancel.
-pub fn paste_cancel(slot: Rc<RefCell<Slot>>, mut ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    move |_: ()| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.cancel_paste();
-        }
-        ui += 1;
-    }
+pub fn paste_cancel(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, ()| s.cancel_paste())
 }
 
 /// The ended shell's restart. The new shell starts a frame after the press: the button the

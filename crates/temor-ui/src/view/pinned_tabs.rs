@@ -10,14 +10,13 @@
 use dioxus::prelude::*;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::prelude::{IconSize, Shown};
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
 use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
 use super::tab_glyph::presence_face;
 use super::tab_wiring::{drag_press, selected_attr, tab_menu_trigger, use_drag_target};
-use crate::hub::{Desk, DragKey, TabRow, Unread};
+use crate::hub::{Desk, DragKey, TabRow, Unread, select_tab};
 
 /// The pinned tabs' tiles.
 #[component]
@@ -57,7 +56,7 @@ fn PinTile(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                 onpointerdown: press,
                 onclick: move |_| {
                     click.counted(|| {
-                        picking.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(id))));
+                        picking.act(select_tab(id));
                     });
                 },
                 oncontextmenu: opening,

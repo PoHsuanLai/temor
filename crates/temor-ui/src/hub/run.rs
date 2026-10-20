@@ -76,20 +76,19 @@ pub(super) struct RunHub {
 
 impl Hub {
     /// Opens a tab that runs `run` in place of the shell. A program that cannot be found is
-    /// said, and no tab opens. Returns whether the tab opened.
-    pub fn run_in_tab(&mut self, run: Run) -> bool {
+    /// said, and no tab opens.
+    pub fn run_in_tab(&mut self, run: Run) {
         let Some(found) = self.find_run(&run) else {
             // As a shell says it: the launch exits at once, with no tab to wait for.
             if let Some(ticket) = run.ticket {
                 self.run.ends.ended(ticket, NOT_FOUND);
             }
-            return false;
+            return;
         };
         self.run.intent = Some(found);
-        let opened = self.open_tab(run.cwd.as_deref().map(cwd_of));
+        let _ = self.open_tab(run.cwd.as_deref().map(cwd_of));
         // A workspace that refused the tab leaves nothing waiting for an unrelated pane.
         self.run.intent = None;
-        opened.is_some()
     }
 
     /// The program `run` names, looked for as a shell would: a name with a slash is a path (from
