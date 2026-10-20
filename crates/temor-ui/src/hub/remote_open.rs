@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 
 use temor_core::host::master::OpenAs;
 use temor_core::remote::HelperState;
-use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::{ControlLayout, HostAlias};
 
@@ -97,24 +96,7 @@ impl Hub {
             None,
             Some(program),
         );
-        match opened {
-            Ok(mut session) => {
-                session.set_focus(self.focus_of(pane));
-                // A pane on a host files for another computer: its paths mean nothing here.
-                session.set_site(PaneSite::Remote);
-                if let Some(slot) = self.slots.get(&pane) {
-                    slot.borrow_mut().session = Some(session);
-                }
-                if let Some(host) = self.ssh.panes.get_mut(&pane) {
-                    host.phase = Phase::Connecting;
-                    host.scan = Some(scan);
-                }
-            }
-            Err(err) => {
-                self.feed_master(alias, temor_core::host::master::MasterIn::Failed(pane));
-                self.fail_host(pane, err.to_string());
-            }
-        }
+        self.host_session_opened(alias, pane, opened, (Phase::Connecting, Some(scan)));
     }
 
     /// The shared connection is up: the pane becomes a session on the helper.

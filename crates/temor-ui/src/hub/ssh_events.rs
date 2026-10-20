@@ -101,10 +101,7 @@ pub fn spawn_ssh_loop(desk: Desk) {
     spawn(async move {
         while let Some(event) = inbox.recv().await {
             let notes = heard.hub.0.borrow_mut().ssh_event(event);
-            for note in notes {
-                heard.say(note);
-            }
-            heard.bump();
+            heard.tell(notes);
         }
     });
     spawn(async move {

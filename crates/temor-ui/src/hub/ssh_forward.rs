@@ -4,11 +4,11 @@
 use temor_core::host::forward::{ForwardFault, ForwardIn, ForwardOut, forward_step};
 use temor_core::host::master::Master;
 use temor_core::vocab::ids::PaneId;
-use temor_pane::text::{LinkVerdict, check_link};
 use temor_ssh::{HostAlias, Port};
 
 use super::model::Hub;
 use crate::edge::ssh_work::free_local_port;
+use crate::platform::open_link;
 
 /// What the person is told when a forward cannot be opened.
 pub(super) fn fault_words(host: &HostAlias, remote: Port, fault: ForwardFault) -> String {
@@ -66,7 +66,7 @@ impl Hub {
     }
 
     fn connected_host(&mut self, pane: PaneId) -> Option<HostAlias> {
-        let alias = self.ssh.panes.get(&pane)?.alias.clone();
+        let alias = self.alias_of(pane)?;
         let up = self.ssh.lines.get(&alias).map(|line| &line.master) == Some(&Master::Up);
         match up {
             true => Some(alias),
@@ -101,7 +101,7 @@ impl Hub {
 
     /// Closes the forward of the host's port `remote`.
     pub fn cancel_forward(&mut self, pane: PaneId, remote: Port) {
-        if let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) {
+        if let Some(alias) = self.alias_of(pane) {
             self.feed_forwards(&alias, ForwardIn::Cancelled { remote });
         }
     }
@@ -134,13 +134,8 @@ impl Hub {
 
     /// Hands a web address to the desktop, if it is one the window opens.
     pub(super) fn open_url(&mut self, url: &str) {
-        match check_link(url) {
-            LinkVerdict::Open(target) => {
-                if let Err(err) = self.ssh.opener.open(&target) {
-                    self.notices.push(err.to_string());
-                }
-            }
-            _ => self.notices.push("That address can't be opened".to_owned()),
+        if let Err(words) = open_link(&*self.ssh.opener, url) {
+            self.notices.push(words.to_owned());
         }
     }
 }

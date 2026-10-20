@@ -19,15 +19,7 @@ pub fn spawn_agent_loops(desk: Desk) {
         let desk = desk.clone();
         spawn(async move {
             while let Some(done) = inbox.recv().await {
-                let notices = {
-                    let mut hub = desk.hub.0.borrow_mut();
-                    hub.agent_done(done);
-                    std::mem::take(&mut hub.notices)
-                };
-                for text in notices {
-                    desk.say(text);
-                }
-                desk.bump();
+                desk.settle(|hub| hub.agent_done(done));
             }
         });
     }

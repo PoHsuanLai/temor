@@ -27,7 +27,7 @@ impl HubRef {
     /// pane (local programs may write) or a host never asked about.
     pub fn clipboard_consent(&self, pane: PaneId) -> Option<Grant> {
         let hub = self.0.borrow();
-        let alias = hub.ssh.panes.get(&pane)?.alias.clone();
+        let alias = hub.alias_of(pane)?;
         Some(hub.permit_grant(&alias, Permit::Clipboard)).filter(|grant| *grant != Grant::Ask)
     }
 
@@ -35,7 +35,7 @@ impl HubRef {
     /// the next launch. Local panes keep nothing.
     pub fn clipboard_answered(&self, pane: PaneId, grant: Grant) {
         let mut hub = self.0.borrow_mut();
-        let Some(alias) = hub.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = hub.alias_of(pane) else {
             return;
         };
         hub.remember_permit(&alias, Permit::Clipboard, grant);
