@@ -12,6 +12,7 @@ use temor_transfer::shelf::ShelfStore;
 use temor_vt::ViewportScroll;
 
 use super::super::Session;
+use super::super::osc52::Copied;
 use crate::error::UiError;
 use crate::words::notices;
 
@@ -50,7 +51,7 @@ impl Session {
     }
 
     pub(super) fn copy_text(&mut self, text: &str) {
-        if self.clipboard.write(text).is_err() {
+        if self.put_on_clipboard(text) == Copied::No {
             self.notice = Some(notices::TEXT_NOT_COPIED.to_owned());
         }
     }
