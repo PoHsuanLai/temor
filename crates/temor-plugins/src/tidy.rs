@@ -16,12 +16,25 @@ pub const MOST_ROWS: usize = 50;
 /// The most secondary actions a row keeps.
 pub const MOST_ACTIONS: usize = 8;
 
+/// The Unicode Bidi_Control characters: they reorder what is shown, so they are dropped. The same
+/// set as temor-core's `is_bidi_control` (this crate does not depend on core).
+fn is_bidi_control(c: char) -> bool {
+    matches!(
+        c,
+        '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
+}
+
 /// `text` on one line: every control character (a newline included) becomes a space, runs of
-/// blanks become one, and the ends are trimmed. Cut to `most` characters.
+/// blanks become one, bidirectional controls are dropped, and the ends are trimmed. Cut to `most`
+/// characters.
 pub fn one_line(text: &str, most: usize) -> String {
     let mut out = String::new();
     let mut blank = true;
     for c in text.chars() {
+        if is_bidi_control(c) {
+            continue;
+        }
         let c = if c.is_control() || c == '\u{2800}' {
             ' '
         } else {
@@ -121,6 +134,7 @@ mod tests {
             ("newline", "a\nb", 10, "a b"),
             ("escape", "a\u{1b}[31mb", 10, "a [31mb"),
             ("braille blank is a space", "a\u{2800}\u{2800}b", 10, "a b"),
+            ("bidi override", "a\u{202E}b\u{061C}c", 10, "abc"),
             ("runs of blanks", "  a \t  b  ", 10, "a b"),
             ("cut", &long, 5, "xxxxx"),
             ("only blanks", " \n ", 5, ""),
