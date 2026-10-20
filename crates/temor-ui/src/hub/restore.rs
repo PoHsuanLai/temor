@@ -112,11 +112,7 @@ impl Hub {
     fn quiet_parked(&mut self) {
         for ws in self.book.parked.values() {
             for pane in ws.tabs.panes() {
-                if let Some(slot) = self.slots.get(&pane)
-                    && let Some(session) = slot.borrow_mut().session.as_mut()
-                {
-                    session.set_focus(Focus::Unfocused);
-                }
+                self.set_pane_focus(pane, Focus::Unfocused);
             }
         }
     }

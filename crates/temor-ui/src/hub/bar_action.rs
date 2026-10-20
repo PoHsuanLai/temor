@@ -4,7 +4,7 @@
 use temor_core::space::Pin;
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::Relaunch;
-use temor_core::workspace::{TabsIn, WorkspaceIn};
+use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 use temor_pane::keys::Action;
 
 use super::model::Hub;
@@ -15,6 +15,11 @@ pub fn pin_as_shell(tab: TabId) -> TabsIn {
         tab,
         relaunch: Relaunch(String::new()),
     }
+}
+
+/// The request that brings `tab` to the front.
+pub fn select_tab(tab: TabId) -> WorkspaceIn {
+    WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab)))
 }
 
 impl Hub {

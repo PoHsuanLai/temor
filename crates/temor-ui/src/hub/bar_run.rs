@@ -4,8 +4,9 @@
 
 use temor_core::bar::{BarAction, BarRow, Target, Visits};
 use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_core::workspace::WorkspaceIn;
 
+use super::bar_action::select_tab;
 use super::hosts::HostRows;
 use super::model::Hub;
 use super::typing::{Submit, type_command};
@@ -28,7 +29,7 @@ impl Hub {
 
     fn go_to(&mut self, target: Target) {
         match target {
-            Target::Tab(tab) => self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab)))),
+            Target::Tab(tab) => self.act(select_tab(tab)),
             Target::Closed(_) => self.act(WorkspaceIn::Reopen),
             // The desk runs it once the bar's pick is over: an action needs the window.
             Target::Action(action) => self.bar_actions.push(action),
@@ -42,7 +43,7 @@ impl Hub {
                     .find(|tab| tab.folder == Some(folder))
                     .map(|tab| tab.id);
                 if let Some(tab) = first {
-                    self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab))));
+                    self.act(select_tab(tab));
                 }
             }
             Target::Space(space) => {

@@ -136,10 +136,8 @@ impl Hub {
         if to == self.book.active {
             return;
         }
-        if let Some(slot) = self.keyboard_pane().and_then(|pane| self.slots.get(&pane))
-            && let Some(session) = slot.borrow_mut().session.as_mut()
-        {
-            session.set_focus(Focus::Unfocused);
+        if let Some(pane) = self.keyboard_pane() {
+            self.set_pane_focus(pane, Focus::Unfocused);
         }
         self.swap_to(to);
         self.fill_empty();

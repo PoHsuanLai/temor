@@ -176,11 +176,7 @@ impl Hub {
             return;
         };
         self.act(WorkspaceIn::Focus(held));
-        if let Some(slot) = self.slots.get(&opened)
-            && let Some(session) = slot.borrow_mut().session.as_mut()
-        {
-            session.set_focus(NoteFocus::Unfocused);
-        }
+        self.set_pane_focus(opened, NoteFocus::Unfocused);
     }
 }
 

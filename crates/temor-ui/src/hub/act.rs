@@ -185,6 +185,11 @@ impl Hub {
         }
     }
 
+    /// Tells `pane`'s session whether it has the keyboard, if it has a session.
+    pub(super) fn set_pane_focus(&self, pane: PaneId, focus: Focus) {
+        let _ = self.live_mut(pane, |session| session.set_focus(focus));
+    }
+
     /// Whether `pane`'s session counts as focused: only the pane with the keyboard does.
     pub(super) fn focus_of(&self, pane: PaneId) -> Focus {
         match self.keyboard_pane() == Some(pane) {

@@ -52,7 +52,7 @@ pub(super) fn begin_plan(before: Option<(Option<SessionId>, Shown)>) -> Begin {
 impl Hub {
     /// The person pressed Retry on a connection temor gave up on.
     pub fn remote_retry(&mut self, pane: PaneId) {
-        let Some(host) = self.ssh.panes.get(&pane).map(|p| p.alias.clone()) else {
+        let Some(host) = self.alias_of(pane) else {
             return;
         };
         let phase = self.ssh.panes.get(&pane).map(|p| p.phase);

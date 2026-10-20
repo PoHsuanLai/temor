@@ -55,7 +55,7 @@ impl Hub {
     /// Sends the dropped files to the folder of the host pane `pane`. What the person should be
     /// told comes back.
     pub fn upload_drop(&mut self, pane: PaneId, paths: &[PathBuf]) -> Vec<String> {
-        let Some(host) = self.ssh.panes.get(&pane).map(|p| p.alias.clone()) else {
+        let Some(host) = self.alias_of(pane) else {
             return Vec::new();
         };
         let Some(folder) = self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {

@@ -74,7 +74,7 @@ impl Hub {
     /// or on the host the pane is a session on. None where there is nothing to look at: a path
     /// that is not absolute, or a host with no helper.
     fn peek_ask_for(&mut self, pane: PaneId, file: &Path) -> Option<Ticket> {
-        let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = self.alias_of(pane) else {
             return self.peek.look().ask(file);
         };
         let conn = self.remote.helper_conn(&alias)?;

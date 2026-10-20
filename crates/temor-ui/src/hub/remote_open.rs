@@ -193,7 +193,7 @@ impl Hub {
 
     /// The pane gives up the helper and becomes a plain `ssh` session.
     pub(super) fn remote_fallback(&mut self, pane: PaneId) {
-        let Some(alias) = self.ssh.panes.get(&pane).map(|host| host.alias.clone()) else {
+        let Some(alias) = self.alias_of(pane) else {
             return;
         };
         self.remote_drop_pane(pane);
