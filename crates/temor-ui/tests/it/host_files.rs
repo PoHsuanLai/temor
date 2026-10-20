@@ -7,17 +7,14 @@ use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
 
 use temor_core::host::edit::EditFault;
-use temor_pty::SessionLauncher;
-use temor_remote::{
-    Client, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
-};
+use temor_remote::{Client, DAEMON_CAPS, hello};
 use temor_ui::edge::remote_conn::Conn;
 use temor_ui::edge::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 use temor_wire::message::RemotePath;
 
-use super::support::scratch;
+use super::support::{helper_daemon, scratch};
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([5; 32]));
 const PATIENCE: Duration = Duration::from_secs(20);
@@ -33,17 +30,7 @@ struct Host {
 fn host(name: &str) -> Host {
     let dir = scratch(name);
     let root = dir.join("home");
-    let daemon = Daemon::new(DaemonConfig {
-        helper: HELPER,
-        launcher: SessionLauncher::Setsid("/usr/bin/setsid".into()),
-        default_shell: "/bin/sh".into(),
-        runtime_dir: dir.join("run"),
-        home: Some(root.clone()),
-        file_roots: vec![root.clone()],
-        proc_root: "/proc".into(),
-        idle: DEFAULT_IDLE,
-        clock: Arc::new(ManualClock::new()) as Arc<dyn Clock>,
-    });
+    let daemon = helper_daemon(HELPER, &dir, &root, "/bin/sh".into());
     let (served_in, client_out) = std::io::pipe().expect("pipe");
     let (client_in, served_out) = std::io::pipe().expect("pipe");
     std::thread::spawn(move || daemon.serve(served_in, served_out));

@@ -7,10 +7,7 @@ use std::time::{Duration, Instant};
 
 use temor_core::vocab::ids::PaneId;
 use temor_pane::{FedSpec, PaneEvent, PaneHandle, start_fed};
-use temor_pty::SessionLauncher;
-use temor_remote::{
-    Client, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
-};
+use temor_remote::{Client, DAEMON_CAPS, Daemon, hello};
 use temor_render::Palette;
 use temor_ssh::HostAlias;
 use temor_ui::edge::remote::RemoteWork;
@@ -25,7 +22,7 @@ use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
-use super::support::{bash_path, scratch, tools_present};
+use super::support::{bash_path, helper_daemon, scratch, tools_present};
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([7; 32]));
 const PATIENCE: Duration = Duration::from_secs(20);
@@ -116,17 +113,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
     let dir = scratch("remote-pane");
     let home = dir.join("home");
     let setsid = super::support::setsid_path();
-    let daemon = Daemon::new(DaemonConfig {
-        helper: HELPER,
-        launcher: SessionLauncher::Setsid(setsid),
-        default_shell: bash_path(),
-        runtime_dir: dir.join("run"),
-        home: Some(home.clone()),
-        file_roots: vec![home.clone()],
-        proc_root: "/proc".into(),
-        idle: DEFAULT_IDLE,
-        clock: Arc::new(ManualClock::new()) as Arc<dyn Clock>,
-    });
+    let daemon = helper_daemon(HELPER, &dir, &home, bash_path());
 
     // The pane: fed from the helper, its input going back through a link of its own.
     let target = Arc::new(std::sync::Mutex::new(Target::default()));

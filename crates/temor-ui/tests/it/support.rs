@@ -4,8 +4,11 @@ use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
+use temor_pty::SessionLauncher;
+use temor_remote::{Clock, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock};
 pub use temor_testkit::ScratchRoot;
 use temor_testkit::{programs_or_skip, skip};
+use temor_wire::hello::HelperVersion;
 
 /// How long a test waits for a real shell or a large transfer before it gives up. The wait ends
 /// as soon as the condition holds, so a generous bound costs nothing when the machine is idle.
@@ -58,6 +61,27 @@ pub fn tools_present() -> bool {
 /// Util-linux `setsid`; the tests that need it have checked [`tools_present`].
 pub fn setsid_path() -> PathBuf {
     temor_testkit::find_program("setsid").expect("util-linux setsid is installed")
+}
+
+/// A helper in this process: a daemon over the Space folder `home`, its sockets in `dir/run`,
+/// starting sessions in `shell`.
+pub fn helper_daemon(
+    helper: HelperVersion,
+    dir: &std::path::Path,
+    home: &std::path::Path,
+    shell: PathBuf,
+) -> std::sync::Arc<Daemon> {
+    Daemon::new(DaemonConfig {
+        helper,
+        launcher: SessionLauncher::Setsid(setsid_path()),
+        default_shell: shell,
+        runtime_dir: dir.join("run"),
+        home: Some(home.to_path_buf()),
+        file_roots: vec![home.to_path_buf()],
+        proc_root: "/proc".into(),
+        idle: DEFAULT_IDLE,
+        clock: std::sync::Arc::new(ManualClock::new()) as std::sync::Arc<dyn Clock>,
+    })
 }
 
 /// Where bash is, from the standard places (the tests skip when it is not there).
