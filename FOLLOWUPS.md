@@ -1691,3 +1691,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       - `PaneError::SocketDir` says "not private" when the folder's parent is simply missing.
       - `run_in_tab`'s answer is now "a pane was added", and no caller reads it.
       - `temor-vt-sys/src/lib.rs` still says Zig 0.16.
+- [ ] Flaky under a full-suite load: `blocks::shells::the_persons_own_clear_takes_every_block`
+      timed out "waiting for the prompt after it" once (PR #26's gate, 2026-10-20). The screen
+      showed the prompt after `clear`, but the prompt count never reached 3. It passes alone and
+      with the other `blocks::shells` tests. Suspect the count misses a prompt that `clear`
+      draws over.
