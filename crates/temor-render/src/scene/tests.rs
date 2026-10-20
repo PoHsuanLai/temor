@@ -6,7 +6,7 @@ use super::colors::{UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle, resolve_cursor};
 use super::model::{QuadPaint, RowScene};
 use crate::font::GlyphCache;
-use crate::font::testing::fonts;
+use crate::testing::fonts;
 use crate::frame::{CellDraw, CellText, TermColors};
 use crate::metrics::{CellPos, Scale};
 use crate::palette::Palette;

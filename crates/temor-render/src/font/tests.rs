@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::face::{ColorFormat, FaceRole};
-use super::testing::fonts;
+use crate::testing::fonts;
 use super::{FaceStyle, GlyphCache, GlyphKind, Slant, Weight};
 use crate::metrics::Scale;
 

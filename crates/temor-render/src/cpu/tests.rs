@@ -2,73 +2,25 @@
 //! picture must still match one drawn with room to spare: no glyph may be read from a cleared
 //! atlas.
 
-use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row, Selected};
+use temor_vt::{CellStyle, Col, GridSize, Rgb, Row, Selected};
 
 use super::CpuRenderer;
-use crate::font::testing::fonts;
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
-use crate::metrics::{Padding, PixelSize, Scale};
 use crate::palette::Palette;
-use crate::renderer::{PaneFocus, PaneView, Renderer};
+use crate::renderer::Renderer;
+use crate::testing::{GLYPH_COLS, GLYPH_ROWS, fonts, glyph_frame, size_for, view};
 
-const COLS: u16 = 40;
-const ROWS: u16 = 8;
-
-/// Box-drawing characters are drawn procedurally, one distinct mask each (160 in all), so the
-/// frame needs more masks than a small atlas holds at this size.
-fn frame() -> PaneFrame {
-    let mut f = PaneFrame::new();
-    f.resize(GridSize::new(COLS, ROWS));
-    f.set_colors(TermColors {
-        foreground: Rgb::new(220, 220, 220),
-        background: Rgb::new(0, 0, 0),
-        cursor: None,
-    });
-    for r in 0..ROWS {
-        let cells = (0..COLS)
-            .map(|c| {
-                let i = usize::from(r) * usize::from(COLS) + usize::from(c);
-                let text = char::from_u32(0x2500 + (i % 160) as u32)
-                    .map_or_else(|| "?".to_owned(), |ch| ch.to_string());
-                CellDraw {
-                    col: Col(c),
-                    span: 1,
-                    text: CellText::new(&text),
-                    fg: None,
-                    bg: None,
-                    style: CellStyle::default(),
-                    selected: Selected::No,
-                }
-            })
-            .collect();
-        f.set_row(Row(r), cells);
-    }
-    f
-}
+const COLS: u16 = GLYPH_COLS;
+const ROWS: u16 = GLYPH_ROWS;
 
 /// One frame drawn by `renderer`: its pixels and how many atlas clears it took.
 fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
-    let scale = Scale::new(1.0);
-    let m = renderer.cell_metrics(scale);
-    let pad = Padding::uniform(Px(4));
-    let size = PixelSize::new(
-        u32::from(COLS) * m.width() + pad.left.0 * 2,
-        u32::from(ROWS) * m.height() + pad.top.0 * 2,
-    );
+    let size = size_for(&mut renderer);
     let palette = Palette::default();
-    let view = PaneView {
-        size,
-        scale,
-        padding: pad,
-        palette: &palette,
-        focus: PaneFocus::Focused,
-        blink: crate::renderer::BlinkPhase::On,
-        selection: None,
-        bands: &[],
-        lower: 0,
-    };
-    let mut f = frame();
-    let out = renderer.render(&mut f, &view).expect("render");
+    let mut f = glyph_frame(0, 160);
+    let out = renderer
+        .render(&mut f, &view(size, &palette, &[]))
+        .expect("render");
     (out.pixels.to_vec(), out.stats.atlas_resets)
 }
 
@@ -112,20 +64,6 @@ fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {
     f
 }
 
-fn view(size: PixelSize, palette: &Palette) -> PaneView<'_> {
-    PaneView {
-        size,
-        scale: Scale::new(1.0),
-        padding: Padding::uniform(Px(4)),
-        palette,
-        focus: PaneFocus::Focused,
-        blink: crate::renderer::BlinkPhase::On,
-        selection: None,
-        bands: &[],
-        lower: 0,
-    }
-}
-
 #[test]
 fn recomposing_rows_draws_what_a_full_compose_draws() {
     let before = [
@@ -149,28 +87,24 @@ fn recomposing_rows_draws_what_a_full_compose_draws() {
         "g",
     ];
     let mut renderer = CpuRenderer::new(fonts(14.0));
-    let m = renderer.cell_metrics(Scale::new(1.0));
-    let size = PixelSize::new(
-        u32::from(COLS) * m.width() + 8,
-        u32::from(ROWS) * m.height() + 8,
-    );
+    let size = size_for(&mut renderer);
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&mut frame, &view(size, &palette, &[]))
         .expect("first render");
     // Row 3 changes alone; the rows beside it are composed too only if its glyphs reach them.
     let next = lines(after);
     frame.set_row(Row(3), next.rows[3].clone());
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&mut frame, &view(size, &palette, &[]))
         .expect("second render")
         .pixels
         .to_vec();
     let mut fresh = CpuRenderer::new(fonts(14.0));
     let mut whole = lines(after);
     let full = fresh
-        .render(&mut whole, &view(size, &palette))
+        .render(&mut whole, &view(size, &palette, &[]))
         .expect("fresh render")
         .pixels
         .to_vec();
@@ -187,28 +121,24 @@ fn a_neighbour_that_gains_an_overhang_in_the_same_frame_is_still_drawn_whole() {
     let before = ["Åg|Ç", "ÅÄÖ", "gjpqy", "x", "", "", "", ""];
     let after = ["Åg|Ç", "ÅÄÖ", "y", "ÅÄÖǧ", "", "", "", ""];
     let mut renderer = CpuRenderer::new(fonts(14.0));
-    let m = renderer.cell_metrics(Scale::new(1.0));
-    let size = PixelSize::new(
-        u32::from(COLS) * m.width() + 8,
-        u32::from(ROWS) * m.height() + 8,
-    );
+    let size = size_for(&mut renderer);
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&mut frame, &view(size, &palette, &[]))
         .expect("first render");
     let next = lines(after);
     for r in [2, 3] {
         frame.set_row(Row(r), next.rows[usize::from(r)].clone());
     }
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&mut frame, &view(size, &palette, &[]))
         .expect("second render")
         .pixels
         .to_vec();
     let mut whole = lines(after);
     let full = CpuRenderer::new(fonts(14.0))
-        .render(&mut whole, &view(size, &palette))
+        .render(&mut whole, &view(size, &palette, &[]))
         .expect("fresh render")
         .pixels
         .to_vec();

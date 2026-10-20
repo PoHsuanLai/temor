@@ -3,27 +3,13 @@
 use std::sync::mpsc;
 
 use temor_render::{
-    CpuRenderer, FontConfig, FontFamily, FontSet, FontSize, FontSource, FrameCapture, Padding,
-    Palette, PaneFocus, PaneFrame, PaneView, PixelSize, RenderStats, Renderer, Scale,
+    CpuRenderer, FrameCapture, Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize,
+    RenderStats, Renderer, Scale,
 };
 use temor_vt::{GridSize, Px, Terminal, TerminalConfig, VtEvent};
 
 /// The bundled OFL fonts (tests/fonts): Noto Sans Mono, then CJK and colour emoji fallbacks.
-pub fn fonts(px: f32) -> FontSet {
-    let dir = format!("{}/tests/fonts", env!("CARGO_MANIFEST_DIR"));
-    let files = [
-        "NotoSansMono-Regular-subset.ttf",
-        "NotoSansMono-Bold-subset.ttf",
-        "NotoSansMonoCJK-subset.otf",
-        "NotoColorEmoji-subset.ttf",
-    ]
-    .map(|f| std::fs::read(format!("{dir}/{f}")).unwrap_or_else(|e| panic!("{f}: {e}")));
-    let config = FontConfig {
-        family: FontFamily::Named("Noto Sans Mono".into()),
-        size: FontSize::new(px),
-    };
-    FontSet::load(&config, FontSource::Bundled(files.to_vec())).expect("bundled fonts")
-}
+pub use temor_render::testing::fonts;
 
 /// The bytes of `tests/fixtures/<name>`.
 pub fn fixture(name: &str) -> Vec<u8> {
