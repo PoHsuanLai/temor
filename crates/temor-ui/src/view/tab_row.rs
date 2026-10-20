@@ -13,18 +13,18 @@ use ds::components::content::label::{LabelRole, LabelStyle};
 use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::overlays::drag_ghost::DropLine;
-use ds::host::measure::use_rect;
 use ds::prelude::IconView;
 use ds::prelude::*;
 use temor_core::presence::companion_presence;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
-use super::dnd::{Click, Dnd, is_primary, point_of};
+use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
 use super::tab_glyph::prompt_glyph;
+use super::tab_wiring::{drag_press, tab_menu_trigger, use_drag_target};
 use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread};
 
 /// The row for one tab.
@@ -32,18 +32,11 @@ use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread};
 #[allow(non_snake_case)]
 pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let id = row.id;
-    let rect = use_rect();
     let mut menu = use_signal(|| Shown::Hidden);
     // The pane whose segment was right-clicked: the menu offers to close it.
     let mut menu_pane = use_signal(|| None::<PaneId>);
     // The drag finds the row under the pointer from where the rows are.
-    if let Some(at) = rect.rect() {
-        dnd.rects.set(id, at);
-    }
-    {
-        let rects = dnd.rects.clone();
-        use_drop(move || rects.forget(id));
-    }
+    let rect = use_drag_target(id, &dnd.rects);
     let drop = match (dnd.over)() {
         Some(over) if over == id => DropState::Target,
         _ => match dnd.drag.phase() {
@@ -94,16 +87,13 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             RowLeading::None,
             Some(rsx! {
                 SplitSegments {
+                    tab: id,
                     tiles: row.tiles.clone(),
                     desk: desk.clone(),
                     dnd: dnd.clone(),
-                    onmenu: {
-                        let desk = desk.clone();
-                        move |pane: PaneId| {
-                            desk.agent_menu_opened(id);
-                            menu_pane.set(Some(pane));
-                            menu.set(Shown::Visible);
-                        }
+                    onmenu: move |pane: PaneId| {
+                        menu_pane.set(Some(pane));
+                        menu.set(Shown::Visible);
                     },
                 }
             }),
@@ -129,9 +119,11 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     };
     let click = dnd.click.clone();
     let selecting = desk.clone();
+    let opening = tab_menu_trigger(&desk, id, move || menu.set(Shown::Visible));
+    let dragging = drag_press(&dnd, DragKey::Tab(id));
     let tip = hover_text(&row);
     rsx! {
-        div { class: "temor-tab-box",
+        div { class: "temor-tab-box", oncontextmenu: opening,
             // The branch, the state and what an agent is doing are said on hover: the row is
             // one line.
             RowTip { name: format!("tab{}", id.0), text: tip,
@@ -147,22 +139,16 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                     drop,
                 },
                 onclick: move |press: Press| {
-                    // A secondary press opens the tab's agent menu; it does not select the tab.
+                    // A secondary press is the tab's menu (`oncontextmenu` above); it does not
+                    // select the tab.
                     if matches!(press.button, PointerButton::Secondary) {
-                        selecting.agent_menu_opened(id);
-                        menu.set(Shown::Visible);
                         return;
                     }
-                    if click.take() == Click::Counts {
+                    click.counted(|| {
                         selecting.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(id))));
-                    }
+                    });
                 },
-                onpointerdown: move |event: PointerEvent| {
-                    if is_primary(&event) {
-                        dnd.click.reset();
-                        dnd.drag.down(DragKey::Tab(id), point_of(&event));
-                    }
-                },
+                onpointerdown: dragging,
                 common: Common {
                     mounted: Some(EventHandler::new(move |event: MountedEvent| rect.on_mounted(event))),
                     ..Common::default()

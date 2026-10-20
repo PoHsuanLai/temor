@@ -58,6 +58,7 @@ pub mod status;
 pub mod tab_glyph;
 pub mod tab_row;
 pub mod tab_sidebar;
+pub mod tab_wiring;
 pub mod theme;
 pub mod title;
 pub mod transfer_ask;

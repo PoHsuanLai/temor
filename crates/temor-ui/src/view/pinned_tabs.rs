@@ -8,19 +8,15 @@
 //! glyph, so the tile is temor's own, in `PinTile`'s plate and sizes.
 
 use dioxus::prelude::*;
-use ds::base::vocab::CompanionPresence;
-use ds::components::companion::orb::model::OrbSize;
-use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
-use ds::host::measure::use_rect;
-use ds::prelude::{IconSize, IconView, Selection, Shown};
-use temor_core::presence::companion_presence;
+use ds::prelude::{IconSize, Shown};
 use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
 
-use super::dnd::{Click, Dnd, is_primary, point_of};
+use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
-use super::tab_glyph::prompt_glyph;
+use super::tab_glyph::presence_face;
+use super::tab_wiring::{drag_press, selected_attr, tab_menu_trigger, use_drag_target};
 use crate::hub::{Desk, DragKey, TabRow, Unread};
 
 /// The pinned tabs' tiles.
@@ -41,57 +37,31 @@ pub fn PinnedTabs(rows: Vec<TabRow>, desk: Desk, dnd: Dnd) -> Element {
 #[allow(non_snake_case)]
 fn PinTile(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let id = row.id;
-    let rect = use_rect();
     // The drag finds the tile under the pointer as it finds a row.
-    if let Some(at) = rect.rect() {
-        dnd.rects.set(id, at);
-    }
-    {
-        let rects = dnd.rects.clone();
-        use_drop(move || rects.forget(id));
-    }
+    let rect = use_drag_target(id, &dnd.rects);
     let over = ((dnd.over)() == Some(id)).then_some("true");
     let click = dnd.click.clone();
     let mut menu = use_signal(|| Shown::Hidden);
-    let selected = match row.selection {
-        Selection::Selected => Some("true"),
-        Selection::Unselected => None,
-    };
-    let face = match companion_presence(row.agent) {
-        CompanionPresence::Idle => rsx! {
-            IconView { source: prompt_glyph(IconSize::Large), size: IconSize::Large }
-        },
-        presence => rsx! {
-            CompanionOrb { presence, size: OrbSize::Inline }
-        },
-    };
-    let (picking, opening) = (desk.clone(), desk.clone());
+    let picking = desk.clone();
+    let opening = tab_menu_trigger(&desk, id, move || menu.set(Shown::Visible));
+    let press = drag_press(&dnd, DragKey::Tab(id));
     rsx! {
         RowTip { name: format!("pin{}", id.0), text: row.title.clone(),
             div {
                 class: "temor-pin",
                 role: "button",
                 "aria-label": row.title.clone(),
-                "data-selected": selected,
+                "data-selected": selected_attr(row.selection),
                 "data-over": over,
                 onmounted: move |event: MountedEvent| rect.on_mounted(event),
-                onpointerdown: move |event: PointerEvent| {
-                    if is_primary(&event) {
-                        dnd.click.reset();
-                        dnd.drag.down(DragKey::Tab(id), point_of(&event));
-                    }
-                },
+                onpointerdown: press,
                 onclick: move |_| {
-                    if click.take() == Click::Counts {
+                    click.counted(|| {
                         picking.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(id))));
-                    }
+                    });
                 },
-                oncontextmenu: move |event: MouseEvent| {
-                    event.prevent_default();
-                    opening.agent_menu_opened(id);
-                    menu.set(Shown::Visible);
-                },
-                {face}
+                oncontextmenu: opening,
+                {presence_face(row.agent, IconSize::Large)}
                 if row.unread == Unread::Unread {
                     span { class: "temor-pin-news",
                         Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }

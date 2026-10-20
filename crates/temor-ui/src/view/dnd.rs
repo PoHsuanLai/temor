@@ -113,6 +113,13 @@ impl ClickCell {
     pub fn take(&self) -> Click {
         self.0.replace(Some(Click::Counts)).unwrap_or(Click::Counts)
     }
+
+    /// Runs `act` for a click that counts: not the one that follows a drag's release.
+    pub fn counted(&self, act: impl FnOnce()) {
+        if self.take() == Click::Counts {
+            act();
+        }
+    }
 }
 
 /// What a release means.
