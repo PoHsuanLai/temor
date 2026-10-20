@@ -9,7 +9,7 @@
 use temor_core::remote::Grant;
 use temor_core::shelf::PaneSite;
 use temor_pane::ReadPolicy;
-use temor_vt::{ClipboardGrant, ClipboardRead, ClipboardWrite};
+use temor_vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
 
 use super::Session;
 use super::clip::PASTE_LIMIT;
@@ -60,11 +60,12 @@ pub struct ClipboardAsk {
     pub program: String,
 }
 
-/// The question and, for a copy, the text it would put on the clipboard.
+/// The question and, for a copy, the text it would put on the clipboard, and where.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PendingClipboard {
     pub(super) ask: ClipboardAsk,
     pub(super) text: String,
+    pub(super) to: ClipboardLocation,
 }
 
 /// The text of a write: its first plain-text form, empty for a clear. `None` when the write
@@ -100,10 +101,7 @@ impl Session {
             return Notice::Quiet;
         }
         match write_verdict(self.site, self.clip_write, write.grant) {
-            WriteVerdict::Write => {
-                // A program's copy that the desktop refuses simply did not happen.
-                let _ = self.put_on_clipboard(&text);
-            }
+            WriteVerdict::Write => self.osc52_put(write.location, &text),
             WriteVerdict::Drop => {}
             WriteVerdict::Ask if self.clip_pending.is_some() => {}
             WriteVerdict::Ask => {
@@ -111,7 +109,11 @@ impl Session {
                     kind: ClipboardUse::Copy,
                     program: sanitise_title(&write.program),
                 };
-                self.clip_pending = Some(PendingClipboard { ask, text });
+                self.clip_pending = Some(PendingClipboard {
+                    ask,
+                    text,
+                    to: write.location,
+                });
                 return Notice::Chrome;
             }
         }
@@ -130,6 +132,7 @@ impl Session {
         self.clip_pending = Some(PendingClipboard {
             ask,
             text: String::new(),
+            to: read.location,
         });
         Notice::Chrome
     }
@@ -143,7 +146,7 @@ impl Session {
             ClipboardUse::Copy => {
                 self.clip_write = grant;
                 if grant == Grant::Allowed {
-                    let _ = self.put_on_clipboard(&pending.text);
+                    self.osc52_put(pending.to, &pending.text);
                 }
             }
             ClipboardUse::Read => {
@@ -154,6 +157,21 @@ impl Session {
                 };
                 self.clip_mirror.set_policy(policy);
                 self.refresh_clipboard_copy();
+            }
+        }
+    }
+
+    /// Puts a program's copy where it asked: the clipboard (OSC 52's `c`), or the primary
+    /// selection (`p` and `s`, which the desktop keeps as one). A copy the desktop refuses
+    /// simply did not happen.
+    fn osc52_put(&mut self, to: ClipboardLocation, text: &str) {
+        match to {
+            ClipboardLocation::Primary | ClipboardLocation::Selection => {
+                let _ = self.clipboard.write_primary(text);
+            }
+            // The clipboard, and any place a later libghostty names.
+            _ => {
+                let _ = self.put_on_clipboard(text);
             }
         }
     }

@@ -12,4 +12,10 @@ pub struct ClipboardFailed(pub String);
 pub trait Clipboard {
     fn write(&self, text: &str) -> Result<(), ClipboardFailed>;
     fn read(&self) -> Result<String, ClipboardFailed>;
+    /// Puts `text` on the primary selection (the one a middle click pastes), where the desktop
+    /// has one. A clipboard without one refuses.
+    fn write_primary(&self, text: &str) -> Result<(), ClipboardFailed> {
+        let _ = text;
+        Err(ClipboardFailed("there is no primary selection".to_owned()))
+    }
 }

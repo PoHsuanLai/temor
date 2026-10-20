@@ -127,6 +127,11 @@ impl Clipboard for DesktopClipboard {
     fn read(&self) -> Result<String, ClipboardFailed> {
         ds_blitz::clipboard::read_text().map_err(|e| ClipboardFailed(e.to_string()))
     }
+
+    fn write_primary(&self, text: &str) -> Result<(), ClipboardFailed> {
+        ds_blitz::clipboard::write_to(ds_blitz::clipboard::ClipboardTarget::Primary, text)
+            .map_err(|e| ClipboardFailed(e.to_string()))
+    }
 }
 
 /// A program to run in a pane in place of the person's shell (the `ssh` of a host session).

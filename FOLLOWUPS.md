@@ -559,7 +559,7 @@ Nothing here was compiled or run (batch rule). The orchestrator's first build wi
 
 ## Keys on chordkit (lane/keys, chordkit d6fed65)
 - [x] chordkit 338b717 (ba094c6 fixes the fallback where the default is plain Ctrl in a terminal): temor forgoes "show fonts" and "new", so ⌘T is new tab (⌘N free); equalize has the fallback ⌥⌘0 (Ctrl+Shift+Alt+0 where Primary is Ctrl+Shift); a person's chord revives an action refused at start (focus left/right on "Other" Linux, where Ctrl+Alt arrows switch Spaces).
-- [ ] chordkit FINDINGS: a fallback applies only where the default has no live form, not where it collides; focus left/right stay refused by default on "Other" Linux.
+- [x] chordkit FINDINGS: a fallback where the default collides (chordkit eb0deff). On "Other" Linux, Focus Left and Right fall back to Primary+Alt+H and L (done 2026-10-20). Toggle Sidebar is the standard action, as in mailo.
 - [x] keycap 0d9abbf adds the `keymap-aware` profile (⌘ arrives as Super); temor's desktop entry asks for it with `X-Keycap-Profile=keymap-aware`. A still-remapped window falls back to chordkit's Ctrl+Shift alias, where ⌘⇧D reads as ⌘D.
 - [x] Forward Primary-form chords to the program under the kitty keyboard flags (route.rs) instead of the drop. (done: input/route.rs)
 - [x] Desktop shortcut sources: keycap on our desktop, `chordkit-kde`, `chordkit-gnome` (edge/keymap.rs uses `ConventionSource` only), plus `KeymapSource::watch` to reload and re-register. (done: edge/keymap_source.rs)
@@ -1189,7 +1189,7 @@ merged, fixed and gated together. anyview c91ec0a.
       icon-button group, the offer-bar overlay, the menu tooltips and the banner row.
 - [x] Byte progress for uploads (a progress hook on temor-remote's `Client::upload`). (done: Batch 20)
 - [x] anyview ask: a "could not be opened" request, so a failed file offers another app (anyview 75f1f86, `PaneRequest::NotOpened`; done 2026-10-11).
-- [ ] quire ask: tell Esc from a click outside on the palette (`onclose` covers both).
+- [x] quire ask: tell Esc from a click outside on the palette (quire v0.3.35 `PaletteClose`; a click outside closes the bar at once, done 2026-10-20).
 - [x] keycap: our desktop's shortcuts come through keycap-client's `KeycapSource` (95f41dc, the rev casement reads).
 - [ ] keycap-client is gone (2026-10-19): the desktop's shortcuts come from quire's
       `system_key_source`, as mailo's do, so temor builds on macOS and Windows past it. On our desktop
@@ -1201,7 +1201,7 @@ merged, fixed and gated together. anyview c91ec0a.
 - [x] Run `search_bench` and decide on a row-text path for search (2026-10-15: glance as text).
 - [ ] Offer: zsh keeps the probe line; nushell history isn't cleaned. (2026-10-16: no probe at all
       when the command line names the shell, as Warp does; plain `ssh host` still asks.)
-- [ ] OSC 52 primary/selection clipboards (ds_blitz has no target).
+- [x] OSC 52 primary/selection clipboards: a copy that names `p` or `s` goes to the primary selection (quire v0.3.35 `ClipboardTarget`, done 2026-10-20). Reading the primary selection still answers from the clipboard's copy.
 - Lane notes in full: `/mnt/data/cargo/temor-lanes/followups-b18-*.md`.
 
 ## Open now (updated 2026-10-14)
