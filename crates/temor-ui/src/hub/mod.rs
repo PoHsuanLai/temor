@@ -31,6 +31,8 @@ mod model;
 mod narrow;
 mod offer;
 mod offer_reply;
+#[cfg(test)]
+mod open_tab_tests;
 mod peek;
 pub mod peek_step;
 mod persist;
@@ -84,6 +86,7 @@ mod tab_name;
 #[cfg(test)]
 mod tests;
 mod transfers;
+mod typing;
 mod uploads;
 mod viewer_changes;
 mod viewer_diff;

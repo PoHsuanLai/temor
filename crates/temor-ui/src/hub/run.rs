@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
 use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnds, RunRequest, RunTicket};
 use temor_pty::ChildExit;
 use temor_shell::ChildEnv;
@@ -87,14 +86,14 @@ impl Hub {
             return false;
         };
         self.run.intent = Some(found);
-        self.act(WorkspaceIn::NewTab {
-            cwd: run
-                .cwd
+        let opened = self.open_tab(
+            run.cwd
                 .as_deref()
                 .map(|dir| Cwd(dir.to_string_lossy().into_owned())),
-        });
+        );
         // A workspace that refused the tab leaves nothing waiting for an unrelated pane.
-        self.run.intent.take().is_none()
+        self.run.intent = None;
+        opened.is_some()
     }
 
     /// The program `run` names, looked for as a shell would: a name with a slash is a path (from

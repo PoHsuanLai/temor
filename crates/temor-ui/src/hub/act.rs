@@ -2,15 +2,18 @@
 //! left the recently closed list, and note that the session wants saving.
 
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use temor_core::notify::Focus;
 use temor_core::vocab::ids::PaneId;
+use temor_core::vocab::text::{CommandText, Cwd};
 use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut, workspace_step};
 use temor_vt::Snapshot;
 
 use super::model::{Hub, HubRef};
 use super::say::refusal_text;
+use super::typing::{Submit, type_command};
 use crate::edge::sidecar;
 use crate::session::Session;
 use crate::view::launch::open_session_with;
@@ -46,6 +49,23 @@ impl Hub {
         if self.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
+    }
+
+    /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
+    /// there before. A request the workspace refuses opens none.
+    pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
+        let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
+        self.act(input);
+        self.ws
+            .tabs
+            .panes()
+            .into_iter()
+            .find(|pane| !before.contains(pane))
+    }
+
+    /// Opens a tab in `cwd` (the default folder with `None`) and answers its pane.
+    pub(super) fn open_tab(&mut self, cwd: Option<Cwd>) -> Option<PaneId> {
+        self.act_for_new_pane(WorkspaceIn::NewTab { cwd })
     }
 
     pub(super) fn carry_out(&mut self, out: WorkspaceOut) {
@@ -103,7 +123,11 @@ impl Hub {
                 // finishes in another pane is worth a notice).
                 session.set_focus(self.focus_of(spawn.pane));
                 if let Some(command) = &spawn.relaunch {
-                    type_command(&session, command.as_str());
+                    type_command(
+                        &session,
+                        &CommandText(command.as_str().to_owned()),
+                        Submit::Enter,
+                    );
                 }
                 slot.session = Some(session);
             }
@@ -225,15 +249,6 @@ impl Hub {
         }
         failure
     }
-}
-
-/// Types a pinned tab's command into its new shell. The text is the person's own, but a control
-/// character in it (a saved file edited by hand) is never sent.
-fn type_command(session: &Session, command: &str) {
-    if command.is_empty() || command.chars().any(char::is_control) {
-        return;
-    }
-    session.pane().send(format!("{command}\n").as_bytes());
 }
 
 impl HubRef {

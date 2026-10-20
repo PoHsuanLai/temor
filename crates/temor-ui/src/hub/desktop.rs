@@ -2,7 +2,6 @@
 //! draw (its panes, commands, context and the dock count), and how it carries out what they ask
 //! (open or close a pane, type a command, read text, and the second launch's new tab).
 
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
@@ -154,16 +153,8 @@ impl Hub {
                 ));
             }
         };
-        let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
         let held = self.ws.front().and_then(|tab| self.ws.focus_of(tab));
-        self.act(input);
-        match self
-            .ws
-            .tabs
-            .panes()
-            .into_iter()
-            .find(|p| !before.contains(p))
-        {
+        match self.act_for_new_pane(input) {
             Some(pane) => {
                 self.hand_keyboard_back(held, pane);
                 Ok(PaneRef(pane.0))
