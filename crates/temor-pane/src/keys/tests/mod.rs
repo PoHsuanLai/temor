@@ -2,5 +2,6 @@
 
 mod build;
 mod edit;
+mod owner;
 mod routes;
 mod support;
