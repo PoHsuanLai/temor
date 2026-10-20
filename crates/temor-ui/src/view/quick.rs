@@ -13,6 +13,7 @@ use temor_core::vocab::ids::PaneId;
 
 use super::pane_view::PaneView;
 use crate::hub::Desk;
+use temor_pane::keys::Action;
 
 /// The quick terminal's overlay. `spaces` are the places it can be moved to; with none, it is
 /// kept as a tab of this window.
@@ -44,7 +45,7 @@ pub fn QuickView(pane: PaneId, spaces: Vec<SpaceEntry>, desk: Desk, started: Ins
                 }
                 Button {
                     label: "Hide",
-                    title: Some("Hide the quick terminal; it keeps running".to_owned()),
+                    title: Some(desk.hub.tooltip("Hide the quick terminal; it keeps running", Action::ToggleQuick)),
                     onclick: move |_: Press| hide.quick_toggle(),
                 }
             }

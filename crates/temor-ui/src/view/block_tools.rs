@@ -6,8 +6,6 @@
 //! It sits beside the grid, not in it, so a press on it never reaches the terminal.
 
 use dioxus::prelude::*;
-use ds::components::content::icon_source::IconSource;
-use ds::components::controls::button_model::{Bezel, ImagePosition};
 use ds::components::controls::press::Propagation;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
@@ -16,6 +14,7 @@ use ds_core::vocab::Shortcut;
 use temor_core::vocab::ids::BlockId;
 
 use super::block_meta::MetaText;
+use super::tool_button::ToolButton;
 use crate::session::ToolsHeight;
 
 /// What the tools show and do for one block.
@@ -89,31 +88,6 @@ fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
     items
 }
 
-/// One icon button of the group. `label` names it; `tip` is the hover hint.
-#[component]
-#[allow(non_snake_case)]
-fn ToolButton(
-    icon: Icon,
-    label: &'static str,
-    tip: &'static str,
-    availability: Availability,
-    onclick: EventHandler<()>,
-) -> Element {
-    rsx! {
-        Button {
-            bezel: Bezel::Toolbar,
-            image: ImagePosition::Only,
-            size: ControlSize::Mini,
-            icon: Some(IconSource::Glyph(icon)),
-            label: label.to_owned(),
-            title: Some(tip.to_owned()),
-            availability,
-            propagation: Propagation::Stop,
-            onclick: move |_| onclick.call(()),
-        }
-    }
-}
-
 /// The tools for one block: each action reports the block it acts on. While the "more" menu is
 /// up, `held` names the block, so the tools stay when the pointer leaves the pane or crosses
 /// another block on its way to the menu.
@@ -152,6 +126,8 @@ pub fn BlockTools(
             IconButtonGroup { label: "Command tools", size: ControlSize::Mini,
                 ToolButton {
                     icon: Icon::Clipboard,
+                    size: ControlSize::Mini,
+                    propagation: Propagation::Stop,
                     label: "Copy output",
                     tip: "Copy this command's output",
                     availability: tools.output,
@@ -159,6 +135,8 @@ pub fn BlockTools(
                 }
                 ToolButton {
                     icon: Icon::Restart,
+                    size: ControlSize::Mini,
+                    propagation: Propagation::Stop,
                     label: "Re-run",
                     tip: "Put this command in the prompt. Press Return to run it",
                     availability: tools.rerun,
@@ -169,6 +147,8 @@ pub fn BlockTools(
                     onmounted: move |event: MountedEvent| more_probe.on_mounted(event),
                     ToolButton {
                         icon: Icon::Ellipsis,
+                        size: ControlSize::Mini,
+                        propagation: Propagation::Stop,
                         label: "More",
                         tip: "More things to do with this command",
                         availability: Availability::Enabled,

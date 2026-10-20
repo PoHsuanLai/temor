@@ -451,6 +451,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     position,
                     on_query:find_query(Rc::clone(&slot), ui, started),
                     on_step:find_step(Rc::clone(&slot), ui),
+                    previous_tip: desk.hub.tooltip("Previous match", Action::FindPrevious),
+                    next_tip: desk.hub.tooltip("Next match", Action::FindNext),
                     on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
                     on_height: move |height: f32| {
                         let mut find_height = find_height;
