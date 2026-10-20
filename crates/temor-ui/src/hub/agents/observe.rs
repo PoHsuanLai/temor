@@ -5,11 +5,12 @@ use std::path::PathBuf;
 
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_core::workspace::WorkspaceIn;
 use temor_pane::PaneEvent;
 
 use super::radar::{Alert, Changed};
 use crate::hub::model::Hub;
+use crate::hub::select_tab;
 
 /// How many agent panes wait for the person. The desktop's badge reads this: a trait, so the
 /// badge's code needs the count and nothing else of the hub.
@@ -133,7 +134,7 @@ impl Hub {
         let Some(tab) = self.ws.tab_of(pane) else {
             return;
         };
-        self.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab))));
+        self.act(select_tab(tab));
         self.act(WorkspaceIn::Focus(pane));
     }
 
