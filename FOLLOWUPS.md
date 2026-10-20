@@ -1564,7 +1564,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [x] Plugins, the drawing side (Batch 27): a header per plugin in the bar (`Section::Plugin`),
       plugin facts as chips (`ChipKind::Plugin`, kept on older headers), "Show with <plugin>" and
       "Hide" in the block menu, and the picture drawn under the block (at most 24 rows).
-- [ ] A lens picture covers the rows below its block instead of pushing them down: the grid is one
+- [x] (done 2026-10-20: temor-render `RowLayout` leaves room between rows; the picture takes it, and
+      every row and point site reads the layout) A lens picture covers the rows below its block instead of pushing them down: the grid is one
       texture, so this needs a row gap in temor-render (`followups-b27-plugview.md`).
 - [ ] Plugins: the built-in Claude Code and git adapters rewritten as plugins; detent's Extensions
       page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
