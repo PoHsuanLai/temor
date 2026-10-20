@@ -5909,6 +5909,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "quire-emoji"
+version = "0.1.0"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=b9913e5cbd594ab5f2e139629f54549d49e9a552#b9913e5cbd594ab5f2e139629f54549d49e9a552"
+dependencies = [
+ "fontique",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7198,6 +7206,7 @@ dependencies = [
  "icu_properties",
  "png",
  "pollster",
+ "quire-emoji",
  "swash",
  "temor-render",
  "temor-testkit",

@@ -23,6 +23,7 @@ testing = ["dep:pollster"]
 thiserror = { workspace = true }
 temor-vt = { workspace = true }
 fontique = { workspace = true }
+quire-emoji = { workspace = true }
 swash = { workspace = true }
 vello_cpu = { workspace = true }
 icu_properties = { workspace = true }

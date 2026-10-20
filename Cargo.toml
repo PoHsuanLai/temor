@@ -24,6 +24,9 @@ ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f
 ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
 ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
 ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+# Only this crate is ahead of the pin above: quire PR #54 (shared emoji detection, depends on fontique alone). Move
+# it with the others at the next quire bump.
+quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9913e5cbd594ab5f2e139629f54549d49e9a552" }
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }

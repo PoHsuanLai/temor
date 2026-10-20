@@ -8,6 +8,8 @@ use fontique::{
     FontWidth, GenericFamily, SourceCache,
 };
 
+use quire_emoji::{EmojiChoice, Fonts, prefer_colour};
+
 use super::config::{FaceStyle, FontConfig, FontFamily, FontSource, Slant, Weight};
 use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
 use super::fallback::{Presentation, needs, presentation, script_of};
@@ -60,6 +62,18 @@ impl FontSet {
             shared: false,
             system_fonts: lookup == Lookup::System,
         });
+        let mut cache = SourceCache::default();
+        if lookup == Lookup::System {
+            // The same detection as quire's windows, so a colour emoji face is found (and an
+            // `QUIRE_EMOJI_FAMILY` honoured) in the terminal grid and the UI alike.
+            prefer_colour(
+                &mut Fonts {
+                    collection: &mut collection,
+                    source_cache: &mut cache,
+                },
+                &EmojiChoice::from_env(),
+            );
+        }
         let mut bundled = Vec::new();
         if let FontSource::Bundled(files) = source {
             for (index, bytes) in files.into_iter().enumerate() {
@@ -84,7 +98,7 @@ impl FontSet {
             primary_family(&mut collection, &config.family, &bundled).ok_or_else(not_found)?;
         let mut set = Self {
             collection,
-            cache: SourceCache::default(),
+            cache,
             lookup,
             size: config.size,
             faces: Vec::new(),
