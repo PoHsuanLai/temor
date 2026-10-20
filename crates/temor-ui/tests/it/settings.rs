@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
-use ds::prelude::{Point, Px, SystemPrefs};
+use ds::prelude::SystemPrefs;
 use ds_harness::{Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
 use temor_core::space::{AccountRef, Credential, Profile, Project, Route};
@@ -28,8 +28,9 @@ use temor_ui::settings_window::{
 use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 
+use super::drive::{chord, focus_pane, press, wait_until};
 use super::support::{scratch, tools_present};
-use super::window::{chord, harness_building, wait_until};
+use super::window::harness_building;
 
 /// The opener of a test: remembers each ask.
 #[derive(Default)]
@@ -98,18 +99,9 @@ fn settings_window(
     (h, ambient)
 }
 
-/// Clicks the element `selector` names, as a person's click would.
-fn click(h: &mut Harness, selector: &str) {
-    let at: Point = h
-        .centre(selector)
-        .unwrap_or_else(|| panic!("nothing matches {selector}:\n{}", h.html()));
-    h.send(Input::click(at));
-    h.advance(Duration::from_millis(200));
-}
-
 /// Replaces what the text field `selector` names holds with `text` and presses Return.
 fn type_into(h: &mut Harness, selector: &str, text: &str) {
-    click(h, selector);
+    press(h, selector);
     for _ in 0..8 {
         h.send(Input::key(ShortcutKey::Backspace));
     }
@@ -122,7 +114,7 @@ fn type_into(h: &mut Harness, selector: &str, text: &str) {
 
 /// Records `held` + `key` in the shortcut recorder `selector` names.
 fn record(h: &mut Harness, selector: &str, held: &[ShortcutKey], key: char) {
-    click(h, selector);
+    press(h, selector);
     h.send(Input::chord(held, ShortcutKey::Char(key)));
     h.advance(Duration::from_millis(300));
 }
@@ -155,11 +147,7 @@ fn command_comma_and_the_bars_page_rows_ask_for_the_window() {
         },
     );
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(200));
+    focus_pane(&mut h);
     chord(&mut h, ',');
     assert_eq!(asked.asks(), [None], "⌘, asks for the window");
 
@@ -214,7 +202,7 @@ fn the_shell_offer_list_adds_and_removes_a_command() {
         "kubectl debug -it",
     );
     assert_eq!(settings_text(&ambient).offer.add, ["kubectl debug -it"]);
-    click(&mut h, "button[aria-label=\"Remove kubectl debug -it\"]");
+    press(&mut h, "button[aria-label=\"Remove kubectl debug -it\"]");
     assert!(settings_text(&ambient).offer.add.is_empty());
 }
 
@@ -243,7 +231,7 @@ fn a_recorded_chord_writes_keys_conf_a_held_one_is_refused_and_reset_all_clears(
     );
     assert!(!keys_text(&ambient).contains("temor.split-down"));
 
-    click(&mut h, "button[aria-label=\"Reset every shortcut\"]");
+    press(&mut h, "button[aria-label=\"Reset every shortcut\"]");
     assert!(
         !keys_text(&ambient).contains("temor.split-right"),
         "{}",
@@ -421,7 +409,7 @@ fn a_variable_is_added_edited_and_removed_on_the_spaces_page() {
     })]);
     h.advance(Duration::from_millis(200));
 
-    click(&mut h, "button[aria-label=\"Remove A\"]");
+    press(&mut h, "button[aria-label=\"Remove A\"]");
     assert_eq!(last_change(&board), SpaceChange::Env(Vec::new()));
 }
 
@@ -445,7 +433,7 @@ fn each_route_has_its_own_named_remove_button() {
         let board = board.clone();
         move |config| config.with_context(board)
     });
-    click(&mut h, "button[aria-label=\"Remove route ssh a\"]");
+    press(&mut h, "button[aria-label=\"Remove route ssh a\"]");
     assert_eq!(
         last_change(&board),
         SpaceChange::Routes(vec![route("ssh b")])
@@ -527,7 +515,7 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
     assert_eq!(store.get(account).as_deref(), Some("second-s3cret"));
     assert!(!h.html().contains("first-s3cret") && !h.html().contains("second-s3cret"));
 
-    click(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
+    press(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
     assert_eq!(store.get(account), None);
     assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
 }

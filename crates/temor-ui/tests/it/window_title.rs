@@ -3,22 +3,11 @@
 
 use std::time::{Duration, Instant};
 
-use ds::base::vocab::ShortcutKey;
 use ds_harness::{Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
-use super::window::{harness_hosting, wait_until};
-
-fn type_line(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
+use super::drive::{type_line, wait_until};
+use super::window::harness_hosting;
 
 fn wait_for_title(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) -> String {
     let start = Instant::now();

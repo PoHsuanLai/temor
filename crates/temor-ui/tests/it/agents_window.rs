@@ -8,13 +8,14 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
-use ds::prelude::{Point, Px};
+
 use ds_harness::{Harness, Input};
 use temor_pane::report::{ReportState, StatusLine, encode_hello, encode_status};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, focus_pane, started, type_line, wait_until};
 use super::support::{scratch_path, tools_present};
-use super::window::{chord, harness, wait_until};
+use super::window::harness;
 
 /// How many tab rows show `presence` (`idle`, `working`, `waiting`). An idle tab has no orb (a
 /// terminal glyph leads it): the tabs that show neither of the others.
@@ -42,17 +43,6 @@ fn wait_for_orbs(h: &mut Harness, what: &str, want: &[(&str, usize)]) {
             h.html()
         );
     }
-}
-
-fn type_line(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
 }
 
 /// The pane sockets in the window's runtime folder, oldest pane first.
@@ -105,13 +95,8 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("ag-orb", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
+    let mut h = started("ag-orb", &probe);
+    focus_pane(&mut h);
     wait_for_orbs(&mut h, "an idle orb", &[("idle", 1)]);
 
     // The program in the first tab says it needs permission, in its own status sequence, and
@@ -156,13 +141,8 @@ fn a_waiting_program_in_a_split_tab_still_shows_its_orb() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("ag-split-orb", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
+    let mut h = started("ag-split-orb", &probe);
+    focus_pane(&mut h);
     // ⌘D: the tab splits, and the new pane has the keys.
     chord(&mut h, 'd');
     assert_eq!(

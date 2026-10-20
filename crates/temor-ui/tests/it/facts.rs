@@ -9,8 +9,9 @@ use ds_harness::Harness;
 use temor_testkit::{git, program_or_skip};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{type_line, wait_until};
 use super::support::tools_present;
-use super::window::{harness_with, wait_until};
+use super::window::harness_with;
 
 /// The markup of the chips row, or none while it is not drawn.
 fn chips_of(html: &str) -> Option<String> {
@@ -138,13 +139,7 @@ fn an_older_blocks_header_keeps_its_prompts_chips() {
         x: ds::prelude::Px(700.0),
         y: ds::prelude::Px(300.0),
     }));
-    for c in "echo older-done".chars() {
-        h.send(Input::key(match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        }));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(&mut h, "echo older-done");
     let start = Instant::now();
     let header = loop {
         h.advance(Duration::from_millis(50));

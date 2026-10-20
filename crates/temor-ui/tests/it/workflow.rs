@@ -28,8 +28,10 @@ use ds_harness::{Harness, Input};
 use temor_testkit::git;
 use temor_ui::view::probe::Probe;
 
+use super::drive;
+use super::drive::{chord, rows, type_line, type_text};
 use super::support::{ScratchRoot, heavy, socket_root, tools_present};
-use super::window::{chord, harness_with, rows};
+use super::window::harness_with;
 
 const NAME: &str = "workflow";
 const WAIT: Duration = Duration::from_secs(60);
@@ -242,19 +244,9 @@ impl Steps {
 
 // ---------------------------------------------------------------- driving the window
 
-fn type_text(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-}
-
-fn type_line(h: &mut Harness, text: &str) {
-    type_text(h, text);
-    h.send(Input::key(ShortcutKey::Enter));
+/// Waits for `ok` on the terminal's text, up to [`WAIT`].
+fn wait_screen(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
+    drive::wait_screen(h, probe, WAIT, what, ok);
 }
 
 thread_local! {
@@ -279,18 +271,6 @@ fn wait_for(h: &mut Harness, what: &str, mut ok: impl FnMut(&mut Harness) -> boo
             presence(h, "working"),
             presence(h, "waiting"),
             screen_tail()
-        );
-    }
-}
-
-fn wait_screen(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
-    let start = Instant::now();
-    while !ok(&probe.screen()) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < WAIT,
-            "timed out waiting for {what}; the screen: {}",
-            probe.screen()
         );
     }
 }

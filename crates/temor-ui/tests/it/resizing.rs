@@ -11,74 +11,15 @@ use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
-use super::window::{harness, harness_scaled, wait_until};
+use super::drive::{Rect, chord, rect, rects, started, type_line, wait_until};
+use super::window::{harness, harness_scaled};
 
 /// The panes' split view (the sidebar has one of its own).
 const PANES: &str = ".ds-split[aria-label=\"Panes\"]";
 
-/// A box: left, top, width, height.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct Rect {
-    pub(super) x: f64,
-    pub(super) y: f64,
-    pub(super) w: f64,
-    pub(super) h: f64,
-}
-
-impl Rect {
-    pub(super) fn right(self) -> f64 {
-        self.x + self.w
-    }
-
-    pub(super) fn centre(self) -> Point {
-        Point {
-            x: Px((self.x + self.w / 2.0) as f32),
-            y: Px((self.y + self.h / 2.0) as f32),
-        }
-    }
-}
-
-pub(super) fn rects(h: &Harness, selector: &str) -> Vec<Rect> {
-    h.with_doc(|doc| {
-        doc.query_selector_all(selector)
-            .map(|found| found.into_iter().collect::<Vec<_>>())
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|id| doc.get_client_bounding_rect(id))
-            .map(|r| Rect {
-                x: r.x,
-                y: r.y,
-                w: r.width,
-                h: r.height,
-            })
-            .collect()
-    })
-}
-
-pub(super) fn rect(h: &Harness, selector: &str) -> Rect {
-    let found = rects(h, selector);
-    assert_eq!(found.len(), 1, "one {selector}: {found:?}");
-    found[0]
-}
-
-pub(super) fn chord(h: &mut Harness, key: char) {
-    h.send(Input::chord(
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char(key),
-    ));
-    h.advance(Duration::from_millis(400));
-}
-
 /// Types `echo <word>$((40+2))` and waits for `<word>42`, which only the output holds.
 fn answers(h: &mut Harness, probe: &Probe, word: &str) {
-    for c in format!("echo {word}$((40+2))").chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(h, &format!("echo {word}$((40+2))"));
     let want = format!("{word}42");
     wait_until(h, probe, &want, |s| s.contains(&want));
 }
@@ -271,8 +212,7 @@ fn keys_alone_open_split_move_and_close_without_a_click() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("resize-keys-only", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("resize-keys-only", &probe);
     answers(&mut h, &probe, "first");
     chord(&mut h, 'n');
     wait_until(&mut h, &probe, "the new tab's prompt", |s| s.contains('$'));

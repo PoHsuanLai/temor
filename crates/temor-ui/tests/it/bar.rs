@@ -6,31 +6,13 @@
 use std::time::Duration;
 
 use ds::base::vocab::ShortcutKey;
-use ds::prelude::{Point, Px};
+
 use ds::window::vocab::PageZoom;
 use ds_harness::{FocusState, Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
-use super::window::{chord, harness, harness_hosting, panes, rows, wait_until};
-
-fn type_line(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
-
-fn click_pane(h: &mut Harness) {
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(200));
-}
+use super::drive::{chord, focus_pane, panes, rows, started, type_line, type_text, wait_until};
+use super::window::{harness, harness_hosting};
 
 fn bar_open(h: &Harness) -> bool {
     // The element, not the stylesheet that names its class.
@@ -45,9 +27,8 @@ fn the_bar_opens_ranks_runs_and_hands_the_keys_back() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("bar-flow", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    let mut h = started("bar-flow", &probe);
+    focus_pane(&mut h);
     assert!(!bar_open(&h));
 
     chord(&mut h, 't');
@@ -57,13 +38,7 @@ fn the_bar_opens_ranks_runs_and_hands_the_keys_back() {
         "an empty bar leads with a plain tab"
     );
 
-    for c in "echo bar-ok".chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
+    type_text(&mut h, "echo bar-ok");
     h.advance(Duration::from_millis(300));
     assert!(
         h.text_of(".ds-palette")
@@ -100,9 +75,8 @@ fn the_find_field_takes_the_keyboard_and_gives_it_back() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("find-keyboard", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    let mut h = started("find-keyboard", &probe);
+    focus_pane(&mut h);
     assert_eq!(h.count(".temor-find"), 0);
 
     chord(&mut h, 'f');
@@ -144,9 +118,8 @@ fn the_bar_lists_window_actions_under_headers_and_runs_them() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("bar-actions", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    let mut h = started("bar-actions", &probe);
+    focus_pane(&mut h);
 
     chord(&mut h, 't');
     let empty = h.text_of(".ds-palette").unwrap_or_default();
@@ -183,18 +156,12 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("bar-pin", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    let mut h = started("bar-pin", &probe);
+    focus_pane(&mut h);
     let tiles = |h: &Harness| h.html().matches("class=\"temor-pin\"").count();
     let listed = |h: &mut Harness, typed: &str| {
         chord(h, 't');
-        for c in typed.chars() {
-            h.send(Input::key(match c {
-                ' ' => ShortcutKey::Space,
-                c => ShortcutKey::Char(c),
-            }));
-        }
+        type_text(h, typed);
         h.advance(Duration::from_millis(300));
         h.text_of(".ds-palette").unwrap_or_default()
     };
@@ -240,9 +207,8 @@ fn the_quick_terminal_keeps_its_shell_when_hidden() {
         h.advance(Duration::from_millis(300));
     };
     let probe = Probe::new();
-    let mut h = harness("bar-quick", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    let mut h = started("bar-quick", &probe);
+    focus_pane(&mut h);
     assert_eq!(panes(&h), 1);
 
     quick(&mut h);
@@ -281,13 +247,8 @@ fn the_zoom_keys_zoom_the_window_and_type_nothing() {
     let probe = Probe::new();
     let mut h = harness_hosting("zoom-keys", &probe, None, |_| {}, WindowHosting::Recorded);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
-    for c in "echo a".chars() {
-        h.send(Input::key(match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        }));
-    }
+    focus_pane(&mut h);
+    type_text(&mut h, "echo a");
     for key in ['=', '-', '0'] {
         h.send(Input::chord(&[ShortcutKey::Super], ShortcutKey::Char(key)));
     }
@@ -310,14 +271,9 @@ fn the_bar_zooms_the_window() {
     let probe = Probe::new();
     let mut h = harness_hosting("bar-zoom", &probe, None, |_| {}, WindowHosting::Recorded);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    click_pane(&mut h);
+    focus_pane(&mut h);
     chord(&mut h, 't');
-    for c in "zoom in".chars() {
-        h.send(Input::key(match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        }));
-    }
+    type_text(&mut h, "zoom in");
     h.advance(Duration::from_millis(300));
     let rows = h.text_of(".ds-palette").unwrap_or_default();
     assert!(rows.contains("Zoom in"), "{rows}");

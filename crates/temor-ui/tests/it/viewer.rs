@@ -12,8 +12,9 @@ use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input, PointerAction, PointerInput};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, focus_pane, type_line, wait_until};
 use super::support::{scratch_path, tools_present};
-use super::window::{chord, harness, wait_until};
+use super::window::harness;
 
 fn viewers(h: &Harness) -> usize {
     h.html().matches("aria-label=\"File viewer\"").count()
@@ -31,17 +32,6 @@ fn command_click(h: &mut Harness, at: Point) {
     h.advance(Duration::from_millis(60));
 }
 
-fn type_line(h: &mut Harness, line: &str) {
-    for c in line.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
-
 /// A window whose shell has listed `a.txt` and `b.txt`, two files in its folder.
 pub fn listed(name: &str, probe: &Probe) -> Harness {
     let mut h = harness(name, probe);
@@ -50,11 +40,7 @@ pub fn listed(name: &str, probe: &Probe) -> Harness {
         std::fs::write(home.join(file), format!("{file} says hello\n")).expect("scratch file");
     }
     wait_until(&mut h, probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(200));
+    focus_pane(&mut h);
     type_line(&mut h, "echo a.txt b.txt");
     wait_until(&mut h, probe, "the listing", |s| {
         s.lines().any(|l| l.trim_end() == "a.txt b.txt")

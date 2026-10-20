@@ -10,9 +10,9 @@ use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input, PointerAction, PointerInput};
 use temor_ui::view::probe::Probe;
 
+use super::drive::wait_until;
 use super::support::tools_present;
 use super::viewer::listed;
-use super::window::wait_until;
 
 fn cards(h: &Harness) -> usize {
     h.html().matches(" preview\"").count()

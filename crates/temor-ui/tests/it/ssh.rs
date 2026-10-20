@@ -5,9 +5,8 @@
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
 
-use ds_harness::{Harness, Input};
+use ds_harness::Harness;
 use temor_core::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
 use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::remote::Grant;
@@ -16,8 +15,9 @@ use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, wor
 use temor_ui::edge::save_with_hosts;
 use temor_ui::view::probe::Probe;
 
+use super::drive::{press, wait_html, wait_until};
 use super::support::{ScratchRoot, socket_root, tools_present};
-use super::window::{harness_with, wait_until};
+use super::window::harness_with;
 
 /// temor's runtime folder below the scratch root.
 const RUNTIME: &str = "xdg/temor";
@@ -59,26 +59,6 @@ fn window(name: &str, probe: &Probe, root: &std::path::Path, state: PathBuf) -> 
             .set("PATH", format!("{}:/usr/bin:/bin", bin.display()));
         ambient.runtime_dir = runtime;
     })
-}
-
-fn wait_html(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) {
-    let start = Instant::now();
-    while !ok(&h.html()) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "timed out waiting for {what}:\n{}",
-            h.html()
-        );
-    }
-}
-
-fn press(h: &mut Harness, selector: &str) {
-    let at = h
-        .centre(selector)
-        .unwrap_or_else(|| panic!("no {selector}:\n{}", h.html()));
-    h.send(Input::click(at));
-    h.advance(Duration::from_millis(100));
 }
 
 #[test]

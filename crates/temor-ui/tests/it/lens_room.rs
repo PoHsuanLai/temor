@@ -8,13 +8,13 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
-use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Backdrop, Backend, Harness, Input, WindowHosting};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{rects, wait_until};
 use super::support::tools_present;
-use super::window::{harness_building, wait_until};
+use super::window::harness_building;
 
 /// The demo lens built beside these tests, if it was.
 fn demo_lens() -> Option<PathBuf> {
@@ -23,31 +23,9 @@ fn demo_lens() -> Option<PathBuf> {
     program.is_file().then_some(program)
 }
 
-/// Rectangles `(left, top, width, height)` of the elements matching `selector`.
-fn rects(h: &Harness, selector: &str) -> Vec<(f64, f64, f64, f64)> {
-    h.with_doc(|doc| {
-        doc.query_selector_all(selector)
-            .map(|found| found.into_iter().collect::<Vec<_>>())
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|id| doc.get_client_bounding_rect(id))
-            .map(|r| (r.x, r.y, r.width, r.height))
-            .collect()
-    })
-}
-
+/// Types `line`, waits for its output line `last`, and lets the window settle.
 fn run_line(h: &mut Harness, probe: &Probe, line: &str, last: &str) {
-    for c in line.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-    wait_until(h, probe, "the command's output", |s| {
-        s.lines().any(|l| l.trim_end() == last)
-    });
+    super::drive::run_line(h, probe, line, last);
     h.advance(Duration::from_millis(300));
 }
 
@@ -114,11 +92,11 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
     // The `ls` block's card: the first on screen (its meta, or its tools in its place).
     let mut cards = rects(&h, ".temor-card-meta");
     cards.extend(rects(&h, ".temor-block-tools"));
-    cards.sort_by(|a, b| a.1.total_cmp(&b.1));
-    let (_, top, _, height) = *cards.first().expect("the ls card");
+    cards.sort_by(|a, b| a.y.total_cmp(&b.y));
+    let card = *cards.first().expect("the ls card");
     let on_ls = Point {
         x: Px(300.0),
-        y: Px((top + height / 2.0) as f32),
+        y: card.centre().y,
     };
     h.send(Input::button_down(on_ls, PointerButton::Secondary));
     h.send(Input::button_up(on_ls, PointerButton::Secondary));
@@ -126,17 +104,15 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
     h.advance(Duration::from_millis(300));
     assert!(h.html().contains("Show with Line bars"), "{}", h.html());
     let items = rects(&h, ".ds-menu-item");
-    let (x, y, w, ih) = *items.get(6).expect("the lens's item");
-    h.send(Input::click(Point {
-        x: Px((x + w / 2.0) as f32),
-        y: Px((y + ih / 2.0) as f32),
-    }));
+    let item = *items.get(6).expect("the lens's item");
+    h.send(Input::click(item.centre()));
     advance_until(&mut h, "the picture and its room", |h| {
         !rects(h, ".temor-lens").is_empty() && !rects(h, ".temor-row-gap").is_empty()
     });
     h.advance(Duration::from_millis(300));
-    let (_, gap_top, _, gap_height) = rects(&h, ".temor-row-gap")[0];
-    let (_, lens_top, _, _) = rects(&h, ".temor-lens")[0];
+    let gap = rects(&h, ".temor-row-gap")[0];
+    let (gap_top, gap_height) = (gap.y, gap.h);
+    let lens_top = rects(&h, ".temor-lens")[0].y;
     assert!(
         (lens_top - gap_top).abs() < 0.5,
         "the picture sits in the room: {lens_top} vs {gap_top}"

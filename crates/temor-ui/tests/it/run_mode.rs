@@ -6,28 +6,15 @@ use std::ffi::OsString;
 use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
-use ds_harness::{Harness, Input};
+use ds_harness::Input;
 use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnd, RunEnds, RunTicket};
 use temor_shell::ChildEnv;
 use temor_ui::hub::Run;
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, rows, wait_until};
 use super::support::{scratch, tools_present};
-use super::window::{
-    chord, harness_in, harness_running, harness_running_in, harness_running_to, rows, wait_until,
-};
-
-fn wait_for_html(h: &mut Harness, what: &str, text: &str) {
-    let start = Instant::now();
-    while !h.html().contains(text) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "timed out waiting for {what}:\n{}",
-            h.html()
-        );
-    }
-}
+use super::window::{harness_in, harness_running, harness_running_in, harness_running_to};
 
 #[test]
 fn a_run_tab_runs_the_program_where_it_was_asked_and_restart_runs_it_again() {

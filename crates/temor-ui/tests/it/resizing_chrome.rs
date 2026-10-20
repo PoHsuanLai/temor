@@ -10,8 +10,7 @@ use ds_blitz::Extent;
 use ds_harness::Input;
 use temor_ui::view::probe::Probe;
 
-use super::resizing::{rect, rects};
-use super::window::{harness, wait_until};
+use super::drive::{rect, rects, started};
 
 /// The window's own split: the sidebar is its first pane.
 const WINDOW: &str = ".ds-split[aria-label=\"Window\"]";
@@ -22,8 +21,7 @@ fn a_sidebar_hidden_and_shown_again_keeps_the_width_it_was_dragged_to() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("resize-sidebar-width", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("resize-sidebar-width", &probe);
     let side = format!("{WINDOW} > .ds-split-pane");
     let first = rect(&h, &side);
     let grip = rect(&h, &format!("{WINDOW} > .ds-split-divider")).centre();
@@ -65,8 +63,7 @@ fn a_tab_menu_open_while_the_window_is_resized_stays_inside_it_and_takes_clicks(
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("resize-menu-open", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("resize-menu-open", &probe);
     let row = rects(&h, ".temor-side .temor-tab-box")[0].centre();
     h.send(Input::press(row, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));

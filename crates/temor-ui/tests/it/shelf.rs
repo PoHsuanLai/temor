@@ -6,35 +6,12 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
-use ds::base::vocab::ShortcutKey;
-use ds::prelude::{Point, Px};
+use ds::prelude::Point;
 use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
-use super::window::{harness, wait_until};
-
-fn type_line(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
-
-fn wait_for_html(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) {
-    let start = Instant::now();
-    while !ok(&h.html()) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "timed out waiting for {what}:\n{}",
-            h.html()
-        );
-    }
-}
+use super::drive::{focus_pane, type_line, wait_html, wait_until};
+use super::window::harness;
 
 /// Where `selector` is drawn once the list has finished opening: the same over two frames, and a
 /// press there lands on it. Clicking earlier can land on whatever was under the list.
@@ -69,18 +46,14 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
     let probe = Probe::new();
     let mut h = harness(name, &probe);
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
+    focus_pane(&mut h);
     // "note.txt" holding "hello", as iTerm2's File= sends it.
     type_line(
         &mut h,
         "printf '\\033]1337;File=name=bm90ZS50eHQ=;size=5:aGVsbG8=\\033\\\\'",
     );
 
-    wait_for_html(&mut h, "the question", |html| {
+    wait_html(&mut h, "the question", |html| {
         html.contains("to your Downloads folder")
     });
     assert!(
@@ -109,7 +82,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
     }
     assert_eq!(std::fs::read(&saved).expect("saved"), b"hello");
     // The Downloads button in the head carries a dot: a file arrived and is not yet opened.
-    wait_for_html(&mut h, "the shelf's dot", |html| {
+    wait_html(&mut h, "the shelf's dot", |html| {
         html.contains("class=\"temor-dl-dot\"") && !html.contains("to your Downloads folder")
     });
 
@@ -118,7 +91,7 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         .centre(".temor-dl-hold .ds-button")
         .unwrap_or_else(|| panic!("no Downloads button:\n{}", h.html()));
     h.send(Input::click(trigger));
-    wait_for_html(&mut h, "the shelf's rows", |html| {
+    wait_html(&mut h, "the shelf's rows", |html| {
         html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in Folder")
     });
 
@@ -143,12 +116,12 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         .centre(".temor-dl-hold .ds-button")
         .expect("Downloads button");
     h.send(Input::click(trigger));
-    wait_for_html(&mut h, "the shelf's rows", |html| {
+    wait_html(&mut h, "the shelf's rows", |html| {
         html.contains("Show in Folder")
     });
     let row = settled_centre(&mut h, ".temor-dl");
     h.send(Input::press(row, PointerButton::Secondary));
-    wait_for_html(&mut h, "the row's menu", |html| {
+    wait_html(&mut h, "the row's menu", |html| {
         html.contains("ds-menu-item")
     });
     let html = h.html();

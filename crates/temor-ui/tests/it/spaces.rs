@@ -15,9 +15,9 @@ use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, wor
 use temor_ui::edge::{SpacesStartup, load_spaces, save_session_for, save_spaces};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, rows, type_line, wait_until};
 use super::support::scratch;
-use super::window::{harness_in, wait_until};
-use ds::base::vocab::ShortcutKey;
+use super::window::harness_in;
 
 fn project(root: Option<&Path>, env: &[(&str, &str)], routes: &[&str]) -> Project {
     Project {
@@ -104,30 +104,6 @@ fn the_spaces_file_round_trips_privately_and_a_damaged_one_is_set_aside() {
     };
     assert_eq!(odd.current().name, "Ops");
     assert_eq!(odd.current().payload.root, None);
-}
-
-fn type_line(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
-
-fn rows(h: &Harness) -> usize {
-    let html = h.html();
-    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
-}
-
-fn chord(h: &mut Harness, key: char) {
-    h.send(Input::chord(
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char(key),
-    ));
-    h.advance(Duration::from_millis(300));
 }
 
 /// Gives the terminal the keyboard, as a click in it would.

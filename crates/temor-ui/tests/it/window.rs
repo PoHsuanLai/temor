@@ -21,6 +21,7 @@ use temor_ui::view::App;
 use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, LauncherChoice, TakeOnce};
 
+use super::drive::{chord, focus_pane, panes, rows, started, type_line, wait_until};
 use super::support::scratch;
 
 pub(super) fn harness(name: &str, probe: &Probe) -> Harness {
@@ -185,40 +186,16 @@ fn harness_at(
     h
 }
 
-pub(super) fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
-    let start = Instant::now();
-    while !ok(&probe.screen()) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "timed out waiting for {what}:\n{}",
-            probe.screen()
-        );
-    }
-}
-
 #[test]
 fn the_window_starts_a_shell_and_takes_typing() {
     if !super::support::tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-typing", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("window-typing", &probe);
     // A click gives the pane the keyboard, as a person's click would.
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
-    for c in "echo window-ok".chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    focus_pane(&mut h);
+    type_line(&mut h, "echo window-ok");
     wait_until(&mut h, &probe, "the command's output", |s| {
         s.lines().any(|l| l.trim_end() == "window-ok")
     });
@@ -251,14 +228,7 @@ fn mouse_reports(screen: &str) -> Vec<(u8, char)> {
 /// Turns on SGR mouse reporting and shows what the program receives, raw.
 fn start_raw_mouse_echo(h: &mut Harness) {
     let command = "stty raw -echo; printf '\\033[?1000h\\033[?1006h'; cat -v";
-    for c in command.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(h, command);
     h.advance(Duration::from_millis(500));
 }
 
@@ -268,8 +238,7 @@ fn a_click_reports_once_per_button() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-click", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("window-click", &probe);
     let at = Point {
         x: Px(300.0),
         y: Px(200.0),
@@ -327,13 +296,8 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-find-close", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
+    let mut h = started("window-find-close", &probe);
+    focus_pane(&mut h);
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Shift],
         ShortcutKey::Char('f'),
@@ -343,36 +307,10 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
     // Esc closes find and hands the keyboard back (the bar has no Done button).
     h.send(Input::key(ShortcutKey::Escape));
     h.advance(Duration::from_millis(200));
-    for c in "echo after-find".chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(&mut h, "echo after-find");
     wait_until(&mut h, &probe, "the command's output", |s| {
         s.lines().any(|l| l.trim_end() == "after-find")
     });
-}
-
-/// How many tab rows the sidebar shows.
-pub(super) fn rows(h: &Harness) -> usize {
-    let html = h.html();
-    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
-}
-
-/// How many terminal panes the tab in front shows.
-pub(super) fn panes(h: &Harness) -> usize {
-    h.html().matches("aria-label=\"Terminal\"").count()
-}
-
-pub(super) fn chord(h: &mut Harness, key: char) {
-    h.send(Input::chord(
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char(key),
-    ));
-    h.advance(Duration::from_millis(300));
 }
 
 /// The ⌘ chords open and close tabs and panes: ⌘T then Enter a tab (⌘T is the command bar, and
@@ -384,13 +322,8 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-tabs", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(200));
+    let mut h = started("window-tabs", &probe);
+    focus_pane(&mut h);
     assert_eq!((rows(&h), panes(&h)), (1, 1), "{}", h.html());
 
     chord(&mut h, 't');
@@ -418,13 +351,8 @@ fn the_sidebar_action_hides_and_shows_the_sidebar() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-sidebar-toggle", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(200));
+    let mut h = started("window-sidebar-toggle", &probe);
+    focus_pane(&mut h);
     // A hidden sidebar keeps its rows in the document; its width is what goes.
     // Folded, the sidebar keeps its width inside a pane that clips it: the pane is what narrows.
     let sidebar_width = |h: &Harness| h.rect(".ds-split-pane").map_or(0.0, |r| r.size.width.0);
@@ -450,13 +378,8 @@ fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("window-restart", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
+    let mut h = started("window-restart", &probe);
+    focus_pane(&mut h);
     for c in "exit".chars() {
         h.send(Input::key(ShortcutKey::Char(c)));
     }

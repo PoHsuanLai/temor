@@ -10,8 +10,9 @@ use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, ready, type_line, wait_until};
 use super::support::tools_present;
-use super::window::{harness, wait_until};
+use super::window::harness;
 
 const HEADER: &str = "temor-block-header";
 const TOOLS: &str = "temor-block-tools";
@@ -21,34 +22,10 @@ fn shows(html: &str, class: &str) -> bool {
     html.contains(&format!("class=\"{class}"))
 }
 
-/// Types `line` and presses Return.
-fn run_line(h: &mut Harness, line: &str) {
-    for c in line.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
-}
-
-/// A window whose pane has the keyboard and shows its first prompt.
-fn ready(name: &str, probe: &Probe) -> Harness {
-    let mut h = harness(name, probe);
-    wait_until(&mut h, probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(500.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
-    h
-}
-
 /// Runs `line` and waits until its last output line `last` is on the screen and the block has
 /// ended (the next prompt is drawn under it).
 fn run_to_end(h: &mut Harness, probe: &Probe, line: &str, last: &str) {
-    run_line(h, line);
+    type_line(h, line);
     wait_until(h, probe, "the command's last line", |s| {
         s.lines().any(|l| l.trim_end() == last)
     });
@@ -182,7 +159,7 @@ fn neither_the_header_nor_the_toolbar_shows_on_the_alternate_screen() {
     assert!(shows(&h.html(), HEADER), "no header before");
     assert!(hover_until_tools(&mut h), "no toolbar before");
     // Step 2: a full-screen program takes the screen; neither shows, however the pointer moves.
-    run_line(&mut h, "printf '\\033[?1049h'");
+    type_line(&mut h, "printf '\\033[?1049h'");
     h.advance(Duration::from_millis(500));
     assert!(
         !shows(&h.html(), HEADER),
@@ -284,14 +261,6 @@ fn on_card(h: &Harness, n: usize) -> Point {
 fn right_click(h: &mut Harness, at: Point) {
     h.send(Input::press(at, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-}
-
-fn chord(h: &mut Harness, letter: char) {
-    h.send(Input::chord(
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char(letter),
-    ));
-    h.advance(Duration::from_millis(200));
 }
 
 #[test]

@@ -8,13 +8,12 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use ds::base::vocab::ShortcutKey;
-use ds::prelude::{Point, Px};
-use ds_harness::{Harness, Input};
+use ds_harness::Harness;
 use temor_ui::view::probe::Probe;
 
+use super::drive::{focus_pane, press, type_line, wait_html, wait_until};
 use super::support::{scratch_path, tools_present};
-use super::window::{harness_with, wait_until};
+use super::window::harness_with;
 
 const QUESTION: &str = "Show commands as blocks in this shell?";
 
@@ -40,40 +39,9 @@ fn window_running_ssh(name: &str, saved: &Path) -> (Harness, Probe) {
         ambient.env.set("PATH", path);
     });
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
-    h.send(Input::click(Point {
-        x: Px(300.0),
-        y: Px(200.0),
-    }));
-    h.advance(Duration::from_millis(100));
-    for c in "ssh box".chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    focus_pane(&mut h);
+    type_line(&mut h, "ssh box");
     (h, probe)
-}
-
-fn wait_html(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) {
-    let start = Instant::now();
-    while !ok(&h.html()) {
-        h.advance(Duration::from_millis(25));
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "timed out waiting for {what}:\n{}",
-            h.html()
-        );
-    }
-}
-
-fn press(h: &mut Harness, selector: &str) {
-    let at = h
-        .centre(selector)
-        .unwrap_or_else(|| panic!("no {selector}:\n{}", h.html()));
-    h.send(Input::click(at));
-    h.advance(Duration::from_millis(100));
 }
 
 /// Steps the window until `path` holds at least `len` bytes.

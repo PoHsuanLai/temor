@@ -13,27 +13,12 @@ use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
+use super::drive::{chord, type_line, wait_until};
 use super::support::scratch_path;
-use super::window::{harness, wait_until};
-
-fn chord(h: &mut Harness, key: char, shift: bool) {
-    let held: &[ShortcutKey] = match shift {
-        true => &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        false => &[ShortcutKey::Ctrl],
-    };
-    h.send(Input::chord(held, ShortcutKey::Char(key)));
-    h.advance(Duration::from_millis(400));
-}
+use super::window::harness;
 
 fn typed(h: &mut Harness, text: &str) {
-    for c in text.chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(h, text);
     h.advance(Duration::from_millis(300));
 }
 
@@ -150,18 +135,18 @@ fn size_audit() {
     }));
     h.advance(Duration::from_millis(300));
     dump(&h, "hover", &mut out);
-    chord(&mut h, 't', true);
+    chord(&mut h, 't');
     dump(&h, "bar", &mut out);
     h.send(Input::key(ShortcutKey::Escape));
     h.advance(Duration::from_millis(200));
-    chord(&mut h, 'f', true);
+    chord(&mut h, 'f');
     dump(&h, "find", &mut out);
     h.send(Input::key(ShortcutKey::Escape));
     h.advance(Duration::from_millis(200));
-    chord(&mut h, 'n', true);
-    chord(&mut h, 'n', true);
+    chord(&mut h, 'n');
+    chord(&mut h, 'n');
     dump(&h, "tabs", &mut out);
-    chord(&mut h, 'd', true);
+    chord(&mut h, 'd');
     dump(&h, "split", &mut out);
     if let Some(row) = h.centre(".ds-row") {
         h.send(Input::press(row, PointerButton::Secondary));

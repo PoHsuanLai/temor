@@ -16,15 +16,9 @@ use ds::components::app::spaces::{SpaceId, Spaces};
 use temor_core::space::Project;
 use temor_ui::edge::save_spaces;
 
-use super::window::{harness, harness_in, wait_until};
-
-fn chord(h: &mut Harness, key: char) {
-    h.send(Input::chord(
-        &[ShortcutKey::Ctrl, ShortcutKey::Shift],
-        ShortcutKey::Char(key),
-    ));
-    h.advance(Duration::from_millis(400));
-}
+use super::drive;
+use super::drive::{chord, rows, started, type_line, wait_until};
+use super::window::{harness, harness_in};
 
 /// A box in the window: left, top, right, bottom, and what it is.
 struct Box4 {
@@ -320,23 +314,16 @@ fn a_middle_press_on_a_split_pane_opens_no_menu() {
 
 /// The boxes of what `selector` finds, in document order.
 fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
-    h.with_doc(|doc| {
-        doc.query_selector_all(selector)
-            .map(|found| found.into_iter().collect::<Vec<_>>())
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|id| {
-                let r = doc.get_client_bounding_rect(id)?;
-                Some(Box4 {
-                    left: r.x,
-                    top: r.y,
-                    right: r.x + r.width,
-                    bottom: r.y + r.height,
-                    what: selector.to_owned(),
-                })
-            })
-            .collect()
-    })
+    drive::rects(h, selector)
+        .into_iter()
+        .map(|r| Box4 {
+            left: r.x,
+            top: r.y,
+            right: r.right(),
+            bottom: r.y + r.h,
+            what: selector.to_owned(),
+        })
+        .collect()
 }
 
 #[test]
@@ -345,20 +332,12 @@ fn a_running_tab_counts_up_with_no_output() {
         return;
     }
     let probe = Probe::new();
-    let mut h = harness("sidebar-running-ticks", &probe);
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let mut h = started("sidebar-running-ticks", &probe);
     h.send(Input::click(ds::prelude::Point {
         x: ds::prelude::Px(700.0),
         y: ds::prelude::Px(300.0),
     }));
-    for c in "sleep 30".chars() {
-        let key = match c {
-            ' ' => ShortcutKey::Space,
-            c => ShortcutKey::Char(c),
-        };
-        h.send(Input::key(key));
-    }
-    h.send(Input::key(ShortcutKey::Enter));
+    type_line(&mut h, "sleep 30");
     let start = std::time::Instant::now();
     // `sleep` prints nothing: only the timer can move the row's time from 0s or 1s to 3s.
     let time = |h: &Harness| {
