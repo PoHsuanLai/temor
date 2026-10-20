@@ -1594,11 +1594,16 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [ ] `blocks::shells::real_shells_make_one_block_per_command_with_its_output_and_status` failed once
       at its block comparison (shells.rs:27) in six full `it` runs; 8 runs alone passed. The message
       was not kept; catch it the next time it shows.
-- [ ] `hub::ssh_tests::edit::a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first` timed
+- [x] (done 2026-10-20: the test changed the host's file before the save's own stat was read, so the
+      new base took the change in; it now waits for the edit to settle first) `hub::ssh_tests::edit::a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first` timed
       out once in a full gate ("timed out waiting for the question", 20 s); the lib suite passed 3 of
       3 and the edit tests 5 of 5 after. Separately, every `hub::ssh_tests::edit` test fails when
       TMPDIR is long (the ssh sockets outgrow 107 bytes), as the window tests did before
       `support::socket_root`; the lib tests want the same fit.
+- [x] (2026-10-20, owner: remove the flaky tests) `ports::a_listener_in_a_session_is_reported_and_forgotten`
+      (temor-remote) timed out once on Fedora CI waiting for a listener to go after Ctrl-C; it is
+      removed. A later connection being told the known ports is still tested; forgetting a stopped
+      listener has no end-to-end test now.
 - [ ] `temor -e` (run mode): a tab that ran a program comes back as a shell when the session is
       restored after a restart; the session file does not keep what it ran. Decide whether a run
       tab is saved at all.
