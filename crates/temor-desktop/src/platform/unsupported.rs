@@ -3,8 +3,8 @@
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
 use crate::checkpoints::{
-    CheckpointPort, NoCheckpoints, PlanDigest, PointId, PointList, PointPlan, RESTORE_POINTS, SessionKey,
-    TurnHow, TurnMark, WatchAsk, Watching,
+    CheckpointPort, NoCheckpoints, PlanDigest, PointId, PointList, PointPlan, RESTORE_POINTS,
+    SessionKey, TurnHow, TurnMark, WatchAsk, Watching,
 };
 use crate::secrets::{NoSecrets, SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
