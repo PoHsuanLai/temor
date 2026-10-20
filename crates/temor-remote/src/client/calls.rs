@@ -117,10 +117,10 @@ impl Client {
         within: Option<Duration>,
     ) -> Result<Answer, Error> {
         let answer = match within {
-            None => waiting.recv().map_err(|_| Error::LinkClosed),
+            None => waiting.recv().map_err(|_| Error::LinkClosed(None)),
             Some(within) => waiting.recv_timeout(within).map_err(|error| match error {
                 RecvTimeoutError::Timeout => Error::NoAnswer,
-                RecvTimeoutError::Disconnected => Error::LinkClosed,
+                RecvTimeoutError::Disconnected => Error::LinkClosed(None),
             }),
         };
         if matches!(answer, Err(Error::NoAnswer)) {

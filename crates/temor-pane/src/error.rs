@@ -24,6 +24,9 @@ pub enum PaneError {
     /// The pane's status socket folder could not be made private to this user.
     #[error("the status socket folder is not private: {0}")]
     SocketDir(#[from] temor_shell::ShellError),
+    /// The pane's status socket folder is not there, and its parent is missing too.
+    #[error("the status socket folder is missing: {0}")]
+    SocketDirMissing(std::path::PathBuf),
     /// The pane's status socket could not be made in its directory.
     #[error("the status socket at {path} failed: {source}")]
     Socket {

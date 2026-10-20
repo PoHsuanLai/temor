@@ -8,6 +8,7 @@ use super::{
     PaneKey, PaneSocket, ReportRefusal, ReportState, ReportWait, SocketLimits, StatusLine,
     encode_hello, encode_status, parse_reply,
 };
+use crate::error::PaneError;
 
 fn status(seq: u64, state: ReportState) -> StatusLine {
     StatusLine {
@@ -67,6 +68,22 @@ fn read_some(stream: &mut UnixStream) -> String {
     let mut buf = [0u8; 256];
     let n = stream.read(&mut buf).expect("a reply");
     String::from_utf8_lossy(&buf[..n]).into_owned()
+}
+
+#[test]
+#[cfg_attr(
+    not(target_os = "linux"),
+    ignore = "the private report socket is Linux-only so far"
+)]
+fn a_socket_folder_whose_parent_is_missing_is_said_to_be_missing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let folder = dir.path().join("no-such-parent").join("sockets");
+    let key = PaneKey::new("p-1").expect("key");
+    let refused = PaneSocket::bind(&folder, key, SocketLimits::default()).expect_err("no parent");
+    assert!(
+        matches!(&refused, PaneError::SocketDirMissing(path) if *path == folder),
+        "{refused:?}"
+    );
 }
 
 #[test]
