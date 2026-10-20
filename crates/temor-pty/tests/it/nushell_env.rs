@@ -63,3 +63,43 @@ fn nushell_marks_its_commands_and_gives_xdg_data_dirs_back_unchanged() {
     let all = String::from_utf8_lossy(&term.out).into_owned();
     assert!(all.contains("\x1b]133;A"), "no prompt start mark");
 }
+
+/// A remote nushell is started by the bootstrap with the autoload folder whatever the person
+/// asked, so the opt-out is nushell's own to honour: with `TEMOR_SHELL_INTEGRATION=0` the script
+/// draws no prompt of temor's and still gives `XDG_DATA_DIRS` back.
+#[test]
+fn nushell_honours_the_opt_out_when_the_folder_is_there_anyway() {
+    if pty_unsupported("nushell_honours_the_opt_out_when_the_folder_is_there_anyway") {
+        return;
+    }
+    let Some(nu) = program_or_skip("nu", "nushell_opt_out") else {
+        return;
+    };
+    let scratch = Scratch::new();
+    let mut profile = ChildEnv::new();
+    profile.set("XDG_DATA_DIRS", ORIGINAL_XDG);
+    let mut spec = prepare_shell(
+        &Shell::at(nu),
+        ShellStart::Interactive,
+        scratch.contract_env(&profile),
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    spec.env.set("TEMOR_SHELL_INTEGRATION", "0");
+    let mut term = Term::spawn(&spec, &setsid());
+    term.send(
+        "print $\"prompt=[($env | get -o TEMOR_PROMPT_COMMAND | describe)] xdg=[($env | get -o XDG_DATA_DIRS)]\"; print ('end-' + (1 + 1 | into string))\r",
+    );
+    assert!(term.read_until_has(0, "end-2"), "{:?}", term.text());
+    let text = term.text();
+    assert!(
+        text.contains("prompt=[nothing]"),
+        "temor's prompt despite the opt-out: {text:?}"
+    );
+    assert!(
+        text.contains(&format!("xdg=[{ORIGINAL_XDG}]")),
+        "XDG_DATA_DIRS is the person's own value: {text:?}"
+    );
+}

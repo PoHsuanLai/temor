@@ -87,6 +87,7 @@ _temor_prompt() {
     if [[ -n $_temor_executing ]]; then
         printf '\e]133;D;%s\e\\' "$_temor_status"
         _temor_executing=
+        _temor_seen=1
     fi
     if [[ $PWD != "$_temor_cwd" ]]; then
         _temor_cwd=$PWD
@@ -96,7 +97,6 @@ _temor_prompt() {
     printf '\e]133;A\e\\'
     if _temor_prompt_is_ours; then
         _temor_blank=${_temor_seen:+$'\n'}
-        _temor_seen=1
         _temor_pwd=$PWD
         if [[ -n ${HOME-} && $HOME != / && ( $PWD == "$HOME" || $PWD == "$HOME"/* ) ]]; then
             _temor_pwd="~${PWD#"$HOME"}"

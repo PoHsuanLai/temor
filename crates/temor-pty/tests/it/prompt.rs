@@ -308,7 +308,8 @@ fn home_shows_as_a_tilde() {
     }
 }
 
-/// The first prompt has no blank line above its header; the ones after a command do. The end
+/// The first prompt has no blank line above its header, nor has one after an empty line; the
+/// ones after a command do. The end
 /// mark stays at column 0 of the line below the header after failures and stops alike.
 #[test]
 fn a_blank_line_separates_prompts_except_the_first() {
@@ -329,6 +330,19 @@ fn a_blank_line_separates_prompts_except_the_first() {
         );
         let first = last_prompt(&term);
         assert!(!first.starts_with('\n'), "{shell}: first {first:?}");
+        // An empty Enter runs no command, so the prompt after it still has no blank line.
+        let from = term.out.len();
+        term.send("\r");
+        assert!(
+            term.read_until(|out| find(&out[from..], PROMPT_END).is_some()),
+            "{shell}: no prompt after an empty line: {:?}",
+            term.text()
+        );
+        let after_empty = last_prompt(&term);
+        assert!(
+            !after_empty.starts_with('\n'),
+            "{shell}: after an empty line {after_empty:?}"
+        );
         for (command, status) in [(failing(shell), 1), ("sh -c 'exit 130'", 130)] {
             run_command(&mut term, command, status);
             let prompt = last_prompt(&term);

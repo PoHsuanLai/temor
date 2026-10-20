@@ -4,14 +4,16 @@
 # command start and command end with its exit status) and osc7 (the working directory). temor
 # turns both on here, from a vendor autoload file in its own folder, so your config.nu is never
 # edited. nushell reads this file before your config. TEMOR_SHELL_INTEGRATION=0 turns it off.
-$env.config.shell_integration.osc133 = true
-$env.config.shell_integration.osc7 = true
+if ($env.TEMOR_SHELL_INTEGRATION? != "0") {
+    $env.config.shell_integration.osc133 = true
+    $env.config.shell_integration.osc7 = true
+}
 
 # It also draws temor's own prompt in place of nushell's, whatever your config.nu sets: a blank
 # line, the folder and the git branch, then an empty line to type on, with no right-side prompt.
 # TEMOR_PROMPT=shell keeps your own prompt instead; TEMOR_PROMPT=temor (or unset) means temor's.
 # Colours are ANSI indices, so the terminal's palette themes them.
-if ($env.TEMOR_PROMPT? != "shell") {
+if ($env.TEMOR_SHELL_INTEGRATION? != "0") and ($env.TEMOR_PROMPT? != "shell") {
     # The git branch of $PWD, or nothing outside a checkout. Reads .git/HEAD directly; no git
     # process. A .git file (a worktree) names the real directory.
     def _temor_branch [] {
@@ -42,10 +44,15 @@ if ($env.TEMOR_PROMPT? != "shell") {
     }
     $env.TEMOR_PROMPT_COMMAND = {||
         let esc = (ansi escape)
-        let dir = match (do -i { $env.PWD | path relative-to $nu.home-dir }) {
-            null => $env.PWD
-            "" => "~"
-            $relative => ([~ $relative] | path join)
+        # A home of "/" (or none) is never shown as "~", as in the other shells.
+        let dir = if ($nu.home-dir | is-empty) or ($nu.home-dir == "/") {
+            $env.PWD
+        } else {
+            match (do -i { $env.PWD | path relative-to $nu.home-dir }) {
+                null => $env.PWD
+                "" => "~"
+                $relative => ([~ $relative] | path join)
+            }
         }
         let branch = (_temor_branch)
         let branch_part = if ($branch | is-empty) { "" } else { $"  ($esc)[35m($branch)($esc)[0m" }
@@ -78,7 +85,7 @@ if ($env.TEMOR_PROMPT? != "shell") {
 def clear [
     --keep-scrollback (-k) # Clear only the screen, not the scrollback
 ] {
-    if not $keep_scrollback { print -n $"(ansi esc)]7502;clear(char bel)" }
+    if (not $keep_scrollback) and ($env.TEMOR_SHELL_INTEGRATION? != "0") { print -n $"(ansi esc)]7502;clear(char bel)" }
     if $keep_scrollback {
         print -n $"(ansi esc)[H(ansi esc)[2J"
     } else {
