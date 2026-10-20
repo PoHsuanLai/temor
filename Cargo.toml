@@ -14,16 +14,16 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "a73dc452f2f3eb715e90ba6f432206b5f61cef92" }  # a73dc452: v0.3.33, design/22, system_key_source (blitz 4b236792)
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "5a3b660e72156132104f51e9a1f203e262515f5d" }  # 5a3b660e: v0.3.35, PaletteClose, primary selection (blitz 851fa7dd)
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -73,7 +73,7 @@ anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d8
 anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
 anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
-chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb86559909eeb63b882d5563d36f5bad37" }
+chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "eb0deff12add543565ec41eecffda646ede43cf0" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
 # docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
@@ -130,11 +130,11 @@ codegen-units = 1
 # every CSS `filter` function paints on both backends. Move back to crates.io once upstream has
 # them (blitz-kit docs/blitz-gaps.md tracks the PRs).
 [patch.crates-io]
-vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
-vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
-vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
-vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
-glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "3e43d4af1f1955f2efc2cd52e50350811a1386ca" }
+vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
+vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
+vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
+vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
+glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
 anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
 anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
 anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
@@ -150,3 +150,4 @@ dioxus-core-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615f
 generational-box = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
 subsecond = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
 subsecond-types = { git = "https://github.com/PoHsuanLai/dioxus", rev = "a615fd9f09e272c688a45e366161c576cecf0439" }
+

@@ -1,4 +1,5 @@
 use anyview_pane::PaneCommand;
+use ds::prelude::PaletteClose;
 
 use super::viewer_find::{Escape, Finding, Reply, entry_row, escape, reply};
 
@@ -19,7 +20,17 @@ fn the_entry_row_shows_for_a_query_that_names_it_and_a_pick_is_answered() {
 }
 
 #[test]
-fn escape_steps_back_from_the_files_find_and_then_closes() {
-    assert_eq!(escape(Finding::On), Escape::StepBack);
-    assert_eq!(escape(Finding::Off), Escape::Close);
+fn escape_steps_back_from_the_files_find_and_then_closes_but_a_click_outside_closes_at_once() {
+    #[rustfmt::skip]
+    let cases = [
+        (Finding::On,  PaletteClose::Escape,  Escape::StepBack),
+        (Finding::Off, PaletteClose::Escape,  Escape::Close),
+        (Finding::On,  PaletteClose::Pick,    Escape::StepBack),
+        (Finding::Off, PaletteClose::Pick,    Escape::Close),
+        (Finding::On,  PaletteClose::Outside, Escape::Close),
+        (Finding::Off, PaletteClose::Outside, Escape::Close),
+    ];
+    for (finding, how, then) in cases {
+        assert_eq!(escape(finding, how), then, "{finding:?}, {how:?}");
+    }
 }
