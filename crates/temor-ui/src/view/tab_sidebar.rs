@@ -14,7 +14,8 @@ use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
 use ds::prelude::*;
 use ds::style::tokens::control_size::SidebarSize;
 use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_core::workspace::WorkspaceIn;
+use temor_pane::keys::Action;
 
 use super::dnd::Dnd;
 use super::pinned_tabs::PinnedTabs;
@@ -22,7 +23,7 @@ use super::row_tip::RowTip;
 use super::side_menu::SideMenu;
 use super::space_ui::{SpaceFoot, SpaceHeader, space_menu_on};
 use super::tab_row::TabRowView;
-use crate::hub::{Desk, SidebarData, TabRow};
+use crate::hub::{Desk, SidebarData, TabRow, select_tab};
 
 /// A row of the sidebar: a tab, or Arc's New Tab row above the loose tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,7 +64,7 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
     let select = {
         let desk = desk.clone();
         EventHandler::new(move |key: SideKey| match key {
-            SideKey::Tab(tab) => desk.act(WorkspaceIn::Tabs(TabsIn::Select(TabSel::Id(tab)))),
+            SideKey::Tab(tab) => desk.act(select_tab(tab)),
             SideKey::NewTab => desk.act(WorkspaceIn::NewTab { cwd: None }),
         })
     };
@@ -104,17 +105,16 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
 
 /// Arc's New Tab row: a plus and the words. The list's pick opens the tab (`onselect`).
 fn new_tab_row(desk: &Desk) -> ListItem<SideKey> {
-    let tip = desk
-        .hub
-        .tooltip("New Tab", temor_pane::keys::Action::NewTab);
+    let title = Action::NewTab.menu_title();
+    let tip = desk.hub.tooltip(title, Action::NewTab);
     let view = rsx! {
         div { class: "temor-new-tab",
             RowTip { name: "new-tab".to_owned(), text: tip,
-                Row { leading: RowLeading::Icon(Icon::Plus), title: "New Tab" }
+                Row { leading: RowLeading::Icon(Icon::Plus), title }
             }
         }
     };
-    ListItem::row(SideKey::NewTab, "New Tab".to_owned(), view)
+    ListItem::row(SideKey::NewTab, title.to_owned(), view)
 }
 
 /// A named group: its heading, then its rows. A group with no rows is left out.

@@ -8,11 +8,12 @@ use ds::components::content::label::LabelStyle;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
 use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Relaunch;
 use temor_core::workspace::{TabsIn, WorkspaceIn};
+use temor_pane::keys::Action;
 
 use crate::hub::{
     AgentMenu, AgentPick, Desk, PointLine, RestoreMenu, SheetView, WAIT_FOR_AGENT, Where,
+    pin_as_shell,
 };
 
 /// The choices of a tab's menu as quire's menu items.
@@ -85,12 +86,15 @@ pub fn AgentTabMenu(
 ) -> Element {
     let menu = desk.hub.0.borrow().agent_menu(tab);
     let words = match pin {
-        PinAct::Pin => "Pin Tab",
-        PinAct::Unpin => "Unpin Tab",
+        PinAct::Pin => Action::PinTab.menu_title(),
+        PinAct::Unpin => Action::UnpinTab.menu_title(),
     };
     let mut items = vec![MenuItem::new(TabPick::Pin(pin), words)];
     if let Some(pane) = close {
-        items.push(MenuItem::new(TabPick::ClosePane(pane), "Close Pane"));
+        items.push(MenuItem::new(
+            TabPick::ClosePane(pane),
+            Action::ClosePane.menu_title(),
+        ));
     }
     if let Some(menu) = menu {
         items.push(MenuItem::Separator);
@@ -107,10 +111,7 @@ pub fn AgentTabMenu(
             items,
             onpick: move |pick: TabPick| match pick {
                 // A pinned tab opens again as a shell: it runs nothing of its own.
-                TabPick::Pin(PinAct::Pin) => desk.act(WorkspaceIn::Tabs(TabsIn::Pin {
-                    tab,
-                    relaunch: Relaunch(String::new()),
-                })),
+                TabPick::Pin(PinAct::Pin) => desk.act(WorkspaceIn::Tabs(pin_as_shell(tab))),
                 TabPick::Pin(PinAct::Unpin) => desk.act(WorkspaceIn::Tabs(TabsIn::Unpin(tab))),
                 TabPick::ClosePane(pane) => desk.act(WorkspaceIn::ClosePane(Some(pane))),
                 TabPick::Agent(pick) => desk.agent_pick(tab, pick),

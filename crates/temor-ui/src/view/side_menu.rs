@@ -13,7 +13,7 @@ use temor_core::space::Project;
 use temor_pane::keys::Action;
 
 use super::menu_key::with_key_opt;
-use crate::hub::{Desk, WindowAction, workspace_input};
+use crate::hub::{Desk, Origin};
 
 /// What the menu's rows ask for: an action the keys have too, or a new Space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,19 +25,19 @@ pub enum SidePick {
 /// The menu's rows, in order.
 /// Rows whose action has a chord show it, as `shortcut_of` gives it.
 pub fn side_items(shortcut_of: impl Fn(Action) -> Option<Shortcut>) -> Vec<MenuItem<SidePick>> {
-    let keyed = |title: &str, action: Action| {
+    let keyed = |action: Action| {
         with_key_opt(
-            MenuItem::new(SidePick::Do(action), title),
+            MenuItem::new(SidePick::Do(action), action.menu_title()),
             shortcut_of(action),
         )
     };
     vec![
-        keyed("New Tab", Action::NewTab),
-        keyed("Reopen Closed Tab", Action::ReopenTab),
+        keyed(Action::NewTab),
+        keyed(Action::ReopenTab),
         MenuItem::Separator,
         MenuItem::new(SidePick::NewSpace, "New Space"),
         MenuItem::Separator,
-        keyed("Hide Sidebar", Action::ToggleSidebar),
+        keyed(Action::ToggleSidebar),
     ]
 }
 
@@ -59,14 +59,7 @@ pub fn SideMenu(desk: Desk) -> Element {
                 ..Common::default()
             },
             onpick: move |pick: SidePick| match pick {
-                // The window's actions first, then the workspace's: the way the keys reach them.
-                SidePick::Do(action) => {
-                    if desk.window_action(action) == WindowAction::NotMine
-                        && let Some(input) = workspace_input(action)
-                    {
-                        desk.act(input);
-                    }
-                }
+                SidePick::Do(action) => desk.run_action(action, Origin::Menu),
                 SidePick::NewSpace => {
                     if handle.editing().is_some() {
                         return;
