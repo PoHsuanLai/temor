@@ -82,6 +82,12 @@ const CASES: &[(&str, &str, &str, &[&str])] = &[
         "\x1b",
         &["1337;File=:x"],
     ),
+    (
+        "a c1 byte is payload, as libghostty reads it (U+009C is C2 9C)",
+        "\x1b]1337;File=:a\u{9c}b\x07",
+        "",
+        &["1337;File=:a\u{9c}b"],
+    ),
     ("can cancels", "\x1b]1337;File=:abc\x18after", "after", &[]),
     (
         "escape cancels and restarts",
@@ -234,9 +240,12 @@ mod marks {
     }
 
     #[test]
-    fn c1_forms_of_osc_and_st_are_recognised() {
-        assert_eq!(cuts(&[b"\x9d133;A\x9c"]), vec![7]);
-        assert_eq!(cuts(&[b"\x9d133;A\x07"]), vec![7]);
+    fn c1_bytes_are_payload_in_an_osc_and_no_controls_in_text() {
+        // libghostty reads 0x9C and 0x9D inside an OSC as payload, and raw C1 bytes in text as
+        // ill-formed UTF-8, so only BEL (or ESC, CAN, SUB) ends a mark.
+        assert!(cuts(&[b"\x9d133;A\x9c"]).is_empty());
+        assert!(cuts(&[b"\x9d133;A\x07"]).is_empty());
+        assert_eq!(cuts(&[b"\x1b]133;A\x9c\x9d\x07"]), vec![10]);
     }
 
     #[test]

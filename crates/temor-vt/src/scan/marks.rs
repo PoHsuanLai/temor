@@ -1,22 +1,17 @@
 //! Where OSC 133 shell marks end, across chunk boundaries. The terminal cuts its input at each
 //! mark's terminator, so the cursor can be anchored where the mark stood: an OSC moves nothing.
-//! The rules follow libghostty's parse table (PLAN §8.1, §9): an OSC ends at BEL, ST (ESC \ or
-//! the C1 byte 0x9C), CAN, SUB or any ESC, and a C1 0x9D starts one anywhere. A mark is cut
-//! right after the byte that ends it, which is when libghostty reports it. DCS, SOS, PM and
-//! APC payloads are ignored up to their end, and an ESC inside one aborts it.
+//! The rules follow libghostty's parse table (PLAN §8.1, §9): an OSC ends at BEL, ST (ESC \),
+//! CAN, SUB or any ESC. C1 bytes are payload inside an OSC or a DCS and are not controls in text
+//! (libghostty is UTF-8 only), so none of them ends or starts a mark. A mark is cut right after
+//! the byte that ends it, which is when libghostty reports it. SOS, PM and APC payloads are
+//! ignored up to their end (C1 ST ends one), and an ESC inside any of them aborts it.
 
-/// Introducer text after `ESC ]` (or C1 0x9D) that makes an OSC a shell mark.
+use super::controls::{CAN, ESC, SUB, ends_osc};
+
+/// Introducer text after `ESC ]` that makes an OSC a shell mark.
 const MARK: &[u8] = b"133;";
-const BEL: u8 = 0x07;
-const CAN: u8 = 0x18;
-const SUB: u8 = 0x1A;
-const ESC: u8 = 0x1B;
-const C1_DCS: u8 = 0x90;
-const C1_SOS: u8 = 0x98;
 const C1_ST: u8 = 0x9C;
 const C1_OSC: u8 = 0x9D;
-const C1_PM: u8 = 0x9E;
-const C1_APC: u8 = 0x9F;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -81,7 +76,7 @@ impl MarkCuts {
 
 /// Bytes that leave the text state.
 fn starts_sequence(b: u8) -> bool {
-    matches!(b, ESC | C1_OSC | C1_DCS | C1_SOS | C1_PM | C1_APC)
+    b == ESC
 }
 
 /// One byte: the state after it, and a cut if a mark ended.
@@ -91,9 +86,6 @@ fn step(state: State, b: u8) -> (State, Option<Cut>) {
     match state {
         Text => match b {
             ESC => plain(Esc),
-            C1_OSC => plain(Osc(0)),
-            C1_DCS => plain(DcsPayload),
-            C1_SOS | C1_PM | C1_APC => plain(StringPayload),
             _ => plain(Text),
         },
         Esc => match b {
@@ -110,11 +102,10 @@ fn step(state: State, b: u8) -> (State, Option<Cut>) {
         }),
         Osc(_) | Other => osc_byte(b),
         Mark => match b {
-            BEL | C1_ST | CAN | SUB => (Text, Some(Cut)),
             // libghostty reports the mark when it reads the ESC (of ST, or of whatever follows),
             // so the ESC goes with the mark and the rest of the sequence with the next piece.
             ESC => (Esc, Some(Cut)),
-            C1_OSC => (Osc(0), Some(Cut)),
+            _ if ends_osc(b) => (Text, Some(Cut)),
             _ => plain(Mark),
         },
         DcsPayload => match b {
@@ -134,9 +125,8 @@ fn step(state: State, b: u8) -> (State, Option<Cut>) {
 /// A byte inside an OSC that is not a mark.
 fn osc_byte(b: u8) -> (State, Option<Cut>) {
     match b {
-        BEL | C1_ST | CAN | SUB => (State::Text, None),
         ESC => (State::Esc, None),
-        C1_OSC => (State::Osc(0), None),
+        _ if ends_osc(b) => (State::Text, None),
         _ => (State::Other, None),
     }
 }

@@ -6,6 +6,7 @@
 
 #[cfg(feature = "ghostty")]
 mod hold;
+mod controls;
 mod inline_file;
 #[cfg(feature = "ghostty")]
 mod marks;
