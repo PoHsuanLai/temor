@@ -7,9 +7,11 @@ use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 
 use temor_core::remote::Grant;
-use temor_core::shelf::{Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, shelf_view};
+use temor_core::shelf::{
+    Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, human_size, shelf_view,
+};
 use temor_core::transfer::Origin;
-use temor_core::vocab::ids::{DownloadId, PaneId};
+use temor_core::vocab::ids::{Bytes, DownloadId, PaneId};
 use temor_pane::OfferId;
 use temor_transfer::Consent;
 use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
@@ -19,6 +21,7 @@ use super::model::{Hub, HubRef};
 use crate::edge::shelf_files::{persist, restore};
 use crate::platform::{FileShell, default_file_shell};
 use crate::view::launch::Launch;
+use crate::words::notices;
 use temor_core::shelf::RowAction;
 
 /// What a program asks of the person.
@@ -73,7 +76,10 @@ impl Ask {
             },
             AskKind::File { name, size } => AskView {
                 text: format!("{from} wants to save “{name}” to your Downloads folder"),
-                detail: format!("{size} bytes. Nothing is saved unless you allow it."),
+                detail: format!(
+                    "{}. Nothing is saved unless you allow it.",
+                    human_size(Bytes(*size))
+                ),
             },
             AskKind::Request { name } => AskView {
                 text: match name {
@@ -282,10 +288,11 @@ impl Hub {
         });
         match said {
             Some(said) => self.notices.extend(said),
+            // No pane to copy through: the desktop clipboard is written directly.
             None => {
                 use crate::session::Clipboard;
                 if crate::view::launch::DesktopClipboard.write(&text).is_err() {
-                    self.notices.push("The path could not be copied".to_owned());
+                    self.notices.push(notices::PATH_NOT_COPIED.to_owned());
                 }
             }
         }

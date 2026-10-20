@@ -12,7 +12,7 @@ use temor_transfer::Consent;
 use super::keys::workspace_input;
 use super::model::Hub;
 use super::rows::{Unread, tidy};
-use super::shelf::AskKind;
+use super::shelf::{Ask, AskKind};
 use crate::edge::Ambient;
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
@@ -495,4 +495,32 @@ fn the_first_window_says_what_the_settings_need_and_the_next_says_nothing() {
     );
     let mut next = Hub::new(launch);
     assert_eq!(next.take_notice(), None);
+}
+
+#[test]
+fn an_ask_for_one_file_says_its_size_the_way_the_shelf_does() {
+    #[rustfmt::skip]
+    let rows: &[(u64, &str)] = &[
+        (1, "1 byte."),
+        (999, "999 bytes."),
+        (1_500, "1.5 KB."),
+        (12_300_000, "12.3 MB."),
+    ];
+    for (size, want) in rows {
+        let ask = Ask {
+            pane: PaneId(1),
+            offer: OfferId(1),
+            kind: AskKind::File {
+                name: "a.txt".to_owned(),
+                size: *size,
+            },
+            from: "a program".to_owned(),
+            stream: String::new(),
+        };
+        assert!(
+            ask.view().detail.starts_with(want),
+            "{size}: {:?}",
+            ask.view()
+        );
+    }
 }
