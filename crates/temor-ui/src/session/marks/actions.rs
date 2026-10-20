@@ -13,6 +13,7 @@ use temor_vt::ViewportScroll;
 
 use super::super::Session;
 use crate::error::UiError;
+use crate::words::notices;
 
 impl Session {
     /// Puts a block's command in the prompt without running it: the text goes through the paste
@@ -44,13 +45,13 @@ impl Session {
     pub fn copy_output(&mut self, id: BlockId) {
         match self.block_output(id) {
             Some(text) => self.copy_text(&text),
-            None => self.notice = Some("The output is not finished yet.".to_owned()),
+            None => self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned()),
         }
     }
 
     pub(super) fn copy_text(&mut self, text: &str) {
         if self.clipboard.write(text).is_err() {
-            self.notice = Some("The text could not be copied.".to_owned());
+            self.notice = Some(notices::TEXT_NOT_COPIED.to_owned());
         }
     }
 
@@ -58,7 +59,7 @@ impl Session {
     /// temporary file in the shelf folder, then placed under its own name by the shelf store.
     pub fn save_output(&mut self, id: BlockId) -> Result<(), UiError> {
         let Some(text) = self.block_output(id) else {
-            self.notice = Some("The output is not finished yet.".to_owned());
+            self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return Ok(());
         };
         let command = self.block_command(id).unwrap_or_default().to_owned();
