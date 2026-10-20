@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::platform::Os;
-use crate::pty::{ProcRoot, ProcessId};
+use crate::pty::{CommandLine, ProcRoot, ProcessId};
 use temor_shell::UserId;
 
 /// This OS.
@@ -14,6 +14,11 @@ pub(crate) struct MacOs;
 impl Os for MacOs {
     // TODO(platform:macos): the foreground process's name.
     fn process_name(_proc: &ProcRoot, _pid: ProcessId) -> Option<String> {
+        None
+    }
+
+    // TODO(platform:macos): the foreground process's command line.
+    fn process_command(_proc: &ProcRoot, _pid: ProcessId) -> Option<CommandLine> {
         None
     }
 

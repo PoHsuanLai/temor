@@ -7,8 +7,9 @@ use std::sync::{Arc, Mutex};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
 use temor_desktop::{
-    CheckpointPort, DesktopError, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
-    PointPlan, PointRow, PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo,
+    CheckpointPort, DesktopError, Named, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
+    PointPlan, PointRow, PointState, RunState, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk,
+    WatchOwner, Watching,
 };
 use temor_ssh::UnixSeconds;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -105,6 +106,8 @@ pub(super) struct Fake {
     list: Mutex<PointList>,
     plan: PointPlan,
     calls: Mutex<Vec<String>>,
+    /// What a watch answers: who holds its session, and whether the app was recognised.
+    answer: Mutex<(WatchOwner, Named)>,
 }
 
 impl Fake {
@@ -113,7 +116,13 @@ impl Fake {
             list: Mutex::new(list),
             plan,
             calls: Mutex::new(Vec::new()),
+            answer: Mutex::new((WatchOwner::Terminal, Named::Unknown)),
         }
+    }
+
+    /// From now on a watch answers with a session `owner` closes, for an app that is `named`.
+    pub(super) fn answer_watch(&self, owner: WatchOwner, named: Named) {
+        *self.answer.lock().unwrap_or_else(|p| p.into_inner()) = (owner, named);
     }
 
     fn log(&self, call: String) {
@@ -168,14 +177,21 @@ impl CheckpointPort for Fake {
         }
     }
 
-    fn watch(
-        &self,
-        workspace: &str,
-        label: &str,
-        rewind: Rewind,
-    ) -> Result<SessionKey, DesktopError> {
+    fn watch(&self, ask: &WatchAsk) -> Result<Watching, DesktopError> {
+        let WatchAsk {
+            workspace,
+            label,
+            rewind,
+            ..
+        } = ask;
         self.log(format!("watch {workspace} [{label}] {rewind:?}"));
-        SessionKey::new("w-1").ok_or(DesktopError::Checkpoint(PointFault::Failed))
+        let (owner, named) = *self.answer.lock().unwrap_or_else(|p| p.into_inner());
+        let session = SessionKey::new("w-1").ok_or(DesktopError::Checkpoint(PointFault::Failed))?;
+        Ok(Watching {
+            session,
+            owner,
+            named,
+        })
     }
 
     fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {

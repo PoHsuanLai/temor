@@ -1,18 +1,20 @@
 //! The hub's side of watched agents (PLAN P19, docket DESIGN §12). An agent program in a pane is
 //! watched by a docket session that keeps restore points for it: a watch opens when the agent
 //! shows up, a point is taken when it starts working, the turn ends when it stops, and the watch
-//! closes when the agent or its pane goes. The calls run on worker threads in the order they
+//! closes when the agent or its pane goes. A session the assistant already holds (a window it
+//! handed to the terminal) is never closed here, and one docket recognised as an app's
+//! conversation stays open after the agent exits, until the pane ends. The calls run on worker threads in the order they
 //! were wanted (see `watch`); a failure is written down once per pane and not shown.
 
 use std::sync::Arc;
 
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::PaneId;
-use temor_desktop::{DesktopError, SessionKey, TurnMark};
+use temor_desktop::{DesktopError, TurnMark, WatchAsk, Watching};
 
 use super::checkpoints::words;
 use super::jobs::Done;
-use super::watch::{Call, Edge, Want, edge, rewind_for};
+use super::watch::{Call, Closing, Edge, Need, Want, edge, rewind_for};
 use crate::hub::model::Hub;
 
 /// Whether the pane's restore points are read again after an answer.
@@ -33,7 +35,7 @@ impl Hub {
         let ((was_agent, before), (agent, after)) = (was, now);
         let Some(agent) = agent else {
             if was_agent.is_some() {
-                self.close_watch(pane);
+                self.leave_watch(pane);
             }
             return;
         };
@@ -49,11 +51,9 @@ impl Hub {
         self.pump_watch(pane);
     }
 
-    /// Wants a session for `agent` in `pane`, unless it has one or no folder is known.
+    /// Wants a session for `agent` in `pane`, unless it has one or no folder is known. A pane
+    /// that still holds the session of an earlier, different agent closes it first.
     fn open_watch(&mut self, pane: PaneId, agent: &str) {
-        if !self.agents.watches.needs_open(pane) {
-            return;
-        }
         let Some(workspace) = self.pane_cwd(pane) else {
             return;
         };
@@ -62,25 +62,33 @@ impl Hub {
             Some(title) => format!("{agent} in {title}"),
             None => agent.to_owned(),
         };
-        let rewind = rewind_for(agent);
-        let open = Want::Open {
+        let ask = WatchAsk {
             workspace,
             label,
-            rewind,
+            rewind: rewind_for(agent),
+            seen: self.agents.radar.command_of(pane).cloned(),
         };
-        self.agents.watches.want(pane, open);
+        match self.agents.watches.need(pane, &ask) {
+            Need::Nothing => {}
+            Need::Open => self.agents.watches.want(pane, Want::Open(ask)),
+            Need::Replace => {
+                self.agents.watches.want(pane, Want::Close(Closing::Always));
+                self.agents.watches.want(pane, Want::Open(ask));
+            }
+        }
     }
 
-    /// The agent left the pane: the watch closes and its points are no longer listed.
-    fn close_watch(&mut self, pane: PaneId) {
-        self.agents.watches.want(pane, Want::Close);
+    /// The agent left the pane: its watch closes unless the assistant holds it or it is a
+    /// recognised app's, and its points are no longer listed.
+    fn leave_watch(&mut self, pane: PaneId) {
+        self.agents.watches.want(pane, Want::Close(Closing::Leave));
         self.pump_watch(pane);
     }
 
     /// The pane ended: the watch closes, and is forgotten once docket has been told.
     pub(super) fn watch_pane_ended(&mut self, pane: PaneId) {
         self.agents.watches.end_life(pane);
-        self.agents.watches.want(pane, Want::Close);
+        self.agents.watches.want(pane, Want::Close(Closing::Always));
         self.pump_watch(pane);
     }
 
@@ -91,13 +99,9 @@ impl Hub {
         };
         let port = Arc::clone(&self.agents.points.port);
         match call {
-            Call::Open {
-                workspace,
-                label,
-                rewind,
-            } => self.agents.jobs.spawn(move || Done::WatchOpened {
+            Call::Open(ask) => self.agents.jobs.spawn(move || Done::WatchOpened {
                 pane,
-                result: port.watch(&workspace, &label, rewind),
+                result: port.watch(&ask),
             }),
             Call::Mark(session) => self.agents.jobs.spawn(move || Done::WatchMarked {
                 pane,
@@ -118,11 +122,12 @@ impl Hub {
         }
     }
 
-    pub(super) fn watch_opened(&mut self, pane: PaneId, result: Result<SessionKey, DesktopError>) {
+    pub(super) fn watch_opened(&mut self, pane: PaneId, result: Result<Watching, DesktopError>) {
         self.agents.watches.answered(pane);
         match result {
-            Ok(session) => {
-                self.agents.watches.opened(pane, session.clone());
+            Ok(watching) => {
+                let session = watching.session.clone();
+                self.agents.watches.opened(pane, watching);
                 // A pane that ended while the call ran is closed next, not listed.
                 if !self.agents.watches.is_ending(pane) {
                     self.set_agent_session(pane, Some(session));

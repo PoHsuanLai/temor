@@ -11,27 +11,6 @@ use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 /// The longest message kept from an agent; it is shown, so it is bounded.
 const NOTE_CHARS: usize = 200;
 
-/// Programs temor knows as agents by their process name (lowercase, exact). The weakest evidence:
-/// a program's own report (OSC 7501 or the pane socket) counts as well.
-const KNOWN_AGENTS: &[&str] = &[
-    "claude",
-    "codex",
-    "gemini",
-    "agy",
-    "aider",
-    "opencode",
-    "goose",
-    "amp",
-    "crush",
-    "cursor-agent",
-];
-
-/// Whether `name` (a foreground process name) is a known agent program.
-pub fn known_agent(name: &str) -> bool {
-    let name = name.to_ascii_lowercase();
-    KNOWN_AGENTS.contains(&name.as_str())
-}
-
 fn note(text: &str) -> Option<Note> {
     let text = display_text(text, NOTE_CHARS);
     (!text.is_empty()).then_some(Note(text))

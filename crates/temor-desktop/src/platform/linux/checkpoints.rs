@@ -5,8 +5,9 @@
 
 use super::bus::connect;
 use crate::checkpoints::{
-    CheckpointPort, NotSavedWhy, PlanDigest, PointFault, PointId, PointList, PointPlan, PointRow,
-    PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo,
+    CheckpointPort, Named, NotSavedWhy, PlanDigest, PointFault, PointId, PointList, PointPlan,
+    PointRow, PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk,
+    WatchOwner, Watching,
 };
 use crate::{DesktopEnv, DesktopError};
 use docket_client::{ClientError, DbusTransport, Intents};
@@ -15,6 +16,7 @@ use docket_core::{
     Origin, ParamName, RestorePlan, SavedState, SkipReason, TargetValue, TurnEnd, TurnId,
     TurnState, Value, WireRefusal, Workspace,
 };
+use docket_dbus::CompanionTerminalsProxy;
 use porter_core::AppName;
 use prov::{ActionName, Label, Labelled, SessionId};
 use temor_ssh::UnixSeconds;
@@ -30,6 +32,9 @@ const RESTORE: &str = "checkpoints.restore";
 #[derive(Debug)]
 pub struct SystemCheckpoints {
     intents: Intents<DbusTransport>,
+    /// The assistant's terminals, which recognise an agent by its command line; `None` when its
+    /// proxy could not be made (the watch is then the plain one).
+    terminals: Option<CompanionTerminalsProxy<'static>>,
     runtime: Handle,
 }
 
@@ -37,8 +42,10 @@ impl SystemCheckpoints {
     /// A reader on the session bus of `env`; calls wait on `runtime`, which the caller keeps alive.
     pub async fn connect(env: &DesktopEnv, runtime: Handle) -> Result<Self, DesktopError> {
         let connection = connect(env).await?;
+        let terminals = CompanionTerminalsProxy::new(&connection).await.ok();
         Ok(Self {
             intents: Intents::over(DbusTransport::new(connection)),
+            terminals,
             runtime,
         })
     }
@@ -79,25 +86,39 @@ impl CheckpointPort for SystemCheckpoints {
         end.map(drop).map_err(refusal_fault)
     }
 
-    fn watch(
-        &self,
-        workspace: &str,
-        label: &str,
-        rewind: Rewind,
-    ) -> Result<SessionKey, DesktopError> {
-        let workspace = Workspace::parse(workspace).map_err(|_| failed())?;
-        let rewind = match rewind {
+    fn watch(&self, ask: &WatchAsk) -> Result<Watching, DesktopError> {
+        let workspace = Workspace::parse(&ask.workspace).map_err(|_| failed())?;
+        let rewind = match ask.rewind {
             Rewind::Docket => docket_core::Rewind::Docket,
             Rewind::Agent => docket_core::Rewind::Agent,
         };
+        let label = ask.label.clone();
+        if let Some(agent) = self.recognise(ask) {
+            let watching = self
+                .runtime
+                .block_on(
+                    self.intents
+                        .checkpoint_watch_agent(workspace, label, rewind, agent),
+                )
+                .map_err(|error| client_fault("watch the agent", &error))?;
+            let owner = match watching.owner {
+                docket_core::WatchOwner::Companion => WatchOwner::Companion,
+                _ => WatchOwner::Terminal,
+            };
+            let session = SessionKey::new(watching.session.as_str()).ok_or_else(failed)?;
+            return Ok(Watching {
+                session,
+                owner,
+                named: Named::App,
+            });
+        }
         let id = self
             .runtime
-            .block_on(
-                self.intents
-                    .checkpoint_watch(workspace, label.to_owned(), rewind),
-            )
+            .block_on(self.intents.checkpoint_watch(workspace, label, rewind))
             .map_err(|error| client_fault("watch the agent", &error))?;
-        SessionKey::new(id.as_str()).ok_or_else(failed)
+        SessionKey::new(id.as_str())
+            .map(Watching::plain)
+            .ok_or_else(failed)
     }
 
     fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {
@@ -131,6 +152,21 @@ impl CheckpointPort for SystemCheckpoints {
         self.runtime
             .block_on(self.intents.session_close(id))
             .map_err(|error| client_fault("stop watching the agent", &error))
+    }
+}
+
+impl SystemCheckpoints {
+    /// The configured app and conversation the assistant recognises in `ask`'s command line, if
+    /// it does. Any trouble (no command line, no assistant, a failed call, an answer this build
+    /// cannot read) is "not recognised", and the watch is the plain one.
+    fn recognise(&self, ask: &WatchAsk) -> Option<docket_core::WatchedAgent> {
+        let terminals = self.terminals.as_ref()?;
+        let seen = docket_core::SeenCommand::parse(ask.seen.as_ref()?.tokens().to_vec()).ok()?;
+        let body = serde_json::to_string(&seen).ok()?;
+        let answer = self.runtime.block_on(terminals.recognise(&body)).ok()?;
+        serde_json::from_str::<Option<docket_core::WatchedAgent>>(&answer)
+            .ok()
+            .flatten()
     }
 }
 

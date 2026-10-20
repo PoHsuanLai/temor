@@ -34,9 +34,11 @@ mod shell;
 #[cfg(feature = "ghostty")]
 pub use engine::{
     ByteTap, ClipboardMirror, EventSink, FedSpec, Feeder, Hold, OfferId, OfferKind, Output,
-    PaintSource, PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, Term,
-    TransferEnd, TransferEvent, TransferSetup, start, start_fed, start_restored,
+    PaintSource, PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, SeenForeground,
+    Term, TransferEnd, TransferEvent, TransferSetup, start, start_fed, start_restored,
 };
 pub use error::{PaneError, SettingsError};
+// The command line of a foreground process; the hub and temor-core name it through here.
 #[cfg(feature = "ghostty")]
 pub use shell::{ShellPaneInput, shell_pane};
+pub use temor_pty::CommandLine;

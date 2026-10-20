@@ -1617,10 +1617,16 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       saved session and the closed list) `temor -e` (run mode): a tab that ran a program comes back as a shell when the session is
       restored after a restart; the session file does not keep what it ran. Decide whether a run
       tab is saved at all.
-- [ ] Checkpoint.WatchAgent (agent's docket branch hd4-terminal-handoff): call it in place of
-      Checkpoint.Watch when temor starts or recognises an agent-app session, and mark on
-      `TerminalRequest.handoff` for a window the companion opened. Waits for hd4 on docket master
-      and a batch that carries it.
+- [x] (2026-10-20) Checkpoint.WatchAgent: the pane's foreground now carries its command line
+      (`/proc/<pid>/cmdline`, bounded; `temor_pty::CommandLine`, shown by count only), so an agent
+      under `env`/`bwrap` is seen (`temor_core::agent::seen::agent_of`). `CheckpointPort::watch`
+      takes a `WatchAsk` and answers a `Watching { session, held, named }`: the live port asks the
+      companion's Terminals `Recognise` first and, on an answer, calls `Checkpoint.WatchAgent`;
+      otherwise the plain `Checkpoint.Watch`. A `Held::Companion` session (a window the assistant
+      handed to the terminal) is marked but never closed; a named `Held::Terminal` session
+      outlives the agent until the pane ends or a different agent takes the pane. Waits for the
+      docket batch that carries `recognise`, `SeenCommand` and `checkpoint_watch_agent`, and a
+      relock of temor-desktop (it now names temor-pty).
 - [ ] `org.quire.Temor1.Run` answers only temor's installed image (peephole, `Exe`, pinned at
       connect; `instance::CALLERS`). A temor the person built is refused, so a checkout's
       `temor -e` aimed at a running checkout temor is refused too, and that launch then starts as

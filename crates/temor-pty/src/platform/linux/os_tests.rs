@@ -19,6 +19,7 @@ fn write_proc(root: &Path, procs: &[Proc], children_of_shell: &str) {
         let dir = root.join(p.pid.to_string());
         std::fs::create_dir_all(dir.join("task").join(p.pid.to_string())).expect("proc dir");
         std::fs::write(dir.join("comm"), format!("{}\n", p.comm)).expect("comm");
+        std::fs::write(dir.join("cmdline"), format!("{}\0--flag\0", p.comm)).expect("cmdline");
         // The name may hold spaces and parentheses; fields count from its last `)`.
         std::fs::write(
             dir.join("stat"),
@@ -129,6 +130,12 @@ fn a_pipeline_is_named_for_its_last_command() {
         let got = Foreground::of_pipeline(ProcessId(group), ProcessId(10), &proc);
         assert_eq!(got.name.as_deref(), want, "{name}");
         assert_eq!(got.group, ProcessId(group), "{name}");
+        // The command line is that of the process the name came from.
+        let first = got
+            .command
+            .as_ref()
+            .and_then(|c| c.tokens().first().cloned());
+        assert_eq!(first.as_deref(), want, "{name}: command");
     }
 }
 

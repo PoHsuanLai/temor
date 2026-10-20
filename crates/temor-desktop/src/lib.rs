@@ -34,8 +34,9 @@ mod window;
 
 pub use badge::{Attention, Badge, BadgeCount, Progress};
 pub use checkpoints::{
-    CheckpointPort, NoCheckpoints, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
+    CheckpointPort, Named, NoCheckpoints, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
     PointPlan, PointRow, PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo,
+    WatchAsk, WatchOwner, Watching,
 };
 pub use env::{BusRoute, DesktopEnv};
 pub use error::DesktopError;

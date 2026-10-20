@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::platform::Os;
-use crate::pty::{ProcRoot, ProcessId};
+use crate::pty::{CommandLine, ProcRoot, ProcessId};
 use temor_shell::UserId;
 
 /// This OS.
@@ -15,6 +15,11 @@ pub(crate) struct Windows;
 impl Os for Windows {
     // TODO(platform:windows): the foreground process's name.
     fn process_name(_proc: &ProcRoot, _pid: ProcessId) -> Option<String> {
+        None
+    }
+
+    // TODO(platform:windows): the foreground process's command line.
+    fn process_command(_proc: &ProcRoot, _pid: ProcessId) -> Option<CommandLine> {
         None
     }
 

@@ -7,13 +7,14 @@ use std::collections::BTreeMap;
 use temor_core::agent::radar::{
     Millis, ProcessFact, RadarIn, RadarOut, RadarParams, RadarState, radar_step,
 };
+use temor_core::agent::seen::{AgentName, CommandLine, agent_of, is_known_agent};
 use temor_core::presence::{AgentState, PaneFocus, PresenceOut, Seen};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Note;
 use temor_pane::PaneEvent;
 use temor_vt::{ProgramState, PromptEvent};
 
-use super::convert::{exit_code, known_agent, note_of, program_fact, status_report};
+use super::convert::{exit_code, note_of, program_fact, status_report};
 use super::ending::{Via, front_of};
 
 /// A known agent seen in a pane.
@@ -22,6 +23,8 @@ struct Named {
     /// The program's name, lowercase.
     program: String,
     via: Via,
+    /// What its process was started with, when its process was seen and the line could be read.
+    command: Option<CommandLine>,
 }
 
 /// Whether a pane is known to run an agent: by its process, or because it reported.
@@ -108,20 +111,29 @@ impl Radar {
         }
     }
 
-    fn know(&mut self, pane: PaneId, app: Option<&str>, via: Via) {
+    fn know(&mut self, pane: PaneId, app: Option<&str>, via: Via, command: Option<&CommandLine>) {
         let entry = self.entry(pane);
         entry.known = Known::Yes;
-        let Some(app) = app.filter(|app| known_agent(app)) else {
+        let Some(app) = app.filter(|app| is_known_agent(app)) else {
             return;
         };
         let program = app.to_ascii_lowercase();
+        let command = command.cloned();
         // The process in front is the stronger evidence: its leaving ends the agent.
         let keep = entry
             .named
             .as_ref()
             .is_some_and(|n| n.program == program && n.via == Via::Process);
-        if !keep {
-            entry.named = Some(Named { program, via });
+        if keep {
+            if let Some(named) = entry.named.as_mut() {
+                named.command = command;
+            }
+        } else {
+            entry.named = Some(Named {
+                program,
+                via,
+                command,
+            });
         }
     }
 
@@ -132,6 +144,11 @@ impl Radar {
         {
             entry.named = None;
         }
+    }
+
+    /// What the agent process seen in `pane` was started with, if its line could be read.
+    pub fn command_of(&self, pane: PaneId) -> Option<&CommandLine> {
+        self.panes.get(&pane)?.named.as_ref()?.command.as_ref()
     }
 
     /// The known agent program seen in `pane` (lowercase), if any.
@@ -154,7 +171,7 @@ impl Radar {
     pub fn observe(&mut self, pane: PaneId, now: Millis, event: &PaneEvent) -> Changed {
         match event {
             PaneEvent::Program(status) => {
-                self.know(pane, Some(status.app.as_str()), Via::Report);
+                self.know(pane, Some(status.app.as_str()), Via::Report, None);
                 let changed = self.feed(pane, now, RadarIn::Program(program_fact(status)));
                 // Clearing its status is a program saying it has ended.
                 if matches!(status.state, ProgramState::Clear) {
@@ -164,17 +181,21 @@ impl Radar {
             }
             #[cfg(unix)]
             PaneEvent::Reported(line) => {
-                self.know(pane, line.app.as_deref(), Via::Report);
+                self.know(pane, line.app.as_deref(), Via::Report, None);
                 self.feed(pane, now, RadarIn::Report(status_report(pane, line)))
             }
-            PaneEvent::Foreground(Some(name)) if known_agent(name) => {
-                self.know(pane, Some(name.as_str()), Via::Process);
+            PaneEvent::Foreground(Some(seen))
+                if agent_of(&seen.name, seen.command.as_ref()).is_some() =>
+            {
+                let program = agent_of(&seen.name, seen.command.as_ref());
+                let program = program.as_ref().map(AgentName::as_str);
+                self.know(pane, program, Via::Process, seen.command.as_ref());
                 self.feed(pane, now, RadarIn::Process(ProcessFact::AgentRunning))
             }
             // The agent seen by its process left the front of the pane, or a shell came back
             // after an agent that only reported: it has exited.
-            PaneEvent::Foreground(name) => {
-                let front = front_of(name.as_deref());
+            PaneEvent::Foreground(seen) => {
+                let front = front_of(seen.as_ref().map(|seen| seen.name.as_str()));
                 self.leave(pane, |via| via.gone_with(front));
                 Changed::No
             }

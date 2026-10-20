@@ -72,7 +72,7 @@ mod tests {
     }
 
     fn front(name: &str) -> PaneEvent {
-        PaneEvent::Foreground(Some(name.to_owned()))
+        super::super::tests::front(name)
     }
 
     #[test]

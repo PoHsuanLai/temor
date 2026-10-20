@@ -1578,7 +1578,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 2.0.119",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -2086,7 +2086,7 @@ dependencies = [
 [[package]]
 name = "docket-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=688dc63392d74d6252740d4b5f72b3db0243cee2#688dc63392d74d6252740d4b5f72b3db0243cee2"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
 dependencies = [
  "docket-core",
  "docket-dbus",
@@ -2101,7 +2101,7 @@ dependencies = [
 [[package]]
 name = "docket-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=688dc63392d74d6252740d4b5f72b3db0243cee2#688dc63392d74d6252740d4b5f72b3db0243cee2"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
 dependencies = [
  "almanac-core",
  "bulkhead",
@@ -2118,7 +2118,7 @@ dependencies = [
 [[package]]
 name = "docket-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=688dc63392d74d6252740d4b5f72b3db0243cee2#688dc63392d74d6252740d4b5f72b3db0243cee2"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
 dependencies = [
  "docket-core",
  "porter-core",
@@ -6963,6 +6963,7 @@ dependencies = [
  "serde",
  "serde_json",
  "temor-desktop",
+ "temor-pty",
  "temor-ssh",
  "tempfile",
  "thiserror 2.0.21",

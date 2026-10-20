@@ -77,10 +77,10 @@ chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "7b80eddb
 # docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
 # Who may call temor's provider (intentd's unit), and the stand-in a test names for it.
-docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "688dc63392d74d6252740d4b5f72b3db0243cee2" }
+docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
 prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
 porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
 porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", default-features = false, features = ["dbus"] }

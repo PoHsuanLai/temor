@@ -7,7 +7,9 @@ use std::sync::Arc;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::worktree::overlap::{BaseKey, BaseProbe, PairKey, PairProbe, ProbeJob};
 use temor_core::worktree::{Git, ListedWorktree, MergeOutcome, Oid, Snapshot};
-use temor_desktop::{DesktopError, PointId, PointList, PointPlan, SessionKey, TurnMark, TurnNo};
+use temor_desktop::{
+    DesktopError, PointId, PointList, PointPlan, SessionKey, TurnMark, TurnNo, Watching,
+};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::work::Made;
@@ -37,7 +39,7 @@ pub enum Done {
     /// A watched agent's session was opened.
     WatchOpened {
         pane: PaneId,
-        result: Result<SessionKey, DesktopError>,
+        result: Result<Watching, DesktopError>,
     },
     /// The agent's turn was marked.
     WatchMarked {

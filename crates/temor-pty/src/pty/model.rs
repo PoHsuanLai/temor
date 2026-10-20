@@ -3,6 +3,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use super::command::CommandLine;
 use crate::size::GridSize;
 use temor_shell::ChildEnv;
 
@@ -49,12 +50,14 @@ pub struct ProcRoot(pub PathBuf);
 
 /// The terminal's foreground process group, for tab titles and the running row. The name and
 /// directory are those of the group leader, read from `/proc` on Linux; elsewhere, or when the
-/// process has gone, they are `None`.
+/// process has gone, they are `None`. The command line is that of the process whose name is
+/// given.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Foreground {
     pub group: ProcessId,
     pub name: Option<String>,
     pub cwd: Option<PathBuf>,
+    pub command: Option<CommandLine>,
 }
 
 /// What to wait for in [`PtyIo::wait`](crate::PtyIo::wait).

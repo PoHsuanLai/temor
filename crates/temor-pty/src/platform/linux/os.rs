@@ -3,7 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::platform::Os;
-use crate::pty::{ProcRoot, ProcessId};
+use crate::pty::MAX_BYTES;
+use crate::pty::{CommandLine, ProcRoot, ProcessId};
 use temor_shell::UserId;
 
 /// This OS.
@@ -14,6 +15,17 @@ impl Os for Linux {
     fn process_name(proc: &ProcRoot, pid: ProcessId) -> Option<String> {
         let comm = std::fs::read_to_string(proc.0.join(pid.0.to_string()).join("comm")).ok()?;
         Some(comm.trim_end_matches('\n').to_owned())
+    }
+
+    fn process_command(proc: &ProcRoot, pid: ProcessId) -> Option<CommandLine> {
+        use std::io::Read;
+        let file = std::fs::File::open(proc.0.join(pid.0.to_string()).join("cmdline")).ok()?;
+        // One byte past the bound is read, so that a longer line is seen to be too long.
+        let mut bytes = Vec::new();
+        file.take(MAX_BYTES as u64 + 1)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        CommandLine::from_cmdline(&bytes)
     }
 
     fn process_cwd(proc: &ProcRoot, pid: ProcessId) -> Option<PathBuf> {

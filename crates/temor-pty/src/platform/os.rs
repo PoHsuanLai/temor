@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::pty::{ProcRoot, ProcessId};
+use crate::pty::{CommandLine, ProcRoot, ProcessId};
 use temor_shell::UserId;
 
 /// The process and file facts temor reads from the OS for tab titles, the running row, shell
@@ -10,6 +10,8 @@ use temor_shell::UserId;
 pub(crate) trait Os {
     /// The short name (`comm`) of process `pid`, when the OS can tell.
     fn process_name(proc: &ProcRoot, pid: ProcessId) -> Option<String>;
+    /// The command line of process `pid`, when the OS can tell and it is within bounds.
+    fn process_command(proc: &ProcRoot, pid: ProcessId) -> Option<CommandLine>;
     /// The working directory of process `pid`, when the OS can tell.
     fn process_cwd(proc: &ProcRoot, pid: ProcessId) -> Option<PathBuf>;
     /// The last command of the pipeline that is process group `group`, run by the shell

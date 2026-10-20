@@ -1,7 +1,7 @@
 //! What a pane tells the window. Callbacks never block: the I/O thread sends these and moves on.
 
 use super::xfer::TransferEvent;
-use temor_pty::ChildExit;
+use temor_pty::{ChildExit, CommandLine};
 use temor_vt::{
     AnchorId, ClipboardRead, ClipboardWrite, Notification, ProgramStatus, Progress, PromptEvent,
 };
@@ -43,12 +43,20 @@ pub enum PaneEvent {
     Transfer(TransferEvent),
     /// A program status report (OSC 7501): what an agent says it is doing.
     Program(ProgramStatus),
-    /// The name of the pane's foreground process changed (`None`: it could not be read). Sent by
-    /// the I/O thread about once a second, only on a change.
-    Foreground(Option<String>),
+    /// The pane's foreground process changed, by name or by command line (`None`: it could not
+    /// be read). Sent by the I/O thread about once a second, only on a change.
+    Foreground(Option<SeenForeground>),
     /// A report over the pane's status socket (an adapter, a hook or the `temor` command).
     #[cfg(unix)]
     Reported(crate::report::StatusLine),
+}
+
+/// The pane's foreground process as seen: its name, and its command line when it could be read.
+/// Under a sandbox the name is the wrapper's (`bwrap`), and the program shows in the arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeenForeground {
+    pub name: String,
+    pub command: Option<CommandLine>,
 }
 
 /// Whether the program is holding the screen for a synchronized update.

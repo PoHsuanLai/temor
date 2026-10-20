@@ -7,9 +7,10 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use temor_core::agent::rewind::{self, rewind_of};
+use temor_core::agent::seen::CommandLine;
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::PaneId;
-use temor_desktop::{Rewind, SessionKey, TurnHow, TurnMark};
+use temor_desktop::{Named, Rewind, SessionKey, TurnHow, TurnMark, WatchAsk, WatchOwner, Watching};
 
 /// What changed about a turn between two states of the same agent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,27 +41,42 @@ pub(super) fn rewind_for(agent: &str) -> Rewind {
     }
 }
 
+/// When a watch's session is closed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Closing {
+    /// The agent left the pane. A session the assistant holds is only forgotten; one for a
+    /// recognised app stays open until the pane ends (the conversation may be resumed); any
+    /// other is closed.
+    Leave,
+    /// The pane ended, or another agent took the pane: a session the window opened is closed.
+    /// One the assistant holds is still only forgotten.
+    Always,
+}
+
+/// What a new agent in a pane needs of its watch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Need {
+    /// Open a session.
+    Open,
+    /// The pane keeps the session of an earlier, different agent: close it, then open one.
+    Replace,
+    /// What is open serves, or an open is already on its way.
+    Nothing,
+}
+
 /// A call wanted of the port.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Want {
-    Open {
-        workspace: String,
-        label: String,
-        rewind: Rewind,
-    },
+    Open(WatchAsk),
     Mark,
     End(TurnHow),
-    Close,
+    Close(Closing),
 }
 
 /// A call ready to run, with what it needs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
-    Open {
-        workspace: String,
-        label: String,
-        rewind: Rewind,
-    },
+    Open(WatchAsk),
     Mark(SessionKey),
     End(SessionKey, TurnMark, TurnHow),
     Close(SessionKey),
@@ -90,6 +106,11 @@ enum Told {
 #[derive(Debug)]
 struct Watch {
     session: Option<SessionKey>,
+    /// Who closes the session, and whether its app was recognised; read once it is open.
+    owner: WatchOwner,
+    named: Named,
+    /// What the agent of the open session was started with.
+    seen: Option<CommandLine>,
     turn: Option<TurnMark>,
     queue: VecDeque<Want>,
     flight: Flight,
@@ -101,11 +122,35 @@ impl Watch {
     fn new() -> Watch {
         Watch {
             session: None,
+            owner: WatchOwner::Terminal,
+            named: Named::Unknown,
+            seen: None,
             turn: None,
             queue: VecDeque::new(),
             flight: Flight::Free,
             life: Life::Live,
             told: Told::Not,
+        }
+    }
+}
+
+impl Watch {
+    /// Whether the session outlives its agent: the window opened it for a recognised app.
+    fn kept_open(&self) -> bool {
+        self.owner == WatchOwner::Terminal && self.named == Named::App
+    }
+
+    /// The call that closes the session when `closing` says so. A session the assistant holds is
+    /// forgotten and never closed.
+    fn close_call(&mut self, closing: Closing) -> Option<Call> {
+        self.turn = None;
+        if closing == Closing::Leave && self.kept_open() {
+            return None;
+        }
+        let session = self.session.take()?;
+        match self.owner {
+            WatchOwner::Terminal => Some(Call::Close(session)),
+            WatchOwner::Companion => None,
         }
     }
 }
@@ -117,15 +162,22 @@ pub(super) struct Watches {
 }
 
 impl Watches {
-    /// Whether an agent just seen in `pane` still needs its session opened: none is open, and no
-    /// open is on its way.
-    pub(super) fn needs_open(&self, pane: PaneId) -> bool {
+    /// What an agent just seen in `pane`, asking `ask`, needs of its watch.
+    pub(super) fn need(&self, pane: PaneId, ask: &WatchAsk) -> Need {
         let Some(watch) = self.panes.get(&pane) else {
-            return true;
+            return Need::Open;
         };
-        let queued = watch.queue.iter().any(|w| matches!(w, Want::Open { .. }));
-        // An open in flight has no session yet and nothing queued; the flight tells it apart.
-        watch.session.is_none() && !queued && watch.flight == Flight::Free
+        let queued = watch.queue.iter().any(|w| matches!(w, Want::Open(_)));
+        if queued || watch.flight == Flight::Busy {
+            return Need::Nothing;
+        }
+        match &watch.session {
+            None => Need::Open,
+            // A recognised app's session stays after its agent exits: the same command picks
+            // it up again, another one replaces it.
+            Some(_) if watch.kept_open() && watch.seen != ask.seen => Need::Replace,
+            Some(_) => Need::Nothing,
+        }
     }
 
     /// `want` is added to `pane`'s calls.
@@ -161,25 +213,17 @@ impl Watches {
         let mut found = None;
         while let Some(want) = watch.queue.pop_front() {
             found = match want {
-                Want::Open {
-                    workspace,
-                    label,
-                    rewind,
-                } if watch.session.is_none() && watch.life == Life::Live => Some(Call::Open {
-                    workspace,
-                    label,
-                    rewind,
-                }),
+                Want::Open(ask) if watch.session.is_none() && watch.life == Life::Live => {
+                    watch.seen = ask.seen.clone();
+                    Some(Call::Open(ask))
+                }
                 Want::Mark => watch.session.clone().map(Call::Mark),
                 Want::End(how) => match (watch.session.clone(), watch.turn.take()) {
                     (Some(session), Some(turn)) => Some(Call::End(session, turn, how)),
                     _ => None,
                 },
-                Want::Close => {
-                    watch.turn = None;
-                    watch.session.take().map(Call::Close)
-                }
-                Want::Open { .. } => None,
+                Want::Close(closing) => watch.close_call(closing),
+                Want::Open(_) => None,
             };
             if found.is_some() {
                 watch.flight = Flight::Busy;
@@ -199,10 +243,12 @@ impl Watches {
         }
     }
 
-    /// The session `pane`'s watch opened.
-    pub(super) fn opened(&mut self, pane: PaneId, session: SessionKey) {
+    /// The watch `pane`'s open call made.
+    pub(super) fn opened(&mut self, pane: PaneId, watching: Watching) {
         if let Some(watch) = self.panes.get_mut(&pane) {
-            watch.session = Some(session);
+            watch.session = Some(watching.session);
+            watch.owner = watching.owner;
+            watch.named = watching.named;
         }
     }
 

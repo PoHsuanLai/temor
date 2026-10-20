@@ -3,8 +3,8 @@
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
 use crate::checkpoints::{
-    CheckpointPort, PlanDigest, PointId, PointList, PointPlan, Rewind, SessionKey, TurnHow,
-    TurnMark,
+    CheckpointPort, PlanDigest, PointId, PointList, PointPlan, SessionKey, TurnHow, TurnMark,
+    WatchAsk, Watching,
 };
 use crate::secrets::{SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
@@ -173,12 +173,7 @@ impl CheckpointPort for SystemCheckpoints {
         })
     }
 
-    fn watch(
-        &self,
-        _workspace: &str,
-        _label: &str,
-        _rewind: Rewind,
-    ) -> Result<SessionKey, DesktopError> {
+    fn watch(&self, _ask: &WatchAsk) -> Result<Watching, DesktopError> {
         Err(DesktopError::Unsupported {
             what: "restore points",
         })

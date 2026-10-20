@@ -8,7 +8,7 @@ use temor_core::presence::{AgentState, Seen, WaitKind};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
-use temor_desktop::{PointId, Rewind, TurnHow};
+use temor_desktop::{Named, PointId, Rewind, TurnHow, WatchOwner};
 use temor_pane::PaneEvent;
 use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -16,6 +16,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use super::jobs::Done;
 use super::points::RestoreMenu;
 use super::points_tests::{Fake, first_list, first_plan};
+use super::tests::{front, front_running};
 use super::watch::{Edge, edge, rewind_for};
 use super::{AgentPick, SheetView};
 use crate::hub::model::Hub;
@@ -77,7 +78,12 @@ fn program(state: ProgramState) -> PaneEvent {
 }
 
 fn in_front(name: &str) -> PaneEvent {
-    PaneEvent::Foreground(Some(name.to_owned()))
+    front(name)
+}
+
+/// A sandbox wrapper in front, as `claude --resume 1` or `codex` runs under one.
+fn sandboxed(agent: &str) -> PaneEvent {
+    front_running("bwrap", &["/usr/bin/bwrap", "--", agent, "--resume", "1"])
 }
 
 impl Scene {
@@ -211,4 +217,66 @@ fn a_pane_that_ends_closes_its_watch_and_a_pane_without_a_folder_has_none() {
     bare.hear(&in_front("codex"));
     bare.hear(&program(ProgramState::Working));
     assert!(bare.fake.calls().is_empty());
+}
+
+#[test]
+fn a_session_the_assistant_holds_is_marked_but_never_closed() {
+    // Each row ends the agent a different way; none of them closes the session.
+    for (name, ends) in [("the agent exits", false), ("the pane ends", true)] {
+        let mut scene = Scene::start();
+        scene.fake.answer_watch(WatchOwner::Companion, Named::App);
+        scene.hear(&sandboxed("claude"));
+        scene.settle(2);
+        scene.hear(&program(ProgramState::Working));
+        scene.settle(2);
+        match ends {
+            false => scene.hear(&in_front("zsh")),
+            true => scene.hub.agent_pane_ended(scene.pane),
+        }
+        assert_eq!(
+            scene.fake.writes(),
+            ["watch /work [claude in Shell] Agent", "mark w-1"],
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn a_recognised_apps_session_outlives_the_agent_until_the_pane_ends_or_another_agent_comes() {
+    let mut scene = Scene::start();
+    scene.fake.answer_watch(WatchOwner::Terminal, Named::App);
+    scene.hear(&sandboxed("claude"));
+    scene.settle(2);
+
+    // The agent exits: the session stays open, and the same command picks it up again.
+    scene.hear(&in_front("zsh"));
+    scene.hear(&sandboxed("claude"));
+    assert_eq!(
+        scene.fake.writes(),
+        ["watch /work [claude in Shell] Agent"],
+        "the same agent again"
+    );
+
+    // Another agent takes the pane: the old session is closed, a new one opened.
+    scene.hear(&in_front("zsh"));
+    scene.hear(&sandboxed("codex"));
+    scene.settle(1);
+    scene.settle(2);
+    assert_eq!(
+        scene.fake.writes(),
+        [
+            "watch /work [claude in Shell] Agent",
+            "close w-1",
+            "watch /work [codex in Shell] Docket"
+        ],
+        "a different agent"
+    );
+
+    // The pane ends: the session is closed.
+    scene.hub.agent_pane_ended(scene.pane);
+    scene.settle(1);
+    assert_eq!(
+        scene.fake.writes().last().map(String::as_str),
+        Some("close w-1")
+    );
 }

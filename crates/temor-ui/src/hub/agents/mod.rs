@@ -28,7 +28,6 @@ mod watching;
 mod work;
 mod worktrees;
 
-pub use convert::known_agent;
 pub use jobs::Done;
 pub use loops::spawn_agent_loops;
 pub use menu::{AgentMenu, AgentPick, LeftoverRow, SheetView, Where};

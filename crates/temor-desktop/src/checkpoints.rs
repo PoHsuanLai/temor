@@ -7,6 +7,7 @@
 
 use std::fmt;
 
+use temor_pty::CommandLine;
 use temor_ssh::UnixSeconds;
 
 use crate::DesktopError;
@@ -109,6 +110,57 @@ pub enum Rewind {
     Agent,
 }
 
+/// What a watch is asked for: an agent running in `workspace`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WatchAsk {
+    /// An absolute folder.
+    pub workspace: String,
+    /// Display text.
+    pub label: String,
+    pub rewind: Rewind,
+    /// What the agent's process was started with, when it could be read: docket uses it to
+    /// recognise the configured app and the conversation.
+    pub seen: Option<CommandLine>,
+}
+
+/// Who closes a watch's session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WatchOwner {
+    /// The window's: it closes the session when the agent or its pane goes.
+    Terminal,
+    /// The assistant's: the session was already there (a window it handed to the terminal). The
+    /// window marks turns on it and never closes it.
+    Companion,
+}
+
+/// Whether docket recognised the watched agent's app and conversation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Named {
+    /// Recognised: the session belongs to that conversation, and outlives one run of the agent.
+    App,
+    /// Not recognised: the session only keeps restore points for this run.
+    Unknown,
+}
+
+/// A watch docket opened, or found already open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Watching {
+    pub session: SessionKey,
+    pub owner: WatchOwner,
+    pub named: Named,
+}
+
+impl Watching {
+    /// A session the window opened for an agent docket did not recognise.
+    pub fn plain(session: SessionKey) -> Self {
+        Self {
+            session,
+            owner: WatchOwner::Terminal,
+            named: Named::Unknown,
+        }
+    }
+}
+
 /// A turn of a watched agent, as `mark` numbered it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TurnMark(pub u64);
@@ -188,14 +240,9 @@ pub trait CheckpointPort: Send + Sync + fmt::Debug {
         digest: &PlanDigest,
     ) -> Result<(), DesktopError>;
 
-    /// Starts a session that only keeps restore points for an agent running in `workspace` (an
-    /// absolute folder). `label` is display text.
-    fn watch(
-        &self,
-        workspace: &str,
-        label: &str,
-        rewind: Rewind,
-    ) -> Result<SessionKey, DesktopError>;
+    /// Starts a session that only keeps restore points for the agent `ask` describes, or finds
+    /// the one docket already has for it.
+    fn watch(&self, ask: &WatchAsk) -> Result<Watching, DesktopError>;
 
     /// The watched agent started working: a point is taken (unless it keeps its own) and a turn
     /// begins. End it with [`turn_ended`](Self::turn_ended).
@@ -239,12 +286,7 @@ impl CheckpointPort for NoCheckpoints {
         })
     }
 
-    fn watch(
-        &self,
-        _workspace: &str,
-        _label: &str,
-        _rewind: Rewind,
-    ) -> Result<SessionKey, DesktopError> {
+    fn watch(&self, _ask: &WatchAsk) -> Result<Watching, DesktopError> {
         Err(DesktopError::Unsupported {
             what: "restore points",
         })

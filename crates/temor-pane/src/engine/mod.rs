@@ -18,7 +18,7 @@ mod watch;
 mod xfer;
 
 pub use clipboard::{ClipboardMirror, ReadPolicy};
-pub use event::{Hold, PaneEvent};
+pub use event::{Hold, PaneEvent, SeenForeground};
 pub use fed::{FedSpec, Feeder, PaneLink, start_fed};
 pub use handle::PaneHandle;
 pub use hold::PaintSource;

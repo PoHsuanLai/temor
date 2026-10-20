@@ -7,12 +7,12 @@ use temor_core::agent::radar::{Millis, RadarParams};
 use temor_core::presence::{AgentState, Seen, WaitKind};
 use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
 use temor_core::worktree::{AgentWorktree, Oid, WorktreeName};
-use temor_pane::PaneEvent;
 use temor_pane::report::{ReportState, ReportWait, StatusLine};
+use temor_pane::{CommandLine, PaneEvent, SeenForeground};
 use temor_pty::ChildExit;
 use temor_vt::{Notification, ProgramState, ProgramStatus, ProgramWait};
 
-use super::convert::{exit_code, known_agent};
+use super::convert::exit_code;
 use super::radar::Radar;
 use super::trees::Trees;
 use super::work::safe_join;
@@ -73,13 +73,30 @@ fn run(steps: Vec<(u64, Step)>) -> Vec<AgentState> {
     shown
 }
 
+/// A program in front of the pane, with no command line read.
+pub(super) fn front(name: &str) -> PaneEvent {
+    PaneEvent::Foreground(Some(SeenForeground {
+        name: name.to_owned(),
+        command: None,
+    }))
+}
+
+/// A wrapper in front of the pane, with the command line it was started with.
+pub(super) fn front_running(name: &str, tokens: &[&str]) -> PaneEvent {
+    let bytes: Vec<u8> = tokens.iter().flat_map(|t| t.bytes().chain([0])).collect();
+    PaneEvent::Foreground(Some(SeenForeground {
+        name: name.to_owned(),
+        command: CommandLine::from_cmdline(&bytes),
+    }))
+}
+
 use AgentState::{Done, Failed, Idle, Waiting, Working};
 use Step::{Event, Focus, Tick};
 
 #[test]
 fn what_a_pane_says_moves_its_orb_over_time() {
     let spinner = || PaneEvent::Title("\u{280B} fixing tests".to_owned());
-    let claude = || PaneEvent::Foreground(Some("claude".to_owned()));
+    let claude = || front("claude");
     #[rustfmt::skip]
     #[allow(clippy::type_complexity)] // a table of named rows
     let cases: Vec<(&str, Vec<(u64, Step)>, Vec<AgentState>)> = vec![
@@ -214,7 +231,6 @@ fn only_named_agents_count_as_agents() {
 #[test]
 fn an_agent_seen_by_its_process_is_gone_when_another_program_is_in_front() {
     let mut radar = Radar::new(RadarParams::default());
-    let front = |name: &str| PaneEvent::Foreground(Some(name.to_owned()));
     // Seen by what it reported: another program in front does not end it.
     radar.observe(
         PaneId(1),
@@ -228,18 +244,24 @@ fn an_agent_seen_by_its_process_is_gone_when_another_program_is_in_front() {
     assert_eq!(radar.agent_of(PaneId(2)), Some("claude"));
     radar.observe(PaneId(2), Millis(1), &front("zsh"));
     assert_eq!(radar.agent_of(PaneId(2)), None);
+    // Under a sandbox the name is the wrapper's; the program shows in the command line, and the
+    // radar keeps the line for the watch.
+    let wrapped = front_running(
+        "bwrap",
+        &["/usr/bin/bwrap", "--", "claude", "--resume", "x"],
+    );
+    radar.observe(PaneId(3), Millis(0), &wrapped);
+    assert_eq!(radar.agent_of(PaneId(3)), Some("claude"));
+    assert_eq!(
+        radar.command_of(PaneId(3)).map(|c| c.tokens().len()),
+        Some(5)
+    );
+    radar.observe(PaneId(3), Millis(1), &front("zsh"));
+    assert_eq!(radar.agent_of(PaneId(3)), None);
 }
 
 #[test]
-fn programs_and_exits_are_read_as_the_radar_needs() {
-    #[rustfmt::skip]
-    let names: &[(&str, bool)] = &[
-        ("claude", true), ("Claude", true), ("codex", true), ("agy", true),
-        ("bash", false), ("node", false), ("claude-helper", false), ("", false),
-    ];
-    for (name, want) in names {
-        assert_eq!(known_agent(name), *want, "{name:?}");
-    }
+fn exits_are_read_as_the_radar_needs() {
     #[rustfmt::skip]
     let exits: &[(Option<ChildExit>, i32)] = &[
         (Some(ChildExit::Exited(0)), 0), (Some(ChildExit::Exited(2)), 2),
