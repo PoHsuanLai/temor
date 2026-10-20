@@ -1,6 +1,6 @@
-//! The block toolbar's "Edit here" (PLAN §9b), shown on panes on another computer: the selected
-//! text, or the word under the pointer, names a file there; it is fetched and opened in an
-//! editor on this computer, and saved back when the person saves.
+//! "Edit Locally" (PLAN §9b), on the block toolbar and the block menu of panes on another
+//! computer: the selected text, or the last file the block's command names, names a file there;
+//! it is fetched and opened in an editor on this computer, and saved back when the person saves.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -21,24 +21,34 @@ pub fn file_to_edit(text: Option<String>) -> Result<String, &'static str> {
     }
 }
 
-/// The toolbar's press: hands the pane's file to the host-file editor.
+/// "Edit Locally", for the toolbar and the block menu alike: hands the file the selection or the
+/// block's command names to the host-file editor. `block` is the block the toolbar is on; the menu
+/// passes `None` and gets its picked block.
+pub fn edit_on_this_computer(
+    slot: &Rc<RefCell<Slot>>,
+    desk: &Desk,
+    pane: PaneId,
+    block: Option<BlockId>,
+) {
+    let text = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|session| session.block_text_to_edit(block));
+    match file_to_edit(text) {
+        Ok(text) => desk.host_edit(pane, &text),
+        Err(words) => desk.say(words.to_owned()),
+    }
+    desk.bump();
+}
+
+/// The toolbar's press.
 pub fn bar_edit(
     slot: Rc<RefCell<Slot>>,
     desk: Desk,
     pane: PaneId,
 ) -> impl FnMut(BlockId) + 'static {
-    move |_: BlockId| {
-        let text = slot
-            .borrow()
-            .session
-            .as_ref()
-            .and_then(|session| session.text_to_edit());
-        match file_to_edit(text) {
-            Ok(text) => desk.host_edit(pane, &text),
-            Err(words) => desk.say(words.to_owned()),
-        }
-        desk.bump();
-    }
+    move |block: BlockId| edit_on_this_computer(&slot, &desk, pane, Some(block))
 }
 
 #[cfg(test)]

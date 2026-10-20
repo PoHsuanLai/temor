@@ -2,7 +2,7 @@
 //! selected one, right of how it ended (`block_meta`), a dense group of three icon buttons (copy
 //! the output, type the command again, more) and a menu behind "more" with the rest: copy the
 //! command, save the output to Downloads, show the files it listed, and on a pane on another
-//! computer, edit here. Typing the command again never runs it.
+//! computer, edit it locally. Typing the command again never runs it.
 //! It sits beside the grid, not in it, so a press on it never reaches the terminal.
 
 use dioxus::prelude::*;
@@ -38,7 +38,7 @@ pub struct ToolsView {
     pub rerun: Availability,
     /// Whether the output can be searched for files to show (the command has finished).
     pub view: Availability,
-    /// "Edit here" on a pane on another computer: `None` on any other pane, where there is
+    /// "Edit Locally" on a pane on another computer: `None` on any other pane, where there is
     /// nothing to fetch.
     pub edit: Option<Availability>,
     /// What a person presses for "Copy Command" (the keymap's chord for it), shown in the menu.
@@ -79,8 +79,10 @@ fn more_items(tools: &ToolsView) -> Vec<MenuItem<More>> {
     ];
     if let Some(availability) = tools.edit {
         items.push(
-            MenuItem::new(More::Edit, "Edit Here")
-                .with_tip("Open the selected file from this computer in an editor here")
+            MenuItem::new(More::Edit, "Edit Locally")
+                .with_tip(
+                    "Open the selected file, or the last file in the command, in an editor here",
+                )
                 .with_availability(availability),
         );
     }

@@ -21,7 +21,7 @@ use ds_blitz::use_gpu;
 use temor_core::remote::Grant;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
-use super::block_edit::{bar_edit, file_to_edit};
+use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_header::BlockHeader;
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
@@ -237,7 +237,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let plugin_facts = desk.hub.plugin_facts_of(pane);
     let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
-    // "Edit here" is only for a pane on another computer.
+    // "Edit Locally" is only for a pane on another computer.
     let tools = chrome
         .tools
         .clone()
@@ -344,18 +344,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         desk.lens_hide(pane, block);
                     }
                 }
-                BlockPick::EditLocally => {
-                    let text = slot
-                        .borrow()
-                        .session
-                        .as_ref()
-                        .and_then(|s| s.block_text_to_edit());
-                    match file_to_edit(text) {
-                        Ok(text) => desk.host_edit(pane, &text),
-                        Err(words) => desk.say(words.to_owned()),
-                    }
-                    desk.bump();
-                }
+                BlockPick::EditLocally => edit_on_this_computer(&slot, &desk, pane, None),
             }
             ui += 1;
             repaint(&slot);
