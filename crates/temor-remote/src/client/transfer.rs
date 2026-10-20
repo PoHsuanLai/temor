@@ -4,7 +4,7 @@
 
 use std::collections::VecDeque;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 
 use temor_transfer::{RelPath, Root};
@@ -118,6 +118,26 @@ impl Client {
             sent.forget(self);
         }
         result
+    }
+
+    /// Copies a remote file into `out`, in the same pieces and the same window as
+    /// [`Client::download`], so a keystroke never waits behind more than the window. Its stamp and
+    /// length. If the file changes while it is read, that is [`Error::ChangedWhileCopying`]; what
+    /// was already written to `out` is then the caller's to discard.
+    pub fn fetch_into(
+        &self,
+        remote: &RemotePath,
+        out: &mut dyn Write,
+    ) -> Result<(FileStamp, u64), Error> {
+        fn failed(error: std::io::Error) -> Error {
+            Error::io("writing the local copy", error)
+        }
+        let first = self.read_range(remote, span(0))?;
+        out.write_all(&first.bytes).map_err(failed)?;
+        self.read_rest(remote, &first, &mut |bytes| {
+            out.write_all(bytes).map_err(failed)
+        })?;
+        Ok((first.stamp, first.total.0))
     }
 
     /// The whole of a remote file with its stamp, for editing locally. If the file changes while
