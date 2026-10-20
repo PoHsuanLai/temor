@@ -15,7 +15,7 @@ use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 use temor_vt::Ime;
 
-use crate::hub::{Desk, WindowAction, workspace_input};
+use crate::hub::{Desk, Origin};
 use crate::input::{Routed, stroke};
 
 /// One viewer pane.
@@ -53,7 +53,7 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
                 return;
             }
             if let Some(action) = stroke(&raw, Ime::Idle).and_then(|s| action_of(&desk, s)) {
-                chord(&desk, action);
+                desk.run_action(action, Origin::Viewer);
             }
         }
     };
@@ -142,26 +142,5 @@ fn action_of(desk: &Desk, stroke: crate::input::Stroke) -> Option<Action> {
     match desk.hub.route_key(stroke) {
         Routed::Action(action) => Some(action),
         Routed::Shell(_) | Routed::Ignored => None,
-    }
-}
-
-/// Carries out a chord of temor's: the bar, a Space, the waiting agent, a tab or a split.
-fn chord(desk: &Desk, action: Action) {
-    match action {
-        Action::SelectSpace(number) => desk.select_space(number),
-        Action::JumpToWaiting => desk.jump_to_waiting(),
-        // The viewer's own find lives in the bar, as its "In This File" group.
-        Action::Find => {
-            desk.hub.want_find_in_viewer();
-            desk.bar_toggle();
-        }
-        other => {
-            if desk.window_action(other) == WindowAction::Taken {
-                return;
-            }
-            if let Some(input) = workspace_input(other) {
-                desk.act(input);
-            }
-        }
     }
 }

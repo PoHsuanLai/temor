@@ -9,13 +9,12 @@ use ds::edit::input::EditInput;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::host::measure::RectProbe;
 use temor_core::vocab::ids::PaneId;
-use temor_pane::keys::Action;
 use temor_vt::Ime;
 
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{place_cursor, take_notice};
-use crate::hub::{Desk, WindowAction, workspace_input};
+use crate::hub::{Desk, Origin};
 use crate::input::stroke;
 
 /// Every key the region hears (a press, a repeat, a release) as quire's raw key. `peek_key` is the
@@ -26,7 +25,7 @@ pub fn key_handler(
     apply: impl Fn(EditInput) + Clone + 'static,
     desk: Desk,
     peek_key: Rc<dyn Fn(&RawKey)>,
-    pane: PaneId,
+    _pane: PaneId,
     rect: RectProbe,
 ) -> impl FnMut(RawKey) + 'static {
     move |raw: RawKey| {
@@ -52,33 +51,16 @@ pub fn key_handler(
         if let Some(message) = take_notice(&slot) {
             desk.say(message);
         }
-        // A chord that is not the program's is the window's: the bar and the quick terminal
-        // are its own; a tab or split chord is the workspace's. The quick terminal has no
-        // tabs or splits of its own.
+        // A chord that is not the program's is the window's or the workspace's, which the
+        // desk sorts out; the quick terminal has no tabs or splits of its own.
         let asked = slot
             .borrow_mut()
             .session
             .as_mut()
             .and_then(|s| s.take_asked());
-        if let Some(Action::SelectSpace(number)) = asked {
-            desk.select_space(number);
-            return;
-        }
-        if asked == Some(Action::JumpToWaiting) {
-            desk.jump_to_waiting();
-            return;
-        }
         if let Some(action) = asked {
-            if desk.window_action(action) == WindowAction::Taken {
-                return;
-            }
-            if desk.hub.is_quick(pane) {
-                return;
-            }
-            if let Some(input) = workspace_input(action) {
-                desk.act(input);
-                return;
-            }
+            desk.run_action(action, Origin::Terminal);
+            return;
         }
         desk.bump();
         repaint(&slot);
