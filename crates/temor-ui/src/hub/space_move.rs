@@ -10,7 +10,6 @@ use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceOut;
 
 use super::model::{Hub, HubRef};
-use super::spaces::empty_workspace;
 use crate::edge::remove_session_for;
 
 impl Hub {
@@ -24,12 +23,7 @@ impl Hub {
             self.notices.push(CoreError::UnknownSpace(to.0).to_string());
             return;
         }
-        let there = self
-            .book
-            .parked
-            .get(&to)
-            .cloned()
-            .unwrap_or_else(empty_workspace);
+        let there = self.book.parked_or_empty(to);
         match carry_tab(&self.ws, tab, &there) {
             Ok((here, there)) => {
                 self.book.note(&there);
@@ -59,12 +53,7 @@ impl Hub {
         let current = space == self.book.active;
         let base = match current {
             true => self.ws.clone(),
-            false => self
-                .book
-                .parked
-                .get(&space)
-                .cloned()
-                .unwrap_or_else(empty_workspace),
+            false => self.book.parked_or_empty(space),
         };
         if self.owner_of(pane).is_some() {
             return Err(CoreError::DuplicatePane(pane.0));

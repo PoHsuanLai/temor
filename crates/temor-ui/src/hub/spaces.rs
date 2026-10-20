@@ -63,6 +63,14 @@ impl SpaceBook {
         next
     }
 
+    /// A copy of the parked workspace of `id`, or an empty one when it has none yet.
+    pub(super) fn parked_or_empty(&self, id: SpaceId) -> Workspace {
+        self.parked
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(empty_workspace)
+    }
+
     /// `ws` with its pane counter past every pane any Space has.
     pub(super) fn lift(&self, ws: &mut Workspace) {
         ws.next_pane = ws.next_pane.max(self.floor);

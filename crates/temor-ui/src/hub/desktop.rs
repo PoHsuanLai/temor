@@ -228,15 +228,7 @@ pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink, window: Option<WindowHa
             if let (Ask::Launch(_, token), Some(window)) = (&ask, &window) {
                 window.focus_with_token(token.clone());
             }
-            let notices = {
-                let mut hub = desk.hub.0.borrow_mut();
-                hub.serve(ask);
-                std::mem::take(&mut hub.notices)
-            };
-            for text in notices {
-                desk.say(text);
-            }
-            desk.bump();
+            desk.settle(|hub| hub.serve(ask));
         }
     });
 }
