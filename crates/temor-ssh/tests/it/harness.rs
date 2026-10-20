@@ -11,6 +11,8 @@ use temor_ssh::{
     BootstrapScript, CommandOutput, CommandRunner, RemoteCommand, StdRunner,
     bootstrap_remote_command,
 };
+use temor_testkit::program_or_skip;
+pub use temor_testkit::{contains, find_program as tool};
 
 /// One test's directories. Dropped with the temp root.
 pub struct Scratch {
@@ -36,14 +38,6 @@ pub fn scratch() -> Scratch {
         fs::create_dir_all(dir).expect("scratch dir");
     }
     s
-}
-
-/// The absolute path of `name` on the test process's PATH.
-pub fn tool(name: &str) -> Option<PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| dir.join(name))
-        .find(|candidate| candidate.is_file())
 }
 
 /// Puts symlinks to `tools` (those that exist) and executable `fakes` into `dir`.
@@ -103,23 +97,10 @@ pub struct Ran {
     pub text: Vec<u8>,
 }
 
-/// Whether TEMOR_REQUIRE_TOOLS=1 is set, which makes a missing shell a failure, not a skip.
-fn required() -> bool {
-    std::env::var("TEMOR_REQUIRE_TOOLS").is_ok_and(|v| v == "1")
-}
-
-/// The tool on PATH, or `None` after a printed note. With TEMOR_REQUIRE_TOOLS=1 a missing
+/// The tool on PATH, or `None` after a printed skip. With TEMOR_REQUIRE_TOOLS=1 a missing
 /// tool fails the test instead.
 pub fn require(name: &str) -> Option<PathBuf> {
-    let found = tool(name);
-    if found.is_none() {
-        assert!(
-            !required(),
-            "{name} is required (TEMOR_REQUIRE_TOOLS=1) but is not on PATH"
-        );
-        eprintln!("skipping {name}: not installed on this machine");
-    }
-    found
+    program_or_skip(name, "temor-ssh")
 }
 
 /// One run of the bootstrap: `outer -c <command>`, where the outer login shell runs the remote
@@ -206,12 +187,6 @@ pub fn host_name() -> String {
 /// The system PATH, which has `bash`, `sh` and the coreutils.
 pub fn system_path() -> String {
     std::env::var("PATH").unwrap_or_default()
-}
-
-pub fn contains(haystack: &[u8], needle: &str) -> bool {
-    haystack
-        .windows(needle.len())
-        .any(|window| window == needle.as_bytes())
 }
 
 /// [`StdRunner`] that tries again when the program cannot be started because it is still open

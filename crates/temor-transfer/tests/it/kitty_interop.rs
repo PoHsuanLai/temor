@@ -5,28 +5,15 @@
 //! kitty_interop -- --ignored` with kitten on PATH. Skipped where kitten or python3 is missing.
 
 use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
 use std::time::Duration;
 
+use temor_testkit::program_or_skip;
 use temor_transfer::kitty::Link;
 
 use crate::roundtrip::terminal_takes;
-
-fn tool(name: &str) -> Option<PathBuf> {
-    let found = std::env::split_paths(&std::env::var_os("PATH")?)
-        .map(|dir| dir.join(name))
-        .find(|path| path.is_file());
-    if found.is_none() {
-        assert!(
-            std::env::var("TEMOR_REQUIRE_TOOLS").as_deref() != Ok("1"),
-            "{name} is required (TEMOR_REQUIRE_TOOLS=1) but is not on PATH"
-        );
-        eprintln!("skipping: {name} is not installed");
-    }
-    found
-}
 
 /// The kitten's terminal, seen from the terminal's side.
 struct Kitten {
@@ -90,7 +77,10 @@ impl Drop for Kitten {
 #[test]
 #[ignore = "runs a downloaded kitten: by hand, with kitten on PATH, `-- --ignored`"]
 fn kittys_own_kitten_sends_a_file_into_temor() {
-    let (Some(kitten), Some(python)) = (tool("kitten"), tool("python3")) else {
+    let (Some(kitten), Some(python)) = (
+        program_or_skip("kitten", "kitty_interop"),
+        program_or_skip("python3", "kitty_interop"),
+    ) else {
         return;
     };
     let from = tempfile::tempdir().expect("from");
