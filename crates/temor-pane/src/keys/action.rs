@@ -121,7 +121,6 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::Equalize, "equalize"),
     (Action::ReopenTab, "reopen-tab"),
     (Action::JumpToWaiting, "jump-to-waiting"),
-    (Action::ToggleSidebar, "toggle-sidebar"),
     (Action::PinTab, "pin-tab"),
     (Action::UnpinTab, "unpin-tab"),
     (Action::ShowDownloads, "show-downloads"),
@@ -142,6 +141,8 @@ const STANDARD: &[(Action, StandardAction)] = &[
     (Action::ZoomOut, StandardAction::Smaller),
     (Action::ActualSize, StandardAction::ActualSize),
     (Action::Settings, StandardAction::Settings),
+    // As mailo has it: ⌃⌘S on a Mac, F9 elsewhere.
+    (Action::ToggleSidebar, StandardAction::ToggleSidebar),
 ];
 
 impl Action {

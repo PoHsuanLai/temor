@@ -343,8 +343,8 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
     });
 }
 
-/// The show/hide action (⌘⇧L, Super+Shift+L on our desktop) folds the sidebar away and brings it
-/// back.
+/// The show/hide action (the standard Toggle Sidebar, ⌃⌘S as in mailo: Ctrl+Super+S on our
+/// desktop) folds the sidebar away and brings it back.
 #[test]
 fn the_sidebar_action_hides_and_shows_the_sidebar() {
     if !super::support::tools_present() {
@@ -359,8 +359,8 @@ fn the_sidebar_action_hides_and_shows_the_sidebar() {
     assert!(sidebar_width(&h) > 100.0, "the sidebar starts shown");
     let toggle = |h: &mut Harness| {
         h.send(Input::chord(
-            &[ShortcutKey::Super, ShortcutKey::Shift],
-            ShortcutKey::Char('l'),
+            &[ShortcutKey::Ctrl, ShortcutKey::Super],
+            ShortcutKey::Char('s'),
         ));
         h.advance(Duration::from_millis(600));
     };

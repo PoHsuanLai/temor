@@ -41,8 +41,20 @@ pub fn declared() -> Vec<Declared> {
         (Action::ToggleQuick, "Primary+Shift+Y", None, &[]),
         (Action::SplitRight, "Primary+D", None, &[]),
         (Action::SplitDown, "Primary+Shift+D", None, &[]),
-        (Action::FocusLeft, "Primary+Alt+Left", None, &[]),
-        (Action::FocusRight, "Primary+Alt+Right", None, &[]),
+        // Where the desktop takes Ctrl+Alt+Left/Right (workspaces), vim's H and L: letters keep their
+        // form under Shift, so they hold where Primary is Ctrl+Shift too.
+        (
+            Action::FocusLeft,
+            "Primary+Alt+Left",
+            Some("Primary+Alt+H"),
+            &[],
+        ),
+        (
+            Action::FocusRight,
+            "Primary+Alt+Right",
+            Some("Primary+Alt+L"),
+            &[],
+        ),
         (Action::FocusUp, "Primary+Alt+Up", None, &[]),
         (Action::FocusDown, "Primary+Alt+Down", None, &[]),
         (Action::PreviousPrompt, "Primary+Up", None, &[]),
@@ -72,8 +84,6 @@ pub fn declared() -> Vec<Declared> {
         ),
         (Action::ReopenTab, "Primary+Shift+T", None, &[]),
         (Action::JumpToWaiting, "Primary+Shift+U", None, &[]),
-        // Safari's chord for its sidebar; no convention of chordkit's binds it.
-        (Action::ToggleSidebar, "Primary+Shift+L", None, &[]),
     ];
     let tabs = (1..=9u8).map(|n| Declared {
         action: Action::SelectTab(n),
