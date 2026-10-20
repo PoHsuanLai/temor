@@ -1,4 +1,5 @@
-//! Linux: swash reads CBDT/sbix strikes straight from the font file.
+//! Linux (CBDT) and macOS (sbix, Apple Color Emoji): swash reads the bitmap strikes straight from
+//! the font file.
 
 use swash::scale::image::Content;
 use swash::scale::{Render, ScaleContext, Source, StrikeWith};

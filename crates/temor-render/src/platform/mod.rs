@@ -2,13 +2,13 @@
 //! reaches the platform through the small traits here.
 
 mod edge;
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod other;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod strikes;
 
 pub(crate) use edge::{BitmapEmojiSource, ColorBitmap};
-#[cfg(target_os = "linux")]
-pub(crate) use linux::SystemBitmapEmoji;
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 pub(crate) use other::SystemBitmapEmoji;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) use strikes::SystemBitmapEmoji;
