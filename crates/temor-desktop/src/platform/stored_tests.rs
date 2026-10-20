@@ -1,4 +1,4 @@
-use super::secrets::StoredSecrets;
+use crate::platform::stored::StoredSecrets;
 use crate::secrets::{SecretFault, SecretVault};
 use porter_core::{AccountId, Credential, SecretKey, SecretPurpose, SecretText};
 use porter_secrets::{MemorySecrets, Secrets};

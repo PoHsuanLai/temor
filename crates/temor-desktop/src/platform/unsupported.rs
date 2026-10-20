@@ -1,14 +1,17 @@
 //! Builds without the Linux desktop services: the same API, every service absent.
-//! TODO(platform:macos): dock badge through NSDockTile, single instance through a socket.
+//! TODO(platform:macos): single instance through a socket (the Keychain and the Dock are `macos.rs`).
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
+use crate::Badge;
 use crate::checkpoints::{
     CheckpointPort, NoCheckpoints, PlanDigest, PointId, PointList, PointPlan, RESTORE_POINTS,
     SessionKey, TurnHow, TurnMark, WatchAsk, Watching,
 };
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 use crate::secrets::{NoSecrets, SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
-use crate::{Badge, Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
+use crate::{Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
 use std::sync::Arc;
 use temor_ssh::TailnetHost;
 use tokio::sync::mpsc::unbounded_channel;
@@ -77,9 +80,11 @@ impl SystemIntents {
 }
 
 /// The dock badge. Absent here.
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 #[derive(Debug)]
 pub struct SystemDock;
 
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 impl SystemDock {
     /// Always [`DesktopError::Unsupported`].
     pub async fn connect(_env: &DesktopEnv) -> Result<Self, DesktopError> {
@@ -194,11 +199,12 @@ impl CheckpointPort for SystemCheckpoints {
 }
 
 /// A Space's secrets. Absent here: nothing is kept and every ask finds nothing.
-/// TODO(platform:macos): the Keychain through porter's keyring store.
 /// TODO(platform:windows): the Credential Manager through the same.
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 #[derive(Debug)]
 pub struct SystemSecrets;
 
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 impl SystemSecrets {
     /// Always [`SecretFault::NoStore`].
     pub fn new(_runtime: tokio::runtime::Handle) -> Result<Self, SecretFault> {
@@ -208,6 +214,7 @@ impl SystemSecrets {
 
 /// Its constructor always fails, so no value of it exists; if one did, it would answer as
 /// [`NoSecrets`] does.
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 impl SecretVault for SystemSecrets {
     fn get(&self, account: &str) -> Result<Option<String>, SecretFault> {
         NoSecrets.get(account)

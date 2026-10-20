@@ -102,14 +102,45 @@ mod linux {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+mod macos {
+    use std::process::{Command, Stdio};
+
+    use temor_pane::text::LinkTarget;
+
+    use super::{OpenError, Opener};
+
+    /// The system's `open`, which hands the link to Launch Services and so to the person's
+    /// default browser. The link was checked by the caller; `--` keeps it from being an option.
+    #[derive(Debug, Default)]
+    pub struct LaunchServices;
+
+    impl Opener for LaunchServices {
+        fn open(&self, target: &LinkTarget) -> Result<(), OpenError> {
+            let mut child = Command::new("/usr/bin/open")
+                .args(["--", target.as_str()])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(OpenError::Failed)?;
+            // The opener is the edge's own child: wait for it off the window's thread.
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            Ok(())
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod other {
     use temor_pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
     /// Stub until the platform's opener is written.
-    // TODO(platform:macos): NSWorkspace open; TODO(platform:windows): ShellExecute.
+    // TODO(platform:windows): ShellExecute.
     #[derive(Debug, Default)]
     pub struct Unsupported;
 
@@ -128,7 +159,11 @@ pub fn default_opener() -> Box<dyn Opener> {
             env: temor_desktop::DesktopEnv::from_process(),
         })
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        Box::new(macos::LaunchServices)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         Box::new(other::Unsupported)
     }

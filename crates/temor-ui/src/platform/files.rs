@@ -56,14 +56,52 @@ mod linux {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+mod macos {
+    use std::path::Path;
+    use std::process::{Command, Stdio};
+
+    use super::{FileShell, OpenError};
+
+    /// The system's `open`: a file in its default app, `open -R` to select it in Finder.
+    #[derive(Debug, Default)]
+    pub struct Finder;
+
+    impl Finder {
+        fn run(args: &[&std::ffi::OsStr]) -> Result<(), OpenError> {
+            let mut child = Command::new("/usr/bin/open")
+                .args(args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(OpenError::Failed)?;
+            // The opener is the edge's own child: wait for it off the window's thread.
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            Ok(())
+        }
+    }
+
+    impl FileShell for Finder {
+        fn open(&self, path: &Path) -> Result<(), OpenError> {
+            Self::run(&["--".as_ref(), path.as_os_str()])
+        }
+
+        fn reveal(&self, path: &Path) -> Result<(), OpenError> {
+            Self::run(&["-R".as_ref(), "--".as_ref(), path.as_os_str()])
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod other {
     use std::path::Path;
 
     use super::{FileShell, OpenError};
 
     /// Stub until the platform's file opener is written.
-    // TODO(platform:macos): NSWorkspace open and activateFileViewerSelecting;
     // TODO(platform:windows): ShellExecute and `explorer /select`.
     #[derive(Debug, Default)]
     pub struct Unsupported;
@@ -85,7 +123,11 @@ pub fn default_file_shell() -> Box<dyn FileShell> {
     {
         Box::new(linux::XdgFiles)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        Box::new(macos::Finder)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         Box::new(other::Unsupported)
     }

@@ -25,6 +25,10 @@ quire-desktop = [
   "dep:peephole-bus",
   "dep:peephole-core",
   "dep:futures-util",
+  "dep:objc2",
+  "dep:objc2-app-kit",
+  "dep:objc2-foundation",
+  "dep:dispatch2",
 ]
 
 # `SystemIntents::serve_for_router`: a private bus's stand-in for intentd. Only this crate's own
@@ -57,7 +61,16 @@ prov = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 zbus = { workspace = true, optional = true }
 
-[target.'cfg(target_os = "linux")'.dev-dependencies]
+# macOS has the Keychain and the Dock tile, no session bus.
+[target.'cfg(target_os = "macos")'.dependencies]
+porter-core = { workspace = true, optional = true }
+porter-secrets = { workspace = true, features = ["keyring"], optional = true }
+dispatch2 = { version = "0.3", optional = true }
+objc2 = { version = "0.6", optional = true }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSDockTile"], optional = true }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString"], optional = true }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
 porter-secrets = { workspace = true, features = ["testing"] }
 
 [dev-dependencies]

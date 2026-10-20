@@ -10,8 +10,6 @@ mod intents;
 mod links;
 mod perform;
 mod secrets;
-#[cfg(test)]
-mod secrets_tests;
 mod tailnet;
 #[cfg(test)]
 mod tests;

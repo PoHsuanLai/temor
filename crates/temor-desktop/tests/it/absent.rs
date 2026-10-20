@@ -9,7 +9,11 @@ async fn without_a_bus_there_are_no_computers_and_no_dock() {
     let tailnet = SystemTailnet::connect(&env).await.unwrap();
     assert!(tailnet.hosts().await.unwrap().is_empty());
     assert_eq!(tailnet.changes().await.unwrap().next().await, None);
-    assert!(SystemDock::connect(&env).await.is_err());
+    // The Dock tile needs no bus, so macOS has it whatever the environment says.
+    assert_eq!(
+        SystemDock::connect(&env).await.is_ok(),
+        cfg!(target_os = "macos")
+    );
     assert!(SystemLinks::connect(&env).await.is_err());
 }
 
