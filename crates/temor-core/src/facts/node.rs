@@ -18,13 +18,17 @@ fn chip(text: &str) -> Option<NodeVersion> {
     chip_text(text).map(|t| NodeVersion(t.to_owned()))
 }
 
-/// The version from the text of an `.nvmrc`: its first non-comment line. Aliases such as
-/// `lts/*` are shown as written.
-pub fn node_from_nvmrc(text: &str) -> Option<NodeVersion> {
+/// The first line of a version file that is not blank or a comment, trimmed.
+pub(super) fn first_value_line(text: &str) -> Option<&str> {
     text.lines()
         .map(str::trim)
         .find(|l| !l.is_empty() && !l.starts_with('#'))
-        .and_then(chip)
+}
+
+/// The version from the text of an `.nvmrc`: its first non-comment line. Aliases such as
+/// `lts/*` are shown as written.
+pub fn node_from_nvmrc(text: &str) -> Option<NodeVersion> {
+    first_value_line(text).and_then(chip)
 }
 
 /// The version from the text of a `package.json`: `engines.node`. Anything else in the file, or a
