@@ -9,6 +9,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_vt::{ClipboardAnswer, ClipboardLocation, ClipboardRead, ClipboardSource};
 
+use super::poison::lock;
+
 /// The longest clipboard text kept for reads (1 MiB). Longer text is not served: a program is
 /// told the clipboard is empty rather than given part of it.
 pub const MIRROR_LIMIT: usize = 1024 * 1024;
@@ -38,9 +40,7 @@ pub struct ClipboardMirror(Arc<Mutex<Mirror>>);
 
 impl ClipboardMirror {
     fn lock(&self) -> MutexGuard<'_, Mirror> {
-        self.0
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock(&self.0)
     }
 
     /// The person's answer so far.

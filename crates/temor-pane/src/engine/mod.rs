@@ -9,6 +9,7 @@ mod handle;
 mod hold;
 mod io;
 mod outbox;
+mod poison;
 mod reap;
 mod sink;
 mod spawn;

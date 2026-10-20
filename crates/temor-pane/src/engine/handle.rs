@@ -12,7 +12,8 @@ use temor_transfer::kitty::Offered;
 use temor_vt::{CellPx, GridSize, KeyInput};
 
 use super::event::PaneEvent;
-use super::io::{Command, lock_term, map_event};
+use super::io::{Command, map_event};
+use super::poison::lock;
 use super::outbox::Outbox;
 use super::sink::EventSink;
 use super::term::Term;
@@ -54,7 +55,7 @@ impl PaneHandle {
 
     /// Runs `f` with the terminal locked (PLAN §4b: the lock is held only for the read).
     pub fn with_term<T>(&self, f: impl FnOnce(&mut Term) -> T) -> T {
-        f(&mut lock_term(&self.term))
+        f(&mut lock(&self.term))
     }
 
     /// Sends program input (keys, paste, a mouse report) in order.

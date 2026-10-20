@@ -132,6 +132,7 @@ pub fn start_fed(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::poison::lock;
     use std::sync::mpsc::Receiver;
     use std::time::Duration;
 
@@ -144,18 +145,12 @@ mod tests {
 
     impl PaneLink for Recording {
         fn send(&self, bytes: &[u8]) -> io::Result<()> {
-            self.sent
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .extend_from_slice(bytes);
+            lock(&self.sent).extend_from_slice(bytes);
             Ok(())
         }
 
         fn resize(&self, grid: GridSize, _cell: CellPx) {
-            self.sizes
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .push((grid.cols.0, grid.rows.0));
+            lock(&self.sizes).push((grid.cols.0, grid.rows.0));
         }
     }
 

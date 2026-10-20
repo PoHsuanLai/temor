@@ -8,11 +8,12 @@
 //! Capturing reads libghostty's dirty marks, which the painter's own capture also consumes, so a
 //! painter that sees `captures` change starts a new capture of its own (a full redraw).
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 use temor_render::{FrameCapture, PaneFrame};
 use temor_vt::{HoldHook, RenderHold, Terminal};
 
+use super::poison::lock;
 use super::term::Term;
 use crate::error::PaneError;
 
@@ -37,12 +38,6 @@ pub(super) struct HoldShared {
 }
 
 pub(super) type Shared = Arc<Mutex<HoldShared>>;
-
-fn lock(shared: &Shared) -> MutexGuard<'_, HoldShared> {
-    shared
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
 
 /// The terminal's hold hook: captures the frame into the shared state.
 #[derive(Debug)]
