@@ -10,7 +10,11 @@ use temor_core::remote::Grant;
 use temor_core::vocab::ids::PaneId;
 use temor_ssh::Port;
 
-use super::host_words::{ask_words, edit_line, forward_line, stage_line};
+use super::host_words::{
+    CLOSE_FORWARD, DECIDE_LATER, DONE_EDITING, EDIT_LOCALLY, FORWARD_PORT, OPEN_CHECK,
+    OPEN_DIRECTLY, OPEN_FORWARDED, REMEMBER_TIP, REPLACE_THEIRS, SHOW_CHANGES, TRY_AGAIN,
+    TRY_ANYWAY, USE_THEIRS, ask_words, edit_line, forward_line, stage_line,
+};
 use super::remote::RemoteBanners;
 use crate::edge::ssh_work::EditId;
 use crate::hub::{CheckRow, Desk, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
@@ -36,8 +40,8 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
             }
             if view.stage == Stage::Offline {
                 Button {
-                    label: "Try anyway".to_owned(),
-                    title: Some("Connect even though it looks offline".to_owned()),
+                    label: TRY_ANYWAY.label,
+                    title: TRY_ANYWAY.title(),
                     onclick: {
                         let desk = desk.clone();
                         move |_| desk.host_try_anyway(pane)
@@ -46,8 +50,8 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
             }
             if view.stage == Stage::Failed {
                 Button {
-                    label: "Try again".to_owned(),
-                    title: Some("Connect again".to_owned()),
+                    label: TRY_AGAIN.label,
+                    title: TRY_AGAIN.title(),
                     onclick: {
                         let desk = desk.clone();
                         move |_| desk.restart(pane)
@@ -61,8 +65,8 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
                     detail: Some(TextLine::from(format!("{host} asks for this before it connects"))),
                     actions: rsx! {
                         Button {
-                            label: "Open".to_owned(),
-                            title: Some("Open the confirmation page".to_owned()),
+                            label: OPEN_CHECK.label,
+                            title: OPEN_CHECK.title(),
                             onclick: {
                                 let desk = desk.clone();
                                 move |_| desk.host_open_check(pane)
@@ -103,12 +107,12 @@ fn Question(
             actions: rsx! {
                 Button {
                     label: ask.allow.to_owned(),
-                    title: Some("Remember this for this computer".to_owned()),
+                    title: Some(REMEMBER_TIP.to_owned()),
                     onclick: move |_| yes.host_answer(pane, Grant::Allowed),
                 }
                 Button {
                     label: ask.refuse.to_owned(),
-                    title: Some("Remember this for this computer".to_owned()),
+                    title: Some(REMEMBER_TIP.to_owned()),
                     onclick: move |_| no.host_answer(pane, Grant::Refused),
                 }
             },
@@ -144,14 +148,14 @@ fn Tools(
                 }
             },
             Button {
-                label: "Forward port…".to_owned(),
-                title: Some("Reach this computer's port from here".to_owned()),
+                label: FORWARD_PORT.label,
+                title: FORWARD_PORT.title(),
                 onclick: move |_| forwarding.host_forward(pane, &typed),
             }
             if opens_direct {
                 Button {
-                    label: "Open directly".to_owned(),
-                    title: Some("Open the port over your tailnet, with no forward".to_owned()),
+                    label: OPEN_DIRECTLY.label,
+                    title: OPEN_DIRECTLY.title(),
                     onclick: move |_| {
                         if let Some(number) = Port::parse(port().trim()) {
                             direct.host_open_direct(pane, number);
@@ -171,8 +175,8 @@ fn Tools(
                 }
             },
             Button {
-                label: "Edit locally".to_owned(),
-                title: Some("Open a copy here and save it back".to_owned()),
+                label: EDIT_LOCALLY.label,
+                title: EDIT_LOCALLY.title(),
                 onclick: move |_| editing.host_edit(pane, &file()),
             }
         }
@@ -191,14 +195,14 @@ fn Forwarded(pane: PaneId, host: String, line: ForwardLine, desk: Desk) -> Eleme
             Label { text, style: LabelStyle::Caption }
             if local.is_some() {
                 Button {
-                    label: "Open".to_owned(),
-                    title: Some("Open it in your browser".to_owned()),
+                    label: OPEN_FORWARDED.label,
+                    title: OPEN_FORWARDED.title(),
                     onclick: move |_| open.host_open_forwarded(pane, remote),
                 }
             }
             Button {
-                label: "Close".to_owned(),
-                title: Some("Stop forwarding this port".to_owned()),
+                label: CLOSE_FORWARD.label,
+                title: CLOSE_FORWARD.title(),
                 onclick: move |_| close.host_cancel_forward(pane, remote),
             }
         }
@@ -227,24 +231,24 @@ fn Edited(edit: EditLine, desk: Desk) -> Element {
                 actions: rsx! {
                     if diff_shown {
                         Button {
-                            label: "Show changes".to_owned(),
-                            title: Some("See what differs, line by line".to_owned()),
+                            label: SHOW_CHANGES.label,
+                            title: SHOW_CHANGES.title(),
                             onclick: move |_| changes.host_show_changes(id),
                         }
                     }
                     Button {
-                        label: "Replace theirs".to_owned(),
-                        title: Some("Write your copy over the computer's file".to_owned()),
+                        label: REPLACE_THEIRS.label,
+                        title: REPLACE_THEIRS.title(),
                         onclick: move |_| over.host_resolve(id, Resolution::Overwrite),
                     }
                     Button {
-                        label: "Use theirs".to_owned(),
-                        title: Some("Discard your changes and fetch the computer's file".to_owned()),
+                        label: USE_THEIRS.label,
+                        title: USE_THEIRS.title(),
                         onclick: move |_| theirs.host_resolve(id, Resolution::TakeRemote),
                     }
                     Button {
-                        label: "Decide later".to_owned(),
-                        title: Some("Keep editing; the next save asks again".to_owned()),
+                        label: DECIDE_LATER.label,
+                        title: DECIDE_LATER.title(),
                         onclick: move |_| later.host_resolve(id, Resolution::Later),
                     }
                 },
@@ -255,8 +259,8 @@ fn Edited(edit: EditLine, desk: Desk) -> Element {
         div { class: "temor-host-line",
             Label { text, style: LabelStyle::Caption }
             Button {
-                label: "Done".to_owned(),
-                title: Some("Stop watching and delete this copy".to_owned()),
+                label: DONE_EDITING.label,
+                title: DONE_EDITING.title(),
                 onclick: move |_| done.host_close_edit(id),
             }
         }

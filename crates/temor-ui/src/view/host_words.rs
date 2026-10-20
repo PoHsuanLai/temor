@@ -14,6 +14,75 @@ pub struct Ask {
     pub refuse: &'static str,
 }
 
+/// A button's label and its hover hint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ButtonWords {
+    pub label: &'static str,
+    pub tip: &'static str,
+}
+
+impl ButtonWords {
+    const fn new(label: &'static str, tip: &'static str) -> Self {
+        Self { label, tip }
+    }
+
+    /// The hint, as a button takes it.
+    pub fn title(self) -> Option<String> {
+        Some(self.tip.to_owned())
+    }
+}
+
+/// What a button that answers a question tells: the answer is kept for the computer.
+pub const REMEMBER_TIP: &str = "Remember this for this computer";
+
+/// Connecting again, from a view that stopped trying: a failed connection and a lost helper alike.
+pub const TRY_AGAIN: ButtonWords = ButtonWords::new("Try again", "Connect again");
+
+/// Connecting to a computer that looks offline.
+pub const TRY_ANYWAY: ButtonWords =
+    ButtonWords::new("Try anyway", "Connect even though it looks offline");
+
+/// The browser page a connection waits on.
+pub const OPEN_CHECK: ButtonWords = ButtonWords::new("Open", "Open the confirmation page");
+
+/// Making a port of the computer reachable here, from the banner and from a listening port's line.
+pub const FORWARD_PORT: ButtonWords = ButtonWords::new(
+    "Forward port\u{2026}",
+    "Reach this computer's port from here",
+);
+
+/// The tip of opening a port over the tailnet, whatever the button's label says.
+pub const OPEN_DIRECT_TIP: &str = "Open the port over your tailnet, with no forward";
+
+/// Opening the port typed in the banner over the tailnet.
+pub const OPEN_DIRECTLY: ButtonWords = ButtonWords::new("Open directly", OPEN_DIRECT_TIP);
+
+/// The edit field's button.
+pub const EDIT_LOCALLY: ButtonWords =
+    ButtonWords::new("Edit locally", "Open a copy here and save it back");
+
+/// A forwarded port, from its line.
+pub const OPEN_FORWARDED: ButtonWords = ButtonWords::new("Open", "Open it in your browser");
+
+/// Ending a forward, from its line.
+pub const CLOSE_FORWARD: ButtonWords = ButtonWords::new("Close", "Stop forwarding this port");
+
+/// The ways out of a file that changed on the computer.
+pub const SHOW_CHANGES: ButtonWords =
+    ButtonWords::new("Show changes", "See what differs, line by line");
+pub const REPLACE_THEIRS: ButtonWords =
+    ButtonWords::new("Replace theirs", "Write your copy over the computer's file");
+pub const USE_THEIRS: ButtonWords = ButtonWords::new(
+    "Use theirs",
+    "Discard your changes and fetch the computer's file",
+);
+pub const DECIDE_LATER: ButtonWords =
+    ButtonWords::new("Decide later", "Keep editing; the next save asks again");
+
+/// Ending an edit.
+pub const DONE_EDITING: ButtonWords =
+    ButtonWords::new("Done", "Stop watching and delete this copy");
+
 /// The words for each question the connection asks, one at a time.
 pub fn ask_words(action: BootstrapAction) -> Ask {
     match action {
@@ -76,7 +145,7 @@ pub fn forward_line(host: &str, remote: u16, local: Option<u16>) -> String {
 mod tests {
     use temor_core::host::consent::BootstrapAction;
 
-    use super::{ask_words, edit_line, forward_line, stage_line};
+    use super::*;
     use crate::hub::{EditStatus, Stage};
 
     #[test]
@@ -86,6 +155,24 @@ mod tests {
             let ask = ask_words(action);
             said.extend([ask.question, ask.detail, ask.allow, ask.refuse]);
         }
+        for words in [
+            TRY_AGAIN,
+            TRY_ANYWAY,
+            OPEN_CHECK,
+            FORWARD_PORT,
+            OPEN_DIRECTLY,
+            EDIT_LOCALLY,
+            OPEN_FORWARDED,
+            CLOSE_FORWARD,
+            SHOW_CHANGES,
+            REPLACE_THEIRS,
+            USE_THEIRS,
+            DECIDE_LATER,
+            DONE_EDITING,
+        ] {
+            said.extend([words.label, words.tip]);
+        }
+        said.extend([REMEMBER_TIP, OPEN_DIRECT_TIP]);
         let owned: Vec<String> = [
             stage_line(Stage::Connecting, "prod"),
             stage_line(Stage::Offline, "prod"),
