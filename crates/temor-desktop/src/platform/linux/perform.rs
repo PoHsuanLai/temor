@@ -123,14 +123,6 @@ fn token_of(text: &str) -> Result<Undoable, AppRefusal> {
         .map_err(|_| failed("could not make an undo token"))
 }
 
-fn kind_word(kind: PaneKind) -> &'static str {
-    match kind {
-        PaneKind::Terminal => "terminal",
-        PaneKind::Agent => "agent",
-        PaneKind::Viewer => "viewer",
-    }
-}
-
 /// The pane list as the JSON an agent reads.
 pub(super) fn pane_list(panes: &[PaneInfo]) -> String {
     let rows: Vec<_> = panes
@@ -138,7 +130,7 @@ pub(super) fn pane_list(panes: &[PaneInfo]) -> String {
         .map(|pane| {
             json!({
                 "pane": pane.id.0,
-                "kind": kind_word(pane.kind),
+                "kind": pane.kind.word(),
                 "title": pane.title,
                 "folder": pane.cwd.as_ref().map(|cwd| cwd.to_string_lossy()),
                 "in_front": matches!(pane.focus, Focus::Focused),

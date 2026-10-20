@@ -25,6 +25,25 @@ pub enum PaneKind {
     Viewer,
 }
 
+impl PaneKind {
+    /// The word for this kind in the desktop's intents (`dist/intents/org.quire.Temor.toml`) and
+    /// in the pane list an agent reads.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Terminal => "terminal",
+            Self::Agent => "agent",
+            Self::Viewer => "viewer",
+        }
+    }
+
+    /// The kind a word names, if it names one.
+    pub fn from_word(word: &str) -> Option<Self> {
+        [Self::Terminal, Self::Agent, Self::Viewer]
+            .into_iter()
+            .find(|kind| kind.word() == word)
+    }
+}
+
 /// Whether a pane has the keyboard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Focus {

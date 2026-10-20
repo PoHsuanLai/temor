@@ -3,10 +3,10 @@
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
 use crate::checkpoints::{
-    CheckpointPort, PlanDigest, PointId, PointList, PointPlan, Rewind, SessionKey, TurnHow,
-    TurnMark,
+    CheckpointPort, NoCheckpoints, PlanDigest, PointId, PointList, PointPlan, RESTORE_POINTS,
+    Rewind, SessionKey, TurnHow, TurnMark,
 };
-use crate::secrets::{SecretFault, SecretVault};
+use crate::secrets::{NoSecrets, SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
 use crate::{Badge, Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
 use std::sync::Arc;
@@ -146,61 +146,55 @@ impl SystemCheckpoints {
         _runtime: tokio::runtime::Handle,
     ) -> Result<Self, DesktopError> {
         Err(DesktopError::Unsupported {
-            what: "restore points",
+            what: RESTORE_POINTS,
         })
     }
 }
 
+/// Its constructor always fails, so no value of it exists; if one did, it would answer as
+/// [`NoCheckpoints`] does.
 impl CheckpointPort for SystemCheckpoints {
-    fn list(&self, _session: &SessionKey) -> Result<PointList, DesktopError> {
-        Ok(PointList::default())
+    fn list(&self, session: &SessionKey) -> Result<PointList, DesktopError> {
+        NoCheckpoints.list(session)
     }
 
-    fn plan(&self, _session: &SessionKey, _id: PointId) -> Result<PointPlan, DesktopError> {
-        Err(DesktopError::Unsupported {
-            what: "restore points",
-        })
+    fn plan(&self, session: &SessionKey, id: PointId) -> Result<PointPlan, DesktopError> {
+        NoCheckpoints.plan(session, id)
     }
 
     fn restore(
         &self,
-        _session: &SessionKey,
-        _id: PointId,
-        _digest: &PlanDigest,
+        session: &SessionKey,
+        id: PointId,
+        digest: &PlanDigest,
     ) -> Result<(), DesktopError> {
-        Err(DesktopError::Unsupported {
-            what: "restore points",
-        })
+        NoCheckpoints.restore(session, id, digest)
     }
 
     fn watch(
         &self,
-        _workspace: &str,
-        _label: &str,
-        _rewind: Rewind,
+        workspace: &str,
+        label: &str,
+        rewind: Rewind,
     ) -> Result<SessionKey, DesktopError> {
-        Err(DesktopError::Unsupported {
-            what: "restore points",
-        })
+        NoCheckpoints.watch(workspace, label, rewind)
     }
 
-    fn mark(&self, _session: &SessionKey) -> Result<TurnMark, DesktopError> {
-        Err(DesktopError::Unsupported {
-            what: "restore points",
-        })
+    fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {
+        NoCheckpoints.mark(session)
     }
 
     fn turn_ended(
         &self,
-        _session: &SessionKey,
-        _turn: TurnMark,
-        _how: TurnHow,
+        session: &SessionKey,
+        turn: TurnMark,
+        how: TurnHow,
     ) -> Result<(), DesktopError> {
-        Ok(())
+        NoCheckpoints.turn_ended(session, turn, how)
     }
 
-    fn close(&self, _session: &SessionKey) -> Result<(), DesktopError> {
-        Ok(())
+    fn close(&self, session: &SessionKey) -> Result<(), DesktopError> {
+        NoCheckpoints.close(session)
     }
 }
 
@@ -217,16 +211,18 @@ impl SystemSecrets {
     }
 }
 
+/// Its constructor always fails, so no value of it exists; if one did, it would answer as
+/// [`NoSecrets`] does.
 impl SecretVault for SystemSecrets {
-    fn get(&self, _account: &str) -> Result<Option<String>, SecretFault> {
-        Ok(None)
+    fn get(&self, account: &str) -> Result<Option<String>, SecretFault> {
+        NoSecrets.get(account)
     }
 
-    fn put(&self, _account: &str, _secret: &str) -> Result<(), SecretFault> {
-        Err(SecretFault::NoStore)
+    fn put(&self, account: &str, secret: &str) -> Result<(), SecretFault> {
+        NoSecrets.put(account, secret)
     }
 
-    fn delete(&self, _account: &str) -> Result<(), SecretFault> {
-        Err(SecretFault::NoStore)
+    fn delete(&self, account: &str) -> Result<(), SecretFault> {
+        NoSecrets.delete(account)
     }
 }

@@ -109,10 +109,8 @@ impl<'a> Reader<'a> {
 
     pub(super) fn kind(&self) -> Result<PaneKind, AppRefusal> {
         match self.choice("kind")? {
-            None | Some("terminal") => Ok(PaneKind::Terminal),
-            Some("agent") => Ok(PaneKind::Agent),
-            Some("viewer") => Ok(PaneKind::Viewer),
-            Some(_) => Err(AppRefusal::Unsupported),
+            None => Ok(PaneKind::Terminal),
+            Some(word) => PaneKind::from_word(word).ok_or(AppRefusal::Unsupported),
         }
     }
 
