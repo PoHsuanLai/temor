@@ -44,6 +44,7 @@ fn request_lines_parse_or_are_refused() {
         ("a bad seq", "status x idle".into(), Err(ReportRefusal::Syntax)),
         ("a bad wait", "status 1 waiting wait=sulking".into(), Err(ReportRefusal::Syntax)),
         ("a broken escape", "status 1 idle note=%G1".into(), Err(ReportRefusal::Syntax)),
+        ("a signed escape is not a digit pair", "status 1 idle note=%+A".into(), Err(ReportRefusal::Syntax)),
         ("a note that is not utf-8", "status 1 idle note=%FF".into(), Err(ReportRefusal::Syntax)),
         ("a note over its limit", format!("status 1 idle note={}", "a".repeat(513)), Err(ReportRefusal::TooLong)),
         ("a line over its limit", format!("status 1 idle note={}", "a".repeat(5000)), Err(ReportRefusal::TooLong)),

@@ -19,10 +19,12 @@
 
 mod env;
 mod error;
+mod osc7;
 mod shell;
 
 pub use env::ChildEnv;
 pub use error::ShellError;
+pub use osc7::{cwd_from_url, percent_decode_strict};
 pub use shell::{
     IntegrationPlan, IntegrationState, Shell, ShellKind, ShellScript, ShellStart, ShimFile, UserId,
     integration_scripts, passwd_login_shell, plan_integration, resolve_shell, write_shims,

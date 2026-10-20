@@ -18,6 +18,10 @@
 //! over the limit also ends the connection.
 
 use std::fmt;
+use std::str::FromStr;
+
+use temor_shell::percent_decode_strict;
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 
 /// The protocol version this library speaks.
 pub const VERSION: u32 = 1;
@@ -46,6 +50,52 @@ pub enum ReportWait {
     Permission,
     Question,
     SignIn,
+}
+
+impl ReportState {
+    /// The word on the wire.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReportState::Idle => "idle",
+            ReportState::Working => "working",
+            ReportState::Waiting => "waiting",
+            ReportState::Done => "done",
+            ReportState::Failed => "failed",
+        }
+    }
+}
+
+impl FromStr for ReportState {
+    type Err = ReportRefusal;
+
+    fn from_str(word: &str) -> Result<Self, ReportRefusal> {
+        [Self::Idle, Self::Working, Self::Waiting, Self::Done, Self::Failed]
+            .into_iter()
+            .find(|state| state.as_str() == word)
+            .ok_or(ReportRefusal::Syntax)
+    }
+}
+
+impl ReportWait {
+    /// The word on the wire.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReportWait::Permission => "permission",
+            ReportWait::Question => "question",
+            ReportWait::SignIn => "sign_in",
+        }
+    }
+}
+
+impl FromStr for ReportWait {
+    type Err = ReportRefusal;
+
+    fn from_str(word: &str) -> Result<Self, ReportRefusal> {
+        [Self::Permission, Self::Question, Self::SignIn]
+            .into_iter()
+            .find(|wait| wait.as_str() == word)
+            .ok_or(ReportRefusal::Syntax)
+    }
 }
 
 /// One status report from a pane's socket. Plain data: `Send` and `Sync`.
@@ -125,14 +175,7 @@ pub(super) fn parse_request(line: &str) -> Result<Request, ReportRefusal> {
 
 fn parse_status<'a>(mut words: impl Iterator<Item = &'a str>) -> Result<StatusLine, ReportRefusal> {
     let seq = words.next().and_then(|s| s.parse().ok());
-    let state = words.next().and_then(|s| match s {
-        "idle" => Some(ReportState::Idle),
-        "working" => Some(ReportState::Working),
-        "waiting" => Some(ReportState::Waiting),
-        "done" => Some(ReportState::Done),
-        "failed" => Some(ReportState::Failed),
-        _ => None,
-    });
+    let state = words.next().and_then(|s| s.parse().ok());
     let (Some(seq), Some(state)) = (seq, state) else {
         return Err(ReportRefusal::Syntax);
     };
@@ -145,10 +188,7 @@ fn parse_status<'a>(mut words: impl Iterator<Item = &'a str>) -> Result<StatusLi
     };
     for word in words {
         match word.split_once('=') {
-            Some(("wait", "permission")) => line.wait = Some(ReportWait::Permission),
-            Some(("wait", "question")) => line.wait = Some(ReportWait::Question),
-            Some(("wait", "sign_in")) => line.wait = Some(ReportWait::SignIn),
-            Some(("wait", _)) => return Err(ReportRefusal::Syntax),
+            Some(("wait", kind)) => line.wait = Some(kind.parse()?),
             Some(("app", app)) => {
                 let app = decode_note(app)?;
                 if app.len() > MAX_APP {
@@ -166,39 +206,24 @@ fn parse_status<'a>(mut words: impl Iterator<Item = &'a str>) -> Result<StatusLi
     Ok(line)
 }
 
+/// What `app=` and `note=` leave unescaped: letters, digits, `-`, `_`, `.` and `~`.
+const NOTE_SAFE: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'_')
+    .remove(b'.')
+    .remove(b'~');
+
 fn decode_note(raw: &str) -> Result<String, ReportRefusal> {
-    let bytes = raw.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%' {
-            let hex = bytes.get(i + 1..i + 3).ok_or(ReportRefusal::Syntax)?;
-            let hex = std::str::from_utf8(hex).map_err(|_| ReportRefusal::Syntax)?;
-            out.push(u8::from_str_radix(hex, 16).map_err(|_| ReportRefusal::Syntax)?);
-            i += 3;
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-        if out.len() > MAX_NOTE {
-            return Err(ReportRefusal::TooLong);
-        }
+    let bytes = percent_decode_strict(raw).ok_or(ReportRefusal::Syntax)?;
+    if bytes.len() > MAX_NOTE {
+        return Err(ReportRefusal::TooLong);
     }
-    let text = String::from_utf8(out).map_err(|_| ReportRefusal::Syntax)?;
+    let text = String::from_utf8(bytes).map_err(|_| ReportRefusal::Syntax)?;
     Ok(text.chars().filter(|c| !c.is_control()).collect())
 }
 
 fn encode_note(note: &str) -> String {
-    let mut out = String::new();
-    for b in note.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(char::from(b));
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
+    utf8_percent_encode(note, NOTE_SAFE).to_string()
 }
 
 /// The first line a client sends.
@@ -208,19 +233,10 @@ pub fn encode_hello() -> String {
 
 /// A status request line, ready to write (LF included). For the `temor` command and adapters.
 pub fn encode_status(line: &StatusLine) -> String {
-    let state = match line.state {
-        ReportState::Idle => "idle",
-        ReportState::Working => "working",
-        ReportState::Waiting => "waiting",
-        ReportState::Done => "done",
-        ReportState::Failed => "failed",
-    };
-    let mut out = format!("status {} {state}", line.seq);
-    match line.wait {
-        Some(ReportWait::Permission) => out.push_str(" wait=permission"),
-        Some(ReportWait::Question) => out.push_str(" wait=question"),
-        Some(ReportWait::SignIn) => out.push_str(" wait=sign_in"),
-        None => {}
+    let mut out = format!("status {} {}", line.seq, line.state.as_str());
+    if let Some(wait) = line.wait {
+        out.push_str(" wait=");
+        out.push_str(wait.as_str());
     }
     if let Some(app) = &line.app {
         out.push_str(" app=");
