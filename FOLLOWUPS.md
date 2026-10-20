@@ -132,7 +132,8 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       current user and `is_executable` (platform/macos.rs) through `proc_pidinfo`. temor-pty
 - [ ] macOS trial sandbox: none (bwrap is Linux-only), so proposals say "not checked". Decide whether
       anything replaces it. §8.3
-- [ ] Ubuntu 24.04+: unprivileged user namespaces are restricted by AppArmor; detect this, report
+- [x] (done in bulkhead 0467c14: `CannotSandbox::RestrictedByAppArmor` reads
+      `kernel.apparmor_restrict_unprivileged_userns` when the probe fails; temor shows it once it links bulkhead, P8) Ubuntu 24.04+: unprivileged user namespaces are restricted by AppArmor; detect this, report
       `NoSandbox`, and document the profile. §8.3
 - [ ] macOS: verify quire windows and IME (winit) and fontique's CoreText path; consider a
       `cargo check --target aarch64-apple-darwin` CI job (Zig can cross-build libghostty).
@@ -1567,7 +1568,8 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       texture, so this needs a row gap in temor-render (`followups-b27-plugview.md`).
 - [ ] Plugins: the built-in Claude Code and git adapters rewritten as plugins; detent's Extensions
       page (lists `Catalog::plugins()`/`problems()`, never reachable from an agent); a sandbox.
-- [ ] Ubuntu 24.04+ user namespaces → `NoSandbox`: belongs beside bulkhead's runner, which temor does
+- [x] (done in bulkhead 0467c14: `CannotSandbox::RestrictedByAppArmor` reads
+      `kernel.apparmor_restrict_unprivileged_userns` when the probe fails; temor shows it once it links bulkhead, P8) Ubuntu 24.04+ user namespaces → `NoSandbox`: belongs beside bulkhead's runner, which temor does
       not link yet (P8).
 - [x] Done while a save is checking or uploading waits for it and closes after, as an editor does;
       a save that does not get there keeps the copy and says so (owner: "standard behavior").
