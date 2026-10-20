@@ -1,7 +1,9 @@
-//! Linux: every operation walks from the root's descriptor with `openat2` and
-//! `RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS`, so the kernel refuses a symlink or an escape even if
-//! the tree changes between two calls. Folders are made with `mkdirat` relative to a held
-//! descriptor, and files are created with `O_EXCL`.
+//! Linux and macOS: every operation walks from the root's descriptor, one name at a time, so a
+//! symlink or an escape is refused even if the tree changes between two calls. Linux asks the
+//! kernel for that with `openat2` and `RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS`; macOS has no
+//! `openat2`, but a name is a single path component (`RelPath` holds no `/` or `..`), and
+//! `openat` with `O_NOFOLLOW` refuses a link as that component. Folders are made with `mkdirat`
+//! relative to a held descriptor, and files are created with `O_EXCL`.
 
 use std::fs::File;
 use std::io::{self, Write};
@@ -10,7 +12,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::SystemTime;
 
-use rustix::fs::{Mode, OFlags, ResolveFlags, mkdirat, openat2, symlinkat, unlinkat};
+use rustix::fs::{Mode, OFlags, RawMode, mkdirat, symlinkat, unlinkat};
 use rustix::io::Errno;
 
 use crate::error::TransferError;
@@ -18,8 +20,8 @@ use crate::name::RelPath;
 
 /// Folders the transfer makes start as 0o755 and files as 0o644; the remote's `prm` is applied
 /// afterwards (`set_file_mode`, `set_dir_mode`).
-const FOLDER_MODE: u32 = 0o755;
-const FILE_MODE: u32 = 0o644;
+const FOLDER_MODE: RawMode = 0o755;
+const FILE_MODE: RawMode = 0o644;
 
 /// Syncs a folder to disk, so a rename made inside it survives a crash.
 pub fn sync_folder(path: &Path) -> Result<(), TransferError> {
@@ -33,8 +35,29 @@ pub fn sync_folder(path: &Path) -> Result<(), TransferError> {
     })
 }
 
-fn resolve() -> ResolveFlags {
-    ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS
+/// Opens `name`, one path component, in `dir`, refusing a link there. `ELOOP` says a link was
+/// refused; on Linux `EXDEV` says the name tried to leave the root.
+#[cfg(target_os = "linux")]
+fn open_beneath(dir: impl AsFd, name: &str, flags: OFlags, mode: Mode) -> Result<OwnedFd, Errno> {
+    use rustix::fs::{ResolveFlags, openat2};
+    openat2(
+        dir,
+        name,
+        flags,
+        mode,
+        ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS,
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn open_beneath(dir: impl AsFd, name: &str, flags: OFlags, mode: Mode) -> Result<OwnedFd, Errno> {
+    // `name` is one component, so `O_NOFOLLOW` (which refuses a link as the last component) is
+    // all of the check. `O_NOFOLLOW_ANY` is no help: macOS answers `EINVAL` when it is combined
+    // with `O_CREAT`.
+    if name.contains('/') {
+        return Err(Errno::INVAL);
+    }
+    rustix::fs::openat(dir, name, flags | OFlags::NOFOLLOW, mode)
 }
 
 fn io_at(path: &Path, err: Errno) -> TransferError {
@@ -97,14 +120,17 @@ impl Root {
                     }
                 }
                 let flags = OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC;
-                openat2(dir, part.as_str(), flags, Mode::empty(), resolve())
+                open_beneath(dir, part.as_str(), flags, Mode::empty())
                     .map_err(|err| refuse_or_io(at, err))?
             };
             current = Some(next);
         }
         match current {
             Some(fd) => Ok(fd),
-            None => rustix::io::dup(&self.fd).map_err(|err| io_at(at, err)),
+            None => self.fd.try_clone().map_err(|source| TransferError::Io {
+                path: at.to_path_buf(),
+                source,
+            }),
         }
     }
 
@@ -118,15 +144,9 @@ impl Root {
         let (folders, leaf) = split(rel)?;
         let parent = self.folder(folders, true, &path)?;
         let flags = OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC;
-        openat2(
-            &parent,
-            leaf,
-            flags,
-            Mode::from_raw_mode(FILE_MODE),
-            resolve(),
-        )
-        .map(drop)
-        .map_err(|err| refuse_or_io(&path, err))
+        open_beneath(&parent, leaf, flags, Mode::from_raw_mode(FILE_MODE))
+            .map(drop)
+            .map_err(|err| refuse_or_io(&path, err))
     }
 
     /// Opens an existing file for writing, refusing links, and returns it as a `File`.
@@ -134,14 +154,8 @@ impl Root {
         let path = rel.to_path_buf();
         let (folders, leaf) = split(rel)?;
         let parent = self.folder(folders, false, &path)?;
-        let fd = openat2(
-            &parent,
-            leaf,
-            flags | OFlags::CLOEXEC,
-            Mode::empty(),
-            resolve(),
-        )
-        .map_err(|err| refuse_or_io(&path, err))?;
+        let fd = open_beneath(&parent, leaf, flags | OFlags::CLOEXEC, Mode::empty())
+            .map_err(|err| refuse_or_io(&path, err))?;
         Ok(File::from(fd))
     }
 

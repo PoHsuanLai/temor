@@ -1,7 +1,5 @@
 //! Stub for platforms without a kernel-enforced, symlink-refusing resolution yet. Every operation
 //! is refused, so a transfer ends cleanly instead of writing through a link.
-// TODO(platform:macos): open with `O_NOFOLLOW_ANY` relative to a root descriptor (macOS 11+),
-// matching the Linux edge.
 // TODO(platform:windows): create beneath a directory handle with `NtCreateFile`, refusing reparse
 // points, and refuse `:` components (alternate data streams) in `RelPath`.
 
@@ -17,7 +15,7 @@ fn unsupported() -> TransferError {
 }
 
 // TODO(platform:windows): directories cannot be opened for sync; the rename is left to the file
-// system's own journal. TODO(platform:macos): sync the directory's descriptor, as on Linux.
+// system's own journal.
 /// Syncs a folder. Nothing is done here yet, so a rename may not survive a crash on this platform.
 pub fn sync_folder(_path: &Path) -> Result<(), TransferError> {
     Ok(())
