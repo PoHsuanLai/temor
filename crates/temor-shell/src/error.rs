@@ -14,4 +14,14 @@ pub enum ShellError {
         #[source]
         source: io::Error,
     },
+    /// A folder meant for this user alone could not be made or tightened.
+    #[error("cannot make {path} private to this user: {source}")]
+    PrivateDir {
+        path: PathBuf,
+        #[source]
+        source: io::Error,
+    },
+    /// A folder meant for this user alone is another user's.
+    #[error("{path} belongs to another user")]
+    NotPrivate { path: PathBuf },
 }

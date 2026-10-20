@@ -21,6 +21,9 @@ pub enum PaneError {
     /// A pane id was not 1 to 32 letters, digits, `-` or `_`; the caller allocates a valid one.
     #[error("not a usable pane id: {0:?}")]
     BadPaneId(String),
+    /// The pane's status socket folder could not be made private to this user.
+    #[error("the status socket folder is not private: {0}")]
+    SocketDir(#[from] temor_shell::ShellError),
     /// The pane's status socket could not be made in its directory.
     #[error("the status socket at {path} failed: {source}")]
     Socket {

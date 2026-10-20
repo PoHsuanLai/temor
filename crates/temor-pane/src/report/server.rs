@@ -92,10 +92,9 @@ impl PaneSocket {
             path: dir.to_path_buf(),
             source,
         };
-        platform::ensure_private_dir(dir).map_err(io_err)?;
+        temor_shell::ensure_private_dir(dir)?;
         let path = dir.join(format!("{}.sock", key.as_str()));
-        // sun_path holds 108 bytes on Linux with the NUL; 104 is the smallest elsewhere.
-        if path.as_os_str().len() >= 104 {
+        if path.as_os_str().len() > temor_shell::SOCKET_PATH_MAX {
             return Err(PaneError::SocketPathTooLong(path));
         }
         match std::fs::remove_file(&path) {
