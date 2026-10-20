@@ -40,10 +40,7 @@ pub fn parse_merge_tree(out: &GitOutput) -> Result<Vec<RelPath>, CoreError> {
         what: "merge-tree".into(),
     };
     if !matches!(out.code, 0 | 1) {
-        return Err(CoreError::GitFailed {
-            what: "merge-tree".into(),
-            stderr: out.stderr.chars().take(300).collect(),
-        });
+        return Err(CoreError::git_failed("merge-tree", &out.stderr));
     }
     let mut fields = out.stdout.split(|b| *b == 0);
     let first = fields.next().ok_or_else(bad)?;
@@ -119,10 +116,7 @@ fn merge_base(git: &dyn Git, repo: &str, a: &Oid, b: &Oid) -> Result<Option<Oid>
     match out.code {
         0 => Ok(Some(Oid::parse(&out.text())?)),
         1 => Ok(None),
-        _ => Err(CoreError::GitFailed {
-            what: cmd.what(),
-            stderr: out.stderr.chars().take(300).collect(),
-        }),
+        _ => Err(CoreError::git_failed(cmd.what(), &out.stderr)),
     }
 }
 

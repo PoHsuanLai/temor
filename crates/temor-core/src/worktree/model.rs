@@ -72,7 +72,7 @@ impl Oid {
             && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
         match ok {
             true => Ok(Oid(text.to_owned())),
-            false => Err(CoreError::NotACommit(text.chars().take(80).collect())),
+            false => Err(CoreError::not_a_commit(text)),
         }
     }
 
@@ -80,6 +80,15 @@ impl Oid {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+}
+
+/// The start of every branch an agent worktree works on: `agent/<name>`.
+pub(super) const AGENT_BRANCH_PREFIX: &str = "agent/";
+
+/// The folder under temor's data folder that holds every agent worktree: `<data>/worktrees`.
+/// Written here once, for the code that makes a path and the code that tells which are ours.
+pub(super) fn worktrees_root(data_dir: &str) -> String {
+    format!("{}/worktrees", data_dir.trim_end_matches('/'))
 }
 
 /// A worktree's short name: lowercase letters, digits and single dashes, 1 to 40 characters.
@@ -116,7 +125,7 @@ impl WorktreeName {
 
     /// The branch the agent works on: `agent/<name>`.
     pub fn branch(&self) -> String {
-        format!("agent/{}", self.0)
+        format!("{AGENT_BRANCH_PREFIX}{}", self.0)
     }
 }
 

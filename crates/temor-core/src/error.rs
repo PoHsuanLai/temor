@@ -70,3 +70,23 @@ pub enum CoreError {
     #[error("not a usable worktree name: {0:?}")]
     BadWorktreeName(String),
 }
+
+/// How much of git's message is kept in an error.
+const STDERR_KEEP: usize = 300;
+/// How much of a rejected ref or id is kept in an error.
+const REV_KEEP: usize = 80;
+
+impl CoreError {
+    /// git ran `what` and refused with `stderr`, cut short.
+    pub fn git_failed(what: impl Into<String>, stderr: &str) -> Self {
+        Self::GitFailed {
+            what: what.into(),
+            stderr: stderr.chars().take(STDERR_KEEP).collect(),
+        }
+    }
+
+    /// `text` did not name a commit; the first of it is kept.
+    pub fn not_a_commit(text: &str) -> Self {
+        Self::NotACommit(text.chars().take(REV_KEEP).collect())
+    }
+}
