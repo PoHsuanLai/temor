@@ -1,8 +1,9 @@
 //! Killing the process group and reaping the leader leaves nothing behind.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use temor_pty::{ChildExit, PtyError, SignalKind};
+use temor_testkit::eventually;
 
 use crate::support::{Scratch, Term, bash, proc_alive, setsid};
 
@@ -31,11 +32,11 @@ fn kill_reaps_the_leader_and_ends_the_group() {
     // Reaped at once: no zombie under our pid.
     assert!(!proc_alive(leader), "leader {leader} is still in /proc");
     // The job got the same signal; whoever adopted it reaps it.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while proc_alive(job) && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(20));
-    }
-    assert!(!proc_alive(job), "job {job} survived the group kill");
+    eventually(
+        &format!("job {job} to die with the group kill"),
+        Duration::from_secs(5),
+        || !proc_alive(job),
+    );
 
     assert_eq!(term.pty.try_exit().expect("try_exit"), Some(exit));
     assert!(matches!(

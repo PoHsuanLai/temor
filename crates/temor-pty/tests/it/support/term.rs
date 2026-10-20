@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use temor_pty::{
     Interest, Pty, PtyIo, ReadOutcome, Ready, SessionLauncher, SpawnSpec, WriteOutcome,
 };
+use temor_testkit::find;
 
 pub struct Term {
     pub pty: Pty,
@@ -120,10 +121,6 @@ impl Term {
             }
         }
     }
-}
-
-pub fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack.windows(needle.len()).position(|w| w == needle)
 }
 
 fn count(haystack: &[u8], needle: &[u8]) -> usize {

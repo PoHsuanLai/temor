@@ -13,8 +13,9 @@ use temor_pty::{
 use temor_shell::ChildEnv;
 use tempfile::TempDir;
 
-pub use plain::{bash, bash_interactive, proc_alive};
-pub use term::{Term, find};
+pub use plain::{bash, bash_interactive};
+pub use temor_testkit::{find, proc_alive, program_or_skip};
+pub use term::Term;
 
 /// A scratch HOME, runtime directory and working directory, removed when dropped.
 pub struct Scratch {
@@ -72,21 +73,6 @@ fn test_path() -> OsString {
 /// The program `name` on the test's PATH, if installed.
 pub fn program(name: &str) -> Option<PathBuf> {
     find_program(name, &test_path())
-}
-
-/// The program `name`, or a printed note that the test is skipped. With `TEMOR_REQUIRE_TOOLS=1`
-/// (the gate sets it) a missing program fails the test instead, so a gate machine without zsh,
-/// fish or nu cannot pass these tests with no assertions.
-pub fn program_or_skip(name: &str, test: &str) -> Option<PathBuf> {
-    let found = program(name);
-    if found.is_none() {
-        assert!(
-            std::env::var("TEMOR_REQUIRE_TOOLS").as_deref() != Ok("1"),
-            "{name} is required (TEMOR_REQUIRE_TOOLS=1) but is not on PATH ({test})"
-        );
-        println!("note: {test} skipped: {name} is not installed");
-    }
-    found
 }
 
 /// util-linux `setsid` where installed (Linux), else this crate's trampoline.

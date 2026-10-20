@@ -1,7 +1,6 @@
 //! Specs for programs started without shell integration.
 
 use std::ffi::OsString;
-use std::path::PathBuf;
 
 use temor_pty::SpawnSpec;
 
@@ -25,8 +24,4 @@ pub fn bash_interactive(scratch: &Scratch) -> SpawnSpec {
     let mut spec = bash(scratch, &["-i"]);
     spec.env.set("PS1", "$ ");
     spec
-}
-
-pub fn proc_alive(pid: i32) -> bool {
-    PathBuf::from(format!("/proc/{pid}")).exists()
 }
