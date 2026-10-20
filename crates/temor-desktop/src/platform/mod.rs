@@ -26,7 +26,7 @@ pub use linux::{
     SystemTailnet,
 };
 #[cfg(all(target_os = "macos", feature = "quire-desktop"))]
-pub use macos::{SystemDock, SystemSecrets};
+pub use macos::{SystemDock, SystemInstance, SystemSecrets};
 #[cfg(not(all(
     any(target_os = "linux", target_os = "macos"),
     feature = "quire-desktop"
@@ -36,6 +36,4 @@ pub use unsupported::{
     SystemTailnet,
 };
 #[cfg(all(target_os = "macos", feature = "quire-desktop"))]
-pub use unsupported::{
-    SystemCheckpoints, SystemInstance, SystemIntents, SystemLinks, SystemTailnet,
-};
+pub use unsupported::{SystemCheckpoints, SystemIntents, SystemLinks, SystemTailnet};

@@ -42,9 +42,10 @@ callers-for-tests = ["quire-desktop", "peephole-bus/fake"]
 [dependencies]
 serde_json = { workspace = true }
 temor-pty = { workspace = true }
+temor-shell = { workspace = true }
 temor-ssh = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt", "net", "io-util", "time"] }
 
 # Only a Linux build has a session bus; `quire-desktop` names these.
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -1,5 +1,5 @@
 //! Builds without the Linux desktop services: the same API, every service absent.
-//! TODO(platform:macos): single instance through a socket (the Keychain and the Dock are `macos.rs`).
+//! TODO(platform:macos): the agent layer (the Keychain, the Dock and single instance are `macos/`).
 //! TODO(platform:windows): taskbar overlay badge, single instance through a named pipe.
 
 #[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
@@ -11,15 +11,20 @@ use crate::checkpoints::{
 #[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 use crate::secrets::{NoSecrets, SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
-use crate::{Claim, DesktopEnv, DesktopError, Primary, Request, WindowPort};
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
+use crate::{Claim, Primary, Request};
+use crate::{DesktopEnv, DesktopError, WindowPort};
 use std::sync::Arc;
 use temor_ssh::TailnetHost;
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 use tokio::sync::mpsc::unbounded_channel;
 
 /// Single instance. Without a bus every launch is the first.
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 #[derive(Debug, Clone)]
 pub struct SystemInstance;
 
+#[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 impl SystemInstance {
     /// An instance claim in `env`.
     pub fn new(_env: DesktopEnv) -> Self {

@@ -70,7 +70,6 @@ pub fn launch_token(wayland: Option<&str>) -> Option<String> {
 /// threads, which the caller keeps alive until the window closes. `token` is the activation token
 /// this launch was started with (`XDG_ACTIVATION_TOKEN`); a later launch passes it on so the
 /// running window can raise itself.
-// TODO(platform:macos): a second launch raises the window through NSApplication activation.
 pub fn join(runtime: &Handle, env: DesktopEnv, request: &Request, token: Option<&str>) -> Joined {
     let claim = runtime.block_on(SystemInstance::new(env.clone()).claim_with(request, token));
     match claim {
