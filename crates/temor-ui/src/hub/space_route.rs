@@ -6,6 +6,7 @@ use std::path::Path;
 
 use ds::components::app::spaces::SpaceId;
 use temor_core::space::{SpaceRoute, route, route_folder, routes_of};
+use temor_core::vocab::home;
 use temor_core::vocab::text::RoutePattern;
 
 use super::model::{Hub, HubRef};
@@ -41,13 +42,7 @@ impl Hub {
 
 /// `pattern` with a leading `~` written as `home`; other patterns as they are.
 pub(super) fn expand_home(pattern: &RoutePattern, home: &Path) -> RoutePattern {
-    let text = pattern.as_str();
-    match text.strip_prefix('~') {
-        Some(rest) if rest.is_empty() || rest.starts_with('/') => {
-            RoutePattern(format!("{}{rest}", home.display()))
-        }
-        _ => pattern.clone(),
-    }
+    RoutePattern(home::expand_home(pattern.as_str(), &home.to_string_lossy()))
 }
 
 impl HubRef {

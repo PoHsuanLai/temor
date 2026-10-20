@@ -264,6 +264,37 @@ mod spaces {
     }
 
     #[test]
+    fn a_root_written_with_a_tilde_is_the_home_folder_for_the_shell_and_its_variables_file() {
+        use temor_core::space::Profile;
+        use temor_core::vocab::text::{ProjectRoot, RelPath};
+
+        let home = tempfile::tempdir().expect("scratch home");
+        std::fs::create_dir_all(home.path().join("app")).expect("app folder");
+        std::fs::write(home.path().join("app/.env"), "FROM_DOTENV=found\n").expect("dotenv");
+        let mut hub = Hub::new(super::launch_in(home.path().to_path_buf()));
+        hub.book.spaces = Spaces::first_run(
+            [Project {
+                root: Some(ProjectRoot("~/app".to_owned())),
+                profile: Profile {
+                    dotenv: Some(RelPath(".env".to_owned())),
+                    ..Profile::default()
+                },
+                ..Project::default()
+            }],
+            Project::default,
+        );
+        hub.book.active = hub.book.spaces.current().id;
+        let start = hub.space_start();
+        let folder = home.path().join("app").display().to_string();
+        assert_eq!(start.cwd, Some(Cwd(folder)));
+        let found = start
+            .env
+            .get("FROM_DOTENV")
+            .map(|v| v.to_string_lossy().into_owned());
+        assert_eq!(found.as_deref(), Some("found"), "{:?}", hub.notices);
+    }
+
+    #[test]
     fn only_a_leading_tilde_is_the_home_folder() {
         let home = std::path::Path::new("/home/someone");
         #[rustfmt::skip]

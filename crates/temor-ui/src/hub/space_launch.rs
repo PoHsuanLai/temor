@@ -3,7 +3,8 @@
 //! key agent. The core puts the plan together (`space::launch`); this reads the dotenv file,
 //! starts the agent and asks the account store.
 
-use temor_core::space::{RuntimeDir, dotenv_path, launch};
+use ds::components::app::spaces::SpaceId;
+use temor_core::space::{Project, RuntimeDir, dotenv_path, launch};
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
 use temor_shell::ChildEnv;
@@ -25,7 +26,7 @@ impl Hub {
     /// of the dotenv file, the agent, a secret) is told to the person and left out.
     pub(super) fn space_start(&mut self) -> SpaceStart {
         let space = self.book.active;
-        let project = self.book.project_of(space);
+        let project = self.project_here(space);
         let dotenv = match dotenv_path(&project) {
             Ok(path) => path.and_then(|path| read_dotenv(&path)),
             Err(err) => {
@@ -68,6 +69,13 @@ impl Hub {
         SpaceStart { cwd: plan.cwd, env }
     }
 
+    /// The Space's project with a root written `~/work` made absolute under the person's home,
+    /// as the shell's folder and the variables file's path are both read from it.
+    fn project_here(&self, space: SpaceId) -> Project {
+        let home = self.launch.ambient.home.to_string_lossy();
+        self.book.project_of(space).with_home(&home)
+    }
+
     /// The person's runtime folder, as the agent's socket folder is made under it.
     fn runtime_dir(&self) -> RuntimeDir {
         let ambient = &self.launch.ambient;
@@ -83,8 +91,7 @@ impl Hub {
         match input {
             WorkspaceIn::NewTab { cwd: None } => WorkspaceIn::NewTab {
                 cwd: self
-                    .book
-                    .project_of(self.book.active)
+                    .project_here(self.book.active)
                     .root
                     .map(|root| Cwd(root.0)),
             },
