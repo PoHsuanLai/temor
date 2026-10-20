@@ -17,6 +17,8 @@ mod desktop;
 mod desktop_io;
 #[cfg(test)]
 mod desktop_tests;
+#[cfg(test)]
+mod drop_pane_tests;
 mod events;
 mod facts;
 mod facts_folder;

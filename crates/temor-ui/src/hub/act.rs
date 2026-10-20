@@ -56,11 +56,7 @@ impl Hub {
             WorkspaceOut::End(pane) => self.end_pane(pane),
             WorkspaceOut::Forgotten(panes) => {
                 for pane in panes {
-                    self.recent.remove(&pane);
-                    self.ssh.closed.remove(&pane);
-                    if let Some(dir) = &self.state_dir {
-                        sidecar::remove(dir, pane);
-                    }
+                    self.forget_pane(pane);
                 }
             }
             WorkspaceOut::Focused(_) => self.refresh_probe(),
@@ -105,10 +101,7 @@ impl Hub {
             Ok(mut session) => {
                 // Only the pane that has the keyboard counts as focused (a long command that
                 // finishes in another pane is worth a notice).
-                session.set_focus(match self.keyboard_pane() == Some(spawn.pane) {
-                    true => Focus::Focused,
-                    false => Focus::Unfocused,
-                });
+                session.set_focus(self.focus_of(spawn.pane));
                 if let Some(command) = &spawn.relaunch {
                     type_command(&session, command.as_str());
                 }
@@ -132,14 +125,7 @@ impl Hub {
 
     /// Ends a pane's program. Its scrollback stays only when the pane is in a closed tab.
     pub(super) fn end_pane(&mut self, pane: PaneId) {
-        self.run_closed(pane);
-        self.viewer_ended(pane);
-        self.agent_pane_ended(pane);
-        self.ssh_forget(pane);
-        if let Some(slot) = self.slots.remove(&pane) {
-            // The view may still hold the slot for a frame; the program ends now.
-            slot.borrow_mut().session = None;
-        }
+        self.drop_pane(pane);
         let in_closed_tab = self
             .ws
             .closed
@@ -148,6 +134,38 @@ impl Hub {
             .any(|closed| closed.tab.tree.contains(pane));
         if !in_closed_tab {
             self.recent.remove(&pane);
+        }
+    }
+
+    /// Everything a pane that is gone leaves running: its run tab's launch stops waiting, its
+    /// viewer, agent sockets and host state go, and so does its session. The one path for a pane
+    /// that closes and for a pane whose Space is deleted. Its scrollback is the caller's.
+    pub(super) fn drop_pane(&mut self, pane: PaneId) {
+        self.run_closed(pane);
+        self.viewer_ended(pane);
+        self.agent_pane_ended(pane);
+        self.ssh_forget(pane);
+        if let Some(slot) = self.slots.remove(&pane) {
+            // The view may still hold the slot for a frame; the program ends now.
+            slot.borrow_mut().session = None;
+        }
+    }
+
+    /// What is kept of a pane that can no longer come back: its scrollback, its place in the
+    /// closed list of hosts, and its sidecar file.
+    pub(super) fn forget_pane(&mut self, pane: PaneId) {
+        self.recent.remove(&pane);
+        self.ssh.closed.remove(&pane);
+        if let Some(dir) = &self.state_dir {
+            sidecar::remove(dir, pane);
+        }
+    }
+
+    /// Whether `pane`'s session counts as focused: only the pane with the keyboard does.
+    pub(super) fn focus_of(&self, pane: PaneId) -> Focus {
+        match self.keyboard_pane() == Some(pane) {
+            true => Focus::Focused,
+            false => Focus::Unfocused,
         }
     }
 
@@ -171,7 +189,8 @@ impl Hub {
             socket.as_deref(),
             run.as_ref().map(|run| run.program()),
         ) {
-            Ok(session) => {
+            Ok(mut session) => {
+                session.set_focus(self.focus_of(pane));
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }

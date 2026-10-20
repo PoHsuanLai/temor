@@ -11,7 +11,7 @@ use temor_core::workspace::WorkspaceOut;
 
 use super::model::{Hub, HubRef};
 use super::spaces::empty_workspace;
-use crate::edge::{remove_session_for, sidecar};
+use crate::edge::remove_session_for;
 
 impl Hub {
     /// Moves `tab` of the Space on screen to the Space `to`. Its panes keep running; the tab is
@@ -105,13 +105,8 @@ impl Hub {
                 .iter()
                 .flat_map(|closed| closed.tab.tree.panes());
             for pane in ws.tabs.panes().into_iter().chain(closed) {
-                if let Some(slot) = self.slots.remove(&pane) {
-                    slot.borrow_mut().session = None;
-                }
-                self.recent.remove(&pane);
-                if let Some(dir) = &self.state_dir {
-                    sidecar::remove(dir, pane);
-                }
+                self.drop_pane(pane);
+                self.forget_pane(pane);
             }
         }
         if let Some(dir) = &self.state_dir {

@@ -6,7 +6,6 @@
 use std::sync::{Arc, Mutex};
 
 use temor_core::host::master::OpenAs;
-use temor_core::notify::Focus;
 use temor_core::remote::HelperState;
 use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
@@ -115,13 +114,6 @@ impl Hub {
                 self.feed_master(alias, temor_core::host::master::MasterIn::Failed(pane));
                 self.fail_host(pane, err.to_string());
             }
-        }
-    }
-
-    fn focus_of(&self, pane: PaneId) -> Focus {
-        match self.keyboard_pane() == Some(pane) {
-            true => Focus::Focused,
-            false => Focus::Unfocused,
         }
     }
 
