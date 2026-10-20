@@ -67,11 +67,11 @@ temor-wire = { path = "crates/temor-wire" }
 temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "4e0d887cbbc0c7b8be7ceca826df53317fc61080" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c6208b0f6c55f3c4a83010f2d0473528b614b68a" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c6208b0f6c55f3c4a83010f2d0473528b614b68a" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c6208b0f6c55f3c4a83010f2d0473528b614b68a" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c6208b0f6c55f3c4a83010f2d0473528b614b68a" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "c6208b0f6c55f3c4a83010f2d0473528b614b68a" }
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "eb0deff12add543565ec41eecffda646ede43cf0" }
 
