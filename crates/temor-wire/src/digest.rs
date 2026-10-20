@@ -8,6 +8,13 @@ use serde::{Deserialize, Serialize, Serializer};
 pub struct ContentHash(pub [u8; 32]);
 
 impl ContentHash {
+    /// The first 16 hex digits of the hash: enough to name a file or a socket after it.
+    pub fn short(self) -> String {
+        let mut hex = self.to_hex();
+        hex.truncate(16);
+        hex
+    }
+
     /// The hash written as 64 lowercase hex digits.
     pub fn to_hex(self) -> String {
         use std::fmt::Write;

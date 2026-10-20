@@ -4,11 +4,11 @@
 use std::io::{Read, Write};
 use std::time::Duration;
 
+use super::command::DAEMON;
 use super::env::HostEnv;
-use super::identity::hash_executable;
-use super::paths::{runtime_dir, socket_path};
+use super::socket::{SocketSpot, socket_spot};
 use crate::error::Error;
-use crate::platform::{Half, connect, ensure_private_dir, spawn_detached};
+use crate::platform::{Half, connect, spawn_detached};
 
 /// How long to wait for a daemon that was just started to listen.
 const START_TRIES: u32 = 50;
@@ -16,19 +16,12 @@ const START_WAIT: Duration = Duration::from_millis(100);
 
 /// Proxies stdin and stdout to the daemon until either side ends.
 pub fn run_stdio(env: &HostEnv) -> Result<(), Error> {
-    let helper = hash_executable(&env.exe)?;
-    let dir = runtime_dir(env.xdg_runtime_dir.as_deref(), env.home.as_deref()).ok_or(
-        Error::Unsupported {
-            feature: "a private folder for the socket",
-        },
-    )?;
-    ensure_private_dir(&dir)?;
-    let socket = socket_path(&dir, &helper);
+    let SocketSpot { socket, .. } = socket_spot(env)?;
 
     let connection = match connect(&socket) {
         Ok(connection) => connection,
         Err(_) => {
-            spawn_detached(&env.exe, &["daemon"])?;
+            spawn_detached(&env.exe, &[DAEMON])?;
             wait_for(&socket)?
         }
     };

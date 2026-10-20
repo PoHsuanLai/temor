@@ -8,13 +8,14 @@ use std::path::{Path, PathBuf};
 use temor_core::remote::{CacheDir, HostArch, HostOs, Probe};
 use temor_core::vocab::text::HelperHash;
 use temor_ssh::{ControlLayout, HostAlias};
+use temor_wire::hello::{HELPER_CACHE_FOLDER, HelperVersion};
 
 use super::remote_builds::arch_of;
 use temor_wire::digest::ContentHash;
 
 /// Where the helper build `hash` lives on the host (the login shell expands the `~`).
 pub fn helper_path(hash: &ContentHash) -> String {
-    format!("~/.cache/temor-remote/{}/temor-remote", hash.to_hex())
+    format!("~/.cache/{}", HelperVersion::cache_path(*hash))
 }
 
 /// The helper build this temor carries: its bytes and their hash.
@@ -154,7 +155,7 @@ pub fn parse_probe(text: &str, ours: &[HelperHash]) -> Found {
 /// The command that stores what it reads as the build `hash` and prints the hash of what it
 /// stored. The file appears under its name only once it is whole and executable.
 pub fn install_script(hash: &ContentHash) -> String {
-    let dir = format!("$HOME/.cache/temor-remote/{}", hash.to_hex());
+    let dir = format!("$HOME/.cache/{HELPER_CACHE_FOLDER}/{}", hash.to_hex());
     format!(
         "sh -c 'set -e; d=\"{dir}\"; mkdir -p \"$d\"; cat > \"$d/temor-remote.part\"; \
 chmod 755 \"$d/temor-remote.part\"; mv \"$d/temor-remote.part\" \"$d/temor-remote\"; \
@@ -165,7 +166,7 @@ sha256sum \"$d/temor-remote\" | cut -d\" \" -f1'"
 /// The command that removes the build `hash` from the host.
 pub fn remove_script(hash: &ContentHash) -> String {
     format!(
-        "sh -c 'rm -rf \"$HOME/.cache/temor-remote/{}\"'",
+        "sh -c 'rm -rf \"$HOME/.cache/{HELPER_CACHE_FOLDER}/{}\"'",
         hash.to_hex()
     )
 }

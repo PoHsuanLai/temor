@@ -9,20 +9,23 @@
 
 use std::process::ExitCode;
 
-use temor_remote::host::{HostEnv, hash_executable, run_daemon, run_stdio};
+use temor_remote::host::{
+    DAEMON, HostEnv, LEADER, STDIO, VERSION, hash_executable, run_daemon, run_stdio,
+};
 
 fn main() -> ExitCode {
     let mut args = std::env::args_os().skip(1);
     let command = args.next();
     match command.as_deref().and_then(|command| command.to_str()) {
-        None | Some("stdio") => finish(host_env().and_then(|env| run_stdio(&env))),
-        Some("daemon") => finish(host_env().and_then(|env| run_daemon(&env))),
-        Some("version") => finish(host_env().and_then(|env| {
+        None => finish(host_env().and_then(|env| run_stdio(&env))),
+        Some(STDIO) => finish(host_env().and_then(|env| run_stdio(&env))),
+        Some(DAEMON) => finish(host_env().and_then(|env| run_daemon(&env))),
+        Some(VERSION) => finish(host_env().and_then(|env| {
             let helper = hash_executable(&env.exe)?;
             println!("{}", helper.0.to_hex());
             Ok(())
         })),
-        Some("leader") => {
+        Some(LEADER) => {
             let error = temor_pty::run_session_leader(args);
             // stderr is the session's terminal, so the person sees why their shell did not start.
             eprintln!("temor-remote: {error}");

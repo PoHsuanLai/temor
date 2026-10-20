@@ -2,12 +2,15 @@
 //! the stdio proxy that `ssh host temor-remote` runs. Thin on purpose: the daemon is
 //! [`crate::Daemon`], and this only wires it to the machine.
 
+mod command;
 mod daemon_main;
 mod env;
 mod identity;
 mod paths;
+mod socket;
 mod stdio_main;
 
+pub use command::{DAEMON, LEADER, STDIO, VERSION};
 pub use daemon_main::run_daemon;
 pub use env::HostEnv;
 pub use identity::hash_executable;

@@ -7,5 +7,7 @@ mod negotiate;
 #[cfg(test)]
 mod tests;
 
-pub use model::{Capability, Hello, HelperVersion, ProtocolRange, ProtocolVersion};
+pub use model::{
+    Capability, HELPER_CACHE_FOLDER, Hello, HelperVersion, ProtocolRange, ProtocolVersion,
+};
 pub use negotiate::{Agreement, Incompatibility, Negotiation, negotiate};

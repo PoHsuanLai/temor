@@ -23,6 +23,19 @@ pub struct ProtocolRange {
 #[serde(transparent)]
 pub struct HelperVersion(pub ContentHash);
 
+/// The helper's folder under a host's cache folder (`~/.cache`), and under the runtime folder
+/// where there is no runtime directory.
+pub const HELPER_CACHE_FOLDER: &str = "temor-remote";
+
+impl HelperVersion {
+    /// Where the build with this hash lives under the host's cache folder:
+    /// `temor-remote/<hash>/temor-remote`, one folder per build, so an update never overwrites a
+    /// build that sessions still run.
+    pub fn cache_path(hash: ContentHash) -> String {
+        format!("{HELPER_CACHE_FOLDER}/{}/temor-remote", hash.to_hex())
+    }
+}
+
 /// What a side can do. Agreement is the set both sides offer, in the order of this enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Capability {
