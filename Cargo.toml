@@ -58,6 +58,8 @@ bayonet = { git = "https://github.com/PoHsuanLai/bayonet.git", rev = "2c5038dfda
 temor-plugins = { path = "crates/temor-plugins" }
 # temor-transfer (lane blocks): the downloads shelf's store, for "Save output".
 temor-transfer = { path = "crates/temor-transfer" }
+# Test helpers shared by every crate's tests (L0; dev-dependency only).
+temor-testkit = { path = "crates/temor-testkit" }
 tokio = { version = "1", default-features = false, features = ["sync"] }
 # temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
 temor-wire = { path = "crates/temor-wire" }

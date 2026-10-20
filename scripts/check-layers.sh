@@ -23,6 +23,7 @@ temor-shell 0
 temor-wire 0
 temor-transfer 0
 temor-ssh 0
+temor-testkit 0
 temor-render 1
 temor-pane 1
 temor-plugins 1
