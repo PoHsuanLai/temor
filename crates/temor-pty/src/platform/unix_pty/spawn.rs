@@ -89,10 +89,20 @@ fn open_pair() -> std::io::Result<(OwnedFd, OwnedFd)> {
     Ok((master, slave))
 }
 
+#[cfg(target_os = "linux")]
 fn open_master() -> std::io::Result<OwnedFd> {
     Ok(openpt(
         OpenptFlags::RDWR | OpenptFlags::NOCTTY | OpenptFlags::CLOEXEC,
     )?)
+}
+
+/// `posix_openpt` takes no close-on-exec flag on macOS, so it is set right after. A child
+/// started by another thread in between could inherit the master; the window is the two calls.
+#[cfg(target_os = "macos")]
+fn open_master() -> std::io::Result<OwnedFd> {
+    let master = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY)?;
+    rustix::io::fcntl_setfd(&master, rustix::io::FdFlags::CLOEXEC)?;
+    Ok(master)
 }
 
 /// Tells the line discipline input is UTF-8 (`IUTF8`), so backspace in canonical mode erases a

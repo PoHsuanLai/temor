@@ -42,7 +42,7 @@ fn make_parents(parent: &Path) -> io::Result<()> {
 
 /// Where temor-shell has no private-folder check yet: the folder is made 0700 and must be this
 /// user's own. Other systems than unix have no ownership check.
-// TODO(platform:macos), TODO(platform:windows): move onto temor-shell's check when it has one.
+// TODO(platform:windows): move onto temor-shell's check when it has one.
 fn unchecked_private_dir(dir: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
@@ -68,7 +68,7 @@ fn unchecked_private_dir(dir: &Path) -> io::Result<()> {
 
 /// Writes `bytes` to `path` so that a reader sees the old file or the new one, never a part:
 /// a temporary file beside it, made owner-only (0600), synced, then renamed over `path`.
-// TODO(platform:macos), TODO(platform:windows): owner-only file creation on those systems.
+// TODO(platform:windows): owner-only file creation there.
 pub fn write_private_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
     use std::io::Write;
     let tmp = path.with_extension("json.tmp");

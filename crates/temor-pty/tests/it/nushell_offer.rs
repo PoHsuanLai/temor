@@ -6,7 +6,7 @@ use temor_pty::prepare_shell;
 use temor_shell::{ChildEnv, Shell, ShellStart, integration_scripts};
 use temor_ssh::{InnerLoadLine, InnerShell, LoadToken, probe_line};
 
-use crate::support::{Scratch, Term, program_or_skip, pty_unsupported, setsid, size};
+use crate::support::{Scratch, Term, find, program_or_skip, pty_unsupported, setsid, size};
 
 #[test]
 fn nushell_names_itself_and_loads_the_text_written_for_it_without_complaint() {
@@ -35,8 +35,13 @@ fn nushell_names_itself_and_loads_the_text_written_for_it_without_complaint() {
 
     let start = term.out.len();
     term.send(&probe_line().replace('\n', "\r"));
+    // The answer is `nu` from `/proc`, or a path ending in `nu` where `ps` gives one (macOS).
+    let named = |out: &[u8]| {
+        let seen = &out[start..];
+        find(seen, b"temor-shell:nu").is_some() || find(seen, b"/nu\r").is_some()
+    };
     assert!(
-        term.read_until_has(start, "temor-shell:nu"),
+        term.read_until(named),
         "the shell did not name itself: {:?}",
         term.text()
     );

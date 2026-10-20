@@ -1,4 +1,4 @@
-//! Linux: a non-blocking open of a regular file. (The private runtime directory and the socket
+//! Linux and macOS: a non-blocking open of a regular file. (The private runtime directory and the socket
 //! path limit are temor-shell's.)
 
 use std::fs::File;

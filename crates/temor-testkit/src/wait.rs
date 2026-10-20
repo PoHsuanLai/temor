@@ -41,9 +41,21 @@ pub fn pid_from_file(file: &Path, timeout: Duration) -> u32 {
     )
 }
 
-/// Whether `/proc/<pid>` exists: the process is running or is a zombie nobody has reaped.
+/// Whether process `pid` exists: it is running or is a zombie nobody has reaped. Linux reads
+/// `/proc/<pid>`; elsewhere `ps -p` answers the same.
 pub fn proc_alive(pid: impl Display) -> bool {
-    Path::new(&format!("/proc/{pid}")).exists()
+    #[cfg(target_os = "linux")]
+    {
+        Path::new(&format!("/proc/{pid}")).exists()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        std::process::Command::new("ps")
+            .args(["-p", &pid.to_string()])
+            .stdout(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    }
 }
 
 /// The offset of the first `needle` in `haystack`.

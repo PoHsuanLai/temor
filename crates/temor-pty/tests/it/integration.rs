@@ -188,7 +188,8 @@ fn zsh_keeps_the_probe_line_out_of_history_and_everything_else_in() {
     let mut term = Term::spawn(&spec, &setsid());
     assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
 
-    let probe = " sh -c 'echo temor-shell:$(cat /proc/$PPID/comm)' sh\r";
+    // `/proc` is Linux's; `ps` gives macOS a path, so the answer is cut to its last word.
+    let probe = " sh -c 'echo temor-shell:$(basename $(cat /proc/$PPID/comm 2>/dev/null || ps -p $PPID -o comm=))' sh\r";
     let start = term.out.len();
     term.send(probe);
     assert!(

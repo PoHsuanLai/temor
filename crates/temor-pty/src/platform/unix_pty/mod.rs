@@ -1,4 +1,4 @@
-//! The Linux pseudo-terminal, through rustix and without `unsafe`.
+//! The Unix pseudo-terminal (Linux and macOS), through rustix and without `unsafe`.
 
 mod foreground;
 mod io;

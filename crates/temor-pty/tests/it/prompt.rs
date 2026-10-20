@@ -22,6 +22,14 @@ enum Own {
     Custom,
 }
 
+/// Where nushell reads its config under HOME: `~/.config` on Linux, `Library/Application Support`
+/// on macOS.
+const NU_CONFIG: &str = if cfg!(target_os = "macos") {
+    "Library/Application Support/nushell/config.nu"
+} else {
+    ".config/nushell/config.nu"
+};
+
 /// The person's startup file for `shell` (path under HOME, contents).
 fn startup(shell: &str, own: Own) -> (&'static str, &'static str) {
     match (shell, own) {
@@ -30,9 +38,9 @@ fn startup(shell: &str, own: Own) -> (&'static str, &'static str) {
         // An empty .zshrc keeps zsh's first-run wizard away.
         ("zsh", Own::Stock) => (".zshrc", ""),
         ("zsh", Own::Custom) => (".zshrc", "PS1='custom> '\nRPS1='right<'\n"),
-        ("nu", Own::Stock) => (".config/nushell/config.nu", ""),
+        ("nu", Own::Stock) => (NU_CONFIG, ""),
         ("nu", Own::Custom) => (
-            ".config/nushell/config.nu",
+            NU_CONFIG,
             "$env.PROMPT_COMMAND = {|| \"custom> \" }\n$env.PROMPT_COMMAND_RIGHT = {|| \"right<\" }\n",
         ),
         (_, Own::Stock) => (".config/fish/config.fish", ""),

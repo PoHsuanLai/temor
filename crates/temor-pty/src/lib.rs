@@ -27,7 +27,7 @@
 //!
 //! The workspace denies `unsafe`, so the child cannot call `setsid` and `TIOCSCTTY` from a
 //! `pre_exec` hook. A [`SessionLauncher`] does it in a tiny exec step instead:
-//! - [`SessionLauncher::Setsid`]: util-linux `setsid --ctty` (Linux).
+//! - [`SessionLauncher::Setsid`]: util-linux `setsid --ctty` (Linux; macOS has none, so it uses the trampoline).
 //! - [`SessionLauncher::Trampoline`]: any program that calls [`run_session_leader`] (this
 //!   crate's `temor-pty-exec`, or temor's own binary), which needs no util-linux.
 //!

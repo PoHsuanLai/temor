@@ -1,7 +1,5 @@
 //! Systems without private-folder support yet: a typed refusal, so the caller can say why.
 //!
-//! TODO(platform:macos): create the folder 0700 (the Linux module is the model; `fchmod` and
-//! `getuid` are the same calls), and `SOCKET_PATH_MAX` stays 103 (`sun_path` is 104 bytes).
 //! TODO(platform:windows): an ACL that grants only this user.
 
 use std::path::Path;

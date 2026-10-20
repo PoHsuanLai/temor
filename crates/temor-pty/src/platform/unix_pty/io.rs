@@ -43,7 +43,7 @@ impl PtyIo {
                 Ok(n) => Ok(ReadOutcome::Data(n)),
                 Err(Errno::INTR) => continue,
                 Err(Errno::AGAIN) => Ok(ReadOutcome::WouldBlock),
-                // Linux reports a terminal whose other side has all closed as EIO.
+                // Linux reports a terminal whose other side has all closed as EIO (macOS reads 0).
                 Err(Errno::IO) => Ok(ReadOutcome::Closed),
                 Err(errno) => Err(PtyError::Io(errno.into())),
             };

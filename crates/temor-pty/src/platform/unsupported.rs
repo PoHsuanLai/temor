@@ -1,9 +1,7 @@
-//! Platforms without temor's pseudo-terminal support yet (macOS, Windows and the rest): the
+//! Platforms without temor's pseudo-terminal support yet (Windows and the rest): the
 //! same API, where spawning returns [`PtyError::Unsupported`] and so no value of these types
 //! ever exists.
 //!
-//! TODO(platform:macos): a real pseudo-terminal (the Linux module is the model; `openpt` there
-//! takes no CLOEXEC flag, and `/proc` facts come from `proc_pidinfo` instead).
 //! TODO(platform:windows): ConPTY.
 
 use std::convert::Infallible;
@@ -31,7 +29,7 @@ pub struct PtyIo {
 }
 
 impl Pty {
-    // TODO(platform:macos), TODO(platform:windows): spawn on a real terminal.
+    // TODO(platform:windows): spawn on a real terminal.
     pub fn spawn(_spec: &SpawnSpec, _launcher: &SessionLauncher) -> Result<Self, PtyError> {
         Err(PtyError::Unsupported)
     }
@@ -84,7 +82,7 @@ impl PtyIo {
 }
 
 /// There is no session to lead on this platform.
-// TODO(platform:macos): setsid, TIOCSCTTY and exec, as on Linux.
+// TODO(platform:windows): the session leader is a Unix idea; ConPTY has none.
 pub fn run_session_leader(_args: impl IntoIterator<Item = OsString>) -> PtyError {
     PtyError::Unsupported
 }
