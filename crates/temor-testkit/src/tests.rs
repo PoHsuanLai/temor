@@ -77,3 +77,27 @@ fn git_makes_a_repository_in_a_scratch_folder() {
     git(&scratch.root, &["init", "-q"]);
     assert!(scratch.root.join(".git").is_dir());
 }
+
+#[test]
+fn a_shipped_manifest_has_only_its_path_line_rewritten() {
+    let shipped = "id = \"demo\"\n[program]\npath = \"placeholder\"\nargs = []";
+    let out = with_program(shipped, std::path::Path::new("/x/demo"));
+    assert_eq!(
+        out,
+        "id = \"demo\"\n[program]\npath = \"/x/demo\"\nargs = []"
+    );
+}
+
+#[test]
+fn a_manifest_names_the_program_its_arguments_and_what_it_provides() {
+    let out = manifest_for(
+        "fake",
+        std::path::Path::new("/x/fake"),
+        &["--slow"],
+        ALL_CAPABILITIES,
+    );
+    assert!(out.contains("id = \"fake\""));
+    assert!(out.contains("path = \"/x/fake\""));
+    assert!(out.contains("args = [\"--slow\"]"));
+    assert!(out.contains("capability = \"block.lens\""));
+}

@@ -6,11 +6,13 @@
 //! - [`Scratch`] and [`ScratchRoot`] are scratch HOME and XDG folders, removed when dropped;
 //! - [`eventually`], [`eventually_some`] and [`pid_from_file`] poll until a deadline;
 //! - [`PrivateBus`] is a private session bus, and [`git()`] runs git on a scratch repository;
+//! - [`example_program`], [`manifest_for`] and [`with_program`] are the fake plugin's fixtures;
 //! - [`assert_modules_declared`] is the "every test module is in `main.rs`" check.
 
 mod bus;
 mod git;
 mod modules;
+mod plugin;
 mod program;
 mod scratch;
 mod wait;
@@ -18,6 +20,7 @@ mod wait;
 pub use bus::PrivateBus;
 pub use git::git;
 pub use modules::assert_modules_declared;
+pub use plugin::{ALL_CAPABILITIES, example_program, manifest_for, with_program};
 pub use program::{
     find_program, optional_program, program_or_skip, programs_or_skip, skip, tools_required,
 };

@@ -1,48 +1,16 @@
 //! A scratch data directory for the host called `temor`, and the fake plugin installed in it.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use temor_plugins::{Catalog, DataDirs, Launcher, Plugin, Waits};
+use temor_testkit::manifest_for;
 
-/// Every capability of the fake, as a manifest lists them.
-pub const ALL: &str = r#"
-[[provides]]
-capability = "block.lens"
-trigger = "kubectl get"
-
-[[provides]]
-capability = "open.provider"
-trigger = "gh"
-
-[[provides]]
-capability = "agent.adapter"
-agent = "claude"
-
-[[provides]]
-capability = "row.facts"
-tables = ["folder"]
-"#;
+pub use temor_testkit::{ALL_CAPABILITIES as ALL, example_program};
 
 /// The example `fake_plugin`, built beside the tests.
 pub fn fake_program() -> PathBuf {
     example_program("fake_plugin")
-}
-
-/// The example program `name`, built beside the tests.
-pub fn example_program(name: &str) -> PathBuf {
-    let exe = std::env::current_exe().unwrap();
-    let program = exe
-        .parent()
-        .and_then(Path::parent)
-        .map(|profile| profile.join("examples").join(name))
-        .unwrap();
-    assert!(
-        program.is_file(),
-        "{} is missing: run the tests with `cargo test`, which builds the examples",
-        program.display()
-    );
-    program
 }
 
 /// Waits short enough for a test of a hang, long enough for a loaded machine to start a program.
@@ -75,11 +43,7 @@ impl Host {
 
     /// Writes `<id>.toml` for the fake, started with `args`, providing `provides`.
     pub fn install(&self, id: &str, args: &[&str], provides: &str) {
-        let text = format!(
-            "id = \"{id}\"\nname = \"Plugin {id}\"\nprotocol = 1\n[program]\npath = {:?}\nargs = {:?}\n{provides}",
-            fake_program().display().to_string(),
-            args
-        );
+        let text = manifest_for(id, &fake_program(), args, provides);
         self.write(&format!("{id}.toml"), &text);
     }
 

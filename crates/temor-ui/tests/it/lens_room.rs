@@ -16,13 +16,6 @@ use super::drive::{rects, wait_until};
 use super::support::tools_present;
 use super::window::harness_building;
 
-/// The demo lens built beside these tests, if it was.
-fn demo_lens() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let program = exe.parent()?.parent()?.join("examples").join("lens_demo");
-    program.is_file().then_some(program)
-}
-
 /// Types `line`, waits for its output line `last`, and lets the window settle.
 fn run_line(h: &mut Harness, probe: &Probe, line: &str, last: &str) {
     super::drive::run_line(h, probe, line, last);
@@ -47,7 +40,7 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
     if !tools_present() {
         return;
     }
-    let lens = demo_lens().expect("build the demo lens first");
+    let lens = temor_testkit::example_program("lens_demo");
     let probe = Probe::new();
     let mut h = harness_building(
         "lens-room",
@@ -58,14 +51,10 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
             let demo = ambient.home.join("demo");
             std::fs::create_dir_all(&plugins).expect("plugins folder");
             std::fs::create_dir_all(&demo).expect("demo folder");
-            let manifest = include_str!("../../../temor-plugins/examples/lens-demo.toml")
-                .lines()
-                .map(|line| match line.starts_with("path = ") {
-                    true => format!("path = {:?}", lens.display().to_string()),
-                    false => line.to_owned(),
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
+            let manifest = temor_testkit::with_program(
+                include_str!("../../../temor-plugins/examples/lens-demo.toml"),
+                &lens,
+            );
             std::fs::write(plugins.join("lens-demo.toml"), manifest).expect("manifest");
             for name in [
                 "a",
