@@ -21,10 +21,12 @@ mod env;
 mod error;
 mod osc7;
 mod platform;
+mod quote;
 mod shell;
 
 pub use env::ChildEnv;
 pub use error::ShellError;
+pub use quote::sh_quote;
 pub use platform::{SOCKET_PATH_MAX, ensure_private_dir};
 pub use osc7::{cwd_from_url, percent_decode_strict};
 pub use shell::{

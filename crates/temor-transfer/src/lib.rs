@@ -31,6 +31,7 @@
 mod base64;
 mod consent;
 mod error;
+mod fields;
 pub mod kitty;
 mod name;
 mod origin;

@@ -1,6 +1,7 @@
 //! Parses one OSC 1337 payload (the bytes between `ESC ]` and the terminator) into a command.
 
 use crate::base64;
+use crate::fields::{MAX_NAME_TEXT, ascii, pairs, parse_value};
 use crate::error::{Malformed, TransferError};
 use crate::name::FileName;
 use crate::units::{Bytes, Limits};
@@ -64,15 +65,7 @@ fn parse_whole(args: &[u8], limits: Limits) -> Result<Osc1337Command, TransferEr
 /// a known key with a bad value is an error.
 fn parse_header(args: &[u8]) -> Result<FileHeader, TransferError> {
     let mut header = FileHeader::new();
-    for pair in args.split(|&byte| byte == b';') {
-        if pair.is_empty() {
-            continue;
-        }
-        let eq = pair.iter().position(|&byte| byte == b'=');
-        let (key, value) = match eq {
-            Some(i) => (&pair[..i], &pair[i + 1..]),
-            None => continue,
-        };
+    for (key, value) in pairs(args) {
         header = apply_key(header, key, value)?;
     }
     Ok(header)
@@ -85,16 +78,12 @@ fn apply_key(
 ) -> Result<FileHeader, TransferError> {
     match key {
         b"name" => {
-            let raw = base64::decode(value, Bytes::new(4096))
+            let raw = base64::decode(value, Bytes::new(MAX_NAME_TEXT))
                 .map_err(|_| Malformed::BadValue { key: "name" })?;
             header.name = FileName::sanitise(&String::from_utf8_lossy(&raw));
         }
         b"size" => {
-            let text = ascii(value, "size")?;
-            let size = text
-                .parse::<u64>()
-                .map_err(|_| Malformed::BadValue { key: "size" })?;
-            header.declared_size = Some(Bytes::new(size));
+            header.declared_size = Some(Bytes::new(parse_value(value, "size")?));
         }
         b"inline" => {
             header.delivery = match ascii(value, "inline")? {
@@ -129,13 +118,6 @@ fn apply_key(
 fn parse_type(value: &[u8]) -> Result<MimeType, TransferError> {
     let text = ascii(value, "type")?;
     MimeType::parse(text).ok_or_else(|| Malformed::BadValue { key: "type" }.into())
-}
-
-fn ascii<'a>(value: &'a [u8], key: &'static str) -> Result<&'a str, TransferError> {
-    std::str::from_utf8(value)
-        .ok()
-        .filter(|text| text.bytes().all(|byte| byte.is_ascii_graphic()))
-        .ok_or_else(|| Malformed::BadValue { key }.into())
 }
 
 /// `auto`, `N` (cells), `Npx` (pixels) or `N%` (percent of the pane, up to 100).

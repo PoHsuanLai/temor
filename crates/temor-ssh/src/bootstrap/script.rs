@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use temor_shell::{ShellScript, XDG_DATA_DIRS_DEFAULT};
+use temor_shell::{ShellScript, XDG_DATA_DIRS_DEFAULT, sh_quote};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -105,7 +105,7 @@ impl BootstrapScript {
             ),
             TerminfoPolicy::Skip => (String::new(), "skip"),
         };
-        let dir = start_dir.map_or_else(String::new, |dir| single_quoted(dir.as_str()));
+        let dir = start_dir.map_or_else(String::new, |dir| sh_quote(dir.as_str()));
         let options_line = format!("temor_terminfo={policy}\ntemor_start_dir={dir}\n");
         let mut script = String::with_capacity(TEMPLATE.len() + placed.len() + terminfo.len());
         for line in TEMPLATE.lines() {
@@ -127,11 +127,6 @@ impl BootstrapScript {
     pub fn as_str(&self) -> &str {
         &self.0
     }
-}
-
-/// `text` in single quotes for `sh`; the script travels base64-encoded, so no login shell reads it.
-fn single_quoted(text: &str) -> String {
-    format!("'{}'", text.replace('\'', "'\\''"))
 }
 
 /// The remote command for `script`. The login shell only sees plain ASCII: the script travels
