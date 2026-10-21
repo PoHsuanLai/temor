@@ -19,7 +19,7 @@ use temor_ui::edge::Ambient;
 use temor_ui::hub::Run;
 use temor_ui::view::App;
 use temor_ui::view::probe::Probe;
-use temor_ui::{AppearanceSource, Launch, LauncherChoice, TakeOnce};
+use temor_ui::{AppearanceSource, Launch, TakeOnce};
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, wait_until};
 use super::support::scratch;
@@ -167,7 +167,7 @@ fn harness_at(
             &chordkit::Overrides::default(),
         )
         .0,
-        launcher: LauncherChoice::Setsid(super::support::setsid_path()),
+        launcher: super::support::launcher_choice(),
         probe: Some(probe.clone()),
         state_dir,
         first_words: Default::default(),
@@ -188,7 +188,7 @@ fn harness_at(
 
 #[test]
 fn the_window_starts_a_shell_and_takes_typing() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -234,7 +234,7 @@ fn start_raw_mouse_echo(h: &mut Harness) {
 
 #[test]
 fn a_click_reports_once_per_button() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -292,7 +292,7 @@ fn a_click_reports_once_per_button() {
 /// reaches the shell.
 #[test]
 fn closing_find_gives_the_keyboard_back_to_the_terminal() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -318,7 +318,7 @@ fn closing_find_gives_the_keyboard_back_to_the_terminal() {
 /// never reaches the shell (^D would end it).
 #[test]
 fn the_command_chords_open_and_close_tabs_and_panes() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -347,7 +347,7 @@ fn the_command_chords_open_and_close_tabs_and_panes() {
 /// back.
 #[test]
 fn the_sidebar_action_hides_and_shows_the_sidebar() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -374,7 +374,7 @@ fn the_sidebar_action_hides_and_shows_the_sidebar() {
 /// `absolute_position` for a node that was gone). Frames keep running past the tooltip delay.
 #[test]
 fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -408,7 +408,7 @@ fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
 /// A saved session starts again: its tabs are in the sidebar and their shells run.
 #[test]
 fn a_saved_session_is_restored_on_launch() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     use temor_core::split::Direction;

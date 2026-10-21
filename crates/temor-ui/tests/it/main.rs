@@ -31,6 +31,7 @@ mod spaces;
 mod ssh;
 mod support;
 mod viewer;
+mod wide_text;
 mod window;
 mod window_title;
 mod workflow;

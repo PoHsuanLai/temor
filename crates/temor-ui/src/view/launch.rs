@@ -38,6 +38,9 @@ pub const SESSION_LEADER_ARG: &str = "--temor-session-leader";
 pub enum LauncherChoice {
     ThisProgram,
     Setsid(std::path::PathBuf),
+    /// A program that calls `run_session_leader` with no arguments (`temor-pty-exec`), for
+    /// tests whose own binary cannot be the session leader where there is no util-linux `setsid`.
+    Trampoline(std::path::PathBuf),
 }
 
 /// Everything the window starts from. Cloned into the window's root context.
@@ -181,6 +184,10 @@ pub fn open_session_with(
             args: vec![SESSION_LEADER_ARG.into()],
         },
         LauncherChoice::Setsid(path) => SessionLauncher::Setsid(path.clone()),
+        LauncherChoice::Trampoline(program) => SessionLauncher::Trampoline {
+            program: program.clone(),
+            args: Vec::new(),
+        },
     };
     let (grid, cell) = first_size();
     // The shell starts in the pane's folder when it is still there.

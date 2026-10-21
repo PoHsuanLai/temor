@@ -107,7 +107,7 @@ fn dump(h: &Harness, state: &str, out: &mut String) {
 #[test]
 #[ignore = "a size audit, run on demand"]
 fn size_audit() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();

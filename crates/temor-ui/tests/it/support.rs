@@ -58,6 +58,15 @@ pub fn tools_present() -> bool {
     proc
 }
 
+/// Whether a test that only drives a window (`window::harness`) can run: where `tools_present`
+/// holds, or on macOS, which has no util-linux `setsid` or /proc, bash and the trampoline.
+pub fn window_tools_present() -> bool {
+    if cfg!(target_os = "macos") {
+        return programs_or_skip(&["bash"], "temor-ui").is_some() && trampoline_path().is_some();
+    }
+    tools_present()
+}
+
 /// Util-linux `setsid`; the tests that need it have checked [`tools_present`].
 pub fn setsid_path() -> PathBuf {
     temor_testkit::find_program("setsid").expect("util-linux setsid is installed")
@@ -88,4 +97,23 @@ pub fn helper_daemon(
 pub fn bash_path() -> PathBuf {
     temor_pty::find_program("bash", std::ffi::OsStr::new("/usr/bin:/bin"))
         .unwrap_or_else(|| PathBuf::from("/usr/bin/bash"))
+}
+
+/// `temor-pty-exec`, built beside the test binary's `deps` folder.
+pub fn trampoline_path() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let path = exe.parent()?.parent()?.join("temor-pty-exec");
+    if !path.exists() {
+        eprintln!("SKIPPED: temor-ui: {} is not built", path.display());
+    }
+    path.exists().then_some(path)
+}
+
+/// How the windows under test start their shells: util-linux `setsid`, or the trampoline.
+pub fn launcher_choice() -> temor_ui::LauncherChoice {
+    if cfg!(target_os = "macos") {
+        temor_ui::LauncherChoice::Trampoline(trampoline_path().expect("tools_present checked it"))
+    } else {
+        temor_ui::LauncherChoice::Setsid(setsid_path())
+    }
 }

@@ -1708,3 +1708,14 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       showed the prompt after `clear`, but the prompt count never reached 3. It passes alone and
       with the other `blocks::shells` tests. Suspect the count misses a prompt that `clear`
       draws over.
+- [ ] macOS UI test coverage (ui-test pass, harness backend). Window tests used to skip on macOS
+      because `tools_present` wants util-linux `setsid` and `/proc`; those driving only a window
+      now run through `support::window_tools_present` and the `temor-pty-exec` trampoline
+      (`LauncherChoice::Trampoline`; run `cargo build --workspace --bins` first, else they skip
+      with a note). All 441 temor-ui tests pass, 7 skipped. Still skipped on macOS: the tests that
+      build a `SessionLauncher::Setsid` themselves (`session.rs`, `blocks/`, `agents_socket.rs`,
+      `hub/ssh_tests/`), and `host_files`/`remote`. Gaps found: the harness's `Input::key` carries
+      no text for a non-ASCII character (typing é reaches the shell as nothing; the IME path,
+      `ime_commit`, carries it whole), and the harness has no Option/Cmd key host, so
+      Option-as-Alt and Cmd chords are covered by `temor-vt` tests only. Not exercised: Keychain,
+      Dock badge, fullscreen and touchpad scrolling against the real system.

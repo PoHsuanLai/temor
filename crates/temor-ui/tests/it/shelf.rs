@@ -36,7 +36,7 @@ fn settled_centre(h: &mut Harness, selector: &str) -> Point {
 
 #[test]
 fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_shelf() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let name = "shelf-window";

@@ -23,7 +23,7 @@ fn bar_open(h: &Harness) -> bool {
 /// in a new tab; Escape closes the bar and the keys are the shell's again.
 #[test]
 fn the_bar_opens_ranks_runs_and_hands_the_keys_back() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -71,7 +71,7 @@ fn the_bar_opens_ranks_runs_and_hands_the_keys_back() {
 /// closes the bar and the keys are the shell's again.
 #[test]
 fn the_find_field_takes_the_keyboard_and_gives_it_back() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -114,7 +114,7 @@ fn the_find_field_takes_the_keyboard_and_gives_it_back() {
 /// Actions, with no per-row kind caption, and picking one does what its chord does.
 #[test]
 fn the_bar_lists_window_actions_under_headers_and_runs_them() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -152,7 +152,7 @@ fn the_bar_lists_window_actions_under_headers_and_runs_them() {
 /// shows without a button of its own is still a few keys away.
 #[test]
 fn the_bar_pins_the_tab_and_opens_downloads() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -196,7 +196,7 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
 /// there after the show, which a new shell would not have.
 #[test]
 fn the_quick_terminal_keeps_its_shell_when_hidden() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let quick = |h: &mut Harness| {
@@ -241,7 +241,7 @@ fn the_quick_terminal_keeps_its_shell_when_hidden() {
 /// keys, then `b` prints `ab`.
 #[test]
 fn the_zoom_keys_zoom_the_window_and_type_nothing() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -265,7 +265,7 @@ fn the_zoom_keys_zoom_the_window_and_type_nothing() {
 /// The bar runs the zoom too: "zoom in" leads with Zoom in, and Enter asks the window.
 #[test]
 fn the_bar_zooms_the_window() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();

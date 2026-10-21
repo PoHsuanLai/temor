@@ -57,7 +57,7 @@ fn drag_divider_to(h: &mut Harness, x: f32) {
 
 #[test]
 fn a_dragged_divider_keeps_its_place_through_a_tab_switch() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -85,7 +85,7 @@ fn a_dragged_divider_keeps_its_place_through_a_tab_switch() {
 
 #[test]
 fn a_divider_dragged_past_either_end_stops_at_its_limit() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -165,7 +165,7 @@ fn out_of_bounds(h: &mut Harness, sizes: &[(u32, u32)]) -> Vec<String> {
 
 #[test]
 fn every_control_stays_inside_the_window_at_every_size() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -186,7 +186,7 @@ fn every_control_stays_inside_the_window_at_every_size() {
 /// the window at 150% or 200% either.
 #[test]
 fn every_control_stays_inside_the_window_on_a_scaled_screen() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     for scale in [150, 200] {
@@ -208,7 +208,7 @@ fn every_control_stays_inside_the_window_on_a_scaled_screen() {
 
 #[test]
 fn keys_alone_open_split_move_and_close_without_a_click() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -232,7 +232,7 @@ fn keys_alone_open_split_move_and_close_without_a_click() {
 
 #[test]
 fn the_bar_stays_inside_the_window_while_it_is_resized_open() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();

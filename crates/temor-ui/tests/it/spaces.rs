@@ -128,7 +128,7 @@ fn go_to(h: &mut Harness, name: &str) {
 /// folder with its variables.
 #[test]
 fn switching_spaces_shows_their_tabs_and_a_new_tab_gets_the_spaces_folder_and_variables() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let state = scratch("spaces-state").join("state");
@@ -210,7 +210,7 @@ fn switching_spaces_shows_their_tabs_and_a_new_tab_gets_the_spaces_folder_and_va
 /// person is told.
 #[test]
 fn a_damaged_spaces_file_is_set_aside_and_the_window_starts_with_one_space() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let state = scratch("spaces-damaged-state").join("state");
@@ -231,7 +231,7 @@ fn a_damaged_spaces_file_is_set_aside_and_the_window_starts_with_one_space() {
 /// The ⌘T bar lists the Spaces: typing a Space's name and Enter switches to it, with no mouse.
 #[test]
 fn the_bar_switches_spaces_from_the_keyboard() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let state = scratch("spaces-bar-state").join("state");

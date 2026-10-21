@@ -17,7 +17,7 @@ const WINDOW: &str = ".ds-split[aria-label=\"Window\"]";
 
 #[test]
 fn a_sidebar_hidden_and_shown_again_keeps_the_width_it_was_dragged_to() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -59,7 +59,7 @@ fn a_sidebar_hidden_and_shown_again_keeps_the_width_it_was_dragged_to() {
 /// drawn lies inside the window, and a click on its first item lands on it (Pin Tab).
 #[test]
 fn a_tab_menu_open_while_the_window_is_resized_stays_inside_it_and_takes_clicks() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();

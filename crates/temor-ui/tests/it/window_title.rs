@@ -26,7 +26,7 @@ fn wait_for_title(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) -> Str
 
 #[test]
 fn the_title_is_the_programs_then_the_folder() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();

@@ -94,7 +94,7 @@ fn assert_apart(h: &Harness, state: &str) {
 
 #[test]
 fn no_two_controls_in_the_sidebar_lie_over_one_another() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -173,7 +173,7 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
 /// dots stand at its centre.
 #[test]
 fn two_spaces_show_their_name_and_dots() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let state = super::support::scratch("sidebar-two-spaces-state").join("state");
@@ -203,7 +203,7 @@ fn two_spaces_show_their_name_and_dots() {
 /// tab's own menu alone.
 #[test]
 fn a_right_click_on_the_bare_sidebar_opens_the_space_s_menu_and_on_a_tab_the_tab_s() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -254,7 +254,7 @@ fn a_right_click_on_the_bare_sidebar_opens_the_space_s_menu_and_on_a_tab_the_tab
 /// alone.
 #[test]
 fn a_split_pane_closes_from_its_menu() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -292,7 +292,7 @@ fn a_split_pane_closes_from_its_menu() {
 /// A middle press on a pane of a split opens no menu: only a right click does, as on a row.
 #[test]
 fn a_middle_press_on_a_split_pane_opens_no_menu() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -328,7 +328,7 @@ fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
 
 #[test]
 fn a_running_tab_counts_up_with_no_output() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -363,7 +363,7 @@ fn a_running_tab_counts_up_with_no_output() {
 /// mailo's does, and a click on the edge pins it again.
 #[test]
 fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -422,7 +422,7 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
 /// others are their glyphs alone.
 #[test]
 fn a_split_of_three_shows_one_name_and_two_glyphs() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
@@ -456,7 +456,7 @@ fn a_split_of_three_shows_one_name_and_two_glyphs() {
 /// is unpinned there.
 #[test]
 fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
-    if !super::support::tools_present() {
+    if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
