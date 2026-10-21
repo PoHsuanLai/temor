@@ -28,7 +28,7 @@ use temor_ui::settings_window::{
 use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, LauncherChoice};
 
-use super::drive::{chord, focus_pane, press, wait_until};
+use super::drive::{chord, focus_pane, press, rects, wait_until};
 use super::support::{scratch, tools_present};
 use super::window::harness_building;
 
@@ -518,4 +518,44 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
     press(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
     assert_eq!(store.get(account), None);
     assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
+}
+
+/// The Font row is a pop-up of the computer's monospace fonts with the system's first, and a
+/// sample line. (A pop-up's menu needs a renderer to open, so the harness checks what the row
+/// lists: the pop-up sizes itself to every title.)
+#[test]
+fn the_font_row_lists_the_computers_fonts_with_a_sample() {
+    let (mut h, _ambient) = settings_window("settings-font-row", SettingsPane::Appearance, |c| c);
+    assert!(!rects(&h, ".temor-font-sample").is_empty(), "a sample line");
+    assert!(
+        !rects(&h, "[aria-label=\"Font\"]").is_empty(),
+        "the font pop-up"
+    );
+    let html = h.html();
+    assert!(
+        html.contains("System default"),
+        "the system's font is listed"
+    );
+    for name in temor_render::font_catalog().monospace() {
+        let sizer = format!("<span class=\"ds-popup-sizer\" aria-hidden=\"true\">{name}</span>");
+        assert!(html.contains(&sizer), "{name} is listed");
+    }
+    if let Some(path) = std::env::var_os("TEMOR_SHOT") {
+        let picture = h
+            .render_over(ds_harness::Backdrop::Scheme)
+            .expect("a frame");
+        let file = std::fs::File::create(path).expect("the shot file");
+        let mut encoder = png::Encoder::new(
+            std::io::BufWriter::new(file),
+            picture.width(),
+            picture.height(),
+        );
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .write_header()
+            .expect("header")
+            .write_image_data(picture.as_raw())
+            .expect("pixels");
+    }
 }

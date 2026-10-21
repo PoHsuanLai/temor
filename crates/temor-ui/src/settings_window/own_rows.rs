@@ -11,6 +11,7 @@ use ds::prelude::*;
 use ds_settings::schema::{KeyKind, KeySpec};
 use ds_settings_page::SettingEdit;
 
+use super::font_row::{FontRow, is_font_key};
 use super::row_parts::{AddButton, RemoveButton};
 
 /// What a number field takes, in words: `a number from 6 to 72 points`.
@@ -96,6 +97,9 @@ pub fn OwnRow(
         },
         KeyKind::List(_) => rsx! {
             ListRows { spec, value, onedit }
+        },
+        _ if is_font_key(&spec) => rsx! {
+            FontRow { spec, value, onedit }
         },
         _ => rsx! {
             TextRow { spec, value, onedit }

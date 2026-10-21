@@ -15,6 +15,7 @@
 
 mod board;
 mod edit;
+mod font_row;
 mod general;
 mod keyboard;
 mod keys_edit;

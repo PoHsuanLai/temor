@@ -1719,3 +1719,13 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       `ime_commit`, carries it whole), and the harness has no Option/Cmd key host, so
       Option-as-Alt and Cmd chords are covered by `temor-vt` tests only. Not exercised: Keychain,
       Dock badge, fullscreen and touchpad scrolling against the real system.
+- [ ] Font picker (Settings > Appearance): a pop-up of the installed monospace families with "System
+      default" first, "Show all fonts", a sample line, and a "not installed" help line
+      (`settings_window/font_row.rs`, catalog in `temor-render/src/font/catalog.rs`). Open:
+      the harness cannot open a pop-up's menu (no renderer), so the list is tested through the
+      pop-up's sizers and the pick is not clicked in a test; not seen in a running window yet
+      (⌘, did not open Settings from a keystroke script, so it was checked as a harness render).
+      The row is chosen by the key path `font.family`; use `control = "font"` once the quire pin has
+      the attribute. Line height is not a setting yet (macOS has a 1.25 em floor, `MIN_LINE_EM`);
+      the plan is `font.line_height` as a multiplier of the font's own line, default 1.0, and a
+      bundled default font (Ghostty and WezTerm embed JetBrains Mono).

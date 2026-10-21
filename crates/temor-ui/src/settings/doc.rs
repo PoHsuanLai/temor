@@ -26,7 +26,7 @@ fn page() -> Page {
 pub struct FontSettings {
     #[settings(
         label = "Font",
-        help = "The family of the terminal's text: a name such as JetBrains Mono, or system for the computer's own.",
+        help = "The family of the terminal's text. A name typed into settings.toml works too, such as JetBrains Mono.",
         section = "Text"
     )]
     pub family: String,

@@ -4,6 +4,7 @@
 mod atlas;
 mod boxdraw;
 mod cache;
+mod catalog;
 mod config;
 mod decor;
 mod face;
@@ -20,6 +21,7 @@ pub(crate) use atlas::AtlasCopy;
 pub(crate) use atlas::AtlasFormat;
 pub(crate) use atlas::{Atlas, Slot};
 pub(crate) use cache::{BUILD_ATTEMPTS, GlyphCache, GlyphKind, RunGlyph};
+pub use catalog::{FontCatalog, font_catalog, warm_font_catalog};
 pub(crate) use config::{FaceStyle, Slant, Weight};
 pub use config::{FontConfig, FontFamily, FontSource};
 pub(crate) use decor::Decoration;

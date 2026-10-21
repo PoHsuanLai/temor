@@ -68,7 +68,9 @@ pub mod testing;
 pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};
 pub use error::RenderError;
-pub use font::{FontConfig, FontFamily, FontSet, FontSource};
+pub use font::{
+    FontCatalog, FontConfig, FontFamily, FontSet, FontSource, font_catalog, warm_font_catalog,
+};
 pub use frame::PaneFrame;
 #[cfg(feature = "ghostty")]
 pub use frame::{CapturedFrame, FrameCapture};

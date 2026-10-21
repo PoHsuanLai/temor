@@ -272,18 +272,25 @@ fn primary_family(
     {
         return Some(found);
     }
-    if matches!(family, FontFamily::Monospace)
-        && let Some(found) = MONOSPACE_FIRST
-            .iter()
-            .find_map(|name| collection.family_by_name(name))
+    default_monospace_family(collection)
+        .into_iter()
+        .chain(bundled.iter().copied())
+        .find_map(|id| collection.family(id))
+}
+
+/// The family "the system's monospace" means here: the platform's preferred names (a Mac's
+/// generic is Courier, which is thin on a screen), then the generic.
+pub(super) fn default_monospace_family(collection: &mut Collection) -> Option<FamilyId> {
+    if let Some(id) = MONOSPACE_FIRST
+        .iter()
+        .find_map(|name| collection.family_id(name))
     {
-        return Some(found);
+        return Some(id);
     }
     let generic: Vec<FamilyId> = collection
         .generic_families(GenericFamily::Monospace)
         .collect();
     generic
         .into_iter()
-        .chain(bundled.iter().copied())
-        .find_map(|id| collection.family(id))
+        .find(|id| collection.family(*id).is_some())
 }

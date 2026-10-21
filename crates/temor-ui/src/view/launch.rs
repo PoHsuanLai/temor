@@ -258,6 +258,8 @@ pub(super) fn session_kit(launch: &Launch) -> SessionKit {
 
 /// The fonts a pane draws with: `font` at `size`, found on this computer.
 pub fn load_fonts(font: &FontChoice, size: FontPoints) -> Result<FontSet, UiError> {
+    // The Settings window's font list is read while the first pane starts, not when it is opened.
+    temor_render::warm_font_catalog();
     let family = match font {
         FontChoice::SystemMonospace => FontFamily::Monospace,
         FontChoice::Named(name) => FontFamily::Named(name.clone()),
