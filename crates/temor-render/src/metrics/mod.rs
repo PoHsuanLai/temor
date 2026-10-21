@@ -11,6 +11,6 @@ pub use fit::fit_grid;
 pub use layout::RowLayout;
 pub use layout_types::{Gap, GridHit, Insert, LayoutParams, Pin, Screen, Slice};
 pub use model::{
-    CellHit, CellMetrics, CellPos, CellSide, FontSize, GridFit, HitRegion, Padding, PixelSize,
-    Scale,
+    CellHit, CellMetrics, CellPos, CellSide, FontSize, GridFit, HitRegion, LineHeight, Padding,
+    PixelSize, Scale,
 };

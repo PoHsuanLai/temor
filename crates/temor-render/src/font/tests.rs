@@ -88,3 +88,50 @@ fn a_full_atlas_clears_and_moves_the_epoch() {
     assert!(cache.epoch() > start);
     assert!(!cache.run("A", FaceStyle::REGULAR, 1).is_empty());
 }
+
+/// The line height scales the cell's height and leaves its width alone, at every scale, and the
+/// baseline, underline and strike stay inside the cell whatever the factor.
+#[test]
+fn the_line_height_opens_the_cell_at_any_scale_and_keeps_its_marks_inside() {
+    use super::{FontConfig, FontFamily, FontSet};
+    use crate::metrics::{FontSize, LineHeight};
+    use crate::testing::bundled;
+
+    let cell = |line: f32, scale: f32| {
+        let set = FontSet::load(
+            &FontConfig {
+                family: FontFamily::Named("Noto Sans Mono".into()),
+                size: FontSize::new(14.0),
+                line_height: LineHeight::new(line),
+            },
+            bundled(),
+        )
+        .expect("bundled fonts load");
+        GlyphCache::new(set, Scale::new(scale)).metrics()
+    };
+    for scale in [1.0, 1.25, 1.5, 2.0, 3.0] {
+        let plain = cell(1.0, scale);
+        let mut last = 0;
+        for line in [0.8, 1.0, 1.2, 1.5, 2.0] {
+            let m = cell(line, scale);
+            assert_eq!(m.cell.width, plain.cell.width, "width at {line} x {scale}");
+            let want = (plain.cell.height.0 as f32 * line).round();
+            assert!(
+                (m.cell.height.0 as f32 - want).abs() <= 1.0,
+                "height {} for {want} at {line} x {scale}",
+                m.cell.height.0
+            );
+            assert!(m.cell.height.0 >= last, "taller as the factor grows");
+            last = m.cell.height.0;
+            assert!(m.baseline.0 < m.cell.height.0, "baseline inside");
+            assert!(
+                m.underline.0 + m.thickness.0 <= m.cell.height.0,
+                "underline inside"
+            );
+            assert!(
+                m.strikeout.0 + m.thickness.0 <= m.cell.height.0,
+                "strikeout inside"
+            );
+        }
+    }
+}

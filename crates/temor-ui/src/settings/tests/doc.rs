@@ -37,6 +37,7 @@ fn the_schema_survives_its_own_file_and_names_every_setting_once() {
     let TerminalSettings {
         font: _,
         font_size: _,
+        line_height: _,
         scrollback: _,
         cursor: _,
         cursor_blink: _,
@@ -53,6 +54,7 @@ fn the_schema_survives_its_own_file_and_names_every_setting_once() {
         [
             "font.family",
             "font.size",
+            "font.line_height",
             "cursor.style",
             "cursor.blink",
             "scrollback.lines",
@@ -63,6 +65,18 @@ fn the_schema_survives_its_own_file_and_names_every_setting_once() {
             "offer.remove",
         ]
     );
+    let line = schema
+        .key
+        .iter()
+        .find(|key| key.path.0 == "font.line_height");
+    assert!(matches!(
+        line.map(|key| &key.kind),
+        Some(KeyKind::Bounded {
+            min: 80,
+            max: 200,
+            ..
+        })
+    ));
     let size = schema.key.iter().find(|key| key.path.0 == "font.size");
     assert!(matches!(
         size.map(|key| &key.kind),
@@ -81,6 +95,7 @@ fn each_key_sets_its_setting() {
 [font]
 family = "Fira Code"
 size = 15
+line_height = 125
 [cursor]
 style = "bar"
 blink = "off"
@@ -105,6 +120,7 @@ remove = ["su"]
     assert!(problems.is_empty(), "{problems:?}");
     assert_eq!(settings.font, FontChoice::Named("Fira Code".to_owned()));
     assert_eq!(settings.font_size.points(), 15.0);
+    assert_eq!(settings.line_height.percent(), 125);
     assert_eq!(settings.cursor, CursorStyle::Bar);
     assert_eq!(settings.cursor_blink, CursorBlinking::Off);
     assert_eq!(settings.scrollback.lines(), 500);

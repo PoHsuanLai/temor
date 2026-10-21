@@ -1,6 +1,6 @@
 //! What fonts the person asked for and where they come from.
 
-use crate::metrics::FontSize;
+use crate::metrics::{FontSize, LineHeight};
 
 /// The grid's font family.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -18,6 +18,7 @@ pub enum FontFamily {
 pub struct FontConfig {
     pub family: FontFamily,
     pub size: FontSize,
+    pub line_height: LineHeight,
 }
 
 /// Where fonts are looked up.

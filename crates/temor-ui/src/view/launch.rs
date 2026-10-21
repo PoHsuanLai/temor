@@ -6,9 +6,9 @@ use std::sync::{Arc, Mutex};
 
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
-use temor_pane::settings::{FontChoice, FontPoints, TerminalSettings};
+use temor_pane::settings::{FontChoice, FontPoints, LinePercent, TerminalSettings};
 use temor_pty::SessionLauncher;
-use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, Palette};
+use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, LineHeight, Palette};
 use temor_shell::ChildEnv;
 use temor_vt::Snapshot;
 use temor_vt::{CellPx, GridSize};
@@ -177,7 +177,7 @@ pub fn open_session_with(
 ) -> Result<Session, UiError> {
     ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
-    let fonts = load_fonts(&settings.font, settings.font_size)?;
+    let fonts = load_fonts(&settings.font, settings.font_size, settings.line_height)?;
     let launcher = match &launch.launcher {
         LauncherChoice::ThisProgram => SessionLauncher::Trampoline {
             program: std::env::current_exe().map_err(UiError::Launcher)?,
@@ -257,7 +257,11 @@ pub(super) fn session_kit(launch: &Launch) -> SessionKit {
 }
 
 /// The fonts a pane draws with: `font` at `size`, found on this computer.
-pub fn load_fonts(font: &FontChoice, size: FontPoints) -> Result<FontSet, UiError> {
+pub fn load_fonts(
+    font: &FontChoice,
+    size: FontPoints,
+    line: LinePercent,
+) -> Result<FontSet, UiError> {
     // The Settings window's font list is read while the first pane starts, not when it is opened.
     temor_render::warm_font_catalog();
     let family = match font {
@@ -268,6 +272,7 @@ pub fn load_fonts(font: &FontChoice, size: FontPoints) -> Result<FontSet, UiErro
         &FontConfig {
             family,
             size: FontSize::new(size.points()),
+            line_height: LineHeight::new(line.factor()),
         },
         FontSource::System,
     )?)

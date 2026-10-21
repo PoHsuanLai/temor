@@ -12,7 +12,7 @@ use super::doc::{
     CursorSettings, FontSettings, NotifySettings, OfferSettings, ScrollbackSettings, ShellSettings,
     TerminalDoc,
 };
-use super::values::{FontSize, NotifySeconds, ScrollbackSize};
+use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
 
 impl TerminalDoc {
     /// The settings the pane reads, with the person's `keys` (from `keys.conf`) put in. What the
@@ -27,6 +27,7 @@ impl TerminalDoc {
         let settings = TerminalSettings {
             font,
             font_size: self.font.size.0,
+            line_height: self.font.line_height.0,
             scrollback: self.scrollback.lines.0,
             cursor: self.cursor.style.into(),
             cursor_blink: self.cursor.blink.into(),
@@ -50,6 +51,7 @@ pub fn from_terminal(settings: &TerminalSettings) -> TerminalDoc {
                 FontChoice::Named(name) => name.clone(),
             },
             size: FontSize(settings.font_size),
+            line_height: LineSpacing(settings.line_height),
         },
         cursor: CursorSettings {
             style: settings.cursor.into(),

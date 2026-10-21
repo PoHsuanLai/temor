@@ -3,7 +3,9 @@
 //! and reports the key), so the rest of the app never checks again.
 
 use serde::{Deserialize, Serialize};
-use temor_pane::settings::{FontPoints, NOTIFY_AFTER_MAX_SECONDS, NotifyAfter, ScrollbackLines};
+use temor_pane::settings::{
+    FontPoints, LinePercent, NOTIFY_AFTER_MAX_SECONDS, NotifyAfter, ScrollbackLines,
+};
 
 /// `font.size`: points, from 6 to 72.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -33,6 +35,37 @@ impl TryFrom<f32> for FontSize {
 impl From<FontSize> for f32 {
     fn from(size: FontSize) -> Self {
         size.0.points()
+    }
+}
+
+/// `font.line_height`: percent of the font's own line, from 80 to 200.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "u32", into = "u32")]
+pub struct LineSpacing(pub LinePercent);
+
+impl Default for LineSpacing {
+    fn default() -> Self {
+        Self(LinePercent::DEFAULT)
+    }
+}
+
+impl TryFrom<u32> for LineSpacing {
+    type Error = String;
+
+    fn try_from(percent: u32) -> Result<Self, String> {
+        LinePercent::new(percent).map(Self).ok_or_else(|| {
+            format!(
+                "a percent from {} to {}",
+                LinePercent::MIN,
+                LinePercent::MAX
+            )
+        })
+    }
+}
+
+impl From<LineSpacing> for u32 {
+    fn from(line: LineSpacing) -> Self {
+        line.0.percent()
     }
 }
 

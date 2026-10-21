@@ -1,7 +1,7 @@
 //! What a change of settings means for open panes.
 
 use temor_pane::settings::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, TerminalSettings,
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, TerminalSettings,
 };
 
 use crate::settings::{LiveChange, live_changes};
@@ -19,7 +19,7 @@ fn the_look_and_the_notice_threshold_reach_open_panes() {
                 ..old.clone()
             },
             LiveChange {
-                font: Some((FontChoice::SystemMonospace, size)),
+                font: Some((FontChoice::SystemMonospace, size, LinePercent::DEFAULT)),
                 ..LiveChange::default()
             },
         ),

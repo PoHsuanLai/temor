@@ -30,8 +30,9 @@ impl Hub {
             let Some(session) = slot.session.as_mut() else {
                 continue;
             };
-            if let Some((font, size)) = &change.font {
-                let applied = load_fonts(font, *size).and_then(|fonts| session.set_fonts(fonts));
+            if let Some((font, size, line)) = &change.font {
+                let applied =
+                    load_fonts(font, *size, *line).and_then(|fonts| session.set_fonts(fonts));
                 if let Err(err) = applied {
                     said.push(format!("Settings: the font was not changed: {err}"));
                 }

@@ -14,7 +14,7 @@ use super::config::{FaceStyle, FontConfig, FontFamily, FontSource, Slant, Weight
 use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
 use super::fallback::{Presentation, needs, presentation, script_of};
 use crate::error::RenderError;
-use crate::metrics::FontSize;
+use crate::metrics::{FontSize, LineHeight};
 use crate::platform::MONOSPACE_FIRST;
 
 /// Most entries the per-grapheme face cache keeps before it starts again (text is unbounded).
@@ -35,6 +35,7 @@ pub struct FontSet {
     cache: SourceCache,
     lookup: Lookup,
     size: FontSize,
+    line_height: LineHeight,
     faces: Vec<Face>,
     primary: [FaceId; 4],
     /// Bundled families in the order they were given.
@@ -102,6 +103,7 @@ impl FontSet {
             cache,
             lookup,
             size: config.size,
+            line_height: config.line_height,
             faces: Vec::new(),
             primary: [FaceId(0); 4],
             bundled,
@@ -117,6 +119,10 @@ impl FontSet {
 
     pub fn size(&self) -> FontSize {
         self.size
+    }
+
+    pub fn line_height(&self) -> LineHeight {
+        self.line_height
     }
 
     pub(crate) fn face(&self, id: FaceId) -> &Face {

@@ -18,6 +18,7 @@ pub fn fonts(px: f32) -> FontSet {
     let config = FontConfig {
         family: FontFamily::Named("Noto Sans Mono".into()),
         size: FontSize::new(px),
+        ..FontConfig::default()
     };
     FontSet::load(&config, bundled()).expect("bundled fonts load")
 }

@@ -117,6 +117,7 @@ pub(super) fn start_with(
         &FontConfig {
             family: FontFamily::Monospace,
             size: FontSize::new(13.0),
+            ..FontConfig::default()
         },
         FontSource::System,
     )

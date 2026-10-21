@@ -16,6 +16,7 @@ fn settings_text_applies_good_lines_and_reports_bad_ones_by_line() {
     let parsed = parse_settings(text);
     assert_eq!(parsed.settings.font_size.points(), 15.0);
     assert_eq!(parsed.settings.scrollback.lines(), 500);
+    assert_eq!(parsed.settings.line_height.percent(), 100);
     let lines: Vec<usize> = parsed.issues.iter().map(|(line, _)| *line).collect();
     assert_eq!(lines, vec![4, 5, 6, 7, 8]);
     let old = parsed
@@ -45,6 +46,23 @@ fn settings_values_have_limits() {
     assert!(parse_settings("scrollback.lines = 1000001").issues.len() == 1);
     assert!(parse_settings("cursor.style = blink").issues.len() == 1);
     assert_eq!(parse_settings("").settings.scrollback.lines(), 10_000);
+}
+
+#[test]
+fn line_height_is_a_percent_from_80_to_200() {
+    // (line, the percent it gives, refused)
+    for (line, want, refused) in [
+        ("", 100, false),
+        ("font.line_height = 120", 120, false),
+        ("font.line_height = 125%", 125, false),
+        ("font.line_height = 79", 100, true),
+        ("font.line_height = 201", 100, true),
+        ("font.line_height = tall", 100, true),
+    ] {
+        let parsed = parse_settings(line);
+        assert_eq!(parsed.settings.line_height.percent(), want, "{line:?}");
+        assert_eq!(!parsed.issues.is_empty(), refused, "{line:?}");
+    }
 }
 
 #[test]

@@ -109,7 +109,11 @@ impl GlyphCache {
         color_max: u32,
     ) -> Self {
         let px = fonts.size().device(scale);
-        let metrics = cell_metrics(fonts.face(fonts.primary(FaceStyle::REGULAR)), px);
+        let metrics = cell_metrics(
+            fonts.face(fonts.primary(FaceStyle::REGULAR)),
+            px,
+            fonts.line_height(),
+        );
         Self {
             fonts,
             px,
@@ -143,6 +147,7 @@ impl GlyphCache {
         self.metrics = cell_metrics(
             self.fonts.face(self.fonts.primary(FaceStyle::REGULAR)),
             self.px,
+            self.fonts.line_height(),
         );
         self.reset();
         true

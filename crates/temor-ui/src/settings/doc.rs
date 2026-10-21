@@ -11,7 +11,7 @@ use ds_settings::{FileName, Format, SettingsDoc};
 use serde::{Deserialize, Serialize};
 
 use super::schema::APP;
-use super::values::{FontSize, NotifySeconds, ScrollbackSize};
+use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
 use super::words::{Blinking, CursorShape, StartFolder};
 
 /// The page temor's keys are on in the Settings app: temor's own.
@@ -38,6 +38,14 @@ pub struct FontSettings {
         unit = "points"
     )]
     pub size: FontSize,
+    #[settings(
+        label = "Line height",
+        help = "How tall each line is, as a share of the font's own line. More opens the text up.",
+        section = "Text",
+        range = "80..=200",
+        unit = "%"
+    )]
+    pub line_height: LineSpacing,
 }
 
 impl Default for FontSettings {
@@ -45,6 +53,7 @@ impl Default for FontSettings {
         Self {
             family: "system".to_owned(),
             size: FontSize::default(),
+            line_height: LineSpacing::default(),
         }
     }
 }

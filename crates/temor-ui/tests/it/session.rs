@@ -91,6 +91,7 @@ fn fixture(name: &str) -> Fixture {
         &FontConfig {
             family: FontFamily::Monospace,
             size: FontSize::new(13.0),
+            ..FontConfig::default()
         },
         FontSource::System,
     )
@@ -1016,13 +1017,14 @@ fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
     if !super::support::tools_present() {
         return;
     }
-    use temor_pane::settings::{CursorStyle, FontChoice, FontPoints};
+    use temor_pane::settings::{CursorStyle, FontChoice, FontPoints, LinePercent};
     use temor_ui::view::launch::load_fonts;
 
     let mut f = ready("session-font-size");
     let before = f.session.fit().expect("fitted");
     let bigger = FontPoints::new(26.0).expect("in range");
-    let fonts = load_fonts(&FontChoice::SystemMonospace, bigger).expect("a monospace font");
+    let fonts = load_fonts(&FontChoice::SystemMonospace, bigger, LinePercent::DEFAULT)
+        .expect("a monospace font");
     f.session.set_fonts(fonts).expect("the pane takes the font");
     let after = f.session.fit().expect("fitted");
     assert!(

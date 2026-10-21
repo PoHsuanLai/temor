@@ -3,8 +3,9 @@
 
 use super::start::StartIn;
 use super::value::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, NotifyAfter, ScrollbackLines, ShellChoice,
-    cursor, cursor_blink, font_family, font_points, notify_after, offer_command, scrollback, shell,
+    CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, ScrollbackLines,
+    ShellChoice, cursor, cursor_blink, font_family, font_points, line_percent, notify_after,
+    offer_command, scrollback, shell,
 };
 use crate::error::SettingsError;
 use crate::keys::Action;
@@ -15,6 +16,8 @@ use chordkit::Overrides;
 pub struct TerminalSettings {
     pub font: FontChoice,
     pub font_size: FontPoints,
+    /// How tall a line is (`font.line_height`, percent of the font's own line).
+    pub line_height: LinePercent,
     pub scrollback: ScrollbackLines,
     pub cursor: CursorStyle,
     /// Whether the cursor blinks (`cursor.blink = on | off`).
@@ -39,6 +42,7 @@ impl Default for TerminalSettings {
         Self {
             font: FontChoice::default(),
             font_size: FontPoints::DEFAULT,
+            line_height: LinePercent::DEFAULT,
             scrollback: ScrollbackLines::DEFAULT,
             cursor: CursorStyle::default(),
             cursor_blink: CursorBlinking::default(),
@@ -114,6 +118,7 @@ fn apply_line(settings: &mut TerminalSettings, line: &str) -> Result<(), Setting
     match key {
         "font.family" => settings.font = font_family(key, value)?,
         "font.size" => settings.font_size = font_points(key, value)?,
+        "font.line_height" => settings.line_height = line_percent(key, value)?,
         "scrollback.lines" => settings.scrollback = scrollback(key, value)?,
         "cursor.style" => settings.cursor = cursor(key, value)?,
         "cursor.blink" => settings.cursor_blink = cursor_blink(key, value)?,

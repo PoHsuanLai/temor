@@ -1726,6 +1726,7 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       pop-up's sizers and the pick is not clicked in a test; not seen in a running window yet
       (⌘, did not open Settings from a keystroke script, so it was checked as a harness render).
       The row is chosen by the key path `font.family`; use `control = "font"` once the quire pin has
-      the attribute. Line height is not a setting yet (macOS has a 1.25 em floor, `MIN_LINE_EM`);
-      the plan is `font.line_height` as a multiplier of the font's own line, default 1.0, and a
-      bundled default font (Ghostty and WezTerm embed JetBrains Mono).
+      the attribute. Line height is a setting now (`font.line_height`, percent of the font's own
+      line, 80 to 200, default 100, live in open panes); macOS still raises the font's line to
+      1.25 em first (`MIN_LINE_EM`), so 100 is that floor there. A bundled default font is still
+      open (Ghostty and WezTerm embed JetBrains Mono).

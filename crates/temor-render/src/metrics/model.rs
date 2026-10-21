@@ -62,6 +62,35 @@ impl Default for FontSize {
     }
 }
 
+/// How tall a line is, as a multiple of the font's own line (its ascent, descent and gap), which
+/// the platform may raise to a floor first. 1.0 keeps that line; 1.2 opens it by a fifth.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LineHeight(f32);
+
+impl LineHeight {
+    pub const MIN: f32 = 0.5;
+    pub const MAX: f32 = 3.0;
+
+    /// `factor` clamped to 0.5..=3.0; anything not a number becomes 1.0.
+    pub fn new(factor: f32) -> Self {
+        if factor.is_finite() {
+            Self(factor.clamp(Self::MIN, Self::MAX))
+        } else {
+            Self(1.0)
+        }
+    }
+
+    pub fn factor(self) -> f32 {
+        self.0
+    }
+}
+
+impl Default for LineHeight {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
 /// A size in device pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PixelSize {

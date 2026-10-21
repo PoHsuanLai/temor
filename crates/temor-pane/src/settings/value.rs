@@ -23,6 +23,34 @@ impl FontPoints {
     }
 }
 
+/// How tall a terminal line is, in percent of the font's own line: 100 keeps it, 120 opens it by
+/// a fifth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LinePercent(u32);
+
+impl LinePercent {
+    pub const MIN: u32 = 80;
+    pub const MAX: u32 = 200;
+    /// The height when the settings say nothing.
+    pub const DEFAULT: Self = Self(100);
+
+    /// The percentage, `None` outside 80 to 200.
+    pub fn new(percent: u32) -> Option<Self> {
+        (Self::MIN..=Self::MAX)
+            .contains(&percent)
+            .then_some(Self(percent))
+    }
+
+    pub fn percent(self) -> u32 {
+        self.0
+    }
+
+    /// The same as a multiple of the font's line.
+    pub fn factor(self) -> f32 {
+        self.0 as f32 / 100.0
+    }
+}
+
 /// How many lines of scrollback are kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScrollbackLines(u32);
@@ -98,6 +126,17 @@ pub fn font_points(key: &str, value: &str) -> Result<FontPoints, SettingsError> 
         .parse::<f32>()
         .ok()
         .and_then(FontPoints::new)
+        .ok_or_else(|| bad(key, value))
+}
+
+/// Reads a line height: a whole percent from 80 to 200.
+pub fn line_percent(key: &str, value: &str) -> Result<LinePercent, SettingsError> {
+    value
+        .trim_end_matches('%')
+        .trim()
+        .parse::<u32>()
+        .ok()
+        .and_then(LinePercent::new)
         .ok_or_else(|| bad(key, value))
 }
 

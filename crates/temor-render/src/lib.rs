@@ -78,7 +78,7 @@ pub use frame::{CapturedFrame, FrameCapture};
 pub use gpu::{GpuFrame, GpuRenderer};
 pub use metrics::{
     CellHit, CellMetrics, CellPos, CellSide, FontSize, Gap, GridFit, GridHit, HitRegion, Insert,
-    LayoutParams, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
+    LayoutParams, LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
 };
 pub use palette::Palette;
 pub use renderer::{

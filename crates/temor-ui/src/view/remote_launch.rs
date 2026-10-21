@@ -25,7 +25,7 @@ pub fn open_fed_session(
     link: Arc<dyn PaneLink>,
 ) -> Result<(Session, Feeder), UiError> {
     let settings = &launch.settings;
-    let fonts = load_fonts(&settings.font, settings.font_size)?;
+    let fonts = load_fonts(&settings.font, settings.font_size, settings.line_height)?;
     let (grid, cell) = first_size();
     let spec = FedSpec {
         link,
