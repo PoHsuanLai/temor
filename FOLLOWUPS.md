@@ -155,10 +155,11 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
 - [ ] macOS: Option-as-Alt is on for both Option keys (temor-pane platform/mod.rs); make it a setting
       (off, left, right, both). Right Option then types the layout's characters.
 - [ ] Review of PR #27 (2026-10-21):
-      - quire-emoji's `prefer_colour` runs for each pane's font set and on every font change. Where no
-        system emoji family has COLR, it walks the font folders and reads the whole COLRv1 file
-        (about 10 MB) each time. Fixed in quire 966b99b3 (the Blob is found once per process);
-        taken with v0.3.38.
+      - [x] quire-emoji's `prefer_colour` runs for each pane's font set and on every font change. Where
+        no system emoji family has COLR, it walked the font folders and read the whole COLRv1 file
+        (about 10 MB) each time. quire v0.3.38 finds the file once per process (quire-emoji pinned
+        at 9844ccac, done 2026-10-21; a COLRv1 font installed while temor runs is seen after a
+        restart).
       - macOS single instance (temor-desktop platform/macos/instance.rs): a launch that times out
         pinging a slow temor removes its socket and binds its own; when the first temor quits, its
         cleanup removes the new owner's socket. Remove only a socket that is still the one bound.

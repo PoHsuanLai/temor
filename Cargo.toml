@@ -24,9 +24,9 @@ ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4
 ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
 ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
 ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "90e73d8d4aab5a5bb4636a4235d3d92c046a58e0" }  # 90e73d8d: v0.3.37, settings types in ds-core, sidebar listing (blitz 851fa7dd)
-# Only this crate is ahead of the pin above: quire PR #54 (shared emoji detection, depends on fontique alone). Move
-# it with the others at the next quire bump.
-quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "b9913e5cbd594ab5f2e139629f54549d49e9a552" }
+# Only this crate is ahead of the pin above (it depends on fontique alone): shared emoji detection, the COLRv1
+# file read once per process. Move the others to it at the next quire bump.
+quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "9844ccaceac13afed27229f7fda0fcf7d8cff546" }  # 9844ccac: v0.3.38
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }

@@ -5914,7 +5914,7 @@ dependencies = [
 [[package]]
 name = "quire-emoji"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/quire.git?rev=b9913e5cbd594ab5f2e139629f54549d49e9a552#b9913e5cbd594ab5f2e139629f54549d49e9a552"
+source = "git+https://github.com/PoHsuanLai/quire.git?rev=9844ccaceac13afed27229f7fda0fcf7d8cff546#9844ccaceac13afed27229f7fda0fcf7d8cff546"
 dependencies = [
  "fontique",
 ]
