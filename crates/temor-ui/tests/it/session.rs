@@ -24,9 +24,9 @@ use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::support::scratch;
 
-/// A clipboard shared between the test and the session.
+/// A clipboard shared between the test and the session, and its primary selection.
 #[derive(Clone, Default)]
-struct MemoryClipboard(Rc<RefCell<String>>);
+struct MemoryClipboard(Rc<RefCell<String>>, Rc<RefCell<String>>);
 
 impl Clipboard for MemoryClipboard {
     fn write(&self, text: &str) -> Result<(), ClipboardFailed> {
@@ -36,6 +36,11 @@ impl Clipboard for MemoryClipboard {
 
     fn read(&self) -> Result<String, ClipboardFailed> {
         Ok(self.0.borrow().clone())
+    }
+
+    fn write_primary(&self, text: &str) -> Result<(), ClipboardFailed> {
+        *self.1.borrow_mut() = text.to_owned();
+        Ok(())
     }
 }
 
@@ -902,8 +907,12 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
 }
 
 fn copy_event(text: &str) -> PaneEvent {
+    copy_to(temor_vt::ClipboardLocation::Standard, text)
+}
+
+fn copy_to(location: temor_vt::ClipboardLocation, text: &str) -> PaneEvent {
     PaneEvent::Clipboard(temor_vt::ClipboardWrite {
-        location: temor_vt::ClipboardLocation::Standard,
+        location,
         items: vec![temor_vt::ClipboardItem {
             mime: "text/plain".to_owned(),
             data: text.as_bytes().to_vec(),
@@ -943,6 +952,36 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
     f.session.set_clipboard_consent(Grant::Refused);
     f.session.absorb(copy_event("refused"));
     assert_eq!(*f.clipboard.0.borrow(), "again");
+}
+
+/// OSC 52 with `p` (or `s`) puts the text on the primary selection and leaves the clipboard
+/// alone, with the same question on another computer.
+#[test]
+fn a_program_copies_to_the_primary_selection_when_it_names_it() {
+    use temor_core::remote::Grant;
+    use temor_core::shelf::PaneSite;
+    use temor_vt::ClipboardLocation::{Primary, Selection};
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-osc52-primary");
+    *f.clipboard.0.borrow_mut() = "kept".to_owned();
+    f.session.absorb(copy_to(Primary, "picked"));
+    assert_eq!(*f.clipboard.1.borrow(), "picked");
+    assert_eq!(
+        *f.clipboard.0.borrow(),
+        "kept",
+        "the clipboard is not touched"
+    );
+    f.session.absorb(copy_to(Selection, "selected"));
+    assert_eq!(*f.clipboard.1.borrow(), "selected");
+
+    f.session.set_site(PaneSite::Remote);
+    f.session.absorb(copy_to(Primary, "there"));
+    assert_eq!(*f.clipboard.1.borrow(), "selected", "waits for the person");
+    f.session.answer_clipboard(Grant::Allowed);
+    assert_eq!(*f.clipboard.1.borrow(), "there");
+    assert_eq!(*f.clipboard.0.borrow(), "kept");
 }
 
 #[test]

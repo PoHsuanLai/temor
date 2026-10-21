@@ -36,6 +36,8 @@ pub fn schema() -> Schema {
         key,
         // temor keeps no tables of its own data in the file.
         foreign: Default::default(),
+        // Every key sits on one of the built-in pages.
+        pages: Vec::new(),
     }
 }
 

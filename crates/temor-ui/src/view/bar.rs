@@ -15,7 +15,7 @@ use dioxus::prelude::*;
 use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,
 };
-use ds::prelude::{AfterPick, CommandPalette, RowChord};
+use ds::prelude::{AfterPick, CommandPalette, PaletteClose, RowChord};
 use temor_core::bar::{BarRow, Section};
 use temor_core::vocab::text::PluginId;
 
@@ -125,8 +125,14 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
                 },
             },
             // Escape leaves the file's find first, back to the bar's rows; a second one closes.
-            onclose: move |()| match escape(finding()) {
-                Escape::Close => closed.bar_close(),
+            // A click outside closes the bar at once, and ends a find that was running.
+            onclose: move |how: PaletteClose| match escape(finding(), how) {
+                Escape::Close => {
+                    if let Some(handle) = stepped.take() {
+                        handle.end_find();
+                    }
+                    closed.bar_close();
+                }
                 Escape::StepBack => {
                     if let Some(handle) = stepped.take() {
                         handle.end_find();

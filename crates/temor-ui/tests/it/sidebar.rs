@@ -380,8 +380,8 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
         h.with_doc(|doc| doc.query_selector(selector).ok().flatten().is_some())
     };
     h.send(Input::chord(
-        &[ShortcutKey::Super, ShortcutKey::Shift],
-        ShortcutKey::Char('l'),
+        &[ShortcutKey::Ctrl, ShortcutKey::Super],
+        ShortcutKey::Char('s'),
     ));
     h.advance(Duration::from_millis(600));
     assert!(

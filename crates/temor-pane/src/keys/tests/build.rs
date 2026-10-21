@@ -9,34 +9,24 @@ use super::support::{GNOME, KDE, OTHER, OURS, Went, keymap_for, press, went};
 use crate::error::SettingsError;
 
 #[test]
-fn every_declared_default_registers_except_where_a_standard_chord_has_it() {
+fn every_declared_default_registers_and_one_the_desktop_takes_has_its_fallback() {
     for platform in [Platform::MacOs, Platform::Windows, KDE, GNOME, OURS] {
         let (_, issues) = build_keymap(&ConventionSource, platform, &Overrides::default());
         assert!(issues.is_empty(), "{platform:?}: {issues:?}");
     }
-    // Ctrl+Alt+Left and Right are the common conventions' Space switch.
+    // Ctrl+Alt+Left and Right are the common conventions' Space switch: there focus left and
+    // right take their fallbacks, H and L, and nothing is refused.
     let (keymap, issues) = build_keymap(&ConventionSource, OTHER, &Overrides::default());
-    let mentioned = |id: &str| {
-        issues
-            .iter()
-            .filter(|(line, issue)| {
-                *line == 0 && matches!(issue, SettingsError::Key(m) if m.contains(id))
-            })
-            .count()
-    };
-    assert_eq!(issues.len(), 2, "{issues:?}");
-    assert_eq!(
-        (
-            mentioned("temor.focus-left"),
-            mentioned("temor.focus-right")
-        ),
-        (1, 1)
-    );
-    // The refusal costs those two actions only.
-    assert_eq!(
-        went(&keymap, &press("Ctrl+Shift+Alt+Up")),
-        Went::Ran(Action::FocusUp)
-    );
+    assert!(issues.is_empty(), "{issues:?}");
+    #[rustfmt::skip]
+    let rows = [
+        ("Ctrl+Shift+Alt+H", Action::FocusLeft),
+        ("Ctrl+Shift+Alt+L", Action::FocusRight),
+        ("Ctrl+Shift+Alt+Up", Action::FocusUp),
+    ];
+    for (chord, action) in rows {
+        assert_eq!(went(&keymap, &press(chord)), Went::Ran(action), "{chord}");
+    }
 }
 
 #[test]
@@ -71,7 +61,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::Equalize, "temor.equalize"),
         (Action::ReopenTab, "temor.reopen-tab"),
         (Action::JumpToWaiting, "temor.jump-to-waiting"),
-        (Action::ToggleSidebar, "temor.toggle-sidebar"),
+        (Action::ToggleSidebar, "toggle-sidebar"),
         (Action::PinTab, "temor.pin-tab"),
         (Action::UnpinTab, "temor.unpin-tab"),
         (Action::ShowDownloads, "temor.show-downloads"),
