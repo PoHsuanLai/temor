@@ -15,6 +15,7 @@ use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
 use super::fallback::{Presentation, needs, presentation, script_of};
 use crate::error::RenderError;
 use crate::metrics::FontSize;
+use crate::platform::MONOSPACE_FIRST;
 
 /// Most entries the per-grapheme face cache keeps before it starts again (text is unbounded).
 const CHOSEN_CAP: usize = 4096;
@@ -268,6 +269,13 @@ fn primary_family(
 ) -> Option<FamilyInfo> {
     if let FontFamily::Named(name) = family
         && let Some(found) = collection.family_by_name(name)
+    {
+        return Some(found);
+    }
+    if matches!(family, FontFamily::Monospace)
+        && let Some(found) = MONOSPACE_FIRST
+            .iter()
+            .find_map(|name| collection.family_by_name(name))
     {
         return Some(found);
     }

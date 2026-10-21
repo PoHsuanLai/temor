@@ -4,6 +4,7 @@ use temor_vt::{CellPx, Px};
 
 use super::face::Face;
 use crate::metrics::CellMetrics;
+use crate::platform::MIN_LINE_EM;
 
 /// The cell of `face` at `px` device pixels: the advance of `0` wide, ascent plus descent plus
 /// line gap tall, every offset rounded so lines land on whole pixels at any scale.
@@ -15,8 +16,11 @@ pub(crate) fn cell_metrics(face: &Face, px: f32) -> CellMetrics {
     let advance = if advance > 0.0 { advance } else { px * 0.6 };
     let width = (advance.round() as u32).max(1);
     let ascent = m.ascent.ceil().max(1.0);
-    let height = ((ascent + m.descent.max(0.0).ceil() + m.leading.max(0.0)).round() as u32).max(2);
-    let baseline = (ascent as u32).min(height - 1);
+    let natural = ascent + m.descent.max(0.0).ceil() + m.leading.max(0.0);
+    let height = (natural.max((px * MIN_LINE_EM).round()).round() as u32).max(2);
+    // Room beyond the font's own line is shared above and below, so the text sits in its row.
+    let spare = height.saturating_sub(natural.round() as u32);
+    let baseline = (ascent as u32 + spare / 2).min(height - 1);
     let thickness = (m.stroke_size.round() as u32).clamp(1, (height / 4).max(1));
     let underline = (baseline as f32 - m.underline_offset).round().max(0.0) as u32;
     let strike_top = if m.strikeout_offset > 0.0 {
