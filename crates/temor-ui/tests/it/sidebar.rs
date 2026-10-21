@@ -427,7 +427,7 @@ fn a_split_of_three_shows_one_name_and_two_glyphs() {
     }
     let probe = Probe::new();
     let mut h = harness("sidebar-squeeze", &probe);
-    h.resize_window(Extent::new(1600, 800));
+    h.resize_window(Extent::new(1700, 800));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
     chord(&mut h, 'd');
     chord(&mut h, 'd');

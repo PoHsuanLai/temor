@@ -30,6 +30,7 @@ mod size_audit;
 mod spaces;
 mod ssh;
 mod support;
+mod tab_close;
 mod viewer;
 mod wide_text;
 mod window;

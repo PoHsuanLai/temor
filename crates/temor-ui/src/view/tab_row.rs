@@ -12,11 +12,14 @@ use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::content::label::{LabelRole, LabelStyle};
 use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
+use ds::components::controls::press::Propagation;
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::prelude::IconView;
 use ds::prelude::*;
+use ds::style::tokens::control_size::ControlSize;
 use temor_core::presence::companion_presence;
 use temor_core::vocab::ids::PaneId;
+use temor_core::workspace::WorkspaceIn;
 
 use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
@@ -24,6 +27,7 @@ use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
 use super::tab_glyph::prompt_glyph;
 use super::tab_wiring::{drag_press, tab_menu_trigger, use_drag_target};
+use super::tool_button::ToolButton;
 use crate::hub::{Desk, DragKey, TabRow, TabTone, Unread, select_tab};
 
 /// The row for one tab.
@@ -67,6 +71,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             CompanionOrb { presence, size: OrbSize::Inline }
         }),
     };
+    let closing = desk.clone();
     // While a command runs, how long it has, at the row's end: the row has no line for the state.
     let elapsed = row.state.elapsed();
     let trail = rsx! {
@@ -77,6 +82,18 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
         }
         if row.unread == Unread::Unread {
             Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
+        }
+        span {
+            class: "temor-tab-close",
+            "data-selected": (row.selection == Selection::Selected).to_string(),
+            ToolButton {
+                icon: Icon::X,
+                size: ControlSize::Mini,
+                propagation: Propagation::Stop,
+                label: "Close tab",
+                tip: "Close this tab",
+                onclick: move |()| closing.act(WorkspaceIn::CloseTab(id)),
+            }
         }
     };
     // A split is its segments, each with its own glyph, so the row leads with none.

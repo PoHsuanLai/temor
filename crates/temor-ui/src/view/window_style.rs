@@ -1,12 +1,14 @@
 //! The window's own sheet: the layout of the shell, the pane and the sidebar's rows. quire has no
 //! column component at v0.3.1, and a `RawKeySurface` takes no style of its own. Colours and type
-//! come from quire's tokens and the pane's palette, so this sheet has no design values.
+//! come from quire's tokens and the pane's palette, so this sheet has no design values. A tab's
+//! selection is quire's source-list wash (da218b79, `--sel-neutral`), taken here through the selection tokens until
+//! the quire pin reaches it: the sidebar says where you are, and the accent is left to the terminal's content.
 
 pub const WINDOW_CSS: &str = "\
 .temor-shell { position: relative; width: 100%; height: 100%; }\
 .temor-edge-host { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }\
 .temor-content { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }\
-.temor-pane { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; }\
+.temor-pane { position: relative; box-sizing: border-box; display: flex; flex-direction: column; width: 100%; height: 100%; padding: var(--s-8) var(--s-10); background: var(--term-bg); }\
 .temor-edge { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--s-4); padding: 0 var(--s-4); pointer-events: none; }\
 .temor-link-tip { position: absolute; width: var(--s-1); height: var(--s-16); pointer-events: none; }\
 .temor-link-tip-spot { display: block; width: var(--s-1); height: var(--s-16); }\
@@ -39,6 +41,9 @@ pub const WINDOW_CSS: &str = "\
 .temor-side-box { width: 100%; height: 100%; }\
 .temor-side { width: 100%; height: 100%; }\
 .temor-tab-box { position: relative; display: flex; width: 100%; min-width: 0; }\
+.temor-tab-box { --sel-bg: var(--sel-neutral); --sel-bg-quiet: var(--sel-neutral); --sel-ink: var(--ink); }\
+.temor-tab-close { display: flex; flex: none; opacity: 0; }\
+.temor-tab-box:hover .temor-tab-close, .temor-tab-close[*|data-selected=true] { opacity: 1; }\
 .temor-tab-glyph { display: grid; place-items: center; }\
 .temor-tab-glyph[*|data-tone=succeeded] { color: var(--ok); }\
 .temor-tab-glyph[*|data-tone=failed] { color: var(--danger); }\
