@@ -1719,14 +1719,20 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       `ime_commit`, carries it whole), and the harness has no Option/Cmd key host, so
       Option-as-Alt and Cmd chords are covered by `temor-vt` tests only. Not exercised: Keychain,
       Dock badge, fullscreen and touchpad scrolling against the real system.
-- [ ] Font picker (Settings > Appearance): a pop-up of the installed monospace families with "System
-      default" first, "Show all fonts", a sample line, and a "not installed" help line
-      (`settings_window/font_row.rs`, catalog in `temor-render/src/font/catalog.rs`). Open:
-      the harness cannot open a pop-up's menu (no renderer), so the list is tested through the
-      pop-up's sizers and the pick is not clicked in a test; not seen in a running window yet
-      (⌘, did not open Settings from a keystroke script, so it was checked as a harness render).
-      The row is chosen by the key path `font.family`; use `control = "font"` once the quire pin has
-      the attribute. Line height is a setting now (`font.line_height`, percent of the font's own
-      line, 80 to 200, default 100, live in open panes); macOS still raises the font's line to
-      1.25 em first (`MIN_LINE_EM`), so 100 is that floor there. A bundled default font is still
+- [ ] Menu clicks on macOS: a click on a quire menu item (every pop-up, the tab's menu) never picks
+      in a real window; it starts a text selection and the Click is dropped (blitz-dom
+      `handle_pointerup`: `do_click` is false after a stale `Selecting` drag, left because a press
+      whose default action is cancelled, as every menu item's is, did not reset the drag state).
+      Fixed in blitz 67eb1509 (branch `prevented-pointerdown-resets-drag` of PoHsuanLai/blitz, on top
+      of the pinned 4b236792); checked in a running window (a font and a cursor-shape pick wrote
+      settings.toml). Needs quire's pin to carry it (a `[patch]` of the same git URL is refused by
+      cargo). The harness cannot show it: its clicks do not move between press and release.
+- [ ] Font picker (Settings > Appearance): a pop-up of every installed family with "System default"
+      first and a "not installed" help line (`settings_window/font_row.rs`, catalog in
+      `temor-render/src/font/catalog.rs`). The harness cannot open the pop-up's menu in the settings
+      window, so the list is tested through the pop-up's sizers and the pick was checked by hand in a
+      running window. The row is chosen by the key path `font.family`; use `control = "font"` once
+      the quire pin has the attribute. Line height is a setting (`font.line_height`, percent of the
+      font's own line, 80 to 200, default 100, live in open panes); macOS still raises the font's line
+      to 1.25 em first (`MIN_LINE_EM`), so 100 is that floor there. A bundled default font is still
       open (Ghostty and WezTerm embed JetBrains Mono).

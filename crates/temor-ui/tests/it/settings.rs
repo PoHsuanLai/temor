@@ -520,13 +520,12 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
     assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
 }
 
-/// The Font row is a pop-up of the computer's monospace fonts with the system's first, and a
-/// sample line. (A pop-up's menu needs a renderer to open, so the harness checks what the row
-/// lists: the pop-up sizes itself to every title.)
+/// The Font row is a pop-up of every font the computer has with the system's first. (A pop-up's
+/// menu needs a renderer to open, so the harness checks what the row lists: the pop-up sizes
+/// itself to every title.)
 #[test]
-fn the_font_row_lists_the_computers_fonts_with_a_sample() {
+fn the_font_row_lists_the_computers_fonts() {
     let (mut h, _ambient) = settings_window("settings-font-row", SettingsPane::Appearance, |c| c);
-    assert!(!rects(&h, ".temor-font-sample").is_empty(), "a sample line");
     assert!(
         !rects(&h, "[aria-label=\"Font\"]").is_empty(),
         "the font pop-up"
@@ -536,7 +535,7 @@ fn the_font_row_lists_the_computers_fonts_with_a_sample() {
         html.contains("System default"),
         "the system's font is listed"
     );
-    for name in temor_render::font_catalog().monospace() {
+    for name in temor_render::font_catalog().families() {
         let sizer = format!("<span class=\"ds-popup-sizer\" aria-hidden=\"true\">{name}</span>");
         assert!(html.contains(&sizer), "{name} is listed");
     }
