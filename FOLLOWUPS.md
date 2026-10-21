@@ -154,6 +154,18 @@ Each one sits behind a `platform/` edge trait, marked `// TODO(platform:<os>)`.
       only a new window or tab).
 - [ ] macOS: Option-as-Alt is on for both Option keys (temor-pane platform/mod.rs); make it a setting
       (off, left, right, both). Right Option then types the layout's characters.
+- [ ] Review of PR #27 (2026-10-21):
+      - quire-emoji's `prefer_colour` runs for each pane's font set and on every font change. Where no
+        system emoji family has COLR, it walks the font folders and reads the whole COLRv1 file
+        (about 10 MB) each time. Fixed in quire 966b99b3 (the Blob is found once per process);
+        taken with v0.3.38.
+      - macOS single instance (temor-desktop platform/macos/instance.rs): a launch that times out
+        pinging a slow temor removes its socket and binds its own; when the first temor quits, its
+        cleanup removes the new owner's socket. Remove only a socket that is still the one bound.
+      - macOS: Option-as-Alt on both keys blocks `@ [ ] { } |` on layouts that type them with Option
+        (the setting above).
+      - The tab close button is hidden by opacity alone, so it is still a keyboard stop on every row.
+      - macOS instance error wording ("claim temor's socket", "its path is too long for a socket").
 - [ ] Windows: PTY (ConPTY; temor-pty platform/windows.rs and unsupported.rs) and the plugin process
       side are unsupported today.
 

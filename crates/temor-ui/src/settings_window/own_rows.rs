@@ -14,9 +14,10 @@ use ds_settings_page::SettingEdit;
 use super::font_row::{FontRow, is_font_key};
 use super::row_parts::{AddButton, RemoveButton};
 
-/// What a number field takes, in words: `a number from 6 to 72 points`.
+/// What a number field takes, in words: `a number from 6 to 72 points`, `from 80 to 200%`.
 pub fn number_wanted(min: i64, max: i64, unit: Option<&str>) -> String {
     match unit {
+        Some("%") => format!("a number from {min} to {max}%"),
         Some(unit) => format!("a number from {min} to {max} {unit}"),
         None => format!("a number from {min} to {max}"),
     }

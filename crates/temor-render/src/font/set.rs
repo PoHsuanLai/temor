@@ -65,17 +65,6 @@ impl FontSet {
             system_fonts: lookup == Lookup::System,
         });
         let mut cache = SourceCache::default();
-        if lookup == Lookup::System {
-            // The same detection as quire's windows, so a colour emoji face is found (and an
-            // `QUIRE_EMOJI_FAMILY` honoured) in the terminal grid and the UI alike.
-            prefer_colour(
-                &mut Fonts {
-                    collection: &mut collection,
-                    source_cache: &mut cache,
-                },
-                &EmojiChoice::from_env(),
-            );
-        }
         let mut bundled = Vec::new();
         if let FontSource::Bundled(files) = source {
             for (index, bytes) in files.into_iter().enumerate() {
@@ -98,6 +87,19 @@ impl FontSet {
         };
         let family =
             primary_family(&mut collection, &config.family, &bundled).ok_or_else(not_found)?;
+        if lookup == Lookup::System {
+            // The same detection as quire's windows, so a colour emoji face is found (and an
+            // `QUIRE_EMOJI_FAMILY` honoured) in the terminal grid and the UI alike. After the
+            // family is chosen: the colour face goes before the first monospace family that maps
+            // an emoji, and that family can be the system's monospace itself.
+            prefer_colour(
+                &mut Fonts {
+                    collection: &mut collection,
+                    source_cache: &mut cache,
+                },
+                &EmojiChoice::from_env(),
+            );
+        }
         let mut set = Self {
             collection,
             cache,
