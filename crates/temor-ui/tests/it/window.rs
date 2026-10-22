@@ -451,3 +451,30 @@ fn clicking_the_new_tab_row_opens_a_tab() {
     h.advance(Duration::from_millis(400));
     assert_eq!(rows(&h), 2, "the New Tab row opened a tab");
 }
+
+/// A shell that ends before its first prompt (here its rc file exits) keeps its tab and says so:
+/// a new tab would end the same way, so closing it would only hide why.
+#[test]
+fn a_shell_that_ends_before_its_first_prompt_keeps_its_tab_and_the_banner() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness_with("window-ends-at-once", &probe, None, |ambient| {
+        std::fs::write(ambient.home.join(".bashrc"), "exit 3\n").expect("bashrc");
+    });
+    let start = Instant::now();
+    while !h.html().contains("The shell has ended.") {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "the shell did not end:\n{}",
+            h.html()
+        );
+    }
+    for _ in 0..40 {
+        h.advance(Duration::from_millis(25));
+    }
+    assert_eq!(rows(&h), 1, "the tab stays");
+    assert!(h.html().contains("The shell has ended."));
+}

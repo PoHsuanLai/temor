@@ -14,6 +14,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{Cwd, TabTitle};
 use temor_core::workspace::{TabsIn, WorkspaceIn};
 use temor_pane::{Hold, PaneEvent, TransferEvent};
+use temor_pty::ChildExit;
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -68,7 +69,7 @@ impl Hub {
                     out.paint.insert(pane);
                 }
                 Notice::Ended(exit) => {
-                    let keep = self.keeps_ended_pane(pane);
+                    let keep = self.keeps_ended_pane(pane, exit, session.prompts_seen() > 0);
                     self.run_ended(pane, exit);
                     self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
@@ -132,14 +133,18 @@ impl Hub {
     }
 
     /// Whether a pane whose program ended stays, with the banner that says so: a run tab (its
-    /// output is what was asked for) and a host session that never came up (the banner says why).
-    fn keeps_ended_pane(&self, pane: PaneId) -> bool {
+    /// output is what was asked for), a shell that ended before its first prompt (a missing
+    /// program or an rc file that exits: a new tab would end the same way, and the banner shows
+    /// why), a host session that never came up or whose connection dropped (Restart connects
+    /// again), and the quick terminal (it closes itself).
+    fn keeps_ended_pane(&self, pane: PaneId, exit: Option<ChildExit>, prompted: bool) -> bool {
+        let host = self.ssh.panes.get(&pane).map(|host| host.phase);
+        let dropped = host == Some(super::ssh::Phase::Up) && exit == Some(ChildExit::Exited(255));
         self.run_name(pane).is_some()
-            || self
-                .ssh
-                .panes
-                .get(&pane)
-                .is_some_and(|host| host.phase != super::ssh::Phase::Up)
+            || self.is_quick(pane)
+            || !prompted
+            || host.is_some_and(|phase| phase != super::ssh::Phase::Up)
+            || dropped
     }
 
     /// The tab's title follows the program's title in the pane that has the keys in it.

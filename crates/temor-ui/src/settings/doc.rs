@@ -111,7 +111,7 @@ pub struct ShellSettings {
     pub start_in: StartFolder,
     #[settings(
         label = "Paged output",
-        help = "Where output that a program would page (git log, git diff) goes: printed into the command's block, which scrolls, folds and finds, or the program's own pager on the full screen. Applies to new panes.",
+        help = "Where output that a program would page (git log, git diff) goes: printed into the command's block, where it scrolls and can be searched, or the program's own pager on the full screen. A pager set in git's own settings is kept. Applies to new panes.",
         section = "Shell"
     )]
     pub pager: PagerWay,

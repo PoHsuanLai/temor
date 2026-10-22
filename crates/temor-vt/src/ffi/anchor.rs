@@ -183,7 +183,12 @@ impl Terminal {
         let Some(up) = u32::from(cursor).checked_sub(at.row) else {
             return;
         };
-        self.write(format!("\x1b[{up}A\r\x1b[J").as_bytes());
+        // A cursor up of 0 moves one row, as 1 does: a prompt on the cursor's row needs none.
+        let up = match up {
+            0 => String::new(),
+            rows => format!("\x1b[{rows}A"),
+        };
+        self.write(format!("{up}\r\x1b[J").as_bytes());
     }
 
     /// How many anchors are live.

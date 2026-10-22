@@ -17,13 +17,14 @@ typeset -g _temor_ps1=
 typeset -g _temor_seen=
 typeset -g _temor_head=
 
-# A pager that would take the whole screen (git, aws, systemd) prints into the block instead, where
-# the output scrolls, folds and is searched with the block. A value you set stays. TEMOR_PAGER=system
-# leaves them to the system.
+# A pager that would take the whole screen (git, aws) prints into the block instead, where the
+# output scrolls and is searched with the block. A value you set stays, and so does a pager git's own
+# config names (delta, diff-so-fancy). TEMOR_PAGER=system leaves them to the system.
 if [[ ${TEMOR_PAGER-} != system ]]; then
-    [[ -z ${GIT_PAGER+x} ]] && export GIT_PAGER=cat
+    if [[ -z ${GIT_PAGER+x} ]] && ! command git config --get core.pager >/dev/null 2>&1; then
+        export GIT_PAGER=cat
+    fi
     [[ -z ${AWS_PAGER+x} ]] && export AWS_PAGER=
-    [[ -z ${SYSTEMD_PAGER+x} ]] && export SYSTEMD_PAGER=cat
 fi
 
 # Percent-encodes a path for a file:// URL, byte by byte, into REPLY.

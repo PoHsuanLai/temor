@@ -1750,3 +1750,19 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       font's own line, 80 to 200, default 100, live in open panes); macOS still raises the font's line
       to 1.25 em first (`MIN_LINE_EM`), so 100 is that floor there. A bundled default font is still
       open (Ghostty and WezTerm embed JetBrains Mono).
+
+## Review of PR #28 (2026-10-23)
+- [x] An ended shell closes its tab, except before its first prompt (a missing program or an rc
+      file that exits would otherwise open and close tabs forever), a host whose connection dropped
+      (ssh's 255: Restart connects again), and the quick terminal (it closes itself).
+- [x] Restore with a one-line prompt: a cursor up of 0 moved one row and erased the output's last
+      line; no move is written now.
+- [x] Pager: the block default keeps a pager git's own config names, and leaves systemd's alone.
+      `core.pager` is read once when the shell starts, in its first folder (a repository's own
+      `core.pager` elsewhere is not seen).
+- [ ] Grid font: `GridFont`, `Session::grid_font` and `FontSet::resolved_family` are not called
+      yet; the grid is not drawn in the resolved family until something reads them.
+- [ ] Folds (no interface yet): `to_grid` maps a point above a folded first run, or below a folded
+      last run, into its hidden rows (temor-render metrics/layout.rs).
+- [ ] Kitty key codes give the US base key for digits and punctuation (input/keys.rs
+      `code_char`); only alternate-key reporting sees it on other layouts.

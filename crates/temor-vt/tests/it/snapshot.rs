@@ -100,3 +100,22 @@ fn the_prompt_being_typed_at_is_left_out_of_a_snapshot_but_a_running_commands_sc
     t.take_prompt_off();
     assert_eq!(text(&t), before);
 }
+
+#[test]
+fn a_one_line_prompt_comes_off_and_the_output_above_it_stays() {
+    let (mut t, _rx) = term(40, 10);
+    // A one-line prompt (bash's default): the mark is on the cursor's own row.
+    t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07ls\r\n\x1b]133;C\x07first\r\nlast\r\n");
+    t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07$ \x1b]133;B\x07");
+    t.take_prompt_off();
+    let kept = export(&t, TextFormat::Plain);
+    assert!(
+        kept.contains("last"),
+        "the output's last line stays: {kept:?}"
+    );
+    assert_eq!(
+        kept.matches("$ ").count(),
+        1,
+        "only the idle prompt comes off: {kept:?}"
+    );
+}
