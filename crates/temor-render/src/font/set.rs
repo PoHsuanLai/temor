@@ -34,6 +34,9 @@ pub struct FontSet {
     collection: Collection,
     cache: SourceCache,
     lookup: Lookup,
+    family: FontFamily,
+    /// The name of the family the primary faces were cut from.
+    resolved: String,
     size: FontSize,
     line_height: LineHeight,
     faces: Vec<Face>,
@@ -104,6 +107,8 @@ impl FontSet {
             collection,
             cache,
             lookup,
+            family: config.family.clone(),
+            resolved: family.name().to_owned(),
             size: config.size,
             line_height: config.line_height,
             faces: Vec::new(),
@@ -117,6 +122,16 @@ impl FontSet {
             set.primary[style.index()] = set.push(face).ok_or_else(not_found)?;
         }
         Ok(set)
+    }
+
+    /// The family that was asked for (the system's monospace, or one by name).
+    pub fn family(&self) -> &FontFamily {
+        &self.family
+    }
+
+    /// The name of the family the grid is drawn in: what `family` asked for, as found.
+    pub fn resolved_family(&self) -> &str {
+        &self.resolved
     }
 
     pub fn size(&self) -> FontSize {

@@ -77,8 +77,9 @@ pub use frame::{CapturedFrame, FrameCapture};
 #[cfg(feature = "gpu")]
 pub use gpu::{GpuFrame, GpuRenderer};
 pub use metrics::{
-    CellHit, CellMetrics, CellPos, CellSide, FontSize, Gap, GridFit, GridHit, HitRegion, Insert,
-    LayoutParams, LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
+    CellHit, CellMetrics, CellPos, CellSide, Fold, FontSize, Gap, GridFit, GridHit, HitRegion,
+    Insert, LayoutParams, LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice,
+    fit_grid,
 };
 pub use palette::Palette;
 pub use renderer::{

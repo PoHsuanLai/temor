@@ -3,4 +3,4 @@
 
 mod painter;
 
-pub use painter::{Inset, PaintView, Painter};
+pub use painter::{GridFont, Inset, PaintView, Painter};

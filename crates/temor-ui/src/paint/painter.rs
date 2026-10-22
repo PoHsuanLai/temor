@@ -62,10 +62,38 @@ enum Draw<'c> {
     Nothing,
 }
 
+/// The font the grid is drawn in, for the text drawn beside it to match: the family it was cut
+/// from (the system's monospace comes to a family by name) and the size in logical pixels.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridFont {
+    pub family: String,
+    pub px: f32,
+}
+
+impl GridFont {
+    /// CSS declarations that set text beside the grid in the grid's size and family (the family
+    /// first, then the terminal's own monospace token).
+    pub fn css(&self) -> String {
+        format!(
+            "font-family:\"{}\", var(--term-font); font-size:{}px",
+            self.family.replace(['"', '\\'], ""),
+            self.px
+        )
+    }
+
+    fn of(fonts: &FontSet) -> Self {
+        Self {
+            family: fonts.resolved_family().to_owned(),
+            px: fonts.size().logical(),
+        }
+    }
+}
+
 /// One pane's renderer, its capture state and its frame buffer.
 #[derive(Debug)]
 pub struct Painter {
     renderer: CpuRenderer,
+    font: GridFont,
     capture: FrameCapture,
     frame: PaneFrame,
     palette: Palette,
@@ -83,6 +111,7 @@ pub struct Painter {
 impl Painter {
     pub fn new(fonts: FontSet, palette: Palette) -> Result<Self, UiError> {
         Ok(Self {
+            font: GridFont::of(&fonts),
             renderer: CpuRenderer::new(fonts),
             capture: FrameCapture::new()?,
             frame: PaneFrame::new(),
@@ -92,6 +121,11 @@ impl Painter {
             seen_captures: 0,
             lower: 0,
         })
+    }
+
+    /// The font the grid is drawn in.
+    pub fn font(&self) -> &GridFont {
+        &self.font
     }
 
     /// How many rows the last paint drew the grid lower than its fit.
@@ -112,6 +146,7 @@ impl Painter {
     /// Draws with `fonts` from now on (the font or its size changed). The next paint uses the new
     /// cell; the caller fits the grid to it again.
     pub fn set_fonts(&mut self, fonts: FontSet) {
+        self.font = GridFont::of(&fonts);
         self.renderer = CpuRenderer::new(fonts);
     }
 
@@ -148,6 +183,7 @@ impl Painter {
     ) -> Result<(), UiError> {
         let Painter {
             renderer,
+            font: _,
             capture,
             frame,
             palette,
@@ -231,5 +267,22 @@ mod tests {
             let got = [pad.left.0, pad.right.0, pad.top.0, pad.bottom.0];
             assert_eq!(got, [across, across, down, down], "scale {factor}");
         }
+    }
+}
+
+#[cfg(test)]
+mod grid_font_tests {
+    use super::GridFont;
+
+    #[test]
+    fn the_css_names_the_family_first_and_never_lets_a_name_close_its_quotes() {
+        let named = GridFont {
+            family: "Fira \"Code\"".to_owned(),
+            px: 13.5,
+        };
+        assert_eq!(
+            named.css(),
+            "font-family:\"Fira Code\", var(--term-font); font-size:13.5px"
+        );
     }
 }
