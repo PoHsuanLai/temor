@@ -69,3 +69,34 @@ fn corrupt_snapshot_is_rejected() {
     );
     assert_eq!(got.err(), Some(VtError::SnapshotRejected));
 }
+
+#[test]
+fn the_prompt_being_typed_at_is_left_out_of_a_snapshot_but_a_running_commands_screen_is_kept() {
+    let (mut t, _rx) = term(40, 10);
+    // A finished command, then an idle prompt: a blank line, the folder line, the typing line.
+    t.write(b"\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07$ ls\r\n\x1b]133;C\x07out\r\n");
+    t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07");
+    let snap = t.snapshot().expect("encode");
+    let text = |t: &Terminal| export(t, TextFormat::Plain);
+    let restored = |snap: &Snapshot| {
+        Terminal::restore(
+            &Snapshot::from_bytes(snap.as_bytes().to_vec()),
+            TerminalConfig::new(GridSize::new(1, 1)),
+            Box::new(mpsc::channel::<VtEvent>().0),
+            Box::new(mpsc::channel::<Vec<u8>>().0),
+        )
+        .expect("restore")
+    };
+    // The plain snapshot keeps both prompts.
+    assert_eq!(text(&restored(&snap)).matches("~/work").count(), 2);
+    t.take_prompt_off();
+    let snap = t.snapshot().expect("encode");
+    let kept = text(&restored(&snap));
+    assert_eq!(kept.matches("~/work").count(), 1, "{kept:?}");
+    assert!(kept.contains("out"), "{kept:?}");
+    // With a command running there is no prompt to take off.
+    t.write(b"$ sleep\r\n\x1b]133;C\x07running\r\n");
+    let before = text(&t);
+    t.take_prompt_off();
+    assert_eq!(text(&t), before);
+}

@@ -165,6 +165,27 @@ impl Terminal {
         self.cursor_u16(sys::TerminalData::CURSOR_Y)
     }
 
+    /// Takes the prompt being typed at off the screen: the cursor goes back to the row its prompt
+    /// mark is on and the rows from there down are erased, as the shell does before it draws the
+    /// prompt again. For a terminal about to be kept as a snapshot: the shell that starts from it
+    /// draws its own prompt, and this one would stay above it. Nothing happens while a command
+    /// runs, on the alternate screen, or when the prompt is above the screen.
+    pub fn take_prompt_off(&mut self) {
+        let Some(prompt) = self.prompt.filter(|_| !self.on_alternate_screen()) else {
+            return;
+        };
+        let (Some(at), Some(cursor)) = (
+            self.anchor_point(prompt, PointSpace::Active),
+            self.cursor_row(),
+        ) else {
+            return;
+        };
+        let Some(up) = u32::from(cursor).checked_sub(at.row) else {
+            return;
+        };
+        self.write(format!("\x1b[{up}A\r\x1b[J").as_bytes());
+    }
+
     /// How many anchors are live.
     pub fn anchor_count(&self) -> usize {
         self.anchors().live.len()
