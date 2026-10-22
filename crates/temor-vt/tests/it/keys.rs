@@ -120,3 +120,29 @@ fn kitty_keyboard_protocol_encodes_after_the_program_asks() {
         "releases are not reported at flag 1"
     );
 }
+
+/// Shift+letter types the capital under the kitty protocol's disambiguation flag (what a shell
+/// that pushed `CSI > 1 u` expects), not `CSI 97 ; 2 u`; a program that asked for every key as an
+/// escape code still gets the escape code.
+#[test]
+fn a_shifted_letter_is_its_text_unless_the_program_wants_every_key_as_a_code() {
+    // (what the program pushed, the bytes Shift+A sends)
+    let cases: [(&str, &[u8]); 5] = [
+        ("", b"A"),
+        ("\x1b[>1u", b"A"),
+        ("\x1b[>3u", b"A"),
+        ("\x1b[>5u", b"A"),
+        ("\x1b[>8u", b"\x1b[97;2u"),
+    ];
+    for (setup, want) in cases {
+        let (mut t, _rx) = term(80, 24);
+        t.write(setup.as_bytes());
+        let mut enc = KeyEncoder::new().expect("encoder");
+        enc.sync(&t);
+        let shift_a = KeyInput {
+            unshifted: Some('a'),
+            ..key(KeyCode::A, Modifiers::SHIFT, "A")
+        };
+        assert_eq!(enc.encode(&shift_a).expect("encode"), want, "{setup:?}");
+    }
+}

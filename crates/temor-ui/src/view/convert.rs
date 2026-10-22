@@ -30,13 +30,17 @@ pub fn device_point(x: f64, y: f64, scale: Scale) -> SurfacePoint {
 /// Which way a wheel turn goes, and how many lines it scrolls: a line delta is three lines per
 /// unit, a pixel delta one line per 20 logical pixels, and at least one line for any movement.
 /// No movement is no lines.
+///
+/// Blitz hands the window's delta on as the system gave it (winit's): a positive `y` moves the
+/// content down, so the view goes up into the scrollback, and the system has already turned the
+/// sign for "natural" scrolling. This is not the DOM's `deltaY`, whose positive is down.
 pub fn wheel_lines(delta: WheelDelta) -> (WheelDirection, u32) {
     let dy = match delta {
         WheelDelta::Pixels(v) => v.y / 20.0,
         WheelDelta::Lines(v) => v.y * 3.0,
         WheelDelta::Pages(v) => v.y * 24.0,
     };
-    let direction = match dy < 0.0 {
+    let direction = match dy > 0.0 {
         true => WheelDirection::Up,
         false => WheelDirection::Down,
     };
@@ -59,4 +63,50 @@ pub fn vt_button(button: MouseButton) -> Option<VtButton> {
         MouseButton::Auxiliary => VtButton::Middle,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod wheel_tests {
+    use dioxus::html::geometry::{WheelDelta, euclid::Vector3D};
+
+    use super::{WheelDirection, wheel_lines};
+
+    #[test]
+    fn a_positive_delta_scrolls_up_and_a_negative_one_down_as_the_system_gives_it() {
+        // (delta, direction, lines)
+        let cases = [
+            (
+                WheelDelta::Pixels(Vector3D::new(0.0, 40.0, 0.0)),
+                WheelDirection::Up,
+                2,
+            ),
+            (
+                WheelDelta::Pixels(Vector3D::new(0.0, -40.0, 0.0)),
+                WheelDirection::Down,
+                2,
+            ),
+            (
+                WheelDelta::Lines(Vector3D::new(0.0, 1.0, 0.0)),
+                WheelDirection::Up,
+                3,
+            ),
+            (
+                WheelDelta::Lines(Vector3D::new(0.0, -1.0, 0.0)),
+                WheelDirection::Down,
+                3,
+            ),
+            (
+                WheelDelta::Pixels(Vector3D::new(0.0, 1.0, 0.0)),
+                WheelDirection::Up,
+                1,
+            ),
+        ];
+        for (delta, direction, lines) in cases {
+            assert_eq!(wheel_lines(delta), (direction, lines), "{delta:?}");
+        }
+        assert_eq!(
+            wheel_lines(WheelDelta::Pixels(Vector3D::new(0.0, 0.0, 0.0))).1,
+            0
+        );
+    }
 }

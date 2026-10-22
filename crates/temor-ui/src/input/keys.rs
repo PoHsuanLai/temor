@@ -19,7 +19,15 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
         KeyPhase::Repeat => KeyAction::Repeat,
         KeyPhase::Release => KeyAction::Release,
     };
-    let unshifted = logical_char(&raw.key).map(fold);
+    // The key without Shift: Shift+1 types `!`, but the key is `1` (the kitty protocol's code for it).
+    let unshifted = match (
+        raw.modifiers.contains(HeldMods::SHIFT),
+        &raw.key,
+        code_char(&raw.code),
+    ) {
+        (true, Key::Character(_), Some(base)) => Some(base),
+        _ => logical_char(&raw.key).map(fold),
+    };
     let key = KeyInput {
         code,
         action,
@@ -387,4 +395,37 @@ pub fn code_key(code: &Code) -> Option<KeyCode> {
         Code::NumpadEqual => K::NumpadEqual,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::html::Location;
+
+    fn raw(key: &str, code: Code, held: HeldMods, text: &str) -> RawKey {
+        RawKey {
+            phase: KeyPhase::Press,
+            key: Key::Character(key.to_owned()),
+            code,
+            modifiers: held,
+            location: Location::Standard,
+            text: Some(text.to_owned()),
+        }
+    }
+
+    #[test]
+    fn the_unshifted_key_of_a_shifted_symbol_is_the_key_itself() {
+        // (key as typed, code, held, text, unshifted)
+        let rows = [
+            ("!", Code::Digit1, HeldMods::SHIFT, "!", '1'),
+            ("A", Code::KeyA, HeldMods::SHIFT, "A", 'a'),
+            ("a", Code::KeyA, HeldMods::empty(), "a", 'a'),
+            // An AZERTY `&` on the digit-1 key, no Shift: the layout's own character.
+            ("&", Code::Digit1, HeldMods::empty(), "&", '&'),
+        ];
+        for (key, code, held, text, want) in rows {
+            let got = stroke(&raw(key, code, held, text), Ime::Idle).expect("stroke");
+            assert_eq!(got.key.unshifted, Some(want), "{key} {code:?}");
+        }
+    }
 }

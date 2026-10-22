@@ -7,7 +7,7 @@ use temor_vt_sys as sys;
 use super::convert::check;
 use super::key_code::ghostty_key;
 use super::terminal::Terminal;
-use crate::{Ime, KeyAction, KeyInput, KittyKeyFlags, OptionAsAlt, VtError};
+use crate::{Ime, KeyAction, KeyInput, KittyKeyFlags, Modifiers, OptionAsAlt, VtError};
 
 /// Encodes key events. Call [`KeyEncoder::sync`] with the terminal before encoding so the
 /// program's modes (cursor keys, keypad, kitty flags) apply.
@@ -24,6 +24,18 @@ unsafe impl Send for KeyEncoder {}
 impl std::fmt::Debug for KeyEncoder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyEncoder").finish_non_exhaustive()
+    }
+}
+
+/// The modifiers the layout used up to make the key's text: Shift, for the capital or the
+/// symbol it typed. Without it a program that asked for the kitty keyboard protocol's
+/// disambiguation alone (`CSI > 1 u`) is sent `CSI 97 ; 2 u` for Shift+A instead of `A`: the
+/// encoder sends text as text only when the modifiers left after these are none.
+fn consumed_mods(key: &KeyInput) -> u16 {
+    let typed = key.text.chars().next().is_some_and(|c| !c.is_control());
+    match typed && key.mods.contains(Modifiers::SHIFT) {
+        true => Modifiers::SHIFT.bits(),
+        false => 0,
     }
 }
 
@@ -121,7 +133,7 @@ impl KeyEncoder {
             sys::ghostty_key_event_set_action(ev, action);
             sys::ghostty_key_event_set_key(ev, ghostty_key(key.code));
             sys::ghostty_key_event_set_mods(ev, key.mods.bits());
-            sys::ghostty_key_event_set_consumed_mods(ev, 0);
+            sys::ghostty_key_event_set_consumed_mods(ev, consumed_mods(key));
             sys::ghostty_key_event_set_composing(ev, key.ime == Ime::Composing);
             sys::ghostty_key_event_set_unshifted_codepoint(ev, key.unshifted.map_or(0, u32::from));
             if text.is_empty() {
