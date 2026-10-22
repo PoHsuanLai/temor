@@ -68,12 +68,17 @@ impl Hub {
                     out.paint.insert(pane);
                 }
                 Notice::Ended(exit) => {
+                    let keep = self.keeps_ended_pane(pane);
                     self.run_ended(pane, exit);
                     self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
                     out.quick.push(QuickIn::ShellExited(pane));
+                    // A shell that exited closes its pane (and the tab, with its last pane).
+                    if !keep {
+                        out.asks.push(WorkspaceIn::ClosePane(Some(pane)));
+                    }
                 }
                 Notice::Hold(Hold::Held) => {
                     // Each hold has its own generation: a stale timer cannot end a newer one.
@@ -124,6 +129,17 @@ impl Hub {
             self.facts_in(pane, input);
         }
         out
+    }
+
+    /// Whether a pane whose program ended stays, with the banner that says so: a run tab (its
+    /// output is what was asked for) and a host session that never came up (the banner says why).
+    fn keeps_ended_pane(&self, pane: PaneId) -> bool {
+        self.run_name(pane).is_some()
+            || self
+                .ssh
+                .panes
+                .get(&pane)
+                .is_some_and(|host| host.phase != super::ssh::Phase::Up)
     }
 
     /// The tab's title follows the program's title in the pane that has the keys in it.

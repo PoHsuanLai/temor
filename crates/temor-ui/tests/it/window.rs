@@ -370,39 +370,39 @@ fn the_sidebar_action_hides_and_shows_the_sidebar() {
     assert!(sidebar_width(&h) > 100.0, "shown again");
 }
 
-/// The shell ends, the person presses Restart, and the window carries on (Blitz once panicked in
+/// The shell ends and its tab closes, and the window carries on (Blitz once panicked in
 /// `absolute_position` for a node that was gone). Frames keep running past the tooltip delay.
 #[test]
-fn restarting_an_ended_shell_gives_a_new_prompt_and_keeps_the_window_alive() {
+fn an_exited_shell_closes_its_tab_and_keeps_the_window_alive() {
     if !super::support::window_tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = started("window-restart", &probe);
+    let mut h = started("window-exit-closes", &probe);
+    // A second tab, so the window stays when the first one ends.
+    chord(&mut h, 'n');
+    assert_eq!(rows(&h), 2, "two tabs");
     focus_pane(&mut h);
     for c in "exit".chars() {
         h.send(Input::key(ShortcutKey::Char(c)));
     }
     h.send(Input::key(ShortcutKey::Enter));
     let start = Instant::now();
-    while !h.html().contains("The shell has ended.") {
+    while rows(&h) != 1 {
         h.advance(Duration::from_millis(25));
         assert!(
             start.elapsed() < Duration::from_secs(30),
-            "the shell did not end"
+            "the tab did not close"
         );
     }
-    // The sidebar has a button of its own (New tab), so the banner's is found inside the banner.
-    let restart = h
-        .centre(".ds-inline-banner .ds-button")
-        .unwrap_or_else(|| panic!("no Restart button:\n{}", h.html()));
-    h.send(Input::click(restart));
     // Keep drawing well past the pointer's rest (a tooltip reads its anchor then).
     for _ in 0..60 {
         h.advance(Duration::from_millis(25));
     }
     assert!(!h.html().contains("The shell has ended."));
-    wait_until(&mut h, &probe, "a new prompt", |s| s.contains('$'));
+    wait_until(&mut h, &probe, "the first tab's prompt", |s| {
+        s.contains('$')
+    });
 }
 
 /// A saved session starts again: its tabs are in the sidebar and their shells run.
@@ -436,4 +436,18 @@ fn a_saved_session_is_restored_on_launch() {
     let mut h = harness_in("window-restore", &probe, Some(state));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
     assert_eq!(rows(&h), 2, "{}", h.html());
+}
+
+#[test]
+fn clicking_the_new_tab_row_opens_a_tab() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("window-new-tab-row", &probe);
+    assert_eq!(rows(&h), 1, "one tab");
+    let at = super::drive::rects(&h, ".temor-side .temor-new-tab .ds-row")[0].centre();
+    h.send(Input::click(at));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(rows(&h), 2, "the New Tab row opened a tab");
 }

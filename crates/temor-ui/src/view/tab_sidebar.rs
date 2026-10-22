@@ -8,6 +8,7 @@
 //! screen.
 
 use dioxus::prelude::*;
+use ds::base::press::{PointerButton, Press};
 use ds::components::app::edge_peek::EdgePeek;
 use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
@@ -103,14 +104,26 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
     }
 }
 
-/// Arc's New Tab row: a plus and the words. The list's pick opens the tab (`onselect`).
+/// Arc's New Tab row: a plus and the words, laid out as a tab's row is (the list's hover wash and
+/// all). A click opens the tab, and so does the list's pick (`onselect`, the keyboard's).
 fn new_tab_row(desk: &Desk) -> ListItem<SideKey> {
     let title = Action::NewTab.menu_title();
     let tip = desk.hub.tooltip(title, Action::NewTab);
+    let opening = desk.clone();
     let view = rsx! {
         div { class: "temor-new-tab",
             RowTip { name: "new-tab".to_owned(), text: tip,
-                Row { leading: RowLeading::Icon(Icon::Plus), title }
+                Row {
+                    leading: RowLeading::Source(IconSource::Glyph(Icon::Plus)),
+                    title,
+                    // A row's own view takes the press, as a tab's does: the list's pick is the
+                    // keyboard's.
+                    onclick: move |press: Press| {
+                        if !matches!(press.button, PointerButton::Secondary) {
+                            opening.act(WorkspaceIn::NewTab { cwd: None });
+                        }
+                    },
+                }
             }
         }
     };

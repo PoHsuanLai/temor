@@ -10,7 +10,6 @@ use ds::base::vocab::{Availability, CompanionPresence, DropState, Emphasis, RowS
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::content::label::{LabelRole, LabelStyle};
-use ds::components::content::text_runs::{RunTone, TextLine, TextRun};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::controls::press::Propagation;
 use ds::components::overlays::drag_ghost::DropLine;
@@ -144,7 +143,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             // one line.
             RowTip { name: format!("tab{}", id.0), text: tip,
             Row {
-                title: shell_data(&row.title),
+                title: row.title.as_str(),
                 content,
                 leading,
                 accessory: Accessory::Slot(trail),
@@ -174,11 +173,6 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             {overlays}
         }
     }
-}
-
-/// Shell data (a folder, a program, a branch): fixed pitch on the row's own ground and ink.
-fn shell_data(text: &str) -> TextLine {
-    TextLine::Runs(vec![TextRun::new(text, RunTone::Mono)])
 }
 
 /// What hover says: the branch and the state, then what the agent in the tab is doing.
