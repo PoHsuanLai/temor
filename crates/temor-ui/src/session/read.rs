@@ -22,6 +22,11 @@ impl Session {
         self.placed().map(|placed| placed.fit)
     }
 
+    /// The font the grid is drawn in.
+    pub fn grid_font(&self) -> &crate::paint::GridFont {
+        self.painter.font()
+    }
+
     /// The pane's width and one cell's width in logical pixels (`None` before the first layout).
     pub fn grid_logical(&self) -> Option<(f32, f32)> {
         let fit = self.placed()?.fit;

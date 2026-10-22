@@ -37,7 +37,7 @@ pub struct GridCut {
 /// The cut of the session's grid, or `None` when no room is made and it shows whole.
 pub fn grid_cut(session: &Session) -> Option<GridCut> {
     let layout = session.row_layout()?;
-    if layout.gaps().is_empty() {
+    if layout.gaps().is_empty() && !layout.has_folds() {
         return None;
     }
     let factor = session.scale_factor().max(f32::EPSILON);

@@ -31,6 +31,7 @@ impl Action {
             | Self::CopyOutputs
             | Self::SelectAllBlocks
             | Self::ToggleBookmark
+            | Self::ToggleFold
             | Self::PreviousBookmark
             | Self::NextBookmark
             | Self::ReinputCommands => Owner::Pane,
@@ -78,6 +79,7 @@ impl Action {
             Self::CopyOutputs => "Copy Outputs",
             Self::SelectAllBlocks => "Select All Commands",
             Self::ToggleBookmark => "Bookmark",
+            Self::ToggleFold => "Fold Output",
             Self::PreviousBookmark => "Previous Bookmark",
             Self::NextBookmark => "Next Bookmark",
             Self::ReinputCommands => "Put in Prompt",

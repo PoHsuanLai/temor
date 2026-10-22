@@ -54,6 +54,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::CopyOutputs, "temor.copy-outputs"),
         (Action::SelectAllBlocks, "select-all"),
         (Action::ToggleBookmark, "temor.toggle-bookmark"),
+        (Action::ToggleFold, "temor.toggle-fold"),
         (Action::PreviousBookmark, "temor.previous-bookmark"),
         (Action::NextBookmark, "temor.next-bookmark"),
         (Action::ReinputCommands, "temor.reinput-commands"),

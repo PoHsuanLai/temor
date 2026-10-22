@@ -253,3 +253,20 @@ fn bookmarks_are_set_on_the_pick_and_alt_arrows_step_between_them() {
     live.session.run(Action::ToggleBookmark).expect("both");
     assert!(live.session.block_bookmarked(b) && live.session.block_bookmarked(c));
 }
+
+#[test]
+fn folding_the_pick_leaves_out_its_output_rows_and_unfolding_brings_them_back() {
+    let Some((mut live, [_, b, _])) = three_blocks("picks-fold") else {
+        return;
+    };
+    let mut clock = 0;
+    let at = cell(&live, 3, header_of(&live, b) + 1);
+    click(&mut live, at, Modifiers::NONE, &mut clock);
+    let folds = |live: &Live| live.session.row_layout().is_some_and(|l| l.has_folds());
+    assert!(!folds(&live) && !live.session.block_folded(b));
+    live.session.run(Action::ToggleFold).expect("fold");
+    assert!(live.session.block_folded(b), "the pick is folded");
+    assert!(folds(&live), "its output rows are left out of the layout");
+    live.session.run(Action::ToggleFold).expect("unfold");
+    assert!(!live.session.block_folded(b) && !folds(&live));
+}

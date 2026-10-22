@@ -91,6 +91,8 @@ pub struct Session {
     pub(super) blocks: BlockLog,
     /// The blocks picked with a click or the arrows.
     pub(super) picks: temor_core::block::Picks,
+    /// The blocks whose output is folded away.
+    pub(super) folds: std::collections::BTreeSet<temor_core::vocab::ids::BlockId>,
     /// The blocks bookmarked for the bookmark keys, while the pane lives.
     pub(super) bookmarks: std::collections::BTreeSet<temor_core::vocab::ids::BlockId>,
     /// The block toolbar's measured height, written by its view.

@@ -6,8 +6,8 @@
 
 use temor_core::vocab::ids::BlockId;
 use temor_render::{
-    CellHit, CellPos, CellSide, GridFit, GridHit, HitRegion, Insert, LayoutParams, Pin, RowLayout,
-    Screen,
+    CellHit, CellPos, CellSide, Fold, GridFit, GridHit, HitRegion, Insert, LayoutParams, Pin,
+    RowLayout, Screen,
 };
 use temor_vt::{Col, Px, Row, SurfacePoint};
 
@@ -119,6 +119,27 @@ impl Session {
                 })
                 .collect(),
         };
+        // Folded blocks' output rows, cut to the rows on screen.
+        let rows = i64::from(fit.grid.rows.0);
+        let folded: Vec<Fold> = match alternate {
+            true => Vec::new(),
+            false => self
+                .folds
+                .iter()
+                .filter(|&&id| self.block_finished(id))
+                .filter_map(|&id| {
+                    let (first, last) = self.block_output_rows(id)?;
+                    let (first, last) = (first.max(0), last.min(rows - 1));
+                    if first > last {
+                        return None;
+                    }
+                    Some(Fold {
+                        first: Row(u16::try_from(first).ok()?),
+                        last: Row(u16::try_from(last).ok()?),
+                    })
+                })
+                .collect(),
+        };
         // At the start of the scrollback, scrolled back: the first rows must stay reachable.
         let pin = match (viewport, total) {
             (Some((0, len)), Some(total)) if len < total => Pin::Top,
@@ -128,6 +149,7 @@ impl Session {
             fit: placed,
             lower,
             inserts: &inserts,
+            folded: &folded,
             pin,
             screen: match alternate {
                 true => Screen::Alternate,

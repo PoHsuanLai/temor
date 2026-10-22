@@ -92,6 +92,10 @@ impl Session {
                 self.toggle_bookmarks();
                 Ok(())
             }
+            Action::ToggleFold => {
+                self.toggle_folds();
+                Ok(())
+            }
             Action::PreviousBookmark => {
                 self.step_bookmark(PickStep::Older);
                 Ok(())

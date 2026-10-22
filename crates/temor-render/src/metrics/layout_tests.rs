@@ -28,6 +28,7 @@ fn layout(lower: u16, pin: Pin, screen: Screen, inserts: &[(u16, u32)]) -> RowLa
         fit,
         lower,
         inserts: &inserts,
+        folded: &[],
         pin,
         screen,
     })
@@ -214,4 +215,125 @@ fn no_room_under_a_row_without_an_insert() {
     let got = layout(0, Pin::Bottom, Screen::Primary, &[(4, 40)]);
     assert_eq!(got.insert_top(Row(3)), None);
     assert_eq!(RowLayout::identity(got.fit()).insert_top(Row(4)), None);
+}
+
+/// The same pane as [`layout`], with `folded` rows (first, last) left out.
+fn folded_layout(pin: Pin, folded: &[(u16, u16)], inserts: &[(u16, u32)]) -> RowLayout {
+    let metrics = CellMetrics {
+        cell: CellPx::new(10, 20),
+        baseline: Px(15),
+        underline: Px(16),
+        strikeout: Px(10),
+        thickness: Px(1),
+    };
+    let fit = fit_grid(PixelSize::new(100, 200), &metrics, Padding::uniform(Px(5)));
+    let inserts: Vec<Insert> = inserts
+        .iter()
+        .map(|&(after, height)| Insert {
+            after: Row(after),
+            height: Px(height),
+        })
+        .collect();
+    let folded: Vec<crate::metrics::Fold> = folded
+        .iter()
+        .map(|&(first, last)| crate::metrics::Fold {
+            first: Row(first),
+            last: Row(last),
+        })
+        .collect();
+    RowLayout::new(LayoutParams {
+        fit,
+        lower: 0,
+        inserts: &inserts,
+        folded: &folded,
+        pin,
+        screen: Screen::Primary,
+    })
+}
+
+#[test]
+fn folded_rows_take_no_room_and_the_rows_below_them_move_up() {
+    // Rows 2 and 3 are folded: the 9 rows are 5 + 20 * row. Bottom pin keeps the last row where
+    // it was, so the rows above the fold move down by the two rows' height.
+    let got = folded_layout(Pin::Bottom, &[(2, 3)], &[]);
+    assert!(got.has_folds());
+    assert_eq!(got.row_top(Row(8)), 5 + 8 * 20, "the last row stays");
+    assert_eq!(
+        got.row_top(Row(4)),
+        5 + 4 * 20,
+        "below the fold: stays, as the last row does"
+    );
+    assert_eq!(
+        got.row_top(Row(1)),
+        5 + 20 + 40,
+        "above the fold moves down too"
+    );
+    assert_eq!(got.row_top(Row(0)), 5 + 40);
+    // A folded row is shown where the fold begins.
+    assert_eq!(got.row_top(Row(2)), got.row_top(Row(3)));
+    assert_eq!(got.row_top(Row(2)), got.row_top(Row(4)));
+    assert!(!got.visible_rows().is_empty());
+    // Two slices (above and below the fold), none for the folded rows, no gap.
+    let slices = got.slices();
+    assert_eq!(slices.len(), 2, "{slices:?}");
+    assert!(got.gaps().is_empty());
+    let shown: u32 = slices.iter().map(|s| s.height.0).sum();
+    assert_eq!(shown, 200 - 40, "the whole picture less the folded rows");
+}
+
+#[test]
+fn a_top_pin_leaves_the_rows_above_a_fold_in_place() {
+    let got = folded_layout(Pin::Top, &[(2, 3)], &[]);
+    assert_eq!(got.row_top(Row(0)), 5);
+    assert_eq!(
+        got.row_top(Row(2)),
+        5 + 2 * 20,
+        "the fold begins where its first row was"
+    );
+    assert_eq!(
+        got.row_top(Row(4)),
+        5 + 2 * 20,
+        "the row after it takes its place"
+    );
+    assert_eq!(got.row_top(Row(8)), 5 + 6 * 20);
+}
+
+#[test]
+fn a_point_is_over_the_rows_as_they_are_shown_and_never_a_folded_one() {
+    let got = folded_layout(Pin::Top, &[(2, 3)], &[]);
+    // Shown y 45 is the first pixel under the fold: it is row 4's first pixel, drawn at 85.
+    assert_eq!(got.to_grid(SurfacePoint { x: 7, y: 45 }), grid(85));
+    assert_eq!(got.to_grid(SurfacePoint { x: 7, y: 44 }), grid(44));
+}
+
+#[test]
+fn room_under_a_folded_row_is_left_out_and_a_fold_alone_does_not_make_a_gap() {
+    let got = folded_layout(Pin::Top, &[(2, 3)], &[(3, 40), (6, 20)]);
+    assert_eq!(got.gaps().len(), 1, "{:?}", got.gaps());
+    assert_eq!(got.gaps()[0].after, Row(6));
+}
+
+#[test]
+fn the_alternate_screen_never_folds() {
+    let metrics = CellMetrics {
+        cell: CellPx::new(10, 20),
+        baseline: Px(15),
+        underline: Px(16),
+        strikeout: Px(10),
+        thickness: Px(1),
+    };
+    let fit = fit_grid(PixelSize::new(100, 200), &metrics, Padding::uniform(Px(5)));
+    let folded = [crate::metrics::Fold {
+        first: Row(2),
+        last: Row(3),
+    }];
+    let got = RowLayout::new(LayoutParams {
+        fit,
+        lower: 0,
+        inserts: &[],
+        folded: &folded,
+        pin: Pin::Bottom,
+        screen: Screen::Alternate,
+    });
+    assert!(!got.has_folds());
 }

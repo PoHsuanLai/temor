@@ -12,6 +12,14 @@ pub struct Insert {
     pub height: Px,
 }
 
+/// Grid rows `first..=last` left out of the picture: the rows below them move up by their height,
+/// and nothing is shown where they were.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Fold {
+    pub first: Row,
+    pub last: Row,
+}
+
 /// Which end of the pane the rows hold on to when room is made between them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
@@ -73,6 +81,9 @@ pub struct LayoutParams<'a> {
     pub lower: u16,
     /// The room to make; inserts under rows the grid does not have are left out.
     pub inserts: &'a [Insert],
+    /// The rows to leave out. Room under a folded row is left out with it. Not applied to the
+    /// alternate screen.
+    pub folded: &'a [Fold],
     pub pin: Pin,
     pub screen: Screen,
 }

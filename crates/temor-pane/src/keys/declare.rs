@@ -71,6 +71,7 @@ pub fn declared() -> Vec<Declared> {
         ),
         (Action::CopyOutputs, "Primary+Shift+O", None, &[]),
         (Action::ToggleBookmark, "Primary+B", None, BOLD_FORGOES),
+        (Action::ToggleFold, "Primary+Alt+F", None, &[]),
         (Action::ReinputCommands, "Primary+I", None, ITALIC_FORGOES),
         (Action::ToggleZoom, "Primary+Shift+Enter", None, &[]),
         // Ctrl+= is the text size (Bigger). Where Primary is Ctrl+Shift, `=` with Shift and Alt is

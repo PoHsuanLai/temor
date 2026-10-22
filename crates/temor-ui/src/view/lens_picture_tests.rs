@@ -36,6 +36,7 @@ fn gutter(factor: u32, room_after: u16) -> Gutter {
             fit,
             lower: 0,
             inserts: &inserts,
+            folded: &[],
             pin: Pin::Top,
             screen: Screen::Primary,
         }),

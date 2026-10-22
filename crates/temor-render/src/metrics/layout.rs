@@ -30,6 +30,8 @@ struct Run {
     src: (i64, i64),
     shift: i64,
     gap: i64,
+    /// Left out of the picture: it takes no room, and its rows are shown where it began.
+    folded: bool,
 }
 
 /// Where a grid's rows are shown when room is made between them. With no room, the picture is
@@ -58,6 +60,7 @@ impl RowLayout {
             fit,
             lower: 0,
             inserts: &[],
+            folded: &[],
             pin: Pin::Bottom,
             screen: Screen::Primary,
         })
@@ -70,18 +73,27 @@ impl RowLayout {
         let fit = params.fit;
         let rows = fit.grid.rows.0.max(1);
         let ch = i64::from(fit.cell.height.0.max(1));
+        let primary = params.screen == Screen::Primary;
+        let folded_row = |row: u16| {
+            primary
+                && params
+                    .folded
+                    .iter()
+                    .any(|f| f.first.0 <= row && row <= f.last.0)
+        };
         let mut room: BTreeMap<u16, i64> = BTreeMap::new();
-        if params.screen == Screen::Primary {
+        if primary {
             for insert in params.inserts {
-                if insert.after.0 < rows && insert.height.0 > 0 {
+                if insert.after.0 < rows && insert.height.0 > 0 && !folded_row(insert.after.0) {
                     *room.entry(insert.after.0).or_default() += i64::from(insert.height.0);
                 }
             }
         }
-        let total: i64 = room.values().sum();
+        let folded_total = (0..rows).filter(|&row| folded_row(row)).count() as i64 * ch;
+        let net = room.values().sum::<i64>() - folded_total;
         let pull = match params.pin {
-            Pin::Bottom => total,
-            Pin::Top => total.min(i64::from(params.lower) * ch),
+            Pin::Bottom => net,
+            Pin::Top => net.clamp(0, i64::from(params.lower) * ch),
         };
         let (top, pane) = (
             clamp_i32(i64::from(fit.padding.top.0)),
@@ -91,28 +103,34 @@ impl RowLayout {
             let (start, end) = band_of(Row(row), rows, top, clamp_i32(ch), pane);
             (i64::from(start), i64::from(end))
         };
-        let run = |first: u16, last: u16, shift: i64, gap: i64| Run {
+        let run = |first: u16, last: u16, shift: i64, gap: i64, folded: bool| Run {
             first,
             last,
             src: (band(first).0, band(last).1),
             shift,
             gap,
+            folded,
         };
         let mut runs = Vec::with_capacity(room.len() + 1);
         let (mut first, mut above) = (0u16, 0i64);
-        for (&after, &height) in &room {
-            runs.push(run(first, after, above - pull, height));
-            above += height;
-            first = after + 1;
-        }
-        if first < rows {
-            runs.push(run(first, rows - 1, above - pull, 0));
+        for row in 0..rows {
+            let gap = room.get(&row).copied().unwrap_or(0);
+            let ends = row + 1 == rows || folded_row(row + 1) != folded_row(row);
+            if gap > 0 || ends {
+                let folded = folded_row(row);
+                runs.push(run(first, row, above - pull, gap, folded));
+                if folded {
+                    above -= i64::from(row - first + 1) * ch;
+                }
+                above += gap;
+                first = row + 1;
+            }
         }
         let pane = i64::from(pane);
         let cut = |start: i64, end: i64| (start.max(0), end.min(pane));
         let mut slices = Vec::with_capacity(runs.len());
         let mut gaps = Vec::with_capacity(room.len());
-        for r in &runs {
+        for r in runs.iter().filter(|r| !r.folded) {
             let (start, end) = cut(r.src.0 + r.shift, r.src.1 + r.shift);
             if start < end {
                 slices.push(Slice {
@@ -139,6 +157,9 @@ impl RowLayout {
         };
         let whole: Vec<u16> = (0..rows)
             .filter(|&row| {
+                if layout.run_of(row).folded {
+                    return false;
+                }
                 let t = layout.top_of(row);
                 t >= 0 && t + ch <= pane
             })
@@ -176,10 +197,27 @@ impl RowLayout {
         found.unwrap_or_else(|| &self.runs[self.runs.len() - 1])
     }
 
+    /// How far row `row` is shown from where it is drawn, in device pixels: its run's shift, and
+    /// for a folded row, back to where the fold began.
+    fn shift_of(&self, row: u16) -> i64 {
+        let run = self.run_of(row);
+        match run.folded {
+            true => {
+                run.shift - i64::from(row - run.first) * i64::from(self.fit.cell.height.0.max(1))
+            }
+            false => run.shift,
+        }
+    }
+
     fn top_of(&self, row: u16) -> i64 {
         let drawn = i64::from(self.fit.padding.top.0)
             + i64::from(row) * i64::from(self.fit.cell.height.0.max(1));
-        drawn + self.run_of(row).shift
+        drawn + self.shift_of(row)
+    }
+
+    /// Whether any row is left out.
+    pub fn has_folds(&self) -> bool {
+        self.runs.iter().any(|r| r.folded)
     }
 
     /// Where row `row`'s top is shown, in device pixels from the pane's top (negative above it).
@@ -190,7 +228,7 @@ impl RowLayout {
 
     /// How far row `row` is shown from where it is drawn, in device pixels (up is negative).
     pub fn row_shift(&self, row: Row) -> i32 {
-        clamp_i32(self.run_of(row.0).shift)
+        clamp_i32(self.shift_of(row.0))
     }
 
     /// Where the room under row `after` begins in the pane, when room was made there.
@@ -212,7 +250,11 @@ impl RowLayout {
             })
         };
         for r in &self.runs {
-            let end = r.src.1 + r.shift;
+            // A folded run has no extent: it ends where it begins.
+            let end = match r.folded {
+                true => r.src.0 + r.shift,
+                false => r.src.1 + r.shift,
+            };
             if y < end {
                 return drawn(r);
             }

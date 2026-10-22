@@ -301,6 +301,54 @@ impl Session {
         Ok(Some(id))
     }
 
+    /// Whether `id`'s output is folded away.
+    pub fn block_folded(&self, id: BlockId) -> bool {
+        self.folds.contains(&id)
+    }
+
+    /// The picked blocks that have output to fold: finished, and with a row below the command.
+    fn foldable_picks(&self) -> Vec<BlockId> {
+        self.picked_blocks()
+            .into_iter()
+            .filter(|&id| self.block_finished(id) && self.block_output_rows(id).is_some())
+            .collect()
+    }
+
+    /// Whether every picked block that has output is folded (and some has).
+    pub fn picks_folded(&self) -> bool {
+        let foldable = self.foldable_picks();
+        !foldable.is_empty() && foldable.iter().all(|id| self.folds.contains(id))
+    }
+
+    /// Folds the picked blocks' output away, or, when every one that has output is folded
+    /// already, brings it back.
+    pub(in crate::session) fn toggle_folds(&mut self) {
+        let foldable = self.foldable_picks();
+        if self.picks_folded() {
+            for id in &foldable {
+                self.folds.remove(id);
+            }
+        } else {
+            self.folds.extend(foldable);
+        }
+        self.relayout();
+    }
+
+    /// Whether `id` has output to fold: it is finished and has a row below its command.
+    pub fn block_foldable(&self, id: BlockId) -> bool {
+        self.block_finished(id) && self.block_output_rows(id).is_some()
+    }
+
+    /// Folds `id`'s output away, or brings it back. Nothing for a block with no output to fold.
+    pub fn toggle_fold_of(&mut self, id: BlockId) {
+        if self.folds.remove(&id) {
+            self.relayout();
+        } else if self.block_foldable(id) {
+            self.folds.insert(id);
+            self.relayout();
+        }
+    }
+
     /// Whether every picked block is bookmarked (and some block is picked).
     pub fn picks_bookmarked(&self) -> bool {
         let picked = self.picked_blocks();

@@ -37,6 +37,8 @@ pub enum Action {
     SelectAllBlocks,
     /// Bookmark the picked commands, or take their bookmark away.
     ToggleBookmark,
+    /// Fold the picked commands' output to just their header row, or unfold it.
+    ToggleFold,
     /// Pick the nearest bookmarked command above the picked one.
     PreviousBookmark,
     /// Pick the nearest bookmarked command below the picked one.
@@ -108,6 +110,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::CopyCommands, "copy-commands"),
     (Action::CopyOutputs, "copy-outputs"),
     (Action::ToggleBookmark, "toggle-bookmark"),
+    (Action::ToggleFold, "toggle-fold"),
     (Action::PreviousBookmark, "previous-bookmark"),
     (Action::NextBookmark, "next-bookmark"),
     (Action::ReinputCommands, "reinput-commands"),
@@ -161,6 +164,7 @@ impl Action {
             Self::CopyOutputs => "Copy outputs",
             Self::SelectAllBlocks => "Select all commands",
             Self::ToggleBookmark => "Bookmark",
+            Self::ToggleFold => "Fold output",
             Self::PreviousBookmark => "Previous bookmark",
             Self::NextBookmark => "Next bookmark",
             Self::ReinputCommands => "Put commands in prompt",

@@ -7,7 +7,7 @@ use temor_core::vocab::ids::BlockId;
 use temor_vt::{PointSpace, RowCount, SurfacePoint, ViewportScroll};
 
 use super::super::Session;
-use super::bands::{Lead, lead_at};
+use super::bands::{Lead, command_rows, lead_at};
 
 #[cfg(test)]
 mod tests;
@@ -212,6 +212,27 @@ impl Session {
         let view = self.view_rows()?;
         let span = self.span_of(id, &view)?;
         Some(i64::from(span.last) - i64::from(view.top))
+    }
+
+    /// The viewport rows of a block's output, first to last: negative above the view, past the
+    /// last row below it. `None` on a full-screen program's screen and for a block with no row
+    /// under its command.
+    pub fn block_output_rows(&self, id: BlockId) -> Option<(i64, i64)> {
+        let view = self.view_rows()?;
+        let span = self.span_of(id, &view)?;
+        let anchors = self.blocks.anchors.get(&id)?;
+        let input = i64::from(self.screen_row(anchors.input?)?);
+        let output = anchors
+            .output
+            .and_then(|mark| {
+                self.pane
+                    .with_term(|term| term.anchor_point(mark, PointSpace::Screen))
+            })
+            .map(|at| (i64::from(at.row), at.col.0));
+        let (_, command_end) = command_rows(input, output, input);
+        let (first, last) = (command_end + 1, i64::from(span.last));
+        let top = i64::from(view.top);
+        (first <= last).then_some((first - top, last - top))
     }
 
     /// Device pixels to a logical pixel on this pane's screen.
