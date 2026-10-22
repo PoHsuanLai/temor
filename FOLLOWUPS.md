@@ -1738,8 +1738,9 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       whose default action is cancelled, as every menu item's is, did not reset the drag state).
       Fixed in blitz 67eb1509 (branch `prevented-pointerdown-resets-drag` of PoHsuanLai/blitz, on top
       of the pinned 4b236792); checked in a running window (a font and a cursor-shape pick wrote
-      settings.toml). Needs quire's pin to carry it (a `[patch]` of the same git URL is refused by
-      cargo). The harness cannot show it: its clicks do not move between press and release.
+      settings.toml). quire v0.3.40 (a980364a, blitz 0be21979) carries it and temor is pinned to it;
+      still to check in a real window. The harness cannot show it: its clicks do not move between
+      press and release.
 - [ ] Font picker (Settings > Appearance): a pop-up of every installed family with "System default"
       first and a "not installed" help line (`settings_window/font_row.rs`, catalog in
       `temor-render/src/font/catalog.rs`). The harness cannot open the pop-up's menu in the settings
