@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::schema::APP;
 use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
-use super::words::{Blinking, CursorShape, StartFolder};
+use super::words::{Blinking, CursorShape, PagerWay, StartFolder};
 
 /// The page temor's keys are on in the Settings app: temor's own.
 fn page() -> Page {
@@ -109,6 +109,12 @@ pub struct ShellSettings {
         section = "Shell"
     )]
     pub start_in: StartFolder,
+    #[settings(
+        label = "Paged output",
+        help = "Where output that a program would page (git log, git diff) goes: printed into the command's block, which scrolls, folds and finds, or the program's own pager on the full screen. Applies to new panes.",
+        section = "Shell"
+    )]
+    pub pager: PagerWay,
 }
 
 impl Default for ShellSettings {
@@ -116,6 +122,7 @@ impl Default for ShellSettings {
         Self {
             program: "login".to_owned(),
             start_in: StartFolder::default(),
+            pager: PagerWay::default(),
         }
     }
 }

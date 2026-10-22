@@ -28,6 +28,15 @@ else if test "$_temor_dirs" = "/usr/local/share /usr/share"
 else
     set -gx XDG_DATA_DIRS (string join : -- $_temor_dirs)
 end
+
+# A pager that would take the whole screen (git, aws, systemd) prints into the block instead, where
+# the output scrolls, folds and is searched with the block. A value you set stays. TEMOR_PAGER=system
+# leaves them to the system.
+if test "$TEMOR_PAGER" != system
+    set -q GIT_PAGER; or set -gx GIT_PAGER cat
+    set -q AWS_PAGER; or set -gx AWS_PAGER ""
+    set -q SYSTEMD_PAGER; or set -gx SYSTEMD_PAGER cat
+end
 set -e _temor_entry _temor_dirs _temor_at
 
 status is-interactive; or exit 0

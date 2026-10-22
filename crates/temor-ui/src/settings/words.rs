@@ -4,7 +4,7 @@
 
 use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
-use temor_pane::settings::{CursorBlinking, CursorStyle, StartIn};
+use temor_pane::settings::{CursorBlinking, CursorStyle, PagerChoice, StartIn};
 
 /// `cursor.style`: the cursor's shape, until a program asks for another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Word)]
@@ -96,6 +96,37 @@ impl From<StartIn> for StartFolder {
             StartIn::Usual => Self::Usual,
             StartIn::Current => Self::Current,
             StartIn::Home => Self::Home,
+        }
+    }
+}
+
+/// `shell.pager`: where the output of a command that pages goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Word)]
+#[serde(rename_all = "snake_case")]
+#[word(case = snake)]
+pub enum PagerWay {
+    /// Printed into the command's block.
+    #[default]
+    #[word(label = "In the command's block")]
+    Block,
+    #[word(label = "In the program's own pager")]
+    System,
+}
+
+impl From<PagerWay> for PagerChoice {
+    fn from(way: PagerWay) -> Self {
+        match way {
+            PagerWay::Block => Self::Block,
+            PagerWay::System => Self::System,
+        }
+    }
+}
+
+impl From<PagerChoice> for PagerWay {
+    fn from(choice: PagerChoice) -> Self {
+        match choice {
+            PagerChoice::Block => Self::Block,
+            PagerChoice::System => Self::System,
         }
     }
 }

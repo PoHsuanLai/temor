@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
-use temor_pane::settings::{FontChoice, FontPoints, LinePercent, TerminalSettings};
+use temor_pane::settings::{FontChoice, FontPoints, LinePercent, PagerChoice, TerminalSettings};
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, LineHeight, Palette};
 use temor_shell::ChildEnv;
@@ -198,6 +198,9 @@ pub fn open_session_with(
     // The shell starts in the pane's folder when it is still there.
     let mut ambient = launch.ambient.clone();
     ambient.env = ambient.env.overlay(env);
+    if settings.pager == PagerChoice::System && ambient.env.get("TEMOR_PAGER").is_none() {
+        ambient.env.set("TEMOR_PAGER", "system");
+    }
     if let Some(dir) = cwd
         .map(|c| PathBuf::from(c.as_str()))
         .filter(|p| p.is_absolute() && p.is_dir())

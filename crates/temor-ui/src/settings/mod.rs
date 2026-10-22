@@ -34,4 +34,4 @@ pub use migrate::{Converted, Migrated, convert_terminal_conf, migrate_terminal_c
 pub use schema::{APP, root_for, schema, write_schema};
 pub use told::Told;
 pub use values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
-pub use words::{Blinking, CursorShape, StartFolder};
+pub use words::{Blinking, CursorShape, PagerWay, StartFolder};

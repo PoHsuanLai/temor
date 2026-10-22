@@ -20,6 +20,15 @@ _temor_cwd_url=
 _temor_pwd=
 _temor_branch=
 _temor_blank=
+
+# A pager that would take the whole screen (git, aws, systemd) prints into the block instead, where
+# the output scrolls, folds and is searched with the block. A value you set stays. TEMOR_PAGER=system
+# leaves them to the system.
+if [[ ${TEMOR_PAGER-} != system ]]; then
+    [[ -z ${GIT_PAGER+x} ]] && export GIT_PAGER=cat
+    [[ -z ${AWS_PAGER+x} ]] && export AWS_PAGER=
+    [[ -z ${SYSTEMD_PAGER+x} ]] && export SYSTEMD_PAGER=cat
+fi
 _temor_seen=
 # temor's prompt. The parts that change each prompt are variables, expanded by bash when it
 # draws PS1; colours are ANSI indices, so the terminal's palette themes them.
