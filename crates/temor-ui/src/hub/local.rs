@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_core::session::Checkpoint;
+use temor_core::session::{Checkpoint, ShellState};
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::Spawn;
 use temor_pane::settings::ShellChoice;
@@ -111,6 +111,11 @@ impl Hub {
         let kept = self.carried.remove(&spawn.pane);
         // A pane made while a program is being detached takes that program's session.
         let resume = resume.or_else(|| self.remote.detaching.map(|(_, session)| session));
+        // A shell that goes on is known by what was kept of it until it next reports.
+        let seed = kept
+            .as_ref()
+            .filter(|_| resume.is_some())
+            .map(|kept| ShellState::restored(&kept.replay()));
         let own = self.local_start(spawn, kept, resume);
         let target = Arc::new(Mutex::new(Target::default()));
         let opened = RemoteLink::start(Arc::clone(&target))
@@ -133,6 +138,9 @@ impl Hub {
             }
         };
         session.set_focus(self.focus_of(spawn.pane));
+        if let Some(seed) = seed {
+            session.seed_shell_state(seed);
+        }
         let slot = crate::view::slot::Slot {
             palette: self.palette,
             session: Some(session),

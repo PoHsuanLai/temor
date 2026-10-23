@@ -45,6 +45,8 @@ pub struct Hub {
     /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
     /// the new shell is given its variables.
     pub(super) carried: BTreeMap<PaneId, temor_core::session::Checkpoint>,
+    /// What each pane's checkpoint file holds now, so only a change is written.
+    pub(super) on_disk: BTreeMap<PaneId, temor_core::session::Checkpoint>,
     pub(super) events: UnboundedSender<(PaneId, PaneEvent)>,
     pub(super) inbox: Option<UnboundedReceiver<(PaneId, PaneEvent)>>,
     pub(super) launch: Launch,
@@ -114,6 +116,7 @@ impl Hub {
             slots: BTreeMap::new(),
             recent: BTreeMap::new(),
             carried: BTreeMap::new(),
+            on_disk: BTreeMap::new(),
             events,
             inbox: Some(inbox),
             bar: BarSlot::new(&launch),

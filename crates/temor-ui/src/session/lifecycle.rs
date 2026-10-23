@@ -210,6 +210,11 @@ impl Session {
     }
 
     /// What the shell holds that a new shell would need to look the same.
+    /// Starts from what was kept of the shell this session continues, until the shell reports.
+    pub fn seed_shell_state(&mut self, state: temor_core::session::ShellState) {
+        self.shell_state = state;
+    }
+
     pub fn shell_state(&self) -> &ShellState {
         &self.shell_state
     }

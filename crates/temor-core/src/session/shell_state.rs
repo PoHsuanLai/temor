@@ -135,6 +135,27 @@ impl ShellState {
         &self.aliases
     }
 
+    /// The state of a shell that is known only by what was kept of it (a checkpoint): the shell
+    /// itself says nothing until something it holds changes.
+    pub fn restored(replay: &Replay) -> Self {
+        let mut env: BTreeMap<String, EnvEntry> = replay
+            .env
+            .iter()
+            .map(|(name, value)| (name.clone(), EnvEntry::Value(value.clone())))
+            .collect();
+        env.extend(
+            replay
+                .withheld
+                .iter()
+                .map(|name| (name.clone(), EnvEntry::Secret)),
+        );
+        Self {
+            cwd: replay.cwd.clone(),
+            env,
+            aliases: replay.aliases.iter().cloned().collect(),
+        }
+    }
+
     /// What to tell a fresh shell.
     pub fn replay(&self) -> Replay {
         let mut replay = Replay {

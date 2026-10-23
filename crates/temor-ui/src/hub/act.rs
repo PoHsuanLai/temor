@@ -247,6 +247,7 @@ impl Hub {
             checkpoint::remove(dir, pane);
         }
         self.carried.remove(&pane);
+        self.on_disk.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.

@@ -17,6 +17,7 @@ impl Hub {
     /// Writes the session if a change is waiting and the pace allows it. Returns how long to
     /// wait before asking again, when a write is waiting for its turn.
     pub fn poll_save(&mut self, now: Instant) -> Option<std::time::Duration> {
+        self.keep_checkpoints();
         match self.pace.poll(now) {
             Pace::Idle => None,
             Pace::WaitFor(wait) => Some(wait),
@@ -34,6 +35,49 @@ impl Hub {
         };
         let failures = self.save_all(&dir);
         self.notices.extend(failures);
+        // Quitting from the system's menu ends the process without dropping the hub, so what a
+        // next launch needs from each pane (its shell's state, its daemon session) is kept now.
+        self.write_checkpoints(&dir);
+    }
+
+    /// Writes the checkpoint of each pane whose state changed since it was last written, so a
+    /// quit that never reaches the hub's drop still leaves the shells' state for the next launch.
+    fn keep_checkpoints(&mut self) {
+        let Some(dir) = self.state_dir.clone() else {
+            return;
+        };
+        let now: Vec<_> = self
+            .slots
+            .iter()
+            .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
+            .filter_map(|(pane, slot)| {
+                let mut kept = slot.borrow().session.as_ref().map(Session::checkpoint)?;
+                kept.daemon_session = self.local_session(*pane);
+                Some((*pane, kept))
+            })
+            .collect();
+        for (pane, kept) in now {
+            if self.on_disk.get(&pane) != Some(&kept)
+                && checkpoint::write(&dir, pane, &kept).is_ok()
+            {
+                self.on_disk.insert(pane, kept);
+            }
+        }
+    }
+
+    /// Writes each pane's checkpoint, with the daemon session it has.
+    fn write_checkpoints(&self, dir: &std::path::Path) {
+        for (pane, slot) in &self.slots {
+            // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
+            if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
+                continue;
+            }
+            let kept = slot.borrow().session.as_ref().map(Session::checkpoint);
+            if let Some(mut kept) = kept {
+                kept.daemon_session = self.local_session(*pane);
+                let _ = checkpoint::write(dir, *pane, &kept);
+            }
+        }
     }
 
     /// Writes every Space's session and the Spaces file; what could not be written, as text.
@@ -74,17 +118,10 @@ impl Drop for Hub {
         sidecar::clear(&dir);
         checkpoint::clear(&dir);
         crate::edge::replay::clear(&dir);
+        self.write_checkpoints(&dir);
         for (pane, slot) in &self.slots {
-            // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
             if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
                 continue;
-            }
-            let mut kept = slot.borrow().session.as_ref().map(Session::checkpoint);
-            if let Some(kept) = &mut kept {
-                kept.daemon_session = self.local_session(*pane);
-            }
-            if let Some(kept) = kept {
-                let _ = checkpoint::write(&dir, *pane, &kept);
             }
             let snapshot = slot.borrow().session.as_ref().and_then(Session::snapshot);
             if let Some(snapshot) = snapshot {

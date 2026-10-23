@@ -157,3 +157,16 @@ proptest! {
         prop_assert_eq!(all, last);
     }
 }
+
+#[test]
+fn a_state_restored_from_a_replay_replays_the_same_and_keeps_secrets_as_names() {
+    let replay = Replay {
+        cwd: Some("/tmp".into()),
+        env: vec![("FOO".into(), "bar".into())],
+        aliases: vec![("zz".into(), "echo zed".into())],
+        withheld: vec!["MY_TOKEN".into()],
+    };
+    let state = ShellState::restored(&replay);
+    assert_eq!(state.replay(), replay);
+    assert_eq!(state.env().get("MY_TOKEN"), Some(&EnvEntry::Secret));
+}
