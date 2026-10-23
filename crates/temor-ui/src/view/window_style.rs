@@ -24,7 +24,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-lens-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }\
 .temor-lens { position: absolute; display: block; object-fit: contain; object-position: left top; }\
 .temor-fact-chips { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: var(--s-6); pointer-events: none; overflow: hidden; }\
-.temor-fact-chips[data-place=over], .temor-fact-chips[data-place=header] { justify-content: flex-start; background: var(--term-bg); }\
+.temor-fact-chips[data-place=over] { justify-content: flex-start; background: var(--term-bg); }\
 .temor-chip { display: flex; flex: none; align-items: center; gap: var(--s-5); box-sizing: border-box; height: calc(100% - var(--s-2)); max-height: var(--s-22); padding: 0 var(--s-6); border-radius: var(--r-micro); background: var(--fill-quaternary); border: var(--hair) solid var(--line-soft); color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-small); white-space: nowrap; --chip-hue: var(--ink); }\
 .temor-chip[data-kind=folder] { flex: 0 1 auto; min-width: 0; --chip-hue: var(--term-ansi-12); }\
 .temor-chip-words { display: flex; gap: 0.6ch; min-width: 0; overflow: hidden; }.temor-chip-words > span { flex: none; }.temor-chip[data-kind=folder] .temor-chip-words > span { flex: 0 1 auto; min-width: 0; overflow: hidden; }\
@@ -33,6 +33,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-chip[data-kind=python] { --chip-hue: var(--term-ansi-11); }.temor-chip[data-kind=ruby] { --chip-hue: var(--term-ansi-9); }.temor-chip[data-kind=go] { --chip-hue: var(--term-ansi-14); }.temor-chip[data-kind=node] { --chip-hue: var(--term-ansi-10); }.temor-chip [data-tone=added] { color: var(--ok); }.temor-chip [data-tone=removed] { color: var(--danger); }\
 .temor-card { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s-8); overflow: hidden; pointer-events: none; border-radius: var(--r-item); background-color: var(--term-bg); }\
 .temor-card-folder { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 0 var(--s-8); overflow: hidden; white-space: nowrap; pointer-events: none; background: var(--term-bg); font-size: var(--fs-small); color: var(--term-ansi-12); }\
+.temor-card-place { flex: none; font-size: var(--fs-small); color: var(--term-ansi-12); }\
 .temor-card-body { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }\
 .temor-card-head { display: flex; align-items: center; gap: var(--s-6); min-width: 0; }\
 .temor-card-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-small); color: var(--ink); }\
@@ -43,7 +44,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-card-glyph { flex: none; display: grid; gap: var(--s-1); width: var(--s-8); }\
 .temor-card-glyph i { display: block; height: var(--s-1); border-radius: var(--r-micro); background: var(--ink-faint); }\
 .temor-card-bar { position: absolute; left: 0; bottom: 0; height: var(--s-2); background: var(--ink-faint); border-radius: 0 var(--r-micro) var(--r-micro) 0; }\
-.temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }.temor-card-meta { position: absolute; display: flex; align-items: center; white-space: nowrap; pointer-events: none; }\
+.temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }\
 .temor-keys:focus { outline: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\

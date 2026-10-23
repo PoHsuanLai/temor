@@ -123,16 +123,15 @@ fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
     }
 }
 
-/// An older block's header line carries the chips its prompt had: the folder, the branch and the
-/// change, over the shell's own text, as the prompt's do.
+/// An older block's card names the folder its prompt was in, as the prompt's chips did.
 #[test]
-fn an_older_blocks_header_keeps_its_prompts_chips() {
+fn an_older_blocks_card_names_its_folder() {
     if !tools_present() || program_or_skip("git", "facts").is_none() {
         return;
     }
     use ds_harness::Input;
     let probe = Probe::new();
-    let mut h = changed_repository("facts-chips-older", &probe, Prompt::Temor);
+    let mut h = changed_repository("facts-card-folder", &probe, Prompt::Temor);
     let _ = chips_with_the_change(&mut h);
     h.send(Input::click(ds::prelude::Point {
         x: ds::prelude::Px(700.0),
@@ -140,26 +139,26 @@ fn an_older_blocks_header_keeps_its_prompts_chips() {
     }));
     type_line(&mut h, "echo older-done");
     let start = Instant::now();
-    let header = loop {
+    loop {
         h.advance(Duration::from_millis(50));
         let html = h.html();
-        let found = html
-            .split("data-place=\"header\"")
-            .nth(1)
-            .map(|after| after[..after.find("</div>").unwrap_or(after.len())].to_owned());
-        if let Some(found) = found {
-            break found;
+        let named = ["temor-card-folder", "temor-card-place"]
+            .iter()
+            .any(|class| {
+                html.split(&format!("class=\"{class}"))
+                    .skip(1)
+                    .any(|after| {
+                        after
+                            .split_once('>')
+                            .is_some_and(|(_, rest)| rest.starts_with("~<"))
+                    })
+            });
+        if named {
+            break;
         }
         assert!(
             start.elapsed() < Duration::from_secs(30),
-            "no chips over the older block's header:\n{}",
-            probe.screen()
-        );
-    };
-    for want in [">~<", ">main<", "+1"] {
-        assert!(
-            header.contains(want),
-            "no {want:?} over the older header:\n{header}"
+            "no folder on the older block's card:\n{html}"
         );
     }
 }

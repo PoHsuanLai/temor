@@ -137,13 +137,6 @@ impl Session {
             .and_then(|id| self.block_output(id))
     }
 
-    /// How a block ended and how long it ran, as its card header says it (`exit 1 · 4 ms`);
-    /// `None` while it runs.
-    pub fn block_meta(&self, id: BlockId) -> Option<String> {
-        let block = self.blocks.store().get(id)?;
-        crate::view::block_meta::meta_text(block.outcome(), block.elapsed_ms())
-    }
-
     /// The block whose gutter is under `at` (device pixels in the pane), if the point is in the
     /// left margin, on a row that belongs to a block. Never on a full-screen program's screen.
     pub fn gutter_block(&self, at: SurfacePoint) -> Option<BlockId> {

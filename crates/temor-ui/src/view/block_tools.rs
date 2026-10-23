@@ -1,5 +1,5 @@
 //! The block tools (PLAN §9 blocks): in the header row of the block under the pointer, or of the
-//! selected one, right of how it ended (`block_meta`), a dense group of three icon buttons (copy
+//! selected one, at the right of its card, a dense group of three icon buttons (copy
 //! the output, type the command again, more) and a menu behind "more" with the rest: copy the
 //! command, save the output to Downloads, show the files it listed, and on a pane on another
 //! computer, edit it locally. Typing the command again never runs it.
@@ -13,7 +13,6 @@ use ds::style::tokens::control_size::ControlSize;
 use ds_core::vocab::Shortcut;
 use temor_core::vocab::ids::BlockId;
 
-use super::block_meta::MetaText;
 use super::menu_key::with_key_opt;
 use super::tool_button::ToolButton;
 use crate::session::ToolsHeight;
@@ -30,8 +29,6 @@ pub struct ToolsView {
     pub row: f32,
     /// Distance from the right edge of the pane, in logical pixels.
     pub inset: f32,
-    /// How the block ended, shown left of the buttons.
-    pub meta: Option<String>,
     /// Whether the output can be copied or saved (the command has finished).
     pub output: Availability,
     /// Whether the command can be typed again (it has a command).
@@ -118,9 +115,6 @@ pub fn BlockTools(
             class: "temor-block-tools",
             onmounted: move |event: MountedEvent| probe.on_mounted(event),
             style: "top:{tools.top}px; height:{tools.row}px; right:{tools.inset}px",
-            if let Some(meta) = tools.meta.clone() {
-                MetaText { text: meta }
-            }
             IconButtonGroup { label: "Command tools", size: ControlSize::Mini,
                 ToolButton {
                     icon: Icon::Clipboard,

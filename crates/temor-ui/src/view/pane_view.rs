@@ -292,6 +292,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
         picked: s.picked_blocks().len(),
         bookmarked: s.picks_bookmarked(),
+        folded: s.picks_folded(),
         pane: match on_host {
             true => PaneKind::OnHost,
             false => PaneKind::ThisComputer,

@@ -70,6 +70,8 @@ pub struct CardView {
     pub ground: Option<String>,
     /// The folder, on the row above the card, when it differs from the card before's.
     pub folder: Option<String>,
+    /// The same, in the card's own head, when there is no row above it to name it on.
+    pub place: Option<String>,
 }
 
 /// The state and words for a block's outcome.
@@ -139,10 +141,14 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
             let folder = session
                 .header_facts(span.id)
                 .map(|kept| kept.folder.clone());
-            let named = folder
+            let changed = folder
                 .clone()
-                .filter(|folder| !folder.is_empty() && last_folder.as_ref() != Some(folder))
-                .filter(|_| lead == 1 && span.first >= 0);
+                .filter(|folder| !folder.is_empty() && last_folder.as_ref() != Some(folder));
+            let room_above = lead == 1 && span.first >= 0;
+            let (named, place) = match room_above {
+                true => (changed, None),
+                false => (None, changed),
+            };
             if folder.is_some() {
                 last_folder = folder;
             }
@@ -175,6 +181,7 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
                 },
                 ground: card_ground(palette, fill),
                 folder: named,
+                place,
             })
         })
         .collect()
@@ -205,6 +212,9 @@ pub fn BlockCards(cards: Vec<CardView>) -> Element {
                 div { class: "temor-card-body", style: "opacity:{card.strength}",
                 div { class: "temor-card-head",
                     span { class: "temor-card-title ds-mono", "{card.title}" }
+                    if let Some(place) = card.place.clone() {
+                        span { class: "temor-card-place ds-mono", "{place}" }
+                    }
                     if let Some(status) = card.status.clone() {
                         span { class: "temor-card-status ds-mono", "{status}" }
                     }

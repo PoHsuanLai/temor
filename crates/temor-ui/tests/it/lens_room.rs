@@ -78,9 +78,8 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
     h.advance(Duration::from_millis(100));
     run_line(&mut h, &probe, "ls -1 demo", "src");
     run_line(&mut h, &probe, "echo after", "after");
-    // The `ls` block's card: the first on screen (its meta, or its tools in its place).
-    let mut cards = rects(&h, ".temor-card-meta");
-    cards.extend(rects(&h, ".temor-block-tools"));
+    // The `ls` block's card: the first on screen.
+    let mut cards = rects(&h, ".temor-card");
     cards.sort_by(|a, b| a.y.total_cmp(&b.y));
     let card = *cards.first().expect("the ls card");
     let on_ls = Point {
@@ -93,7 +92,7 @@ fn the_demo_lens_draws_under_its_block_in_room_between_the_rows() {
     h.advance(Duration::from_millis(300));
     assert!(h.html().contains("Show with Line bars"), "{}", h.html());
     let items = rects(&h, ".ds-menu-item");
-    let item = *items.get(6).expect("the lens's item");
+    let item = *items.get(7).expect("the lens's item");
     h.send(Input::click(item.centre()));
     advance_until(&mut h, "the picture and its room", |h| {
         !rects(h, ".temor-lens").is_empty() && !rects(h, ".temor-row-gap").is_empty()

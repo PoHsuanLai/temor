@@ -195,8 +195,8 @@ fn a_full_screen_program_hides_the_gutter_and_its_hits() {
         "no marks on the alternate screen"
     );
     assert!(
-        live.session.block_meta(id).is_some(),
-        "the header's words still read while hidden"
+        live.session.block_finished(id),
+        "the block is still known while hidden"
     );
     live.session
         .pane()

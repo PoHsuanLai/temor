@@ -184,38 +184,39 @@ fn spans(h: &Harness, selector: &str) -> Vec<(f64, f64)> {
 }
 
 #[test]
-fn a_card_meta_steps_aside_where_the_header_text_reaches_it() {
+fn a_failed_card_says_its_status_however_long_its_command() {
     if !tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = ready("cards-meta-room", &probe);
+    let mut h = ready("cards-status", &probe);
     run_to_end(&mut h, &probe, "echo short; (exit 3)", "short");
     // A command longer than the row: its header line runs to the right edge.
     let long = format!(": {}; echo long; (exit 4)", "x".repeat(140));
     run_to_end(&mut h, &probe, &long, "long");
     let html = h.html();
     assert!(
-        html.contains("exit 3 \u{b7} "),
-        "the short card's meta:\n{html}"
+        html.contains(">exit 3<"),
+        "the short card's status:\n{html}"
     );
+    assert!(html.contains(">exit 4<"), "the long card's status:\n{html}");
     assert!(
-        !html.contains("exit 4 \u{b7} "),
-        "the long card's meta lies over its command"
+        html.contains(">short<") && html.contains(">long<"),
+        "each card shows its last line of output:\n{html}"
     );
 }
 
 #[test]
-fn the_find_bar_hides_the_card_meta_it_would_cover() {
+fn the_find_bar_hides_the_cards_it_would_cover() {
     if !tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = ready("cards-meta-find", &probe);
+    let mut h = ready("cards-find", &probe);
     run_to_end(&mut h, &probe, "echo one; (exit 3)", "one");
     run_to_end(&mut h, &probe, "echo two; (exit 4)", "two");
-    let top_meta = |h: &Harness| spans(h, ".temor-card-meta").first().map(|s| s.0);
-    let first = top_meta(&h).expect("the first card's meta");
+    let top_card = |h: &Harness| spans(h, ".temor-card").first().map(|s| s.0);
+    let first = top_card(&h).expect("the first card");
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Shift],
         ShortcutKey::Char('f'),
@@ -226,25 +227,24 @@ fn the_find_bar_hides_the_card_meta_it_would_cover() {
     let bottom = bar[0].1;
     assert!(
         first < bottom,
-        "the first card's meta starts under the bar: {first} vs {bottom}"
+        "the first card starts under the bar: {first} vs {bottom}"
     );
-    for (top, _) in spans(&h, ".temor-card-meta") {
+    for (top, _) in spans(&h, ".temor-card") {
         assert!(
             top >= bottom,
-            "a meta at {top} lies under the find bar (to {bottom})"
+            "a card at {top} lies under the find bar (to {bottom})"
         );
     }
     assert!(
-        h.html().contains("exit 4 \u{b7} "),
-        "the meta below the bar stays"
+        h.html().contains(">exit 4<"),
+        "the card below the bar stays"
     );
 }
 
-/// The middle of the header row of the `n`th card on screen, a little into the grid: a point on
-/// that block. The row holds the card's meta, or the toolbar of the hovered card in its place.
+/// The middle of the `n`th card on screen, a little into the grid: a point on that block (the
+/// card lets a press through to the rows under it).
 fn on_card(h: &Harness, n: usize) -> Point {
-    let mut rows = spans(h, ".temor-card-meta");
-    rows.extend(spans(h, ".temor-block-tools"));
+    let mut rows = spans(h, ".temor-card");
     rows.sort_by(|a, b| a.0.total_cmp(&b.0));
     let (top, bottom) = rows
         .get(n)
@@ -319,13 +319,14 @@ fn a_right_click_on_a_block_opens_its_menu_and_the_menu_acts_on_the_block() {
         "Copy Output",
         "Put in Prompt",
         "Bookmark",
+        "Fold Output",
         "Select All Commands",
     ] {
         assert!(html.contains(title), "no {title:?} in the menu:\n{html}");
     }
-    // Copy, Copy Command, Copy Output, Put in Prompt, Bookmark, Select All Commands.
+    // Copy, Copy Command, Copy Output, Put in Prompt, Bookmark, Fold Output, Select All Commands.
     let found = items(&h);
-    assert_eq!(found.len(), 6, "the menu's items:\n{html}");
+    assert_eq!(found.len(), 7, "the menu's items:\n{html}");
     h.send(Input::click(found[2]));
     h.advance(Duration::from_millis(300));
     assert_eq!(

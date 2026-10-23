@@ -1,5 +1,5 @@
 //! What the window draws for a pane's blocks beside the grid (PLAN §9 blocks): the sticky header
-//! (`block_header`), how each card ended (`block_meta`), the tools on the hovered or selected
+//! (`block_header`), the cards (`block_card`), the tools on the hovered or selected
 //! block (`block_tools`), and the pane's progress and bell. A gutter click still selects a block;
 //! the cards lane's bands show how each one ended.
 
@@ -53,8 +53,6 @@ fn tools_of(
                 top: gutter.row_top(spot.row),
                 row: gutter.cell_h,
                 inset: gutter.side,
-                // The card says how it ended.
-                meta: None,
                 output: available(finished),
                 rerun: available(session.block_command(id).is_some_and(|c| !c.is_empty())),
                 view: available(finished),

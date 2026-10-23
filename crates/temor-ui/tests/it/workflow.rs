@@ -293,25 +293,30 @@ fn first_pane(h: &Harness) -> ds::prelude::Rect {
         .unwrap_or_else(|| panic!("no terminal pane in the page"))
 }
 
-/// The finished command cards in the panes in front: their meta texts ("4 ms", "exit 1 · 4 ms").
+/// The finished command cards in the panes in front, each as its state and the status it says
+/// ("done", "failed exit 1"). A card still running is left out.
 fn metas(h: &Harness) -> Vec<String> {
     let html = h.html();
-    html.split("class=\"temor-card-meta\"")
+    html.split("class=\"temor-card\"")
         .skip(1)
-        .map(|part| {
-            let body = part.split_once('>').map_or("", |(_, rest)| rest);
-            let mut text = String::new();
-            let mut tag = false;
-            let body = body.split("</div>").next().unwrap_or("");
-            for c in body.chars() {
-                match c {
-                    '<' => tag = true,
-                    '>' => tag = false,
-                    c if !tag => text.push(c),
-                    _ => {}
-                }
+        .filter_map(|part| {
+            let state = part
+                .split_once("data-state=\"")
+                .and_then(|(_, rest)| rest.split_once('"'))
+                .map(|(state, _)| state)?;
+            if state == "running" {
+                return None;
             }
-            text.split_whitespace().collect::<Vec<_>>().join(" ")
+            let status = part
+                .split_once("temor-card-status")
+                .and_then(|(_, rest)| rest.split_once('>'))
+                .and_then(|(_, rest)| rest.split_once('<'))
+                .map(|(text, _)| text.trim())
+                .filter(|_| state == "failed");
+            Some(match status {
+                Some(status) => format!("{state} {status}"),
+                None => state.to_owned(),
+            })
         })
         .collect()
 }
