@@ -60,6 +60,13 @@ impl ShellAdapter for BashAdapter {
         &[BASH_RC, BASH_SCRIPT]
     }
 
+    fn caps(&self) -> ReportCaps {
+        ReportCaps {
+            env: true,
+            aliases: true,
+        }
+    }
+
     /// The wrapper reads the profile files itself when `TEMOR_BASH_LOGIN` is set, and bash always
     /// starts as a plain interactive shell.
     fn plan(

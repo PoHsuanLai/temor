@@ -131,3 +131,27 @@ proptest! {
         prop_assert_eq!(Checkpoint::decode(&checkpoint.encode()), Ok(checkpoint));
     }
 }
+
+#[test]
+fn commands_of_a_shell_that_goes_on_come_first_and_only_the_newest_are_kept() {
+    let record = |n: usize| CommandRecord {
+        command: format!("c{n}"),
+        exit: Some(0),
+        took_ms: None,
+    };
+    let earlier: Vec<_> = (0..MOST_HISTORY).map(record).collect();
+    let now = Checkpoint {
+        history: vec![record(1000), record(1001)],
+        ..Checkpoint::default()
+    };
+    let joined = now.after(&earlier);
+    assert_eq!(joined.history.len(), MOST_HISTORY);
+    assert_eq!(
+        joined.history.last().map(|r| r.command.as_str()),
+        Some("c1001")
+    );
+    assert_eq!(
+        joined.history.first().map(|r| r.command.as_str()),
+        Some("c2")
+    );
+}

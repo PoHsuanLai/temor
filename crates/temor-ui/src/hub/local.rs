@@ -1,7 +1,7 @@
 //! Panes that live in this computer's own daemon (PLAN M7): the shell runs in a process that
 //! outlives the window, and quitting only lets go of it. It is the helper's session machinery
 //! with the unix socket in place of `ssh`; the pane, its screen and its reconnects work as for a
-//! host. Off unless `TEMOR_LOCAL_DAEMON` is set, until it has had more use.
+//! host. Off unless the setting `shell.keep_running = on` or `TEMOR_LOCAL_DAEMON` is set.
 
 use std::sync::{Arc, Mutex};
 
@@ -28,7 +28,8 @@ pub(super) fn local_alias() -> HostAlias {
 impl Hub {
     /// Whether `spawn`'s pane should be a session in the local daemon.
     pub(super) fn local_wanted(&self, spawn: &Spawn) -> bool {
-        self.launch.ambient.env.get("TEMOR_LOCAL_DAEMON").is_some()
+        (self.launch.settings.keep_running
+            || self.launch.ambient.env.get("TEMOR_LOCAL_DAEMON").is_some())
             && spawn.relaunch.is_none()
             && self.run.intent.is_none()
             && !self.is_quick(spawn.pane)
@@ -113,9 +114,9 @@ impl Hub {
         let resume = resume.or_else(|| self.remote.detaching.map(|(_, session)| session));
         // A shell that goes on is known by what was kept of it until it next reports.
         let seed = kept
-            .as_ref()
+            .clone()
             .filter(|_| resume.is_some())
-            .map(|kept| ShellState::restored(&kept.replay()));
+            .map(|kept| (ShellState::restored(&kept.replay()), kept));
         let own = self.local_start(spawn, kept, resume);
         let target = Arc::new(Mutex::new(Target::default()));
         let opened = RemoteLink::start(Arc::clone(&target))
@@ -138,8 +139,8 @@ impl Hub {
             }
         };
         session.set_focus(self.focus_of(spawn.pane));
-        if let Some(seed) = seed {
-            session.seed_shell_state(seed);
+        if let Some((state, kept)) = seed {
+            session.continue_from(state, kept);
         }
         let slot = crate::view::slot::Slot {
             palette: self.palette,

@@ -27,7 +27,7 @@ arch=$(uname -m)
 name=temor-$version-$arch-macos
 
 cd "$root"
-cargo build -q --locked --profile "$profile" -p temor
+cargo build -q --locked --profile "$profile" -p temor -p temor-remote
 target=${CARGO_TARGET_DIR:-$root/target}
 dir=$profile
 [ "$profile" = dev ] && dir=debug
@@ -38,6 +38,10 @@ app=$out/temor.app
 rm -rf "$app" "$out/$name.zip" "$out/$name.zip.sha256"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/temor"
+# The background service that keeps terminals running after quit: temor finds it beside itself.
+helper=$target/$dir/temor-remote
+[ -x "$helper" ] || { echo "no $helper was built" >&2; exit 1; }
+cp "$helper" "$app/Contents/MacOS/temor-remote"
 sed "s/@VERSION@/$version/g" dist/macos/Info.plist > "$app/Contents/Info.plist"
 
 # The icon: the 1024 px source at each size the iconset wants, as `.icns`.
@@ -52,7 +56,7 @@ done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/Temor.icns"
 rm -rf "$(dirname "$iconset")"
 
-codesign --force --sign - --timestamp=none "$app"
+codesign --force --deep --sign - --timestamp=none "$app"
 codesign --verify --strict "$app"
 
 ditto -c -k --keepParent "$app" "$out/$name.zip"

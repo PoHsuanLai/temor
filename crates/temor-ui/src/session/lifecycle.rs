@@ -207,14 +207,21 @@ impl Session {
     /// ran.
     pub fn checkpoint(&self) -> temor_core::session::Checkpoint {
         temor_core::session::Checkpoint::of(self.shell_state.replay(), self.blocks.store().iter())
+            .after(&self.inherited)
+    }
+
+    /// Starts from what was kept of the shell this session continues: its state until the shell
+    /// reports, and the commands it ran before this window.
+    pub fn continue_from(
+        &mut self,
+        state: temor_core::session::ShellState,
+        kept: temor_core::session::Checkpoint,
+    ) {
+        self.shell_state = state;
+        self.inherited = kept.history;
     }
 
     /// What the shell holds that a new shell would need to look the same.
-    /// Starts from what was kept of the shell this session continues, until the shell reports.
-    pub fn seed_shell_state(&mut self, state: temor_core::session::ShellState) {
-        self.shell_state = state;
-    }
-
     pub fn shell_state(&self) -> &ShellState {
         &self.shell_state
     }

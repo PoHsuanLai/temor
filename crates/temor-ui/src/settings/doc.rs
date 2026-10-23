@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::schema::APP;
 use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
-use super::words::{Blinking, CursorShape, PagerWay, StartFolder};
+use super::words::{Blinking, CursorShape, KeepWay, PagerWay, StartFolder};
 
 /// The page temor's keys are on in the Settings app: temor's own.
 fn page() -> Page {
@@ -115,6 +115,12 @@ pub struct ShellSettings {
         section = "Shell"
     )]
     pub pager: PagerWay,
+    #[settings(
+        label = "After quitting",
+        help = "Keep terminals running in a background service after temor quits, so the next start finds the same shells and their running programs, or end them as temor quits. Applies to new panes; needs the temor-remote program beside temor.",
+        section = "Shell"
+    )]
+    pub keep_running: KeepWay,
 }
 
 impl Default for ShellSettings {
@@ -123,6 +129,7 @@ impl Default for ShellSettings {
             program: "login".to_owned(),
             start_in: StartFolder::default(),
             pager: PagerWay::default(),
+            keep_running: KeepWay::default(),
         }
     }
 }

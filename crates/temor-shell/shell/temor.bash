@@ -17,6 +17,7 @@ _temor_executing=
 _temor_status=0
 _temor_cwd=
 _temor_cwd_url=
+_temor_reported=
 _temor_pwd=
 _temor_branch=
 _temor_blank=
@@ -47,6 +48,59 @@ _temor_encode_cwd() {
         esac
     done
     _temor_cwd_url=$out
+}
+
+# Percent-encodes any text byte by byte into REPLY (everything but letters, digits and `._~/-`).
+_temor_encode() {
+    local LC_ALL=C text=$1 out= ch i
+    if [[ $text != *[!a-zA-Z0-9._~/-]* ]]; then
+        REPLY=$text
+        return 0
+    fi
+    for ((i = 0; i < ${#text}; i++)); do
+        ch=${text:i:1}
+        case $ch in
+            [a-zA-Z0-9._~/-]) out+=$ch ;;
+            *) printf -v ch '%02X' "'$ch"; out+=%${ch: -2} ;;
+        esac
+    done
+    REPLY=$out
+}
+
+# Tells temor the shell's exported variables and aliases (OSC 7503, see temor-shell's report
+# module), but only when they differ from what it last said; the comparison is on the raw text.
+# Too large a report is not sent.
+_temor_report() {
+    local LC_ALL=C name line value raw= out=v1 quote="'" esc
+    esc="'\\''"
+    local -a names=()
+    while IFS= read -r name; do
+        case $name in _ | PWD | OLDPWD | SHLVL) continue ;; esac
+        names[${#names[@]}]=$name
+        raw+="e=$name=${!name}"$'\n'
+    done < <(compgen -e)
+    local aliased
+    aliased=$(alias -p 2>/dev/null)
+    raw+=$aliased
+    [[ $raw == "$_temor_reported" ]] && return 0
+    _temor_reported=$raw
+    for name in "${names[@]}"; do
+        _temor_encode "$name"; out+=";e=$REPLY"
+        _temor_encode "${!name}"; out+="=$REPLY"
+    done
+    while IFS= read -r line; do
+        [[ $line == "alias "* ]] || continue
+        line=${line#alias }
+        name=${line%%=*}
+        value=${line#*=}
+        value=${value#\'}
+        value=${value%\'}
+        value=${value//"$esc"/$quote}
+        _temor_encode "$name"; out+=";a=$REPLY"
+        _temor_encode "$value"; out+="=$REPLY"
+    done <<<"$aliased"
+    (( ${#out} > 60000 )) && return 0
+    printf '\e]7503;%s\e\\' "$out"
 }
 
 # Sets _temor_branch to "  <name>" (magenta) when $PWD is inside a git checkout, else empty.
@@ -104,6 +158,13 @@ _temor_prompt() {
         _temor_encode_cwd "$PWD"
     fi
     printf '\e]7;file://%s%s\e\\' "${HOSTNAME-}" "$_temor_cwd_url"
+    if [[ -n ${TEMOR_REPLAY-} ]]; then
+        # The aliases of the shell this one replaces, defined once after the person's own rc.
+        [[ -r $TEMOR_REPLAY ]] && source "$TEMOR_REPLAY"
+        command rm -f -- "$TEMOR_REPLAY"
+        unset TEMOR_REPLAY
+    fi
+    _temor_report
     printf '\e]133;A\e\\'
     if _temor_prompt_is_ours; then
         _temor_blank=${_temor_seen:+$'\n'}

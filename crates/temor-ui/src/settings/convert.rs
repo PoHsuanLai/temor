@@ -34,6 +34,7 @@ impl TerminalDoc {
             shell: program,
             start_in: self.shell.start_in.into(),
             pager: self.shell.pager.into(),
+            keep_running: self.shell.keep_running.into(),
             keys,
             notify_after: self.notify.after.0,
             offer_add,
@@ -68,6 +69,7 @@ pub fn from_terminal(settings: &TerminalSettings) -> TerminalDoc {
             },
             start_in: settings.start_in.into(),
             pager: settings.pager.into(),
+            keep_running: settings.keep_running.into(),
         },
         notify: NotifySettings {
             after: NotifySeconds(settings.notify_after),

@@ -27,6 +27,9 @@ pub struct TerminalSettings {
     pub start_in: StartIn,
     /// Where paged output goes (`shell.pager`).
     pub pager: PagerChoice,
+    /// Whether new terminals run in the background daemon, so quitting leaves them running
+    /// (`shell.keep_running`).
+    pub keep_running: bool,
     /// The person's key changes, in chordkit's line form (`temor.split-right = Primary+Alt+N`).
     /// The keymap itself is built at the app's edge from the desktop's conventions and these.
     pub keys: Overrides,
@@ -51,6 +54,7 @@ impl Default for TerminalSettings {
             shell: ShellChoice::default(),
             start_in: StartIn::default(),
             pager: PagerChoice::default(),
+            keep_running: false,
             keys: Overrides::default(),
             notify_after: NotifyAfter::DEFAULT,
             offer_add: Vec::new(),

@@ -113,6 +113,35 @@ pub enum PagerWay {
     System,
 }
 
+/// Whether quitting temor ends its terminals.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Word)]
+#[serde(rename_all = "snake_case")]
+#[word(case = snake)]
+pub enum KeepWay {
+    /// Quitting ends them.
+    #[default]
+    #[word(label = "Quitting ends them")]
+    Off,
+    /// A background service keeps them; the next start finds them.
+    #[word(label = "Keep them running")]
+    On,
+}
+
+impl From<KeepWay> for bool {
+    fn from(way: KeepWay) -> Self {
+        way == KeepWay::On
+    }
+}
+
+impl From<bool> for KeepWay {
+    fn from(keep: bool) -> Self {
+        match keep {
+            true => Self::On,
+            false => Self::Off,
+        }
+    }
+}
+
 impl From<PagerWay> for PagerChoice {
     fn from(way: PagerWay) -> Self {
         match way {

@@ -92,6 +92,17 @@ impl Checkpoint {
         }
     }
 
+    /// This checkpoint's commands after `earlier` ones (those of a shell this one continues),
+    /// the newest [`MOST_HISTORY`] kept.
+    pub fn after(mut self, earlier: &[CommandRecord]) -> Self {
+        let mut all = earlier.to_vec();
+        all.append(&mut self.history);
+        let extra = all.len().saturating_sub(MOST_HISTORY);
+        all.drain(..extra);
+        self.history = all;
+        self
+    }
+
     /// What a new shell is told.
     pub fn replay(&self) -> Replay {
         Replay {

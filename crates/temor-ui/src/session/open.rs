@@ -87,6 +87,7 @@ impl Session {
             blocks: BlockLog::default(),
             ann: temor_core::session::Annotations::default(),
             shell_state: temor_core::session::ShellState::default(),
+            inherited: Vec::new(),
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,
