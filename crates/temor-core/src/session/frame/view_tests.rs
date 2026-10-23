@@ -1,10 +1,10 @@
 //! The frame's answers from tables of plain reads: no terminal, no session.
 
-use temor_core::block::Outcome;
-use temor_core::vocab::ids::{BlockId, ExitCode};
-
-use super::super::bands::{Lead, Mark, Pick, Stage};
 use super::{BlockRead, End, Frame, LiveRead, Read, Spot};
+use crate::block::Outcome;
+use crate::vocab::ids::{BlockId, ExitCode};
+
+use super::super::card::{Lead, Mark, Pick, Stage};
 
 fn at(row: u32, col: u16) -> Spot {
     Spot { row, col }

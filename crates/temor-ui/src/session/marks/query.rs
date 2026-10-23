@@ -4,6 +4,7 @@
 use temor_core::block::{BlockState, Outcome};
 use temor_core::facts::Facts;
 use temor_core::session::AnnotateIn;
+use temor_core::session::frame::BlockMark;
 use temor_core::vocab::ids::BlockId;
 use temor_render::RowLayout;
 use temor_vt::{Row, SurfacePoint};
@@ -13,23 +14,6 @@ use super::super::blocks::HeaderFacts;
 use super::super::model::PADDING_LOGICAL;
 use crate::error::UiError;
 use crate::plugins::facts::PluginFact;
-
-/// What the gutter shows for one block whose prompt is on screen.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BlockMark {
-    pub id: BlockId,
-    /// The prompt's row in the viewport.
-    pub row: u32,
-    /// The viewport row of the prompt's header line: the row under the prompt's first row when
-    /// that row is the blank line temor's prompt leaves above it, else the prompt's row.
-    pub header: u32,
-    /// How many columns the header line's text takes, up to its last non-blank cell: what is
-    /// drawn beside it on the right must start after that.
-    pub header_cols: u32,
-    pub outcome: Outcome,
-    /// How long it ran; `None` while it runs.
-    pub took_ms: Option<u64>,
-}
 
 /// Where the grid's rows sit in the pane, in logical pixels: the inset on the left and right,
 /// the inset above the first row as drawn, a row's height, and where the rows are shown around

@@ -1,80 +1,48 @@
-//! What a pane's blocks look like at one moment, as plain data: the terminal is read once into a
-//! [`Read`] (`survey`), and every question the views ask of the blocks (the gutter's marks, the
-//! sticky header, where the tools go, a block's last and output rows, the bands' input) is
-//! answered from the [`Frame`] made of it. Nothing here touches the terminal, the session or the
-//! clock, so the rules can be tested from tables.
+//! The blocks of one pane at one moment, and every question the views ask of them: the gutter's
+//! marks, the sticky header, where the tools go, a block's last and output rows, and the bands'
+//! input. Made from a [`Read`] by [`Frame::of`]; nothing here touches the terminal.
 //!
 //! Rows are screen rows (0 is the oldest kept row) in a [`Read`], and the answers are in the
 //! viewport's rows, negative above it, as the views want them.
 
-use temor_core::block::Outcome;
-use temor_core::vocab::ids::BlockId;
+use crate::block::Outcome;
+use crate::vocab::ids::BlockId;
 
-use super::bands::{CardBlock, Lead, Mark, Pick, Stage, command_rows};
-use super::query::BlockMark;
-use super::rows::{Span, StickyHeader, ToolsSpot, ViewRows, heads_viewport, tools_row};
+use super::card::{CardBlock, Lead, Mark, Pick, Stage};
+use super::place::{Span, ViewRows, command_rows, heads_viewport, tools_row};
+use super::read::{BlockRead, End, LiveRead, Read, Spot};
 
-/// A mark's place in the screen: its row and column.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Spot {
-    pub row: u32,
-    pub col: u16,
-}
-
-/// Where a block's end mark is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum End {
-    /// There is none: the command still runs.
-    Running,
-    At(Spot),
-    /// The block has one that the terminal no longer holds.
-    Lost,
-}
-
-/// One block as the terminal showed it.
+/// The command that heads the pane while its block's prompt is above the viewport.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct BlockRead {
+pub struct StickyHeader {
     pub id: BlockId,
-    /// The command as typed.
+    /// The command's first line.
     pub command: String,
-    pub outcome: Outcome,
-    pub took_ms: Option<u64>,
-    /// The prompt's mark; `None` once the scrollback took it.
-    pub prompt: Option<Spot>,
-    /// The output's mark.
-    pub output: Option<Spot>,
-    /// The typed command's mark.
-    pub input: Option<Spot>,
-    pub end: End,
-    /// What the prompt's first row is.
-    pub lead: Lead,
-    /// The columns the header line's text takes; read only for a prompt in the viewport.
-    pub header_cols: u32,
-    pub picked: bool,
-    pub bookmarked: bool,
 }
 
-/// The prompt being typed at.
+/// Where the block tools go: the block they act on and the viewport row they are on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct LiveRead {
-    pub prompt: Spot,
-    pub lead: Lead,
-    pub input: Option<Spot>,
+pub struct ToolsSpot {
+    pub id: BlockId,
+    /// A viewport row (0 is the top row).
+    pub row: u32,
 }
 
-/// Everything the views need from the terminal to place the blocks.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Read {
-    /// The viewport's first screen row, and how many rows it has.
-    pub top: u32,
-    pub len: u32,
-    /// The cursor's screen row, when it is shown.
-    pub cursor: Option<u32>,
-    /// The first viewport row shown whole, below the rows the room under a block pushed out.
-    pub first_shown: u32,
-    /// The store's blocks, oldest first.
-    pub blocks: Vec<BlockRead>,
-    pub live: Option<LiveRead>,
+/// What the gutter shows for one block whose prompt is on screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockMark {
+    pub id: BlockId,
+    /// The prompt's row in the viewport.
+    pub row: u32,
+    /// The viewport row of the prompt's header line: the row under the prompt's first row when
+    /// that row is the blank line temor's prompt leaves above it, else the prompt's row.
+    pub header: u32,
+    /// How many columns the header line's text takes, up to its last non-blank cell: what is
+    /// drawn beside it on the right must start after that.
+    pub header_cols: u32,
+    pub outcome: Outcome,
+    /// How long it ran; `None` while it runs.
+    pub took_ms: Option<u64>,
 }
 
 /// The blocks of one pane at one moment.
@@ -88,7 +56,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub(super) fn of(read: Read) -> Self {
+    pub fn of(read: Read) -> Self {
         let bottom = read.top.saturating_add(read.len.saturating_sub(1));
         Self {
             view: ViewRows {
@@ -257,13 +225,13 @@ impl Frame {
     }
 
     /// The cursor's row in the viewport, when it is shown.
-    pub(super) fn cursor_row(&self) -> Option<i64> {
+    pub fn cursor_row(&self) -> Option<i64> {
         self.view.cursor.map(|row| self.rel(row))
     }
 
     /// The cards for the bands, oldest first: every block with a prompt, and the prompt being
     /// typed at. `end` is the viewport row a running block's command runs to.
-    pub(super) fn cards(&self, end: i64) -> Vec<CardBlock> {
+    pub fn cards(&self, end: i64) -> Vec<CardBlock> {
         let top = i64::from(self.view.top);
         let command_of = |input: Option<Spot>, output: Option<Spot>| {
             let input = input?;
@@ -308,4 +276,5 @@ impl Frame {
 }
 
 #[cfg(test)]
+#[path = "view_tests.rs"]
 mod tests;

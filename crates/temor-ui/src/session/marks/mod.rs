@@ -6,7 +6,6 @@
 mod actions;
 mod anchors;
 mod bands;
-mod frame;
 mod mark;
 mod notify;
 mod picks;
@@ -18,7 +17,6 @@ mod tests;
 mod tools_height;
 
 pub use bands::{HeaderLine, PromptHeader};
-pub use frame::Frame;
 pub use notify::desktop_note;
-pub use query::{BlockMark, Gutter};
+pub use query::Gutter;
 pub use tools_height::ToolsHeight;

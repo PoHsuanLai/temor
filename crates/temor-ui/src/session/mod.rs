@@ -31,7 +31,7 @@ pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::{LinkHover, LinkTipSpot};
-pub use marks::{BlockMark, Frame, Gutter, HeaderLine, PromptHeader, ToolsHeight, desktop_note};
+pub use marks::{Gutter, HeaderLine, PromptHeader, ToolsHeight, desktop_note};
 pub use model::{
     Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
 };
@@ -39,4 +39,5 @@ pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
+pub use temor_core::session::frame::{BlockMark, Frame};
 pub use viewer::ViewAsk;

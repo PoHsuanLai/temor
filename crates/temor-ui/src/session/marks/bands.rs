@@ -7,6 +7,7 @@
 //! `Session::card_bands` gathers its input from the terminal.
 
 use temor_core::block::{BlockState, Outcome};
+use temor_core::session::frame::{CardBlock, Lead, Mark, Pick, Stage};
 use temor_pane::Term;
 use temor_pane::text::RowText;
 use temor_render::{Cut, RowBand, RowSpan, RowWeight};
@@ -30,49 +31,6 @@ pub struct PromptHeader {
     pub line: HeaderLine,
     /// What the shell wrote on it, without trailing blanks.
     pub text: String,
-}
-
-/// Where a block stands, as far as its card goes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Stage {
-    /// The prompt is up and the command has not started.
-    AtPrompt,
-    /// The command started (or finished) with this outcome.
-    Ran(Outcome),
-}
-
-/// Whether the block is the one the gutter selected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Pick {
-    Selected,
-    Unselected,
-}
-
-/// Whether the person bookmarked the block.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Mark {
-    Bookmarked,
-    Plain,
-}
-
-/// Whether a block's first row is the blank line temor's prompt leaves above its header.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Lead {
-    Blank,
-    Header,
-}
-
-/// One block: its first row in the viewport (negative above it), what that row is, how it
-/// stands, and the rows of its command line (OSC 133 B up to C), when they are known.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct CardBlock {
-    pub first: i64,
-    pub lead: Lead,
-    pub stage: Stage,
-    pub pick: Pick,
-    pub mark: Mark,
-    /// The command's rows, first and last, and the column it starts at in the first.
-    pub command: Option<(i64, i64, u16)>,
 }
 
 /// Whether a prompt's first row is a blank line: nothing but spaces, and a row below it that the
@@ -183,22 +141,6 @@ pub(super) fn bands_of(
         }
     }
     out
-}
-
-/// The rows of a command line: from the row of the input mark to the row before the output
-/// mark when that mark is at a line's start, else to the output mark's row. `output` is the
-/// mark's row and column; without it the line runs to `fallback_end`, never above `input`.
-pub(super) fn command_rows(
-    input: i64,
-    output: Option<(i64, u16)>,
-    fallback_end: i64,
-) -> (i64, i64) {
-    let last = match output {
-        Some((row, 0)) if row > input => row - 1,
-        Some((row, _)) => row,
-        None => fallback_end,
-    };
-    (input, last.max(input))
 }
 
 impl Session {

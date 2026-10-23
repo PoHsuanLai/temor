@@ -2,12 +2,12 @@
 //! Everything the views want to know about where the blocks are comes from the frame this makes.
 
 use temor_core::block::BlockState;
+use temor_core::session::frame::{BlockRead, End, Frame, Lead, LiveRead, Read, Spot};
 use temor_pane::Term;
 use temor_vt::{AnchorId, PointSpace};
 
 use super::super::Session;
-use super::bands::{Lead, lead_at};
-use super::frame::{BlockRead, End, Frame, LiveRead, Read, Spot};
+use super::bands::lead_at;
 use super::query::used_columns;
 
 /// Where an anchor is in the screen.

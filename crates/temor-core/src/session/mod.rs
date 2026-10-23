@@ -6,4 +6,6 @@ mod annotations;
 #[cfg(test)]
 mod annotations_tests;
 
+pub mod frame;
+
 pub use annotations::{AnnotateIn, AnnotateOut, Annotations, annotate_step};

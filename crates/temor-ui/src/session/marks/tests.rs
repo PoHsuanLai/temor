@@ -7,8 +7,9 @@ use temor_render::{Cut, Palette, RowBand, RowSpan, RowWeight, Tint};
 use temor_vt::{Col, Row};
 
 use super::actions::output_name;
-use super::bands::{CardBlock, Lead, Mark, Pick, Stage, bands_of, command_rows, leads_blank};
+use super::bands::{bands_of, leads_blank};
 use crate::view::card_colours::CardColours;
+use temor_core::session::frame::{CardBlock, Lead, Mark, Pick, Stage};
 
 #[test]
 fn output_names_come_from_the_command_or_a_fallback() {
@@ -297,19 +298,5 @@ fn a_command_after_a_one_line_prompt_is_bold_from_its_column() {
         ),
     ] {
         assert_eq!(weights(block), vec![want], "{what}");
-    }
-}
-
-#[test]
-fn a_command_ends_before_the_output_mark_at_a_line_start() {
-    // (what, input row, output mark (row, col), end if no output yet, rows)
-    for (what, input, output, end, rows) in [
-        ("output on the next line", 4, Some((5, 0)), 9, (4, 4)),
-        ("a wrapped command", 4, Some((6, 0)), 9, (4, 5)),
-        ("output mark mid-line", 4, Some((4, 7)), 9, (4, 4)),
-        ("still typing", 4, None, 6, (4, 6)),
-        ("the cursor above the input mark", 4, None, 2, (4, 4)),
-    ] {
-        assert_eq!(command_rows(input, output, end), rows, "{what}");
     }
 }
