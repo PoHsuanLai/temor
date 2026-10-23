@@ -47,6 +47,8 @@ pub struct CardView {
     /// The card's top and height in logical pixels.
     pub top: f32,
     pub height: f32,
+    /// One grid row's height, in logical pixels.
+    pub row: f32,
     /// The pane's padding in logical pixels.
     pub inset: f32,
     /// The command's first line.
@@ -66,6 +68,8 @@ pub struct CardView {
     pub strength: f32,
     /// The card's ground as CSS when it has a fill; the quire surface otherwise.
     pub ground: Option<String>,
+    /// The folder, on the row above the card, when it differs from the card before's.
+    pub folder: Option<String>,
 }
 
 /// The state and words for a block's outcome.
@@ -100,6 +104,7 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
         .max()
         .unwrap_or(0);
     let count = spans.len();
+    let mut last_folder: Option<String> = None;
     spans
         .into_iter()
         .enumerate()
@@ -130,6 +135,17 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
             )
             .unwrap_or(1);
             let rows = (last_row - top_row + 1).min(1 + own);
+            // A new folder is named on the blank row above the card, when there is one on screen.
+            let folder = session
+                .header_facts(span.id)
+                .map(|kept| kept.folder.clone());
+            let named = folder
+                .clone()
+                .filter(|folder| !folder.is_empty() && last_folder.as_ref() != Some(folder))
+                .filter(|_| lead == 1 && span.first >= 0);
+            if folder.is_some() {
+                last_folder = folder;
+            }
             let tip = [
                 status.clone(),
                 mark.took_ms.map(format_elapsed),
@@ -144,6 +160,7 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
                 id: span.id,
                 top: gutter.row_top(first) + CARD_GAP,
                 height: rows as f32 * gutter.cell_h - 2.0 * CARD_GAP,
+                row: gutter.cell_h,
                 inset: gutter.side,
                 title,
                 note: note.map(|note| (clip_chars(&note.text, columns), note.tone)),
@@ -157,6 +174,7 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
                     false => age_strength(count - 1 - n),
                 },
                 ground: card_ground(palette, fill),
+                folder: named,
             })
         })
         .collect()
@@ -167,6 +185,16 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
 #[allow(non_snake_case)]
 pub fn BlockCards(cards: Vec<CardView>) -> Element {
     rsx! {
+        for card in cards.iter().filter(|card| card.folder.is_some()) {
+            if let Some(folder) = card.folder.clone() {
+                div {
+                    key: "f{card.id.0}",
+                    class: "temor-card-folder ds-mono",
+                    style: "top:{card.top - card.row}px; height:{card.row}px; left:{card.inset}px; right:{card.inset}px",
+                    "{folder}"
+                }
+            }
+        }
         for card in cards {
             div {
                 key: "{card.id.0}",

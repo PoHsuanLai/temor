@@ -32,6 +32,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-chip[data-kind=branch] { --chip-hue: var(--term-ansi-13); }.temor-chip[data-kind=changes] { --chip-hue: var(--ink-soft); }.temor-chip[data-kind=new] { --chip-hue: var(--term-ansi-3); color: var(--chip-hue); }\
 .temor-chip[data-kind=python] { --chip-hue: var(--term-ansi-11); }.temor-chip[data-kind=ruby] { --chip-hue: var(--term-ansi-9); }.temor-chip[data-kind=go] { --chip-hue: var(--term-ansi-14); }.temor-chip[data-kind=node] { --chip-hue: var(--term-ansi-10); }.temor-chip [data-tone=added] { color: var(--ok); }.temor-chip [data-tone=removed] { color: var(--danger); }\
 .temor-card { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s-8); overflow: hidden; pointer-events: none; border-radius: var(--r-item); background-color: var(--term-bg); }\
+.temor-card-folder { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 0 var(--s-8); overflow: hidden; white-space: nowrap; pointer-events: none; background: var(--term-bg); font-size: var(--fs-small); color: var(--term-ansi-12); }\
 .temor-card-body { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }\
 .temor-card-head { display: flex; align-items: center; gap: var(--s-6); min-width: 0; }\
 .temor-card-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-small); color: var(--ink); }\

@@ -6,7 +6,6 @@
 use temor_core::vocab::ids::BlockId;
 
 use super::block_header::HeaderView;
-use super::block_meta::header_row;
 use super::block_tools::ToolsView;
 use super::status::{ProgressLine, progress_line};
 use crate::session::{Frame, Gutter, Session};
@@ -54,14 +53,8 @@ fn tools_of(
                 top: gutter.row_top(spot.row),
                 row: gutter.cell_h,
                 inset: gutter.side,
-                meta: session.block_meta(id).filter(|words| {
-                    let cols = frame
-                        .marks()
-                        .into_iter()
-                        .find(|mark| mark.id == id)
-                        .map_or(0, |mark| mark.header_cols);
-                    header_row(session, gutter).is_some_and(|row| row.fits(cols, words))
-                }),
+                // The card says how it ended.
+                meta: None,
                 output: available(finished),
                 rerun: available(session.block_command(id).is_some_and(|c| !c.is_empty())),
                 view: available(finished),
