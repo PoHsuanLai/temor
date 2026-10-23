@@ -12,6 +12,7 @@ use super::scripts::{
     BASH_RC, BASH_SCRIPT, FISH_SCRIPT, NU_SCRIPT, ShellScript, ZSH_ENV, ZSH_SCRIPT,
 };
 use crate::env::ChildEnv;
+use crate::report::ReportCaps;
 
 /// How temor integrates with one kind of shell. Every method is pure: it returns data.
 pub trait ShellAdapter: Sync {
@@ -25,6 +26,14 @@ pub trait ShellAdapter: Sync {
     /// integration is on.
     fn plan(&self, shell: &Shell, start: ShellStart, env: ChildEnv, root: &Path)
     -> IntegrationPlan;
+
+    /// What this shell's script reports besides the prompt marks (see [`crate::report`]).
+    fn caps(&self) -> ReportCaps {
+        ReportCaps {
+            env: false,
+            aliases: false,
+        }
+    }
 }
 
 /// The adapter for a kind of shell. A shell temor has no script for is started plainly.
@@ -84,6 +93,13 @@ impl ShellAdapter for ZshAdapter {
 
     fn scripts(&self) -> &'static [ShellScript] {
         &[ZSH_ENV, ZSH_SCRIPT]
+    }
+
+    fn caps(&self) -> ReportCaps {
+        ReportCaps {
+            env: true,
+            aliases: true,
+        }
     }
 
     fn plan(

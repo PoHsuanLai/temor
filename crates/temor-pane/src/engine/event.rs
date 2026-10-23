@@ -18,6 +18,9 @@ pub enum PaneEvent {
     Bell,
     /// The working directory changed (OSC 7), as the raw URL.
     Cwd(String),
+    /// The shell reported its variables and aliases (OSC 7503): the report's text, to be read
+    /// with `temor_shell::report::decode`.
+    ShellReport(String),
     /// The program asked to write the clipboard (OSC 52); the window decides (PLAN §6).
     Clipboard(ClipboardWrite),
     /// The program asked to read the clipboard before the person was asked: the window asks,

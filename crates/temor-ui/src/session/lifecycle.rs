@@ -2,6 +2,7 @@
 //! the program sends.
 
 use temor_core::notify::Focus;
+use temor_core::session::{ShellIn, ShellState, shell_step};
 use temor_core::vocab::text::display_text;
 use temor_pane::text::cwd_from_url;
 use temor_render::{Palette, PaneFocus, PixelSize, Scale};
@@ -146,10 +147,19 @@ impl Session {
             PaneEvent::Cwd(url) => {
                 // The path is shown, so it is cleaned and bounded first (it came from the shell).
                 self.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
+                if let Some(path) = cwd_from_url(&url) {
+                    self.shell_step(ShellIn::Cwd(path));
+                }
                 match &self.cwd {
                     Some(path) => Notice::Cwd(path.clone()),
                     None => Notice::Chrome,
                 }
+            }
+            PaneEvent::ShellReport(text) => {
+                if let Ok(report) = temor_shell::report::decode(&text) {
+                    self.shell_step(ShellIn::Reported(report));
+                }
+                Notice::Quiet
             }
             PaneEvent::Progress(progress) => {
                 self.progress = match progress.state {
@@ -185,6 +195,17 @@ impl Session {
             // A variant this window does not draw yet: nothing to show.
             _ => Notice::Quiet,
         }
+    }
+
+    /// Steps the shell's state on one input.
+    fn shell_step(&mut self, input: ShellIn) {
+        let state = std::mem::take(&mut self.shell_state);
+        self.shell_state = shell_step(state, input).0;
+    }
+
+    /// What the shell holds that a new shell would need to look the same.
+    pub fn shell_state(&self) -> &ShellState {
+        &self.shell_state
     }
 
     /// The bell's visual mark, while it is up.

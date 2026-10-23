@@ -86,6 +86,7 @@ impl Session {
             pending_query: None,
             blocks: BlockLog::default(),
             ann: temor_core::session::Annotations::default(),
+            shell_state: temor_core::session::ShellState::default(),
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,

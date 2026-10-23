@@ -8,8 +8,12 @@ mod annotations_tests;
 
 pub mod frame;
 mod marks;
+mod shell_state;
 
 pub use annotations::{AnnotateIn, AnnotateOut, Annotations, annotate_step};
 pub use marks::{
     Anchor, BlockAnchors, HeaderFacts, MarkIn, MarkKind, MarkLog, MarkOut, PluginFact, mark_step,
+};
+pub use shell_state::{
+    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, is_secret, shell_step,
 };

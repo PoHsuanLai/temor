@@ -102,7 +102,13 @@ pub(super) fn start_with(
         shell: ShellChoice::Program(shell.display().to_string()),
         ..TerminalSettings::default()
     };
-    let setsid = super::super::support::setsid_path();
+    let launcher = match cfg!(target_os = "macos") {
+        true => SessionLauncher::Trampoline {
+            program: super::super::support::trampoline_path().expect("the trampoline is built"),
+            args: Vec::new(),
+        },
+        false => SessionLauncher::Setsid(super::super::support::setsid_path()),
+    };
     let spec = shell_pane(
         &ambient,
         &settings,
@@ -110,7 +116,7 @@ pub(super) fn start_with(
         temor_vt::GridSize::new(80, 24),
         temor_vt::CellPx::new(8, 16),
         temor_render::Palette::default(),
-        SessionLauncher::Setsid(setsid),
+        launcher,
     )
     .expect("shell spec");
     let fonts = FontSet::load(

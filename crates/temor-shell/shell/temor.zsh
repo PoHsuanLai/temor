@@ -16,6 +16,8 @@ typeset -g _temor_executing=
 typeset -g _temor_ps1=
 typeset -g _temor_seen=
 typeset -g _temor_head=
+# What the last state report said (raw, before escaping): a report is sent only when it changed.
+typeset -g _temor_reported=
 
 # A pager that would take the whole screen (git, aws) prints into the block instead, where the
 # output scrolls and is searched with the block. A value you set stays, and so does a pager git's own
@@ -128,6 +130,37 @@ _temor_build_prompt() {
     RPS1=
 }
 
+# Tells temor the shell's exported variables and aliases (OSC 7503, see temor-shell's report
+# module), but only when they differ from what it last said: the comparison is on the raw text, so
+# an unchanged prompt costs one loop over the names and no escaping. Every name and value is
+# percent-encoded in the shell itself (no process is started). Too large a report is not sent.
+_temor_report() {
+    emulate -L zsh
+    setopt extendedglob
+    local LC_ALL=C name value
+    local -a names=(${(ko)parameters[(R)scalar*export*]})
+    names=(${names:#(_|PWD|OLDPWD|SHLVL)})
+    local raw=
+    for name in $names; do
+        raw+="e=$name=${(P)name}"$'\n'
+    done
+    for name value in "${(@kv)aliases}"; do
+        raw+="a=$name=$value"$'\n'
+    done
+    [[ $raw == $_temor_reported ]] && return 0
+    _temor_reported=$raw
+    local out=v1 pct='%${(l:2::0:)$(( [##16] #MATCH ))}'
+    for name in $names; do
+        value=${(P)name}
+        out+=";e=${name//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}=${value//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}"
+    done
+    for name value in "${(@kv)aliases}"; do
+        out+=";a=${name//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}=${value//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}"
+    done
+    (( ${#out} > 60000 )) && return 0
+    printf '\e]7503;%s\e\\' "$out"
+}
+
 # Runs first in every precmd cycle (it is hooked before your .zshrc runs), so it sees the
 # command's status before any other hook changes it.
 _temor_save_status() {
@@ -153,6 +186,7 @@ _temor_precmd() {
         local REPLY
         _temor_encode_cwd "$PWD"
         printf '\e]7;file://%s%s\e\\' "${HOST-}" "$REPLY"
+        _temor_report
         printf '\e]133;A\e\\'
         if _temor_prompt_is_ours; then
             _temor_build_prompt

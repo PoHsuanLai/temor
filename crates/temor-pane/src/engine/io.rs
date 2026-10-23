@@ -13,7 +13,7 @@ use std::time::Duration;
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{RenderHold, Snapshot, VtEvent};
+use temor_vt::{RenderHold, Snapshot, Truncation, UnknownKind, VtEvent};
 
 use super::event::PaneEvent;
 use super::fed_io::{FedSetup, pump_fed};
@@ -25,6 +25,9 @@ use super::tap::ByteTap;
 use super::term::Term;
 use super::watch::ForegroundWatch;
 use super::xfer::{OfferId, Reaction, Transfers};
+
+/// What the payload of a shell state report starts with (`temor_shell::report::OSC_NUMBER`).
+const REPORT_HEAD: &[u8] = b"7503;";
 
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
@@ -194,6 +197,18 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         let _ = io.outbox.push_reply(&reply);
     }
     for event in output.events {
+        if let VtEvent::Unknown {
+            kind: UnknownKind::Osc,
+            payload,
+            truncation: Truncation::Complete,
+        } = &event
+            && let Some(report) = payload.strip_prefix(REPORT_HEAD)
+        {
+            if let Ok(report) = std::str::from_utf8(report) {
+                send(io, PaneEvent::ShellReport(report.to_owned()));
+            }
+            continue;
+        }
         if let VtEvent::Unknown {
             kind,
             payload,

@@ -92,6 +92,8 @@ pub struct Session {
     /// What the person did to the blocks: picked with a click or the arrows, folded away,
     /// bookmarked for the bookmark keys (while the pane lives).
     pub(super) ann: temor_core::session::Annotations,
+    /// What the shell holds that a new shell would need (folder, variables, aliases).
+    pub(super) shell_state: temor_core::session::ShellState,
     /// The block toolbar's measured height, written by its view.
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.

@@ -8,4 +8,5 @@ mod notify;
 mod picks;
 mod room;
 mod shells;
+mod state;
 mod support;

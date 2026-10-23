@@ -22,6 +22,7 @@ mod error;
 mod osc7;
 mod platform;
 mod quote;
+pub mod report;
 mod shell;
 
 pub use env::ChildEnv;
