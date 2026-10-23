@@ -223,6 +223,17 @@ pub fn card_span(placed: &[Placed], id: BlockId) -> Option<(f32, f32)> {
     Some((top, bottom))
 }
 
+/// Where screen row `row` is drawn in the list, `row_height` pixels a row: its top. `None` when
+/// no card shows it (folded, or gone from the list).
+pub fn row_top(placed: &[Placed], row: u32, row_height: f32) -> Option<f32> {
+    placed.iter().find_map(|p| match &p.seg {
+        Seg::Rows { rows, .. } | Seg::Composer { rows } if rows.contains(&row) => {
+            Some(p.top + (row - rows.start) as f32 * row_height)
+        }
+        _ => None,
+    })
+}
+
 /// The segments that lie within `margin` of the view `offset..offset + viewport`: those the
 /// window mounts.
 pub fn near_view(placed: &[Placed], offset: f32, viewport: f32, margin: f32) -> Range<usize> {

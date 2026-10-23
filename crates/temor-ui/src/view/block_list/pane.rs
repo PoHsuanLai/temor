@@ -26,7 +26,9 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
 
-use super::segments::{Placed, Seg, Sizes, Standing, card_span, lay_out, list_map, near_view};
+use super::segments::{
+    Placed, Seg, Sizes, Standing, card_span, lay_out, list_map, near_view, row_top,
+};
 use super::tiles::ground_of;
 use crate::hub::Desk;
 use crate::session::Session;
@@ -39,6 +41,8 @@ const MOUNT_MARGIN: f32 = 600.0;
 /// How far the offset moves before the list is laid out again, in logical pixels: well inside
 /// the mount margin.
 const BAND: f32 = 200.0;
+/// The room a revealed find match keeps above it, for the find bar over the list's top.
+const FIND_ROOM: f32 = 64.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
 
@@ -129,6 +133,7 @@ pub fn BlockPane(
     texture: TextureHandle,
     font: String,
     reveal: Option<BlockId>,
+    found: Option<u32>,
     actions: CardActions,
     offers: CardOffers,
 ) -> Element {
@@ -205,6 +210,18 @@ pub fn BlockPane(
             follow.set(false);
             let length = (bottom - top).min(scroll.viewport.0.max(1.0));
             scroller.reveal(ScrollSpan { start: top, length });
+        }
+    }
+    // The find bar's match, when it moves, is scrolled to, clear of the bar over the list's top.
+    let seen_found = use_hook(|| Rc::new(Cell::new(None::<u32>)));
+    if seen_found.get() != found {
+        seen_found.set(found);
+        if let Some(top) = found.and_then(|r| row_top(&placed, r, row)) {
+            follow.set(false);
+            scroller.reveal(ScrollSpan {
+                start: top - FIND_ROOM,
+                length: FIND_ROOM + row * 2.0,
+            });
         }
     }
     keep_bottom(scroll, total, &follow, &seen, scroller);

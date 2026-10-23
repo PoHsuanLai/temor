@@ -153,3 +153,15 @@ fn only_the_segments_near_the_view_are_mounted() {
     let near = near_view(&placed, total - 100.0, 100.0, 0.0);
     assert_eq!(placed[near.end - 1].key, SegKey::Composer);
 }
+
+#[test]
+fn a_row_is_found_in_the_tile_that_draws_it() {
+    let mut folded = block(2, 30..40);
+    folded.folded = true;
+    let items = [Item::Done(block(1, 10..20)), Item::Done(folded)];
+    let (placed, _) = lay_out(&items, &SIZES);
+    // Under the 30px head: tile 1 starts at row 14, 70px down; row 15 is a row further.
+    assert_eq!(row_top(&placed, 15, SIZES.row), Some(80.0));
+    assert_eq!(row_top(&placed, 35, SIZES.row), None, "folded away");
+    assert_eq!(row_top(&placed, 99, SIZES.row), None, "in no card");
+}

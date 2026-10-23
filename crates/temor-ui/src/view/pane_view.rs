@@ -434,6 +434,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             texture: texture.clone(),
                             font: card_font.clone(),
                             reveal: picked_block,
+                            found: slot.borrow().session.as_ref().and_then(|s| s.found_row()),
                             actions: CardActions {
                                 copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
                                 copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
