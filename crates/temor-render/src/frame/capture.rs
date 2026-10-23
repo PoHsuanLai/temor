@@ -1,13 +1,10 @@
 //! Reading a frame out of a real terminal in the two phases of PLAN §4b.
 
-use temor_vt::{
-    CellView, CellWidth, FrameDirty, PendingFrame, RenderView, RowFilter, StyleFlags, Terminal,
-    Underline,
-};
+use temor_vt::{FrameDirty, PendingFrame, RenderView, RowFilter, Terminal};
 
 use super::images::{Collected, ImageCache};
-use super::model::{CellDraw, CellText, PaneFrame, TermColors};
-use super::placeholder::{PLACEHOLDER, PlaceholderCell};
+use super::model::{PaneFrame, TermColors, drawable};
+use super::placeholder::PlaceholderCell;
 use super::update::Update;
 use super::virtual_images::VirtualScene;
 use crate::error::RenderError;
@@ -113,38 +110,4 @@ impl CapturedFrame<'_> {
         f.mark_drawn()?;
         Ok(())
     }
-}
-
-/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders (kept apart as
-/// [`PlaceholderCell`]) and blank narrow default cells. Blank wide cells are kept, so a cursor
-/// on one spans both columns.
-fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
-    let span = match c.width {
-        CellWidth::Narrow => 1,
-        CellWidth::Wide => 2,
-        CellWidth::SpacerTail | CellWidth::SpacerHead => return None,
-    };
-    if c.text.starts_with(PLACEHOLDER) {
-        return None;
-    }
-    let text = CellText::new(c.text);
-    let flags = c.style.flags;
-    let marked = c.bg.is_some()
-        || c.selected == temor_vt::Selected::Yes
-        || c.style.underline != Underline::None
-        || flags.contains(StyleFlags::INVERSE)
-        || flags.contains(StyleFlags::STRIKETHROUGH)
-        || flags.contains(StyleFlags::OVERLINE);
-    if text.is_blank() && !marked && span == 1 {
-        return None;
-    }
-    Some(CellDraw {
-        col: c.col,
-        span,
-        text,
-        fg: c.fg,
-        bg: c.bg,
-        style: c.style,
-        selected: c.selected,
-    })
 }

@@ -323,3 +323,68 @@ mod bands {
         }
     }
 }
+
+/// The rows of `texts` as a screen read hands them over.
+fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
+    texts
+        .iter()
+        .map(|text| {
+            text.chars()
+                .enumerate()
+                .map(|(c, ch)| temor_vt::StyledCell {
+                    col: Col(c as u16),
+                    text: ch.to_string(),
+                    width: temor_vt::CellWidth::Narrow,
+                    fg: None,
+                    bg: None,
+                    style: CellStyle::default(),
+                    hyperlink: temor_vt::Hyperlink::None,
+                    semantic: temor_vt::SemanticMark::Output,
+                })
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn a_still_draws_its_rows_as_the_live_frame_does_and_leaves_the_live_frame_alone() {
+    let texts = [
+        "Åg|Ç ÿjQ",
+        "ÅÄÖ ǧ,;j",
+        "gjpqy()[]",
+        "x",
+        "ẞ@$%&",
+        "Ç",
+        "",
+        "g",
+    ];
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let size = size_for(&mut renderer);
+    let palette = Palette::default();
+    let mut live = lines(texts);
+    let first = renderer
+        .render(&mut live, &view(size, &palette, &[]))
+        .expect("live")
+        .pixels
+        .to_vec();
+    let still = PaneFrame::still(COLS, &styled(&texts), &live);
+    let drawn = renderer
+        .render_still(&still, &view(size, &palette, &[]))
+        .expect("still");
+    assert_eq!(drawn.size, size);
+    assert!(
+        drawn.pixels == first.as_slice(),
+        "the still differs from the live frame"
+    );
+    let again = renderer
+        .render(&mut live, &view(size, &palette, &[]))
+        .expect("live again");
+    assert!(
+        again.damage.is_empty(),
+        "the still made the live frame redraw"
+    );
+    assert!(
+        again.pixels == first.as_slice(),
+        "the still drew into the live frame"
+    );
+}
