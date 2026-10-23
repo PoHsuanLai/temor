@@ -11,7 +11,6 @@ use temor_core::workspace::leave_out;
 
 use super::model::Hub;
 use crate::edge::{Pace, checkpoint, save_session_for, save_spaces, save_with_hosts, sidecar};
-use crate::session::Session;
 
 impl Hub {
     /// Writes the session if a change is waiting and the pace allows it. Returns how long to
@@ -40,43 +39,50 @@ impl Hub {
         self.write_checkpoints(&dir);
     }
 
+    /// What is kept of each pane that outlives the window: its checkpoint (with the daemon
+    /// session it has) and, with `Screens::Taken`, its screen. The quick terminal is a throwaway,
+    /// kept while temor runs and never saved; nor is a run tab.
+    fn kept_panes(&self, screens: Screens) -> Vec<KeptPane> {
+        self.slots
+            .iter()
+            .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
+            .filter_map(|(pane, slot)| {
+                let slot = slot.borrow();
+                let session = slot.session.as_ref()?;
+                let mut checkpoint = session.checkpoint();
+                self.keep_local(*pane, &mut checkpoint);
+                let screen = match screens {
+                    Screens::Taken => session.snapshot(),
+                    Screens::Left => None,
+                };
+                Some(KeptPane {
+                    pane: *pane,
+                    checkpoint,
+                    screen,
+                })
+            })
+            .collect()
+    }
+
     /// Writes the checkpoint of each pane whose state changed since it was last written, so a
     /// quit that never reaches the hub's drop still leaves the shells' state for the next launch.
     fn keep_checkpoints(&mut self) {
         let Some(dir) = self.state_dir.clone() else {
             return;
         };
-        let now: Vec<_> = self
-            .slots
-            .iter()
-            .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
-            .filter_map(|(pane, slot)| {
-                let mut kept = slot.borrow().session.as_ref().map(Session::checkpoint)?;
-                self.keep_local(*pane, &mut kept);
-                Some((*pane, kept))
-            })
-            .collect();
-        for (pane, kept) in now {
-            if self.on_disk.get(&pane) != Some(&kept)
-                && checkpoint::write(&dir, pane, &kept).is_ok()
+        for kept in self.kept_panes(Screens::Left) {
+            if self.on_disk.get(&kept.pane) != Some(&kept.checkpoint)
+                && checkpoint::write(&dir, kept.pane, &kept.checkpoint).is_ok()
             {
-                self.on_disk.insert(pane, kept);
+                self.on_disk.insert(kept.pane, kept.checkpoint);
             }
         }
     }
 
     /// Writes each pane's checkpoint, with the daemon session it has.
     fn write_checkpoints(&self, dir: &std::path::Path) {
-        for (pane, slot) in &self.slots {
-            // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
-            if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
-                continue;
-            }
-            let kept = slot.borrow().session.as_ref().map(Session::checkpoint);
-            if let Some(mut kept) = kept {
-                self.keep_local(*pane, &mut kept);
-                let _ = checkpoint::write(dir, *pane, &kept);
-            }
+        for kept in self.kept_panes(Screens::Left) {
+            let _ = checkpoint::write(dir, kept.pane, &kept.checkpoint);
         }
     }
 
@@ -114,19 +120,34 @@ impl Drop for Hub {
         let _ = self.save_all(&dir);
         // The links go, the host sessions stay: quitting detaches (D18).
         self.remote_quit();
-        // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
-        sidecar::clear(&dir);
-        checkpoint::clear(&dir);
-        crate::edge::replay::clear(&dir);
-        self.write_checkpoints(&dir);
-        for (pane, slot) in &self.slots {
-            if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
-                continue;
-            }
-            let snapshot = slot.borrow().session.as_ref().and_then(Session::snapshot);
-            if let Some(snapshot) = snapshot {
-                let _ = sidecar::write(&dir, *pane, &snapshot);
-            }
+        keep_at_quit(&dir, &self.kept_panes(Screens::Taken));
+    }
+}
+
+/// Whether what is kept of a pane takes its screen too (only at quit: encoding it is not free).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Screens {
+    Taken,
+    Left,
+}
+
+/// What is kept of one pane for the next launch.
+struct KeptPane {
+    pane: PaneId,
+    checkpoint: temor_core::session::Checkpoint,
+    screen: Option<temor_vt::Snapshot>,
+}
+
+/// Writes what a quit keeps, in place of what an earlier quit left: ids restart from the live
+/// maximum, so an older file must not outlive this quit.
+fn keep_at_quit(dir: &std::path::Path, panes: &[KeptPane]) {
+    sidecar::clear(dir);
+    checkpoint::clear(dir);
+    crate::edge::replay::clear(dir);
+    for kept in panes {
+        let _ = checkpoint::write(dir, kept.pane, &kept.checkpoint);
+        if let Some(screen) = &kept.screen {
+            let _ = sidecar::write(dir, kept.pane, screen);
         }
     }
 }

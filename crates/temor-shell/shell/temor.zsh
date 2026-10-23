@@ -213,9 +213,20 @@ _temor_precmd() {
     [[ ${PS1-} == *$'\e]133;B'* ]] || PS1+=$'%{\e]133;B\e\\%}'
 }
 
+# The output mark carries the command line as zsh read it (percent-encoded, as cmdline_url), so
+# the card names the command even when Enter came before its text was echoed. A very long one is
+# left to the screen: the mark must stay short enough to be read whole.
 _temor_preexec() {
+    emulate -L zsh
+    setopt extendedglob
     _temor_executing=1
-    printf '\e]133;C\e\\'
+    local LC_ALL=C pct='%${(l:2::0:)$(( [##16] #MATCH ))}' line=$1
+    line=${line//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}
+    if (( ${#line} <= 1024 )); then
+        printf '\e]133;C;cmdline_url=%s\e\\' "$line"
+    else
+        printf '\e]133;C\e\\'
+    fi
 }
 
 # zsh runs a snapshot of precmd_functions, so on the very first prompt a theme hooked after

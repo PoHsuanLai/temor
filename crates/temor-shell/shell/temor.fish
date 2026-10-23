@@ -182,9 +182,17 @@ function _temor_prompt_start --on-event fish_prompt
     end
 end
 
+# The output mark carries the command line (percent-encoded, as cmdline_url), so the card names
+# the command even when Enter came before its text was echoed. A very long one is left to the
+# screen: the mark must stay short enough to be read whole.
 function _temor_preexec --on-event fish_preexec
     set -g _temor_executing 1
-    printf '\e]133;C\e\\\\'
+    set -l line (string escape --style=url -- "$argv[1]")
+    if test (string length -- "$line") -le 1024
+        printf '\e]133;C;cmdline_url=%s\e\\\\' "$line"
+    else
+        printf '\e]133;C\e\\\\'
+    end
 end
 
 function _temor_postexec --on-event fish_postexec
