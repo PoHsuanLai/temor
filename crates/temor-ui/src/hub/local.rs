@@ -282,6 +282,8 @@ impl Hub {
     pub(super) fn detach_prepare(&mut self) -> Option<PaneId> {
         let (pane, session) = self.detachable()?;
         self.remote.detaching = Some((pane, session));
+        // A command has run: the new shell left in the pane is not a new window's first prompt.
+        self.first_hint = None;
         Some(pane)
     }
 

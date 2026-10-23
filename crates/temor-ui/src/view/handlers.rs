@@ -14,6 +14,7 @@ use ds::prelude::{Point, Px};
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::keys::Action;
 
+use super::block_header::HeaderPress;
 use super::block_menu::BlockMenuAt;
 use super::convert::{device_point, scale_of};
 use super::find_bar::StepDirection;
@@ -245,11 +246,23 @@ pub fn bar_rerun(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId
     on_session(slot, ui, Redraw::WithGrid, |s, id| s.rerun(id))
 }
 
-/// The sticky header's press: the block's prompt scrolls to the top of the pane.
-pub fn header_press(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, id| {
-        s.scroll_block_to_top(id)
-    })
+/// The sticky header's press: its command scrolls the block's prompt to the top of the pane;
+/// Detach moves the running program to a pane of its own; Stop interrupts it.
+pub fn header_press(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+    desk: Desk,
+    pane: PaneId,
+) -> impl FnMut(HeaderPress) + 'static {
+    let mut session = on_session(slot, ui, Redraw::WithGrid, |s, press| match press {
+        HeaderPress::Command(id) => s.scroll_block_to_top(id),
+        HeaderPress::Stop => s.send_bytes(b"\x03"),
+        HeaderPress::Detach => {}
+    });
+    move |press: HeaderPress| match press {
+        HeaderPress::Detach => desk.detach_block(pane),
+        press => session(press),
+    }
 }
 
 /// A header or toolbar press, then the keyboard back to the terminal: the button the person

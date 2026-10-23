@@ -66,13 +66,17 @@ pub fn glyph_bars(lines: u32) -> u8 {
 }
 
 /// The part of the card's width its duration bar takes, 0 to 1, against the longest of the
-/// cards in view. A command that took no time still draws a sliver.
+/// cards in view. Under a tenth of the longest draws none: a sliver at a card's rounded corner
+/// reads as a stray mark, not a length.
 pub fn bar_share(took_ms: u64, longest_ms: u64) -> f32 {
-    const SLIVER: f32 = 0.02;
+    const LEAST: f32 = 0.1;
     if longest_ms == 0 {
-        return SLIVER;
+        return 0.0;
     }
-    (took_ms as f32 / longest_ms as f32).clamp(SLIVER, 1.0)
+    match (took_ms as f32 / longest_ms as f32).min(1.0) {
+        share if share < LEAST => 0.0,
+        share => share,
+    }
 }
 
 /// How strongly a card draws: the newest are full, older ones fade down to a floor, in steps
@@ -131,8 +135,10 @@ mod tests {
     fn the_bar_is_the_share_of_the_longest_with_a_sliver_as_the_least() {
         assert_eq!(bar_share(500, 1000), 0.5);
         assert_eq!(bar_share(1000, 1000), 1.0);
-        assert_eq!(bar_share(0, 1000), 0.02);
-        assert_eq!(bar_share(0, 0), 0.02);
+        assert_eq!(bar_share(0, 1000), 0.0);
+        assert_eq!(bar_share(99, 1000), 0.0);
+        assert_eq!(bar_share(100, 1000), 0.1);
+        assert_eq!(bar_share(0, 0), 0.0);
         assert_eq!(bar_share(5000, 1000), 1.0);
     }
 

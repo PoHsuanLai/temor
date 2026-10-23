@@ -1,15 +1,13 @@
 //! The colours of the command cards, derived from the grid's palette so they follow the theme:
-//! a rule is the foreground at 10% over the background, the failed fill red (ANSI 1) at 10%, the
-//! stripe red at full strength, and the selected fill the foreground at 8%: a neutral wash, as
-//! quire's source list selects while the keyboard is elsewhere.
+//! the failed fill red (ANSI 1) at 10%, the stripe red at full strength, and the selected fill
+//! the foreground at 8%: a neutral wash, as quire's source list selects while the keyboard is
+//! elsewhere.
 
 use temor_render::{Alpha, Palette, Tint};
 
 /// The tints the card bands use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardColours {
-    /// The line above every block.
-    pub rule: Tint,
     /// Behind a failed block.
     pub failed_fill: Tint,
     /// The bar at a failed block's left edge.
@@ -30,10 +28,6 @@ impl CardColours {
     pub fn of(palette: &Palette) -> Self {
         let red = palette.ansi[1];
         Self {
-            rule: Tint {
-                color: palette.foreground,
-                alpha: percent(10),
-            },
             failed_fill: Tint {
                 color: red,
                 alpha: percent(10),
@@ -64,12 +58,16 @@ pub enum CardFill {
     Picked,
 }
 
-/// The colour a block's row shows where nothing else is drawn: the palette's background under
-/// the block's fill, as CSS. `None` without a fill (the pane's own ground shows).
-pub fn card_ground(palette: &Palette, fill: CardFill) -> Option<String> {
+/// The colour a card is drawn on: the palette's background under the block's fill, as CSS. A
+/// card with no fill is raised a little off the background (the foreground at 5%), so it reads
+/// as a card on any theme.
+pub fn card_ground(palette: &Palette, fill: CardFill) -> String {
     let colours = CardColours::of(palette);
     let tint = match fill {
-        CardFill::None => return None,
+        CardFill::None => Tint {
+            color: palette.foreground,
+            alpha: percent(5),
+        },
         CardFill::Failed => colours.failed_fill,
         CardFill::Picked => colours.selected_fill,
     };
@@ -77,12 +75,12 @@ pub fn card_ground(palette: &Palette, fill: CardFill) -> Option<String> {
     let mix =
         |under: u8, over: u8| (u32::from(under) * (255 - a) + u32::from(over) * a + 127) / 255;
     let (bg, c) = (palette.background, tint.color);
-    Some(format!(
+    format!(
         "rgb({},{},{})",
         mix(bg.r, c.r),
         mix(bg.g, c.g),
         mix(bg.b, c.b)
-    ))
+    )
 }
 
 #[cfg(test)]
@@ -95,7 +93,6 @@ mod tests {
         let c = CardColours::of(&palette);
         // (tint, colour, alpha)
         for (tint, color, alpha) in [
-            (c.rule, palette.foreground, 26),
             (c.failed_fill, palette.ansi[1], 26),
             (c.failed_stripe, palette.ansi[1], 255),
             (c.selected_fill, palette.selection, 115),
@@ -114,11 +111,17 @@ mod tests {
             ansi,
             ..Palette::default()
         };
-        assert_eq!(card_ground(&palette, CardFill::None), None);
+        // White at 5% (13 of 255) over black.
+        let palette = Palette {
+            foreground: temor_vt::Rgb {
+                r: 255,
+                g: 255,
+                b: 255,
+            },
+            ..palette
+        };
+        assert_eq!(card_ground(&palette, CardFill::None), "rgb(13,13,13)");
         // Red at 10% (26 of 255) over black.
-        assert_eq!(
-            card_ground(&palette, CardFill::Failed).as_deref(),
-            Some("rgb(26,0,0)")
-        );
+        assert_eq!(card_ground(&palette, CardFill::Failed), "rgb(26,0,0)");
     }
 }

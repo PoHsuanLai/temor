@@ -59,6 +59,8 @@ fn tools_of(
                 // The window knows which panes are on another computer.
                 edit: None,
                 copy_command_key: None,
+                running: session.running_block() == Some(id),
+                detach: false,
             })
         })
 }
@@ -71,17 +73,22 @@ pub fn chrome_of(session: &Session, _hovered: Option<BlockId>, held: Option<Bloc
     let frame = session.frame();
     let columns = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
     // Over the first row shown whole and everything above it.
-    let header = frame
-        .as_ref()
-        .and_then(Frame::sticky_header)
-        .map(|header| HeaderView {
+    let header = frame.as_ref().and_then(Frame::sticky_header).map(|header| {
+        // A running command's header holds its tools, which want two rows.
+        let running = session.running_block() == Some(header.id);
+        let rows = if running { 2 } else { 1 };
+        HeaderView {
             id: header.id,
             command: clip_chars(&header.command, columns),
             inset: gutter.as_ref().map_or(0.0, |g| g.side),
             height: gutter
                 .as_ref()
-                .map_or(0.0, |g| g.row_top(g.first_shown() + 1)),
-        });
+                .map_or(0.0, |g| g.row_top(g.first_shown() + rows)),
+            running,
+            detach: false,
+            font: String::new(),
+        }
+    });
     let tools = gutter
         .as_ref()
         .zip(frame.as_ref())

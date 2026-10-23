@@ -2,7 +2,9 @@
 //! selected one, at the right of its card, a dense group of three icon buttons (copy
 //! the output, type the command again, more) and a menu behind "more" with the rest: copy the
 //! command, save the output to Downloads, show the files it listed, and on a pane on another
-//! computer, edit it locally. Typing the command again never runs it.
+//! computer, edit it locally. Typing the command again never runs it. While the command runs,
+//! the first two are what can be done to a running program instead: move it to a pane of its
+//! own (where it can be), and interrupt it.
 //! It sits beside the grid, not in it, so a press on it never reaches the terminal.
 
 use dioxus::prelude::*;
@@ -40,6 +42,10 @@ pub struct ToolsView {
     pub edit: Option<Availability>,
     /// What a person presses for "Copy Command" (the keymap's chord for it), shown in the menu.
     pub copy_command_key: Option<Shortcut>,
+    /// The command is still running.
+    pub running: bool,
+    /// It can be moved to a pane of its own (the window knows: a session in the local daemon).
+    pub detach: bool,
 }
 
 /// Whether the "more" menu is up.
@@ -97,6 +103,8 @@ pub fn BlockTools(
     on_rerun: EventHandler<BlockId>,
     on_view: EventHandler<BlockId>,
     on_edit: EventHandler<BlockId>,
+    on_detach: EventHandler<()>,
+    on_stop: EventHandler<()>,
 ) -> Element {
     let id = tools.id;
     // The tools' real height, once laid out, replaces the estimate the session starts with.
@@ -116,6 +124,26 @@ pub fn BlockTools(
             onmounted: move |event: MountedEvent| probe.on_mounted(event),
             style: "top:{tools.top}px; height:{tools.row}px; right:{tools.inset}px",
             IconButtonGroup { label: "Command tools", size: ControlSize::Mini,
+                if tools.running {
+                    if tools.detach {
+                        ToolButton {
+                            icon: Icon::Columns,
+                            size: ControlSize::Mini,
+                            propagation: Propagation::Stop,
+                            label: "Detach",
+                            tip: "Move this program to a pane of its own beside this one",
+                            onclick: move |()| on_detach.call(()),
+                        }
+                    }
+                    ToolButton {
+                        icon: Icon::Square,
+                        size: ControlSize::Mini,
+                        propagation: Propagation::Stop,
+                        label: "Stop",
+                        tip: "Interrupt the program (Control-C)",
+                        onclick: move |()| on_stop.call(()),
+                    }
+                } else {
                 ToolButton {
                     icon: Icon::Clipboard,
                     size: ControlSize::Mini,
@@ -133,6 +161,7 @@ pub fn BlockTools(
                     tip: "Put this command in the prompt. Press Return to run it",
                     availability: tools.rerun,
                     onclick: move |()| on_rerun.call(id),
+                }
                 }
                 div {
                     class: "temor-block-more",

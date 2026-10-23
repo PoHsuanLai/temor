@@ -23,7 +23,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 
 use super::block_card::{BlockCards, cards_of};
 use super::block_edit::{bar_edit, edit_on_this_computer};
-use super::block_header::BlockHeader;
+use super::block_header::{BlockHeader, HeaderPress, HeaderView};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
@@ -241,6 +241,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .map(|tools| ToolsView {
             edit: on_host.then_some(Availability::Enabled),
             copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
+            detach: tools.running && desk.hub.can_detach(pane),
             ..tools
         });
     let chips = slot
@@ -359,6 +360,14 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             .and_then(|s| hint_for(s, text))
     });
     let live_head = desk.hub.live_head(pane);
+    let shows_live_head = live_head.is_some();
+    // Cards and headers are set in the grid's own family, so a command reads as it was typed.
+    let card_font = slot
+        .borrow()
+        .session
+        .as_ref()
+        .map(|s| s.grid_font().family_css())
+        .unwrap_or_default();
     let live_icon = {
         let desk = desk.clone();
         move |icon: LiveIcon| desk.live_icon(pane, icon)
@@ -368,7 +377,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
             onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
             if let Some(head) = live_head {
-                LiveCardHead { head, on_icon: live_icon }
+                LiveCardHead { head, font: card_font.clone(), on_icon: live_icon }
             }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),
@@ -407,16 +416,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if !lens_pictures.is_empty() {
                     LensPictures { views: lens_pictures }
                 }
-                if let Some(header) = chrome.header.clone() {
+                // A live card's own head names its program: no second header under it.
+                if let (Some(header), false) = (chrome.header.clone(), shows_live_head) {
                     BlockHeader {
-                        header,
-                        on_press:then_regain(header_press(Rc::clone(&slot), ui), ime.clone(), regain),
+                        header: HeaderView { detach: header.running && desk.hub.can_detach(pane), font: card_font.clone(), ..header },
+                        on_press:then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain),
                     }
                 }
                 if let Some(view) = chips {
                     FactChips { view }
                 }
-                BlockCards { cards }
+                BlockCards { cards, font: card_font.clone() }
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
@@ -436,6 +446,11 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                         on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
                         on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
                         on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
+                        on_detach: { let desk = desk.clone(); move |()| desk.detach_block(pane) },
+                        on_stop: {
+                            let mut press = then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain);
+                            move |()| press(HeaderPress::Stop)
+                        },
                     }
                 }
             }

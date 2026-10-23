@@ -55,14 +55,15 @@ fn blocks_become_bands_by_how_they_stand() {
     // (what, blocks, cursor row, viewport rows, bands)
     let cases = [
         (
-            "a failed block gets fill and stripe, no rule on row 0; the next only a rule",
+            "a failed block gets fill and stripe; a plain one draws nothing",
             vec![block(0, failed, plain), block(3, done, plain)],
             5,
             10,
-            vec![
-                band(0, 2, [Some(c.failed_fill), Some(c.failed_stripe), None]),
-                band(3, 5, [None, None, Some(c.rule)]),
-            ],
+            vec![band(
+                0,
+                2,
+                [Some(c.failed_fill), Some(c.failed_stripe), None],
+            )],
         ),
         (
             "selected wins the fill over failed, which keeps its stripe",
@@ -72,7 +73,7 @@ fn blocks_become_bands_by_how_they_stand() {
             vec![band(
                 2,
                 4,
-                [Some(c.selected_fill), Some(c.failed_stripe), Some(c.rule)],
+                [Some(c.selected_fill), Some(c.failed_stripe), None],
             )],
         ),
         (
@@ -86,42 +87,40 @@ fn blocks_become_bands_by_how_they_stand() {
             vec![band(
                 2,
                 4,
-                [Some(c.failed_fill), Some(c.bookmark_stripe), Some(c.rule)],
+                [Some(c.failed_fill), Some(c.bookmark_stripe), None],
             )],
         ),
         (
-            "the newest block at its prompt is set off by its rule alone, with no fill",
+            "plain blocks and the one at its prompt draw nothing: their cards set them apart",
             vec![block(1, done, plain), block(4, Stage::AtPrompt, plain)],
             5,
             10,
-            vec![
-                band(1, 3, [None, None, Some(c.rule)]),
-                band(4, 5, [None, None, Some(c.rule)]),
-            ],
+            vec![],
         ),
         (
             "the selected fill shows on the block at its prompt",
             vec![block(3, Stage::AtPrompt, chosen)],
             4,
             10,
-            vec![band(3, 4, [Some(c.selected_fill), None, Some(c.rule)])],
+            vec![band(3, 4, [Some(c.selected_fill), None, None])],
         ),
         (
             "a stopped block is quiet",
             vec![block(2, stopped, plain)],
             3,
             10,
-            vec![band(2, 3, [None, None, Some(c.rule)])],
+            vec![],
         ),
         (
-            "a block begun above the view is clipped and shows no rule",
+            "a block begun above the view is clipped",
             vec![block(-4, failed, plain), block(2, done, plain)],
             3,
             10,
-            vec![
-                band(0, 1, [Some(c.failed_fill), Some(c.failed_stripe), None]),
-                band(2, 3, [None, None, Some(c.rule)]),
-            ],
+            vec![band(
+                0,
+                1,
+                [Some(c.failed_fill), Some(c.failed_stripe), None],
+            )],
         ),
         (
             "a block past the bottom is clipped to the view",
@@ -131,7 +130,7 @@ fn blocks_become_bands_by_how_they_stand() {
             vec![band(
                 8,
                 9,
-                [Some(c.failed_fill), Some(c.failed_stripe), Some(c.rule)],
+                [Some(c.failed_fill), Some(c.failed_stripe), None],
             )],
         ),
         ("no blocks, no bands", vec![], 3, 10, vec![]),
@@ -151,13 +150,12 @@ fn a_card_on_a_blank_line_begins_and_ends_across_that_lines_middle() {
         ..block(first, stage, Pick::Unselected)
     };
     let cut = |b: RowBand, top, bottom| RowBand { top, bottom, ..b };
-    let rule = [None, None, Some(c.rule)];
-    let red = [Some(c.failed_fill), Some(c.failed_stripe), Some(c.rule)];
+    let red = [Some(c.failed_fill), Some(c.failed_stripe), None];
     let (edge, mid) = (Cut::Edge, Cut::Middle);
     // (what, blocks, cursor row, viewport rows, bands)
     let cases = [
         (
-            "each card shares the blank line with the next; the first, with no rule, has no band",
+            "a failed card shares the blank lines above and below it with its neighbours",
             vec![
                 block(0, done, Pick::Unselected),
                 blank(3, failed),
@@ -165,38 +163,25 @@ fn a_card_on_a_blank_line_begins_and_ends_across_that_lines_middle() {
             ],
             8,
             10,
-            vec![
-                cut(band(3, 6, red), mid, mid),
-                cut(band(6, 8, rule), mid, edge),
-            ],
-        ),
-        (
-            "a blank line on row 0 still shows its rule",
-            vec![blank(0, done)],
-            4,
-            10,
-            vec![cut(band(0, 4, rule), mid, edge)],
+            vec![cut(band(3, 6, red), mid, mid)],
         ),
         (
             "a card scrolled above the view is clipped at the edge",
             vec![blank(-2, failed), blank(3, done)],
             5,
             10,
-            vec![
-                cut(
-                    band(0, 3, [Some(c.failed_fill), Some(c.failed_stripe), None]),
-                    edge,
-                    mid,
-                ),
-                cut(band(3, 5, rule), mid, edge),
-            ],
+            vec![cut(
+                band(0, 3, [Some(c.failed_fill), Some(c.failed_stripe), None]),
+                edge,
+                mid,
+            )],
         ),
         (
             "the next blank line below the view is clipped at the edge",
-            vec![blank(2, done), blank(10, done)],
+            vec![blank(2, failed), blank(10, done)],
             12,
             10,
-            vec![cut(band(2, 9, rule), mid, edge)],
+            vec![cut(band(2, 9, red), mid, edge)],
         ),
     ];
     for (what, blocks, end, rows, expected) in cases {

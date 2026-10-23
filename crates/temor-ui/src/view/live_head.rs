@@ -36,7 +36,7 @@ fn state_name(life: Life) -> &'static str {
 
 #[component]
 #[allow(non_snake_case)]
-pub fn LiveCardHead(head: LiveHead, on_icon: EventHandler<LiveIcon>) -> Element {
+pub fn LiveCardHead(head: LiveHead, font: String, on_icon: EventHandler<LiveIcon>) -> Element {
     let title = clip_chars(head.command.trim(), TITLE_CHARS);
     let status = status_words(head.life);
     let ended = matches!(head.life, Life::Ended(_));
@@ -49,10 +49,10 @@ pub fn LiveCardHead(head: LiveHead, on_icon: EventHandler<LiveIcon>) -> Element 
         live_cards_grace_secs()
     );
     rsx! {
-        div { class: "temor-live-head", "data-state": state_name(head.life),
-            span { class: "temor-live-title ds-mono", "{title}" }
+        div { class: "temor-live-head", "data-state": state_name(head.life), style: font,
+            span { class: "temor-live-title", "{title}" }
             if let Some(words) = status {
-                span { class: "temor-live-status ds-mono", "{words}" }
+                span { class: "temor-live-status", "{words}" }
             }
             IconButtonGroup { label: "Card tools", size: ControlSize::Mini,
                 if ended {

@@ -1,6 +1,6 @@
-//! The command cards as row bands for the renderer: a rule above every block (the line being
-//! typed is set off from history by the rule above its block, with no fill of its own), a
-//! stripe and a faint fill on a failed one, an accent fill on the selected one, and the command
+//! The command cards as row bands for the renderer: no rule between blocks (the cards set them
+//! apart, and a rule would show past a card's rounded ends), a stripe and a faint fill on a
+//! failed one, an accent fill on the selected one, and the command
 //! line in bold. temor's prompt leaves a blank line above its header; the card's edge runs
 //! across the middle of that line, so every card has half a line of room above its header and
 //! half a line below its last row, as Warp's blocks do. `bands_of` is pure;
@@ -82,10 +82,7 @@ pub(super) fn bands_of(
             (Mark::Plain, Stage::Ran(Outcome::Failed(_))) => Some(colours.failed_stripe),
             (Mark::Plain, _) => None,
         };
-        // A block whose first row is row 0 (or above the view) shows no rule, unless the rule
-        // crosses that row's middle.
-        let rule = (block.first >= 1 || top_cut == Cut::Middle).then_some(colours.rule);
-        if !(fill.is_none() && stripe.is_none() && rule.is_none()) {
+        if !(fill.is_none() && stripe.is_none()) {
             out.push(RowBand {
                 rows: RowSpan {
                     first: Row(top as u16),
@@ -95,7 +92,7 @@ pub(super) fn bands_of(
                 bottom: bottom_cut,
                 fill,
                 stripe,
-                rule,
+                rule: None,
                 weight: RowWeight::Normal,
             });
         }

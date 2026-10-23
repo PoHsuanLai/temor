@@ -28,6 +28,7 @@ quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
+unicode-width = "0.2"
 serde_json = "1"
 thiserror = "2"
 proptest = "1"

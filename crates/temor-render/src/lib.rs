@@ -82,6 +82,7 @@ pub use metrics::{
     fit_grid,
 };
 pub use palette::Palette;
+pub use platform::SYMBOLS as SYMBOL_FAMILIES;
 pub use renderer::{
     BlinkPhase, DamageRect, PaneFocus, PaneView, RenderStats, Renderer, SelectionOverlay,
     SelectionShape,

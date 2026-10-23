@@ -81,6 +81,21 @@ impl GridFont {
         )
     }
 
+    /// The CSS `font-family` for text set like the grid beside it (a block card's command, the
+    /// sticky header): the grid's family, then the symbol families the grid falls back to, so a
+    /// TUI's arrows and marks are drawn there too, then the terminal's monospace token. Inline,
+    /// as the grid's family is no quire token.
+    pub fn family_css(&self) -> String {
+        let symbols: String = temor_render::SYMBOL_FAMILIES
+            .iter()
+            .map(|family| format!("\"{family}\", "))
+            .collect();
+        format!(
+            "font-family:\"{}\", {symbols}var(--term-font)",
+            self.family.replace(['"', '\\', ';'], "")
+        )
+    }
+
     fn of(fonts: &FontSet) -> Self {
         Self {
             family: fonts.resolved_family().to_owned(),

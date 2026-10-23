@@ -135,3 +135,22 @@ fn the_line_height_opens_the_cell_at_any_scale_and_keeps_its_marks_inside() {
         }
     }
 }
+
+#[test]
+fn symbols_no_script_owns_come_from_a_text_face_where_the_system_has_one() {
+    let config = super::FontConfig::default();
+    let mut set = super::FontSet::load(&config, super::FontSource::System).expect("system fonts");
+    for text in ["⏵", "⎿", "⧉", "⏺"] {
+        let id = set.face_for(text, FaceStyle::REGULAR);
+        let face = set.face(id);
+        let c = text.chars().next().unwrap();
+        if !face.maps(c) {
+            // A system without a symbol font (a bare container) has nothing to find; a Mac has.
+            #[cfg(target_os = "macos")]
+            panic!("{text} has no face on a Mac");
+            #[cfg(not(target_os = "macos"))]
+            continue;
+        }
+        assert_eq!(face.color, ColorFormat::None, "{text} is drawn as text");
+    }
+}

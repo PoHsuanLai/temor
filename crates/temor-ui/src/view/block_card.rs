@@ -66,8 +66,10 @@ pub struct CardView {
     pub bars: u8,
     /// How strongly it draws, 0 to 1.
     pub strength: f32,
-    /// The card's ground as CSS when it has a fill; the quire surface otherwise.
-    pub ground: Option<String>,
+    /// The pointer is over it: the hover tools take the right end of its head.
+    pub hovered: bool,
+    /// The card's ground as CSS, from the grid's palette.
+    pub ground: String,
     /// The folder, on the row above the card, when it differs from the card before's.
     pub folder: Option<String>,
     /// The same, in the card's own head, when there is no row above it to name it on.
@@ -83,16 +85,31 @@ fn standing(outcome: Outcome) -> (CardState, Option<String>) {
     }
 }
 
+/// The grid rows `command` takes in a pane `width` columns wide: each line at least one, a
+/// longer one as many as it wraps to.
+fn wrapped_rows(command: &str, width: usize) -> usize {
+    let width = width.max(1);
+    command
+        .lines()
+        .map(|line| {
+            let cells: usize = line
+                .chars()
+                .map(|c| unicode_width::UnicodeWidthChar::width(c).unwrap_or(0))
+                .sum();
+            cells.max(1).div_ceil(width)
+        })
+        .sum::<usize>()
+        .max(1)
+}
+
 /// The cards over the blocks on screen: those whose header and command rows are in view.
 pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<CardView> {
     let Some(gutter) = session.gutter_geometry() else {
         return Vec::new();
     };
     let rows = session.rows();
-    let columns = session
-        .fit()
-        .map_or(80, |fit| usize::from(fit.grid.cols.0))
-        .saturating_sub(12);
+    let width = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
+    let columns = width.saturating_sub(12);
     let end = frame.cursor_row().unwrap_or(i64::from(rows) - 1);
     let marks = frame.marks();
     let spans: Vec<_> = frame
@@ -129,11 +146,11 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
             let (top_row, last_row) = (span.first + lead, span.last);
             let first = top_row as u32;
             // A command with no output yet runs to the cursor; the card is the header and the
-            // command's own lines.
+            // command's own rows, a line wider than the pane taking as many rows as it wraps to.
             let own = i64::try_from(
                 session
                     .block_command(span.id)
-                    .map_or(1, |c| c.lines().count().max(1)),
+                    .map_or(1, |c| wrapped_rows(c, width)),
             )
             .unwrap_or(1);
             let rows = (last_row - top_row + 1).min(1 + own);
@@ -175,6 +192,7 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
                 tip,
                 bar: bar_share(mark.took_ms.unwrap_or(0), longest),
                 bars: note.map_or(0, |note| glyph_bars(note.lines)),
+                hovered,
                 strength: match hovered || session.block_picked(span.id) {
                     true => 1.0,
                     false => age_strength(count - 1 - n),
@@ -190,14 +208,14 @@ pub fn cards_of(session: &Session, frame: &Frame, palette: &Palette) -> Vec<Card
 /// The cards over the blocks on screen.
 #[component]
 #[allow(non_snake_case)]
-pub fn BlockCards(cards: Vec<CardView>) -> Element {
+pub fn BlockCards(cards: Vec<CardView>, font: String) -> Element {
     rsx! {
         for card in cards.iter().filter(|card| card.folder.is_some()) {
             if let Some(folder) = card.folder.clone() {
                 div {
                     key: "f{card.id.0}",
-                    class: "temor-card-folder ds-mono",
-                    style: "top:{card.top - card.row}px; height:{card.row}px; left:{card.inset}px; right:{card.inset}px",
+                    class: "temor-card-folder",
+                    style: "top:{card.top - card.row}px; height:{card.row}px; left:{card.inset}px; right:{card.inset}px; {font}",
                     "{folder}"
                 }
             }
@@ -207,18 +225,17 @@ pub fn BlockCards(cards: Vec<CardView>) -> Element {
                 key: "{card.id.0}",
                 class: "temor-card",
                 "data-state": card.state.slug(),
+                "data-tools": card.hovered,
                 title: "{card.tip}",
-                style: card_style(&card),
+                style: "{card_style(&card)}; {font}",
                 div { class: "temor-card-body", style: "opacity:{card.strength}",
                 div { class: "temor-card-head",
-                    span { class: "temor-card-title ds-mono", "{card.title}" }
+                    span { class: "temor-card-title", "{card.title}" }
                     if let Some(place) = card.place.clone() {
-                        span { class: "temor-card-place ds-mono", "{place}" }
+                        span { class: "temor-card-place", "{place}" }
                     }
-                    if let Some(status) = card.status.clone() {
-                        span { class: "temor-card-status ds-mono", "{status}" }
-                    }
-                    if card.bars > 0 {
+                    // One bar alone reads as a "minus" button: the glyph starts at two.
+                    if card.bars > 1 {
                         span { class: "temor-card-glyph",
                             for n in 0..card.bars {
                                 i { key: "{n}" }
@@ -226,17 +243,27 @@ pub fn BlockCards(cards: Vec<CardView>) -> Element {
                         }
                     }
                 }
+                // A failure says its status first on the line under the command, as the
+                // mockup does: the head's right end is where the hover tools go.
                 if let Some((text, tone)) = card.note.clone() {
                     div {
-                        class: "temor-card-note ds-mono",
+                        class: "temor-card-note",
                         "data-tone": if tone == NoteTone::Trouble { "trouble" } else { "plain" },
+                        if let Some(status) = card.status.clone() {
+                            span { class: "temor-card-status", "{status}" }
+                            span { class: "temor-card-status", "\u{a0}\u{b7}\u{a0}" }
+                        }
                         "{text}"
                     }
+                } else if let Some(status) = card.status.clone() {
+                    div { class: "temor-card-note",
+                        span { class: "temor-card-status", "{status}" }
+                    }
                 } else if card.state == CardState::Running {
-                    div { class: "temor-card-note ds-mono", "running" }
+                    div { class: "temor-card-note", "running" }
                 }
                 }
-                if card.state != CardState::Running {
+                if card.state != CardState::Running && card.bar > 0.0 {
                     span {
                         class: "temor-card-bar",
                         style: "width:{card.bar * 100.0}%; opacity:{card.strength}",
@@ -248,14 +275,9 @@ pub fn BlockCards(cards: Vec<CardView>) -> Element {
 }
 
 fn card_style(card: &CardView) -> String {
-    let ground = card
-        .ground
-        .as_ref()
-        .map(|ground| format!("; background:{ground}"))
-        .unwrap_or_default();
     format!(
-        "top:{}px; height:{}px; left:{}px; right:{}px{ground}",
-        card.top, card.height, card.inset, card.inset
+        "top:{}px; height:{}px; left:{}px; right:{}px; background:{}",
+        card.top, card.height, card.inset, card.inset, card.ground
     )
 }
 
@@ -273,5 +295,16 @@ mod tests {
             (CardState::Failed, Some("exit 101".to_owned()))
         );
         assert_eq!(standing(Outcome::Stopped(ExitCode(130))).0, CardState::Done);
+    }
+
+    #[test]
+    fn a_command_wider_than_the_pane_takes_the_rows_it_wraps_to() {
+        assert_eq!(wrapped_rows("ls", 80), 1);
+        assert_eq!(wrapped_rows("", 80), 1);
+        assert_eq!(wrapped_rows(&"x".repeat(80), 80), 1);
+        assert_eq!(wrapped_rows(&"x".repeat(81), 80), 2);
+        assert_eq!(wrapped_rows("a\nb", 80), 2);
+        // Wide characters take two cells each.
+        assert_eq!(wrapped_rows(&"日".repeat(41), 80), 2);
     }
 }
