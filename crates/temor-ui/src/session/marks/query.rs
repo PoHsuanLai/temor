@@ -5,12 +5,11 @@ use temor_core::block::{BlockState, Outcome};
 use temor_core::facts::Facts;
 use temor_core::vocab::ids::BlockId;
 use temor_render::RowLayout;
-use temor_vt::{PointSpace, Row, SurfacePoint};
+use temor_vt::{Row, SurfacePoint};
 
 use super::super::Session;
 use super::super::blocks::HeaderFacts;
 use super::super::model::PADDING_LOGICAL;
-use super::bands::{Lead, lead_at};
 use crate::error::UiError;
 use crate::plugins::facts::PluginFact;
 
@@ -118,35 +117,7 @@ impl Session {
     /// The gutter's marks for the blocks whose prompts are on screen. None while a full-screen
     /// program holds the screen: the shell's blocks are not shown there.
     pub fn block_marks(&self) -> Vec<BlockMark> {
-        self.pane.with_term(|term| {
-            if term.on_alternate_screen() {
-                return Vec::new();
-            }
-            self.blocks
-                .store
-                .iter()
-                .filter_map(|block| {
-                    let anchors = self.blocks.anchors.get(&block.id)?;
-                    let at = term.anchor_point(anchors.prompt?, PointSpace::Viewport)?;
-                    let below = match lead_at(term, anchors.prompt?, anchors.input) {
-                        Lead::Blank => 1,
-                        Lead::Header => 0,
-                    };
-                    let header_cols = term
-                        .anchor_point(anchors.prompt?, PointSpace::Screen)
-                        .and_then(|first| term.row_text(first.row + below).ok())
-                        .map_or(0, |text| used_columns(&text.cells));
-                    Some(BlockMark {
-                        id: block.id,
-                        row: at.row,
-                        header: at.row + below,
-                        header_cols,
-                        outcome: block.outcome(),
-                        took_ms: block.elapsed_ms(),
-                    })
-                })
-                .collect()
-        })
+        self.frame().map(|frame| frame.marks()).unwrap_or_default()
     }
 
     /// Picks no block.
@@ -226,7 +197,7 @@ impl Session {
 }
 
 /// The columns up to and including the last cell that holds more than blank space.
-fn used_columns(cells: &[temor_pane::text::RowCell]) -> u32 {
+pub(super) fn used_columns(cells: &[temor_pane::text::RowCell]) -> u32 {
     cells
         .iter()
         .rposition(|cell| !cell.text.trim().is_empty())

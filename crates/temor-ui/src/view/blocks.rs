@@ -9,7 +9,7 @@ use super::block_header::HeaderView;
 use super::block_meta::{MetaView, header_row, metas_of};
 use super::block_tools::ToolsView;
 use super::status::{ProgressLine, progress_line};
-use crate::session::{Gutter, Session};
+use crate::session::{Frame, Gutter, Session};
 use ds::base::text::clip::clip_chars;
 use ds::prelude::Availability;
 
@@ -22,6 +22,8 @@ pub struct Chrome {
     pub metas: Vec<MetaView>,
     pub progress: Option<ProgressLine>,
     pub bell: bool,
+    /// Where the blocks sit now, read from the terminal once for everything drawn this time.
+    pub frame: Option<Frame>,
 }
 
 /// A tool is on when its condition holds, and off when it does not.
@@ -35,12 +37,17 @@ fn available(on: bool) -> Availability {
 /// The tools for the first of `hovered` and the selected block that has a place on screen. Their
 /// meta is left out where it would reach the header's text; the buttons show whatever the room,
 /// since the person asked for them.
-fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Option<ToolsView> {
+fn tools_of(
+    session: &Session,
+    frame: &Frame,
+    hovered: Option<BlockId>,
+    gutter: &Gutter,
+) -> Option<ToolsView> {
     [hovered, session.selected_block()]
         .into_iter()
         .flatten()
         .find_map(|id| {
-            let spot = session.tools_spot(id)?;
+            let spot = frame.tools_spot(id, session.tools_reach())?;
             // The output and the files in it are there once the command has finished.
             let finished = session.block_finished(id);
             Some(ToolsView {
@@ -50,8 +57,8 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Opt
                 row: gutter.cell_h,
                 inset: gutter.side,
                 meta: session.block_meta(id).filter(|words| {
-                    let cols = session
-                        .block_marks()
+                    let cols = frame
+                        .marks()
                         .into_iter()
                         .find(|mark| mark.id == id)
                         .map_or(0, |mark| mark.header_cols);
@@ -72,25 +79,33 @@ fn tools_of(session: &Session, hovered: Option<BlockId>, gutter: &Gutter) -> Opt
 /// draw again when it changes. `held` is the block whose "more" menu is up: its tools stay.
 pub fn chrome_of(session: &Session, _hovered: Option<BlockId>, held: Option<BlockId>) -> Chrome {
     let gutter = session.gutter_geometry();
+    let frame = session.frame();
     let columns = session.fit().map_or(80, |fit| usize::from(fit.grid.cols.0));
     // Over the first row shown whole and everything above it.
-    let header = session.sticky_header().map(|header| HeaderView {
-        id: header.id,
-        command: clip_chars(&header.command, columns),
-        inset: gutter.as_ref().map_or(0.0, |g| g.side),
-        height: gutter
-            .as_ref()
-            .map_or(0.0, |g| g.row_top(g.first_shown() + 1)),
-    });
+    let header = frame
+        .as_ref()
+        .and_then(Frame::sticky_header)
+        .map(|header| HeaderView {
+            id: header.id,
+            command: clip_chars(&header.command, columns),
+            inset: gutter.as_ref().map_or(0.0, |g| g.side),
+            height: gutter
+                .as_ref()
+                .map_or(0.0, |g| g.row_top(g.first_shown() + 1)),
+        });
     let tools = gutter
         .as_ref()
-        .and_then(|g| tools_of(session, held.or(session.hovered_block()), g));
-    let metas = metas_of(session, tools.as_ref().map(|tools| tools.id));
+        .zip(frame.as_ref())
+        .and_then(|(g, frame)| tools_of(session, frame, held.or(session.hovered_block()), g));
+    let metas = frame.as_ref().map_or_else(Vec::new, |frame| {
+        metas_of(session, frame, tools.as_ref().map(|tools| tools.id))
+    });
     Chrome {
         header,
         tools,
         metas,
         progress: session.progress().and_then(progress_line),
         bell: session.bell_showing(),
+        frame,
     }
 }

@@ -13,7 +13,7 @@ use ds::prelude::*;
 use temor_core::block::{Outcome, format_elapsed};
 use temor_core::vocab::ids::BlockId;
 
-use crate::session::{BlockMark, Gutter, Session};
+use crate::session::{BlockMark, Frame, Gutter, Session};
 
 /// One header row's meta, placed by the window from the session.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,13 +41,13 @@ pub fn meta_text(outcome: Outcome, took_ms: Option<u64>) -> Option<String> {
 
 /// The header rows' meta for the blocks whose prompts are on screen, except `skip` (the block
 /// whose tools show the meta themselves) and those with no room right of their header's text.
-pub fn metas_of(session: &Session, skip: Option<BlockId>) -> Vec<MetaView> {
+pub fn metas_of(session: &Session, frame: &Frame, skip: Option<BlockId>) -> Vec<MetaView> {
     let Some(gutter) = session.gutter_geometry() else {
         return Vec::new();
     };
     let row = header_row(session, &gutter);
-    session
-        .block_marks()
+    frame
+        .marks()
         .into_iter()
         .filter(|mark| Some(mark.id) != skip)
         .filter_map(|mark| {

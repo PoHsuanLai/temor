@@ -105,13 +105,14 @@ impl Session {
                 term.screen_rows().ok(),
             )
         });
+        let frame = self.frame().filter(|_| !alternate);
         let inserts: Vec<Insert> = match alternate {
             true => Vec::new(),
             false => self
                 .inserts
                 .iter()
                 .filter_map(|&(block, height)| {
-                    let after = u16::try_from(self.block_last_row(block)?).ok()?;
+                    let after = u16::try_from(frame.as_ref()?.last_row(block)?).ok()?;
                     Some(Insert {
                         after: Row(after),
                         height: whole_rows(height, fit.cell.height.0),
@@ -128,7 +129,7 @@ impl Session {
                 .iter()
                 .filter(|&&id| self.block_finished(id))
                 .filter_map(|&id| {
-                    let (first, last) = self.block_output_rows(id)?;
+                    let (first, last) = frame.as_ref()?.output_rows(id)?;
                     let (first, last) = (first.max(0), last.min(rows - 1));
                     if first > last {
                         return None;

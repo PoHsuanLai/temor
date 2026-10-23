@@ -237,81 +237,12 @@ impl Session {
 
     /// The bands to paint over the grid. Empty on the alternate screen.
     pub fn card_bands(&self, colours: &CardColours) -> Vec<RowBand> {
-        // This frame's cursor row when the terminal knows it, else where the last paint put it.
-        let cursor = self
-            .pane
-            .with_term(|term| term.cursor_viewport_row())
-            .or_else(|| self.painter.cursor_cell().map(|c| c.row.0))
-            .map(i64::from);
-        let typing = matches!(
-            self.blocks.machine,
-            BlockState::Prompting { .. } | BlockState::Typing { .. }
-        );
-        self.pane.with_term(|term| {
-            if term.on_alternate_screen() {
-                return Vec::new();
-            }
-            let Ok((top, _)) = term.viewport() else {
-                return Vec::new();
-            };
-            let top = i64::from(top);
-            let rows = term.size().rows.0;
-            let first_of = |anchor| {
-                let at = term.anchor_point(anchor, PointSpace::Screen)?;
-                Some(i64::from(at.row) - top)
-            };
-            let end = cursor.unwrap_or(i64::from(rows) - 1);
-            // The rows of the command typed after the input mark, up to the output mark.
-            let command_of = |input: Option<AnchorId>, output: Option<AnchorId>| {
-                let input = input?;
-                let col = term.anchor_point(input, PointSpace::Screen)?.col.0;
-                let input = first_of(input)?;
-                let output = output.and_then(|anchor| {
-                    let at = term.anchor_point(anchor, PointSpace::Screen)?;
-                    Some((i64::from(at.row) - top, at.col.0))
-                });
-                let (from, to) = command_rows(input, output, end);
-                Some((from, to, col))
-            };
-            let mut blocks: Vec<CardBlock> = self
-                .blocks
-                .store
-                .iter()
-                .filter_map(|block| {
-                    let anchors = self.blocks.anchors.get(&block.id)?;
-                    let prompt = anchors.prompt?;
-                    let first = first_of(prompt)?;
-                    let pick = match self.picks.contains(block.id) {
-                        true => Pick::Selected,
-                        false => Pick::Unselected,
-                    };
-                    let mark = match self.bookmarks.contains(&block.id) {
-                        true => Mark::Bookmarked,
-                        false => Mark::Plain,
-                    };
-                    Some(CardBlock {
-                        first,
-                        lead: lead_at(term, prompt, anchors.input),
-                        stage: Stage::Ran(block.outcome()),
-                        pick,
-                        mark,
-                        command: command_of(anchors.input, anchors.output),
-                    })
-                })
-                .collect();
-            let live = self.blocks.prompt.filter(|_| typing);
-            if let Some((prompt, first)) = live.and_then(|p| Some((p, first_of(p)?))) {
-                blocks.push(CardBlock {
-                    first,
-                    lead: lead_at(term, prompt, self.blocks.input),
-                    stage: Stage::AtPrompt,
-                    pick: Pick::Unselected,
-                    mark: Mark::Plain,
-                    command: command_of(self.blocks.input, None),
-                });
-            }
-            blocks.sort_by_key(|b| b.first);
-            bands_of(&blocks, end, rows, colours)
-        })
+        let Some(frame) = self.frame() else {
+            return Vec::new();
+        };
+        let rows = self.pane.with_term(|term| term.size().rows.0);
+        // Where a running command's rows end: the cursor's row, else the viewport's last.
+        let end = frame.cursor_row().unwrap_or(i64::from(rows) - 1);
+        bands_of(&frame.cards(end), end, rows, colours)
     }
 }

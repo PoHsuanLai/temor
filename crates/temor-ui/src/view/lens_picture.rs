@@ -10,7 +10,7 @@ use ds::prelude::ImageSource;
 use temor_core::vocab::ids::BlockId;
 
 use crate::plugins::lens::LensPicture;
-use crate::session::{Gutter, Session};
+use crate::session::{Frame, Gutter, Session};
 
 /// The most rows a picture takes under its block.
 pub const MOST_ROWS: u32 = crate::session::LENS_MOST_ROWS;
@@ -79,7 +79,7 @@ pub fn lens_request(session: &Session) -> Option<(BlockId, u32)> {
 }
 
 /// The pictures that have a block on screen to sit under.
-pub fn lens_views(session: &Session, pictures: Vec<LensPicture>) -> Vec<LensView> {
+pub fn lens_views(session: &Session, frame: &Frame, pictures: Vec<LensPicture>) -> Vec<LensView> {
     let (Some(gutter), Some((pane_width, _))) = (session.gutter_geometry(), session.grid_logical())
     else {
         return Vec::new();
@@ -87,7 +87,7 @@ pub fn lens_views(session: &Session, pictures: Vec<LensPicture>) -> Vec<LensView
     pictures
         .into_iter()
         .filter_map(|picture| {
-            let last = session.block_last_row(picture.block)?;
+            let last = frame.last_row(picture.block)?;
             Some(LensView {
                 block: picture.block,
                 spot: lens_spot((picture.width, picture.height), last, &gutter, pane_width)?,

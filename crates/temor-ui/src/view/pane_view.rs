@@ -266,7 +266,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         let palette = slot.palette;
         slot.session
             .as_ref()
-            .map(|s| header_chips(s, &metas, &palette))
+            .zip(chrome.frame.as_ref())
+            .map(|(s, frame)| header_chips(s, frame, &metas, &palette))
             .unwrap_or_default()
             .into_iter()
             .filter(|(_, view)| !under_find(view.top))
@@ -313,7 +314,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 .borrow()
                 .session
                 .as_ref()
-                .map(|s| lens_views(s, pictures))
+                .zip(chrome.frame.as_ref())
+                .map(|(s, frame)| lens_views(s, frame, pictures))
                 .unwrap_or_default(),
         }
     };

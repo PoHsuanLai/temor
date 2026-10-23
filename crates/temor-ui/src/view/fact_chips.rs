@@ -25,7 +25,7 @@ use super::card_colours::{CardFill, card_ground};
 pub use super::chip_texts::{all_chips, chip_texts, lead_chips, plugin_chips};
 use super::folder_fit::{RowRoom, fit_folder_chip};
 use crate::plugins::facts::PluginFact;
-use crate::session::{HeaderLine, PromptHeader, Session};
+use crate::session::{Frame, HeaderLine, PromptHeader, Session};
 
 /// The small picture at a chip's start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,6 +223,7 @@ pub fn chips_for(
 /// ends before the block's meta, and takes the block's fill as its ground.
 pub fn header_chips(
     session: &Session,
+    frame: &Frame,
     metas: &[MetaView],
     palette: &Palette,
 ) -> Vec<(BlockId, ChipsView)> {
@@ -231,8 +232,8 @@ pub fn header_chips(
     else {
         return Vec::new();
     };
-    session
-        .block_marks()
+    frame
+        .marks()
         .into_iter()
         .filter_map(|mark| {
             let kept = session.header_facts(mark.id)?;
