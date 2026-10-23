@@ -12,6 +12,7 @@ mod cards_tests;
 mod checkpoint;
 pub mod found;
 pub mod frame;
+pub mod list;
 mod marks;
 mod shell_state;
 
