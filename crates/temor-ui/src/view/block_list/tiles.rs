@@ -19,6 +19,8 @@ use crate::view::card_colours::{CardFill, card_ground_rgb};
 struct Look {
     rows: Range<u32>,
     width: u32,
+    /// The cell's size in device pixels: the font's size and the screen's scale.
+    cell: (u32, u32),
     palette: Palette,
     ground: Rgb,
     /// The selection's ends where it covers the tile's rows.
@@ -80,7 +82,9 @@ impl Tiles {
         palette: &Palette,
         new_texture: impl Fn() -> TextureHandle,
     ) {
-        let width = session.fit().map_or(0, |fit| fit.pane.width.0);
+        let (width, cell) = session.fit().map_or((0, (0, 0)), |fit| {
+            (fit.pane.width.0, (fit.cell.width.0, fit.cell.height.0))
+        });
         self.tiles
             .retain(|key, _| mounted.iter().any(|p| p.key == *key));
         for placed in mounted {
@@ -97,6 +101,7 @@ impl Tiles {
             let look = Look {
                 rows: rows.clone(),
                 width,
+                cell,
                 palette: *palette,
                 ground: ground_of(palette, *standing, *picked),
                 selection: session.selection_over(rows.clone()),

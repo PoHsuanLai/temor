@@ -5,6 +5,7 @@
 use std::time::Duration;
 
 use ds::prelude::{Point, Px};
+use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
 use temor_ui::session::force_block_list;
 use temor_ui::view::probe::Probe;
@@ -125,4 +126,32 @@ fn the_wheel_scrolls_the_list_back_and_a_new_command_brings_it_to_its_bottom() {
         last.y + last.h <= list.y + list.h,
         "the newest card is in view: {last:?} in {list:?}"
     );
+}
+
+#[test]
+fn a_narrower_window_reflows_a_cards_rows_and_the_card_grows_to_hold_them() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    assert!(force_block_list(), "nothing asked before the test");
+    let probe = Probe::new();
+    let mut h = started("block-list-reflow", &probe);
+    // One line of output 150 characters long: one row wide, several narrow.
+    type_line(&mut h, "printf '%0150d\\n' 7");
+    wait_until(&mut h, &probe, "the output", |s| s.contains("00007"));
+    wait_html(&mut h, "its card", |html| html.contains("temor-blk-rows"));
+    h.advance(Duration::from_millis(300));
+    let wide = rects(&h, ".temor-blk-rows")[0].h;
+    h.resize_window(Extent::new(520, 640));
+    h.advance(Duration::from_millis(600));
+    wait_html(&mut h, "the card again", |html| {
+        html.contains("temor-blk-rows")
+    });
+    let narrow = rects(&h, ".temor-blk-rows")[0].h;
+    assert!(
+        narrow > wide + 10.0,
+        "the rows wrapped and the card grew: {wide} -> {narrow}"
+    );
+    // The command's line stays the card's head, not one of its rows.
+    assert!(h.html().contains("printf"), "the head:\n{}", h.html());
 }
