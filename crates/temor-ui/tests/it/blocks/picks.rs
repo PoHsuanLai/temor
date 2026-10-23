@@ -13,7 +13,7 @@ use temor_ui::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers, MouseButton, SurfacePoint};
 
 use super::super::support::tools_present;
-use super::support::{Live, pump, run_line, shell_path, start};
+use super::support::{Live, marks_of, pump, run_line, shell_path, start};
 
 /// The point in the middle of cell (`col`, viewport `row`).
 fn cell(live: &Live, col: u16, row: u32) -> SurfacePoint {
@@ -30,8 +30,7 @@ fn cell(live: &Live, col: u16, row: u32) -> SurfacePoint {
 
 /// The header row of block `id` in the viewport.
 fn header_of(live: &Live, id: BlockId) -> u32 {
-    live.session
-        .block_marks()
+    marks_of(&live.session)
         .into_iter()
         .find(|m| m.id == id)
         .expect("the block is on screen")

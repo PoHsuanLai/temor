@@ -346,7 +346,11 @@ impl Session {
 
     /// Whether `id` has output to fold: it is finished and has a row below its command.
     pub fn block_foldable(&self, id: BlockId) -> bool {
-        self.block_finished(id) && self.block_output_rows(id).is_some()
+        self.block_finished(id)
+            && self
+                .frame()
+                .and_then(|frame| frame.output_rows(id))
+                .is_some()
     }
 
     /// Folds `id`'s output away, or brings it back. Nothing for a block with no output to fold.

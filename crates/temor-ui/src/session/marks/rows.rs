@@ -29,20 +29,6 @@ impl Session {
         })
     }
 
-    /// The viewport row of a block's last row: negative above the view, past the last row below
-    /// it. Where a picture under the block starts is the row after. `None` on a full-screen
-    /// program's screen and for a block with no rows.
-    pub fn block_last_row(&self, id: BlockId) -> Option<i64> {
-        self.frame()?.last_row(id)
-    }
-
-    /// The viewport rows of a block's output, first to last: negative above the view, past the
-    /// last row below it. `None` on a full-screen program's screen and for a block with no row
-    /// under its command.
-    pub fn block_output_rows(&self, id: BlockId) -> Option<(i64, i64)> {
-        self.frame()?.output_rows(id)
-    }
-
     /// Device pixels to a logical pixel on this pane's screen.
     pub fn scale_factor(&self) -> f32 {
         self.scale.factor()

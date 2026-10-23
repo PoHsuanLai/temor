@@ -8,7 +8,7 @@ use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::support::tools_present;
-use super::support::{Live, pump, settle, shell_path, start};
+use super::support::{Live, marks_of, pump, settle, shell_path, start};
 use std::time::Duration;
 
 /// Sends one whole mark: its number, its event, and its anchor at the cursor.
@@ -184,14 +184,14 @@ fn a_full_screen_program_hides_the_gutter_and_its_hits() {
     command_block(&mut live, 4000, "vim");
     let id = live.session.block_outcomes()[0].0;
     assert!(
-        !live.session.block_marks().is_empty(),
+        !marks_of(&live.session).is_empty(),
         "the prompt is on screen"
     );
     live.session
         .pane()
         .with_term(|term| term.write(b"\x1b[?1049h"));
     assert!(
-        live.session.block_marks().is_empty(),
+        marks_of(&live.session).is_empty(),
         "no marks on the alternate screen"
     );
     assert!(
@@ -202,7 +202,7 @@ fn a_full_screen_program_hides_the_gutter_and_its_hits() {
         .pane()
         .with_term(|term| term.write(b"\x1b[?1049l"));
     assert!(
-        !live.session.block_marks().is_empty(),
+        !marks_of(&live.session).is_empty(),
         "the marks return with the shell's screen"
     );
 }

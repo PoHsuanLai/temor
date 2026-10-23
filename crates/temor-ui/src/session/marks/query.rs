@@ -4,7 +4,6 @@
 use temor_core::block::{BlockState, Outcome};
 use temor_core::facts::Facts;
 use temor_core::session::AnnotateIn;
-use temor_core::session::frame::BlockMark;
 use temor_core::vocab::ids::BlockId;
 use temor_render::RowLayout;
 use temor_vt::{Row, SurfacePoint};
@@ -97,12 +96,6 @@ impl Session {
             .store
             .get(id)
             .is_some_and(|block| block.outcome() != Outcome::Running)
-    }
-
-    /// The gutter's marks for the blocks whose prompts are on screen. None while a full-screen
-    /// program holds the screen: the shell's blocks are not shown there.
-    pub fn block_marks(&self) -> Vec<BlockMark> {
-        self.frame().map(|frame| frame.marks()).unwrap_or_default()
     }
 
     /// Picks no block.

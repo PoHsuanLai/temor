@@ -9,7 +9,7 @@ use temor_ui::session::Session;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 use super::super::support::tools_present;
-use super::support::{pump, run_line, shell_path, start};
+use super::support::{marks_of, pump, run_line, shell_path, start};
 
 #[test]
 fn a_gutter_press_picks_the_block_and_copy_takes_it_whole() {
@@ -24,7 +24,7 @@ fn a_gutter_press_picks_the_block_and_copy_takes_it_whole() {
             .first()
             .is_some_and(|b| b.1 != Outcome::Running)
     });
-    let marks = live.session.block_marks();
+    let marks = marks_of(&live.session);
     let mark = marks.first().expect("the prompt is on screen");
     let fit = live.session.fit().expect("fitted");
     let (_, y) = fit.cell_origin(temor_render::CellPos::new(
@@ -76,7 +76,7 @@ fn control_shift_up_and_down_pick_blocks_and_bring_them_into_view() {
                     .is_some_and(|b| b.1 != Outcome::Running)
         });
     }
-    let prompt_top = |s: &Session| s.block_marks().iter().find(|m| m.row == 0).map(|m| m.id);
+    let prompt_top = |s: &Session| marks_of(s).iter().find(|m| m.row == 0).map(|m| m.id);
     let up = Stroke {
         input: Some(Pressed::new(
             [Modifier::Ctrl, Modifier::Shift]

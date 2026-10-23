@@ -3,7 +3,7 @@
 use temor_core::block::Outcome;
 
 use super::super::support::tools_present;
-use super::support::{blocks, pump, run_line, shell_path, shells, start, start_with};
+use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
 use temor_ui::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
@@ -171,6 +171,6 @@ fn the_shells_screen_clear_takes_the_blocks_it_blanked_and_the_next_command_is_w
     );
     let id = live.session.block_outcomes()[0].0;
     assert_eq!(live.session.block_output(id).as_deref(), Some("after"));
-    let marks = live.session.block_marks();
+    let marks = marks_of(&live.session);
     assert_eq!(marks.first().map(|m| m.row), Some(0), "{marks:?}");
 }

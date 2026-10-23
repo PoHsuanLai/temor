@@ -8,7 +8,7 @@ use temor_pane::keys::Action;
 use temor_vt::{Modifiers, MouseButton, Px, Row, SurfacePoint};
 
 use super::super::support::tools_present;
-use super::support::{Live, pump, run_line, shell_path, start};
+use super::support::{Live, last_row_of, marks_of, pump, run_line, shell_path, start};
 
 /// The middle of cell `col` of viewport row `row`, where the session shows it now.
 fn shown_point(live: &Live, row: u16, col: u16) -> SurfacePoint {
@@ -53,7 +53,7 @@ fn with_room_under_a_block_the_card_a_click_and_a_selection_land_on_the_rows_sho
     let ch = fit.cell.height.0;
     let header_gap = |live: &Live| {
         let gutter = live.session.gutter_geometry().expect("gutter");
-        let marks = live.session.block_marks();
+        let marks = marks_of(&live.session);
         let top = |id| {
             let mark = marks.iter().find(|m| m.id == id).expect("the card");
             gutter.row_top(mark.header)
@@ -64,7 +64,7 @@ fn with_room_under_a_block_the_card_a_click_and_a_selection_land_on_the_rows_sho
 
     // Step 1: three rows of room under the first block.
     live.session.set_inserts(vec![(first, Px(3 * ch))]);
-    let last = live.session.block_last_row(first).expect("on screen");
+    let last = last_row_of(&live.session, first).expect("on screen");
     let layout = live.session.row_layout().expect("laid out").clone();
     let room = layout
         .insert_top(Row(u16::try_from(last).expect("a row")))

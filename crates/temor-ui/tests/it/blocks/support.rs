@@ -252,3 +252,17 @@ pub(super) fn shells() -> Vec<(&'static str, PathBuf)> {
         })
         .collect()
 }
+
+/// The gutter's marks for the blocks whose prompts are on screen; none on a full-screen
+/// program's screen.
+pub(super) fn marks_of(session: &Session) -> Vec<temor_core::session::frame::BlockMark> {
+    session
+        .frame()
+        .map(|frame| frame.marks())
+        .unwrap_or_default()
+}
+
+/// The viewport row of a block's last row.
+pub(super) fn last_row_of(session: &Session, id: temor_core::vocab::ids::BlockId) -> Option<i64> {
+    session.frame()?.last_row(id)
+}
