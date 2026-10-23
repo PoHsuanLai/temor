@@ -65,7 +65,7 @@ fn each_finished_block_holds_the_rows_between_its_command_and_the_next_prompt() 
             (ItemKey::Block(BlockId(2)), 7..8),
         ]
     );
-    assert_eq!(items.last(), Some(&Item::Composer));
+    assert_eq!(items.last(), Some(&Item::Composer { rows: 0..0 }));
 }
 
 #[test]
@@ -175,4 +175,17 @@ fn blocks_with_no_command_or_lost_rows_are_left_out() {
     lost.end = End::Lost;
     let items = list_of(&read(0, 24, None, vec![empty, lost, done(3, 6, 9)]), plain);
     assert_eq!(outputs(&items), [(ItemKey::Block(BlockId(3)), 8..9)]);
+}
+
+#[test]
+fn the_composer_holds_the_prompt_rows_through_the_cursor() {
+    let mut r = read(0, 24, Some(7), vec![done(1, 0, 5)]);
+    r.live = Some(crate::session::frame::LiveRead {
+        prompt: at(5, 0),
+        lead: Lead::Header,
+        input: Some(at(6, 2)),
+        header_text: String::new(),
+    });
+    let items = list_of(&r, plain);
+    assert_eq!(items.last(), Some(&Item::Composer { rows: 5..8 }));
 }

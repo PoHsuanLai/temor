@@ -24,6 +24,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use super::block_card::{BlockCards, cards_of};
 use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_header::{BlockHeader, HeaderPress, HeaderView};
+use super::block_list::{BlockPane, block_list_on};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
@@ -368,6 +369,17 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .as_ref()
         .map(|s| s.grid_font().family_css())
         .unwrap_or_default();
+    // The pane as a list of blocks, but for a full-screen program's screen.
+    let block_items = match block_list_on() {
+        true => slot.borrow().session.as_ref().and_then(|s| s.block_list()),
+        false => None,
+    };
+    let listed = block_items.is_some();
+    let picked_block = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|s| s.selected_block());
     let live_icon = {
         let desk = desk.clone();
         move |icon: LiveIcon| desk.live_icon(pane, icon)
@@ -388,8 +400,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     mounted: Some(on_mounted),
                     ..Common::default()
                 },
+                if let Some(items) = block_items {
+                    BlockPane { pane, desk: desk.clone(), items, texture: texture.clone(), font: card_font.clone(), reveal: picked_block }
+                }
                 div {
                     class: "temor-grid",
+                    "data-listed": listed,
                     "data-wheel": "capture",
                     "data-drop": dropper.drop_attr(),
                     onmounted: move |e: MountedEvent| {
@@ -417,26 +433,28 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     LensPictures { views: lens_pictures }
                 }
                 // A live card's own head names its program: no second header under it.
-                if let (Some(header), false) = (chrome.header.clone(), shows_live_head) {
+                if let (Some(header), false, false) = (chrome.header.clone(), shows_live_head, listed) {
                     BlockHeader {
                         header: HeaderView { detach: header.running && desk.hub.can_detach(pane), font: card_font.clone(), ..header },
                         on_press:then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain),
                     }
                 }
-                if let Some(view) = chips {
+                if let (Some(view), false) = (chips, listed) {
                     FactChips { view }
                 }
-                BlockCards { cards, font: card_font.clone() }
+                if !listed {
+                    BlockCards { cards, font: card_font.clone() }
+                }
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
-                if let Some(view) = hint {
+                if let (Some(view), false) = (hint, listed) {
                     FirstHint { view }
                 }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}
                 }
-                if let Some(tools) = tools {
+                if let (Some(tools), false) = (tools, listed) {
                     BlockTools {
                         tools,
                         held,

@@ -53,8 +53,9 @@ pub enum Item {
     /// The running block: its output rows above `live_from` have left the viewport and no longer
     /// change; those from it on are the viewport's, drawn live.
     Running { block: ListBlock, live_from: u32 },
-    /// Where the next command is typed: nothing runs.
-    Composer,
+    /// Where the next command is typed: nothing runs. `rows` are the screen rows of the shell's
+    /// own prompt, from its first row to the cursor's (empty when no prompt is marked).
+    Composer { rows: Range<u32> },
 }
 
 /// What identifies an item across reads, for the list to keep its rows.
@@ -70,7 +71,7 @@ impl Item {
         match self {
             Item::Section { before, .. } => ItemKey::Section(*before),
             Item::Done(block) | Item::Running { block, .. } => ItemKey::Block(block.id),
-            Item::Composer => ItemKey::Composer,
+            Item::Composer { .. } => ItemKey::Composer,
         }
     }
 }
@@ -157,7 +158,11 @@ pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockFacts) -> Vec<Item> 
         });
     }
     if !running {
-        items.push(Item::Composer);
+        let rows = match (&read.live, read.cursor) {
+            (Some(live), Some(cursor)) if cursor >= live.prompt.row => live.prompt.row..cursor + 1,
+            _ => 0..0,
+        };
+        items.push(Item::Composer { rows });
     }
     items
 }

@@ -187,6 +187,46 @@ impl Painter {
         fit_grid(pixels, &metrics, inset.padding(scale))
     }
 
+    /// Draws `rows` (read from anywhere in the screen) whole, `cols` wide, as the pane's grid
+    /// would draw them: `width` device pixels wide with the pane's side inset and no room above
+    /// or below, in the live frame's colours (on `ground` where a cell has none). Hands the premultiplied RGBA8 pixels to `show`.
+    pub fn still(
+        &mut self,
+        cols: u16,
+        rows: &[Vec<temor_vt::StyledCell>],
+        (width, scale, inset): (u32, Scale, Inset),
+        ground: Option<temor_vt::Rgb>,
+        show: impl FnOnce(&[u8], PixelSize),
+    ) -> Result<(), UiError> {
+        if rows.is_empty() || width == 0 {
+            return Ok(());
+        }
+        let metrics = self.renderer.cell_metrics(scale);
+        let frame = PaneFrame::still(cols, rows, &self.frame);
+        let frame = match ground {
+            Some(ground) => frame.on_background(ground),
+            None => frame,
+        };
+        let mut padding = inset.padding(scale);
+        padding.top = temor_vt::Px(0);
+        padding.bottom = temor_vt::Px(0);
+        let height = u32::try_from(rows.len()).unwrap_or(u32::MAX) * metrics.height();
+        let view = PaneView {
+            size: PixelSize::new(width, height),
+            scale,
+            padding,
+            palette: &self.palette,
+            focus: PaneFocus::Focused,
+            blink: BlinkPhase::On,
+            selection: None,
+            bands: &[],
+            lower: 0,
+        };
+        let drawn = self.renderer.render_still(&frame, &view)?;
+        show(drawn.pixels, drawn.size);
+        Ok(())
+    }
+
     /// Draws what changed in the terminal since the last frame and hands the whole pane's
     /// premultiplied RGBA8 pixels, with their size, to `show`. The terminal is locked only while
     /// libghostty begins the frame.

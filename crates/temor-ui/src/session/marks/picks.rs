@@ -99,6 +99,10 @@ impl Session {
     /// Brings the active pick's prompt into view (to the top, when it is out of view); with
     /// nothing picked, the live screen.
     fn reveal_pick(&mut self) {
+        // A list of blocks scrolls itself to the pick; the terminal's viewport stays put.
+        if super::super::block_list_on() {
+            return;
+        }
         let first = self
             .ann
             .active_pick()

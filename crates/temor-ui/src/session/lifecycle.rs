@@ -98,7 +98,11 @@ impl Session {
         let blink = self.blink_now();
         self.blink.painted = blink;
         let palette = self.painter.palette();
-        let bands = self.card_bands(&CardColours::of(palette));
+        // A list of blocks draws its cards itself.
+        let bands = match super::block_list_on() {
+            true => Vec::new(),
+            false => self.card_bands(&CardColours::of(palette)),
+        };
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,

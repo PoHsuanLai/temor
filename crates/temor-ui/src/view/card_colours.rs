@@ -62,6 +62,12 @@ pub enum CardFill {
 /// card with no fill is raised a little off the background (the foreground at 5%), so it reads
 /// as a card on any theme.
 pub fn card_ground(palette: &Palette, fill: CardFill) -> String {
+    let c = card_ground_rgb(palette, fill);
+    format!("rgb({},{},{})", c.r, c.g, c.b)
+}
+
+/// The colour a card is drawn on, as channels.
+pub fn card_ground_rgb(palette: &Palette, fill: CardFill) -> temor_vt::Rgb {
     let colours = CardColours::of(palette);
     let tint = match fill {
         CardFill::None => Tint {
@@ -72,15 +78,11 @@ pub fn card_ground(palette: &Palette, fill: CardFill) -> String {
         CardFill::Picked => colours.selected_fill,
     };
     let a = u32::from(tint.alpha.0);
-    let mix =
-        |under: u8, over: u8| (u32::from(under) * (255 - a) + u32::from(over) * a + 127) / 255;
+    let mix = |under: u8, over: u8| {
+        ((u32::from(under) * (255 - a) + u32::from(over) * a + 127) / 255).min(255) as u8
+    };
     let (bg, c) = (palette.background, tint.color);
-    format!(
-        "rgb({},{},{})",
-        mix(bg.r, c.r),
-        mix(bg.g, c.g),
-        mix(bg.b, c.b)
-    )
+    temor_vt::Rgb::new(mix(bg.r, c.r), mix(bg.g, c.g), mix(bg.b, c.b))
 }
 
 #[cfg(test)]

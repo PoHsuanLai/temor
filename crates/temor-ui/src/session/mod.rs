@@ -3,6 +3,7 @@
 //! never touches the terminal or the PTY itself. Dioxus is not used here.
 
 mod blink;
+mod block_list;
 mod blocks;
 mod clip;
 mod clipboard;
@@ -25,6 +26,7 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
+pub use block_list::{CARD_MARGIN, LiveRows, block_list_on};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};

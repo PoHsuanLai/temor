@@ -26,7 +26,7 @@ impl Session {
         self.survey().map(Frame::of)
     }
 
-    fn survey(&self) -> Option<Read> {
+    pub(crate) fn survey(&self) -> Option<Read> {
         let typing = matches!(
             *self.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }

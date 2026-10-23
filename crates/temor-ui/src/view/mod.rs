@@ -6,6 +6,7 @@ pub mod bar;
 pub mod block_card;
 pub mod block_edit;
 pub mod block_header;
+pub mod block_list;
 pub mod block_menu;
 pub mod block_tools;
 pub mod blocks;

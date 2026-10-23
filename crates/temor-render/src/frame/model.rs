@@ -151,6 +151,13 @@ impl PaneFrame {
         }
     }
 
+    /// The same frame drawn on `background` where a cell has no colour of its own (a still set
+    /// on a card).
+    pub fn on_background(mut self, background: Rgb) -> Self {
+        self.colors.background = background;
+        self
+    }
+
     /// The cursor's cell as of the last capture, when the cursor is shown.
     pub fn cursor_cell(&self) -> Option<crate::metrics::CellPos> {
         self.cursor

@@ -19,6 +19,17 @@ pub const WINDOW_CSS: &str = "\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; overflow: hidden; }\
 .temor-grid-slice { position: absolute; left: 0; right: 0; pointer-events: none; }\
+.temor-grid[data-listed=true] { display: none; }\
+.temor-blist { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; background: var(--term-bg); }\
+.temor-blist-scroll { flex: 1 1 0; }\
+.temor-blist-content { position: relative; }\
+.temor-seg { position: absolute; left: var(--s-8); right: var(--s-8); box-sizing: border-box; overflow: hidden; }\
+.temor-blk-section { display: flex; align-items: flex-end; padding: 0 var(--s-8) var(--s-6); color: var(--term-ansi-12); font-size: var(--fs-small); white-space: nowrap; }\
+.temor-blk-head { display: flex; align-items: center; gap: var(--s-12); padding: 0 var(--s-8); border-radius: var(--r-item) var(--r-item) 0 0; }\
+.temor-blk-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-reading); color: var(--term-fg); }\
+.temor-blk-head[data-state=failed] .temor-blk-title { color: var(--term-ansi-1); }.temor-blk-head[data-state=running] .temor-blk-title { color: var(--term-ansi-3); }\
+.temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
+.temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }\
 .temor-row-gap { position: absolute; left: 0; right: 0; pointer-events: none; background: var(--term-bg); }\
 .temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; gap: var(--s-6); min-width: 0; overflow: hidden; background: var(--term-bg); border-bottom: var(--hair) solid var(--line-soft); }\
 .temor-block-header-title { min-width: 0; }\

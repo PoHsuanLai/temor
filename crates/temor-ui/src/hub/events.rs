@@ -206,7 +206,10 @@ pub fn spawn_event_loop(desk: Desk) {
                     moved |= repaint(&slot) == Relaid::Moved;
                 }
             }
+            // A list of blocks grows with the output: it is drawn again for every paint.
+            let listed = !paint.is_empty() && crate::session::block_list_on();
             let redraw = moved
+                || listed
                 || heard
                 || !chrome.is_empty()
                 || !bell.is_empty()

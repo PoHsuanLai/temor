@@ -238,6 +238,15 @@ impl Term {
         })
     }
 
+    /// Screen rows `rows`, styled cell by cell, as a frame would draw them: a finished block's
+    /// output, wherever it is now.
+    pub fn styled_rows(
+        &self,
+        rows: std::ops::Range<u32>,
+    ) -> Result<Vec<Vec<temor_vt::StyledCell>>, PaneError> {
+        Ok(self.terminal.styled_rows(rows)?)
+    }
+
     /// The viewport's place: its first screen row, and the rows it shows.
     pub fn viewport(&self) -> Result<(u32, u32), PaneError> {
         let bar = self.terminal.scrollbar()?;
