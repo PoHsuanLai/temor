@@ -98,6 +98,13 @@ pub(super) fn start_with(
         config_dir: home.join("config"),
         runtime_dir: home.join("runtime"),
     };
+    let mut ambient = ambient;
+    // A script `setup` left for the shell's first prompt, as a replaced shell's aliases are.
+    if home.join("replay.zsh").is_file() {
+        ambient
+            .env
+            .set("TEMOR_REPLAY", home.join("replay.zsh").into_os_string());
+    }
     let settings = TerminalSettings {
         shell: ShellChoice::Program(shell.display().to_string()),
         ..TerminalSettings::default()

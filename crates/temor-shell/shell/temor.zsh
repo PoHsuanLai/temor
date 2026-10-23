@@ -186,6 +186,12 @@ _temor_precmd() {
         local REPLY
         _temor_encode_cwd "$PWD"
         printf '\e]7;file://%s%s\e\\' "${HOST-}" "$REPLY"
+        if [[ -n ${TEMOR_REPLAY-} ]]; then
+            # The aliases of the shell this one replaces, defined once after the person's own rc.
+            [[ -r $TEMOR_REPLAY ]] && source "$TEMOR_REPLAY"
+            command rm -f -- "$TEMOR_REPLAY"
+            unset TEMOR_REPLAY
+        fi
         _temor_report
         printf '\e]133;A\e\\'
         if _temor_prompt_is_ours; then

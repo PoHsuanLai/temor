@@ -36,6 +36,7 @@ pub mod remote_ping;
 pub mod remote_pump;
 pub mod remote_relay;
 pub mod remote_route;
+pub mod replay;
 mod save_pace;
 mod session_file;
 mod settings_file;

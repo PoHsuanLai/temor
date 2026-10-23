@@ -57,8 +57,15 @@ const DROPPED_PREFIXES: &[&str] = &[
 ];
 
 /// The person's choices survive the scrub, so `TEMOR_SHELL_INTEGRATION=0` and `TEMOR_PROMPT`
-/// in temor's own environment reach the shells it starts.
-const KEPT: &[&str] = &["TEMOR_SHELL_INTEGRATION", "TEMOR_PROMPT", "TEMOR_PAGER"];
+/// in temor's own environment reach the shells it starts. `TEMOR_REPLAY` names the aliases a
+/// replaced shell leaves for the new one; the shell deletes the file and the variable at its
+/// first prompt.
+const KEPT: &[&str] = &[
+    "TEMOR_SHELL_INTEGRATION",
+    "TEMOR_PROMPT",
+    "TEMOR_PAGER",
+    "TEMOR_REPLAY",
+];
 
 /// The base environment from an injected `source` (the app passes its own environment at its
 /// edge), without the variables that describe another terminal.

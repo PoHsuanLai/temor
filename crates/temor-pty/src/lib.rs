@@ -43,7 +43,7 @@
 //! 1. [`base_env`] takes an injected source (the app passes its own environment at its edge)
 //!    and drops variables that describe *another* terminal: `TERM`, `COLORTERM`,
 //!    `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, `VTE_VERSION`, `WINDOWID`, `LINES`, `COLUMNS`, `TMUX`, `TMUX_PANE`, `STY`, every
-//!    `TEMOR_*` variable except `TEMOR_SHELL_INTEGRATION`, and the `KITTY_*`, `GHOSTTY_*`,
+//!    `TEMOR_*` variable except `TEMOR_SHELL_INTEGRATION`, `TEMOR_PROMPT`, `TEMOR_PAGER` and `TEMOR_REPLAY`, and the `KITTY_*`, `GHOSTTY_*`,
 //!    `WEZTERM_*`, `ITERM_*`, `ALACRITTY_*` and `KONSOLE_*` families.
 //! 2. [`child_env`] layers temor's contract and the Space profile on top, in this order:
 //!    the base, then `TERM` and `COLORTERM`, then the profile (which may override those two,

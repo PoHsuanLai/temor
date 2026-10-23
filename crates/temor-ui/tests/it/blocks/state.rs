@@ -6,7 +6,8 @@ use temor_core::session::EnvEntry;
 use temor_shell::{ShellKind, adapter_for};
 
 use super::super::support::window_tools_present as tools_present;
-use super::support::{pump, run_line, shells, start};
+use super::super::support::{scratch_path, window_tools_present};
+use super::support::{pump, run_line, shell_path, shells, start, start_with};
 
 fn kind_of(name: &str) -> ShellKind {
     match name {
@@ -70,4 +71,32 @@ fn shells_report_what_their_adapters_say_they_can() {
         }
         assert_eq!(state.cwd(), Some("/"), "{name}");
     }
+}
+
+/// A new shell is given the aliases of the one it replaces: the script it is pointed at is read
+/// at its first prompt and removed, and the shell then reports the aliases as its own.
+#[test]
+fn a_new_zsh_defines_the_aliases_it_is_given_once() {
+    let Some(zsh) = shell_path("zsh").filter(|_| window_tools_present()) else {
+        return;
+    };
+    let _alone = super::super::support::heavy();
+    let script = temor_shell::alias_script(&[
+        ("handed".to_owned(), "echo it's handed".to_owned()),
+        ("bad name".to_owned(), "x".to_owned()),
+    ]);
+    let mut live = start_with("state-replay", &zsh, |home| {
+        std::fs::write(home.join("replay.zsh"), &script).expect("script");
+    });
+    pump(&mut live, "the alias in the report", |s| {
+        s.shell_state().aliases().contains_key("handed")
+    });
+    let state = live.session.shell_state();
+    assert_eq!(
+        state.aliases().get("handed").map(String::as_str),
+        Some("echo it's handed")
+    );
+    assert!(!state.aliases().contains_key("bad name"));
+    let home = scratch_path("state-replay").join("home");
+    assert!(!home.join("replay.zsh").exists(), "read once, then removed");
 }

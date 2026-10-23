@@ -22,6 +22,7 @@ mod error;
 mod osc7;
 mod platform;
 mod quote;
+mod replay;
 pub mod report;
 mod shell;
 
@@ -30,6 +31,7 @@ pub use error::ShellError;
 pub use osc7::{cwd_from_url, percent_decode_strict};
 pub use platform::{SOCKET_PATH_MAX, ensure_private_dir};
 pub use quote::sh_quote;
+pub use replay::alias_script;
 pub use shell::{
     BashAdapter, FishAdapter, IntegrationPlan, IntegrationState, NuAdapter, PROBE_WORD,
     PlainAdapter, Shell, ShellAdapter, ShellKind, ShellScript, ShellStart, ShimFile, UserId,

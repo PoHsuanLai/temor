@@ -73,6 +73,7 @@ impl Drop for Hub {
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
         checkpoint::clear(&dir);
+        crate::edge::replay::clear(&dir);
         for (pane, slot) in &self.slots {
             // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
             if self.is_quick(*pane) || self.run.panes.contains_key(pane) {

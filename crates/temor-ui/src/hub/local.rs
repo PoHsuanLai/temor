@@ -60,7 +60,7 @@ impl Hub {
     ) -> LocalStart {
         let mut start = self.space_start();
         if let Some(kept) = &kept {
-            self.carry_env(&mut start.env, kept);
+            self.carry_env(&mut start.env, spawn.pane, kept);
         }
         let cwd = spawn
             .cwd
