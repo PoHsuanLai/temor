@@ -17,6 +17,7 @@ mod project;
 mod route;
 #[cfg(test)]
 mod route_tests;
+mod spawn_plan;
 
 pub use agent::{AgentPlan, RuntimeDir, agent_plan};
 pub use carry::carry_tab;
@@ -26,6 +27,7 @@ pub use launch::{SpaceLaunch, dotenv_path, launch};
 pub use place::{Folder, Pin, Place, Tab, Viewing};
 pub use project::{Profile, Project, Route};
 pub use route::{SpaceRoute, route, route_folder, routes_of};
+pub use spawn_plan::{Origin, SpawnPlan, spawn_plan};
 
 /// temor's Spaces: each keeps a [`Project`] and recalls a [`Place`].
 pub type TemorSpaces = ds_style::space::list::Spaces<Project, Place>;
