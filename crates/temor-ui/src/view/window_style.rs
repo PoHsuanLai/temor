@@ -30,6 +30,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-fold { flex: none; display: flex; }.temor-blk-fold[data-none=true] { visibility: hidden; }\
 .temor-blk-tools { flex: none; display: flex; align-items: center; gap: var(--s-4); }.temor-blk-more { display: flex; }\
 .temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
+.temor-blk-sticky { position: absolute; top: 0; left: 0; right: 0; }.temor-blk-sticky .temor-blk-head { border-bottom: var(--hair) solid var(--line-soft); }\
 .temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }\
 .temor-row-gap { position: absolute; left: 0; right: 0; pointer-events: none; background: var(--term-bg); }\
 .temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; gap: var(--s-6); min-width: 0; overflow: hidden; background: var(--term-bg); border-bottom: var(--hair) solid var(--line-soft); }\

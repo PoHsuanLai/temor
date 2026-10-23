@@ -223,6 +223,44 @@ pub fn card_span(placed: &[Placed], id: BlockId) -> Option<(f32, f32)> {
     Some((top, bottom))
 }
 
+/// A card's head and where the card lies, for the head that stays at the list's top.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CardPlace {
+    pub block: ListBlock,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+/// The cards of a layout, top to bottom.
+pub fn card_places(placed: &[Placed]) -> Vec<CardPlace> {
+    placed
+        .iter()
+        .filter_map(|p| match &p.seg {
+            Seg::Head(block) => {
+                let (top, bottom) = card_span(placed, block.id)?;
+                Some(CardPlace {
+                    block: block.clone(),
+                    top,
+                    bottom,
+                })
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// The card whose head stays at the list's top with the list scrolled to `offset`, and where
+/// that head is drawn, from the view's top: the card whose own head has scrolled away while
+/// some of the rest of it shows, its head pushed up by the card's end as that comes near.
+pub fn sticky_head(cards: &[CardPlace], offset: f32, head: f32) -> Option<(usize, f32)> {
+    let index = cards
+        .iter()
+        .position(|card| card.top < offset && offset < card.bottom)?;
+    let card = &cards[index];
+    let pushed = (card.bottom - head - offset).min(0.0);
+    Some((index, pushed))
+}
+
 /// Where screen row `row` is drawn in the list, `row_height` pixels a row: its top. `None` when
 /// no card shows it (folded, or gone from the list).
 pub fn row_top(placed: &[Placed], row: u32, row_height: f32) -> Option<f32> {

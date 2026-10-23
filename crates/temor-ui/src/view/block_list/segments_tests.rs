@@ -165,3 +165,19 @@ fn a_row_is_found_in_the_tile_that_draws_it() {
     assert_eq!(row_top(&placed, 35, SIZES.row), None, "folded away");
     assert_eq!(row_top(&placed, 99, SIZES.row), None, "in no card");
 }
+
+#[test]
+fn a_long_cards_head_stays_at_the_top_until_its_end_pushes_it_away() {
+    let items = [Item::Done(block(1, 0..20)), Item::Done(block(2, 20..30))];
+    let (placed, _) = lay_out(&items, &SIZES);
+    let cards = card_places(&placed);
+    // Card 1: a 30px head, 200px of rows, a 5px foot: 0..235; card 2 from 243.
+    assert_eq!((cards[0].top, cards[0].bottom), (0.0, 235.0));
+    assert_eq!(sticky_head(&cards, 0.0, 30.0), None, "its own head shows");
+    assert_eq!(sticky_head(&cards, 50.0, 30.0), Some((0, 0.0)));
+    // 15px before the card's end the head is pushed up by what is left of 30px.
+    assert_eq!(sticky_head(&cards, 190.0, 30.0), Some((0, 0.0)));
+    assert_eq!(sticky_head(&cards, 220.0, 30.0), Some((0, -15.0)));
+    assert_eq!(sticky_head(&cards, 240.0, 30.0), None, "between the cards");
+    assert_eq!(sticky_head(&cards, 260.0, 30.0), Some((1, 0.0)));
+}

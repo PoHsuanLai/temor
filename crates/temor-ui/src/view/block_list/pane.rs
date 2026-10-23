@@ -27,7 +27,8 @@ use temor_render::Palette;
 use temor_vt::Rgb;
 
 use super::segments::{
-    Placed, Seg, Sizes, Standing, card_span, lay_out, list_map, near_view, row_top,
+    CardPlace, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map, near_view,
+    row_top, sticky_head,
 };
 use super::tiles::ground_of;
 use crate::hub::Desk;
@@ -274,6 +275,7 @@ pub fn BlockPane(
         _ => None,
     });
     let tools_on = held().or(hovered()).or(picked);
+    let cards = card_places(&placed);
     let head = Head {
         tools_on,
         columns,
@@ -298,12 +300,13 @@ pub fn BlockPane(
                     }
                 }
             }
+            StickyHead { cards, scroller, palette, head: head.clone(), height: sizes.head, hovered }
         }
     }
 }
 
 /// What every card head is drawn with.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 struct Head {
     tools_on: Option<BlockId>,
     columns: usize,
@@ -391,6 +394,54 @@ fn segment(
                 }
             }
         },
+    }
+}
+
+/// The head of the card the list is scrolled into, kept at the list's top while the card's own
+/// head is scrolled away, and pushed up by the card's end. It follows every step of the scroll
+/// (the list itself is laid out again only band by band) but draws again only when the card or
+/// the push changes.
+#[component]
+#[allow(non_snake_case)]
+fn StickyHead(
+    cards: Vec<CardPlace>,
+    scroller: ScrollerRef,
+    palette: Palette,
+    head: Head,
+    height: f32,
+    hovered: Signal<Option<BlockId>>,
+) -> Element {
+    let place = use_memo(use_reactive!(|cards, height| {
+        let offset = scroller.scroll()().offset.0;
+        sticky_head(&cards, offset, height).map(|(index, y)| (index, y.round() as i32))
+    }));
+    let Some((card, y)) = place().and_then(|(index, y)| Some((cards.get(index)?.clone(), y)))
+    else {
+        return rsx! {};
+    };
+    let block = card.block;
+    let id = block.id;
+    let standing = Standing::of(block.outcome);
+    let ground = ground_of(&palette, standing, block.picked);
+    let ground = format!("rgb({},{},{})", ground.r, ground.g, ground.b);
+    let mut hovered = hovered;
+    rsx! {
+        div { class: "temor-blk-sticky",
+            CardHead {
+                block,
+                style: "top:{y}px; height:{height}px; background:{ground}",
+                columns: head.columns,
+                tools: head.tools_on == Some(id),
+                actions: head.actions.clone(),
+                offers: head.offers.clone(),
+                held: head.held,
+                on_move: move |_| {
+                    if *hovered.peek() != Some(id) {
+                        hovered.set(Some(id));
+                    }
+                },
+            }
+        }
     }
 }
 
