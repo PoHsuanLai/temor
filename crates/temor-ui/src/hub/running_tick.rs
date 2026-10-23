@@ -31,14 +31,16 @@ impl Hub {
     }
 }
 
-/// Redraws the window when a tab's state words change, for as long as the window lives.
+/// Redraws the window when a tab's state words change, for as long as the window lives. The
+/// same tick hangs up the live cards whose grace is over.
 pub fn spawn_running_loop(desk: Desk) {
     spawn(async move {
         let mut shown = desk.hub.0.borrow().state_words();
         loop {
             sleep(TICK).await;
+            let hung = desk.hub.0.borrow_mut().live_tick(std::time::Instant::now());
             let now = desk.hub.0.borrow().state_words();
-            if now != shown {
+            if hung || now != shown {
                 shown = now;
                 desk.bump();
             }

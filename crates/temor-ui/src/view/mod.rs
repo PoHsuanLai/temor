@@ -27,6 +27,7 @@ pub mod ime;
 pub mod launch;
 pub mod lens_picture;
 pub mod link_tip;
+pub mod live_head;
 pub mod menu_key;
 pub mod names;
 pub mod offer;

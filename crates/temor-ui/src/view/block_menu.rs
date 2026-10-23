@@ -50,6 +50,8 @@ pub struct BlockMenuState {
     pub bookmarked: bool,
     /// Whether every picked block's output is folded: the item then unfolds.
     pub folded: bool,
+    /// Whether a command runs in the pane that can move to a live card of its own.
+    pub detachable: bool,
     pub pane: PaneKind,
     /// The lenses that can draw the selected block; offered when one block is picked.
     pub lenses: Vec<LensOffer>,
@@ -90,15 +92,24 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
         MenuItem::new(Action::ToggleBookmark, bookmark)
             .with_tip("Alt+Up and Alt+Down step between bookmarks"),
         MenuItem::new(Action::ToggleFold, fold).with_tip("Show only the command's card"),
+    ];
+    if state.detachable {
+        items.push(
+            MenuItem::new(Action::DetachProgram, Action::DetachProgram.menu_title())
+                .with_tip("Move the running program to a card of its own. The prompt comes back"),
+        );
+    }
+    items.extend([
         MenuItem::Separator,
         MenuItem::new(
             Action::SelectAllBlocks,
             Action::SelectAllBlocks.menu_title(),
         ),
-    ]
-    .into_iter()
-    .map(|item| item.map(&BlockPick::Do))
-    .collect::<Vec<_>>();
+    ]);
+    let mut items = items
+        .into_iter()
+        .map(|item| item.map(&BlockPick::Do))
+        .collect::<Vec<_>>();
     if !state.lenses.is_empty() && !many {
         items.push(MenuItem::Separator);
         items.extend(state.lenses.iter().map(|lens| {
@@ -159,6 +170,7 @@ mod tests {
             picked,
             bookmarked: false,
             folded: false,
+            detachable: false,
             pane: PaneKind::ThisComputer,
             lenses: lenses
                 .iter()
@@ -196,6 +208,16 @@ mod tests {
         // Only a pane on another computer offers to edit a file here.
         assert_eq!(many.last().map(String::as_str), Some("Edit Locally"));
         assert!(!one.contains(&"Edit Locally".to_owned()));
+        // A running program in a daemon pane can move to a card of its own.
+        let running = titles(BlockMenuState {
+            detachable: true,
+            ..state(1, &[], PictureShown::No)
+        });
+        assert_eq!(
+            running.get(6).map(String::as_str),
+            Some("Detach Running Program")
+        );
+        assert!(!one.contains(&"Detach Running Program".to_owned()));
     }
 
     #[test]

@@ -83,6 +83,8 @@ pub struct Hub {
     pub(super) first_hint: Option<PaneId>,
     /// Programs run in tabs of their own in place of the shell (`temor -e`).
     pub(super) run: RunHub,
+    /// Running programs moved to terminals of their own, shown as live cards.
+    pub(super) live_cards: super::live_cards::LiveCards,
 }
 
 impl std::fmt::Debug for Hub {
@@ -143,6 +145,7 @@ impl Hub {
             first_hint: None,
 
             run: RunHub::default(),
+            live_cards: Default::default(),
         }
     }
 

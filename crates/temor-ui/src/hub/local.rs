@@ -273,7 +273,7 @@ impl Hub {
 
     /// Whether "Detach running program" can do anything now (the command bar lists it only
     /// then).
-    pub(super) fn can_detach(&self) -> bool {
+    pub(super) fn can_detach_focused(&self) -> bool {
         self.detachable().is_some()
     }
 
@@ -283,6 +283,19 @@ impl Hub {
         let (pane, session) = self.detachable()?;
         self.remote.detaching = Some((pane, session));
         Some(pane)
+    }
+
+    /// Ends a daemon session without closing the pane that shows it: the pane keeps its last
+    /// frame when the daemon says the session is gone.
+    pub(super) fn local_hang_up(&mut self, session: SessionId) {
+        let conn = self
+            .remote
+            .lines
+            .get(&local_alias())
+            .and_then(|line| line.conn.clone());
+        if let Some(conn) = conn {
+            self.remote.work.close(conn, session);
+        }
     }
 
     /// The split happened: the new pane took the program's session, and the old pane gets a new

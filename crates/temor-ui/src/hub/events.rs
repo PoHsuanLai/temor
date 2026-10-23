@@ -70,6 +70,11 @@ impl Hub {
                 }
                 Notice::Ended(exit) => {
                     let keep = self.keeps_ended_pane(pane, exit, session.prompts_seen() > 0);
+                    let code = match exit {
+                        Some(ChildExit::Exited(code)) => Some(code),
+                        _ => None,
+                    };
+                    self.live_ended(pane, code);
                     self.run_ended(pane, exit);
                     self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
@@ -142,6 +147,7 @@ impl Hub {
         let dropped = host == Some(super::ssh::Phase::Up) && exit == Some(ChildExit::Exited(255));
         self.run_name(pane).is_some()
             || self.is_quick(pane)
+            || self.shows_live_card(pane)
             || !prompted
             || host.is_some_and(|phase| phase != super::ssh::Phase::Up)
             || dropped

@@ -44,6 +44,10 @@ pub const WINDOW_CSS: &str = "\
 .temor-card-glyph { flex: none; display: grid; gap: var(--s-1); width: var(--s-8); }\
 .temor-card-glyph i { display: block; height: var(--s-1); border-radius: var(--r-micro); background: var(--ink-faint); }\
 .temor-card-bar { position: absolute; left: 0; bottom: 0; height: var(--s-2); background: var(--ink-faint); border-radius: 0 var(--r-micro) var(--r-micro) 0; }\
+.temor-live-head { flex: none; display: flex; align-items: center; gap: var(--s-6); min-width: 0; padding: 0 0 var(--s-4); border-bottom: var(--hair) solid var(--line-soft); margin-bottom: var(--s-4); }\
+.temor-live-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-small); color: var(--term-ansi-3); }\
+.temor-live-head[data-state=ended] .temor-live-title { color: var(--ink); }\
+.temor-live-status { flex: none; font-size: var(--fs-small); color: var(--ink-soft); }\
 .temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }\
 .temor-keys:focus { outline: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\

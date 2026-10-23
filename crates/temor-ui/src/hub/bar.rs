@@ -73,7 +73,7 @@ impl Hub {
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
         // Pin Tab or Unpin Tab, whichever the tab in front can take; Detach only where it works.
         let pinned = self.front_pinned();
-        let detach = self.can_detach();
+        let detach = self.can_detach_focused();
         let actions: Vec<Action> = BAR_ACTIONS
             .iter()
             .copied()
@@ -282,12 +282,9 @@ impl Desk {
             Action::ToggleSidebar => self.sidebar_toggle(),
             Action::ShowDownloads => self.shelf_toggle(),
             Action::DetachProgram => {
-                let pane = self.hub.0.borrow_mut().detach_prepare();
-                if pane.is_some() {
-                    self.act(temor_core::workspace::WorkspaceIn::Split {
-                        towards: temor_core::split::Direction::Right,
-                    });
-                    self.hub.0.borrow_mut().detach_finish();
+                let pane = self.hub.keyboard_pane();
+                if let Some(pane) = pane {
+                    self.settle(|hub| hub.detach_block(pane));
                 }
             }
             Action::Settings => crate::settings_window::open(),

@@ -42,6 +42,7 @@ use super::handlers::{
 use super::ime::{ImeGlue, composed_sink};
 use super::lens_picture::{LensPictures, lens_request, lens_views};
 use super::link_tip::LinkTip;
+use super::live_head::LiveCardHead;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::key_handler;
@@ -53,6 +54,7 @@ use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
+use crate::hub::LiveIcon;
 use temor_pane::keys::Action;
 
 /// How far the find bar sits below the pane's top (`.temor-find`'s `top`, `--s-4`).
@@ -293,6 +295,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         picked: s.picked_blocks().len(),
         bookmarked: s.picks_bookmarked(),
         folded: s.picks_folded(),
+        detachable: desk.hub.can_detach(pane),
         pane: match on_host {
             true => PaneKind::OnHost,
             false => PaneKind::ThisComputer,
@@ -320,6 +323,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         move |pick: BlockPick| {
             menu.set(None);
             match pick {
+                BlockPick::Do(Action::DetachProgram) => desk.detach_block(pane),
                 BlockPick::Do(action) => {
                     if let Some(s) = slot.borrow_mut().session.as_mut() {
                         let _ = s.run(action);
@@ -354,10 +358,18 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             .as_ref()
             .and_then(|s| hint_for(s, text))
     });
+    let live_head = desk.hub.live_head(pane);
+    let live_icon = {
+        let desk = desk.clone();
+        move |icon: LiveIcon| desk.live_icon(pane, icon)
+    };
     rsx! {
         div { class: "temor-pane",
             // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
             onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
+            if let Some(head) = live_head {
+                LiveCardHead { head, on_icon: live_icon }
+            }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),
                 on_focus,
