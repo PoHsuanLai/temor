@@ -233,7 +233,11 @@ fn a_lens_picture_shows_in_its_card_between_the_rows_and_the_foot() {
 /// The composer field's value, as the page writes it.
 fn composer_value(html: &str) -> Option<String> {
     let card = &html[html.find("temor-blk-composer")?..];
-    let input = &card[card.find("<input")?..];
+    let at = [card.find("<input"), card.find("<textarea")]
+        .into_iter()
+        .flatten()
+        .min()?;
+    let input = &card[at..];
     let value = &input[input.find("value=\"")? + 7..];
     Some(value[..value.find('"')?].to_owned())
 }
@@ -334,4 +338,78 @@ fn a_picture_of_the_list_with_its_cards_and_the_composer() {
             .write_image_data(picture.as_raw())
             .expect("png pixels");
     }
+}
+
+/// The composer card's height, in window pixels.
+fn composer_height(h: &ds_harness::Harness) -> f64 {
+    rects(h, ".temor-blk-composer").first().map_or(0.0, |r| r.h)
+}
+
+#[test]
+fn shift_enter_starts_a_new_line_the_card_grows_and_enter_sends_both() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("block-list-composer-lines", &probe);
+    wait_html(&mut h, "the composer", |html| {
+        html.contains("temor-blk-composer")
+    });
+    let one = composer_height(&h);
+    super::drive::type_text(&mut h, "echo one");
+    h.send(Input::chord(&[ShortcutKey::Shift], ShortcutKey::Enter));
+    h.advance(Duration::from_millis(300));
+    super::drive::type_text(&mut h, "echo two");
+    h.advance(Duration::from_millis(300));
+    let html = h.html();
+    assert!(html.contains("<textarea"), "a field of lines:\n{html}");
+    let value = composer_value(&html).unwrap_or_default();
+    assert!(
+        value.contains("echo one") && value.contains("echo two") && value.contains('\n')
+            || value.contains("echo one&#10;echo two"),
+        "both lines in the field: {value:?}"
+    );
+    let two = composer_height(&h);
+    assert!(two > one + 10.0, "the card grew: {one} -> {two}");
+    // Nothing reached the shell yet; Enter sends both lines.
+    assert!(!probe.screen().contains("echo one"), "{}", probe.screen());
+    h.send(Input::key(ShortcutKey::Enter));
+    wait_until(&mut h, &probe, "both outputs", |s| {
+        s.lines().any(|l| l.trim_end() == "one") && s.lines().any(|l| l.trim_end() == "two")
+    });
+    wait_html(&mut h, "the composer one line again", |html| {
+        composer_value(html).as_deref() == Some("") && !html.contains("<textarea")
+    });
+    assert!((composer_height(&h) - one).abs() < 1.0, "back to one line");
+}
+
+#[test]
+fn the_wheel_over_a_program_that_asked_for_the_mouse_goes_to_it() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("block-list-wheel-program", &probe);
+    // A program on the shell's screen that asks for the mouse (SGR reports) and prints the first
+    // six bytes it reads.
+    type_line(
+        &mut h,
+        "stty raw -echo; printf 'ready\\033[?1000h\\033[?1006h\\r\\n'; \
+         dd bs=1 count=6 2>/dev/null | od -An -c; printf '\\033[?1000l\\033[?1006l'; stty sane",
+    );
+    wait_until(&mut h, &probe, "the program", |s| {
+        s.lines().any(|l| l.trim_end() == "ready")
+    });
+    wait_html(&mut h, "its live rows", |html| {
+        html.contains("data-wheel=\"capture\"")
+    });
+    let live = rects(&h, ".temor-blk-rows")
+        .into_iter()
+        .max_by(|a, b| a.y.total_cmp(&b.y))
+        .expect("live rows");
+    wheel(&mut h, left_of(live, 40.0), 1.0);
+    // A wheel up is button 64 in an SGR report: ESC [ < 6 4 ;
+    wait_until(&mut h, &probe, "the report", |s| {
+        s.contains("033   [   <   6   4   ;")
+    });
 }

@@ -22,6 +22,7 @@ fn block(id: u64, output: Range<u32>) -> ListBlock {
         output,
         folded: false,
         picked: false,
+        bookmarked: false,
     }
 }
 

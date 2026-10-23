@@ -124,7 +124,7 @@ fn a_folder_is_named_where_it_changes() {
             1 | 2 => "/work".to_owned(),
             _ => "/tmp".to_owned(),
         }),
-        folded: false,
+        ..BlockFacts::default()
     };
     let items = list_of(
         &read(
@@ -154,12 +154,14 @@ fn a_folded_block_shows_no_rows_and_a_failed_one_keeps_its_outcome() {
     let mut b = done(1, 0, 6);
     b.outcome = Outcome::Failed(ExitCode(2));
     let items = list_of(&read(0, 24, None, vec![b]), |_| BlockFacts {
-        folder: None,
         folded: true,
+        bookmarked: true,
+        ..BlockFacts::default()
     });
     match &items[0] {
         Item::Done(block) => {
             assert_eq!(block.shown_rows(), 0);
+            assert!(block.bookmarked);
             assert_eq!(block.output.len(), 4);
             assert_eq!(block.outcome, Outcome::Failed(ExitCode(2)));
         }

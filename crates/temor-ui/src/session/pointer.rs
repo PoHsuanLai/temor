@@ -29,6 +29,11 @@ impl Session {
         self.pointer_over = None;
     }
 
+    /// Whether the program asked for the mouse: presses and the wheel are reported to it.
+    pub fn mouse_tracking(&self) -> bool {
+        self.pane.with_term(|term| term.mouse_tracking())
+    }
+
     /// A button went down at `at`.
     pub fn press(
         &mut self,

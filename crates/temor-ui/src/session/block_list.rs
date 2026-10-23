@@ -55,6 +55,7 @@ impl Session {
         Some(list_of(&read, |id| BlockFacts {
             folder: self.header_facts(id).map(|kept| kept.folder.clone()),
             folded: self.block_folded(id),
+            bookmarked: self.block_bookmarked(id),
         }))
     }
 

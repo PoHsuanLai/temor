@@ -17,6 +17,8 @@ pub struct BlockFacts {
     pub folder: Option<String>,
     /// The person folded its output away.
     pub folded: bool,
+    /// The person bookmarked it.
+    pub bookmarked: bool,
 }
 
 /// One block in the list.
@@ -31,6 +33,7 @@ pub struct ListBlock {
     pub output: Range<u32>,
     pub folded: bool,
     pub picked: bool,
+    pub bookmarked: bool,
 }
 
 impl ListBlock {
@@ -144,6 +147,7 @@ pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockFacts) -> Vec<Item> 
             output,
             folded: fact.folded,
             picked: block.picked,
+            bookmarked: fact.bookmarked,
         };
         items.push(match block.end {
             End::Running => {

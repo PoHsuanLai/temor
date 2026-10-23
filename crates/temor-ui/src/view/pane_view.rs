@@ -354,6 +354,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         let desk = desk.clone();
         move |icon: LiveIcon| desk.live_icon(pane, icon)
     };
+    let wheel_slot = Rc::clone(&slot);
     rsx! {
         div { class: "temor-pane",
             onpointerleave: pointer_gone(Rc::clone(&slot)),
@@ -384,7 +385,11 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     onpointerleave: on_leave,
                     oncontextmenu: on_context,
                     onwheel: move |e| {
-                        if listed {
+                        // A list scrolls itself; only a program that asked for the mouse hears
+                        // the wheel over its live rows (they capture it), and never with Shift,
+                        // which would scroll the terminal under the list.
+                        let program = wheel_slot.borrow().session.as_ref().is_some_and(|s| s.mouse_tracking());
+                        if listed && !(program && !e.modifiers().contains(Modifiers::SHIFT)) {
                             return;
                         }
                         (mouse.wheel)(e);

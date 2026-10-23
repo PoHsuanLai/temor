@@ -206,10 +206,17 @@ fn a_right_click_on_a_card_opens_its_menu_and_the_menu_acts_on_the_block() {
         "Copy Output: the right-clicked block's output"
     );
     assert!(items(&h).is_empty(), "the menu closed after the pick");
-    // Bookmarked, the item turns around.
+    // Bookmarked, the card shows its star and the item turns around.
+    assert!(
+        !h.html().contains("class=\"temor-blk-mark\""),
+        "a star before"
+    );
     right_click(&mut h, second);
     h.send(Input::click(items(&h)[4]));
     h.advance(Duration::from_millis(300));
+    wait_html(&mut h, "the star", |html| {
+        html.matches("class=\"temor-blk-mark\"").count() == 1
+    });
     right_click(&mut h, second);
     assert!(
         h.html().contains("Remove Bookmark"),

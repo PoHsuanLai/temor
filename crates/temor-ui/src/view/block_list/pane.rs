@@ -27,7 +27,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
 
-use super::composer::{ComposerActions, ComposerCard};
+use super::composer::{ComposerActions, ComposerCard, composer_height};
 use super::more::{More, more_menu};
 use super::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
@@ -39,9 +39,6 @@ use crate::plugins::lens::LensPicture;
 use crate::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
 use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
-
-/// The composer card's height, in logical pixels.
-const COMPOSER_HEIGHT: f32 = 44.0;
 
 /// What the composer card shows and does, while the shell waits at its prompt.
 #[derive(Debug, Clone, PartialEq)]
@@ -267,7 +264,7 @@ pub fn BlockPane(
                 *rows = 0..0;
             }
             let sizes = Sizes {
-                composer: COMPOSER_HEIGHT,
+                composer: composer_height(&composer.text),
                 ..sizes
             };
             (items, sizes)
@@ -364,7 +361,14 @@ pub fn BlockPane(
     });
     let tools_on = held().or(hovered()).or(picked);
     let cards = card_places(&placed);
+    // A program that asked for the mouse hears the wheel over its live rows, not the list.
+    let tracking = slot
+        .borrow()
+        .session
+        .as_ref()
+        .is_some_and(Session::mouse_tracking);
     let head = Head {
+        tracking,
         tools_on,
         columns,
         actions,
@@ -397,6 +401,8 @@ pub fn BlockPane(
 /// What every card head is drawn with.
 #[derive(Clone, PartialEq)]
 struct Head {
+    /// The running program asked for the mouse: its live rows take the wheel.
+    tracking: bool,
     tools_on: Option<BlockId>,
     columns: usize,
     actions: CardActions,
@@ -454,7 +460,10 @@ fn segment(
             }
         }
         Seg::Rows {
-            standing, picked, ..
+            standing,
+            picked,
+            live,
+            ..
         } => {
             let ground = css(ground_of(palette, *standing, *picked));
             rsx! {
@@ -462,6 +471,8 @@ fn segment(
                     key: "{key}",
                     class: "temor-bseg temor-blk-rows",
                     style: "{place}; background:{ground}",
+                    // The pane hands this wheel to the program as mouse reports.
+                    "data-wheel": (*live && head.tracking).then_some("capture"),
                     onpointermove: on_move,
                     if let Some(texture) = handle {
                         TextureLayer { texture: Some(texture), fit: TextureFit::Actual, sampling: Sampling::Nearest, source }
@@ -624,6 +635,11 @@ fn CardHead(
                     label: fold_label,
                     tip: "Fold this command's output away, or bring it back",
                     onclick: move |()| actions.fold.call(id),
+                }
+            }
+            if block.bookmarked {
+                span { class: "temor-blk-mark", title: "Bookmarked",
+                    IconView { source: IconSource::Glyph(Icon::Star), size: IconSize::Small }
                 }
             }
             span { class: "temor-blk-title", "{title}" }

@@ -25,7 +25,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-head { display: flex; align-items: center; gap: var(--s-8); padding: 0 var(--s-8) 0 var(--s-4); border-radius: var(--r-item) var(--r-item) 0 0; }\
 .temor-blk-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-reading); color: var(--term-fg); }\
 .temor-blk-head[data-state=failed] .temor-blk-title { color: var(--term-ansi-1); }.temor-blk-head[data-state=running] .temor-blk-title { color: var(--term-ansi-3); }\
-.temor-blk-fold { flex: none; display: flex; }.temor-blk-fold[data-none=true] { visibility: hidden; }\
+.temor-blk-mark { flex: none; display: flex; color: var(--term-ansi-11); }.temor-blk-fold { flex: none; display: flex; }.temor-blk-fold[data-none=true] { visibility: hidden; }\
 .temor-blk-tools { flex: none; display: flex; align-items: center; gap: var(--s-4); }.temor-blk-more { display: flex; }\
 .temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
 .temor-blk-sticky { position: absolute; top: 0; left: 0; right: 0; }.temor-blk-sticky .temor-blk-head { border-bottom: var(--hair) solid var(--line-soft); }\
