@@ -29,24 +29,27 @@ pub fn attach_pane(
     };
     let palette = ticket.palette;
     let opened = match &ticket.wanted {
-        Wanted::Fresh { cwd, env } => open(
+        Wanted::Fresh { cwd, env, shell } => open(
             client,
-            (cwd.as_str(), env.as_slice()),
+            (cwd.as_str(), env.as_slice(), shell.as_deref()),
             (size, cell),
             palette,
         ),
         Wanted::Again(session) => Ok(*session),
-        Wanted::Resume { session, cwd, env } => {
-            sessions(client).and_then(|held| match adoption(*session, &held) {
-                Adoption::Adopt => Ok(*session),
-                Adoption::OpenNew => open(
-                    client,
-                    (cwd.as_str(), env.as_slice()),
-                    (size, cell),
-                    palette,
-                ),
-            })
-        }
+        Wanted::Resume {
+            session,
+            cwd,
+            env,
+            shell,
+        } => sessions(client).and_then(|held| match adoption(*session, &held) {
+            Adoption::Adopt => Ok(*session),
+            Adoption::OpenNew => open(
+                client,
+                (cwd.as_str(), env.as_slice(), shell.as_deref()),
+                (size, cell),
+                palette,
+            ),
+        }),
     };
     let attached = opened.and_then(|session| {
         // The screen the host sends back is at the size the window has now.

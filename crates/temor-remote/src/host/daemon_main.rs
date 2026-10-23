@@ -10,7 +10,7 @@ use temor_wire::units::UnixMillis;
 
 use super::command::LEADER;
 use super::env::HostEnv;
-use super::socket::{SocketSpot, socket_spot};
+use super::socket::{SocketSpot, Whose, socket_spot};
 use crate::clock::SystemClock;
 use crate::daemon::{Daemon, DaemonConfig};
 use crate::error::Error;
@@ -79,12 +79,18 @@ fn sweep_in_background(daemon: &Arc<Daemon>) {
 
 /// Runs the daemon until the process is killed. Returns at once, with `Ok`, if a daemon of this
 /// version is already listening.
-pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
+pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
     let SocketSpot {
         helper,
         dir,
         socket,
-    } = socket_spot(env)?;
+    } = socket_spot(
+        env,
+        match local {
+            true => Whose::Local,
+            false => Whose::Helper,
+        },
+    )?;
     if socket.exists() {
         if connect(&socket).is_ok() {
             return Ok(());

@@ -10,7 +10,7 @@
 use std::process::ExitCode;
 
 use temor_remote::host::{
-    DAEMON, HostEnv, LEADER, STDIO, VERSION, hash_executable, run_daemon, run_stdio,
+    DAEMON, HostEnv, LEADER, LOCAL, STDIO, VERSION, hash_executable, run_daemon, run_stdio,
 };
 
 fn main() -> ExitCode {
@@ -19,7 +19,10 @@ fn main() -> ExitCode {
     match command.as_deref().and_then(|command| command.to_str()) {
         None => finish(host_env().and_then(|env| run_stdio(&env))),
         Some(STDIO) => finish(host_env().and_then(|env| run_stdio(&env))),
-        Some(DAEMON) => finish(host_env().and_then(|env| run_daemon(&env))),
+        Some(DAEMON) => {
+            let local = args.next().is_some_and(|word| word == LOCAL);
+            finish(host_env().and_then(|env| run_daemon(&env, local)))
+        }
         Some(VERSION) => finish(host_env().and_then(|env| {
             let helper = hash_executable(&env.exe)?;
             println!("{}", helper.0.to_hex());

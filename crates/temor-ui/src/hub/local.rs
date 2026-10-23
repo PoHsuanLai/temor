@@ -6,6 +6,7 @@
 use std::sync::{Arc, Mutex};
 
 use temor_core::workspace::Spawn;
+use temor_pane::settings::ShellChoice;
 use temor_remote::host::HostEnv;
 use temor_ssh::HostAlias;
 use temor_wire::ids::SessionId;
@@ -90,6 +91,10 @@ impl Hub {
             spawn: spawn.clone(),
             cwd,
             env,
+            shell: match &self.launch.settings.shell {
+                ShellChoice::Login => None,
+                ShellChoice::Program(program) => Some(program.clone()),
+            },
             resume,
         };
         let target = Arc::new(Mutex::new(Target::default()));

@@ -18,10 +18,11 @@
 //! trait and per-OS pseudo-terminal modules.
 //! - **Linux:** everything, including the foreground process's name and working directory
 //!   from `/proc`.
-//! - **macOS, Windows and other OSes:** the crate compiles, [`Pty::spawn`] returns
-//!   [`PtyError::Unsupported`] and [`UserId::current`] is `None`. The portable core cannot use
-//!   a pseudo-terminal there yet (ConPTY on Windows is future work). The environment, shell
-//!   resolution and integration planning still work everywhere.
+//! - **macOS:** sessions start through the trampoline launcher; the foreground process's name
+//!   and working directory are not read (there is no `/proc`).
+//! - **Windows and other OSes:** the crate compiles, [`Pty::spawn`] returns
+//!   [`PtyError::Unsupported`] and [`UserId::current`] is `None` (ConPTY on Windows is future
+//!   work). The environment, shell resolution and integration planning still work everywhere.
 //!
 //! # Starting the session leader
 //!

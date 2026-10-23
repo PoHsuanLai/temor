@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use super::command::DAEMON;
 use super::env::HostEnv;
-use super::socket::{SocketSpot, socket_spot};
+use super::socket::{SocketSpot, Whose, socket_spot};
 use crate::error::Error;
 use crate::platform::{Half, connect, spawn_detached};
 
@@ -16,7 +16,7 @@ const START_WAIT: Duration = Duration::from_millis(100);
 
 /// Proxies stdin and stdout to the daemon until either side ends.
 pub fn run_stdio(env: &HostEnv) -> Result<(), Error> {
-    let SocketSpot { socket, .. } = socket_spot(env)?;
+    let SocketSpot { socket, .. } = socket_spot(env, Whose::Helper)?;
 
     let connection = match connect(&socket) {
         Ok(connection) => connection,

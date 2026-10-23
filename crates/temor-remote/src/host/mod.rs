@@ -11,7 +11,7 @@ mod paths;
 mod socket;
 mod stdio_main;
 
-pub use command::{DAEMON, LEADER, STDIO, VERSION};
+pub use command::{DAEMON, LEADER, LOCAL, STDIO, VERSION};
 pub use daemon_main::run_daemon;
 pub use env::HostEnv;
 pub use identity::hash_executable;

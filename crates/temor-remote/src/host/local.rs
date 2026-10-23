@@ -5,9 +5,9 @@
 use std::io::{self, Write};
 use std::sync::mpsc::Receiver;
 
-use super::command::DAEMON;
+use super::command::{DAEMON, LOCAL};
 use super::env::HostEnv;
-use super::socket::{SocketSpot, socket_spot};
+use super::socket::{SocketSpot, Whose, socket_spot};
 use super::stdio_main::wait_for;
 use crate::client::{Client, ClientEvent};
 use crate::error::Error;
@@ -38,7 +38,7 @@ impl Drop for HangUpOnDrop {
 /// A client of the local daemon (started with `env`'s binary when none listens), and what the
 /// daemon tells it unasked.
 pub fn dial_local(env: &HostEnv) -> Result<(Client, Receiver<ClientEvent>), Error> {
-    let SocketSpot { helper, socket, .. } = socket_spot(env)?;
+    let SocketSpot { helper, socket, .. } = socket_spot(env, Whose::Local)?;
     let half = match connect(&socket) {
         Ok(half) => half,
         Err(_) => {
@@ -53,7 +53,7 @@ pub fn dial_local(env: &HostEnv) -> Result<(Client, Receiver<ClientEvent>), Erro
                 .into_iter()
                 .filter_map(|(name, value)| Some((name, value?)))
                 .collect();
-            spawn_detached(&env.exe, &[DAEMON], &set)?;
+            spawn_detached(&env.exe, &[DAEMON, LOCAL], &set)?;
             wait_for(&socket)?
         }
     };

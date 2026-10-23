@@ -155,6 +155,7 @@ fn a_pane_on_the_helper_shows_its_output_and_gets_its_screen_back_after_the_link
             wanted: Wanted::Fresh {
                 cwd: home.display().to_string(),
                 env,
+                shell: None,
             },
         },
     );

@@ -70,6 +70,8 @@ pub(super) struct LocalStart {
     pub spawn: temor_core::workspace::Spawn,
     pub cwd: String,
     pub env: Vec<(String, String)>,
+    /// The program the person chose in settings; none is their login shell.
+    pub shell: Option<String>,
     /// The session the pane had when temor last quit.
     pub resume: Option<SessionId>,
 }

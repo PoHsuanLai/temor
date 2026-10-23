@@ -99,6 +99,8 @@ pub enum Wanted {
     Fresh {
         cwd: String,
         env: Vec<(String, String)>,
+        /// The program to run; `None` is the host's login shell.
+        shell: Option<String>,
     },
     /// The session the pane had before the link dropped.
     Again(SessionId),
@@ -108,6 +110,7 @@ pub enum Wanted {
         session: SessionId,
         cwd: String,
         env: Vec<(String, String)>,
+        shell: Option<String>,
     },
 }
 

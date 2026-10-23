@@ -235,8 +235,8 @@ impl Hub {
             let Some(remote) = self.remote.panes.get(&pane) else {
                 continue;
             };
-            let (cwd, env) = match self.remote.local.get(&pane) {
-                Some(own) => (own.cwd.clone(), own.env.clone()),
+            let (cwd, env, shell) = match self.remote.local.get(&pane) {
+                Some(own) => (own.cwd.clone(), own.env.clone(), own.shell.clone()),
                 None => (
                     self.ssh
                         .panes
@@ -246,6 +246,7 @@ impl Hub {
                         .or_else(|| home.clone())
                         .unwrap_or_else(|| "/".to_owned()),
                     env.clone(),
+                    None,
                 ),
             };
             // A session the pane had when temor last quit is asked for before a new one.
@@ -254,8 +255,9 @@ impl Hub {
                     session: *session,
                     cwd,
                     env,
+                    shell,
                 },
-                None => Wanted::Fresh { cwd, env },
+                None => Wanted::Fresh { cwd, env, shell },
             };
             let ticket = crate::edge::remote_event::Ticket {
                 pane,

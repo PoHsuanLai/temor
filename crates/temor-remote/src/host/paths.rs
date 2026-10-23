@@ -22,10 +22,21 @@ pub fn socket_path(dir: &Path, helper: &HelperVersion) -> PathBuf {
     dir.join(format!("{}.sock", helper.0.short()))
 }
 
+/// The socket of the person's own daemon: named by the protocol it speaks, not by the build.
+pub fn local_socket_path(dir: &Path) -> PathBuf {
+    dir.join(format!("local-v{}.sock", crate::PROTOCOL.0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use temor_wire::digest::ContentHash;
+
+    #[test]
+    fn the_local_socket_is_named_by_the_protocol_alone() {
+        let at = local_socket_path(Path::new("/run/x"));
+        assert!(at.to_string_lossy().starts_with("/run/x/local-v"));
+    }
 
     #[test]
     fn the_runtime_dir_wins_then_the_cache_then_nothing() {

@@ -34,12 +34,12 @@ pub fn grid_size(cols: u16, rows: u16) -> Size {
 /// environment, at `size` cells of `cell` pixels, answering colour questions with `palette`.
 pub fn open(
     client: &Client,
-    (cwd, env): (&str, &[(String, String)]),
+    (cwd, env, shell): (&str, &[(String, String)], Option<&str>),
     (size, cell): (Size, CellPx),
     palette: Palette,
 ) -> Result<SessionId, Error> {
     client.open_session(OpenSession {
-        shell: None,
+        shell: shell.map(|shell| RemotePath(shell.to_owned())),
         cwd: RemotePath(cwd.to_owned()),
         env: env
             .iter()

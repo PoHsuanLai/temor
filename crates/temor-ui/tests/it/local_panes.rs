@@ -8,7 +8,7 @@ use temor_ui::edge::remote_conn::dial_local;
 use temor_ui::view::probe::Probe;
 
 use super::drive::{focus_pane, type_line, wait_until};
-use super::support::{bash_path, scratch, window_tools_present};
+use super::support::{scratch, window_tools_present};
 use super::window::harness_with;
 
 /// The helper the build made beside the test programs, if it has been built.
@@ -43,7 +43,6 @@ fn a_local_pane_keeps_its_shell_when_the_window_quits_and_the_next_window_finds_
             ("TEMOR_REMOTE_HELPER", helper.clone().into_os_string()),
             ("TEMOR_REMOTE_LINGER", "2".into()),
             ("XDG_RUNTIME_DIR", run.path().as_os_str().to_owned()),
-            ("SHELL", bash_path().into_os_string()),
         ] {
             ambient.env.set(key, value);
         }
