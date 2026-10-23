@@ -16,7 +16,6 @@ mod survey;
 mod tests;
 mod tools_height;
 
-pub use bands::{HeaderLine, PromptHeader};
 pub use notify::desktop_note;
 pub use query::Gutter;
 pub use tools_height::ToolsHeight;

@@ -172,7 +172,7 @@ pub fn chips_for(
     let gutter = session.gutter_geometry()?;
     let (inset, cell_h) = (gutter.side, gutter.cell_h);
     // The prompt being typed at, when it is in view and not on the alternate screen.
-    let header = session.live_prompt_header()?;
+    let header = session.frame()?.live_header()?;
     let top = gutter.row_top(header.row);
     let view = |chips: Vec<ChipText>, place| {
         (!chips.is_empty()).then_some(ChipsView {

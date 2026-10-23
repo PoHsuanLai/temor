@@ -47,11 +47,13 @@ pub struct BlockRead {
 }
 
 /// The prompt being typed at.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LiveRead {
     pub prompt: Spot,
     pub lead: Lead,
     pub input: Option<Spot>,
+    /// What the shell wrote on the prompt's header line, without trailing blanks.
+    pub header_text: String,
 }
 
 /// Everything the views need from the terminal to place the blocks.

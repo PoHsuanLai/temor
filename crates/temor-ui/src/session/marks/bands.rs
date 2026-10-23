@@ -6,7 +6,7 @@
 //! half a line below its last row, as Warp's blocks do. `bands_of` is pure;
 //! `Session::card_bands` gathers its input from the terminal.
 
-use temor_core::block::{BlockState, Outcome};
+use temor_core::block::Outcome;
 use temor_core::session::frame::{CardBlock, Lead, Mark, Pick, Stage};
 use temor_pane::Term;
 use temor_pane::text::RowText;
@@ -15,23 +15,6 @@ use temor_vt::{AnchorId, Col, PointSpace, Row};
 
 use super::super::Session;
 use crate::view::card_colours::CardColours;
-
-/// Whether a prompt's header is a line of its own (temor's prompt) or the line typed on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeaderLine {
-    Own,
-    Shared,
-}
-
-/// The header line of the prompt being typed at.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PromptHeader {
-    /// Its viewport row.
-    pub row: u32,
-    pub line: HeaderLine,
-    /// What the shell wrote on it, without trailing blanks.
-    pub text: String,
-}
 
 /// Whether a prompt's first row is a blank line: nothing but spaces, and a row below it that the
 /// prompt goes on to (its header).
@@ -144,39 +127,6 @@ pub(super) fn bands_of(
 }
 
 impl Session {
-    /// The header line of the prompt being typed at: with temor's prompt, the line above the
-    /// empty typing line; with a one-line prompt, the prompt's own line. None while a command
-    /// runs, on the alternate screen, or when it is out of view.
-    pub fn live_prompt_header(&self) -> Option<PromptHeader> {
-        let typing = matches!(
-            *self.blocks.machine(),
-            BlockState::Prompting { .. } | BlockState::Typing { .. }
-        );
-        let prompt = self.blocks.prompt().filter(|_| typing)?;
-        let input = self.blocks.input();
-        self.pane.with_term(|term| {
-            if term.on_alternate_screen() {
-                return None;
-            }
-            // The header in one point space: its row, and whether it is a line of its own.
-            let header_in = |space| {
-                let start = term.anchor_point(prompt, space)?.row;
-                let typed = input.and_then(|id| term.anchor_point(id, space));
-                Some(match typed {
-                    Some(at) if at.row > start && at.col.0 <= 1 => (at.row - 1, HeaderLine::Own),
-                    Some(at) => (at.row, HeaderLine::Shared),
-                    None => (start, HeaderLine::Shared),
-                })
-            };
-            let (row, line) = header_in(PointSpace::Viewport)?;
-            let text = header_in(PointSpace::Active)
-                .and_then(|(at, _)| term.row_text(at).ok())
-                .map(|text| text.text().trim_end().to_owned())
-                .unwrap_or_default();
-            Some(PromptHeader { row, line, text })
-        })
-    }
-
     /// The bands to paint over the grid. Empty on the alternate screen.
     pub fn card_bands(&self, colours: &CardColours) -> Vec<RowBand> {
         let Some(frame) = self.frame() else {

@@ -89,10 +89,22 @@ impl Session {
                 })
                 .collect();
             let live = self.blocks.prompt().filter(|_| typing).and_then(|prompt| {
+                let prompt = spot(term, Some(prompt))?;
+                let input = spot(term, self.blocks.input());
+                // The header's line, as `Frame::live_header` finds it.
+                let header_row = match input {
+                    Some(at) if at.row > prompt.row && at.col <= 1 => at.row - 1,
+                    Some(at) => at.row,
+                    None => prompt.row,
+                };
                 Some(LiveRead {
-                    prompt: spot(term, Some(prompt))?,
-                    lead: lead_at(term, prompt, self.blocks.input()),
-                    input: spot(term, self.blocks.input()),
+                    prompt,
+                    lead: lead_at(term, self.blocks.prompt()?, self.blocks.input()),
+                    input,
+                    header_text: term
+                        .row_text(header_row)
+                        .map(|text| text.text().trim_end().to_owned())
+                        .unwrap_or_default(),
                 })
             });
             Some(Read {

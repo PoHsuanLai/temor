@@ -10,4 +10,4 @@ mod view;
 pub use card::{CardBlock, Lead, Mark, Pick, Stage};
 pub use place::{HEADER_MIN_ROWS, Span, ViewRows, command_rows, heads_viewport, tools_row};
 pub use read::{BlockRead, End, LiveRead, Read, Spot};
-pub use view::{BlockMark, Frame, StickyHeader, ToolsSpot};
+pub use view::{BlockMark, Frame, HeaderLine, PromptHeader, StickyHeader, ToolsSpot};

@@ -45,6 +45,23 @@ pub struct BlockMark {
     pub took_ms: Option<u64>,
 }
 
+/// Whether a prompt's header is a line of its own (temor's prompt) or the line typed on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderLine {
+    Own,
+    Shared,
+}
+
+/// The header line of the prompt being typed at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PromptHeader {
+    /// Its viewport row.
+    pub row: u32,
+    pub line: HeaderLine,
+    /// What the shell wrote on it, without trailing blanks.
+    pub text: String,
+}
+
 /// The blocks of one pane at one moment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
@@ -150,6 +167,27 @@ impl Frame {
             .filter(|read| Self::reach_of(read).is_some())
             .map(|read| read.id)
             .collect()
+    }
+
+    /// The header line of the prompt being typed at: with temor's prompt, the line above the
+    /// empty typing line; with a one-line prompt, the prompt's own line. `None` while a command
+    /// runs or when it is out of view.
+    pub fn live_header(&self) -> Option<PromptHeader> {
+        let live = self.live.as_ref()?;
+        let start = live.prompt.row;
+        let (row, line) = match live.input {
+            Some(at) if at.row > start && at.col <= 1 => (at.row - 1, HeaderLine::Own),
+            Some(at) => (at.row, HeaderLine::Shared),
+            None => (start, HeaderLine::Shared),
+        };
+        let row = u32::try_from(self.rel(row))
+            .ok()
+            .filter(|&row| row < self.len)?;
+        Some(PromptHeader {
+            row,
+            line,
+            text: live.header_text.clone(),
+        })
     }
 
     /// The block under viewport row `row`.
@@ -283,7 +321,7 @@ impl Frame {
                 })
             })
             .collect();
-        if let Some(live) = self.live {
+        if let Some(live) = &self.live {
             cards.push(CardBlock {
                 first: i64::from(live.prompt.row) - top,
                 lead: live.lead,

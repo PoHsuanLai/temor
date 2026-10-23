@@ -1,6 +1,6 @@
 //! The frame's answers from tables of plain reads: no terminal, no session.
 
-use super::{BlockRead, End, Frame, LiveRead, Read, Spot};
+use super::{BlockRead, End, Frame, HeaderLine, LiveRead, PromptHeader, Read, Spot};
 use crate::block::Outcome;
 use crate::vocab::ids::{BlockId, ExitCode};
 
@@ -182,6 +182,7 @@ fn the_cards_follow_the_blocks_picks_and_the_live_prompt_in_row_order() {
         prompt: at(9, 0),
         lead: Lead::Blank,
         input: Some(at(11, 2)),
+        header_text: String::new(),
     });
     let cards = Frame::of(r).cards(15);
     assert_eq!(cards.len(), 2);
@@ -204,5 +205,63 @@ fn the_cards_follow_the_blocks_picks_and_the_live_prompt_in_row_order() {
         live.command,
         Some((9, 15, 2)),
         "the live command runs to `end`"
+    );
+}
+
+#[test]
+fn the_live_header_is_the_line_above_an_empty_typing_line_or_the_prompts_own() {
+    let live = |prompt, input| LiveRead {
+        prompt,
+        lead: Lead::Header,
+        input,
+        header_text: "~/temor".to_owned(),
+    };
+    let header = |row, line| {
+        Some(PromptHeader {
+            row,
+            line,
+            text: "~/temor".to_owned(),
+        })
+    };
+    // (what, the prompt mark, the input mark, viewport top, the header)
+    let cases = [
+        (
+            "temor's two-line prompt",
+            at(10, 0),
+            Some(at(11, 0)),
+            8,
+            header(2, HeaderLine::Own),
+        ),
+        (
+            "a one-line prompt",
+            at(10, 0),
+            Some(at(10, 9)),
+            8,
+            header(2, HeaderLine::Shared),
+        ),
+        (
+            "no input mark yet",
+            at(10, 0),
+            None,
+            8,
+            header(2, HeaderLine::Shared),
+        ),
+        (
+            "scrolled out above the view",
+            at(10, 0),
+            Some(at(11, 0)),
+            12,
+            None,
+        ),
+    ];
+    for (what, prompt, input, top, want) in cases {
+        let mut r = read(top, 20, vec![]);
+        r.live = Some(live(prompt, input));
+        assert_eq!(Frame::of(r).live_header(), want, "{what}");
+    }
+    assert_eq!(
+        Frame::of(read(0, 20, vec![])).live_header(),
+        None,
+        "no prompt typed at"
     );
 }
