@@ -10,4 +10,6 @@ pub mod frame;
 mod marks;
 
 pub use annotations::{AnnotateIn, AnnotateOut, Annotations, annotate_step};
-pub use marks::{Anchor, BlockAnchors, MarkIn, MarkKind, MarkLog, MarkOut, mark_step};
+pub use marks::{
+    Anchor, BlockAnchors, HeaderFacts, MarkIn, MarkKind, MarkLog, MarkOut, PluginFact, mark_step,
+};

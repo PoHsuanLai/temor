@@ -25,7 +25,6 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
-pub use blocks::HeaderFacts;
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
@@ -39,5 +38,6 @@ pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
+pub use temor_core::session::HeaderFacts;
 pub use temor_core::session::frame::{BlockMark, Frame};
 pub use viewer::ViewAsk;

@@ -5,16 +5,7 @@
 
 use temor_plugins::message::Fact;
 
-/// One fact a plugin gave about a pane's folder.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PluginFact {
-    /// What the person calls the plugin.
-    pub plugin: String,
-    /// The label (`cluster`).
-    pub label: String,
-    /// The value (`prod`).
-    pub value: String,
-}
+pub use temor_core::session::PluginFact;
 
 /// `facts` as one plugin's `PluginFact`s.
 pub fn from_plugin(plugin: &str, facts: Vec<Fact>) -> Vec<PluginFact> {

@@ -2,7 +2,7 @@
 
 use ds_core::time::stamp::Stamp;
 
-use super::{Anchor, BlockAnchors, MarkIn, MarkKind, MarkLog, MarkOut, mark_step};
+use super::{Anchor, BlockAnchors, HeaderFacts, MarkIn, MarkKind, MarkLog, MarkOut, mark_step};
 use crate::block::{BlockState, Outcome};
 use crate::test_support::run_steps;
 use crate::vocab::ids::{BlockId, ExitCode, GridRow};
@@ -314,4 +314,43 @@ fn replaying_the_same_marks_in_one_go_or_two_gives_the_same_log() {
     outs.extend(more);
     assert_eq!(whole, split);
     assert_eq!(whole_outs, outs);
+}
+
+fn chips(folder: &str) -> MarkIn {
+    MarkIn::Chips(HeaderFacts {
+        folder: folder.to_owned(),
+        facts: Default::default(),
+        plugin: Vec::new(),
+    })
+}
+
+#[test]
+fn the_chips_of_a_prompt_go_to_the_block_it_becomes_and_leave_with_it() {
+    // Nothing is kept while no prompt is typed at.
+    let (log, _) = mark_step(MarkLog::default(), chips("~"));
+    assert_eq!(log.header_facts(BlockId(1)), None);
+    // At a prompt they are kept for the next block, the latest saying wins, and the block that
+    // follows keeps what its prompt said.
+    let (log, _) = run(MarkLog::default(), vec![prompt(1, 1, 0)]);
+    let (log, _) = run_steps(log, [chips("~"), chips("~/src")], mark_step);
+    let (log, _) = run(
+        log,
+        vec![input(2, 2, 1), output(3, 3, 2, "ls"), end(4, 4, 5, Some(0))],
+    );
+    assert_eq!(
+        log.header_facts(BlockId(1))
+            .map(|kept| kept.folder.as_str()),
+        Some("~/src")
+    );
+    // A running command is not at a prompt: its chips are not kept for the next block.
+    let (log, _) = mark_step(log, chips("elsewhere"));
+    assert_eq!(log.header_facts(BlockId(2)).map(|k| k.folder.clone()), None);
+    // The block leaving the log takes its chips along.
+    let (log, _) = mark_step(
+        log,
+        MarkIn::Gone {
+            ids: vec![BlockId(1)],
+        },
+    );
+    assert_eq!(log.header_facts(BlockId(1)), None);
 }

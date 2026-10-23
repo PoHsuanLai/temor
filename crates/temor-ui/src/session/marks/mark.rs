@@ -111,7 +111,7 @@ impl Session {
     }
 
     /// Steps the mark log on one input and carries out what it says.
-    fn mark(&mut self, input: MarkIn) {
+    pub(super) fn mark(&mut self, input: MarkIn) {
         let log = std::mem::take(&mut self.blocks.marks);
         let (log, outs) = mark_step(log, input);
         self.blocks.marks = log;
@@ -119,11 +119,6 @@ impl Session {
             match out {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
                 MarkOut::Finished(block) => self.notify_finished(&block),
-                MarkOut::Dropped(ids) => {
-                    for id in ids {
-                        self.blocks.header_facts.remove(&id);
-                    }
-                }
                 _ => {}
             }
         }

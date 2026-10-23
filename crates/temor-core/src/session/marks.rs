@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use ds_core::time::stamp::Stamp;
 
 use crate::block::{Author, Block, BlockIn, BlockOut, BlockState, BlockStore, block_step};
+use crate::facts::Facts;
 use crate::vocab::ids::{BlockId, ExitCode, GridRow};
 use crate::vocab::text::CommandText;
 
@@ -37,6 +38,27 @@ impl BlockAnchors {
             .into_iter()
             .flatten()
     }
+}
+
+/// One fact a plugin gave about a pane's folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PluginFact {
+    /// What the person calls the plugin.
+    pub plugin: String,
+    /// The label (`cluster`).
+    pub label: String,
+    /// The value (`prod`).
+    pub value: String,
+}
+
+/// The folder and facts the chips over a prompt's header line said, kept for its block.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeaderFacts {
+    /// The folder as its chip said it.
+    pub folder: String,
+    pub facts: Facts,
+    /// The facts plugins gave beside them.
+    pub plugin: Vec<PluginFact>,
 }
 
 /// What one mark says.
@@ -77,6 +99,8 @@ pub struct MarkLog {
     prompts: usize,
     /// How many commands have finished.
     finished: usize,
+    /// What the chips over each block's header line said when its prompt was typed at.
+    header_facts: BTreeMap<BlockId, HeaderFacts>,
 }
 
 impl Default for MarkLog {
@@ -93,6 +117,7 @@ impl Default for MarkLog {
             next_id: 1,
             prompts: 0,
             finished: 0,
+            header_facts: BTreeMap::new(),
         }
     }
 }
@@ -148,6 +173,11 @@ impl MarkLog {
         self.prompts
     }
 
+    /// What the chips over a block's header line said when its prompt was typed at.
+    pub fn header_facts(&self, id: BlockId) -> Option<&HeaderFacts> {
+        self.header_facts.get(&id)
+    }
+
     /// How many commands have finished.
     pub fn finished(&self) -> usize {
         self.finished
@@ -180,6 +210,9 @@ pub enum MarkIn {
     ShellGone { at: Stamp },
     /// The terminal was reset: a running command is no longer on screen.
     Reset { at: Stamp },
+    /// What the chips over the prompt being typed at say, for the block it becomes. Nothing
+    /// while no prompt is typed at.
+    Chips(HeaderFacts),
     /// The scrollback no longer holds these blocks: they are dropped.
     Gone { ids: Vec<BlockId> },
 }
@@ -227,6 +260,16 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
         MarkIn::Reset { at } => {
             log.run(BlockIn::Reset { at }, &mut outs);
         }
+        MarkIn::Chips(kept) => {
+            let typing = matches!(
+                log.machine,
+                BlockState::Prompting { .. } | BlockState::Typing { .. }
+            );
+            let id = log.next_id();
+            if typing && log.header_facts.get(&id) != Some(&kept) {
+                log.header_facts.insert(id, kept);
+            }
+        }
         MarkIn::Gone { ids } => {
             let gone = log.store.retain_live(|id| !ids.contains(&id));
             log.forget(gone, &mut outs);
@@ -245,6 +288,7 @@ impl MarkLog {
     /// Gives back the anchors of blocks that left the store, and says so.
     fn forget(&mut self, gone: Vec<BlockId>, outs: &mut Vec<MarkOut>) {
         for id in &gone {
+            self.header_facts.remove(id);
             if let Some(held) = self.anchors.remove(id) {
                 outs.extend(held.all().map(MarkOut::Release));
             }

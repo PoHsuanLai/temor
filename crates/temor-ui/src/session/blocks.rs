@@ -3,15 +3,10 @@
 //! and the chips each block's header carried. The rules are in `temor-core`; the session reads
 //! the terminal into the log's inputs and carries out what it says.
 
-use std::collections::BTreeMap;
-
 use temor_core::block::{BlockState, BlockStore};
-use temor_core::facts::Facts;
 use temor_core::session::{Anchor, MarkLog};
 use temor_core::vocab::ids::BlockId;
 use temor_vt::AnchorId;
-
-use crate::plugins::facts::PluginFact;
 
 /// The anchors of one block: where its prompt, its typed command, its output and its end are.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -36,18 +31,6 @@ pub(super) fn anchor_id(anchor: Anchor) -> AnchorId {
 #[derive(Debug, Default)]
 pub(super) struct BlockLog {
     pub(super) marks: MarkLog,
-    /// What the chips over each block's header line said when its prompt was typed at.
-    pub(super) header_facts: BTreeMap<BlockId, HeaderFacts>,
-}
-
-/// The folder and facts the chips over a prompt's header line said, kept for its block.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HeaderFacts {
-    /// The folder as its chip said it.
-    pub folder: String,
-    pub facts: Facts,
-    /// The facts plugins gave beside them.
-    pub plugin: Vec<PluginFact>,
 }
 
 impl BlockLog {
@@ -80,10 +63,5 @@ impl BlockLog {
     /// The anchor of where the typed command starts.
     pub(super) fn input(&self) -> Option<AnchorId> {
         self.marks.input().map(anchor_id)
-    }
-
-    /// The id the next command will get.
-    pub(super) fn next_id(&self) -> BlockId {
-        self.marks.next_id()
     }
 }
