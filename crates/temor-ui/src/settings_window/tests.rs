@@ -95,11 +95,11 @@ fn a_key_is_bound_reset_and_refused_by_the_keymap_in_force() {
     let bound = changed_text(
         "# mine\nbogus = 1\n",
         &keymap,
-        KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'n')),
+        KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'k')),
     )
     .expect("free chord");
     assert!(
-        bound.contains("temor.split-right = Primary+Alt+N"),
+        bound.contains("temor.split-right = Primary+Alt+K"),
         "{bound}"
     );
     assert!(bound.starts_with("# mine\nbogus = 1\n"), "{bound}");
@@ -131,18 +131,18 @@ fn keys_conf_is_written_and_read_back_as_the_keymap_the_panes_will_build() {
     assert_eq!(before.mine(Action::SplitRight), Mine::AsShipped);
 
     let ctrl_shift_alt = [Modifier::Ctrl, Modifier::Shift, Modifier::Alt];
-    let change = KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'n'));
+    let change = KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'k'));
     let after = change_keys(&ambient, platform, change).expect("bound");
     assert_eq!(after.mine(Action::SplitRight), Mine::Changed);
     assert_eq!(
         after.chord_of(Action::SplitRight),
-        Some(chord(&ctrl_shift_alt, 'n'))
+        Some(chord(&ctrl_shift_alt, 'k'))
     );
     let text = std::fs::read_to_string(ambient.keys_path()).expect("keys.conf");
     assert!(text.contains("temor.split-right"), "{text}");
 
     // A refusal changes nothing on disk: Split right holds the chord it was just given.
-    let held = KeyChange::Bind(Action::SplitDown, chord(&ctrl_shift_alt, 'n'));
+    let held = KeyChange::Bind(Action::SplitDown, chord(&ctrl_shift_alt, 'k'));
     let refused = change_keys(&ambient, platform, held).expect_err("held");
     assert!(refused.to_string().contains("Split right"), "{refused}");
     assert_eq!(
