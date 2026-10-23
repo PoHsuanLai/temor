@@ -66,6 +66,7 @@ fn action_ids_are_the_ones_a_keys_file_writes() {
         (Action::PinTab, "temor.pin-tab"),
         (Action::UnpinTab, "temor.unpin-tab"),
         (Action::ShowDownloads, "temor.show-downloads"),
+        (Action::DetachProgram, "temor.detach-program"),
         (Action::Settings, "settings"),
         (Action::SelectTab(1), "temor.tab-1"),
         (Action::SelectTab(9), "temor.tab-9"),

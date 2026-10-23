@@ -127,6 +127,7 @@ impl Session {
             | Action::PinTab
             | Action::UnpinTab
             | Action::ShowDownloads
+            | Action::DetachProgram
             | Action::Settings
             | Action::SettingsAt(_)
             | Action::ZoomIn

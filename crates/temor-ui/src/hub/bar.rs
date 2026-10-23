@@ -279,6 +279,15 @@ impl Desk {
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
             Action::ShowDownloads => self.shelf_toggle(),
+            Action::DetachProgram => {
+                let pane = self.hub.0.borrow_mut().detach_prepare();
+                if pane.is_some() {
+                    self.act(temor_core::workspace::WorkspaceIn::Split {
+                        towards: temor_core::split::Direction::Right,
+                    });
+                    self.hub.0.borrow_mut().detach_finish();
+                }
+            }
             Action::Settings => crate::settings_window::open(),
             Action::SettingsAt(pane) => crate::settings_window::open_at(pane),
             Action::ZoomIn => self.window.page_zoom(PageZoom::Bigger),

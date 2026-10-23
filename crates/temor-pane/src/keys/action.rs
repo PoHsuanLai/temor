@@ -89,6 +89,10 @@ pub enum Action {
     /// Open the list of downloaded files, or close it. No default chord: the command bar lists
     /// it, and the sidebar's head has its button.
     ShowDownloads,
+    /// Move the focused pane's running program to a pane of its own, and give this pane a new
+    /// shell with the same folder and variables. Only for a pane in the local daemon. No default
+    /// chord: the command bar lists it.
+    DetachProgram,
     /// Open the Settings window, or raise it (the standard "settings", ⌘,).
     Settings,
     /// Open the Settings window on this page. No chord: the command bar lists one row for each.
@@ -127,6 +131,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::PinTab, "pin-tab"),
     (Action::UnpinTab, "unpin-tab"),
     (Action::ShowDownloads, "show-downloads"),
+    (Action::DetachProgram, "detach-program"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -189,6 +194,7 @@ impl Action {
             Self::PinTab => "Pin tab",
             Self::UnpinTab => "Unpin tab",
             Self::ShowDownloads => "Downloads",
+            Self::DetachProgram => "Detach running program",
             Self::Settings => "Settings",
             Self::SettingsAt(pane) => pane.row_label(),
             Self::SelectTab(_) => "Select tab",

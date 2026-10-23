@@ -5,6 +5,8 @@
 
 use std::sync::{Arc, Mutex};
 
+use temor_core::session::Checkpoint;
+use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::Spawn;
 use temor_pane::settings::ShellChoice;
 use temor_remote::host::HostEnv;
@@ -48,10 +50,14 @@ impl Hub {
         })
     }
 
-    /// Makes `spawn`'s pane a session in the local daemon: an empty pane now, its screen when the
-    /// daemon has answered. Without a helper beside temor the pane is an ordinary one.
-    pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<SessionId>) {
-        let kept = self.carried.remove(&spawn.pane);
+    /// How `spawn`'s pane starts in the daemon: the Space's folder and variables, with what the
+    /// person had set in the shell it replaces (`kept`) over them.
+    fn local_start(
+        &mut self,
+        spawn: &Spawn,
+        kept: Option<Checkpoint>,
+        resume: Option<SessionId>,
+    ) -> LocalStart {
         let mut start = self.space_start();
         if let Some(kept) = &kept {
             self.carry_env(&mut start.env, kept);
@@ -67,7 +73,7 @@ impl Hub {
                     .ambient
                     .env
                     .get("HOME")
-                    .map(|h| h.to_string_lossy().into_owned())
+                    .map(|home| home.to_string_lossy().into_owned())
             })
             .unwrap_or_else(|| "/".to_owned());
         let mut env: Vec<(String, String)> = self
@@ -87,7 +93,7 @@ impl Hub {
             .collect();
         env.push(("TERM".to_owned(), "xterm-256color".to_owned()));
         env.push(("COLORTERM".to_owned(), "truecolor".to_owned()));
-        let own = LocalStart {
+        LocalStart {
             spawn: spawn.clone(),
             cwd,
             env,
@@ -96,7 +102,16 @@ impl Hub {
                 ShellChoice::Program(program) => Some(program.clone()),
             },
             resume,
-        };
+        }
+    }
+
+    /// Makes `spawn`'s pane a session in the local daemon: an empty pane now, its screen when the
+    /// daemon has answered. Without a helper beside temor the pane is an ordinary one.
+    pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<SessionId>) {
+        let kept = self.carried.remove(&spawn.pane);
+        // A pane made while a program is being detached takes that program's session.
+        let resume = resume.or_else(|| self.remote.detaching.map(|(_, session)| session));
+        let own = self.local_start(spawn, kept, resume);
         let target = Arc::new(Mutex::new(Target::default()));
         let opened = RemoteLink::start(Arc::clone(&target))
             .map_err(|e| e.to_string())
@@ -203,5 +218,57 @@ impl Hub {
     /// Starts the daemon's helper for the dial.
     pub(super) fn local_dial_env(&self) -> Option<HostEnv> {
         self.local_env()
+    }
+}
+
+impl Hub {
+    /// The focused pane, when it is a daemon pane with a program running: the pane and its
+    /// session are noted for [`Hub::detach_finish`], and the caller splits the pane.
+    pub(super) fn detach_prepare(&mut self) -> Option<PaneId> {
+        let pane = self.keyboard_pane()?;
+        self.remote.local.contains_key(&pane).then_some(())?;
+        let session = self.remote.panes.get(&pane)?.session?;
+        self.live(pane, |session| session.running_command())??;
+        self.remote.detaching = Some((pane, session));
+        Some(pane)
+    }
+
+    /// The split happened: the new pane took the program's session, and the old pane gets a new
+    /// shell with the folder and variables of the one it had.
+    pub(super) fn detach_finish(&mut self) {
+        let Some((from, session)) = self.remote.detaching.take() else {
+            return;
+        };
+        let taken = self
+            .remote
+            .local
+            .iter()
+            .any(|(pane, own)| *pane != from && own.resume == Some(session));
+        let Some(old) = self.remote.local.get(&from).map(|own| own.spawn.clone()) else {
+            return;
+        };
+        if !taken {
+            return;
+        }
+        let kept = self
+            .live(from, |session| session.checkpoint())
+            .unwrap_or_default();
+        let own = self.local_start(&old, Some(kept), None);
+        self.remote.local.insert(from, own);
+        self.remote.saved.remove(&from);
+        if let Some(pane) = self.remote.panes.get_mut(&from) {
+            pane.session = None;
+            pane.shown = Shown::Opening;
+            let mut target = crate::edge::remote_link::lock(&pane.target);
+            target.conn = None;
+            target.session = None;
+        }
+        self.remote
+            .lines
+            .entry(local_alias())
+            .or_default()
+            .waiting
+            .push(from);
+        self.local_advance();
     }
 }
