@@ -27,6 +27,8 @@ use crate::sync::lock;
 
 /// How long a program may take to leave after its terminal hangs up, and how often that is polled.
 const GRACE: Duration = Duration::from_millis(500);
+/// How long a killed program is polled (its output drained) before the wait blocks.
+const KILLED: Duration = Duration::from_secs(2);
 const POLL: Duration = Duration::from_millis(20);
 
 /// A session. `Send` and `Sync`: the pump thread and the connections share it.
@@ -44,7 +46,8 @@ pub(super) struct Session {
 struct Shared {
     screen: Terminal,
     size: Size,
-    subscriber: Option<Arc<Link>>,
+    /// Every client attached: each gets the output, so several windows can show one session.
+    subscribers: Vec<Arc<Link>>,
     detached_at: Option<Monotonic>,
     closing: Closing,
 }
@@ -97,7 +100,7 @@ impl Session {
             shared: Mutex::new(Shared {
                 screen,
                 size,
-                subscriber: None,
+                subscribers: Vec::new(),
                 detached_at: Some(config.clock.now()),
                 closing: Closing::Open,
             }),
@@ -109,17 +112,19 @@ impl Session {
         Ok((session, reader))
     }
 
-    /// Feeds program output to the screen and on to the attached client.
+    /// Feeds program output to the screen and on to every attached client.
     pub(super) fn output(&self, bytes: &[u8]) {
         let mut shared = self.lock();
         shared.screen.write(bytes);
-        let Some(link) = shared.subscriber.clone() else {
+        if shared.subscribers.is_empty() {
             return;
-        };
+        }
         let event = Message::Event(Event::Output { session: self.id });
-        if link.try_send(&event, Some(bytes)).is_err() {
-            // The client is gone or too slow; it reattaches for a snapshot.
-            shared.subscriber = None;
+        // A client that is gone or too slow is dropped; it reattaches for a snapshot.
+        shared
+            .subscribers
+            .retain(|link| link.try_send(&event, Some(bytes)).is_ok());
+        if shared.subscribers.is_empty() {
             shared.detached_at = Some(self.clock.now());
         }
     }
@@ -137,7 +142,8 @@ impl Session {
     }
 
     /// Answers an attach request with the screen's snapshot, and from then on sends the live
-    /// output to `link`. Both happen under the session's lock, so no output falls between them.
+    /// output to `link` too: the clients already attached stay. Both happen under the session's
+    /// lock, so no output falls between them. A link that attaches again is counted once.
     pub(super) fn attach(&self, link: &Arc<Link>, request: RequestId) -> Result<(), Error> {
         let mut shared = self.lock();
         let snapshot = shared.screen.snapshot()?;
@@ -149,20 +155,20 @@ impl Session {
             }),
         };
         link.send(&reply, Some(snapshot.as_bytes()))?;
-        shared.subscriber = Some(Arc::clone(link));
+        shared.subscribers.retain(|attached| attached.id != link.id);
+        shared.subscribers.push(Arc::clone(link));
         shared.detached_at = None;
         Ok(())
     }
 
-    /// Detaches the client, if it is `from` (or whoever it is when `from` is `None`).
+    /// Detaches `from` (every client when `from` is `None`); the others stay attached.
     pub(super) fn detach(&self, from: Option<LinkId>) {
         let mut shared = self.lock();
-        let matches = shared
-            .subscriber
-            .as_ref()
-            .is_some_and(|link| from.is_none_or(|id| link.id == id));
-        if matches {
-            shared.subscriber = None;
+        let before = shared.subscribers.len();
+        shared
+            .subscribers
+            .retain(|link| from.is_some_and(|id| link.id != id));
+        if before > 0 && shared.subscribers.is_empty() {
             shared.detached_at = Some(self.clock.now());
         }
     }
@@ -208,7 +214,7 @@ impl Session {
             session: self.id,
             cwd: RemotePath(cwd),
             size: shared.size,
-            state: if shared.subscriber.is_some() {
+            state: if !shared.subscribers.is_empty() {
                 SessionState::Attached
             } else {
                 SessionState::Detached
@@ -229,8 +235,9 @@ impl Session {
     /// Waits for the program to leave after its terminal closed: hangs it up, gives it the grace
     /// period, then kills it. `None` when its status is no longer known.
     ///
-    /// `drain` runs on every poll: a program exiting on a terminal nobody reads can stall in its
-    /// own exit (macOS holds the process there until the output is taken).
+    /// `drain` runs on every poll, after the kill too: a program exiting on a terminal nobody
+    /// reads can stall in its own exit (macOS holds the process there until the output is taken),
+    /// so a blocking wait could wait for ever, holding the terminal's lock.
     pub(super) fn reap(&self, mut drain: impl FnMut()) -> Option<ChildExit> {
         self.hang_up();
         let mut waited = Duration::ZERO;
@@ -240,8 +247,11 @@ impl Session {
                 if let Ok(Some(exit)) = pty.try_exit() {
                     return Some(exit);
                 }
-                if waited >= GRACE {
+                if waited >= GRACE + KILLED {
                     return pty.kill().ok();
+                }
+                if waited >= GRACE {
+                    let _ = pty.signal_group(temor_pty::SignalKind::Kill);
                 }
             }
             drain();
@@ -250,14 +260,14 @@ impl Session {
         }
     }
 
-    /// Tells the attached client the program ended.
+    /// Tells every attached client the program ended.
     pub(super) fn exited(&self, exit: Option<ChildExit>) {
-        let link = self.lock().subscriber.take();
-        if let Some(link) = link {
-            let event = Message::Event(Event::Exited {
-                session: self.id,
-                status: exit_status(exit),
-            });
+        let links = std::mem::take(&mut self.lock().subscribers);
+        let event = Message::Event(Event::Exited {
+            session: self.id,
+            status: exit_status(exit),
+        });
+        for link in links {
             // A client that cannot take it has gone; there is no one to tell.
             let _ = link.try_send(&event, None);
         }

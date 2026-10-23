@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 pub enum Request {
     /// Open a session. Replies [`Reply::Opened`](super::Reply::Opened).
     OpenSession(OpenSession),
-    /// Attach to a session. Replies with its snapshot as the payload.
+    /// Attach to a session. Replies with its snapshot as the payload. Clients attached before
+    /// stay attached: each gets the output from then on (several windows on one session).
     AttachSession {
         /// The session.
         session: SessionId,

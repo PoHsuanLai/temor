@@ -228,3 +228,40 @@ fn a_session_starts_with_temors_shell_integration_unless_switched_off() {
         .output_has("the plain session's output", |out| out.contains("quiet-5"));
     assert!(!out.contains("\x1b]133;"), "no marks when off:\n{out:?}");
 }
+
+#[test]
+fn two_clients_attached_to_one_session_both_see_it_and_one_leaving_keeps_the_other() {
+    if !tools_present() {
+        return;
+    }
+    let rig = Rig::new("two-clients");
+    let mut first = rig.connect();
+    let mut second = rig.connect();
+    let id = first.client.open_session(rig.bash()).expect("open");
+    first.client.attach(id).expect("attach");
+    second
+        .client
+        .attach(id)
+        .expect("a second attach takes nothing from the first");
+    first
+        .client
+        .send_input(id, b"echo both-$((3*3))\n")
+        .expect("input");
+    first
+        .watch
+        .output_has("the first sees it", |out| out.contains("both-9"));
+    second
+        .watch
+        .output_has("the second sees it", |out| out.contains("both-9"));
+
+    first.client.detach(id).expect("detach");
+    second
+        .client
+        .send_input(id, b"echo still-$((2+2))\n")
+        .expect("input");
+    second
+        .watch
+        .output_has("the one left sees on", |out| out.contains("still-4"));
+    let listed = second.client.list_sessions().expect("list");
+    assert_eq!(listed[0].state, SessionState::Attached);
+}
