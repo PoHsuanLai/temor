@@ -305,10 +305,12 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         lenses,
         picture,
     });
-    // Pictures lenses drew, each under its block.
+    // Pictures lenses drew, each under its block: in its card in the list, else in the room
+    // under its last row.
+    let drawn = desk.hub.lens_pictures(pane);
     let lens_pictures = {
-        let pictures = desk.hub.lens_pictures(pane);
-        match pictures.is_empty() {
+        let pictures = drawn.clone();
+        match pictures.is_empty() || block_list_on() {
             true => Vec::new(),
             false => slot
                 .borrow()
@@ -435,6 +437,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             font: card_font.clone(),
                             reveal: picked_block,
                             found: slot.borrow().session.as_ref().and_then(|s| s.found_row()),
+                            pictures: drawn.clone(),
                             actions: CardActions {
                                 copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
                                 copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),

@@ -48,7 +48,7 @@ fn listed(name: &str) -> Option<(Live, [BlockId; 3], Vec<Placed>)> {
         tile_rows: 48,
     };
     let items = live.session.block_list().expect("a list");
-    let (placed, _) = lay_out(&items, &sizes);
+    let (placed, _) = lay_out(&items, &sizes, &[]);
     live.session.set_list_map(Some(list_map(&placed, 0.0)));
     Some((live, [ids[0], ids[1], ids[2]], placed))
 }

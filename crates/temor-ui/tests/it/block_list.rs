@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use ds::base::press::PointerButton;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
@@ -154,4 +155,81 @@ fn a_narrower_window_reflows_a_cards_rows_and_the_card_grows_to_hold_them() {
     );
     // The command's line stays the card's head, not one of its rows.
     assert!(h.html().contains("printf"), "the head:\n{}", h.html());
+}
+
+#[test]
+#[ignore = "needs the demo lens built beside the tests"]
+fn a_lens_picture_shows_in_its_card_between_the_rows_and_the_foot() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    assert!(force_block_list(), "nothing asked before the test");
+    let lens = temor_testkit::example_program("lens_demo");
+    let probe = Probe::new();
+    let mut h = harness_building(
+        "block-list-lens",
+        &probe,
+        None,
+        |ambient| {
+            let plugins = ambient.home.join(".local/share/temor/plugins");
+            let demo = ambient.home.join("demo");
+            std::fs::create_dir_all(&plugins).expect("plugins folder");
+            std::fs::create_dir_all(&demo).expect("demo folder");
+            let manifest = temor_testkit::with_program(
+                include_str!("../../../temor-plugins/examples/lens-demo.toml"),
+                &lens,
+            );
+            std::fs::write(plugins.join("lens-demo.toml"), manifest).expect("manifest");
+            for name in ["a", "notes.txt", "Cargo.toml", "src", "b"] {
+                std::fs::write(demo.join(name), "").expect("a file");
+            }
+        },
+        WindowHosting::Absent,
+        |config| config,
+    );
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    type_line(&mut h, "ls -1 demo");
+    wait_until(&mut h, &probe, "the listing", |s| {
+        s.lines().any(|l| l.trim_end() == "src")
+    });
+    type_line(&mut h, "echo after");
+    wait_until(&mut h, &probe, "the second block", |s| {
+        s.lines().any(|l| l.trim_end() == "after")
+    });
+    wait_html(&mut h, "two cards", |html| {
+        html.matches("temor-blk-foot").count() >= 2
+    });
+    h.advance(Duration::from_millis(300));
+    let ls = heads(&h)[0];
+    let on_ls = left_of(ls, 160.0);
+    h.send(Input::button_down(on_ls, PointerButton::Secondary));
+    h.send(Input::button_up(on_ls, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    assert!(h.html().contains("Show with Line bars"), "{}", h.html());
+    let items = rects(&h, ".ds-menu-item");
+    let item = *items.get(7).expect("the lens's item");
+    h.send(Input::click(item.centre()));
+    wait_html(&mut h, "the picture", |html| {
+        html.contains("temor-blk-picture")
+    });
+    h.advance(Duration::from_millis(300));
+    let picture = rects(&h, ".temor-blk-picture")[0];
+    let rows = rects(&h, ".temor-blk-rows")[0];
+    let foot = rects(&h, ".temor-blk-foot")[0];
+    assert!(
+        (picture.y - (rows.y + rows.h)).abs() < 0.5,
+        "under the rows: {picture:?} {rows:?}"
+    );
+    assert!(
+        (foot.y - (picture.y + picture.h)).abs() < 0.5,
+        "above the foot: {picture:?} {foot:?}"
+    );
+    let img = rects(&h, ".temor-blk-img")[0];
+    assert!(img.h > 20.0 && img.w <= picture.w, "{img:?} in {picture:?}");
+    // Folded, the card is its head and foot: the picture goes with the rows.
+    h.send(Input::click(rects(&h, ".temor-blk-fold")[0].centre()));
+    h.advance(Duration::from_millis(300));
+    wait_html(&mut h, "the picture folded away", |html| {
+        !html.contains("temor-blk-picture")
+    });
 }

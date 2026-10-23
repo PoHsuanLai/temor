@@ -1,9 +1,11 @@
 //! The block list laid out top to bottom, in logical pixels: each entry of the list cut into the
 //! segments the window mounts on their own, so a block's long output is a run of tiles and only
 //! the tiles near the view are drawn. A card is its head, its tiles and its foot, one under the
-//! other with nothing between; the cards have a gap between them.
+//! other with nothing between; the cards have a gap between them. A picture a lens drew for a
+//! block goes in its card, under its rows.
 
 use std::ops::Range;
+use std::sync::Arc;
 
 use temor_core::block::Outcome;
 use temor_core::session::list::{Item, ListBlock};
@@ -70,6 +72,14 @@ pub enum Seg {
         rows: Range<u32>,
         live: bool,
     },
+    /// The picture a lens drew for the block, `width` logical pixels across.
+    Picture {
+        id: BlockId,
+        standing: Standing,
+        picked: bool,
+        width: f32,
+        source: Arc<str>,
+    },
     Foot {
         id: BlockId,
         standing: Standing,
@@ -90,6 +100,7 @@ pub enum SegKey {
     Tile(BlockId, u32),
     /// The running block's live rows.
     Live(BlockId),
+    Picture(BlockId),
     Foot(BlockId),
     Composer,
 }
@@ -126,8 +137,30 @@ fn tiles(id: BlockId, rows: Range<u32>, size: u32, first: u32) -> Vec<(SegKey, R
         .collect()
 }
 
-/// The list's segments, top to bottom, and the height of the whole list.
-pub fn lay_out(items: &[Item], sizes: &Sizes) -> (Vec<Placed>, f32) {
+/// A lens's picture of a block, at the size it is shown, in logical pixels.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Picture {
+    pub block: BlockId,
+    pub width: f32,
+    pub height: f32,
+    /// The picture as a `data:` address.
+    pub source: Arc<str>,
+}
+
+/// The size a picture `size` device pixels big is shown at, at `factor` device pixels a logical
+/// one: its own, shrunk (never enlarged) to `room` across and `most` down.
+pub fn picture_size(size: (u32, u32), factor: f32, room: f32, most: f32) -> (f32, f32) {
+    let factor = factor.max(f32::EPSILON);
+    let (width, height) = (size.0 as f32 / factor, size.1 as f32 / factor);
+    let shrink = (room.max(1.0) / width.max(1.0))
+        .min(most.max(1.0) / height.max(1.0))
+        .min(1.0);
+    (width * shrink, height * shrink)
+}
+
+/// The list's segments, top to bottom, and the height of the whole list. A block in `pictures`
+/// shows its picture under its rows while unfolded.
+pub fn lay_out(items: &[Item], sizes: &Sizes, pictures: &[Picture]) -> (Vec<Placed>, f32) {
     let mut out = Vec::new();
     let mut y = 0.0_f32;
     let push = |out: &mut Vec<Placed>, y: &mut f32, key, height, seg| {
@@ -189,6 +222,17 @@ pub fn lay_out(items: &[Item], sizes: &Sizes) -> (Vec<Placed>, f32) {
                             };
                             push(&mut out, &mut y, SegKey::Live(id), height, seg);
                         }
+                    }
+                    if let Some(picture) = pictures.iter().find(|p| p.block == id) {
+                        let seg = Seg::Picture {
+                            id,
+                            standing,
+                            picked,
+                            width: picture.width,
+                            source: Arc::clone(&picture.source),
+                        };
+                        let key = SegKey::Picture(id);
+                        push(&mut out, &mut y, key, picture.height, seg);
                     }
                 }
                 push(
@@ -290,7 +334,7 @@ pub fn list_map(placed: &[Placed], offset: f32) -> ListMap {
                 Seg::Section(_) => (None, 0..0, Toward::Next),
                 Seg::Head(block) => (Some(block.id), 0..0, Toward::Next),
                 Seg::Rows { id, rows, .. } => (Some(*id), rows.clone(), Toward::Next),
-                Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),
+                Seg::Picture { id, .. } | Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),
                 Seg::Composer { rows } => (None, rows.clone(), Toward::Next),
             };
             ListSpan {

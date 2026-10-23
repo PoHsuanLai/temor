@@ -27,12 +27,13 @@ use temor_render::Palette;
 use temor_vt::Rgb;
 
 use super::segments::{
-    CardPlace, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map, near_view,
-    row_top, sticky_head,
+    CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
+    near_view, picture_size, row_top, sticky_head,
 };
 use super::tiles::ground_of;
 use crate::hub::Desk;
-use crate::session::Session;
+use crate::plugins::lens::LensPicture;
+use crate::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
 use crate::view::block_tools::{More, more_menu};
 use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
@@ -123,8 +124,31 @@ fn meta_of(block: &ListBlock) -> String {
         .join(" \u{b7} ")
 }
 
+/// The pictures lenses drew, at the size they are shown: as wide as the rows' text at most, and
+/// as tall as [`LENS_MOST_ROWS`] rows.
+fn pictures_of(session: Option<&Session>, lens: &[LensPicture], row: f32) -> Vec<Picture> {
+    let Some((pane_width, _)) = session.and_then(Session::grid_logical) else {
+        return Vec::new();
+    };
+    let factor = session.map_or(1.0, Session::scale_factor);
+    let room = pane_width - 2.0 * INSET.horizontal;
+    let most = LENS_MOST_ROWS as f32 * row;
+    lens.iter()
+        .map(|picture| {
+            let (width, height) = picture_size((picture.width, picture.height), factor, room, most);
+            Picture {
+                block: picture.block,
+                width,
+                height,
+                source: picture.source.clone(),
+            }
+        })
+        .collect()
+}
+
 /// The pane's blocks as a list. `items` is the session's list now; `texture` the pane's own
-/// picture, which holds the live rows; `font` the grid's family as CSS.
+/// picture, which holds the live rows; `font` the grid's family as CSS; `pictures` what lenses
+/// drew for its blocks.
 #[component]
 #[allow(non_snake_case)]
 pub fn BlockPane(
@@ -135,6 +159,7 @@ pub fn BlockPane(
     font: String,
     reveal: Option<BlockId>,
     found: Option<u32>,
+    pictures: Vec<LensPicture>,
     actions: CardActions,
     offers: CardOffers,
 ) -> Element {
@@ -173,10 +198,18 @@ pub fn BlockPane(
             }
         });
     }
-    let (row, palette) = {
+    let (row, palette, pictures) = {
         let s = slot.borrow();
-        let row = s.session.as_ref().and_then(Session::row_height);
-        (row.unwrap_or(16.0), s.palette)
+        let row = s
+            .session
+            .as_ref()
+            .and_then(Session::row_height)
+            .unwrap_or(16.0);
+        (
+            row,
+            s.palette,
+            pictures_of(s.session.as_ref(), &pictures, row),
+        )
     };
     let sizes = Sizes {
         row,
@@ -187,7 +220,7 @@ pub fn BlockPane(
         composer: row,
         tile_rows: TILE_ROWS,
     };
-    let (placed, total) = lay_out(&items, &sizes);
+    let (placed, total) = lay_out(&items, &sizes, &pictures);
     // The render follows the offset only band by band: the window eases a scroll a little each
     // round, and a list drawn again each time would never settle. What is mounted reaches past
     // the view by more than a band.
@@ -319,7 +352,7 @@ struct Head {
 fn block_of(seg: &Seg) -> Option<BlockId> {
     match seg {
         Seg::Head(block) => Some(block.id),
-        Seg::Rows { id, .. } | Seg::Foot { id, .. } => Some(*id),
+        Seg::Rows { id, .. } | Seg::Picture { id, .. } | Seg::Foot { id, .. } => Some(*id),
         Seg::Section(_) | Seg::Composer { .. } => None,
     }
 }
@@ -375,6 +408,30 @@ fn segment(
                     onpointermove: on_move,
                     if let Some(texture) = handle {
                         TextureLayer { texture: Some(texture), fit: TextureFit::Actual, sampling: Sampling::Nearest, source }
+                    }
+                }
+            }
+        }
+        Seg::Picture {
+            standing,
+            picked,
+            width,
+            source,
+            ..
+        } => {
+            let ground = css(ground_of(palette, *standing, *picked));
+            let left = INSET.horizontal - CARD_MARGIN;
+            rsx! {
+                div {
+                    key: "{key}",
+                    class: "temor-bseg temor-blk-picture",
+                    style: "{place}; background:{ground}",
+                    onpointermove: on_move,
+                    img {
+                        class: "temor-blk-img",
+                        alt: "",
+                        src: source.to_string(),
+                        style: "left:{left}px; width:{width}px; height:{p.height}px",
                     }
                 }
             }
