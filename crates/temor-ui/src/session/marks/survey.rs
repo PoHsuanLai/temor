@@ -88,8 +88,8 @@ impl Session {
                         end,
                         lead,
                         header_cols,
-                        picked: self.picks.contains(block.id),
-                        bookmarked: self.bookmarks.contains(&block.id),
+                        picked: self.ann.is_picked(block.id),
+                        bookmarked: self.ann.is_bookmarked(block.id),
                     }
                 })
                 .collect();

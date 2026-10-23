@@ -8,7 +8,10 @@
 //! and is at its prompt. Any other key goes to the shell and lets go of the pick. The rules are
 //! `temor_core::block::Picks`; this reads the blocks and moves the view.
 
-use temor_core::block::{BlockState, PickClick, PickStep, next_bookmark};
+use std::collections::BTreeSet;
+
+use temor_core::block::{BlockState, PickClick, PickStep};
+use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
 use temor_core::vocab::ids::BlockId;
 use temor_core::vocab::text::CommandText;
 use temor_pane::paste;
@@ -30,18 +33,33 @@ impl Session {
 
     /// The picked blocks, oldest first.
     pub fn picked_blocks(&self) -> Vec<BlockId> {
-        self.picks.in_order(&self.pick_order())
+        self.ann.picked_in(&self.pick_order())
     }
 
     /// Whether `id` is picked.
     pub fn block_picked(&self, id: BlockId) -> bool {
-        self.picks.contains(id)
+        self.ann.is_picked(id)
+    }
+
+    /// Changes the picks, folds and bookmarks by `input`, and does what the step asks for.
+    pub(in crate::session) fn annotate(&mut self, input: AnnotateIn) {
+        let (ann, outs) = annotate_step(std::mem::take(&mut self.ann), input);
+        self.ann = ann;
+        for out in outs {
+            match out {
+                AnnotateOut::Reveal => self.reveal_pick(),
+                AnnotateOut::FoldsChanged => {
+                    self.relayout();
+                }
+                _ => {}
+            }
+        }
     }
 
     /// A click on block `id`, picking it as `how` says.
     pub(in crate::session) fn pick_block(&mut self, id: BlockId, how: PickClick) {
         let order = self.pick_order();
-        self.picks.click(id, how, &order);
+        self.annotate(AnnotateIn::Click { id, how, order });
     }
 
     /// A click that never left its cell, at `at`: it picks the block there (Shift: the run from
@@ -66,7 +84,7 @@ impl Session {
                 };
                 self.pick_block(id, how);
             }
-            None => self.picks.clear(),
+            None => self.annotate(AnnotateIn::ClearPicks),
         }
     }
 
@@ -74,16 +92,15 @@ impl Session {
     /// picked, ⌘↑ picks the newest block) and the view follows it.
     pub(in crate::session) fn step_pick(&mut self, step: PickStep) {
         let order = self.pick_order();
-        self.picks.step(step, &order);
-        self.reveal_pick();
+        self.annotate(AnnotateIn::Step { step, order });
     }
 
     /// Brings the active pick's prompt into view (to the top, when it is out of view); with
     /// nothing picked, the live screen.
     fn reveal_pick(&mut self) {
         let first = self
-            .picks
-            .active()
+            .ann
+            .active_pick()
             .and_then(|id| self.block_rows(id))
             .map(|(first, _)| first);
         self.pane.with_term(|term| {
@@ -120,7 +137,7 @@ impl Session {
                 _ => {}
             }
         }
-        if self.picks.is_empty() {
+        if self.ann.nothing_picked() {
             return false;
         }
         let order = self.pick_order();
@@ -130,14 +147,18 @@ impl Session {
             KeyCode::ArrowUp if plain => self.step_pick(PickStep::Older),
             KeyCode::ArrowDown if plain => self.step_pick(PickStep::Newer),
             KeyCode::ArrowUp if shift => {
-                self.picks.extend(PickStep::Older, &order);
-                self.reveal_pick();
+                self.annotate(AnnotateIn::Extend {
+                    step: PickStep::Older,
+                    order,
+                });
             }
             KeyCode::ArrowDown if shift => {
-                self.picks.extend(PickStep::Newer, &order);
-                self.reveal_pick();
+                self.annotate(AnnotateIn::Extend {
+                    step: PickStep::Newer,
+                    order,
+                });
             }
-            KeyCode::Escape if plain => self.picks.clear(),
+            KeyCode::Escape if plain => self.annotate(AnnotateIn::ClearPicks),
             _ => return false,
         }
         true
@@ -157,7 +178,7 @@ impl Session {
                 | KeyCode::MetaRight
         );
         if key.action != KeyAction::Release && !modifier {
-            self.picks.clear();
+            self.annotate(AnnotateIn::ClearPicks);
         }
     }
 
@@ -185,7 +206,7 @@ impl Session {
             self.blocks.machine,
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
-        !self.bookmarks.is_empty()
+        self.ann.any_bookmarked()
             && at_prompt
             && !self.pane.with_term(|term| term.on_alternate_screen())
     }
@@ -193,15 +214,12 @@ impl Session {
     /// Picks the nearest bookmark `step`'s way from the pick; none that way leaves the pick.
     pub(in crate::session) fn step_bookmark(&mut self, step: PickStep) {
         let order = self.pick_order();
-        if let Some(id) = next_bookmark(&order, &self.bookmarks, self.picks.active(), step) {
-            self.picks.click(id, PickClick::Only, &order);
-            self.reveal_pick();
-        }
+        self.annotate(AnnotateIn::StepBookmark { step, order });
     }
 
     /// Whether `id` is bookmarked.
     pub fn block_bookmarked(&self, id: BlockId) -> bool {
-        self.bookmarks.contains(&id)
+        self.ann.is_bookmarked(id)
     }
 
     /// The picked blocks' commands, as typed, oldest first.
@@ -239,20 +257,14 @@ impl Session {
     /// ⌘A: every block.
     pub(in crate::session) fn pick_all(&mut self) {
         let order = self.pick_order();
-        self.picks.select_all(&order);
+        self.annotate(AnnotateIn::SelectAll { order });
     }
 
     /// ⌘B: bookmarks the picked blocks, or, when every one of them is bookmarked already, takes
     /// their bookmarks away.
     pub(in crate::session) fn toggle_bookmarks(&mut self) {
-        let picked = self.picked_blocks();
-        if picked.iter().all(|id| self.bookmarks.contains(id)) {
-            for id in &picked {
-                self.bookmarks.remove(id);
-            }
-        } else {
-            self.bookmarks.extend(picked);
-        }
+        let order = self.pick_order();
+        self.annotate(AnnotateIn::ToggleBookmarks { order });
     }
 
     /// ⌘I: the picked commands in the prompt, joined with `; ` (never a line break, so nothing
@@ -268,7 +280,7 @@ impl Session {
             self.notice = Some("These commands cannot be typed again.".to_owned());
             return;
         }
-        self.picks.clear();
+        self.annotate(AnnotateIn::ClearPicks);
         let mode = self.pane.with_term(|term| term.paste_mode());
         self.pane.send(&paste::encode(&line, mode));
         self.pane
@@ -293,7 +305,7 @@ impl Session {
         let Some(id) = self.block_at_row(row) else {
             return Ok(None);
         };
-        if !self.picks.contains(id) {
+        if !self.ann.is_picked(id) {
             self.pick_block(id, PickClick::Only);
         }
         self.selection = None;
@@ -303,35 +315,33 @@ impl Session {
 
     /// Whether `id`'s output is folded away.
     pub fn block_folded(&self, id: BlockId) -> bool {
-        self.folds.contains(&id)
+        self.ann.is_folded(id)
     }
 
-    /// The picked blocks that have output to fold: finished, and with a row below the command.
-    fn foldable_picks(&self) -> Vec<BlockId> {
-        self.picked_blocks()
-            .into_iter()
-            .filter(|&id| self.block_finished(id) && self.block_output_rows(id).is_some())
+    /// The blocks in `order` that have output to fold: finished, and with a row below the command.
+    fn foldable_blocks(&self, order: &[BlockId]) -> BTreeSet<BlockId> {
+        let frame = self.frame();
+        order
+            .iter()
+            .copied()
+            .filter(|&id| {
+                self.block_finished(id) && frame.as_ref().and_then(|f| f.output_rows(id)).is_some()
+            })
             .collect()
     }
 
     /// Whether every picked block that has output is folded (and some has).
     pub fn picks_folded(&self) -> bool {
-        let foldable = self.foldable_picks();
-        !foldable.is_empty() && foldable.iter().all(|id| self.folds.contains(id))
+        let order = self.pick_order();
+        self.ann.picks_folded(&order, &self.foldable_blocks(&order))
     }
 
     /// Folds the picked blocks' output away, or, when every one that has output is folded
     /// already, brings it back.
     pub(in crate::session) fn toggle_folds(&mut self) {
-        let foldable = self.foldable_picks();
-        if self.picks_folded() {
-            for id in &foldable {
-                self.folds.remove(id);
-            }
-        } else {
-            self.folds.extend(foldable);
-        }
-        self.relayout();
+        let order = self.pick_order();
+        let foldable = self.foldable_blocks(&order);
+        self.annotate(AnnotateIn::ToggleFolds { order, foldable });
     }
 
     /// Whether `id` has output to fold: it is finished and has a row below its command.
@@ -341,17 +351,12 @@ impl Session {
 
     /// Folds `id`'s output away, or brings it back. Nothing for a block with no output to fold.
     pub fn toggle_fold_of(&mut self, id: BlockId) {
-        if self.folds.remove(&id) {
-            self.relayout();
-        } else if self.block_foldable(id) {
-            self.folds.insert(id);
-            self.relayout();
-        }
+        let foldable = self.block_foldable(id);
+        self.annotate(AnnotateIn::ToggleFold { id, foldable });
     }
 
     /// Whether every picked block is bookmarked (and some block is picked).
     pub fn picks_bookmarked(&self) -> bool {
-        let picked = self.picked_blocks();
-        !picked.is_empty() && picked.iter().all(|id| self.bookmarks.contains(id))
+        self.ann.picks_bookmarked(&self.pick_order())
     }
 }

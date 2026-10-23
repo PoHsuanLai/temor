@@ -11,6 +11,8 @@ use temor_vt::{
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
 };
 
+use temor_core::session::AnnotateIn;
+
 use super::{Drag, Session};
 use crate::error::UiError;
 use crate::input::{Click, next_click};
@@ -52,7 +54,7 @@ impl Session {
         let shift = mods.contains(Modifiers::SHIFT);
         if tracking && !shift {
             // The program has the mouse: nothing of the blocks is picked under it.
-            self.picks.clear();
+            self.annotate(AnnotateIn::ClearPicks);
             let surface = placed.fit.mouse_surface();
             let input = MouseInput {
                 action: MouseAction::Press,
@@ -124,7 +126,7 @@ impl Session {
                 self.pick_at(at, mods);
             }
         } else if self.selection.is_some() {
-            self.picks.clear();
+            self.annotate(AnnotateIn::ClearPicks);
         }
         let Some(placed) = self.placed() else {
             return Ok(());

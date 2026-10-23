@@ -125,10 +125,10 @@ impl Session {
         let folded: Vec<Fold> = match alternate {
             true => Vec::new(),
             false => self
-                .folds
-                .iter()
-                .filter(|&&id| self.block_finished(id))
-                .filter_map(|&id| {
+                .ann
+                .folded()
+                .filter(|&id| self.block_finished(id))
+                .filter_map(|id| {
                     let (first, last) = frame.as_ref()?.output_rows(id)?;
                     let (first, last) = (first.max(0), last.min(rows - 1));
                     if first > last {

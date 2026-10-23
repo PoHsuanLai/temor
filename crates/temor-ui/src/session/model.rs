@@ -89,12 +89,9 @@ pub struct Session {
     pub(super) find_text: String,
     pub(super) pending_query: Option<PendingQuery>,
     pub(super) blocks: BlockLog,
-    /// The blocks picked with a click or the arrows.
-    pub(super) picks: temor_core::block::Picks,
-    /// The blocks whose output is folded away.
-    pub(super) folds: std::collections::BTreeSet<temor_core::vocab::ids::BlockId>,
-    /// The blocks bookmarked for the bookmark keys, while the pane lives.
-    pub(super) bookmarks: std::collections::BTreeSet<temor_core::vocab::ids::BlockId>,
+    /// What the person did to the blocks: picked with a click or the arrows, folded away,
+    /// bookmarked for the bookmark keys (while the pane lives).
+    pub(super) ann: temor_core::session::Annotations,
     /// The block toolbar's measured height, written by its view.
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.

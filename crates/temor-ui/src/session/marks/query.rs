@@ -3,6 +3,7 @@
 
 use temor_core::block::{BlockState, Outcome};
 use temor_core::facts::Facts;
+use temor_core::session::AnnotateIn;
 use temor_core::vocab::ids::BlockId;
 use temor_render::RowLayout;
 use temor_vt::{Row, SurfacePoint};
@@ -122,12 +123,12 @@ impl Session {
 
     /// Picks no block.
     pub fn clear_block_selection(&mut self) {
-        self.picks.clear();
+        self.annotate(AnnotateIn::ClearPicks);
     }
 
     /// The picked block the arrows move (the last one clicked), if any.
     pub fn selected_block(&self) -> Option<BlockId> {
-        self.picks.active()
+        self.ann.active_pick()
     }
 
     /// The command a block ran, as typed.
