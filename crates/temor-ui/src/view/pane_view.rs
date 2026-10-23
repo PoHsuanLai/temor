@@ -402,6 +402,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let listed = block_items.is_some();
     if !listed && let Some(s) = slot.borrow_mut().session.as_mut() {
         s.set_list_map(None);
+        s.set_composer_shown(false);
     }
     let picked_block = slot
         .borrow()
