@@ -2,9 +2,11 @@
 //! drawing of its output, the running one live, and the composer last. Behind
 //! `TEMOR_BLOCK_LIST=1` until it replaces the cards laid over the grid.
 
+pub mod composer;
 pub mod pane;
 pub mod segments;
 pub mod tiles;
 
 pub use crate::session::block_list_on;
-pub use pane::{BlockPane, CardActions, CardOffers};
+pub use composer::ComposerActions;
+pub use pane::{BlockPane, CardActions, CardOffers, ComposerView};

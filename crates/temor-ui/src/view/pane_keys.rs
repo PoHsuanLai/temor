@@ -4,9 +4,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use dioxus::prelude::{Key, Modifiers};
 use ds::edit::composition::Composing;
 use ds::edit::input::EditInput;
 use ds::edit::raw_key::{KeyPhase, RawKey};
+use ds::focus::request::FocusRequest;
 use ds::host::measure::RectProbe;
 use temor_core::vocab::ids::PaneId;
 use temor_vt::Ime;
@@ -16,6 +18,57 @@ use super::slot::{Slot, repaint};
 use super::window_help::{place_cursor, take_notice};
 use crate::hub::{Desk, Origin};
 use crate::input::stroke;
+use crate::session::HistoryStep;
+
+/// A key the region hears while the list shows the composer: a typed key is the composer's
+/// (its text, Enter, Backspace, the arrows through the history), and the caret goes to its field
+/// for the rest, but for Enter. A chord is the terminal's as ever. Whether the composer took it.
+fn to_composer(slot: &RefCell<Slot>, raw: &RawKey, focus: FocusRequest) -> bool {
+    let mut slot = slot.borrow_mut();
+    let Some(session) = slot.session.as_mut().filter(|s| s.composer_shown()) else {
+        return false;
+    };
+    if raw
+        .modifiers
+        .intersects(Modifiers::META | Modifiers::CONTROL)
+    {
+        return false;
+    }
+    if raw.phase == KeyPhase::Release {
+        return true;
+    }
+    match (&raw.key, &raw.text) {
+        // The command runs and the composer goes: the keys stay the terminal's.
+        (Key::Enter, _) => {
+            session.composer_submit();
+            return true;
+        }
+        (Key::Backspace, _) => session.composer_backspace(),
+        (Key::ArrowUp, _) => session.composer_history(HistoryStep::Older),
+        (Key::ArrowDown, _) => session.composer_history(HistoryStep::Newer),
+        (_, Some(text)) => session.composer_append(text),
+        _ => {}
+    }
+    focus.request();
+    true
+}
+
+/// Where the region's keys go: its pane, its box (the input method is placed in it), and the
+/// composer's field, which takes the typing while the list shows it.
+#[derive(Clone, Copy)]
+pub struct KeyRegion {
+    pub pane: PaneId,
+    pub rect: RectProbe,
+    pub composer: FocusRequest,
+}
+
+impl std::fmt::Debug for KeyRegion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyRegion")
+            .field("pane", &self.pane)
+            .finish_non_exhaustive()
+    }
+}
 
 /// Every key the region hears (a press, a repeat, a release) as quire's raw key. `peek_key` is the
 /// peek's ear for it; `apply` takes what a finished composition types.
@@ -25,11 +78,19 @@ pub fn key_handler(
     apply: impl Fn(EditInput) + Clone + 'static,
     desk: Desk,
     peek_key: Rc<dyn Fn(&RawKey)>,
-    pane: PaneId,
-    rect: RectProbe,
+    region: KeyRegion,
 ) -> impl FnMut(RawKey) + 'static {
+    let KeyRegion {
+        pane,
+        rect,
+        composer,
+    } = region;
     move |raw: RawKey| {
         peek_key(&raw);
+        if to_composer(&slot, &raw, composer) {
+            desk.bump();
+            return;
+        }
         let composing = match ime.composing.get() {
             Composing::Active => Ime::Composing,
             Composing::Idle | Composing::Cleared => Ime::Idle,

@@ -22,7 +22,7 @@ use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
 use crate::hub::Desk;
-use crate::session::Session;
+use crate::session::{HistoryStep, Session};
 
 /// The find bar's query, run once typing pauses.
 pub fn find_query(
@@ -225,6 +225,28 @@ pub fn bar_copy_output(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(B
 /// A card's chevron in the block list: folds its output away or brings it back.
 pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
     on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
+}
+
+/// The composer's text as the person edits it.
+pub fn composer_input(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(String) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, text| {
+        s.set_composer_text(text)
+    })
+}
+
+/// The composer's Enter: its text goes to the shell.
+pub fn composer_submit(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.composer_submit())
+}
+
+/// The composer's arrows through the pane's commands.
+pub fn composer_history(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(HistoryStep) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
+        s.composer_history(step)
+    })
 }
 
 /// The block toolbar's save of an output to Downloads.

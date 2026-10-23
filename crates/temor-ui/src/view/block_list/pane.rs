@@ -12,6 +12,7 @@ use ds::base::text::clip::clip_chars;
 use ds::components::controls::press::Propagation;
 use ds::components::controls::scroller::handle::{ScrollerRef, use_scroller};
 use ds::components::controls::scroller::view::Scroller;
+use ds::focus::request::FocusRequest;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
@@ -26,6 +27,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
 
+use super::composer::{ComposerActions, ComposerCard};
 use super::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
     near_view, picture_size, row_top, sticky_head,
@@ -37,6 +39,32 @@ use crate::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
 use crate::view::block_tools::{More, more_menu};
 use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
+
+/// The composer card's height, in logical pixels.
+const COMPOSER_HEIGHT: f32 = 44.0;
+
+/// What the composer card shows and does, while the shell waits at its prompt.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComposerView {
+    pub text: String,
+    /// The grid's family as CSS.
+    pub font: String,
+    /// The folder the shell is in.
+    pub folder: Option<String>,
+    /// Whether the list has text selected (⌘C copies that, not the field's).
+    pub selection: bool,
+    /// Puts the caret in the field.
+    pub focus: FocusRequest,
+    /// Whether the field takes the keyboard as it appears: the pane has it.
+    pub take: bool,
+    pub actions: ComposerActions,
+}
+
+/// Whether the list ends at the shell's prompt, marked, with nothing running: the composer
+/// takes the prompt's place.
+fn composing(items: &[Item]) -> bool {
+    matches!(items.last(), Some(Item::Composer { rows }) if !rows.is_empty())
+}
 
 /// How far around the view segments are mounted, in logical pixels.
 const MOUNT_MARGIN: f32 = 600.0;
@@ -160,6 +188,7 @@ pub fn BlockPane(
     reveal: Option<BlockId>,
     found: Option<u32>,
     pictures: Vec<LensPicture>,
+    composer: ComposerView,
     actions: CardActions,
     offers: CardOffers,
 ) -> Element {
@@ -220,6 +249,22 @@ pub fn BlockPane(
         composer: row,
         tile_rows: TILE_ROWS,
     };
+    // The composer card stands for the prompt's rows: they are not drawn.
+    let composing = composing(&items);
+    let (items, sizes) = match composing {
+        true => {
+            let mut items = items;
+            if let Some(Item::Composer { rows }) = items.last_mut() {
+                *rows = 0..0;
+            }
+            let sizes = Sizes {
+                composer: COMPOSER_HEIGHT,
+                ..sizes
+            };
+            (items, sizes)
+        }
+        false => (items, sizes),
+    };
     let (placed, total) = lay_out(&items, &sizes, &pictures);
     // The render follows the offset only band by band: the window eases a scroll a little each
     // round, and a list drawn again each time would never settle. What is mounted reaches past
@@ -271,6 +316,7 @@ pub fn BlockPane(
         let Slot { session, tiles, .. } = &mut *s;
         if let Some(session) = session.as_mut() {
             session.set_list_map(Some(list_map(&placed, scroll.offset.0)));
+            session.set_composer_shown(composing);
             tiles.draw(session, &mounted, &palette, || gpu.handle());
         }
     }
@@ -316,6 +362,7 @@ pub fn BlockPane(
         offers,
         held,
     };
+    let composer = composing.then_some(composer);
     rsx! {
         div {
             class: "temor-blist",
@@ -329,7 +376,7 @@ pub fn BlockPane(
                 },
                 div { class: "temor-blist-content", style: "height:{total}px",
                     for (p, handle, source) in views {
-                        {segment(&p, handle, source, &palette, &head, hovered)}
+                        {segment(&p, handle, source, &palette, &head, composer.as_ref(), hovered)}
                     }
                 }
             }
@@ -364,6 +411,7 @@ fn segment(
     source: Option<TexelRect>,
     palette: &Palette,
     head: &Head,
+    composer: Option<&ComposerView>,
     mut hovered: Signal<Option<BlockId>>,
 ) -> Element {
     let key = format!("{:?}", p.key);
@@ -444,6 +492,19 @@ fn segment(
                 div { key: "{key}", class: "temor-bseg temor-blk-foot", style: "{place}; background:{ground}", onpointermove: on_move }
             }
         }
+        Seg::Composer { .. } if let Some(view) = composer => rsx! {
+            ComposerCard {
+                key: "{key}",
+                style: "{place}; background:{css(ground_of(palette, Standing::Done, false))}",
+                font: view.font.clone(),
+                text: view.text.clone(),
+                folder: view.folder.clone(),
+                selection: view.selection,
+                focus: view.focus,
+                take: view.take,
+                actions: view.actions.clone(),
+            }
+        },
         Seg::Composer { .. } => rsx! {
             div { key: "{key}", class: "temor-bseg temor-blk-prompt", style: "{place}",
                 if let Some(texture) = handle {

@@ -102,6 +102,7 @@ impl Session {
             pointer_over: None,
             link_hover: None,
             list_map: None,
+            composer: Default::default(),
             cwd: None,
             progress: None,
             focus: Focus::Focused,

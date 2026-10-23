@@ -5,6 +5,7 @@
 use std::time::Duration;
 
 use ds::base::press::PointerButton;
+use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
@@ -232,4 +233,112 @@ fn a_lens_picture_shows_in_its_card_between_the_rows_and_the_foot() {
     wait_html(&mut h, "the picture folded away", |html| {
         !html.contains("temor-blk-picture")
     });
+}
+
+/// The composer field's value, as the page writes it.
+fn composer_value(html: &str) -> Option<String> {
+    let card = &html[html.find("temor-blk-composer")?..];
+    let input = &card[card.find("<input")?..];
+    let value = &input[input.find("value=\"")? + 7..];
+    Some(value[..value.find('"')?].to_owned())
+}
+
+#[test]
+fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_history() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    assert!(force_block_list(), "nothing asked before the test");
+    let probe = Probe::new();
+    let mut h = started("block-list-composer", &probe);
+    wait_html(&mut h, "the composer", |html| {
+        html.contains("temor-blk-composer")
+    });
+    super::drive::type_text(&mut h, "echo one");
+    h.advance(Duration::from_millis(200));
+    assert_eq!(
+        composer_value(&h.html()).as_deref(),
+        Some("echo one"),
+        "typed into the composer"
+    );
+    // Nothing reached the shell's own line yet: the prompt's rows hold no command.
+    assert!(
+        !probe.screen().contains("echo one"),
+        "the shell has not seen it:\n{}",
+        probe.screen()
+    );
+    h.send(Input::key(ShortcutKey::Enter));
+    wait_until(&mut h, &probe, "its output", |s| {
+        s.lines().any(|l| l.trim_end() == "one")
+    });
+    wait_html(&mut h, "its card, and the composer empty again", |html| {
+        html.contains("echo one") && composer_value(html).as_deref() == Some("")
+    });
+    type_line(&mut h, "echo two");
+    wait_until(&mut h, &probe, "the second output", |s| {
+        s.lines().any(|l| l.trim_end() == "two")
+    });
+    wait_html(&mut h, "the composer back", |html| {
+        composer_value(html).as_deref() == Some("")
+    });
+    h.send(Input::key(ShortcutKey::Up));
+    h.advance(Duration::from_millis(200));
+    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo two"));
+    h.send(Input::key(ShortcutKey::Up));
+    h.advance(Duration::from_millis(200));
+    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo one"));
+    h.send(Input::key(ShortcutKey::Down));
+    h.send(Input::key(ShortcutKey::Down));
+    h.advance(Duration::from_millis(200));
+    assert_eq!(
+        composer_value(&h.html()).as_deref(),
+        Some(""),
+        "back to what was typed"
+    );
+}
+
+#[test]
+#[ignore = "a picture for a person; with TEMOR_SHOT=<file.png> it saves the frame for a person to look at"]
+fn a_picture_of_the_list_with_its_cards_and_the_composer() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    assert!(force_block_list(), "nothing asked before the test");
+    let probe = Probe::new();
+    let mut h = harness_building(
+        "block-list-shot",
+        &probe,
+        None,
+        |_| {},
+        WindowHosting::Absent,
+        |config| config,
+    );
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    for (line, last) in [
+        ("printf 'alpha\\nbeta\\ngamma\\n'", "gamma"),
+        ("ls /nope", "directory"),
+        ("seq 1 12", "12"),
+    ] {
+        type_line(&mut h, line);
+        wait_until(&mut h, &probe, "the output", |s| s.contains(last));
+    }
+    wait_html(&mut h, "the composer back", |html| {
+        composer_value(html).as_deref() == Some("")
+    });
+    super::drive::type_text(&mut h, "git status");
+    h.advance(Duration::from_millis(500));
+    let picture = h
+        .render_over(ds_harness::Backdrop::Scheme)
+        .expect("a frame");
+    if let Some(path) = std::env::var_os("TEMOR_SHOT") {
+        let (width, height) = (picture.width(), picture.height());
+        let file = std::fs::File::create(std::path::PathBuf::from(path)).expect("the shot file");
+        let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().expect("png header");
+        writer
+            .write_image_data(picture.as_raw())
+            .expect("png pixels");
+    }
 }

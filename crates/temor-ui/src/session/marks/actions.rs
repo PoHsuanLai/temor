@@ -17,15 +17,20 @@ use crate::error::UiError;
 use crate::words::notices;
 
 impl Session {
-    /// Puts a block's command in the prompt without running it: the text goes through the paste
-    /// path (framed when the shell asked for it), so no line break in it can submit anything.
-    /// A command that is not safe to type is refused with a notice.
+    /// Puts a block's command in the prompt without running it: in the composer while the list
+    /// shows it, else through the paste path (framed when the shell asked for it), so no line
+    /// break in it can submit anything. A command that is not safe to type is refused with a
+    /// notice.
     pub fn rerun(&mut self, id: BlockId) {
         let Some(command) = self.block_command(id).map(str::to_owned) else {
             return;
         };
         if !CommandText(command.clone()).typable() {
             self.notice = Some("This command cannot be typed again.".to_owned());
+            return;
+        }
+        if self.composer_shown() {
+            self.set_composer_text(command);
             return;
         }
         let mode = self.pane.with_term(|term| term.paste_mode());

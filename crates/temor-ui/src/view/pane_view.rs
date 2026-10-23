@@ -11,6 +11,8 @@ use std::time::Instant;
 use dioxus::prelude::*;
 use ds::file_drop::drag::FileDrop;
 use ds::file_drop::hook::use_file_drop;
+use ds::focus::request::use_focus_request;
+use ds::host::caret::InitialCaret;
 use ds::host::document::use_document_host;
 use ds::host::ime::ImeEvent;
 use ds::host::measure::use_rect;
@@ -24,7 +26,9 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use super::block_card::{BlockCards, cards_of};
 use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_header::{BlockHeader, HeaderPress, HeaderView};
-use super::block_list::{BlockPane, CardActions, CardOffers, block_list_on};
+use super::block_list::{
+    BlockPane, CardActions, CardOffers, ComposerActions, ComposerView, block_list_on,
+};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
@@ -37,8 +41,9 @@ use super::find_bar::FindBar;
 use super::first_hint::{FirstHint, hint_for};
 use super::grid_slices::{GridTexture, grid_cut};
 use super::handlers::{
-    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
-    find_query, find_step, header_press, list_fold, then_regain,
+    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, composer_history,
+    composer_input, composer_submit, find_close, find_query, find_step, header_press, list_fold,
+    then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::lens_picture::{LensPictures, lens_request, lens_views};
@@ -46,7 +51,7 @@ use super::link_tip::LinkTip;
 use super::live_head::LiveCardHead;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
-use super::pane_keys::key_handler;
+use super::pane_keys::{KeyRegion, key_handler};
 use super::pane_pointer::{GridPointer, GridState, grid_pointer};
 use super::peek::use_peek;
 use super::peek_card::peek_card;
@@ -145,14 +150,32 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         use_callback(move |event: ImeEvent| ime.event(event, &apply))
     };
 
+    // The composer's field takes the caret at its end: typing goes on from what is there.
+    let composer_focus = use_focus_request().with_caret(InitialCaret::End);
     let on_key = key_handler(
         Rc::clone(&slot),
         ime.clone(),
         apply.clone(),
         desk.clone(),
         peek.key.clone(),
-        pane,
-        rect,
+        KeyRegion {
+            pane,
+            rect,
+            composer: composer_focus,
+        },
+    );
+    // A chord typed in the composer's field is the terminal's, as if typed in the region.
+    let composer_chord = key_handler(
+        Rc::clone(&slot),
+        ime.clone(),
+        apply.clone(),
+        desk.clone(),
+        peek.key.clone(),
+        KeyRegion {
+            pane,
+            rect,
+            composer: composer_focus,
+        },
     );
 
     // A ⌘-click's viewer opens once the press is released: opening it splits the pane, which must
@@ -438,6 +461,21 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             reveal: picked_block,
                             found: slot.borrow().session.as_ref().and_then(|s| s.found_row()),
                             pictures: drawn.clone(),
+                            composer: ComposerView {
+                                text: slot.borrow().session.as_ref().map(|s| s.composer_text().to_owned()).unwrap_or_default(),
+                                font: card_font.clone(),
+                                folder: folder.clone(),
+                                selection: slot.borrow().session.as_ref().is_some_and(|s| s.has_selection()),
+                                focus: composer_focus,
+                                take: desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open() && find.is_none(),
+                                actions: ComposerActions {
+                                    input: EventHandler::new(composer_input(Rc::clone(&slot), ui)),
+                                    submit: EventHandler::new(then_regain(composer_submit(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                    history: EventHandler::new(composer_history(Rc::clone(&slot), ui)),
+                                    chord: EventHandler::new(composer_chord),
+                                    gone: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
+                                },
+                            },
                             actions: CardActions {
                                 copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
                                 copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
