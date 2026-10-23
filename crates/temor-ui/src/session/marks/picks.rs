@@ -24,7 +24,7 @@ impl Session {
     /// The blocks that can be picked, oldest first: those the scrollback still holds.
     fn pick_order(&self) -> Vec<BlockId> {
         self.blocks
-            .store
+            .store()
             .iter()
             .filter(|block| self.block_rows(block.id).is_some())
             .map(|block| block.id)
@@ -203,7 +203,7 @@ impl Session {
     /// its prompt, on the main screen.
     fn bookmark_keys_live(&self) -> bool {
         let at_prompt = matches!(
-            self.blocks.machine,
+            *self.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         self.ann.any_bookmarked()

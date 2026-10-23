@@ -40,30 +40,30 @@ impl Session {
         })
     }
 
-    /// Drops the blocks whose prompt and output the scrollback no longer holds.
-    pub(super) fn sweep(&mut self) {
+    /// The blocks whose prompt and output the scrollback no longer holds.
+    pub(super) fn swept(&self) -> Vec<BlockId> {
         let pane = &self.pane;
-        let anchors = &self.blocks.anchors;
-        let alive = |id: BlockId| {
-            anchors.get(&id).is_some_and(|held| {
-                [held.prompt, held.output]
-                    .into_iter()
-                    .flatten()
-                    .any(|anchor| {
-                        pane.with_term(|term| term.anchor_point(anchor, PointSpace::Screen))
-                            .is_some()
-                    })
+        self.blocks
+            .store()
+            .iter()
+            .map(|block| block.id)
+            .filter(|&id| {
+                !self.blocks.anchors_of(id).is_some_and(|held| {
+                    [held.prompt, held.output]
+                        .into_iter()
+                        .flatten()
+                        .any(|anchor| {
+                            pane.with_term(|term| term.anchor_point(anchor, PointSpace::Screen))
+                                .is_some()
+                        })
+                })
             })
-        };
-        let gone = self.blocks.store.retain_live(alive);
-        for anchor in self.blocks.drop_anchors(&gone) {
-            self.drop_anchor(anchor);
-        }
+            .collect()
     }
 
     /// The newest block whose prompt..end span holds screen row `row`.
     pub(super) fn block_at_row(&self, row: u32) -> Option<BlockId> {
-        self.blocks.store.iter().rev().find_map(|block| {
+        self.blocks.store().iter().rev().find_map(|block| {
             let (first, last) = self.block_rows(block.id)?;
             (first..=last).contains(&row).then_some(block.id)
         })
@@ -71,7 +71,7 @@ impl Session {
 
     /// The first and last screen rows of a block (a running block runs to the bottom).
     pub(super) fn block_rows(&self, id: BlockId) -> Option<(u32, u32)> {
-        let anchors = self.blocks.anchors.get(&id)?;
+        let anchors = self.blocks.anchors_of(id)?;
         let first = self.screen_row(anchors.prompt.or(anchors.output)?)?;
         let last = match anchors.end {
             Some(end) => self.screen_row(end)?,

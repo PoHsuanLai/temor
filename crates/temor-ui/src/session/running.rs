@@ -18,7 +18,7 @@ impl Session {
     pub fn running_command(&self) -> Option<Running> {
         let block = self
             .blocks
-            .store
+            .store()
             .iter()
             .rev()
             .find(|block| block.outcome() == Outcome::Running)?;
@@ -31,7 +31,7 @@ impl Session {
     /// How the newest command stands; none before the first, or where the shell marks none.
     pub fn last_outcome(&self) -> Option<Outcome> {
         self.blocks
-            .store
+            .store()
             .iter()
             .next_back()
             .map(|block| block.outcome())

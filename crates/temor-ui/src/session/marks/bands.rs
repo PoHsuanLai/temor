@@ -149,11 +149,11 @@ impl Session {
     /// runs, on the alternate screen, or when it is out of view.
     pub fn live_prompt_header(&self) -> Option<PromptHeader> {
         let typing = matches!(
-            self.blocks.machine,
+            *self.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
-        let prompt = self.blocks.prompt.filter(|_| typing)?;
-        let input = self.blocks.input;
+        let prompt = self.blocks.prompt().filter(|_| typing)?;
+        let input = self.blocks.input();
         self.pane.with_term(|term| {
             if term.on_alternate_screen() {
                 return None;

@@ -17,7 +17,7 @@ impl Session {
 
     /// The running command's line, as the shell marked it.
     pub fn running_line(&self) -> Option<&str> {
-        match &self.blocks.machine {
+        match self.blocks.machine() {
             BlockState::Running(block) => Some(block.command.as_str()),
             _ => None,
         }
@@ -25,7 +25,7 @@ impl Session {
 
     /// The running command's block, when its command is on `list`, and which entry matched.
     pub fn running_listed(&self, list: &OfferList) -> Option<(BlockId, Program)> {
-        match &self.blocks.machine {
+        match self.blocks.machine() {
             BlockState::Running(block) => list
                 .matches(block.command.as_str())
                 .map(|program| (block.id, program)),

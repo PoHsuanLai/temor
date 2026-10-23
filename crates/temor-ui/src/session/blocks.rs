@@ -1,13 +1,15 @@
-//! The pane's block log (PLAN §9 blocks): the block machine, its store, and the anchors that
-//! locate each block's marks on the grid. The machine and the rules are in `temor-core`; this
-//! holds the glue state. Anchors are released when their block leaves the store.
+//! The pane's block log (PLAN §9 blocks): the mark log of `temor-core` (the block machine, its
+//! store, and which anchors locate each block's marks), seen through the terminal's anchor ids,
+//! and the chips each block's header carried. The rules are in `temor-core`; the session reads
+//! the terminal into the log's inputs and carries out what it says.
 
 use std::collections::BTreeMap;
 
 use temor_core::block::{BlockState, BlockStore};
 use temor_core::facts::Facts;
+use temor_core::session::{Anchor, MarkLog};
 use temor_core::vocab::ids::BlockId;
-use temor_vt::{AnchorId, PromptEvent};
+use temor_vt::AnchorId;
 
 use crate::plugins::facts::PluginFact;
 
@@ -20,36 +22,20 @@ pub(super) struct BlockAnchors {
     pub(super) end: Option<AnchorId>,
 }
 
-impl BlockAnchors {
-    /// Every anchor the block holds.
-    pub(super) fn all(self) -> impl Iterator<Item = AnchorId> {
-        [self.prompt, self.input, self.output, self.end]
-            .into_iter()
-            .flatten()
-    }
+/// The core's handle for a terminal anchor.
+pub(super) fn handle(id: AnchorId) -> Anchor {
+    Anchor(id.0)
+}
+
+/// The terminal's anchor for a core handle.
+pub(super) fn anchor_id(anchor: Anchor) -> AnchorId {
+    AnchorId(anchor.0)
 }
 
 /// Everything the session knows about the pane's blocks.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct BlockLog {
-    pub(super) machine: BlockState,
-    pub(super) store: BlockStore,
-    pub(super) anchors: BTreeMap<BlockId, BlockAnchors>,
-    /// The number of the mark in progress (see `temor_vt::VtEvent::MarkBegin`).
-    pub(super) pending_seq: Option<u64>,
-    /// The mark's own event, waiting for its anchor.
-    pub(super) pending: Option<PromptEvent>,
-    /// The cursor where the person last pressed Enter: the end of the typed command.
-    pub(super) enter: Option<AnchorId>,
-    /// The prompt and typed-command anchors of the block being typed, before its id exists.
-    pub(super) prompt: Option<AnchorId>,
-    pub(super) input: Option<AnchorId>,
-    /// The id the next command will get.
-    pub(super) next_id: u64,
-    /// How many primary prompts the shell has marked.
-    pub(super) prompts: usize,
-    /// How many commands have finished.
-    pub(super) finished: usize,
+    pub(super) marks: MarkLog,
     /// What the chips over each block's header line said when its prompt was typed at.
     pub(super) header_facts: BTreeMap<BlockId, HeaderFacts>,
 }
@@ -64,34 +50,40 @@ pub struct HeaderFacts {
     pub plugin: Vec<PluginFact>,
 }
 
-impl Default for BlockLog {
-    fn default() -> Self {
-        Self {
-            machine: BlockState::Idle,
-            store: BlockStore::default(),
-            anchors: BTreeMap::new(),
-            pending_seq: None,
-            pending: None,
-            enter: None,
-            prompt: None,
-            input: None,
-            next_id: 1,
-            prompts: 0,
-            finished: 0,
-            header_facts: BTreeMap::new(),
-        }
-    }
-}
-
 impl BlockLog {
-    /// Forgets the anchors of blocks the store no longer holds, returning them to release.
-    pub(super) fn drop_anchors(&mut self, gone: &[BlockId]) -> Vec<AnchorId> {
-        for id in gone {
-            self.header_facts.remove(id);
-        }
-        gone.iter()
-            .filter_map(|id| self.anchors.remove(id))
-            .flat_map(BlockAnchors::all)
-            .collect()
+    /// Where the block machine stands.
+    pub(super) fn machine(&self) -> &BlockState {
+        self.marks.machine()
+    }
+
+    /// The blocks, oldest first.
+    pub(super) fn store(&self) -> &BlockStore {
+        self.marks.store()
+    }
+
+    /// The anchors of a block.
+    pub(super) fn anchors_of(&self, id: BlockId) -> Option<BlockAnchors> {
+        let held = self.marks.anchors_of(id)?;
+        Some(BlockAnchors {
+            prompt: held.prompt.map(anchor_id),
+            input: held.input.map(anchor_id),
+            output: held.output.map(anchor_id),
+            end: held.end.map(anchor_id),
+        })
+    }
+
+    /// The anchor of the prompt being typed at.
+    pub(super) fn prompt(&self) -> Option<AnchorId> {
+        self.marks.prompt().map(anchor_id)
+    }
+
+    /// The anchor of where the typed command starts.
+    pub(super) fn input(&self) -> Option<AnchorId> {
+        self.marks.input().map(anchor_id)
+    }
+
+    /// The id the next command will get.
+    pub(super) fn next_id(&self) -> BlockId {
+        self.marks.next_id()
     }
 }

@@ -1,196 +1,131 @@
-//! The events of one mark, in order: its number, its event, its anchor. A mark's anchor is kept
-//! only when the block machine accepts the mark, so an ignored mark leaves nothing behind.
+//! The events of one mark, in order: its number, its event, its anchor. The rules are
+//! `mark_step` in `temor-core`; here the terminal is read into its inputs (the clock, where the
+//! anchor sits, the text typed) and its outputs are carried out (anchors handed back, a finished
+//! command announced).
 
-use ds_core::time::stamp::Stamp;
-use temor_core::block::{Author, BlockIn, BlockOut, BlockState, block_step};
-use temor_core::vocab::ids::{BlockId, ExitCode, GridRow};
-use temor_core::vocab::text::CommandText;
+use temor_core::session::{MarkIn, MarkKind, MarkOut, mark_step};
+use temor_core::vocab::ids::{ExitCode, GridRow};
 use temor_vt::{AnchorId, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::Session;
-use super::super::blocks::BlockAnchors;
+use super::super::blocks::{anchor_id, handle};
 use crate::session::Notice;
+
+/// What a mark's event says, for the log.
+fn kind_of(event: PromptEvent) -> MarkKind {
+    match event {
+        PromptEvent::PromptStart(kind) => MarkKind::PromptStart {
+            primary: kind == PromptKind::Primary,
+        },
+        PromptEvent::InputStart => MarkKind::InputStart,
+        PromptEvent::OutputStart { command } => MarkKind::OutputStart { command },
+        PromptEvent::CommandEnd { exit, .. } => MarkKind::CommandEnd {
+            exit: match exit {
+                ExitStatus::Code(code) => Some(ExitCode(code.0)),
+                // Unreported, or a status this build does not know: no exit code.
+                _ => None,
+            },
+        },
+        // A prompt event this build does not know: no block is opened or closed for it.
+        _ => MarkKind::Other,
+    }
+}
 
 impl Session {
     /// A mark starts, numbered `seq`. Whatever an earlier mark left pending is dropped.
     pub(in crate::session) fn mark_begin(&mut self, seq: u64) {
-        self.blocks.pending = None;
-        self.blocks.pending_seq = Some(seq);
+        self.mark(MarkIn::Begin { seq });
     }
 
     /// A mark's own event. Kept only while its mark is the current one.
     pub(in crate::session) fn mark_event(&mut self, mark: PromptEvent) {
-        if self.blocks.pending_seq.is_some() {
-            self.blocks.pending = Some(mark);
-        }
+        self.mark(MarkIn::Event(kind_of(mark)));
     }
 
     /// A mark's anchor arrived. It is paired with the event of the same number; anything else is
     /// released, so a missed anchor cannot pair with the next mark's event.
     pub(in crate::session) fn anchored(&mut self, seq: u64, id: AnchorId) -> Notice {
-        let current = self.blocks.pending_seq.take();
-        let mark = self.blocks.pending.take();
-        let (Some(current), Some(mark)) = (current, mark) else {
-            self.drop_anchor(id);
-            return Notice::Chrome;
-        };
-        if current != seq {
-            self.drop_anchor(id);
-            return Notice::Chrome;
-        }
-        let Some(row) = self.screen_row(id) else {
-            self.drop_anchor(id);
-            return Notice::Chrome;
-        };
-        let row = GridRow(u64::from(row));
+        let finished_before = self.blocks.marks.finished();
+        let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
         let at = self.clock.now();
-        let finished_before = self.blocks.finished;
-        match mark {
-            PromptEvent::PromptStart(PromptKind::Primary) => {
-                if self.step(BlockIn::PromptStart { row, at }) {
-                    self.blocks.prompts += 1;
-                    if let Some(old) = self.blocks.prompt.replace(id) {
-                        self.drop_anchor(old);
-                    }
-                    if let Some(old) = self.blocks.input.take() {
-                        self.drop_anchor(old);
-                    }
-                    self.clear_enter();
-                } else {
-                    self.drop_anchor(id);
-                }
-            }
-            PromptEvent::PromptStart(_) => self.drop_anchor(id),
-            PromptEvent::InputStart => {
-                if self.step(BlockIn::CommandStart { row }) {
-                    if let Some(old) = self.blocks.input.replace(id) {
-                        self.drop_anchor(old);
-                    }
-                } else {
-                    self.drop_anchor(id);
-                }
-            }
-            PromptEvent::OutputStart { command } => self.output_start(id, row, at, &command),
-            PromptEvent::CommandEnd { exit, .. } => {
-                let running = match &self.blocks.machine {
-                    BlockState::Running(block) => Some(block.id),
-                    _ => None,
-                };
-                let exit = match exit {
-                    ExitStatus::Code(code) => Some(ExitCode(code.0)),
-                    // Unreported, or a status this build does not know: no exit code.
-                    _ => None,
-                };
-                let taken = self.step(BlockIn::Finished { row, exit, at });
-                match (taken, running) {
-                    (true, Some(block)) => {
-                        self.blocks.anchors.entry(block).or_default().end = Some(id)
-                    }
-                    _ => self.drop_anchor(id),
-                }
-            }
-            // A prompt event this build does not know: no block is opened or closed for it.
-            _ => self.drop_anchor(id),
-        }
+        let typed = self.typed_at(id);
+        self.mark(MarkIn::Anchored {
+            seq,
+            anchor: handle(id),
+            row,
+            at,
+            typed,
+        });
         self.sweep();
-        match self.blocks.finished > finished_before {
+        match self.blocks.marks.finished() > finished_before {
             true => Notice::CommandDone,
             false => Notice::Chrome,
         }
     }
 
-    /// The command started: its block keeps the prompt, input and output anchors, if accepted.
-    fn output_start(&mut self, id: AnchorId, row: GridRow, at: Stamp, command: &str) {
-        let input = self.blocks.input.take();
-        let enter = self.blocks.enter.take();
-        let typed = input.and_then(|from| {
-            enter
-                .and_then(|to| self.text_between(from, to))
-                .filter(|text| !text.is_empty())
-                .or_else(|| self.text_between(from, id))
-        });
-        if let Some(enter) = enter {
-            self.drop_anchor(enter);
+    /// The command line as the person typed it, when the mark in progress starts the command
+    /// without the shell saying what it is: the text from the input mark to where Enter was
+    /// pressed, or to the output mark.
+    fn typed_at(&self, output: AnchorId) -> Option<String> {
+        let marks = &self.blocks.marks;
+        if !matches!(marks.pending(), Some(MarkKind::OutputStart { command }) if command.is_empty())
+        {
+            return None;
         }
-        let text = match command.is_empty() {
-            true => typed.unwrap_or_default(),
-            false => command.to_owned(),
-        };
-        let block = BlockId(self.blocks.next_id);
-        let accepted = self.step(BlockIn::OutputStart {
-            id: block,
-            row,
-            command: CommandText::from_shell(&text),
-            by: Author::Person,
-            at,
-        });
-        if accepted {
-            self.blocks.next_id += 1;
-            // The input anchor stays: the card's command rows (drawn bold) run from it to the
-            // output anchor.
-            let anchors = BlockAnchors {
-                prompt: self.blocks.prompt.take(),
-                input,
-                output: Some(id),
-                end: None,
-            };
-            self.blocks.anchors.insert(block, anchors);
-        } else {
-            // An ignored command keeps nothing: its anchors go back to the terminal.
-            self.drop_anchor(id);
-            if let Some(prompt) = self.blocks.prompt.take() {
-                self.drop_anchor(prompt);
-            }
-            if let Some(input) = input {
-                self.drop_anchor(input);
-            }
-        }
+        let from = anchor_id(marks.input()?);
+        marks
+            .enter()
+            .and_then(|to| self.text_between(from, anchor_id(to)))
+            .filter(|text| !text.is_empty())
+            .or_else(|| self.text_between(from, output))
     }
 
     /// The shell is gone: a running command ends unreported.
     pub(in crate::session) fn shell_gone(&mut self) {
         let at = self.clock.now();
-        self.step(BlockIn::ShellExited { at });
+        self.mark(MarkIn::ShellGone { at });
         self.sweep();
     }
 
     /// The terminal was reset: a running command is no longer on screen.
     pub(in crate::session) fn terminal_reset(&mut self) {
         let at = self.clock.now();
-        self.step(BlockIn::Reset { at });
+        self.mark(MarkIn::Reset { at });
     }
 
     /// The person pressed Enter at the shell: the cursor now sits at the end of the typed command
     /// (a right prompt lies beyond it), so the command's text ends there.
     pub(in crate::session) fn note_enter(&mut self) {
-        self.clear_enter();
-        self.blocks.enter = self.pane.with_term(|term| term.anchor_cursor());
+        let anchor = self.pane.with_term(|term| term.anchor_cursor());
+        self.mark(MarkIn::Entered {
+            anchor: anchor.map(handle),
+        });
     }
 
-    fn clear_enter(&mut self) {
-        if let Some(old) = self.blocks.enter.take() {
-            self.drop_anchor(old);
+    /// Drops the blocks whose marks the scrollback no longer holds.
+    pub(super) fn sweep(&mut self) {
+        let ids = self.swept();
+        if !ids.is_empty() {
+            self.mark(MarkIn::Gone { ids });
         }
     }
 
-    /// Runs the block machine on one input and applies what it says. Returns whether the machine
-    /// took the input (changed state): an ignored input leaves nothing to keep.
-    fn step(&mut self, input: BlockIn) -> bool {
-        let machine = std::mem::replace(&mut self.blocks.machine, BlockState::Idle);
-        let before = machine.clone();
-        let (next, outs) = block_step(machine, input);
-        let taken = next != before;
-        self.blocks.machine = next;
-        for out in &outs {
-            if let BlockOut::BlockDone(block) = out {
-                self.blocks.finished += 1;
-                self.notify_finished(block);
-            }
-            let gone = self.blocks.store.apply(out);
-            for anchor in self.blocks.drop_anchors(&gone) {
-                self.drop_anchor(anchor);
+    /// Steps the mark log on one input and carries out what it says.
+    fn mark(&mut self, input: MarkIn) {
+        let log = std::mem::take(&mut self.blocks.marks);
+        let (log, outs) = mark_step(log, input);
+        self.blocks.marks = log;
+        for out in outs {
+            match out {
+                MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
+                MarkOut::Finished(block) => self.notify_finished(&block),
+                MarkOut::Dropped(ids) => {
+                    for id in ids {
+                        self.blocks.header_facts.remove(&id);
+                    }
+                }
+                _ => {}
             }
         }
-        taken
     }
 }

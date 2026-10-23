@@ -54,7 +54,7 @@ impl Session {
     /// older block's header carries the chips its prompt had. Nothing while no prompt is typed at.
     pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts, plugin: &[PluginFact]) {
         let typing = matches!(
-            self.blocks.machine,
+            *self.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         if !typing {
@@ -65,7 +65,7 @@ impl Session {
             facts: facts.clone(),
             plugin: plugin.to_vec(),
         };
-        let id = BlockId(self.blocks.next_id);
+        let id = self.blocks.next_id();
         if self.blocks.header_facts.get(&id) != Some(&kept) {
             self.blocks.header_facts.insert(id, kept);
         }
@@ -78,13 +78,13 @@ impl Session {
 
     /// How many primary prompts the shell has marked so far.
     pub fn prompts_seen(&self) -> usize {
-        self.blocks.prompts
+        self.blocks.marks.prompts()
     }
 
     /// Every block the session holds, oldest first, with how each stands.
     pub fn block_outcomes(&self) -> Vec<(BlockId, Outcome)> {
         self.blocks
-            .store
+            .store()
             .iter()
             .map(|block| (block.id, block.outcome()))
             .collect()
@@ -93,7 +93,7 @@ impl Session {
     /// Whether a block's command has finished (its output is complete).
     pub fn block_finished(&self, id: BlockId) -> bool {
         self.blocks
-            .store
+            .store()
             .get(id)
             .is_some_and(|block| block.outcome() != Outcome::Running)
     }
@@ -110,12 +110,12 @@ impl Session {
 
     /// The command a block ran, as typed.
     pub fn block_command(&self, id: BlockId) -> Option<&str> {
-        self.blocks.store.get(id).map(|b| b.command.0.as_str())
+        self.blocks.store().get(id).map(|b| b.command.0.as_str())
     }
 
     /// A block's output as text, once the command has finished.
     pub fn block_output(&self, id: BlockId) -> Option<String> {
-        let anchors = self.blocks.anchors.get(&id)?;
+        let anchors = self.blocks.anchors_of(id)?;
         self.text_between(anchors.output?, anchors.end?)
     }
 
@@ -127,7 +127,7 @@ impl Session {
     /// How a block ended and how long it ran, as its card header says it (`exit 1 · 4 ms`);
     /// `None` while it runs.
     pub fn block_meta(&self, id: BlockId) -> Option<String> {
-        let block = self.blocks.store.get(id)?;
+        let block = self.blocks.store().get(id)?;
         crate::view::block_meta::meta_text(block.outcome(), block.elapsed_ms())
     }
 

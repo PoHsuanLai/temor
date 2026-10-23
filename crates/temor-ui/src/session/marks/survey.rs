@@ -28,7 +28,7 @@ impl Session {
 
     fn survey(&self) -> Option<Read> {
         let typing = matches!(
-            self.blocks.machine,
+            *self.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         let painted = self.painter.cursor_cell().map(|cell| u32::from(cell.row.0));
@@ -49,15 +49,10 @@ impl Session {
                 .map(|row| top.saturating_add(row));
             let blocks = self
                 .blocks
-                .store
+                .store()
                 .iter()
                 .map(|block| {
-                    let anchors = self
-                        .blocks
-                        .anchors
-                        .get(&block.id)
-                        .copied()
-                        .unwrap_or_default();
+                    let anchors = self.blocks.anchors_of(block.id).unwrap_or_default();
                     let prompt = spot(term, anchors.prompt);
                     let lead = match anchors.prompt {
                         Some(prompt) => lead_at(term, prompt, anchors.input),
@@ -93,11 +88,11 @@ impl Session {
                     }
                 })
                 .collect();
-            let live = self.blocks.prompt.filter(|_| typing).and_then(|prompt| {
+            let live = self.blocks.prompt().filter(|_| typing).and_then(|prompt| {
                 Some(LiveRead {
                     prompt: spot(term, Some(prompt))?,
-                    lead: lead_at(term, prompt, self.blocks.input),
-                    input: spot(term, self.blocks.input),
+                    lead: lead_at(term, prompt, self.blocks.input()),
+                    input: spot(term, self.blocks.input()),
                 })
             });
             Some(Read {
