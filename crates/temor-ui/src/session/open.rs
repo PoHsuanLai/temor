@@ -101,6 +101,7 @@ impl Session {
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,
+            list_map: None,
             cwd: None,
             progress: None,
             focus: Focus::Focused,

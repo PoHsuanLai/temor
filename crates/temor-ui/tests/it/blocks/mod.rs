@@ -3,6 +3,7 @@
 
 mod actions;
 mod gutter;
+mod list;
 mod marks;
 mod notify;
 mod picks;

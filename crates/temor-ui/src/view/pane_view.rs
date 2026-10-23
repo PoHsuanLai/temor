@@ -375,6 +375,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         false => None,
     };
     let listed = block_items.is_some();
+    if !listed && let Some(s) = slot.borrow_mut().session.as_mut() {
+        s.set_list_map(None);
+    }
     let picked_block = slot
         .borrow()
         .session
@@ -400,39 +403,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     mounted: Some(on_mounted),
                     ..Common::default()
                 },
-                if let Some(items) = block_items {
-                    BlockPane {
-                        pane,
-                        desk: desk.clone(),
-                        items,
-                        texture: texture.clone(),
-                        font: card_font.clone(),
-                        reveal: picked_block,
-                        actions: CardActions {
-                            copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
-                            copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
-                            save: EventHandler::new(then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain)),
-                            rerun: EventHandler::new(then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain)),
-                            view: EventHandler::new(bar_view(Rc::clone(&slot), desk.clone(), pane)),
-                            edit: EventHandler::new(bar_edit(Rc::clone(&slot), desk.clone(), pane)),
-                            fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
-                            detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
-                            stop: EventHandler::new({
-                                let mut press = then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain);
-                                move |()| press(HeaderPress::Stop)
-                            }),
-                        },
-                        offers: CardOffers {
-                            detach: desk.hub.can_detach(pane),
-                            on_host,
-                            copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
-                        },
-                    }
-                }
                 div {
                     class: "temor-grid",
-                    "data-listed": listed,
-                    "data-wheel": "capture",
+                    // A list of blocks scrolls itself: the wheel is the window's to give it.
+                    "data-wheel": (!listed).then_some("capture"),
                     "data-drop": dropper.drop_attr(),
                     onmounted: move |e: MountedEvent| {
                         dropper.mounted(e.clone());
@@ -444,12 +418,45 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     onpointerleave: on_leave,
                     oncontextmenu: on_context,
                     onwheel: move |e| {
+                        if listed {
+                            return;
+                        }
                         (mouse.wheel)(e);
                         // The hovered block follows the wheel; draw it again.
                         let mut ui = ui;
                         ui += 1;
                     },
-                    GridTexture { texture: texture.clone(), cut: cut.clone() }
+                    if let Some(items) = block_items {
+                        BlockPane {
+                            pane,
+                            desk: desk.clone(),
+                            items,
+                            texture: texture.clone(),
+                            font: card_font.clone(),
+                            reveal: picked_block,
+                            actions: CardActions {
+                                copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                save: EventHandler::new(then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain)),
+                                rerun: EventHandler::new(then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                view: EventHandler::new(bar_view(Rc::clone(&slot), desk.clone(), pane)),
+                                edit: EventHandler::new(bar_edit(Rc::clone(&slot), desk.clone(), pane)),
+                                fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
+                                stop: EventHandler::new({
+                                    let mut press = then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain);
+                                    move |()| press(HeaderPress::Stop)
+                                }),
+                            },
+                            offers: CardOffers {
+                                detach: desk.hub.can_detach(pane),
+                                on_host,
+                                copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
+                            },
+                        }
+                    } else {
+                        GridTexture { texture: texture.clone(), cut: cut.clone() }
+                    }
                     if let Some(text) = preedit() {
                         div { class: "temor-preedit", "{text}" }
                     }

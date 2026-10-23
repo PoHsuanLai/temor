@@ -3,8 +3,7 @@
 //! block's live rows, and the shell's prompt, are shown from the pane's own picture as the
 //! terminal draws them. The list follows its bottom until the person scrolls back.
 
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -17,9 +16,7 @@ use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds::style::tokens::control_size::ControlSize;
-use ds_blitz::{
-    PixelFormat, Pixels, Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu,
-};
+use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
 use ds_core::geometry::scroll::ScrollSpan;
 use ds_core::geometry::units::Px;
 use ds_core::vocab::Shortcut;
@@ -29,45 +26,19 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
 
-use super::segments::{Placed, Seg, SegKey, Sizes, Standing, card_span, lay_out, near_view};
+use super::segments::{Placed, Seg, Sizes, Standing, card_span, lay_out, list_map, near_view};
+use super::tiles::ground_of;
 use crate::hub::Desk;
 use crate::session::{Session, WheelDirection};
 use crate::view::block_tools::{More, more_menu};
-use crate::view::card_colours::{CardFill, card_ground_rgb};
 use crate::view::convert::wheel_lines;
+use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
 
 /// How far around the view segments are mounted, in logical pixels.
 const MOUNT_MARGIN: f32 = 600.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
-
-/// What a tile was drawn with: when any of it changes the tile is drawn again.
-#[derive(Debug, Clone, PartialEq)]
-struct Look {
-    rows: Range<u32>,
-    width: u32,
-    palette: Palette,
-    ground: Rgb,
-}
-
-/// A tile's texture and what it shows.
-struct Tile {
-    texture: TextureHandle,
-    look: Look,
-}
-
-/// The colour a card's rows are drawn on: raised off the background, tinted when it failed, the
-/// background itself while it runs (its live rows are the terminal's own); a picked card is
-/// drawn as selected text is.
-fn ground_of(palette: &Palette, standing: Standing, picked: bool) -> Rgb {
-    match (picked, standing) {
-        (true, _) => card_ground_rgb(palette, CardFill::Picked),
-        (false, Standing::Running) => palette.background,
-        (false, Standing::Failed) => card_ground_rgb(palette, CardFill::Failed),
-        (false, Standing::Done) => card_ground_rgb(palette, CardFill::None),
-    }
-}
 
 /// What a card's tools do, each to the block it names; `detach` and `stop` act on the running
 /// program, `fold` folds a block's output away or brings it back.
@@ -113,53 +84,6 @@ fn meta_of(block: &ListBlock) -> String {
         .join(" \u{b7} ")
 }
 
-/// Draws the tiles near the view that are missing or stale, and forgets the rest.
-fn draw_tiles(
-    session: &mut Session,
-    tiles: &mut HashMap<SegKey, Tile>,
-    mounted: &[&Placed],
-    palette: &Palette,
-    new_texture: impl Fn() -> TextureHandle,
-) {
-    let width = session.fit().map_or(0, |fit| fit.pane.width.0);
-    tiles.retain(|key, _| mounted.iter().any(|p| p.key == *key));
-    for placed in mounted {
-        let Seg::Rows {
-            rows,
-            standing,
-            picked,
-            live: false,
-            ..
-        } = &placed.seg
-        else {
-            continue;
-        };
-        let look = Look {
-            rows: rows.clone(),
-            width,
-            palette: *palette,
-            ground: ground_of(palette, *standing, *picked),
-        };
-        if tiles.get(&placed.key).is_some_and(|tile| tile.look == look) {
-            continue;
-        }
-        let texture = tiles
-            .remove(&placed.key)
-            .map_or_else(&new_texture, |tile| tile.texture);
-        let _ = session.draw_rows(rows.clone(), Some(look.ground), |bytes, size| {
-            if let Ok(pixels) = Pixels::new(
-                PixelFormat::Rgba8Premultiplied,
-                size.width.0,
-                size.height.0,
-                bytes,
-            ) {
-                let _ = texture.update(&pixels);
-            }
-        });
-        tiles.insert(placed.key, Tile { texture, look });
-    }
-}
-
 /// The pane's blocks as a list. `items` is the session's list now; `texture` the pane's own
 /// picture, which holds the live rows; `font` the grid's family as CSS.
 #[component]
@@ -177,7 +101,6 @@ pub fn BlockPane(
     let slot = use_hook(|| desk.hub.slot(pane).unwrap_or_default());
     let gpu = use_gpu();
     let scroller = use_scroller();
-    let tiles = use_hook(|| Rc::new(RefCell::new(HashMap::<SegKey, Tile>::new())));
     // The block under the pointer, and the one whose "more" menu is up: its tools show.
     let mut hovered = use_signal(|| None::<BlockId>);
     let held = use_signal(|| None::<BlockId>);
@@ -247,10 +170,13 @@ pub fn BlockPane(
     };
     let near = near_view(&placed, scroll.offset.0, viewport, MOUNT_MARGIN);
     let mounted: Vec<&Placed> = placed[near].iter().collect();
-    if let Some(session) = slot.borrow_mut().session.as_mut() {
-        draw_tiles(session, &mut tiles.borrow_mut(), &mounted, &palette, || {
-            gpu.handle()
-        });
+    {
+        let mut s = slot.borrow_mut();
+        let Slot { session, tiles, .. } = &mut *s;
+        if let Some(session) = session.as_mut() {
+            session.set_list_map(Some(list_map(&placed, scroller.scroll().peek().offset.0)));
+            tiles.draw(session, &mounted, &palette, || gpu.handle());
+        }
     }
     // Where live rows are in the pane's picture.
     let live_rect = |rows: &Range<u32>| {
@@ -268,10 +194,7 @@ pub fn BlockPane(
                     rows, live: true, ..
                 }
                 | Seg::Composer { rows } => (Some(texture.clone()), live_rect(rows)),
-                Seg::Rows { .. } => (
-                    tiles.borrow().get(&p.key).map(|tile| tile.texture.clone()),
-                    None,
-                ),
+                Seg::Rows { .. } => (slot.borrow().tiles.texture(&p.key), None),
                 _ => (None, None),
             };
             ((*p).clone(), handle, source)
@@ -458,6 +381,7 @@ fn CardHead(
         div {
             class: "temor-bseg temor-blk-head",
             "data-state": standing.slug(),
+            "data-picked": block.picked,
             style,
             onpointermove: move |e| on_move.call(e),
             // Held in place on every card, shown where there is output to fold, so titles align.

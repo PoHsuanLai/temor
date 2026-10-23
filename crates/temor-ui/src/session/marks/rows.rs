@@ -16,10 +16,8 @@ impl Session {
     /// The block under a point in the pane (device pixels), anywhere in the pane. `None` on a
     /// full-screen program's screen.
     pub fn block_at_point(&self, at: SurfacePoint) -> Option<BlockId> {
-        let placed = self.placed()?;
-        let hit = placed.cell_at(at);
-        self.frame()?
-            .block_at_viewport_row(u32::from(hit.pos.row.0))
+        let hit = self.point_hit(at)?;
+        self.hit_block(&hit)
     }
 
     /// How many grid rows the block tools cover.

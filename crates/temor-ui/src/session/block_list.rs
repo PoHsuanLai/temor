@@ -4,11 +4,15 @@
 use std::ops::Range;
 
 use temor_core::session::list::{BlockFacts, Item, list_of};
-use temor_render::{CellPos, PixelSize};
-use temor_vt::{Col, Row};
+use temor_core::vocab::ids::BlockId;
+use temor_pane::text::CellPos as ScreenCell;
+use temor_render::{CellPos, HitRegion, PixelSize};
+use temor_vt::{Col, Row, SurfacePoint};
 
 use super::Session;
+use super::list_hit::{Landing, ListMap, list_hit};
 use super::model::INSET;
+use super::pointer::screen_cell;
 use crate::error::UiError;
 use crate::paint::Inset;
 
@@ -16,11 +20,29 @@ use crate::paint::Inset;
 /// this much narrower than the pane, with this much less inset, so its columns are the grid's.
 pub const CARD_MARGIN: f32 = 8.0;
 
+static BLOCK_LIST: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
 /// Whether panes are drawn as lists of blocks (`TEMOR_BLOCK_LIST=1`) instead of one grid with
 /// cards over it.
 pub fn block_list_on() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("TEMOR_BLOCK_LIST").is_some_and(|v| v == "1"))
+    *BLOCK_LIST.get_or_init(|| std::env::var_os("TEMOR_BLOCK_LIST").is_some_and(|v| v == "1"))
+}
+
+/// Draws panes as lists of blocks in this process whatever the environment says, before any
+/// pane asks (a test's own process). Whether it took: false once a pane has asked.
+pub fn force_block_list() -> bool {
+    BLOCK_LIST.set(true).is_ok()
+}
+
+/// The screen cell under a point in the pane, as the pane draws it: one grid or a list of blocks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PointHit {
+    pub cell: ScreenCell,
+    /// Whether the point is over the cells' columns, not the room beside them.
+    pub region: HitRegion,
+    /// The block the list put there, when the pane is a list: there the block a point is over
+    /// is the card it is on, which may have no rows to find it by.
+    pub listed: Option<Option<BlockId>>,
 }
 
 /// Where some of the viewport's rows are in the pane's picture, in its own pixels.
@@ -50,14 +72,90 @@ impl Session {
         }))
     }
 
+    /// The list as its view laid it out now, or `None` while the pane is one grid.
+    pub fn set_list_map(&mut self, map: Option<ListMap>) {
+        self.list_map = map;
+    }
+
+    /// The screen cell under `at` (device pixels in the pane). `None` before the first layout.
+    pub(crate) fn point_hit(&self, at: SurfacePoint) -> Option<PointHit> {
+        let placed = self.placed()?;
+        let hit = placed.cell_at(at);
+        let Some(map) = &self.list_map else {
+            let top = self.viewport_top().ok()?;
+            return Some(PointHit {
+                cell: screen_cell(top, hit.pos.row.0, hit.pos.col.0),
+                region: hit.region,
+                listed: None,
+            });
+        };
+        let factor = self.scale.factor().max(f32::EPSILON);
+        let row = placed.fit.cell.height.0 as f32 / factor;
+        let found = list_hit(map, at.y as f32 / factor, row)?;
+        // The list's rows keep the grid's columns: only the point's height is the list's.
+        let left = i64::from(placed.fit.padding.left.0);
+        let width = i64::from(placed.fit.grid.cols.0) * i64::from(placed.fit.cell.width.0);
+        let over = (left..left + width).contains(&i64::from(at.x));
+        let last = placed.fit.grid.cols.0.saturating_sub(1);
+        let (row, col, region) = match found.landing {
+            Landing::On(row) if over => (row, hit.pos.col.0, HitRegion::Grid),
+            Landing::On(row) => (row, hit.pos.col.0, HitRegion::Padding),
+            Landing::Start(row) => (row, 0, HitRegion::Padding),
+            Landing::End(row) => (row, last, HitRegion::Padding),
+        };
+        Some(PointHit {
+            cell: ScreenCell::new(row, col),
+            region,
+            listed: Some(found.block),
+        })
+    }
+
+    /// The block a hit is on.
+    pub(crate) fn hit_block(&self, hit: &PointHit) -> Option<BlockId> {
+        match hit.listed {
+            Some(block) => block,
+            None => self.frame()?.block_at_screen_row(hit.cell.row),
+        }
+    }
+
+    /// The point a program that has the mouse is told of for `at`: the cell's place in the
+    /// viewport, where the program drew it.
+    pub(crate) fn drawn_point(&self, at: SurfacePoint) -> Option<SurfacePoint> {
+        let placed = self.placed()?;
+        if self.list_map.is_none() {
+            return Some(placed.drawn_point(at));
+        }
+        let hit = self.point_hit(at)?;
+        let top = self.viewport_top().ok()?;
+        let row = hit.cell.row.saturating_sub(top);
+        let pos = CellPos {
+            row: Row(u16::try_from(row).unwrap_or(u16::MAX)),
+            col: Col(hit.cell.col),
+        };
+        let (x, y) = placed.fit.cell_origin(pos);
+        let half = placed.fit.cell.height.0 / 2;
+        Some(SurfacePoint {
+            x: i32::try_from(x.0).unwrap_or(i32::MAX).max(at.x),
+            y: i32::try_from(y.0 + half).unwrap_or(i32::MAX),
+        })
+    }
+
     /// One row's height in logical pixels (`None` before the first layout).
     pub fn row_height(&self) -> Option<f32> {
         let fit = self.fit?;
         Some(fit.cell.height.0 as f32 / self.scale.factor().max(f32::EPSILON))
     }
 
+    /// What of screen rows `rows` the selection covers, as its ends (or `None`): a drawing of
+    /// them is drawn again when it changes.
+    pub fn selection_over(&self, rows: Range<u32>) -> Option<(ScreenCell, ScreenCell)> {
+        let selection = self.selection?;
+        let (start, end) = selection.ends();
+        (start.row < rows.end && end.row >= rows.start).then_some((start, end))
+    }
+
     /// Draws screen rows `rows` whole, as wide as a card, on `ground` where a cell has no
-    /// colour of its own, handing the pixels to `show`.
+    /// colour of its own, with the selection over them, handing the pixels to `show`.
     pub fn draw_rows(
         &mut self,
         rows: Range<u32>,
@@ -66,9 +164,18 @@ impl Session {
     ) -> Result<(), UiError> {
         let (cols, cells) = self.pane.with_term(|term| {
             let cols = term.size().cols.0;
-            (cols, term.styled_rows(rows))
+            (cols, term.styled_rows(rows.clone()))
         });
-        let cells = cells?;
+        let mut cells = cells?;
+        if let Some(selection) = self.selection {
+            for (row, line) in (rows.start..).zip(cells.iter_mut()) {
+                for cell in line {
+                    if selection.contains(ScreenCell::new(row, cell.col.0)) {
+                        cell.selected = temor_vt::Selected::Yes;
+                    }
+                }
+            }
+        }
         let margin = self.scale.device(CARD_MARGIN).0;
         let width = self.pixels.width.0.saturating_sub(2 * margin);
         let inset = Inset {

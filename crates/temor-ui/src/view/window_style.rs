@@ -19,7 +19,6 @@ pub const WINDOW_CSS: &str = "\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; overflow: hidden; }\
 .temor-grid-slice { position: absolute; left: 0; right: 0; pointer-events: none; }\
-.temor-grid[data-listed=true] { display: none; }\
 .temor-blist { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; background: var(--term-bg); }\
 .temor-blist-scroll { flex: 1 1 0; }\
 .temor-blist-content { position: relative; }\

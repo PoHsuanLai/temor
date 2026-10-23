@@ -144,7 +144,8 @@ pub struct CellView<'a> {
 }
 
 /// One cell of any screen row, scrollback included, owned: what a frame's [`CellView`] says of
-/// a viewport cell, read for a row the viewport need not show. Nothing is selected in it.
+/// a viewport cell, read for a row the viewport need not show. It is read unselected; whoever
+/// draws it marks what its own selection covers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StyledCell {
     pub col: Col,
@@ -158,6 +159,7 @@ pub struct StyledCell {
     pub style: CellStyle,
     pub hyperlink: Hyperlink,
     pub semantic: SemanticMark,
+    pub selected: Selected,
 }
 
 impl StyledCell {
@@ -172,7 +174,7 @@ impl StyledCell {
             style: self.style,
             hyperlink: self.hyperlink,
             semantic: self.semantic,
-            selected: Selected::No,
+            selected: self.selected,
         }
     }
 }

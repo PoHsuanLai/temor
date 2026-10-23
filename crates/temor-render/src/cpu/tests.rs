@@ -340,6 +340,7 @@ fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
                     style: CellStyle::default(),
                     hyperlink: temor_vt::Hyperlink::None,
                     semantic: temor_vt::SemanticMark::Output,
+                    selected: temor_vt::Selected::No,
                 })
                 .collect()
         })

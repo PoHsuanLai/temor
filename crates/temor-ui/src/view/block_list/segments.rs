@@ -9,6 +9,8 @@ use temor_core::block::Outcome;
 use temor_core::session::list::{Item, ListBlock};
 use temor_core::vocab::ids::BlockId;
 
+use crate::session::{ListMap, ListSpan, Toward};
+
 /// The sizes the layout is made with, in logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sizes {
@@ -228,6 +230,30 @@ pub fn near_view(placed: &[Placed], offset: f32, viewport: f32, margin: f32) -> 
     let start = placed.partition_point(|p| p.bottom() <= top);
     let end = placed.partition_point(|p| p.top < bottom);
     start..end.max(start)
+}
+
+/// The list as the session maps a point over it: each segment's place, its block and its rows.
+pub fn list_map(placed: &[Placed], offset: f32) -> ListMap {
+    let spans = placed
+        .iter()
+        .map(|p| {
+            let (block, rows, toward) = match &p.seg {
+                Seg::Section(_) => (None, 0..0, Toward::Next),
+                Seg::Head(block) => (Some(block.id), 0..0, Toward::Next),
+                Seg::Rows { id, rows, .. } => (Some(*id), rows.clone(), Toward::Next),
+                Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),
+                Seg::Composer { rows } => (None, rows.clone(), Toward::Next),
+            };
+            ListSpan {
+                top: p.top,
+                height: p.height,
+                block,
+                rows,
+                toward,
+            }
+        })
+        .collect();
+    ListMap { offset, spans }
 }
 
 #[cfg(test)]

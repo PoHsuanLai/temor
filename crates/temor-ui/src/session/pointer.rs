@@ -56,11 +56,14 @@ impl Session {
             // The program has the mouse: nothing of the blocks is picked under it.
             self.annotate(AnnotateIn::ClearPicks);
             let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
             let input = MouseInput {
                 action: MouseAction::Press,
                 button: Some(button),
                 mods,
-                at: placed.drawn_point(at),
+                at: drawn,
             };
             let bytes = self
                 .pane
@@ -68,9 +71,9 @@ impl Session {
             self.pane.send(&bytes);
             return Ok(());
         }
-        let hit = placed.cell_at(at);
-        let top = self.viewport_top()?;
-        let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
+        let Some(cell) = self.point_hit(at).map(|hit| hit.cell) else {
+            return Ok(());
+        };
         if mods.contains(Modifiers::CTRL) && mods.contains(Modifiers::SHIFT) {
             return self.open_link_at(cell);
         }
@@ -93,15 +96,12 @@ impl Session {
 
     /// The pointer moved at `at` while a button is held.
     pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), UiError> {
-        let Some(placed) = self.placed() else {
-            return Ok(());
-        };
         if self.drag.is_none() {
             return Ok(());
         }
-        let hit = placed.cell_at(at);
-        let top = self.viewport_top()?;
-        let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
+        let Some(cell) = self.point_hit(at).map(|hit| hit.cell) else {
+            return Ok(());
+        };
         let line = self.line(cell.row)?;
         if let Some(selection) = self.selection.as_mut() {
             selection.extend(cell, &line);
@@ -134,11 +134,14 @@ impl Session {
         let tracking = self.pane.with_term(|term| term.mouse_tracking());
         if tracking && !mods.contains(Modifiers::SHIFT) {
             let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
             let input = MouseInput {
                 action: MouseAction::Release,
                 button: Some(button),
                 mods,
-                at: placed.drawn_point(at),
+                at: drawn,
             };
             let bytes = self
                 .pane
@@ -171,11 +174,14 @@ impl Session {
                 WheelDirection::Down => MouseButton::WheelDown,
             };
             let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
             let input = MouseInput {
                 action: MouseAction::Press,
                 button: Some(button),
                 mods,
-                at: placed.drawn_point(at),
+                at: drawn,
             };
             for _ in 0..lines.min(10) {
                 let bytes = self

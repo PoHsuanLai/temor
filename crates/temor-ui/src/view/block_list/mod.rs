@@ -4,6 +4,7 @@
 
 pub mod pane;
 pub mod segments;
+pub mod tiles;
 
 pub use crate::session::block_list_on;
 pub use pane::{BlockPane, CardActions, CardOffers};

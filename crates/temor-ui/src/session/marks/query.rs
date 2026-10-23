@@ -140,6 +140,10 @@ impl Session {
     /// The block whose gutter is under `at` (device pixels in the pane), if the point is in the
     /// left margin, on a row that belongs to a block. Never on a full-screen program's screen.
     pub fn gutter_block(&self, at: SurfacePoint) -> Option<BlockId> {
+        // A list of blocks has no gutter: its cards take their own presses.
+        if self.list_map.is_some() {
+            return None;
+        }
         let placed = self.placed()?;
         let margin = i64::from(placed.fit.padding.left.0);
         if at.x < 0 || i64::from(at.x) >= margin {

@@ -9,7 +9,7 @@ use super::cells::{graphemes, has_text};
 use super::convert::{check, rgb};
 use super::row::{cell_flag, cell_get, cell_style, cell_width, semantic};
 use super::terminal::Terminal;
-use crate::{Col, GridPoint, Hyperlink, PointSpace, Rgb, StyledCell, VtError};
+use crate::{Col, GridPoint, Hyperlink, PointSpace, Rgb, Selected, StyledCell, VtError};
 
 impl Terminal {
     /// The cells of screen row `row` (screen space), left to right, one per column.
@@ -69,6 +69,7 @@ impl Terminal {
                     false => Hyperlink::None,
                 },
                 semantic: semantic(raw),
+                selected: Selected::No,
             });
         }
         Ok(out)

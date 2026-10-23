@@ -105,6 +105,9 @@ pub struct Session {
     pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
     /// The link under the pointer as last drawn in its tooltip.
     pub(super) link_hover: Option<String>,
+    /// The block list as its view last laid it out, while the pane is drawn as one: where a
+    /// point over it lands. `None` while the pane is one grid.
+    pub(super) list_map: Option<super::list_hit::ListMap>,
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
     pub(super) focus: Focus,

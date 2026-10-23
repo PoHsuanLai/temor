@@ -7,6 +7,7 @@ mod agents_socket;
 mod agents_window;
 mod ambient;
 mod bar;
+mod block_list;
 mod blocks;
 mod cards;
 mod coherence;
