@@ -23,6 +23,7 @@ mod row;
 mod semantic;
 mod signals;
 mod snapshot;
+mod styled;
 mod terminal;
 mod terminal_read;
 mod terminal_write;

@@ -143,6 +143,40 @@ pub struct CellView<'a> {
     pub selected: Selected,
 }
 
+/// One cell of any screen row, scrollback included, owned: what a frame's [`CellView`] says of
+/// a viewport cell, read for a row the viewport need not show. Nothing is selected in it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyledCell {
+    pub col: Col,
+    /// The full grapheme cluster; empty for a blank cell.
+    pub text: String,
+    pub width: CellWidth,
+    /// Resolved foreground; `None` means the terminal's default foreground.
+    pub fg: Option<Rgb>,
+    /// Resolved background; `None` means the terminal's default background.
+    pub bg: Option<Rgb>,
+    pub style: CellStyle,
+    pub hyperlink: Hyperlink,
+    pub semantic: SemanticMark,
+}
+
+impl StyledCell {
+    /// The cell as a frame's walk would hand it over.
+    pub fn view(&self) -> CellView<'_> {
+        CellView {
+            col: self.col,
+            text: &self.text,
+            width: self.width,
+            fg: self.fg,
+            bg: self.bg,
+            style: self.style,
+            hyperlink: self.hyperlink,
+            semantic: self.semantic,
+            selected: Selected::No,
+        }
+    }
+}
+
 /// The cursor's shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CursorShape {

@@ -195,7 +195,7 @@ fn read_text(cells: sys::RenderStateRowCells, text: &mut Vec<u8>) -> Result<(), 
     }
 }
 
-fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
+pub(super) fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
     let mut out = T::default();
     // SAFETY: `ghostty_cell_get` decodes the packed value; callers pass the type documented for
     // `data`.
@@ -203,11 +203,11 @@ fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
     out
 }
 
-fn cell_flag(raw: sys::Cell, data: sys::CellData::Type) -> bool {
+pub(super) fn cell_flag(raw: sys::Cell, data: sys::CellData::Type) -> bool {
     cell_get::<bool>(raw, data)
 }
 
-fn cell_width(raw: sys::Cell) -> CellWidth {
+pub(super) fn cell_width(raw: sys::Cell) -> CellWidth {
     match cell_get::<sys::CellWide::Type>(raw, sys::CellData::WIDE) {
         sys::CellWide::WIDE => CellWidth::Wide,
         sys::CellWide::SPACER_TAIL => CellWidth::SpacerTail,
@@ -224,7 +224,7 @@ pub(super) fn semantic(raw: sys::Cell) -> SemanticMark {
     }
 }
 
-fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
+pub(super) fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
     let flags = [
         (s.bold, StyleFlags::BOLD),
         (s.italic, StyleFlags::ITALIC),

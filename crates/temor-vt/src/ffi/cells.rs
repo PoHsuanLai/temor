@@ -74,7 +74,7 @@ pub(super) fn has_text(cell: sys::Cell) -> bool {
 }
 
 /// The grapheme cluster of a cell, read with libghostty's two-call sizing protocol.
-fn graphemes(gref: &sys::GridRef) -> Result<String, VtError> {
+pub(super) fn graphemes(gref: &sys::GridRef) -> Result<String, VtError> {
     let mut len = 0usize;
     // SAFETY: a null buffer with zero length asks for the size in `len`.
     let code = unsafe { sys::ghostty_grid_ref_graphemes(gref, std::ptr::null_mut(), 0, &mut len) };
