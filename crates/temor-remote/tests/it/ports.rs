@@ -5,7 +5,7 @@ use temor_remote::ClientEvent;
 use temor_testkit::program_or_skip;
 use temor_wire::units::Port;
 
-use crate::support::{Rig, tools_present};
+use crate::support::{Rig, proc_present, tools_present};
 
 /// A listener on an ephemeral loopback port that prints it and then waits.
 const LISTENER: &str = "python3 -c \"import socket,time; s=socket.socket(); s.bind(('127.0.0.1',0)); s.listen(); print('PORT=%d;' % s.getsockname()[1], flush=True); time.sleep(60)\"\n";
@@ -20,7 +20,7 @@ fn port_in(output: &str) -> Option<u16> {
 
 #[test]
 fn a_new_connection_is_told_the_ports_already_known() {
-    if !tools_present() || program_or_skip("python3", "ports").is_none() {
+    if !tools_present() || !proc_present() || program_or_skip("python3", "ports").is_none() {
         return;
     }
     let rig = Rig::new("ports-late");

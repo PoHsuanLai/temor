@@ -25,7 +25,9 @@ impl Daemon {
                 continue;
             };
             if idle_step(limit, since, now) == IdleVerdict::End {
-                session.hang_up();
+                // Closed, not only hung up: the pump then reaps it and kills what ignores the hangup
+                // (macOS's bash does, idle at its prompt).
+                session.close();
             }
         }
     }

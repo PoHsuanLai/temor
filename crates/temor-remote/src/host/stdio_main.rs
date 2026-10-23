@@ -28,7 +28,7 @@ pub fn run_stdio(env: &HostEnv) -> Result<(), Error> {
     proxy(connection)
 }
 
-fn wait_for(socket: &std::path::Path) -> Result<Half, Error> {
+pub(super) fn wait_for(socket: &std::path::Path) -> Result<Half, Error> {
     let mut last = Error::LinkClosed(None);
     for _ in 0..START_TRIES {
         std::thread::sleep(START_WAIT);

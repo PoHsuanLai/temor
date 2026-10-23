@@ -270,9 +270,21 @@ pub fn bash_path() -> PathBuf {
 /// Whether bash and `/proc` are there. Where not, the terminal tests return early with a note,
 /// or fail under TEMOR_REQUIRE_TOOLS=1 so a gate that has the tools cannot pass silently.
 pub fn tools_present() -> bool {
-    if temor_testkit::program_or_skip("bash", "temor-remote").is_none() {
-        return false;
+    temor_testkit::program_or_skip("bash", "temor-remote").is_some()
+}
+
+/// Whether the host can serve confined files (Linux so far), for the tests that upload or read
+/// them.
+pub fn files_present() -> bool {
+    let linux = cfg!(target_os = "linux");
+    if !linux {
+        temor_testkit::skip("confined file access", "temor-remote");
     }
+    linux && tools_present()
+}
+
+/// Whether `/proc` is there: the port tests read it, and so do the foreground-process ones.
+pub fn proc_present() -> bool {
     let proc = Path::new("/proc/self").exists();
     if !proc {
         temor_testkit::skip("/proc", "temor-remote");

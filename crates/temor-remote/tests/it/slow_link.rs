@@ -9,7 +9,7 @@ use temor_wire::ids::SessionId;
 use temor_wire::message::{RemotePath, WriteCheck};
 
 use crate::pipes::Line;
-use crate::support::{Conn, Rig, tools_present};
+use crate::support::{Conn, Rig, files_present};
 
 /// How long a typed line takes to come back on the screen.
 fn echo_after(conn: &mut Conn, id: SessionId, n: u32) -> Duration {
@@ -55,7 +55,7 @@ fn echoes_during(
 #[test]
 #[ignore = "a measurement: by hand, `-- --ignored --nocapture`"]
 fn typing_while_a_file_moves_over_a_thin_line() {
-    if !tools_present() {
+    if !files_present() {
         return;
     }
     let line = Line {
@@ -116,7 +116,7 @@ fn upload_over_plain_pipes() {
 
 #[test]
 fn a_keystroke_is_not_held_behind_an_upload_on_a_thin_line() {
-    if !tools_present() {
+    if !files_present() {
         return;
     }
     // 1 MB/s and 150 ms there and back. A part in flight ahead of the keystroke costs a quarter

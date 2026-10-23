@@ -46,7 +46,11 @@ pub(super) fn run(daemon: Arc<Daemon>, session: Arc<Session>, io: PtyIo) {
             Ok(ReadOutcome::Closed) | Err(_) => break,
         }
     }
-    let exit = session.reap();
+    let exit = session.reap(|| {
+        // What the program prints while it leaves is not shown to anyone; it is read so the
+        // program can finish writing it.
+        while let Ok(ReadOutcome::Data(_)) = io.read(&mut buffer) {}
+    });
     session.exited(exit);
     daemon.remove_session(session.id);
 }

@@ -12,6 +12,8 @@ mod fixtures;
 mod handshake;
 #[cfg(feature = "ghostty")]
 mod live;
+#[cfg(all(feature = "ghostty", unix))]
+mod local_daemon;
 #[cfg(feature = "ghostty")]
 mod pipes;
 #[cfg(feature = "ghostty")]

@@ -78,6 +78,16 @@ pub struct Listener(UnixListener);
 impl Listener {
     /// Listens at `path`, which must not exist, with mode 0600.
     pub fn bind(path: &Path) -> Result<Self, Error> {
+        // A longer path is refused by the system with a vague error; say what is wrong.
+        if path.as_os_str().len() > temor_shell::SOCKET_PATH_MAX {
+            return Err(Error::io(
+                format!("listening at {}", path.display()),
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "the socket's path is longer than a unix socket allows",
+                ),
+            ));
+        }
         let listener = UnixListener::bind(path)
             .map_err(|error| Error::io(format!("listening at {}", path.display()), error))?;
         fs::set_permissions(path, fs::Permissions::from_mode(0o600))

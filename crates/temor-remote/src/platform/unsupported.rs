@@ -1,9 +1,9 @@
-//! Every other system: nothing here yet, and each call says so.
+//! What a system lacks: nothing here yet, and each call says so. The confined files and ports
+//! are missing off Linux, the local socket off unix.
 // TODO(platform:macos): openat(O_NOFOLLOW) walks for the file service, `libproc` for ports.
 // TODO(platform:windows): the helper targets Linux hosts only; Windows hosts stay on Tier A.
 
 use std::fs::File;
-use std::io::{self, Read, Write};
 use std::path::Path;
 
 use temor_wire::message::ListeningPort;
@@ -76,56 +76,67 @@ pub fn listening_ports(_proc: &Path, _roots: &[u32]) -> Result<Vec<ListeningPort
     Err(no("port detection"))
 }
 
-pub fn ensure_private_dir(_path: &Path) -> Result<(), Error> {
-    Err(no("a private folder"))
-}
+#[cfg(not(unix))]
+mod socket {
+    use std::io::{self, Read, Write};
+    use std::path::Path;
 
-/// One end of a connection (unsupported here).
-#[derive(Debug)]
-pub struct Half;
+    use super::no;
+    use crate::error::Error;
 
-impl Half {
-    pub fn duplicate(&self) -> Result<Self, Error> {
+    pub fn ensure_private_dir(_path: &Path) -> Result<(), Error> {
+        Err(no("a private folder"))
+    }
+
+    /// One end of a connection (unsupported here).
+    #[derive(Debug)]
+    pub struct Half;
+
+    impl Half {
+        pub fn duplicate(&self) -> Result<Self, Error> {
+            Err(no("the local socket"))
+        }
+
+        pub fn shutdown_write(&self) {}
+    }
+
+    impl Read for Half {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Ok(0)
+        }
+    }
+
+    impl Write for Half {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// The listening socket (unsupported here).
+    #[derive(Debug)]
+    pub struct Listener;
+
+    impl Listener {
+        pub fn bind(_path: &Path) -> Result<Self, Error> {
+            Err(no("the local socket"))
+        }
+
+        pub fn accept(&self) -> Result<Half, Error> {
+            Err(no("the local socket"))
+        }
+    }
+
+    pub fn connect(_path: &Path) -> Result<Half, Error> {
         Err(no("the local socket"))
     }
 
-    pub fn shutdown_write(&self) {}
-}
-
-impl Read for Half {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
+    pub fn spawn_detached(_program: &Path, _args: &[&str]) -> Result<(), Error> {
+        Err(no("starting the daemon"))
     }
 }
-
-impl Write for Half {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-/// The listening socket (unsupported here).
-#[derive(Debug)]
-pub struct Listener;
-
-impl Listener {
-    pub fn bind(_path: &Path) -> Result<Self, Error> {
-        Err(no("the local socket"))
-    }
-
-    pub fn accept(&self) -> Result<Half, Error> {
-        Err(no("the local socket"))
-    }
-}
-
-pub fn connect(_path: &Path) -> Result<Half, Error> {
-    Err(no("the local socket"))
-}
-
-pub fn spawn_detached(_program: &Path, _args: &[&str]) -> Result<(), Error> {
-    Err(no("starting the daemon"))
-}
+#[cfg(not(unix))]
+pub use socket::{Half, Listener, connect, ensure_private_dir, spawn_detached};

@@ -228,7 +228,10 @@ impl Session {
 
     /// Waits for the program to leave after its terminal closed: hangs it up, gives it the grace
     /// period, then kills it. `None` when its status is no longer known.
-    pub(super) fn reap(&self) -> Option<ChildExit> {
+    ///
+    /// `drain` runs on every poll: a program exiting on a terminal nobody reads can stall in its
+    /// own exit (macOS holds the process there until the output is taken).
+    pub(super) fn reap(&self, mut drain: impl FnMut()) -> Option<ChildExit> {
         self.hang_up();
         let mut waited = Duration::ZERO;
         loop {
@@ -241,6 +244,7 @@ impl Session {
                     return pty.kill().ok();
                 }
             }
+            drain();
             std::thread::sleep(POLL);
             waited += POLL;
         }
