@@ -33,10 +33,13 @@ fn shells_report_what_their_adapters_say_they_can() {
             continue;
         }
         let mut live = start(&format!("state-{name}"), &shell);
-        run_line(
-            &live,
-            "export TEMOR_CASE_VAR=kept-value MY_API_TOKEN=top-secret; alias tzz='echo zz'; cd /",
-        );
+        let line = match name {
+            "nu" => "$env.TEMOR_CASE_VAR = 'kept-value'; $env.MY_API_TOKEN = 'top-secret'; cd /",
+            _ => {
+                "export TEMOR_CASE_VAR=kept-value MY_API_TOKEN=top-secret; alias tzz='echo zz'; cd /"
+            }
+        };
+        run_line(&live, line);
         pump(&mut live, "the command", |s| {
             s.block_outcomes()
                 .first()

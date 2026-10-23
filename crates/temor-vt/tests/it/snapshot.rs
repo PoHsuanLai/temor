@@ -70,35 +70,37 @@ fn corrupt_snapshot_is_rejected() {
     assert_eq!(got.err(), Some(VtError::SnapshotRejected));
 }
 
+fn restored(snap: &Snapshot) -> Terminal {
+    Terminal::restore(
+        &Snapshot::from_bytes(snap.as_bytes().to_vec()),
+        TerminalConfig::new(GridSize::new(1, 1)),
+        Box::new(mpsc::channel::<VtEvent>().0),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
+    )
+    .expect("restore")
+}
+
 #[test]
-fn the_prompt_being_typed_at_is_left_out_of_a_snapshot_but_a_running_commands_screen_is_kept() {
+fn a_restored_screens_open_prompt_comes_off_but_a_running_commands_screen_stays() {
     let (mut t, _rx) = term(40, 10);
     // A finished command, then an idle prompt: a blank line, the folder line, the typing line.
     t.write(b"\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07$ ls\r\n\x1b]133;C\x07out\r\n");
     t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07");
-    let snap = t.snapshot().expect("encode");
     let text = |t: &Terminal| export(t, TextFormat::Plain);
-    let restored = |snap: &Snapshot| {
-        Terminal::restore(
-            &Snapshot::from_bytes(snap.as_bytes().to_vec()),
-            TerminalConfig::new(GridSize::new(1, 1)),
-            Box::new(mpsc::channel::<VtEvent>().0),
-            Box::new(mpsc::channel::<Vec<u8>>().0),
-        )
-        .expect("restore")
-    };
-    // The plain snapshot keeps both prompts.
-    assert_eq!(text(&restored(&snap)).matches("~/work").count(), 2);
-    t.take_prompt_off();
     let snap = t.snapshot().expect("encode");
-    let kept = text(&restored(&snap));
+    // The snapshot keeps both prompts; the restore takes the open one off, its blank line too.
+    let mut back = restored(&snap);
+    assert_eq!(text(&back).matches("~/work").count(), 2);
+    back.take_open_prompt_off();
+    let kept = text(&back);
     assert_eq!(kept.matches("~/work").count(), 1, "{kept:?}");
-    assert!(kept.contains("out"), "{kept:?}");
+    assert!(kept.trim_end().ends_with("out"), "{kept:?}");
     // With a command running there is no prompt to take off.
     t.write(b"$ sleep\r\n\x1b]133;C\x07running\r\n");
-    let before = text(&t);
-    t.take_prompt_off();
-    assert_eq!(text(&t), before);
+    let mut back = restored(&t.snapshot().expect("encode"));
+    let before = text(&back);
+    back.take_open_prompt_off();
+    assert_eq!(text(&back), before);
 }
 
 #[test]
@@ -107,8 +109,9 @@ fn a_one_line_prompt_comes_off_and_the_output_above_it_stays() {
     // A one-line prompt (bash's default): the mark is on the cursor's own row.
     t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07ls\r\n\x1b]133;C\x07first\r\nlast\r\n");
     t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07$ \x1b]133;B\x07");
-    t.take_prompt_off();
-    let kept = export(&t, TextFormat::Plain);
+    let mut back = restored(&t.snapshot().expect("encode"));
+    back.take_open_prompt_off();
+    let kept = export(&back, TextFormat::Plain);
     assert!(
         kept.contains("last"),
         "the output's last line stays: {kept:?}"

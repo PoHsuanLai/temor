@@ -123,12 +123,15 @@ impl Term {
         self.clipboard.clone()
     }
 
-    /// The whole terminal encoded, to start a pane from later, without the prompt being typed at
-    /// (the program that starts from it draws its own). The terminal is changed: it is for a pane
-    /// that is going away.
-    pub fn snapshot(&mut self) -> Result<Snapshot, PaneError> {
-        self.terminal.take_prompt_off();
+    /// The whole terminal encoded, to start a pane from later.
+    pub fn snapshot(&self) -> Result<Snapshot, PaneError> {
         Ok(self.terminal.snapshot()?)
+    }
+
+    /// Takes the prompt left open at the bottom off a restored screen, for a new program that
+    /// draws its own (see `Terminal::take_open_prompt_off`).
+    pub fn take_open_prompt_off(&mut self) {
+        self.terminal.take_open_prompt_off();
     }
 
     /// Feeds program output and collects what it caused.

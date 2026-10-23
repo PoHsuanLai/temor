@@ -42,3 +42,69 @@ impl Terminal {
         Ok(out)
     }
 }
+
+impl Terminal {
+    /// Takes the prompt left open at the bottom off the screen: the rows from its prompt mark
+    /// down are erased and the cursor goes there, as the shell does before it draws a prompt
+    /// again. For a screen restored for a new shell, which draws its own prompt. Nothing happens
+    /// on the alternate screen, when the last command has output after its prompt (it was
+    /// running), or when the prompt is above the screen.
+    pub fn take_open_prompt_off(&mut self) {
+        if self.on_alternate_screen() {
+            return;
+        }
+        let Ok(starts) = self.semantic_starts() else {
+            return;
+        };
+        let open = starts
+            .iter()
+            .rposition(|(_, kind)| *kind == SemanticMark::Prompt)
+            .filter(|&at| starts[at..].iter().all(|(_, k)| *k != SemanticMark::Output));
+        let Some(at) = open else {
+            return;
+        };
+        // The prompt mark can sit on a row above the prompt's text (temor's own prompt leaves a
+        // blank line there): those rows go with it.
+        let mut row = starts[at].0.row;
+        while row > 0 && self.row_marked_prompt(row - 1) && !self.row_has_text(row - 1) {
+            row -= 1;
+        }
+        let Ok(bar) = self.scrollbar() else {
+            return;
+        };
+        let rows = u64::from(self.size().rows.0);
+        let top = bar.total.0.saturating_sub(rows);
+        let Some(active) = u64::from(row).checked_sub(top) else {
+            return;
+        };
+        self.write(format!("\x1b[{};1H\x1b[J", active + 1).as_bytes());
+    }
+
+    fn row_marked_prompt(&self, row: u32) -> bool {
+        let Ok(gref) = self.grid_ref(GridPoint::new(PointSpace::Screen, 0, row)) else {
+            return false;
+        };
+        let mut raw: sys::Row = 0;
+        // SAFETY: `gref` came from this live terminal; `raw` is a valid out-slot.
+        let code = unsafe { sys::ghostty_grid_ref_row(&gref, &mut raw) };
+        if code != sys::Result::SUCCESS {
+            return false;
+        }
+        let mut mark: sys::RowSemanticPrompt::Type = sys::RowSemanticPrompt::NONE;
+        // SAFETY: SEMANTIC_PROMPT writes one `RowSemanticPrompt` value, which `mark` is.
+        unsafe { sys::ghostty_row_get(raw, sys::RowData::SEMANTIC_PROMPT, (&raw mut mark).cast()) };
+        mark != sys::RowSemanticPrompt::NONE
+    }
+
+    fn row_has_text(&self, row: u32) -> bool {
+        (0..self.size().cols.0).any(|col| {
+            let Ok(gref) = self.grid_ref(GridPoint::new(PointSpace::Screen, col, row)) else {
+                return false;
+            };
+            let mut cell: sys::Cell = 0;
+            // SAFETY: `gref` came from this live terminal; `cell` is a valid out-slot.
+            let code = unsafe { sys::ghostty_grid_ref_cell(&gref, &mut cell) };
+            code == sys::Result::SUCCESS && has_text(cell)
+        })
+    }
+}

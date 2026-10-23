@@ -112,6 +112,50 @@ function _temor_command_seen --on-event fish_preexec
     set -g _temor_seen 1
 end
 
+# Tells temor the shell's exported variables and aliases (OSC 7503, see temor-shell's report
+# module), but only when they differ from what it last said. An alias is the function `alias`
+# made, known by the description it gives it. A variable fish keeps as a list is joined as fish
+# exports it: with ':' for a *PATH, else with spaces. Too large a report is not sent. The report
+# key temor gave this shell is moved out of the environment at load, so no program sees it, and
+# signs each report; a shell without it (one started inside the pane) says nothing.
+set -g _temor_reported
+set -g _temor_key $TEMOR_REPORT_KEY
+set -e TEMOR_REPORT_KEY
+function _temor_report
+    test -n "$_temor_key"; or return 0
+    set -l raw
+    set -l out "v2;k=$_temor_key"
+    for name in (set -xn)
+        contains -- $name _ PWD OLDPWD SHLVL; and continue
+        set -l value (string join ' ' -- $$name)
+        string match -q '*PATH' -- $name; and set value (string join : -- $$name)
+        set -a raw "e=$name=$value"
+        set out "$out;e="(string escape --style=url -- $name)"="(string escape --style=url -- $value)
+    end
+    for name in (functions -n)
+        set -l described (functions -Dv -- $name)[5]
+        string match -q -- "alias $name=*" $described; or continue
+        set -l value (string replace -- "alias $name=" '' $described)
+        set -a raw "a=$name=$value"
+        set out "$out;a="(string escape --style=url -- $name)"="(string escape --style=url -- $value)
+    end
+    test "$raw" = "$_temor_reported"; and return 0
+    set -g _temor_reported $raw
+    test (string length -- $out) -gt 60000; and return 0
+    printf '\e]7503;%s\e\\\\' $out
+end
+
+# The aliases of the shell this one replaces, defined once after the person's own config, and
+# then what this shell holds, before every prompt.
+function _temor_state --on-event fish_prompt
+    if set -q TEMOR_REPLAY
+        test -r "$TEMOR_REPLAY"; and source "$TEMOR_REPLAY"
+        command rm -f -- "$TEMOR_REPLAY"
+        set -e TEMOR_REPLAY
+    end
+    _temor_report
+end
+
 if not string match -qr '^[0-3]\.' -- $version
     # fish 4 and newer draw the marks themselves; only the prompt is installed, once, when the
     # first prompt is about to be drawn (after config.fish has had its say).

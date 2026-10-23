@@ -84,13 +84,19 @@ fn start_from(
     let pty = Pty::spawn(&spawn, &spec.launcher)?;
     let port = pty.io()?;
     let term = match snapshot {
-        Some(snapshot) => Term::restored(
-            snapshot,
-            spec.cell,
-            spec.scrollback,
-            spec.cursor,
-            &spec.palette,
-        )?,
+        // The new shell draws its own prompt: the one the snapshot was taken at goes. Its output
+        // is read only once the runner runs, so it cannot have drawn one yet.
+        Some(snapshot) => {
+            let mut term = Term::restored(
+                snapshot,
+                spec.cell,
+                spec.scrollback,
+                spec.cursor,
+                &spec.palette,
+            )?;
+            term.take_open_prompt_off();
+            term
+        }
         None => Term::new(
             spec.grid,
             spec.cell,
