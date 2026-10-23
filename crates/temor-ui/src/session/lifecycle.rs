@@ -237,6 +237,11 @@ impl Session {
         self.report_key.as_ref()
     }
 
+    /// The commands run before this pane's screen was handed to it, for the blocks found on it.
+    pub fn inherit(&mut self, history: Vec<temor_core::session::CommandRecord>) {
+        self.inherited = history;
+    }
+
     /// What the shell holds that a new shell would need to look the same.
     pub fn shell_state(&self) -> &ShellState {
         &self.shell_state

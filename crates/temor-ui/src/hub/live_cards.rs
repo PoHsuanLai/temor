@@ -222,6 +222,11 @@ impl Hub {
             .live(origin, |s| s.running_command().map(|r| r.command))
             .flatten()
             .unwrap_or_default();
+        // The card's pane shows the screen the program ran on: the commands before it are told
+        // how they ended from what the pane they ran in kept.
+        let history = self
+            .live(origin, |s| s.checkpoint().history)
+            .unwrap_or_default();
         self.act(WorkspaceIn::Focus(origin));
         if self.detach_prepare() != Some(origin) {
             return;
@@ -243,6 +248,11 @@ impl Hub {
         let Some(pane) = shown else {
             return;
         };
+        if let Some(slot) = self.slots.get(&pane)
+            && let Some(session) = slot.borrow_mut().session.as_mut()
+        {
+            session.inherit(history);
+        }
         self.live_cards.shown.insert((origin, id), pane);
         self.live_cards.commands.insert((origin, id), command);
         self.card(

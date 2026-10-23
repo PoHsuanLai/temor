@@ -182,3 +182,29 @@ fn only_the_shell_temor_started_reports() {
         assert!(!state.aliases().contains_key("forged_alias"), "{name}");
     }
 }
+
+/// A command that prints nothing has no line under its title: the next prompt's folder line is
+/// not its output.
+#[test]
+fn a_cd_prints_nothing_and_its_card_says_nothing_under_the_command() {
+    if !window_tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("state-cd-{name}"), &shell);
+        run_line(&live, "cd /");
+        pump(&mut live, "the cd", |s| {
+            s.block_outcomes()
+                .first()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let (id, _) = live.session.block_outcomes()[0];
+        assert_eq!(
+            live.session.block_output(id).as_deref().map(str::trim),
+            Some(""),
+            "{name}"
+        );
+        assert_eq!(live.session.block_note(id), None, "{name}");
+    }
+}
