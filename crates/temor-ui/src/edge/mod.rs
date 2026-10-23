@@ -4,6 +4,7 @@
 
 mod agent_socket;
 mod ambient;
+pub mod checkpoint;
 pub mod clock;
 pub mod desktop_feed;
 pub mod desktop_port;

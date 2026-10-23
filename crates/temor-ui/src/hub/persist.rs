@@ -10,7 +10,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::leave_out;
 
 use super::model::Hub;
-use crate::edge::{Pace, save_session_for, save_spaces, save_with_hosts, sidecar};
+use crate::edge::{Pace, checkpoint, save_session_for, save_spaces, save_with_hosts, sidecar};
 use crate::session::Session;
 
 impl Hub {
@@ -72,10 +72,15 @@ impl Drop for Hub {
         self.remote_quit();
         // Ids restart from the live maximum, so what an earlier quit left must not outlive this one.
         sidecar::clear(&dir);
+        checkpoint::clear(&dir);
         for (pane, slot) in &self.slots {
             // The quick terminal is a throwaway: kept while temor runs, never saved; nor is a run tab.
             if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
                 continue;
+            }
+            let kept = slot.borrow().session.as_ref().map(Session::checkpoint);
+            if let Some(kept) = kept {
+                let _ = checkpoint::write(&dir, *pane, &kept);
             }
             let snapshot = slot.borrow().session.as_ref().and_then(Session::snapshot);
             if let Some(snapshot) = snapshot {

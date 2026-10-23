@@ -42,6 +42,9 @@ pub struct Hub {
     pub(super) slots: BTreeMap<PaneId, Rc<RefCell<Slot>>>,
     /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
     pub(super) recent: BTreeMap<PaneId, Snapshot>,
+    /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
+    /// the new shell is given its variables.
+    pub(super) carried: BTreeMap<PaneId, temor_core::session::Checkpoint>,
     pub(super) events: UnboundedSender<(PaneId, PaneEvent)>,
     pub(super) inbox: Option<UnboundedReceiver<(PaneId, PaneEvent)>>,
     pub(super) launch: Launch,
@@ -110,6 +113,7 @@ impl Hub {
             book: SpaceBook::new(),
             slots: BTreeMap::new(),
             recent: BTreeMap::new(),
+            carried: BTreeMap::new(),
             events,
             inbox: Some(inbox),
             bar: BarSlot::new(&launch),

@@ -14,7 +14,9 @@ use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan, vie
 use temor_core::workspace::{KeepClosed, Workspace};
 
 use super::model::Hub;
-use crate::edge::{SpacesStartup, Startup, load_hosts, load_session_for, load_spaces, sidecar};
+use crate::edge::{
+    SpacesStartup, Startup, checkpoint, load_hosts, load_session_for, load_spaces, sidecar,
+};
 
 impl Hub {
     /// Restores the saved Spaces (every tab's panes, in their folders, with their scrollback
@@ -34,6 +36,7 @@ impl Hub {
             }
             // A snapshot is good for one launch only: pane ids are reused after a restore.
             sidecar::clear(&dir);
+            checkpoint::clear(&dir);
             self.quiet_parked();
         }
         let restored = !self.slots.is_empty();
@@ -100,6 +103,9 @@ impl Hub {
         self.with_space(id, |hub| {
             for spawn in plan {
                 let snapshot = sidecar::take(dir, spawn.pane);
+                if let Some(kept) = checkpoint::take(dir, spawn.pane) {
+                    hub.carried.insert(spawn.pane, kept);
+                }
                 hub.open_pane(&spawn, snapshot);
             }
             for open in viewers {

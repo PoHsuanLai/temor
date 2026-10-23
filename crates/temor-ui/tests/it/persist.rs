@@ -206,3 +206,38 @@ fn snapshot_sidecars_are_private_capped_read_once_and_cleared() {
     clear(&state);
     assert!(!state.join("snapshots/4.bin").exists());
 }
+
+#[test]
+fn checkpoint_files_are_private_read_once_and_hold_no_secret_value() {
+    use temor_core::session::{Checkpoint, ShellIn, ShellState, shell_step};
+    use temor_ui::edge::checkpoint::{take, write};
+
+    let dir = tempfile::tempdir().unwrap();
+    let state = dir.path().join("temor");
+    let report = temor_shell::report::Report {
+        env: vec![
+            ("EDITOR".into(), "vim".into()),
+            ("GITHUB_TOKEN".into(), "ghp_never_on_disk".into()),
+        ],
+        aliases: vec![],
+    };
+    let (shell, _) = shell_step(ShellState::default(), ShellIn::Reported(report));
+    let kept = Checkpoint::of(shell.replay(), std::iter::empty());
+    write(&state, PaneId(1), &kept).unwrap();
+    let file = state.join("checkpoints/1.json");
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.contains("EDITOR") && text.contains("GITHUB_TOKEN"));
+    assert!(
+        !text.contains("ghp_never_on_disk"),
+        "a secret's value is never written"
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&file), 0o600);
+        assert_eq!(mode(&state.join("checkpoints")), 0o700);
+    }
+    assert_eq!(take(&state, PaneId(1)), Some(kept));
+    assert!(!file.exists(), "reading takes it");
+}

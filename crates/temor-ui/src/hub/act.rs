@@ -6,6 +6,8 @@ use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use temor_core::notify::Focus;
+use temor_core::session::Checkpoint;
+use temor_core::space::{Origin, spawn_plan};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{CommandText, Cwd};
 use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut, workspace_step};
@@ -14,7 +16,7 @@ use temor_vt::Snapshot;
 use super::model::{Hub, HubRef};
 use super::say::refusal_text;
 use super::typing::{Submit, type_command};
-use crate::edge::sidecar;
+use crate::edge::{checkpoint, sidecar};
 use crate::session::Session;
 use crate::view::launch::open_session_with;
 use crate::view::slot::{Slot, repaint};
@@ -99,8 +101,16 @@ impl Hub {
             Start::Scrollback(pane) => self.recent.remove(&pane),
             Start::Fresh => None,
         });
-        let start = self.space_start();
-        let cwd = spawn.cwd.clone().or(start.cwd);
+        let mut start = self.space_start();
+        let kept = self.carried.remove(&spawn.pane);
+        let cwd = spawn
+            .cwd
+            .clone()
+            .or_else(|| kept.as_ref().and_then(|kept| kept.cwd.clone().map(Cwd)))
+            .or(start.cwd);
+        if let Some(kept) = &kept {
+            self.carry_env(&mut start.env, kept);
+        }
         let socket = self.open_socket(spawn.pane);
         // A program run in place of the shell brings its own environment, not the Space's.
         let run = self.run_claims(spawn.pane);
@@ -136,6 +146,26 @@ impl Hub {
         self.slots.insert(spawn.pane, Rc::new(RefCell::new(slot)));
     }
 
+    /// Gives a new shell what the person had set in the one it replaces: the variables that differ
+    /// from what a shell starts with in this Space.
+    fn carry_env(&self, env: &mut temor_shell::ChildEnv, kept: &Checkpoint) {
+        let base = self.launch.ambient.env.clone().overlay(env);
+        let base: Vec<(String, String)> = base
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.to_string_lossy().into_owned(),
+                    v.to_string_lossy().into_owned(),
+                )
+            })
+            .collect();
+        for (key, value, origin) in spawn_plan(&base, &base, None, Some(&kept.replay())).env {
+            if origin == Origin::User {
+                env.set(key, value);
+            }
+        }
+    }
+
     /// Takes the scrollback of a pane that is about to end, for a reopen.
     fn keep_scrollback(&mut self, pane: PaneId) {
         let snapshot = self
@@ -144,6 +174,13 @@ impl Hub {
             .and_then(|slot| slot.borrow().session.as_ref().and_then(Session::snapshot));
         if let Some(snapshot) = snapshot {
             self.recent.insert(pane, snapshot);
+        }
+        let kept = self
+            .slots
+            .get(&pane)
+            .and_then(|slot| slot.borrow().session.as_ref().map(Session::checkpoint));
+        if let Some(kept) = kept {
+            self.carried.insert(pane, kept);
         }
     }
 
@@ -182,7 +219,9 @@ impl Hub {
         self.ssh.closed.remove(&pane);
         if let Some(dir) = &self.state_dir {
             sidecar::remove(dir, pane);
+            checkpoint::remove(dir, pane);
         }
+        self.carried.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.

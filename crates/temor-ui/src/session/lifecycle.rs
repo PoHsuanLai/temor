@@ -203,6 +203,12 @@ impl Session {
         self.shell_state = shell_step(state, input).0;
     }
 
+    /// What is kept of this pane when its window goes away: the shell's state and the commands it
+    /// ran.
+    pub fn checkpoint(&self) -> temor_core::session::Checkpoint {
+        temor_core::session::Checkpoint::of(self.shell_state.replay(), self.blocks.store().iter())
+    }
+
     /// What the shell holds that a new shell would need to look the same.
     pub fn shell_state(&self) -> &ShellState {
         &self.shell_state

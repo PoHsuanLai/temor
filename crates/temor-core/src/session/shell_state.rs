@@ -79,8 +79,22 @@ const OWN: &[&str] = &[
     "OLDPWD",
     "SHLVL",
     "ZDOTDIR",
+    "COLUMNS",
+    "LINES",
     "TERM_SESSION_ID",
-    "TEMOR_SOCKET",
+    "TERM_PROGRAM_VERSION",
+    "SSH_AUTH_SOCK",
+    "SSH_CONNECTION",
+    "SSH_TTY",
+    "TMPDIR",
+    "XDG_RUNTIME_DIR",
+    "DISPLAY",
+    "WAYLAND_DISPLAY",
+    "DBUS_SESSION_BUS_ADDRESS",
+    "XPC_FLAGS",
+    "XPC_SERVICE_NAME",
+    "SECURITYSESSIONID",
+    "__CF_USER_TEXT_ENCODING",
 ];
 
 fn is_own(name: &str) -> bool {
