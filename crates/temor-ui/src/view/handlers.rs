@@ -222,6 +222,11 @@ pub fn bar_copy_output(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(B
     on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_output(id))
 }
 
+/// A card's chevron in the block list: folds its output away or brings it back.
+pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
+}
+
 /// The block toolbar's save of an output to Downloads.
 pub fn bar_save(
     slot: Rc<RefCell<Slot>>,

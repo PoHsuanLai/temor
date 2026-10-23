@@ -24,7 +24,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use super::block_card::{BlockCards, cards_of};
 use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_header::{BlockHeader, HeaderPress, HeaderView};
-use super::block_list::{BlockPane, block_list_on};
+use super::block_list::{BlockPane, CardActions, CardOffers, block_list_on};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
@@ -38,7 +38,7 @@ use super::first_hint::{FirstHint, hint_for};
 use super::grid_slices::{GridTexture, grid_cut};
 use super::handlers::{
     bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
-    find_query, find_step, header_press, then_regain,
+    find_query, find_step, header_press, list_fold, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::lens_picture::{LensPictures, lens_request, lens_views};
@@ -401,7 +401,33 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     ..Common::default()
                 },
                 if let Some(items) = block_items {
-                    BlockPane { pane, desk: desk.clone(), items, texture: texture.clone(), font: card_font.clone(), reveal: picked_block }
+                    BlockPane {
+                        pane,
+                        desk: desk.clone(),
+                        items,
+                        texture: texture.clone(),
+                        font: card_font.clone(),
+                        reveal: picked_block,
+                        actions: CardActions {
+                            copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
+                            copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
+                            save: EventHandler::new(then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain)),
+                            rerun: EventHandler::new(then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain)),
+                            view: EventHandler::new(bar_view(Rc::clone(&slot), desk.clone(), pane)),
+                            edit: EventHandler::new(bar_edit(Rc::clone(&slot), desk.clone(), pane)),
+                            fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
+                            detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
+                            stop: EventHandler::new({
+                                let mut press = then_regain(header_press(Rc::clone(&slot), ui, desk.clone(), pane), ime.clone(), regain);
+                                move |()| press(HeaderPress::Stop)
+                            }),
+                        },
+                        offers: CardOffers {
+                            detach: desk.hub.can_detach(pane),
+                            on_host,
+                            copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
+                        },
+                    }
                 }
                 div {
                     class: "temor-grid",
