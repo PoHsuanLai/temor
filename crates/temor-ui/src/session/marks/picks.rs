@@ -23,12 +23,9 @@ use crate::error::UiError;
 impl Session {
     /// The blocks that can be picked, oldest first: those the scrollback still holds.
     fn pick_order(&self) -> Vec<BlockId> {
-        self.blocks
-            .store()
-            .iter()
-            .filter(|block| self.block_rows(block.id).is_some())
-            .map(|block| block.id)
-            .collect()
+        self.frame()
+            .map(|frame| frame.pick_order())
+            .unwrap_or_default()
     }
 
     /// The picked blocks, oldest first.
@@ -73,7 +70,11 @@ impl Session {
         };
         let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
         let alternate = self.pane.with_term(|term| term.on_alternate_screen());
-        match self.block_at_row(row).filter(|_| !alternate) {
+        match self
+            .frame()
+            .and_then(|frame| frame.block_at_screen_row(row))
+            .filter(|_| !alternate)
+        {
             Some(id) => {
                 let how = match () {
                     _ if mods.contains(Modifiers::SHIFT) => PickClick::Range,
@@ -101,7 +102,7 @@ impl Session {
         let first = self
             .ann
             .active_pick()
-            .and_then(|id| self.block_rows(id))
+            .and_then(|id| self.frame()?.reach(id))
             .map(|(first, _)| first);
         self.pane.with_term(|term| {
             let Some(first) = first else {
@@ -302,7 +303,10 @@ impl Session {
             return Ok(None);
         }
         let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
-        let Some(id) = self.block_at_row(row) else {
+        let Some(id) = self
+            .frame()
+            .and_then(|frame| frame.block_at_screen_row(row))
+        else {
             return Ok(None);
         };
         if !self.ann.is_picked(id) {

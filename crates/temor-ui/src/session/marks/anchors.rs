@@ -60,23 +60,4 @@ impl Session {
             })
             .collect()
     }
-
-    /// The newest block whose prompt..end span holds screen row `row`.
-    pub(super) fn block_at_row(&self, row: u32) -> Option<BlockId> {
-        self.blocks.store().iter().rev().find_map(|block| {
-            let (first, last) = self.block_rows(block.id)?;
-            (first..=last).contains(&row).then_some(block.id)
-        })
-    }
-
-    /// The first and last screen rows of a block (a running block runs to the bottom).
-    pub(super) fn block_rows(&self, id: BlockId) -> Option<(u32, u32)> {
-        let anchors = self.blocks.anchors_of(id)?;
-        let first = self.screen_row(anchors.prompt.or(anchors.output)?)?;
-        let last = match anchors.end {
-            Some(end) => self.screen_row(end)?,
-            None => u32::MAX,
-        };
-        Some((first, last))
-    }
 }

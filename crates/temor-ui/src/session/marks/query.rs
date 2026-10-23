@@ -110,7 +110,9 @@ impl Session {
 
     /// The output of the block that holds screen row `row`, once its command has finished.
     pub fn output_at_row(&self, row: u32) -> Option<String> {
-        self.block_at_row(row).and_then(|id| self.block_output(id))
+        self.frame()
+            .and_then(|frame| frame.block_at_screen_row(row))
+            .and_then(|id| self.block_output(id))
     }
 
     /// How a block ended and how long it ran, as its card header says it (`exit 1 · 4 ms`);
@@ -134,7 +136,7 @@ impl Session {
         let hit = placed.cell_at(at);
         let top = self.viewport_top().ok()?;
         let row = top.saturating_add(u32::from(hit.pos.row.0));
-        self.block_at_row(row)
+        self.frame()?.block_at_screen_row(row)
     }
 
     /// Where the grid's rows sit in the pane, for placing things beside them.

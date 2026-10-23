@@ -129,6 +129,29 @@ impl Frame {
         })
     }
 
+    /// The newest block whose rows hold screen row `row`.
+    pub fn block_at_screen_row(&self, row: u32) -> Option<BlockId> {
+        self.block_at_row(row).map(|read| read.id)
+    }
+
+    /// The first and last screen rows of a block (a running block runs to the bottom), when the
+    /// scrollback still holds it.
+    pub fn reach(&self, id: BlockId) -> Option<(u32, u32)> {
+        self.blocks
+            .iter()
+            .find(|read| read.id == id)
+            .and_then(Self::reach_of)
+    }
+
+    /// The blocks the scrollback still holds, oldest first: those that can be picked.
+    pub fn pick_order(&self) -> Vec<BlockId> {
+        self.blocks
+            .iter()
+            .filter(|read| Self::reach_of(read).is_some())
+            .map(|read| read.id)
+            .collect()
+    }
+
     /// The block under viewport row `row`.
     pub fn block_at_viewport_row(&self, row: u32) -> Option<BlockId> {
         self.block_at_row(self.view.top.saturating_add(row))

@@ -36,7 +36,7 @@ impl Session {
 
     /// Scrolls so a block's prompt is the top row.
     pub fn scroll_block_to_top(&mut self, id: BlockId) {
-        let Some((first, _)) = self.block_rows(id) else {
+        let Some((first, _)) = self.frame().and_then(|frame| frame.reach(id)) else {
             return;
         };
         self.pane
