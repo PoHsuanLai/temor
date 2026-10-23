@@ -478,3 +478,51 @@ fn a_shell_that_ends_before_its_first_prompt_keeps_its_tab_and_the_banner() {
     assert_eq!(rows(&h), 1, "the tab stays");
     assert!(h.html().contains("The shell has ended."));
 }
+
+/// A screen kept at quit comes back with its commands as cards, a failed one still saying how it
+/// ended: the marks are found again from the screen and the kept commands.
+#[test]
+fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let state = scratch("window-restore-cards-state").join("state");
+    let probe = Probe::new();
+    let mut h = harness_in("window-restore-cards", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "echo kept-one");
+    wait_until(&mut h, &probe, "the output", |s| {
+        s.lines().any(|l| l.trim_end() == "kept-one")
+    });
+    type_line(&mut h, "echo kept-two; (exit 4)");
+    let start = Instant::now();
+    while !h.html().contains(">exit 4<") {
+        h.advance(Duration::from_millis(25));
+        assert!(start.elapsed() < Duration::from_secs(10), "{}", h.html());
+    }
+    let before = h.html().matches("class=\"temor-card\"").count();
+    drop(h);
+
+    let probe = Probe::new();
+    let mut h = harness_in("window-restore-cards-again", &probe, Some(state));
+    let start = Instant::now();
+    loop {
+        let html = h.html();
+        let cards = html.matches("class=\"temor-card\"").count();
+        if cards >= before && html.contains(">exit 4<") {
+            break;
+        }
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "{cards} cards after the restart, {before} before:\n{}\n{}",
+            probe.screen(),
+            html.split("class=\"temor-card")
+                .skip(1)
+                .map(|c| c.chars().take(400).collect::<String>())
+                .collect::<Vec<_>>()
+                .join("\n---\n")
+        );
+    }
+}

@@ -59,13 +59,18 @@ impl Terminal {
             self.cursor_u16(sys::TerminalData::CURSOR_X)?,
             self.cursor_u16(sys::TerminalData::CURSOR_Y)?,
         );
+        self.anchor_at(GridPoint::new(PointSpace::Active, col, u32::from(row)))
+    }
+
+    /// Anchors the cell at `at`. `None` when libghostty refuses the point.
+    pub fn anchor_at(&mut self, at: GridPoint) -> Option<AnchorId> {
         let mut value = sys::PointValue::default();
         value.coordinate = sys::PointCoordinate {
-            x: col,
-            y: u32::from(row),
+            x: at.col.0,
+            y: at.row,
         };
         let point = sys::Point {
-            tag: sys::PointTag::ACTIVE,
+            tag: tag_of(at.space),
             value,
         };
         let mut tracked: sys::TrackedGridRef = std::ptr::null_mut();

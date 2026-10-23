@@ -60,7 +60,7 @@ fn width_of(cell: sys::Cell) -> CellWidth {
     }
 }
 
-fn has_text(cell: sys::Cell) -> bool {
+pub(super) fn has_text(cell: sys::Cell) -> bool {
     let mut any = false;
     // SAFETY: `HAS_TEXT` writes one `bool`, which `any` is.
     unsafe {

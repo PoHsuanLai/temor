@@ -282,6 +282,17 @@ impl Term {
         self.terminal.anchor_cursor()
     }
 
+    /// Anchors the cell at `at`.
+    pub fn anchor_at(&mut self, at: GridPoint) -> Option<AnchorId> {
+        self.terminal.anchor_at(at)
+    }
+
+    /// Where each kind of shell-marked text starts, top of the scrollback down (see
+    /// `Terminal::semantic_starts`). Empty when the terminal will not say.
+    pub fn semantic_starts(&self) -> Vec<(GridPoint, temor_vt::SemanticMark)> {
+        self.terminal.semantic_starts().unwrap_or_default()
+    }
+
     /// How many anchors are live.
     pub fn anchor_count(&self) -> usize {
         self.terminal.anchor_count()

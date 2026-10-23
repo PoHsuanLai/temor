@@ -119,3 +119,44 @@ fn a_one_line_prompt_comes_off_and_the_output_above_it_stays() {
         "only the idle prompt comes off: {kept:?}"
     );
 }
+
+/// A restored screen keeps which text was prompt, typed command and output, so its blocks can be
+/// found again although its marks never arrive as events.
+#[test]
+fn a_restored_screen_says_where_prompts_commands_and_output_start() {
+    let (mut t, _rx) = term(40, 6);
+    for n in 0..2 {
+        t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07");
+        t.write(format!("echo {n}\r\n\x1b]133;C\x07{n}\r\n\x1b]133;D;0\x07").as_bytes());
+    }
+    t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07");
+    let stored = Snapshot::from_bytes(t.snapshot().expect("encode").as_bytes().to_vec());
+    let back = Terminal::restore(
+        &stored,
+        TerminalConfig::new(GridSize::new(1, 1)),
+        Box::new(mpsc::channel::<VtEvent>().0),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
+    )
+    .expect("restore");
+    let starts: Vec<_> = back
+        .semantic_starts()
+        .expect("starts")
+        .into_iter()
+        .map(|(at, kind)| (at.row, at.col.0, kind))
+        .collect();
+    use temor_vt::SemanticMark::{Input, Output, Prompt};
+    assert_eq!(
+        starts,
+        [
+            (0, 0, Prompt),
+            (0, 2, Input),
+            (1, 0, Output),
+            (2, 0, Prompt),
+            (2, 2, Input),
+            (3, 0, Output),
+            (4, 0, Prompt),
+        ],
+        "{starts:?}"
+    );
+    assert_eq!(back.semantic_starts(), t.semantic_starts());
+}

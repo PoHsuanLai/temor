@@ -182,6 +182,8 @@ impl Session {
             PaneEvent::Anchor { seq, anchor } => self.anchored(seq, anchor),
             PaneEvent::Reset => {
                 self.terminal_reset();
+                // A pane fed from elsewhere is reset when its screen is restored.
+                self.find_restored_blocks();
                 Notice::Repaint
             }
             PaneEvent::Notification(note) => {

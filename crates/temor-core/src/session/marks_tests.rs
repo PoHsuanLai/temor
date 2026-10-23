@@ -354,3 +354,43 @@ fn the_chips_of_a_prompt_go_to_the_block_it_becomes_and_leave_with_it() {
     );
     assert_eq!(log.header_facts(BlockId(1)), None);
 }
+
+#[test]
+fn restored_blocks_join_the_log_finished_with_their_anchors_and_nothing_is_announced() {
+    use crate::vocab::ids::GridSpan;
+    let span = |a: u64, b: u64| GridSpan {
+        first: GridRow(a),
+        last: GridRow(b),
+    };
+    let kept = |n: u64, exit: i32| super::KeptBlock {
+        anchors: super::BlockAnchors {
+            prompt: Some(super::Anchor(n * 10)),
+            input: Some(super::Anchor(n * 10 + 1)),
+            output: Some(super::Anchor(n * 10 + 2)),
+            end: None,
+        },
+        prompt: span(n * 3, n * 3),
+        output: span(n * 3 + 1, n * 3 + 2),
+        command: format!("cmd{n}"),
+        exit: Some(ExitCode(exit)),
+        took_ms: Some(40),
+    };
+    let (log, outs) = super::mark_step(
+        super::MarkLog::default(),
+        super::MarkIn::Restored {
+            blocks: vec![kept(1, 0), kept(2, 3)],
+            at: Stamp(1000),
+        },
+    );
+    assert!(outs.is_empty(), "{outs:?}");
+    let blocks: Vec<_> = log.store().iter().collect();
+    assert_eq!(blocks.len(), 2);
+    assert_eq!(blocks[1].command.0, "cmd2");
+    assert_eq!(blocks[1].exit, Some(ExitCode(3)));
+    assert_eq!(blocks[1].elapsed_ms(), Some(40));
+    assert_eq!(
+        log.anchors_of(blocks[0].id).and_then(|a| a.output),
+        Some(super::Anchor(12))
+    );
+    assert_eq!(log.next_id(), BlockId(3));
+}

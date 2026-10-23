@@ -145,6 +145,9 @@ impl Hub {
         };
         match opened {
             Ok(mut session) => {
+                if snapshot.is_some() {
+                    session.begin_restored(kept.map(|kept| kept.history).unwrap_or_default());
+                }
                 // Only the pane that has the keyboard counts as focused (a long command that
                 // finishes in another pane is worth a notice).
                 session.set_focus(self.focus_of(spawn.pane));

@@ -20,6 +20,7 @@ mod png;
 mod render;
 mod reports;
 mod row;
+mod semantic;
 mod signals;
 mod snapshot;
 mod terminal;

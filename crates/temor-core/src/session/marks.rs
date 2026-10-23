@@ -14,7 +14,7 @@ use ds_core::time::stamp::Stamp;
 
 use crate::block::{Author, Block, BlockIn, BlockOut, BlockState, BlockStore, block_step};
 use crate::facts::Facts;
-use crate::vocab::ids::{BlockId, ExitCode, GridRow};
+use crate::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};
 use crate::vocab::text::CommandText;
 
 /// One tracked reference to a cell of the terminal, as the edge numbers them. Ids are never
@@ -184,6 +184,18 @@ impl MarkLog {
     }
 }
 
+/// A finished block found again on a restored screen, with its anchors (see `found`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeptBlock {
+    pub anchors: BlockAnchors,
+    pub prompt: GridSpan,
+    pub output: GridSpan,
+    pub command: String,
+    pub exit: Option<ExitCode>,
+    /// How long it ran, when that was kept.
+    pub took_ms: Option<u64>,
+}
+
 /// What reaches the log.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -215,6 +227,9 @@ pub enum MarkIn {
     Chips(HeaderFacts),
     /// The scrollback no longer holds these blocks: they are dropped.
     Gone { ids: Vec<BlockId> },
+    /// Finished blocks found again on a screen restored from a snapshot, oldest first. They join
+    /// the log as finished blocks, after any it holds; nothing is announced for them.
+    Restored { blocks: Vec<KeptBlock>, at: Stamp },
 }
 
 /// What the edge does after a step.
@@ -273,6 +288,28 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
         MarkIn::Gone { ids } => {
             let gone = log.store.retain_live(|id| !ids.contains(&id));
             log.forget(gone, &mut outs);
+        }
+        MarkIn::Restored { blocks, at } => {
+            for kept in blocks {
+                let id = BlockId(log.next_id);
+                log.next_id += 1;
+                let took = kept.took_ms.unwrap_or(0);
+                let block = Block {
+                    id,
+                    prompt: kept.prompt,
+                    command: CommandText::from_shell(&kept.command),
+                    output: kept.output,
+                    exit: kept.exit,
+                    by: Author::Person,
+                    started: Stamp(at.0.saturating_sub(took)),
+                    ended: Some(at),
+                };
+                log.prompts += 1;
+                log.finished += 1;
+                log.anchors.insert(id, kept.anchors);
+                let gone = log.store.apply(&BlockOut::BlockDone(block));
+                log.forget(gone, &mut outs);
+            }
         }
     }
     (log, outs)

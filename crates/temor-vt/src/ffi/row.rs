@@ -216,7 +216,7 @@ fn cell_width(raw: sys::Cell) -> CellWidth {
     }
 }
 
-fn semantic(raw: sys::Cell) -> SemanticMark {
+pub(super) fn semantic(raw: sys::Cell) -> SemanticMark {
     match cell_get::<sys::CellSemanticContent::Type>(raw, sys::CellData::SEMANTIC_CONTENT) {
         sys::CellSemanticContent::INPUT => SemanticMark::Input,
         sys::CellSemanticContent::PROMPT => SemanticMark::Prompt,
