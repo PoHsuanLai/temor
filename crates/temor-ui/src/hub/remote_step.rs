@@ -188,6 +188,20 @@ impl Hub {
     /// Starts a connection attempt for `host`: a new generation with a new router, so what the
     /// last connection says afterwards is ignored.
     pub(super) fn remote_dial(&mut self, host: &HostAlias) {
+        if host.as_str() == super::remote::LOCAL {
+            let Some(env) = self.local_dial_env() else {
+                return self.local_fallback();
+            };
+            let line = self.remote.lines.entry(host.clone()).or_default();
+            line.generation = line.generation.next();
+            line.router = Default::default();
+            line.busy = Busy::Dialing;
+            let (generation, router) = (line.generation, line.router.clone());
+            self.remote
+                .work
+                .dial_local(env, host.clone(), generation, router);
+            return;
+        }
         let arch = self.remote.lines.get(host).and_then(|line| line.arch);
         let Some(blob) = arch
             .and_then(|arch| self.remote.builds.for_host(arch))
@@ -221,22 +235,33 @@ impl Hub {
             let Some(remote) = self.remote.panes.get(&pane) else {
                 continue;
             };
-            let cwd = self
-                .ssh
-                .panes
-                .get(&pane)
-                .and_then(|host| host.start_dir.as_ref())
-                .map(|dir| dir.as_str().to_owned())
-                .or_else(|| home.clone())
-                .unwrap_or_else(|| "/".to_owned());
+            let (cwd, env) = match self.remote.local.get(&pane) {
+                Some(own) => (own.cwd.clone(), own.env.clone()),
+                None => (
+                    self.ssh
+                        .panes
+                        .get(&pane)
+                        .and_then(|host| host.start_dir.as_ref())
+                        .map(|dir| dir.as_str().to_owned())
+                        .or_else(|| home.clone())
+                        .unwrap_or_else(|| "/".to_owned()),
+                    env.clone(),
+                ),
+            };
+            // A session the pane had when temor last quit is asked for before a new one.
+            let wanted = match self.remote.saved.get(&pane) {
+                Some(session) => Wanted::Resume {
+                    session: *session,
+                    cwd,
+                    env,
+                },
+                None => Wanted::Fresh { cwd, env },
+            };
             let ticket = crate::edge::remote_event::Ticket {
                 pane,
                 target: std::sync::Arc::clone(&remote.target),
                 feeder: remote.feeder.clone(),
-                wanted: Wanted::Fresh {
-                    cwd,
-                    env: env.clone(),
-                },
+                wanted,
                 palette: crate::edge::remote_palette::wire_palette(&self.palette),
             };
             self.remote.work.attach(

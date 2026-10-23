@@ -92,6 +92,13 @@ impl Hub {
                 self.step_link(host, LinkEvent::Reattached { at });
                 self.remote_open_waiting(host);
             }
+            (Err(_), Reach::Never) if host.as_str() == super::remote::LOCAL => {
+                self.notices.push(
+                    "The background service for sessions didn't start; terminals end when temor quits"
+                        .to_owned(),
+                );
+                self.local_fallback();
+            }
             (Err(fault), Reach::Never) => {
                 self.notices.push(never_words(host, &fault));
                 if let Some(line) = self.remote.lines.get_mut(host) {

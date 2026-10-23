@@ -48,6 +48,18 @@ fn config(
     }
 }
 
+/// How long a daemon with no sessions and no connections stays: `TEMOR_REMOTE_LINGER` seconds, a
+/// minute when that is not set.
+fn linger(env: &HostEnv) -> Duration {
+    let seconds = env
+        .linger
+        .as_deref()
+        .and_then(|value| value.to_str())
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(60);
+    Duration::from_secs(seconds)
+}
+
 /// Clears uploads left half-staged by writers that are gone. On a thread of its own: the walk
 /// may be long, and nothing waits for it. If the thread cannot start the files stay until the
 /// next start.
@@ -87,12 +99,25 @@ pub fn run_daemon(env: &HostEnv) -> Result<(), Error> {
     sweep_in_background(&daemon);
 
     let ticking = Arc::clone(&daemon);
+    let linger = linger(env);
+    let own_socket = socket.clone();
     std::thread::Builder::new()
         .name("temor-remote-tick".to_string())
         .spawn(move || {
+            let mut unused = Duration::ZERO;
             loop {
                 std::thread::sleep(TICK);
                 ticking.tick();
+                // A daemon nobody uses goes away; the next window starts a new one.
+                unused = if ticking.is_unused() {
+                    unused + TICK
+                } else {
+                    Duration::ZERO
+                };
+                if unused >= linger {
+                    let _ = std::fs::remove_file(&own_socket);
+                    std::process::exit(0);
+                }
             }
         })
         .map_err(|error| Error::io("starting the timer", error))?;

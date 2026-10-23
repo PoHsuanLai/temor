@@ -21,7 +21,7 @@ pub fn run_stdio(env: &HostEnv) -> Result<(), Error> {
     let connection = match connect(&socket) {
         Ok(connection) => connection,
         Err(_) => {
-            spawn_detached(&env.exe, &[DAEMON])?;
+            spawn_detached(&env.exe, &[DAEMON], &[])?;
             wait_for(&socket)?
         }
     };

@@ -62,6 +62,18 @@ pub(super) enum Shown {
     Gone,
 }
 
+/// The name the window gives this computer's own daemon among the hosts.
+pub(super) const LOCAL: &str = "local";
+
+/// How a pane that is a session in the local daemon starts, and what to do if the daemon cannot.
+pub(super) struct LocalStart {
+    pub spawn: temor_core::workspace::Spawn,
+    pub cwd: String,
+    pub env: Vec<(String, String)>,
+    /// The session the pane had when temor last quit.
+    pub resume: Option<SessionId>,
+}
+
 /// One pane that is a session on a helper.
 pub(super) struct RemotePane {
     pub alias: HostAlias,
@@ -121,6 +133,8 @@ pub(super) struct RemoteHub {
     /// The sessions panes were saved with, until each pane has its session again or is told the
     /// host lost it.
     pub saved: BTreeMap<PaneId, SessionId>,
+    /// Panes that are sessions in this computer's own daemon, and how each starts.
+    pub local: BTreeMap<PaneId, LocalStart>,
     /// The helper builds this temor carries, one per kind of processor.
     pub builds: HelperBuilds,
     started: Instant,
@@ -140,6 +154,7 @@ impl RemoteHub {
             lines: BTreeMap::new(),
             panes: BTreeMap::new(),
             saved: BTreeMap::new(),
+            local: BTreeMap::new(),
             builds: HelperBuilds::new(
                 arch_of(std::env::consts::ARCH),
                 ambient.env.get("TEMOR_REMOTE_HELPER"),

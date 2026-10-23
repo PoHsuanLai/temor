@@ -41,6 +41,10 @@ pub struct Checkpoint {
     pub withheld: Vec<String>,
     #[serde(default, deserialize_with = "lenient")]
     pub history: Vec<CommandRecord>,
+    /// The session the pane had in the local daemon when temor quit; the next launch asks the
+    /// daemon for it.
+    #[serde(default, deserialize_with = "lenient")]
+    pub daemon_session: Option<u64>,
 }
 
 /// A field that cannot be read is its default.
@@ -84,6 +88,7 @@ impl Checkpoint {
             aliases: replay.aliases,
             withheld: replay.withheld,
             history,
+            daemon_session: None,
         }
     }
 

@@ -134,7 +134,11 @@ mod socket {
         Err(no("the local socket"))
     }
 
-    pub fn spawn_detached(_program: &Path, _args: &[&str]) -> Result<(), Error> {
+    pub fn spawn_detached(
+        _program: &Path,
+        _args: &[&str],
+        _env: &[(&str, &std::ffi::OsStr)],
+    ) -> Result<(), Error> {
         Err(no("starting the daemon"))
     }
 }

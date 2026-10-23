@@ -17,6 +17,11 @@ impl Daemon {
         self.poll_watches();
     }
 
+    /// Whether the daemon has no sessions and no connections: nothing would be lost if it ended.
+    pub fn is_unused(&self) -> bool {
+        self.registry.all().is_empty() && self.links_snapshot().is_empty()
+    }
+
     fn sweep_idle(&self) {
         let limit = *lock(&self.idle);
         let now = self.config.clock.now();

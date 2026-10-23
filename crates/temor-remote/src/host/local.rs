@@ -42,7 +42,18 @@ pub fn dial_local(env: &HostEnv) -> Result<(Client, Receiver<ClientEvent>), Erro
     let half = match connect(&socket) {
         Ok(half) => half,
         Err(_) => {
-            spawn_detached(&env.exe, &[DAEMON])?;
+            // The daemon lives by what the window was told, not by the process's own surroundings.
+            let own = [
+                ("HOME", env.home.as_deref()),
+                ("XDG_RUNTIME_DIR", env.xdg_runtime_dir.as_deref()),
+                ("SHELL", env.shell.as_deref()),
+                ("TEMOR_REMOTE_LINGER", env.linger.as_deref()),
+            ];
+            let set: Vec<_> = own
+                .into_iter()
+                .filter_map(|(name, value)| Some((name, value?)))
+                .collect();
+            spawn_detached(&env.exe, &[DAEMON], &set)?;
             wait_for(&socket)?
         }
     };

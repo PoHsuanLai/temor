@@ -44,6 +44,7 @@ fn host_env() -> Result<HostEnv, temor_remote::Error> {
     Ok(HostEnv {
         xdg_runtime_dir: std::env::var_os("XDG_RUNTIME_DIR"),
         home: std::env::var_os("HOME"),
+        linger: std::env::var_os("TEMOR_REMOTE_LINGER"),
         shell: std::env::var_os("SHELL"),
         exe,
     })

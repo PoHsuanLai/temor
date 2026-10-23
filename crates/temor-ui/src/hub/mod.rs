@@ -27,6 +27,7 @@ mod facts;
 mod facts_folder;
 mod hosts;
 mod keys;
+mod local;
 mod model;
 mod narrow;
 mod offer;

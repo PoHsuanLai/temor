@@ -97,6 +97,19 @@ impl Hub {
         if let Some(alias) = self.ssh_claims(spawn) {
             return self.begin_host(spawn, alias);
         }
+        if self.local_wanted(spawn) {
+            let resume = self
+                .carried
+                .get(&spawn.pane)
+                .and_then(|kept| kept.daemon_session)
+                .map(temor_wire::ids::SessionId);
+            return self.begin_local(spawn, resume);
+        }
+        self.open_plain(spawn, restored);
+    }
+
+    /// Starts the program of `spawn` as a child of this window.
+    pub(super) fn open_plain(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
         let snapshot = restored.or_else(|| match spawn.start {
             Start::Scrollback(pane) => self.recent.remove(&pane),
             Start::Fresh => None,
@@ -148,7 +161,7 @@ impl Hub {
 
     /// Gives a new shell what the person had set in the one it replaces: the variables that differ
     /// from what a shell starts with in this Space.
-    fn carry_env(&self, env: &mut temor_shell::ChildEnv, kept: &Checkpoint) {
+    pub(super) fn carry_env(&self, env: &mut temor_shell::ChildEnv, kept: &Checkpoint) {
         let base = self.launch.ambient.env.clone().overlay(env);
         let base: Vec<(String, String)> = base
             .iter()

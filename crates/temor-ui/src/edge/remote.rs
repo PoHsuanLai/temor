@@ -6,8 +6,11 @@
 
 use std::process::{Command, Stdio};
 use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 
 use temor_core::vocab::text::HelperHash;
+use temor_remote::ClientEvent;
+use temor_remote::host::HostEnv;
 use temor_ssh::{CommandOutput, CommandRunner, HostAlias};
 use temor_wire::digest::ContentHash;
 use temor_wire::ids::SessionId;
@@ -18,7 +21,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use super::SshEnv;
 use super::remote_attach::attach_pane;
 use super::remote_calls::{close, ports, set_palette};
-use super::remote_conn::{Conn, DialFault, dial, dial_argv};
+use super::remote_conn::{Conn, DialFault, dial, dial_argv, dial_local};
 use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket};
 use super::remote_install::{
     Found, HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
@@ -144,41 +147,31 @@ impl RemoteWork {
                     return;
                 };
                 let argv = dial_argv(&host, &layout, &hash);
-                let outcome = dial(&env.tools.ssh, &argv, hash).map(|(conn, incoming)| {
-                    let (tell, name) = (events.clone(), host.clone());
-                    let reader = std::thread::Builder::new()
-                        .name("temor-remote-events".to_owned())
-                        .spawn(move || pump(&name, generation, &incoming, &router, &tell));
-                    (conn, reader)
-                });
-                let outcome = match outcome {
-                    Ok((conn, Ok(_))) => {
-                        let stalled = RemoteEvent::Stalled {
-                            host: host.clone(),
-                            generation,
-                        };
-                        let tell = events.clone();
-                        // Without the watch a stall goes unnoticed; the keepalives still run.
-                        let _ = watch(&conn, PingPolicy::DEFAULT, move || {
-                            let _ = tell.send(stalled);
-                        });
-                        if let Ok(list) = ports(conn.client()) {
-                            let _ = events.send(RemoteEvent::Ports {
-                                host: host.clone(),
-                                generation,
-                                ports: list,
-                            });
-                        }
-                        Ok(conn)
-                    }
-                    Ok((_, Err(_))) => Err(DialFault::Failed),
-                    Err(fault) => Err(fault),
-                };
-                let _ = events.send(RemoteEvent::Dialed {
-                    host,
-                    generation,
-                    outcome,
-                });
+                let dialed = dial(&env.tools.ssh, &argv, hash);
+                serve(events, host, generation, router, dialed);
+            },
+            Some(failed),
+        );
+    }
+
+    /// Connects to this computer's own daemon (starting it with `helper`) and starts reading its
+    /// events into `router`. `host` is the name the window gives it.
+    pub fn dial_local(
+        &self,
+        env: HostEnv,
+        host: HostAlias,
+        generation: Generation,
+        router: Router,
+    ) {
+        let failed = RemoteEvent::Dialed {
+            host: host.clone(),
+            generation,
+            outcome: Err(DialFault::Failed),
+        };
+        self.run(
+            move |events| {
+                let dialed = dial_local(&env);
+                serve(events, host, generation, router, dialed);
             },
             Some(failed),
         );
@@ -243,6 +236,46 @@ impl RemoteWork {
             None,
         );
     }
+}
+
+/// What follows a dial that connected: the thread that reads the connection's events, the watch
+/// on its pings, and its listening ports. Then the window is told how the dial went.
+fn serve(
+    events: &UnboundedSender<RemoteEvent>,
+    host: HostAlias,
+    generation: Generation,
+    router: Router,
+    dialed: Result<(Arc<Conn>, Receiver<ClientEvent>), DialFault>,
+) {
+    let outcome = dialed.and_then(|(conn, incoming)| {
+        let (tell, name) = (events.clone(), host.clone());
+        std::thread::Builder::new()
+            .name("temor-remote-events".to_owned())
+            .spawn(move || pump(&name, generation, &incoming, &router, &tell))
+            .map_err(|_| DialFault::Failed)?;
+        let stalled = RemoteEvent::Stalled {
+            host: host.clone(),
+            generation,
+        };
+        let tell = events.clone();
+        // Without the watch a stall goes unnoticed; the keepalives still run.
+        let _ = watch(&conn, PingPolicy::DEFAULT, move || {
+            let _ = tell.send(stalled);
+        });
+        if let Ok(list) = ports(conn.client()) {
+            let _ = events.send(RemoteEvent::Ports {
+                host: host.clone(),
+                generation,
+                ports: list,
+            });
+        }
+        Ok(conn)
+    });
+    let _ = events.send(RemoteEvent::Dialed {
+        host,
+        generation,
+        outcome,
+    });
 }
 
 fn probed(host: &HostAlias, found: Option<Found>) -> RemoteEvent {

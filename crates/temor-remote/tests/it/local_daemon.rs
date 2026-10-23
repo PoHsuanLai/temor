@@ -45,6 +45,7 @@ impl Local {
         let env = HostEnv {
             xdg_runtime_dir: None,
             home: Some(self.scratch.home.clone().into()),
+            linger: None,
             shell: Some("/bin/bash".into()),
             exe: HELPER_BIN.into(),
         };

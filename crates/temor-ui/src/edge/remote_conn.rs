@@ -6,6 +6,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
+use temor_remote::host::HostEnv;
 use temor_remote::{Client, ClientEvent, DAEMON_CAPS, Error, hello};
 use temor_ssh::{ControlLayout, HostAlias};
 use temor_wire::digest::ContentHash;
@@ -97,6 +98,16 @@ pub fn dial_argv(alias: &HostAlias, layout: &ControlLayout, hash: &ContentHash) 
         format!("{} stdio", helper_path(hash)),
     ]);
     argv
+}
+
+/// A connection to this computer's own daemon, started when none is running. `env.exe` is the
+/// helper to start.
+pub fn dial_local(env: &HostEnv) -> Result<(Arc<Conn>, Receiver<ClientEvent>), DialFault> {
+    match temor_remote::host::dial_local(env) {
+        Ok((client, events)) => Ok((Arc::new(Conn::bare(client)), events)),
+        Err(Error::Incompatible(_)) => Err(DialFault::Refused),
+        Err(_) => Err(DialFault::Failed),
+    }
 }
 
 /// Starts `ssh` with `argv` and greets the helper over it, expecting the build `hash`.

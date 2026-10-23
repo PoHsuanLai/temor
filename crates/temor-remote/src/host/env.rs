@@ -13,6 +13,8 @@ pub struct HostEnv {
     pub home: Option<OsString>,
     /// `SHELL`.
     pub shell: Option<OsString>,
+    /// `TEMOR_REMOTE_LINGER`.
+    pub linger: Option<OsString>,
     /// This binary.
     pub exe: PathBuf,
 }

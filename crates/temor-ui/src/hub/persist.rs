@@ -78,7 +78,10 @@ impl Drop for Hub {
             if self.is_quick(*pane) || self.run.panes.contains_key(pane) {
                 continue;
             }
-            let kept = slot.borrow().session.as_ref().map(Session::checkpoint);
+            let mut kept = slot.borrow().session.as_ref().map(Session::checkpoint);
+            if let Some(kept) = &mut kept {
+                kept.daemon_session = self.local_session(*pane);
+            }
             if let Some(kept) = kept {
                 let _ = checkpoint::write(&dir, *pane, &kept);
             }
