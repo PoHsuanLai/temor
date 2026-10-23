@@ -15,6 +15,7 @@ use temor_vt::MouseButton as VtButton;
 
 use super::convert::{device_point, scale_of, vt_button, vt_mods, wheel_lines};
 use super::slot::{Slot, repaint};
+use super::window_help::device_at;
 
 /// The pane's pointer handlers: the capture for drags, and the press, release and wheel.
 #[derive(Clone)]
@@ -109,16 +110,12 @@ pub fn use_pane_mouse(
                 },
                 _ => ReleaseOwner::Element,
             });
-            let p = event.element_coordinates();
-            let scale = scale_of(signals.as_ref());
-            let result = slot.borrow_mut().session.as_mut().map(|s| {
-                s.press(
-                    device_point(p.x, p.y, scale),
-                    button,
-                    vt_mods(event.modifiers()),
-                    started.elapsed(),
-                )
-            });
+            let at = device_at(event.client_coordinates(), &rect, signals);
+            let result = slot
+                .borrow_mut()
+                .session
+                .as_mut()
+                .map(|s| s.press(at, button, vt_mods(event.modifiers()), started.elapsed()));
             if let Some(Err(err)) = result {
                 let mut notice = notice;
                 notice.set(Some(err.to_string()));
@@ -143,16 +140,13 @@ pub fn use_pane_mouse(
             if owner.get() == ReleaseOwner::Host {
                 return;
             }
-            let p = event.element_coordinates();
-            let scale = scale_of(signals.as_ref());
+            let at = device_at(event.client_coordinates(), &rect, signals);
             let mut notice = notice;
-            let result = slot.borrow_mut().session.as_mut().map(|s| {
-                s.release(
-                    device_point(p.x, p.y, scale),
-                    button,
-                    vt_mods(event.modifiers()),
-                )
-            });
+            let result = slot
+                .borrow_mut()
+                .session
+                .as_mut()
+                .map(|s| s.release(at, button, vt_mods(event.modifiers())));
             if let Some(Err(err)) = result {
                 notice.set(Some(err.to_string()));
             }
@@ -165,10 +159,8 @@ pub fn use_pane_mouse(
         let (slot, signals) = (Rc::clone(&slot), signals);
         move |event: WheelEvent| {
             event.prevent_default();
-            let p = event.element_coordinates();
-            let scale = scale_of(signals.as_ref());
             let (direction, lines) = wheel_lines(event.delta());
-            let at = device_point(p.x, p.y, scale);
+            let at = device_at(event.client_coordinates(), &rect, signals);
             if let Some(s) = slot.borrow_mut().session.as_mut() {
                 let _ = s.wheel(at, direction, lines, vt_mods(event.modifiers()));
             }

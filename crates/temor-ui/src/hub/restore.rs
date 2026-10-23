@@ -39,15 +39,11 @@ impl Hub {
             checkpoint::clear(&dir);
             self.quiet_parked();
         }
-        let restored = !self.slots.is_empty();
         // A first launch that was asked to run a program opens with its tab, not an empty shell.
         if let Some(run) = self.launch.first_run.take() {
             self.run_in_tab(run);
         }
         self.fill_empty();
-        if !restored {
-            self.first_hint = self.keyboard_pane();
-        }
         self.refresh_probe();
         self.sweep_old_snapshots();
     }

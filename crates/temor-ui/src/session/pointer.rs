@@ -24,19 +24,9 @@ impl Session {
         self.pointer_over = Some(at);
     }
 
-    /// The pointer left the grid: no block is hovered.
+    /// The pointer left the grid: no link is under it.
     pub fn pointer_left(&mut self) {
         self.pointer_over = None;
-    }
-
-    /// The block under the pointer now (it follows the wheel), if the pointer is over the grid.
-    pub fn hovered_block(&self) -> Option<temor_core::vocab::ids::BlockId> {
-        self.pointer_over.and_then(|at| self.block_at_point(at))
-    }
-
-    /// The toolbar's measured height, for its view to fill in.
-    pub fn tools_height(&self) -> super::ToolsHeight {
-        self.tools_height.clone()
     }
 
     /// A button went down at `at`.

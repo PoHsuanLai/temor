@@ -497,11 +497,14 @@ fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
     });
     type_line(&mut h, "echo kept-two; (exit 4)");
     let start = Instant::now();
-    while !h.html().contains(">exit 4<") {
+    while !h.html().contains(">exit 4") {
         h.advance(Duration::from_millis(25));
         assert!(start.elapsed() < Duration::from_secs(10), "{}", h.html());
     }
-    let before = h.html().matches("class=\"temor-card\"").count();
+    let before = h
+        .html()
+        .matches("class=\"temor-bseg temor-blk-head\"")
+        .count();
     drop(h);
 
     let probe = Probe::new();
@@ -509,8 +512,8 @@ fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
     let start = Instant::now();
     loop {
         let html = h.html();
-        let cards = html.matches("class=\"temor-card\"").count();
-        if cards >= before && html.contains(">exit 4<") {
+        let cards = html.matches("class=\"temor-bseg temor-blk-head\"").count();
+        if cards >= before && html.contains(">exit 4") {
             break;
         }
         h.advance(Duration::from_millis(25));
@@ -518,7 +521,7 @@ fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
             start.elapsed() < Duration::from_secs(10),
             "{cards} cards after the restart, {before} before:\n{}\n{}",
             probe.screen(),
-            html.split("class=\"temor-card")
+            html.split("class=\"temor-bseg temor-blk-head")
                 .skip(1)
                 .map(|c| c.chars().take(400).collect::<String>())
                 .collect::<Vec<_>>()

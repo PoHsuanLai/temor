@@ -207,7 +207,7 @@ pub fn spawn_event_loop(desk: Desk) {
                 }
             }
             // A list of blocks grows with the output: it is drawn again for every paint.
-            let listed = !paint.is_empty() && crate::session::block_list_on();
+            let listed = !paint.is_empty();
             let redraw = moved
                 || listed
                 || heard

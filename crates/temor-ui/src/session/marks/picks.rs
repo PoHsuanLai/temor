@@ -15,7 +15,7 @@ use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
 use temor_core::vocab::ids::BlockId;
 use temor_core::vocab::text::CommandText;
 use temor_pane::paste;
-use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, RowCount, SurfacePoint, ViewportScroll};
+use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint, ViewportScroll};
 
 use super::super::Session;
 use crate::error::UiError;
@@ -42,14 +42,8 @@ impl Session {
     pub(in crate::session) fn annotate(&mut self, input: AnnotateIn) {
         let (ann, outs) = annotate_step(std::mem::take(&mut self.ann), input);
         self.ann = ann;
-        for out in outs {
-            match out {
-                AnnotateOut::Reveal => self.reveal_pick(),
-                AnnotateOut::FoldsChanged => {
-                    self.relayout();
-                }
-                _ => {}
-            }
+        if outs.contains(&AnnotateOut::FoldsChanged) {
+            self.relayout();
         }
     }
 
@@ -86,32 +80,6 @@ impl Session {
     pub(in crate::session) fn step_pick(&mut self, step: PickStep) {
         let order = self.pick_order();
         self.annotate(AnnotateIn::Step { step, order });
-    }
-
-    /// Brings the active pick's prompt into view (to the top, when it is out of view); with
-    /// nothing picked, the live screen.
-    fn reveal_pick(&mut self) {
-        // A list of blocks scrolls itself to the pick; the terminal's viewport stays put.
-        if super::super::block_list_on() {
-            return;
-        }
-        let first = self
-            .ann
-            .active_pick()
-            .and_then(|id| self.frame()?.reach(id))
-            .map(|(first, _)| first);
-        self.pane.with_term(|term| {
-            let Some(first) = first else {
-                term.scroll(ViewportScroll::Bottom);
-                return;
-            };
-            let shown = term
-                .viewport()
-                .is_ok_and(|(top, rows)| (top..top.saturating_add(rows)).contains(&first));
-            if !shown {
-                term.scroll(ViewportScroll::Row(RowCount(u64::from(first))));
-            }
-        });
     }
 
     /// A key while blocks are picked: the arrows and Escape act on the pick and are used up.

@@ -7,7 +7,7 @@ use temor_pane::Term;
 use temor_vt::{AnchorId, PointSpace};
 
 use super::super::Session;
-use super::bands::lead_at;
+use super::lead::lead_at;
 use super::query::used_columns;
 
 /// Where an anchor is in the screen.

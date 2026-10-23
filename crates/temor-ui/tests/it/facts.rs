@@ -1,164 +1,34 @@
-//! The context chips in the window (PLAN P16), in ds-harness: a scratch repository with one
-//! changed file is the shell's folder, and the chips over the prompt's header line (and the tab's
-//! row) say so.
+//! Where a block ran, in the window (PLAN P16): the list's section line over a block names the
+//! folder its prompt was in, and the composer names the folder the next command runs in.
 //! The DOM is read back; no pixels, no OS input, no real HOME.
 
-use std::time::{Duration, Instant};
-
-use ds_harness::Harness;
-use temor_testkit::{git, program_or_skip};
 use temor_ui::view::probe::Probe;
 
-use super::drive::{type_line, wait_until};
-use super::support::tools_present;
-use super::window::harness_with;
+use super::drive::{started, type_line, wait_html, wait_until};
+use super::support::window_tools_present;
 
-/// The markup of the chips row, or none while it is not drawn.
-fn chips_of(html: &str) -> Option<String> {
-    let after = html.split("class=\"temor-fact-chips").nth(1)?;
-    let end = after.find("</div>").unwrap_or(after.len());
-    Some(after[..end].to_owned())
+/// The text of the first element whose opening tag carries `class`, if any.
+fn text_of<'a>(html: &'a str, class: &str) -> Option<&'a str> {
+    let after = html.split(&format!("class=\"{class}\"")).nth(1)?;
+    let (_, rest) = after.split_once('>')?;
+    rest.split('<').next()
 }
 
-/// Which prompt the shell draws: the plain `$ ` the other tests read, or temor's own.
-#[derive(Clone, Copy, PartialEq)]
-enum Prompt {
-    Plain,
-    Temor,
-}
-
-/// A window whose shell starts in a scratch repository with one changed file, at its prompt.
-fn changed_repository(name: &str, probe: &Probe, prompt: Prompt) -> Harness {
-    let mut h = harness_with(name, probe, None, |ambient| {
-        if prompt == Prompt::Temor {
-            ambient.env.set("TEMOR_PROMPT", "temor");
-        }
-        let home = &ambient.home;
-        git(home, &["init", "-q", "-b", "main"]);
-        std::fs::write(home.join("a.txt"), "one\n").expect("write");
-        git(home, &["add", "a.txt"]);
-        git(home, &["commit", "-q", "-m", "first"]);
-        std::fs::write(home.join("a.txt"), "one\ntwo\n").expect("write");
+#[test]
+fn a_blocks_section_and_the_composer_name_the_folder() {
+    if !window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("facts-folder", &probe);
+    type_line(&mut h, "echo here");
+    wait_until(&mut h, &probe, "the output", |s| {
+        s.lines().any(|l| l.trim_end() == "here")
     });
-    let at_prompt = move |s: &str| match prompt {
-        Prompt::Plain => s.contains('$'),
-        // temor's header line: the home folder and the branch.
-        Prompt::Temor => s.contains("~  main"),
-    };
-    wait_until(&mut h, probe, "the prompt", at_prompt);
-    h
-}
-
-/// The chips row once it says the change, and the whole page then.
-fn chips_with_the_change(h: &mut Harness) -> (String, String) {
-    let start = Instant::now();
-    loop {
-        h.advance(Duration::from_millis(50));
-        let html = h.html();
-        if let Some(chips) = chips_of(&html).filter(|c| c.contains("+1")) {
-            return (chips, html);
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "no chips with the change:\n{html}"
-        );
-    }
-}
-
-#[test]
-fn a_changed_repository_shows_its_branch_and_changes_in_the_chips_and_on_the_tab() {
-    if !tools_present() || program_or_skip("git", "facts").is_none() {
-        return;
-    }
-    let probe = Probe::new();
-    // The shell starts in the home folder, so the repository is made there, after the harness has
-    // made the folder clean and before the shell is started.
-    let mut h = changed_repository("facts-chips", &probe, Prompt::Plain);
-    let (chips, html) = chips_with_the_change(&mut h);
-    // The tab's row says the branch.
-    assert!(
-        html.contains("main"),
-        "the tab row lacks the branch:\n{html}"
-    );
-    for want in ["+1", "\u{2212}0", "1 file"] {
-        assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
-    }
-    // A prompt of the shell's own keeps its text: the chips end at the right, without the folder
-    // and the branch.
-    assert!(
-        html.contains("data-place=\"end\""),
-        "the chips are not at the end:\n{html}"
-    );
-    for kind in ["folder", "branch"] {
-        assert!(
-            !chips.contains(&format!("data-kind=\"{kind}\"")),
-            "a {kind} chip beside the shell's own text:\n{chips}"
-        );
-    }
-}
-
-#[test]
-fn over_temors_prompt_the_chips_say_the_folder_and_branch_first() {
-    if !tools_present() || program_or_skip("git", "facts").is_none() {
-        return;
-    }
-    let probe = Probe::new();
-    let mut h = changed_repository("facts-chips-over", &probe, Prompt::Temor);
-    let (chips, html) = chips_with_the_change(&mut h);
-    assert!(
-        html.contains("data-place=\"over\""),
-        "the chips are not over the header line:\n{html}"
-    );
-    let at = |kind: &str| {
-        chips
-            .find(&format!("data-kind=\"{kind}\""))
-            .unwrap_or_else(|| panic!("no {kind} chip:\n{chips}"))
-    };
-    assert!(
-        at("folder") < at("branch") && at("branch") < at("changes"),
-        "the folder, then the branch, then the changes:\n{chips}"
-    );
-    for want in [">~<", ">main<", "+1"] {
-        assert!(chips.contains(want), "no {want:?} in the chips:\n{chips}");
-    }
-}
-
-/// An older block's card names the folder its prompt was in, as the prompt's chips did.
-#[test]
-fn an_older_blocks_card_names_its_folder() {
-    if !tools_present() || program_or_skip("git", "facts").is_none() {
-        return;
-    }
-    use ds_harness::Input;
-    let probe = Probe::new();
-    let mut h = changed_repository("facts-card-folder", &probe, Prompt::Temor);
-    let _ = chips_with_the_change(&mut h);
-    h.send(Input::click(ds::prelude::Point {
-        x: ds::prelude::Px(700.0),
-        y: ds::prelude::Px(300.0),
-    }));
-    type_line(&mut h, "echo older-done");
-    let start = Instant::now();
-    loop {
-        h.advance(Duration::from_millis(50));
-        let html = h.html();
-        let named = ["temor-card-folder", "temor-card-place"]
-            .iter()
-            .any(|class| {
-                html.split(&format!("class=\"{class}"))
-                    .skip(1)
-                    .any(|after| {
-                        after
-                            .split_once('>')
-                            .is_some_and(|(_, rest)| rest.starts_with("~<"))
-                    })
-            });
-        if named {
-            break;
-        }
-        assert!(
-            start.elapsed() < Duration::from_secs(30),
-            "no folder on the older block's card:\n{html}"
-        );
-    }
+    wait_html(&mut h, "the section line", |html| {
+        text_of(html, "temor-bseg temor-blk-section") == Some("~")
+    });
+    wait_html(&mut h, "the composer's folder", |html| {
+        text_of(html, "temor-blk-where") == Some("~")
+    });
 }

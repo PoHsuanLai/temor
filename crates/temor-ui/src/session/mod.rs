@@ -28,7 +28,7 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
-pub use block_list::{CARD_MARGIN, LiveRows, block_list_on, force_block_list};
+pub use block_list::{CARD_MARGIN, LiveRows};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use composer::HistoryStep;
@@ -36,7 +36,7 @@ pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::{LinkHover, LinkTipSpot};
 pub use list_hit::{ListMap, ListSpan, Toward};
-pub use marks::{Gutter, ToolsHeight, desktop_note};
+pub use marks::desktop_note;
 pub use model::{
     Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
 };

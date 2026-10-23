@@ -12,7 +12,6 @@ use super::model::{INSET, Lifetime, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
-use crate::view::card_colours::CardColours;
 use temor_pane::{Hold, PaneEvent};
 use temor_vt::Snapshot;
 
@@ -97,12 +96,6 @@ impl Session {
         }
         let blink = self.blink_now();
         self.blink.painted = blink;
-        let palette = self.painter.palette();
-        // A list of blocks draws its cards itself.
-        let bands = match super::block_list_on() {
-            true => Vec::new(),
-            false => self.card_bands(&CardColours::of(palette)),
-        };
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,
@@ -113,7 +106,7 @@ impl Session {
             },
             blink,
             selection: None,
-            bands: &bands,
+            bands: &[],
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_pane::PaintSource`).

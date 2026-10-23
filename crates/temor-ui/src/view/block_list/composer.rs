@@ -23,23 +23,33 @@ pub struct ComposerActions {
     pub submit: EventHandler<()>,
     /// ↑ or ↓: the command one older or newer.
     pub history: EventHandler<HistoryStep>,
-    /// A chord for the terminal's keys.
+    /// A chord the field does not take: the keymap's (the terminal's keys hear it).
     pub chord: EventHandler<RawKey>,
     /// The card went away with the caret in its field: the keyboard goes back to the terminal.
     pub gone: EventHandler<()>,
 }
 
-/// Whether a ⌘ chord is the field's own: select all, copy, cut, paste, undo and redo, and the
-/// caret's moves (to the line's ends, by word).
+/// Whether a chord is the field's own. With ⌘: select all, copy, cut, paste, undo and redo, and
+/// the caret's moves (to the line's ends, by word). With Ctrl alone, the line editing a Mac
+/// field does (to the line's start and end, a character back and on, cutting to the end, and
+/// deleting); Ctrl+C is the composer's, which empties it.
 fn field_takes(event: &KeyboardEvent, selection: bool) -> bool {
+    let mods = event.modifiers();
+    let command = mods.intersects(Modifiers::SUPER | Modifiers::META);
     match event.key() {
-        Key::Character(c) => match c.to_lowercase().as_str() {
+        Key::ArrowLeft | Key::ArrowRight | Key::Backspace | Key::Delete => true,
+        Key::Character(c) if command => match c.to_lowercase().as_str() {
             // With text selected in the list, ⌘C copies that.
             "c" => !selection,
             "a" | "x" | "v" | "z" => true,
             _ => false,
         },
-        Key::ArrowLeft | Key::ArrowRight | Key::Backspace | Key::Delete => true,
+        Key::Character(c) if mods == Modifiers::CONTROL => {
+            matches!(
+                c.to_lowercase().as_str(),
+                "a" | "e" | "b" | "f" | "k" | "d" | "h"
+            )
+        }
         _ => false,
     }
 }
@@ -79,7 +89,8 @@ pub fn ComposerCard(
     });
     let on_key = move |event: KeyboardEvent| {
         let mods = event.modifiers();
-        let command = mods.contains(Modifiers::META);
+        // ⌘ is Super where the platform says so, Meta where it says that.
+        let command = mods.intersects(Modifiers::SUPER | Modifiers::META);
         let control = mods.contains(Modifiers::CONTROL);
         match event.key() {
             Key::Enter if !command && !control => {
@@ -93,11 +104,7 @@ pub fn ComposerCard(
                     _ => HistoryStep::Newer,
                 });
             }
-            Key::Character(c) if control && !command && c.eq_ignore_ascii_case("c") => {
-                event.prevent_default();
-                input.call(String::new());
-            }
-            _ if command && !field_takes(&event, selection) => {
+            _ if (command || control) && !field_takes(&event, selection) => {
                 event.prevent_default();
                 let phase = match event.is_auto_repeating() {
                     true => KeyPhase::Repeat,

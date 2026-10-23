@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
+use dioxus::html::geometry::ClientPoint;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds::host::ime::ImeSwitch;
@@ -100,13 +101,23 @@ pub(super) fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant, mut ui:
     });
 }
 
-/// A pointer event's place in the pane, in device pixels.
+/// A point in the window, in logical pixels from the pane's region (`rect`): a list's cards are
+/// elements of their own, so an event's element coordinates are its card's, not the pane's.
+pub(super) fn pane_logical(client: ClientPoint, rect: &RectProbe) -> (f64, f64) {
+    let origin = rect.rect().map_or((0.0, 0.0), |r| {
+        (f64::from(r.origin.x.0), f64::from(r.origin.y.0))
+    });
+    (client.x - origin.0, client.y - origin.1)
+}
+
+/// A point in the window, in device pixels from the pane's region (`rect`).
 pub(super) fn device_at(
-    event: &PointerEvent,
+    client: ClientPoint,
+    rect: &RectProbe,
     signals: Option<HostSignals>,
 ) -> temor_vt::SurfacePoint {
-    let p = event.element_coordinates();
-    device_point(p.x, p.y, scale_of(signals.as_ref()))
+    let (x, y) = pane_logical(client, rect);
+    device_point(x, y, scale_of(signals.as_ref()))
 }
 
 /// Tells the session whether the pane has the keyboard (a notice goes out only when it does not),

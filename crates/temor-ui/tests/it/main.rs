@@ -15,7 +15,6 @@ mod desktop;
 mod drive;
 mod facts;
 mod host_files;
-mod lens_room;
 mod local_panes;
 mod offer;
 mod peek;

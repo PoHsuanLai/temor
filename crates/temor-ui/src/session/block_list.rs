@@ -20,20 +20,6 @@ use crate::paint::Inset;
 /// this much narrower than the pane, with this much less inset, so its columns are the grid's.
 pub const CARD_MARGIN: f32 = 8.0;
 
-static BLOCK_LIST: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-
-/// Whether panes are drawn as lists of blocks (`TEMOR_BLOCK_LIST=1`) instead of one grid with
-/// cards over it.
-pub fn block_list_on() -> bool {
-    *BLOCK_LIST.get_or_init(|| std::env::var_os("TEMOR_BLOCK_LIST").is_some_and(|v| v == "1"))
-}
-
-/// Draws panes as lists of blocks in this process whatever the environment says, before any
-/// pane asks (a test's own process). Whether it took: false once a pane has asked.
-pub fn force_block_list() -> bool {
-    BLOCK_LIST.set(true).is_ok()
-}
-
 /// The screen cell under a point in the pane, as the pane draws it: one grid or a list of blocks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct PointHit {
@@ -87,8 +73,8 @@ impl Session {
     /// The screen cell under `at` (device pixels in the pane). `None` before the first layout.
     pub(crate) fn point_hit(&self, at: SurfacePoint) -> Option<PointHit> {
         let placed = self.placed()?;
-        let hit = placed.cell_at(at);
         let Some(map) = &self.list_map else {
+            let hit = placed.cell_at(at);
             let top = self.viewport_top().ok()?;
             return Some(PointHit {
                 cell: screen_cell(top, hit.pos.row.0, hit.pos.col.0),
@@ -100,6 +86,7 @@ impl Session {
         let row = placed.fit.cell.height.0 as f32 / factor;
         let found = list_hit(map, at.y as f32 / factor, row)?;
         // The list's rows keep the grid's columns: only the point's height is the list's.
+        let hit = placed.fit.cell_at(at);
         let left = i64::from(placed.fit.padding.left.0);
         let width = i64::from(placed.fit.grid.cols.0) * i64::from(placed.fit.cell.width.0);
         let over = (left..left + width).contains(&i64::from(at.x));

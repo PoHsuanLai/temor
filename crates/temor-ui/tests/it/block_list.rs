@@ -9,7 +9,6 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
-use temor_ui::session::force_block_list;
 use temor_ui::view::probe::Probe;
 
 use super::drive::{Rect, rects, started, type_line, wait_html, wait_until};
@@ -38,7 +37,6 @@ fn a_click_on_a_card_picks_it_and_a_drag_across_cards_selects_their_text() {
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let probe = Probe::new();
     let mut h = started("block-list-pointer", &probe);
     for word in ["alpha", "beta", "gamma"] {
@@ -86,7 +84,6 @@ fn the_wheel_scrolls_the_list_back_and_a_new_command_brings_it_to_its_bottom() {
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let probe = Probe::new();
     // The harness's own clock: the scroll engine eases once a frame, as in a window, not once a
     // round of a frame's renders.
@@ -135,7 +132,6 @@ fn a_narrower_window_reflows_a_cards_rows_and_the_card_grows_to_hold_them() {
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let probe = Probe::new();
     let mut h = started("block-list-reflow", &probe);
     // One line of output 150 characters long: one row wide, several narrow.
@@ -164,7 +160,6 @@ fn a_lens_picture_shows_in_its_card_between_the_rows_and_the_foot() {
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let lens = temor_testkit::example_program("lens_demo");
     let probe = Probe::new();
     let mut h = harness_building(
@@ -248,7 +243,6 @@ fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_h
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let probe = Probe::new();
     let mut h = started("block-list-composer", &probe);
     wait_html(&mut h, "the composer", |html| {
@@ -303,7 +297,6 @@ fn a_picture_of_the_list_with_its_cards_and_the_composer() {
     if !super::support::window_tools_present() {
         return;
     }
-    assert!(force_block_list(), "nothing asked before the test");
     let probe = Probe::new();
     let mut h = harness_building(
         "block-list-shot",

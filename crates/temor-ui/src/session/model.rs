@@ -99,8 +99,6 @@ pub struct Session {
     /// The key temor gave the shell it started here; a state report without it is not the
     /// shell's and is dropped. None: nothing reports.
     pub(super) report_key: Option<temor_shell::report::ReportKey>,
-    /// The block toolbar's measured height, written by its view.
-    pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
     pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
     /// The link under the pointer as last drawn in its tooltip.
@@ -135,9 +133,7 @@ pub struct Session {
     pub(super) clip_mirror: temor_pane::ClipboardMirror,
     /// A clipboard question waiting for the person.
     pub(super) clip_pending: Option<super::osc52::PendingClipboard>,
-    /// The blocks with a picture under them and its height in device pixels (see `room`).
-    pub(super) inserts: Vec<(temor_core::vocab::ids::BlockId, temor_vt::Px)>,
-    /// Where the rows were shown at the last paint, around the room under those blocks.
+    /// Where the rows were shown at the last paint (see `room`).
     pub(super) layout: Option<temor_render::RowLayout>,
 }
 

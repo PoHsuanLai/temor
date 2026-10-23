@@ -16,32 +16,39 @@ use temor_vt::Ime;
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{place_cursor, take_notice};
+use crate::error::UiError;
 use crate::hub::{Desk, Origin};
 use crate::input::stroke;
 use crate::session::HistoryStep;
 
-/// A key the region hears while the list shows the composer: a typed key is the composer's
-/// (its text, Enter, Backspace, the arrows through the history), and the caret goes to its field
-/// for the rest, but for Enter. A chord is the terminal's as ever. Whether the composer took it.
-fn to_composer(slot: &RefCell<Slot>, raw: &RawKey, focus: FocusRequest) -> bool {
+/// A key the region hears, or the composer's field hands on, while the list shows the
+/// composer: a typed key is the composer's (its text, Enter, Backspace, the arrows through the
+/// history), and the caret goes to its field for the rest, but for Enter. A chord runs what the
+/// keymap binds it to. Whether the composer took it: then the shell hears nothing.
+fn to_composer(
+    slot: &RefCell<Slot>,
+    raw: &RawKey,
+    focus: FocusRequest,
+) -> Option<Result<(), UiError>> {
     let mut slot = slot.borrow_mut();
-    let Some(session) = slot.session.as_mut().filter(|s| s.composer_shown()) else {
-        return false;
-    };
+    let session = slot.session.as_mut().filter(|s| s.composer_shown())?;
+    if raw.phase == KeyPhase::Release {
+        return Some(Ok(()));
+    }
     if raw
         .modifiers
-        .intersects(Modifiers::META | Modifiers::CONTROL)
+        .intersects(Modifiers::SUPER | Modifiers::META | Modifiers::CONTROL)
     {
-        return false;
-    }
-    if raw.phase == KeyPhase::Release {
-        return true;
+        return Some(match stroke(raw, Ime::Idle) {
+            Some(stroke) => session.composer_chord(stroke),
+            None => Ok(()),
+        });
     }
     match (&raw.key, &raw.text) {
         // The command runs and the composer goes: the keys stay the terminal's.
         (Key::Enter, _) => {
             session.composer_submit();
-            return true;
+            return Some(Ok(()));
         }
         (Key::Backspace, _) => session.composer_backspace(),
         (Key::ArrowUp, _) => session.composer_history(HistoryStep::Older),
@@ -50,7 +57,7 @@ fn to_composer(slot: &RefCell<Slot>, raw: &RawKey, focus: FocusRequest) -> bool 
         _ => {}
     }
     focus.request();
-    true
+    Some(Ok(()))
 }
 
 /// Where the region's keys go: its pane, its box (the input method is placed in it), and the
@@ -87,24 +94,25 @@ pub fn key_handler(
     } = region;
     move |raw: RawKey| {
         peek_key(&raw);
-        if to_composer(&slot, &raw, composer) {
-            desk.bump();
-            return;
-        }
-        let composing = match ime.composing.get() {
-            Composing::Active => Ime::Composing,
-            Composing::Idle | Composing::Cleared => Ime::Idle,
-        };
-        if raw.phase != KeyPhase::Release {
-            ime.settle(&apply);
-        }
-        if composing == Ime::Composing {
-            return;
-        }
-        // An unidentified key is ignored; the rest go to the session.
-        let outcome = match stroke(&raw, composing) {
-            Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
-            None => None,
+        let outcome = match to_composer(&slot, &raw, composer) {
+            Some(outcome) => Some(outcome),
+            None => {
+                let composing = match ime.composing.get() {
+                    Composing::Active => Ime::Composing,
+                    Composing::Idle | Composing::Cleared => Ime::Idle,
+                };
+                if raw.phase != KeyPhase::Release {
+                    ime.settle(&apply);
+                }
+                if composing == Ime::Composing {
+                    return;
+                }
+                // An unidentified key is ignored; the rest go to the session.
+                match stroke(&raw, composing) {
+                    Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
+                    None => None,
+                }
+            }
         };
         if let Some(Err(err)) = outcome {
             desk.say(err.to_string());

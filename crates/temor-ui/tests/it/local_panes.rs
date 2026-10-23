@@ -196,18 +196,18 @@ fn a_running_program_moves_to_a_live_card_that_stops_and_is_put_away() {
     focus_pane(&mut h);
     type_line(&mut h, "echo before; (exit 3)");
     wait_html(&mut h, "the first command's status", |html| {
-        html.contains(">exit 3<")
+        html.contains(">exit 3")
     });
     type_line(&mut h, "echo live=$$; sleep 300");
     wait_until(&mut h, &probe, "the shell's pid", |s| {
         number_after(s, "live=").is_some()
     });
     wait_html(&mut h, "the running card", |html| {
-        html.matches("class=\"temor-card\"").count() == 2
+        html.matches("temor-bseg temor-blk-head\"").count() == 2
     });
 
     // The running block's menu offers to detach it.
-    let card = *centres(&h, ".temor-card").last().unwrap();
+    let card = *centres(&h, ".temor-blk-head").last().unwrap();
     h.send(Input::press(
         ds::prelude::Point {
             x: ds::prelude::Px(300.0),
@@ -229,7 +229,7 @@ fn a_running_program_moves_to_a_live_card_that_stops_and_is_put_away() {
     assert_eq!(panes(&h), 2);
     // The command before it came along on the card's screen, with how it ended.
     wait_html(&mut h, "the earlier command's status on the card", |html| {
-        html.contains(">exit 3<")
+        html.contains(">exit 3")
     });
     assert!(
         h.html().contains("data-state=\"running\""),

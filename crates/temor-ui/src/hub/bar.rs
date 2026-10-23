@@ -8,7 +8,7 @@ use std::rc::Rc;
 use ds::window::vocab::PageZoom;
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
 use temor_core::vocab::text::{CommandText, HostAlias};
-use temor_pane::keys::{Action, terminal_shortcut};
+use temor_pane::keys::Action;
 
 use super::desk::Desk;
 use super::dispatch::Origin;
@@ -197,19 +197,6 @@ impl HubRef {
     /// Whether the bar is open: its field has the keyboard, and no pane takes it back.
     pub fn bar_is_open(&self) -> bool {
         self.0.borrow().bar.model.is_open()
-    }
-
-    /// The first-launch hint for `pane`, in the person's own chords: only the first pane of a new
-    /// window (never a restored one) has one.
-    pub fn first_hint(&self, pane: temor_core::vocab::ids::PaneId) -> Option<String> {
-        let hub = self.0.borrow();
-        if hub.first_hint != Some(pane) {
-            return None;
-        }
-        let keymap = &hub.launch.keymap;
-        let bar = terminal_shortcut(keymap, Action::OpenBar)?;
-        let split = terminal_shortcut(keymap, Action::SplitRight)?;
-        Some(format!("{bar} for anything \u{b7} {split} to split"))
     }
 
     /// Lists these Spaces in the bar and switches through them.

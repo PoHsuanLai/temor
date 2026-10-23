@@ -28,6 +28,7 @@ use temor_render::Palette;
 use temor_vt::Rgb;
 
 use super::composer::{ComposerActions, ComposerCard};
+use super::more::{More, more_menu};
 use super::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
     near_view, picture_size, row_top, sticky_head,
@@ -36,7 +37,6 @@ use super::tiles::ground_of;
 use crate::hub::Desk;
 use crate::plugins::lens::LensPicture;
 use crate::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
-use crate::view::block_tools::{More, more_menu};
 use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
 
@@ -172,6 +172,15 @@ fn pictures_of(session: Option<&Session>, lens: &[LensPicture], row: f32) -> Vec
             }
         })
         .collect()
+}
+
+/// The block the menu acts on and the width its lens is asked to draw in, in device pixels: the
+/// width of the rows' text.
+pub fn lens_request(session: &Session) -> Option<(BlockId, u32)> {
+    let block = session.selected_block()?;
+    let (pane_width, _) = session.grid_logical()?;
+    let room = (pane_width - 2.0 * INSET.horizontal).max(1.0);
+    Some((block, (room * session.scale_factor()).round() as u32))
 }
 
 /// The pane's blocks as a list. `items` is the session's list now; `texture` the pane's own

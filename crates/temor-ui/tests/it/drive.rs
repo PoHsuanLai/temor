@@ -35,14 +35,6 @@ pub(super) fn type_line(h: &mut Harness, text: &str) {
     h.send(Input::key(ShortcutKey::Enter));
 }
 
-/// Types `line`, and waits until `last` is a line on the screen (the command's output).
-pub(super) fn run_line(h: &mut Harness, probe: &Probe, line: &str, last: &str) {
-    type_line(h, line);
-    wait_until(h, probe, "the command's output", |s| {
-        s.lines().any(|l| l.trim_end() == last)
-    });
-}
-
 /// Presses `held` and `key` together, and lets the window take it in.
 pub(super) fn chord_with(h: &mut Harness, held: &[ShortcutKey], key: char) {
     h.send(Input::chord(held, ShortcutKey::Char(key)));
@@ -113,13 +105,6 @@ pub(super) fn wait_screen(
 pub(super) fn started(name: &str, probe: &Probe) -> Harness {
     let mut h = harness(name, probe);
     wait_until(&mut h, probe, "the prompt", |s| s.contains('$'));
-    h
-}
-
-/// A window whose pane has the keyboard and shows its first prompt.
-pub(super) fn ready(name: &str, probe: &Probe) -> Harness {
-    let mut h = started(name, probe);
-    focus_pane(&mut h);
     h
 }
 

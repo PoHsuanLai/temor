@@ -3,30 +3,21 @@
 //! session's state and send it the person's events; they decide nothing themselves.
 
 pub mod bar;
-pub mod block_card;
 pub mod block_edit;
-pub mod block_header;
 pub mod block_list;
 pub mod block_menu;
-pub mod block_tools;
 pub mod blocks;
 pub mod card_colours;
-mod chip_texts;
 pub mod clipboard_ask;
 pub mod confirm;
 pub mod convert;
 pub mod dnd;
-pub mod fact_chips;
 pub mod find_bar;
-pub mod first_hint;
-pub mod folder_fit;
-pub mod grid_slices;
 pub mod handlers;
 pub mod host_banners;
 pub mod host_words;
 pub mod ime;
 pub mod launch;
-pub mod lens_picture;
 pub mod link_tip;
 pub mod live_head;
 pub mod menu_key;
