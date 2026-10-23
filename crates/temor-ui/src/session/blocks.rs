@@ -31,6 +31,8 @@ pub(super) fn anchor_id(anchor: Anchor) -> AnchorId {
 #[derive(Debug, Default)]
 pub(super) struct BlockLog {
     pub(super) marks: MarkLog,
+    /// What each finished block's card says of its output.
+    pub(super) notes: std::collections::BTreeMap<BlockId, temor_core::block::Note>,
 }
 
 impl BlockLog {

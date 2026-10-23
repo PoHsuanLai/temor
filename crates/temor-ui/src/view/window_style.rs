@@ -31,6 +31,17 @@ pub const WINDOW_CSS: &str = "\
 .temor-chip-icon { display: flex; color: var(--chip-hue); }.temor-chip [data-tone=strong] { color: var(--chip-hue); font-weight: 600; }\
 .temor-chip[data-kind=branch] { --chip-hue: var(--term-ansi-13); }.temor-chip[data-kind=changes] { --chip-hue: var(--ink-soft); }.temor-chip[data-kind=new] { --chip-hue: var(--term-ansi-3); color: var(--chip-hue); }\
 .temor-chip[data-kind=python] { --chip-hue: var(--term-ansi-11); }.temor-chip[data-kind=ruby] { --chip-hue: var(--term-ansi-9); }.temor-chip[data-kind=go] { --chip-hue: var(--term-ansi-14); }.temor-chip[data-kind=node] { --chip-hue: var(--term-ansi-10); }.temor-chip [data-tone=added] { color: var(--ok); }.temor-chip [data-tone=removed] { color: var(--danger); }\
+.temor-card { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s-8); overflow: hidden; pointer-events: none; border-radius: var(--r-item); background-color: var(--term-bg); }\
+.temor-card-body { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }\
+.temor-card-head { display: flex; align-items: center; gap: var(--s-6); min-width: 0; }\
+.temor-card-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-small); color: var(--ink); }\
+.temor-card[data-state=running] .temor-card-title { color: var(--term-ansi-3); }\
+.temor-card-status { flex: none; font-size: var(--fs-small); color: var(--danger); }\
+.temor-card-note { min-width: 0; overflow: hidden; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-soft); }\
+.temor-card-note[data-tone=trouble] { color: var(--danger); }\
+.temor-card-glyph { flex: none; display: grid; gap: var(--s-1); width: var(--s-8); }\
+.temor-card-glyph i { display: block; height: var(--s-1); border-radius: var(--r-micro); background: var(--ink-faint); }\
+.temor-card-bar { position: absolute; left: 0; bottom: 0; height: var(--s-2); background: var(--ink-faint); border-radius: 0 var(--r-micro) var(--r-micro) 0; }\
 .temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }.temor-card-meta { position: absolute; display: flex; align-items: center; white-space: nowrap; pointer-events: none; }\
 .temor-keys:focus { outline: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\

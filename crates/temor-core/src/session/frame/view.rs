@@ -28,6 +28,17 @@ pub struct ToolsSpot {
     pub row: u32,
 }
 
+/// The rows a block's card covers: from its prompt's first row (the blank line temor's prompt
+/// leaves above the header, when there is one) through the last row of its command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CardSpan {
+    pub id: BlockId,
+    /// Viewport rows, negative above the view.
+    pub first: i64,
+    pub last: i64,
+    pub lead: Lead,
+}
+
 /// What the gutter shows for one block whose prompt is on screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockMark {
@@ -299,6 +310,30 @@ impl Frame {
     /// The cursor's row in the viewport as the terminal has it, shown or not.
     pub fn cursor_row(&self) -> Option<i64> {
         self.live_cursor.map(|row| self.rel(row))
+    }
+
+    /// The rows each block's card covers, oldest first: blocks whose prompt and command are
+    /// known. `end` is the viewport row a running block's command runs to.
+    pub fn card_spans(&self, end: i64) -> Vec<CardSpan> {
+        let top = i64::from(self.view.top);
+        let mut spans: Vec<CardSpan> = self
+            .blocks
+            .iter()
+            .filter_map(|read| {
+                let prompt = read.prompt?;
+                let input = read.input?;
+                let output = read.output.map(|at| (i64::from(at.row) - top, at.col));
+                let (_, last) = command_rows(i64::from(input.row) - top, output, end);
+                Some(CardSpan {
+                    id: read.id,
+                    first: i64::from(prompt.row) - top,
+                    last,
+                    lead: read.lead,
+                })
+            })
+            .collect();
+        spans.sort_by_key(|span| span.first);
+        spans
     }
 
     /// The cards for the bands, oldest first: every block with a prompt, and the prompt being

@@ -21,17 +21,17 @@ use ds_blitz::use_gpu;
 use temor_core::remote::Grant;
 use temor_core::vocab::ids::{BlockId, PaneId};
 
+use super::block_card::{BlockCards, cards_of};
 use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_header::BlockHeader;
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
-use super::block_meta::BlockMetas;
 use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
-use super::fact_chips::{ChipPlace, FactChips, chips_for, header_chips};
+use super::fact_chips::{ChipPlace, FactChips, chips_for};
 use super::find_bar::FindBar;
 use super::first_hint::{FirstHint, hint_for};
 use super::grid_slices::{GridTexture, grid_cut};
@@ -227,12 +227,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .and_then(|s| s.clipboard_ask().cloned());
     // The find bar stands over the pane's top rows: the meta and tools there would lie under it.
     let under_find = |top: f32| find.is_some() && top < FIND_TOP + find_height();
-    let metas: Vec<_> = chrome
-        .metas
-        .iter()
-        .filter(|meta| !under_find(meta.top))
-        .cloned()
-        .collect();
     let facts = desk.hub.facts_of(pane);
     let plugin_facts = desk.hub.plugin_facts_of(pane);
     let folder = desk.hub.chip_folder(pane);
@@ -261,16 +255,16 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     {
         s.keep_header_facts(folder, &facts, &plugin_facts);
     }
-    let older_chips: Vec<_> = {
+    let cards: Vec<_> = {
         let slot = slot.borrow();
         let palette = slot.palette;
         slot.session
             .as_ref()
             .zip(chrome.frame.as_ref())
-            .map(|(s, frame)| header_chips(s, frame, &metas, &palette))
+            .map(|(s, frame)| cards_of(s, frame, &palette))
             .unwrap_or_default()
             .into_iter()
-            .filter(|(_, view)| !under_find(view.top))
+            .filter(|card| !under_find(card.top))
             .collect()
     };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
@@ -409,13 +403,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 if let Some(view) = chips {
                     FactChips { view }
                 }
-                for (id, view) in older_chips {
-                    FactChips { key: "{id.0}", view }
-                }
+                BlockCards { cards }
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
-                BlockMetas { metas }
                 if let Some(view) = hint {
                     FirstHint { view }
                 }

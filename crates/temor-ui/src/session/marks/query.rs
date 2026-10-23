@@ -50,6 +50,11 @@ impl Gutter {
 }
 
 impl Session {
+    /// How many rows the terminal has.
+    pub fn rows(&self) -> u16 {
+        self.pane.with_term(|term| term.size().rows.0)
+    }
+
     /// Keeps what the chips over the prompt being typed at say, for the block it becomes: an
     /// older block's header carries the chips its prompt had. Nothing while no prompt is typed at.
     pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts, plugin: &[PluginFact]) {
@@ -63,6 +68,23 @@ impl Session {
     /// What the chips over a block's header line said when its prompt was typed at.
     pub fn header_facts(&self, id: BlockId) -> Option<&HeaderFacts> {
         self.blocks.marks.header_facts(id)
+    }
+
+    /// Keeps the line of output a finished block's card shows. Read once, when the block
+    /// finishes: the card is drawn every frame and the output may be long.
+    pub(super) fn keep_note(&mut self, block: &temor_core::block::Block) {
+        let failed = matches!(block.outcome(), Outcome::Failed(_));
+        let note = self
+            .block_output(block.id)
+            .and_then(|output| temor_core::block::summarize(&output, failed));
+        if let Some(note) = note {
+            self.blocks.notes.insert(block.id, note);
+        }
+    }
+
+    /// The line of output a finished block's card shows, and how much output there was.
+    pub fn block_note(&self, id: BlockId) -> Option<&temor_core::block::Note> {
+        self.blocks.notes.get(&id)
     }
 
     /// How many primary prompts the shell has marked so far.

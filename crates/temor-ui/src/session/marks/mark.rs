@@ -105,6 +105,9 @@ impl Session {
     /// Drops the blocks whose marks the scrollback no longer holds.
     pub(super) fn sweep(&mut self) {
         let ids = self.swept();
+        for id in &ids {
+            self.blocks.notes.remove(id);
+        }
         if !ids.is_empty() {
             self.mark(MarkIn::Gone { ids });
         }
@@ -118,7 +121,10 @@ impl Session {
         for out in outs {
             match out {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
-                MarkOut::Finished(block) => self.notify_finished(&block),
+                MarkOut::Finished(block) => {
+                    self.keep_note(&block);
+                    self.notify_finished(&block);
+                }
                 _ => {}
             }
         }

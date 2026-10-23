@@ -6,7 +6,7 @@
 use temor_core::vocab::ids::BlockId;
 
 use super::block_header::HeaderView;
-use super::block_meta::{MetaView, header_row, metas_of};
+use super::block_meta::header_row;
 use super::block_tools::ToolsView;
 use super::status::{ProgressLine, progress_line};
 use crate::session::{Frame, Gutter, Session};
@@ -18,8 +18,6 @@ use ds::prelude::Availability;
 pub struct Chrome {
     pub header: Option<HeaderView>,
     pub tools: Option<ToolsView>,
-    /// How each card on screen ended, except the one whose tools say it themselves.
-    pub metas: Vec<MetaView>,
     pub progress: Option<ProgressLine>,
     pub bell: bool,
     /// Where the blocks sit now, read from the terminal once for everything drawn this time.
@@ -97,13 +95,9 @@ pub fn chrome_of(session: &Session, _hovered: Option<BlockId>, held: Option<Bloc
         .as_ref()
         .zip(frame.as_ref())
         .and_then(|(g, frame)| tools_of(session, frame, held.or(session.hovered_block()), g));
-    let metas = frame.as_ref().map_or_else(Vec::new, |frame| {
-        metas_of(session, frame, tools.as_ref().map(|tools| tools.id))
-    });
     Chrome {
         header,
         tools,
-        metas,
         progress: session.progress().and_then(progress_line),
         bell: session.bell_showing(),
         frame,
