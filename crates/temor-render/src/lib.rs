@@ -48,7 +48,6 @@
 //! assert_eq!(fit.grid.rows.0, 24);
 //! ```
 
-mod bands;
 mod error;
 mod font;
 mod frame;
@@ -65,7 +64,6 @@ mod gpu;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};
 pub use error::RenderError;
 pub use font::{

@@ -1,45 +1,16 @@
-//! The blocks of one pane at one moment, and every question the views ask of them: the gutter's
-//! marks, the sticky header, where the tools go, a block's last and output rows, and the bands'
-//! input. Made from a [`Read`] by [`Frame::of`]; nothing here touches the terminal.
+//! The blocks of one pane at one moment, and the questions the list asks of them: which block
+//! holds a row, the order blocks are picked in, the prompts in view and a block's output rows.
+//! Made from a [`Read`] by [`Frame::of`]; nothing here touches the terminal.
 //!
 //! Rows are screen rows (0 is the oldest kept row) in a [`Read`], and the answers are in the
 //! viewport's rows, negative above it, as the views want them.
 
-use crate::block::Outcome;
 use crate::vocab::ids::BlockId;
 
-use super::card::{CardBlock, Lead, Mark, Pick, Stage};
-use super::place::{Span, ViewRows, command_rows, heads_viewport, tools_row};
-use super::read::{BlockRead, End, LiveRead, Read, Spot};
+use super::place::{Span, ViewRows, command_rows};
+use super::read::{BlockRead, End, Lead, Read};
 
-/// The command that heads the pane while its block's prompt is above the viewport.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StickyHeader {
-    pub id: BlockId,
-    /// The command's first line.
-    pub command: String,
-}
-
-/// Where the block tools go: the block they act on and the viewport row they are on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ToolsSpot {
-    pub id: BlockId,
-    /// A viewport row (0 is the top row).
-    pub row: u32,
-}
-
-/// The rows a block's card covers: from its prompt's first row (the blank line temor's prompt
-/// leaves above the header, when there is one) through the last row of its command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CardSpan {
-    pub id: BlockId,
-    /// Viewport rows, negative above the view.
-    pub first: i64,
-    pub last: i64,
-    pub lead: Lead,
-}
-
-/// What the gutter shows for one block whose prompt is on screen.
+/// A block whose prompt is on screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockMark {
     pub id: BlockId,
@@ -48,29 +19,6 @@ pub struct BlockMark {
     /// The viewport row of the prompt's header line: the row under the prompt's first row when
     /// that row is the blank line temor's prompt leaves above it, else the prompt's row.
     pub header: u32,
-    /// How many columns the header line's text takes, up to its last non-blank cell: what is
-    /// drawn beside it on the right must start after that.
-    pub header_cols: u32,
-    pub outcome: Outcome,
-    /// How long it ran; `None` while it runs.
-    pub took_ms: Option<u64>,
-}
-
-/// Whether a prompt's header is a line of its own (temor's prompt) or the line typed on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeaderLine {
-    Own,
-    Shared,
-}
-
-/// The header line of the prompt being typed at.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PromptHeader {
-    /// Its viewport row.
-    pub row: u32,
-    pub line: HeaderLine,
-    /// What the shell wrote on it, without trailing blanks.
-    pub text: String,
 }
 
 /// The blocks of one pane at one moment.
@@ -78,10 +26,7 @@ pub struct PromptHeader {
 pub struct Frame {
     view: ViewRows,
     len: u32,
-    live_cursor: Option<u32>,
-    first_shown: u32,
     blocks: Vec<BlockRead>,
-    live: Option<LiveRead>,
 }
 
 impl Frame {
@@ -94,10 +39,7 @@ impl Frame {
                 cursor: read.cursor,
             },
             len: read.len,
-            live_cursor: read.live_cursor,
-            first_shown: read.first_shown,
             blocks: read.blocks,
-            live: read.live,
         }
     }
 
@@ -107,18 +49,6 @@ impl Frame {
 
     fn block(&self, id: BlockId) -> Option<&BlockRead> {
         self.blocks.iter().find(|read| read.id == id)
-    }
-
-    /// The viewport as it is shown: its top is the first row shown whole.
-    fn shown(&self) -> ViewRows {
-        ViewRows {
-            top: self
-                .view
-                .top
-                .saturating_add(self.first_shown)
-                .min(self.view.bottom),
-            ..self.view
-        }
     }
 
     /// A block's first screen row: its prompt's, or its output's when it never had a prompt.
@@ -173,15 +103,6 @@ impl Frame {
         self.block_at_row(row).map(|read| read.id)
     }
 
-    /// The first and last screen rows of a block (a running block runs to the bottom), when the
-    /// scrollback still holds it.
-    pub fn reach(&self, id: BlockId) -> Option<(u32, u32)> {
-        self.blocks
-            .iter()
-            .find(|read| read.id == id)
-            .and_then(Self::reach_of)
-    }
-
     /// The blocks the scrollback still holds, oldest first: those that can be picked.
     pub fn pick_order(&self) -> Vec<BlockId> {
         self.blocks
@@ -191,34 +112,7 @@ impl Frame {
             .collect()
     }
 
-    /// The header line of the prompt being typed at: with temor's prompt, the line above the
-    /// empty typing line; with a one-line prompt, the prompt's own line. `None` while a command
-    /// runs or when it is out of view.
-    pub fn live_header(&self) -> Option<PromptHeader> {
-        let live = self.live.as_ref()?;
-        let start = live.prompt.row;
-        let (row, line) = match live.input {
-            Some(at) if at.row > start && at.col <= 1 => (at.row - 1, HeaderLine::Own),
-            Some(at) => (at.row, HeaderLine::Shared),
-            None => (start, HeaderLine::Shared),
-        };
-        let row = u32::try_from(self.rel(row))
-            .ok()
-            .filter(|&row| row < self.len)?;
-        Some(PromptHeader {
-            row,
-            line,
-            text: live.header_text.clone(),
-        })
-    }
-
-    /// The block under viewport row `row`.
-    pub fn block_at_viewport_row(&self, row: u32) -> Option<BlockId> {
-        self.block_at_row(self.view.top.saturating_add(row))
-            .map(|read| read.id)
-    }
-
-    /// The gutter's marks for the blocks whose prompts are in the viewport.
+    /// The blocks whose prompts are in the viewport.
     pub fn marks(&self) -> Vec<BlockMark> {
         self.blocks
             .iter()
@@ -234,64 +128,9 @@ impl Frame {
                     id: read.id,
                     row,
                     header: row + below,
-                    header_cols: read.header_cols,
-                    outcome: read.outcome,
-                    took_ms: read.took_ms,
                 })
             })
             .collect()
-    }
-
-    /// The command that heads the pane while its block's prompt is above the viewport.
-    pub fn sticky_header(&self) -> Option<StickyHeader> {
-        let view = self.shown();
-        let read = self.block_at_row(view.top)?;
-        let span = self.span_of(read)?;
-        if !heads_viewport(span, &view) {
-            return None;
-        }
-        let command = read.command.lines().next()?.trim();
-        match command.is_empty() {
-            true => None,
-            false => Some(StickyHeader {
-                id: read.id,
-                command: command.to_owned(),
-            }),
-        }
-    }
-
-    /// Where the tools for `id` go, with `reach` rows to cover: its header row, or the sticky
-    /// header when its prompt is scrolled away. `None` for a block with no command, one off the
-    /// screen, or when they would cover the cursor.
-    pub fn tools_spot(&self, id: BlockId, reach: u32) -> Option<ToolsSpot> {
-        let read = self.block(id)?;
-        if read.command.is_empty() {
-            return None;
-        }
-        let span = self.span_of(read)?;
-        // On the header line, under the blank line temor's prompt leaves above it.
-        let lead = match read.prompt {
-            Some(_) => read.lead,
-            None => Lead::Header,
-        };
-        let span = match lead {
-            Lead::Blank if span.first < span.last => Span {
-                first: span.first + 1,
-                ..span
-            },
-            _ => span,
-        };
-        let row = tools_row(span, &self.shown(), reach.max(1))?;
-        Some(ToolsSpot {
-            id,
-            row: row - self.view.top,
-        })
-    }
-
-    /// The viewport row of a block's last row: negative above the view, past the last row below.
-    pub fn last_row(&self, id: BlockId) -> Option<i64> {
-        let span = self.span_of(self.block(id)?)?;
-        Some(self.rel(span.last))
     }
 
     /// The viewport rows of a block's output, first to last; `None` for a block with no row
@@ -305,80 +144,6 @@ impl Frame {
         let (first, last) = (command_end + 1, i64::from(span.last));
         let top = i64::from(self.view.top);
         (first <= last).then_some((first - top, last - top))
-    }
-
-    /// The cursor's row in the viewport as the terminal has it, shown or not.
-    pub fn cursor_row(&self) -> Option<i64> {
-        self.live_cursor.map(|row| self.rel(row))
-    }
-
-    /// The rows each block's card covers, oldest first: blocks whose prompt and command are
-    /// known. `end` is the viewport row a running block's command runs to.
-    pub fn card_spans(&self, end: i64) -> Vec<CardSpan> {
-        let top = i64::from(self.view.top);
-        let mut spans: Vec<CardSpan> = self
-            .blocks
-            .iter()
-            .filter_map(|read| {
-                let prompt = read.prompt?;
-                let input = read.input?;
-                let output = read.output.map(|at| (i64::from(at.row) - top, at.col));
-                let (_, last) = command_rows(i64::from(input.row) - top, output, end);
-                Some(CardSpan {
-                    id: read.id,
-                    first: i64::from(prompt.row) - top,
-                    last,
-                    lead: read.lead,
-                })
-            })
-            .collect();
-        spans.sort_by_key(|span| span.first);
-        spans
-    }
-
-    /// The cards for the bands, oldest first: every block with a prompt, and the prompt being
-    /// typed at. `end` is the viewport row a running block's command runs to.
-    pub fn cards(&self, end: i64) -> Vec<CardBlock> {
-        let top = i64::from(self.view.top);
-        let command_of = |input: Option<Spot>, output: Option<Spot>| {
-            let input = input?;
-            let output = output.map(|at| (i64::from(at.row) - top, at.col));
-            let (from, to) = command_rows(i64::from(input.row) - top, output, end);
-            Some((from, to, input.col))
-        };
-        let mut cards: Vec<CardBlock> = self
-            .blocks
-            .iter()
-            .filter_map(|read| {
-                let prompt = read.prompt?;
-                Some(CardBlock {
-                    first: i64::from(prompt.row) - top,
-                    lead: read.lead,
-                    stage: Stage::Ran(read.outcome),
-                    pick: match read.picked {
-                        true => Pick::Selected,
-                        false => Pick::Unselected,
-                    },
-                    mark: match read.bookmarked {
-                        true => Mark::Bookmarked,
-                        false => Mark::Plain,
-                    },
-                    command: command_of(read.input, read.output),
-                })
-            })
-            .collect();
-        if let Some(live) = &self.live {
-            cards.push(CardBlock {
-                first: i64::from(live.prompt.row) - top,
-                lead: live.lead,
-                stage: Stage::AtPrompt,
-                pick: Pick::Unselected,
-                mark: Mark::Plain,
-                command: command_of(live.input, None),
-            });
-        }
-        cards.sort_by_key(|card| card.first);
-        cards
     }
 }
 

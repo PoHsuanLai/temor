@@ -5,7 +5,6 @@ use temor_vt::Row;
 use super::compose::compose_row;
 use super::overhang::{Overhangs, compose_with_neighbours};
 use super::pixels::Target;
-use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
 use crate::font::{FontSet, GlyphCache};
 use crate::frame::PaneFrame;
@@ -83,7 +82,7 @@ impl CpuRenderer {
     /// Draws every row of a [`PaneFrame::still`] (a finished block's output) whole, sharing
     /// this renderer's glyphs but not its memory or its record of what the live frame drew:
     /// `view.size` is the still's own (its rows' height plus `view.padding`), the selection is
-    /// in the still's rows, and bands, cursor and lowering are not drawn.
+    /// in the still's rows, and the cursor and lowering are not drawn.
     pub fn render_still(
         &mut self,
         frame: &PaneFrame,
@@ -110,9 +109,6 @@ impl CpuRenderer {
             colors: &frame.colors,
             cursor: None,
             selection: view.selection,
-            bands: &[],
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let mut target = Target {
             data: &mut self.still,
@@ -206,7 +202,6 @@ impl Renderer for CpuRenderer {
             cursor,
             view.selection,
             &frame.images,
-            view.bands,
         );
         let input = SceneInput {
             metrics,
@@ -216,9 +211,6 @@ impl Renderer for CpuRenderer {
             colors: &frame.colors,
             cursor,
             selection: view.selection,
-            bands: view.bands,
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let mut target = Target {
             data: &mut self.buf,

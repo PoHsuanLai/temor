@@ -2,11 +2,18 @@
 //! theme: a failed card on red (ANSI 1) at 10%, a picked one on the selection's colour at 45%,
 //! and any other raised a little off the background (the foreground at 5%).
 
-use temor_render::{Alpha, Palette, Tint};
+use temor_render::Palette;
+use temor_vt::Rgb;
+
+/// A colour laid over the background at an opacity out of 255.
+struct Tint {
+    color: Rgb,
+    alpha: u8,
+}
 
 /// `percent` of full opacity.
-fn percent(percent: u32) -> Alpha {
-    Alpha(((percent * 255 + 50) / 100) as u8)
+fn percent(percent: u32) -> u8 {
+    ((percent * 255 + 50) / 100) as u8
 }
 
 /// Which fill lies behind a block's card: a pick wins over a failure.
@@ -37,14 +44,14 @@ fn tint_of(palette: &Palette, fill: CardFill) -> Tint {
 }
 
 /// The colour a card is drawn on: the palette's background under the block's fill.
-pub fn card_ground_rgb(palette: &Palette, fill: CardFill) -> temor_vt::Rgb {
+pub fn card_ground_rgb(palette: &Palette, fill: CardFill) -> Rgb {
     let tint = tint_of(palette, fill);
-    let a = u32::from(tint.alpha.0);
+    let a = u32::from(tint.alpha);
     let mix = |under: u8, over: u8| {
         ((u32::from(under) * (255 - a) + u32::from(over) * a + 127) / 255).min(255) as u8
     };
     let (bg, c) = (palette.background, tint.color);
-    temor_vt::Rgb::new(mix(bg.r, c.r), mix(bg.g, c.g), mix(bg.b, c.b))
+    Rgb::new(mix(bg.r, c.r), mix(bg.g, c.g), mix(bg.b, c.b))
 }
 
 #[cfg(test)]

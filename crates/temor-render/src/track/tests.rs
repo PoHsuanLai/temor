@@ -34,8 +34,8 @@ fn select(from: (u16, u16), to: (u16, u16), shape: SelectionShape) -> Option<Sel
 /// The rows composed after `before`, then `after`, with nothing else changing.
 fn composed(before: Option<SelectionOverlay>, after: Option<SelectionOverlay>) -> Compose {
     let mut tracker = ChangeTracker::default();
-    tracker.plan(key(), Vec::new(), None, before, &[], &[]);
-    tracker.plan(key(), Vec::new(), None, after, &[], &[])
+    tracker.plan(key(), Vec::new(), None, before, &[]);
+    tracker.plan(key(), Vec::new(), None, after, &[])
 }
 
 fn rows(of: &[u16]) -> Compose {
@@ -111,13 +111,12 @@ fn a_selection_change_composes_only_the_rows_it_changes() {
 #[test]
 fn a_selection_change_adds_to_the_rows_that_are_dirty() {
     let mut tracker = ChangeTracker::default();
-    tracker.plan(key(), Vec::new(), None, None, &[], &[]);
+    tracker.plan(key(), Vec::new(), None, None, &[]);
     let plan = tracker.plan(
         key(),
         vec![Row(0)],
         None,
         select((1, 3), (2, 3), SelectionShape::Linear),
-        &[],
         &[],
     );
     assert_eq!(plan, rows(&[0, 3]));

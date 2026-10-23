@@ -45,5 +45,4 @@ pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
 pub use temor_core::session::HeaderFacts;
-pub use temor_core::session::frame::{BlockMark, CardSpan, Frame, HeaderLine, PromptHeader};
 pub use viewer::ViewAsk;

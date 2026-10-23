@@ -4,7 +4,12 @@
 use crate::block::Outcome;
 use crate::vocab::ids::BlockId;
 
-use super::card::Lead;
+/// Whether a block's first row is the blank line temor's prompt leaves above its header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Lead {
+    Blank,
+    Header,
+}
 
 /// A mark's place in the screen: its row and column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,20 +48,13 @@ pub struct BlockRead {
     pub end: End,
     /// What the prompt's first row is.
     pub lead: Lead,
-    /// The columns the header line's text takes; read only for a prompt in the viewport.
-    pub header_cols: u32,
     pub picked: bool,
-    pub bookmarked: bool,
 }
 
 /// The prompt being typed at.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LiveRead {
     pub prompt: Spot,
-    pub lead: Lead,
-    pub input: Option<Spot>,
-    /// What the shell wrote on the prompt's header line, without trailing blanks.
-    pub header_text: String,
 }
 
 /// Everything the views need from the terminal to place the blocks.
@@ -67,11 +65,6 @@ pub struct Read {
     pub len: u32,
     /// The cursor's screen row, when it is shown.
     pub cursor: Option<u32>,
-    /// The cursor's screen row as the terminal has it now, shown or not (else where the last
-    /// paint put it): where the bands' running command runs to.
-    pub live_cursor: Option<u32>,
-    /// The first viewport row shown whole, below the rows the room under a block pushed out.
-    pub first_shown: u32,
     /// The store's blocks, oldest first.
     pub blocks: Vec<BlockRead>,
     pub live: Option<LiveRead>,

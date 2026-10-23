@@ -61,9 +61,4 @@ impl BlockLog {
     pub(super) fn prompt(&self) -> Option<AnchorId> {
         self.marks.prompt().map(anchor_id)
     }
-
-    /// The anchor of where the typed command starts.
-    pub(super) fn input(&self) -> Option<AnchorId> {
-        self.marks.input().map(anchor_id)
-    }
 }

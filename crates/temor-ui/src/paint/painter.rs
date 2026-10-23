@@ -5,8 +5,8 @@
 use temor_pane::{PaintSource, PaneHandle};
 use temor_render::{
     BlinkPhase, CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit,
-    Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale,
-    SelectionOverlay, fit_grid,
+    Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, Scale, SelectionOverlay,
+    fit_grid,
 };
 
 use crate::error::UiError;
@@ -34,7 +34,7 @@ impl Inset {
 
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PaintView<'a> {
+pub struct PaintView {
     pub pixels: PixelSize,
     pub scale: Scale,
     pub inset: Inset,
@@ -42,8 +42,6 @@ pub struct PaintView<'a> {
     /// The cursor's blink half now.
     pub blink: BlinkPhase,
     pub selection: Option<SelectionOverlay>,
-    /// The command cards over the grid's rows.
-    pub bands: &'a [RowBand],
 }
 
 /// Which frame the pane's pixels were last drawn from.
@@ -219,7 +217,6 @@ impl Painter {
             focus: PaneFocus::Focused,
             blink: BlinkPhase::On,
             selection: None,
-            bands: &[],
             lower: 0,
         };
         let drawn = self.renderer.render_still(&frame, &view)?;
@@ -233,7 +230,7 @@ impl Painter {
     pub fn paint(
         &mut self,
         pane: &PaneHandle,
-        view: PaintView<'_>,
+        view: PaintView,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
         let Painter {
@@ -292,7 +289,6 @@ impl Painter {
             focus: view.focus,
             blink: view.blink,
             selection: view.selection,
-            bands: view.bands,
         };
         let drawn = match source {
             Some(Showing::Live) => renderer.render(frame, &pane_view)?,

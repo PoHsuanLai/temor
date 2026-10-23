@@ -5,7 +5,6 @@ use temor_vt::Row;
 
 use super::pipeline::{ALPHA, COLOR, IMAGE, Inst, SOLID, texture};
 use super::{GpuFrame, GpuRenderer};
-use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
 use crate::font::BUILD_ATTEMPTS;
 use crate::frame::{ImagePlacement, PaneFrame};
@@ -119,7 +118,6 @@ impl Renderer for GpuRenderer {
             cursor,
             view.selection,
             &frame.images,
-            view.bands,
         );
         let all: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
         let reach = plan.reach();
@@ -139,9 +137,6 @@ impl Renderer for GpuRenderer {
             colors: &frame.colors,
             cursor,
             selection: view.selection,
-            bands: view.bands,
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         // An atlas clear while building invalidates the glyphs of rows built before it: build
         // again, every row this time, until a build finishes without a clear.

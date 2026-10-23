@@ -17,13 +17,12 @@ fn done(id: u64, first: u32, end: u32) -> BlockRead {
         outcome: Outcome::Succeeded,
         took_ms: Some(4),
         prompt: Some(at(first, 0)),
+        prompt_lost: false,
         output: Some(at(first + 2, 0)),
         input: Some(at(first + 1, 2)),
         end: End::At(at(end, 0)),
         lead: Lead::Header,
-        header_cols: 7,
         picked: false,
-        bookmarked: false,
     }
 }
 
@@ -32,7 +31,6 @@ fn read(top: u32, len: u32, cursor: Option<u32>, blocks: Vec<BlockRead>) -> Read
         top,
         len,
         cursor,
-        first_shown: 0,
         blocks,
         live: None,
     }
@@ -182,12 +180,7 @@ fn blocks_with_no_command_or_lost_rows_are_left_out() {
 #[test]
 fn the_composer_holds_the_prompt_rows_through_the_cursor() {
     let mut r = read(0, 24, Some(7), vec![done(1, 0, 5)]);
-    r.live = Some(crate::session::frame::LiveRead {
-        prompt: at(5, 0),
-        lead: Lead::Header,
-        input: Some(at(6, 2)),
-        header_text: String::new(),
-    });
+    r.live = Some(crate::session::frame::LiveRead { prompt: at(5, 0) });
     let items = list_of(&r, plain);
     assert_eq!(items.last(), Some(&Item::Composer { rows: 5..8 }));
 }

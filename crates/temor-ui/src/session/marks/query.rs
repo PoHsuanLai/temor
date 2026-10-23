@@ -98,11 +98,3 @@ impl Session {
             .and_then(|id| self.block_output(id))
     }
 }
-
-/// The columns up to and including the last cell that holds more than blank space.
-pub(super) fn used_columns(cells: &[temor_pane::text::RowCell]) -> u32 {
-    cells
-        .iter()
-        .rposition(|cell| !cell.text.trim().is_empty())
-        .map_or(0, |last| u32::try_from(last + 1).unwrap_or(u32::MAX))
-}

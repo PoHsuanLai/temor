@@ -106,7 +106,6 @@ impl Session {
             },
             blink,
             selection: None,
-            bands: &[],
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_pane::PaintSource`).
