@@ -77,6 +77,13 @@ impl Session {
         self.list_map = map;
     }
 
+    /// How far the list is scrolled now, in logical pixels.
+    pub fn set_list_offset(&mut self, offset: f32) {
+        if let Some(map) = self.list_map.as_mut() {
+            map.offset = offset;
+        }
+    }
+
     /// The screen cell under `at` (device pixels in the pane). `None` before the first layout.
     pub(crate) fn point_hit(&self, at: SurfacePoint) -> Option<PointHit> {
         let placed = self.placed()?;

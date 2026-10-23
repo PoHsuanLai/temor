@@ -10,14 +10,14 @@ use std::rc::Rc;
 use dioxus::prelude::*;
 use ds::base::text::clip::clip_chars;
 use ds::components::controls::press::Propagation;
-use ds::components::controls::scroller::handle::use_scroller;
+use ds::components::controls::scroller::handle::{ScrollerRef, use_scroller};
 use ds::components::controls::scroller::view::Scroller;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds::style::tokens::control_size::ControlSize;
 use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
-use ds_core::geometry::scroll::ScrollSpan;
+use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
 use ds_core::vocab::Shortcut;
 use temor_core::block::{Outcome, format_elapsed};
@@ -29,14 +29,16 @@ use temor_vt::Rgb;
 use super::segments::{Placed, Seg, Sizes, Standing, card_span, lay_out, list_map, near_view};
 use super::tiles::ground_of;
 use crate::hub::Desk;
-use crate::session::{Session, WheelDirection};
+use crate::session::Session;
 use crate::view::block_tools::{More, more_menu};
-use crate::view::convert::wheel_lines;
 use crate::view::slot::Slot;
 use crate::view::tool_button::ToolButton;
 
 /// How far around the view segments are mounted, in logical pixels.
 const MOUNT_MARGIN: f32 = 600.0;
+/// How far the offset moves before the list is laid out again, in logical pixels: well inside
+/// the mount margin.
+const BAND: f32 = 200.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
 
@@ -63,6 +65,38 @@ pub struct CardOffers {
     pub detach: bool,
     pub on_host: bool,
     pub copy_command_key: Option<Shortcut>,
+}
+
+/// Keeps the list to its bottom while it follows it, and in range when it shrinks. `total` is
+/// the list's height; `seen` the offset and bottom last seen. When the offset moves the list
+/// follows only from its bottom: a wheel back stops it, a wheel down to the end, or the list's
+/// own move there, starts it again.
+fn keep_bottom(
+    scroll: Scroll,
+    total: f32,
+    follow: &Cell<bool>,
+    seen: &Cell<Option<(f32, f32)>>,
+    scroller: ScrollerRef,
+) {
+    if scroll.viewport.0 <= 0.0 {
+        return;
+    }
+    let offset = scroll.offset.0;
+    // The scroller's own bottom, from the content it measured: it can be reached.
+    let reach = scroll.max_offset().0;
+    // The list's own bottom: the scroller's measure lags a layout behind it.
+    let bottom = (total - scroll.viewport.0).max(0.0);
+    let (was, was_bottom) = seen.get().unwrap_or((offset, bottom));
+    seen.set(Some((offset, bottom)));
+    if (offset - was).abs() > 0.5 {
+        follow.set(offset >= reach.min(bottom) - 1.0);
+    }
+    // A list that shrank (a fold) under an offset past its new end goes to that end.
+    if bottom < was_bottom - 0.5 && offset > bottom + 0.5 {
+        scroller.scroll_to(Px(bottom));
+    } else if follow.get() && offset < reach - 0.5 {
+        scroller.scroll_to(Px(reach));
+    }
 }
 
 /// What the head says beside the command: a failure's status, how long it ran, and how many rows
@@ -104,17 +138,32 @@ pub fn BlockPane(
     // The block under the pointer, and the one whose "more" menu is up: its tools show.
     let mut hovered = use_signal(|| None::<BlockId>);
     let held = use_signal(|| None::<BlockId>);
-    // Whether the list keeps to its bottom as it grows: until the person scrolls back.
+    // Whether the list keeps to its bottom as it grows: until the person scrolls back. The
+    // window's scroll engine takes the wheel, so the list knows only that its offset moved.
     let follow = use_hook(|| Rc::new(Cell::new(true)));
+    // The offset, and the list's own bottom, as last seen.
+    let seen = use_hook(|| Rc::new(Cell::new(None::<(f32, f32)>)));
+    // The list's height as last laid out, for the scroll's effect.
+    let total_now = use_hook(|| Rc::new(Cell::new(0.0_f32)));
+    let band = use_memo(move || {
+        let scroll = scroller.scroll()();
+        (
+            (scroll.offset.0 / BAND).floor() as i64,
+            scroll.viewport.0.to_bits(),
+        )
+    });
     {
-        let follow = Rc::clone(&follow);
+        let (follow, seen, total_now, slot) = (
+            Rc::clone(&follow),
+            Rc::clone(&seen),
+            Rc::clone(&total_now),
+            Rc::clone(&slot),
+        );
         use_effect(move || {
             let scroll = scroller.scroll()();
-            let bottom = scroll.max_offset();
-            if scroll.offset.0 >= bottom.0 - 1.0 {
-                follow.set(true);
-            } else if follow.get() {
-                scroller.scroll_to(bottom);
+            keep_bottom(scroll, total_now.get(), &follow, &seen, scroller);
+            if let Some(session) = slot.borrow_mut().session.as_mut() {
+                session.set_list_offset(scroll.offset.0);
             }
         });
     }
@@ -133,7 +182,11 @@ pub fn BlockPane(
         tile_rows: TILE_ROWS,
     };
     let (placed, total) = lay_out(&items, &sizes);
-    let scroll = scroller.scroll()();
+    // The render follows the offset only band by band: the window eases a scroll a little each
+    // round, and a list drawn again each time would never settle. What is mounted reaches past
+    // the view by more than a band.
+    let _ = band();
+    let scroll = *scroller.scroll().peek();
     // A new command (the list's last block changed) takes the list back to its bottom.
     let newest = items.iter().rev().find_map(|item| match item {
         Item::Done(block) | Item::Running { block, .. } => Some(block.id),
@@ -154,16 +207,8 @@ pub fn BlockPane(
             scroller.reveal(ScrollSpan { start: top, length });
         }
     }
-    // The list's own height says where its bottom is now: the scroller's measure of the content
-    // lags a layout behind, and keeps an offset past the end when the list shrinks (a fold).
-    if scroll.viewport.0 > 0.0 {
-        let bottom = (total - scroll.viewport.0).max(0.0);
-        let past = scroll.offset.0 > bottom + 0.5;
-        let behind = follow.get() && scroll.offset.0 < bottom - 0.5;
-        if past || behind {
-            scroller.scroll_to(Px(bottom));
-        }
-    }
+    keep_bottom(scroll, total, &follow, &seen, scroller);
+    total_now.set(total);
     let viewport = match scroll.viewport.0 > 0.0 {
         true => scroll.viewport.0,
         false => total,
@@ -174,7 +219,7 @@ pub fn BlockPane(
         let mut s = slot.borrow_mut();
         let Slot { session, tiles, .. } = &mut *s;
         if let Some(session) = session.as_mut() {
-            session.set_list_map(Some(list_map(&placed, scroller.scroll().peek().offset.0)));
+            session.set_list_map(Some(list_map(&placed, scroll.offset.0)));
             tiles.draw(session, &mounted, &palette, || gpu.handle());
         }
     }
@@ -206,14 +251,6 @@ pub fn BlockPane(
         .as_ref()
         .and_then(Session::fit)
         .map_or(80, |fit| usize::from(fit.grid.cols.0));
-    let on_wheel = {
-        let follow = Rc::clone(&follow);
-        move |event: WheelEvent| {
-            if wheel_lines(event.delta()).0 == WheelDirection::Up {
-                follow.set(false);
-            }
-        }
-    };
     // The tools show on one card: the one with its menu up, else under the pointer, else picked.
     let picked = items.iter().find_map(|item| match item {
         Item::Done(block) | Item::Running { block, .. } if block.picked => Some(block.id),
@@ -231,7 +268,6 @@ pub fn BlockPane(
         div {
             class: "temor-blist",
             style: "{font}",
-            onwheel: on_wheel,
             onpointerleave: move |_| hovered.set(None),
             Scroller {
                 scroller,
