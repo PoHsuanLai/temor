@@ -30,8 +30,8 @@ pub enum Done {
         generation: u64,
         /// The text typed, whole.
         query: String,
-        /// Who offered them.
-        plugin: Plugin,
+        /// Who offered them (boxed: a plugin's description is many times the other answers).
+        plugin: Box<Plugin>,
         /// The rows.
         items: Vec<Item>,
     },

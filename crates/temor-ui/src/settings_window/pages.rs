@@ -36,7 +36,9 @@ pub fn drawn_by(kind: &KeyKind) -> DrawnBy {
         KeyKind::Toggle { .. }
         | KeyKind::Segmented { .. }
         | KeyKind::Menu { .. }
-        | KeyKind::Fixed { .. } => DrawnBy::Page,
+        | KeyKind::Fixed { .. }
+        // A choice among installed things that provide a capability: temor declares none.
+        | KeyKind::Provided { .. } => DrawnBy::Page,
         KeyKind::Bounded { .. }
         | KeyKind::Text
         | KeyKind::List(_)

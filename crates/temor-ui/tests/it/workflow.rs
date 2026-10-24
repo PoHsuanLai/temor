@@ -347,7 +347,9 @@ fn drag_files(h: &mut Harness, at: Point, files: Vec<PathBuf>) {
     h.send(Input::FileDrag(FileDragInput::Offered(Offer::Files(files))));
     h.send(Input::FileDrag(FileDragInput::Moved { point: at }));
     h.advance(Duration::from_millis(50));
-    h.send(Input::FileDrag(FileDragInput::Dropped));
+    h.send(Input::FileDrag(FileDragInput::Dropped {
+        modifiers: dioxus::html::Modifiers::empty(),
+    }));
     h.advance(Duration::from_millis(300));
 }
 
