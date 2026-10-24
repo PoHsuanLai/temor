@@ -1766,3 +1766,39 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       last run, into its hidden rows (temor-render metrics/layout.rs).
 - [ ] Kitty key codes give the US base key for digits and punctuation (input/keys.rs
       `code_char`); only alternate-key reporting sees it on other layouts.
+
+## Review of PR #30 (2026-10-24)
+- [x] Forged state reports: temor gives each shell it starts a random report key
+      (`TEMOR_REPORT_KEY`); the zsh and bash shims move it into an unexported variable before the
+      person's files run, every report carries it (format v2), and a report without the pane's key
+      is dropped. Text a program prints (`cat`, `curl`, a host) can no longer set variables or
+      aliases for the next shell. Daemon panes keep their shell's key across a quit and a detach.
+- [x] Nested shells: a zsh, bash or tmux shell started inside a pane has no key and does not
+      report; fish, nushell and a shell with integration off are not given the key at all.
+- [x] Never carried to a new shell, in one list (`NEVER_CARRIED` in temor-core's shell_state):
+      PATH and its kin (a carried PATH grew at every restore), the code loaders' `LD_*`/`DYLD_*`,
+      `BASH_ENV`/`ENV`/`ZDOTDIR`, prompts, and what names the old login, terminal or desktop session.
+- [x] Secrets: more name parts (`_PASS`, `_PWD`, `_PAT`, `_DSN`, `APIKEY`, `AUTH`, `PRIVATE`) and
+      values that look secret (a URL with a password, well-known token prefixes) are kept by name
+      only; an alias that holds a secret is not kept; a command typed with a space first, or that
+      sets a secret or holds a token, is left out of a checkpoint's history. Checkpoint files are
+      0600 in a private (0700) folder.
+- [x] Daemon start: a lock beside the socket is held for the daemon's life, so two starts at once
+      cannot both listen; at linger the daemon removes the socket only if it is still the one it
+      bound; a connection counts from the accept, not the greeting.
+- [x] A report's variable names must be shell names, and NUL, `=`, `/` or white space in an alias
+      name, or NUL in a value, refuses the report.
+- [x] A reaped program's output is drained a megabyte at a time, so one that ignores the hangup and
+      writes without end still reaches the kill.
+- [x] bash's report keeps the person's `REPLY`; in both shells a report too large to send is not
+      counted as sent (and is not escaped again at every prompt).
+- [x] `TEMOR_REPLAY` and `TEMOR_REPORT_KEY` are set only by temor-pty's contract, never inherited
+      from temor's own environment (daemon panes are scrubbed the same way).
+- [x] Keep terminals running says terminals end as usual where the background service is not
+      available; the command bar lists Detach running program only where it works.
+- [ ] Host panes (Tier B over ssh) are not given a report key yet, so a host's shell does not
+      report its state; nothing reads that state for host panes today.
+- [ ] bash's report reads aliases from `alias -p` (one process per changed prompt); `BASH_ALIASES`
+      would avoid it. An alias whose value has a newline is read as its first line only.
+- [ ] `nextest run -p temor-core` alone fails to build: temor-pane without its `ghostty` feature
+      names `temor_vt` (platform/mod.rs `OPTION_AS_ALT`, from main). The workspace build is fine.
