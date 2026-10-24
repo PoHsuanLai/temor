@@ -16,5 +16,5 @@ pub use daemon_main::run_daemon;
 pub use env::HostEnv;
 pub use identity::hash_executable;
 pub use local::dial_local;
-pub use paths::{runtime_dir, socket_path};
+pub use paths::{local_socket_path, runtime_dir, socket_path};
 pub use stdio_main::run_stdio;

@@ -69,14 +69,16 @@ fn three_blocks(name: &str) -> Option<(Live, [BlockId; 3])> {
     }
     let shell = shell_path("bash").expect("bash");
     let mut live = start(name, &shell);
-    for word in ["a", "b", "c"] {
+    for (round, word) in ["a", "b", "c"].into_iter().enumerate() {
         let before = live.session.block_outcomes().len();
         run_line(&live, &format!("echo {word}"));
-        pump(&mut live, "a finished block", |s| {
+        // The prompt after the block too: keys that act at the prompt (Alt+↑) wait for it.
+        pump(&mut live, "a finished block and the prompt after it", |s| {
             s.block_outcomes().len() > before
                 && s.block_outcomes()
                     .last()
                     .is_some_and(|b| b.1 != Outcome::Running)
+                && s.prompts_seen() > round + 1
         });
     }
     let ids: Vec<BlockId> = live

@@ -122,10 +122,11 @@ fn the_persons_own_clear_takes_every_block() {
     };
     let mut live = start("blocks-person-clear", &bash);
     run_line(&live, "echo before");
-    pump(&mut live, "the first block", |s| {
-        s.block_outcomes()
-            .first()
-            .is_some_and(|b| b.1 != Outcome::Running)
+    pump(&mut live, "the first block and the prompt after it", |s| {
+        s.prompts_seen() >= 2
+            && s.block_outcomes()
+                .first()
+                .is_some_and(|b| b.1 != Outcome::Running)
     });
     run_line(&live, "clear");
     pump(&mut live, "the prompt after it", |s| s.prompts_seen() >= 3);

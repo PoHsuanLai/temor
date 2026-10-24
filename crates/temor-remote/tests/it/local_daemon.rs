@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 use temor_remote::Client;
-use temor_remote::host::{HostEnv, dial_local};
+use temor_remote::host::{DAEMON, HostEnv, LOCAL, dial_local, local_socket_path, runtime_dir};
 use temor_testkit::Scratch;
 use temor_wire::message::SessionState;
 
@@ -27,7 +27,7 @@ impl Local {
         // there is long.
         let scratch = Scratch::new_in(Path::new("/tmp"));
         let child = Command::new(HELPER_BIN)
-            .arg("daemon")
+            .args([DAEMON, LOCAL])
             .env_clear()
             .env("HOME", &scratch.home)
             .env("SHELL", "/bin/bash")
@@ -37,6 +37,10 @@ impl Local {
             .process_group(0)
             .spawn()
             .expect("the daemon starts");
+        // Connected only once it listens: a dial before that would start a daemon of its own.
+        let dir = runtime_dir(None, Some(scratch.home.as_os_str())).expect("a socket folder");
+        let socket = local_socket_path(&dir);
+        eventually("the daemon's socket", || socket.exists().then_some(()));
         Self { child, scratch }
     }
 

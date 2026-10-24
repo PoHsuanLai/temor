@@ -65,9 +65,14 @@ fn marks_around_true_and_false(shell: PathBuf, prepare: impl Fn(&Scratch)) {
             format!("\x1b]133;D;{status}\x07"),
         ];
         let done = |out: &[u8]| ends.iter().find_map(|end| find(out, end.as_bytes()));
+        // The prompt after D: fish 4 draws the prompt again when Enter is pressed, so a B before
+        // the command's D is not the next prompt.
+        let prompt_after = |out: &[u8]| {
+            done(&out[start..])
+                .is_some_and(|d| find(&out[start + d..], PROMPT_END.as_bytes()).is_some())
+        };
         assert!(
-            term.read_until(|out| done(&out[start..]).is_some())
-                && term.read_until_has(start, PROMPT_END),
+            term.read_until(prompt_after),
             "{command}: no D;{status} and prompt: {:?}",
             term.text()
         );
