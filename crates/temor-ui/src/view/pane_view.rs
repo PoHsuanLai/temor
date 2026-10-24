@@ -10,6 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
+use ds::edit::raw_key::RawKey;
 use ds::file_drop::drag::FileDrop;
 use ds::file_drop::hook::use_file_drop;
 use ds::focus::request::use_focus_request;
@@ -422,6 +423,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                     history: EventHandler::new(composer_history(Rc::clone(&slot), ui)),
                                     chord: EventHandler::new(composer_chord),
                                     gone: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
+                                    key: EventHandler::new({ let key = peek.key.clone(); move |raw: RawKey| key(&raw) }),
                                 },
                             },
                             actions: CardActions {

@@ -187,7 +187,12 @@ impl FontSet {
     }
 
     /// Faces to try, best first.
-    fn candidates(&mut self, text: &str, wanted: Presentation, style: FaceStyle) -> Vec<FaceId> {
+    pub(super) fn candidates(
+        &mut self,
+        text: &str,
+        wanted: Presentation,
+        style: FaceStyle,
+    ) -> Vec<FaceId> {
         let mut families: Vec<FamilyId> = Vec::new();
         let emoji: Vec<FamilyId> = match self.lookup {
             Lookup::System => self

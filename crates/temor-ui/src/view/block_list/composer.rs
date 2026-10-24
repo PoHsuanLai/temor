@@ -54,6 +54,9 @@ pub struct ComposerActions {
     pub chord: EventHandler<RawKey>,
     /// The card went away with the caret in its field: the keyboard goes back to the terminal.
     pub gone: EventHandler<()>,
+    /// Every key pressed in the field, before the field acts on it: the ⌘-hover card hears the
+    /// keys typed here as it hears the terminal's.
+    pub key: EventHandler<RawKey>,
 }
 
 /// Whether a chord is the field's own. With ⌘: select all, copy, cut, paste, undo and redo, and
@@ -108,6 +111,7 @@ pub fn ComposerCard(
         history,
         chord,
         gone,
+        key,
     } = actions;
     // Whether the caret is in the field, for the keyboard to go back when the card goes.
     let mut holds = use_hook(|| CopyValue::new(false));
@@ -123,6 +127,12 @@ pub fn ComposerCard(
         let command = mods.intersects(Modifiers::SUPER | Modifiers::META);
         let control = mods.contains(Modifiers::CONTROL);
         let shift = mods.contains(Modifiers::SHIFT);
+        let phase = match event.is_auto_repeating() {
+            true => KeyPhase::Repeat,
+            false => KeyPhase::Press,
+        };
+        let raw = RawKey::new(phase, (event.key(), event.code()), (mods, event.location()));
+        key.call(raw.clone());
         match event.key() {
             // A new line: a multi-line field adds it itself; a one-line field becomes one that
             // holds it, and the caret goes on at its end.
@@ -145,15 +155,7 @@ pub fn ComposerCard(
             }
             _ if (command || control) && !field_takes(&event, selection) => {
                 event.prevent_default();
-                let phase = match event.is_auto_repeating() {
-                    true => KeyPhase::Repeat,
-                    false => KeyPhase::Press,
-                };
-                chord.call(RawKey::new(
-                    phase,
-                    (event.key(), event.code()),
-                    (mods, event.location()),
-                ));
+                chord.call(raw);
             }
             _ => {}
         }

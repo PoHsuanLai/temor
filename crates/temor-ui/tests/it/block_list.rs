@@ -231,7 +231,7 @@ fn a_lens_picture_shows_in_its_card_between_the_rows_and_the_foot() {
 }
 
 /// The composer field's value, as the page writes it.
-fn composer_value(html: &str) -> Option<String> {
+pub(super) fn composer_value(html: &str) -> Option<String> {
     let card = &html[html.find("temor-blk-composer")?..];
     let at = [card.find("<input"), card.find("<textarea")]
         .into_iter()

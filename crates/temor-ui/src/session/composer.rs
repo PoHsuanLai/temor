@@ -24,6 +24,9 @@ pub struct Composer {
     /// The command shown from the history, counted from the newest (`Some(0)`), and what was
     /// typed before the first step back.
     step: Option<(usize, String)>,
+    /// What was last sent, until the command it starts takes it: a shell that does not say what
+    /// it runs (nushell) shows a command of several lines on rows the screen cannot give back.
+    sent: Option<String>,
 }
 
 /// The commands to step through, newest first: each run once, the most recent run kept.
@@ -116,7 +119,13 @@ impl Session {
             self.pane.send(&paste::encode(&text, mode));
         }
         self.pane.send(b"\r");
+        self.composer.sent = (!text.is_empty()).then_some(text);
         self.wake_cursor();
+    }
+
+    /// What the composer last sent, taken by the command it starts.
+    pub(in crate::session) fn take_composer_sent(&mut self) -> Option<String> {
+        self.composer.sent.take()
     }
 
     /// Text the window types for the person (a drop, a paste): into the composer while it is

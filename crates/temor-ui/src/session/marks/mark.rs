@@ -48,7 +48,17 @@ impl Session {
         let finished_before = self.blocks.marks.finished();
         let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
         let at = self.clock.now();
-        let typed = self.typed_at(id);
+        // The composer's text is the command as sent, lines and all, where the screen's rows
+        // are only how the shell drew it; a command the shell names keeps its own name.
+        let starts = match self.blocks.marks.pending() {
+            Some(MarkKind::OutputStart { command }) => Some(command.is_empty()),
+            _ => None,
+        };
+        let sent = match starts {
+            Some(unnamed) => self.take_composer_sent().filter(|_| unnamed),
+            None => None,
+        };
+        let typed = sent.or_else(|| self.typed_at(id));
         self.mark(MarkIn::Anchored {
             seq,
             anchor: handle(id),

@@ -151,6 +151,20 @@ fn symbols_no_script_owns_come_from_a_text_face_where_the_system_has_one() {
             #[cfg(not(target_os = "macos"))]
             continue;
         }
-        assert_eq!(face.color, ColorFormat::None, "{text} is drawn as text");
+        if face.color == ColorFormat::None {
+            continue;
+        }
+        // A colour face only where none of the text faces tried has the character (a runner
+        // with no symbol font but an emoji one).
+        let wanted = super::fallback::presentation(text);
+        let text_faces: Vec<_> = set
+            .candidates(text, wanted, FaceStyle::REGULAR)
+            .into_iter()
+            .filter(|&id| set.face(id).color == ColorFormat::None && set.face(id).maps(c))
+            .collect();
+        assert!(
+            text_faces.is_empty(),
+            "{text} is drawn in colour though a text face has it"
+        );
     }
 }

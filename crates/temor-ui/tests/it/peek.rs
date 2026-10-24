@@ -1,6 +1,6 @@
 //! The ⌘-hover preview in the window (PLAN §10): holding ⌘ with the pointer on a file the shell
 //! listed shows a small card beside it; letting go of ⌘ or typing puts it away, and the typing
-//! still reaches the shell. Event dispatch only; the card reads a real file in a scratch folder.
+//! still reaches the composer. Event dispatch only; the card reads a real file in a scratch folder.
 
 use std::time::{Duration, Instant};
 
@@ -10,7 +10,7 @@ use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input, PointerAction, PointerInput};
 use temor_ui::view::probe::Probe;
 
-use super::drive::wait_until;
+use super::block_list::composer_value;
 use super::support::tools_present;
 use super::viewer::listed;
 
@@ -77,8 +77,15 @@ fn command_hover_on_a_listed_file_shows_a_card_that_goes_when_command_does_or_a_
         assert!(start.elapsed() < Duration::from_secs(10), "no card again");
     }
     h.send(Input::key(ShortcutKey::Char('x')));
-    wait_until(&mut h, &probe, "the key to reach the shell", |s| {
-        s.lines().any(|l| l.contains("$ x"))
-    });
+    // At the prompt the composer takes what is typed.
+    let start = Instant::now();
+    while composer_value(&h.html()).as_deref() != Some("x") {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the key never reached the composer: {}",
+            h.html()
+        );
+    }
     assert_eq!(cards(&h), 0, "{}", h.html());
 }

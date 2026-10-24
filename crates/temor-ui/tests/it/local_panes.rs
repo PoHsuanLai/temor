@@ -202,8 +202,9 @@ fn a_running_program_moves_to_a_live_card_that_stops_and_is_put_away() {
     wait_until(&mut h, &probe, "the shell's pid", |s| {
         number_after(s, "live=").is_some()
     });
+    // Its head, not a count of heads: the sticky head over the list is a head too.
     wait_html(&mut h, "the running card", |html| {
-        html.matches("temor-bseg temor-blk-head\"").count() == 2
+        html.contains("temor-bseg temor-blk-head\" data-state=\"running\"")
     });
 
     // The running block's menu offers to detach it.
