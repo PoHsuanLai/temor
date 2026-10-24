@@ -184,8 +184,11 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
     let _alone = super::super::support::heavy();
     for (name, shell) in shells() {
         let mut live = start(&format!("blocks-lines-{name}"), &shell);
+        // The prompt, and the shell reading pastes: a line break sent before fish turns
+        // bracketed paste on is an Enter, and the first line runs alone.
         pump(&mut live, "the prompt", |s| {
             s.block_list().is_some_and(|l| !l.is_empty())
+                && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
         });
         live.session
             .set_composer_text("echo first\necho second".to_owned());
