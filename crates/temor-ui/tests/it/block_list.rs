@@ -377,6 +377,9 @@ fn shift_enter_starts_a_new_line_the_card_grows_and_enter_sends_both() {
     wait_until(&mut h, &probe, "both outputs", |s| {
         s.lines().any(|l| l.trim_end() == "one") && s.lines().any(|l| l.trim_end() == "two")
     });
+    wait_html(&mut h, "a card for the two lines", |html| {
+        html.contains(">echo one<")
+    });
     wait_html(&mut h, "the composer one line again", |html| {
         composer_value(html).as_deref() == Some("") && !html.contains("<textarea")
     });

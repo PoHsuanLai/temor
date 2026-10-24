@@ -162,6 +162,7 @@ pub fn ComposerCard(
         div {
             class: "temor-bseg temor-blk-composer",
             style: "{style}",
+            "data-lines": (!one_line).then_some("many"),
             onkeydown: move |event: KeyboardEvent| event.stop_propagation(),
             onkeyup: move |event: KeyboardEvent| event.stop_propagation(),
             onpointerdown: move |event: PointerEvent| event.stop_propagation(),

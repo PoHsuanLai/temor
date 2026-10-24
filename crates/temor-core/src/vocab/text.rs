@@ -139,20 +139,28 @@ impl From<EnvKey> for String {
 }
 
 impl CommandText {
-    /// A command as a shell reported it, made safe to type into a prompt. A line break (LF or CR)
-    /// refuses it: the result is empty, which `typable` rejects. Other control characters are
-    /// dropped, a tab becomes a space, and trailing blanks are cut. Nothing from the shell can
-    /// submit a command through this text (PLAN §6, D6).
+    /// A command as a shell reported it, made safe to type into a prompt. A command of several
+    /// lines (one typed with ⇧Enter in the composer) keeps them, so its card names it and Copy
+    /// takes it whole; `typable` rejects it, so nothing from the shell can submit a command
+    /// through this text (PLAN §6, D6). A carriage return refuses the command: the result is
+    /// empty. In each line other control characters are dropped, a tab becomes a space, and
+    /// trailing blanks are cut; blank lines at the end go.
     pub fn from_shell(raw: &str) -> Self {
-        if raw.contains(['\n', '\r']) {
+        if raw.contains('\r') {
             return Self(String::new());
         }
-        let text: String = raw
-            .chars()
-            .map(|c| if c == '\t' { ' ' } else { c })
-            .filter(|c| !c.is_control() && !is_bidi_control(*c))
+        let lines: Vec<String> = raw
+            .split('\n')
+            .map(|line| {
+                let text: String = line
+                    .chars()
+                    .map(|c| if c == '\t' { ' ' } else { c })
+                    .filter(|c| !c.is_control() && !is_bidi_control(*c))
+                    .collect();
+                text.trim_end().to_owned()
+            })
             .collect();
-        Self(text.trim_end().to_owned())
+        Self(lines.join("\n").trim_end().to_owned())
     }
 
     /// Whether the command may be typed into a prompt: it has text and no control character.
@@ -184,13 +192,18 @@ mod tests {
     use super::{CommandText, display_text};
 
     #[test]
-    fn a_line_break_refuses_the_command() {
-        assert!(!CommandText::from_shell("ls\nrm -rf x").typable());
-        assert!(!CommandText::from_shell("ls\rrm").typable());
+    fn lines_are_kept_but_never_typable_and_a_carriage_return_refuses_the_command() {
+        let two = CommandText::from_shell("ls\t\x03\nrm -rf x  \n\n");
+        assert_eq!(two.0, "ls\nrm -rf x");
+        assert!(
+            !two.typable(),
+            "a command of lines is never typed into a prompt"
+        );
         assert_eq!(
-            CommandText::from_shell("ls\nrm"),
+            CommandText::from_shell("ls\rrm"),
             CommandText(String::new())
         );
+        assert!(!CommandText::from_shell("ls\rrm").typable());
     }
 
     #[test]

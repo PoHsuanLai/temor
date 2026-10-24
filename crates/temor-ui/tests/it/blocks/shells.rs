@@ -175,3 +175,38 @@ fn the_shells_screen_clear_takes_the_blocks_it_blanked_and_the_next_command_is_w
     let marks = marks_of(&live.session);
     assert_eq!(marks.first().map(|m| m.row), Some(0), "{marks:?}");
 }
+
+#[test]
+fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
+    if !tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("blocks-lines-{name}"), &shell);
+        pump(&mut live, "the prompt", |s| {
+            s.block_list().is_some_and(|l| !l.is_empty())
+        });
+        live.session
+            .set_composer_text("echo first\necho second".to_owned());
+        live.session.composer_submit();
+        pump(&mut live, "the block", |s| {
+            s.block_outcomes()
+                .first()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let id = live.session.block_outcomes()[0].0;
+        assert_eq!(
+            live.session.block_command(id),
+            Some("echo first\necho second"),
+            "{name}: both lines"
+        );
+        let listed = live.session.block_list().unwrap_or_default();
+        assert!(
+            listed
+                .iter()
+                .any(|item| matches!(item, temor_core::session::list::Item::Done(b) if b.id == id)),
+            "{name}: the block is in the list: {listed:?}"
+        );
+    }
+}
