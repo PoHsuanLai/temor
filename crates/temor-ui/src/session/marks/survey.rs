@@ -41,8 +41,10 @@ impl Session {
                 return None;
             }
             let (top, len) = term.viewport().ok()?;
-            // This frame's cursor row when the terminal knows it, else where the last paint put it.
-            let cursor = term
+            // Spans and tools keep clear of the cursor only where it is drawn; the bands' running
+            // command runs to this frame's cursor row when the terminal knows it.
+            let cursor = painted.map(|row| top.saturating_add(row));
+            let live_cursor = term
                 .cursor_viewport_row()
                 .map(u32::from)
                 .or(painted)
@@ -78,6 +80,7 @@ impl Session {
                         outcome: block.outcome(),
                         took_ms: block.elapsed_ms(),
                         prompt,
+                        prompt_lost: anchors.prompt.is_some() && prompt.is_none(),
                         output: spot(term, anchors.output),
                         input: spot(term, anchors.input),
                         end,
@@ -111,6 +114,7 @@ impl Session {
                 top,
                 len,
                 cursor,
+                live_cursor,
                 first_shown,
                 blocks,
                 live,

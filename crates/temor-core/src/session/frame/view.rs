@@ -67,6 +67,7 @@ pub struct PromptHeader {
 pub struct Frame {
     view: ViewRows,
     len: u32,
+    live_cursor: Option<u32>,
     first_shown: u32,
     blocks: Vec<BlockRead>,
     live: Option<LiveRead>,
@@ -82,6 +83,7 @@ impl Frame {
                 cursor: read.cursor,
             },
             len: read.len,
+            live_cursor: read.live_cursor,
             first_shown: read.first_shown,
             blocks: read.blocks,
             live: read.live,
@@ -108,11 +110,20 @@ impl Frame {
         }
     }
 
+    /// A block's first screen row: its prompt's, or its output's when it never had a prompt.
+    /// `None` once the scrollback took the prompt.
+    fn first_row(read: &BlockRead) -> Option<u32> {
+        match read.prompt_lost {
+            true => None,
+            false => Some(read.prompt.or(read.output)?.row),
+        }
+    }
+
     /// A block's rows, the prompt (or output) mark through the last row: a running block ends at
     /// the cursor's row, or the viewport's bottom; a finished one on the row before its end mark
     /// when that mark is at a line's start.
     fn span_of(&self, read: &BlockRead) -> Option<Span> {
-        let first = read.prompt.or(read.output)?.row;
+        let first = Self::first_row(read)?;
         let last = match read.end {
             End::At(end) => match end.col {
                 0 if end.row > first => end.row - 1,
@@ -130,7 +141,7 @@ impl Frame {
     /// The first and last screen rows of a block, a running block running to the end of the
     /// screen: what a row belongs to.
     fn reach_of(read: &BlockRead) -> Option<(u32, u32)> {
-        let first = read.prompt.or(read.output)?.row;
+        let first = Self::first_row(read)?;
         let last = match read.end {
             End::At(end) => end.row,
             End::Running => u32::MAX,
@@ -285,9 +296,9 @@ impl Frame {
         (first <= last).then_some((first - top, last - top))
     }
 
-    /// The cursor's row in the viewport, when it is shown.
+    /// The cursor's row in the viewport as the terminal has it, shown or not.
     pub fn cursor_row(&self) -> Option<i64> {
-        self.view.cursor.map(|row| self.rel(row))
+        self.live_cursor.map(|row| self.rel(row))
     }
 
     /// The cards for the bands, oldest first: every block with a prompt, and the prompt being

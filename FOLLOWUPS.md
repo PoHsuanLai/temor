@@ -1766,3 +1766,19 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       last run, into its hidden rows (temor-render metrics/layout.rs).
 - [ ] Kitty key codes give the US base key for digits and punctuation (input/keys.rs
       `code_char`); only alternate-key reporting sees it on other layouts.
+
+## Review of PR #29 (2026-10-24)
+- [x] Frame: a running block's span and the tools keep clear of the cursor only where it is drawn
+      (a program that hides it runs to the viewport's bottom again); the bands still run to the
+      terminal's cursor row (`Read::live_cursor`).
+- [x] Frame: a block whose prompt the scrollback took is gone (not picked, hit or headed), even
+      while its output's mark is kept (`BlockRead::prompt_lost`).
+- [ ] Frame reads per render: `chips_for`, the hover lookup, `card_bands` and the view each read a
+      frame of their own, and each reads every block's prompt row (`lead_at`). One frame per render
+      handed down, or a reach-only read for hit-tests and `pick_order`; the block list (#31)
+      replaces most of these readers.
+- [ ] `MarkOut::Dropped` is not acted on: picks, folds and bookmarks of a dropped block stay.
+- [ ] The survey has no tests of its own (cursor source, lost prompt, live header with
+      scrollback).
+- The live prompt header now reads its Screen row (it read an Active row as a Screen one, the wrong
+  line once there was scrollback).
