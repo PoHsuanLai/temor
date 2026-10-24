@@ -17,9 +17,12 @@ impl Daemon {
         self.poll_watches();
     }
 
-    /// Whether the daemon has no sessions and no connections: nothing would be lost if it ended.
+    /// Whether the daemon has no sessions and no connections, counting one accepted that has not
+    /// finished its greeting: nothing would be lost if it ended.
     pub fn is_unused(&self) -> bool {
-        self.registry.all().is_empty() && self.links_snapshot().is_empty()
+        self.registry.all().is_empty()
+            && self.links_snapshot().is_empty()
+            && self.accepted.load(std::sync::atomic::Ordering::SeqCst) == 0
     }
 
     fn sweep_idle(&self) {

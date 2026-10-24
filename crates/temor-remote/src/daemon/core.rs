@@ -1,7 +1,7 @@
 //! The daemon itself: its sessions, its connections and the file service they share.
 
 use std::path::Path;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_wire::hello::Capability;
@@ -29,6 +29,19 @@ pub struct Daemon {
     pub(super) idle: Mutex<IdleLimit>,
     pub(super) ports: Mutex<Vec<ListeningPort>>,
     pub(super) next_link: AtomicU64,
+    /// Connections accepted and not yet ended, counted from the accept (before the greeting),
+    /// so a daemon about to linger out does not miss one that is still saying hello.
+    pub(super) accepted: Arc<AtomicUsize>,
+}
+
+/// One accepted connection, counted until it is dropped.
+#[derive(Debug)]
+pub struct Accepted(Arc<AtomicUsize>);
+
+impl Drop for Accepted {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 impl Daemon {
@@ -42,7 +55,15 @@ impl Daemon {
             links: Mutex::new(Vec::new()),
             ports: Mutex::new(Vec::new()),
             next_link: AtomicU64::new(0),
+            accepted: Arc::new(AtomicUsize::new(0)),
         })
+    }
+
+    /// Counts a connection the listener accepted, until the value is dropped (when serving it
+    /// ends).
+    pub fn accepted(&self) -> Accepted {
+        self.accepted.fetch_add(1, Ordering::SeqCst);
+        Accepted(Arc::clone(&self.accepted))
     }
 
     /// Starts a session and its pump thread.

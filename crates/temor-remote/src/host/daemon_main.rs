@@ -15,7 +15,7 @@ use crate::clock::SystemClock;
 use crate::daemon::{Daemon, DaemonConfig};
 use crate::error::Error;
 use crate::idle::DEFAULT_IDLE;
-use crate::platform::{Listener, connect};
+use crate::platform::{Listener, SocketLock, connect, remove_socket};
 
 /// How often the daemon does its periodic work.
 const TICK: Duration = Duration::from_secs(1);
@@ -78,7 +78,9 @@ fn sweep_in_background(daemon: &Arc<Daemon>) {
 }
 
 /// Runs the daemon until the process is killed. Returns at once, with `Ok`, if a daemon of this
-/// version is already listening.
+/// version is already listening or starting: the lock file beside the socket is held for the
+/// daemon's whole life, so of two starts at once one waits for nothing and leaves, and its caller
+/// dials the other.
 pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
     let SocketSpot {
         helper,
@@ -91,6 +93,9 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
             false => Whose::Helper,
         },
     )?;
+    let Some(lock) = SocketLock::try_take(&socket.with_extension("lock"))? else {
+        return Ok(());
+    };
     if socket.exists() {
         if connect(&socket).is_ok() {
             return Ok(());
@@ -100,6 +105,7 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
             .map_err(|error| Error::io("removing a stale socket", error))?;
     }
     let listener = Listener::bind(&socket)?;
+    let bound = listener.id();
     let daemon = Daemon::new(config(env, helper, dir));
 
     sweep_in_background(&daemon);
@@ -121,13 +127,18 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
                     Duration::ZERO
                 };
                 if unused >= linger {
-                    let _ = std::fs::remove_file(&own_socket);
+                    // Only the socket this daemon bound; the lock goes with the process.
+                    if let Some(bound) = bound {
+                        remove_socket(&own_socket, bound);
+                    }
                     std::process::exit(0);
                 }
             }
         })
         .map_err(|error| Error::io("starting the timer", error))?;
 
+    // Held until the process ends.
+    let _lock = lock;
     loop {
         let connection = match listener.accept() {
             Ok(connection) => connection,
@@ -137,6 +148,7 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
                 continue;
             }
         };
+        let accepted = daemon.accepted();
         let writer = connection.duplicate()?;
         let serving = Arc::clone(&daemon);
         std::thread::Builder::new()
@@ -144,6 +156,7 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
             .spawn(move || {
                 // A connection that ends badly has nobody to tell; its sessions stay.
                 let _ = serving.serve(connection, writer);
+                drop(accepted);
             })
             .map_err(|error| Error::io("starting a connection's thread", error))?;
     }

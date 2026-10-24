@@ -107,3 +107,31 @@ fn a_shell_started_through_the_local_daemon_outlives_its_connection() {
     assert!(snapshot_text(&attached).contains("before-42"));
     again.close_session(id).expect("close");
 }
+
+/// The lock beside the socket is held for a daemon's whole life: a daemon that finds it taken
+/// (another one is starting or running) leaves at once and binds nothing, so two starts at once
+/// cannot both listen or remove each other's socket.
+#[test]
+fn a_daemon_that_finds_the_lock_taken_leaves_without_listening() {
+    if !tools_present() {
+        return;
+    }
+    let scratch = Scratch::new_in(Path::new("/tmp"));
+    let dir = runtime_dir(None, Some(scratch.home.as_os_str())).expect("a socket folder");
+    std::fs::create_dir_all(&dir).expect("folder");
+    let socket = local_socket_path(&dir);
+    let held = std::fs::File::create(socket.with_extension("lock")).expect("lock file");
+    held.try_lock().expect("the test holds the lock");
+    let status = Command::new(HELPER_BIN)
+        .args([DAEMON, LOCAL])
+        .env_clear()
+        .env("HOME", &scratch.home)
+        .env("SHELL", "/bin/bash")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("the daemon runs");
+    assert!(status.success());
+    assert!(!socket.exists(), "it bound nothing");
+}

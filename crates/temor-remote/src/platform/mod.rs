@@ -17,8 +17,12 @@ pub use model::RawStat;
 #[cfg(target_os = "linux")]
 pub use linux::{Beneath, listening_ports};
 #[cfg(unix)]
-pub use unix::{Half, Listener, connect, ensure_private_dir, spawn_detached};
+pub use unix::{
+    Half, Listener, SocketLock, connect, ensure_private_dir, remove_socket, spawn_detached,
+};
 #[cfg(not(target_os = "linux"))]
 pub use unsupported::{Beneath, listening_ports};
 #[cfg(not(unix))]
-pub use unsupported::{Half, Listener, connect, ensure_private_dir, spawn_detached};
+pub use unsupported::{
+    Half, Listener, SocketLock, connect, ensure_private_dir, remove_socket, spawn_detached,
+};

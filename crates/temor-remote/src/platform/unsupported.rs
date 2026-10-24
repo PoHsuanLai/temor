@@ -128,6 +128,26 @@ mod socket {
         pub fn accept(&self) -> Result<Half, Error> {
             Err(no("the local socket"))
         }
+
+        pub fn id(&self) -> Option<SocketId> {
+            None
+        }
+    }
+
+    /// Which file a socket is (unsupported here).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct SocketId;
+
+    pub fn remove_socket(_path: &Path, _id: SocketId) {}
+
+    /// The lock beside a socket (unsupported here).
+    #[derive(Debug)]
+    pub struct SocketLock;
+
+    impl SocketLock {
+        pub fn try_take(_path: &Path) -> Result<Option<Self>, Error> {
+            Err(no("the local socket"))
+        }
     }
 
     pub fn connect(_path: &Path) -> Result<Half, Error> {
@@ -143,4 +163,6 @@ mod socket {
     }
 }
 #[cfg(not(unix))]
-pub use socket::{Half, Listener, connect, ensure_private_dir, spawn_detached};
+pub use socket::{
+    Half, Listener, SocketLock, connect, ensure_private_dir, remove_socket, spawn_detached,
+};
