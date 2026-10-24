@@ -129,4 +129,18 @@ fn a_block_whose_prompt_the_scrollback_took_is_gone_though_its_output_mark_is_ke
     assert_eq!(frame.block_at_screen_row(3), None);
     assert_eq!(frame.pick_order(), vec![BlockId(2)]);
     assert_eq!(frame.output_rows(BlockId(1)), None);
+    assert_eq!(frame.block_first_row(BlockId(1)), None);
+}
+
+#[test]
+fn a_block_starts_on_its_prompts_row_or_its_outputs_without_one() {
+    let mut bare = done(2, 10, 14);
+    bare.prompt = None;
+    let mut lost = done(3, 20, 25);
+    lost.end = End::Lost;
+    let frame = Frame::of(read(0, 30, vec![done(1, 2, 8), bare, lost]));
+    assert_eq!(frame.block_first_row(BlockId(1)), Some(2));
+    assert_eq!(frame.block_first_row(BlockId(2)), Some(12));
+    assert_eq!(frame.block_first_row(BlockId(3)), None, "its end is gone");
+    assert_eq!(frame.block_first_row(BlockId(9)), None);
 }

@@ -48,12 +48,13 @@ pub enum Landing {
 /// What a point over the list is over.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ListHit {
-    pub landing: Landing,
+    /// `None` where the list draws no rows at all (every card folded or without output).
+    pub landing: Option<Landing>,
     pub block: Option<BlockId>,
 }
 
 /// Where `y` (logical pixels from the list's visible top) lands, with rows `row` pixels high.
-/// `None` for an empty list or one that draws no rows.
+/// `None` for an empty list, or for a point on no card in a list that draws no rows.
 pub fn list_hit(map: &ListMap, y: f32, row: f32) -> Option<ListHit> {
     let at = y + map.offset;
     let spans = &map.spans;
@@ -68,7 +69,10 @@ pub fn list_hit(map: &ListMap, y: f32, row: f32) -> Option<ListHit> {
             true => Landing::Start(span.rows.start),
             false => Landing::On((span.rows.start + within).min(last)),
         };
-        return Some(ListHit { landing, block });
+        return Some(ListHit {
+            landing: Some(landing),
+            block,
+        });
     }
     let after = || {
         spans[index..]
@@ -86,8 +90,9 @@ pub fn list_hit(map: &ListMap, y: f32, row: f32) -> Option<ListHit> {
     let landing = match span.toward {
         Toward::Next => after().or_else(before),
         Toward::Prev => before().or_else(after),
-    }?;
-    Some(ListHit { landing, block })
+    };
+    // With no rows to land on, a point on a card is still on its block.
+    (landing.is_some() || block.is_some()).then_some(ListHit { landing, block })
 }
 
 #[cfg(test)]

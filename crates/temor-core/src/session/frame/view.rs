@@ -103,6 +103,13 @@ impl Frame {
         self.block_at_row(row).map(|read| read.id)
     }
 
+    /// The screen row block `id` starts on: its prompt's, or its output's without one.
+    pub fn block_first_row(&self, id: BlockId) -> Option<u32> {
+        self.block(id)
+            .and_then(Self::reach_of)
+            .map(|(first, _)| first)
+    }
+
     /// The blocks the scrollback still holds, oldest first: those that can be picked.
     pub fn pick_order(&self) -> Vec<BlockId> {
         self.blocks

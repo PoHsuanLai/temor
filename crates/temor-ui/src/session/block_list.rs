@@ -93,10 +93,16 @@ impl Session {
         let over = (left..left + width).contains(&i64::from(at.x));
         let last = placed.fit.grid.cols.0.saturating_sub(1);
         let (row, col, region) = match found.landing {
-            Landing::On(row) if over => (row, hit.pos.col.0, HitRegion::Grid),
-            Landing::On(row) => (row, hit.pos.col.0, HitRegion::Padding),
-            Landing::Start(row) => (row, 0, HitRegion::Padding),
-            Landing::End(row) => (row, last, HitRegion::Padding),
+            Some(Landing::On(row)) if over => (row, hit.pos.col.0, HitRegion::Grid),
+            Some(Landing::On(row)) => (row, hit.pos.col.0, HitRegion::Padding),
+            Some(Landing::Start(row)) => (row, 0, HitRegion::Padding),
+            Some(Landing::End(row)) => (row, last, HitRegion::Padding),
+            // No card shows a row: the point is on its block's card, whose first row is its own.
+            None => (
+                self.frame()?.block_first_row(found.block?)?,
+                0,
+                HitRegion::Padding,
+            ),
         };
         Some(PointHit {
             cell: ScreenCell::new(row, col),
