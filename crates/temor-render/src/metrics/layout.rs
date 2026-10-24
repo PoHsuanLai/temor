@@ -1,26 +1,23 @@
-//! Room between a grid's rows: the grid is drawn as one picture of whole rows, and a caller that
-//! wants space under a row (a picture under a command's output) shows that picture in slices with
-//! gaps between them. [`RowLayout`] is the geometry: where each slice of the drawn grid goes in
-//! the pane, where each gap is, and which drawn point a pane point is over. It never redraws
-//! anything; the grid is drawn as it always is, and only shown cut apart.
+//! Rows left out of a grid's picture: the grid is drawn as one picture of whole rows, and folded
+//! rows (a folded command's output) are left out by showing that picture in slices.
+//! [`RowLayout`] is the geometry: where each slice of the drawn grid goes in the pane, and which
+//! drawn point a pane point is over. It never redraws anything; the grid is drawn as it always
+//! is, and only shown cut apart.
 //!
-//! The rows keep their order and their size. Room under a row pushes the rows above it up
+//! The rows keep their order and their size. A fold moves the rows above it down
 //! ([`Pin::Bottom`], the live screen, whose last row stays on the pane's bottom) or the rows
-//! below it down ([`Pin::Top`], for the start of the scrollback, whose first rows would otherwise
-//! be out of reach). Either way the blank rows the grid was lowered over
-//! ([`GridFit::lowered`]) are taken first. What is pushed out of the pane is cut.
+//! below it up ([`Pin::Top`], for the start of the scrollback, whose first rows stay where they
+//! are). What is moved out of the pane is cut.
 
-use std::collections::BTreeMap;
 use std::ops::Range;
 
 use temor_vt::{Px, Row, SurfacePoint};
 
-use super::layout_types::{Gap, GridHit, LayoutParams, Pin, Screen, Slice};
+use super::layout_types::{LayoutParams, Pin, Screen, Slice};
 use super::model::GridFit;
 use crate::track::band_of;
 
-/// Rows `first..=last`, shown `shift` device pixels from where they are drawn, with `gap`
-/// pixels of room under the last.
+/// Rows `first..=last`, shown `shift` device pixels from where they are drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Run {
     first: u16,
@@ -29,19 +26,17 @@ struct Run {
     /// runs take in the padding.
     src: (i64, i64),
     shift: i64,
-    gap: i64,
     /// Left out of the picture: it takes no room, and its rows are shown where it began.
     folded: bool,
 }
 
-/// Where a grid's rows are shown when room is made between them. With no room, the picture is
-/// shown whole where it was drawn and every point is the point it was. `Send` and `Sync`.
+/// Where a grid's rows are shown when some are left out. With none left out, the picture is shown
+/// whole where it was drawn and every point is the point it was. `Send` and `Sync`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RowLayout {
     fit: GridFit,
     runs: Vec<Run>,
     slices: Vec<Slice>,
-    gaps: Vec<Gap>,
     visible: Range<u16>,
 }
 
@@ -54,21 +49,19 @@ fn clamp_i32(v: i64) -> i32 {
 }
 
 impl RowLayout {
-    /// The grid shown as it is drawn: one slice, no room.
+    /// The grid shown as it is drawn: one slice.
     pub fn identity(fit: GridFit) -> Self {
         Self::new(LayoutParams {
             fit,
-            lower: 0,
-            inserts: &[],
             folded: &[],
             pin: Pin::Bottom,
             screen: Screen::Primary,
         })
     }
 
-    /// Lays the rows out around `params.inserts`: a row's shown top is its drawn top, plus the
-    /// room above it, less what the pin pulls up (all the room for [`Pin::Bottom`], at most the
-    /// blank rows the grid was lowered over for [`Pin::Top`]).
+    /// Lays the rows out without `params.folded`: a row's shown top is its drawn top, less the
+    /// folded rows above it, plus what the pin pushes down (all the folded rows for
+    /// [`Pin::Bottom`], none for [`Pin::Top`]).
     pub fn new(params: LayoutParams<'_>) -> Self {
         let fit = params.fit;
         let rows = fit.grid.rows.0.max(1);
@@ -81,19 +74,10 @@ impl RowLayout {
                     .iter()
                     .any(|f| f.first.0 <= row && row <= f.last.0)
         };
-        let mut room: BTreeMap<u16, i64> = BTreeMap::new();
-        if primary {
-            for insert in params.inserts {
-                if insert.after.0 < rows && insert.height.0 > 0 && !folded_row(insert.after.0) {
-                    *room.entry(insert.after.0).or_default() += i64::from(insert.height.0);
-                }
-            }
-        }
         let folded_total = (0..rows).filter(|&row| folded_row(row)).count() as i64 * ch;
-        let net = room.values().sum::<i64>() - folded_total;
-        let pull = match params.pin {
-            Pin::Bottom => net,
-            Pin::Top => net.clamp(0, i64::from(params.lower) * ch),
+        let push = match params.pin {
+            Pin::Bottom => folded_total,
+            Pin::Top => 0,
         };
         let (top, pane) = (
             clamp_i32(i64::from(fit.padding.top.0)),
@@ -103,33 +87,28 @@ impl RowLayout {
             let (start, end) = band_of(Row(row), rows, top, clamp_i32(ch), pane);
             (i64::from(start), i64::from(end))
         };
-        let run = |first: u16, last: u16, shift: i64, gap: i64, folded: bool| Run {
+        let run = |first: u16, last: u16, shift: i64, folded: bool| Run {
             first,
             last,
             src: (band(first).0, band(last).1),
             shift,
-            gap,
             folded,
         };
-        let mut runs = Vec::with_capacity(room.len() + 1);
+        let mut runs = Vec::new();
         let (mut first, mut above) = (0u16, 0i64);
         for row in 0..rows {
-            let gap = room.get(&row).copied().unwrap_or(0);
-            let ends = row + 1 == rows || folded_row(row + 1) != folded_row(row);
-            if gap > 0 || ends {
+            if row + 1 == rows || folded_row(row + 1) != folded_row(row) {
                 let folded = folded_row(row);
-                runs.push(run(first, row, above - pull, gap, folded));
+                runs.push(run(first, row, above + push, folded));
                 if folded {
                     above -= i64::from(row - first + 1) * ch;
                 }
-                above += gap;
                 first = row + 1;
             }
         }
         let pane = i64::from(pane);
         let cut = |start: i64, end: i64| (start.max(0), end.min(pane));
         let mut slices = Vec::with_capacity(runs.len());
-        let mut gaps = Vec::with_capacity(room.len());
         for r in runs.iter().filter(|r| !r.folded) {
             let (start, end) = cut(r.src.0 + r.shift, r.src.1 + r.shift);
             if start < end {
@@ -139,20 +118,11 @@ impl RowLayout {
                     dst_y: px(start),
                 });
             }
-            let (start, end) = cut(r.src.1 + r.shift, r.src.1 + r.shift + r.gap);
-            if r.gap > 0 && start < end {
-                gaps.push(Gap {
-                    after: Row(r.last),
-                    dst_y: px(start),
-                    height: px(end - start),
-                });
-            }
         }
         let mut layout = RowLayout {
             fit,
             runs,
             slices,
-            gaps,
             visible: 0..0,
         };
         let whole: Vec<u16> = (0..rows)
@@ -179,11 +149,6 @@ impl RowLayout {
     /// The bands of the drawn grid to show, top to bottom.
     pub fn slices(&self) -> &[Slice] {
         &self.slices
-    }
-
-    /// The room between them, top to bottom; empty when none was made.
-    pub fn gaps(&self) -> &[Gap] {
-        &self.gaps
     }
 
     /// The rows shown whole in the pane.
@@ -231,23 +196,14 @@ impl RowLayout {
         clamp_i32(self.shift_of(row.0))
     }
 
-    /// Where the room under row `after` begins in the pane, when room was made there.
-    pub fn insert_top(&self, after: Row) -> Option<i32> {
-        self.runs
-            .iter()
-            .find(|r| r.last == after.0 && r.gap > 0)
-            .map(|r| clamp_i32(r.src.1 + r.shift))
-    }
-
-    /// What the pane point `at` is over. A point above or below the pane is over what the edge
-    /// is over, carried on.
-    pub fn to_grid(&self, at: SurfacePoint) -> GridHit {
+    /// The point of the drawn grid the pane point `at` is over (map it to a cell with
+    /// [`GridFit::cell_at`]). A point above or below the pane is over what the edge is over,
+    /// carried on.
+    pub fn to_grid(&self, at: SurfacePoint) -> SurfacePoint {
         let y = i64::from(at.y);
-        let drawn = |r: &Run| {
-            GridHit::Grid(SurfacePoint {
-                x: at.x,
-                y: clamp_i32(y - r.shift),
-            })
+        let drawn = |r: &Run| SurfacePoint {
+            x: at.x,
+            y: clamp_i32(y - r.shift),
         };
         for r in &self.runs {
             // A folded run has no extent: it ends where it begins.
@@ -258,17 +214,8 @@ impl RowLayout {
             if y < end {
                 return drawn(r);
             }
-            if y < end + r.gap {
-                return GridHit::Gap { after: Row(r.last) };
-            }
         }
-        let last = &self.runs[self.runs.len() - 1];
-        match last.gap > 0 {
-            true => GridHit::Gap {
-                after: Row(last.last),
-            },
-            false => drawn(last),
-        }
+        drawn(&self.runs[self.runs.len() - 1])
     }
 }
 

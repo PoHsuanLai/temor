@@ -2,11 +2,8 @@
 //! out, and the rows pinned to the top at the start of the scrollback. Every place that maps a
 //! point to a cell reads the rows where they are shown.
 
-use temor_render::{
-    CellHit, CellPos, CellSide, Fold, GridFit, GridHit, HitRegion, LayoutParams, Pin, RowLayout,
-    Screen,
-};
-use temor_vt::{Col, Row, SurfacePoint};
+use temor_render::{CellHit, Fold, GridFit, LayoutParams, Pin, RowLayout, Screen};
+use temor_vt::{Row, SurfacePoint};
 
 use super::Session;
 
@@ -30,40 +27,15 @@ pub struct Placed {
 }
 
 impl Placed {
-    /// The cell under a pane point. A point in the room under a block is taken as the end of
-    /// the block's last row (a drag into it selects to there), outside the grid.
+    /// The cell under a pane point.
     pub fn cell_at(&self, at: SurfacePoint) -> CellHit {
-        match self.layout.to_grid(at) {
-            GridHit::Gap { after } => CellHit {
-                pos: CellPos {
-                    row: after,
-                    col: Col(self.fit.grid.cols.0.saturating_sub(1)),
-                },
-                side: CellSide::Right,
-                region: HitRegion::Padding,
-            },
-            GridHit::Grid(drawn) => self.fit.cell_at(drawn),
-            _ => self.fit.cell_at(at),
-        }
+        self.fit.cell_at(self.drawn_point(at))
     }
 
     /// The point of the drawn grid a pane point is over, for reports to a program that has the
-    /// mouse: in the room under a block, the last cell of the block's last row.
+    /// mouse.
     pub fn drawn_point(&self, at: SurfacePoint) -> SurfacePoint {
-        match self.layout.to_grid(at) {
-            GridHit::Grid(drawn) => drawn,
-            GridHit::Gap { after } => {
-                let (x, y) = self.fit.cell_origin(CellPos {
-                    row: after,
-                    col: Col(self.fit.grid.cols.0.saturating_sub(1)),
-                });
-                SurfacePoint {
-                    x: i32::try_from(x.0).unwrap_or(i32::MAX),
-                    y: i32::try_from(y.0).unwrap_or(i32::MAX),
-                }
-            }
-            _ => at,
-        }
+        self.layout.to_grid(at)
     }
 }
 
@@ -73,14 +45,13 @@ impl Session {
         self.layout.as_ref()
     }
 
-    /// Lays the rows out around the room under the blocks with pictures, as they are on the
-    /// screen now. Whether the rows moved.
+    /// Lays the rows out without the folded blocks' output, as they are on the screen now.
+    /// Whether the rows moved.
     pub(super) fn relayout(&mut self) -> Relaid {
         let Some(fit) = self.fit else {
             return Relaid::Same;
         };
-        let lower = self.painter.lower();
-        let placed = fit.lowered(lower);
+        let placed = fit.lowered(self.painter.lower());
         let (alternate, viewport, total) = self.pane.with_term(|term| {
             (
                 term.on_alternate_screen(),
@@ -117,8 +88,6 @@ impl Session {
         };
         let layout = RowLayout::new(LayoutParams {
             fit: placed,
-            lower,
-            inserts: &[],
             folded: &folded,
             pin,
             screen: match alternate {
