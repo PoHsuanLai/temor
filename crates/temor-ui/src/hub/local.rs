@@ -262,13 +262,25 @@ impl Hub {
 }
 
 impl Hub {
-    /// The focused pane, when it is a daemon pane with a program running: the pane and its
-    /// session are noted for [`Hub::detach_finish`], and the caller splits the pane.
-    pub(super) fn detach_prepare(&mut self) -> Option<PaneId> {
+    /// The focused pane and its daemon session, when it is a daemon pane with a program running.
+    fn detachable(&self) -> Option<(PaneId, SessionId)> {
         let pane = self.keyboard_pane()?;
         self.remote.local.contains_key(&pane).then_some(())?;
         let session = self.remote.panes.get(&pane)?.session?;
         self.live(pane, |session| session.running_command())??;
+        Some((pane, session))
+    }
+
+    /// Whether "Detach running program" can do anything now (the command bar lists it only
+    /// then).
+    pub(super) fn can_detach(&self) -> bool {
+        self.detachable().is_some()
+    }
+
+    /// The focused pane, when it is a daemon pane with a program running: the pane and its
+    /// session are noted for [`Hub::detach_finish`], and the caller splits the pane.
+    pub(super) fn detach_prepare(&mut self) -> Option<PaneId> {
+        let (pane, session) = self.detachable()?;
         self.remote.detaching = Some((pane, session));
         Some(pane)
     }

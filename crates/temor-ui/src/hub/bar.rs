@@ -71,14 +71,16 @@ impl Hub {
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
-        // Pin Tab or Unpin Tab, whichever the tab in front can take.
+        // Pin Tab or Unpin Tab, whichever the tab in front can take; Detach only where it works.
         let pinned = self.front_pinned();
+        let detach = self.can_detach();
         let actions: Vec<Action> = BAR_ACTIONS
             .iter()
             .copied()
             .filter(|action| match action {
                 Action::PinTab => pinned == Some(false),
                 Action::UnpinTab => pinned == Some(true),
+                Action::DetachProgram => detach,
                 _ => true,
             })
             .collect();

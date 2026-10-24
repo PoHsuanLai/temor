@@ -117,7 +117,7 @@ pub struct ShellSettings {
     pub pager: PagerWay,
     #[settings(
         label = "After quitting",
-        help = "Keep terminals running in a background service after temor quits, so the next start finds the same shells and their running programs, or end them as temor quits. Applies to new panes; needs the temor-remote program beside temor.",
+        help = "Keep terminals running in a background service after temor quits, so the next start finds the same shells and their running programs, or end them as temor quits. Applies to new panes. Where the background service is not available, terminals end as usual.",
         section = "Shell"
     )]
     pub keep_running: KeepWay,

@@ -148,6 +148,23 @@ fn the_bar_lists_window_actions_under_headers_and_runs_them() {
     assert_eq!(panes(&h), 2, "Split right split the pane");
 }
 
+/// "Detach running program" works only in a pane the background service keeps, with a program
+/// running: an ordinary pane's bar does not list it.
+#[test]
+fn the_bar_lists_detach_only_where_it_works() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("bar-detach", &probe);
+    focus_pane(&mut h);
+    chord(&mut h, 't');
+    type_text(&mut h, "detach");
+    h.advance(Duration::from_millis(300));
+    let rows = h.text_of(".ds-palette").unwrap_or_default();
+    assert!(!rows.contains("Detach running program"), "{rows}");
+}
+
 /// The bar pins the tab in front and lets it go again, and opens Downloads: what the sidebar
 /// shows without a button of its own is still a few keys away.
 #[test]
