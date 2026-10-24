@@ -100,6 +100,7 @@ impl Session {
             pointer_over: None,
             link_hover: None,
             list_map: None,
+            live_ground: None,
             composer: Default::default(),
             cwd: None,
             progress: None,

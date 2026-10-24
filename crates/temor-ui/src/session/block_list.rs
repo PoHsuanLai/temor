@@ -64,6 +64,14 @@ impl Session {
         self.list_map = map;
     }
 
+    /// The ground the live screen is drawn on: the running card's while the pane is a list, the
+    /// terminal's own (`None`) while it is one grid. Whether it changed: the pane is drawn again.
+    pub fn set_live_ground(&mut self, ground: Option<temor_vt::Rgb>) -> bool {
+        let changed = self.live_ground != ground;
+        self.live_ground = ground;
+        changed
+    }
+
     /// How far the list is scrolled now, in logical pixels.
     pub fn set_list_offset(&mut self, offset: f32) {
         if let Some(map) = self.list_map.as_mut() {

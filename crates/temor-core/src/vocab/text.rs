@@ -167,6 +167,12 @@ impl CommandText {
     pub fn typable(&self) -> bool {
         !self.0.is_empty() && !self.0.chars().any(char::is_control)
     }
+
+    /// Whether the command may be put in the composer, which holds lines and sends nothing until
+    /// Return: as [`typable`](Self::typable), but its line breaks are kept.
+    pub fn composable(&self) -> bool {
+        !self.0.is_empty() && !self.0.chars().any(|c| c != '\n' && c.is_control())
+    }
 }
 
 /// Text a program or a path may hand us for display: control characters and bidirectional
@@ -204,6 +210,12 @@ mod tests {
             CommandText(String::new())
         );
         assert!(!CommandText::from_shell("ls\rrm").typable());
+        assert!(
+            two.composable(),
+            "the composer holds lines and sends only on Return"
+        );
+        assert!(!CommandText("ls\n\x03".to_owned()).composable());
+        assert!(!CommandText(String::new()).composable());
     }
 
     #[test]

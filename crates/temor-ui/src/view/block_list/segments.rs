@@ -62,7 +62,11 @@ impl Standing {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Seg {
     Section(String),
-    Head(ListBlock),
+    /// A card's head; `whole` when nothing is under it (no rows, folded): the card is its head.
+    Head {
+        block: ListBlock,
+        whole: bool,
+    },
     /// Screen rows of a block's output: drawn once as a still, or, `live`, shown from the pane's
     /// own picture as the terminal draws them.
     Rows {
@@ -189,12 +193,16 @@ pub fn lay_out(items: &[Item], sizes: &Sizes, pictures: &[Picture]) -> (Vec<Plac
                 let id = block.id;
                 let standing = Standing::of(block.outcome);
                 let picked = block.picked;
+                let head = out.len();
                 push(
                     &mut out,
                     &mut y,
                     SegKey::Head(id),
                     sizes.head,
-                    Seg::Head(block.clone()),
+                    Seg::Head {
+                        block: block.clone(),
+                        whole: false,
+                    },
                 );
                 if !block.folded {
                     let settled = block.output.start..live_from.unwrap_or(block.output.end);
@@ -235,11 +243,22 @@ pub fn lay_out(items: &[Item], sizes: &Sizes, pictures: &[Picture]) -> (Vec<Plac
                         push(&mut out, &mut y, key, picture.height, seg);
                     }
                 }
+                // A card that is only its head has no room under its last row: the head's own
+                // room is the card's, its command in the middle of it.
+                let whole = out.len() == head + 1;
+                if let Some(Placed {
+                    seg: Seg::Head { whole: alone, .. },
+                    ..
+                }) = out.get_mut(head)
+                {
+                    *alone = whole;
+                }
+                let foot = if whole { 0.0 } else { sizes.foot };
                 push(
                     &mut out,
                     &mut y,
                     SegKey::Foot(id),
-                    sizes.foot,
+                    foot,
                     Seg::Foot {
                         id,
                         standing,
@@ -280,7 +299,7 @@ pub fn card_places(placed: &[Placed]) -> Vec<CardPlace> {
     placed
         .iter()
         .filter_map(|p| match &p.seg {
-            Seg::Head(block) => {
+            Seg::Head { block, .. } => {
                 let (top, bottom) = card_span(placed, block.id)?;
                 Some(CardPlace {
                     block: block.clone(),
@@ -332,7 +351,7 @@ pub fn list_map(placed: &[Placed], offset: f32) -> ListMap {
         .map(|p| {
             let (block, rows, toward) = match &p.seg {
                 Seg::Section(_) => (None, 0..0, Toward::Next),
-                Seg::Head(block) => (Some(block.id), 0..0, Toward::Next),
+                Seg::Head { block, .. } => (Some(block.id), 0..0, Toward::Next),
                 Seg::Rows { id, rows, .. } => (Some(*id), rows.clone(), Toward::Next),
                 Seg::Picture { id, .. } | Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),
                 Seg::Composer { rows } => (None, rows.clone(), Toward::Next),

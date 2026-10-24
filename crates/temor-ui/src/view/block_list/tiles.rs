@@ -53,9 +53,8 @@ impl std::fmt::Debug for Tiles {
 pub fn ground_of(palette: &Palette, standing: Standing, picked: bool) -> Rgb {
     match (picked, standing) {
         (true, _) => card_ground_rgb(palette, CardFill::Picked),
-        (false, Standing::Running) => palette.background,
         (false, Standing::Failed) => card_ground_rgb(palette, CardFill::Failed),
-        (false, Standing::Done) => card_ground_rgb(palette, CardFill::None),
+        (false, Standing::Done | Standing::Running) => card_ground_rgb(palette, CardFill::None),
     }
 }
 

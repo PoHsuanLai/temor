@@ -341,9 +341,14 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     // The pane as a list of blocks, but for a full-screen program's screen.
     let block_items = slot.borrow().session.as_ref().and_then(|s| s.block_list());
     let listed = block_items.is_some();
-    if !listed && let Some(s) = slot.borrow_mut().session.as_mut() {
-        s.set_list_map(None);
-        s.set_composer_shown(false);
+    let reground = !listed
+        && slot.borrow_mut().session.as_mut().is_some_and(|s| {
+            s.set_list_map(None);
+            s.set_composer_shown(false);
+            s.set_live_ground(None)
+        });
+    if reground {
+        repaint(&slot);
     }
     let picked_block = slot
         .borrow()
@@ -429,6 +434,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                 fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
                                 detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
                                 stop: EventHandler::new(then_regain(block_stop(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                menu_closed: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
                             },
                             offers: CardOffers {
                                 detach: desk.hub.can_detach(pane),

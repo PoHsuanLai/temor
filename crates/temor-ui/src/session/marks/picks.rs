@@ -14,8 +14,7 @@ use temor_core::block::{BlockState, PickClick, PickStep};
 use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
 use temor_core::vocab::ids::BlockId;
 use temor_core::vocab::text::CommandText;
-use temor_pane::paste;
-use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint, ViewportScroll};
+use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::super::Session;
 use crate::error::UiError;
@@ -233,23 +232,18 @@ impl Session {
     }
 
     /// ⌘I: the picked commands in the prompt, joined with `; ` (never a line break, so nothing
-    /// runs), through the paste path; the pick is let go. Refused with a notice when one of
-    /// them cannot be typed.
+    /// runs), in the composer while it shows, else through the paste path; the pick is let go.
+    /// Refused with a notice when one of them cannot be typed.
     pub(in crate::session) fn reinput_picked(&mut self) {
         let commands = self.picked_commands();
         if commands.is_empty() {
             return;
         }
-        let line = commands.join("; ");
-        if !CommandText(line.clone()).typable() {
+        if !self.put_in_prompt(CommandText(commands.join("; "))) {
             self.notice = Some("These commands cannot be typed again.".to_owned());
             return;
         }
         self.annotate(AnnotateIn::ClearPicks);
-        let mode = self.pane.with_term(|term| term.paste_mode());
-        self.pane.send(&paste::encode(&line, mode));
-        self.pane
-            .with_term(|term| term.scroll(ViewportScroll::Bottom));
     }
 
     /// A right-click at `at`: the block there, for its menu. It is picked, alone, unless it is

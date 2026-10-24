@@ -37,7 +37,7 @@ use super::tiles::ground_of;
 use crate::hub::Desk;
 use crate::plugins::lens::LensPicture;
 use crate::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
-use crate::view::slot::Slot;
+use crate::view::slot::{Slot, repaint};
 use crate::view::tool_button::ToolButton;
 
 /// What the composer card shows and does, while the shell waits at its prompt.
@@ -86,6 +86,8 @@ pub struct CardActions {
     pub fold: EventHandler<BlockId>,
     pub detach: EventHandler<()>,
     pub stop: EventHandler<()>,
+    /// A card's menu closed: the keyboard goes back to the pane, not the button that opened it.
+    pub menu_closed: EventHandler<()>,
 }
 
 /// What the pane offers beyond the block itself: whether a running program can move to a pane of
@@ -317,14 +319,24 @@ pub fn BlockPane(
     };
     let near = near_view(&placed, scroll.offset.0, viewport, MOUNT_MARGIN);
     let mounted: Vec<&Placed> = placed[near].iter().collect();
-    {
+    // The live rows are the pane's own picture: it is drawn on the running card's ground.
+    let live_picked = items.iter().any(|item| match item {
+        Item::Running { block, .. } => block.picked,
+        _ => false,
+    });
+    let live_ground = ground_of(&palette, Standing::Running, live_picked);
+    let reground = {
         let mut s = slot.borrow_mut();
         let Slot { session, tiles, .. } = &mut *s;
-        if let Some(session) = session.as_mut() {
+        session.as_mut().is_some_and(|session| {
             session.set_list_map(Some(list_map(&placed, scroll.offset.0)));
             session.set_composer_shown(composing);
             tiles.draw(session, &mounted, &palette, || gpu.handle());
-        }
+            session.set_live_ground(Some(live_ground))
+        })
+    };
+    if reground {
+        repaint(&slot);
     }
     // Where live rows are in the pane's picture.
     let live_rect = |rows: &Range<u32>| {
@@ -413,7 +425,7 @@ struct Head {
 /// The block a segment belongs to, for the pointer over it.
 fn block_of(seg: &Seg) -> Option<BlockId> {
     match seg {
-        Seg::Head(block) => Some(block.id),
+        Seg::Head { block, .. } => Some(block.id),
         Seg::Rows { id, .. } | Seg::Picture { id, .. } | Seg::Foot { id, .. } => Some(*id),
         Seg::Section(_) | Seg::Composer { .. } => None,
     }
@@ -442,13 +454,14 @@ fn segment(
         Seg::Section(folder) => rsx! {
             div { key: "{key}", class: "temor-bseg temor-blk-section", style: "{place}", "{folder}" }
         },
-        Seg::Head(block) => {
+        Seg::Head { block, whole } => {
             let standing = Standing::of(block.outcome);
             let ground = css(ground_of(palette, standing, block.picked));
             rsx! {
                 CardHead {
                     key: "{key}",
                     block: block.clone(),
+                    whole: *whole,
                     style: "{place}; background:{ground}",
                     columns: head.columns,
                     tools: head.tools_on == Some(block.id),
@@ -567,6 +580,7 @@ fn StickyHead(
         div { class: "temor-blk-sticky",
             CardHead {
                 block,
+                whole: false,
                 style: "top:{y}px; height:{height}px; background:{ground}",
                 columns: head.columns,
                 tools: head.tools_on == Some(id),
@@ -589,6 +603,8 @@ fn StickyHead(
 #[allow(non_snake_case)]
 fn CardHead(
     block: ListBlock,
+    /// Nothing is under the head: it is the whole card.
+    whole: bool,
     style: String,
     columns: usize,
     tools: bool,
@@ -624,6 +640,7 @@ fn CardHead(
             class: "temor-bseg temor-blk-head",
             "data-state": standing.slug(),
             "data-picked": block.picked,
+            "data-whole": whole.then_some("true"),
             style,
             onpointermove: move |e| on_move.call(e),
             // Held in place on every card, shown where there is output to fold, so titles align.
@@ -716,6 +733,7 @@ fn CardHead(
                             onclose: move |()| {
                                 held.set(None);
                                 menu.set(false);
+                                actions.menu_closed.call(());
                             },
                         }
                     }

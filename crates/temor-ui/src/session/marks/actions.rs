@@ -25,18 +25,30 @@ impl Session {
         let Some(command) = self.block_command(id).map(str::to_owned) else {
             return;
         };
-        if !CommandText(command.clone()).typable() {
+        if !self.put_in_prompt(CommandText(command)) {
             self.notice = Some("This command cannot be typed again.".to_owned());
-            return;
         }
+    }
+
+    /// Puts `command` in the prompt without running it: in the composer while the list shows it
+    /// (lines and all: it sends nothing until Return), else through the paste path. False, with
+    /// nothing put anywhere, when it is not safe there.
+    pub(in crate::session) fn put_in_prompt(&mut self, command: CommandText) -> bool {
         if self.composer_shown() {
-            self.set_composer_text(command);
-            return;
+            if !command.composable() {
+                return false;
+            }
+            self.set_composer_text(command.0);
+            return true;
+        }
+        if !command.typable() {
+            return false;
         }
         let mode = self.pane.with_term(|term| term.paste_mode());
-        self.pane.send(&paste::encode(&command, mode));
+        self.pane.send(&paste::encode(&command.0, mode));
         self.pane
             .with_term(|term| term.scroll(ViewportScroll::Bottom));
+        true
     }
 
     /// Copies a block's command to the clipboard.

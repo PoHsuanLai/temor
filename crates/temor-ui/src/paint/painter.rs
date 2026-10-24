@@ -42,6 +42,9 @@ pub struct PaintView {
     /// The cursor's blink half now.
     pub blink: BlinkPhase,
     pub selection: Option<SelectionOverlay>,
+    /// The live screen drawn on this where a cell has no colour of its own: the running card's
+    /// ground while the pane is a list, so its live rows sit on the card.
+    pub ground: Option<temor_vt::Rgb>,
 }
 
 /// Which frame the pane's pixels were last drawn from.
@@ -271,6 +274,9 @@ impl Painter {
         let source = match draw {
             Draw::Live(captured) => {
                 captured.finish(frame)?;
+                if let Some(ground) = view.ground {
+                    frame.set_background(ground);
+                }
                 *lower = frame.blank_rows_below();
                 Some(Showing::Live)
             }

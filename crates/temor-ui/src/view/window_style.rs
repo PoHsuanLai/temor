@@ -29,7 +29,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-tools { flex: none; display: flex; align-items: center; gap: var(--s-4); }.temor-blk-more { display: flex; }\
 .temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
 .temor-blk-sticky { position: absolute; top: 0; left: 0; right: 0; }.temor-blk-sticky .temor-blk-head { border-bottom: var(--hair) solid var(--line-soft); }\
-.temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }\
+.temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }.temor-blk-head[data-whole=true] { border-radius: var(--r-item); }\
 .temor-blk-composer { display: flex; align-items: center; gap: var(--s-8); padding: 0 var(--s-12); border-radius: var(--r-item); }\
 .temor-blk-composer[data-lines=many] { align-items: flex-start; padding-top: var(--s-8); }\
 .temor-blk-where { flex: none; white-space: nowrap; color: var(--term-ansi-12); font-size: var(--fs-small); }\

@@ -85,6 +85,19 @@ fn a_block_with_no_output_or_folded_is_its_head_and_foot() {
             SegKey::Foot(BlockId(2)),
         ]
     );
+    // The card is its head: no room under it, so its command sits in the middle.
+    let whole: Vec<bool> = placed
+        .iter()
+        .filter_map(|p| match &p.seg {
+            Seg::Head { whole, .. } => Some(*whole),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(whole, [true, true]);
+    assert_eq!((placed[1].height, placed[3].height), (0.0, 0.0));
+    let (shown, _) = lay_out(&[Item::Done(block(3, 0..2))], &SIZES, &[]);
+    assert!(matches!(shown[0].seg, Seg::Head { whole: false, .. }));
+    assert_eq!(shown.last().map(|p| p.height), Some(SIZES.foot));
 }
 
 #[test]
