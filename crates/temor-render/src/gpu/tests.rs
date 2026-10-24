@@ -7,7 +7,6 @@ use std::sync::Arc;
 use temor_vt::{KittyLayer, Px};
 
 use super::GpuRenderer;
-use crate::cpu::CpuRenderer;
 use crate::frame::{ImagePixels, ImagePlacement, PaneFrame};
 use crate::palette::Palette;
 use crate::renderer::Renderer;
@@ -31,22 +30,6 @@ fn gpu_draw(
     queue.submit([out.commands]);
     let tex = out.texture;
     (read_back(device, queue, tex), stats)
-}
-
-/// The share of pixels that differ by more than `tolerance` in any channel.
-fn differ(a: &[u8], b: &[u8], tolerance: u8) -> f64 {
-    let off = a
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(b.as_chunks::<4>().0.iter())
-        .filter(|(x, y)| {
-            x.iter()
-                .zip(y.iter())
-                .any(|(p, q)| p.abs_diff(*q) > tolerance)
-        })
-        .count();
-    off as f64 / (a.len() / 4) as f64
 }
 
 /// A frame draws with all its glyphs in the atlas at once, so a frame that needs room clears
