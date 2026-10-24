@@ -29,6 +29,10 @@ use super::xfer::{OfferId, Reaction, Transfers};
 /// What the payload of a shell state report starts with (`temor_shell::report::OSC_NUMBER`).
 const REPORT_HEAD: &[u8] = b"7503;";
 
+/// What the payload of a shell's completion answer starts with
+/// (`temor_shell::complete::OSC_NUMBER`).
+const COMPLETE_HEAD: &[u8] = b"7504;";
+
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
 pub(super) enum Command {
@@ -207,6 +211,18 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         {
             if let Ok(report) = std::str::from_utf8(report) {
                 send(io, PaneEvent::ShellReport(report.to_owned()));
+            }
+            continue;
+        }
+        if let VtEvent::Unknown {
+            kind: UnknownKind::Osc,
+            payload,
+            truncation: Truncation::Complete,
+        } = &event
+            && let Some(answer) = payload.strip_prefix(COMPLETE_HEAD)
+        {
+            if let Ok(answer) = std::str::from_utf8(answer) {
+                send(io, PaneEvent::Completions(answer.to_owned()));
             }
             continue;
         }

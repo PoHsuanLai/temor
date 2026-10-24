@@ -168,6 +168,84 @@ _temor_report() {
     _temor_unsent=
 }
 
+# Tab in temor's composer (temor-shell's complete module): temor types the composer's line into
+# zsh's and presses U+E000, a character no keyboard types, bound to this widget. It answers with
+# what the line's last word can become (OSC 7504) and empties zsh's line again, so nothing of it
+# runs. With the completion system loaded (compinit), the words are the ones it would offer: while
+# it runs, `compadd` keeps the matches instead of adding them. Without it, commands and files.
+_temor_complete() {
+    emulate -L zsh
+    setopt extendedglob
+    unsetopt beep listbeep
+    local line=$BUFFER word
+    typeset -ga _temor_hits=()
+    typeset -gi _temor_at=-1
+    if (( $+functions[_main_complete] )); then
+        compadd() { _temor_compadd "$@" }
+        {
+            zle complete-word
+        } always {
+            unfunction compadd
+        }
+    fi
+    (( $#_temor_hits )) || _temor_plain_hits $line
+    (( _temor_at < 0 )) && _temor_at=$#line
+    BUFFER=
+    CURSOR=0
+    local LC_ALL=C out="v1;at=$_temor_at" pct='%${(l:2::0:)$(( [##16] #MATCH ))}' n=0
+    for word in ${(u)_temor_hits}; do
+        out+=";c=${word//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}"
+        (( ++n >= 500 || ${#out} > 60000 )) && break
+    done
+    printf '\e]7504;%s\e\\' "$out"
+}
+
+# compadd while _temor_complete runs the completion system: the matches a call would add, with
+# what goes before and after them, are kept in _temor_hits, and nothing is added. A call that
+# asks for the matches itself (-O, -A, -D) is the system's own and goes through.
+_temor_compadd() {
+    if [[ ${@[1,(i)(-|--)]} == *-(O|A|D)\ * ]]; then
+        builtin compadd "$@"
+        return
+    fi
+    local -a hits apre hpre asuf
+    builtin compadd -A hits "$@"
+    zparseopts -E P:=apre p:=hpre S:=asuf
+    # Files are added with -f, often bundled with other flags (-Qf).
+    local file=
+    [[ -n ${(M)@[1,(i)(-|--)]:#-[a-zA-Z]#f[a-zA-Z]#} ]] && file=1
+    (( _temor_at < 0 )) && _temor_at=$(( CURSOR - ${#IPREFIX} - ${#PREFIX} ))
+    local hit word
+    for hit in $hits; do
+        word=$IPREFIX${apre[2]-}${hpre[2]-}$hit
+        if [[ ${asuf[2]-} == / || ( -n $file && -d ${(Q)word} ) ]]; then
+            [[ $word == */ ]] || word+=/
+        fi
+        _temor_hits+=($word)
+    done
+}
+
+# The line's last word completed without the completion system: a command name first, then a
+# file (a folder ends in /).
+_temor_plain_hits() {
+    emulate -L zsh
+    setopt extendedglob
+    local line=$1 f
+    local -a words=(${(z)line})
+    [[ -z $line || $line == *[[:space:]] ]] && words+=('')
+    local cur=${words[-1]}
+    _temor_at=$(( ${#line} - ${#cur} ))
+    if (( $#words == 1 )); then
+        _temor_hits=(${(ou)${(k)commands[(I)${(b)cur}*]}} ${(ou)${(k)builtins[(I)${(b)cur}*]}}
+            ${(ou)${(k)aliases[(I)${(b)cur}*]}} ${(ou)${${(k)functions[(I)${(b)cur}*]}:#_*}})
+    else
+        for f in $cur*(N); do
+            [[ -d $f ]] && f+=/
+            _temor_hits+=($f)
+        done
+    fi
+}
+
 # Runs first in every precmd cycle (it is hooked before your .zshrc runs), so it sees the
 # command's status before any other hook changes it.
 _temor_save_status() {
@@ -200,6 +278,12 @@ _temor_precmd() {
             unset TEMOR_REPLAY
         fi
         _temor_report
+        # Bound again at every prompt: the person's own bindings may have replaced it.
+        if zmodload -e zsh/zle; then
+            bindkey -M emacs $'\xee\x80\x80' _temor_complete
+            bindkey -M viins $'\xee\x80\x80' _temor_complete
+            printf '\e]7504;v1;ready\e\\'
+        fi
         printf '\e]133;A\e\\'
         if _temor_prompt_is_ours; then
             _temor_build_prompt
@@ -272,6 +356,7 @@ _temor_addhistory() {
 autoload -Uz add-zsh-hook add-zle-hook-widget
 # Line editing loads lazily at the first prompt; it is loaded here so the widget can be hooked.
 zmodload zsh/zle 2>/dev/null && add-zle-hook-widget zle-line-init _temor_line_init
+zmodload -e zsh/zle && zle -N _temor_complete
 [[ ${widgets[clear-screen]-} == builtin ]] && zle -N clear-screen _temor_clear_screen
 add-zsh-hook precmd _temor_save_status
 add-zsh-hook precmd _temor_precmd

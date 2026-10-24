@@ -173,8 +173,15 @@ impl Session {
                 Notice::Quiet
             }
             PaneEvent::Prompt(mark) => {
+                if matches!(mark, temor_vt::PromptEvent::OutputStart { .. }) {
+                    self.completion_ended();
+                }
                 self.mark_event(mark);
                 Notice::Quiet
+            }
+            PaneEvent::Completions(answer) => {
+                self.completion_answer(&answer);
+                Notice::Chrome
             }
             PaneEvent::Anchor { seq, anchor, at } => self.anchored(seq, anchor, at),
             PaneEvent::Reset => {

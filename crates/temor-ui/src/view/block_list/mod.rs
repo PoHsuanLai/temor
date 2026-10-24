@@ -8,5 +8,5 @@ pub mod pane;
 pub mod segments;
 pub mod tiles;
 
-pub use composer::ComposerActions;
+pub use composer::{ChoicesView, ComposerActions};
 pub use pane::{BlockPane, CardActions, CardOffers, ComposerView};

@@ -27,7 +27,7 @@ use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
 
-use super::composer::{ComposerActions, ComposerCard, composer_height};
+use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_height};
 use super::more::{More, more_menu};
 use super::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
@@ -55,6 +55,8 @@ pub struct ComposerView {
     /// Whether the field takes the keyboard as it appears: the pane has it.
     pub take: bool,
     pub actions: ComposerActions,
+    /// The words the shell offered for the line's end, if any.
+    pub choices: Option<ChoicesView>,
 }
 
 /// Whether the list ends at the shell's prompt, marked, with nothing running: the composer
@@ -266,7 +268,10 @@ pub fn BlockPane(
                 *rows = 0..0;
             }
             let sizes = Sizes {
-                composer: composer_height(&composer.text),
+                composer: composer_height(
+                    &composer.text,
+                    composer.choices.as_ref().map_or(0, |c| c.words.len()),
+                ),
                 ..sizes
             };
             (items, sizes)
@@ -536,6 +541,7 @@ fn segment(
                 focus: view.focus,
                 take: view.take,
                 actions: view.actions.clone(),
+                choices: view.choices.clone(),
             }
         },
         Seg::Composer { .. } => rsx! {

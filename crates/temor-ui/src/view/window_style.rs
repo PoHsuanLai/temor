@@ -30,8 +30,12 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
 .temor-blk-sticky { position: absolute; top: 0; left: 0; right: 0; }.temor-blk-sticky .temor-blk-head { border-bottom: var(--hair) solid var(--line-soft); }\
 .temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }.temor-blk-head[data-whole=true] { border-radius: var(--r-item); }\
-.temor-blk-composer { display: flex; align-items: center; gap: var(--s-8); padding: 0 var(--s-12); border-radius: var(--r-item); }\
-.temor-blk-composer[data-lines=many] { align-items: flex-start; padding-top: var(--s-8); }\
+.temor-blk-composer { display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s-12); border-radius: var(--r-item); }\
+.temor-blk-composer[data-lines=many], .temor-blk-composer[data-choices=true] { justify-content: flex-start; padding-top: var(--s-8); }\
+.temor-blk-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }.temor-blk-composer[data-lines=many] .temor-blk-line { align-items: flex-start; }\
+.temor-blk-choices { flex: none; display: flex; flex-direction: column; padding-bottom: var(--s-6); margin-bottom: var(--s-6); border-bottom: var(--hair) solid var(--line-soft); }\
+.temor-blk-choice { flex: none; display: flex; align-items: center; padding: 0 var(--s-6); border-radius: var(--r-item); overflow: hidden; white-space: nowrap; color: var(--term-fg); font-size: var(--fs-reading); }\
+.temor-blk-choice[data-picked=true] { background: var(--sel-neutral); }.temor-blk-choice[data-more=true] { color: var(--ink-faint); font-size: var(--fs-small); }\
 .temor-blk-where { flex: none; white-space: nowrap; color: var(--term-ansi-12); font-size: var(--fs-small); }\
 .temor-blk-field { flex: 1 1 auto; min-width: 0; color: var(--term-fg); font-size: var(--fs-reading); }\
 .temor-blk-img { position: absolute; top: 0; display: block; object-fit: contain; object-position: left top; }\

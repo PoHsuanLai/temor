@@ -213,3 +213,66 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
         );
     }
 }
+
+/// Tab in the composer: bash, zsh and fish complete the line with their own completion, a command
+/// name and a folder (left open for what is in it); nushell does not say it answers, so nothing is
+/// asked of it and the line stays as typed.
+#[test]
+fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
+    if !tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("blocks-tab-{name}"), &shell);
+        pump(&mut live, "the prompt", |s| {
+            s.block_list().is_some_and(|l| !l.is_empty())
+                && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
+        });
+        live.session.set_composer_shown(true);
+        if name == "nu" {
+            live.session.set_composer_text("ech".to_owned());
+            live.session.composer_complete();
+            assert!(!live.session.composer_completes(), "nu: says it answers");
+            assert_eq!(live.session.composer_text(), "ech", "nu: the line stays");
+            continue;
+        }
+        pump(&mut live, "the shell saying it answers Tab", |s| {
+            s.composer_completes()
+        });
+        // (the line, what it becomes or starts with)
+        for (line, want) in [("ech", "echo"), ("ls /us", "ls /usr/")] {
+            live.session.set_composer_text(line.to_owned());
+            live.session.composer_complete();
+            pump(&mut live, &format!("{name}: {line} completed"), |s| {
+                s.composer_text() != line || s.composer_choices().is_some()
+            });
+            let text = live.session.composer_text().to_owned();
+            assert!(text.starts_with(want), "{name}: {line:?} became {text:?}");
+            if let Some(choices) = live.session.composer_choices() {
+                assert!(
+                    choices
+                        .words()
+                        .iter()
+                        .all(|w| w.starts_with(&want[line.rfind(' ').map_or(0, |i| i + 1)..])),
+                    "{name}: {:?}",
+                    choices.words()
+                );
+            }
+        }
+        // Nothing was left in the shell's own line: a command sent now runs as typed.
+        live.session.set_composer_text("echo after-tab".to_owned());
+        live.session.composer_submit();
+        pump(&mut live, &format!("{name}: the command after Tab"), |s| {
+            s.block_outcomes()
+                .last()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let id = live.session.block_outcomes().last().expect("a block").0;
+        assert_eq!(
+            live.session.block_output(id).as_deref(),
+            Some("after-tab"),
+            "{name}"
+        );
+    }
+}

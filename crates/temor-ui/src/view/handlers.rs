@@ -223,6 +223,38 @@ pub fn composer_history(
     })
 }
 
+/// The composer's Tab: the shell is asked to complete the line.
+pub fn composer_complete(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, ()| s.composer_complete())
+}
+
+/// The pick among the words the shell offered moves.
+pub fn composer_pick(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(HistoryStep) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
+        s.composer_pick(step)
+    })
+}
+
+/// A word the shell offered goes into the line: the picked one, or the one pressed.
+pub fn composer_take(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(Option<usize>) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, index| {
+        s.composer_take_choice(index)
+    })
+}
+
+/// The words the shell offered are put away.
+pub fn composer_close(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, ()| {
+        s.composer_close_choices()
+    })
+}
+
 /// The block toolbar's save of an output to Downloads.
 pub fn bar_save(
     slot: Rc<RefCell<Slot>>,

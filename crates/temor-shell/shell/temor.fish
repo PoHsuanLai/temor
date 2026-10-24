@@ -145,6 +145,28 @@ function _temor_report
     printf '\e]7503;%s\e\\\\' $out
 end
 
+# Tab in temor's composer (temor-shell's complete module): temor types the composer's line into
+# fish's and presses U+E000, a character no keyboard types, bound to this. It answers with what the
+# line's last token can become (OSC 7504), as fish's own completion offers it, and empties fish's
+# line again, so nothing of it runs.
+function _temor_complete
+    set -l line (commandline)
+    set -l token (commandline -ct)
+    set -l at (math (string length -- "$line") - (string length -- "$token"))
+    set -l out "v1;at=$at"
+    set -l n 0
+    for found in (complete -C -- "$line")
+        set -l word (string split -m 1 \t -- $found)[1]
+        set out "$out;c="(string escape --style=url -- $word)
+        set n (math $n + 1)
+        if test $n -ge 500; or test (string length -- "$out") -gt 60000
+            break
+        end
+    end
+    commandline -r ''
+    printf '\e]7504;%s\e\\\\' $out
+end
+
 # The aliases of the shell this one replaces, defined once after the person's own config, and
 # then what this shell holds, before every prompt.
 function _temor_state --on-event fish_prompt
@@ -154,6 +176,10 @@ function _temor_state --on-event fish_prompt
         set -e TEMOR_REPLAY
     end
     _temor_report
+    # Bound again at every prompt: the person's own bindings may have replaced it.
+    bind \ue000 _temor_complete
+    bind -M insert \ue000 _temor_complete 2>/dev/null
+    printf '\e]7504;v1;ready\e\\\\'
 end
 
 if not string match -qr '^[0-3]\.' -- $version

@@ -4,6 +4,10 @@
 //! holds one line, Ctrl+C empties it, and a ⌘ chord the field does not take (a block's, the
 //! window's) goes to the terminal's keys as if the field were not there.
 //!
+//! Tab asks the shell to complete the line. Words it offers to pick from are listed above the
+//! field: the arrows and ⇧Tab move the pick, Tab or Enter puts it in, a press puts in the one
+//! pressed, and Escape puts the list away.
+//!
 //! The field lies inside the terminal's key surface: its keys and presses stop at the card, so
 //! the surface neither hears them a second time nor starts a selection under the card.
 
@@ -20,6 +24,32 @@ use crate::session::HistoryStep;
 const ONE_LINE: f32 = 44.0;
 /// One more line of the field: the regular control's 13 px at the field's 1.55 leading.
 const LINE: f32 = 13.0 * 1.55;
+/// One word offered, in logical pixels.
+const CHOICE: f32 = 22.0;
+/// The most words listed at once; past that the list follows the pick and says how many more.
+const MOST_CHOICES: usize = 8;
+/// The list's space under its words: a gap, the rule, a gap.
+const CHOICES_END: f32 = 13.0;
+
+/// The rows the offered words take: each word, at most [`MOST_CHOICES`], and one saying how many
+/// more there are.
+fn choice_rows(count: usize) -> usize {
+    match count {
+        0 => 0,
+        n if n <= MOST_CHOICES => n,
+        _ => MOST_CHOICES + 1,
+    }
+}
+
+/// The words in view: [`MOST_CHOICES`] of them, from the first unless the pick is further down.
+fn in_view(count: usize, picked: usize) -> std::ops::Range<usize> {
+    if count == 0 {
+        return 0..0;
+    }
+    let shown = count.min(MOST_CHOICES);
+    let start = picked.saturating_sub(shown - 1).min(count - shown);
+    start..start + shown
+}
 
 /// How many lines the field shows for `text`: none past one line (a single-line field), else the
 /// least of quire's heights that holds them, at most ten (the text scrolls past that).
@@ -34,11 +64,15 @@ fn shown_rows(text: &str) -> Option<(FieldRows, u8)> {
     }
 }
 
-/// The card's height for `text`, in logical pixels: one line's, and a line more for each line
-/// the field shows past the first.
-pub fn composer_height(text: &str) -> f32 {
+/// The card's height for `text` with `choices` words offered, in logical pixels: one line's, a
+/// line more for each line the field shows past the first, and the list of words.
+pub fn composer_height(text: &str, choices: usize) -> f32 {
     let more = shown_rows(text).map_or(0, |(_, n)| n - 1);
-    ONE_LINE + f32::from(more) * LINE
+    let listed = match choice_rows(choices) {
+        0 => 0.0,
+        rows => rows as f32 * CHOICE + CHOICES_END,
+    };
+    ONE_LINE + f32::from(more) * LINE + listed
 }
 
 /// What the composer card does with what is typed in it.
@@ -57,6 +91,21 @@ pub struct ComposerActions {
     /// Every key pressed in the field, before the field acts on it: the ⌘-hover card hears the
     /// keys typed here as it hears the terminal's.
     pub key: EventHandler<RawKey>,
+    /// Tab: ask the shell to complete the line.
+    pub complete: EventHandler<()>,
+    /// The pick among the offered words moves up (`Older`) or down (`Newer`).
+    pub pick: EventHandler<HistoryStep>,
+    /// The picked word goes in, or the one at this index.
+    pub take: EventHandler<Option<usize>>,
+    /// The offered words are put away.
+    pub close: EventHandler<()>,
+}
+
+/// The words the shell offered for the line's end, and the one picked.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ChoicesView {
+    pub words: Vec<String>,
+    pub picked: usize,
 }
 
 /// Whether a chord is the field's own. With ⌘: select all, copy, cut, paste, undo and redo, and
@@ -98,8 +147,11 @@ pub fn ComposerCard(
     focus: FocusRequest,
     take: bool,
     actions: ComposerActions,
+    /// The words offered to pick from, if any.
+    choices: Option<ChoicesView>,
 ) -> Element {
     let rows = shown_rows(&text);
+    let choosing = choices.is_some();
     let one_line = rows.is_none();
     let field_focus = match take {
         true => FieldFocus::Controlled(focus),
@@ -112,6 +164,10 @@ pub fn ComposerCard(
         chord,
         gone,
         key,
+        complete,
+        pick,
+        take: take_word,
+        close,
     } = actions;
     // Whether the caret is in the field, for the keyboard to go back when the card goes.
     let mut holds = use_hook(|| CopyValue::new(false));
@@ -133,7 +189,34 @@ pub fn ComposerCard(
         };
         let raw = RawKey::new(phase, (event.key(), event.code()), (mods, event.location()));
         key.call(raw.clone());
+        let plain = !command && !control && !mods.contains(Modifiers::ALT);
         match event.key() {
+            Key::Tab if plain && shift && choosing => {
+                event.prevent_default();
+                pick.call(HistoryStep::Older);
+            }
+            Key::Tab if plain && !shift => {
+                event.prevent_default();
+                match choosing {
+                    true => take_word.call(None),
+                    false => complete.call(()),
+                }
+            }
+            Key::ArrowUp | Key::ArrowDown if mods.is_empty() && choosing => {
+                event.prevent_default();
+                pick.call(match event.key() {
+                    Key::ArrowUp => HistoryStep::Older,
+                    _ => HistoryStep::Newer,
+                });
+            }
+            Key::Enter if plain && !shift && choosing => {
+                event.prevent_default();
+                take_word.call(None);
+            }
+            Key::Escape if choosing => {
+                event.prevent_default();
+                close.call(());
+            }
             // A new line: a multi-line field adds it itself; a one-line field becomes one that
             // holds it, and the caret goes on at its end.
             Key::Enter if shift && !command && !control => {
@@ -165,10 +248,15 @@ pub fn ComposerCard(
             class: "temor-bseg temor-blk-composer",
             style: "{style}",
             "data-lines": (!one_line).then_some("many"),
+            "data-choices": choosing.then_some("true"),
             onkeydown: move |event: KeyboardEvent| event.stop_propagation(),
             onkeyup: move |event: KeyboardEvent| event.stop_propagation(),
             onpointerdown: move |event: PointerEvent| event.stop_propagation(),
             onpointerup: move |event: PointerEvent| event.stop_propagation(),
+            if let Some(choices) = choices {
+                ChoiceList { choices, font: font.clone(), take: take_word }
+            }
+            div { class: "temor-blk-line",
             if let Some(folder) = folder {
                 span { class: "temor-blk-where", "{folder}" }
             }
@@ -189,6 +277,38 @@ pub fn ComposerCard(
                     onfocus: move |()| holds.set(true),
                     onblur: move |()| holds.set(false),
                     onkey: on_key,
+                }
+            }
+            }
+        }
+    }
+}
+
+/// The words offered for the line's end, the picked one marked; a press puts one in.
+#[component]
+#[allow(non_snake_case)]
+fn ChoiceList(choices: ChoicesView, font: String, take: EventHandler<Option<usize>>) -> Element {
+    let count = choices.words.len();
+    let view = in_view(count, choices.picked);
+    let more = count - view.len();
+    rsx! {
+        div { class: "temor-blk-choices", style: "{font}",
+            for index in view {
+                div {
+                    key: "{index}",
+                    class: "temor-blk-choice",
+                    style: "height:{CHOICE}px",
+                    "data-picked": (index == choices.picked).then_some("true"),
+                    onpointerdown: move |event: PointerEvent| {
+                        event.prevent_default();
+                        take.call(Some(index));
+                    },
+                    "{choices.words[index]}"
+                }
+            }
+            if more > 0 {
+                div { class: "temor-blk-choice", style: "height:{CHOICE}px", "data-more": "true",
+                    "{more} more"
                 }
             }
         }

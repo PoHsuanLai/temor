@@ -27,7 +27,9 @@ use temor_core::vocab::ids::PaneId;
 
 use super::block_edit::{bar_edit, edit_on_this_computer};
 use super::block_list::pane::lens_request;
-use super::block_list::{BlockPane, CardActions, CardOffers, ComposerActions, ComposerView};
+use super::block_list::{
+    BlockPane, CardActions, CardOffers, ChoicesView, ComposerActions, ComposerView,
+};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
@@ -36,9 +38,9 @@ use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
 use super::find_bar::FindBar;
 use super::handlers::{
-    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_stop, composer_history,
-    composer_input, composer_submit, find_close, find_query, find_step, list_fold, pointer_gone,
-    then_regain,
+    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_stop, composer_close,
+    composer_complete, composer_history, composer_input, composer_pick, composer_submit,
+    composer_take, find_close, find_query, find_step, list_fold, pointer_gone, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
@@ -424,7 +426,15 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                     chord: EventHandler::new(composer_chord),
                                     gone: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
                                     key: EventHandler::new({ let key = peek.key.clone(); move |raw: RawKey| key(&raw) }),
+                                    complete: EventHandler::new(composer_complete(Rc::clone(&slot), ui)),
+                                    pick: EventHandler::new(composer_pick(Rc::clone(&slot), ui)),
+                                    take: EventHandler::new(composer_take(Rc::clone(&slot), ui)),
+                                    close: EventHandler::new(composer_close(Rc::clone(&slot), ui)),
                                 },
+                                choices: slot.borrow().session.as_ref().and_then(|s| s.composer_choices()).map(|c| ChoicesView {
+                                    words: c.words().to_vec(),
+                                    picked: c.picked(),
+                                }),
                             },
                             actions: CardActions {
                                 copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),

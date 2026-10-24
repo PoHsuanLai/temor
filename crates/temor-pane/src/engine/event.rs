@@ -23,6 +23,9 @@ pub enum PaneEvent {
     /// The shell reported its variables and aliases (OSC 7503): the report's text, to be read
     /// with `temor_shell::report::decode`.
     ShellReport(String),
+    /// The shell answered temor's completion key, or said it answers it (OSC 7504): the answer's
+    /// text, to be read with `temor_shell::complete::decode`.
+    Completions(String),
     /// The program asked to write the clipboard (OSC 52); the window decides (PLAN §6).
     Clipboard(ClipboardWrite),
     /// The program asked to read the clipboard before the person was asked: the window asks,
