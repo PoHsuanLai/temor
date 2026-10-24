@@ -1818,3 +1818,7 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
       would avoid it. An alias whose value has a newline is read as its first line only.
 - [ ] `nextest run -p temor-core` alone fails to build: temor-pane without its `ghostty` feature
       names `temor_vt` (platform/mod.rs `OPTION_AS_ALT`, from main). The workspace build is fine.
+- [ ] CI after the merge: `a_running_program_is_detached_into_its_own_pane_and_the_old_pane_gets_a_new_shell`
+      timed out once on Arch (the screen still showed the parked program after the click on the
+      left pane); it passes locally. The macOS window tests failed one each run, a different one each
+      time (sidebar right-click, tab menu while resizing).

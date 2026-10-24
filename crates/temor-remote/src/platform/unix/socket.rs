@@ -186,12 +186,15 @@ mod tests {
         drop(held);
         assert!(SocketLock::try_take(&lock_at).expect("opens").is_some());
 
+        // The newer socket is bound while the first still exists, so the two never share an
+        // inode (a filesystem may hand a freed one straight back), then moved into its place.
         let at = base.join("local.sock");
         let first = Listener::bind(&at).expect("binds");
         let first_id = first.id().expect("known");
+        let newer = base.join("newer.sock");
+        let second = Listener::bind(&newer).expect("binds again");
+        fs::rename(&newer, &at).expect("takes its place");
         drop(first);
-        fs::remove_file(&at).expect("gone");
-        let second = Listener::bind(&at).expect("binds again");
         remove_socket(&at, first_id);
         assert!(at.exists(), "the newer daemon's socket stays");
         remove_socket(&at, second.id().expect("known"));
