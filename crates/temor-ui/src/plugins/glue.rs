@@ -152,7 +152,7 @@ impl Hub {
                         let _ = done.send(Done::Rows {
                             generation,
                             query: typed.clone(),
-                            plugin: plugin.clone(),
+                            plugin: Box::new(plugin.clone()),
                             items: batch.items,
                         });
                     },
