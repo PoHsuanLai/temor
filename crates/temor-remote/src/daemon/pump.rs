@@ -16,6 +16,10 @@ const POLL: Duration = Duration::from_millis(200);
 /// The most bytes read from the terminal at once, so one frame carries one read.
 const CHUNK: usize = 32 * 1024;
 
+/// The most reads in one drain while a program is reaped (a megabyte): a program that ignores
+/// the hangup and writes without end cannot keep the reaper from its next look and the kill.
+const DRAIN_READS: usize = 32;
+
 /// Runs until the program is reaped, then drops the session from the daemon.
 pub(super) fn run(daemon: Arc<Daemon>, session: Arc<Session>, io: PtyIo) {
     let mut buffer = vec![0u8; CHUNK];
@@ -49,7 +53,11 @@ pub(super) fn run(daemon: Arc<Daemon>, session: Arc<Session>, io: PtyIo) {
     let exit = session.reap(|| {
         // What the program prints while it leaves is not shown to anyone; it is read so the
         // program can finish writing it.
-        while let Ok(ReadOutcome::Data(_)) = io.read(&mut buffer) {}
+        for _ in 0..DRAIN_READS {
+            if !matches!(io.read(&mut buffer), Ok(ReadOutcome::Data(_))) {
+                break;
+            }
+        }
     });
     session.exited(exit);
     daemon.remove_session(session.id);
