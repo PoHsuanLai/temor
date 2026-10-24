@@ -3,14 +3,19 @@
 //! selection, so a drop, a paste or Re-run puts text in it whoever has the keyboard; Enter sends
 //! it to the shell as a paste and a Return, and the arrows step through the pane's commands.
 //!
-//! Tab asks the shell to complete the line (`temor_shell::complete`): one word is put in, and
-//! several are offered to pick from, with what they all start with put in already.
+//! Tab asks the sources that complete the line (`temor_shell::suggest`): the running shell's own
+//! completion through the pane (`temor_shell::complete`), and any source that stands on its own
+//! (nushell's). What they say is merged into one list: one suggestion is put in, and several are
+//! offered to pick from, with what they all start with put in already. A slow source adds its
+//! suggestions to the list when they arrive.
 
 use temor_core::vocab::ids::BlockId;
 use temor_pane::paste::{self, PasteMode};
-use temor_shell::complete::{Answer, Completions, REQUEST_KEY, decode};
+use temor_shell::complete::{Answer, REQUEST_KEY, decode};
+use temor_shell::suggest::{Answered, Ask, SourceId, Suggestion, common_start};
 
 use super::Session;
+use super::sources::SHELL;
 
 /// Which way the arrows step through the commands run before.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,24 +37,49 @@ pub struct Composer {
     /// it runs (nushell) shows a command of several lines on rows the screen cannot give back.
     sent: Option<String>,
     /// Whether the shell answers Tab: its script said so at this prompt.
-    completes: bool,
-    /// The line asked about, until the shell answers.
-    asked: Option<String>,
-    /// The words offered for the line's end.
+    shell_ready: bool,
+    /// The requests made so far, numbered so that a late answer to an old one is dropped.
+    requests: u64,
+    /// The request the sources are answering.
+    asked: Option<Asked>,
+    /// The suggestions offered for the line.
     choices: Option<Choices>,
 }
 
-/// The words a shell offered for the line's end, one of them picked.
+/// A request to the sources, and what they have said so far.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Asked {
+    request: u64,
+    /// The line asked about.
+    line: String,
+    /// The sources that have not answered yet.
+    waiting: Vec<SourceId>,
+    merged: Vec<Suggestion>,
+    /// Whether the line has been completed (or the list shown) from an answer already.
+    presented: bool,
+}
+
+/// The suggestions offered for a line, one of them picked.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Choices {
-    completions: Completions,
+    /// The line they were asked for: each takes its place in it.
+    base: String,
+    suggestions: Vec<Suggestion>,
     picked: usize,
 }
 
 impl Choices {
-    /// The words, in the shell's order.
-    pub fn words(&self) -> &[String] {
-        &self.completions.words
+    /// The words, in the order the sources gave them.
+    pub fn words(&self) -> Vec<&str> {
+        self.suggestions.iter().map(|s| s.word.as_str()).collect()
+    }
+
+    /// What each says about itself, in the same order.
+    pub fn details(&self) -> Vec<Option<&str>> {
+        self.suggestions
+            .iter()
+            .map(|s| s.detail.as_deref())
+            .collect()
     }
 
     /// The one picked.
@@ -58,33 +88,34 @@ impl Choices {
     }
 }
 
-/// `line` completed with `word`: a word that names a folder stays open for what is in it, and
-/// any other is followed by a space for what comes next.
-fn with_word(completions: &Completions, line: &str, word: &str) -> Option<String> {
-    let mut out = completions.applied(line, word)?;
-    if !word.ends_with('/') {
-        out.push(' ');
-    }
-    Some(out)
-}
-
-/// What the shell's words make of `line`: the line with one word put in, or with what several
-/// share put in and the words to pick from.
-fn completed(line: &str, completions: Completions) -> (String, Option<Choices>) {
-    match completions.words.as_slice() {
+/// What the suggestions make of `line`: the line with one suggestion put in, or with what several
+/// share put in and the suggestions to pick from.
+fn completed(line: &str, suggestions: Vec<Suggestion>) -> (String, Option<Choices>) {
+    match suggestions.as_slice() {
         [] => (line.to_owned(), None),
-        [word] => (
-            with_word(&completions, line, word).unwrap_or_else(|| line.to_owned()),
-            None,
-        ),
-        _ => {
-            let shared = completions.applied(line, completions.shared());
+        [one] => (one.applied(line).unwrap_or_else(|| line.to_owned()), None),
+        [first, ..] => {
+            // What they share is put in only where they all take the same place.
+            let same_place = suggestions
+                .iter()
+                .all(|s| (s.from, s.to) == (first.from, first.to));
+            let words: Vec<&str> = suggestions.iter().map(|s| s.word.as_str()).collect();
+            let shared = Suggestion {
+                word: common_start(&words).to_owned(),
+                from: first.from,
+                to: first.to,
+                space: false,
+                detail: None,
+            };
+            let typed = first.to.saturating_sub(first.from);
             // What they share never takes back what was typed.
             let text = shared
-                .filter(|text| text.chars().count() > line.chars().count())
+                .applied(line)
+                .filter(|_| same_place && shared.word.chars().count() > typed)
                 .unwrap_or_else(|| line.to_owned());
             let choices = Choices {
-                completions,
+                base: line.to_owned(),
+                suggestions,
                 picked: 0,
             };
             (text, Some(choices))
@@ -113,6 +144,47 @@ fn stepped(at: Option<usize>, step: HistoryStep, count: usize) -> Option<usize> 
         (HistoryStep::Older, Some(n)) => Some((n + 1).min(count - 1)),
         (HistoryStep::Newer, None | Some(0)) => None,
         (HistoryStep::Newer, Some(n)) => Some(n - 1),
+    }
+}
+
+impl Composer {
+    /// A source's answer: its suggestions join the others'. The first to say anything completes the
+    /// line, or lists what to pick from; the ones after it add to the list. An answer to an old
+    /// request, or from a source not asked, is dropped.
+    fn merge(&mut self, answered: Answered) {
+        let composer = self;
+        let Some(asked) = composer.asked.as_mut() else {
+            return;
+        };
+        if asked.request != answered.request || !asked.waiting.contains(&answered.source) {
+            return;
+        }
+        asked.waiting.retain(|source| *source != answered.source);
+        for suggestion in answered.suggestions {
+            if !asked.merged.contains(&suggestion) {
+                asked.merged.push(suggestion);
+            }
+        }
+        match (
+            &mut composer.choices,
+            asked.merged.is_empty(),
+            asked.presented,
+        ) {
+            // Offered already: the list grows, the pick stays.
+            (Some(choices), false, _) => choices.suggestions = asked.merged.clone(),
+            // Completed from one suggestion already: what comes after changes nothing.
+            (None, _, true) | (_, true, _) => {}
+            (None, false, false) => {
+                asked.presented = true;
+                let (text, choices) = completed(&asked.line, asked.merged.clone());
+                composer.text = text;
+                composer.step = None;
+                composer.choices = choices;
+            }
+        }
+        if asked.waiting.is_empty() || (composer.choices.is_none() && asked.presented) {
+            composer.asked = None;
+        }
     }
 }
 
@@ -177,59 +249,92 @@ impl Session {
         self.composer.choices = None;
     }
 
-    /// Tab: asks the shell to complete the line. The line goes into the shell's own line as a
-    /// paste (none of it runs), then the key its script answers; the script empties its line again.
-    /// Nothing is asked of a shell that has not said it answers, nor while an answer is awaited.
+    /// Tab: asks the sources to complete the line. The shell's goes into its own line as a paste
+    /// (none of it runs), then the key its script answers; the script empties its line again.
+    /// A source that is not ready is not asked, nor is anything asked while answers are awaited.
     pub fn composer_complete(&mut self) {
         let composer = &self.composer;
-        if !composer.shown || !composer.completes || composer.asked.is_some() {
+        if !composer.shown || composer.asked.is_some() {
             return;
         }
         let text = composer.text.clone();
         let mode = self.pane.with_term(|term| term.paste_mode());
         // A line break that is not framed as a paste would run the line.
-        if text.contains('\n') && mode != PasteMode::Bracketed {
+        let shell = composer.shell_ready && (!text.contains('\n') || mode == PasteMode::Bracketed);
+        let others = self.sources.any_ready();
+        if !shell && !others {
             return;
         }
-        if !text.is_empty() {
-            self.pane.send(&paste::encode(&text, mode));
+        self.composer.requests += 1;
+        let request = self.composer.requests;
+        let mut waiting = Vec::new();
+        if shell {
+            if !text.is_empty() {
+                self.pane.send(&paste::encode(&text, mode));
+            }
+            self.pane.send(REQUEST_KEY);
+            waiting.push(SHELL);
         }
-        self.pane.send(REQUEST_KEY);
-        self.composer.asked = Some(text);
+        if let Some(deliver) = self.sources.deliver.clone() {
+            let ask = Ask {
+                line: text.clone(),
+                folder: self.folder.clone(),
+            };
+            for source in self.sources.list.iter().filter(|source| source.ready()) {
+                waiting.push(source.id());
+                source.ask(ask.clone(), request, deliver.clone());
+            }
+        }
+        self.composer.asked = Some(Asked {
+            request,
+            line: text,
+            waiting,
+            merged: Vec::new(),
+            presented: false,
+        });
     }
 
     /// The shell's answer (OSC 7504): that it completes, or the words for the line asked about.
-    /// An answer for a line since changed is dropped.
     pub(in crate::session) fn completion_answer(&mut self, payload: &str) {
         match decode(payload) {
-            Ok(Answer::Ready) => self.composer.completes = true,
+            Ok(Answer::Ready) => self.composer.shell_ready = true,
             Ok(Answer::Completed(completions)) => {
-                if self.composer.asked.take().as_deref() != Some(self.composer.text.as_str()) {
+                let Some(asked) = self.composer.asked.as_ref() else {
+                    return;
+                };
+                if !asked.waiting.contains(&SHELL) {
                     return;
                 }
-                let (text, choices) = completed(&self.composer.text, completions);
-                self.composer.text = text;
-                self.composer.step = None;
-                self.composer.choices = choices;
+                self.completion_answered(Answered {
+                    request: asked.request,
+                    source: SHELL,
+                    suggestions: completions.suggestions(&asked.line),
+                });
             }
             _ => {}
         }
     }
 
+    /// A source's answer (see [`Composer::merge`]).
+    pub(in crate::session) fn completion_answered(&mut self, answered: Answered) {
+        self.composer.merge(answered);
+    }
+
     /// A command started: the shell running it may be another, which answers no Tab until its
     /// prompt says so.
     pub(in crate::session) fn completion_ended(&mut self) {
-        self.composer.completes = false;
+        self.composer.shell_ready = false;
         self.composer.asked = None;
         self.composer.choices = None;
     }
 
-    /// Whether the shell answers Tab: its script said so at this prompt.
+    /// Whether something answers Tab: the shell's script said so at this prompt, or a source of
+    /// its own is ready.
     pub fn composer_completes(&self) -> bool {
-        self.composer.completes
+        self.composer.shell_ready || self.sources.any_ready()
     }
 
-    /// The words offered for the line's end, if any.
+    /// The suggestions offered for the line, if any.
     pub fn composer_choices(&self) -> Option<&Choices> {
         self.composer.choices.as_ref()
     }
@@ -239,21 +344,23 @@ impl Session {
         let Some(choices) = self.composer.choices.as_mut() else {
             return;
         };
-        let count = choices.words().len().max(1);
+        let count = choices.suggestions.len().max(1);
         choices.picked = match step {
             HistoryStep::Older => (choices.picked + count - 1) % count,
             HistoryStep::Newer => (choices.picked + 1) % count,
         };
     }
 
-    /// Puts the picked word in, or the one at `index` when given.
+    /// Puts the picked suggestion in, or the one at `index` when given.
     pub fn composer_take_choice(&mut self, index: Option<usize>) {
         let Some(choices) = self.composer.choices.take() else {
             return;
         };
-        let word = choices.words().get(index.unwrap_or(choices.picked));
-        if let Some(text) =
-            word.and_then(|w| with_word(&choices.completions, &self.composer.text, w))
+        let at = index.unwrap_or(choices.picked);
+        if let Some(text) = choices
+            .suggestions
+            .get(at)
+            .and_then(|suggestion| suggestion.applied(&choices.base))
         {
             self.composer.text = text;
         }

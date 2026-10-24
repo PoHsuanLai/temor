@@ -35,6 +35,7 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }.temor-blk-composer[data-lines=many] .temor-blk-line { align-items: flex-start; }\
 .temor-blk-choices { flex: none; display: flex; flex-direction: column; padding-bottom: var(--s-6); margin-bottom: var(--s-6); border-bottom: var(--hair) solid var(--line-soft); }\
 .temor-blk-choice { flex: none; display: flex; align-items: center; padding: 0 var(--s-6); border-radius: var(--r-item); overflow: hidden; white-space: nowrap; color: var(--term-fg); font-size: var(--fs-reading); }\
+.temor-blk-choice-note { margin-left: var(--s-8); color: var(--ink-faint); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; }\
 .temor-blk-choice[data-picked=true] { background: var(--sel-neutral); }.temor-blk-choice[data-more=true] { color: var(--ink-faint); font-size: var(--fs-small); }\
 .temor-blk-where { flex: none; white-space: nowrap; color: var(--term-ansi-12); font-size: var(--fs-small); }\
 .temor-blk-field { flex: 1 1 auto; min-width: 0; color: var(--term-fg); font-size: var(--fs-reading); }\

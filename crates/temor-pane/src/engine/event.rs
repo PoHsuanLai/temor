@@ -26,6 +26,8 @@ pub enum PaneEvent {
     /// The shell answered temor's completion key, or said it answers it (OSC 7504): the answer's
     /// text, to be read with `temor_shell::complete::decode`.
     Completions(String),
+    /// A completion source answered temor's request for suggestions for the composer's line.
+    Suggested(temor_shell::suggest::Answered),
     /// The program asked to write the clipboard (OSC 52); the window decides (PLAN §6).
     Clipboard(ClipboardWrite),
     /// The program asked to read the clipboard before the person was asked: the window asks,

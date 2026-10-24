@@ -105,6 +105,8 @@ pub struct ComposerActions {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ChoicesView {
     pub words: Vec<String>,
+    /// What each says about itself, in the same order (shorter than the words when none do).
+    pub details: Vec<Option<String>>,
     pub picked: usize,
 }
 
@@ -304,6 +306,9 @@ fn ChoiceList(choices: ChoicesView, font: String, take: EventHandler<Option<usiz
                         take.call(Some(index));
                     },
                     "{choices.words[index]}"
+                    if let Some(Some(detail)) = choices.details.get(index) {
+                        span { class: "temor-blk-choice-note", "{detail}" }
+                    }
                 }
             }
             if more > 0 {

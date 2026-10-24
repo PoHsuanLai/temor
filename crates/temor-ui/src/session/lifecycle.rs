@@ -144,6 +144,7 @@ impl Session {
             PaneEvent::Cwd(url) => {
                 // The path is shown, so it is cleaned and bounded first (it came from the shell).
                 self.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
+                self.folder = cwd_from_url(&url).map(std::path::PathBuf::from);
                 if let Some(path) = cwd_from_url(&url) {
                     self.shell_step(ShellIn::Cwd(path));
                 }
@@ -181,6 +182,10 @@ impl Session {
             }
             PaneEvent::Completions(answer) => {
                 self.completion_answer(&answer);
+                Notice::Chrome
+            }
+            PaneEvent::Suggested(answered) => {
+                self.completion_answered(answered);
                 Notice::Chrome
             }
             PaneEvent::Anchor { seq, anchor, at } => self.anchored(seq, anchor, at),

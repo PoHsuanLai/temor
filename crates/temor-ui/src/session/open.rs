@@ -40,6 +40,8 @@ impl Session {
             .get(temor_shell::report::KEY_VAR)
             .and_then(|key| key.to_str())
             .and_then(temor_shell::report::ReportKey::parse);
+        let program = spec.spawn.program.clone();
+        let heard = Arc::clone(&sink);
         let (pane, runner) = match snapshot {
             Some(snapshot) => start_restored(spec, snapshot, sink)?,
             None => start(spec, sink)?,
@@ -50,6 +52,9 @@ impl Session {
             .map_err(UiError::Thread)?;
         let mut session = Self::assemble(pane, painter, kit);
         session.report_key = report_key;
+        let deliver: temor_shell::suggest::Deliver =
+            Arc::new(move |answered| heard.send(PaneEvent::Suggested(answered)));
+        session.sources = super::sources::Sources::for_program(&program, deliver);
         Ok(session)
     }
 
@@ -97,6 +102,8 @@ impl Session {
             shell_state: temor_core::session::ShellState::default(),
             inherited: Vec::new(),
             report_key: None,
+            sources: Default::default(),
+            folder: None,
             pointer_over: None,
             link_hover: None,
             list_map: None,

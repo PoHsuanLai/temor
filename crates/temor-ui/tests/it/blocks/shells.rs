@@ -214,9 +214,9 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
     }
 }
 
-/// Tab in the composer: bash, zsh and fish complete the line with their own completion, a command
-/// name and a folder (left open for what is in it); nushell does not say it answers, so nothing is
-/// asked of it and the line stays as typed.
+/// Tab in the composer: bash, zsh and fish complete the line with their own completion, and
+/// nushell with the source that asks it from outside; each completes a command name and a folder
+/// (left open for what is in it).
 #[test]
 fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
     if !tools_present() {
@@ -230,14 +230,8 @@ fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
                 && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
         });
         live.session.set_composer_shown(true);
-        if name == "nu" {
-            live.session.set_composer_text("ech".to_owned());
-            live.session.composer_complete();
-            assert!(!live.session.composer_completes(), "nu: says it answers");
-            assert_eq!(live.session.composer_text(), "ech", "nu: the line stays");
-            continue;
-        }
-        pump(&mut live, "the shell saying it answers Tab", |s| {
+        // Nushell is asked from outside, so it answers without saying so; the others say so.
+        pump(&mut live, "something answering Tab", |s| {
             s.composer_completes()
         });
         // (the line, what it becomes or starts with)

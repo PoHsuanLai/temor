@@ -1,6 +1,7 @@
 //! temor's shell: which shell the person uses, the environment a child starts with, and the
 //! shell integration (OSC 133 prompt marks and OSC 7 working directory) laid down for it, and the
-//! formats its scripts answer in ([`report`], [`complete`]).
+//! formats its scripts answer in ([`report`], [`complete`]), and the vocabulary of the sources that complete
+//! the composer's line ([`suggest`]).
 //!
 //! This crate is pure planning plus the shim files it writes under a caller's runtime directory.
 //! It reads no ambient state: the environment, the passwd entry and the runtime directory are
@@ -27,6 +28,7 @@ mod quote;
 mod replay;
 pub mod report;
 mod shell;
+pub mod suggest;
 
 pub use env::ChildEnv;
 pub use error::ShellError;

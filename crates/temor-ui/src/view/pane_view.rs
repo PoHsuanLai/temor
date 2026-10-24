@@ -432,7 +432,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                     close: EventHandler::new(composer_close(Rc::clone(&slot), ui)),
                                 },
                                 choices: slot.borrow().session.as_ref().and_then(|s| s.composer_choices()).map(|c| ChoicesView {
-                                    words: c.words().to_vec(),
+                                    words: c.words().into_iter().map(str::to_owned).collect(),
+                                    details: c.details().into_iter().map(|d| d.map(str::to_owned)).collect(),
                                     picked: c.picked(),
                                 }),
                             },

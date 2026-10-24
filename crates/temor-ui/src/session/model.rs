@@ -99,6 +99,10 @@ pub struct Session {
     /// The key temor gave the shell it started here; a state report without it is not the
     /// shell's and is dropped. None: nothing reports.
     pub(super) report_key: Option<temor_shell::report::ReportKey>,
+    /// The sources that complete the composer's line besides the shell's own.
+    pub(super) sources: super::sources::Sources,
+    /// The pane's folder as the shell last said it, to run a completion in.
+    pub(super) folder: Option<std::path::PathBuf>,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
     pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
     /// The link under the pointer as last drawn in its tooltip.

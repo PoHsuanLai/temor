@@ -7262,6 +7262,7 @@ dependencies = [
  "percent-encoding",
  "proptest",
  "rustix",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.21",
 ]
