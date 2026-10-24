@@ -3,6 +3,8 @@
 //! anchor sits, the text typed) and its outputs are carried out (anchors handed back, a finished
 //! command announced).
 
+use std::time::Instant;
+
 use temor_core::session::{MarkIn, MarkKind, MarkOut, mark_step};
 use temor_core::vocab::ids::{ExitCode, GridRow};
 use temor_vt::{AnchorId, ExitStatus, PromptEvent, PromptKind};
@@ -42,12 +44,15 @@ impl Session {
         self.mark(MarkIn::Event(kind_of(mark)));
     }
 
-    /// A mark's anchor arrived. It is paired with the event of the same number; anything else is
-    /// released, so a missed anchor cannot pair with the next mark's event.
-    pub(in crate::session) fn anchored(&mut self, seq: u64, id: AnchorId) -> Notice {
+    /// A mark's anchor arrived, read by the pane at `read`. It is paired with the event of the
+    /// same number; anything else is released, so a missed anchor cannot pair with the next
+    /// mark's event.
+    pub(in crate::session) fn anchored(&mut self, seq: u64, id: AnchorId, read: Instant) -> Notice {
         let finished_before = self.blocks.marks.finished();
         let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
-        let at = self.clock.now();
+        // When the pane read the mark, not when the window got to it: a command's start and end
+        // taken in one go would otherwise be 0 ms apart.
+        let at = self.clock.at(read);
         // The composer's text is the command as sent, lines and all, where the screen's rows
         // are only how the shell drew it; a command the shell names keeps its own name.
         let starts = match self.blocks.marks.pending() {

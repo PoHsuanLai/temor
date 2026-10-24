@@ -8,7 +8,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
@@ -192,6 +192,7 @@ pub(super) fn serve(io: &mut Io, offer: OfferId, consent: Consent, shelf: &[Offe
 
 /// Feeds program output to the terminal, sends its replies to the PTY and its events on.
 pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
+    let read = Instant::now();
     let output = lock(&io.term).write(bytes);
     for reply in output.replies {
         let _ = io.outbox.push_reply(&reply);
@@ -220,7 +221,7 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
             carry_out(io, Some(reaction));
             continue;
         }
-        if let Some(event) = map_event(event) {
+        if let Some(event) = map_event(event, read) {
             if let PaneEvent::Title(title) = &event {
                 if io.last_title.as_deref() == Some(title.as_str()) {
                     continue;
@@ -253,8 +254,9 @@ pub(super) fn signal_dirty(io: &Io) {
     }
 }
 
-/// The window's view of a terminal event; events the window does not use yet are dropped.
-pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
+/// The window's view of a terminal event, read at `read`; events the window does not use yet are
+/// dropped.
+pub(super) fn map_event(event: VtEvent, read: Instant) -> Option<PaneEvent> {
     Some(match event {
         VtEvent::Title(title) => PaneEvent::Title(title),
         VtEvent::Bell => PaneEvent::Bell,
@@ -264,7 +266,11 @@ pub(super) fn map_event(event: VtEvent) -> Option<PaneEvent> {
         VtEvent::Notification(note) => PaneEvent::Notification(note),
         VtEvent::MarkBegin { seq } => PaneEvent::MarkBegin { seq },
         VtEvent::Prompt(mark) => PaneEvent::Prompt(mark),
-        VtEvent::Anchor { seq, anchor } => PaneEvent::Anchor { seq, anchor },
+        VtEvent::Anchor { seq, anchor } => PaneEvent::Anchor {
+            seq,
+            anchor,
+            at: read,
+        },
         VtEvent::Progress(progress) => PaneEvent::Progress(progress),
         VtEvent::Reset => PaneEvent::Reset,
         VtEvent::RenderHold(RenderHold::Held) => PaneEvent::RenderHold(super::event::Hold::Held),

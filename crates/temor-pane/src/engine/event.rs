@@ -1,5 +1,7 @@
 //! What a pane tells the window. Callbacks never block: the I/O thread sends these and moves on.
 
+use std::time::Instant;
+
 use super::xfer::TransferEvent;
 use temor_pty::{ChildExit, CommandLine};
 use temor_vt::{
@@ -32,8 +34,13 @@ pub enum PaneEvent {
     MarkBegin { seq: u64 },
     /// A shell integration mark (OSC 133). Its anchor follows as `Anchor` with the same number.
     Prompt(PromptEvent),
-    /// The cursor, where mark `seq` stood, anchored.
-    Anchor { seq: u64, anchor: AnchorId },
+    /// The cursor, where mark `seq` stood, anchored; `at` is when the pane read the mark, so a
+    /// command's time does not take in how long its marks waited for the window.
+    Anchor {
+        seq: u64,
+        anchor: AnchorId,
+        at: Instant,
+    },
     /// A progress report (OSC 9;4).
     Progress(Progress),
     /// The terminal was reset (RIS): a running command is no longer on screen.

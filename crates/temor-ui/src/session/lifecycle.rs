@@ -176,7 +176,7 @@ impl Session {
                 self.mark_event(mark);
                 Notice::Quiet
             }
-            PaneEvent::Anchor { seq, anchor } => self.anchored(seq, anchor),
+            PaneEvent::Anchor { seq, anchor, at } => self.anchored(seq, anchor, at),
             PaneEvent::Reset => {
                 self.terminal_reset();
                 // A pane fed from elsewhere is reset when its screen is restored.

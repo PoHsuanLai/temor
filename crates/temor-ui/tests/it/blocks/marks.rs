@@ -16,7 +16,11 @@ fn mark(live: &mut Live, seq: u64, event: PromptEvent) {
     live.session.absorb(PaneEvent::MarkBegin { seq });
     live.session.absorb(PaneEvent::Prompt(event));
     if let Some(anchor) = live.session.pane().with_term(|term| term.anchor_cursor()) {
-        live.session.absorb(PaneEvent::Anchor { seq, anchor });
+        live.session.absorb(PaneEvent::Anchor {
+            seq,
+            anchor,
+            at: std::time::Instant::now(),
+        });
     }
 }
 

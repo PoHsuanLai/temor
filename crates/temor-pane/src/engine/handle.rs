@@ -6,6 +6,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
@@ -93,7 +94,8 @@ impl PaneHandle {
         for reply in output.replies {
             let _ = self.outbox.push_reply(&reply);
         }
-        for event in output.events.into_iter().filter_map(map_event) {
+        let read = Instant::now();
+        for event in output.events.into_iter().filter_map(|e| map_event(e, read)) {
             self.events.send(event);
         }
         self.request_repaint();
