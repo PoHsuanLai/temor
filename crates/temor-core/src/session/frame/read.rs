@@ -33,6 +33,9 @@ pub struct BlockRead {
     pub took_ms: Option<u64>,
     /// The prompt's mark; `None` once the scrollback took it.
     pub prompt: Option<Spot>,
+    /// The block had a prompt mark and the scrollback took it: the block has left the screen,
+    /// though its output's mark may still be kept.
+    pub prompt_lost: bool,
     /// The output's mark.
     pub output: Option<Spot>,
     /// The typed command's mark.
@@ -64,6 +67,9 @@ pub struct Read {
     pub len: u32,
     /// The cursor's screen row, when it is shown.
     pub cursor: Option<u32>,
+    /// The cursor's screen row as the terminal has it now, shown or not (else where the last
+    /// paint put it): where the bands' running command runs to.
+    pub live_cursor: Option<u32>,
     /// The first viewport row shown whole, below the rows the room under a block pushed out.
     pub first_shown: u32,
     /// The store's blocks, oldest first.

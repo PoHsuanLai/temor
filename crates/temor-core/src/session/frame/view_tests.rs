@@ -19,6 +19,7 @@ fn done(id: u64, first: u32, end: u32) -> BlockRead {
         outcome: Outcome::Succeeded,
         took_ms: Some(4),
         prompt: Some(at(first, 0)),
+        prompt_lost: false,
         output: Some(at(first + 2, 0)),
         input: Some(at(first + 1, 2)),
         end: End::At(at(end, 0)),
@@ -34,6 +35,7 @@ fn read(top: u32, len: u32, blocks: Vec<BlockRead>) -> Read {
         top,
         len,
         cursor: None,
+        live_cursor: None,
         first_shown: 0,
         blocks,
         live: None,
@@ -264,4 +266,31 @@ fn the_live_header_is_the_line_above_an_empty_typing_line_or_the_prompts_own() {
         None,
         "no prompt typed at"
     );
+}
+
+#[test]
+fn a_block_whose_prompt_the_scrollback_took_is_gone_though_its_output_mark_is_kept() {
+    let mut trimmed = done(1, 0, 6);
+    trimmed.prompt = None;
+    trimmed.prompt_lost = true;
+    let frame = Frame::of(read(0, 20, vec![trimmed, done(2, 8, 12)]));
+    assert_eq!(frame.block_at_screen_row(3), None);
+    assert_eq!(frame.reach(BlockId(1)), None);
+    assert_eq!(frame.pick_order(), vec![BlockId(2)]);
+    assert_eq!(frame.last_row(BlockId(1)), None);
+}
+
+#[test]
+fn a_running_block_runs_to_the_bottom_while_the_cursor_is_hidden_and_the_bands_to_the_cursor() {
+    let mut running = done(1, 2, 0);
+    running.end = End::Running;
+    let mut hidden = read(0, 20, vec![running]);
+    hidden.live_cursor = Some(9);
+    let frame = Frame::of(hidden);
+    assert_eq!(
+        frame.last_row(BlockId(1)),
+        Some(19),
+        "no cursor is drawn to end it"
+    );
+    assert_eq!(frame.cursor_row(), Some(9));
 }
