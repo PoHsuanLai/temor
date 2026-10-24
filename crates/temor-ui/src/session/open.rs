@@ -33,6 +33,13 @@ impl Session {
     ) -> Result<Self, UiError> {
         let SessionParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
+        // Only temor sets the key in a child's environment (temor-pty's contract).
+        let report_key = spec
+            .spawn
+            .env
+            .get(temor_shell::report::KEY_VAR)
+            .and_then(|key| key.to_str())
+            .and_then(temor_shell::report::ReportKey::parse);
         let (pane, runner) = match snapshot {
             Some(snapshot) => start_restored(spec, snapshot, sink)?,
             None => start(spec, sink)?,
@@ -41,7 +48,9 @@ impl Session {
             .name("temor-pane-io".to_owned())
             .spawn(move || runner.run())
             .map_err(UiError::Thread)?;
-        Ok(Self::assemble(pane, painter, kit))
+        let mut session = Self::assemble(pane, painter, kit);
+        session.report_key = report_key;
+        Ok(session)
     }
 
     /// Starts a session whose program runs elsewhere (a host's helper), its events going to
@@ -88,6 +97,7 @@ impl Session {
             ann: temor_core::session::Annotations::default(),
             shell_state: temor_core::session::ShellState::default(),
             inherited: Vec::new(),
+            report_key: None,
             tools_height: super::ToolsHeight::default(),
             pointer_over: None,
             link_hover: None,

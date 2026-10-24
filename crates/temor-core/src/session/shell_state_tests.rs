@@ -14,6 +14,7 @@ fn report(env: &[(&str, &str)], aliases: &[(&str, &str)]) -> ShellIn {
             .collect()
     };
     ShellIn::Reported(Report {
+        key: String::new(),
         env: own(env),
         aliases: own(aliases),
     })
@@ -150,7 +151,7 @@ proptest! {
     ) {
         let ins: Vec<ShellIn> = reports
             .iter()
-            .map(|env| ShellIn::Reported(Report { env: env.clone(), aliases: vec![] }))
+            .map(|env| ShellIn::Reported(Report { key: String::new(), env: env.clone(), aliases: vec![] }))
             .collect();
         let (all, _) = run_steps(ShellState::default(), ins.clone(), shell_step);
         let (last, _) = run_steps(ShellState::default(), vec![ins.last().cloned().unwrap()], shell_step);

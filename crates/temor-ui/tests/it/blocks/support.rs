@@ -14,7 +14,7 @@ use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
-use temor_ui::app::shell_pane;
+use temor_ui::app::shell_pane_with_socket;
 use temor_ui::edge::{Ambient, FakeClock, RecordingNotifier};
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
@@ -98,13 +98,8 @@ pub(super) fn start_with(
         config_dir: home.join("config"),
         runtime_dir: home.join("runtime"),
     };
-    let mut ambient = ambient;
     // A script `setup` left for the shell's first prompt, as a replaced shell's aliases are.
-    if home.join("replay.zsh").is_file() {
-        ambient
-            .env
-            .set("TEMOR_REPLAY", home.join("replay.zsh").into_os_string());
-    }
+    let replay = Some(home.join("replay.zsh")).filter(|path| path.is_file());
     let settings = TerminalSettings {
         shell: ShellChoice::Program(shell.display().to_string()),
         ..TerminalSettings::default()
@@ -116,14 +111,17 @@ pub(super) fn start_with(
         },
         false => SessionLauncher::Setsid(super::super::support::setsid_path()),
     };
-    let spec = shell_pane(
+    let spec = shell_pane_with_socket(
         &ambient,
         &settings,
         1,
-        temor_vt::GridSize::new(80, 24),
-        temor_vt::CellPx::new(8, 16),
+        (
+            temor_vt::GridSize::new(80, 24),
+            temor_vt::CellPx::new(8, 16),
+        ),
         temor_render::Palette::default(),
         launcher,
+        (None, replay),
     )
     .expect("shell spec");
     let fonts = FontSet::load(

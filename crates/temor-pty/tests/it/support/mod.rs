@@ -61,6 +61,8 @@ impl Scratch {
             version: ProgramVersion("0.0.0-test".into()),
             pane: PaneId("pane-1".into()),
             socket: None,
+            report_key: None,
+            replay: None,
         };
         child_env(self.base_env(), profile, &contract)
     }

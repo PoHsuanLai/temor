@@ -22,6 +22,11 @@ pub struct EnvContract {
     pub pane: PaneId,
     /// temor's control socket, when one is listening.
     pub socket: Option<PathBuf>,
+    /// The key this shell's state reports carry (`TEMOR_REPORT_KEY`), made for it by temor.
+    pub report_key: Option<String>,
+    /// The aliases a replaced shell leaves for this one (`TEMOR_REPLAY`): a script the shell reads
+    /// at its first prompt, then deletes along with the variable.
+    pub replay: Option<PathBuf>,
 }
 
 /// Exact names that describe the terminal temor was started from, not the one it is.
@@ -57,15 +62,9 @@ const DROPPED_PREFIXES: &[&str] = &[
 ];
 
 /// The person's choices survive the scrub, so `TEMOR_SHELL_INTEGRATION=0` and `TEMOR_PROMPT`
-/// in temor's own environment reach the shells it starts. `TEMOR_REPLAY` names the aliases a
-/// replaced shell leaves for the new one; the shell deletes the file and the variable at its
-/// first prompt.
-const KEPT: &[&str] = &[
-    "TEMOR_SHELL_INTEGRATION",
-    "TEMOR_PROMPT",
-    "TEMOR_PAGER",
-    "TEMOR_REPLAY",
-];
+/// in temor's own environment reach the shells it starts. What temor hands one shell
+/// (`TEMOR_REPORT_KEY`, `TEMOR_REPLAY`) is never inherited: only the contract sets it.
+const KEPT: &[&str] = &["TEMOR_SHELL_INTEGRATION", "TEMOR_PROMPT", "TEMOR_PAGER"];
 
 /// The base environment from an injected `source` (the app passes its own environment at its
 /// edge), without the variables that describe another terminal.
@@ -116,6 +115,18 @@ pub fn child_env(base: ChildEnv, profile: &ChildEnv, contract: &EnvContract) -> 
         Some(path) => env.set("TEMOR_SOCKET", path),
         None => {
             env.remove("TEMOR_SOCKET");
+        }
+    }
+    match &contract.report_key {
+        Some(key) => env.set("TEMOR_REPORT_KEY", key),
+        None => {
+            env.remove("TEMOR_REPORT_KEY");
+        }
+    }
+    match &contract.replay {
+        Some(path) => env.set("TEMOR_REPLAY", path),
+        None => {
+            env.remove("TEMOR_REPLAY");
         }
     }
     env

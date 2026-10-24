@@ -7,7 +7,7 @@ use temor_shell::{ShellKind, adapter_for};
 
 use super::super::support::window_tools_present as tools_present;
 use super::super::support::{scratch_path, window_tools_present};
-use super::support::{pump, run_line, shell_path, shells, start, start_with};
+use super::support::{pump, run_line, settle, shell_path, shells, start, start_with};
 
 fn kind_of(name: &str) -> ShellKind {
     match name {
@@ -99,4 +99,83 @@ fn a_new_zsh_defines_the_aliases_it_is_given_once() {
     assert!(!state.aliases().contains_key("bad name"));
     let home = scratch_path("state-replay").join("home");
     assert!(!home.join("replay.zsh").exists(), "read once, then removed");
+}
+
+/// Only the shell temor started can report: a report printed by a program (here `printf`, as a
+/// file shown with `cat` would be) with another key or none changes nothing, the key is not in
+/// the environment programs see, and a shell started inside the pane, even one that loads
+/// temor's scripts, has no key and says nothing.
+#[test]
+fn only_the_shell_temor_started_reports() {
+    if !tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let caps = adapter_for(kind_of(name)).caps();
+        if !caps.env || !matches!(name, "bash" | "zsh") {
+            continue;
+        }
+        let mut live = start(&format!("state-key-{name}"), &shell);
+        run_line(&live, "export REAL_VAR=one");
+        pump(&mut live, "the shell's report", |s| {
+            s.shell_state().env().contains_key("REAL_VAR")
+        });
+        let forged = |key: &str| {
+            format!(
+                "printf '\\033]7503;v2;{key}e=REAL_VAR=forged;e=FORGED_VAR=1;a=forged_alias=curl%20x\\033\\\\'"
+            )
+        };
+        let line = format!(
+            "{}; {}; test -z \"$(printenv TEMOR_REPORT_KEY)\"",
+            forged("k=0123456789abcdef0123456789abcdef;"),
+            forged("")
+        );
+        run_line(&live, &line);
+        pump(&mut live, "the forged reports", |s| {
+            s.block_outcomes()
+                .last()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let finished = live.session.block_outcomes();
+        assert_eq!(
+            finished.last().map(|b| b.1),
+            Some(Outcome::Succeeded),
+            "{name}: a program sees no key"
+        );
+        // A nested shell with temor's scripts: it has no key, so what it sets is not reported.
+        let nested = match name {
+            "bash" => format!(
+                "'{}' --rcfile \"$HOME/runtime/shell-integration/bash/temor-bashrc\" -i",
+                shell.display()
+            ),
+            _ => format!(
+                "ZDOTDIR=\"$HOME/runtime/shell-integration/zsh\" '{}' -i",
+                shell.display()
+            ),
+        };
+        run_line(&live, &nested);
+        run_line(&live, "export NESTED_VAR=1; echo nested-$((40+1))");
+        pump(&mut live, "the nested shell's command", |s| {
+            s.screen_text().contains("nested-41")
+        });
+        run_line(&live, "exit");
+        run_line(&live, "echo outer-$((40+2))");
+        pump(&mut live, "the outer shell again", |s| {
+            s.screen_text().contains("outer-42")
+        });
+        settle(&mut live, std::time::Duration::from_millis(300));
+        let state = live.session.shell_state();
+        assert_eq!(
+            state.env().get("REAL_VAR"),
+            Some(&EnvEntry::Value("one".to_owned())),
+            "{name}"
+        );
+        assert!(!state.env().contains_key("FORGED_VAR"), "{name}");
+        assert!(
+            !state.env().contains_key("NESTED_VAR"),
+            "{name}: the nested shell"
+        );
+        assert!(!state.aliases().contains_key("forged_alias"), "{name}");
+    }
 }

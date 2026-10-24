@@ -121,9 +121,9 @@ impl Hub {
             .clone()
             .or_else(|| kept.as_ref().and_then(|kept| kept.cwd.clone().map(Cwd)))
             .or(start.cwd);
-        if let Some(kept) = &kept {
-            self.carry_env(&mut start.env, spawn.pane, kept);
-        }
+        let replay = kept
+            .as_ref()
+            .and_then(|kept| self.carry_env(&mut start.env, spawn.pane, kept));
         let socket = self.open_socket(spawn.pane);
         // A program run in place of the shell brings its own environment, not the Space's.
         let run = self.run_claims(spawn.pane);
@@ -132,7 +132,10 @@ impl Hub {
             self.palette,
             (spawn.pane, cwd.as_ref(), snapshot.as_ref()),
             self.events.clone(),
-            run.as_ref().map_or(&start.env, |run| &run.env),
+            match &run {
+                Some(run) => (&run.env, None),
+                None => (&start.env, replay.as_deref()),
+            },
             socket.as_deref(),
             run.as_ref().map(|run| run.program()),
         );
@@ -160,20 +163,17 @@ impl Hub {
     }
 
     /// Gives a new shell what the person had set in the one it replaces: the variables that differ
-    /// from what a shell starts with in this Space.
+    /// from what a shell starts with in this Space, set in `env`, and the aliases, in a script the
+    /// new shell reads once at its first prompt (where it is returned).
     pub(super) fn carry_env(
         &self,
         env: &mut temor_shell::ChildEnv,
         pane: PaneId,
         kept: &Checkpoint,
-    ) {
-        // The aliases go in a script the new shell reads once, at its first prompt.
-        if let Some(dir) = &self.state_dir
-            && let Some(at) =
-                crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&kept.aliases))
-        {
-            env.set("TEMOR_REPLAY", at.into_os_string());
-        }
+    ) -> Option<std::path::PathBuf> {
+        let replay = self.state_dir.as_deref().and_then(|dir| {
+            crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&kept.aliases))
+        });
         let base = self.launch.ambient.env.clone().overlay(env);
         let base: Vec<(String, String)> = base
             .iter()
@@ -189,6 +189,7 @@ impl Hub {
                 env.set(key, value);
             }
         }
+        replay
     }
 
     /// Takes the scrollback of a pane that is about to end, for a reopen.
@@ -279,7 +280,7 @@ impl Hub {
             self.palette,
             (pane, cwd.as_ref(), None),
             self.events.clone(),
-            run.as_ref().map_or(&start.env, |run| &run.env),
+            (run.as_ref().map_or(&start.env, |run| &run.env), None),
             socket.as_deref(),
             run.as_ref().map(|run| run.program()),
         ) {

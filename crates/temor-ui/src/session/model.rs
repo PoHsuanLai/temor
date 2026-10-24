@@ -96,6 +96,9 @@ pub struct Session {
     pub(super) shell_state: temor_core::session::ShellState,
     /// Commands the shell this session continues ran before this window began.
     pub(super) inherited: Vec<temor_core::session::CommandRecord>,
+    /// The key temor gave the shell it started here; a state report without it is not the
+    /// shell's and is dropped. None: nothing reports.
+    pub(super) report_key: Option<temor_shell::report::ReportKey>,
     /// The block toolbar's measured height, written by its view.
     pub(super) tools_height: super::ToolsHeight,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.

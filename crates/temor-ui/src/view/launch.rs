@@ -162,21 +162,22 @@ pub fn open_session(
         palette,
         (pane, cwd, snapshot),
         events,
-        &ChildEnv::new(),
+        (&ChildEnv::new(), None),
         None,
         None,
     )
 }
 
-/// [`open_session`] with `env` set over the surroundings' own (a Space's variables), the pane's
-/// status socket, when it has one, named to the shell in `TEMOR_SOCKET`, and `program` run in
-/// place of the shell when one is given (a host session).
+/// [`open_session`] with `env` set over the surroundings' own (a Space's variables), the aliases
+/// of the shell it replaces (`replay`, a script the shell reads once), the pane's status socket,
+/// when it has one, named to the shell in `TEMOR_SOCKET`, and `program` run in place of the shell
+/// when one is given (a host session).
 pub fn open_session_with(
     launch: &Launch,
     palette: Palette,
     (pane, cwd, snapshot): (PaneId, Option<&Cwd>, Option<&Snapshot>),
     events: UnboundedSender<(PaneId, PaneEvent)>,
-    env: &ChildEnv,
+    (env, replay): (&ChildEnv, Option<&std::path::Path>),
     socket: Option<&std::path::Path>,
     program: Option<Program>,
 ) -> Result<Session, UiError> {
@@ -214,7 +215,10 @@ pub fn open_session_with(
         (grid, cell),
         palette,
         launcher,
-        socket.map(std::path::Path::to_path_buf),
+        (
+            socket.map(std::path::Path::to_path_buf),
+            replay.map(std::path::Path::to_path_buf),
+        ),
     )?;
     spec.transfers = Some(TransferSetup {
         staging: launch.ambient.staging_dir(pane.0),

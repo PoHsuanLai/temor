@@ -40,6 +40,8 @@ fn env_holds_the_contract_and_nothing_inherited() {
         version: ProgramVersion("9.9.9".into()),
         pane: PaneId("pane-42".into()),
         socket: Some(scratch.runtime.join("temor.sock")),
+        report_key: None,
+        replay: None,
     };
     let profile: ChildEnv = [("SPACE_TOKEN", "abc")].into_iter().collect();
     let env = child_env(base, &profile, &contract);

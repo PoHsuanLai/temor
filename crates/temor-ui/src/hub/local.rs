@@ -10,6 +10,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::Spawn;
 use temor_pane::settings::ShellChoice;
 use temor_remote::host::HostEnv;
+use temor_shell::report::{KEY_VAR, ReportKey};
 use temor_ssh::HostAlias;
 use temor_wire::ids::SessionId;
 use temor_wire::link::{Attempt, LinkState};
@@ -18,6 +19,7 @@ use super::model::Hub;
 use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
 use crate::edge::remote_install::blob_path;
 use crate::edge::remote_link::{RemoteLink, Target};
+use crate::edge::replay::fresh_key;
 use crate::view::remote_launch::open_fed_session;
 
 /// The local daemon's name as a host.
@@ -52,17 +54,18 @@ impl Hub {
     }
 
     /// How `spawn`'s pane starts in the daemon: the Space's folder and variables, with what the
-    /// person had set in the shell it replaces (`kept`) over them.
+    /// person had set in the shell it replaces (`kept`) over them, and `report_key` for its
+    /// reports. The environment is scrubbed as a local pane's is (temor-pty's `base_env`).
     fn local_start(
         &mut self,
         spawn: &Spawn,
         kept: Option<Checkpoint>,
-        resume: Option<SessionId>,
+        (resume, report_key): (Option<SessionId>, ReportKey),
     ) -> LocalStart {
         let mut start = self.space_start();
-        if let Some(kept) = &kept {
-            self.carry_env(&mut start.env, spawn.pane, kept);
-        }
+        let replay = kept
+            .as_ref()
+            .and_then(|kept| self.carry_env(&mut start.env, spawn.pane, kept));
         let cwd = spawn
             .cwd
             .as_ref()
@@ -77,12 +80,8 @@ impl Hub {
                     .map(|home| home.to_string_lossy().into_owned())
             })
             .unwrap_or_else(|| "/".to_owned());
-        let mut env: Vec<(String, String)> = self
-            .launch
-            .ambient
-            .env
-            .clone()
-            .overlay(&start.env)
+        let surroundings = self.launch.ambient.env.clone().overlay(&start.env);
+        let mut env: Vec<(String, String)> = temor_pty::base_env(surroundings.iter())
             .iter()
             .map(|(k, v)| {
                 (
@@ -90,10 +89,16 @@ impl Hub {
                     v.to_string_lossy().into_owned(),
                 )
             })
-            .filter(|(k, _)| k != "TERM" && k != "COLORTERM")
             .collect();
         env.push(("TERM".to_owned(), "xterm-256color".to_owned()));
         env.push(("COLORTERM".to_owned(), "truecolor".to_owned()));
+        env.push((KEY_VAR.to_owned(), report_key.as_str().to_owned()));
+        if let Some(replay) = replay {
+            env.push((
+                "TEMOR_REPLAY".to_owned(),
+                replay.to_string_lossy().into_owned(),
+            ));
+        }
         LocalStart {
             spawn: spawn.clone(),
             cwd,
@@ -103,6 +108,7 @@ impl Hub {
                 ShellChoice::Program(program) => Some(program.clone()),
             },
             resume,
+            report_key,
         }
     }
 
@@ -111,13 +117,27 @@ impl Hub {
     pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<SessionId>) {
         let kept = self.carried.remove(&spawn.pane);
         // A pane made while a program is being detached takes that program's session.
-        let resume = resume.or_else(|| self.remote.detaching.map(|(_, session)| session));
+        let detached = self.remote.detaching.filter(|_| resume.is_none());
+        let resume = resume.or(detached.map(|(_, session)| session));
+        // A shell that goes on keeps the key it was started with: the detached pane's, or the
+        // one kept when temor quit.
+        let key = match (detached, resume) {
+            (Some((from, _)), _) => self
+                .live(from, |session| session.report_key().cloned())
+                .flatten(),
+            (None, Some(_)) => kept
+                .as_ref()
+                .and_then(|kept| kept.report_key.as_deref())
+                .and_then(ReportKey::parse),
+            (None, None) => None,
+        }
+        .unwrap_or_else(fresh_key);
         // A shell that goes on is known by what was kept of it until it next reports.
         let seed = kept
             .clone()
             .filter(|_| resume.is_some())
             .map(|kept| (ShellState::restored(&kept.replay()), kept));
-        let own = self.local_start(spawn, kept, resume);
+        let own = self.local_start(spawn, kept, (resume, key));
         let target = Arc::new(Mutex::new(Target::default()));
         let opened = RemoteLink::start(Arc::clone(&target))
             .map_err(|e| e.to_string())
@@ -139,6 +159,7 @@ impl Hub {
             }
         };
         session.set_focus(self.focus_of(spawn.pane));
+        session.set_report_key(Some(own.report_key.clone()));
         if let Some((state, kept)) = seed {
             session.continue_from(state, kept);
         }
@@ -224,6 +245,16 @@ impl Hub {
             .map(|session| session.0)
     }
 
+    /// Notes in `kept` what the next launch needs to find `pane`'s daemon session again: the
+    /// session, and the key its shell reports with.
+    pub(super) fn keep_local(&self, pane: PaneId, kept: &mut Checkpoint) {
+        kept.daemon_session = self.local_session(pane);
+        kept.report_key = kept
+            .daemon_session
+            .and(self.remote.local.get(&pane))
+            .map(|own| own.report_key.as_str().to_owned());
+    }
+
     /// Starts the daemon's helper for the dial.
     pub(super) fn local_dial_env(&self) -> Option<HostEnv> {
         self.local_env()
@@ -262,7 +293,12 @@ impl Hub {
         let kept = self
             .live(from, |session| session.checkpoint())
             .unwrap_or_default();
-        let own = self.local_start(&old, Some(kept), None);
+        let own = self.local_start(&old, Some(kept), (None, fresh_key()));
+        if let Some(slot) = self.slots.get(&from)
+            && let Some(session) = slot.borrow_mut().session.as_mut()
+        {
+            session.set_report_key(Some(own.report_key.clone()));
+        }
         self.remote.local.insert(from, own);
         self.remote.saved.remove(&from);
         if let Some(pane) = self.remote.panes.get_mut(&from) {

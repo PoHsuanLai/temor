@@ -92,7 +92,7 @@ impl Hub {
             self.palette,
             (pane, None, None),
             events,
-            &start.env,
+            (&start.env, None),
             None,
             Some(program),
         );

@@ -54,6 +54,8 @@ pub struct ShellPaneInput {
     palette: Palette,
     launcher: SessionLauncher,
     socket: Option<PathBuf>,
+    report_key: Option<String>,
+    replay: Option<PathBuf>,
 }
 
 impl ShellPaneInput {
@@ -76,6 +78,8 @@ impl ShellPaneInput {
             palette: Palette::default(),
             launcher,
             socket: None,
+            report_key: None,
+            replay: None,
         }
     }
 
@@ -130,6 +134,22 @@ impl ShellPaneInput {
         self
     }
 
+    /// The key the shell's state reports carry, which the shell finds in `TEMOR_REPORT_KEY`
+    /// (default: none, so it does not report).
+    #[must_use]
+    pub fn report_key(mut self, key: Option<String>) -> Self {
+        self.report_key = key;
+        self
+    }
+
+    /// The aliases of the shell this one replaces, a script the shell finds in `TEMOR_REPLAY`
+    /// (default: none).
+    #[must_use]
+    pub fn replay(mut self, replay: Option<PathBuf>) -> Self {
+        self.replay = replay;
+        self
+    }
+
     /// The colours the pane starts with.
     #[must_use]
     pub fn palette(mut self, palette: Palette) -> Self {
@@ -156,6 +176,8 @@ pub fn shell_pane(
         version: input.version,
         pane: PaneId(input.pane.to_string()),
         socket: input.socket,
+        report_key: input.report_key,
+        replay: input.replay,
     };
     let env = child_env(base, &ChildEnv::new(), &contract);
     let shell = pick_shell(&input.settings, &env, input.passwd_shell, is_file);

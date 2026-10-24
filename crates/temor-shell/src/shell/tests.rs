@@ -211,3 +211,26 @@ fn opt_out_and_other_shells_start_plainly() {
     let sh = plan_integration(&Shell::at("/bin/sh"), ShellStart::Interactive, env(&[]), rt);
     assert!(sh.args.is_empty() && sh.files.is_empty());
 }
+
+#[test]
+fn only_a_shell_whose_script_reports_is_given_the_report_key() {
+    let rt = Path::new("/run/temor");
+    let key = crate::report::KEY_VAR;
+    // (shell, the environment, whether the key is kept)
+    let cases = [
+        ("/bin/bash", vec![(key, "k")], true),
+        ("/usr/bin/zsh", vec![(key, "k")], true),
+        ("/usr/bin/fish", vec![(key, "k")], false),
+        ("/usr/bin/nu", vec![(key, "k")], false),
+        ("/bin/sh", vec![(key, "k")], false),
+        (
+            "/bin/bash",
+            vec![(key, "k"), ("TEMOR_SHELL_INTEGRATION", "0")],
+            false,
+        ),
+    ];
+    for (shell, vars, kept) in cases {
+        let plan = plan_integration(&Shell::at(shell), ShellStart::Login, env(&vars), rt);
+        assert_eq!(plan.env.get(key).is_some(), kept, "{shell} {vars:?}");
+    }
+}

@@ -58,16 +58,23 @@ pub const XDG_DATA_DIRS_DEFAULT: &str = "/usr/local/share:/usr/share";
 
 /// The plan for starting `shell` with `env`, its shims under `runtime_dir/shell-integration`.
 /// With integration off, or for a shell temor has no script for, the plan starts the shell
-/// plainly and lays down nothing.
+/// plainly and lays down nothing. The report key ([`crate::report::KEY_VAR`]) is left only for
+/// a script that reports and hides it; any other shell would hand it to every program it runs.
 pub fn plan_integration(
     shell: &Shell,
     start: ShellStart,
-    env: ChildEnv,
+    mut env: ChildEnv,
     runtime_dir: &Path,
 ) -> IntegrationPlan {
     let root = runtime_dir.join("shell-integration");
-    match IntegrationState::of(&env) {
-        IntegrationState::On => adapter_for(shell.kind).plan(shell, start, env, &root),
+    let adapter = adapter_for(shell.kind);
+    let state = IntegrationState::of(&env);
+    let caps = adapter.caps();
+    if state == IntegrationState::Off || !(caps.env || caps.aliases) {
+        env.remove(crate::report::KEY_VAR);
+    }
+    match state {
+        IntegrationState::On => adapter.plan(shell, start, env, &root),
         IntegrationState::Off => plain(shell, start, env),
     }
 }

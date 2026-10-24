@@ -121,7 +121,7 @@ impl Hub {
             self.palette,
             (pane, None, None),
             self.events.clone(),
-            &start.env,
+            (&start.env, None),
             None,
             Some(program),
         );

@@ -43,7 +43,7 @@
 //! 1. [`base_env`] takes an injected source (the app passes its own environment at its edge)
 //!    and drops variables that describe *another* terminal: `TERM`, `COLORTERM`,
 //!    `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, `VTE_VERSION`, `WINDOWID`, `LINES`, `COLUMNS`, `TMUX`, `TMUX_PANE`, `STY`, every
-//!    `TEMOR_*` variable except `TEMOR_SHELL_INTEGRATION`, `TEMOR_PROMPT`, `TEMOR_PAGER` and `TEMOR_REPLAY`, and the `KITTY_*`, `GHOSTTY_*`,
+//!    `TEMOR_*` variable except `TEMOR_SHELL_INTEGRATION`, `TEMOR_PROMPT` and `TEMOR_PAGER`, and the `KITTY_*`, `GHOSTTY_*`,
 //!    `WEZTERM_*`, `ITERM_*`, `ALACRITTY_*` and `KONSOLE_*` families.
 //! 2. [`child_env`] layers temor's contract and the Space profile on top, in this order:
 //!    the base, then `TERM` and `COLORTERM`, then the profile (which may override those two,
@@ -60,6 +60,8 @@
 //! | `TERM_PROGRAM_VERSION` | the caller's [`ProgramVersion`] (temor's version) |
 //! | `TEMOR_PANE_ID` | the caller's [`PaneId`], so a program can address its own pane |
 //! | `TEMOR_SOCKET` | the caller's control socket path, when there is one; removed otherwise |
+//! | `TEMOR_REPORT_KEY` | the key the shell's state reports carry, when the caller made one; removed otherwise. The scripts move it into an unexported shell variable before the person's startup files run |
+//! | `TEMOR_REPLAY` | a script with the aliases of the shell this one replaces, when there is one; removed otherwise. The scripts read it at the first prompt, then delete it and the variable |
 //!
 //! Variables read by temor and its scripts:
 //!
@@ -106,6 +108,8 @@
 //!     version: ProgramVersion("0.1.0".to_owned()),
 //!     pane: PaneId("pane-1".to_owned()),
 //!     socket: None,
+//!     report_key: None,
+//!     replay: None,
 //! };
 //! let env = child_env(host, &ChildEnv::new(), &contract);
 //! assert_eq!(env.get("HOME"), Some(OsStr::new("/home/me")));

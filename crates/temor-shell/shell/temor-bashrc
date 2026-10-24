@@ -9,6 +9,14 @@
 # so it is not sourced here. In the login case their /etc/profile sources it as well, so it runs
 # twice there (a real login bash would run it once); it is written to be harmless twice.
 
+# The key temor's state reports carry (temor.bash sends them), so temor knows them from text a
+# program prints. It moves into an unexported variable before any of your files run, so no
+# program or shell started from here sees it; a shell without one does not report.
+if [[ -n ${TEMOR_REPORT_KEY+x} ]]; then
+    _temor_key=$TEMOR_REPORT_KEY
+    unset TEMOR_REPORT_KEY
+fi
+
 if [[ -n ${TEMOR_BASH_LOGIN-} ]]; then
     unset TEMOR_BASH_LOGIN
     [[ -r /etc/profile ]] && . /etc/profile

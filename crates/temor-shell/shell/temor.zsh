@@ -17,7 +17,9 @@ typeset -g _temor_ps1=
 typeset -g _temor_seen=
 typeset -g _temor_head=
 # What the last state report said (raw, before escaping): a report is sent only when it changed.
+# A state too large to send is kept apart, so it is not escaped again at every prompt.
 typeset -g _temor_reported=
+typeset -g _temor_unsent=
 
 # A pager that would take the whole screen (git, aws) prints into the block instead, where the
 # output scrolls and is searched with the block. A value you set stays, and so does a pager git's own
@@ -135,6 +137,7 @@ _temor_build_prompt() {
 # an unchanged prompt costs one loop over the names and no escaping. Every name and value is
 # percent-encoded in the shell itself (no process is started). Too large a report is not sent.
 _temor_report() {
+    [[ -n ${_temor_key-} ]] || return 0
     emulate -L zsh
     setopt extendedglob
     local LC_ALL=C name value
@@ -147,9 +150,8 @@ _temor_report() {
     for name value in "${(@kv)aliases}"; do
         raw+="a=$name=$value"$'\n'
     done
-    [[ $raw == $_temor_reported ]] && return 0
-    _temor_reported=$raw
-    local out=v1 pct='%${(l:2::0:)$(( [##16] #MATCH ))}'
+    [[ $raw == "$_temor_reported" || $raw == "$_temor_unsent" ]] && return 0
+    local out="v2;k=$_temor_key" pct='%${(l:2::0:)$(( [##16] #MATCH ))}'
     for name in $names; do
         value=${(P)name}
         out+=";e=${name//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}=${value//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}"
@@ -157,8 +159,13 @@ _temor_report() {
     for name value in "${(@kv)aliases}"; do
         out+=";a=${name//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}=${value//(#m)[^a-zA-Z0-9._~\/-]/${(e)pct}}"
     done
-    (( ${#out} > 60000 )) && return 0
+    if (( ${#out} > 60000 )); then
+        _temor_unsent=$raw
+        return 0
+    fi
     printf '\e]7503;%s\e\\' "$out"
+    _temor_reported=$raw
+    _temor_unsent=
 }
 
 # Runs first in every precmd cycle (it is hooked before your .zshrc runs), so it sees the

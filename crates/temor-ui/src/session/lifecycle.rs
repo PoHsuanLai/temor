@@ -156,7 +156,10 @@ impl Session {
                 }
             }
             PaneEvent::ShellReport(text) => {
-                if let Ok(report) = temor_shell::report::decode(&text) {
+                // Anything printed in the pane can look like a report; only the shell has the key.
+                if let Some(key) = &self.report_key
+                    && let Ok(report) = temor_shell::report::read(&text, key)
+                {
                     self.shell_step(ShellIn::Reported(report));
                 }
                 Notice::Quiet
@@ -219,6 +222,17 @@ impl Session {
     ) {
         self.shell_state = state;
         self.inherited = kept.history;
+    }
+
+    /// The key the shell's state reports carry, for a shell started elsewhere (the local daemon)
+    /// or one that goes on in another pane.
+    pub fn set_report_key(&mut self, key: Option<temor_shell::report::ReportKey>) {
+        self.report_key = key;
+    }
+
+    /// The key of the shell this session shows, if it reports.
+    pub fn report_key(&self) -> Option<&temor_shell::report::ReportKey> {
+        self.report_key.as_ref()
     }
 
     /// What the shell holds that a new shell would need to look the same.

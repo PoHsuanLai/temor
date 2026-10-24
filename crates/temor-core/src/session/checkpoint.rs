@@ -45,6 +45,10 @@ pub struct Checkpoint {
     /// daemon for it.
     #[serde(default, deserialize_with = "lenient")]
     pub daemon_session: Option<u64>,
+    /// The report key of that session's shell, so the next launch knows its reports. Only with a
+    /// daemon session; the file is the person's alone (0600 in a private folder).
+    #[serde(default, deserialize_with = "lenient")]
+    pub report_key: Option<String>,
 }
 
 /// A field that cannot be read is its default.
@@ -89,6 +93,7 @@ impl Checkpoint {
             withheld: replay.withheld,
             history,
             daemon_session: None,
+            report_key: None,
         }
     }
 

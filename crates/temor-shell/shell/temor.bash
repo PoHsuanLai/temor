@@ -18,6 +18,7 @@ _temor_status=0
 _temor_cwd=
 _temor_cwd_url=
 _temor_reported=
+_temor_unsent=
 _temor_pwd=
 _temor_branch=
 _temor_blank=
@@ -69,9 +70,11 @@ _temor_encode() {
 
 # Tells temor the shell's exported variables and aliases (OSC 7503, see temor-shell's report
 # module), but only when they differ from what it last said; the comparison is on the raw text.
-# Too large a report is not sent.
+# Too large a report is not sent, and that state is kept apart so it is not escaped again at
+# every prompt.
 _temor_report() {
-    local LC_ALL=C name line value raw= out=v1 quote="'" esc
+    [[ -n ${_temor_key-} ]] || return 0
+    local LC_ALL=C REPLY name line value raw= out="v2;k=$_temor_key" quote="'" esc
     esc="'\\''"
     local -a names=()
     while IFS= read -r name; do
@@ -82,8 +85,7 @@ _temor_report() {
     local aliased
     aliased=$(alias -p 2>/dev/null)
     raw+=$aliased
-    [[ $raw == "$_temor_reported" ]] && return 0
-    _temor_reported=$raw
+    [[ $raw == "$_temor_reported" || $raw == "$_temor_unsent" ]] && return 0
     for name in "${names[@]}"; do
         _temor_encode "$name"; out+=";e=$REPLY"
         _temor_encode "${!name}"; out+="=$REPLY"
@@ -99,8 +101,13 @@ _temor_report() {
         _temor_encode "$name"; out+=";a=$REPLY"
         _temor_encode "$value"; out+="=$REPLY"
     done <<<"$aliased"
-    (( ${#out} > 60000 )) && return 0
+    if (( ${#out} > 60000 )); then
+        _temor_unsent=$raw
+        return 0
+    fi
     printf '\e]7503;%s\e\\' "$out"
+    _temor_reported=$raw
+    _temor_unsent=
 }
 
 # Sets _temor_branch to "  <name>" (magenta) when $PWD is inside a git checkout, else empty.

@@ -156,7 +156,7 @@ fn a_shell_is_told_where_its_socket_is() {
             ),
             temor_render::Palette::default(),
             launcher.clone(),
-            socket,
+            (socket, None),
         )
         .expect("spec")
     };

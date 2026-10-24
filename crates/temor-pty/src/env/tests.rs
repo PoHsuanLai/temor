@@ -35,6 +35,8 @@ fn profile_overrides_term_but_not_identity() {
         version: ProgramVersion("1.2.3".into()),
         pane: PaneId("p7".into()),
         socket: None,
+        report_key: None,
+        replay: None,
     };
     let profile = env(&[
         ("TERM", "xterm-256color"),
@@ -55,6 +57,32 @@ fn profile_overrides_term_but_not_identity() {
             ("TEMOR_PANE_ID", "p7"),
         ])
     );
+}
+
+#[test]
+fn what_temor_hands_one_shell_is_never_inherited() {
+    let inherited = [
+        ("TEMOR_REPORT_KEY", "from-another-terminal"),
+        ("TEMOR_REPLAY", "/tmp/someone-elses-script"),
+        ("HOME", "/h"),
+    ];
+    let mut contract = EnvContract {
+        term: TermName::Xterm256Color,
+        version: ProgramVersion("1".into()),
+        pane: PaneId("p1".into()),
+        socket: None,
+        report_key: None,
+        replay: None,
+    };
+    let profile = env(&[("TEMOR_REPORT_KEY", "spoof"), ("TEMOR_REPLAY", "/spoof")]);
+    let out = child_env(base_env(inherited), &profile, &contract);
+    assert_eq!(out.get("TEMOR_REPORT_KEY"), None);
+    assert_eq!(out.get("TEMOR_REPLAY"), None);
+    contract.report_key = Some("abc".into());
+    contract.replay = Some(PathBuf::from("/state/replay/1.sh"));
+    let out = child_env(base_env(inherited), &profile, &contract);
+    assert_eq!(out.get("TEMOR_REPORT_KEY"), Some("abc".as_ref()));
+    assert_eq!(out.get("TEMOR_REPLAY"), Some("/state/replay/1.sh".as_ref()));
 }
 
 #[test]

@@ -31,11 +31,12 @@ pub fn shell_pane(
         (grid, cell),
         palette,
         launcher,
-        None,
+        (None, None),
     )
 }
 
-/// Like [`shell_pane`], with the pane's status socket named to the shell in `TEMOR_SOCKET`.
+/// Like [`shell_pane`], with the pane's status socket named to the shell in `TEMOR_SOCKET` and the
+/// aliases of a shell it replaces in `TEMOR_REPLAY`. Every shell gets a new report key.
 pub fn shell_pane_with_socket(
     ambient: &Ambient,
     settings: &TerminalSettings,
@@ -43,7 +44,7 @@ pub fn shell_pane_with_socket(
     (grid, cell): (GridSize, CellPx),
     palette: temor_render::Palette,
     launcher: SessionLauncher,
-    socket: Option<PathBuf>,
+    (socket, replay): (Option<PathBuf>, Option<PathBuf>),
 ) -> Result<PaneSpec, UiError> {
     // The passwd file is read only when the login shell is asked for.
     let passwd_shell = match settings.shell {
@@ -61,6 +62,8 @@ pub fn shell_pane_with_socket(
     .version(ProgramVersion(VERSION.to_owned()))
     .pane(pane)
     .socket(socket)
+    .replay(replay)
+    .report_key(Some(crate::edge::replay::fresh_key().as_str().to_owned()))
     .grid(grid, cell)
     .palette(palette);
     Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)

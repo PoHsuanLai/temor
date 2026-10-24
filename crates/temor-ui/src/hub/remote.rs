@@ -74,6 +74,9 @@ pub(super) struct LocalStart {
     pub shell: Option<String>,
     /// The session the pane had when temor last quit.
     pub resume: Option<SessionId>,
+    /// The key the pane's shell signs its state reports with: the one it was started with when
+    /// it goes on, else a new one (a session opened anew is given the same).
+    pub report_key: temor_shell::report::ReportKey,
 }
 
 /// One pane that is a session on a helper.

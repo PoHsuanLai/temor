@@ -127,6 +127,7 @@ proptest! {
                 .map(|(command, exit, took_ms)| CommandRecord { command, exit, took_ms })
                 .collect(),
             daemon_session: Some(7),
+            report_key: Some("0123456789abcdef0123456789abcdef".into()),
         };
         prop_assert_eq!(Checkpoint::decode(&checkpoint.encode()), Ok(checkpoint));
     }

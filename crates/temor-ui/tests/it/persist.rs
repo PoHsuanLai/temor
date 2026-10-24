@@ -215,6 +215,7 @@ fn checkpoint_files_are_private_read_once_and_hold_no_secret_value() {
     let dir = tempfile::tempdir().unwrap();
     let state = dir.path().join("temor");
     let report = temor_shell::report::Report {
+        key: String::new(),
         env: vec![
             ("EDITOR".into(), "vim".into()),
             ("GITHUB_TOKEN".into(), "ghp_never_on_disk".into()),

@@ -52,7 +52,7 @@ impl Hub {
             .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
             .filter_map(|(pane, slot)| {
                 let mut kept = slot.borrow().session.as_ref().map(Session::checkpoint)?;
-                kept.daemon_session = self.local_session(*pane);
+                self.keep_local(*pane, &mut kept);
                 Some((*pane, kept))
             })
             .collect();
@@ -74,7 +74,7 @@ impl Hub {
             }
             let kept = slot.borrow().session.as_ref().map(Session::checkpoint);
             if let Some(mut kept) = kept {
-                kept.daemon_session = self.local_session(*pane);
+                self.keep_local(*pane, &mut kept);
                 let _ = checkpoint::write(dir, *pane, &kept);
             }
         }
