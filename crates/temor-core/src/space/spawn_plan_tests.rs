@@ -81,3 +81,24 @@ fn the_carried_folder_wins_and_secrets_stay_withheld() {
         "no carried folder: the Space's"
     );
 }
+
+#[test]
+fn a_variable_that_is_never_carried_is_not_carried_even_if_the_person_set_it() {
+    let carried = Replay {
+        env: vec![
+            ("PATH".into(), "/evil:/bin".into()),
+            ("LD_PRELOAD".into(), "/x.so".into()),
+            ("EDITOR".into(), "vim".into()),
+        ],
+        ..Replay::default()
+    };
+    let base = vec![("PATH".to_owned(), "/bin".to_owned())];
+    let plan = spawn_plan(&base, &base, None, Some(&carried));
+    assert_eq!(
+        plan.env,
+        [
+            ("EDITOR".to_owned(), "vim".to_owned(), Origin::User),
+            ("PATH".to_owned(), "/bin".to_owned(), Origin::Space),
+        ]
+    );
+}

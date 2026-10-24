@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::shell_state::Replay;
+use super::shell_state::{Replay, holds_secret, is_secret, looks_secret, never_carried};
 use crate::block::Block;
 
 /// The version this build writes.
@@ -61,6 +61,13 @@ where
     Ok(serde_json::from_value(value).unwrap_or_default())
 }
 
+/// Whether a command goes into a checkpoint's history: not one typed with a space first (the
+/// shells' way to keep a command out of history), and not one that sets a secret or holds
+/// something that looks like one.
+pub fn kept_in_history(command: &str) -> bool {
+    !command.starts_with(' ') && !holds_secret(command)
+}
+
 /// Why a checkpoint was not read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -73,10 +80,11 @@ pub enum CheckpointFault {
 
 impl Checkpoint {
     /// A checkpoint of `replay` and the commands in `blocks` (oldest first; the newest
-    /// [`MOST_HISTORY`] are kept; a command still running is left out).
+    /// [`MOST_HISTORY`] are kept; a command still running is left out, and so is one that is
+    /// kept out of history: see [`kept_in_history`]).
     pub fn of<'a>(replay: Replay, blocks: impl Iterator<Item = &'a Block>) -> Self {
         let mut history: Vec<CommandRecord> = blocks
-            .filter(|block| block.ended.is_some())
+            .filter(|block| block.ended.is_some() && kept_in_history(&block.command.0))
             .map(|block| CommandRecord {
                 command: block.command.0.clone(),
                 exit: block.exit.map(|code| code.0),
@@ -108,12 +116,25 @@ impl Checkpoint {
         self
     }
 
-    /// What a new shell is told.
+    /// What a new shell is told. A file written by an earlier build may hold what this one
+    /// would not keep; that is left out here.
     pub fn replay(&self) -> Replay {
         Replay {
             cwd: self.cwd.clone(),
-            env: self.env.clone(),
-            aliases: self.aliases.clone(),
+            env: self
+                .env
+                .iter()
+                .filter(|(name, value)| {
+                    !never_carried(name) && !is_secret(name) && !looks_secret(value)
+                })
+                .cloned()
+                .collect(),
+            aliases: self
+                .aliases
+                .iter()
+                .filter(|(_, value)| !holds_secret(value))
+                .cloned()
+                .collect(),
             withheld: self.withheld.clone(),
         }
     }

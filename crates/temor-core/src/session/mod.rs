@@ -21,5 +21,6 @@ pub use marks::{
     Anchor, BlockAnchors, HeaderFacts, MarkIn, MarkKind, MarkLog, MarkOut, PluginFact, mark_step,
 };
 pub use shell_state::{
-    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, is_secret, shell_step,
+    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, holds_secret, is_secret,
+    looks_secret, never_carried, shell_step,
 };

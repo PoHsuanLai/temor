@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::session::Replay;
+use crate::session::{Replay, never_carried};
 
 /// Where a variable of a new shell comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +55,10 @@ pub fn spawn_plan(
         };
     };
     for (key, value) in &carried.env {
+        // What names the old session or loads code is the new shell's own to set.
+        if never_carried(key) {
+            continue;
+        }
         // Still what the old Space gave it: the new Space's value (set above) stands.
         if old.get(key.as_str()) == Some(&value.as_str()) {
             continue;

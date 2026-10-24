@@ -4,8 +4,9 @@
 //! whole state can be turned into what a fresh shell must be told ([`ShellState::replay`]).
 //!
 //! A variable whose name says it is a secret (`*_TOKEN`, `*_KEY`, `*_SECRET`, `*PASSWORD*`,
-//! credentials) is kept as a name only: its value never enters the state, so it is never copied,
-//! saved or replayed.
+//! credentials), or whose value looks like one (a URL with a password in it, a well-known token
+//! prefix), is kept as a name only: its value never enters the state, so it is never copied,
+//! saved or replayed. An alias that holds a secret is not kept at all.
 
 use std::collections::BTreeMap;
 
@@ -72,54 +73,169 @@ pub struct Replay {
     pub withheld: Vec<String>,
 }
 
-/// Variables a shell or temor sets for itself: not state to carry.
-const OWN: &[&str] = &[
+/// Variables never carried to a new shell, by exact name: what a shell sets for itself, what
+/// names this login, terminal or desktop session (the new shell gets its own), and what changes
+/// the code a shell or program loads. `PATH` and its kin are here because the new shell's startup
+/// files extend them again: a carried `PATH` would grow at every restore.
+const NEVER_CARRIED: &[&str] = &[
     "_",
     "PWD",
     "OLDPWD",
     "SHLVL",
+    "HOME",
+    "SHELL",
+    "USER",
+    "LOGNAME",
+    "PATH",
+    "MANPATH",
+    "INFOPATH",
+    "FPATH",
+    "BASH_ENV",
+    "ENV",
     "ZDOTDIR",
+    "PROMPT_COMMAND",
+    "PS1",
+    "PS2",
+    "PS3",
+    "PS4",
+    "TERM",
+    "COLORTERM",
     "COLUMNS",
     "LINES",
     "TERM_SESSION_ID",
-    "TERM_PROGRAM_VERSION",
-    "SSH_AUTH_SOCK",
-    "SSH_CONNECTION",
-    "SSH_TTY",
-    "TMPDIR",
-    "XDG_RUNTIME_DIR",
+    "TMUX",
+    "TMUX_PANE",
+    "STY",
+    "WINDOWID",
     "DISPLAY",
     "WAYLAND_DISPLAY",
+    "XAUTHORITY",
+    "SSH_AUTH_SOCK",
+    "SSH_CONNECTION",
+    "SSH_CLIENT",
+    "SSH_TTY",
     "DBUS_SESSION_BUS_ADDRESS",
+    "XDG_RUNTIME_DIR",
+    "TMPDIR",
     "XPC_FLAGS",
     "XPC_SERVICE_NAME",
     "SECURITYSESSIONID",
     "__CF_USER_TEXT_ENCODING",
 ];
 
-fn is_own(name: &str) -> bool {
-    OWN.contains(&name) || name.starts_with("TEMOR_")
+/// Variables never carried, by the start of their name: the code loaders' (`LD_*`, `DYLD_*`),
+/// temor's own and other terminals', and the desktop session's.
+const NEVER_CARRIED_PREFIXES: &[&str] = &[
+    "LD_",
+    "DYLD_",
+    "TEMOR_",
+    "TERM_PROGRAM",
+    "KITTY_",
+    "GHOSTTY_",
+    "XDG_SESSION_",
+];
+
+/// Whether a variable is one a new shell must not be given from an old one (see
+/// [`NEVER_CARRIED`]).
+pub fn never_carried(name: &str) -> bool {
+    NEVER_CARRIED.contains(&name) || NEVER_CARRIED_PREFIXES.iter().any(|p| name.starts_with(p))
 }
+
+/// Words that make a name a secret wherever they stand in it.
+const SECRET_WORDS: &[&str] = &[
+    "TOKEN",
+    "SECRET",
+    "PASSWORD",
+    "PASSWD",
+    "PASSPHRASE",
+    "CREDENTIAL",
+    "PRIVATE",
+    "APIKEY",
+    "API_KEY",
+    "ACCESS_KEY",
+];
+
+/// Parts of a name (between underscores) that make it a secret: `DB_PASS`, `GITLAB_PAT`,
+/// `SENTRY_DSN`, `NPM_AUTH`. As parts only, so `MY_PATH` and `AUTHOR` are not.
+const SECRET_PARTS: &[&str] = &["PASS", "PWD", "PAT", "DSN", "AUTH"];
 
 /// Whether a variable's name says its value is a secret.
 pub fn is_secret(name: &str) -> bool {
     let upper = name.to_ascii_uppercase();
-    [
-        "TOKEN",
-        "SECRET",
-        "PASSWORD",
-        "PASSWD",
-        "PASSPHRASE",
-        "CREDENTIAL",
-        "PRIVATE_KEY",
-        "API_KEY",
-        "ACCESS_KEY",
-    ]
-    .iter()
-    .any(|word| upper.contains(word))
+    SECRET_WORDS.iter().any(|word| upper.contains(word))
+        || upper.split('_').any(|part| SECRET_PARTS.contains(&part))
         || upper.ends_with("_KEY")
-        || upper.ends_with("_AUTH")
-        || upper == "AWS_SESSION_TOKEN"
+}
+
+/// Starts of well-known tokens (GitHub, GitLab, OpenAI and others, Slack); a word that starts
+/// with one and goes on for 16 or more token characters is taken for a token.
+const TOKEN_PREFIXES: &[&str] = &[
+    "ghp_",
+    "gho_",
+    "ghs_",
+    "ghu_",
+    "github_pat_",
+    "glpat-",
+    "sk-",
+    "xoxb-",
+    "xoxp-",
+];
+
+/// Starts of AWS access key ids, which go on with 16 capitals or digits.
+const AWS_PREFIXES: &[&str] = &["AKIA", "ASIA"];
+
+fn token_like(word: &str) -> bool {
+    let tail_is = |prefix: &str, ok: fn(u8) -> bool| {
+        word.strip_prefix(prefix)
+            .is_some_and(|rest| rest.len() >= 16 && rest.bytes().all(ok))
+    };
+    TOKEN_PREFIXES
+        .iter()
+        .any(|p| tail_is(p, |b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-'))
+        || AWS_PREFIXES
+            .iter()
+            .any(|p| tail_is(p, |b| b.is_ascii_uppercase() || b.is_ascii_digit()))
+}
+
+/// Whether `text` has a URL with a password in it (`scheme://user:password@host`).
+fn url_with_password(text: &str) -> bool {
+    text.match_indices("://").any(|(at, _)| {
+        let rest = &text[at + 3..];
+        let authority = rest
+            .split(|c: char| c == '/' || c == '?' || c == '#' || c.is_whitespace())
+            .next()
+            .unwrap_or("");
+        authority
+            .rsplit_once('@')
+            .is_some_and(|(user, _)| user.contains(':'))
+    })
+}
+
+/// Whether a value looks like a secret whatever its name: a URL with a password in it, or a
+/// word that looks like a well-known token.
+pub fn looks_secret(value: &str) -> bool {
+    url_with_password(value)
+        || value
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+            .any(token_like)
+}
+
+/// Whether a line of shell (an alias's value, a command) holds a secret: it sets a variable
+/// whose name is a secret's (`export DB_PASSWORD=...`), or something in it looks like one.
+pub fn holds_secret(line: &str) -> bool {
+    looks_secret(line)
+        || line
+            .split(|c: char| c.is_whitespace() || ";&|()`".contains(c))
+            .filter_map(|word| word.split_once('='))
+            .any(|(name, _)| is_variable_name(name) && is_secret(name))
+}
+
+fn is_variable_name(name: &str) -> bool {
+    let mut bytes = name.bytes();
+    bytes
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
+        && bytes.all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 impl ShellState {
@@ -178,7 +294,7 @@ impl ShellState {
 }
 
 fn entry_of(name: &str, value: &str) -> EnvEntry {
-    match is_secret(name) {
+    match is_secret(name) || looks_secret(value) {
         true => EnvEntry::Secret,
         false => EnvEntry::Value(value.to_owned()),
     }
@@ -198,10 +314,14 @@ pub fn shell_step(mut state: ShellState, input: ShellIn) -> (ShellState, Vec<She
             let env: BTreeMap<String, EnvEntry> = report
                 .env
                 .iter()
-                .filter(|(name, _)| !is_own(name))
+                .filter(|(name, _)| !never_carried(name))
                 .map(|(name, value)| (name.clone(), entry_of(name, value)))
                 .collect();
-            let aliases: BTreeMap<String, String> = report.aliases.into_iter().collect();
+            let aliases: BTreeMap<String, String> = report
+                .aliases
+                .into_iter()
+                .filter(|(_, value)| !holds_secret(value))
+                .collect();
             for (name, entry) in &env {
                 if state.env.get(name) != Some(entry) {
                     delta.env_set.push((name.clone(), entry.clone()));

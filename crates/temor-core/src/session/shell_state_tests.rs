@@ -3,7 +3,10 @@
 use proptest::prelude::*;
 use temor_shell::report::Report;
 
-use super::{EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, is_secret, shell_step};
+use super::{
+    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, holds_secret, is_secret,
+    looks_secret, never_carried, shell_step,
+};
 use crate::test_support::run_steps;
 
 fn report(env: &[(&str, &str)], aliases: &[(&str, &str)]) -> ShellIn {
@@ -81,11 +84,32 @@ fn a_secret_is_a_name_only_and_is_never_replayed() {
         "SSH_PRIVATE_KEY",
         "NPM_AUTH",
         "my_key",
+        "DB_PASS",
+        "MYSQL_PWD",
+        "GITLAB_PAT",
+        "SENTRY_DSN",
+        "MAPS_APIKEY",
+        "GOOGLE_API_KEY",
+        "AUTH_HEADER",
+        "AZURE_CREDENTIALS",
+        "PRIVATE_THING",
     ];
     for name in secrets {
         assert!(is_secret(name), "{name}");
     }
-    for name in ["EDITOR", "KEYBOARD", "HOME", "MONKEY_PATCH", "TERM"] {
+    let plain = [
+        "EDITOR",
+        "KEYBOARD",
+        "HOME",
+        "MONKEY_PATCH",
+        "TERM",
+        "MY_PATH",
+        "GIT_AUTHOR_NAME",
+        "PASSENGER",
+        "OLDPWD",
+        "PATTERN",
+    ];
+    for name in plain {
         assert!(!is_secret(name), "{name}");
     }
     let (state, _) = shell_step(
@@ -170,4 +194,136 @@ fn a_state_restored_from_a_replay_replays_the_same_and_keeps_secrets_as_names() 
     let state = ShellState::restored(&replay);
     assert_eq!(state.replay(), replay);
     assert_eq!(state.env().get("MY_TOKEN"), Some(&EnvEntry::Secret));
+}
+
+#[test]
+fn a_value_that_looks_like_a_secret_is_one_whatever_its_name() {
+    let secret = [
+        "postgres://app:hunter2@db.local:5432/app",
+        "https://user:pw@example.com",
+        concat!("ghp_", "0123456789abcdefABCDEF"),
+        concat!("gho_", "0123456789abcdefABCDEF"),
+        concat!("ghs_", "0123456789abcdefABCDEF"),
+        concat!("ghu_", "0123456789abcdefABCDEF"),
+        concat!("github_pat_", "11ABCDEFG0123456789_abc"),
+        concat!("glpat-", "0123456789abcdefABCD"),
+        concat!("sk-proj-", "0123456789abcdefABCD"),
+        concat!("xoxb-", "1234-5678-abcdefghijkl"),
+        concat!("xoxp-", "1234-5678-abcdefghijkl"),
+        concat!("AKIA", "IOSFODNN7EXAMPLE"),
+        concat!("ASIA", "IOSFODNN7EXAMPLE"),
+        concat!("Bearer ghp_", "0123456789abcdefABCDEF"),
+    ];
+    for value in secret {
+        assert!(looks_secret(value), "{value}");
+    }
+    let plain = [
+        "https://example.com/a:b@c",
+        "git@github.com:me/repo.git",
+        "ssh://git@host/repo",
+        "sk-feature",
+        "ghp_short",
+        "AKIA",
+        "/usr/bin:/bin",
+        "vim",
+    ];
+    for value in plain {
+        assert!(!looks_secret(value), "{value}");
+    }
+    let (state, _) = shell_step(
+        ShellState::default(),
+        report(&[("DATABASE_URL", "postgres://u:pw@db/app")], &[]),
+    );
+    assert_eq!(state.env().get("DATABASE_URL"), Some(&EnvEntry::Secret));
+}
+
+#[test]
+fn an_alias_that_holds_a_secret_is_not_kept() {
+    assert!(holds_secret("export GITHUB_TOKEN=abc && gh pr list"));
+    assert!(holds_secret("DB_PASSWORD=x psql"));
+    assert!(holds_secret("curl -u me:pw https://me:pw@host/api"));
+    assert!(holds_secret(concat!(
+        "gh --token ghp_",
+        "0123456789abcdefABCDEF"
+    )));
+    assert!(!holds_secret("ls -la"));
+    assert!(!holds_secret("echo $GITHUB_TOKEN"));
+    assert!(!holds_secret("git log --author=me"));
+    let (state, _) = shell_step(
+        ShellState::default(),
+        report(
+            &[],
+            &[
+                ("ll", "ls -l"),
+                ("deploy", "AWS_SECRET_ACCESS_KEY=abc ./deploy"),
+                ("gh2", concat!("gh --token ghp_", "0123456789abcdefABCDEF")),
+            ],
+        ),
+    );
+    assert_eq!(
+        state.replay().aliases,
+        [("ll".to_owned(), "ls -l".to_owned())]
+    );
+    assert!(!format!("{state:?}").contains("ghp_"));
+}
+
+#[test]
+fn what_names_the_session_or_loads_code_is_never_carried() {
+    let never = [
+        "PATH",
+        "MANPATH",
+        "INFOPATH",
+        "FPATH",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "BASH_ENV",
+        "ENV",
+        "ZDOTDIR",
+        "PROMPT_COMMAND",
+        "PS1",
+        "PS4",
+        "HOME",
+        "SHELL",
+        "USER",
+        "LOGNAME",
+        "SHLVL",
+        "TERM",
+        "TERM_PROGRAM",
+        "TERM_PROGRAM_VERSION",
+        "COLORTERM",
+        "TMUX",
+        "TMUX_PANE",
+        "STY",
+        "WINDOWID",
+        "DISPLAY",
+        "WAYLAND_DISPLAY",
+        "XAUTHORITY",
+        "SSH_AUTH_SOCK",
+        "SSH_CONNECTION",
+        "SSH_CLIENT",
+        "SSH_TTY",
+        "DBUS_SESSION_BUS_ADDRESS",
+        "XDG_RUNTIME_DIR",
+        "XDG_SESSION_TYPE",
+        "TEMOR_REPLAY",
+        "KITTY_WINDOW_ID",
+        "GHOSTTY_RESOURCES_DIR",
+    ];
+    for name in never {
+        assert!(never_carried(name), "{name}");
+    }
+    for name in [
+        "EDITOR",
+        "GOPATH",
+        "PAGER",
+        "LANG",
+        "XDG_CONFIG_HOME",
+        "TERMINFO",
+    ] {
+        assert!(!never_carried(name), "{name}");
+    }
+    let reported: Vec<(&str, &str)> = never.iter().map(|name| (*name, "x")).collect();
+    let (state, _) = shell_step(ShellState::default(), report(&reported, &[]));
+    assert_eq!(state.replay().env, []);
 }

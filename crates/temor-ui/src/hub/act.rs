@@ -171,8 +171,9 @@ impl Hub {
         pane: PaneId,
         kept: &Checkpoint,
     ) -> Option<std::path::PathBuf> {
+        let carried = kept.replay();
         let replay = self.state_dir.as_deref().and_then(|dir| {
-            crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&kept.aliases))
+            crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&carried.aliases))
         });
         let base = self.launch.ambient.env.clone().overlay(env);
         let base: Vec<(String, String)> = base
@@ -184,7 +185,7 @@ impl Hub {
                 )
             })
             .collect();
-        for (key, value, origin) in spawn_plan(&base, &base, None, Some(&kept.replay())).env {
+        for (key, value, origin) in spawn_plan(&base, &base, None, Some(&carried)).env {
             if origin == Origin::User {
                 env.set(key, value);
             }

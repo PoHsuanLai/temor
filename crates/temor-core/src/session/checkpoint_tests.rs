@@ -156,3 +156,62 @@ fn commands_of_a_shell_that_goes_on_come_first_and_only_the_newest_are_kept() {
         Some("c2")
     );
 }
+
+#[test]
+fn a_command_kept_out_of_history_or_holding_a_secret_is_not_kept() {
+    let commands = [
+        ("ls -la", true),
+        (" mysql -p hunter2", false),
+        ("export GITHUB_TOKEN=abc", false),
+        ("DB_PASSWORD=x ./migrate", false),
+        (
+            concat!(
+                "curl -H 'Authorization: token ghp_",
+                "0123456789abcdefABCD' api"
+            ),
+            false,
+        ),
+        ("git clone https://me:hunter2@example.com/r.git", false),
+        ("git clone https://example.com/r.git", true),
+        ("export EDITOR=vim", true),
+        ("echo $GITHUB_TOKEN", true),
+    ];
+    let blocks: Vec<Block> = commands
+        .iter()
+        .enumerate()
+        .map(|(n, (command, _))| block(n as u64, command, Some(1001), Some(0)))
+        .collect();
+    let kept: Vec<_> = Checkpoint::of(Replay::default(), blocks.iter())
+        .history
+        .into_iter()
+        .map(|record| record.command)
+        .collect();
+    let want: Vec<_> = commands
+        .iter()
+        .filter(|(_, keep)| *keep)
+        .map(|(command, _)| (*command).to_owned())
+        .collect();
+    assert_eq!(kept, want);
+}
+
+#[test]
+fn what_an_earlier_build_kept_and_this_one_would_not_is_not_replayed() {
+    let old = Checkpoint {
+        version: VERSION,
+        env: vec![
+            ("PATH".into(), "/bin".into()),
+            ("LD_PRELOAD".into(), "/x.so".into()),
+            ("OPENAI_API_KEY".into(), "sk-x".into()),
+            ("DATABASE_URL".into(), "postgres://u:pw@db/app".into()),
+            ("EDITOR".into(), "vim".into()),
+        ],
+        aliases: vec![
+            ("deploy".into(), "AWS_SECRET_ACCESS_KEY=abc ./go".into()),
+            ("ll".into(), "ls -l".into()),
+        ],
+        ..Checkpoint::default()
+    };
+    let replay = old.replay();
+    assert_eq!(replay.env, [("EDITOR".to_owned(), "vim".to_owned())]);
+    assert_eq!(replay.aliases, [("ll".to_owned(), "ls -l".to_owned())]);
+}
