@@ -31,6 +31,8 @@ pub(super) fn anchor_id(anchor: Anchor) -> AnchorId {
 #[derive(Debug, Default)]
 pub(super) struct BlockLog {
     pub(super) marks: MarkLog,
+    /// What each finished block's card says of its output.
+    pub(super) notes: std::collections::BTreeMap<BlockId, temor_core::block::Note>,
 }
 
 impl BlockLog {
@@ -58,10 +60,5 @@ impl BlockLog {
     /// The anchor of the prompt being typed at.
     pub(super) fn prompt(&self) -> Option<AnchorId> {
         self.marks.prompt().map(anchor_id)
-    }
-
-    /// The anchor of where the typed command starts.
-    pub(super) fn input(&self) -> Option<AnchorId> {
-        self.marks.input().map(anchor_id)
     }
 }

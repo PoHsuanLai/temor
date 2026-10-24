@@ -175,8 +175,13 @@ impl Hub {
             0 => Marking::Unmarked,
             _ => Marking::Marked,
         };
+        // A live card's pane runs the program it was given, which its own shell never marked.
+        let carried = self.live_head(pane).map(|head| head.command);
         let name = tab_title(NameIn {
-            running: running.as_ref().map(|run| run.command.as_str()),
+            running: running
+                .as_ref()
+                .map(|run| run.command.as_str())
+                .or(carried.as_deref()),
             title: &title,
             cwd: cwd.as_deref(),
             home: &self.launch.ambient.home,

@@ -12,7 +12,6 @@ use super::model::{INSET, Lifetime, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
-use crate::view::card_colours::CardColours;
 use temor_pane::{Hold, PaneEvent};
 use temor_vt::Snapshot;
 
@@ -97,8 +96,6 @@ impl Session {
         }
         let blink = self.blink_now();
         self.blink.painted = blink;
-        let palette = self.painter.palette();
-        let bands = self.card_bands(&CardColours::of(palette));
         let view = PaintView {
             pixels: self.pixels,
             scale: self.scale,
@@ -109,7 +106,7 @@ impl Session {
             },
             blink,
             selection: None,
-            bands: &bands,
+            ground: self.live_ground,
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_pane::PaintSource`).
@@ -176,12 +173,21 @@ impl Session {
                 Notice::Quiet
             }
             PaneEvent::Prompt(mark) => {
+                if matches!(mark, temor_vt::PromptEvent::OutputStart { .. }) {
+                    self.completion_ended();
+                }
                 self.mark_event(mark);
                 Notice::Quiet
             }
-            PaneEvent::Anchor { seq, anchor } => self.anchored(seq, anchor),
+            PaneEvent::Completions(answer) => {
+                self.completion_answer(&answer);
+                Notice::Chrome
+            }
+            PaneEvent::Anchor { seq, anchor, at } => self.anchored(seq, anchor, at),
             PaneEvent::Reset => {
                 self.terminal_reset();
+                // A pane fed from elsewhere is reset when its screen is restored.
+                self.find_restored_blocks();
                 Notice::Repaint
             }
             PaneEvent::Notification(note) => {
@@ -233,6 +239,11 @@ impl Session {
     /// The key of the shell this session shows, if it reports.
     pub fn report_key(&self) -> Option<&temor_shell::report::ReportKey> {
         self.report_key.as_ref()
+    }
+
+    /// The commands run before this pane's screen was handed to it, for the blocks found on it.
+    pub fn inherit(&mut self, history: Vec<temor_core::session::CommandRecord>) {
+        self.inherited = history;
     }
 
     /// What the shell holds that a new shell would need to look the same.

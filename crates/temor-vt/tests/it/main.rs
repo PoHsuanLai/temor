@@ -36,6 +36,8 @@ mod shell;
 #[cfg(feature = "ghostty")]
 mod snapshot;
 #[cfg(feature = "ghostty")]
+mod styled;
+#[cfg(feature = "ghostty")]
 mod threads;
 
 #[test]

@@ -19,7 +19,7 @@ fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
     let palette = Palette::default();
     let mut f = glyph_frame(0, 160);
     let out = renderer
-        .render(&mut f, &view(size, &palette, &[]))
+        .render(&mut f, &view(size, &palette))
         .expect("render");
     (out.pixels.to_vec(), out.stats.atlas_resets)
 }
@@ -91,20 +91,20 @@ fn recomposing_rows_draws_what_a_full_compose_draws() {
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette, &[]))
+        .render(&mut frame, &view(size, &palette))
         .expect("first render");
     // Row 3 changes alone; the rows beside it are composed too only if its glyphs reach them.
     let next = lines(after);
     frame.set_row(Row(3), next.rows[3].clone());
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette, &[]))
+        .render(&mut frame, &view(size, &palette))
         .expect("second render")
         .pixels
         .to_vec();
     let mut fresh = CpuRenderer::new(fonts(14.0));
     let mut whole = lines(after);
     let full = fresh
-        .render(&mut whole, &view(size, &palette, &[]))
+        .render(&mut whole, &view(size, &palette))
         .expect("fresh render")
         .pixels
         .to_vec();
@@ -125,20 +125,20 @@ fn a_neighbour_that_gains_an_overhang_in_the_same_frame_is_still_drawn_whole() {
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette, &[]))
+        .render(&mut frame, &view(size, &palette))
         .expect("first render");
     let next = lines(after);
     for r in [2, 3] {
         frame.set_row(Row(r), next.rows[usize::from(r)].clone());
     }
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette, &[]))
+        .render(&mut frame, &view(size, &palette))
         .expect("second render")
         .pixels
         .to_vec();
     let mut whole = lines(after);
     let full = CpuRenderer::new(fonts(14.0))
-        .render(&mut whole, &view(size, &palette, &[]))
+        .render(&mut whole, &view(size, &palette))
         .expect("fresh render")
         .pixels
         .to_vec();
@@ -148,178 +148,68 @@ fn a_neighbour_that_gains_an_overhang_in_the_same_frame_is_still_drawn_whole() {
     );
 }
 
-mod bands {
-    use temor_vt::{GridSize, Px, Rgb, Row};
-
-    use super::{COLS, CpuRenderer, ROWS, fonts};
-    use crate::bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, Tint};
-    use crate::frame::{PaneFrame, TermColors};
-    use crate::metrics::{Padding, PixelSize, Scale};
-    use crate::palette::Palette;
-    use crate::renderer::{PaneFocus, PaneView, Renderer};
-
-    const PAD: u32 = 4;
-
-    struct Bench {
-        renderer: CpuRenderer,
-        frame: PaneFrame,
-        palette: Palette,
-        size: PixelSize,
-        cell_h: u32,
-    }
-
-    impl Bench {
-        fn new() -> Self {
-            let mut renderer = CpuRenderer::new(fonts(14.0));
-            let m = renderer.cell_metrics(Scale::new(1.0));
-            let mut frame = PaneFrame::new();
-            frame.resize(GridSize::new(COLS, ROWS));
-            frame.set_colors(TermColors {
-                foreground: Rgb::new(220, 220, 220),
-                background: Rgb::new(0, 0, 0),
-                cursor: None,
-            });
-            Self {
-                renderer,
-                frame,
-                palette: Palette::default(),
-                size: PixelSize::new(
-                    u32::from(COLS) * m.width() + PAD * 2,
-                    u32::from(ROWS) * m.height() + PAD * 2,
-                ),
-                cell_h: m.height(),
-            }
-        }
-
-        /// Renders with `bands`: the pixels and the number of rows composed.
-        fn render(&mut self, bands: &[RowBand]) -> (Vec<u8>, u32) {
-            let view = PaneView {
-                size: self.size,
-                scale: Scale::new(1.0),
-                padding: Padding::uniform(Px(PAD)),
-                palette: &self.palette,
-                focus: PaneFocus::Focused,
-                blink: crate::renderer::BlinkPhase::On,
-                selection: None,
-                bands,
-                lower: 0,
-            };
-            let out = self
-                .renderer
-                .render(&mut self.frame, &view)
-                .expect("render");
-            (out.pixels.to_vec(), out.stats.rows_composed)
-        }
-
-        fn px(&self, pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
-            let i = ((y * self.size.width.0 + x) * 4) as usize;
-            [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]
-        }
-
-        /// The top pixel row of grid row `r`.
-        fn top(&self, r: u32) -> u32 {
-            PAD + r * self.cell_h
-        }
-    }
-
-    fn tint(r: u8, g: u8, b: u8, a: u8) -> Option<Tint> {
-        Some(Tint {
-            color: Rgb::new(r, g, b),
-            alpha: Alpha(a),
+/// The rows of `texts` as a screen read hands them over.
+fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
+    texts
+        .iter()
+        .map(|text| {
+            text.chars()
+                .enumerate()
+                .map(|(c, ch)| temor_vt::StyledCell {
+                    col: Col(c as u16),
+                    text: ch.to_string(),
+                    width: temor_vt::CellWidth::Narrow,
+                    fg: None,
+                    bg: None,
+                    style: CellStyle::default(),
+                    hyperlink: temor_vt::Hyperlink::None,
+                    semantic: temor_vt::SemanticMark::Output,
+                    selected: temor_vt::Selected::No,
+                })
+                .collect()
         })
-    }
+        .collect()
+}
 
-    fn band(row: u16, fill: Option<Tint>, stripe: Option<Tint>, rule: Option<Tint>) -> RowBand {
-        RowBand {
-            rows: RowSpan {
-                first: Row(row),
-                last: Row(row),
-            },
-            top: Cut::Edge,
-            bottom: Cut::Edge,
-            fill,
-            stripe,
-            rule,
-            weight: RowWeight::Normal,
-        }
-    }
-
-    #[test]
-    fn a_fill_tints_its_row_across_the_padding_and_not_the_row_below() {
-        let mut b = Bench::new();
-        let (px, _) = b.render(&[band(1, tint(200, 0, 0, 128), None, None)]);
-        let mid = b.top(1) + b.cell_h / 2;
-        // (x, y, red): inside the grid, in the left padding, in the right padding, row below.
-        for (x, y, red) in [
-            (40, mid, 100),
-            (1, mid, 100),
-            (b.size.width.0 - 1, mid, 100),
-            (40, b.top(2) + b.cell_h / 2, 0),
-            (40, b.top(0) + b.cell_h / 2, 0),
-        ] {
-            assert_eq!(b.px(&px, x, y)[0], red, "red at ({x}, {y})");
-        }
-    }
-
-    #[test]
-    fn the_stripe_lies_inside_the_left_padding() {
-        let mut b = Bench::new();
-        let (px, _) = b.render(&[band(1, None, tint(0, 255, 0, 255), None)]);
-        let mid = b.top(1) + b.cell_h / 2;
-        // Three logical px at scale 1: columns 0..3 are the stripe, the rest of the padding is not.
-        for (x, green) in [(0, 255), (2, 255), (3, 0), (PAD - 1, 0), (PAD + 10, 0)] {
-            assert_eq!(b.px(&px, x, mid)[1], green, "green at x {x}");
-        }
-        assert_eq!(b.px(&px, 1, b.top(2) + 1)[1], 0, "the row below has none");
-    }
-
-    #[test]
-    fn the_rule_is_one_pixel_on_the_top_edge() {
-        let mut b = Bench::new();
-        let (px, _) = b.render(&[band(2, None, None, tint(0, 0, 255, 255))]);
-        let top = b.top(2);
-        for (y, blue) in [(top - 1, 0), (top, 255), (top + 1, 0)] {
-            for x in [0, 40, b.size.width.0 - 1] {
-                assert_eq!(b.px(&px, x, y)[2], blue, "blue at ({x}, {y})");
-            }
-        }
-    }
-
-    #[test]
-    fn a_band_cut_across_middles_paints_and_rules_from_the_middle() {
-        let mut b = Bench::new();
-        let mut card = band(1, tint(200, 0, 0, 255), None, tint(0, 0, 255, 255));
-        card.rows.last = Row(3);
-        (card.top, card.bottom) = (Cut::Middle, Cut::Middle);
-        let (px, _) = b.render(&[card]);
-        let half = b.cell_h / 2;
-        let (rule, end) = (b.top(1) + half, b.top(3) + half);
-        // (y, red, blue): above the rule, the rule, below it, the middle row, the last row's
-        // upper half, its lower half.
-        for (y, red, blue) in [
-            (rule - 1, 0, 0),
-            (rule, 0, 255),
-            (rule + 1, 200, 0),
-            (b.top(2) + half, 200, 0),
-            (end - 1, 200, 0),
-            (end, 0, 0),
-        ] {
-            let at = b.px(&px, 40, y);
-            assert_eq!((at[0], at[2]), (red, blue), "red and blue at y {y}");
-        }
-    }
-
-    #[test]
-    fn a_changed_band_redraws_exactly_its_rows() {
-        let mut b = Bench::new();
-        let first = band(1, tint(200, 0, 0, 128), None, None);
-        let moved = band(3, tint(200, 0, 0, 128), None, None);
-        let (_, all) = b.render(&[first]);
-        assert_eq!(all, u32::from(ROWS), "the first frame draws everything");
-        // (bands, rows composed)
-        for (bands, composed) in [(vec![first], 0), (vec![moved], 2), (vec![], 1), (vec![], 0)] {
-            let (_, rows) = b.render(&bands);
-            assert_eq!(rows, composed);
-        }
-    }
+#[test]
+fn a_still_draws_its_rows_as_the_live_frame_does_and_leaves_the_live_frame_alone() {
+    let texts = [
+        "Åg|Ç ÿjQ",
+        "ÅÄÖ ǧ,;j",
+        "gjpqy()[]",
+        "x",
+        "ẞ@$%&",
+        "Ç",
+        "",
+        "g",
+    ];
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let size = size_for(&mut renderer);
+    let palette = Palette::default();
+    let mut live = lines(texts);
+    let first = renderer
+        .render(&mut live, &view(size, &palette))
+        .expect("live")
+        .pixels
+        .to_vec();
+    let still = PaneFrame::still(COLS, &styled(&texts), &live);
+    let drawn = renderer
+        .render_still(&still, &view(size, &palette))
+        .expect("still");
+    assert_eq!(drawn.size, size);
+    assert!(
+        drawn.pixels == first.as_slice(),
+        "the still differs from the live frame"
+    );
+    let again = renderer
+        .render(&mut live, &view(size, &palette))
+        .expect("live again");
+    assert!(
+        again.damage.is_empty(),
+        "the still made the live frame redraw"
+    );
+    assert!(
+        again.pixels == first.as_slice(),
+        "the still drew into the live frame"
+    );
 }

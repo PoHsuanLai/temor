@@ -135,3 +135,36 @@ fn the_line_height_opens_the_cell_at_any_scale_and_keeps_its_marks_inside() {
         }
     }
 }
+
+#[test]
+fn symbols_no_script_owns_come_from_a_text_face_where_the_system_has_one() {
+    let config = super::FontConfig::default();
+    let mut set = super::FontSet::load(&config, super::FontSource::System).expect("system fonts");
+    for text in ["⏵", "⎿", "⧉", "⏺"] {
+        let id = set.face_for(text, FaceStyle::REGULAR);
+        let face = set.face(id);
+        let c = text.chars().next().unwrap();
+        if !face.maps(c) {
+            // A system without a symbol font (a bare container) has nothing to find; a Mac has.
+            #[cfg(target_os = "macos")]
+            panic!("{text} has no face on a Mac");
+            #[cfg(not(target_os = "macos"))]
+            continue;
+        }
+        if face.color == ColorFormat::None {
+            continue;
+        }
+        // A colour face only where none of the text faces tried has the character (a runner
+        // with no symbol font but an emoji one).
+        let wanted = super::fallback::presentation(text);
+        let text_faces: Vec<_> = set
+            .candidates(text, wanted, FaceStyle::REGULAR)
+            .into_iter()
+            .filter(|&id| set.face(id).color == ColorFormat::None && set.face(id).maps(c))
+            .collect();
+        assert!(
+            text_faces.is_empty(),
+            "{text} is drawn in colour though a text face has it"
+        );
+    }
+}

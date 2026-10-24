@@ -23,7 +23,6 @@ use super::support::Rig;
 use crate::edge::remote_conn::Conn;
 use crate::edge::remote_link::{RemoteLink, Target};
 use crate::hub::remote::{RemotePane, Shown};
-use crate::view::fact_chips::{ChipKind, chip_texts, lead_chips};
 use crate::view::remote_launch::open_fed_session;
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([4; 32]));
@@ -144,16 +143,16 @@ fn a_host_panes_folder_branch_and_changes_from_its_helper_show_as_its_chips() {
         .chip_folder(pane)
         .expect("the folder as its chip says it");
     let facts = rig.hub.facts_of(pane);
-    let mut chips = lead_chips(&folder, &facts);
-    chips.extend(chip_texts(&facts));
-    let said: Vec<(ChipKind, String)> = chips.iter().map(|c| (c.kind, c.text())).collect();
+    assert_eq!(folder, "~/app", "the host's folder");
     assert_eq!(
-        said,
-        [
-            (ChipKind::Folder, "~/app".to_owned()),
-            (ChipKind::Branch, "main".to_owned()),
-            (ChipKind::Changes, "+1 \u{2212}0 \u{b7} 1 file".to_owned()),
-        ],
-        "the host's chips"
+        facts.branch.as_ref().map(|b| b.as_str()),
+        Some("main"),
+        "the host's branch"
+    );
+    let changes = facts.changes.expect("the host's changes");
+    assert_eq!(
+        (changes.added, changes.removed, changes.files),
+        (1, 0, 1),
+        "the host's changes"
     );
 }

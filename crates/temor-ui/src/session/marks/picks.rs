@@ -14,8 +14,7 @@ use temor_core::block::{BlockState, PickClick, PickStep};
 use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
 use temor_core::vocab::ids::BlockId;
 use temor_core::vocab::text::CommandText;
-use temor_pane::paste;
-use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, RowCount, SurfacePoint, ViewportScroll};
+use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::super::Session;
 use crate::error::UiError;
@@ -42,14 +41,8 @@ impl Session {
     pub(in crate::session) fn annotate(&mut self, input: AnnotateIn) {
         let (ann, outs) = annotate_step(std::mem::take(&mut self.ann), input);
         self.ann = ann;
-        for out in outs {
-            match out {
-                AnnotateOut::Reveal => self.reveal_pick(),
-                AnnotateOut::FoldsChanged => {
-                    self.relayout();
-                }
-                _ => {}
-            }
+        if outs.contains(&AnnotateOut::FoldsChanged) {
+            self.relayout();
         }
     }
 
@@ -62,19 +55,11 @@ impl Session {
     /// A click that never left its cell, at `at`: it picks the block there (Shift: the run from
     /// the last pick; Ctrl or ⌘: in or out), or lets go of the pick where there is no block.
     pub(in crate::session) fn pick_at(&mut self, at: SurfacePoint, mods: Modifiers) {
-        let Some(placed) = self.placed() else {
+        let Some(hit) = self.point_hit(at) else {
             return;
         };
-        let Ok(top) = self.viewport_top() else {
-            return;
-        };
-        let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
         let alternate = self.pane.with_term(|term| term.on_alternate_screen());
-        match self
-            .frame()
-            .and_then(|frame| frame.block_at_screen_row(row))
-            .filter(|_| !alternate)
-        {
+        match self.hit_block(&hit).filter(|_| !alternate) {
             Some(id) => {
                 let how = match () {
                     _ if mods.contains(Modifiers::SHIFT) => PickClick::Range,
@@ -94,28 +79,6 @@ impl Session {
     pub(in crate::session) fn step_pick(&mut self, step: PickStep) {
         let order = self.pick_order();
         self.annotate(AnnotateIn::Step { step, order });
-    }
-
-    /// Brings the active pick's prompt into view (to the top, when it is out of view); with
-    /// nothing picked, the live screen.
-    fn reveal_pick(&mut self) {
-        let first = self
-            .ann
-            .active_pick()
-            .and_then(|id| self.frame()?.reach(id))
-            .map(|(first, _)| first);
-        self.pane.with_term(|term| {
-            let Some(first) = first else {
-                term.scroll(ViewportScroll::Bottom);
-                return;
-            };
-            let shown = term
-                .viewport()
-                .is_ok_and(|(top, rows)| (top..top.saturating_add(rows)).contains(&first));
-            if !shown {
-                term.scroll(ViewportScroll::Row(RowCount(u64::from(first))));
-            }
-        });
     }
 
     /// A key while blocks are picked: the arrows and Escape act on the pick and are used up.
@@ -269,23 +232,18 @@ impl Session {
     }
 
     /// ⌘I: the picked commands in the prompt, joined with `; ` (never a line break, so nothing
-    /// runs), through the paste path; the pick is let go. Refused with a notice when one of
-    /// them cannot be typed.
+    /// runs), in the composer while it shows, else through the paste path; the pick is let go.
+    /// Refused with a notice when one of them cannot be typed.
     pub(in crate::session) fn reinput_picked(&mut self) {
         let commands = self.picked_commands();
         if commands.is_empty() {
             return;
         }
-        let line = commands.join("; ");
-        if !CommandText(line.clone()).typable() {
+        if !self.put_in_prompt(CommandText(commands.join("; "))) {
             self.notice = Some("These commands cannot be typed again.".to_owned());
             return;
         }
         self.annotate(AnnotateIn::ClearPicks);
-        let mode = self.pane.with_term(|term| term.paste_mode());
-        self.pane.send(&paste::encode(&line, mode));
-        self.pane
-            .with_term(|term| term.scroll(ViewportScroll::Bottom));
     }
 
     /// A right-click at `at`: the block there, for its menu. It is picked, alone, unless it is
@@ -293,7 +251,7 @@ impl Session {
     /// stays selected. None where there is no block, on a full-screen program's screen, or while
     /// the program has the mouse: the click is the program's then.
     pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, UiError> {
-        let (Some(placed), Ok(top)) = (self.placed(), self.viewport_top()) else {
+        let Some(hit) = self.point_hit(at) else {
             return Ok(None);
         };
         let (alternate, tracking) = self
@@ -302,11 +260,7 @@ impl Session {
         if alternate || tracking {
             return Ok(None);
         }
-        let row = top.saturating_add(u32::from(placed.cell_at(at).pos.row.0));
-        let Some(id) = self
-            .frame()
-            .and_then(|frame| frame.block_at_screen_row(row))
-        else {
+        let Some(id) = self.hit_block(&hit) else {
             return Ok(None);
         };
         if !self.ann.is_picked(id) {

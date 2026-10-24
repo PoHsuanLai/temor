@@ -8,7 +8,7 @@ use std::rc::Rc;
 use ds::window::vocab::PageZoom;
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
 use temor_core::vocab::text::{CommandText, HostAlias};
-use temor_pane::keys::{Action, terminal_shortcut};
+use temor_pane::keys::Action;
 
 use super::desk::Desk;
 use super::dispatch::Origin;
@@ -73,7 +73,7 @@ impl Hub {
         let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
         // Pin Tab or Unpin Tab, whichever the tab in front can take; Detach only where it works.
         let pinned = self.front_pinned();
-        let detach = self.can_detach();
+        let detach = self.can_detach_focused();
         let actions: Vec<Action> = BAR_ACTIONS
             .iter()
             .copied()
@@ -199,19 +199,6 @@ impl HubRef {
         self.0.borrow().bar.model.is_open()
     }
 
-    /// The first-launch hint for `pane`, in the person's own chords: only the first pane of a new
-    /// window (never a restored one) has one.
-    pub fn first_hint(&self, pane: temor_core::vocab::ids::PaneId) -> Option<String> {
-        let hub = self.0.borrow();
-        if hub.first_hint != Some(pane) {
-            return None;
-        }
-        let keymap = &hub.launch.keymap;
-        let bar = terminal_shortcut(keymap, Action::OpenBar)?;
-        let split = terminal_shortcut(keymap, Action::SplitRight)?;
-        Some(format!("{bar} for anything \u{b7} {split} to split"))
-    }
-
     /// Lists these Spaces in the bar and switches through them.
     pub fn set_bar_spaces(&self, spaces: Rc<dyn SpaceRows>) {
         self.0.borrow_mut().set_bar_spaces(spaces);
@@ -282,12 +269,9 @@ impl Desk {
             Action::ToggleSidebar => self.sidebar_toggle(),
             Action::ShowDownloads => self.shelf_toggle(),
             Action::DetachProgram => {
-                let pane = self.hub.0.borrow_mut().detach_prepare();
-                if pane.is_some() {
-                    self.act(temor_core::workspace::WorkspaceIn::Split {
-                        towards: temor_core::split::Direction::Right,
-                    });
-                    self.hub.0.borrow_mut().detach_finish();
+                let pane = self.hub.keyboard_pane();
+                if let Some(pane) = pane {
+                    self.settle(|hub| hub.detach_block(pane));
                 }
             }
             Action::Settings => crate::settings_window::open(),

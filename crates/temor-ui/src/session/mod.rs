@@ -3,15 +3,18 @@
 //! never touches the terminal or the PTY itself. Dioxus is not used here.
 
 mod blink;
+mod block_list;
 mod blocks;
 mod clip;
 mod clipboard;
+mod composer;
 mod dropped;
 mod edit_text;
 mod find;
 mod keys;
 mod lifecycle;
 mod links;
+mod list_hit;
 mod look;
 mod marks;
 mod model;
@@ -25,12 +28,15 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
+pub use block_list::{CARD_MARGIN, LiveRows};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
+pub use composer::HistoryStep;
 pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::{LinkHover, LinkTipSpot};
-pub use marks::{Gutter, ToolsHeight, desktop_note};
+pub use list_hit::{ListMap, ListSpan, Toward};
+pub use marks::desktop_note;
 pub use model::{
     Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
 };
@@ -39,5 +45,4 @@ pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
 pub use temor_core::session::HeaderFacts;
-pub use temor_core::session::frame::{BlockMark, Frame, HeaderLine, PromptHeader};
 pub use viewer::ViewAsk;

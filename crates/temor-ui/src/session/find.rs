@@ -92,6 +92,11 @@ impl Session {
         self.reveal_current()
     }
 
+    /// The screen row of the find bar's current match.
+    pub fn found_row(&self) -> Option<u32> {
+        self.finder.as_ref()?.current().map(|found| found.row)
+    }
+
     /// Moves the find bar to the next or previous match.
     pub(super) fn step_find(&mut self, step: FindStep) {
         if let Some(finder) = self.finder.as_mut() {
@@ -104,7 +109,8 @@ impl Session {
         let _ = self.reveal_current();
     }
 
-    /// Selects the current match and scrolls the viewport to show it.
+    /// Selects the current match and scrolls the viewport to show it; a list of blocks scrolls
+    /// itself to it instead (`found_row`).
     fn reveal_current(&mut self) -> Result<(), UiError> {
         let Some(found) = self.finder.as_ref().and_then(|f| f.current().copied()) else {
             self.selection = None;
@@ -117,7 +123,7 @@ impl Session {
         self.selection = Some(selection);
         self.mirror_selection()?;
         let (top, len) = self.pane.with_term(|term| term.viewport())?;
-        if found.row < top || found.row >= top.saturating_add(len) {
+        if self.list_map.is_none() && (found.row < top || found.row >= top.saturating_add(len)) {
             self.pane.with_term(|term| {
                 term.scroll(temor_vt::ViewportScroll::Row(temor_vt::RowCount(
                     u64::from(found.row),

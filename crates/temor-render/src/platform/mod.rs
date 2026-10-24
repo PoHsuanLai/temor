@@ -21,6 +21,22 @@ pub(crate) const MONOSPACE_FIRST: &[&str] = &["SF Mono", "Menlo"];
 #[cfg(not(target_os = "macos"))]
 pub(crate) const MONOSPACE_FIRST: &[&str] = &[];
 
+/// Families tried by name for a character no script owns (arrows, technical and media symbols
+/// such as ⏵ ⏺ ⎿ ⧉, which TUIs draw with), after the monospace ones and before colour emoji:
+/// the system's script fallback says nothing for them, and the emoji face would draw some as
+/// pictures.
+#[cfg(target_os = "macos")]
+pub const SYMBOLS: &[&str] = &["Apple Symbols", "STIX Two Math"];
+#[cfg(not(target_os = "macos"))]
+pub const SYMBOLS: &[&str] = &[
+    "DejaVu Sans Mono",
+    "Noto Sans Symbols 2",
+    "Noto Sans Symbols",
+    "Noto Sans Math",
+    "DejaVu Sans",
+    "Symbola",
+];
+
 /// The least a line is tall, in ems: Menlo's own line is 1.17, which reads tight under the UI's
 /// type. Zero where the font's own metrics are kept.
 #[cfg(target_os = "macos")]

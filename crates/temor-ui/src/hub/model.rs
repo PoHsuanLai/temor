@@ -78,11 +78,10 @@ pub struct Hub {
     pub(super) viewers: ViewerHub,
     /// The peek card's worker (PLAN §10).
     pub(super) peek: PeekHub,
-    /// The pane of a new window's first tab, which shows the first-launch hint until a command
-    /// runs. None in a restored session.
-    pub(super) first_hint: Option<PaneId>,
     /// Programs run in tabs of their own in place of the shell (`temor -e`).
     pub(super) run: RunHub,
+    /// Running programs moved to terminals of their own, shown as live cards.
+    pub(super) live_cards: super::live_cards::LiveCards,
 }
 
 impl std::fmt::Debug for Hub {
@@ -140,9 +139,9 @@ impl Hub {
             remote,
             viewers: ViewerHub::default(),
             peek: PeekHub::default(),
-            first_hint: None,
 
             run: RunHub::default(),
+            live_cards: Default::default(),
         }
     }
 

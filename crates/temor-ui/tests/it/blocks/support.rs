@@ -272,8 +272,3 @@ pub(super) fn marks_of(session: &Session) -> Vec<temor_core::session::frame::Blo
         .map(|frame| frame.marks())
         .unwrap_or_default()
 }
-
-/// The viewport row of a block's last row.
-pub(super) fn last_row_of(session: &Session, id: temor_core::vocab::ids::BlockId) -> Option<i64> {
-    session.frame()?.last_row(id)
-}

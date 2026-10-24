@@ -14,20 +14,21 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49, blitz-kit 80938e37 (blitz 41134ff3)
+quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "d17e19da64c8845d8eb413784b2d84f177a86767" }  # d17e19da: v0.3.49
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
+unicode-width = "0.2"
 serde_json = "1"
 thiserror = "2"
 proptest = "1"
@@ -68,27 +69,27 @@ temor-wire = { path = "crates/temor-wire" }
 temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "373afbbc70bb1d229c970f06ea2fc28cb4d99244" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "373afbbc70bb1d229c970f06ea2fc28cb4d99244" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "373afbbc70bb1d229c970f06ea2fc28cb4d99244" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "373afbbc70bb1d229c970f06ea2fc28cb4d99244" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "373afbbc70bb1d229c970f06ea2fc28cb4d99244" }
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "99eec9ddd03ee345b669fcc7954ed44590724290" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
-# docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
+# docket 41ddb1c7 locks porter dcc16ada (as anyview 373afbbc does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07" }
 # Who may call temor's provider (intentd's unit), and the stand-in a test names for it.
-docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", default-features = false, features = ["dbus"] }
+docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031", default-features = false, features = ["dbus"] }
 # The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
-porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", features = ["oo7"] }
+porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 # peephole: which program is calling (a pinned process judged against a table), as porter and
 # docket use it, by the same tag; temor-desktop checks the caller of `org.quire.Temor1.Run` with it.
@@ -130,19 +131,22 @@ codegen-units = 1
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
 # quire-filters): the colour matrix filter, multi-threaded filter layers and CSS filter lists, so
-# every CSS `filter` function paints on both backends. Move back to crates.io once upstream has
-# them (blitz-kit docs/blitz-gaps.md tracks the PRs).
+# every CSS `filter` function paints on both backends; d4ae3885 lets a window renderer name the wgpu
+# backends it probes, falling back once to the default set; 03fcbe4c does not carry a skipped frame
+# into the next one on vello_hybrid; vello 84b2c9f7 draws bitmap glyphs (colour emoji from `sbix`
+# and CBDT fonts) on vello_hybrid, and 5c986661 tests it (branch fix/atlas-limit). Move back to
+# crates.io once upstream has them (blitz-kit docs/blitz-gaps.md tracks the PRs).
 [patch.crates-io]
-vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
 # dioxus-core 0.7.10 can spin forever in VirtualDom::wait_for_work: a task woken and then cancelled
 # before it is polled (a use_resource restart) leaves an empty entry in the dirty-task queue that
 # pop_task never removes. Fixed upstream in DioxusLabs/dioxus#5554 (0.8-alpha only); this fork

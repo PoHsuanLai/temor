@@ -6,7 +6,6 @@ use temor_core::vocab::text::display_text;
 use temor_vt::{GridPoint, PointSpace};
 
 use super::Session;
-use super::pointer::screen_cell;
 
 /// The longest link target shown.
 const LINK_MAX_CHARS: usize = 300;
@@ -43,13 +42,11 @@ impl Session {
     /// output moves under a pointer that did not.
     pub fn link_under_pointer(&self) -> Option<String> {
         let at = self.pointer_over?;
-        let placed = self.placed()?;
-        let hit = placed.cell_at(at);
+        let hit = self.point_hit(at)?;
         if hit.region != temor_render::HitRegion::Grid {
             return None;
         }
-        let top = self.viewport_top().ok()?;
-        let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
+        let cell = hit.cell;
         let target = self.pane.with_term(|term| {
             term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
         })?;

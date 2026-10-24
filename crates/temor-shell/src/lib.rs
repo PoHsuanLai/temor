@@ -1,5 +1,6 @@
 //! temor's shell: which shell the person uses, the environment a child starts with, and the
-//! shell integration (OSC 133 prompt marks and OSC 7 working directory) laid down for it.
+//! shell integration (OSC 133 prompt marks and OSC 7 working directory) laid down for it, and the
+//! formats its scripts answer in ([`report`], [`complete`]).
 //!
 //! This crate is pure planning plus the shim files it writes under a caller's runtime directory.
 //! It reads no ambient state: the environment, the passwd entry and the runtime directory are
@@ -17,6 +18,7 @@
 //! assert_eq!(shell.kind, ShellKind::Fish);
 //! ```
 
+pub mod complete;
 mod env;
 mod error;
 mod osc7;

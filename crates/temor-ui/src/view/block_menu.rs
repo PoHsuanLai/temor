@@ -48,6 +48,10 @@ pub struct BlockMenuState {
     pub picked: usize,
     /// Whether every picked block is bookmarked: the item then takes the bookmarks away.
     pub bookmarked: bool,
+    /// Whether every picked block's output is folded: the item then unfolds.
+    pub folded: bool,
+    /// Whether a command runs in the pane that can move to a live card of its own.
+    pub detachable: bool,
     pub pane: PaneKind,
     /// The lenses that can draw the selected block; offered when one block is picked.
     pub lenses: Vec<LensOffer>,
@@ -70,6 +74,10 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
         true => "Remove Bookmark",
         false => Action::ToggleBookmark.menu_title(),
     };
+    let fold = match state.folded {
+        true => "Unfold Output",
+        false => "Fold Output",
+    };
     let mut items = vec![
         MenuItem::new(Action::Copy, Action::Copy.menu_title())
             .with_tip("Copy the commands and their output"),
@@ -83,15 +91,25 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
         .with_tip("Type the commands into the prompt. Press Return to run them"),
         MenuItem::new(Action::ToggleBookmark, bookmark)
             .with_tip("Alt+Up and Alt+Down step between bookmarks"),
+        MenuItem::new(Action::ToggleFold, fold).with_tip("Show only the command's card"),
+    ];
+    if state.detachable {
+        items.push(
+            MenuItem::new(Action::DetachProgram, Action::DetachProgram.menu_title())
+                .with_tip("Move the running program to a card of its own. The prompt comes back"),
+        );
+    }
+    items.extend([
         MenuItem::Separator,
         MenuItem::new(
             Action::SelectAllBlocks,
             Action::SelectAllBlocks.menu_title(),
         ),
-    ]
-    .into_iter()
-    .map(|item| item.map(&BlockPick::Do))
-    .collect::<Vec<_>>();
+    ]);
+    let mut items = items
+        .into_iter()
+        .map(|item| item.map(&BlockPick::Do))
+        .collect::<Vec<_>>();
     if !state.lenses.is_empty() && !many {
         items.push(MenuItem::Separator);
         items.extend(state.lenses.iter().map(|lens| {
@@ -151,6 +169,8 @@ mod tests {
         BlockMenuState {
             picked,
             bookmarked: false,
+            folded: false,
+            detachable: false,
             pane: PaneKind::ThisComputer,
             lenses: lenses
                 .iter()
@@ -174,6 +194,7 @@ mod tests {
                 "Copy Output",
                 "Put in Prompt",
                 "Bookmark",
+                "Fold Output",
                 "Select All Commands"
             ]
         );
@@ -187,12 +208,22 @@ mod tests {
         // Only a pane on another computer offers to edit a file here.
         assert_eq!(many.last().map(String::as_str), Some("Edit Locally"));
         assert!(!one.contains(&"Edit Locally".to_owned()));
+        // A running program in a daemon pane can move to a card of its own.
+        let running = titles(BlockMenuState {
+            detachable: true,
+            ..state(1, &[], PictureShown::No)
+        });
+        assert_eq!(
+            running.get(6).map(String::as_str),
+            Some("Detach Running Program")
+        );
+        assert!(!one.contains(&"Detach Running Program".to_owned()));
     }
 
     #[test]
     fn a_lens_item_for_each_lens_of_one_block_and_hide_only_under_a_picture() {
         let kube = [("kube", "Show with Kube"), ("graph", "Show with Graph")];
-        let tail = |state| -> Vec<String> { titles(state).into_iter().skip(6).collect() };
+        let tail = |state| -> Vec<String> { titles(state).into_iter().skip(7).collect() };
         assert_eq!(
             tail(state(1, &kube, PictureShown::No)),
             ["Show with Kube", "Show with Graph"]
@@ -212,7 +243,7 @@ mod tests {
                 MenuItem::Item { value, .. } => Some(value),
                 _ => None,
             })
-            .skip(6)
+            .skip(7)
             .collect();
         assert_eq!(
             picks,

@@ -10,7 +10,9 @@ mod cards;
 #[cfg(test)]
 mod cards_tests;
 mod checkpoint;
+pub mod found;
 pub mod frame;
+pub mod list;
 mod marks;
 mod shell_state;
 
@@ -18,7 +20,8 @@ pub use annotations::{AnnotateIn, AnnotateOut, Annotations, annotate_step};
 pub use cards::{CardIn, CardOut, CardSize, Cards, Life, Placement, Surface, SurfaceId, card_step};
 pub use checkpoint::{Checkpoint, CheckpointFault, CommandRecord};
 pub use marks::{
-    Anchor, BlockAnchors, HeaderFacts, MarkIn, MarkKind, MarkLog, MarkOut, PluginFact, mark_step,
+    Anchor, BlockAnchors, HeaderFacts, KeptBlock, MarkIn, MarkKind, MarkLog, MarkOut, PluginFact,
+    mark_step,
 };
 pub use shell_state::{
     EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, holds_secret, is_secret,

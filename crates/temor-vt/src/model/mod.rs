@@ -13,7 +13,7 @@ pub use anchor::AnchorId;
 pub use cell::{
     CellStyle, CellView, CellWidth, CursorBlink, CursorCell, CursorShape, CursorView, FrameColors,
     FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, Selected, SemanticMark, StyleFlags,
-    Underline, Wrap,
+    StyledCell, Underline, Wrap,
 };
 pub use colour::{ColorRef, ColorScheme, Rgb};
 pub use config::TerminalConfig;
