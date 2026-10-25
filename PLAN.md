@@ -134,6 +134,72 @@ temor/
   and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.
 - Only `temor-desktop` names zbus or docket. Nothing in the core reaches `desktop/`.
 
+## 2b. Data, store, client, window (target, P23–P24)
+
+The terminal is already data (blocks, shell state, facts, presence, places); the crates should
+say so. Four stages, each a crate, each reaching only the one below it, as mailo is doing
+(`mailo/docs/mail-client.md`, the `mac-mail-client*` branches):
+
+```
+temor-schema   the data, as types (pure, serde, versioned)          ← every crate may name it
+temor-store    where the data is kept: SQLite (rusqlite, bundled, FTS5), WAL, one writer
+temor-client   every operation, on threads of its own; no Dioxus, no quire
+temor-ui       views only; reaches the rest through temor-client
+temor          the binary: makes one Client per process and launches the window
+```
+
+**temor-schema** (from `temor-core`'s types): `SessionId` (new: stable across launches and the
+daemon, unlike `PaneId`, which stays a window's handle and restarts each launch), `Session`
+(host, folder, program and argv, title, started, ended), `Block` (command, folder, exit,
+`Outcome`, author, started, ended, where its output is), `ShellState` and `ShellDelta`, `Fact`
+(slot, tone, symbol, link) and its scope, `AgentState`, `Progress`, `Place`, `Pin` and
+`Favourite`, `Page`, and `TemorUrl` (`temor://<host>/<path>#<session>[/<block>]`, parse and
+format, and never a command in it). `temor-core` keeps the pure rules (the step machines, the
+split tree, bar ranking, proposal sanitising) and names its types from `temor-schema`.
+
+**temor-store**: the tables are sessions, blocks (FTS5 on command and folder), pins and
+favourites (URLs in order), and the window's layout (what `session.json` holds now). The screen
+and scrollback stay files beside it (`snapshots/<session>.bin`), now keyed by `SessionId`, so
+they outlive the next launch. Every write says what it touched (`Topics`: SESSIONS, BLOCKS, PINS,
+LAYOUT, HOSTS, SETTINGS) and the store publishes `Committed { topics, generation }` once the
+commit is visible; a write that says nothing publishes ALL. A command typed with a leading space,
+or one the shell-state secret rules call a secret, is never written. History is kept for a set
+time (default 90 days) and output is not kept beyond the snapshot unless asked. The first launch
+imports `session.json` and `checkpoints/` and leaves them in place.
+
+**temor-client**: `Client` (Clone, Send + Sync, one per process, every window shares it).
+- `live(query) -> Live<T>`: a value that is already there (`Snapshot::{Loading, Ready{as_of},
+  Failed}`), shared by everyone who asks the same thing, read again when a commit touches its
+  topics (gathered over about 30 ms), dropped when the last holder goes. Facts, not views: it has
+  no word for a sidebar or a row. Queries: `Sessions { space }` (each with program, argv, folder,
+  presence, progress, whether it waits for the person), `Blocks(SessionId)`, `History { place,
+  text, before }` (paged), `Pins`, `Favourites`, `Folder(TemorUrl)` (a listing, read off the
+  window's thread), `Facts(scope)`, `Completions(Ask)` (P21's sources).
+- `act(command) -> Ticket<Done>`, never blocking, applied in order on `temor-act`: open a URL,
+  spawn, close, reopen, pin, favourite, rename, move, detach, attach, upload. Undo and toasts stay
+  the window's.
+- Runtime state that is not in SQLite (a running block, presence, progress) is the client's own
+  and publishes the same way (a RUNTIME topic), so the window has one way to hear anything.
+- Panes are not queries: `pane(id) -> (PaneFeed, PaneInput)`. The feed hands over the rendered
+  rows with their damage, made on the pane's thread with `temor-render`'s CPU renderer; the
+  window only uploads them. Input (keys, mouse, paste, resize) goes straight to the pane's thread
+  and never waits behind `act`.
+- It owns what the window runs today: the hub's model and dispatch, the pane sessions (engine,
+  painter, selection, find), the edge's files and workers, ssh and the remote links, transfers,
+  facts providers, completion sources, viewers, and `temor-desktop`'s port.
+- `Client::builder(store).inline()` (feature `testing`) answers on subscribe, synchronously, so
+  SSR tests see data on the first frame; `client.idle()` says nothing is running.
+
+**temor-ui**: views, input, texture upload, the settings window, words. `use_client()` and
+`use_live(key)` are its only way to data; `Cargo.toml` names `temor-client` and `temor-schema`
+and no other temor crate, so a store, a pty or a socket is not something a view can name. That
+is the fence, kept by the compiler and by `scripts/check-layers.sh`; there is no allowlist.
+
+Where today's code goes: `temor-ui/src/edge` (6.7k lines) and `hub` (18k, less its Dioxus glue)
+and `session` (5k) go to `temor-client`; `view`, `input`, `paint`, `settings_window`, `words`
+stay. `temor-core`'s types go to `temor-schema`. The L0 and L1 crates stay where they are, under
+the client.
+
 ## 3. Core types (temor-core, pure)
 
 ```rust
@@ -759,6 +825,8 @@ The ranking rules:
 | **P20 Block list** (done 2026-10-24, branch `block-list`) | Replaces P15's cards laid over the grid and P16's chips. On the shell's screen the pane is a list of blocks, each a card with its own drawing of its output (`Terminal::styled_row`, `render_rows`), the running one live, expanded by default with a chevron to fold; status by tint only (failed red with "exit N", running amber). A folder line heads each section, the head of the card scrolled into sticks to the top, and a lens's picture sits in its block's card. The list ends in a composer card (folder, field in the grid's family; Enter sends, ⇧Enter starts a new line and the card grows to hold its lines, ↑/↓ step through the pane's commands while it holds one line, Ctrl+C empties; Tab completes the line with the shell's own completion (bash 4+, zsh, fish; temor presses U+E000, the script answers in OSC 7504; several words are listed above the field to pick from); a paste, a drop and Re-run go into it). A block's time is from when the pane read its marks. A bookmarked card shows a star. The wheel over the running block's rows goes to its program as mouse reports when it asked for the mouse. A full-screen program's screen is drawn whole. Gone: the overlay cards, header, toolbar, chips, stripe and first-launch hint, and `TEMOR_BLOCK_LIST`. Open: shells still draw their prompt into the grid (hidden by the list, so `TEMOR_COMPOSER` blanking was not needed); the branch and changes show on the tab's hover only, as the design has it; temor-render's row bands, temor-core's overlay `Frame` parts (sticky header, tools spot, card spans), chip fitting and `RowLayout`'s inserts are deleted (it still lays out folds) | P15, P16 |
 | **P21 Completion sources** (the interface and nushell's source done 2026-10-25; the AI source and ghost text open) | Tab in the composer asks sources (`temor_shell::suggest`: `CompletionSource`, `Ask`, `Suggestion`) and merges what they say into one list. A suggestion replaces the line's characters `from..to` with a word, so a source can finish the last word (a shell) or put a whole command in place of what was typed (a model); it can carry a short detail shown beside it, and a space follows it or not (a folder goes on). A source answers once, from any thread, as late as it likes; the first answer completes the line (one suggestion) or lists what to pick from (several, with what they share put in), and later ones add to the list; an answer to an old request is dropped. The running shell's own completion (bash 4+, zsh, fish; OSC 7504) is held by the session because it needs the pane; sources that stand on their own implement the trait: **nushell's** runs `nu --ide-complete` on the line in the pane's folder. **Next:** an AI source (the line, folder, shell and recent commands to a model; opt-in, and what it sends goes through the shell-state secret rules: a command typed with a leading space, or holding a secret, is never sent), and ghost text (one best suggestion shown faintly in the field, taken with →) as a source's optional second answer. Bash 3 (macOS's own) and a remote host's nushell have no source | P20 |
 | **P22 Tab icons** (open) | A tab's icon is the first of: what the program says (an `icon` slot on the provider escape, so a tool or a project can name its own); the icon of the Mac app the foreground executable belongs to (its real path inside a `.app`, asked of the system: `code`, `cursor`, `zed`, `docker`, `ollama` and anything else installed that way, with no list); an icon pack, an editable provider that maps a program name or argv to a glyph and a brand colour (agent CLIs such as `claude`, `codex`, `gemini`, `copilot`, `cursor-agent`, `aider`, `opencode`; runtimes and build tools; git, containers, clouds, databases, editors), drawn as a white glyph on the brand colour, from Simple Icons (CC0) where it has the brand; the runtime when argv names one (`python train.py` takes Python's); and else the letter tile coloured from the name. A shell at its prompt shows its folder's own icon when the folder has one set, else the letter tile; a project-type icon (Cargo.toml, pyproject) is an extension's to add, not temor's. Open: whether an app's full-colour icon is drawn as it is (as the Dock does) or redrawn as a tile from its main colour | P11 |
+| **P23 History store** (open) | `temor-schema` and `temor-store` (§2b). Sessions get a `SessionId` that lasts; every session and every finished block is written as it happens (not at quit), with FTS5 on commands and folders. `temor://history` is a page of its own, opened with ⌘Y or a tab's or folder's Show History: every session by day, searchable, narrowed to a folder (`?in=`) or to one session (`/<id>`, its commands). A live session in it goes to its tab; a closed one opens read-only and reopens a shell at its folder with its blocks above. Snapshots are kept by session, so they outlive the next launch. Retention, and never writing a secret, as §2b says. Imports `session.json` and `checkpoints/` once | P22 |
+| **P24 The client** (open) | `temor-client` between the store and the window (§2b), in stages, each leaving the app working: **a.** the crate, `Live`, the registry, the read workers, store publishing, tests; queries `Sessions`, `History`, `Pins`, `Favourites`; the history page and the sidebar read through it. **b.** commands through `act` (open, spawn, close, reopen, pin, favourite); the window keeps undo and toasts. **c.** panes: the hub, the pane sessions and the edge move in; `PaneFeed` and `PaneInput`; the console reads `Blocks`. **d.** the rest: facts, completions, ssh and remote, transfers, viewers, the desktop port. **e.** the fence: `temor-ui` names only `temor-client` and `temor-schema`, and `check-layers.sh` says so. Follows mailo's `mail-client`, so the two apps share one shape | P23 |
 
 **Status (2026-10-11):** every phase not blocked on another project has landed. Open: P8 (bulkhead), P11 (bayonet), P12 (companion), the docket-side parts of P7 and P14, and the follow-ups in FOLLOWUPS.md "Open now". P3 to P5 can run alongside P6 and P9 once P2 lands. P14's window side (Tier B sessions in the window, plus the temor-wire revision: WriteFile offset/append, Ping, cell size and Palette) runs with P16 to P18 as Batch 3. Version pins arrive in account-wide batches (Batch 13: porter's `Machine.link` / `Machine.ssh`) and are applied when the full set comes.
 
