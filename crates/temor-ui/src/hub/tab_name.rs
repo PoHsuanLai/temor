@@ -1,4 +1,4 @@
-//! What a tab is called in the sidebar, and its second line (PLAN §7). The name is the program
+//! What a tab is called in the sidebar (PLAN §7). The name is the program
 //! that runs in the pane while one runs, else the last part of the pane's folder. A window title
 //! of the form `user@host:path` is the shell's own and is never used. Pure: the hub reads the
 //! inputs and the row draws the result.
@@ -86,82 +86,11 @@ fn folder_name(cwd: &str, home: &Path) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// How the tab's last command went, which colours its glyph in the sidebar: one colour, one
-/// meaning, as the chips use them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum TabTone {
-    /// Nothing ran yet, it runs now, or it was stopped or ended unsaid: no colour of its own.
-    #[default]
-    Plain,
-    /// The last command succeeded.
-    Succeeded,
-    /// The last command failed.
-    Failed,
-}
-
-impl TabTone {
-    /// The tone of a tab whose newest command stands at `outcome`.
-    pub fn of(outcome: Option<temor_core::block::Outcome>) -> TabTone {
-        use temor_core::block::Outcome;
-        match outcome {
-            Some(Outcome::Succeeded) => TabTone::Succeeded,
-            Some(Outcome::Failed(_)) => TabTone::Failed,
-            _ => TabTone::Plain,
-        }
-    }
-
-    /// The word the stylesheet reads.
-    pub fn slug(self) -> &'static str {
-        match self {
-            TabTone::Plain => "plain",
-            TabTone::Succeeded => "succeeded",
-            TabTone::Failed => "failed",
-        }
-    }
-}
-
-/// What the tab is doing, for its second line.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TabState {
-    Idle,
-    /// A command has run for this many milliseconds.
-    Running {
-        for_ms: u64,
-    },
-}
-
-impl TabState {
-    /// The words: `idle` or `running 2m`.
-    pub fn words(self) -> String {
-        match self {
-            TabState::Idle => "idle".to_owned(),
-            TabState::Running { for_ms } => format!("running {}", short(for_ms)),
-        }
-    }
-
-    /// How long the command has run, `2m`, while one runs.
-    pub fn elapsed(self) -> Option<String> {
-        match self {
-            TabState::Idle => None,
-            TabState::Running { for_ms } => Some(short(for_ms)),
-        }
-    }
-}
-
-/// A duration in its largest whole unit: `5s`, `2m`, `3h`.
-fn short(ms: u64) -> String {
-    match ms / 1000 {
-        0..60 => format!("{}s", ms / 1000),
-        60..3600 => format!("{}m", ms / 60_000),
-        _ => format!("{}h", ms / 3_600_000),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
 
-    use super::{Marking, NameIn, TabState, TabTone, is_host_form, tab_title};
+    use super::{Marking, NameIn, is_host_form, tab_title};
 
     fn name(running: Option<&str>, title: &str, cwd: Option<&str>, marking: Marking) -> String {
         tab_title(NameIn {
@@ -216,35 +145,6 @@ mod tests {
             ("ssh me@box", false),
         ] {
             assert_eq!(is_host_form(title), want, "{title}");
-        }
-    }
-
-    #[test]
-    fn the_second_line_names_the_state() {
-        for (state, want) in [
-            (TabState::Idle, "idle"),
-            (TabState::Running { for_ms: 4_000 }, "running 4s"),
-            (TabState::Running { for_ms: 125_000 }, "running 2m"),
-            (TabState::Running { for_ms: 7_300_000 }, "running 2h"),
-        ] {
-            assert_eq!(state.words(), want);
-        }
-    }
-
-    #[test]
-    fn a_tab_is_coloured_by_how_its_last_command_went() {
-        use temor_core::block::Outcome;
-        use temor_core::vocab::ids::ExitCode;
-        let rows = [
-            (None, TabTone::Plain),
-            (Some(Outcome::Running), TabTone::Plain),
-            (Some(Outcome::Succeeded), TabTone::Succeeded),
-            (Some(Outcome::Failed(ExitCode(1))), TabTone::Failed),
-            (Some(Outcome::Stopped(ExitCode(130))), TabTone::Plain),
-            (Some(Outcome::Unreported), TabTone::Plain),
-        ];
-        for (outcome, tone) in rows {
-            assert_eq!(TabTone::of(outcome), tone, "{outcome:?}");
         }
     }
 }

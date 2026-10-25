@@ -1,6 +1,6 @@
 //! The pinned tabs at the top of the sidebar, as Arc's and mailo's pinned tiles are: square tiles
-//! four to a row, each the tab's glyph (the companion's orb while an agent works or waits) with
-//! its name on hover and a dot when it has news. Pressing a tile brings its tab to the front; its
+//! four to a row, each the tab's glyph with its name on hover and a dot when it needs the
+//! person. Pressing a tile brings its tab to the front; its
 //! menu unpins it. A tile drags as Arc's do (`dnd::resolve`): onto another tile to take its place,
 //! onto a row to be unpinned there; a row dropped on a tile is pinned there.
 //!
@@ -9,12 +9,12 @@
 
 use dioxus::prelude::*;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
-use ds::prelude::{IconSize, Shown};
+use ds::prelude::{IconSize, IconView, Shown};
 
 use super::dnd::Dnd;
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
-use super::tab_glyph::presence_face;
+use super::tab_glyph::prompt_glyph;
 use super::tab_wiring::{drag_press, selected_attr, tab_menu_trigger, use_drag_target};
 use crate::hub::{Desk, DragKey, TabRow, Unread, select_tab};
 
@@ -60,9 +60,9 @@ fn PinTile(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                     });
                 },
                 oncontextmenu: opening,
-                {presence_face(row.agent, IconSize::Large)}
+                IconView { source: prompt_glyph(IconSize::Large), size: IconSize::Large }
                 if row.unread == Unread::Unread {
-                    span { class: "temor-pin-news",
+                    span { class: "temor-pin-news temor-tab-needs",
                         Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
                     }
                 }

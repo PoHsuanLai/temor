@@ -10,7 +10,7 @@ use temor_core::workspace::sidebar_plan;
 use temor_ssh::HostAlias;
 
 use super::model::{Hub, HubRef};
-use super::tab_name::{Marking, NameIn, TabState, TabTone, tab_title};
+use super::tab_name::{Marking, NameIn, tab_title};
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,14 +52,8 @@ pub struct TabRow {
     pub unread: Unread,
     /// What the agent in the tab is doing: the most urgent of its panes.
     pub agent: AgentState,
-    /// A line under the folder: the tab's agent worktree and what the overlap check found.
-    pub note: Option<String>,
-    /// What plugins say about the pane's folder, on one line.
-    pub branch: Option<String>,
-    /// Whether a command runs in the tab's pane, for the row's second line.
-    pub state: TabState,
-    /// How the last command in the tab's pane went, for the glyph's colour.
-    pub tone: TabTone,
+    /// What plugins say about the pane's folder, on one line, for hover.
+    pub about: Option<String>,
     /// Selected when the tab is in front.
     pub selection: Selection,
     /// The pane with the keys in this tab.
@@ -103,7 +97,7 @@ impl Hub {
     fn row(&self, id: TabId) -> Option<TabRow> {
         let tab = self.ws.tabs.tab(id)?;
         let pane = self.ws.focus_of(id)?;
-        let (title, state) = self.tab_name_and_state(pane, &tab.title);
+        let title = self.pane_title(pane, &tab.title);
         // A host's title already names its folder, and its paths are not under this home.
         let on_host = self.host_of(pane).is_some();
         let cwd = self
@@ -127,29 +121,25 @@ impl Hub {
             true => self.tiles(id, pane),
             false => Vec::new(),
         };
-        let tone = TabTone::of(self.live(pane, |s| s.last_outcome()).flatten());
         Some(TabRow {
             id,
             title,
             cwd,
             unread,
             agent,
-            note: self.agent_note(id),
-            branch: self.plugin_facts_summary(pane),
-            state,
-            tone,
+            about: self.plugin_facts_summary(pane),
             selection,
             pane,
             tiles,
         })
     }
 
-    /// The tab's name and what it is doing (see `tab_name`).
-    pub(super) fn tab_name_and_state(
+    /// The name a tab whose focus is `pane` goes by (see `tab_name`).
+    pub(super) fn pane_title(
         &self,
         pane: PaneId,
         made_as: &temor_core::vocab::text::TabTitle,
-    ) -> (String, TabState) {
+    ) -> String {
         let read = self.live(pane, |s| {
             (
                 s.title().to_owned(),
@@ -159,12 +149,8 @@ impl Hub {
             )
         });
         let (title, live_cwd, running, prompts) = read.unwrap_or_default();
-        let state = match &running {
-            Some(run) => TabState::Running { for_ms: run.for_ms },
-            None => TabState::Idle,
-        };
         if let Some(host_title) = self.ssh_title(pane) {
-            return (host_title, state);
+            return host_title;
         }
         let cwd = live_cwd.or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
         let marking = match prompts {
@@ -173,7 +159,7 @@ impl Hub {
         };
         // A live card's pane runs the program it was given, which its own shell never marked.
         let carried = self.live_head(pane).map(|head| head.command);
-        let name = tab_title(NameIn {
+        tab_title(NameIn {
             running: running
                 .as_ref()
                 .map(|run| run.command.as_str())
@@ -183,8 +169,7 @@ impl Hub {
             home: &self.launch.ambient.home,
             fallback: made_as.as_str(),
             marking,
-        });
-        (name, state)
+        })
     }
 
     fn tiles(&self, id: TabId, focus: PaneId) -> Vec<Tile> {
@@ -209,7 +194,7 @@ impl Hub {
                     // Named as a tab is: its folder, or what runs in it.
                     title: match self.viewer_name(pane) {
                         Some(name) => name,
-                        None => self.tab_name_and_state(pane, &tab.title).0,
+                        None => self.pane_title(pane, &tab.title),
                     },
                     selection: match pane == focus {
                         true => Selection::Selected,

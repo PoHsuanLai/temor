@@ -17,7 +17,7 @@ use temor_core::space::Project;
 use temor_ui::edge::save_spaces;
 
 use super::drive;
-use super::drive::{chord, started, type_line, wait_until};
+use super::drive::{chord, wait_until};
 use super::window::{harness, harness_in};
 
 /// A box in the window: left, top, right, bottom, and what it is.
@@ -326,41 +326,6 @@ fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
         .collect()
 }
 
-#[test]
-fn a_running_tab_counts_up_with_no_output() {
-    if !super::support::window_tools_present() {
-        return;
-    }
-    let probe = Probe::new();
-    let mut h = started("sidebar-running-ticks", &probe);
-    h.send(Input::click(ds::prelude::Point {
-        x: ds::prelude::Px(700.0),
-        y: ds::prelude::Px(300.0),
-    }));
-    type_line(&mut h, "sleep 30");
-    let start = std::time::Instant::now();
-    // `sleep` prints nothing: only the timer can move the row's time from 0s or 1s to 3s.
-    let time = |h: &Harness| {
-        h.with_doc(|doc| {
-            doc.query_selector(".temor-tab-time")
-                .ok()
-                .flatten()
-                .and_then(|id| doc.get_node(id).map(|node| node.text_content()))
-        })
-    };
-    while time(&h).as_deref().map(str::trim) != Some("3s") {
-        h.advance(Duration::from_millis(50));
-        assert!(
-            start.elapsed() < Duration::from_secs(20),
-            "the tab's time did not count up: {:?}",
-            time(&h)
-        );
-    }
-    h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
-}
-
-/// Hidden, the sidebar waits at the window's edge: the pointer there floats it over the pane, as
-/// mailo's does, and a click on the edge pins it again.
 #[test]
 fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
     if !super::support::window_tools_present() {

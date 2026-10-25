@@ -1,5 +1,5 @@
-//! Agents in the window, in ds-harness (event dispatch only, never OS input): a program's own
-//! status report (OSC 7501) and a report over the pane socket show as the sidebar's orbs, and
+//! Agents in the window, in ds-harness (event dispatch only, never OS input): a program that
+//! says it waits (OSC 7501, or over the pane socket) puts the sidebar's one dot on its tab, and
 //! ⌘⇧U brings the keyboard to the pane that waits.
 
 use std::io::{BufRead, BufReader, Write};
@@ -16,25 +16,14 @@ use temor_ui::view::probe::Probe;
 use super::drive::{chord, focus_pane, started, type_line, wait_until};
 use super::support::{scratch_path, tools_present};
 
-/// How many tab rows show `presence` (`idle`, `working`, `waiting`). An idle tab has no orb (a
-/// terminal glyph leads it): the tabs that show neither of the others.
-fn orbs(h: &Harness, presence: &str) -> usize {
-    let html = h.html();
-    let count = |presence: &str| {
-        html.matches(&format!("data-presence=\"{presence}\""))
-            .count()
-    };
-    match presence {
-        "idle" => {
-            html.matches("class=\"temor-tab-box\"").count() - count("working") - count("waiting")
-        }
-        _ => count(presence),
-    }
+/// How many tab rows show the dot that says the tab needs the person.
+fn dots(h: &Harness) -> usize {
+    h.html().matches("class=\"temor-tab-needs\"").count()
 }
 
-fn wait_for_orbs(h: &mut Harness, what: &str, want: &[(&str, usize)]) {
+fn wait_for_dots(h: &mut Harness, what: &str, want: usize) {
     let start = Instant::now();
-    while !want.iter().all(|(presence, n)| orbs(h, presence) == *n) {
+    while dots(h) != want {
         h.advance(Duration::from_millis(25));
         assert!(
             start.elapsed() < Duration::from_secs(30),
@@ -89,14 +78,14 @@ fn say_over_socket(socket: &Path, state: ReportState) {
 }
 
 #[test]
-fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
+fn a_wait_shows_as_the_dot_and_the_jump_chord_finds_the_pane_that_waits() {
     if !tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = started("ag-orb", &probe);
+    let mut h = started("ag-dot", &probe);
     focus_pane(&mut h);
-    wait_for_orbs(&mut h, "an idle orb", &[("idle", 1)]);
+    wait_for_dots(&mut h, "no dot", 0);
 
     // The program in the first tab says it needs permission, in its own status sequence, and
     // then waits for an answer as an agent does (a prompt coming back would end the wait).
@@ -104,7 +93,7 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
         &mut h,
         "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
     );
-    wait_for_orbs(&mut h, "a waiting orb", &[("waiting", 1), ("idle", 0)]);
+    wait_for_dots(&mut h, "the waiting tab's dot", 1);
 
     // A second tab, and its program reports over the pane's socket.
     h.send(Input::chord(
@@ -116,10 +105,12 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
     wait_until(&mut h, &probe, "the second tab to have the keys", |s| {
         s.lines().any(|l| l.trim_end() == "second-tab")
     });
-    let found = sockets("ag-orb");
+    let found = sockets("ag-dot");
     assert_eq!(found.len(), 2, "one socket for each pane: {found:?}");
+    // Working is not something the row says: the dots stay as they were.
     say_over_socket(&found[1], ReportState::Working);
-    wait_for_orbs(&mut h, "a working orb", &[("waiting", 1), ("working", 1)]);
+    h.advance(Duration::from_millis(300));
+    assert_eq!(dots(&h), 1, "a working agent puts no dot on its tab");
 
     // The chord brings the keyboard to the pane that waits: its screen has the command typed.
     h.send(Input::chord(
@@ -132,15 +123,14 @@ fn reports_show_as_orbs_and_the_jump_chord_finds_the_pane_that_waits() {
 }
 
 /// A tab split in two draws its panes as segments; the pane whose program says it waits still
-/// shows as a waiting orb in the sidebar (found by the end-to-end workflow test: a split tab's
-/// row draws each segment's prompt glyph and drops the tab's orb).
+/// puts the dot on its tab.
 #[test]
-fn a_waiting_program_in_a_split_tab_still_shows_its_orb() {
+fn a_waiting_program_in_a_split_tab_still_shows_its_dot() {
     if !tools_present() {
         return;
     }
     let probe = Probe::new();
-    let mut h = started("ag-split-orb", &probe);
+    let mut h = started("ag-split-dot", &probe);
     focus_pane(&mut h);
     // ⌘D: the tab splits, and the new pane has the keys.
     chord(&mut h, 'd');
@@ -153,5 +143,5 @@ fn a_waiting_program_in_a_split_tab_still_shows_its_orb() {
         &mut h,
         "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
     );
-    wait_for_orbs(&mut h, "a waiting orb on the split tab", &[("waiting", 1)]);
+    wait_for_dots(&mut h, "the split tab's dot", 1);
 }

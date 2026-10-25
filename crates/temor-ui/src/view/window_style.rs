@@ -53,10 +53,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-tab-box { position: relative; display: flex; width: 100%; min-width: 0; }\
 .temor-tab-box { --sel-bg: var(--sel-neutral); --sel-bg-quiet: var(--sel-neutral); --sel-ink: var(--ink); }\
 .temor-tab-close { display: flex; flex: none; opacity: 0; }\
+.temor-tab-needs { display: flex; flex: none; }\
 .temor-tab-box:hover .temor-tab-close, .temor-tab-close[*|data-selected=true] { opacity: 1; }\
-.temor-tab-glyph { display: grid; place-items: center; }\
-.temor-tab-glyph[*|data-tone=succeeded] { color: var(--ok); }\
-.temor-tab-glyph[*|data-tone=failed] { color: var(--danger); }\
 .temor-new-tab { display: flex; width: 100%; min-width: 0; }\
 .temor-tab-box > *, .temor-new-tab > *, .temor-seg-slot > * { flex: 1 1 auto; min-width: 0; }\
 .temor-split { display: flex; flex-direction: row; align-items: center; width: 100%; min-width: 0; gap: var(--s-2); }\
