@@ -53,10 +53,14 @@ temor-ssh = { path = "crates/temor-ssh" }
 temor-core = { path = "crates/temor-core" }
 temor-schema = { path = "crates/temor-schema" }
 temor-store = { path = "crates/temor-store" }
+temor-client = { path = "crates/temor-client" }
 # temor-store: SQLite, built in (FTS5 included), with the commit hook that says a write is visible.
 rusqlite = { version = "0.40", features = ["bundled", "hooks"] }
 bitflags = "2"
 parking_lot = "0.12"
+# temor-client: another process's commits are heard by watching the store's file. The version
+# quire's ds-settings already locks.
+notify = "8.2"
 temor-pty = { path = "crates/temor-pty" }
 temor-shell = { path = "crates/temor-shell" }
 temor-pane = { path = "crates/temor-pane", default-features = false }

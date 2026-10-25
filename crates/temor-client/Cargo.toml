@@ -1,0 +1,33 @@
+[package]
+name = "temor-client"
+description = "temor's data as values that are already read, and kept read as the store changes: what the window asks, answered on threads of the client's own."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Between the store and the window (PLAN §2b, P24). A caller asks for a value and is handed one
+# that is already there; the reading happens on the client's threads, and again when the store
+# says what a commit touched. Draws nothing and words nothing: no dioxus, no quire.
+
+[features]
+# What a test builds with: `Live::wait`, and a faster look for other processes' writes.
+testing = []
+
+[dependencies]
+temor-schema = { workspace = true }
+temor-store = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+# The watch channel a `Live` is followed through, so an `async` window can await a change.
+tokio = { workspace = true }
+notify = { workspace = true }
+
+[dev-dependencies]
+temor-client = { path = ".", features = ["testing"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+
+[lints]
+workspace = true

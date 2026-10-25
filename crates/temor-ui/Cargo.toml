@@ -32,6 +32,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 similar = { workspace = true }
 temor-core = { workspace = true }
+# What the window reads: temor's data as values kept read (PLAN §2b).
+temor-client = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
 temor-remote = { workspace = true }

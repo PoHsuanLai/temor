@@ -20,6 +20,8 @@ pub fn run(launch: Launch) -> Result<(), ds_blitz::LaunchError> {
 
 /// [`run`] with the desktop services `desktop` (see [`desktop::join`]).
 pub fn run_with(launch: Launch, desktop: Desktop) -> Result<(), ds_blitz::LaunchError> {
+    // One for the process: every window reads through it.
+    let client = crate::view::live::open_client(launch.state_dir.as_deref());
     let config = ds_blitz::AppConfig::new(
         "temor",
         ds_blitz::WindowSize::new(960, 600).with_least(480, 320),
@@ -27,6 +29,7 @@ pub fn run_with(launch: Launch, desktop: Desktop) -> Result<(), ds_blitz::Launch
     .with_app_id(ds_blitz::AppId(APP_ID.to_owned()))
     .with_context(launch)
     .with_context(desktop)
+    .with_context(client)
     // Both windows hold these: where Settings is asked to be, and the Spaces between them.
     .with_context(crate::settings_window::SettingsAsked::default())
     .with_context(crate::settings_window::SpaceBoard::default())

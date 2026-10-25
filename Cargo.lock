@@ -7197,6 +7197,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-client"
+version = "0.1.1"
+dependencies = [
+ "notify",
+ "parking_lot",
+ "temor-client",
+ "temor-schema",
+ "temor-store",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "temor-core"
 version = "0.1.1"
 dependencies = [
@@ -7417,6 +7431,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar",
+ "temor-client",
  "temor-core",
  "temor-desktop",
  "temor-pane",
