@@ -1,5 +1,5 @@
-//! The loops that keep agents current while the window lives: finished git jobs are carried on
-//! as they arrive, and about once a second the radar settles and worktrees due a look get one.
+//! The loop that keeps agents current while the window lives: about once a second the radar
+//! settles.
 
 use std::time::Duration;
 
@@ -12,17 +12,8 @@ use crate::hub::Desk;
 /// How often the radar is ticked.
 const TICK: Duration = Duration::from_secs(1);
 
-/// Starts the two loops. Call once, next to the pane event loop.
+/// Starts the loop. Call once, next to the pane event loop.
 pub fn spawn_agent_loops(desk: Desk) {
-    let inbox = desk.hub.0.borrow_mut().agents.jobs.take_inbox();
-    if let Some(mut inbox) = inbox {
-        let desk = desk.clone();
-        spawn(async move {
-            while let Some(done) = inbox.recv().await {
-                desk.settle(|hub| hub.agent_done(done));
-            }
-        });
-    }
     spawn(async move {
         loop {
             sleep(TICK).await;

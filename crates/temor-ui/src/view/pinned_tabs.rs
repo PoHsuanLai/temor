@@ -42,7 +42,7 @@ fn PinTile(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     let click = dnd.click.clone();
     let mut menu = use_signal(|| Shown::Hidden);
     let picking = desk.clone();
-    let opening = tab_menu_trigger(&desk, id, move || menu.set(Shown::Visible));
+    let opening = tab_menu_trigger(move || menu.set(Shown::Visible));
     let press = drag_press(&dnd, DragKey::Tab(id));
     rsx! {
         RowTip { name: format!("pin{}", id.0), text: row.title.clone(),

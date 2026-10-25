@@ -30,7 +30,6 @@ use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::quick::QuickView;
-use super::radar::AgentSheets;
 use super::sidebar_room::SidebarRoom;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
@@ -84,7 +83,6 @@ pub fn App() -> Element {
             });
             if let Some(desktop) = desktop {
                 hub.set_tailnet(desktop.tailnet.clone());
-                hub.set_checkpoints(desktop.checkpoints.clone());
                 hub.set_run_ends(desktop.run_ends.clone());
             }
             hub.start();
@@ -345,7 +343,6 @@ pub fn App() -> Element {
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }
-            AgentSheets { desk: desk.clone() }
         }
     }
 }

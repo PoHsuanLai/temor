@@ -110,7 +110,7 @@ impl Ambient {
         DataDirs::from_env(&self.home, &get)
     }
 
-    /// temor's own data directory: outside every repository, where agent worktrees live.
+    /// temor's own data directory.
     pub fn data_dir(&self) -> PathBuf {
         self.data_home().join("temor")
     }

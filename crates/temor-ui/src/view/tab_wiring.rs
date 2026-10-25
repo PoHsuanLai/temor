@@ -9,7 +9,7 @@ use ds::prelude::Selection;
 use temor_core::vocab::ids::TabId;
 
 use super::dnd::{Dnd, RowRects, is_primary, point_of};
-use crate::hub::{Desk, DragKey};
+use crate::hub::DragKey;
 
 /// Measures the element this hook's component draws and tells the drag where the tab `id` stands,
 /// for as long as it is on the page. Give the probe the element's `onmounted`.
@@ -35,19 +35,12 @@ pub fn drag_press(dnd: &Dnd, key: DragKey) -> impl FnMut(PointerEvent) + 'static
     }
 }
 
-/// The handler of the tab `tab`'s context-menu event: the agent's points are refreshed for the
-/// menu, `open` shows it, and the event is taken so the sidebar's own menu (the Space's) stays
-/// shut.
-pub fn tab_menu_trigger(
-    desk: &Desk,
-    tab: TabId,
-    mut open: impl FnMut() + 'static,
-) -> impl FnMut(MouseEvent) + 'static {
-    let desk = desk.clone();
+/// The handler of a tab's context-menu event: `open` shows the menu, and the event is taken so
+/// the sidebar's own menu (the Space's) stays shut.
+pub fn tab_menu_trigger(mut open: impl FnMut() + 'static) -> impl FnMut(MouseEvent) + 'static {
     move |event: MouseEvent| {
         event.prevent_default();
         event.stop_propagation();
-        desk.agent_menu_opened(tab);
         open();
     }
 }

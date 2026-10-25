@@ -45,7 +45,6 @@ impl Hub {
         }
         self.fill_empty();
         self.refresh_probe();
-        self.sweep_old_snapshots();
     }
 
     fn read_spaces(&mut self, dir: &Path) -> TemorSpaces {

@@ -2,7 +2,6 @@
 //! direct calls (keys, pointer, paste, find), and the window in ds-harness (event dispatch only,
 //! never OS input).
 
-mod agents_git;
 mod agents_socket;
 mod agents_window;
 mod ambient;
@@ -36,7 +35,6 @@ mod wide_text;
 mod window;
 mod window_title;
 mod workflow;
-mod worktree_git;
 
 #[test]
 fn every_module_in_this_directory_is_declared() {

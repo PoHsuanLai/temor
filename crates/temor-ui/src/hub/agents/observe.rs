@@ -43,22 +43,14 @@ impl Hub {
     }
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.
-    /// A known agent that appears, starts or stops a turn, or leaves is followed by its watch.
+    /// A known agent that appears or leaves is told to the plugins that adapt to it.
     pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, event: &PaneEvent) -> Changed {
         let now = self.agents.now();
-        let was = self.agent_and_state(pane);
-        let command_was = self.agents.radar.command_of(pane).cloned();
+        let was = self.agents.radar.agent_of(pane).map(str::to_owned);
         let changed = self.agents.radar.observe(pane, now, event);
-        let is = self.agent_and_state(pane);
-        let (was_agent, is_agent) = (was.0.clone(), is.0.clone());
-        self.watch_follows(pane, was, is, command_was);
-        self.plugin_adapter_follows(pane, was_agent, is_agent);
+        let is = self.agents.radar.agent_of(pane).map(str::to_owned);
+        self.plugin_adapter_follows(pane, was, is);
         changed
-    }
-
-    fn agent_and_state(&self, pane: PaneId) -> (Option<String>, AgentState) {
-        let agent = self.agents.radar.agent_of(pane).map(str::to_owned);
-        (agent, self.agents.radar.state_of(pane))
     }
 
     /// The pane has the keyboard and the window is in use.
@@ -84,15 +76,12 @@ impl Hub {
             let now = self.agents.now();
             self.agents.radar.set_focus(now, None);
         }
-        self.forget_closed_trees();
     }
 
     /// A pane's program ended and the pane is gone.
     pub(in crate::hub) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);
         self.plugins.forget_pane(pane);
-        self.agents.points.forget(pane);
-        self.watch_pane_ended(pane);
         if let Some(sockets) = &self.agents.sockets {
             sockets.close(pane);
         }
@@ -115,13 +104,11 @@ impl Hub {
         }
     }
 
-    /// Time passed (about once a second): the radar settles and the worktrees due a look get
-    /// one. Returns whether the chrome shows something new.
+    /// Time passed (about once a second): the radar settles. Returns whether the chrome shows
+    /// something new.
     pub fn agent_tick(&mut self) -> Changed {
         let now = self.agents.now();
-        let changed = self.agents.radar.tick(now);
-        self.look_at_due_trees(now);
-        changed
+        self.agents.radar.tick(now)
     }
 
     /// ⌘⇧U: the next agent pane that waits for the person takes the keyboard.

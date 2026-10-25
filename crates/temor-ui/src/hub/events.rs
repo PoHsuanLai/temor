@@ -118,7 +118,6 @@ impl Hub {
                     });
                 }
                 Notice::CommandDone => {
-                    self.agents_command_done(pane);
                     facts.push((pane, FactsIn::CommandDone));
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));

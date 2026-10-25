@@ -1,12 +1,8 @@
-//! The radar on a virtual clock, the worktree look timing and the
-//! path rule for files put back. No threads, no git, no window.
-
-use std::path::Path;
+//! The radar on a virtual clock. No threads, no window.
 
 use temor_core::agent::radar::{Millis, RadarParams};
 use temor_core::presence::{AgentState, Seen, WaitKind};
-use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
-use temor_core::worktree::{AgentWorktree, Oid, WorktreeName};
+use temor_core::vocab::ids::{ExitCode, PaneId};
 use temor_pane::report::{ReportState, ReportWait, StatusLine};
 use temor_pane::{CommandLine, PaneEvent, SeenForeground};
 use temor_pty::ChildExit;
@@ -14,8 +10,6 @@ use temor_vt::{Notification, ProgramState, ProgramStatus, ProgramWait};
 
 use super::convert::exit_code;
 use super::radar::Radar;
-use super::trees::Trees;
-use super::work::safe_join;
 
 const P1: PaneId = PaneId(1);
 
@@ -217,65 +211,5 @@ fn exits_are_read_as_the_radar_needs() {
     ];
     for (exit, want) in exits {
         assert_eq!(exit_code(*exit), ExitCode(*want), "{exit:?}");
-    }
-}
-
-fn worktree(path: &str) -> AgentWorktree {
-    AgentWorktree {
-        tab: TabId(0),
-        name: WorktreeName::from_task("fix login").expect("name"),
-        repo: "/r".to_owned(),
-        path: path.to_owned(),
-        base_ref: "main".to_owned(),
-        base: Oid::parse(&format!("{:040x}", 1)).expect("oid"),
-    }
-}
-
-#[test]
-fn a_worktree_is_looked_at_once_after_its_commands_settle() {
-    let mut trees = Trees::default();
-    trees.adopt(TabId(4), worktree("/d/w"), Millis(10_000));
-    // The first look is due at once.
-    assert_eq!(trees.due(Millis(10_000)).len(), 1);
-    assert!(trees.due(Millis(11_000)).is_empty(), "one look at a time");
-    let tip = Oid::parse(&format!("{:040x}", 2)).expect("tip");
-    let snap = temor_core::worktree::Snapshot {
-        commit: tip.clone(),
-        tree: tip.clone(),
-    };
-    trees.snapshotted(TabId(4), tip, snap);
-    // A burst of commands counts once, and only after two quiet seconds.
-    trees.command_done(TabId(4), Millis(20_000));
-    trees.command_done(TabId(4), Millis(20_500));
-    assert!(trees.due(Millis(21_000)).is_empty());
-    assert_eq!(trees.due(Millis(22_000)).len(), 1);
-    // A failed look is asked for again after the next command, not at once.
-    trees.snapshot_failed(TabId(4));
-    assert!(trees.due(Millis(40_000)).is_empty());
-    trees.command_done(TabId(4), Millis(40_000));
-    assert_eq!(trees.due(Millis(42_000)).len(), 1);
-    trees.gone(TabId(4));
-    assert!(trees.by_tab.is_empty());
-}
-
-#[test]
-fn files_are_put_back_only_inside_the_repository() {
-    let root = Path::new("/r");
-    #[rustfmt::skip]
-    let rows: &[(&str, Option<&str>)] = &[
-        ("a.txt", Some("/r/a.txt")),
-        ("src/deep/b.rs", Some("/r/src/deep/b.rs")),
-        ("../escape", None),
-        ("src/../../escape", None),
-        ("/etc/passwd", None),
-        ("./a", None),
-        ("", None),
-    ];
-    for (rel, want) in rows {
-        assert_eq!(
-            safe_join(root, rel).as_deref(),
-            want.map(Path::new),
-            "{rel:?}"
-        );
     }
 }

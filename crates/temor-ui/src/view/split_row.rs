@@ -42,7 +42,7 @@ pub fn SplitSegments(
                 if index > 0 {
                     span { key: "rule{tile.pane.0}", class: "temor-seg-rule", aria_hidden: "true" }
                 }
-                {segment(tile, squeezed, tab, desk.clone(), dnd.clone(), onmenu)}
+                {segment(tile, squeezed, desk.clone(), dnd.clone(), onmenu)}
             }
         }
     }
@@ -61,7 +61,6 @@ enum Squeeze {
 fn segment(
     tile: Tile,
     squeeze: Squeeze,
-    tab: TabId,
     desk: Desk,
     dnd: Dnd,
     onmenu: EventHandler<PaneId>,
@@ -71,7 +70,7 @@ fn segment(
     let glyph_only = (squeeze == Squeeze::Squeezed && selected.is_none()).then_some("true");
     let click = dnd.click.clone();
     // A right click on a segment is the tab's menu, with Close Pane for this pane alone.
-    let opening = tab_menu_trigger(&desk, tab, move || onmenu.call(pane));
+    let opening = tab_menu_trigger(move || onmenu.call(pane));
     let mut press = drag_press(&dnd, DragKey::Tile(pane));
     rsx! {
         div { key: "{pane.0}", class: "temor-seg-slot", "data-glyph": glyph_only,

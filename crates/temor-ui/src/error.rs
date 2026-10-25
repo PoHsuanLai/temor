@@ -43,14 +43,7 @@ pub enum UiError {
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),
-    /// git could not do what an agent worktree needed.
+    /// One of temor's own rules refused.
     #[error(transparent)]
-    Git(#[from] temor_core::error::CoreError),
-    /// A file of an agent worktree could not be copied, written back or removed.
-    #[error("{path}: {source}")]
-    AgentFile {
-        path: String,
-        #[source]
-        source: std::io::Error,
-    },
+    Core(#[from] temor_core::error::CoreError),
 }

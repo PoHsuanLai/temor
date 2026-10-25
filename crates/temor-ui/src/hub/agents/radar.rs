@@ -29,8 +29,8 @@ enum Known {
 struct Entry {
     state: RadarState,
     known: Known,
-    /// A known agent's name was seen (its process, or what it reported): restore points are kept
-    /// for these panes only, never for a build tool that reports its progress.
+    /// A known agent's name was seen (its process, or what it reported): plugins adapt to these
+    /// panes only, never to a build tool that reports its progress.
     named: Option<Named>,
 }
 

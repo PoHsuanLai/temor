@@ -98,10 +98,7 @@ mod viewer_requests;
 mod viewer_tests;
 mod viewers;
 
-pub use agents::{
-    AgentMenu, AgentPick, Agents, Alert, LeftoverRow, PointLine, RestoreMenu, SheetView,
-    WAIT_FOR_AGENT, WaitingCount, Where, spawn_agent_loops,
-};
+pub use agents::{Agents, Alert, WaitingCount, spawn_agent_loops};
 pub use bar::{BarData, WindowAction};
 pub use bar_action::select_tab;
 pub use blink_tick::spawn_blink_loop;
