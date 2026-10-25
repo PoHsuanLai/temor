@@ -18,8 +18,6 @@ use crate::session::{ListMap, ListSpan, Toward};
 pub struct Sizes {
     /// One grid row.
     pub row: f32,
-    /// A folder line.
-    pub section: f32,
     /// A card's head: its command.
     pub head: f32,
     /// The room under a card's last row, inside it.
@@ -61,12 +59,8 @@ impl Standing {
 /// What a segment draws.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Seg {
-    Section(String),
     /// A card's head; `whole` when nothing is under it (no rows, folded): the card is its head.
-    Head {
-        block: ListBlock,
-        whole: bool,
-    },
+    Head { block: ListBlock, whole: bool },
     /// Screen rows of a block's output: drawn once as a still, or, `live`, shown from the pane's
     /// own picture as the terminal draws them.
     Rows {
@@ -90,15 +84,12 @@ pub enum Seg {
         picked: bool,
     },
     /// Where the next command is typed: the shell's own prompt rows, live.
-    Composer {
-        rows: Range<u32>,
-    },
+    Composer { rows: Range<u32> },
 }
 
 /// What identifies a segment across layouts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SegKey {
-    Section(BlockId),
     Head(BlockId),
     /// Tile `n` of a block's settled rows.
     Tile(BlockId, u32),
@@ -178,13 +169,6 @@ pub fn lay_out(items: &[Item], sizes: &Sizes, pictures: &[Picture]) -> (Vec<Plac
     };
     for item in items {
         match item {
-            Item::Section { folder, before } => push(
-                &mut out,
-                &mut y,
-                SegKey::Section(*before),
-                sizes.section,
-                Seg::Section(folder.clone()),
-            ),
             Item::Done(block) | Item::Running { block, .. } => {
                 let live_from = match item {
                     Item::Running { live_from, .. } => Some(*live_from),
@@ -350,7 +334,6 @@ pub fn list_map(placed: &[Placed], offset: f32) -> ListMap {
         .iter()
         .map(|p| {
             let (block, rows, toward) = match &p.seg {
-                Seg::Section(_) => (None, 0..0, Toward::Next),
                 Seg::Head { block, .. } => (Some(block.id), 0..0, Toward::Next),
                 Seg::Rows { id, rows, .. } => (Some(*id), rows.clone(), Toward::Next),
                 Seg::Picture { id, .. } | Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),

@@ -53,7 +53,6 @@ impl Session {
             .saturating_sub(u32::from(self.painter.lower()));
         read.cursor = Some(read.cursor.map_or(drawn, |cursor| cursor.max(drawn)));
         Some(list_of(&read, |id| BlockFacts {
-            folder: self.header_facts(id).map(|kept| kept.folder.clone()),
             folded: self.block_folded(id),
             bookmarked: self.block_bookmarked(id),
         }))

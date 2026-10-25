@@ -21,7 +21,6 @@ pub const WINDOW_CSS: &str = "\
 .temor-blist-scroll { flex: 1 1 0; }\
 .temor-blist-content { position: relative; }\
 .temor-bseg { position: absolute; left: var(--s-8); right: var(--s-8); box-sizing: border-box; overflow: hidden; }\
-.temor-blk-section { display: flex; align-items: flex-end; padding: 0 var(--s-8) var(--s-6); color: var(--term-ansi-12); font-size: var(--fs-small); white-space: nowrap; }\
 .temor-blk-head { display: flex; align-items: center; gap: var(--s-8); padding: 0 var(--s-8) 0 var(--s-4); border-radius: var(--r-item) var(--r-item) 0 0; }\
 .temor-blk-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-reading); color: var(--term-fg); }\
 .temor-blk-head[data-state=failed] .temor-blk-title { color: var(--term-ansi-1); }.temor-blk-head[data-state=running] .temor-blk-title { color: var(--term-ansi-3); }\
@@ -37,7 +36,6 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-choice { flex: none; display: flex; align-items: center; padding: 0 var(--s-6); border-radius: var(--r-item); overflow: hidden; white-space: nowrap; color: var(--term-fg); font-size: var(--fs-reading); }\
 .temor-blk-choice-note { margin-left: var(--s-8); color: var(--ink-faint); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; }\
 .temor-blk-choice[data-picked=true] { background: var(--sel-neutral); }.temor-blk-choice[data-more=true] { color: var(--ink-faint); font-size: var(--fs-small); }\
-.temor-blk-where { flex: none; white-space: nowrap; color: var(--term-ansi-12); font-size: var(--fs-small); }\
 .temor-blk-field { flex: 1 1 auto; min-width: 0; color: var(--term-fg); font-size: var(--fs-reading); }\
 .temor-blk-img { position: absolute; top: 0; display: block; object-fit: contain; object-position: left top; }\
 .temor-live-head { position: relative; z-index: var(--z-raise); flex: none; display: flex; align-items: center; gap: var(--s-6); min-width: 0; padding: 0 0 var(--s-4); border-bottom: var(--hair) solid var(--line-soft); margin-bottom: var(--s-4); }\

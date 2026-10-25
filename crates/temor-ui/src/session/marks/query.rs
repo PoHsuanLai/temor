@@ -2,33 +2,15 @@
 //! Nothing here is drawn; the views decide how to show it.
 
 use temor_core::block::Outcome;
-use temor_core::facts::Facts;
 use temor_core::session::AnnotateIn;
 use temor_core::vocab::ids::BlockId;
 
 use super::super::Session;
-use crate::plugins::facts::PluginFact;
-use temor_core::session::{HeaderFacts, MarkIn};
 
 impl Session {
     /// How many rows the terminal has.
     pub fn rows(&self) -> u16 {
         self.pane.with_term(|term| term.size().rows.0)
-    }
-
-    /// Keeps what the chips over the prompt being typed at say, for the block it becomes: an
-    /// older block's header carries the chips its prompt had. Nothing while no prompt is typed at.
-    pub fn keep_header_facts(&mut self, folder: &str, facts: &Facts, plugin: &[PluginFact]) {
-        self.mark(MarkIn::Chips(HeaderFacts {
-            folder: folder.to_owned(),
-            facts: facts.clone(),
-            plugin: plugin.to_vec(),
-        }));
-    }
-
-    /// What the chips over a block's header line said when its prompt was typed at.
-    pub fn header_facts(&self, id: BlockId) -> Option<&HeaderFacts> {
-        self.blocks.marks.header_facts(id)
     }
 
     /// Keeps the line of output a finished block's card shows. Read once, when the block

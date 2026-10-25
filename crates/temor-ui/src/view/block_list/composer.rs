@@ -144,7 +144,6 @@ pub fn ComposerCard(
     /// The grid's family as CSS: a command reads as it will be run.
     font: String,
     text: String,
-    folder: Option<String>,
     selection: bool,
     focus: FocusRequest,
     take: bool,
@@ -259,9 +258,6 @@ pub fn ComposerCard(
                 ChoiceList { choices, font: font.clone(), take: take_word }
             }
             div { class: "temor-blk-line",
-            if let Some(folder) = folder {
-                span { class: "temor-blk-where", "{folder}" }
-            }
             div { class: "temor-blk-field", style: "{font}",
                 TextField {
                     label: "Command".to_owned(),

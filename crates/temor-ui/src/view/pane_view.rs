@@ -258,15 +258,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| s.clipboard_ask().cloned());
-    let facts = desk.hub.facts_of(pane);
-    let plugin_facts = desk.hub.plugin_facts_of(pane);
-    let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
-    // What the shell's folder and facts are now is kept for the block the prompt becomes: its
-    // card's folder line says where it ran.
-    if let Some((folder, s)) = folder.as_ref().zip(slot.borrow_mut().session.as_mut()) {
-        s.keep_header_facts(folder, &facts, &plugin_facts);
-    }
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // The block menu speaks of what is picked now.
     let menu_block = match block_menu() {
@@ -415,7 +407,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             composer: ComposerView {
                                 text: slot.borrow().session.as_ref().map(|s| s.composer_text().to_owned()).unwrap_or_default(),
                                 font: card_font.clone(),
-                                folder: folder.clone(),
                                 selection: slot.borrow().session.as_ref().is_some_and(|s| s.has_selection()),
                                 focus: composer_focus,
                                 take: desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open() && find.is_none(),

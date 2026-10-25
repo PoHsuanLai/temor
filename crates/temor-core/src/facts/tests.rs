@@ -2,49 +2,6 @@
 
 use super::*;
 
-fn stat(files: u32, added: u32, removed: u32) -> Option<DiffStat> {
-    Some(DiffStat {
-        files,
-        added,
-        removed,
-    })
-}
-
-#[test]
-fn shortstat_lines() {
-    #[rustfmt::skip]
-    let cases: Vec<(&str, &str, Option<DiffStat>)> = vec![
-        ("both counts", " 3 files changed, 10 insertions(+), 2 deletions(-)\n", stat(3, 10, 2)),
-        ("one file, singular words", " 1 file changed, 1 insertion(+), 1 deletion(-)\n", stat(1, 1, 1)),
-        ("only insertions", " 2 files changed, 7 insertions(+)\n", stat(2, 7, 0)),
-        ("only deletions", " 1 file changed, 4 deletions(-)\n", stat(1, 0, 4)),
-        ("no changes", "", stat(0, 0, 0)),
-        ("blank lines only", "\n\n", stat(0, 0, 0)),
-        ("not a stat line", "fatal: not a git repository\n", None),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(parse_shortstat(output), want, "{name}");
-    }
-}
-
-#[test]
-fn branch_lines() {
-    #[rustfmt::skip]
-    let cases: Vec<(&str, &str, Option<&str>)> = vec![
-        ("plain", "main\n", Some("main")),
-        ("slashes", "feature/chips\n", Some("feature/chips")),
-        ("detached", "HEAD\n", None),
-        ("empty", "", None),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(
-            parse_branch(output).as_ref().map(BranchName::as_str),
-            want,
-            "{name}"
-        );
-    }
-}
-
 #[test]
 fn venv_names() {
     #[rustfmt::skip]
@@ -145,22 +102,6 @@ fn tool_version_files() {
         Some("v22.1.0"),
         ".node-version reads like .nvmrc"
     );
-}
-
-#[test]
-fn untracked_counts() {
-    let many: String = (0..1500).map(|n| format!("?? f{n}\n")).collect();
-    #[rustfmt::skip]
-    let cases: Vec<(&str, String, u32)> = vec![
-        ("none", String::new(), 0),
-        ("only tracked changes", " M a.txt\nA  b.txt\n".to_owned(), 0),
-        ("mixed", " M a.txt\n?? new.txt\n?? dir/x\n".to_owned(), 2),
-        ("a name that starts with ??", "?? ?? odd\n".to_owned(), 1),
-        ("capped past the most", many, MOST_UNTRACKED + 1),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(parse_untracked(&output), Untracked(want), "{name}");
-    }
 }
 
 fn state(flight: Flight, prompted: bool) -> FactsState {

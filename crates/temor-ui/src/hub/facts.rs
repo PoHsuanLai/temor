@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use temor_core::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
 use temor_core::vocab::ids::PaneId;
-use temor_core::worktree::Git;
 use temor_wire::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
@@ -15,9 +14,7 @@ use super::facts_folder::host_folder;
 use super::model::Hub;
 use crate::edge::facts::{FactsEnv, read_facts};
 use crate::edge::facts_host::facts_from_host;
-use crate::edge::git::ProcessGit;
 use crate::edge::remote_conn::Conn;
-use crate::view::launch::Launch;
 
 /// Whether a result changed what the window shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,9 +42,8 @@ struct PaneFacts {
     folder: Option<String>,
 }
 
-/// The window's facts: git (if found), what the panes last read, and the way back to the window.
+/// The window's facts: what the panes last read, and the way back to the window.
 pub struct FactsHub {
-    git: Option<Arc<dyn Git>>,
     env: FactsEnv,
     panes: BTreeMap<PaneId, PaneFacts>,
     done: UnboundedSender<Ready>,
@@ -63,22 +59,12 @@ impl std::fmt::Debug for FactsHub {
 }
 
 impl FactsHub {
-    /// Facts for a window started from `launch`. git is looked for on the environment's `PATH`;
-    /// without it the branch and changes are left out. The virtualenv comes from a `.venv`
-    /// folder only: one activated inside a shell is not visible to the window until the shell
-    /// reports it (FOLLOWUPS).
-    pub fn new(launch: &Launch) -> FactsHub {
-        let path = launch
-            .ambient
-            .env
-            .get("PATH")
-            .map_or_else(|| "/usr/bin:/bin".into(), std::ffi::OsStr::to_os_string);
-        let git = temor_pty::find_program("git", &path)
-            .map(|binary| Arc::new(ProcessGit::new(binary)) as Arc<dyn Git>);
+    /// Facts for a window. The virtualenv comes from a `.venv` folder only: one activated
+    /// inside a shell is not visible to the window until the shell reports it (FOLLOWUPS).
+    pub fn new() -> FactsHub {
         let virtual_env = None;
         let (done, inbox) = unbounded_channel();
         FactsHub {
-            git,
             env: FactsEnv { virtual_env },
             panes: BTreeMap::new(),
             done,
@@ -93,13 +79,13 @@ impl FactsHub {
 
     /// Reads `dir` on a thread of its own and sends the result to the window.
     fn spawn(&self, pane: PaneId, dir: String) {
-        let (git, env, done) = (self.git.clone(), self.env.clone(), self.done.clone());
+        let (env, done) = (self.env.clone(), self.done.clone());
         // If the thread cannot start the run never reports; `facts_step` was told it is in
         // flight, so this pane's facts stay as they are until the window restarts the pane.
         let _ = std::thread::Builder::new()
             .name("temor-facts".to_owned())
             .spawn(move || {
-                let facts = Some(read_facts(git.as_deref(), &dir, &env));
+                let facts = Some(read_facts(&dir, &env));
                 // A closed channel means the window is gone.
                 let _ = done.send(Ready {
                     pane,

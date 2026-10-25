@@ -5,7 +5,6 @@ use temor_core::vocab::ids::ExitCode;
 
 const SIZES: Sizes = Sizes {
     row: 10.0,
-    section: 20.0,
     head: 30.0,
     foot: 5.0,
     gap: 8.0,
@@ -136,20 +135,12 @@ fn the_running_block_keeps_its_settled_tiles_as_it_grows_and_shows_the_rest_live
 }
 
 #[test]
-fn a_new_folder_has_its_line_and_a_failed_card_its_standing() {
+fn a_failed_card_has_its_standing() {
     let mut failed = block(1, 0..2);
     failed.outcome = Outcome::Failed(ExitCode(1));
-    let items = [
-        Item::Section {
-            folder: "/tmp".to_owned(),
-            before: BlockId(1),
-        },
-        Item::Done(failed),
-    ];
-    let (placed, _) = lay_out(&items, &SIZES, &[]);
-    assert_eq!(placed[0].seg, Seg::Section("/tmp".to_owned()));
+    let (placed, _) = lay_out(&[Item::Done(failed)], &SIZES, &[]);
     assert!(matches!(
-        placed[2].seg,
+        placed[1].seg,
         Seg::Rows {
             standing: Standing::Failed,
             ..

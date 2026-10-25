@@ -11,7 +11,6 @@ use temor_ssh::HostAlias;
 
 use super::model::{Hub, HubRef};
 use super::tab_name::{Marking, NameIn, TabState, TabTone, tab_title};
-use crate::plugins::facts::with_summary;
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -55,7 +54,7 @@ pub struct TabRow {
     pub agent: AgentState,
     /// A line under the folder: the tab's agent worktree and what the overlap check found.
     pub note: Option<String>,
-    /// The pane's branch, with a dot when its folder has uncommitted changes (PLAN P16).
+    /// What plugins say about the pane's folder, on one line.
     pub branch: Option<String>,
     /// Whether a command runs in the tab's pane, for the row's second line.
     pub state: TabState,
@@ -136,10 +135,7 @@ impl Hub {
             unread,
             agent,
             note: self.agent_note(id),
-            branch: with_summary(
-                self.facts_of(pane).branch.as_ref().map(ToString::to_string),
-                self.plugin_facts_summary(pane),
-            ),
+            branch: self.plugin_facts_summary(pane),
             state,
             tone,
             selection,

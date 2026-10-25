@@ -105,7 +105,7 @@ impl Hub {
             .collect();
         let agents = Agents::new(&launch, events.clone());
         let ssh = SshHub::new(&launch.ambient);
-        let facts = FactsHub::new(&launch);
+        let facts = FactsHub::new();
         let plugins = PluginHub::new(&launch);
         let offer = OfferHub::new(&launch);
         let remote = RemoteHub::new(&launch.ambient, launch.state_dir.clone());

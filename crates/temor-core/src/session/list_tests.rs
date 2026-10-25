@@ -116,45 +116,12 @@ fn a_running_block_wholly_in_view_is_live_from_its_first_row() {
 }
 
 #[test]
-fn a_folder_is_named_where_it_changes() {
-    let folders = |id: BlockId| BlockFacts {
-        folder: Some(match id.0 {
-            1 | 2 => "/work".to_owned(),
-            _ => "/tmp".to_owned(),
-        }),
-        ..BlockFacts::default()
-    };
-    let items = list_of(
-        &read(
-            0,
-            24,
-            None,
-            vec![done(1, 0, 3), done(2, 3, 6), done(3, 6, 9)],
-        ),
-        folders,
-    );
-    let keys: Vec<ItemKey> = items.iter().map(Item::key).collect();
-    assert_eq!(
-        keys,
-        [
-            ItemKey::Section(BlockId(1)),
-            ItemKey::Block(BlockId(1)),
-            ItemKey::Block(BlockId(2)),
-            ItemKey::Section(BlockId(3)),
-            ItemKey::Block(BlockId(3)),
-            ItemKey::Composer,
-        ]
-    );
-}
-
-#[test]
 fn a_folded_block_shows_no_rows_and_a_failed_one_keeps_its_outcome() {
     let mut b = done(1, 0, 6);
     b.outcome = Outcome::Failed(ExitCode(2));
     let items = list_of(&read(0, 24, None, vec![b]), |_| BlockFacts {
         folded: true,
         bookmarked: true,
-        ..BlockFacts::default()
     });
     match &items[0] {
         Item::Done(block) => {

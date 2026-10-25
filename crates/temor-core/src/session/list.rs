@@ -1,6 +1,5 @@
-//! A pane's blocks as the list the window draws (PLAN: block list): a folder line where the
-//! folder changes, then each block's head and the screen rows of its output, and the composer
-//! last while nothing runs. Made from a [`Read`]; rows are screen rows (0 is the oldest kept
+//! A pane's blocks as the list the window draws (PLAN: block list): each block's head and the
+//! screen rows of its output, and the composer last while nothing runs. Made from a [`Read`]; rows are screen rows (0 is the oldest kept
 //! row), which a block's surface reads whole wherever they are, viewport or scrollback.
 
 use std::ops::Range;
@@ -13,8 +12,6 @@ use super::frame::{BlockRead, End, Read, command_rows};
 /// What the list needs to know of a block that the terminal does not say.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BlockFacts {
-    /// The folder the command ran in, when known.
-    pub folder: Option<String>,
     /// The person folded its output away.
     pub folded: bool,
     /// The person bookmarked it.
@@ -49,8 +46,6 @@ impl ListBlock {
 /// One entry of the list, top to bottom.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Item {
-    /// The folder the blocks under it ran in, named where it changes.
-    Section { folder: String, before: BlockId },
     /// A finished block: its output never changes again.
     Done(ListBlock),
     /// The running block: its output rows above `live_from` have left the viewport and no longer
@@ -64,7 +59,6 @@ pub enum Item {
 /// What identifies an item across reads, for the list to keep its rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ItemKey {
-    Section(BlockId),
     Block(BlockId),
     Composer,
 }
@@ -72,7 +66,6 @@ pub enum ItemKey {
 impl Item {
     pub fn key(&self) -> ItemKey {
         match self {
-            Item::Section { before, .. } => ItemKey::Section(*before),
             Item::Done(block) | Item::Running { block, .. } => ItemKey::Block(block.id),
             Item::Composer { .. } => ItemKey::Composer,
         }
@@ -118,8 +111,7 @@ fn output_of(read: &BlockRead, cursor: Option<u32>, bottom: u32) -> Option<Range
 /// first, with `facts` for each.
 pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockFacts) -> Vec<Item> {
     let bottom = read.top.saturating_add(read.len.saturating_sub(1));
-    let mut items = Vec::with_capacity(read.blocks.len() * 2 + 1);
-    let mut folder: Option<String> = None;
+    let mut items = Vec::with_capacity(read.blocks.len() + 1);
     let mut running = false;
     for block in &read.blocks {
         let command = block.command.lines().next().unwrap_or("").trim();
@@ -130,15 +122,6 @@ pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockFacts) -> Vec<Item> 
             continue;
         };
         let fact = facts(block.id);
-        if let Some(here) = fact.folder.filter(|f| !f.is_empty())
-            && folder.as_ref() != Some(&here)
-        {
-            items.push(Item::Section {
-                folder: here.clone(),
-                before: block.id,
-            });
-            folder = Some(here);
-        }
         let entry = ListBlock {
             id: block.id,
             command: command.to_owned(),

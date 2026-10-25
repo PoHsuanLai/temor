@@ -45,5 +45,4 @@ pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
-pub use temor_core::session::HeaderFacts;
 pub use viewer::ViewAsk;

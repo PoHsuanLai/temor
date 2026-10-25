@@ -1,11 +1,19 @@
-//! `row.facts`: what plugins add to a folder's chips and to its sidebar row.
+//! `row.facts`: what plugins say about a folder, for its sidebar row.
 //!
-//! A plugin's facts join the built-in ones (branch, changes, versions): they come after them, in
-//! the order the plugins serve. A plugin that failed has no facts here, so it shows nothing.
+//! In the order the plugins serve. A plugin that failed has no facts here, so it shows nothing.
 
 use temor_plugins::message::Fact;
 
-pub use temor_core::session::PluginFact;
+/// One fact a plugin gave about a pane's folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PluginFact {
+    /// What the person calls the plugin.
+    pub plugin: String,
+    /// The label (`cluster`).
+    pub label: String,
+    /// The value (`prod`).
+    pub value: String,
+}
 
 /// `facts` as one plugin's `PluginFact`s.
 pub fn from_plugin(plugin: &str, facts: Vec<Fact>) -> Vec<PluginFact> {
@@ -33,15 +41,6 @@ pub fn summary(facts: &[PluginFact]) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(" \u{b7} "))
 }
 
-/// The sidebar row's second line: the branch (with its dot) and the plugins' summary, joined.
-pub fn with_summary(branch: Option<String>, plugins: Option<String>) -> Option<String> {
-    match (branch, plugins) {
-        (Some(branch), Some(plugins)) => Some(format!("{branch} \u{b7} {plugins}")),
-        (Some(only), None) | (None, Some(only)) => Some(only),
-        (None, None) => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,25 +54,13 @@ mod tests {
     }
 
     #[test]
-    fn plugin_facts_follow_the_branch_on_the_sidebar_row() {
-        let one = vec![fact("cluster", "prod")];
+    fn the_summary_joins_the_facts_on_one_line() {
+        assert_eq!(summary(&[]), None);
         let two = vec![fact("cluster", "prod"), fact("region", "eu")];
-        type Row<'a> = (&'a str, Option<&'a str>, &'a [PluginFact], Option<&'a str>);
-        let table: &[Row] = &[
-            ("nothing", None, &[], None),
-            ("branch alone", Some("main"), &[], Some("main")),
-            ("facts alone", None, &one, Some("cluster prod")),
-            (
-                "both",
-                Some("main"),
-                &two,
-                Some("main \u{b7} cluster prod \u{b7} region eu"),
-            ),
-        ];
-        for (why, branch, facts, want) in table {
-            let got = with_summary(branch.map(str::to_owned), summary(facts));
-            assert_eq!(got.as_deref(), *want, "{why}");
-        }
+        assert_eq!(
+            summary(&two).as_deref(),
+            Some("cluster prod \u{b7} region eu")
+        );
     }
 
     #[test]

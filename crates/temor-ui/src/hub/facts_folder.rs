@@ -22,7 +22,6 @@ mod tests {
     fn sent(dir: &str, home: Option<&str>) -> FolderFacts {
         FolderFacts {
             dir: RemotePath(dir.to_owned()),
-            git: None,
             venv: None,
             home: home.map(|home| RemotePath(home.to_owned())),
             root: None,

@@ -464,12 +464,7 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
             m.iter().all(|t| !t.contains("exit")),
             "a card failed: {m:?}"
         );
-        let html = h.html();
-        assert!(
-            html.contains("class=\"temor-blk-where\""),
-            "the composer names no folder"
-        );
-        format!("2 cards {m:?}, no exit; the composer names the folder")
+        format!("2 cards {m:?}, no exit")
     });
 
     steps.run("W2", || {

@@ -1,13 +1,12 @@
-//! The chips of a pane on a host (PLAN P16, §9b Tier B): the helper reads git and the version files
-//! of the session's folder and sends their text; the rules that make chips of it are the same
-//! ones a pane on this computer follows (`temor_core::facts`, `facts_files`).
+//! The facts of a pane on a host (PLAN P16, §9b Tier B): the helper reads the version files of the
+//! session's folder and sends their text; the rules that make facts of it are the same ones a
+//! pane on this computer follows (`temor_core::facts`, `facts_files`). What an older helper says
+//! of git is not read.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use temor_core::facts::{
-    Facts, FolderSource, parse_branch, parse_shortstat, parse_untracked, runtimes_in, venv_name,
-};
+use temor_core::facts::{Facts, FolderSource, runtimes_in, venv_name};
 use temor_wire::message::{FolderFacts, MOST_FACT_PARENTS};
 
 /// The version files the helper sent, by folder.
@@ -28,13 +27,6 @@ impl FolderSource for Sent {
 
 /// What the helper's text says about the folder.
 pub fn facts_from_host(sent: &FolderFacts) -> Facts {
-    let branch = sent
-        .git
-        .as_ref()
-        .and_then(|git| git.head.as_deref())
-        .and_then(parse_branch);
-    // No branch (not a repository, or a detached head): nothing to compare or count either.
-    let git = sent.git.as_ref().filter(|_| branch.is_some());
     let files = Sent {
         files: sent
             .folders
@@ -52,13 +44,6 @@ pub fn facts_from_host(sent: &FolderFacts) -> Facts {
     };
     let runtimes = runtimes_in(Path::new(&sent.dir.0), &files, MOST_FACT_PARENTS);
     Facts {
-        branch,
-        changes: git
-            .and_then(|git| git.shortstat.as_deref())
-            .and_then(parse_shortstat),
-        untracked: git
-            .and_then(|git| git.untracked.as_deref())
-            .map(parse_untracked),
         venv: sent.venv.as_ref().and_then(|path| venv_name(&path.0)),
         node: runtimes.node,
         python: runtimes.python,
@@ -70,8 +55,8 @@ pub fn facts_from_host(sent: &FolderFacts) -> Facts {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_core::facts::{BranchName, DiffStat, EnvName, NodeVersion, ToolVersion, Untracked};
-    use temor_wire::message::{FactFile, FolderFiles, GitText, RemotePath};
+    use temor_core::facts::{EnvName, NodeVersion, ToolVersion};
+    use temor_wire::message::{FactFile, FolderFiles, RemotePath};
 
     fn path(text: &str) -> RemotePath {
         RemotePath(text.to_owned())
@@ -90,22 +75,13 @@ mod tests {
         }
     }
 
-    fn sent(git: Option<GitText>, folders: Vec<FolderFiles>) -> FolderFacts {
+    fn sent(folders: Vec<FolderFiles>) -> FolderFacts {
         FolderFacts {
             dir: path("/w/app/src"),
-            git,
             venv: Some(path("/w/app/src/.venv")),
             home: Some(path("/w")),
             root: Some(path("/w/app")),
             folders,
-        }
-    }
-
-    fn git(head: &str) -> GitText {
-        GitText {
-            head: Some(head.to_owned()),
-            shortstat: Some(" 2 files changed, 5 insertions(+), 1 deletion(-)\n".to_owned()),
-            untracked: Some("?? a\n?? b/\n".to_owned()),
         }
     }
 
@@ -124,35 +100,11 @@ mod tests {
             // Above the repository root: never looked in.
             folder("/w", &[(".nvmrc", "v14\n")]),
         ];
-        let facts = facts_from_host(&sent(Some(git("main\n")), folders));
-        assert_eq!(facts.branch, Some(BranchName("main".to_owned())));
-        assert_eq!(
-            facts.changes,
-            Some(DiffStat {
-                files: 2,
-                added: 5,
-                removed: 1
-            })
-        );
-        assert_eq!(facts.untracked, Some(Untracked(2)));
+        let facts = facts_from_host(&sent(folders));
         assert_eq!(facts.venv, Some(EnvName("src".to_owned())));
         assert_eq!(facts.node, Some(NodeVersion("v20".to_owned())));
         assert_eq!(facts.python, Some(ToolVersion("3.12".to_owned())));
         assert_eq!(facts.ruby, Some(ToolVersion("3.3.0".to_owned())));
         assert_eq!(facts.go, None);
-    }
-
-    #[test]
-    fn without_a_branch_there_are_no_changes_or_untracked_files_to_show() {
-        let table = [
-            ("detached", Some(git("HEAD\n"))),
-            ("not a repository", None),
-        ];
-        for (why, git) in table {
-            let facts = facts_from_host(&sent(git, vec![]));
-            assert_eq!(facts.branch, None, "{why}");
-            assert_eq!(facts.changes, None, "{why}");
-            assert_eq!(facts.untracked, None, "{why}");
-        }
     }
 }

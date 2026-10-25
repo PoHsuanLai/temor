@@ -46,8 +46,6 @@ pub struct ComposerView {
     pub text: String,
     /// The grid's family as CSS.
     pub font: String,
-    /// The folder the shell is in.
-    pub folder: Option<String>,
     /// Whether the list has text selected (⌘C copies that, not the field's).
     pub selection: bool,
     /// Puts the caret in the field.
@@ -252,7 +250,6 @@ pub fn BlockPane(
     };
     let sizes = Sizes {
         row,
-        section: 28.0,
         head: 40.0,
         foot: 10.0,
         gap: 10.0,
@@ -432,7 +429,7 @@ fn block_of(seg: &Seg) -> Option<BlockId> {
     match seg {
         Seg::Head { block, .. } => Some(block.id),
         Seg::Rows { id, .. } | Seg::Picture { id, .. } | Seg::Foot { id, .. } => Some(*id),
-        Seg::Section(_) | Seg::Composer { .. } => None,
+        Seg::Composer { .. } => None,
     }
 }
 
@@ -456,9 +453,6 @@ fn segment(
         }
     };
     match &p.seg {
-        Seg::Section(folder) => rsx! {
-            div { key: "{key}", class: "temor-bseg temor-blk-section", style: "{place}", "{folder}" }
-        },
         Seg::Head { block, whole } => {
             let standing = Standing::of(block.outcome);
             let ground = css(ground_of(palette, standing, block.picked));
@@ -536,7 +530,6 @@ fn segment(
                 style: "{place}; background:{css(ground_of(palette, Standing::Done, false))}",
                 font: view.font.clone(),
                 text: view.text.clone(),
-                folder: view.folder.clone(),
                 selection: view.selection,
                 focus: view.focus,
                 take: view.take,
