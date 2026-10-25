@@ -2,7 +2,7 @@
 //! wanted. Paths are kept as text because the core does no I/O; the edges turn them into
 //! `PathBuf`s.
 
-use crate::error::CoreError;
+use crate::error::SchemaError;
 use serde::{Deserialize, Serialize};
 
 /// Defines a transparent `String` newtype with the derives stored text carries.
@@ -111,10 +111,10 @@ pub struct EnvKey(String);
 
 impl EnvKey {
     /// `name` as an environment key, or why it cannot be one.
-    pub fn new(name: impl Into<String>) -> Result<EnvKey, CoreError> {
+    pub fn new(name: impl Into<String>) -> Result<EnvKey, SchemaError> {
         let name = name.into();
         if name.is_empty() || name.contains(['=', '\0']) {
-            return Err(CoreError::BadEnvKey(name));
+            return Err(SchemaError::BadEnvKey(name));
         }
         Ok(EnvKey(name))
     }
@@ -126,8 +126,8 @@ impl EnvKey {
 }
 
 impl TryFrom<String> for EnvKey {
-    type Error = CoreError;
-    fn try_from(name: String) -> Result<EnvKey, CoreError> {
+    type Error = SchemaError;
+    fn try_from(name: String) -> Result<EnvKey, SchemaError> {
         EnvKey::new(name)
     }
 }
@@ -186,7 +186,7 @@ pub fn display_text(raw: &str, max: usize) -> String {
 
 /// The Unicode Bidi_Control characters (the Arabic letter mark, the left and right marks, the
 /// embeddings, overrides and isolates): they reorder what is shown. The one table for core.
-pub(crate) fn is_bidi_control(c: char) -> bool {
+pub fn is_bidi_control(c: char) -> bool {
     matches!(
         c,
         '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'

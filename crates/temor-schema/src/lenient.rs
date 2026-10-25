@@ -12,7 +12,7 @@ enum Item<T> {
 }
 
 /// The items of a stored list that parse, in order.
-pub(crate) fn lenient_list<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+pub fn lenient_list<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
@@ -28,7 +28,7 @@ where
 }
 
 /// A stored value, or its default when it does not parse: one bad field costs only itself.
-pub(crate) fn lenient_or_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+pub fn lenient_or_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Default,

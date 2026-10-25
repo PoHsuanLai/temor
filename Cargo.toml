@@ -51,6 +51,7 @@ temor-render = { path = "crates/temor-render", default-features = false }
 temor-ssh = { path = "crates/temor-ssh" }
 # temor's app crates (lane app): the pure core, the pseudo-terminal, and the window.
 temor-core = { path = "crates/temor-core" }
+temor-schema = { path = "crates/temor-schema" }
 temor-pty = { path = "crates/temor-pty" }
 temor-shell = { path = "crates/temor-shell" }
 temor-pane = { path = "crates/temor-pane", default-features = false }

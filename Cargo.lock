@@ -7138,6 +7138,7 @@ dependencies = [
  "serde",
  "serde_json",
  "temor-pane",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
@@ -7253,6 +7254,17 @@ dependencies = [
  "thiserror 2.0.21",
  "vello_cpu 0.1.0",
  "wgpu",
+]
+
+[[package]]
+name = "temor-schema"
+version = "0.1.1"
+dependencies = [
+ "percent-encoding",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

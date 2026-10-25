@@ -6,9 +6,9 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum CoreError {
-    /// An environment key was empty or held `=` or NUL; the profile entry is dropped.
-    #[error("not an environment variable name: {0:?}")]
-    BadEnvKey(String),
+    /// A schema value refused its text (an environment key with `=`, a URL that is not one).
+    #[error(transparent)]
+    Schema(#[from] temor_schema::error::SchemaError),
     /// A stored split tree did not describe one tree over distinct panes; the tab opens with a
     /// fresh single pane.
     #[error("the stored split layout is damaged: {0}")]
