@@ -8,6 +8,8 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::error::SchemaError;
+use crate::ids::BlockId;
+use crate::url::Host;
 
 /// A session's lasting id: 64 bits the store draws at random, written as 16 lowercase hex digits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -64,6 +66,38 @@ impl TryFrom<String> for SessionId {
 )]
 #[serde(transparent)]
 pub struct At(pub i64);
+
+/// One session as history keeps it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Session {
+    pub id: SessionId,
+    /// The computer it runs on.
+    pub host: Host,
+    /// The folder it started in (an absolute path).
+    pub folder: String,
+    /// The program it was started to run; none for the person's shell.
+    pub program: Option<String>,
+    pub started: At,
+    /// When it ended; none while it runs, or if temor stopped before it said.
+    pub ended: Option<At>,
+}
+
+/// One command a session ran, as history keeps it: what was typed and where, how it ended and
+/// when. Its output is not kept here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RanCommand {
+    pub session: SessionId,
+    /// Its number in the session, as the session's URL names it.
+    pub block: BlockId,
+    /// The command as typed (every line of it).
+    pub command: String,
+    /// The folder it ran in (an absolute path).
+    pub folder: String,
+    /// Its exit status; none while it runs, or when the shell did not say.
+    pub exit: Option<i32>,
+    pub started: At,
+    pub ended: Option<At>,
+}
 
 #[cfg(test)]
 mod tests {

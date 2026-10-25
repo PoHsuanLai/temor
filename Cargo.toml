@@ -52,6 +52,11 @@ temor-ssh = { path = "crates/temor-ssh" }
 # temor's app crates (lane app): the pure core, the pseudo-terminal, and the window.
 temor-core = { path = "crates/temor-core" }
 temor-schema = { path = "crates/temor-schema" }
+temor-store = { path = "crates/temor-store" }
+# temor-store: SQLite, built in (FTS5 included), with the commit hook that says a write is visible.
+rusqlite = { version = "0.40", features = ["bundled", "hooks"] }
+bitflags = "2"
+parking_lot = "0.12"
 temor-pty = { path = "crates/temor-pty" }
 temor-shell = { path = "crates/temor-shell" }
 temor-pane = { path = "crates/temor-pane", default-features = false }

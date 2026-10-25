@@ -76,10 +76,19 @@ impl Host {
         }
     }
 
-    fn as_str(&self) -> &str {
+    /// The host as a URL writes it: `local` for this computer, else its name.
+    pub fn as_str(&self) -> &str {
         match self {
             Host::Local => LOCAL,
             Host::Named(name) => name,
+        }
+    }
+
+    /// The host a URL wrote as `text`.
+    pub fn parse(text: &str) -> Result<Host, SchemaError> {
+        match text {
+            LOCAL => Ok(Host::Local),
+            name => Host::named(name),
         }
     }
 }
@@ -219,10 +228,7 @@ impl FromStr for TemorUrl {
             .find('/')
             .ok_or_else(|| bad("a place needs a path after its host", text))?;
         let (host, rest) = rest.split_at(slash);
-        let host = match host {
-            LOCAL => Host::Local,
-            name => Host::named(name).map_err(|_| bad("the host's name cannot be read", text))?,
-        };
+        let host = Host::parse(host).map_err(|_| bad("the host's name cannot be read", text))?;
         let (path, fragment) = match rest.split_once('#') {
             Some((path, fragment)) => (path, Some(fragment)),
             None => (rest, None),
