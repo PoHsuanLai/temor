@@ -10,7 +10,6 @@ use temor_core::vocab::ids::PaneId;
 use temor_wire::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use super::facts_folder::host_folder;
 use super::model::Hub;
 use crate::edge::facts::{FactsEnv, read_facts};
 use crate::edge::facts_host::facts_from_host;
@@ -29,8 +28,6 @@ pub struct Ready {
     pane: PaneId,
     /// What was read; none when the read failed, and what the pane showed stays.
     facts: Option<Facts>,
-    /// The folder as the chip says it, for a pane on a host (none from an older helper).
-    folder: Option<String>,
 }
 
 /// One pane's rule state and what was last read.
@@ -38,8 +35,6 @@ pub struct Ready {
 struct PaneFacts {
     state: FactsState,
     facts: Facts,
-    /// The host pane's folder chip text, from its helper's last answer.
-    folder: Option<String>,
 }
 
 /// The window's facts: what the panes last read, and the way back to the window.
@@ -87,11 +82,7 @@ impl FactsHub {
             .spawn(move || {
                 let facts = Some(read_facts(&dir, &env));
                 // A closed channel means the window is gone.
-                let _ = done.send(Ready {
-                    pane,
-                    facts,
-                    folder: None,
-                });
+                let _ = done.send(Ready { pane, facts });
             });
     }
 
@@ -102,14 +93,12 @@ impl FactsHub {
         let _ = std::thread::Builder::new()
             .name("temor-facts-host".to_owned())
             .spawn(move || {
-                let sent = conn.client().folder_facts(session).ok();
-                let folder = sent.as_ref().and_then(host_folder);
-                let facts = sent.map(|sent| facts_from_host(&sent));
-                let _ = done.send(Ready {
-                    pane,
-                    facts,
-                    folder,
-                });
+                let facts = conn
+                    .client()
+                    .folder_facts(session)
+                    .ok()
+                    .map(|sent| facts_from_host(&sent));
+                let _ = done.send(Ready { pane, facts });
             });
     }
 }
@@ -160,11 +149,7 @@ impl Hub {
 
     /// A finished read: stored, and the rule told. Results for a pane that is gone are dropped.
     pub(super) fn facts_ready(&mut self, ready: Ready) -> Shown {
-        let Ready {
-            pane,
-            facts,
-            folder,
-        } = ready;
+        let Ready { pane, facts } = ready;
         if !self.slots.contains_key(&pane) {
             self.facts.panes.remove(&pane);
             return Shown::Same;
@@ -172,9 +157,8 @@ impl Hub {
         let entry = self.facts.panes.entry(pane).or_default();
         let shown = match facts {
             Some(facts) => {
-                let changed = entry.facts != facts || entry.folder != folder;
+                let changed = entry.facts != facts;
                 entry.facts = facts;
-                entry.folder = folder;
                 match changed {
                     true => Shown::Changed,
                     false => Shown::Same,
@@ -195,35 +179,11 @@ impl Hub {
             .unwrap_or_default()
     }
 
-    /// The pane's folder as its chip says it (the home folder as `~`). On a host it is what the
-    /// helper last read, with the host's home as `~`; none until it has, and from a helper that
-    /// does not say its home.
-    pub(super) fn chip_folder(&self, pane: PaneId) -> Option<String> {
-        if self.host_of(pane).is_some() {
-            return self.facts.panes.get(&pane)?.folder.clone();
-        }
-        let home = &self.launch.ambient.home;
-        self.pane_folder(pane)
-            .map(|path| super::rows::tidy(&path, home))
-    }
-
     /// The pane's folder: the shell's report, else where the pane started.
     pub(super) fn pane_folder(&self, pane: PaneId) -> Option<String> {
         self.live(pane, |s| s.cwd().map(str::to_owned))
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
-    }
-}
-
-impl super::HubRef {
-    /// The facts last read for the pane.
-    pub fn facts_of(&self, pane: PaneId) -> Facts {
-        self.0.borrow().facts_of(pane)
-    }
-
-    /// The pane's folder as its chip says it.
-    pub fn chip_folder(&self, pane: PaneId) -> Option<String> {
-        self.0.borrow().chip_folder(pane)
     }
 }
 

@@ -22,7 +22,6 @@ mod dispatch_tests;
 mod drop_pane_tests;
 mod events;
 mod facts;
-mod facts_folder;
 mod hosts;
 mod keys;
 mod live_cards;

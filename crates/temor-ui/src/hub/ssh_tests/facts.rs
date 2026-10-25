@@ -130,12 +130,7 @@ fn a_host_panes_folder_and_versions_come_from_its_helper() {
         }
     }
 
-    let folder = rig
-        .hub
-        .chip_folder(pane)
-        .expect("the folder as its chip says it");
     let facts = rig.hub.facts_of(pane);
-    assert_eq!(folder, "~/app", "the host's folder");
     assert_eq!(
         facts.node.as_ref().map(|v| v.as_str()),
         Some("v20"),

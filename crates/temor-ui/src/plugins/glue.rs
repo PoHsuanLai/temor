@@ -221,11 +221,6 @@ impl HubRef {
             .name_of(plugin.as_str())
             .unwrap_or_else(|| plugin.as_str().to_owned())
     }
-
-    /// The facts plugins gave for the pane's folder.
-    pub fn plugin_facts_of(&self, pane: PaneId) -> Vec<PluginFact> {
-        self.0.borrow().plugin_facts_of(pane)
-    }
 }
 
 /// Carries finished plugin work into the hub for as long as the window lives, and draws the
