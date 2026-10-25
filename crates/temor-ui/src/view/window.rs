@@ -3,10 +3,12 @@
 //! draws the look: the root, the palette, the title and the message bar. The panes are
 //! `pane_view`, the tab's tree is `tree_view`, the sidebar is `tab_sidebar`.
 
+use super::favourites::folder_url;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
+use temor_client::{Command, Shelf};
 
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
@@ -215,6 +217,16 @@ pub fn App() -> Element {
                     });
                 }
                 Dropped::Tear(pane) => desk.act(WorkspaceIn::Tear(pane)),
+                Dropped::Favourite(tab) => {
+                    let place = desk.hub.sidebar().row(tab).and_then(|row| row.place);
+                    if let Some(place) = place {
+                        super::live::client().act(Command::Keep {
+                            shelf: Shelf::Favourites,
+                            place: folder_url(&place),
+                            at: None,
+                        });
+                    }
+                }
                 Dropped::Nothing => {}
             }
         })

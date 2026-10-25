@@ -417,10 +417,10 @@ fn a_split_of_three_shows_one_name_and_two_glyphs() {
     );
 }
 
-/// Pinned tabs move as Arc's do: a row dropped on a pinned tile is pinned, a tile dropped on a row
-/// is unpinned there.
+/// Pinned tabs move as Arc's do: a loose row dropped on a pinned row is pinned, a pinned row
+/// dropped on a loose one is unpinned there.
 #[test]
-fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
+fn a_row_dropped_on_a_pinned_row_pins_and_a_pinned_row_dropped_on_a_loose_one_unpins() {
     if !super::support::window_tools_present() {
         return;
     }
@@ -434,38 +434,104 @@ fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
         x: ds::prelude::Px(((b.left + b.right) / 2.0) as f32),
         y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
     };
-    let rows = |h: &Harness| rects(h, ".temor-side .temor-tab-box");
-    let tiles = |h: &Harness| rects(h, ".temor-side .temor-pin");
-    assert_eq!((rows(&h).len(), tiles(&h).len()), (3, 0), "three tabs");
+    let pinned = |h: &Harness| rects(h, ".temor-side .temor-tab-box[data-pinned=true]");
+    let loose = |h: &Harness| {
+        let all = rects(h, ".temor-side .temor-tab-box");
+        let pins = pinned(h);
+        all.into_iter()
+            .filter(|row| !pins.iter().any(|pin| pin.top == row.top))
+            .collect::<Vec<_>>()
+    };
+    let counts = |h: &Harness| (loose(h).len(), pinned(h).len());
+    assert_eq!(counts(&h), (3, 0), "three tabs");
     // Pin Tab heads the row's menu.
-    let first = centre(&rows(&h)[0]);
+    let first = centre(&loose(&h)[0]);
     h.send(Input::press(first, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
     let item = rects(&h, ".ds-menu-item");
     assert!(!item.is_empty(), "the row's menu opens");
     h.send(Input::click(centre(&item[0])));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (2, 1),
-        "pinned from the menu"
-    );
-    // A row onto the tile: pinned too.
-    let (row, tile) = (centre(&rows(&h)[0]), centre(&tiles(&h)[0]));
-    h.send(Input::drag(row, tile, 12));
+    assert_eq!(counts(&h), (2, 1), "pinned from the menu");
+    // A loose row onto the pinned one: pinned too.
+    let (row, pin) = (centre(&loose(&h)[0]), centre(&pinned(&h)[0]));
+    h.send(Input::drag(row, pin, 12));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (1, 2),
-        "a row dropped on a tile"
-    );
-    // A tile onto the row: unpinned.
-    let (tile, row) = (centre(&tiles(&h)[0]), centre(&rows(&h)[0]));
-    h.send(Input::drag(tile, row, 12));
+    assert_eq!(counts(&h), (1, 2), "a row dropped on a pinned row");
+    // A pinned row onto the loose one: unpinned.
+    let (pin, row) = (centre(&pinned(&h)[0]), centre(&loose(&h)[0]));
+    h.send(Input::drag(pin, row, 12));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (2, 1),
-        "a tile dropped on a row"
-    );
+    assert_eq!(counts(&h), (2, 1), "a pinned row dropped on a loose one");
+}
+
+/// A row dragged to the top of the sidebar keeps its folder among the Favourites, as Arc's do; the
+/// tile's menu lets it go.
+#[test]
+fn a_row_dropped_on_the_favourites_keeps_its_folder_there() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-favourite", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let centre = |b: &Box4| ds::prelude::Point {
+        x: ds::prelude::Px(((b.left + b.right) / 2.0) as f32),
+        y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
+    };
+    let tiles = |h: &Harness| rects(h, ".temor-side .temor-fav");
+    // None kept: the Favourites say where to drop one.
+    let zone = rects(&h, ".temor-favs-drop");
+    assert_eq!(zone.len(), 1, "the drop zone shows:\n{}", h.html());
+    let row = centre(&rects(&h, ".temor-side .temor-tab-box")[0]);
+    h.send(Input::drag(row, centre(&zone[0]), 12));
+    h.advance(Duration::from_millis(400));
+    assert!(rects(&h, ".temor-favs-drop").is_empty(), "the hint goes");
+    assert_eq!(tiles(&h).len(), 1, "kept:\n{}", h.html());
+    // Its menu lets it go.
+    h.send(Input::press(
+        centre(&tiles(&h)[0]),
+        PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(300));
+    let item = rects(&h, ".ds-menu-item");
+    assert_eq!(item.len(), 1, "Remove from Favourites");
+    h.send(Input::click(centre(&item[0])));
+    h.advance(Duration::from_millis(400));
+    assert!(tiles(&h).is_empty(), "let go:\n{}", h.html());
+}
+
+/// ⌘-pressing a row (Ctrl off a Mac) opens a new tab in its folder, as a browser's link opens
+/// beside the page; a plain press only brings the tab to the front.
+#[test]
+fn a_command_press_on_a_row_opens_a_new_tab_beside_it() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-command-press", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let first = &rects(&h, ".temor-side .temor-tab-box")[0];
+    let row = Point {
+        x: Px(((first.left + first.right) / 2.0) as f32),
+        y: Px(((first.top + first.bottom) / 2.0) as f32),
+    };
+    h.send(Input::click(row));
+    h.advance(Duration::from_millis(300));
+    assert_eq!(drive::rows(&h), 1, "a press opens nothing");
+    let command = match cfg!(target_os = "macos") {
+        true => dioxus::prelude::Modifiers::SUPER,
+        false => dioxus::prelude::Modifiers::CONTROL,
+    };
+    h.send(Input::Pointer(
+        ds_harness::PointerInput::new(
+            row,
+            ds_harness::PointerAction::Click(PointerButton::Primary),
+        )
+        .with_mods(command),
+    ));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(drive::rows(&h), 2, "a new tab:\n{}", h.html());
 }

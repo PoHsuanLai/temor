@@ -2,7 +2,8 @@
 //! led by a terminal glyph, with the tab's name and, trailing, one dot when it needs the person
 //! (news, or an agent that waits). Its folder, and what plugins say of it, are said on hover. A tab
 //! with several panes is Arc's split row instead: a segment per pane (`split_row`). Pressing the
-//! row brings the tab to the front; dragging it onto another row joins the two tabs.
+//! row brings the tab to the front, and ⌘-pressing it opens a new tab in its folder; dragging it
+//! onto another row joins the two tabs.
 
 use dioxus::prelude::*;
 use ds::base::press::{PointerButton, Press};
@@ -13,9 +14,10 @@ use ds::components::overlays::drag_ghost::DropLine;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_core::vocab::ids::PaneId;
+use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
 
-use super::dnd::Dnd;
+use super::dnd::{Dnd, Target};
 use super::radar::{AgentTabMenu, PinAct};
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
@@ -27,7 +29,7 @@ use crate::hub::{Desk, DragKey, TabRow, Unread, select_tab};
 /// The row for one tab.
 #[component]
 #[allow(non_snake_case)]
-pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
+pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
     let id = row.id;
     let mut menu = use_signal(|| Shown::Hidden);
     // The pane whose segment was right-clicked: the menu offers to close it.
@@ -35,7 +37,7 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     // The drag finds the row under the pointer from where the rows are.
     let rect = use_drag_target(id, &dnd.rects);
     let drop = match (dnd.over)() {
-        Some(over) if over == id => DropState::Target,
+        Some(Target::Tab(over)) if over == id => DropState::Target,
         _ => match dnd.drag.phase() {
             ds::motion::drag::DragPhase::Live {
                 key: DragKey::Tab(held),
@@ -98,7 +100,10 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             AgentTabMenu {
                 tab: id,
                 at,
-                pin: PinAct::Pin,
+                pin: match pinned {
+                    true => PinAct::Unpin,
+                    false => PinAct::Pin,
+                },
                 close: menu_pane(),
                 desk: desk.clone(),
                 onclose: move |()| {
@@ -110,11 +115,15 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
     };
     let click = dnd.click.clone();
     let selecting = desk.clone();
+    let place = row.place.clone();
     let opening = tab_menu_trigger(move || menu.set(Shown::Visible));
     let dragging = drag_press(&dnd, DragKey::Tab(id));
     let tip = hover_text(&row);
     rsx! {
-        div { class: "temor-tab-box", oncontextmenu: opening,
+        div {
+            class: "temor-tab-box",
+            "data-pinned": pinned.then_some("true"),
+            oncontextmenu: opening,
             // The folder and what plugins say of it are said on hover: the row is one line.
             RowTip { name: format!("tab{}", id.0), text: tip,
             Row {
@@ -134,8 +143,10 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
                     if matches!(press.button, PointerButton::Secondary) {
                         return;
                     }
-                    click.counted(|| {
-                        selecting.act(select_tab(id));
+                    let place = place.clone();
+                    click.counted(|| match opens_beside(press.modifiers) {
+                        true => selecting.act(WorkspaceIn::NewTab { cwd: place.map(Cwd) }),
+                        false => selecting.act(select_tab(id)),
                     });
                 },
                 onpointerdown: dragging,
@@ -147,6 +158,15 @@ pub fn TabRowView(row: TabRow, desk: Desk, dnd: Dnd) -> Element {
             }
             {overlays}
         }
+    }
+}
+
+/// Whether a press with `modifiers` opens a new tab rather than choosing this one: ⌘ on a Mac,
+/// Ctrl elsewhere, as a browser's link is opened beside the page.
+fn opens_beside(modifiers: Modifiers) -> bool {
+    match cfg!(target_os = "macos") {
+        true => modifiers.intersects(Modifiers::SUPER | Modifiers::META),
+        false => modifiers.contains(Modifiers::CONTROL),
     }
 }
 

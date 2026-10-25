@@ -3,11 +3,6 @@
 //! A value the client keeps read ([`temor_client::Live`]) becomes a signal here, set from a task
 //! that follows it. Rendering reads the signal and nothing else, so no frame waits on the store,
 //! and a component draws again when its value changes. Ported from mailo's `ui/live.rs`.
-// The sidebar is the first view to read through it (B1); until then only the tests do.
-#![cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the sidebar reads through it next (B1)")
-)]
 
 use std::path::Path;
 use std::sync::Arc;

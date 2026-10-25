@@ -49,6 +49,8 @@ pub struct TabRow {
     pub id: TabId,
     pub title: String,
     pub cwd: Option<String>,
+    /// The folder as this computer writes it (an absolute path); none on a host, or not known.
+    pub place: Option<String>,
     pub unread: Unread,
     /// What the agent in the tab is doing: the most urgent of its panes.
     pub agent: AgentState,
@@ -68,6 +70,18 @@ pub struct SidebarData {
     pub pinned: Vec<TabRow>,
     pub folders: Vec<(String, Vec<TabRow>)>,
     pub loose: Vec<TabRow>,
+}
+
+impl SidebarData {
+    /// The row of tab `id`, wherever it is.
+    pub fn row(&self, id: TabId) -> Option<TabRow> {
+        self.pinned
+            .iter()
+            .chain(&self.loose)
+            .chain(self.folders.iter().flat_map(|(_, rows)| rows))
+            .find(|row| row.id == id)
+            .cloned()
+    }
 }
 
 /// The side of the miniature's square the layout is computed in.
@@ -100,12 +114,14 @@ impl Hub {
         let title = self.pane_title(pane, &tab.title);
         // A host's title already names its folder, and its paths are not under this home.
         let on_host = self.host_of(pane).is_some();
-        let cwd = self
+        let place = self
             .live(pane, |s| s.cwd().map(str::to_owned))
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
-            .filter(|_| !on_host)
-            .map(|path| tidy(&path, &self.launch.ambient.home));
+            .filter(|_| !on_host);
+        let cwd = place
+            .as_deref()
+            .map(|path| tidy(path, &self.launch.ambient.home));
         let agent = self.agent_state_of_tab(id);
         // News, or an agent that waits or has a result the person has not looked at.
         let news = self.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
@@ -125,6 +141,7 @@ impl Hub {
             id,
             title,
             cwd,
+            place,
             unread,
             agent,
             about: self.plugin_facts_summary(pane),
@@ -287,6 +304,17 @@ impl HubRef {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
         self.0.borrow().sidebar()
+    }
+
+    /// The person's home folder, as a path.
+    pub fn home(&self) -> String {
+        self.0
+            .borrow()
+            .launch
+            .ambient
+            .home
+            .to_string_lossy()
+            .into_owned()
     }
 
     /// The window's title parts: the keyboard pane's title and folder.

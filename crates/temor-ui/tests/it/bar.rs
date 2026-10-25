@@ -175,7 +175,7 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
     let probe = Probe::new();
     let mut h = started("bar-pin", &probe);
     focus_pane(&mut h);
-    let tiles = |h: &Harness| h.html().matches("class=\"temor-pin\"").count();
+    let tiles = |h: &Harness| h.html().matches("data-pinned=\"true\"").count();
     let listed = |h: &mut Harness, typed: &str| {
         chord(h, 't');
         type_text(h, typed);

@@ -99,7 +99,7 @@ fn a_tab_menu_open_while_the_window_is_resized_stays_inside_it_and_takes_clicks(
     h.send(Input::click(items[0].centre()));
     h.advance(Duration::from_millis(400));
     assert_eq!(
-        rects(&h, ".temor-side .temor-pin").len(),
+        rects(&h, ".temor-side .temor-tab-box[data-pinned=true]").len(),
         1,
         "the click landed on Pin Tab:\n{}",
         h.html()

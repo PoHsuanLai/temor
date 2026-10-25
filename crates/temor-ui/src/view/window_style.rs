@@ -68,13 +68,14 @@ pub const WINDOW_CSS: &str = "\
 .temor-seg-rule { flex: none; width: var(--hair); height: var(--s-14); background: var(--line); }\
 .temor-host { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--s-4); }\
 .temor-host-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }\
-.temor-pins { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6); padding-bottom: var(--s-4); }\
-.temor-pins > * { min-width: 0; }\
-.temor-pin { position: relative; display: grid; place-items: center; height: 44px; border-radius: var(--r-tile); background: var(--f-pill-hover); color: var(--f-ink); }\
-.temor-pin:hover, .temor-pin[*|data-selected=true] { background: var(--f-pill); }\
-.temor-pin[*|data-selected=true] { box-shadow: var(--shadow-current); }\
-.temor-pin[*|data-over=true] { box-shadow: 0 0 0 2px var(--accent-text); }\
-.temor-pin-news { position: absolute; top: var(--s-2); right: var(--s-2); display: flex; }\
+.temor-favs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6); padding-bottom: var(--s-4); border-radius: var(--r-tile); }\
+.temor-favs > * { min-width: 0; }\
+.temor-favs[*|data-over=true] { box-shadow: 0 0 0 2px var(--accent-text); }\
+.temor-favs-drop { grid-column: 1 / -1; display: grid; place-items: center; height: 40px; border-radius: var(--r-tile); border: var(--hair) dashed var(--f-line); color: var(--f-ink-soft); font-size: var(--fs-small); }\
+.temor-fav { position: relative; display: grid; place-items: center; height: 44px; border-radius: var(--r-tile); background: var(--f-pill-hover); color: var(--f-ink); }\
+.temor-fav:hover, .temor-fav[*|data-selected=true] { background: var(--f-pill); }\
+.temor-fav[*|data-selected=true] { box-shadow: var(--shadow-current); }\
+.temor-side-rule { height: var(--hair); margin: var(--s-4) var(--s-6); background: var(--f-line); }\
 .temor-foot { flex: 1 1 auto; min-width: 0; }\
 .temor-foot .temor-foot-lead, .temor-foot .temor-foot-end { display: flex; align-items: center; flex: 1000 1 0; min-width: 0; }\
 .temor-foot-end { justify-content: flex-end; }\

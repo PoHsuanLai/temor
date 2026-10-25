@@ -7439,6 +7439,7 @@ dependencies = [
  "temor-pty",
  "temor-remote",
  "temor-render",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",

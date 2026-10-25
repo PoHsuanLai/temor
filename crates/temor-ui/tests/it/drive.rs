@@ -110,8 +110,7 @@ pub(super) fn started(name: &str, probe: &Probe) -> Harness {
 
 /// How many tab rows the sidebar shows.
 pub(super) fn rows(h: &Harness) -> usize {
-    let html = h.html();
-    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
+    h.html().matches("class=\"temor-tab-box\"").count()
 }
 
 /// How many terminal panes the tab in front shows.

@@ -8,12 +8,14 @@
 //! Facts, not views: a query names sessions, commands, places. What a sidebar or a page makes of
 //! them is the window's. Ported from mailo's `mail-client`, so the two apps share one shape.
 
+pub mod act;
 mod client;
 mod error;
 mod external;
 mod live;
 pub mod query;
 
+pub use act::Command;
 pub use client::{Client, ClientConfig};
 pub use error::ClientError;
 pub use live::{Live, Query, Snapshot};

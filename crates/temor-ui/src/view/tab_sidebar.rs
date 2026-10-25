@@ -1,6 +1,6 @@
 //! The sidebar (PLAN §7), laid out as mailo's and Arc's are: the Space's name and Downloads at the
-//! top, the pinned tabs as tiles, each folder's tabs under its name, then New Tab and the rest; at
-//! the foot, the Space dots and one chevron that holds everything else. The name and the dots show
+//! top, the Favourites as tiles, the pinned tabs' rows and a hairline under them, each folder's
+//! tabs under its name, then New Tab and the rest; at the foot, the Space dots and one chevron that holds everything else. The name and the dots show
 //! only once there is a second Space. It is quire's `Sidebar` on the ladder's 32, each row one
 //! line. The sections' order is the model's (`hub::rows`), so a row and its ⌘1 to ⌘9 key always
 //! name the same tab. The sidebar is drawn in the Space's frame ink (`use_space_frame`), so a
@@ -19,7 +19,7 @@ use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 
 use super::dnd::Dnd;
-use super::pinned_tabs::PinnedTabs;
+use super::favourites::Favourites;
 use super::row_tip::RowTip;
 use super::side_menu::SideMenu;
 use super::space_ui::{SpaceFoot, SpaceHeader, space_menu_on};
@@ -39,9 +39,25 @@ pub enum SideKey {
 pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Element {
     let frame = use_space_frame();
     let mut sections = Vec::new();
+    let every: Vec<TabRow> = [&data.pinned, &data.loose]
+        .into_iter()
+        .chain(data.folders.iter().map(|(_, rows)| rows))
+        .flatten()
+        .cloned()
+        .collect();
+    sections.push(SidebarSection::Custom(rsx! {
+        Favourites { rows: every.clone(), desk: desk.clone(), dnd: dnd.clone() }
+    }));
+    // The pinned tabs are rows, as Arc's are, over a hairline that parts them from the rest.
     if !data.pinned.is_empty() {
+        sections.push(SidebarSection::List(items_of(
+            &data.pinned,
+            true,
+            &desk,
+            &dnd,
+        )));
         sections.push(SidebarSection::Custom(rsx! {
-            PinnedTabs { rows: data.pinned.clone(), desk: desk.clone(), dnd: dnd.clone() }
+            div { class: "temor-side-rule", role: "separator" }
         }));
     }
     for (title, rows) in &data.folders {
@@ -54,12 +70,10 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
         }));
     }
     let mut loose = vec![new_tab_row(&desk)];
-    loose.extend(items_of(&data.loose, &desk, &dnd));
+    loose.extend(items_of(&data.loose, false, &desk, &dnd));
     sections.push(SidebarSection::List(loose));
-    let cursor = [&data.loose]
-        .into_iter()
-        .chain(data.folders.iter().map(|(_, rows)| rows))
-        .flatten()
+    let cursor = every
+        .iter()
         .find(|row| row.selection == Selection::Selected)
         .map(|row| SideKey::Tab(row.id));
     let select = {
@@ -144,15 +158,15 @@ fn group(
     sections.push(SidebarSection::Custom(rsx! {
         SectionHeader { title: title.to_owned() }
     }));
-    sections.push(SidebarSection::List(items_of(rows, desk, dnd)));
+    sections.push(SidebarSection::List(items_of(rows, false, desk, dnd)));
 }
 
-/// The rows of a list of tabs.
-fn items_of(rows: &[TabRow], desk: &Desk, dnd: &Dnd) -> Vec<ListItem<SideKey>> {
+/// The rows of a list of tabs, `pinned` or not.
+fn items_of(rows: &[TabRow], pinned: bool, desk: &Desk, dnd: &Dnd) -> Vec<ListItem<SideKey>> {
     rows.iter()
         .map(|row| {
             let view = rsx! {
-                TabRowView { row: row.clone(), desk: desk.clone(), dnd: dnd.clone() }
+                TabRowView { row: row.clone(), pinned, desk: desk.clone(), dnd: dnd.clone() }
             };
             ListItem::row(SideKey::Tab(row.id), row.title.clone(), view)
         })

@@ -9,6 +9,8 @@
 //!   stale value from the queue and reads it, in one moment of the database.
 //! - **Changes** (`temor-changes`) hears every commit the store makes, gathers the ones that come
 //!   together, and marks stale every value that reads what they touched.
+//! - **Act** (`temor-act`) applies [`Command`]s, one at a time, in the order they were given: the
+//!   only one that waits on the store's writer.
 //! - **External** (`temor-external`) watches the store's file for another process's commits
 //!   (`external`).
 //!
@@ -26,6 +28,7 @@ use std::time::{Duration, Instant};
 use parking_lot::{Condvar, Mutex};
 use temor_store::{Committed, SqliteStore, Topics};
 
+use crate::act::Command;
 use crate::live::{Entry, Job, Live, Query};
 
 /// How long the change thread waits for more commits after one before it marks anything stale:
@@ -85,6 +88,8 @@ pub(crate) struct Shared {
     moved: tokio::sync::watch::Sender<u64>,
     /// How the external watch is woken: by a write to the store's file, or to stop.
     pub(crate) external: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    /// Where commands go to be applied; `None` for an inline client, and once stopping.
+    acts: Mutex<Option<std::sync::mpsc::Sender<Command>>>,
 }
 
 #[derive(Default)]
@@ -109,6 +114,18 @@ impl Client {
         {
             let shared = shared.clone();
             threads.push(spawn("temor-changes", move || shared.hear(&heard)));
+        }
+        {
+            let (tx, asked) = std::sync::mpsc::channel::<Command>();
+            *shared.acts.lock() = Some(tx);
+            let shared = shared.clone();
+            threads.push(spawn("temor-act", move || {
+                // Every command given is applied, even once the client is stopping: a change the
+                // person made is not dropped because the window closed after it.
+                for command in asked {
+                    shared.apply(command);
+                }
+            }));
         }
         if config.external
             && let Some(watching) = crate::external::start(shared.clone())
@@ -175,6 +192,21 @@ impl Client {
         live
     }
 
+    /// Apply `command`, in order after every command given before it. Never waits on the store;
+    /// what it changed is heard through the values that read it. An inline client applies it
+    /// here, now.
+    pub fn act(&self, command: Command) {
+        let shared = &self.0.shared;
+        if shared.inline {
+            shared.apply(command);
+            return;
+        }
+        if let Some(acts) = shared.acts.lock().as_ref() {
+            // A thread that has gone has stopped with the client; nothing is applied any more.
+            let _ = acts.send(command);
+        }
+    }
+
     /// Mark stale every value that reads any of `topics`, as a commit that touched them would:
     /// what the client says for what it keeps in memory ([`Topics::RUNTIME`]).
     pub fn invalidate(&self, topics: Topics) {
@@ -216,6 +248,8 @@ impl Drop for Inner {
 impl Inner {
     fn stop(&self, within: Duration) {
         self.shared.stopping.store(true, Ordering::Release);
+        // Nothing more is taken; what was given is still applied.
+        self.shared.acts.lock().take();
         self.shared.queued.notify_all();
         crate::external::wake(&self.shared);
         let deadline = Instant::now() + within;
@@ -256,11 +290,22 @@ impl Shared {
             heard: Mutex::new(None),
             moved: tokio::sync::watch::Sender::new(0),
             external: Mutex::new(None),
+            acts: Mutex::new(None),
         }
     }
 
     pub(crate) fn store(&self) -> &SqliteStore {
         &self.store
+    }
+
+    /// Apply `command`, and for an inline client act on what it committed.
+    fn apply(&self, command: Command) {
+        if let Err(why) = crate::act::apply(&self.store, command) {
+            eprintln!("temor: a change could not be kept: {why}");
+        }
+        if self.inline {
+            self.settle();
+        }
     }
 
     fn settle(&self) {
