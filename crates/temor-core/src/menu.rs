@@ -16,6 +16,8 @@ pub enum Target {
     /// The page on a row's stage: a file, or one of temor's own (`temor://history`), which no
     /// other app opens and no folder holds.
     Page { file: bool },
+    /// A file on the Downloads page.
+    Download(DownloadFacts),
 }
 
 /// What a tab's row is.
@@ -29,6 +31,17 @@ pub struct RowFacts {
     /// Whether the menu was opened from one pane of a split row: it then offers to close that
     /// pane.
     pub split_pane: bool,
+}
+
+/// What a file on the Downloads page is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DownloadFacts {
+    /// Whether it has arrived whole, so it can be opened and shown.
+    pub ready: bool,
+    /// Whether the tab it came from is still open.
+    pub from_tab: bool,
+    /// Whether it can be taken off the list (one still arriving cannot).
+    pub clearable: bool,
 }
 
 /// What the picked blocks are.
@@ -81,10 +94,14 @@ pub enum Item {
     ShowInFolder,
     /// The history page, of the row's session or of the folder.
     ShowHistory,
+    /// The tab a download came from.
+    ShowTab,
     ClosePane,
     CloseTab,
     ClosePage,
     RemoveFromFavourites,
+    /// Take a download off the list; the file stays.
+    RemoveFromList,
 }
 
 /// The groups, in order; an item is in exactly one.
@@ -112,10 +129,12 @@ impl Item {
             | Item::EditLocally
             | Item::SelectAllBlocks => Group::Own,
             Item::Favourite { .. } | Item::Pin { .. } => Group::Keep,
-            Item::ShowInFolder | Item::ShowHistory => Group::Show,
-            Item::ClosePane | Item::CloseTab | Item::ClosePage | Item::RemoveFromFavourites => {
-                Group::TakeAway
-            }
+            Item::ShowInFolder | Item::ShowHistory | Item::ShowTab => Group::Show,
+            Item::ClosePane
+            | Item::CloseTab
+            | Item::ClosePage
+            | Item::RemoveFromFavourites
+            | Item::RemoveFromList => Group::TakeAway,
         }
     }
 
@@ -145,10 +164,12 @@ impl Item {
             Item::Pin { pinned: false } => "Pin Tab",
             Item::ShowInFolder => "Show in Folder",
             Item::ShowHistory => "Show History",
+            Item::ShowTab => "Show Tab",
             Item::ClosePane => "Close Pane",
             Item::CloseTab => "Close Tab",
             Item::ClosePage => "Close Page",
             Item::RemoveFromFavourites => "Remove from Favourites",
+            Item::RemoveFromList => "Remove from List",
         }
     }
 }
@@ -205,6 +226,12 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(file, Item::OpenInDefaultApp);
             add(file, Item::ShowInFolder);
             add(true, Item::ClosePage);
+        }
+        Target::Download(download) => {
+            add(download.ready, Item::Open);
+            add(download.ready, Item::ShowInFolder);
+            add(download.from_tab, Item::ShowTab);
+            add(download.clearable, Item::RemoveFromList);
         }
     }
     // Each item lands in its group, whatever order it was added in.
@@ -336,6 +363,27 @@ mod tests {
     }
 
     #[test]
+    fn a_download_opens_shows_and_comes_off_the_list_once_it_has_arrived() {
+        let arrived = DownloadFacts {
+            ready: true,
+            from_tab: true,
+            clearable: true,
+        };
+        assert_eq!(
+            titles(Target::Download(arrived)),
+            [
+                vec!["Open"],
+                vec!["Show in Folder", "Show Tab"],
+                vec!["Remove from List"],
+            ]
+        );
+        assert_eq!(
+            titles(Target::Download(DownloadFacts::default())),
+            Vec::<Vec<&str>>::new()
+        );
+    }
+
+    #[test]
     fn every_menu_keeps_the_groups_in_order_and_none_is_empty() {
         let targets = [
             Target::Row(RowFacts::default()),
@@ -349,6 +397,11 @@ mod tests {
             Target::Block(BlockFacts::default()),
             Target::Page { file: true },
             Target::Page { file: false },
+            Target::Download(DownloadFacts {
+                ready: true,
+                from_tab: true,
+                clearable: true,
+            }),
         ];
         for target in targets {
             let groups = menu_for(target);

@@ -26,8 +26,6 @@ pub struct Desk {
     pub picked_space: PendingSwitch,
     /// Whether the sidebar is shown: the window's, which the show/hide action flips.
     pub sidebar: Signal<Shown>,
-    /// Whether the Downloads list is open: its button flips it, and so does the command bar.
-    pub shelf: Signal<Shown>,
     /// The window itself, which zooms the page; none where nothing hosts the window.
     pub window: HostOf,
 }

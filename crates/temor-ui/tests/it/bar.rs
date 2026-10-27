@@ -203,8 +203,8 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
     h.send(Input::key(ShortcutKey::Enter));
     h.advance(Duration::from_millis(400));
     assert!(
-        h.html().contains("class=\"temor-dl-list\""),
-        "the Downloads list is open:\n{}",
+        h.html().contains("class=\"temor-downloads\""),
+        "the Downloads page is open:\n{}",
         h.html()
     );
 }

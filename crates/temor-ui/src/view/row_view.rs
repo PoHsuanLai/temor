@@ -24,6 +24,7 @@ use temor_schema::url::{HistoryScope, TemorUrl};
 use super::history_page::HistoryPage;
 use super::menu::{Pick, menu_items};
 use super::row_menu::show_in_folder;
+use super::shelf::DownloadsPage;
 use super::tool_button::ToolButton;
 use super::tree_view::TreeView;
 use super::viewer_pane::{PageKeys, ViewerView};
@@ -152,9 +153,12 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                             HistoryPage { key: "{scope:?}", scope, desk: desk.clone() }
                         }
                     },
-                    Some(_) => rsx! {
-                        EmptyState { title: "Nothing here yet" }
+                    Some(TemorUrl::Downloads) => rsx! {
+                        PageKeys { pane: page, desk: desk.clone(), label: "Downloads",
+                            DownloadsPage { desk: desk.clone() }
+                        }
                     },
+                    Some(TemorUrl::Location(_)) => rsx! {},
                     None => rsx! {
                         ViewerView { pane: page, desk: desk.clone() }
                     },

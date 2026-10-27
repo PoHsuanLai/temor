@@ -10,6 +10,7 @@ use temor_core::remote::Grant;
 use temor_core::shelf::{
     Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, human_size, shelf_view,
 };
+use temor_core::stage::Layout;
 use temor_core::transfer::Origin;
 use temor_core::vocab::ids::{Bytes, DownloadId, PaneId};
 use temor_pane::OfferId;
@@ -17,6 +18,7 @@ use temor_transfer::Consent;
 use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
 
 use super::bar_action::select_tab;
+use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use crate::edge::shelf_files::{persist, restore};
 use crate::platform::{FileShell, default_file_shell};
@@ -245,7 +247,7 @@ impl Hub {
 
     /// Where Use in pane would send a file now.
     pub fn shelf_target(&self) -> PaneTarget {
-        match self.keyboard_pane() {
+        match self.terminal_pane() {
             None => PaneTarget::Nowhere,
             Some(pane) => match self.host_of(pane) {
                 Some(host) => PaneTarget::Host(host.to_owned()),
@@ -263,13 +265,27 @@ impl Hub {
             .then(|| PathBuf::from(row.path.as_str()))
     }
 
-    /// Gives row `id`'s file to the pane with the keyboard, as a drop on that pane would.
+    /// The terminal the person was using: the one with the keyboard, or, while a page has it (the
+    /// Downloads page), the one beside that page.
+    fn terminal_pane(&self) -> Option<PaneId> {
+        let pane = self.keyboard_pane()?;
+        match self.is_viewer(pane) {
+            true => self.viewer_unfocus_to(pane),
+            false => Some(pane),
+        }
+    }
+
+    /// Gives row `id`'s file to the terminal the person was using, as a drop on it would, and
+    /// takes them back to it from the page.
     fn use_in_pane(&mut self, id: DownloadId) {
-        let (Some(path), Some(pane)) = (self.ready_path(id), self.keyboard_pane()) else {
+        let (Some(path), Some(pane)) = (self.ready_path(id), self.terminal_pane()) else {
             return;
         };
         let told = self.drop_on(pane, &[path]);
         self.notices.extend(told);
+        if self.keyboard_pane() != Some(pane) {
+            self.set_layout(Layout::Console);
+        }
     }
 
     /// Puts row `id`'s path on the clipboard, through the pane with the keyboard when there is
@@ -279,7 +295,7 @@ impl Hub {
             return;
         };
         let text = path.display().to_string();
-        let pane = self.keyboard_pane();
+        let pane = self.terminal_pane();
         let said = pane.and_then(|pane| {
             self.live_mut(pane, |session| {
                 session.copy_path(&text);
@@ -326,6 +342,13 @@ impl Hub {
     }
 }
 
+impl Desk {
+    /// The person did something with a file on the Downloads page.
+    pub fn shelf_act(&self, id: DownloadId, action: RowAction) {
+        self.settle(|hub| hub.shelf_act(id, action));
+    }
+}
+
 impl HubRef {
     /// The shelf as rows.
     pub fn shelf_view(&self) -> ShelfView {
@@ -341,13 +364,6 @@ impl HubRef {
     pub fn answer_ask(&self, consent: Consent) -> Vec<String> {
         let mut hub = self.0.borrow_mut();
         hub.answer_ask(consent);
-        std::mem::take(&mut hub.notices)
-    }
-
-    /// The person did something with a row; what the person should be told comes back.
-    pub fn shelf_act(&self, id: DownloadId, action: RowAction) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.shelf_act(id, action);
         std::mem::take(&mut hub.notices)
     }
 

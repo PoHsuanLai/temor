@@ -91,9 +91,11 @@ pub const WINDOW_CSS: &str = "\
 .temor-dl-hold { position: relative; display: flex; }\
 .temor-dl-dot { position: absolute; top: var(--s-3); right: var(--s-3); width: var(--s-6); height: var(--s-6); border-radius: var(--r-pill); background: var(--ok); pointer-events: none; }\
 .temor-dl-dot.going { background: var(--ink-faint); }\
-.temor-dl-list { display: flex; flex-direction: column; gap: var(--s-8); width: 320px; max-height: 420px; overflow-y: auto; padding: var(--s-8); }\
-.temor-dl { display: flex; flex-direction: column; gap: var(--s-8); min-width: 0; }\
-.temor-dl-actions { display: flex; gap: var(--s-8); }\
+.temor-downloads { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s-12); padding: var(--s-16) var(--s-24); }\
+.temor-downloads > * { width: 100%; max-width: 760px; }\
+.temor-dl { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }\
+.temor-dl-actions { display: flex; gap: var(--s-8); padding-left: calc(var(--s-24) + var(--s-14)); }\
+.temor-dl-actions:empty { display: none; }\
 .temor-stage { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; }\
 .temor-page-bar { flex: none; display: flex; align-items: center; gap: var(--s-4); height: 32px; padding: 0 var(--s-6) 0 var(--s-8); border-bottom: var(--hair) solid var(--f-line); }\
 .temor-page-title { flex: 1 1 auto; display: flex; align-items: baseline; gap: var(--s-6); min-width: 0; overflow: hidden; white-space: nowrap; }\

@@ -143,7 +143,7 @@ impl Hub {
     }
 
     /// The terminal the keyboard goes back to from `viewer`.
-    fn viewer_unfocus_to(&self, viewer: PaneId) -> Option<PaneId> {
+    pub(super) fn viewer_unfocus_to(&self, viewer: PaneId) -> Option<PaneId> {
         match self.viewer_unfocus(viewer)? {
             WorkspaceIn::Focus(pane) => Some(pane),
             _ => None,
@@ -203,6 +203,11 @@ impl Desk {
     /// The history of every session.
     pub fn open_history(&self) {
         self.open_page(TemorUrl::History(HistoryScope::All));
+    }
+
+    /// The files that arrived, and those on their way to other computers.
+    pub fn open_downloads(&self) {
+        self.open_page(TemorUrl::Downloads);
     }
 
     /// Show `layout` on the row in front.

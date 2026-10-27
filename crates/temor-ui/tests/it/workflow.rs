@@ -360,17 +360,18 @@ fn drag_files(h: &mut Harness, at: Point, files: Vec<PathBuf>) {
     h.advance(Duration::from_millis(300));
 }
 
-/// Opens the Downloads popover, returns its text, and closes it again.
+/// Opens the Downloads page, returns its text, and closes it again.
 fn shelf_text(h: &mut Harness) -> String {
     let trigger = h
         .centre(".temor-dl-hold .ds-button")
         .unwrap_or_else(|| panic!("no Downloads button in the head"));
     click(h, trigger);
     h.advance(Duration::from_millis(200));
-    let text = h.text_of(".temor-dl-list").unwrap_or_default();
+    let text = h.text_of(".temor-downloads").unwrap_or_default();
     let rows = h.count(".temor-dl");
-    if let Some(again) = h.centre(".temor-dl-hold .ds-button") {
-        click(h, again);
+    if let Some(close) = h.centre(".temor-page-bar [aria-label=\"Close Page\"]") {
+        click(h, close);
+        h.advance(Duration::from_millis(200));
     }
     format!("[{rows} rows] {}", one_line(&text))
 }

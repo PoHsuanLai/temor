@@ -268,7 +268,7 @@ impl Desk {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
-            Action::ShowDownloads => self.shelf_toggle(),
+            Action::ShowDownloads => self.open_downloads(),
             Action::DetachProgram => {
                 let pane = self.hub.keyboard_pane();
                 if let Some(pane) = pane {
