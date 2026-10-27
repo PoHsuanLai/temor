@@ -274,6 +274,11 @@ pub fn App() -> Element {
         DragPhase::Idle | DragPhase::Pending { .. } => None,
     };
     let now = env();
+    // One monospace in the window: the terminal's.
+    let code_font = hub
+        .grid_font()
+        .map(|font| font.code_css())
+        .unwrap_or_default();
     // Pinned, the sidebar is the pane's body; hidden, it moves out of the pane (which clips what
     // floats over it) into a zero-width host at the window's edge, where it peeks.
     let side_box = |pinned: Shown| {
@@ -307,6 +312,7 @@ pub fn App() -> Element {
             }
             div {
                 class: "temor-shell",
+                style: code_font,
                 onmounted: move |event: MountedEvent| shell.on_mounted(event),
                 onpointermove: moved,
                 onpointerup: move |_| release.call(()),

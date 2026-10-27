@@ -78,6 +78,20 @@ pub fn spawn_settings_loop(desk: Desk, spawner: Arc<dyn Spawner>) {
     });
 }
 
+impl super::model::HubRef {
+    /// The font the terminals are drawn in, once one is: what the rest of the window sets code in
+    /// (a page's text, a peek), so the window has one monospace.
+    pub fn grid_font(&self) -> Option<crate::paint::GridFont> {
+        let hub = self.0.borrow();
+        hub.slots.values().find_map(|slot| {
+            let slot = slot.borrow();
+            slot.session
+                .as_ref()
+                .map(|session| session.grid_font().clone())
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use chordkit::Overrides;

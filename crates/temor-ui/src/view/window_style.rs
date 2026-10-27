@@ -71,7 +71,10 @@ pub const WINDOW_CSS: &str = "\
 .temor-favs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6); padding-bottom: var(--s-4); border-radius: var(--r-tile); }\
 .temor-favs > * { min-width: 0; }\
 .temor-favs[*|data-over=true] { box-shadow: 0 0 0 2px var(--accent-text); }\
-.temor-favs-drop { grid-column: 1 / -1; display: grid; place-items: center; height: 40px; border-radius: var(--r-tile); border: var(--hair) dashed var(--f-line); color: var(--f-ink-soft); font-size: var(--fs-small); }\
+.temor-favs[*|data-empty=true] { display: block; height: 0; padding: 0; position: relative; z-index: var(--z-raise); }\
+.temor-favs[*|data-empty=true][*|data-over=true] { box-shadow: none; }\
+.temor-favs-drop { position: absolute; left: 0; right: 0; bottom: 0; display: grid; place-items: center; height: 40px; border-radius: var(--r-tile); border: var(--hair) dashed var(--f-line); background: var(--surface); color: var(--f-ink-soft); font-size: var(--fs-small); }\
+.temor-favs-drop[*|data-over=true] { border-color: var(--accent-text); color: var(--f-ink); }\
 .temor-fav { position: relative; display: grid; place-items: center; height: 44px; border-radius: var(--r-tile); background: var(--f-pill-hover); color: var(--f-ink); }\
 .temor-fav:hover, .temor-fav[*|data-selected=true] { background: var(--f-pill); }\
 .temor-fav[*|data-selected=true] { box-shadow: var(--shadow-current); }\

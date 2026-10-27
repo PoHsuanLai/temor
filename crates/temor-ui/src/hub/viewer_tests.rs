@@ -41,15 +41,12 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
 }
 
 #[test]
-fn a_viewer_tile_is_named_by_its_file() {
-    let (hub, _, viewer) = with_viewer("/w/notes/a.txt", &[]);
+fn a_page_is_the_rows_stage_not_a_tile_and_names_the_row() {
+    let (hub, _, _) = with_viewer("/w/notes/a.txt", &[]);
     let data = hub.sidebar();
-    let tiles = &data.loose[0].tiles;
-    let name = tiles
-        .iter()
-        .find(|t| t.pane == viewer)
-        .map(|t| t.title.as_str());
-    assert_eq!(name, Some("a.txt"));
+    let row = &data.loose[0];
+    assert!(row.tiles.is_empty(), "one terminal: no split row");
+    assert_eq!(row.title, "a.txt");
     assert_eq!(hub.window_parts(), ("a.txt".to_owned(), None));
 }
 

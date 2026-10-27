@@ -91,7 +91,8 @@ fn segment(
                     },
                     oncontextmenu: opening,
                     span { class: "temor-seg-glyph", {presence_face(tile.agent, GLYPH)} }
-                    span { class: "temor-seg-name ds-mono", "{tile.title}" }
+                    // Named in the row title's own face, as a one-pane row is.
+                    span { class: "temor-seg-name ds-row-title", "{tile.title}" }
                 }
             }
         }

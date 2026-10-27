@@ -1,11 +1,12 @@
 //! The Favourites at the top of the sidebar (PLAN §7, v14), as Arc's are: square tiles four to a
 //! row, each a place the person keeps, read from temor's store (`temor://` URLs, `use_live`). A
 //! tab's row dragged here keeps its folder. Pressing a tile brings the tab in that folder to the
-//! front, or opens one there; its menu lets it go. With none kept, they say where to drop one, so
-//! the rows below never move under a drag.
+//! front, or opens one there; its menu lets it go. With none kept they take no room, and a drag
+//! shows where to drop one over the top of the list, so the rows below never move under it.
 
 use dioxus::prelude::*;
 use ds::host::measure::{Anchor, use_rect};
+use ds::motion::drag::DragPhase;
 use ds::prelude::*;
 use temor_client::query::OnShelf;
 use temor_client::{Command, Shelf};
@@ -76,8 +77,16 @@ pub fn Favourites(rows: Vec<TabRow>, desk: Desk, dnd: Dnd) -> Element {
         .map(|places| places.to_vec())
         .unwrap_or_default();
     let rect = use_rect();
-    // The drag finds the Favourites under the pointer from where they are.
-    dnd.rects.set_favourites(rect.rect());
+    let drop_rect = use_rect();
+    let dragging = matches!(dnd.drag.phase(), DragPhase::Live { .. });
+    let empty = places.is_empty();
+    // The drag finds the Favourites under the pointer from where they are: the tiles, or with
+    // none kept, the box a drag shows over the top of the list.
+    dnd.rects.set_favourites(match (empty, dragging) {
+        (false, _) => rect.rect(),
+        (true, true) => drop_rect.rect(),
+        (true, false) => None,
+    });
     use_drop({
         let rects = dnd.rects.clone();
         move || rects.set_favourites(None)
@@ -90,9 +99,15 @@ pub fn Favourites(rows: Vec<TabRow>, desk: Desk, dnd: Dnd) -> Element {
             role: "group",
             "aria-label": "Favourites",
             "data-over": over,
+            "data-empty": empty.then_some("true"),
             onmounted: move |event: MountedEvent| rect.on_mounted(event),
-            if places.is_empty() {
-                div { class: "temor-favs-drop", "Drag a tab here to keep it" }
+            if empty && dragging {
+                div {
+                    class: "temor-favs-drop",
+                    "data-over": over,
+                    onmounted: move |event: MountedEvent| drop_rect.on_mounted(event),
+                    "Drop to keep it in Favourites"
+                }
             }
             for place in places {
                 if let Some(folder) = folder_of(&place) {

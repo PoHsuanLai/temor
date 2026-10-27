@@ -97,6 +97,15 @@ impl GridFont {
         )
     }
 
+    /// A CSS declaration that makes quire's code font the grid's, for the window around the
+    /// panes: a page's text and a peek are then set as the terminal is.
+    pub fn code_css(&self) -> String {
+        format!(
+            "--font-code:\"{}\", var(--term-font)",
+            self.family.replace(['"', '\\', ';'], "")
+        )
+    }
+
     fn of(fonts: &FontSet) -> Self {
         Self {
             family: fonts.resolved_family().to_owned(),

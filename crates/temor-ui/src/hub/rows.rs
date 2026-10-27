@@ -4,7 +4,7 @@
 
 use ds::prelude::{Emphasis, Selection};
 use temor_core::presence::{AgentState, attention};
-use temor_core::split::WholePx;
+use temor_core::split::{Closed, SplitTree, WholePx};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::sidebar_plan;
 use temor_ssh::HostAlias;
@@ -110,8 +110,20 @@ impl Hub {
 
     fn row(&self, id: TabId) -> Option<TabRow> {
         let tab = self.ws.tabs.tab(id)?;
-        let pane = self.ws.focus_of(id)?;
-        let title = self.pane_title(pane, &tab.title);
+        let focus = self.ws.focus_of(id)?;
+        // A page with the keys names the row, as a browser tab is named by its page; the folder
+        // is still its terminal's.
+        let page_name = self.viewer_name(focus);
+        let pane = match page_name {
+            Some(_) => self
+                .console_of(&tab.tree)
+                .panes()
+                .into_iter()
+                .find(|pane| !self.is_viewer(*pane))
+                .unwrap_or(focus),
+            None => focus,
+        };
+        let title = page_name.unwrap_or_else(|| self.pane_title(pane, &tab.title));
         // A host's title already names its folder, and its paths are not under this home.
         let on_host = self.host_of(pane).is_some();
         let place = self
@@ -133,7 +145,8 @@ impl Hub {
             true => Selection::Selected,
             false => Selection::Unselected,
         };
-        let tiles = match tab.tree.panes().len() > 1 {
+        // A page is the row's stage, not a pane beside it: only the terminals split the row.
+        let tiles = match self.console_of(&tab.tree).panes().len() > 1 {
             true => self.tiles(id, pane),
             false => Vec::new(),
         };
@@ -194,10 +207,10 @@ impl Hub {
             return Vec::new();
         };
         let whole = MINIATURE as f32;
-        let rects = tab.tree.layout(WholePx(MINIATURE), WholePx(MINIATURE));
+        let tree = self.console_of(&tab.tree);
+        let rects = tree.layout(WholePx(MINIATURE), WholePx(MINIATURE));
         // The panes as they stand, which is the order the focus steps through them (⌘]).
-        tab.tree
-            .reading_order()
+        tree.reading_order()
             .into_iter()
             .filter_map(|pane| {
                 let (_, rect) = rects.iter().find(|(at, _)| *at == pane)?;
@@ -221,6 +234,15 @@ impl Hub {
                 })
             })
             .collect()
+    }
+
+    /// The row's console: its panes but the page on its stage.
+    fn console_of(&self, tree: &SplitTree) -> SplitTree {
+        let page = tree.panes().into_iter().find(|pane| self.is_viewer(*pane));
+        match page.map(|page| tree.remove(page)) {
+            Some(Ok(Closed::Remaining(rest))) => rest,
+            _ => tree.clone(),
+        }
     }
 
     /// What a pane is called: its program's title, else the last part of its folder, else "Shell".

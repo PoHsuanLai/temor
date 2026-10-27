@@ -481,13 +481,34 @@ fn a_row_dropped_on_the_favourites_keeps_its_folder_there() {
         y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
     };
     let tiles = |h: &Harness| rects(h, ".temor-side .temor-fav");
-    // None kept: the Favourites say where to drop one.
-    let zone = rects(&h, ".temor-favs-drop");
-    assert_eq!(zone.len(), 1, "the drop zone shows:\n{}", h.html());
+    // None kept: they take no room until a drag shows where to drop one.
+    assert!(
+        rects(&h, ".temor-favs-drop").is_empty(),
+        "no drop box at rest"
+    );
     let row = centre(&rects(&h, ".temor-side .temor-tab-box")[0]);
-    h.send(Input::drag(row, centre(&zone[0]), 12));
+    let first_top = rects(&h, ".temor-side .temor-tab-box")[0].top;
+    h.send(Input::pointer_down(row));
+    for step in 1..=6 {
+        let mut at = row;
+        at.y.0 -= step as f32 * 3.0;
+        h.send(Input::pointer_move(at));
+        h.advance(Duration::from_millis(16));
+    }
+    h.advance(Duration::from_millis(100));
+    let zone = rects(&h, ".temor-favs-drop");
+    assert_eq!(zone.len(), 1, "a drag shows the drop box:\n{}", h.html());
+    assert_eq!(
+        rects(&h, ".temor-side .temor-tab-box")[0].top,
+        first_top,
+        "the rows do not move under the drag"
+    );
+    let over = centre(&zone[0]);
+    h.send(Input::pointer_move(over));
+    h.advance(Duration::from_millis(16));
+    h.send(Input::pointer_up(over));
     h.advance(Duration::from_millis(400));
-    assert!(rects(&h, ".temor-favs-drop").is_empty(), "the hint goes");
+    assert!(rects(&h, ".temor-favs-drop").is_empty(), "the box goes");
     assert_eq!(tiles(&h).len(), 1, "kept:\n{}", h.html());
     // Its menu lets it go.
     h.send(Input::press(
