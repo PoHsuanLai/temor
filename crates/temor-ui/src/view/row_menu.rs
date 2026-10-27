@@ -13,6 +13,7 @@ use temor_core::menu::{Item, RowFacts, Target};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::{TabsIn, WorkspaceIn};
+use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::favourites::folder_url;
 use super::live::{client, use_live};
@@ -70,6 +71,17 @@ pub fn RowMenu(
                     Item::ShowInFolder => {
                         if let Some(place) = place.as_deref() {
                             show_in_folder(&desk, Path::new(place));
+                        }
+                    }
+                    // The row's session, or before its shell has said where it is, its folder.
+                    Item::ShowHistory => {
+                        let scope = match (desk.hub.session_of_tab(tab), place.clone()) {
+                            (Some(id), _) => Some(HistoryScope::Session(id)),
+                            (None, Some(folder)) => Some(HistoryScope::In(folder)),
+                            (None, None) => None,
+                        };
+                        if let Some(scope) = scope {
+                            desk.open_page(TemorUrl::History(scope));
                         }
                     }
                     Item::ClosePane => desk.act(WorkspaceIn::ClosePane(close)),

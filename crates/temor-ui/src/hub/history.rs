@@ -56,6 +56,16 @@ impl Hub {
         self.ws.tab_of(*pane)
     }
 
+    /// The session of the pane with the keys in `tab`, or of its first that has one.
+    pub fn session_of_tab(&self, tab: temor_core::vocab::ids::TabId) -> Option<SessionId> {
+        let focus = self.ws.focus_of(tab);
+        let panes = self.ws.tabs.tab(tab)?.tree.panes();
+        focus
+            .into_iter()
+            .chain(panes)
+            .find_map(|pane| self.session_id(pane))
+    }
+
     /// The sessions still running in this window.
     pub fn running_sessions(&self) -> std::collections::BTreeSet<SessionId> {
         self.history
@@ -138,6 +148,11 @@ impl HubRef {
     /// See [`Hub::tab_of_session`].
     pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
         self.0.borrow().tab_of_session(id)
+    }
+
+    /// See [`Hub::session_of_tab`].
+    pub fn session_of_tab(&self, tab: temor_core::vocab::ids::TabId) -> Option<SessionId> {
+        self.0.borrow().session_of_tab(tab)
     }
 
     /// See [`Hub::running_sessions`].

@@ -111,3 +111,43 @@ fn the_history_page_lists_the_session_and_opens_its_commands() {
         html.contains("class=\"temor-history-day\"") && !html.contains("Go to Tab")
     });
 }
+
+/// A row's Show History opens its own session's commands.
+#[test]
+fn a_rows_show_history_opens_its_sessions_commands() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let store = Arc::new(SqliteStore::in_memory().expect("store"));
+    let client = Client::open(store.clone(), ClientConfig { external: false });
+    let probe = Probe::new();
+    let mut h = harness_building(
+        "history-row-menu",
+        &probe,
+        None,
+        |_| {},
+        WindowHosting::Absent,
+        move |config| config.with_context(client),
+    );
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    type_line(&mut h, "echo from-this-row");
+    let start = Instant::now();
+    while kept(&store).is_empty() {
+        h.advance(Duration::from_millis(50));
+        assert!(start.elapsed() < Duration::from_secs(10), "nothing kept");
+    }
+    let row = h
+        .centre(".temor-side .temor-tab-box")
+        .expect("the tab's row");
+    h.send(ds_harness::Input::press(
+        row,
+        ds::base::press::PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(300));
+    let item = super::drive::menu_item(&h, "Show History");
+    h.send(ds_harness::Input::click(item.centre()));
+    wait_html(&mut h, "the session's commands", |html| {
+        html.contains("echo from-this-row") && html.contains("Go to Tab")
+    });
+}

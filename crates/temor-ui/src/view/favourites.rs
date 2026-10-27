@@ -14,7 +14,7 @@ use temor_core::menu::{Item, Target as Clicked};
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
-use temor_schema::url::{Host, Location, TemorUrl};
+use temor_schema::url::{HistoryScope, Host, Location, TemorUrl};
 
 use super::dnd::{Dnd, Target};
 use super::live::{client, use_live};
@@ -182,6 +182,7 @@ fn FavouriteTile(
                         },
                         Item::OpenInNewTab => acting.act(WorkspaceIn::NewTab { cwd: Some(Cwd(opened.clone())) }),
                         Item::ShowInFolder => show_in_folder(&acting, std::path::Path::new(&opened)),
+                        Item::ShowHistory => acting.open_page(TemorUrl::History(HistoryScope::In(opened.clone()))),
                         Item::RemoveFromFavourites => {
                             client().act(Command::Let { shelf: Shelf::Favourites, place: letting.clone() });
                         }

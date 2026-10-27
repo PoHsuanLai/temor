@@ -575,6 +575,7 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
             "Add to Favourites",
             "Pin Tab",
             "Show in Folder",
+            "Show History",
             "Close Tab"
         ]
     );

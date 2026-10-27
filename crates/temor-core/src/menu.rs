@@ -79,6 +79,8 @@ pub enum Item {
         pinned: bool,
     },
     ShowInFolder,
+    /// The history page, of the row's session or of the folder.
+    ShowHistory,
     ClosePane,
     CloseTab,
     ClosePage,
@@ -110,7 +112,7 @@ impl Item {
             | Item::EditLocally
             | Item::SelectAllBlocks => Group::Own,
             Item::Favourite { .. } | Item::Pin { .. } => Group::Keep,
-            Item::ShowInFolder => Group::Show,
+            Item::ShowInFolder | Item::ShowHistory => Group::Show,
             Item::ClosePane | Item::CloseTab | Item::ClosePage | Item::RemoveFromFavourites => {
                 Group::TakeAway
             }
@@ -142,6 +144,7 @@ impl Item {
             Item::Pin { pinned: true } => "Unpin Tab",
             Item::Pin { pinned: false } => "Pin Tab",
             Item::ShowInFolder => "Show in Folder",
+            Item::ShowHistory => "Show History",
             Item::ClosePane => "Close Pane",
             Item::CloseTab => "Close Tab",
             Item::ClosePage => "Close Page",
@@ -164,6 +167,7 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(row.local_folder, Item::Favourite { kept: row.kept });
             add(true, Item::Pin { pinned: row.pinned });
             add(row.local_folder, Item::ShowInFolder);
+            add(true, Item::ShowHistory);
             add(row.split_pane, Item::ClosePane);
             add(true, Item::CloseTab);
         }
@@ -171,6 +175,7 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(true, Item::Open);
             add(true, Item::OpenInNewTab);
             add(true, Item::ShowInFolder);
+            add(true, Item::ShowHistory);
             add(true, Item::RemoveFromFavourites);
         }
         Target::Block(block) => {
@@ -236,7 +241,7 @@ mod tests {
             [
                 vec!["Open in New Tab"],
                 vec!["Add to Favourites", "Pin Tab"],
-                vec!["Show in Folder"],
+                vec!["Show in Folder", "Show History"],
                 vec!["Close Tab"],
             ]
         );
@@ -250,7 +255,7 @@ mod tests {
             titles(Target::Row(kept))[1..],
             [
                 vec!["Remove from Favourites", "Unpin Tab"],
-                vec!["Show in Folder"],
+                vec!["Show in Folder", "Show History"],
                 vec!["Close Pane", "Close Tab"],
             ]
         );
@@ -260,7 +265,7 @@ mod tests {
     fn a_row_on_another_computer_has_no_folder_here_to_open_keep_or_show() {
         assert_eq!(
             titles(Target::Row(RowFacts::default())),
-            [vec!["Pin Tab"], vec!["Close Tab"]]
+            [vec!["Pin Tab"], vec!["Show History"], vec!["Close Tab"]]
         );
     }
 
@@ -270,7 +275,7 @@ mod tests {
             titles(Target::Favourite),
             [
                 vec!["Open", "Open in New Tab"],
-                vec!["Show in Folder"],
+                vec!["Show in Folder", "Show History"],
                 vec!["Remove from Favourites"],
             ]
         );

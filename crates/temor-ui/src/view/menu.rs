@@ -69,6 +69,7 @@ fn tip_of(item: Item) -> Option<&'static str> {
             "Open the selected file, or the last file in the command, in an editor here"
         }
         Item::ShowInFolder => "Show it in your files",
+        Item::ShowHistory => "The commands run here, by day",
         _ => return None,
     })
 }
@@ -105,6 +106,7 @@ mod tests {
                 "Pin Tab",
                 "-",
                 "Show in Folder",
+                "Show History",
                 "-",
                 "Close Tab"
             ]
