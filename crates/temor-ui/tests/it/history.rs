@@ -93,11 +93,8 @@ fn the_history_page_lists_the_session_and_opens_its_commands() {
         h.advance(Duration::from_millis(50));
         assert!(start.elapsed() < Duration::from_secs(10), "nothing kept");
     }
-    // ⌥⇧⌘Y, or Ctrl+Alt+Shift+Y off a Mac.
-    let primary: &[ShortcutKey] = match cfg!(target_os = "macos") {
-        true => &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift],
-        false => &[ShortcutKey::Ctrl, ShortcutKey::Alt, ShortcutKey::Shift],
-    };
+    // ⌥⇧⌘Y: the window reads Super as temor's primary key on every desktop.
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
     chord_with(&mut h, primary, 'y');
     wait_html(&mut h, "the history page", |html| {
         html.contains("class=\"temor-history-day\"") && html.contains("Today")

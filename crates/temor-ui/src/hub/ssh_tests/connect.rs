@@ -161,7 +161,10 @@ fn a_split_or_new_tab_of_a_host_pane_joins_its_connection_in_its_folder() {
         let pane = rig.front();
         assert_eq!(rig.hub.host_of(pane), Some("fake"), "session {n}");
         let name = format!("session-{n}.script");
-        rig.pump("the joined session", |_| dir.join(&name).exists());
+        // The fake host writes the script as it reads it: wait for its folder line, not the file.
+        rig.pump("the joined session", |_| {
+            std::fs::read_to_string(dir.join(&name)).is_ok_and(|s| s.contains("temor_start_dir="))
+        });
         let script = rig.got(&name).unwrap_or_default();
         assert!(
             script.contains("\ntemor_start_dir='/srv/it'\\''s here'\n"),
