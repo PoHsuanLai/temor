@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use temor_client::model::address::{Crumb, crumbs_of};
 use temor_client::model::stage::{Layout, Pages};
 use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::vocab::text::ViewerRef;
@@ -36,6 +37,26 @@ pub struct StageView {
     pub layout: Layout,
     pub can_go_back: bool,
     pub can_go_forward: bool,
+}
+
+/// What the address at the top of the sidebar says of the row in front.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum Address {
+    /// Nothing: no row, or a terminal whose folder is not known or is on a host.
+    #[default]
+    None,
+    /// One of temor's own pages that is no folder.
+    Page(TemorUrl),
+    /// The folders down to what is shown; `file` when the last is a file, not a folder.
+    Path { crumbs: Vec<Crumb>, file: bool },
+}
+
+/// The address of `path` under `home`.
+fn path_address(path: &str, home: &str, file: bool) -> Address {
+    match crumbs_of(path, home) {
+        crumbs if crumbs.is_empty() => Address::None,
+        crumbs => Address::Path { crumbs, file },
+    }
 }
 
 /// The page of temor's own `file` names (`temor://history`, a folder on this computer), when it
@@ -157,6 +178,32 @@ impl Hub {
         }
     }
 
+    /// The address of the row in front: the page on its stage, or else its terminal's folder.
+    pub fn address(&self) -> Address {
+        let Some(tab) = self.book.ws.front() else {
+            return Address::None;
+        };
+        let home = self.launch.ambient.home.to_string_lossy();
+        let page = self
+            .stages
+            .rows
+            .get(&tab)
+            .filter(|stage| stage.layout.shows_stage())
+            .and_then(|stage| stage.viewer)
+            .and_then(|viewer| self.book.ws.viewers.get(&viewer));
+        if let Some(file) = page {
+            let file = file.as_str();
+            return match temor_page(file) {
+                Some(TemorUrl::Location(place)) => path_address(&place.path, &home, false),
+                Some(page) => Address::Page(page),
+                None => path_address(file, &home, true),
+            };
+        }
+        self.row(tab)
+            .and_then(|row| row.place)
+            .map_or(Address::None, |place| path_address(&place, &home, false))
+    }
+
     /// Show `layout` on the row in front. Without a page there is only the console.
     pub(super) fn set_layout(&mut self, layout: Layout) {
         let Some(tab) = self.book.ws.front() else {
@@ -225,6 +272,11 @@ impl HubRef {
         self.0.borrow().stage_view(tab)
     }
 
+    /// See [`Hub::address`].
+    pub fn address(&self) -> Address {
+        self.0.borrow().address()
+    }
+
     /// The file the page in the viewer `pane` is.
     pub fn page_file(&self, pane: PaneId) -> Option<String> {
         let hub = self.0.borrow();
@@ -251,6 +303,11 @@ impl Desk {
     pub fn open_file(&self, path: &Path) {
         let file = ViewerRef(path.to_string_lossy().into_owned());
         self.settle(|hub| hub.open_on_stage(file));
+    }
+
+    /// The page of the folder `path` on the row in front, as a crumb of the address opens it.
+    pub fn open_folder(&self, path: &str) {
+        self.open_page(folder_url(path));
     }
 
     /// The files that arrived, and those on their way to other computers.

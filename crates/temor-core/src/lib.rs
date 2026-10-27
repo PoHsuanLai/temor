@@ -2,6 +2,7 @@
 //! machine, the command-bar ranking and proposal sanitising. No I/O, no threads, no UI and no
 //! foreign code: the other crates feed these functions values and carry out what they return.
 
+pub mod address;
 pub mod agent;
 pub mod bar;
 pub mod block;

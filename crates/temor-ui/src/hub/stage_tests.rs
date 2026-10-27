@@ -94,3 +94,40 @@ fn hiding_what_has_the_keys_hands_them_to_what_is_shown() {
     hub.set_layout(Layout::Stage);
     assert_eq!(hub.keyboard_pane(), Some(viewer));
 }
+
+/// The names the address shows, and whether it ends at a file.
+fn address(hub: &Hub) -> (Vec<String>, bool) {
+    match hub.address() {
+        super::Address::Path { crumbs, file } => {
+            (crumbs.into_iter().map(|crumb| crumb.name).collect(), file)
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn the_address_is_the_page_shown_or_else_the_terminal_s_folder() {
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab {
+        cwd: Some(temor_client::model::vocab::text::Cwd("/w/src".to_owned())),
+    }]);
+    assert_eq!(
+        address(&hub),
+        (vec!["/".into(), "w".into(), "src".into()], false)
+    );
+    hub.open_viewer(PaneId(1), ask("/w/docs/a.txt"));
+    assert_eq!(
+        address(&hub),
+        (
+            vec!["/".into(), "w".into(), "docs".into(), "a.txt".into()],
+            true
+        )
+    );
+    hub.set_layout(Layout::Console);
+    assert_eq!(address(&hub).0.last().map(String::as_str), Some("src"));
+    hub.set_layout(Layout::Stage);
+    hub.open_page(temor_schema::url::TemorUrl::Downloads);
+    assert_eq!(
+        hub.address(),
+        super::Address::Page(temor_schema::url::TemorUrl::Downloads)
+    );
+}

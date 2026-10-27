@@ -153,6 +153,21 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
         downloads.right,
         head.right
     );
+    // Back and Forward stand before Downloads, with nowhere to go yet; the address of the row in
+    // front is under the head.
+    let walk = &rects(&h, ".temor-head .temor-walk")[0];
+    assert!(
+        walk.right <= downloads.left,
+        "Back and Forward, then Downloads"
+    );
+    assert_eq!(
+        rects(&h, ".temor-head .temor-walk .ds-button[disabled]").len(),
+        2,
+        "nowhere to go"
+    );
+    let address = rects(&h, ".temor-side .temor-address .ds-path-segment");
+    assert!(!address.is_empty(), "the shell's folder");
+    assert!(address[0].top >= head.bottom, "under the head");
     // The foot has no menu of its own: New Space is in the Space's menu.
     assert!(
         rects(&h, ".temor-side .temor-foot .ds-button").is_empty(),

@@ -15,6 +15,11 @@ pub const WINDOW_CSS: &str = "\
 .temor-sheet { background: var(--raise); border: var(--hair) solid var(--line); box-shadow: var(--shadow-sheet); }\
 .temor-find { position: absolute; top: var(--s-4); right: var(--s-4); display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4); border-radius: var(--r-item); }\
 .temor-find-field { width: calc(var(--s-16) * 12); }\
+.temor-console-bar { flex: none; display: flex; align-items: center; gap: var(--s-4); min-width: 0; min-height: 28px; margin-bottom: var(--s-4); }\
+.temor-console-grow { flex: 1 1 auto; }\
+.temor-console-tools { flex: none; display: flex; align-items: center; gap: var(--s-2); }\
+.temor-find-inline { position: static; flex: 1 1 auto; min-width: 0; padding: 0; }\
+.temor-find-inline .temor-find-field { flex: 1 1 auto; width: auto; min-width: 0; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; overflow: hidden; }\
 .temor-blist { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; background: var(--term-bg); }\
@@ -89,6 +94,9 @@ pub const WINDOW_CSS: &str = "\
 .temor-head { display: flex; align-items: center; gap: var(--s-6); min-width: 0; }\
 .temor-head-title { flex: 1 1 auto; min-width: 0; }\
 .temor-head > .temor-dl-hold { flex: none; }\
+.temor-head-stack { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }\
+.temor-walk { flex: none; display: flex; }\
+.temor-address { display: flex; min-width: 0; overflow: hidden; }\
 .temor-dl-hold { position: relative; display: flex; }\
 .temor-dl-dot { position: absolute; top: var(--s-3); right: var(--s-3); width: var(--s-6); height: var(--s-6); border-radius: var(--r-pill); background: var(--ok); pointer-events: none; }\
 .temor-dl-dot.going { background: var(--ink-faint); }\

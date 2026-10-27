@@ -11,6 +11,7 @@ use ds::components::menus::item::item::MenuItem;
 use ds::prelude::{Point, Px};
 use temor_client::model::space::{Place, Project, TemorSpaces};
 
+use super::address_bar::{AddressBar, WalkButtons};
 use super::shelf::ShelfButton;
 use super::space_handle::SpacesOf;
 use crate::hub::{Desk, HubRef};
@@ -47,16 +48,21 @@ enum SpaceAct {
 }
 
 /// The head of the sidebar, as mailo's is: the name of the Space on screen, one Space or several,
-/// so it says where you are; Downloads stands at the row's right end.
+/// so it says where you are, then Back and Forward; Downloads stands at the row's right end. The
+/// address of the row in front is under it.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceHeader(desk: Desk) -> Element {
     rsx! {
-        div { class: "temor-head",
-            div { class: "temor-head-title",
-                SpaceHead { handle: desk.spaces }
+        div { class: "temor-head-stack",
+            div { class: "temor-head",
+                div { class: "temor-head-title",
+                    SpaceHead { handle: desk.spaces }
+                }
+                WalkButtons { desk: desk.clone() }
+                ShelfButton { desk: desk.clone() }
             }
-            ShelfButton { desk: desk.clone() }
+            AddressBar { desk: desk.clone() }
         }
     }
 }

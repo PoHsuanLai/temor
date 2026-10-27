@@ -28,6 +28,9 @@ pub fn FindBar(
     previous_tip: String,
     next_tip: String,
     on_close: EventHandler<()>,
+    /// In a console's bar, not over the pane's corner.
+    #[props(default)]
+    inline: bool,
 ) -> Element {
     let status = match position {
         Some((index, total)) => format!("{index} of {total}"),
@@ -35,7 +38,7 @@ pub fn FindBar(
         None => "No matches".to_owned(),
     };
     rsx! {
-        div { class: "temor-find temor-sheet",
+        div { class: if inline { "temor-find temor-find-inline" } else { "temor-find temor-sheet" },
             div { class: "temor-find-field",
                 TextField {
                     label: "Find in terminal".to_owned(),

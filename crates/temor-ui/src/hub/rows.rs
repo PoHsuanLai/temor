@@ -99,6 +99,17 @@ impl SidebarData {
     }
 }
 
+/// What a console's bar knows of its row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConsoleRow {
+    pub tab: TabId,
+    pub pinned: bool,
+    /// The folder as this computer writes it; none on a host.
+    pub place: Option<String>,
+    /// Whether the row is a Split View, whose terminals close one by one.
+    pub split: bool,
+}
+
 /// The side of the miniature's square the layout is computed in.
 const MINIATURE: u32 = 1000;
 
@@ -123,7 +134,7 @@ impl Hub {
         }
     }
 
-    fn row(&self, id: TabId) -> Option<TabRow> {
+    pub(super) fn row(&self, id: TabId) -> Option<TabRow> {
         let tab = self.book.ws.tabs.tab(id)?;
         let focus = self.book.ws.focus_of(id)?;
         // A page with the keys names the row, as a browser tab is named by its page; the folder
@@ -385,6 +396,31 @@ impl HubRef {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
         self.0.borrow().sidebar()
+    }
+
+    /// The row a console's terminal `pane` is in, for its bar's menu: none for the quick
+    /// terminal, which is in no row.
+    pub fn console_row(&self, pane: PaneId) -> Option<ConsoleRow> {
+        let hub = self.0.borrow();
+        let tab = hub.book.ws.tab_of(pane)?;
+        let sidebar = hub.sidebar();
+        let row = sidebar.row(tab)?;
+        let terminals = hub
+            .book
+            .ws
+            .tabs
+            .tab(tab)?
+            .tree
+            .panes()
+            .into_iter()
+            .filter(|pane| !hub.is_viewer(*pane))
+            .count();
+        Some(ConsoleRow {
+            tab,
+            pinned: sidebar.pinned.iter().any(|pinned| pinned.id == tab),
+            place: row.place,
+            split: terminals > 1,
+        })
     }
 
     /// The person's home folder, as a path.

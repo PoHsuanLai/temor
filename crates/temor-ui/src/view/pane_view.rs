@@ -31,6 +31,7 @@ use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, Co
 use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn, PictureShown};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
+use super::console_bar::ConsoleTools;
 use super::convert::scale_of;
 use super::find_bar::FindBar;
 use super::handlers::{
@@ -257,6 +258,24 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .as_ref()
         .and_then(|s| s.clipboard_ask());
     let on_host = desk.hub.is_host_pane(pane);
+    // A row's terminal has the console's bar; the quick terminal is in no row.
+    let console_row = desk.hub.console_row(pane);
+    let find_toggle = {
+        let slot = Rc::clone(&slot);
+        let open = find.is_some();
+        let mut close = find_close(Rc::clone(&slot), ui, ime.clone(), regain);
+        move |()| match open {
+            true => close(()),
+            false => {
+                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                    let _ = s.run(Action::Find);
+                }
+                let mut ui = ui;
+                ui += 1;
+                repaint(&slot);
+            }
+        }
+    };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // The block menu speaks of what is picked now.
     let menu_block = match block_menu() {
@@ -386,6 +405,25 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     rsx! {
         div { class: "temor-pane",
             onpointerleave: pointer_gone(Rc::clone(&slot)),
+            if let Some(row) = console_row.clone() {
+                div { class: "temor-console-bar",
+                    if let Some((query, position)) = find.clone() {
+                        FindBar {
+                            query,
+                            position,
+                            on_query: find_query(Rc::clone(&slot), ui, started),
+                            on_step: find_step(Rc::clone(&slot), ui),
+                            previous_tip: desk.hub.tooltip("Previous match", Action::FindPrevious),
+                            next_tip: desk.hub.tooltip("Next match", Action::FindNext),
+                            on_close: find_close(Rc::clone(&slot), ui, ime.clone(), regain),
+                            inline: true,
+                        }
+                    } else {
+                        span { class: "temor-console-grow" }
+                    }
+                    ConsoleTools { pane, row, finding: find.is_some(), desk: desk.clone(), on_find: find_toggle }
+                }
+            }
             if let Some(head) = live_head {
                 LiveCardHead { head, font: card_font.clone(), on_icon: live_icon }
             }
@@ -497,8 +535,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     },
                 }
             }
-            // On the pane's top-right corner, over the grid.
-            if let Some((query, position)) = find {
+            // The quick terminal's: on the pane's top-right corner, over the grid.
+            if let (None, Some((query, position))) = (&console_row, find) {
                 FindBar {
                     query,
                     position,

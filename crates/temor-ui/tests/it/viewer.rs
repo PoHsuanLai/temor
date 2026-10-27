@@ -201,3 +201,46 @@ fn command_click_on_a_folder_opens_its_page_and_walks_into_it() {
         html.contains("aria-label=\"File viewer\"") && html.contains(">notes.txt<")
     });
 }
+
+/// The address under the sidebar's head names the shell's folder; a folder in it opens that
+/// folder's page, the address follows the page, and Back in the head returns.
+#[test]
+fn a_folder_in_the_address_opens_its_page_and_back_returns() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::{press, wait_html};
+    let name = "viewer-address";
+    let probe = Probe::new();
+    let mut h = harness(name, &probe);
+    let proj = scratch_path(name).join("home").join("proj");
+    std::fs::create_dir_all(proj.join("src")).expect("scratch folder");
+    std::fs::write(proj.join("notes.txt"), "notes\n").expect("scratch file");
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "cd proj/src && echo \"$PWD\"");
+    let crumbs = ".temor-address .ds-path-segment";
+    wait_html(&mut h, "the shell's folder", |html| {
+        html.contains("class=\"ds-path-name ds-truncate\">src<")
+    });
+    let names = |h: &Harness| -> Vec<String> {
+        (1..=3)
+            .filter_map(|at| h.text_of(&format!("{crumbs}:nth-of-type({at})")))
+            .map(|name| name.trim().to_owned())
+            .collect()
+    };
+    assert_eq!(names(&h), ["~", "proj", "src"]);
+    press(&mut h, &format!("{crumbs}:nth-of-type(2)"));
+    wait_html(&mut h, "the folder's page", |html| {
+        html.contains(">notes.txt<")
+    });
+    assert_eq!(names(&h), ["~", "proj"], "the address follows the page");
+    press(&mut h, &format!("{crumbs}:nth-of-type(1)"));
+    wait_html(&mut h, "the home folder's page", |html| {
+        html.contains("class=\"temor-page-name\">home<")
+    });
+    press(&mut h, ".temor-walk > :first-child");
+    wait_html(&mut h, "the folder again", |html| {
+        html.contains(">notes.txt<")
+    });
+}
