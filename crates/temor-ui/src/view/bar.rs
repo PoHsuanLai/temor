@@ -16,8 +16,8 @@ use ds::components::menus::palette::palette_group::{
     GroupEntries, PaletteGroup, PaletteGroups, PaletteRow,
 };
 use ds::prelude::{AfterPick, CommandPalette, PaletteClose, RowChord};
-use temor_core::bar::{BarRow, Section};
-use temor_core::vocab::text::PluginId;
+use temor_client::model::bar::{BarRow, Section};
+use temor_client::model::vocab::text::PluginId;
 
 use crate::bar::{
     Escape, FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, escape, lift, reply,

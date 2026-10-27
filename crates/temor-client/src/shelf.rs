@@ -5,6 +5,9 @@
 //! The live model is temor-core's `Shelf`; the index is temor-transfer's `Shelf`. They are mapped
 //! here, so the index keeps the facts a restart needs (name, place, size, where from, when).
 
+/// The transfers' own names (consent, file names, the shelf's index), for the window.
+pub use temor_transfer as transfer;
+
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
 use std::io;

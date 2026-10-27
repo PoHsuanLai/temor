@@ -6,11 +6,11 @@ use std::path::PathBuf;
 
 use chordkit::Keymap;
 use ds_core::time::stamp::Stamp;
-use temor_pane::settings::NotifyAfter;
-use temor_pane::text::Finder;
-use temor_pane::text::Selection;
-use temor_pty::ChildExit;
-use temor_render::{FontSet, GridFit, PixelSize, Scale};
+use temor_panes::pane::settings::NotifyAfter;
+use temor_panes::pane::text::Finder;
+use temor_panes::pane::text::Selection;
+use temor_panes::pty::ChildExit;
+use temor_panes::render::{FontSet, GridFit, PixelSize, Scale};
 
 use super::clip::PendingPaste;
 use super::clipboard::Clipboard;
@@ -18,8 +18,8 @@ use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
-use temor_pane::PaneSpec;
 pub use temor_panes::PaneCore;
+use temor_panes::pane::PaneSpec;
 use temor_panes::{Locked, Shared};
 
 /// What the window should do about an event from the pane.
@@ -41,9 +41,9 @@ pub enum Notice {
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
-    Hold(temor_pane::Hold),
+    Hold(temor_panes::pane::Hold),
     /// A program offered, sent or asked for a file (PLAN §9).
-    Transfer(temor_pane::TransferEvent),
+    Transfer(temor_panes::pane::TransferEvent),
     /// Nothing for the window.
     Quiet,
 }
@@ -51,8 +51,8 @@ pub enum Notice {
 /// The drag in progress: how the selection grows from the press.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Drag {
-    pub granularity: temor_pane::text::Granularity,
-    pub shape: temor_pane::text::Shape,
+    pub granularity: temor_panes::pane::text::Granularity,
+    pub shape: temor_panes::pane::text::Shape,
 }
 
 /// Logical padding around the grid (PLAN §5: panes snap to whole cells, leftovers are padding):
@@ -72,7 +72,7 @@ pub struct Session {
     /// it (see [`Session::core`]).
     pub(super) core: Shared,
     /// The pane's engine, as the core holds it: painting and typing need no lock on the core.
-    pub(super) pane: std::sync::Arc<temor_pane::PaneHandle>,
+    pub(super) pane: std::sync::Arc<temor_panes::pane::PaneHandle>,
     pub(super) painter: Painter,
     pub keymap: Keymap,
     pub(super) clipboard: Box<dyn Clipboard>,
@@ -90,29 +90,29 @@ pub struct Session {
     pub(super) pending_query: Option<PendingQuery>,
     /// What the person did to the blocks: picked with a click or the arrows, folded away,
     /// bookmarked for the bookmark keys (while the pane lives).
-    pub(super) ann: temor_core::session::Annotations,
+    pub(super) ann: temor_client::model::session::Annotations,
     /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
-    pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
+    pub(super) pointer_over: Option<temor_panes::vt::SurfacePoint>,
     /// The link under the pointer as last drawn in its tooltip.
     pub(super) link_hover: Option<String>,
     /// The block list as its view last laid it out, while the pane is drawn as one: where a
     /// point over it lands. `None` while the pane is one grid.
     pub(super) list_map: Option<super::list_hit::ListMap>,
     /// The ground the live screen is drawn on while the pane is a list (the running card's).
-    pub(super) live_ground: Option<temor_vt::Rgb>,
+    pub(super) live_ground: Option<temor_panes::vt::Rgb>,
     /// Where the next command is typed while the list shows it.
     pub(super) composer: super::composer::Composer,
     pub(super) blink: super::blink::Blink,
     /// Until when the bell's visual mark stays up.
     pub(super) bell_until: Option<Stamp>,
     /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
-    pub(super) asked: Option<temor_pane::keys::Action>,
+    pub(super) asked: Option<temor_panes::pane::keys::Action>,
     /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
     pub(super) view_ask: Option<super::ViewAsk>,
     /// The commands the session ran before it was reopened, shown above the pane's own.
-    pub(super) kept: Vec<temor_core::session::list::KeptCard>,
+    pub(super) kept: Vec<temor_client::model::session::list::KeptCard>,
     /// Where the rows were shown at the last paint (see `room`).
-    pub(super) layout: Option<temor_render::RowLayout>,
+    pub(super) layout: Option<temor_panes::render::RowLayout>,
 }
 
 /// A find query typed but not yet run, and when it was last typed.
@@ -170,7 +170,7 @@ pub struct SessionKit {
     /// When a finished command is worth a notice.
     pub notify_after: NotifyAfter,
     /// Whether the cursor blinks.
-    pub cursor_blink: temor_pane::settings::CursorBlinking,
+    pub cursor_blink: temor_panes::pane::settings::CursorBlinking,
     pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     /// Where "Save output" places files (the downloads shelf).
@@ -182,7 +182,7 @@ pub(super) struct WindowKit {
     pub keymap: Keymap,
     pub clipboard: Box<dyn Clipboard>,
     pub opener: Box<dyn Opener>,
-    pub cursor_blink: temor_pane::settings::CursorBlinking,
+    pub cursor_blink: temor_panes::pane::settings::CursorBlinking,
 }
 
 impl SessionKit {
@@ -223,9 +223,9 @@ impl std::fmt::Debug for SessionKit {
     }
 }
 
-/// What a session on a program that runs elsewhere is made from (see `temor_pane::start_fed`).
+/// What a session on a program that runs elsewhere is made from (see `temor_panes::pane::start_fed`).
 pub struct FedParts {
-    pub spec: temor_pane::FedSpec,
+    pub spec: temor_panes::pane::FedSpec,
     pub fonts: FontSet,
     pub kit: SessionKit,
 }

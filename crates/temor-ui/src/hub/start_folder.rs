@@ -3,8 +3,8 @@
 //! pane it came from. The two other choices are the folder of the pane in front, or home, for
 //! both. A tab on a host and a tab given a folder are never changed.
 
-use temor_core::workspace::{Spawn, WorkspaceIn};
-use temor_pane::settings::StartIn;
+use temor_client::model::workspace::{Spawn, WorkspaceIn};
+use temor_panes::pane::settings::StartIn;
 
 use super::model::Hub;
 

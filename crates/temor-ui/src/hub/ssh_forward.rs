@@ -1,10 +1,10 @@
 //! Port forwards on a host's shared connection (PLAN §9b "Port forwarding"). The decisions are
 //! temor-core's `forward_step`; this runs the `ssh -O forward` it names and tells the person.
 
-use temor_core::host::forward::{ForwardFault, ForwardIn, ForwardOut, forward_step};
-use temor_core::host::master::Master;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{HostAlias, Port};
+use temor_client::model::host::forward::{ForwardFault, ForwardIn, ForwardOut, forward_step};
+use temor_client::model::host::master::Master;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{HostAlias, Port};
 
 use super::model::Hub;
 use crate::platform::open_link;

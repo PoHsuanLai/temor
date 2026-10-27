@@ -1,8 +1,8 @@
 //! Which kind of session a host pane gets, and how a connection's state reads (PLAN §9b).
 //! Pure: the hub carries out what these decide.
 
-use temor_core::remote::{Grant, HelperState};
-use temor_wire::link::{GoneReason, LinkState};
+use temor_client::model::remote::{Grant, HelperState};
+use temor_client::remote::link::{GoneReason, LinkState};
 
 /// Whether this temor carries a helper build to put on hosts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,8 +60,8 @@ pub fn link_shown(link: &LinkState) -> LinkShown {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_core::vocab::text::HelperHash;
-    use temor_wire::link::{Attempt, Millis, Monotonic};
+    use temor_client::model::vocab::text::HelperHash;
+    use temor_client::remote::link::{Attempt, Millis, Monotonic};
 
     #[test]
     fn a_host_gets_the_helper_unless_it_was_refused_cannot_run_it_or_there_is_none_to_put_there() {

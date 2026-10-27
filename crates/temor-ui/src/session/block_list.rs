@@ -3,11 +3,11 @@
 
 use std::ops::Range;
 
-use temor_core::session::list::{BlockFacts, Item, KeptCard, list_of};
-use temor_core::vocab::ids::BlockId;
-use temor_pane::text::CellPos as ScreenCell;
-use temor_render::{CellPos, HitRegion, PixelSize};
-use temor_vt::{Col, Row, SurfacePoint};
+use temor_client::model::session::list::{BlockFacts, Item, KeptCard, list_of};
+use temor_client::model::vocab::ids::BlockId;
+use temor_panes::pane::text::CellPos as ScreenCell;
+use temor_panes::render::{CellPos, HitRegion, PixelSize};
+use temor_panes::vt::{Col, Row, SurfacePoint};
 
 use super::Session;
 use super::list_hit::{Landing, ListMap, list_hit};
@@ -70,7 +70,7 @@ impl Session {
         let Some(card) = self.kept.iter().find(|card| card.n == n) else {
             return;
         };
-        let command = temor_core::vocab::text::CommandText(card.command.clone());
+        let command = temor_client::model::vocab::text::CommandText(card.command.clone());
         if !self.put_in_prompt(command) {
             self.notice = Some("This command cannot be typed again.".to_owned());
         }
@@ -83,7 +83,7 @@ impl Session {
 
     /// The ground the live screen is drawn on: the running card's while the pane is a list, the
     /// terminal's own (`None`) while it is one grid. Whether it changed: the pane is drawn again.
-    pub fn set_live_ground(&mut self, ground: Option<temor_vt::Rgb>) -> bool {
+    pub fn set_live_ground(&mut self, ground: Option<temor_panes::vt::Rgb>) -> bool {
         let changed = self.live_ground != ground;
         self.live_ground = ground;
         changed
@@ -185,7 +185,7 @@ impl Session {
     pub fn draw_rows(
         &mut self,
         rows: Range<u32>,
-        ground: Option<temor_vt::Rgb>,
+        ground: Option<temor_panes::vt::Rgb>,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
         let (cols, cells) = self.pane.with_term(|term| {
@@ -197,7 +197,7 @@ impl Session {
             for (row, line) in (rows.start..).zip(cells.iter_mut()) {
                 for cell in line {
                     if selection.contains(ScreenCell::new(row, cell.col.0)) {
-                        cell.selected = temor_vt::Selected::Yes;
+                        cell.selected = temor_panes::vt::Selected::Yes;
                     }
                 }
             }

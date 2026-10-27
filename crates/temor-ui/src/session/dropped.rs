@@ -4,9 +4,11 @@
 
 use std::path::PathBuf;
 
-use temor_core::shelf::{DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action};
-use temor_pane::paste;
-use temor_vt::ViewportScroll;
+use temor_client::model::shelf::{
+    DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action,
+};
+use temor_panes::pane::paste;
+use temor_panes::vt::ViewportScroll;
 
 use super::Session;
 use super::osc52::Copied;

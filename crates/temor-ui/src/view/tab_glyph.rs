@@ -8,7 +8,7 @@ use ds::components::companion::orb::view::CompanionOrb;
 use ds::components::content::avatar::{AvatarFace, AvatarShape, AvatarSize, AvatarTone, PersonHue};
 use ds::prelude::{ExternalIcon, IconSize, IconSource, IconView, RowLeading};
 use ds::style::icon::url::IconUrl;
-use temor_core::presence::{AgentState, companion_presence};
+use temor_client::model::presence::{AgentState, companion_presence};
 
 use crate::hub::RowIcon;
 

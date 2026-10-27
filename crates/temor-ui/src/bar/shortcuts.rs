@@ -1,7 +1,7 @@
 //! Which of the bar's rows are also a pane action with a chord, so the row can show it.
 
-use temor_core::bar::{BarAction, Target};
-use temor_pane::keys::Action;
+use temor_client::model::bar::{BarAction, Target};
+use temor_panes::pane::keys::Action;
 
 /// The pane action a row does, when there is one.
 pub fn action_of(row: &BarAction) -> Option<Action> {
@@ -21,8 +21,8 @@ pub fn action_of(row: &BarAction) -> Option<Action> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_core::vocab::ids::Seq;
-    use temor_core::vocab::text::CommandText;
+    use temor_client::model::vocab::ids::Seq;
+    use temor_client::model::vocab::text::CommandText;
 
     #[test]
     fn only_the_rows_that_are_a_pane_action_have_one() {

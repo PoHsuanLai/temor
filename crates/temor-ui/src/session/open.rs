@@ -3,9 +3,9 @@
 
 use std::sync::Arc;
 
-use temor_pane::{EventSink, Feeder, PaneEvent};
-use temor_render::{PixelSize, Scale};
-use temor_vt::Snapshot;
+use temor_panes::pane::{EventSink, Feeder, PaneEvent};
+use temor_panes::render::{PixelSize, Scale};
+use temor_panes::vt::Snapshot;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
@@ -66,7 +66,7 @@ impl Session {
             notice: None,
             find_text: String::new(),
             pending_query: None,
-            ann: temor_core::session::Annotations::default(),
+            ann: temor_client::model::session::Annotations::default(),
             pointer_over: None,
             link_hover: None,
             list_map: None,
@@ -75,7 +75,7 @@ impl Session {
             blink: super::blink::Blink {
                 setting: kit.cursor_blink,
                 from: blink_from,
-                painted: temor_render::BlinkPhase::On,
+                painted: temor_panes::render::BlinkPhase::On,
             },
             bell_until: None,
             asked: None,

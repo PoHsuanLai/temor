@@ -4,7 +4,7 @@
 
 use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
-use temor_pane::settings::{CursorBlinking, CursorStyle, PagerChoice, StartIn};
+use temor_panes::pane::settings::{CursorBlinking, CursorStyle, PagerChoice, StartIn};
 
 /// `cursor.style`: the cursor's shape, until a program asks for another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Word)]

@@ -2,7 +2,7 @@
 
 use chordkit::Platform;
 use dioxus::html::{Code, Key, Modifiers as Held};
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
 use super::super::route::FindBar;
 use super::table::{KDE, OURS, Went, ch, check, row};

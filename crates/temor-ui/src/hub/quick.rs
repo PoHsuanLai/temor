@@ -5,10 +5,10 @@
 //! window's.
 
 use ds::style::space::list::SpaceId;
-use temor_core::quick::{QuickIn, QuickOut, QuickState, quick_step};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::{Spawn, Start};
+use temor_client::model::quick::{QuickIn, QuickOut, QuickState, quick_step};
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::{Spawn, Start};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};

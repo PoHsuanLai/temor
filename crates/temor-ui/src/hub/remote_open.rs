@@ -5,10 +5,10 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_core::host::master::OpenAs;
-use temor_core::remote::HelperState;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{ControlLayout, HostAlias};
+use temor_client::model::host::master::OpenAs;
+use temor_client::model::remote::HelperState;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{ControlLayout, HostAlias};
 
 use super::model::Hub;
 use super::remote::{Busy, RemotePane, Shown, Tier};
@@ -228,7 +228,7 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_ssh::{ControlPersist, RuntimeDir, Seconds};
+    use temor_client::ssh::{ControlPersist, RuntimeDir, Seconds};
 
     #[test]
     fn the_connecting_ssh_has_a_terminal_leaves_the_connection_behind_and_runs_only_true() {

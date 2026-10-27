@@ -1,9 +1,9 @@
 //! Reading a pane's text and typing into it for the desktop services. Everything a terminal
 //! printed is somebody else's words: it goes out as text and is never interpreted here.
 
-use temor_core::vocab::ids::BlockId;
-use temor_core::vocab::text::CommandText;
-use temor_desktop::{CommandRef, LineRange, PaneRef, PortRefusal};
+use temor_client::desktop::{CommandRef, LineRange, PaneRef, PortRefusal};
+use temor_client::model::vocab::ids::BlockId;
+use temor_client::model::vocab::text::CommandText;
 
 use super::model::Hub;
 use super::typing::{Submit, type_command};

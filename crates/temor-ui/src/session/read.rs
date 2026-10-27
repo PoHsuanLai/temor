@@ -2,13 +2,13 @@
 //! screen's text, the find bar and the paste waiting for an answer.
 
 use chordkit::Keymap;
-use temor_pane::text::Finder;
-use temor_render::GridFit;
+use temor_panes::pane::text::Finder;
+use temor_panes::render::GridFit;
 
 use super::Session;
 use super::clip::PendingPaste;
 use crate::error::UiError;
-use temor_pane::PaneHandle;
+use temor_panes::pane::PaneHandle;
 
 impl Session {
     /// The pane's engine handle, for the window's painting loop and tests.

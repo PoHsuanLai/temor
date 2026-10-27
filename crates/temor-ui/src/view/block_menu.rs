@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
-use temor_core::menu::{BlockFacts, Target};
+use temor_client::model::menu::{BlockFacts, Target};
 
 use super::menu::{Pick, menu_items};
 use crate::plugins::lens::LensOffer;

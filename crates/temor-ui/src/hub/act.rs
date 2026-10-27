@@ -5,13 +5,13 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
-use temor_core::notify::Focus;
-use temor_core::session::Checkpoint;
-use temor_core::space::{Origin, spawn_plan};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
-use temor_vt::Snapshot;
+use temor_client::model::notify::Focus;
+use temor_client::model::session::Checkpoint;
+use temor_client::model::space::{Origin, spawn_plan};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::{CommandText, Cwd};
+use temor_client::model::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
+use temor_panes::vt::Snapshot;
 
 use super::model::{Hub, HubRef};
 use super::say::refusal_text;
@@ -98,7 +98,7 @@ impl Hub {
                 .carried
                 .get(&spawn.pane)
                 .and_then(|kept| kept.daemon_session)
-                .map(temor_wire::ids::SessionId);
+                .map(temor_client::remote::ids::SessionId);
             return self.begin_local(spawn, resume);
         }
         self.open_plain(spawn, restored);
@@ -167,7 +167,7 @@ impl Hub {
     /// new shell reads once at its first prompt (where it is returned).
     pub(super) fn carry_env(
         &self,
-        env: &mut temor_shell::ChildEnv,
+        env: &mut temor_panes::shell::ChildEnv,
         pane: PaneId,
         kept: &Checkpoint,
     ) -> Option<std::path::PathBuf> {
@@ -176,7 +176,7 @@ impl Hub {
             temor_client::keep::replay::write(
                 dir,
                 pane,
-                &temor_shell::alias_script(&carried.aliases),
+                &temor_panes::shell::alias_script(&carried.aliases),
             )
         });
         let base = self.launch.ambient.env.clone().overlay(env);
@@ -312,7 +312,7 @@ impl Hub {
     }
 
     /// Makes `palette` the grid's colours in every pane; the first failure comes back as text.
-    pub fn set_palette(&mut self, palette: temor_render::Palette) -> Option<String> {
+    pub fn set_palette(&mut self, palette: temor_panes::render::Palette) -> Option<String> {
         self.palette = palette;
         self.remote_palette();
         let mut failure = None;
@@ -341,7 +341,7 @@ impl HubRef {
     }
 
     /// Makes `palette` the grid's colours in every pane.
-    pub fn set_palette(&self, palette: temor_render::Palette) -> Option<String> {
+    pub fn set_palette(&self, palette: temor_panes::render::Palette) -> Option<String> {
         self.0.borrow_mut().set_palette(palette)
     }
 }

@@ -3,7 +3,7 @@
 //! and reports the key), so the rest of the app never checks again.
 
 use serde::{Deserialize, Serialize};
-use temor_pane::settings::{
+use temor_panes::pane::settings::{
     FontPoints, LinePercent, NOTIFY_AFTER_MAX_SECONDS, NotifyAfter, ScrollbackLines,
 };
 

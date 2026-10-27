@@ -1,5 +1,5 @@
 //! A folder's page (PLAN §7, v14, `temor://local/<path>/`): the tabs open in the folder, then
-//! what it holds, as Finder lists it (`temor_core::folder`), each with when it last changed. A tab
+//! what it holds, as Finder lists it (`temor_client::model::folder`), each with when it last changed. A tab
 //! comes to the front on a press; a folder opens its own page (Back returns), and a file opens on
 //! the stage as `temor view` would show it.
 
@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 use ds::base::press::Press;
 use ds::components::overlays::empty_state::EmptyForm;
 use ds::prelude::*;
-use temor_core::folder::{Entry, listed, modified_words};
+use temor_client::model::folder::{Entry, listed, modified_words};
 
 use super::tab_glyph::row_leading;
 use crate::edge::folder_read::read_folder;

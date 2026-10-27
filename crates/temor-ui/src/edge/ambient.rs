@@ -6,8 +6,8 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use ds_settings::Store;
-use temor_plugins::DataDirs;
-use temor_shell::ChildEnv;
+use temor_client::plugins::DataDirs;
+use temor_panes::shell::ChildEnv;
 
 use crate::settings::{APP, root_for};
 use temor_client::keep::older::resolve_state_dir;

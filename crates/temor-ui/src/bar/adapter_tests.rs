@@ -1,8 +1,8 @@
 //! The bar on the palette: the rows go in, the highlight is the palette's, a pick comes out.
 
-use temor_core::bar::{BarAction, BarContext, Candidate, PathResolver, RowKey, Target};
-use temor_core::vocab::ai::AiSwitch;
-use temor_core::vocab::ids::TabId;
+use temor_client::model::bar::{BarAction, BarContext, Candidate, PathResolver, RowKey, Target};
+use temor_client::model::vocab::ai::AiSwitch;
+use temor_client::model::vocab::ids::TabId;
 
 use super::BarModel;
 

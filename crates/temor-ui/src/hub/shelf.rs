@@ -6,16 +6,16 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 
-use temor_core::remote::Grant;
-use temor_core::shelf::{
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::{
     Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, human_size, shelf_view,
 };
-use temor_core::stage::Layout;
-use temor_core::transfer::Origin;
-use temor_core::vocab::ids::{Bytes, DownloadId, PaneId};
-use temor_pane::OfferId;
-use temor_transfer::Consent;
-use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
+use temor_client::model::stage::Layout;
+use temor_client::model::transfer::Origin;
+use temor_client::model::vocab::ids::{Bytes, DownloadId, PaneId};
+use temor_client::shelf::transfer::Consent;
+use temor_client::shelf::transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
+use temor_panes::pane::OfferId;
 
 use super::bar_action::select_tab;
 use super::desk::Desk;
@@ -23,8 +23,8 @@ use super::model::{Hub, HubRef};
 use crate::platform::{FileShell, default_file_shell};
 use crate::view::launch::Launch;
 use crate::words::notices;
+use temor_client::model::shelf::RowAction;
 use temor_client::shelf::{persist, restore};
-use temor_core::shelf::RowAction;
 
 /// What a program asks of the person.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,7 +133,7 @@ impl ShelfHub {
         let user_dirs = std::fs::read_to_string(ambient.user_dirs_path()).ok();
         let downloads = ambient.downloads_dir(user_dirs.as_deref());
         let store = ShelfStore::new(ambient.shelf_dir());
-        let dir = temor_core::vocab::text::ShelfPath(downloads.display().to_string());
+        let dir = temor_client::model::vocab::text::ShelfPath(downloads.display().to_string());
         let (shelf, when, trouble) = restore(&store, &dir, &SystemClock);
         let hub = Self {
             shelf,
@@ -154,7 +154,7 @@ impl ShelfHub {
     pub(super) fn step(&mut self, input: ShelfIn) -> Vec<ShelfOut> {
         let dir = self.shelf.dir().clone();
         let current = std::mem::replace(&mut self.shelf, Shelf::new(dir));
-        let (next, outs) = temor_core::shelf::shelf_step(current, input);
+        let (next, outs) = temor_client::model::shelf::shelf_step(current, input);
         self.shelf = next;
         outs
     }
@@ -384,12 +384,12 @@ impl HubRef {
     }
 
     /// The files on their way to other computers, newest first.
-    pub fn uploads(&self) -> Vec<temor_core::shelf::Upload> {
+    pub fn uploads(&self) -> Vec<temor_client::model::shelf::Upload> {
         self.0.borrow().shelf.uploads.items().to_vec()
     }
 
     /// The person took an upload off the list.
-    pub fn clear_upload(&self, id: temor_core::shelf::UploadId) {
+    pub fn clear_upload(&self, id: temor_client::model::shelf::UploadId) {
         self.0.borrow_mut().clear_upload(id);
     }
 }

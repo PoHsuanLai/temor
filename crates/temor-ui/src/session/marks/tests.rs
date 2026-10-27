@@ -1,10 +1,10 @@
 //! Unit tests for the mark helpers that need no terminal.
 
-use temor_pane::text::{RowText, Wrap};
+use temor_panes::pane::text::{RowText, Wrap};
 
 use super::actions::output_name;
 use super::lead::leads_blank;
-use temor_core::session::frame::Lead;
+use temor_client::model::session::frame::Lead;
 
 #[test]
 fn output_names_come_from_the_command_or_a_fallback() {

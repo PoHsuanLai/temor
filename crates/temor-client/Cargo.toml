@@ -17,6 +17,8 @@ publish = false
 [features]
 # What a test builds with: `Live::wait`, and a faster look for other processes' writes.
 testing = []
+# The Linux desktop's services through `temor-desktop` (PLAN D15); off, its portable half.
+quire-desktop = ["temor-desktop/quire-desktop"]
 
 [dependencies]
 temor-schema = { workspace = true }

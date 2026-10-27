@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 use std::time::Instant;
 
 use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through};
-use temor_core::notify::Focus;
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::notify::Focus;
+use temor_client::model::vocab::ids::PaneId;
 
 use super::model::Hub;
 
@@ -59,7 +59,7 @@ impl Hub {
                 if let Some(kept) = kept {
                     hub.carried.insert(spawn.pane, kept);
                 }
-                hub.open_pane(&spawn, screen.map(temor_vt::Snapshot::from_bytes));
+                hub.open_pane(&spawn, screen.map(temor_panes::vt::Snapshot::from_bytes));
             }
             for open in starting.viewers {
                 hub.restore_viewer(open);
@@ -136,7 +136,11 @@ impl Hub {
                     pane: *pane,
                     checkpoint,
                     screen: screens
-                        .then(|| session.snapshot().map(temor_vt::Snapshot::into_bytes))
+                        .then(|| {
+                            session
+                                .snapshot()
+                                .map(temor_panes::vt::Snapshot::into_bytes)
+                        })
                         .flatten(),
                 })
             })

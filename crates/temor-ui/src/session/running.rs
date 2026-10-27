@@ -1,6 +1,6 @@
 //! What the tab's row reads of a pane: the command that is running now and for how long.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 
 use super::Session;
 
@@ -30,7 +30,7 @@ impl Session {
     }
 
     /// The block of the newest command that is still running.
-    pub fn running_block(&self) -> Option<temor_core::vocab::ids::BlockId> {
+    pub fn running_block(&self) -> Option<temor_client::model::vocab::ids::BlockId> {
         self.core()
             .blocks
             .store()

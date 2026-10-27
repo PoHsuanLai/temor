@@ -3,8 +3,10 @@
 //! kit's handle, the same way a Space menu's edits go.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::{AccountRef, Credential, Project, Route};
-use temor_core::vocab::text::{EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern};
+use temor_client::model::space::{AccountRef, Credential, Project, Route};
+use temor_client::model::vocab::text::{
+    EnvKey, EnvValue, KeyPath, ProjectRoot, RelPath, RoutePattern,
+};
 
 /// A profile's variables, in order.
 pub type Variables = Vec<(EnvKey, EnvValue)>;

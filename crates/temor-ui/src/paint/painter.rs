@@ -2,8 +2,8 @@
 //! premultiplied pixels, handed to the pane's texture. The lock is held only for the first phase
 //! of the capture; the rows are copied and drawn after it is released.
 
-use temor_pane::{PaintSource, PaneHandle};
-use temor_render::{
+use temor_panes::pane::{PaintSource, PaneHandle};
+use temor_panes::render::{
     BlinkPhase, CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit,
     Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, Scale, SelectionOverlay,
     fit_grid,
@@ -44,7 +44,7 @@ pub struct PaintView {
     pub selection: Option<SelectionOverlay>,
     /// The live screen drawn on this where a cell has no colour of its own: the running card's
     /// ground while the pane is a list, so its live rows sit on the card.
-    pub ground: Option<temor_vt::Rgb>,
+    pub ground: Option<temor_panes::vt::Rgb>,
 }
 
 /// Which frame the pane's pixels were last drawn from.
@@ -87,7 +87,7 @@ impl GridFont {
     /// TUI's arrows and marks are drawn there too, then the terminal's monospace token. Inline,
     /// as the grid's family is no quire token.
     pub fn family_css(&self) -> String {
-        let symbols: String = temor_render::SYMBOL_FAMILIES
+        let symbols: String = temor_panes::render::SYMBOL_FAMILIES
             .iter()
             .map(|family| format!("\"{family}\", "))
             .collect();
@@ -203,9 +203,9 @@ impl Painter {
     pub fn still(
         &mut self,
         cols: u16,
-        rows: &[Vec<temor_vt::StyledCell>],
+        rows: &[Vec<temor_panes::vt::StyledCell>],
         (width, scale, inset): (u32, Scale, Inset),
-        ground: Option<temor_vt::Rgb>,
+        ground: Option<temor_panes::vt::Rgb>,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
         if rows.is_empty() || width == 0 {
@@ -218,8 +218,8 @@ impl Painter {
             None => frame,
         };
         let mut padding = inset.padding(scale);
-        padding.top = temor_vt::Px(0);
-        padding.bottom = temor_vt::Px(0);
+        padding.top = temor_panes::vt::Px(0);
+        padding.bottom = temor_panes::vt::Px(0);
         let height = u32::try_from(rows.len()).unwrap_or(u32::MAX) * metrics.height();
         let view = PaneView {
             size: PixelSize::new(width, height),
@@ -318,7 +318,7 @@ impl Painter {
 #[cfg(test)]
 mod tests {
     use super::Inset;
-    use temor_render::Scale;
+    use temor_panes::render::Scale;
 
     #[test]
     fn the_grid_starts_16_px_in_from_the_sides_and_8_from_the_top_at_every_scale() {

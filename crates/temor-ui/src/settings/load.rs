@@ -2,7 +2,7 @@
 //! `keys.conf` as a file, and hand the pane its typed settings.
 
 use ds_settings::SettingsDoc;
-use temor_pane::settings::TerminalSettings;
+use temor_panes::pane::settings::TerminalSettings;
 
 use super::doc::TerminalDoc;
 use super::keys_file::read_overrides;

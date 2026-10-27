@@ -1,10 +1,10 @@
-//! What is in a folder on this computer, for its page (`temor_core::folder` lists it). A link to a
+//! What is in a folder on this computer, for its page (`temor_client::model::folder` lists it). A link to a
 //! folder is listed as a folder, as Finder does.
 
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
-use temor_core::folder::Entry;
+use temor_client::model::folder::Entry;
 use temor_schema::session::At;
 
 /// The entries of `folder`; an error when it cannot be read.

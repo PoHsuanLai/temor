@@ -5,15 +5,15 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_core::session::{Checkpoint, ShellState};
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::Spawn;
-use temor_pane::settings::ShellChoice;
-use temor_remote::host::HostEnv;
-use temor_shell::report::{KEY_VAR, ReportKey};
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{Attempt, LinkState};
+use temor_client::model::session::{Checkpoint, ShellState};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::Spawn;
+use temor_client::remote::host::HostEnv;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{Attempt, LinkState};
+use temor_client::ssh::HostAlias;
+use temor_panes::pane::settings::ShellChoice;
+use temor_panes::shell::report::{KEY_VAR, ReportKey};
 
 use super::model::Hub;
 use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
@@ -81,7 +81,7 @@ impl Hub {
             })
             .unwrap_or_else(|| "/".to_owned());
         let surroundings = self.launch.ambient.env.clone().overlay(&start.env);
-        let mut env: Vec<(String, String)> = temor_pty::base_env(surroundings.iter())
+        let mut env: Vec<(String, String)> = temor_panes::pty::base_env(surroundings.iter())
             .iter()
             .map(|(k, v)| {
                 (
@@ -237,7 +237,10 @@ impl Hub {
 
     /// The session a pane has in the local daemon, to ask for again at the next launch: the one
     /// it has now, else the one it was saved with and has not got back yet.
-    pub(super) fn local_session(&self, pane: temor_core::vocab::ids::PaneId) -> Option<u64> {
+    pub(super) fn local_session(
+        &self,
+        pane: temor_client::model::vocab::ids::PaneId,
+    ) -> Option<u64> {
         self.remote.local.contains_key(&pane).then_some(())?;
         let live = self.remote.panes.get(&pane).and_then(|p| p.session);
         live.or_else(|| self.remote.saved.get(&pane).copied())

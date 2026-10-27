@@ -6,12 +6,12 @@
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use temor_core::host::edit::{
+use temor_client::model::host::edit::{
     Edit, EditFault, EditIn, EditOut, LocalStamp, Resolution, Watch, edit_step, watch_step,
 };
-use temor_core::host::target::{parse_host_path, resolve_in};
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{ByteCount, HostAlias, RemoteFilePath};
+use temor_client::model::host::target::{parse_host_path, resolve_in};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use super::remote_edit::{EditTier, Job, Overwrite};

@@ -12,9 +12,9 @@ use ds::components::chrome::split_view::model::{
     PaneAt, PaneSize, PaneSpec, Share as ViewShare, SplitAxis, SplitPane, UnfocusedPanes,
 };
 use ds::components::chrome::split_view::view::SplitView;
-use temor_core::split::{Axis, Handle, Node, Share, SplitTree};
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::split::{Axis, Handle, Node, Share, SplitTree};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::pane_view::PaneView;
 use super::viewer_pane::ViewerView;

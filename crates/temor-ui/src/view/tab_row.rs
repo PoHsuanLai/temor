@@ -13,9 +13,9 @@ use ds::components::controls::press::Propagation;
 use ds::components::overlays::drag_ghost::DropLine;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::dnd::{Dnd, Target};
 use super::row_menu::RowMenu;

@@ -3,15 +3,15 @@
 
 use std::path::PathBuf;
 
-use temor_core::block::Outcome;
-use temor_core::split::Direction;
-use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_desktop::{BadgeCount, Exit, Focus, LineRange, PaneRef, PortRefusal, Request};
-use temor_pane::PaneEvent;
+use temor_client::desktop::{BadgeCount, Exit, Focus, LineRange, PaneRef, PortRefusal, Request};
+use temor_client::model::block::Outcome;
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::{ExitCode, PaneId, TabId};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::Heard;
-use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
+use temor_panes::pane::PaneEvent;
+use temor_panes::vt::{ProgramState, ProgramStatus, ProgramWait};
 
 use super::desktop::{exit_of, new_tab_for, refocus_after_agent_open};
 use super::tests::hub_after;
@@ -140,8 +140,8 @@ fn a_pane_an_agent_opens_leaves_the_keyboard_where_it_was() {
 
 #[test]
 fn a_pane_an_agent_opens_is_unfocused_in_the_radar_and_waits_for_the_person() {
-    use temor_core::presence::AgentState;
-    use temor_core::workspace::workspace_step;
+    use temor_client::model::presence::AgentState;
+    use temor_client::model::workspace::workspace_step;
 
     let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
     hub.pane_focused(PaneId(1));

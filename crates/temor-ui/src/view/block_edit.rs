@@ -5,7 +5,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::slot::Slot;
 use crate::hub::Desk;

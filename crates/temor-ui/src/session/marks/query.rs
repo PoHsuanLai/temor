@@ -1,9 +1,9 @@
 //! What the bar and the prompt jumps read from the blocks, and what a jump does to the view.
 //! Nothing here is drawn; the views decide how to show it.
 
-use temor_core::block::Outcome;
-use temor_core::session::AnnotateIn;
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::block::Outcome;
+use temor_client::model::session::AnnotateIn;
+use temor_client::model::vocab::ids::BlockId;
 
 use super::super::Session;
 use super::Finished;
@@ -15,7 +15,7 @@ impl Session {
     }
 
     /// The line of output a finished block's card shows, and how much output there was.
-    pub fn block_note(&self, id: BlockId) -> Option<temor_core::block::Note> {
+    pub fn block_note(&self, id: BlockId) -> Option<temor_client::model::block::Note> {
         self.core().block_note(id).cloned()
     }
 

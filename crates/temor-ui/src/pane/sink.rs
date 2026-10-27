@@ -1,7 +1,7 @@
 //! The window's event channel as a pane sink. The window drains it on its own thread.
 
-use temor_core::vocab::ids::PaneId;
-use temor_pane::{EventSink, PaneEvent};
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::{EventSink, PaneEvent};
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Sends a pane's events to the window's unbounded channel. A newtype, so the impl sits in this

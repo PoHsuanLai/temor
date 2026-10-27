@@ -23,9 +23,9 @@ use ds::prelude::*;
 use ds::window::host::{use_window_host, use_window_title};
 use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
 use ds_settings::{AppearanceFile, use_environment};
-use temor_core::split::Direction;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{TabsIn, WorkspaceIn};
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
 
 use super::bar::BarView;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};

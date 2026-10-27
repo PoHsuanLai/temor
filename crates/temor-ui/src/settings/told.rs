@@ -5,8 +5,8 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use temor_pane::SettingsError;
-use temor_pane::keys::KeyIssue;
+use temor_panes::pane::SettingsError;
+use temor_panes::pane::keys::KeyIssue;
 
 use super::kept::kept_aside;
 use super::migrate::Migrated;

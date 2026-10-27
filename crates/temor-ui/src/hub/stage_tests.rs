@@ -4,9 +4,9 @@
 
 use std::path::PathBuf;
 
-use temor_core::stage::Layout;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::stage::Layout;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::model::Hub;
 use super::tests::hub_after;
@@ -16,7 +16,7 @@ fn ask(file: &str) -> ViewAsk {
     ViewAsk {
         file: PathBuf::from(file),
         around: Vec::new(),
-        site: temor_core::shelf::PaneSite::Local,
+        site: temor_client::model::shelf::PaneSite::Local,
     }
 }
 

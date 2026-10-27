@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use temor_desktop::{
+use temor_client::desktop::{
     Badge, BadgeCount, Claim, DesktopEnv, DesktopError, NoSecrets, Primary, Request, RunEnds,
     SecretVault, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
 };

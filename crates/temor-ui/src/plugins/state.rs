@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use std::rc::Rc;
 
-use temor_core::vocab::ids::PaneId;
-use temor_plugins::Generations;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::plugins::Generations;
 
 use super::effects::Hands;
 use super::facts::PluginFact;

@@ -5,12 +5,12 @@
 use std::sync::Arc;
 
 use ds::prelude::{Emphasis, Selection};
-use temor_core::icon::{IconAsk, TabIcon, icon_for, initial_of, programs_of};
-use temor_core::presence::{AgentState, attention};
-use temor_core::split::{Closed, SplitTree, WholePx};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::sidebar_plan;
-use temor_ssh::HostAlias;
+use temor_client::model::icon::{IconAsk, TabIcon, icon_for, initial_of, programs_of};
+use temor_client::model::presence::{AgentState, attention};
+use temor_client::model::split::{Closed, SplitTree, WholePx};
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::sidebar_plan;
+use temor_client::ssh::HostAlias;
 
 use super::model::{Hub, HubRef};
 use super::tab_name::{Marking, NameIn, tab_title};
@@ -188,7 +188,7 @@ impl Hub {
     pub(super) fn pane_title(
         &self,
         pane: PaneId,
-        made_as: &temor_core::vocab::text::TabTitle,
+        made_as: &temor_client::model::vocab::text::TabTitle,
     ) -> String {
         let read = self.live(pane, |s| {
             (s.title(), s.cwd(), s.running_command(), s.prompts_seen())

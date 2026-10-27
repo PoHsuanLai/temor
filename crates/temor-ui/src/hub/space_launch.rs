@@ -4,10 +4,10 @@
 //! starts the agent and asks the account store.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::{Project, RuntimeDir, dotenv_path, launch};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_shell::ChildEnv;
+use temor_client::model::space::{Project, RuntimeDir, dotenv_path, launch};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::shell::ChildEnv;
 
 use super::model::Hub;
 use temor_client::space::start::read_dotenv;

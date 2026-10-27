@@ -15,8 +15,8 @@ use ds::components::overlays::empty_state::EmptyForm;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::menu::{DownloadFacts, Item, Target};
-use temor_core::shelf::{
+use temor_client::model::menu::{DownloadFacts, Item, Target};
+use temor_client::model::shelf::{
     Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
 };
 
@@ -25,7 +25,7 @@ use super::names::named;
 use super::shelf_words::{ActWords, REMOVE_FROM_LIST, act_words};
 use super::tool_button::ToolButton;
 use crate::hub::Desk;
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
 /// The Downloads button for the head of the sidebar.
 #[component]

@@ -3,7 +3,7 @@
 //! this computer's own shell is one pick away (`Target::LocalTab`, a tab in the home folder: a
 //! tab given a folder is never taken to the host).
 
-use temor_core::bar::{Candidate, Target};
+use temor_client::model::bar::{Candidate, Target};
 
 use super::model::Hub;
 

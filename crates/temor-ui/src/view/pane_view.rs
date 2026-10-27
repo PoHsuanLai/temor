@@ -22,8 +22,8 @@ use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::edit_on_this_computer;
 use super::block_list::pane::lens_request;
@@ -54,8 +54,8 @@ use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
 use crate::hub::LiveIcon;
-use temor_core::menu::{BlockFacts, Item};
-use temor_pane::keys::Action;
+use temor_client::model::menu::{BlockFacts, Item};
+use temor_panes::pane::keys::Action;
 
 /// Puts the pane on screen: it paints into `texture` from now on.
 fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {

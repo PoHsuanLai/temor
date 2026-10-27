@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use temor_ssh::{HostRow, merge_hosts};
+use temor_client::ssh::{HostRow, merge_hosts};
 
 use super::model::{Hub, HubRef};
 use temor_client::desktop::feed::TailnetFeed;

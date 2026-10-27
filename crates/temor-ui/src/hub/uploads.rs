@@ -1,14 +1,14 @@
 //! Files dropped on a pane that runs on another computer (PLAN §9, §9b): each regular file is
 //! copied into the pane's folder there, through the computer's helper when it has one and with
 //! `scp` otherwise, and never over a file of the same name. The shelf lists them while they go
-//! (`temor_core::shelf::upload_step`). A folder is not sent: it says so.
+//! (`temor_client::model::shelf::upload_step`). A folder is not sent: it says so.
 
 use std::path::{Path, PathBuf};
 
-use temor_core::shelf::{UploadFault, UploadId, UploadIn, upload_step};
-use temor_core::vocab::ids::{Bytes, PaneId};
-use temor_ssh::{HostAlias, RemoteFilePath};
-use temor_wire::message::RemotePath;
+use temor_client::model::shelf::{UploadFault, UploadId, UploadIn, upload_step};
+use temor_client::model::vocab::ids::{Bytes, PaneId};
+use temor_client::remote::message::RemotePath;
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use super::remote_edit::EditTier;

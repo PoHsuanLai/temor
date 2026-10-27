@@ -1,6 +1,6 @@
 //! The shell offer in the window (PLAN P17): each pane's offer state, fed by the marks and the
 //! output the pane's events carry, and by a timer for the rule that waits. The rule itself is
-//! `temor_core::offer`; here the events are read, the screen is looked at, and a Yes types the
+//! `temor_client::model::offer`; here the events are read, the screen is looked at, and a Yes types the
 //! integration line into the pane. A host pane opened from temor's own list is never offered:
 //! it already has the integration.
 
@@ -11,12 +11,12 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds_settings::Store;
-use temor_core::offer::{
+use temor_client::model::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
 };
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{InnerShell, ProbeReading, prompt_after_answer, read_probe};
 use temor_panes::Heard as PaneHeard;
-use temor_ssh::{InnerShell, ProbeReading, prompt_after_answer, read_probe};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};

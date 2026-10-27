@@ -2,7 +2,7 @@
 //! threshold apply to every pane that is open; the scrollback, the shell and the shell offer's
 //! lists are read when a pane starts, so they reach the panes that come next. Pure.
 
-use temor_pane::settings::{
+use temor_panes::pane::settings::{
     CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, TerminalSettings,
 };
 

@@ -7,9 +7,9 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use temor_core::block::Outcome;
-use temor_core::session::list::{Item, KeptCard, ListBlock};
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::block::Outcome;
+use temor_client::model::session::list::{Item, KeptCard, ListBlock};
+use temor_client::model::vocab::ids::BlockId;
 
 use crate::session::{ListMap, ListSpan, Toward};
 

@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use temor_core::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
-use temor_core::vocab::ids::PaneId;
-use temor_wire::ids::SessionId;
+use temor_client::model::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::model::Hub;

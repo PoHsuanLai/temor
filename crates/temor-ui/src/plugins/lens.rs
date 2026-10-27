@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use ds::prelude::ImageSource;
 
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_plugins::{Drawing, Plugin};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::plugins::{Drawing, Plugin};
 
 /// A lens the block menu offers.
 #[derive(Debug, Clone, PartialEq, Eq)]

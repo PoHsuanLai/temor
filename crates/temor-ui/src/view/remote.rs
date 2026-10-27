@@ -5,10 +5,10 @@
 use dioxus::prelude::*;
 use ds::components::content::label::LabelStyle;
 use ds::prelude::*;
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
-use temor_remote::PortAction;
-use temor_ssh::Port;
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::PortAction;
+use temor_client::ssh::Port;
 
 use super::host_words::{REMEMBER_TIP, TRY_AGAIN};
 use super::remote_words::{

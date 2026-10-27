@@ -4,7 +4,7 @@
 
 use chordkit::{DefaultChord, Keymap, PrimaryUse};
 use ds_core::vocab::Shortcut;
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
 /// What a person presses in a terminal window to run `action` (`Ctrl+Shift+D` on Windows or KDE,
 /// where plain Ctrl is the program's). `None` when the action has no chord, or one quire has no

@@ -2,9 +2,9 @@
 //! own pick. A command typed for them is sent with Enter only on the Run row, which says it
 //! will run; anything else waits at the prompt for their Enter.
 
-use temor_core::bar::{BarAction, BarRow, Target, Visits};
-use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::bar::{BarAction, BarRow, Target, Visits};
+use temor_client::model::vocab::text::{CommandText, Cwd};
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::bar_action::select_tab;
 use super::hosts::HostRows;

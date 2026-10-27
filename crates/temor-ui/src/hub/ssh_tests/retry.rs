@@ -1,15 +1,15 @@
 //! Retry on a connection temor gave up on: the `ssh` that runs in the pane asks for a password,
 //! the person types it, and the pane carries on (the stand-in `ssh` asks, and accepts one word).
 
-use temor_core::remote::Grant;
-use temor_ssh::HostAlias;
-use temor_wire::link::{GoneReason, LinkState};
+use temor_client::model::remote::Grant;
+use temor_client::remote::link::{GoneReason, LinkState};
+use temor_client::ssh::HostAlias;
 
 use super::support::Rig;
 use crate::hub::ssh_view::Stage;
 
 /// Types `text` into the pane.
-fn type_into(rig: &Rig, pane: temor_core::vocab::ids::PaneId, text: &str) {
+fn type_into(rig: &Rig, pane: temor_client::model::vocab::ids::PaneId, text: &str) {
     if let Some(slot) = rig.hub.slots.get(&pane)
         && let Some(session) = slot.borrow().session.as_ref()
     {
@@ -63,7 +63,7 @@ fn retry_asks_for_the_password_in_the_pane_and_carries_on_once_it_is_given() {
 
 fn screen_has(
     hub: &crate::hub::model::Hub,
-    pane: temor_core::vocab::ids::PaneId,
+    pane: temor_client::model::vocab::ids::PaneId,
     text: &str,
 ) -> bool {
     hub.slots

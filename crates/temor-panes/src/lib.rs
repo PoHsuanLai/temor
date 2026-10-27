@@ -31,6 +31,15 @@ use clock::Clock;
 use notify::Notifier;
 use sources::Sources;
 
+// The terminal engine, for the window that draws and types into the panes: the pane engine, the
+// terminal, its renderer, the pseudo-terminal and the shell integration. The window names them
+// through here and no other way (PLAN §2b, the fence; decided 2026-10-28).
+pub use temor_pane as pane;
+pub use temor_pty as pty;
+pub use temor_render as render;
+pub use temor_shell as shell;
+pub use temor_vt as vt;
+
 pub use hear::{Heard, desktop_note};
 pub use heard::sanitise_title;
 pub use hearing::{Hearing, Locked, Shared, share};

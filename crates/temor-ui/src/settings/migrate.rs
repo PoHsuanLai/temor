@@ -6,8 +6,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use temor_pane::SettingsError;
-use temor_pane::settings::parse_settings;
+use temor_panes::pane::SettingsError;
+use temor_panes::pane::settings::parse_settings;
 
 use super::convert::from_terminal;
 use super::doc::TerminalDoc;

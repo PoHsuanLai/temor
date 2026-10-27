@@ -4,11 +4,11 @@
 
 use std::sync::Arc;
 
-use temor_core::host::consent::{ConsentIn, Who};
-use temor_core::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{
+use temor_client::model::host::consent::{ConsentIn, Who};
+use temor_client::model::host::master::{Master, MasterIn, MasterOut, OpenAs, master_step};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{
     Fingerprint, HostAlias, HostKey, HostName, KnownName, MasterProbe, prepare_control_dirs,
     socket_appeared,
 };
@@ -61,9 +61,10 @@ impl Hub {
                     }
                     self.start_session(alias, pane, how)
                 }
-                MasterOut::ConnectionEnded => {
-                    self.feed_forwards(alias, temor_core::host::forward::ForwardIn::ConnectionLost)
-                }
+                MasterOut::ConnectionEnded => self.feed_forwards(
+                    alias,
+                    temor_client::model::host::forward::ForwardIn::ConnectionLost,
+                ),
             }
         }
     }

@@ -3,10 +3,10 @@
 //! was read; with `scp` and a look at the file's time and size beforehand otherwise (Tier A).
 //! The edit's own steps are temor-core's `edit_step`; these pick the way and carry the jobs out.
 
-use temor_core::host::edit::{EditFault, EditIn};
-use temor_core::host::master::Master;
-use temor_ssh::{HostAlias, RemoteFilePath};
-use temor_wire::message::{FileStamp, RemotePath, WriteCheck};
+use temor_client::model::host::edit::{EditFault, EditIn};
+use temor_client::model::host::master::Master;
+use temor_client::remote::message::{FileStamp, RemotePath, WriteCheck};
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use temor_client::remote::edit::HelperEdits;

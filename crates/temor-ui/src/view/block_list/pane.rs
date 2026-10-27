@@ -20,11 +20,11 @@ use ds::style::tokens::control_size::ControlSize;
 use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
 use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
-use temor_core::block::{Outcome, format_elapsed};
-use temor_core::session::list::{Item, KeptCard, ListBlock};
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_render::Palette;
-use temor_vt::Rgb;
+use temor_client::model::block::{Outcome, format_elapsed};
+use temor_client::model::session::list::{Item, KeptCard, ListBlock};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_panes::render::Palette;
+use temor_panes::vt::Rgb;
 
 use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_height};
 use super::segments::{

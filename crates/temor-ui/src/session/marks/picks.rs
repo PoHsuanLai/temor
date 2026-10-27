@@ -6,15 +6,15 @@
 //! copy only the commands or only the outputs, ⌘I puts the commands back in the prompt, and ⌘B
 //! bookmarks the picked blocks; Alt+↑ and Alt+↓ step between bookmarks while the pane has one
 //! and is at its prompt. Any other key goes to the shell and lets go of the pick. The rules are
-//! `temor_core::block::Picks`; this reads the blocks and moves the view.
+//! `temor_client::model::block::Picks`; this reads the blocks and moves the view.
 
 use std::collections::BTreeSet;
 
-use temor_core::block::{BlockState, PickClick, PickStep};
-use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
-use temor_core::vocab::ids::BlockId;
-use temor_core::vocab::text::CommandText;
-use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
+use temor_client::model::block::{BlockState, PickClick, PickStep};
+use temor_client::model::session::{AnnotateIn, AnnotateOut, annotate_step};
+use temor_client::model::vocab::ids::BlockId;
+use temor_client::model::vocab::text::CommandText;
+use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::super::Session;
 use crate::error::UiError;

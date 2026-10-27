@@ -3,16 +3,16 @@
 //! selection, so a drop, a paste or Re-run puts text in it whoever has the keyboard; Enter sends
 //! it to the shell as a paste and a Return, and the arrows step through the pane's commands.
 //!
-//! Tab asks the sources that complete the line (`temor_shell::suggest`): the running shell's own
-//! completion through the pane (`temor_shell::complete`), and any source that stands on its own
+//! Tab asks the sources that complete the line (`temor_panes::shell::suggest`): the running shell's own
+//! completion through the pane (`temor_panes::shell::complete`), and any source that stands on its own
 //! (nushell's). What they say is merged into one list: one suggestion is put in, and several are
 //! offered to pick from, with what they all start with put in already. A slow source adds its
 //! suggestions to the list when they arrive.
 
-use temor_core::vocab::ids::BlockId;
-use temor_pane::paste::{self, PasteMode};
-use temor_shell::complete::{Answer, REQUEST_KEY, decode};
-use temor_shell::suggest::{Answered, Ask, SourceId, Suggestion, common_start};
+use temor_client::model::vocab::ids::BlockId;
+use temor_panes::pane::paste::{self, PasteMode};
+use temor_panes::shell::complete::{Answer, REQUEST_KEY, decode};
+use temor_panes::shell::suggest::{Answered, Ask, SourceId, Suggestion, common_start};
 
 use super::Session;
 use temor_panes::sources::SHELL;

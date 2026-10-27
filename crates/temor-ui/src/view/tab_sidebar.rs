@@ -14,9 +14,9 @@ use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
 use ds::prelude::*;
 use ds::style::tokens::control_size::SidebarSize;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::keys::Action;
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::pane::keys::Action;
 
 use super::dnd::Dnd;
 use super::favourites::Favourites;

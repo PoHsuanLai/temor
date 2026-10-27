@@ -1,11 +1,11 @@
 //! The bar's providers that need no window: what the recently closed list, the blocks and the
-//! folders contribute, as plain data for [`temor_core::bar::candidates`].
+//! folders contribute, as plain data for [`temor_client::model::bar::candidates`].
 
 use std::collections::BTreeMap;
 
-use temor_core::bar::{Candidate, DirectoryUse, Target, UnixSecs, Visits};
-use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::ClosedState;
+use temor_client::model::bar::{Candidate, DirectoryUse, Target, UnixSecs, Visits};
+use temor_client::model::vocab::text::{CommandText, Cwd};
+use temor_client::model::workspace::ClosedState;
 
 /// The most recent commands the bar remembers.
 const RECENT_COMMANDS: usize = 50;

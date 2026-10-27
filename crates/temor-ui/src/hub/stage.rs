@@ -5,10 +5,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use temor_core::stage::{Layout, Pages};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::ViewerRef;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::stage::{Layout, Pages};
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::text::ViewerRef;
+use temor_client::model::workspace::WorkspaceIn;
 use temor_schema::url::{HistoryScope, Host, Location, TemorUrl};
 
 use super::desk::Desk;

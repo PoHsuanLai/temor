@@ -2,12 +2,14 @@
 //! found, the person's answer, the upload, the dial. `helper_step` decides; this runs what it
 //! names. The connection's life after that is in `remote_link`.
 
-use temor_core::remote::{CacheDir, Grant, HelperIn, HelperOut, HelperState, HostOs, helper_step};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::HelperHash;
-use temor_ssh::HostAlias;
-use temor_wire::digest::ContentHash;
-use temor_wire::link::{Attempt, LinkState};
+use temor_client::model::remote::{
+    CacheDir, Grant, HelperIn, HelperOut, HelperState, HostOs, helper_step,
+};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::HelperHash;
+use temor_client::remote::digest::ContentHash;
+use temor_client::remote::link::{Attempt, LinkState};
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::Busy;

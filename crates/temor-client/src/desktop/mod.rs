@@ -3,3 +3,6 @@
 
 pub mod feed;
 pub mod port;
+
+// The desktop services' own names, for the window's side of the port, until it is the client's.
+pub use temor_desktop::*;

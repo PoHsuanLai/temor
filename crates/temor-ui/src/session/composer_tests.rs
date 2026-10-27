@@ -1,6 +1,6 @@
 //! The composer's history from plain lists: no session, no shell.
 
-use temor_shell::complete::Completions;
+use temor_panes::shell::complete::Completions;
 
 use super::*;
 

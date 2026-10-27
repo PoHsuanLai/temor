@@ -8,13 +8,13 @@ use thiserror::Error;
 pub enum UiError {
     /// The fonts or the renderer refused.
     #[error("drawing the terminal failed: {0}")]
-    Render(#[from] temor_render::RenderError),
+    Render(#[from] temor_panes::render::RenderError),
     /// The pane engine could not start or draw (see `temor-pane`).
     #[error(transparent)]
-    Pane(#[from] temor_pane::PaneError),
+    Pane(#[from] temor_panes::pane::PaneError),
     /// The program could not be started on a terminal, or the terminal failed.
     #[error("the shell could not start: {0}")]
-    Pty(#[from] temor_pty::PtyError),
+    Pty(#[from] temor_panes::pty::PtyError),
     /// The settings file could not be read.
     #[error("the settings file could not be read: {0}")]
     SettingsRead(#[source] std::io::Error),
@@ -39,5 +39,5 @@ pub enum UiError {
     Open(#[from] temor_panes::OpenError),
     /// One of temor's own rules refused.
     #[error(transparent)]
-    Core(#[from] temor_core::error::CoreError),
+    Core(#[from] temor_client::model::error::CoreError),
 }

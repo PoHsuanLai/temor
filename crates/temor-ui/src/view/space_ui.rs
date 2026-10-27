@@ -9,7 +9,7 @@ use ds::components::app::spaces::{
 };
 use ds::components::menus::item::item::MenuItem;
 use ds::prelude::{Point, Px};
-use temor_core::space::{Place, Project, TemorSpaces};
+use temor_client::model::space::{Place, Project, TemorSpaces};
 
 use super::shelf::ShelfButton;
 use super::space_handle::SpacesOf;

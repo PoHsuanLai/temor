@@ -1,10 +1,10 @@
 //! Keys (PLAN §6): a routed key runs its action, or goes to the program encoded by the
 //! terminal's modes. Typing returns the view to the live screen.
 
-use temor_pane::keys::Action;
-use temor_vt::{KeyAction, KeyCode};
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::{KeyAction, KeyCode};
 
-use temor_core::block::PickStep;
+use temor_client::model::block::PickStep;
 
 use super::{FindStep, Session};
 use crate::error::UiError;
@@ -33,7 +33,7 @@ impl Session {
                 }
                 if key.action != KeyAction::Release {
                     self.pane
-                        .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));
+                        .with_term(|term| term.scroll(temor_panes::vt::ViewportScroll::Bottom));
                 }
                 if is_altgr_text(&key) {
                     self.pane.send(key.text.as_bytes());
@@ -57,7 +57,7 @@ impl Session {
         let kitty = self
             .pane
             .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
-        let clear = stroke.key.mods == temor_vt::Modifiers::CTRL
+        let clear = stroke.key.mods == temor_panes::vt::Modifiers::CTRL
             && stroke.key.unshifted == Some('c')
             && stroke.key.action != KeyAction::Release;
         match route_with(stroke, &self.keymap, find, kitty) {
@@ -77,7 +77,7 @@ impl Session {
             Action::Paste => self.paste(),
             Action::Find => {
                 if self.finder.is_none() {
-                    self.finder = Some(temor_pane::text::Finder::new("", Vec::new()));
+                    self.finder = Some(temor_panes::pane::text::Finder::new("", Vec::new()));
                 }
                 Ok(())
             }

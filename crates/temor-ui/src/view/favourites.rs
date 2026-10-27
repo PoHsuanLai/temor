@@ -8,12 +8,12 @@ use dioxus::prelude::*;
 use ds::host::measure::{Anchor, use_rect};
 use ds::motion::drag::DragPhase;
 use ds::prelude::*;
+use temor_client::model::menu::{Item, Target as Clicked};
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 use temor_client::query::OnShelf;
 use temor_client::{Command, Shelf};
-use temor_core::menu::{Item, Target as Clicked};
-use temor_core::vocab::ids::TabId;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
 use temor_schema::url::{HistoryScope, Host, Location, TemorUrl};
 
 use super::dnd::{Dnd, Target};

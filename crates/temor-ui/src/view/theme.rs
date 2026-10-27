@@ -6,8 +6,8 @@ use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, Theme, res
 use ds::style::tokens::hex::{Colour, Hex};
 use ds::style::tokens::terminal::TerminalColour;
 use ds_settings::{AppName, ConfigRoot, Environment, Store, SystemPrefsSource};
-use temor_render::Palette;
-use temor_vt::Rgb;
+use temor_panes::render::Palette;
+use temor_panes::vt::Rgb;
 
 use crate::edge::ThemeChoice;
 

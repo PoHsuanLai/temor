@@ -1,9 +1,9 @@
 //! Which agent a pane runs and what its command line was, as the radar keeps them for the watch.
 
-use temor_core::agent::radar::{Millis, RadarParams};
-use temor_core::presence::AgentState::Working;
-use temor_core::vocab::ids::PaneId;
-use temor_vt::{ProgramState, ProgramWait};
+use temor_client::model::agent::radar::{Millis, RadarParams};
+use temor_client::model::presence::AgentState::Working;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::vt::{ProgramState, ProgramWait};
 
 use super::radar::Radar;
 use super::tests::{front, front_running, status, status_of};

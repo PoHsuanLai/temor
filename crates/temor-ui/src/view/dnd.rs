@@ -14,7 +14,7 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use ds::motion::drag::{DragPhase, DragTracker};
 use ds::prelude::{Point, Px, Rect};
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::ids::{PaneId, TabId};
 
 use crate::hub::DragKey;
 

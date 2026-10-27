@@ -3,9 +3,9 @@
 
 use std::path::PathBuf;
 
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::ViewerRef;
-use temor_core::workspace::{ViewerOpen, WorkspaceIn, WorkspaceOut, workspace_step};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::ViewerRef;
+use temor_client::model::workspace::{ViewerOpen, WorkspaceIn, WorkspaceOut, workspace_step};
 
 use super::model::Hub;
 use super::tests::hub_after;
@@ -34,7 +34,7 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     hub.viewers_ask(ViewAsk {
         file: PathBuf::from(file),
         around: around.iter().map(PathBuf::from).collect(),
-        site: temor_core::shelf::PaneSite::Local,
+        site: temor_client::model::shelf::PaneSite::Local,
     });
     hub.viewer_opened(open);
     (hub, shell, pane)
@@ -83,7 +83,7 @@ fn escape_goes_to_another_terminal_when_the_origin_is_gone() {
     let (ws, _) = workspace_step(
         hub.book.ws.clone(),
         WorkspaceIn::Split {
-            towards: temor_core::split::Direction::Down,
+            towards: temor_client::model::split::Direction::Down,
         },
     );
     hub.book.ws = ws;
@@ -101,7 +101,7 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
     let (mut hub, _, viewer) = with_viewer("/nowhere/at/all/a.txt", &[]);
     hub.restore_viewer(ViewerOpen {
         pane: viewer,
-        tab: temor_core::vocab::ids::TabId(1),
+        tab: temor_client::model::vocab::ids::TabId(1),
         file: ViewerRef("/nowhere/at/all/a.txt".to_owned()),
         from: None,
     });

@@ -8,13 +8,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use temor_core::remote::{Grant, HelperState, HostArch};
-use temor_core::vocab::ids::PaneId;
-use temor_pane::Feeder;
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{LinkState, Monotonic};
-use temor_wire::message::ListeningPort;
+use temor_client::model::remote::{Grant, HelperState, HostArch};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{LinkState, Monotonic};
+use temor_client::remote::message::ListeningPort;
+use temor_client::ssh::HostAlias;
+use temor_panes::pane::Feeder;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use crate::edge::Ambient;
@@ -67,7 +67,7 @@ pub(super) const LOCAL: &str = "local";
 
 /// How a pane that is a session in the local daemon starts, and what to do if the daemon cannot.
 pub(super) struct LocalStart {
-    pub spawn: temor_core::workspace::Spawn,
+    pub spawn: temor_client::model::workspace::Spawn,
     pub cwd: String,
     pub env: Vec<(String, String)>,
     /// The program the person chose in settings; none is their login shell.
@@ -76,7 +76,7 @@ pub(super) struct LocalStart {
     pub resume: Option<SessionId>,
     /// The key the pane's shell signs its state reports with: the one it was started with when
     /// it goes on, else a new one (a session opened anew is given the same).
-    pub report_key: temor_shell::report::ReportKey,
+    pub report_key: temor_panes::shell::report::ReportKey,
 }
 
 /// One pane that is a session on a helper.

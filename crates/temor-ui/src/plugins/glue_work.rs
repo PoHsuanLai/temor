@@ -2,10 +2,10 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_pane::PaneEvent;
-use temor_plugins::message::LensBlock;
-use temor_plugins::{Generations, Plugin, lens_block};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::plugins::message::LensBlock;
+use temor_client::plugins::{Generations, Plugin, lens_block};
+use temor_panes::pane::PaneEvent;
 
 use super::{Desk, Hub, HubRef};
 use crate::plugins::adapter::{Follow, follow, status_line};

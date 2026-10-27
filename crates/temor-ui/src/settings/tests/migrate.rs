@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use chordkit::Overrides;
-use temor_pane::settings::{CursorStyle, ShellChoice};
+use temor_panes::pane::settings::{CursorStyle, ShellChoice};
 
 use crate::edge::Ambient;
 use crate::settings::{TerminalDoc, convert_terminal_conf, load_settings};
@@ -23,7 +23,7 @@ fn ambient(scratch: &Path) -> Ambient {
     let home = scratch.join("home");
     Ambient {
         home: home.clone(),
-        env: temor_shell::ChildEnv::new(),
+        env: temor_panes::shell::ChildEnv::new(),
         config_dir: scratch.join("config/temor"),
         runtime_dir: home.join("runtime"),
     }
@@ -142,7 +142,7 @@ fn nothing_is_converted_over_a_settings_file_or_without_an_old_one() {
     let loaded = load_settings(&bare).expect("loads");
     assert_eq!(
         loaded.settings,
-        temor_pane::settings::TerminalSettings::default()
+        temor_panes::pane::settings::TerminalSettings::default()
     );
     assert!(!bare.config_dir.exists());
 }

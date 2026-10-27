@@ -1,10 +1,10 @@
 //! Reads the terminal into a [`Frame`]: the one place the blocks' marks are asked for their rows.
 //! Everything the views want to know about where the blocks are comes from the frame this makes.
 
-use temor_core::block::BlockState;
-use temor_core::session::frame::{BlockRead, End, Frame, Lead, LiveRead, Read, Spot};
-use temor_pane::Term;
-use temor_vt::{AnchorId, PointSpace};
+use temor_client::model::block::BlockState;
+use temor_client::model::session::frame::{BlockRead, End, Frame, Lead, LiveRead, Read, Spot};
+use temor_panes::pane::Term;
+use temor_panes::vt::{AnchorId, PointSpace};
 
 use super::super::Session;
 use super::lead::lead_at;

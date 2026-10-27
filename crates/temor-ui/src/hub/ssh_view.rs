@@ -2,11 +2,11 @@
 //! connection is up, the browser check, the forwards and the files being edited. Plain data; the
 //! views draw it and send the person's choices back.
 
-use temor_core::host::consent::BootstrapAction;
-use temor_core::host::edit::{Edit, Found};
-use temor_core::host::target::host_title;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::Port;
+use temor_client::model::host::consent::BootstrapAction;
+use temor_client::model::host::edit::{Edit, Found};
+use temor_client::model::host::target::host_title;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::Port;
 
 use super::model::{Hub, HubRef};
 use super::ssh::{Check, Phase};
@@ -204,7 +204,7 @@ impl HubRef {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_ssh::{ByteCount, RemoteStat, UnixSeconds};
+    use temor_client::ssh::{ByteCount, RemoteStat, UnixSeconds};
 
     #[test]
     fn a_conflict_reads_as_changed_rewritten_or_removed() {

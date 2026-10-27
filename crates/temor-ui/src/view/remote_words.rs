@@ -1,7 +1,7 @@
 //! What the helper views say, in plain words (no jargon): the question about installing it, the
 //! state of a dropped connection, and what can be done about a port the host listens on.
 
-use temor_remote::PortAction;
+use temor_client::remote::PortAction;
 
 use super::host_words::{FORWARD_PORT, OPEN_DIRECT_TIP};
 use crate::hub::RemoteStage;
@@ -67,7 +67,7 @@ pub fn port_action_words(action: &PortAction) -> (String, &'static str) {
 
 #[cfg(test)]
 mod tests {
-    use temor_wire::units::Port;
+    use temor_client::remote::units::Port;
 
     use super::*;
 

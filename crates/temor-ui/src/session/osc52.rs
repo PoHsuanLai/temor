@@ -4,12 +4,12 @@
 //! once per tab (the host's remembered answer, when the app has one, is set with
 //! [`Session::set_clipboard_consent`]) and the answer is kept. Reads: every program asks once per
 //! tab. libghostty wants a read answered at once, so the first request gets nothing; after the
-//! person allows, the pane's copy of the clipboard (see `temor_pane::ClipboardMirror`) answers.
+//! person allows, the pane's copy of the clipboard (see `temor_panes::pane::ClipboardMirror`) answers.
 
-use temor_core::remote::Grant;
-use temor_core::shelf::PaneSite;
-use temor_pane::ReadPolicy;
-use temor_vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::PaneSite;
+use temor_panes::pane::ReadPolicy;
+use temor_panes::vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
 
 pub use temor_panes::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
 

@@ -1,9 +1,9 @@
 //! One order for a split's panes: the sidebar's segments and the focus steps (⌘]) both walk them
 //! as they stand on the screen.
 
-use temor_core::split::{Direction, Goto};
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{WorkspaceIn, workspace_step};
+use temor_client::model::split::{Direction, Goto};
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::{WorkspaceIn, workspace_step};
 
 use super::tests::hub_after;
 

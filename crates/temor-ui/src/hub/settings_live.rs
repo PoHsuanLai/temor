@@ -8,7 +8,7 @@ use std::sync::Arc;
 use dioxus::prelude::spawn;
 use ds::base::spawner::Spawner;
 use ds_settings::SettingsDoc;
-use temor_core::offer::OfferList;
+use temor_client::model::offer::OfferList;
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -95,7 +95,7 @@ impl super::model::HubRef {
 #[cfg(test)]
 mod tests {
     use chordkit::Overrides;
-    use temor_pane::settings::{FontPoints, ShellChoice};
+    use temor_panes::pane::settings::{FontPoints, ShellChoice};
 
     use super::{Hub, TerminalDoc};
     use crate::settings::FontSize;

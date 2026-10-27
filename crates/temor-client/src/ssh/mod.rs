@@ -8,3 +8,6 @@ pub mod work;
 mod work_tests;
 
 pub use env::{ArcRunner, SshEnv};
+// What the window's SSH steps name (the hosts, their keys, the shared connection), until those
+// steps are the client's too.
+pub use temor_ssh::*;

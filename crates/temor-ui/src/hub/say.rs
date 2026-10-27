@@ -1,6 +1,6 @@
 //! What the person is told when the workspace refuses a request. Plain words, no jargon.
 
-use temor_core::workspace::RefuseWhy;
+use temor_client::model::workspace::RefuseWhy;
 
 /// The words for a refusal.
 pub fn refusal_text(why: &RefuseWhy) -> String {

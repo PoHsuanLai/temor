@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use ds_blitz::{PixelFormat, Pixels, TextureHandle};
-use temor_pane::text::CellPos as ScreenCell;
-use temor_render::Palette;
-use temor_vt::Rgb;
+use temor_panes::pane::text::CellPos as ScreenCell;
+use temor_panes::render::Palette;
+use temor_panes::vt::Rgb;
 
 use super::segments::{Placed, Seg, SegKey, Standing};
 use crate::session::Session;

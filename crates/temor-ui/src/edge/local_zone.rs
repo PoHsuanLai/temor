@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use temor_core::history::Zone;
+use temor_client::model::history::Zone;
 use temor_schema::session::At;
 
 /// The zone now; UTC when the system does not say.

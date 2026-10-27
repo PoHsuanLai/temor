@@ -6,9 +6,9 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex, Weak};
 
-use temor_core::vocab::ids::PaneId;
-use temor_pane::ByteTap;
-use temor_ssh::{CheckScan, CheckUrl, PreShellEvent};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{CheckScan, CheckUrl, PreShellEvent};
+use temor_panes::pane::ByteTap;
 
 use super::model::Hub;
 use super::ssh::Check;

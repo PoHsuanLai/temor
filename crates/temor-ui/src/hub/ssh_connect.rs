@@ -6,16 +6,18 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_core::host::consent::{ConsentIn, ConsentOut, Gate, RunMode, Who, consent_step, gate};
-use temor_core::host::master::MasterIn;
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::{Spawn, WorkspaceIn};
-use temor_pty::ChildExit;
-use temor_ssh::{
+use temor_client::model::host::consent::{
+    ConsentIn, ConsentOut, Gate, RunMode, Who, consent_step, gate,
+};
+use temor_client::model::host::master::MasterIn;
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::{Spawn, WorkspaceIn};
+use temor_client::ssh::{
     BootstrapOptions, BootstrapScript, ControlLayout, HostAlias, HostRow, Presence, RemoteFilePath,
     SshError, bootstrap_remote_command, plain_session_argv, session_argv,
 };
+use temor_panes::pty::ChildExit;
 
 use super::model::Hub;
 use super::remote::Tier;
@@ -37,7 +39,7 @@ pub(super) fn session_args(
         RunMode::Plain => Ok(plain_session_argv(alias, layout)),
         RunMode::Bootstrap(policy) => {
             let script = BootstrapScript::build_in(
-                &temor_shell::integration_scripts(),
+                &temor_panes::shell::integration_scripts(),
                 BootstrapOptions::with_terminfo(policy),
                 start_dir,
             )?;
@@ -50,7 +52,7 @@ pub(super) fn session_args(
 /// What the person is told about a host name temor can't use. An IPv6 address can't be typed
 /// here: it goes in the ssh config as the `HostName` of a short name.
 pub(super) fn not_a_name(text: &str) -> String {
-    match temor_ssh::is_ipv6_literal(text) {
+    match temor_client::ssh::is_ipv6_literal(text) {
         true => format!(
             "{text} is an IPv6 address; give it a short name with a HostName line in your \
              ssh config, then use that name"
@@ -63,7 +65,7 @@ pub(super) fn not_a_name(text: &str) -> String {
 /// meant a host, and gets the same word about the ssh config as for a host tab.
 pub(super) fn ipv6_host_of(typed: &str) -> Option<&str> {
     let (host, _) = typed.trim().rsplit_once(":/")?;
-    temor_ssh::is_ipv6_literal(host).then_some(host.trim())
+    temor_client::ssh::is_ipv6_literal(host).then_some(host.trim())
 }
 
 impl Hub {
@@ -130,7 +132,7 @@ impl Hub {
         if let Some(at) = self.ssh.restored.iter().position(|r| r.pane == spawn.pane) {
             let saved = self.ssh.restored.remove(at);
             if let Some(session) = saved.session {
-                let session = temor_wire::ids::SessionId(session.0);
+                let session = temor_client::remote::ids::SessionId(session.0);
                 self.remote.saved.insert(spawn.pane, session);
             }
             self.ssh.deferred.insert(spawn.pane);

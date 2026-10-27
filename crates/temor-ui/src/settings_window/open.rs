@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use dioxus::prelude::*;
 use ds_blitz::{WindowHandle, WindowLife, WindowSize, WindowSpec};
-use temor_pane::keys::SettingsPane;
+use temor_panes::pane::keys::SettingsPane;
 use tokio::sync::watch;
 
 use super::root::settings_window;

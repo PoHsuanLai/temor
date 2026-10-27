@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyview_peek::AnyPeeked;
-use temor_core::vocab::ids::PaneId;
-use temor_wire::message::RemotePath;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::message::RemotePath;
 
 use super::model::{Hub, HubRef};
 use super::ssh_edit::local_name;

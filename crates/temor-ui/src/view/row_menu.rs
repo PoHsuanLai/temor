@@ -7,12 +7,12 @@ use std::path::Path;
 use dioxus::prelude::*;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
+use temor_client::model::menu::{Item, RowFacts, Target};
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
 use temor_client::query::OnShelf;
 use temor_client::{Command, Shelf};
-use temor_core::menu::{Item, RowFacts, Target};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::{TabsIn, WorkspaceIn};
 use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::favourites::folder_url;

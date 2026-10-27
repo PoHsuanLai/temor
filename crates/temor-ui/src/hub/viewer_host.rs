@@ -7,11 +7,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use dioxus::prelude::spawn;
-use temor_core::host::edit::EditFault;
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{HostAlias, RemoteFilePath};
-use temor_wire::message::RemotePath;
+use temor_client::model::host::edit::EditFault;
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::message::RemotePath;
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::desk::Desk;

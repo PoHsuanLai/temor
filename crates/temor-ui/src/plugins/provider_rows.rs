@@ -2,7 +2,7 @@
 //! `bar/adapter.rs` as a child module, so it reaches the model's private fields.
 
 use ds::prelude::PaletteIn;
-use temor_core::bar::{BarContext, BarIn, BarOut, PluginRow, bar_step};
+use temor_client::model::bar::{BarContext, BarIn, BarOut, PluginRow, bar_step};
 
 use super::{BarModel, rows_of, walk};
 
@@ -28,9 +28,9 @@ impl BarModel {
 
 #[cfg(test)]
 mod tests {
-    use temor_core::bar::{BarAction, BarContext, PathResolver, PluginRow};
-    use temor_core::vocab::ai::AiSwitch;
-    use temor_core::vocab::text::PluginId;
+    use temor_client::model::bar::{BarAction, BarContext, PathResolver, PluginRow};
+    use temor_client::model::vocab::ai::AiSwitch;
+    use temor_client::model::vocab::text::PluginId;
 
     use super::BarModel;
 

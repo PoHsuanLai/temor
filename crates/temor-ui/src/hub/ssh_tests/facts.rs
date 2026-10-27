@@ -7,16 +7,16 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use temor_core::facts::FactsIn;
-use temor_pty::SessionLauncher;
-use temor_remote::{
+use temor_client::model::facts::FactsIn;
+use temor_client::remote::digest::ContentHash;
+use temor_client::remote::hello::HelperVersion;
+use temor_client::remote::message::{EnvVar, OpenSession, RemotePath};
+use temor_client::remote::units::{CellPx, Cols, Rows, Size};
+use temor_client::remote::{
     Client, ClientEvent, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
 };
-use temor_ssh::HostAlias;
-use temor_wire::digest::ContentHash;
-use temor_wire::hello::HelperVersion;
-use temor_wire::message::{EnvVar, OpenSession, RemotePath};
-use temor_wire::units::{CellPx, Cols, Rows, Size};
+use temor_client::ssh::HostAlias;
+use temor_panes::pty::SessionLauncher;
 
 use super::support::Rig;
 use crate::hub::remote::{RemotePane, Shown};
@@ -31,9 +31,13 @@ fn helper_session(
     rig: &Rig,
     home: &Path,
     cwd: &Path,
-) -> (Arc<Conn>, temor_wire::ids::SessionId, Receiver<ClientEvent>) {
-    let setsid =
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid");
+) -> (
+    Arc<Conn>,
+    temor_client::remote::ids::SessionId,
+    Receiver<ClientEvent>,
+) {
+    let setsid = temor_panes::pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
+        .expect("setsid");
     let daemon = Daemon::new(DaemonConfig {
         helper: HELPER,
         launcher: SessionLauncher::Setsid(setsid),

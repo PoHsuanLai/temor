@@ -2,9 +2,9 @@
 //! step decides, from the width the window tells it here.
 
 use dioxus::prelude::WritableExt;
-use temor_core::split::Columns;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::split::Columns;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::Hub;

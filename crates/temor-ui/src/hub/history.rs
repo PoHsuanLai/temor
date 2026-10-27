@@ -9,10 +9,10 @@ use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::time::SystemTime;
 
+use temor_client::model::session::list::kept_cards;
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::model::vocab::text::Cwd;
 use temor_client::{Client, Command};
-use temor_core::session::list::kept_cards;
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_core::vocab::text::Cwd;
 use temor_schema::session::{At, RanCommand, Session as Kept, SessionId};
 use temor_schema::url::Host;
 
@@ -77,7 +77,7 @@ impl Hub {
     }
 
     /// The tab the live session `id` is in.
-    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
+    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_client::model::vocab::ids::TabId> {
         let (pane, _) = self
             .history
             .sessions
@@ -87,7 +87,7 @@ impl Hub {
     }
 
     /// The session of the pane with the keys in `tab`, or of its first that has one.
-    pub fn session_of_tab(&self, tab: temor_core::vocab::ids::TabId) -> Option<SessionId> {
+    pub fn session_of_tab(&self, tab: temor_client::model::vocab::ids::TabId) -> Option<SessionId> {
         let focus = self.book.ws.focus_of(tab);
         let panes = self.book.ws.tabs.tab(tab)?.tree.panes();
         focus
@@ -241,12 +241,12 @@ impl HubRef {
     }
 
     /// See [`Hub::tab_of_session`].
-    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
+    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_client::model::vocab::ids::TabId> {
         self.0.borrow().tab_of_session(id)
     }
 
     /// See [`Hub::session_of_tab`].
-    pub fn session_of_tab(&self, tab: temor_core::vocab::ids::TabId) -> Option<SessionId> {
+    pub fn session_of_tab(&self, tab: temor_client::model::vocab::ids::TabId) -> Option<SessionId> {
         self.0.borrow().session_of_tab(tab)
     }
 

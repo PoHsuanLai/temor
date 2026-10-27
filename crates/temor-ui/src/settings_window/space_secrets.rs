@@ -5,8 +5,8 @@
 //! value.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::{AccountRef, Credential};
-use temor_core::vocab::text::EnvKey;
+use temor_client::model::space::{AccountRef, Credential};
+use temor_client::model::vocab::text::EnvKey;
 
 use super::space_edit::{account_for, credentials_with, credentials_without, variable_name};
 use crate::edge::{CredentialSource, Held};

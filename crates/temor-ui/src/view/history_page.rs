@@ -10,9 +10,9 @@ use ds::components::content::avatar::{AvatarFace, AvatarShape, AvatarSize, Avata
 use ds::components::overlays::empty_state::EmptyForm;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
+use temor_client::model::history::{Zone, by_day, session_title, span_of};
+use temor_client::model::icon::initial_of;
 use temor_client::query::{Commands, History, Sessions};
-use temor_core::history::{Zone, by_day, session_title, span_of};
-use temor_core::icon::initial_of;
 use temor_schema::session::{RanCommand, Session, SessionId};
 use temor_schema::url::{HistoryScope, TemorUrl};
 

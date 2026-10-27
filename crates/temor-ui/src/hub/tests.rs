@@ -1,13 +1,15 @@
 //! The hub's pure parts: which request a pane action makes, and what the sidebar shows for a
 //! workspace. No panes are started; the workspace is built with its step.
 
-use temor_core::split::{Direction, Goto};
-use temor_core::vocab::ids::{FolderId, PaneId, TabId};
-use temor_core::vocab::text::{Relaunch, TabTitle};
-use temor_core::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn, WorkspaceOut, workspace_step};
-use temor_pane::keys::Action;
-use temor_pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
-use temor_transfer::Consent;
+use temor_client::model::split::{Direction, Goto};
+use temor_client::model::vocab::ids::{FolderId, PaneId, TabId};
+use temor_client::model::vocab::text::{Relaunch, TabTitle};
+use temor_client::model::workspace::{
+    NthTab, TabSel, TabsIn, WorkspaceIn, WorkspaceOut, workspace_step,
+};
+use temor_client::shelf::transfer::Consent;
+use temor_panes::pane::keys::Action;
+use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::keys::workspace_input;
 use super::model::Hub;
@@ -25,11 +27,11 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
     Launch {
         ambient: Ambient {
             home: home.clone(),
-            env: temor_shell::ChildEnv::new(),
+            env: temor_panes::shell::ChildEnv::new(),
             config_dir: home.join("config"),
             runtime_dir: home.join("runtime"),
         },
-        settings: temor_pane::settings::TerminalSettings::default(),
+        settings: temor_panes::pane::settings::TerminalSettings::default(),
         keymap: crate::edge::keymap_for(
             chordkit::Platform::Linux {
                 desktop: chordkit::Desktop::Ours,
@@ -115,7 +117,7 @@ fn the_sidebar_lists_pinned_then_folders_then_the_rest_with_unread_marks_and_min
             towards: Direction::Right,
         },
         // News in a tab that is not in front.
-        WorkspaceIn::Activity(temor_core::vocab::ids::PaneId(2)),
+        WorkspaceIn::Activity(temor_client::model::vocab::ids::PaneId(2)),
     ]);
     let data = hub.sidebar();
     let ids = |rows: &[super::TabRow]| rows.iter().map(|r| r.id.0).collect::<Vec<_>>();
@@ -153,9 +155,9 @@ fn the_home_folder_is_written_as_a_tilde() {
 
 mod spaces {
     use ds::components::app::spaces::{SpaceId, Spaces};
-    use temor_core::space::{Project, Route};
-    use temor_core::vocab::text::{Cwd, RoutePattern};
-    use temor_core::workspace::WorkspaceIn;
+    use temor_client::model::space::{Project, Route};
+    use temor_client::model::vocab::text::{Cwd, RoutePattern};
+    use temor_client::model::workspace::WorkspaceIn;
 
     use super::super::space_route::expand_home;
     use super::{hub_after, launch};
@@ -163,7 +165,7 @@ mod spaces {
 
     fn project(root: Option<&str>, routes: &[&str]) -> Project {
         Project {
-            root: root.map(|r| temor_core::vocab::text::ProjectRoot(r.to_owned())),
+            root: root.map(|r| temor_client::model::vocab::text::ProjectRoot(r.to_owned())),
             routes: routes
                 .iter()
                 .map(|p| Route {
@@ -251,8 +253,8 @@ mod spaces {
 
     #[test]
     fn a_root_written_with_a_tilde_is_the_home_folder_for_the_shell_and_its_variables_file() {
-        use temor_core::space::Profile;
-        use temor_core::vocab::text::{ProjectRoot, RelPath};
+        use temor_client::model::space::Profile;
+        use temor_client::model::vocab::text::{ProjectRoot, RelPath};
 
         let home = tempfile::tempdir().expect("scratch home");
         std::fs::create_dir_all(home.path().join("app")).expect("app folder");
@@ -332,9 +334,10 @@ fn a_program_is_asked_once_and_the_answer_holds_for_its_pane_until_temor_quits()
     // is turned away without one too.
     hub.transfers(vec![offered(2, OfferKind::Files)]);
     assert!(hub.front_ask().is_none());
-    hub.shelf
-        .grants
-        .insert("pane:1".to_owned(), temor_core::remote::Grant::Refused);
+    hub.shelf.grants.insert(
+        "pane:1".to_owned(),
+        temor_client::model::remote::Grant::Refused,
+    );
     hub.transfers(vec![offered(3, OfferKind::Files)]);
     assert!(hub.front_ask().is_none());
 }
@@ -408,7 +411,10 @@ fn a_file_lands_in_downloads_under_a_free_name_and_survives_a_restart() {
     let view = hub.shelf_view();
     assert_eq!(view.rows.len(), 1);
     assert_eq!(view.rows[0].title, "a (2).txt");
-    assert_eq!(view.rows[0].state, temor_core::shelf::RowState::Ready);
+    assert_eq!(
+        view.rows[0].state,
+        temor_client::model::shelf::RowState::Ready
+    );
     assert_eq!(view.unseen, 1);
 
     // A new run reads the index back: the file is on the shelf, already seen.
@@ -437,9 +443,10 @@ fn a_refused_or_broken_transfer_leaves_no_row_waiting_and_no_question() {
         "the program left, so nobody waits"
     );
 
-    hub.shelf
-        .grants
-        .insert("pane:1".to_owned(), temor_core::remote::Grant::Allowed);
+    hub.shelf.grants.insert(
+        "pane:1".to_owned(),
+        temor_client::model::remote::Grant::Allowed,
+    );
     hub.transfers(vec![
         offered(2, OfferKind::Files),
         (
@@ -462,7 +469,7 @@ fn a_refused_or_broken_transfer_leaves_no_row_waiting_and_no_question() {
     let view = hub.shelf_view();
     assert!(matches!(
         view.rows[0].state,
-        temor_core::shelf::RowState::Failed { .. }
+        temor_client::model::shelf::RowState::Failed { .. }
     ));
 }
 

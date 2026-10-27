@@ -4,9 +4,9 @@
 //! store its credentials come from.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::notify::Focus;
-use temor_core::space::{Place, TemorSpaces};
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::notify::Focus;
+use temor_client::model::space::{Place, TemorSpaces};
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::model::{Hub, HubRef};
 use crate::edge::Credentials;

@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use chordkit::Overrides;
-use temor_pane::SettingsError;
-use temor_pane::keys::{KeyIssue, is_key_action};
+use temor_panes::pane::SettingsError;
+use temor_panes::pane::keys::{KeyIssue, is_key_action};
 
 use crate::error::UiError;
 

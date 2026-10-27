@@ -1,9 +1,9 @@
-//! Where the grid's rows are shown (`temor_render::RowLayout`): folded blocks' output rows taken
+//! Where the grid's rows are shown (`temor_panes::render::RowLayout`): folded blocks' output rows taken
 //! out, and the rows pinned to the top at the start of the scrollback. Every place that maps a
 //! point to a cell reads the rows where they are shown.
 
-use temor_render::{CellHit, Fold, GridFit, LayoutParams, Pin, RowLayout, Screen};
-use temor_vt::{Row, SurfacePoint};
+use temor_panes::render::{CellHit, Fold, GridFit, LayoutParams, Pin, RowLayout, Screen};
+use temor_panes::vt::{Row, SurfacePoint};
 
 use super::Session;
 

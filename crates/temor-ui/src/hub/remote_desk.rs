@@ -1,8 +1,8 @@
 //! What the helper views ask of the window: each call runs on the hub, shows the messages it left,
 //! and draws the window again.
 
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
 
 use super::desk::Desk;
 

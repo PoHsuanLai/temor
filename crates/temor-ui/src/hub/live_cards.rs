@@ -5,11 +5,11 @@
 
 use std::collections::BTreeMap;
 
-use temor_core::session::{CardIn, CardOut, CardSize, Cards, Life, SurfaceId, card_step};
-use temor_core::split::{Direction, Share};
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_core::workspace::WorkspaceIn;
-use temor_wire::ids::SessionId;
+use temor_client::model::session::{CardIn, CardOut, CardSize, Cards, Life, SurfaceId, card_step};
+use temor_client::model::split::{Direction, Share};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::model::workspace::WorkspaceIn;
+use temor_client::remote::ids::SessionId;
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};

@@ -1,7 +1,7 @@
 //! The block list's segments from plain lists: no session, no window.
 
 use super::*;
-use temor_core::vocab::ids::ExitCode;
+use temor_client::model::vocab::ids::ExitCode;
 
 const SIZES: Sizes = Sizes {
     row: 10.0,

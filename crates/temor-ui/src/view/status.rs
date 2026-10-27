@@ -7,7 +7,7 @@ use ds::components::controls::progress::model::{Progress as Share, ProgressStyle
 use ds::components::controls::progress::view::ProgressIndicator;
 use ds::components::overlays::tooltip::Tooltip;
 use ds::prelude::*;
-use temor_vt::{Progress, ProgressState};
+use temor_panes::vt::{Progress, ProgressState};
 
 use super::names::named;
 

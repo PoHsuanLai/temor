@@ -3,8 +3,8 @@
 //! a short note rather than ignored.
 
 use anyview_pane::{FileRequest, PaneRequest};
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::Hub;

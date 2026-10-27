@@ -4,11 +4,11 @@
 
 use std::path::{Path, PathBuf};
 
-use temor_core::shelf::PaneSite;
-use temor_core::viewer::{candidates, first_file, output_paths, resolve, token_at};
-use temor_core::vocab::ids::BlockId;
-use temor_pane::text::{CellPos, cwd_from_url};
-use temor_vt::{GridPoint, PointSpace, SurfacePoint};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::viewer::{candidates, first_file, output_paths, resolve, token_at};
+use temor_client::model::vocab::ids::BlockId;
+use temor_panes::pane::text::{CellPos, cwd_from_url};
+use temor_panes::vt::{GridPoint, PointSpace, SurfacePoint};
 
 use super::Session;
 use crate::error::UiError;

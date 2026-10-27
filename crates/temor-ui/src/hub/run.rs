@@ -8,10 +8,10 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-use temor_core::vocab::ids::PaneId;
-use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnds, RunRequest, RunTicket};
-use temor_pty::ChildExit;
-use temor_shell::ChildEnv;
+use temor_client::desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnds, RunRequest, RunTicket};
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pty::ChildExit;
+use temor_panes::shell::ChildEnv;
 
 use super::desktop::cwd_of;
 use super::model::Hub;
@@ -105,7 +105,7 @@ impl Hub {
                     .or_else(|| self.launch.ambient.env.get("PATH"))
                     .unwrap_or_default()
                     .to_owned();
-                temor_pty::find_program(&name, &search)
+                temor_panes::pty::find_program(&name, &search)
             }
         };
         let Some(program) = path.filter(|path| path.is_file()) else {

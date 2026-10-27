@@ -3,9 +3,9 @@
 //! changes the session.
 
 use ds_core::time::stamp::Stamp;
-use temor_core::block::BlockState;
-use temor_core::offer::{Line, OfferList, Program, Screen, asks_for_secret};
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::block::BlockState;
+use temor_client::model::offer::{Line, OfferList, Program, Screen, asks_for_secret};
+use temor_client::model::vocab::ids::BlockId;
 
 use super::Session;
 

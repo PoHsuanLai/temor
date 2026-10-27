@@ -6,16 +6,16 @@ use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
 use ds_blitz::WindowHandle;
-use temor_core::block::Outcome;
-use temor_core::notify::Focus as NoteFocus;
-use temor_core::split::Direction;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_desktop::{
+use temor_client::desktop::{
     BadgeCount, CommandInfo, CommandRef, Exit, Focus, PaneInfo, PaneKind, PaneOpen, PaneRef,
     Placement, PortRefusal, Request, SpaceRef, WindowContext,
 };
+use temor_client::model::block::Outcome;
+use temor_client::model::notify::Focus as NoteFocus;
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};

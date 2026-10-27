@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 use ds::host::measure::{RectProbe, use_rect};
 use ds::prelude::Selection;
-use temor_core::vocab::ids::TabId;
+use temor_client::model::vocab::ids::TabId;
 
 use super::dnd::{Dnd, RowRects, is_primary, point_of};
 use crate::hub::DragKey;

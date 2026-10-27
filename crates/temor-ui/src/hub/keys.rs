@@ -5,9 +5,9 @@ use std::sync::Arc;
 use chordkit::{ChangeCallback, Keymap, Overrides};
 use dioxus::prelude::spawn;
 use ds_core::vocab::Shortcut;
-use temor_core::split::{Direction, Goto};
-use temor_core::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn};
-use temor_pane::keys::{Action, KeyIssue, Owner, build_keymap};
+use temor_client::model::split::{Direction, Goto};
+use temor_client::model::workspace::{NthTab, TabSel, TabsIn, WorkspaceIn};
+use temor_panes::pane::keys::{Action, KeyIssue, Owner, build_keymap};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -53,7 +53,7 @@ impl HubRef {
     /// `label` with the action's chord after it, as a Mac tooltip writes it (`New tab (⌘N)`), or
     /// `label` alone when the action has no chord.
     pub fn tooltip(&self, label: &str, action: Action) -> String {
-        match temor_pane::keys::terminal_shortcut(&self.0.borrow().launch.keymap, action) {
+        match temor_panes::pane::keys::terminal_shortcut(&self.0.borrow().launch.keymap, action) {
             Some(chord) => format!("{label} ({chord})"),
             None => label.to_owned(),
         }

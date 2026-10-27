@@ -8,7 +8,7 @@ use ds::prelude::{PaletteIn, PaletteIndex, PaletteOut, PaletteParams, PaletteSta
 use ds_core::machine::Machine;
 use ds_core::text::typed::TypedText;
 use ds_core::time::stamp::Stamp;
-use temor_core::bar::{BarContext, BarIn, BarOut, BarRow, BarState, RowKey, bar_step};
+use temor_client::model::bar::{BarContext, BarIn, BarOut, BarRow, BarState, RowKey, bar_step};
 
 /// The bar and the palette that walks its rows.
 #[derive(Debug, Clone, PartialEq)]

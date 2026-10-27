@@ -11,7 +11,7 @@ use ds::base::spawner::Spawner;
 use ds::prelude::*;
 use ds_blitz::TokioSpawner;
 use ds_settings::{AppearanceFile, use_environment};
-use temor_pane::keys::SettingsPane;
+use temor_panes::pane::keys::SettingsPane;
 
 use super::edit::current;
 use super::open::SettingsAsked;

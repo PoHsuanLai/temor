@@ -2,10 +2,10 @@
 //! quick terminal's "Move to Space"), and what a deleted Space leaves behind.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::error::CoreError;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceOut;
+use temor_client::model::error::CoreError;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceOut;
 
 use super::model::{Hub, HubRef};
 use temor_client::keep::older::remove_for as remove_session_for;

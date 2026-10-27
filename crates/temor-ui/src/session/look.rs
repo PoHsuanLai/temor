@@ -1,8 +1,8 @@
 //! The look of a pane that is already open, changed by the settings (PLAN §14): its font, its
 //! cursor's shape and its blinking. The rest of the settings are read when a pane starts.
 
-use temor_pane::settings::{CursorBlinking, CursorStyle};
-use temor_render::FontSet;
+use temor_panes::pane::settings::{CursorBlinking, CursorStyle};
+use temor_panes::render::FontSet;
 
 use super::Session;
 use crate::error::UiError;

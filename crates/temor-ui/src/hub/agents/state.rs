@@ -1,9 +1,9 @@
 //! Everything the window keeps about agents: the radar and the pane sockets. Lives in the hub, on
 //! the window's thread.
 
-use temor_core::agent::radar::{Millis, RadarParams};
-use temor_core::vocab::ids::PaneId;
-use temor_pane::PaneEvent;
+use temor_client::model::agent::radar::{Millis, RadarParams};
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::PaneEvent;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::radar::Radar;

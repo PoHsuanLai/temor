@@ -4,10 +4,10 @@
 
 use std::sync::Arc;
 
-use temor_core::vocab::ids::PaneId;
-use temor_pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup, cursor_shape};
-use temor_render::Palette;
-use temor_vt::LineCount;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::{FedSpec, Feeder, PaneEvent, PaneLink, TransferSetup, cursor_shape};
+use temor_panes::render::Palette;
+use temor_panes::vt::LineCount;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::launch::{Launch, first_size, load_fonts, session_kit, transfer_limits};

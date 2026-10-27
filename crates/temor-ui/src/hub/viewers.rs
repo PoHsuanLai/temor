@@ -11,10 +11,10 @@ use std::sync::Arc;
 
 use anyview_machines::StageFamily;
 use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Sequence, SequenceOrigin};
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::ViewerRef;
-use temor_core::workspace::{ViewerOpen, WorkspaceIn};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::ViewerRef;
+use temor_client::model::workspace::{ViewerOpen, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
 use crate::bar::Finding;

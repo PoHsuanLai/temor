@@ -8,7 +8,7 @@ use chordkit::Chord;
 use dioxus::prelude::*;
 use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
-use temor_pane::keys::{Action, bindable};
+use temor_panes::pane::keys::{Action, bindable};
 
 use super::keys_edit::{KeyChange, Mine, change_keys, load_view};
 use crate::view::launch::Launch;

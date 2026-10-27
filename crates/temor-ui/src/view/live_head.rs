@@ -8,7 +8,7 @@ use ds::base::text::clip::clip_chars;
 use ds::components::controls::press::Propagation;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::session::Life;
+use temor_client::model::session::Life;
 
 use super::tool_button::ToolButton;
 use crate::hub::{LiveHead, LiveIcon, live_cards_grace_secs};

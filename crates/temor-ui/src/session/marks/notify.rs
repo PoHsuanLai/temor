@@ -1,8 +1,8 @@
 //! Notices from the session (PLAN §8.1): a long command finishing, a program's notification, the
 //! bell. Each goes through the same rate limit to the notifier edge.
 
-use temor_core::notify::Focus;
-use temor_pane::settings::NotifyAfter;
+use temor_client::model::notify::Focus;
+use temor_panes::pane::settings::NotifyAfter;
 
 use super::super::Session;
 

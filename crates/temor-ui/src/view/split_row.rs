@@ -10,8 +10,8 @@
 
 use dioxus::prelude::*;
 use ds::prelude::IconSize;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::dnd::Dnd;
 use super::row_tip::RowTip;

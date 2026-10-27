@@ -3,8 +3,8 @@
 //! same readers `terminal.conf` used, so a bad one costs only itself.
 
 use chordkit::Overrides;
-use temor_pane::SettingsError;
-use temor_pane::settings::{
+use temor_panes::pane::SettingsError;
+use temor_panes::pane::settings::{
     FontChoice, ShellChoice, TerminalSettings, font_family, offer_command, shell,
 };
 

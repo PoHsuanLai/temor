@@ -3,10 +3,10 @@
 
 use std::path::{Path, PathBuf};
 
-use temor_pane::PaneSpec;
-use temor_pane::settings::{ShellChoice, TerminalSettings};
-use temor_pty::{ProgramVersion, SessionLauncher, login_shell};
-use temor_vt::{CellPx, GridSize};
+use temor_panes::pane::PaneSpec;
+use temor_panes::pane::settings::{ShellChoice, TerminalSettings};
+use temor_panes::pty::{ProgramVersion, SessionLauncher, login_shell};
+use temor_panes::vt::{CellPx, GridSize};
 
 use crate::edge::Ambient;
 use crate::error::UiError;
@@ -21,7 +21,7 @@ pub fn shell_pane(
     pane: u64,
     grid: GridSize,
     cell: CellPx,
-    palette: temor_render::Palette,
+    palette: temor_panes::render::Palette,
     launcher: SessionLauncher,
 ) -> Result<PaneSpec, UiError> {
     shell_pane_with_socket(
@@ -42,7 +42,7 @@ pub fn shell_pane_with_socket(
     settings: &TerminalSettings,
     pane: u64,
     (grid, cell): (GridSize, CellPx),
-    palette: temor_render::Palette,
+    palette: temor_panes::render::Palette,
     launcher: SessionLauncher,
     (socket, replay): (Option<PathBuf>, Option<PathBuf>),
 ) -> Result<PaneSpec, UiError> {
@@ -51,7 +51,7 @@ pub fn shell_pane_with_socket(
         ShellChoice::Login => login_shell(),
         ShellChoice::Program(_) => None,
     };
-    let input = temor_pane::ShellPaneInput::new(
+    let input = temor_panes::pane::ShellPaneInput::new(
         ambient.runtime_dir.clone(),
         ambient.home.clone(),
         launcher,
@@ -68,5 +68,7 @@ pub fn shell_pane_with_socket(
     ))
     .grid(grid, cell)
     .palette(palette);
-    Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)
+    Ok(temor_panes::pane::shell_pane(input, |path: &Path| {
+        path.is_file()
+    })?)
 }

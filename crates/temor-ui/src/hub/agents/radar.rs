@@ -4,16 +4,16 @@
 
 use std::collections::BTreeMap;
 
-use temor_core::agent::radar::{
+use temor_client::model::agent::radar::{
     Millis, ProcessFact, RadarIn, RadarOut, RadarParams, RadarState, radar_step,
 };
-use temor_core::agent::seen::{CommandLine, agent_of, is_known_agent};
-use temor_core::presence::{AgentState, PaneFocus, PresenceOut, Seen};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Note;
-use temor_pane::PaneEvent;
+use temor_client::model::agent::seen::{CommandLine, agent_of, is_known_agent};
+use temor_client::model::presence::{AgentState, PaneFocus, PresenceOut, Seen};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Note;
 use temor_panes::Heard;
-use temor_vt::ProgramState;
+use temor_panes::pane::PaneEvent;
+use temor_panes::vt::ProgramState;
 
 use super::convert::{exit_code, note_of, program_fact, status_report};
 use super::ending::{Via, front_of};

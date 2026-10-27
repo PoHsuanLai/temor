@@ -2,7 +2,7 @@
 
 use std::ffi::OsString;
 
-use temor_core::bar::PathResolver;
+use temor_client::model::bar::PathResolver;
 
 /// Finds programs on a `PATH`-style list, as the shell would for a bare name.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,6 +22,6 @@ impl PathResolver for PathLookup {
         // A path is not a lookup: `./run` and `/bin/ls` do not make a Run row.
         !program.is_empty()
             && !program.contains('/')
-            && temor_pty::find_program(program, &self.path).is_some()
+            && temor_panes::pty::find_program(program, &self.path).is_some()
     }
 }

@@ -1,10 +1,10 @@
 //! The tab in front and pinning (PLAN §7): what Pin Tab and Unpin Tab ask for. Running an action
 //! picked in the bar is `dispatch`, as for every other route.
 
-use temor_core::space::Pin;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
-use temor_pane::keys::Action;
+use temor_client::model::space::Pin;
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_panes::pane::keys::Action;
 
 use super::model::Hub;
 

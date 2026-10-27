@@ -11,7 +11,7 @@ use ds::components::app::spaces::SpaceId;
 use ds::components::content::label::LabelRole;
 use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
-use temor_core::vocab::text::{KeyPath, ProjectRoot, RelPath};
+use temor_client::model::vocab::text::{KeyPath, ProjectRoot, RelPath};
 
 use super::board::{SpaceBoard, SpaceEdit, SpaceRow};
 use super::space_edit::{

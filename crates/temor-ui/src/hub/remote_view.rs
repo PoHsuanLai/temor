@@ -2,9 +2,9 @@
 //! the connection's state, and the ports the host is listening on with what can be done about
 //! each. Plain data; the views draw it and send the person's choices back.
 
-use temor_core::remote::HelperState;
-use temor_core::vocab::ids::PaneId;
-use temor_remote::{HostReach, PortAction, port_actions};
+use temor_client::model::remote::HelperState;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::{HostReach, PortAction, port_actions};
 
 use super::model::{Hub, HubRef};
 use super::remote::Shown;
@@ -113,7 +113,8 @@ mod tests {
 
     #[test]
     fn the_stage_follows_the_question_then_the_session_then_the_connection() {
-        let ready = HelperState::Ready(temor_core::vocab::text::HelperHash("a".repeat(64)));
+        let ready =
+            HelperState::Ready(temor_client::model::vocab::text::HelperHash("a".repeat(64)));
         let cases = [
             (
                 HelperState::Offered,

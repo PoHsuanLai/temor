@@ -3,10 +3,10 @@
 //! [`Done`] and is applied here, on the window's thread. A plugin that fails shows nothing and is
 //! logged (`log_trouble`). Lenses and adapters are in `glue_work.rs`.
 
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::PluginId;
-use temor_plugins::message::{Choice, Item};
-use temor_plugins::{FOLDER_TABLE, Plugin, Routed, effect_of};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::PluginId;
+use temor_client::plugins::message::{Choice, Item};
+use temor_client::plugins::{FOLDER_TABLE, Plugin, Routed, effect_of};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};

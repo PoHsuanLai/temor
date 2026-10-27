@@ -6,14 +6,14 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use temor_core::quick::QuickState;
-use temor_core::split::SplitTree;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::Workspace;
-use temor_pane::PaneEvent;
+use temor_client::model::quick::QuickState;
+use temor_client::model::split::SplitTree;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::Workspace;
+use temor_panes::pane::PaneEvent;
+use temor_panes::render::Palette;
+use temor_panes::vt::Snapshot;
 use temor_panes::{Heard, Hearing};
-use temor_render::Palette;
-use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use super::agents::Agents;
@@ -45,7 +45,7 @@ pub struct Hub {
     pub(super) recent: BTreeMap<PaneId, Snapshot>,
     /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
     /// the new shell is given its variables.
-    pub(super) carried: BTreeMap<PaneId, temor_core::session::Checkpoint>,
+    pub(super) carried: BTreeMap<PaneId, temor_client::model::session::Checkpoint>,
     /// The panes' kept files (the client's), and what each holds now.
     pub(super) files: temor_client::keep::PaneFiles,
     /// Where the panes' events go: the client's thread that hears them (`Hearing`).
@@ -62,7 +62,7 @@ pub struct Hub {
     pub(super) notices: Vec<String>,
     /// Actions picked in the command bar, which the desk runs once the pick has settled: the
     /// window runs all of them one way (`Desk::run_action`).
-    pub(super) bar_actions: Vec<temor_pane::keys::Action>,
+    pub(super) bar_actions: Vec<temor_panes::pane::keys::Action>,
     pub(super) bar: BarSlot,
     /// The quick terminal: never part of the workspace, so never saved with the session.
     pub(super) quick: QuickState,

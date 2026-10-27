@@ -5,9 +5,9 @@
 
 use std::time::Duration;
 
-use temor_pane::text::RowText;
-use temor_pane::text::{Finder, Match, find_all, may_match};
-use temor_pane::text::{Granularity, Selection, Shape};
+use temor_panes::pane::text::RowText;
+use temor_panes::pane::text::{Finder, Match, find_all, may_match};
+use temor_panes::pane::text::{Granularity, Selection, Shape};
 
 use super::Session;
 use super::model::PendingQuery;
@@ -81,7 +81,7 @@ impl Session {
                     }
                     block = next;
                 }
-                Ok::<_, temor_pane::PaneError>(chunk)
+                Ok::<_, temor_panes::pane::PaneError>(chunk)
             })?;
             lines.extend(chunk);
             first = end;
@@ -125,9 +125,9 @@ impl Session {
         let (top, len) = self.pane.with_term(|term| term.viewport())?;
         if self.list_map.is_none() && (found.row < top || found.row >= top.saturating_add(len)) {
             self.pane.with_term(|term| {
-                term.scroll(temor_vt::ViewportScroll::Row(temor_vt::RowCount(
-                    u64::from(found.row),
-                )))
+                term.scroll(temor_panes::vt::ViewportScroll::Row(
+                    temor_panes::vt::RowCount(u64::from(found.row)),
+                ))
             });
         }
         Ok(())

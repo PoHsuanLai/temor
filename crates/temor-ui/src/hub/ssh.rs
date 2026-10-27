@@ -5,16 +5,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use temor_core::host::consent::{ConsentBook, RunMode};
-use temor_core::host::edit::{Edit, Found, Watch};
-use temor_core::host::forward::Forwards;
-use temor_core::host::master::Master;
-use temor_core::host::store::{HostsFile, PaneHost};
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
+use temor_client::model::host::consent::{ConsentBook, RunMode};
+use temor_client::model::host::edit::{Edit, Found, Watch};
+use temor_client::model::host::forward::Forwards;
+use temor_client::model::host::master::Master;
+use temor_client::model::host::store::{HostsFile, PaneHost};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{CheckUrl, DirectHost, HostAlias, HostKey, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use temor_wire::message::FileStamp;
+use temor_client::remote::message::FileStamp;
 
 use super::remote_edit::{EditTier, Overwrite};
 use crate::edge::Ambient;
@@ -27,7 +27,7 @@ use temor_client::ssh::work::{EditId, SshEvent, SshWork};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Phase {
     /// The person is being asked what the setup may do.
-    Asking(temor_core::host::consent::BootstrapAction),
+    Asking(temor_client::model::host::consent::BootstrapAction),
     /// Answered; waiting for the shared connection's turn.
     Waiting,
     /// The session is starting and the connection is not up yet (a password, a browser check).

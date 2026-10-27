@@ -13,12 +13,12 @@ use ds::components::chrome::split_view::view::SplitView;
 use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::menu::{Item, Target};
-use temor_core::split::{Closed, SplitTree};
-use temor_core::stage::Layout;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::keys::Action;
+use temor_client::model::menu::{Item, Target};
+use temor_client::model::split::{Closed, SplitTree};
+use temor_client::model::stage::Layout;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::pane::keys::Action;
 use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::folder_page::FolderPage;

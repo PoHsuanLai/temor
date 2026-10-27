@@ -4,12 +4,14 @@
 
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use temor_core::stage::Layout;
+use temor_client::model::stage::Layout;
 
 use ds::window::vocab::PageZoom;
-use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
-use temor_core::vocab::text::{CommandText, HostAlias};
-use temor_pane::keys::Action;
+use temor_client::model::bar::{
+    BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates,
+};
+use temor_client::model::vocab::text::{CommandText, HostAlias};
+use temor_panes::pane::keys::Action;
 
 use super::desk::Desk;
 use super::dispatch::Origin;
@@ -206,7 +208,7 @@ impl HubRef {
     }
 
     /// The Spaces a quick terminal can be moved to.
-    pub fn bar_spaces(&self) -> Vec<temor_core::bar::SpaceEntry> {
+    pub fn bar_spaces(&self) -> Vec<temor_client::model::bar::SpaceEntry> {
         self.0.borrow().bar.seams.spaces.spaces()
     }
 }

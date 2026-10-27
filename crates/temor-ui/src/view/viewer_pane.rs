@@ -10,10 +10,10 @@ use dioxus::prelude::*;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::keys::Action;
-use temor_vt::Ime;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::Ime;
 
 use crate::hub::{Desk, Origin};
 use crate::input::{Routed, stroke};

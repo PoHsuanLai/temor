@@ -6,7 +6,7 @@ use std::path::Path;
 use chordkit::{Chord, Key, Modifier, Modifiers, Overrides, Platform};
 use ds_settings::schema::KeyPath;
 use ds_settings_page::SettingEdit;
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
 use super::edit::{applied, current, save_edit};
 use super::keys_edit::{KeyChange, Mine, change_keys, changed_text, load_view};
@@ -20,7 +20,7 @@ fn ambient(scratch: &Path) -> Ambient {
     let home = scratch.join("home");
     Ambient {
         home: home.clone(),
-        env: temor_shell::ChildEnv::new(),
+        env: temor_panes::shell::ChildEnv::new(),
         config_dir: scratch.join("config/temor"),
         runtime_dir: home.join("runtime"),
     }

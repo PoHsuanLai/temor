@@ -4,7 +4,7 @@
 use chordkit::Overrides;
 use ds_settings::schema::{KeyKind, Schema};
 use ds_settings::{ConfigRoot, Store};
-use temor_pane::settings::{
+use temor_panes::pane::settings::{
     CursorBlinking, CursorStyle, FontChoice, NotifyAfter, ShellChoice, StartIn, TerminalSettings,
 };
 

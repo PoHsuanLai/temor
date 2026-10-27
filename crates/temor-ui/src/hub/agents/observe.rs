@@ -3,9 +3,9 @@
 
 use std::path::PathBuf;
 
-use temor_core::presence::AgentState;
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::presence::AgentState;
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::Heard;
 
 use super::radar::{Alert, Changed};

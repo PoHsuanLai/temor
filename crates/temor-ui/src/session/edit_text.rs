@@ -2,8 +2,8 @@
 //! the last file named in a block's command. The window hands it to the host-file editor, which
 //! resolves it against the pane's folder on the host.
 
-use temor_core::host::target::resolvable;
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::host::target::resolvable;
+use temor_client::model::vocab::ids::BlockId;
 
 use super::Session;
 

@@ -1,7 +1,7 @@
 //! Which block a point in the pane belongs to (PLAN §9 blocks).
 
-use temor_core::vocab::ids::BlockId;
-use temor_vt::SurfacePoint;
+use temor_client::model::vocab::ids::BlockId;
+use temor_panes::vt::SurfacePoint;
 
 use super::super::Session;
 

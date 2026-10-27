@@ -5,9 +5,9 @@
 //! pane when a half turns (`blink_due`).
 
 use ds_core::time::stamp::Stamp;
-use temor_core::notify::Focus;
-use temor_pane::settings::CursorBlinking;
-use temor_render::BlinkPhase;
+use temor_client::model::notify::Focus;
+use temor_panes::pane::settings::CursorBlinking;
+use temor_panes::render::BlinkPhase;
 
 use super::Session;
 

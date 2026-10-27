@@ -5,13 +5,13 @@
 
 use std::path::Path;
 
-use temor_core::remote::Grant;
-use temor_core::shelf::{FailWhy, Incoming, ShelfIn, ShelfOut, Source};
-use temor_core::transfer::{Origin, TransferOut, offer};
-use temor_core::vocab::ids::{Bytes, DownloadId, PaneId};
-use temor_core::vocab::text::HostName;
-use temor_pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
-use temor_transfer::Consent;
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::{FailWhy, Incoming, ShelfIn, ShelfOut, Source};
+use temor_client::model::transfer::{Origin, TransferOut, offer};
+use temor_client::model::vocab::ids::{Bytes, DownloadId, PaneId};
+use temor_client::model::vocab::text::HostName;
+use temor_client::shelf::transfer::Consent;
+use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::model::Hub;
 use super::shelf::{Ask, AskKind, Live};

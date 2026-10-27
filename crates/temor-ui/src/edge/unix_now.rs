@@ -2,7 +2,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use temor_core::bar::UnixSecs;
+use temor_client::model::bar::UnixSecs;
 
 /// Now. A clock set before 1970 reads as the epoch.
 pub fn unix_now() -> UnixSecs {

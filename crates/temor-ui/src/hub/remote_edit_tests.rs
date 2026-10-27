@@ -1,9 +1,9 @@
 //! Which way a remote edit goes, and what its write must find.
 
-use temor_core::host::master::Master;
-use temor_wire::digest::ContentHash;
-use temor_wire::message::{FileStamp, WriteCheck};
-use temor_wire::units::UnixMillis;
+use temor_client::model::host::master::Master;
+use temor_client::remote::digest::ContentHash;
+use temor_client::remote::message::{FileStamp, WriteCheck};
+use temor_client::remote::units::UnixMillis;
 
 use super::remote_edit::{EditTier, HelperUp, NoWay, Overwrite, pick_tier, write_check};
 

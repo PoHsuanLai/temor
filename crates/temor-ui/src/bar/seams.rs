@@ -5,8 +5,8 @@
 use std::rc::Rc;
 
 use ds::style::space::list::SpaceId;
-use temor_core::bar::{BarAction, PathResolver, SpaceEntry, UnixSecs};
-use temor_core::vocab::ai::AiSwitch;
+use temor_client::model::bar::{BarAction, PathResolver, SpaceEntry, UnixSecs};
+use temor_client::model::vocab::ai::AiSwitch;
 
 use super::resolver::PathLookup;
 use crate::edge::unix_now;

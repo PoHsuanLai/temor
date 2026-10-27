@@ -1,6 +1,6 @@
 //! What a change of settings means for open panes.
 
-use temor_pane::settings::{
+use temor_panes::pane::settings::{
     CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, TerminalSettings,
 };
 
@@ -48,7 +48,7 @@ fn the_look_and_the_notice_threshold_reach_open_panes() {
         // These are read when a pane starts.
         (
             TerminalSettings {
-                shell: temor_pane::settings::ShellChoice::Program("fish".to_owned()),
+                shell: temor_panes::pane::settings::ShellChoice::Program("fish".to_owned()),
                 offer_add: vec!["ssh".to_owned()],
                 ..old.clone()
             },

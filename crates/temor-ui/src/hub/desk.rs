@@ -5,8 +5,8 @@ use dioxus::prelude::*;
 use ds::base::vocab::Shown;
 use ds::window::host::WindowHost;
 use ds::window::vocab::PageZoom;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::model::HubRef;
 use super::space_rows::PendingSwitch;

@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use temor_core::vocab::ids::PaneId;
-use temor_pane::text::LinkTarget;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::text::LinkTarget;
 use temor_testkit::{ScratchRoot, program_or_skip};
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -157,7 +157,7 @@ impl Rig {
             )
             .0,
             launcher: LauncherChoice::Setsid(setsid),
-            settings: temor_pane::settings::TerminalSettings::default(),
+            settings: temor_panes::pane::settings::TerminalSettings::default(),
             ambient,
             probe: None,
             state_dir: None,

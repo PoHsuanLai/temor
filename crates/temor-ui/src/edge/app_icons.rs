@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 
-use temor_core::icon::{bundle_of, png_in_icns};
+use temor_client::model::icon::{bundle_of, png_in_icns};
 
 /// The size the row draws an icon at, in points; the PNG is at least twice that.
 const ROW_PX: u32 = 16;

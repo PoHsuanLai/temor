@@ -4,7 +4,7 @@
 //! Pure over the schema.
 
 use ds_settings::schema::{KeyKind, KeySpec, Schema};
-use temor_pane::keys::SettingsPane;
+use temor_panes::pane::keys::SettingsPane;
 
 use crate::settings::schema;
 
@@ -81,7 +81,7 @@ pub fn own_sections(pane: SettingsPane) -> Vec<(String, Vec<KeySpec>)> {
 
 #[cfg(test)]
 mod tests {
-    use temor_pane::keys::SettingsPane;
+    use temor_panes::pane::keys::SettingsPane;
 
     use super::*;
 

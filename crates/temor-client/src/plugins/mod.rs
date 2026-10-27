@@ -15,3 +15,6 @@ pub mod effects;
 pub mod facts;
 pub mod host;
 pub mod offer;
+
+// The plugins' own names, for what the window keeps and draws of them.
+pub use temor_plugins::*;

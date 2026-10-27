@@ -12,7 +12,7 @@ impl Session {
 
     /// The pane began as a kept screen: the commands it ran before are `history`, and the blocks
     /// on that screen are found again.
-    pub fn begin_restored(&mut self, history: Vec<temor_core::session::CommandRecord>) {
+    pub fn begin_restored(&mut self, history: Vec<temor_client::model::session::CommandRecord>) {
         self.core().begin_restored(history);
     }
 }

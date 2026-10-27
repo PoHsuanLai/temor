@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use temor_vt::Modifiers;
+use temor_panes::vt::Modifiers;
 
 /// Whether the ⌘ key is down.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

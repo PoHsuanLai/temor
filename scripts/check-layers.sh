@@ -6,7 +6,9 @@
 #   - every workspace crate is in the table below (a new crate must be placed in a layer);
 #   - the quire-desktop boundary (PLAN §2, D15): only temor-desktop names zbus, docket or porter
 #     crates, and there each such dependency is optional and listed in its `quire-desktop` feature,
-#     so `--no-default-features` builds with none of them.
+#     so `--no-default-features` builds with none of them;
+#   - the fence (PLAN §2b): temor-ui depends on no temor crate but temor-client, temor-panes and
+#     temor-schema (its tests may name more, as dev-dependencies).
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
 # `crate -> dep (rule)` and exits 1 when there is any.
@@ -52,6 +54,8 @@ for line in sys.stdin.read().split("\n"):
 banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
 DESKTOP = "temor-desktop"
+WINDOW = "temor-ui"
+FENCE = {"temor-client", "temor-panes", "temor-schema"}
 FEATURE = "quire-desktop"
 meta = json.loads(sys.argv[1])
 violations = []
@@ -82,6 +86,13 @@ for pkg in meta["packages"]:
                 violations.append(f"{name} -> {dname} (only {DESKTOP} names zbus, docket or porter)")
             elif not dep.get("optional") or dname not in gated:
                 violations.append(f"{name} -> {dname} (must be optional and in feature {FEATURE})")
+        if (
+            name == WINDOW
+            and dname.startswith("temor")
+            and dname not in FENCE
+            and dep.get("kind") != "dev"
+        ):
+            violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes and temor-schema)")
         if layer <= 1 and banned.match(dname):
             violations.append(f"{name} -> {dname} (L{layer} never depends on quire, dioxus, docket or zbus)")
             continue

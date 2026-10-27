@@ -1,18 +1,18 @@
 //! The session's lifecycle: opening the program, fitting and painting, and taking the events
 //! the program sends.
 
-use temor_core::notify::Focus;
-use temor_core::session::ShellState;
-use temor_render::{Palette, PaneFocus, PixelSize, Scale};
+use temor_client::model::notify::Focus;
+use temor_client::model::session::ShellState;
+use temor_panes::render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
-use temor_pane::PaneEvent;
 use temor_panes::Heard;
-use temor_vt::Snapshot;
+use temor_panes::pane::PaneEvent;
+use temor_panes::vt::Snapshot;
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
@@ -99,7 +99,7 @@ impl Session {
             ground: self.live_ground,
         };
         // While the program holds the screen the painter draws the frame captured where the
-        // hold began (see `temor_pane::PaintSource`).
+        // hold began (see `temor_panes::pane::PaintSource`).
         self.painter.paint(&self.pane, view, show)?;
         Ok(self.relayout())
     }
@@ -156,7 +156,7 @@ impl Session {
 
     /// What is kept of this pane when its window goes away: the shell's state and the commands it
     /// ran.
-    pub fn checkpoint(&self) -> temor_core::session::Checkpoint {
+    pub fn checkpoint(&self) -> temor_client::model::session::Checkpoint {
         self.core().checkpoint()
     }
 
@@ -164,25 +164,25 @@ impl Session {
     /// reports, and the commands it ran before this window.
     pub fn continue_from(
         &mut self,
-        state: temor_core::session::ShellState,
-        kept: temor_core::session::Checkpoint,
+        state: temor_client::model::session::ShellState,
+        kept: temor_client::model::session::Checkpoint,
     ) {
         self.core().continue_from(state, kept);
     }
 
     /// The key the shell's state reports carry, for a shell started elsewhere (the local daemon)
     /// or one that goes on in another pane.
-    pub fn set_report_key(&mut self, key: Option<temor_shell::report::ReportKey>) {
+    pub fn set_report_key(&mut self, key: Option<temor_panes::shell::report::ReportKey>) {
         self.core().report_key = key;
     }
 
     /// The key of the shell this session shows, if it reports.
-    pub fn report_key(&self) -> Option<temor_shell::report::ReportKey> {
+    pub fn report_key(&self) -> Option<temor_panes::shell::report::ReportKey> {
         self.core().report_key.clone()
     }
 
     /// The commands run before this pane's screen was handed to it, for the blocks found on it.
-    pub fn inherit(&mut self, history: Vec<temor_core::session::CommandRecord>) {
+    pub fn inherit(&mut self, history: Vec<temor_client::model::session::CommandRecord>) {
         self.core().inherit(history);
     }
 
@@ -216,7 +216,7 @@ impl Session {
     }
 
     /// The progress the program reported (OSC 9;4), while it is shown.
-    pub fn progress(&self) -> Option<temor_vt::Progress> {
+    pub fn progress(&self) -> Option<temor_panes::vt::Progress> {
         self.core().progress
     }
 }

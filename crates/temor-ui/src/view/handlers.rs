@@ -12,8 +12,8 @@ use ds::base::time::clock::sleep;
 use ds::host::measure::RectProbe;
 use ds::host::signals::HostSignals;
 use ds::prelude::{Point, Px};
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_pane::keys::Action;
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_panes::pane::keys::Action;
 
 use super::block_menu::BlockMenuAt;
 use super::find_bar::StepDirection;

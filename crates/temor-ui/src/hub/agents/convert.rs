@@ -1,12 +1,12 @@
 //! What the panes say, as the radar's typed facts. Pure: no sequences, no clocks.
 
-use temor_core::agent::radar::{ProgramFact, ProgramKind};
-use temor_core::presence::{AgentState, Seen, StatusReport, StatusSource, WaitKind};
-use temor_core::vocab::ids::{ExitCode, PaneId, Seq};
-use temor_core::vocab::text::{Note, PluginId, display_text};
-use temor_pane::report::{ReportState, ReportWait, StatusLine};
-use temor_pty::ChildExit;
-use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
+use temor_client::model::agent::radar::{ProgramFact, ProgramKind};
+use temor_client::model::presence::{AgentState, Seen, StatusReport, StatusSource, WaitKind};
+use temor_client::model::vocab::ids::{ExitCode, PaneId, Seq};
+use temor_client::model::vocab::text::{Note, PluginId, display_text};
+use temor_panes::pane::report::{ReportState, ReportWait, StatusLine};
+use temor_panes::pty::ChildExit;
+use temor_panes::vt::{ProgramState, ProgramStatus, ProgramWait};
 
 /// The longest message kept from an agent; it is shown, so it is bounded.
 const NOTE_CHARS: usize = 200;

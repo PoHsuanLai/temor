@@ -1,6 +1,6 @@
 //! The known agent a pane was seen to run, and how it is told when it is seen again.
 
-use temor_core::agent::seen::CommandLine;
+use temor_client::model::agent::seen::CommandLine;
 
 use super::ending::Via;
 

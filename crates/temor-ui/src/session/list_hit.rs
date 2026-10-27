@@ -5,7 +5,7 @@
 
 use std::ops::Range;
 
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::vocab::ids::BlockId;
 
 /// Which rows a stretch with no rows of its own goes with, for a point on it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
