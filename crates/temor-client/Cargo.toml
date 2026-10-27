@@ -29,6 +29,8 @@ ds-core = { workspace = true }
 # The Spaces (`spaces`): the kit's list, which temor-core keeps its projects in.
 ds-style = { workspace = true }
 serde_json = { workspace = true }
+# The private state folder's owner check (`keep::private`).
+rustix = { workspace = true }
 # The script a nushell completion runs from.
 tempfile = { workspace = true }
 thiserror = { workspace = true }

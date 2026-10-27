@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use temor_core::vocab::ids::PaneId;
 use temor_vt::Snapshot;
 
-use crate::platform::{ensure_private_dir, write_private_file};
-use crate::session::SNAPSHOT_LIMIT;
+use super::private::{ensure_private_dir, write_private_file};
+use crate::pane::SNAPSHOT_LIMIT;
 
 /// The folder inside the state folder.
 const FOLDER: &str = "snapshots";

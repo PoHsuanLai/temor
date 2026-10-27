@@ -63,7 +63,9 @@ pub fn shell_pane_with_socket(
     .pane(pane)
     .socket(socket)
     .replay(replay)
-    .report_key(Some(crate::edge::replay::fresh_key().as_str().to_owned()))
+    .report_key(Some(
+        temor_client::keep::replay::fresh_key().as_str().to_owned(),
+    ))
     .grid(grid, cell)
     .palette(palette);
     Ok(temor_pane::shell_pane(input, |path: &Path| path.is_file())?)

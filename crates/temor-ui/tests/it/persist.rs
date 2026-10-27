@@ -3,6 +3,11 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use temor_client::keep::older::{
+    Startup, load as load_session, load_hosts, resolve_state_dir, save as save_session,
+    save_with_hosts,
+};
+use temor_client::keep::{Pace, SavePace};
 use temor_core::host::consent::{ConsentBook, HostRecord};
 use temor_core::host::store::{HostsFile, PaneHost};
 use temor_core::split::Direction;
@@ -10,10 +15,6 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::restore::FreshWhy;
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
-use temor_ui::edge::{
-    Pace, SavePace, Startup, load_hosts, load_session, resolve_state_dir, save_session,
-    save_with_hosts,
-};
 
 fn built() -> Workspace {
     let ws = Workspace::new(ClosedState::new(KeepClosed::DEFAULT));
@@ -171,9 +172,9 @@ fn saves_are_paced_to_one_per_interval_and_owed_at_quit() {
 
 #[test]
 fn snapshot_sidecars_are_private_capped_read_once_and_cleared() {
+    use temor_client::keep::sidecar::{Stored, clear, remove, take, write};
+    use temor_client::pane::SNAPSHOT_LIMIT;
     use temor_core::vocab::ids::PaneId;
-    use temor_ui::edge::sidecar::{Stored, clear, remove, take, write};
-    use temor_ui::session::SNAPSHOT_LIMIT;
     use temor_vt::Snapshot;
 
     let dir = tempfile::tempdir().unwrap();
@@ -209,8 +210,8 @@ fn snapshot_sidecars_are_private_capped_read_once_and_cleared() {
 
 #[test]
 fn checkpoint_files_are_private_read_once_and_hold_no_secret_value() {
+    use temor_client::keep::checkpoint::{take, write};
     use temor_core::session::{Checkpoint, ShellIn, ShellState, shell_step};
-    use temor_ui::edge::checkpoint::{take, write};
 
     let dir = tempfile::tempdir().unwrap();
     let state = dir.path().join("temor");

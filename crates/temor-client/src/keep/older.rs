@@ -1,5 +1,6 @@
-//! The session files an older temor wrote (`session.json`, `session-<n>.json`): temor now keeps
-//! its rows in the store (`hub::layout`) and reads these once, into it. The directory is
+//! The files an older temor wrote: the session files (`session.json`, `session-<n>.json`) and
+//! the Spaces file (`spaces.json`, quire's `Spaces<Project, Place>` as the kit writes it). temor
+//! now keeps its rows and Spaces in the store ([`super::Kept`]) and reads these once, into it. The directory is
 //! injected; the binary resolves it from the XDG state home. A damaged file is set aside
 //! (`session.json.bad`), a newer one is left alone. The writers stay so tests can leave a file as
 //! an older temor would.
@@ -7,13 +8,13 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use ds::components::app::spaces::SpaceId;
+use ds_style::space::list::SpaceId;
 use temor_core::host::store::{HostsFile, read_hosts, splice_hosts};
+use temor_core::space::TemorSpaces;
 use temor_core::workspace::restore::{FreshWhy, Restored, decode, encode};
 use temor_core::workspace::{KeepClosed, Workspace};
 
-use crate::error::UiError;
-use crate::platform::{ensure_private_dir, write_private_file};
+use super::private::{ensure_private_dir, write_private_file};
 
 /// The first Space's file name inside the state directory (the one a single-Space build wrote).
 pub const FILE_NAME: &str = "session.json";
@@ -49,18 +50,18 @@ pub enum Startup {
 }
 
 /// Reads the first Space's session in `dir` (see [`load_for`]).
-pub fn load(dir: &Path, keep: KeepClosed) -> Result<Startup, UiError> {
+pub fn load(dir: &Path, keep: KeepClosed) -> io::Result<Startup> {
     load_for(dir, SpaceId(0), keep)
 }
 
 /// Reads the session of `space` in `dir`. A damaged file (not JSON, not valid text, no version)
 /// is renamed to `<name>.bad`; a newer one is kept as it is, so a downgrade never destroys it.
-pub fn load_for(dir: &Path, space: SpaceId, keep: KeepClosed) -> Result<Startup, UiError> {
+pub fn load_for(dir: &Path, space: SpaceId, keep: KeepClosed) -> io::Result<Startup> {
     let path = dir.join(file_name(space));
     let bytes = match std::fs::read(&path) {
         Ok(bytes) => bytes,
         Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(Startup::NoFile),
-        Err(source) => return Err(UiError::Session(source)),
+        Err(source) => return Err(source),
     };
     // Bytes that are not text cannot be a session file: they are damaged like any other.
     let decoded = match String::from_utf8(bytes) {
@@ -95,19 +96,19 @@ pub fn remove_for(dir: &Path, space: SpaceId) {
 }
 
 /// Writes `ws` to the first Space's session file (see [`save_for`]).
-pub fn save(dir: &Path, ws: &Workspace) -> Result<(), UiError> {
+pub fn save(dir: &Path, ws: &Workspace) -> io::Result<()> {
     save_for(dir, SpaceId(0), ws)
 }
 
 /// Writes `ws` to the session file of `space` in `dir`, creating the directory (owner-only)
 /// first. A file written by a newer build is never overwritten; a damaged one is set aside first.
-pub fn save_for(dir: &Path, space: SpaceId, ws: &Workspace) -> Result<(), UiError> {
+pub fn save_for(dir: &Path, space: SpaceId, ws: &Workspace) -> io::Result<()> {
     write(dir, space, ws, None)
 }
 
 /// [`save_for`] the first Space, with the hosts (remembered answers, panes on hosts) kept under
 /// the file's `hosts` key. Pane ids are unique across Spaces, so one record serves them all.
-pub fn save_with_hosts(dir: &Path, ws: &Workspace, hosts: &HostsFile) -> Result<(), UiError> {
+pub fn save_with_hosts(dir: &Path, ws: &Workspace, hosts: &HostsFile) -> io::Result<()> {
     write(dir, SpaceId(0), ws, Some(hosts))
 }
 
@@ -121,13 +122,8 @@ pub fn load_hosts(dir: &Path) -> HostsFile {
         .unwrap_or_default()
 }
 
-fn write(
-    dir: &Path,
-    space: SpaceId,
-    ws: &Workspace,
-    hosts: Option<&HostsFile>,
-) -> Result<(), UiError> {
-    ensure_private_dir(dir).map_err(UiError::Session)?;
+fn write(dir: &Path, space: SpaceId, ws: &Workspace, hosts: Option<&HostsFile>) -> io::Result<()> {
+    ensure_private_dir(dir)?;
     let path = dir.join(file_name(space));
     if let Ok(existing) = std::fs::read(&path) {
         match String::from_utf8(existing) {
@@ -140,11 +136,53 @@ fn write(
             Err(_) => set_aside(&path),
         }
     }
-    let failed =
-        |e: temor_core::error::CoreError| UiError::Session(io::Error::other(e.to_string()));
+    let failed = |e: temor_core::error::CoreError| io::Error::other(e.to_string());
     let mut text = encode(ws).map_err(failed)?;
     if let Some(hosts) = hosts {
         text = splice_hosts(&text, hosts).map_err(failed)?;
     }
-    write_private_file(&path, text.as_bytes()).map_err(UiError::Session)
+    write_private_file(&path, text.as_bytes())
+}
+
+pub const SPACES_FILE: &str = "spaces.json";
+
+/// What the file gave at start.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SpacesStartup {
+    /// No file: the first launch.
+    NoFile,
+    /// The saved Spaces.
+    Loaded(TemorSpaces),
+    /// The file could not be used and was set aside; the window starts with a first Space.
+    Damaged,
+}
+
+/// Reads the Spaces in `dir`. The kit's reader is lenient (a Space with a damaged key takes its
+/// default), so only a file that is not text, not JSON, or has no Space at all is damage.
+pub fn load_spaces(dir: &Path) -> io::Result<SpacesStartup> {
+    let path = dir.join(SPACES_FILE);
+    let bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {
+            return Ok(SpacesStartup::NoFile);
+        }
+        Err(source) => return Err(source),
+    };
+    let spaces = String::from_utf8(bytes)
+        .ok()
+        .and_then(|text| serde_json::from_str::<TemorSpaces>(&text).ok());
+    match spaces {
+        Some(spaces) => Ok(SpacesStartup::Loaded(spaces)),
+        None => {
+            set_aside(&path);
+            Ok(SpacesStartup::Damaged)
+        }
+    }
+}
+
+/// Writes `spaces` to the Spaces file in `dir`, creating the directory (owner-only) first.
+pub fn save_spaces(dir: &Path, spaces: &TemorSpaces) -> io::Result<()> {
+    ensure_private_dir(dir)?;
+    let text = serde_json::to_string_pretty(spaces).map_err(|e| io::Error::other(e.to_string()))?;
+    write_private_file(&dir.join(SPACES_FILE), format!("{text}\n").as_bytes())
 }

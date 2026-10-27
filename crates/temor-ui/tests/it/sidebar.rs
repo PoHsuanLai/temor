@@ -13,8 +13,8 @@ use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use ds::components::app::spaces::{SpaceId, Spaces};
+use temor_client::keep::older::save_spaces;
 use temor_core::space::Project;
-use temor_ui::edge::save_spaces;
 
 use super::drive;
 use super::drive::{chord, wait_until};

@@ -34,9 +34,6 @@ pub enum UiError {
     /// The pane's background work could not start.
     #[error("the terminal could not start its background work: {0}")]
     Thread(#[source] std::io::Error),
-    /// The session file could not be read or written.
-    #[error("the session file could not be saved: {0}")]
-    Session(#[source] std::io::Error),
     /// A Space's key agent could not be started.
     #[error("the Space's key agent could not start: {0}")]
     Agent(String),

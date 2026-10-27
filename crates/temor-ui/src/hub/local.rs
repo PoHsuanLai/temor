@@ -19,8 +19,8 @@ use super::model::Hub;
 use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
 use crate::edge::remote_install::blob_path;
 use crate::edge::remote_link::{RemoteLink, Target};
-use crate::edge::replay::fresh_key;
 use crate::view::remote_launch::open_fed_session;
+use temor_client::keep::replay::fresh_key;
 
 /// The local daemon's name as a host.
 pub(super) fn local_alias() -> HostAlias {

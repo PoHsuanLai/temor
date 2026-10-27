@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use temor_core::session::Checkpoint;
 use temor_core::vocab::ids::PaneId;
 
-use crate::platform::{ensure_private_dir, write_private_file};
+use super::private::{ensure_private_dir, write_private_file};
 
 /// The folder inside the state folder.
 const FOLDER: &str = "checkpoints";

@@ -9,8 +9,8 @@ use ds_settings::Store;
 use temor_plugins::DataDirs;
 use temor_shell::ChildEnv;
 
-use super::session_file::resolve_state_dir;
 use crate::settings::{APP, root_for};
+use temor_client::keep::older::resolve_state_dir;
 
 /// What the app needs from its surroundings.
 #[derive(Debug, Clone, PartialEq)]

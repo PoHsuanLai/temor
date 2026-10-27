@@ -8,7 +8,7 @@ use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceOut;
 
 use super::model::{Hub, HubRef};
-use crate::edge::remove_session_for;
+use temor_client::keep::older::remove_for as remove_session_for;
 
 impl Hub {
     /// Moves `tab` of the Space on screen to the Space `to`. Its panes keep running; the tab is

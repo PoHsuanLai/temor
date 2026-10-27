@@ -431,7 +431,7 @@ fn a_saved_session_is_restored_on_launch() {
         Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
         |ws, step| workspace_step(ws, step).0,
     );
-    temor_ui::edge::save_session(&state, &ws).expect("saved");
+    temor_client::keep::older::save(&state, &ws).expect("saved");
     let probe = Probe::new();
     let mut h = harness_in("window-restore", &probe, Some(state));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
@@ -460,7 +460,7 @@ fn the_rows_are_kept_in_the_store_after_the_old_file_is_read_in_once() {
         Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
         |ws, step| workspace_step(ws, step).0,
     );
-    temor_ui::edge::save_session(&state, &ws).expect("saved");
+    temor_client::keep::older::save(&state, &ws).expect("saved");
     let probe = Probe::new();
     let mut h = harness_in("window-layout", &probe, Some(state.clone()));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));

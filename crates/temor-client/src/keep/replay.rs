@@ -10,7 +10,7 @@ use temor_shell::report::ReportKey;
 
 use temor_core::vocab::ids::PaneId;
 
-use crate::platform::{ensure_private_dir, write_private_file};
+use super::private::{ensure_private_dir, write_private_file};
 
 /// Stores `script` for `pane`'s next shell and returns where. `None` when there is nothing to
 /// give or it could not be stored.

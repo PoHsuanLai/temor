@@ -12,6 +12,7 @@ pub mod act;
 mod client;
 mod error;
 mod external;
+pub mod keep;
 mod live;
 pub mod pane;
 pub mod query;

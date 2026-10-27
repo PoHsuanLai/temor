@@ -16,7 +16,6 @@ use temor_vt::Snapshot;
 use super::model::{Hub, HubRef};
 use super::say::refusal_text;
 use super::typing::{Submit, type_command};
-use crate::edge::{checkpoint, sidecar};
 use crate::session::Session;
 use crate::view::launch::open_session_with;
 use crate::view::slot::{Slot, repaint};
@@ -174,7 +173,11 @@ impl Hub {
     ) -> Option<std::path::PathBuf> {
         let carried = kept.replay();
         let replay = self.state_dir.as_deref().and_then(|dir| {
-            crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&carried.aliases))
+            temor_client::keep::replay::write(
+                dir,
+                pane,
+                &temor_shell::alias_script(&carried.aliases),
+            )
         });
         let base = self.launch.ambient.env.clone().overlay(env);
         let base: Vec<(String, String)> = base
@@ -246,12 +249,8 @@ impl Hub {
     pub(super) fn forget_pane(&mut self, pane: PaneId) {
         self.recent.remove(&pane);
         self.ssh.closed.remove(&pane);
-        if let Some(dir) = &self.state_dir {
-            sidecar::remove(dir, pane);
-            checkpoint::remove(dir, pane);
-        }
+        self.files.forget(self.state_dir.as_deref(), pane);
         self.carried.remove(&pane);
-        self.on_disk.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.

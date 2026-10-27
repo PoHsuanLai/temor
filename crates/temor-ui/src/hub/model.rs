@@ -27,7 +27,6 @@ use super::shelf::ShelfHub;
 use super::spaces::SpaceKeep;
 use super::ssh::SshHub;
 use super::viewers::ViewerHub;
-use crate::edge::SavePace;
 use crate::plugins::PluginHub;
 use crate::view::launch::Launch;
 use crate::view::slot::Slot;
@@ -47,8 +46,8 @@ pub struct Hub {
     /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
     /// the new shell is given its variables.
     pub(super) carried: BTreeMap<PaneId, temor_core::session::Checkpoint>,
-    /// What each pane's checkpoint file holds now, so only a change is written.
-    pub(super) on_disk: BTreeMap<PaneId, temor_core::session::Checkpoint>,
+    /// The panes' kept files (the client's), and what each holds now.
+    pub(super) files: temor_client::keep::PaneFiles,
     /// Where the panes' events go: the client's thread that hears them (`Hearing`).
     pub(super) events: UnboundedSender<(PaneId, PaneEvent)>,
     pub(super) hearing: Hearing,
@@ -59,7 +58,7 @@ pub struct Hub {
     /// The viewer's store (shared with anyview), for a run that keeps its state.
     pub(super) viewer_store: Option<PathBuf>,
     pub(super) palette: Palette,
-    pub(super) pace: SavePace,
+    pub(super) pace: temor_client::keep::SavePace,
     pub(super) notices: Vec<String>,
     /// Actions picked in the command bar, which the desk runs once the pick has settled: the
     /// window runs all of them one way (`Desk::run_action`).
@@ -92,8 +91,8 @@ pub struct Hub {
     pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
     pub(super) icon_pack: crate::edge::icon_pack::IconPack,
     pub(super) history: super::history::History,
-    /// What of the layout the client was last handed.
-    pub(super) laid: super::layout::Laid,
+    /// What of the layout the client was last handed (the client's).
+    pub(super) kept: temor_client::keep::Kept,
 }
 
 impl std::fmt::Debug for Hub {
@@ -141,7 +140,7 @@ impl Hub {
             slots: BTreeMap::new(),
             recent: BTreeMap::new(),
             carried: BTreeMap::new(),
-            on_disk: BTreeMap::new(),
+            files: Default::default(),
             events,
             hearing,
             inbox: Some(inbox),
@@ -154,7 +153,7 @@ impl Hub {
                 .map(|_| launch.ambient.viewer_store()),
             launch,
             palette: Palette::default(),
-            pace: SavePace::new(SAVE_EVERY),
+            pace: temor_client::keep::SavePace::new(SAVE_EVERY),
             notices,
             bar_actions: Vec::new(),
             shelf,
@@ -173,7 +172,7 @@ impl Hub {
             app_icons: RefCell::default(),
             icon_pack,
             history: Default::default(),
-            laid: Default::default(),
+            kept: Default::default(),
         }
     }
 

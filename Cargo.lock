@@ -7204,6 +7204,7 @@ dependencies = [
  "ds-style",
  "notify",
  "parking_lot",
+ "rustix",
  "serde_json",
  "temor-client",
  "temor-core",

@@ -5,7 +5,6 @@
 mod agent_socket;
 mod ambient;
 pub mod app_icons;
-pub mod checkpoint;
 pub mod clock;
 pub mod desktop_feed;
 pub mod desktop_port;
@@ -39,16 +38,11 @@ pub mod remote_ping;
 pub mod remote_pump;
 pub mod remote_relay;
 pub mod remote_route;
-pub mod replay;
-mod save_pace;
-mod session_file;
 mod settings_file;
 pub mod shelf_files;
-pub mod sidecar;
 pub mod space_agent;
 pub mod space_start;
 pub mod space_vault;
-mod spaces_file;
 mod ssh_env;
 mod ssh_hosts_cache;
 pub mod ssh_work;
@@ -65,15 +59,8 @@ pub use clock::{Clock, FakeClock, SystemClock};
 pub use keymap::{keymap_for, load_keymap};
 pub use keymap_source::{LOOK_EVERY, system_keys, watch_file};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
-pub use save_pace::{Pace, SavePace};
-pub use session_file::{
-    FILE_NAME, Startup, file_name as session_file_name, load as load_session,
-    load_for as load_session_for, load_hosts, remove_for as remove_session_for, resolve_state_dir,
-    save as save_session, save_for as save_session_for, save_with_hosts,
-};
 pub use settings_file::{ThemeChoice, read_theme_choice, theme_choice};
 pub use space_start::{CredentialFault, CredentialSource, Credentials, Held, NoCredentials};
 pub use space_vault::VaultCredentials;
-pub use spaces_file::{SPACES_FILE, SpacesStartup, load_spaces, save_spaces};
 pub use ssh_env::{ArcRunner, SshEnv};
 pub use unix_now::unix_now;

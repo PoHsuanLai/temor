@@ -7,12 +7,14 @@ use std::time::Duration;
 use ds::components::app::spaces::{SpaceId, Spaces};
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
+use temor_client::keep::older::{
+    SpacesStartup, load_spaces, save_for as save_session_for, save_spaces,
+};
 use temor_core::space::{Place, Profile, Project, Route};
 use temor_core::split::Direction;
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::{Cwd, EnvKey, EnvValue, ProjectRoot, RelPath, RoutePattern};
 use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
-use temor_ui::edge::{SpacesStartup, load_spaces, save_session_for, save_spaces};
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, rows, type_line, wait_until};
