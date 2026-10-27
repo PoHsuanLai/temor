@@ -5,12 +5,16 @@ use dioxus::prelude::*;
 use ds::base::vocab::Shown;
 use ds::window::host::WindowHost;
 use ds::window::vocab::PageZoom;
-use temor_client::model::vocab::ids::PaneId;
-use temor_client::model::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::{FolderId, PaneId, TabId};
+use temor_client::model::vocab::text::TabTitle;
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
 
 use super::model::HubRef;
 use super::space_rows::PendingSwitch;
 use crate::view::space_handle::SpacesOf;
+
+/// What a folder is called until it is named.
+pub const NEW_FOLDER: &str = "New Folder";
 
 /// The window's desk. Two desks are equal when they are the same window's.
 #[derive(Clone, PartialEq)]
@@ -28,6 +32,8 @@ pub struct Desk {
     pub sidebar: Signal<Shown>,
     /// The window itself, which zooms the page; none where nothing hosts the window.
     pub window: HostOf,
+    /// The folder of the sidebar being named where it stands (one just made, or Rename Folder).
+    pub naming: Signal<Option<FolderId>>,
 }
 
 /// The window's host, if there is one. Always equal: a desk holds its own window's.
@@ -66,6 +72,23 @@ impl Desk {
     pub fn say(&self, text: String) {
         let mut notice = self.notice;
         notice.set(Some(text));
+    }
+
+    /// Makes a folder, at the top or in `parent`, with `tab` in it when one is given, and names
+    /// it where it stands, as Finder names a new folder.
+    pub fn new_folder(&self, parent: Option<FolderId>, tab: Option<TabId>) {
+        let folder = self.hub.next_folder();
+        let title = TabTitle(NEW_FOLDER.to_owned());
+        self.act(WorkspaceIn::Tabs(TabsIn::NewFolder { title, parent }));
+        if !self.hub.has_folder(folder) {
+            return;
+        }
+        if let Some(tab) = tab {
+            let folder = Some(folder);
+            self.act(WorkspaceIn::Tabs(TabsIn::MoveToFolder { tab, folder }));
+        }
+        let mut naming = self.naming;
+        naming.set(Some(folder));
     }
 
     /// Shows `notes` to the person, and draws the window again.

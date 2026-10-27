@@ -19,6 +19,8 @@ pub enum Target {
     Page { file: bool },
     /// A file on the Downloads page.
     Download(DownloadFacts),
+    /// A folder of tabs in the sidebar.
+    Folder,
 }
 
 /// What a tab's row is.
@@ -99,6 +101,14 @@ pub enum Item {
     ShowHistory,
     /// The tab a download came from.
     ShowTab,
+    /// Put the tab in a folder, or take it out of one.
+    MoveToFolder,
+    /// A folder made in the folder.
+    NewFolderInside,
+    /// Call the folder something else, where it stands.
+    RenameFolder,
+    /// Take the folder away; what it held goes to the folder it was in.
+    DeleteFolder,
     ClosePane,
     CloseTab,
     ClosePage,
@@ -130,14 +140,17 @@ impl Item {
             | Item::SaveOutput
             | Item::ViewFiles
             | Item::EditLocally
-            | Item::SelectAllBlocks => Group::Own,
-            Item::Favourite { .. } | Item::Pin { .. } => Group::Keep,
+            | Item::SelectAllBlocks
+            | Item::NewFolderInside
+            | Item::RenameFolder => Group::Own,
+            Item::Favourite { .. } | Item::Pin { .. } | Item::MoveToFolder => Group::Keep,
             Item::ShowInFolder | Item::ShowHistory | Item::ShowTab => Group::Show,
             Item::ClosePane
             | Item::CloseTab
             | Item::ClosePage
             | Item::RemoveFromFavourites
-            | Item::RemoveFromList => Group::TakeAway,
+            | Item::RemoveFromList
+            | Item::DeleteFolder => Group::TakeAway,
         }
     }
 
@@ -169,6 +182,10 @@ impl Item {
             Item::ShowInFolder => "Show in Folder",
             Item::ShowHistory => "Show History",
             Item::ShowTab => "Show Tab",
+            Item::MoveToFolder => "Move to Folder",
+            Item::NewFolderInside => "New Folder Inside",
+            Item::RenameFolder => "Rename Folder",
+            Item::DeleteFolder => "Delete Folder",
             Item::ClosePane => "Close Pane",
             Item::CloseTab => "Close Tab",
             Item::ClosePage => "Close Page",
@@ -191,6 +208,8 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(row.local_folder, Item::OpenInNewTab);
             add(row.local_folder, Item::Favourite { kept: row.kept });
             add(true, Item::Pin { pinned: row.pinned });
+            // A pinned tab stands above every folder.
+            add(!row.pinned, Item::MoveToFolder);
             add(row.local_folder, Item::ShowInFolder);
             add(true, Item::ShowHistory);
             add(row.split_pane, Item::ClosePane);
@@ -238,6 +257,11 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(download.from_tab, Item::ShowTab);
             add(download.clearable, Item::RemoveFromList);
         }
+        Target::Folder => {
+            add(true, Item::NewFolderInside);
+            add(true, Item::RenameFolder);
+            add(true, Item::DeleteFolder);
+        }
     }
     // Each item lands in its group, whatever order it was added in.
     items.sort_by_key(|item| item.group());
@@ -272,7 +296,7 @@ mod tests {
             titles(Target::Row(row)),
             [
                 vec!["Open in New Tab"],
-                vec!["Add to Favourites", "Pin Tab"],
+                vec!["Add to Favourites", "Pin Tab", "Move to Folder"],
                 vec!["Show in Folder", "Show History"],
                 vec!["Close Tab"],
             ]
@@ -297,7 +321,22 @@ mod tests {
     fn a_row_on_another_computer_has_no_folder_here_to_open_keep_or_show() {
         assert_eq!(
             titles(Target::Row(RowFacts::default())),
-            [vec!["Pin Tab"], vec!["Show History"], vec!["Close Tab"]]
+            [
+                vec!["Pin Tab", "Move to Folder"],
+                vec!["Show History"],
+                vec!["Close Tab"]
+            ]
+        );
+    }
+
+    #[test]
+    fn a_folders_menu_makes_one_inside_renames_and_deletes() {
+        assert_eq!(
+            titles(Target::Folder),
+            [
+                vec!["New Folder Inside", "Rename Folder"],
+                vec!["Delete Folder"]
+            ]
         );
     }
 

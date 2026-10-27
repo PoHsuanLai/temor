@@ -107,6 +107,7 @@ fn the_sidebar_lists_pinned_then_folders_then_the_rest_with_unread_marks_and_min
         }),
         WorkspaceIn::Tabs(TabsIn::NewFolder {
             title: TabTitle("Work".to_owned()),
+            parent: None,
         }),
         WorkspaceIn::Tabs(TabsIn::MoveToFolder {
             tab: TabId(2),
@@ -123,11 +124,11 @@ fn the_sidebar_lists_pinned_then_folders_then_the_rest_with_unread_marks_and_min
     let ids = |rows: &[super::TabRow]| rows.iter().map(|r| r.id.0).collect::<Vec<_>>();
     assert_eq!(ids(&data.pinned), [3]);
     assert_eq!(data.folders.len(), 1);
-    assert_eq!(data.folders[0].0, "Work");
-    assert_eq!(ids(&data.folders[0].1), [2]);
+    assert_eq!(data.folders[0].title, "Work");
+    assert_eq!(ids(&data.folders[0].rows), [2]);
     assert_eq!(ids(&data.loose), [1]);
 
-    let (pinned, folder, loose) = (&data.pinned[0], &data.folders[0].1[0], &data.loose[0]);
+    let (pinned, folder, loose) = (&data.pinned[0], &data.folders[0].rows[0], &data.loose[0]);
     assert_eq!(folder.unread, Unread::Unread);
     assert_eq!(pinned.unread, Unread::Seen);
     assert_eq!(loose.unread, Unread::Seen);

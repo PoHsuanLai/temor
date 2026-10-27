@@ -82,10 +82,7 @@ fn providers_rank_by_section_then_by_frecency_and_drop_what_cannot_be_matched() 
         },
     ];
     let tabs = [tab(7, "src build")];
-    let folders = [Folder {
-        id: FolderId(2),
-        title: TabTitle("src notes".into()),
-    }];
+    let folders = [Folder::new(FolderId(2), TabTitle("src notes".into()), None)];
     let hosts = [HostAlias("src-box".into())];
     let layouts = [LayoutName("src layout".into())];
     let recent = [

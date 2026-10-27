@@ -126,13 +126,40 @@ pub struct Tab {
     pub tree: SplitTree,
 }
 
-/// A named group of tabs in the sidebar.
+/// A named group of tabs in the sidebar, Arc's: it may sit in another folder, and it is open
+/// (its tabs and folders shown under it) or closed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Folder {
     /// Its identity.
     pub id: FolderId,
     /// What the sidebar calls it.
     pub title: TabTitle,
+    /// The folder it is in; none at the top.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<FolderId>,
+    /// Whether what it holds is shown under it.
+    #[serde(default = "open_by_default", skip_serializing_if = "is_open")]
+    pub open: bool,
+}
+
+impl Folder {
+    /// An open folder called `title`, in `parent`.
+    pub fn new(id: FolderId, title: TabTitle, parent: Option<FolderId>) -> Folder {
+        Folder {
+            id,
+            title,
+            parent,
+            open: true,
+        }
+    }
+}
+
+fn open_by_default() -> bool {
+    true
+}
+
+fn is_open(open: &bool) -> bool {
+    *open
 }
 
 /// Whether a tab is pinned at the top of the sidebar.

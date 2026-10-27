@@ -8,7 +8,7 @@ use ds::prelude::{Emphasis, Selection};
 use temor_client::model::icon::{IconAsk, TabIcon, icon_for, initial_of, programs_of};
 use temor_client::model::presence::{AgentState, attention};
 use temor_client::model::split::{Closed, SplitTree, WholePx};
-use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::ids::{FolderId, PaneId, TabId};
 use temor_client::model::workspace::sidebar_plan;
 use temor_client::ssh::HostAlias;
 
@@ -83,19 +83,34 @@ pub struct TabRow {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SidebarData {
     pub pinned: Vec<TabRow>,
-    pub folders: Vec<(String, Vec<TabRow>)>,
+    /// The folders, depth first: a folder before the folders in it.
+    pub folders: Vec<FolderRows>,
     pub loose: Vec<TabRow>,
 }
 
+/// One folder of the sidebar and its tabs' rows.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FolderRows {
+    pub id: FolderId,
+    pub title: String,
+    /// The folder it is listed under; none at the top.
+    pub parent: Option<FolderId>,
+    pub open: bool,
+    pub rows: Vec<TabRow>,
+}
+
 impl SidebarData {
-    /// The row of tab `id`, wherever it is.
-    pub fn row(&self, id: TabId) -> Option<TabRow> {
+    /// Every row, in the sidebar's order.
+    pub fn every(&self) -> impl Iterator<Item = &TabRow> {
         self.pinned
             .iter()
+            .chain(self.folders.iter().flat_map(|folder| &folder.rows))
             .chain(&self.loose)
-            .chain(self.folders.iter().flat_map(|(_, rows)| rows))
-            .find(|row| row.id == id)
-            .cloned()
+    }
+
+    /// The row of tab `id`, wherever it is.
+    pub fn row(&self, id: TabId) -> Option<TabRow> {
+        self.every().find(|row| row.id == id).cloned()
     }
 }
 
@@ -123,7 +138,13 @@ impl Hub {
         let folders = plan
             .folders
             .iter()
-            .map(|(folder, ids)| (folder.title.as_str().to_owned(), take(ids)))
+            .map(|(folder, ids)| FolderRows {
+                id: folder.id,
+                title: folder.title.as_str().to_owned(),
+                parent: folder.parent,
+                open: folder.open,
+                rows: take(ids),
+            })
             .collect();
         // The plan's loose tabs include those whose folder is gone.
         let loose = take(&plan.loose);
@@ -396,6 +417,16 @@ impl HubRef {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
         self.0.borrow().sidebar()
+    }
+
+    /// The id the next folder made in the Space on screen gets.
+    pub fn next_folder(&self) -> FolderId {
+        FolderId(self.0.borrow().book.ws.tabs.next_folder)
+    }
+
+    /// Whether the Space on screen has `folder`.
+    pub fn has_folder(&self, folder: FolderId) -> bool {
+        self.0.borrow().book.ws.tabs.folder(folder).is_some()
     }
 
     /// The row a console's terminal `pane` is in, for its bar's menu: none for the quick

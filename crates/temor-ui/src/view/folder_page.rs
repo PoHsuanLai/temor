@@ -81,16 +81,14 @@ pub fn FolderPage(folder: String, desk: Desk) -> Element {
 fn tabs_in(desk: &Desk, folder: &str) -> Vec<TabRow> {
     let folder = folder.trim_end_matches('/');
     let rows = desk.hub.sidebar();
-    rows.pinned
-        .into_iter()
-        .chain(rows.loose)
-        .chain(rows.folders.into_iter().flat_map(|(_, rows)| rows))
+    rows.every()
         .filter(|row| {
             row.place
                 .as_deref()
                 .map(|place| place.trim_end_matches('/'))
                 == Some(folder)
         })
+        .cloned()
         .collect()
 }
 

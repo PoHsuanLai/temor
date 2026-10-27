@@ -45,6 +45,8 @@ pub fn use_window_spaces(
 enum SpaceAct {
     /// Bring the tab in front into this Space.
     MoveTabHere,
+    /// A folder of tabs in the Space on screen, named where it stands.
+    NewFolder,
 }
 
 /// The head of the sidebar, as mailo's is: the name of the Space on screen, one Space or several,
@@ -120,7 +122,8 @@ pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
     }
 }
 
-/// The Space's menu (rename, colour, appearance, new, delete) and "Move Tab Here".
+/// The Space's menu (rename, colour, appearance, new, delete), "Move Tab Here" and, for the Space
+/// on screen, "New Folder".
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceMenus(desk: Desk) -> Element {
@@ -131,8 +134,14 @@ pub fn SpaceMenus(desk: Desk) -> Element {
         true => Availability::Disabled,
         false => Availability::Enabled,
     };
-    let extra =
-        vec![MenuItem::new(SpaceAct::MoveTabHere, "Move Tab Here").with_availability(availability)];
+    let here = match availability {
+        Availability::Disabled => Availability::Enabled,
+        _ => Availability::Disabled,
+    };
+    let extra = vec![
+        MenuItem::new(SpaceAct::NewFolder, crate::hub::NEW_FOLDER).with_availability(here),
+        MenuItem::new(SpaceAct::MoveTabHere, "Move Tab Here").with_availability(availability),
+    ];
     rsx! {
         SpaceMenu::<Project, Place, SpaceAct> {
             handle,
@@ -140,6 +149,7 @@ pub fn SpaceMenus(desk: Desk) -> Element {
             extra,
             on_extra: move |(space, act): (SpaceId, SpaceAct)| match act {
                 SpaceAct::MoveTabHere => desk.move_front_tab_to(space),
+                SpaceAct::NewFolder => desk.new_folder(None, None),
             },
             kept: "Everything on disk".to_owned(),
         }

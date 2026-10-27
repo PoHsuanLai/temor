@@ -128,6 +128,7 @@ fn request(ws: &Workspace, op: &Op) -> WorkspaceIn {
         Op::Unpin(at) => WorkspaceIn::Tabs(TabsIn::Unpin(tab_at(ws, at))),
         Op::NewFolder => WorkspaceIn::Tabs(TabsIn::NewFolder {
             title: TabTitle("f".into()),
+            parent: None,
         }),
         Op::ToFolder(at, folder) => WorkspaceIn::Tabs(TabsIn::MoveToFolder {
             tab: tab_at(ws, at),

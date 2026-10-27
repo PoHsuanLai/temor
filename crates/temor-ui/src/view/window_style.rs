@@ -64,6 +64,8 @@ pub const WINDOW_CSS: &str = "\
 .temor-tab-brand { display: flex; align-items: center; justify-content: center; width: var(--s-16); height: var(--s-16); border-radius: var(--r-kbd); color: var(--on-hue); }\
 .temor-tab-box:hover .temor-tab-close, .temor-tab-close[*|data-selected=true] { opacity: 1; }\
 .temor-new-tab { display: flex; width: 100%; min-width: 0; }\
+.temor-side-folder { display: flex; flex-direction: column; width: 100%; min-width: 0; }\
+.temor-side-folder-kids { display: flex; flex-direction: column; min-width: 0; }\
 .temor-tab-box > *, .temor-new-tab > *, .temor-seg-slot > * { flex: 1 1 auto; min-width: 0; }\
 .temor-split { display: flex; flex-direction: row; align-items: center; width: 100%; min-width: 0; gap: var(--s-2); }\
 .temor-seg-slot { flex: 1 1 0; min-width: 0; display: flex; }\

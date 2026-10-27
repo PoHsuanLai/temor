@@ -103,6 +103,7 @@ pub fn App() -> Element {
         spaces,
         picked_space,
         window: HostOf(use_window_host()),
+        naming: use_signal(|| None),
     };
     use_hook({
         let desk = desk.clone();
@@ -201,6 +202,10 @@ pub fn App() -> Element {
                         at: onto,
                     });
                 }
+                Dropped::IntoFolder { from, folder } => tabs(TabsIn::MoveToFolder {
+                    tab: from,
+                    folder: Some(folder),
+                }),
                 Dropped::Tear(pane) => desk.act(WorkspaceIn::Tear(pane)),
                 Dropped::Favourite(tab) => {
                     let place = desk.hub.sidebar().row(tab).and_then(|row| row.place);
@@ -375,11 +380,7 @@ const SIDEBAR_WIDTH: f32 = 232.0;
 
 /// What the drag ghost says: the tab's title and folder, or the tile's pane.
 fn ghost_text(data: &SidebarData, key: DragKey) -> (String, String) {
-    let rows = data
-        .pinned
-        .iter()
-        .chain(data.folders.iter().flat_map(|(_, rows)| rows))
-        .chain(&data.loose);
+    let rows = data.every();
     match key {
         DragKey::Tab(tab) => rows
             .filter(|row| row.id == tab)

@@ -16,6 +16,7 @@ use temor_client::{Command, Shelf};
 use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::favourites::folder_url;
+use super::folder_row::{MoveTo, with_move_menu};
 use super::live::{client, use_live};
 use super::menu::{Pick, menu_items};
 use crate::hub::Desk;
@@ -48,13 +49,21 @@ pub fn RowMenu(
         local_folder: place.is_some(),
         split_pane: close.is_some(),
     };
+    let items = menu_items::<MoveTo>(Target::Row(facts), false, Vec::new());
+    let items = with_move_menu(items, &desk.hub.sidebar().folders, tab, |to| to);
     rsx! {
         Menu {
             placement: MenuPlacement::Context,
             anchor: Anchor::Rect(at),
-            items: menu_items::<()>(Target::Row(facts), false, Vec::new()),
-            onpick: move |pick: Pick<()>| {
-                let Pick::Item(item) = pick else { return };
+            items,
+            onpick: move |pick: Pick<MoveTo>| {
+                let item = match pick {
+                    Pick::Item(item) => item,
+                    Pick::Own(MoveTo::Folder(folder)) => {
+                        return desk.act(WorkspaceIn::Tabs(TabsIn::MoveToFolder { tab, folder }));
+                    }
+                    Pick::Own(MoveTo::NewFolder) => return desk.new_folder(None, Some(tab)),
+                };
                 match item {
                     Item::OpenInNewTab => desk.act(WorkspaceIn::NewTab { cwd: place.clone().map(Cwd) }),
                     Item::Favourite { kept } => {

@@ -104,6 +104,7 @@ mod tests {
                 "-",
                 "Add to Favourites",
                 "Pin Tab",
+                "Move to Folder",
                 "-",
                 "Show in Folder",
                 "Show History",
