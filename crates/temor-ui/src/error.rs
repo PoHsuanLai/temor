@@ -43,6 +43,9 @@ pub enum UiError {
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),
+    /// The pane could not open (see `temor-client`).
+    #[error(transparent)]
+    Open(#[from] temor_client::pane::OpenError),
     /// One of temor's own rules refused.
     #[error(transparent)]
     Core(#[from] temor_core::error::CoreError),

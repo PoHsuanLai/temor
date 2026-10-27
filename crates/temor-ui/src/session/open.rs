@@ -1,22 +1,19 @@
-//! Opening a session: the pane engine started on a program (or fed from elsewhere), and the
-//! session's state around it.
+//! Opening a session: the pane's core opened by the client (`PaneCore::start`), and the
+//! window's state around it.
 
 use std::sync::Arc;
 
-use temor_core::notify::{Focus, Limiter};
-use temor_pane::{
-    EventSink, Feeder, Hold, PaneEvent, PaneHandle, start, start_fed, start_restored,
-};
+use temor_core::notify::Focus;
+use temor_pane::{EventSink, Feeder, PaneEvent};
 use temor_render::{PixelSize, Scale};
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
-use super::model::{FedParts, Lifetime, PaneCore, SessionKit, SessionParts};
+use super::model::{FedParts, PaneCore, SessionParts, WindowKit};
 use crate::error::UiError;
 use crate::paint::Painter;
 use crate::pane::UiSink;
-use temor_client::pane::blocks::BlockLog;
 
 impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
@@ -33,29 +30,9 @@ impl Session {
     ) -> Result<Self, UiError> {
         let SessionParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
-        // Only temor sets the key in a child's environment (temor-pty's contract).
-        let report_key = spec
-            .spawn
-            .env
-            .get(temor_shell::report::KEY_VAR)
-            .and_then(|key| key.to_str())
-            .and_then(temor_shell::report::ReportKey::parse);
-        let program = spec.spawn.program.clone();
-        let heard = Arc::clone(&sink);
-        let (pane, runner) = match snapshot {
-            Some(snapshot) => start_restored(spec, snapshot, sink)?,
-            None => start(spec, sink)?,
-        };
-        std::thread::Builder::new()
-            .name("temor-pane-io".to_owned())
-            .spawn(move || runner.run())
-            .map_err(UiError::Thread)?;
-        let mut session = Self::assemble(pane, painter, kit);
-        session.core.report_key = report_key;
-        let deliver: temor_shell::suggest::Deliver =
-            Arc::new(move |answered| heard.send(PaneEvent::Suggested(answered)));
-        session.core.sources = super::sources::Sources::for_program(&program, deliver);
-        Ok(session)
+        let (core_kit, kit) = kit.split();
+        let core = PaneCore::start(spec, sink, snapshot, core_kit)?;
+        Ok(Self::assemble(core, painter, kit))
     }
 
     /// Starts a session whose program runs elsewhere (a host's helper), its events going to
@@ -63,46 +40,15 @@ impl Session {
     pub fn open_fed(parts: FedParts, sink: Arc<dyn EventSink>) -> Result<(Self, Feeder), UiError> {
         let FedParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
-        let (pane, runner, feeder) = start_fed(spec, sink)?;
-        std::thread::Builder::new()
-            .name("temor-pane-io".to_owned())
-            .spawn(move || runner.run())
-            .map_err(UiError::Thread)?;
-        let mut session = Self::assemble(pane, painter, kit);
-        session.core.site = temor_core::shelf::PaneSite::Remote;
-        Ok((session, feeder))
+        let (core_kit, kit) = kit.split();
+        let (core, feeder) = PaneCore::start_fed(spec, sink, core_kit)?;
+        Ok((Self::assemble(core, painter, kit), feeder))
     }
 
-    fn assemble(pane: PaneHandle, painter: Painter, kit: SessionKit) -> Self {
-        let clip_mirror = pane.with_term(|term| term.clipboard());
-        let blink_from = kit.clock.now();
+    fn assemble(core: PaneCore, painter: Painter, kit: WindowKit) -> Self {
+        let blink_from = core.clock.now();
         Self {
-            core: PaneCore {
-                pane,
-                title: String::new(),
-                lifetime: Lifetime::Running,
-                hold: Hold::Released,
-                hold_generation: 0,
-                blocks: BlockLog::default(),
-                shell_state: temor_core::session::ShellState::default(),
-                shell_path: None,
-                inherited: Vec::new(),
-                report_key: None,
-                sources: Default::default(),
-                folder: None,
-                cwd: None,
-                progress: None,
-                notify_after: kit.notify_after,
-                limiter: Limiter::default(),
-                notifier: kit.notifier,
-                clock: kit.clock,
-                shelf_dir: kit.shelf_dir,
-                quoting: temor_core::shelf::Quoting::Posix,
-                site: temor_core::shelf::PaneSite::Local,
-                clip_write: temor_core::remote::Grant::Ask,
-                clip_mirror,
-                clip_pending: None,
-            },
+            core,
             painter,
             keymap: kit.keymap,
             clipboard: kit.clipboard,

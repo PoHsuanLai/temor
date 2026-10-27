@@ -150,6 +150,44 @@ pub struct SessionKit {
     pub shelf_dir: PathBuf,
 }
 
+/// What the window keeps of a [`SessionKit`] once the pane's part is handed to the client.
+pub(super) struct WindowKit {
+    pub keymap: Keymap,
+    pub clipboard: Box<dyn Clipboard>,
+    pub opener: Box<dyn Opener>,
+    pub cursor_blink: temor_pane::settings::CursorBlinking,
+}
+
+impl SessionKit {
+    /// The pane's part and the window's.
+    pub(super) fn split(self) -> (temor_client::pane::PaneKit, WindowKit) {
+        let SessionKit {
+            keymap,
+            clipboard,
+            opener,
+            notify_after,
+            cursor_blink,
+            notifier,
+            clock,
+            shelf_dir,
+        } = self;
+        (
+            temor_client::pane::PaneKit {
+                notify_after,
+                notifier,
+                clock,
+                shelf_dir,
+            },
+            WindowKit {
+                keymap,
+                clipboard,
+                opener,
+                cursor_blink,
+            },
+        )
+    }
+}
+
 impl std::fmt::Debug for SessionKit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SessionKit")

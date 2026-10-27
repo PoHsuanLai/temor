@@ -10,6 +10,7 @@ pub mod clock;
 mod heard;
 pub mod marks;
 pub mod notify;
+mod open;
 pub mod sources;
 
 use std::path::PathBuf;
@@ -27,6 +28,7 @@ use notify::Notifier;
 use sources::Sources;
 
 pub use heard::{SNAPSHOT_LIMIT, sanitise_title};
+pub use open::{OpenError, PaneKit};
 
 /// What a pane is, apart from how the window shows it: its engine, what its program said (title,
 /// folder, progress, how it ended), its commands, its shell's state, its completion sources, what

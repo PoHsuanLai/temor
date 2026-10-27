@@ -15,7 +15,7 @@ use temor_shell::complete::{Answer, REQUEST_KEY, decode};
 use temor_shell::suggest::{Answered, Ask, SourceId, Suggestion, common_start};
 
 use super::Session;
-use super::sources::SHELL;
+use temor_client::pane::sources::SHELL;
 
 /// Which way the arrows step through the commands run before.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -24,7 +24,6 @@ mod pointer;
 mod read;
 mod room;
 mod running;
-mod sources;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
