@@ -11,7 +11,7 @@ use temor_client::remote::message::RemotePath;
 use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
-use super::remote_edit::EditTier;
+use temor_client::remote::edit_way::EditTier;
 use temor_client::remote::upload::UploadJobs;
 
 /// One file to send, with where it goes.

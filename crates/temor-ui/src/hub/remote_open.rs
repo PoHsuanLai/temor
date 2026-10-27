@@ -13,11 +13,11 @@ use temor_client::ssh::{ControlLayout, HostAlias};
 use super::model::Hub;
 use super::remote::{Busy, RemotePane, Shown, Tier};
 use super::remote_retry::{Begin, begin_plan};
-use super::remote_source::{Blob, Source, session_source};
 use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
+use temor_client::remote::session::{Blob, Source, session_source};
 use temor_panes::remote::link::{RemoteLink, Target, lock};
 use temor_panes::remote::relay::relay;
 

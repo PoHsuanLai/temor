@@ -3,6 +3,7 @@
 
 pub mod env;
 mod hosts_cache;
+pub mod view;
 pub mod work;
 #[cfg(test)]
 mod work_tests;

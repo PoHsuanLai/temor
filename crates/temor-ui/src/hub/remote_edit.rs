@@ -1,63 +1,17 @@
-//! Which way a remote edit reaches the host's file (PLAN §9b): through the helper when the host
-//! has one running (Tier B), where the write itself checks that the file is still the one that
-//! was read; with `scp` and a look at the file's time and size beforehand otherwise (Tier A).
-//! The edit's own steps are temor-core's `edit_step`; these pick the way and carry the jobs out.
+//! A remote edit's calls (PLAN §9b), carried out the way the client's `edit_way` picks: through
+//! the host's helper (Tier B) or with `scp` (Tier A). The edit's own steps are temor-core's
+//! `edit_step`.
 
 use temor_client::model::host::edit::{EditFault, EditIn};
-use temor_client::model::host::master::Master;
-use temor_client::remote::message::{FileStamp, RemotePath, WriteCheck};
+use temor_client::remote::edit_way::{
+    EditTier, HelperUp, NoWay, Overwrite, pick_tier, write_check,
+};
+use temor_client::remote::message::{FileStamp, RemotePath};
 use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use temor_client::remote::edit::HelperEdits;
 use temor_client::ssh::work::EditId;
-
-/// How an edit's file is read and written.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum EditTier {
-    /// `scp` over the shared connection.
-    Scp,
-    /// The host's helper.
-    Helper,
-}
-
-/// Whether the host's helper is connected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum HelperUp {
-    Yes,
-    No,
-}
-
-/// Whether the next write goes over a changed file because the person said so.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Overwrite {
-    Yes,
-    No,
-}
-
-/// There is no way to reach the host's files: no helper, and no shared connection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct NoWay;
-
-/// The way to reach a host's files: the helper when it is connected, else `scp` on a shared
-/// connection that is up.
-pub(super) fn pick_tier(helper: HelperUp, master: Option<&Master>) -> Result<EditTier, NoWay> {
-    match (helper, master) {
-        (HelperUp::Yes, _) => Ok(EditTier::Helper),
-        (HelperUp::No, Some(Master::Up)) => Ok(EditTier::Scp),
-        (HelperUp::No, _) => Err(NoWay),
-    }
-}
-
-/// What a write-back must find on the host. The stamp read last, unless the person chose to
-/// overwrite; `None` when there is no stamp to hold the write to (it is never written blind).
-pub(super) fn write_check(seen: Option<FileStamp>, overwrite: Overwrite) -> Option<WriteCheck> {
-    match (overwrite, seen) {
-        (Overwrite::Yes, _) => Some(WriteCheck::Overwrite),
-        (Overwrite::No, Some(stamp)) => Some(WriteCheck::Unchanged(stamp)),
-        (Overwrite::No, None) => None,
-    }
-}
 
 /// A call the edit's steps ask for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

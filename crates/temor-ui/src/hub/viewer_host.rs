@@ -16,10 +16,10 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use super::remote_edit::EditTier;
 use super::ssh_edit::{forget_copy, local_name};
 use crate::platform::ensure_private_dir;
 use crate::session::ViewAsk;
+use temor_client::remote::edit_way::EditTier;
 use temor_client::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
 use temor_client::viewer_host::{copy_from_helper, copy_with_scp};
 

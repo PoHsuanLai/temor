@@ -8,7 +8,7 @@ use temor_client::model::vocab::text::Cwd;
 use temor_client::model::workspace::WorkspaceIn;
 
 use super::support::Rig;
-use crate::hub::ssh_view::{CheckRow, Stage};
+use temor_client::ssh::view::{CheckRow, Stage};
 
 /// Longer than the 80-column screen, so on screen it wraps; the link is read from the bytes.
 const CHECK_URL: &str =

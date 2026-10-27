@@ -6,7 +6,7 @@ use temor_client::remote::link::{GoneReason, LinkState};
 use temor_client::ssh::HostAlias;
 
 use super::support::Rig;
-use crate::hub::ssh_view::Stage;
+use temor_client::ssh::view::Stage;
 
 /// Types `text` into the pane.
 fn type_into(rig: &Rig, pane: temor_client::model::vocab::ids::PaneId, text: &str) {

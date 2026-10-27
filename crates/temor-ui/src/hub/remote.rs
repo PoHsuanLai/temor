@@ -51,16 +51,7 @@ pub(super) enum Reach {
     Reached,
 }
 
-/// Where a pane's session stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Shown {
-    /// Waiting for the helper, or for the host to open the session.
-    Opening,
-    /// Open on the host and showing its screen.
-    Attached,
-    /// The host no longer has the session.
-    Gone,
-}
+pub(super) use temor_client::remote::session::Shown;
 
 /// The name the window gives this computer's own daemon among the hosts.
 pub(super) const LOCAL: &str = "local";

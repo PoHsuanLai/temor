@@ -1,8 +1,11 @@
-//! Which kind of session a host pane gets, and how a connection's state reads (PLAN §9b).
-//! Pure: the hub carries out what these decide.
+//! A pane on a host's helper, read for the person (PLAN §9b): which kind of session a host pane
+//! gets, how its connection and its session read, and what the views show of it. Pure: the
+//! window carries out what these decide and draws what they say.
 
-use temor_client::model::remote::{Grant, HelperState};
-use temor_client::remote::link::{GoneReason, LinkState};
+use crate::model::remote::{Grant, HelperState};
+use crate::remote::PortAction;
+use crate::remote::hold::Typing;
+use crate::remote::link::{GoneReason, LinkState};
 
 /// Whether this temor carries a helper build to put on hosts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,11 +60,72 @@ pub fn link_shown(link: &LinkState) -> LinkShown {
     }
 }
 
+/// Where a pane's session stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shown {
+    /// Waiting for the helper, or for the host to open the session.
+    Opening,
+    /// Open on the host and showing its screen.
+    Attached,
+    /// The host no longer has the session.
+    Gone,
+}
+
+/// Where a pane on a helper stands, for the person.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RemoteStage {
+    /// The person is asked whether the helper may be put on the host.
+    Asking,
+    /// The helper is being put there, or the session is being opened.
+    Preparing,
+    /// The session is open.
+    Live,
+    /// The connection dropped; temor is trying again.
+    Reconnecting,
+    /// temor stopped trying; the person can ask again.
+    Lost,
+    /// The host no longer has the session.
+    Ended,
+}
+
+/// A port a program on the host listens on, and what can be done about it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PortRow {
+    pub port: u16,
+    /// The program that listens, as the host shows it.
+    pub program: String,
+    /// Best first.
+    pub actions: Vec<PortAction>,
+}
+
+/// Everything the views show for one pane on a helper.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteView {
+    pub host: String,
+    pub stage: RemoteStage,
+    pub ports: Vec<PortRow>,
+    /// Whether typing was lost while the connection was down.
+    pub typing: Typing,
+}
+
+/// The stage for a pane whose session is `shown` on a host whose helper stands at `helper`
+/// and whose connection reads `link`.
+pub fn stage_of(helper: &HelperState, shown: Shown, link: LinkShown) -> RemoteStage {
+    match (helper, shown, link) {
+        (HelperState::Offered, _, _) => RemoteStage::Asking,
+        (_, Shown::Gone, _) => RemoteStage::Ended,
+        (_, _, LinkShown::Lost) => RemoteStage::Lost,
+        (_, _, LinkShown::Reconnecting) => RemoteStage::Reconnecting,
+        (_, Shown::Opening, LinkShown::Quiet) => RemoteStage::Preparing,
+        (_, Shown::Attached, LinkShown::Quiet) => RemoteStage::Live,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_client::model::vocab::text::HelperHash;
-    use temor_client::remote::link::{Attempt, Millis, Monotonic};
+    use crate::model::vocab::text::HelperHash;
+    use crate::remote::link::{Attempt, Millis, Monotonic};
 
     #[test]
     fn a_host_gets_the_helper_unless_it_was_refused_cannot_run_it_or_there_is_none_to_put_there() {
@@ -157,6 +221,63 @@ mod tests {
         ];
         for (link, want) in cases {
             assert_eq!(link_shown(&link), want, "{link:?}");
+        }
+    }
+
+    #[test]
+    fn the_stage_follows_the_question_then_the_session_then_the_connection() {
+        let ready = HelperState::Ready(crate::model::vocab::text::HelperHash("a".repeat(64)));
+        let cases = [
+            (
+                HelperState::Offered,
+                Shown::Opening,
+                LinkShown::Quiet,
+                RemoteStage::Asking,
+            ),
+            (
+                HelperState::Uploading,
+                Shown::Opening,
+                LinkShown::Quiet,
+                RemoteStage::Preparing,
+            ),
+            (
+                ready.clone(),
+                Shown::Opening,
+                LinkShown::Quiet,
+                RemoteStage::Preparing,
+            ),
+            (
+                ready.clone(),
+                Shown::Attached,
+                LinkShown::Quiet,
+                RemoteStage::Live,
+            ),
+            (
+                ready.clone(),
+                Shown::Attached,
+                LinkShown::Reconnecting,
+                RemoteStage::Reconnecting,
+            ),
+            (
+                ready.clone(),
+                Shown::Attached,
+                LinkShown::Lost,
+                RemoteStage::Lost,
+            ),
+            (
+                ready.clone(),
+                Shown::Gone,
+                LinkShown::Quiet,
+                RemoteStage::Ended,
+            ),
+            (ready, Shown::Gone, LinkShown::Lost, RemoteStage::Ended),
+        ];
+        for (helper, shown, link, want) in cases {
+            assert_eq!(
+                stage_of(&helper, shown, link),
+                want,
+                "{helper:?} {shown:?} {link:?}"
+            );
         }
     }
 }

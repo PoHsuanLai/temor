@@ -8,10 +8,12 @@ pub mod calls;
 pub mod conn;
 pub mod edit;
 pub mod edit_stream;
+pub mod edit_way;
 pub mod grants;
 pub mod hold;
 pub mod install;
 pub mod ping;
+pub mod session;
 pub mod upload;
 
 pub use temor_wire::{digest, hello, ids, link, message, units};

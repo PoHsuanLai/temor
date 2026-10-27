@@ -14,9 +14,10 @@ use temor_client::model::vocab::ids::PaneId;
 use temor_client::ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
-use super::remote_edit::{EditTier, Job, Overwrite};
+use super::remote_edit::Job;
 use super::ssh::{DoneAsked, Opened, RemoteEdit};
 use crate::platform::ensure_private_dir;
+use temor_client::remote::edit_way::{EditTier, Overwrite};
 use temor_client::ssh::work::EditId;
 
 /// The name the local copy has: the host file's own name, so the editor picks the right mode.

@@ -81,8 +81,8 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
 
 #[test]
 fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
-    use crate::hub::ssh_view::Stage;
     use temor_client::model::host::consent::BootstrapAction;
+    use temor_client::ssh::view::Stage;
 
     let Some(mut rig) = Rig::new("offline") else {
         return;

@@ -8,7 +8,7 @@ use temor_client::ssh::Port;
 
 use super::support::Rig;
 use crate::hub::ssh::DoneAsked;
-use crate::hub::ssh_view::{EditStatus, Stage};
+use temor_client::ssh::view::{EditStatus, Stage};
 use temor_client::ssh::work::EditId;
 
 /// A rig whose first host pane is connected.

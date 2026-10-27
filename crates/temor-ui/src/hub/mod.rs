@@ -45,14 +45,11 @@ mod remote_attach;
 mod remote_consent;
 mod remote_desk;
 mod remote_edit;
-#[cfg(test)]
-mod remote_edit_tests;
 mod remote_keep;
 mod remote_line;
 mod remote_loop;
 mod remote_open;
 mod remote_retry;
-mod remote_source;
 mod remote_step;
 mod remote_view;
 mod rows;
@@ -117,7 +114,6 @@ pub use model::{Hub, HubRef};
 pub use offer::spawn_offer_loop;
 pub use plugin_glue::spawn_plugins_loop;
 pub use remote_loop::spawn_remote_loop;
-pub use remote_view::{PortRow, RemoteStage, RemoteView};
 pub use rows::{ConsoleRow, DragKey, FolderRows, RowIcon, SidebarData, TabRow, Tile, Unread};
 pub use run::Run;
 pub use running_tick::spawn_running_loop;
@@ -127,7 +123,10 @@ pub use shelf::{Ask, AskKind, AskView, PaneTarget};
 pub use space_edits::spawn_space_edits;
 pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;
-pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
 pub use stage::{Address, StageView, folder_url, page_path, temor_page, temor_page_name};
+pub use temor_client::remote::session::{PortRow, RemoteStage, RemoteView};
+pub use temor_client::ssh::view::{
+    CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage,
+};
 pub use viewer_host::spawn_viewer_loop;
 pub use viewers::ViewerShow;

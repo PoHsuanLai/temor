@@ -16,10 +16,10 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use temor_client::remote::message::FileStamp;
 
-use super::remote_edit::{EditTier, Overwrite};
 use crate::edge::Ambient;
 use crate::platform::{FileShell, Opener, default_file_shell, default_opener};
 use temor_client::desktop::feed::{NoTailnet, TailnetFeed};
+use temor_client::remote::edit_way::{EditTier, Overwrite};
 use temor_client::ssh::SshEnv;
 use temor_client::ssh::work::{EditId, SshEvent, SshWork};
 

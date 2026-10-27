@@ -13,10 +13,10 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::edge::Ambient;
 use crate::hub::model::Hub;
-use crate::hub::ssh_view::{HostView, Stage};
 use crate::platform::{FileShell, OpenError, Opener};
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
+use temor_client::ssh::view::{HostView, Stage};
 use temor_client::ssh::work::SshEvent;
 use temor_panes::remote::event::RemoteEvent;
 
