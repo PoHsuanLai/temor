@@ -20,7 +20,6 @@ use ds::style::tokens::control_size::ControlSize;
 use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
 use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
-use ds_core::vocab::Shortcut;
 use temor_core::block::{Outcome, format_elapsed};
 use temor_core::session::list::{Item, ListBlock};
 use temor_core::vocab::ids::{BlockId, PaneId};
@@ -28,7 +27,6 @@ use temor_render::Palette;
 use temor_vt::Rgb;
 
 use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_height};
-use super::more::{More, more_menu};
 use super::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
     near_view, picture_size, row_top, sticky_head,
@@ -77,27 +75,9 @@ const TILE_ROWS: u32 = 48;
 /// program, `fold` folds a block's output away or brings it back.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CardActions {
-    pub copy_command: EventHandler<BlockId>,
-    pub copy_output: EventHandler<BlockId>,
-    pub save: EventHandler<BlockId>,
-    pub rerun: EventHandler<BlockId>,
-    pub view: EventHandler<BlockId>,
-    pub edit: EventHandler<BlockId>,
     pub fold: EventHandler<BlockId>,
-    pub detach: EventHandler<()>,
-    pub stop: EventHandler<()>,
-    /// A card's menu closed: the keyboard goes back to the pane, not the button that opened it.
-    pub menu_closed: EventHandler<()>,
-}
-
-/// What the pane offers beyond the block itself: whether a running program can move to a pane of
-/// its own, whether the pane is on another computer (to edit locally), and the chord for "Copy
-/// Command".
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct CardOffers {
-    pub detach: bool,
-    pub on_host: bool,
-    pub copy_command_key: Option<Shortcut>,
+    /// The card's "…" at the point under it: the block's menu, the one a right-click opens.
+    pub menu: EventHandler<(BlockId, Point)>,
 }
 
 /// Keeps the list to its bottom while it follows it, and in range when it shrinks. `total` is
@@ -198,14 +178,12 @@ pub fn BlockPane(
     pictures: Vec<LensPicture>,
     composer: ComposerView,
     actions: CardActions,
-    offers: CardOffers,
 ) -> Element {
     let slot = use_hook(|| desk.hub.slot(pane).unwrap_or_default());
     let gpu = use_gpu();
     let scroller = use_scroller();
-    // The block under the pointer, and the one whose "more" menu is up: its tools show.
+    // The block under the pointer: its "…" shows.
     let mut hovered = use_signal(|| None::<BlockId>);
-    let held = use_signal(|| None::<BlockId>);
     // Whether the list keeps to its bottom as it grows: until the person scrolls back. The
     // window's scroll engine takes the wheel, so the list knows only that its offset moved.
     let follow = use_hook(|| Rc::new(Cell::new(true)));
@@ -368,12 +346,12 @@ pub fn BlockPane(
         .as_ref()
         .and_then(Session::fit)
         .map_or(80, |fit| usize::from(fit.grid.cols.0));
-    // The tools show on one card: the one with its menu up, else under the pointer, else picked.
+    // The "…" shows on one card: the one under the pointer, else the one picked (its menu is up).
     let picked = items.iter().find_map(|item| match item {
         Item::Done(block) | Item::Running { block, .. } if block.picked => Some(block.id),
         _ => None,
     });
-    let tools_on = held().or(hovered()).or(picked);
+    let tools_on = hovered().or(picked);
     let cards = card_places(&placed);
     // A program that asked for the mouse hears the wheel over its live rows, not the list.
     let tracking = slot
@@ -386,8 +364,6 @@ pub fn BlockPane(
         tools_on,
         columns,
         actions,
-        offers,
-        held,
     };
     let composer = composing.then_some(composer);
     rsx! {
@@ -420,8 +396,6 @@ struct Head {
     tools_on: Option<BlockId>,
     columns: usize,
     actions: CardActions,
-    offers: CardOffers,
-    held: Signal<Option<BlockId>>,
 }
 
 /// The block a segment belongs to, for the pointer over it.
@@ -465,8 +439,6 @@ fn segment(
                     columns: head.columns,
                     tools: head.tools_on == Some(block.id),
                     actions: head.actions.clone(),
-                    offers: head.offers.clone(),
-                    held: head.held,
                     on_move,
                 }
             }
@@ -584,8 +556,6 @@ fn StickyHead(
                 columns: head.columns,
                 tools: head.tools_on == Some(id),
                 actions: head.actions.clone(),
-                offers: head.offers.clone(),
-                held: head.held,
                 on_move: move |_| {
                     if *hovered.peek() != Some(id) {
                         hovered.set(Some(id));
@@ -608,8 +578,6 @@ fn CardHead(
     columns: usize,
     tools: bool,
     actions: CardActions,
-    offers: CardOffers,
-    held: Signal<Option<BlockId>>,
     on_move: EventHandler<PointerEvent>,
 ) -> Element {
     let id = block.id;
@@ -619,17 +587,6 @@ fn CardHead(
     let meta = meta_of(&block);
     let title = clip_chars(&block.command, columns.saturating_sub(16).max(8));
     let more_probe = use_rect();
-    let mut menu = use_signal(|| false);
-    let finished = match running {
-        true => Availability::Disabled,
-        false => Availability::Enabled,
-    };
-    let items = more_menu(
-        finished,
-        finished,
-        offers.on_host.then_some(Availability::Enabled),
-        offers.copy_command_key.clone(),
-    );
     let (fold_icon, fold_label) = match block.folded {
         true => (Icon::ChevronRight, "Show output"),
         false => (Icon::ChevronDown, "Fold output"),
@@ -664,75 +621,21 @@ fn CardHead(
             }
             if tools {
                 div { class: "temor-blk-tools",
-                    IconButtonGroup { label: "Command tools", size: ControlSize::Mini,
-                        if running {
-                            if offers.detach {
-                                ToolButton {
-                                    icon: Icon::Columns,
-                                    size: ControlSize::Mini,
-                                    propagation: Propagation::Stop,
-                                    label: "Detach",
-                                    tip: "Move this program to a pane of its own beside this one",
-                                    onclick: move |()| actions.detach.call(()),
-                                }
-                            }
-                            ToolButton {
-                                icon: Icon::Square,
-                                size: ControlSize::Mini,
-                                propagation: Propagation::Stop,
-                                label: "Stop",
-                                tip: "Interrupt the program (Control-C)",
-                                onclick: move |()| actions.stop.call(()),
-                            }
-                        } else {
-                            ToolButton {
-                                icon: Icon::Clipboard,
-                                size: ControlSize::Mini,
-                                propagation: Propagation::Stop,
-                                label: "Copy output",
-                                tip: "Copy this command's output",
-                                onclick: move |()| actions.copy_output.call(id),
-                            }
-                            ToolButton {
-                                icon: Icon::Restart,
-                                size: ControlSize::Mini,
-                                propagation: Propagation::Stop,
-                                label: "Re-run",
-                                tip: "Put this command in the prompt. Press Return to run it",
-                                onclick: move |()| actions.rerun.call(id),
-                            }
-                        }
-                        div {
-                            class: "temor-blk-more",
-                            onmounted: move |event: MountedEvent| more_probe.on_mounted(event),
-                            ToolButton {
-                                icon: Icon::Ellipsis,
-                                size: ControlSize::Mini,
-                                propagation: Propagation::Stop,
-                                label: "More",
-                                tip: "More things to do with this command",
-                                onclick: move |()| {
-                                    held.set(Some(id));
-                                    menu.set(true);
-                                },
-                            }
-                        }
-                    }
-                    if let (true, Some(anchor)) = (menu(), more_probe.anchor()) {
-                        Menu {
-                            placement: MenuPlacement::Popup,
-                            anchor,
-                            items,
-                            onpick: move |pick: More| match pick {
-                                More::CopyCommand => actions.copy_command.call(id),
-                                More::Save => actions.save.call(id),
-                                More::View => actions.view.call(id),
-                                More::Edit => actions.edit.call(id),
-                            },
-                            onclose: move |()| {
-                                held.set(None);
-                                menu.set(false);
-                                actions.menu_closed.call(());
+                    div {
+                        class: "temor-blk-more",
+                        onmounted: move |event: MountedEvent| more_probe.on_mounted(event),
+                        ToolButton {
+                            icon: Icon::Ellipsis,
+                            size: ControlSize::Mini,
+                            propagation: Propagation::Stop,
+                            label: "More",
+                            tip: "What can be done with this command",
+                            onclick: move |()| {
+                                let at = more_probe.rect().map(|rect| Point {
+                                    x: rect.left(),
+                                    y: rect.bottom(),
+                                });
+                                actions.menu.call((id, at.unwrap_or_default()));
                             },
                         }
                     }

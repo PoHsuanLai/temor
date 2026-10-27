@@ -3,10 +3,9 @@
 //! screen is drawn whole instead.
 
 pub mod composer;
-mod more;
 pub mod pane;
 pub mod segments;
 pub mod tiles;
 
 pub use composer::{ChoicesView, ComposerActions};
-pub use pane::{BlockPane, CardActions, CardOffers, ComposerView};
+pub use pane::{BlockPane, CardActions, ComposerView};

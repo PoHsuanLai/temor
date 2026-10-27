@@ -1,6 +1,6 @@
 //! The row in front (PLAN §7, v14): its stage and its console. The console is the row's terminal
 //! (or Arc's Split View of two); the stage is the page a command asked for, beside it, under a bar
-//! that names the page and holds the Console button and Close. What the row shows of the two is
+//! that names the page and holds the Console button, the page's menu and Close. What the row shows of the two is
 //! its layout (⌥⌘1 to ⌥⌘3); a row with no page is its console alone.
 
 use std::path::Path;
@@ -10,14 +10,18 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use ds::components::chrome::split_view::model::{PaneSpec, Share, SplitAxis, SplitPane};
 use ds::components::chrome::split_view::view::SplitView;
+use ds::host::measure::use_rect;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
+use temor_core::menu::{Item, Target};
 use temor_core::split::{Closed, SplitTree};
 use temor_core::stage::Layout;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 
+use super::menu::{Pick, menu_items};
+use super::row_menu::show_in_folder;
 use super::tool_button::ToolButton;
 use super::tree_view::TreeView;
 use super::viewer_pane::ViewerView;
@@ -92,7 +96,9 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
         },
         Action::ShowStageAndConsole,
     );
-    let (toggling, closing) = (desk.clone(), desk.clone());
+    let (toggling, closing, acting) = (desk.clone(), desk.clone(), desk.clone());
+    let more = use_rect();
+    let mut menu = use_signal(|| Shown::Hidden);
     rsx! {
         div { class: "temor-stage",
             div { class: "temor-page-bar",
@@ -111,6 +117,17 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                         onclick: move |()| toggling.toggle_console(),
                     }
                 }
+                div {
+                    class: "temor-page-tool",
+                    onmounted: move |event: MountedEvent| more.on_mounted(event),
+                    ToolButton {
+                        icon: Icon::Ellipsis,
+                        size: ControlSize::Small,
+                        label: "More",
+                        tip: "What can be done with this page",
+                        onclick: move |()| menu.set(Shown::Visible),
+                    }
+                }
                 ToolButton {
                     icon: Icon::X,
                     size: ControlSize::Small,
@@ -121,6 +138,24 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
             }
             div { class: "temor-page",
                 ViewerView { pane: page, desk: desk.clone() }
+            }
+            if let (Shown::Visible, Some(anchor)) = (menu(), more.anchor()) {
+                Menu {
+                    placement: MenuPlacement::Popup,
+                    anchor,
+                    items: menu_items::<()>(Target::Page, false, Vec::new()),
+                    onpick: move |pick: Pick<()>| match pick {
+                        Pick::Item(Item::OpenInDefaultApp) => acting.viewer_open_in_app(page),
+                        Pick::Item(Item::ShowInFolder) => {
+                            if let Some(file) = acting.hub.page_file(page) {
+                                show_in_folder(&acting, Path::new(&file));
+                            }
+                        }
+                        Pick::Item(Item::ClosePage) => acting.act(WorkspaceIn::ClosePane(Some(page))),
+                        _ => {}
+                    },
+                    onclose: move |()| menu.set(Shown::Hidden),
+                }
             }
         }
     }

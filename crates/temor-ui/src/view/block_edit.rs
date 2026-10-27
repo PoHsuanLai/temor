@@ -42,15 +42,6 @@ pub fn edit_on_this_computer(
     desk.bump();
 }
 
-/// The toolbar's press.
-pub fn bar_edit(
-    slot: Rc<RefCell<Slot>>,
-    desk: Desk,
-    pane: PaneId,
-) -> impl FnMut(BlockId) + 'static {
-    move |block: BlockId| edit_on_this_computer(&slot, &desk, pane, Some(block))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

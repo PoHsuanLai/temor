@@ -18,7 +18,7 @@ use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
 
 use super::dnd::{Dnd, Target};
-use super::radar::{AgentTabMenu, PinAct};
+use super::row_menu::RowMenu;
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
 use super::tab_glyph::prompt_glyph;
@@ -97,13 +97,11 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
             DropLine {}
         }
         if let (Shown::Visible, Some(at)) = (menu(), rect.rect()) {
-            AgentTabMenu {
+            RowMenu {
                 tab: id,
                 at,
-                pin: match pinned {
-                    true => PinAct::Unpin,
-                    false => PinAct::Pin,
-                },
+                pinned,
+                place: row.place.clone(),
                 close: menu_pane(),
                 desk: desk.clone(),
                 onclose: move |()| {

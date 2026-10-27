@@ -186,16 +186,6 @@ fn on_session<T: 'static>(
     }
 }
 
-/// The block toolbar's copy of a command.
-pub fn bar_copy_command(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_command(id))
-}
-
-/// The block toolbar's copy of an output.
-pub fn bar_copy_output(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_output(id))
-}
-
 /// A card's chevron in the block list: folds its output away or brings it back.
 pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
     on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
@@ -253,35 +243,6 @@ pub fn composer_close(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()
     on_session(slot, ui, Redraw::WindowOnly, |s, ()| {
         s.composer_close_choices()
     })
-}
-
-/// The block toolbar's save of an output to Downloads.
-pub fn bar_save(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
-    mut notice: Signal<Option<String>>,
-) -> impl FnMut(BlockId) + 'static {
-    move |id: BlockId| {
-        let saved = slot
-            .borrow_mut()
-            .session
-            .as_mut()
-            .map(|s| s.save_output(id));
-        if let Some(Err(err)) = saved {
-            notice.set(Some(err.to_string()));
-        }
-        ui += 1;
-    }
-}
-
-/// The block toolbar's re-run: the command is typed, never run.
-pub fn bar_rerun(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, id| s.rerun(id))
-}
-
-/// The running card's Stop: the program is interrupted.
-pub fn block_stop(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.send_bytes(b"\x03"))
 }
 
 /// A header or toolbar press, then the keyboard back to the terminal: the button the person

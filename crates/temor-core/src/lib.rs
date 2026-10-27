@@ -9,6 +9,7 @@ pub mod error;
 pub mod facts;
 pub mod host;
 pub mod key;
+pub mod menu;
 pub mod notify;
 pub mod offer;
 pub mod pane;

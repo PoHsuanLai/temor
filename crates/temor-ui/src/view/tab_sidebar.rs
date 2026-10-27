@@ -21,7 +21,6 @@ use temor_pane::keys::Action;
 use super::dnd::Dnd;
 use super::favourites::Favourites;
 use super::row_tip::RowTip;
-use super::side_menu::SideMenu;
 use super::space_ui::{SpaceFoot, SpaceHeader, space_menu_on};
 use super::tab_row::TabRowView;
 use crate::hub::{Desk, SidebarData, TabRow, select_tab};
@@ -101,13 +100,14 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
                 size: SidebarSize::Medium,
                 fill: SidebarFill::Flat,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
-                // The Space dots, and the chevron at the end.
+                // The Space dots; a new Space is in the Space's menu (a right-click on the sidebar).
                 foot: rsx! {
                     div { class: "temor-foot",
                     SpaceFoot {
                         desk: desk.clone(),
                         trailing: rsx! {
-                            div { class: "temor-foot-end", SideMenu { desk: desk.clone() } }
+                            // As wide as the lead, so the dots stand at the centre.
+                            div { class: "temor-foot-end" }
                         },
                     }
                     }

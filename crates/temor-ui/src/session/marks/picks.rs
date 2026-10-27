@@ -271,6 +271,15 @@ impl Session {
         Ok(Some(id))
     }
 
+    /// The card `id`'s "…": the block, for its menu, picked as a right-click on it picks it.
+    pub fn block_menu_for(&mut self, id: BlockId) -> Result<(), UiError> {
+        if !self.ann.is_picked(id) {
+            self.pick_block(id, PickClick::Only);
+        }
+        self.selection = None;
+        self.mirror_selection()
+    }
+
     /// Whether `id`'s output is folded away.
     pub fn block_folded(&self, id: BlockId) -> bool {
         self.ann.is_folded(id)

@@ -1,7 +1,7 @@
 //! The Favourites at the top of the sidebar (PLAN §7, v14), as Arc's are: square tiles four to a
 //! row, each a place the person keeps, read from temor's store (`temor://` URLs, `use_live`). A
 //! tab's row dragged here keeps its folder. Pressing a tile brings the tab in that folder to the
-//! front, or opens one there; its menu lets it go. With none kept they take no room, and a drag
+//! front, or opens one there; its menu (the one menu's) opens, shows or lets it go. With none kept they take no room, and a drag
 //! shows where to drop one over the top of the list, so the rows below never move under it.
 
 use dioxus::prelude::*;
@@ -10,6 +10,7 @@ use ds::motion::drag::DragPhase;
 use ds::prelude::*;
 use temor_client::query::OnShelf;
 use temor_client::{Command, Shelf};
+use temor_core::menu::{Item, Target as Clicked};
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
@@ -17,6 +18,8 @@ use temor_schema::url::{Host, Location, TemorUrl};
 
 use super::dnd::{Dnd, Target};
 use super::live::{client, use_live};
+use super::menu::{Pick, menu_items};
+use super::row_menu::show_in_folder;
 use super::row_tip::RowTip;
 use super::tab_wiring::{selected_attr, tab_menu_trigger};
 use crate::hub::{Desk, TabRow, select_tab};
@@ -147,6 +150,7 @@ fn FavouriteTile(
     };
     let picking = desk.clone();
     let open = folder.clone();
+    let (acting, opened) = (desk.clone(), folder.clone());
     let letting = place.clone();
     rsx! {
         RowTip { name: format!("fav-{folder}"), text: folder.clone(),
@@ -168,9 +172,21 @@ fn FavouriteTile(
             Menu {
                 placement: MenuPlacement::Context,
                 anchor: Anchor::Rect(at),
-                items: vec![MenuItem::new((), "Remove from Favourites")],
-                onpick: move |()| {
-                    client().act(Command::Let { shelf: Shelf::Favourites, place: letting.clone() });
+                items: menu_items::<()>(Clicked::Favourite, false, Vec::new()),
+                onpick: move |pick: Pick<()>| {
+                    let Pick::Item(item) = pick else { return };
+                    match item {
+                        Item::Open => match tab {
+                            Some(tab) => acting.act(select_tab(tab)),
+                            None => acting.act(WorkspaceIn::NewTab { cwd: Some(Cwd(opened.clone())) }),
+                        },
+                        Item::OpenInNewTab => acting.act(WorkspaceIn::NewTab { cwd: Some(Cwd(opened.clone())) }),
+                        Item::ShowInFolder => show_in_folder(&acting, std::path::Path::new(&opened)),
+                        Item::RemoveFromFavourites => {
+                            client().act(Command::Let { shelf: Shelf::Favourites, place: letting.clone() });
+                        }
+                        _ => {}
+                    }
                 },
                 onclose: move |()| menu.set(Shown::Hidden),
             }

@@ -23,28 +23,25 @@ use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
+use temor_core::vocab::ids::{BlockId, PaneId};
 
-use super::block_edit::{bar_edit, edit_on_this_computer};
+use super::block_edit::edit_on_this_computer;
 use super::block_list::pane::lens_request;
-use super::block_list::{
-    BlockPane, CardActions, CardOffers, ChoicesView, ComposerActions, ComposerView,
-};
-use super::block_menu::{
-    BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
-};
+use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, ComposerView};
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn, PictureShown};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
 use super::find_bar::FindBar;
 use super::handlers::{
-    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_stop, composer_close,
-    composer_complete, composer_history, composer_input, composer_pick, composer_submit,
-    composer_take, find_close, find_query, find_step, list_fold, pointer_gone, then_regain,
+    composer_close, composer_complete, composer_history, composer_input, composer_pick,
+    composer_submit, composer_take, find_close, find_query, find_step, list_fold, pointer_gone,
+    then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
 use super::live_head::LiveCardHead;
+use super::menu::Pick;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::{KeyRegion, key_handler};
@@ -57,6 +54,7 @@ use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
 use crate::hub::LiveIcon;
+use temor_core::menu::{BlockFacts, Item};
 use temor_pane::keys::Action;
 
 /// Puts the pane on screen: it paints into `texture` from now on.
@@ -279,47 +277,77 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         ),
         None => (Vec::new(), PictureShown::No),
     };
-    let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
-        picked: s.picked_blocks().len(),
-        bookmarked: s.picks_bookmarked(),
-        folded: s.picks_folded(),
-        detachable: desk.hub.can_detach(pane),
-        pane: match on_host {
-            true => PaneKind::OnHost,
-            false => PaneKind::ThisComputer,
-        },
-        lenses,
-        picture,
+    let menu_state = slot.borrow().session.as_ref().map(|s| {
+        let running = menu_block.is_some_and(|block| !s.block_finished(block));
+        BlockMenuState {
+            facts: BlockFacts {
+                picked: s.picked_blocks().len(),
+                running,
+                has_output: menu_block.is_some_and(|block| s.block_foldable(block)),
+                bookmarked: s.picks_bookmarked(),
+                folded: s.picks_folded(),
+                detachable: desk.hub.can_detach(pane),
+                on_host,
+            },
+            lenses,
+            picture,
+        }
     });
     let menu_pick = {
         let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
         let desk = desk.clone();
-        move |pick: BlockPick| {
+        move |pick: Pick<BlockOwn>| {
             menu.set(None);
+            let picked = slot
+                .borrow()
+                .session
+                .as_ref()
+                .and_then(|s| s.selected_block());
+            let run = |action: Action| {
+                if let Some(s) = slot.borrow_mut().session.as_mut() {
+                    let _ = s.run(action);
+                }
+            };
             match pick {
-                BlockPick::Do(Action::DetachProgram) => desk.detach_block(pane),
-                BlockPick::Do(action) => {
+                Pick::Item(Item::PutInPrompt) => run(Action::ReinputCommands),
+                Pick::Item(Item::Bookmark { .. }) => run(Action::ToggleBookmark),
+                Pick::Item(Item::Fold { .. }) => run(Action::ToggleFold),
+                Pick::Item(Item::SelectAllBlocks) => run(Action::SelectAllBlocks),
+                Pick::Item(Item::Detach) => desk.detach_block(pane),
+                Pick::Item(Item::Stop) => {
                     if let Some(s) = slot.borrow_mut().session.as_mut() {
-                        let _ = s.run(action);
+                        s.send_bytes(b"\x03");
                     }
                 }
-                BlockPick::Lens(lens) => {
+                Pick::Item(Item::SaveOutput) => {
+                    let saved = picked.and_then(|block| {
+                        slot.borrow_mut()
+                            .session
+                            .as_mut()
+                            .map(|s| s.save_output(block))
+                    });
+                    if let Some(Err(err)) = saved {
+                        desk.say(err.to_string());
+                    }
+                }
+                Pick::Item(Item::ViewFiles) => {
+                    if let Some(block) = picked {
+                        bar_view(Rc::clone(&slot), desk.clone(), pane)(block);
+                    }
+                }
+                Pick::Item(Item::EditLocally) => edit_on_this_computer(&slot, &desk, pane, None),
+                Pick::Item(_) => {}
+                Pick::Own(BlockOwn::Lens(lens)) => {
                     let asked = slot.borrow().session.as_ref().and_then(lens_request);
                     if let Some((block, width)) = asked {
                         desk.lens_run(pane, block, &lens, width);
                     }
                 }
-                BlockPick::HidePicture => {
-                    let block = slot
-                        .borrow()
-                        .session
-                        .as_ref()
-                        .and_then(|s| s.selected_block());
-                    if let Some(block) = block {
+                Pick::Own(BlockOwn::HidePicture) => {
+                    if let Some(block) = picked {
                         desk.lens_hide(pane, block);
                     }
                 }
-                BlockPick::EditLocally => edit_on_this_computer(&slot, &desk, pane, None),
             }
             ui += 1;
             repaint(&slot);
@@ -429,21 +457,18 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                 }),
                             },
                             actions: CardActions {
-                                copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
-                                copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
-                                save: EventHandler::new(then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain)),
-                                rerun: EventHandler::new(then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain)),
-                                view: EventHandler::new(bar_view(Rc::clone(&slot), desk.clone(), pane)),
-                                edit: EventHandler::new(bar_edit(Rc::clone(&slot), desk.clone(), pane)),
                                 fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
-                                detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
-                                stop: EventHandler::new(then_regain(block_stop(Rc::clone(&slot), ui), ime.clone(), regain)),
-                                menu_closed: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
-                            },
-                            offers: CardOffers {
-                                detach: desk.hub.can_detach(pane),
-                                on_host,
-                                copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
+                                menu: EventHandler::new({
+                                    let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
+                                    move |(block, point): (BlockId, Point)| {
+                                        if let Some(s) = slot.borrow_mut().session.as_mut() {
+                                            let _ = s.block_menu_for(block);
+                                        }
+                                        menu.set(Some(BlockMenuAt { point }));
+                                        ui += 1;
+                                        repaint(&slot);
+                                    }
+                                }),
                             },
                         }
                     } else {

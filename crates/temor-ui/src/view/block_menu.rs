@@ -1,27 +1,20 @@
-//! The menu a right-click on a block opens, as Warp's does: copy the picked blocks whole, their
-//! commands or their outputs, put the commands back in the prompt, bookmark them, or pick every
-//! block. The right-click picks the block first (keeping the pick when the block was in it), so
-//! each item acts on what is tinted. Each item runs the action its key runs.
+//! The menu on the picked blocks, the one menu for a block (`view::menu`): a right-click on a
+//! block, or its card's "…", picks it first (keeping the pick when the block was in it), so each
+//! item acts on what is tinted. To the one menu's items it adds the lenses that can draw the
+//! block, and Hide under a picture a lens drew.
 
 use dioxus::prelude::*;
 use ds::host::measure::Anchor;
 use ds::prelude::*;
-use temor_pane::keys::Action;
+use temor_core::menu::{BlockFacts, Target};
 
+use super::menu::{Pick, menu_items};
 use crate::plugins::lens::LensOffer;
 
 /// Where the menu is up: the right-click's point in the window.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BlockMenuAt {
     pub point: Point,
-}
-
-/// Whether the pane is a session on another computer: the menu then offers to edit a file
-/// there on this one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PaneKind {
-    ThisComputer,
-    OnHost,
 }
 
 /// Whether a lens has drawn a picture under the block: the menu then offers to hide it.
@@ -31,12 +24,9 @@ pub enum PictureShown {
     No,
 }
 
-/// What a pick in the menu asks for: a pane action, a lens to draw the block with (its id), or
-/// one of the items with no key of their own.
+/// The block menu's own items: a lens to draw the block with (its id), or hiding its picture.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BlockPick {
-    Do(Action),
-    EditLocally,
+pub enum BlockOwn {
     Lens(String),
     HidePicture,
 }
@@ -44,100 +34,35 @@ pub enum BlockPick {
 /// What the menu says, read from the session when it opens.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockMenuState {
-    /// How many blocks are picked: one block's items say "Command", several "Commands".
-    pub picked: usize,
-    /// Whether every picked block is bookmarked: the item then takes the bookmarks away.
-    pub bookmarked: bool,
-    /// Whether every picked block's output is folded: the item then unfolds.
-    pub folded: bool,
-    /// Whether a command runs in the pane that can move to a live card of its own.
-    pub detachable: bool,
-    pub pane: PaneKind,
+    pub facts: BlockFacts,
     /// The lenses that can draw the selected block; offered when one block is picked.
     pub lenses: Vec<LensOffer>,
     pub picture: PictureShown,
 }
 
-/// The menu's items, each the action its key runs, and on a pane on another computer "Edit
-/// Locally": it edits the selected text, else the last path in the block's command.
-pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<BlockPick>> {
-    let many = state.picked > 1;
-    // The wording follows how many blocks are picked: the action's title is the plural.
-    let (commands, outputs) = match many {
-        true => (
-            Action::CopyCommands.menu_title(),
-            Action::CopyOutputs.menu_title(),
-        ),
-        false => ("Copy Command", "Copy Output"),
-    };
-    let bookmark = match state.bookmarked {
-        true => "Remove Bookmark",
-        false => Action::ToggleBookmark.menu_title(),
-    };
-    let fold = match state.folded {
-        true => "Unfold Output",
-        false => "Fold Output",
-    };
-    let mut items = vec![
-        MenuItem::new(Action::Copy, Action::Copy.menu_title())
-            .with_tip("Copy the commands and their output"),
-        MenuItem::new(Action::CopyCommands, commands),
-        MenuItem::new(Action::CopyOutputs, outputs),
-        MenuItem::Separator,
-        MenuItem::new(
-            Action::ReinputCommands,
-            Action::ReinputCommands.menu_title(),
-        )
-        .with_tip("Type the commands into the prompt. Press Return to run them"),
-        MenuItem::new(Action::ToggleBookmark, bookmark)
-            .with_tip("Alt+Up and Alt+Down step between bookmarks"),
-        MenuItem::new(Action::ToggleFold, fold).with_tip("Show only the command's card"),
-    ];
-    if state.detachable {
-        items.push(
-            MenuItem::new(Action::DetachProgram, Action::DetachProgram.menu_title())
-                .with_tip("Move the running program to a card of its own. The prompt comes back"),
-        );
-    }
-    items.extend([
-        MenuItem::Separator,
-        MenuItem::new(
-            Action::SelectAllBlocks,
-            Action::SelectAllBlocks.menu_title(),
-        ),
-    ]);
-    let mut items = items
-        .into_iter()
-        .map(|item| item.map(&BlockPick::Do))
-        .collect::<Vec<_>>();
-    if !state.lenses.is_empty() && !many {
-        items.push(MenuItem::Separator);
-        items.extend(state.lenses.iter().map(|lens| {
-            MenuItem::new(BlockPick::Lens(lens.id.clone()), lens.label.clone())
+/// The menu's items: the one menu's for the picked blocks, then the lenses and Hide.
+pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Pick<BlockOwn>>> {
+    let many = state.facts.picked > 1;
+    let mut own: Vec<MenuItem<BlockOwn>> = Vec::new();
+    if !many {
+        own.extend(state.lenses.iter().map(|lens| {
+            MenuItem::new(BlockOwn::Lens(lens.id.clone()), lens.label.clone())
                 .with_tip("Draw the output as a picture under the command")
         }));
     }
     if state.picture == PictureShown::Yes {
-        items.push(MenuItem::new(BlockPick::HidePicture, "Hide").with_tip("Take the picture away"));
+        own.push(MenuItem::new(BlockOwn::HidePicture, "Hide").with_tip("Take the picture away"));
     }
-    if state.pane == PaneKind::OnHost {
-        items.push(MenuItem::Separator);
-        items.push(
-            MenuItem::new(BlockPick::EditLocally, "Edit Locally").with_tip(
-                "Open the selected file, or the last file in the command, in an editor here",
-            ),
-        );
-    }
-    items
+    menu_items(Target::Block(state.facts), many, own)
 }
 
-/// The menu at the right-click.
+/// The menu at `at`.
 #[component]
 #[allow(non_snake_case)]
 pub fn BlockMenu(
     at: BlockMenuAt,
     state: BlockMenuState,
-    onpick: EventHandler<BlockPick>,
+    onpick: EventHandler<Pick<BlockOwn>>,
     onclose: EventHandler<()>,
 ) -> Element {
     rsx! {
@@ -145,7 +70,7 @@ pub fn BlockMenu(
             placement: MenuPlacement::Context,
             anchor: Anchor::Point(at.point),
             items: block_menu_items(state),
-            onpick: move |pick: BlockPick| onpick.call(pick),
+            onpick: move |pick: Pick<BlockOwn>| onpick.call(pick),
             onclose: move |()| onclose.call(()),
         }
     }
@@ -167,11 +92,11 @@ mod tests {
 
     fn state(picked: usize, lenses: &[(&str, &str)], picture: PictureShown) -> BlockMenuState {
         BlockMenuState {
-            picked,
-            bookmarked: false,
-            folded: false,
-            detachable: false,
-            pane: PaneKind::ThisComputer,
+            facts: BlockFacts {
+                picked,
+                has_output: true,
+                ..BlockFacts::default()
+            },
             lenses: lenses
                 .iter()
                 .map(|(id, label)| LensOffer {
@@ -184,46 +109,9 @@ mod tests {
     }
 
     #[test]
-    fn the_items_speak_of_one_block_or_several_and_the_bookmark_turns_around() {
-        let one = titles(state(1, &[], PictureShown::No));
-        assert_eq!(
-            one,
-            [
-                "Copy",
-                "Copy Command",
-                "Copy Output",
-                "Put in Prompt",
-                "Bookmark",
-                "Fold Output",
-                "Select All Commands"
-            ]
-        );
-        let many = titles(BlockMenuState {
-            bookmarked: true,
-            pane: PaneKind::OnHost,
-            ..state(3, &[], PictureShown::No)
-        });
-        assert!(many.contains(&"Copy Commands".to_owned()));
-        assert!(many.contains(&"Remove Bookmark".to_owned()));
-        // Only a pane on another computer offers to edit a file here.
-        assert_eq!(many.last().map(String::as_str), Some("Edit Locally"));
-        assert!(!one.contains(&"Edit Locally".to_owned()));
-        // A running program in a daemon pane can move to a card of its own.
-        let running = titles(BlockMenuState {
-            detachable: true,
-            ..state(1, &[], PictureShown::No)
-        });
-        assert_eq!(
-            running.get(6).map(String::as_str),
-            Some("Detach Running Program")
-        );
-        assert!(!one.contains(&"Detach Running Program".to_owned()));
-    }
-
-    #[test]
     fn a_lens_item_for_each_lens_of_one_block_and_hide_only_under_a_picture() {
         let kube = [("kube", "Show with Kube"), ("graph", "Show with Graph")];
-        let tail = |state| -> Vec<String> { titles(state).into_iter().skip(7).collect() };
+        let tail = |state| -> Vec<String> { titles(state).into_iter().skip(6).collect() };
         assert_eq!(
             tail(state(1, &kube, PictureShown::No)),
             ["Show with Kube", "Show with Graph"]
@@ -234,24 +122,8 @@ mod tests {
         );
         assert_eq!(tail(state(1, &[], PictureShown::Yes)), ["Hide"]);
         assert!(
-            tail(state(2, &kube, PictureShown::No)).is_empty(),
+            !titles(state(2, &kube, PictureShown::No)).contains(&"Show with Kube".to_owned()),
             "a lens draws one block"
-        );
-        let picks: Vec<BlockPick> = block_menu_items(state(1, &kube, PictureShown::Yes))
-            .into_iter()
-            .filter_map(|item| match item {
-                MenuItem::Item { value, .. } => Some(value),
-                _ => None,
-            })
-            .skip(7)
-            .collect();
-        assert_eq!(
-            picks,
-            [
-                BlockPick::Lens("kube".to_owned()),
-                BlockPick::Lens("graph".to_owned()),
-                BlockPick::HidePicture
-            ]
         );
     }
 }

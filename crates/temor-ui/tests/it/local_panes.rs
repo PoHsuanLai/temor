@@ -222,8 +222,9 @@ fn a_running_program_moves_to_a_live_card_that_stops_and_is_put_away() {
         "no Detach in the menu:\n{}",
         h.html()
     );
+    // Bookmark, Detach Running Program, Stop, Select All Commands.
     let items = centres(&h, ".ds-menu-item");
-    h.send(Input::click(items[6]));
+    h.send(Input::click(items[1]));
     wait_html(&mut h, "the live card's head", |html| {
         html.contains("class=\"temor-live-head\"") && html.contains("echo live=$$; sleep 300")
     });

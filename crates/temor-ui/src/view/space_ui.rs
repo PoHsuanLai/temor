@@ -83,8 +83,9 @@ pub fn space_menu_on(desk: &Desk) -> impl FnMut(MouseEvent) + 'static {
 }
 
 /// The foot of the sidebar: a dot for each Space once there are several (quire's `SpacesFoot`
-/// draws none for one), and its `trailing` (the chevron, whose menu holds New Space: the foot
-/// draws no `+`). The Space switch has no chord of its own here: the desktop owns Ctrl+digit.
+/// draws none for one) between its two ends, `trailing` the right one (the foot draws no `+`:
+/// New Space is in the Space's menu). The Space switch has no chord of its own here: the desktop
+/// owns Ctrl+digit.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {

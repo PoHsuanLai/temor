@@ -135,7 +135,7 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
     let (wa, wb) = (a.right - a.left, b.right - b.left);
     assert!(wa > 40.0 && (wa - wb).abs() < 2.0, "even: {wa} and {wb}");
     // With one Space its name still heads the sidebar (it says where you are), but there is no
-    // dot to switch to. Downloads stands at the head's right end, the chevron at the foot's.
+    // dot to switch to. Downloads stands at the head's right end.
     assert_eq!(
         rects(&h, ".temor-side .temor-head .ds-space-head").len(),
         1,
@@ -145,25 +145,18 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
         rects(&h, ".temor-side .ds-spaces-dots").is_empty(),
         "no lone dot"
     );
-    let side = &rects(&h, ".temor-side")[0];
     let head = &rects(&h, ".temor-side .temor-head")[0];
     let downloads = &rects(&h, ".temor-head .temor-dl-hold")[0];
-    let chevron = &rects(&h, ".temor-side .temor-foot-end .ds-button")[0];
     assert!(
         (head.right - downloads.right).abs() <= 1.0,
         "Downloads ends the head: {} and {}",
         downloads.right,
         head.right
     );
+    // The foot has no menu of its own: New Space is in the Space's menu.
     assert!(
-        (downloads.right - chevron.right).abs() <= 1.0,
-        "Downloads stands over the chevron: {} and {}",
-        downloads.right,
-        chevron.right
-    );
-    assert!(
-        chevron.top > side.top + (side.bottom - side.top) / 2.0,
-        "the chevron is at the foot"
+        rects(&h, ".temor-side .temor-foot .ds-button").is_empty(),
+        "no chevron"
     );
     // A split's panes close from their menu, never from a button on hover.
     assert!(rects(&h, ".temor-seg-close").is_empty(), "no hover close");
@@ -273,13 +266,7 @@ fn a_split_pane_closes_from_its_menu() {
         "the segment's menu:\n{}",
         h.html()
     );
-    // Pin Tab, then Close Pane.
-    let item = rects(&h, ".ds-menu-item");
-    assert!(item.len() >= 2, "the segment's menu opens:\n{}", h.html());
-    let close = ds::prelude::Point {
-        x: ds::prelude::Px(((item[1].left + item[1].right) / 2.0) as f32),
-        y: ds::prelude::Px(((item[1].top + item[1].bottom) / 2.0) as f32),
-    };
+    let close = super::drive::menu_item(&h, "Close Pane").centre();
     h.send(Input::click(close));
     h.advance(Duration::from_millis(400));
     assert!(
@@ -444,13 +431,12 @@ fn a_row_dropped_on_a_pinned_row_pins_and_a_pinned_row_dropped_on_a_loose_one_un
     };
     let counts = |h: &Harness| (loose(h).len(), pinned(h).len());
     assert_eq!(counts(&h), (3, 0), "three tabs");
-    // Pin Tab heads the row's menu.
+    // Pin Tab is in the row's menu.
     let first = centre(&loose(&h)[0]);
     h.send(Input::press(first, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-    let item = rects(&h, ".ds-menu-item");
-    assert!(!item.is_empty(), "the row's menu opens");
-    h.send(Input::click(centre(&item[0])));
+    let pin = super::drive::menu_item(&h, "Pin Tab");
+    h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
     assert_eq!(counts(&h), (2, 1), "pinned from the menu");
     // A loose row onto the pinned one: pinned too.
@@ -516,9 +502,8 @@ fn a_row_dropped_on_the_favourites_keeps_its_folder_there() {
         PointerButton::Secondary,
     ));
     h.advance(Duration::from_millis(300));
-    let item = rects(&h, ".ds-menu-item");
-    assert_eq!(item.len(), 1, "Remove from Favourites");
-    h.send(Input::click(centre(&item[0])));
+    let remove = super::drive::menu_item(&h, "Remove from Favourites");
+    h.send(Input::click(remove.centre()));
     h.advance(Duration::from_millis(400));
     assert!(tiles(&h).is_empty(), "let go:\n{}", h.html());
 }
@@ -555,4 +540,53 @@ fn a_command_press_on_a_row_opens_a_new_tab_beside_it() {
     ));
     h.advance(Duration::from_millis(400));
     assert_eq!(drive::rows(&h), 2, "a new tab:\n{}", h.html());
+}
+
+/// A row's menu is the one menu: open, keep, show, close, in that order; Add to Favourites keeps
+/// its folder as a tile.
+#[test]
+fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-row-menu", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let row = &rects(&h, ".temor-side .temor-tab-box")[0];
+    let at = ds::prelude::Point {
+        x: ds::prelude::Px(((row.left + row.right) / 2.0) as f32),
+        y: ds::prelude::Px(((row.top + row.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let titles: Vec<String> = h.with_doc(|doc| {
+        doc.query_selector_all(".ds-menu-item")
+            .map(|found| found.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|id| Some(doc.get_node(id)?.text_content().trim().to_owned()))
+            .collect()
+    });
+    assert_eq!(
+        titles,
+        [
+            "Open in New Tab",
+            "Add to Favourites",
+            "Pin Tab",
+            "Show in Folder",
+            "Close Tab"
+        ]
+    );
+    let keep = drive::menu_item(&h, "Add to Favourites");
+    h.send(Input::click(keep.centre()));
+    let start = Instant::now();
+    while rects(&h, ".temor-side .temor-fav").is_empty() {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "no tile:\n{}",
+            h.html()
+        );
+    }
 }
