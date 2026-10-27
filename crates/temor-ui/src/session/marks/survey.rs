@@ -27,11 +27,11 @@ impl Session {
 
     pub(crate) fn survey(&self) -> Option<Read> {
         let typing = matches!(
-            *self.blocks.machine(),
+            *self.core.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         let painted = self.painter.cursor_cell().map(|cell| u32::from(cell.row.0));
-        self.pane.with_term(|term| {
+        self.core.pane.with_term(|term| {
             if term.on_alternate_screen() {
                 return None;
             }
@@ -40,11 +40,12 @@ impl Session {
             // draws below it too.
             let cursor = painted.map(|row| top.saturating_add(row));
             let blocks = self
+                .core
                 .blocks
                 .store()
                 .iter()
                 .map(|block| {
-                    let anchors = self.blocks.anchors_of(block.id).unwrap_or_default();
+                    let anchors = self.core.blocks.anchors_of(block.id).unwrap_or_default();
                     let prompt = spot(term, anchors.prompt);
                     let lead = match anchors.prompt {
                         Some(prompt) => lead_at(term, prompt, anchors.input),
@@ -70,11 +71,16 @@ impl Session {
                     }
                 })
                 .collect();
-            let live = self.blocks.prompt().filter(|_| typing).and_then(|prompt| {
-                Some(LiveRead {
-                    prompt: spot(term, Some(prompt))?,
-                })
-            });
+            let live = self
+                .core
+                .blocks
+                .prompt()
+                .filter(|_| typing)
+                .and_then(|prompt| {
+                    Some(LiveRead {
+                        prompt: spot(term, Some(prompt))?,
+                    })
+                });
             Some(Read {
                 top,
                 len,

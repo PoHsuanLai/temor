@@ -11,19 +11,19 @@ use crate::edge::DesktopNote;
 impl Session {
     /// A block finished: notifies when it ran long enough while the pane was unfocused.
     pub(super) fn notify_finished(&mut self, block: &Block) {
-        if let Some(note) = finished_notice(block, self.notify_after, self.focus) {
+        if let Some(note) = finished_notice(block, self.core.notify_after, self.focus) {
             self.announce(note);
         }
     }
 
     /// Makes a desktop notice of a core notice, when the limiter lets one through.
     pub(in crate::session) fn announce(&mut self, notice: Desk) {
-        let now = self.clock.now();
-        if !self.limiter.allow(now) {
+        let now = self.core.clock.now();
+        if !self.core.limiter.allow(now) {
             return;
         }
         let note = desktop_note(&notice);
-        if let Err(err) = self.notifier.notify(&note) {
+        if let Err(err) = self.core.notifier.notify(&note) {
             self.notice = Some(err.to_string());
         }
     }
@@ -41,12 +41,12 @@ impl Session {
 
     /// Changes how long a command must run before its finish is announced, from the next one.
     pub fn set_notify_after(&mut self, after: NotifyAfter) {
-        self.notify_after = after;
+        self.core.notify_after = after;
     }
 
     /// The notify setting the session uses.
     pub fn notify_after(&self) -> NotifyAfter {
-        self.notify_after
+        self.core.notify_after
     }
 }
 

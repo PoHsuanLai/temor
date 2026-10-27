@@ -9,20 +9,21 @@ use super::super::Session;
 impl Session {
     /// The row of an anchor in the screen (0 is the oldest kept row); `None` once it is gone.
     pub(super) fn screen_row(&self, id: AnchorId) -> Option<u32> {
-        self.pane
+        self.core
+            .pane
             .with_term(|term| term.anchor_point(id, PointSpace::Screen))
             .map(|at| at.row)
     }
 
     /// Hands an anchor back to the terminal.
     pub(super) fn drop_anchor(&self, id: AnchorId) {
-        self.pane.with_term(|term| term.release_anchor(id));
+        self.core.pane.with_term(|term| term.release_anchor(id));
     }
 
     /// The text from one anchor up to (not including) another, trimmed of the line ends around
     /// it. The end cell is excluded: an anchor at a line's start marks the end of the line above.
     pub(super) fn text_between(&self, from: AnchorId, to: AnchorId) -> Option<String> {
-        self.pane.with_term(|term| {
+        self.core.pane.with_term(|term| {
             let start = term.anchor_point(from, PointSpace::Screen)?;
             let end = term.anchor_point(to, PointSpace::Screen)?;
             let last_col = term.size().cols.0.saturating_sub(1);
@@ -42,13 +43,14 @@ impl Session {
 
     /// The blocks whose prompt and output the scrollback no longer holds.
     pub(super) fn swept(&self) -> Vec<BlockId> {
-        let pane = &self.pane;
-        self.blocks
+        let pane = &self.core.pane;
+        self.core
+            .blocks
             .store()
             .iter()
             .map(|block| block.id)
             .filter(|&id| {
-                !self.blocks.anchors_of(id).is_some_and(|held| {
+                !self.core.blocks.anchors_of(id).is_some_and(|held| {
                     [held.prompt, held.output]
                         .into_iter()
                         .flatten()

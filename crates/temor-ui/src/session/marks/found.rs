@@ -17,7 +17,7 @@ impl Session {
     /// The pane began as a kept screen: the commands it ran before are `history`, and the blocks
     /// on that screen are found again.
     pub fn begin_restored(&mut self, history: Vec<temor_core::session::CommandRecord>) {
-        self.inherited = history;
+        self.core.inherited = history;
         self.find_restored_blocks();
     }
 
@@ -26,10 +26,11 @@ impl Session {
     /// prompt left open becomes the prompt being typed at.
     pub(in crate::session) fn find_restored_blocks(&mut self) {
         self.sweep();
-        if !self.blocks.marks.store().is_empty() {
+        if !self.core.blocks.marks.store().is_empty() {
             return;
         }
         let starts: Vec<(At, Kind)> = self
+            .core
             .pane
             .with_term(|term| term.semantic_starts())
             .into_iter()
@@ -91,7 +92,7 @@ impl Session {
             });
         }
         let commands: Vec<String> = blocks.iter().map(|b| b.command.clone()).collect();
-        let (records, on_screen) = match_history(&commands, &self.inherited);
+        let (records, on_screen) = match_history(&commands, &self.core.inherited);
         for (block, record) in blocks.iter_mut().zip(records) {
             if let Some(record) = record {
                 block.exit = record.exit.map(ExitCode);
@@ -99,12 +100,12 @@ impl Session {
             }
         }
         // The commands on the screen are its blocks now: kept once, not as history too.
-        let keep = self.inherited.len() - on_screen;
-        self.inherited.truncate(keep);
-        let at = self.clock.now();
+        let keep = self.core.inherited.len() - on_screen;
+        self.core.inherited.truncate(keep);
+        let at = self.core.clock.now();
         if !blocks.is_empty() {
             self.mark(MarkIn::Restored { blocks, at });
-            let restored: Vec<_> = self.blocks.marks.store().iter().cloned().collect();
+            let restored: Vec<_> = self.core.blocks.marks.store().iter().cloned().collect();
             for block in &restored {
                 self.keep_note(block);
             }
@@ -119,7 +120,8 @@ impl Session {
 
     fn anchor_found(&self, at: At) -> Option<AnchorId> {
         let row = u32::try_from(at.row).ok()?;
-        self.pane
+        self.core
+            .pane
             .with_term(|term| term.anchor_at(GridPoint::new(PointSpace::Screen, at.col, row)))
     }
 
@@ -130,7 +132,7 @@ impl Session {
         };
         self.mark(MarkIn::Begin { seq: FOUND_SEQ });
         self.mark(MarkIn::Event(kind));
-        let now = self.clock.now();
+        let now = self.core.clock.now();
         self.mark(MarkIn::Anchored {
             seq: FOUND_SEQ,
             anchor: handle(anchor),

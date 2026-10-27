@@ -47,7 +47,7 @@ impl Session {
             return None;
         }
         let cell = hit.cell;
-        let target = self.pane.with_term(|term| {
+        let target = self.core.pane.with_term(|term| {
             term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
         })?;
         let shown = display_text(&target, LINK_MAX_CHARS);

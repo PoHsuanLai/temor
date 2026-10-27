@@ -19,7 +19,7 @@ pub struct Finished {
 impl Session {
     /// How many rows the terminal has.
     pub fn rows(&self) -> u16 {
-        self.pane.with_term(|term| term.size().rows.0)
+        self.core.pane.with_term(|term| term.size().rows.0)
     }
 
     /// Keeps the line of output a finished block's card shows. Read once, when the block
@@ -30,23 +30,24 @@ impl Session {
             .block_output(block.id)
             .and_then(|output| temor_core::block::summarize(&output, failed));
         if let Some(note) = note {
-            self.blocks.notes.insert(block.id, note);
+            self.core.blocks.notes.insert(block.id, note);
         }
     }
 
     /// The line of output a finished block's card shows, and how much output there was.
     pub fn block_note(&self, id: BlockId) -> Option<&temor_core::block::Note> {
-        self.blocks.notes.get(&id)
+        self.core.blocks.notes.get(&id)
     }
 
     /// How many primary prompts the shell has marked so far.
     pub fn prompts_seen(&self) -> usize {
-        self.blocks.marks.prompts()
+        self.core.blocks.marks.prompts()
     }
 
     /// Every block the session holds, oldest first, with how each stands.
     pub fn block_outcomes(&self) -> Vec<(BlockId, Outcome)> {
-        self.blocks
+        self.core
+            .blocks
             .store()
             .iter()
             .map(|block| (block.id, block.outcome()))
@@ -56,7 +57,8 @@ impl Session {
     /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
     /// them: the command, how it exited, and how long it ran.
     pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
-        self.blocks
+        self.core
+            .blocks
             .store()
             .iter()
             .filter(|block| after.is_none_or(|after| block.id > after))
@@ -73,7 +75,8 @@ impl Session {
 
     /// Whether a block's command has finished (its output is complete).
     pub fn block_finished(&self, id: BlockId) -> bool {
-        self.blocks
+        self.core
+            .blocks
             .store()
             .get(id)
             .is_some_and(|block| block.outcome() != Outcome::Running)
@@ -91,12 +94,16 @@ impl Session {
 
     /// The command a block ran, as typed.
     pub fn block_command(&self, id: BlockId) -> Option<&str> {
-        self.blocks.store().get(id).map(|b| b.command.0.as_str())
+        self.core
+            .blocks
+            .store()
+            .get(id)
+            .map(|b| b.command.0.as_str())
     }
 
     /// A block's output as text, once the command has finished.
     pub fn block_output(&self, id: BlockId) -> Option<String> {
-        let anchors = self.blocks.anchors_of(id)?;
+        let anchors = self.core.blocks.anchors_of(id)?;
         self.text_between(anchors.output?, anchors.end?)
     }
 

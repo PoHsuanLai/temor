@@ -18,7 +18,9 @@ impl Session {
 
     /// Makes `style` the cursor shape the terminal falls back to.
     pub fn set_cursor_style(&mut self, style: CursorStyle) -> Result<(), UiError> {
-        self.pane.with_term(|term| term.set_default_cursor(style))?;
+        self.core
+            .pane
+            .with_term(|term| term.set_default_cursor(style))?;
         Ok(())
     }
 

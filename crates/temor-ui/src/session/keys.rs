@@ -18,6 +18,7 @@ impl Session {
             false => FindBar::Closed,
         };
         let kitty = self
+            .core
             .pane
             .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
         if find == FindBar::Closed && self.pick_key(&stroke.key) {
@@ -32,14 +33,15 @@ impl Session {
                     self.note_enter();
                 }
                 if key.action != KeyAction::Release {
-                    self.pane
+                    self.core
+                        .pane
                         .with_term(|term| term.scroll(temor_vt::ViewportScroll::Bottom));
                 }
                 if is_altgr_text(&key) {
-                    self.pane.send(key.text.as_bytes());
+                    self.core.pane.send(key.text.as_bytes());
                     return Ok(());
                 }
-                Ok(self.pane.key(&key)?)
+                Ok(self.core.pane.key(&key)?)
             }
             Routed::Ignored => Ok(()),
         }
@@ -55,6 +57,7 @@ impl Session {
             false => FindBar::Closed,
         };
         let kitty = self
+            .core
             .pane
             .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
         let clear = stroke.key.mods == temor_vt::Modifiers::CTRL

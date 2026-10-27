@@ -15,17 +15,17 @@ use crate::words::notices;
 impl Session {
     /// Says how the pane's shell quotes a word (from the shell the pane runs).
     pub fn set_quoting(&mut self, quoting: Quoting) {
-        self.quoting = quoting;
+        self.core.quoting = quoting;
     }
 
     /// Says whether the pane's shell runs on this computer or on another.
     pub fn set_site(&mut self, site: PaneSite) {
-        self.site = site;
+        self.core.site = site;
     }
 
     /// Whether the pane's shell runs on this computer or on another.
     pub fn site(&self) -> PaneSite {
-        self.site
+        self.core.site
     }
 
     /// Carries out a drop: the quoted paths are pasted, or the person is told why not.
@@ -42,17 +42,18 @@ impl Session {
             paths: words,
             // No program here has said it takes files; the paths are typed instead.
             support: ReceiveSupport::Unknown,
-            site: self.site,
-            quoting: self.quoting,
+            site: self.core.site,
+            quoting: self.core.quoting,
         };
         match drop_action(&dropped) {
             DropAction::Paste(text) => {
                 if self.composer_takes(&text) {
                     return;
                 }
-                let mode = self.pane.with_term(|term| term.paste_mode());
-                self.pane.send(&paste::encode(&text, mode));
-                self.pane
+                let mode = self.core.pane.with_term(|term| term.paste_mode());
+                self.core.pane.send(&paste::encode(&text, mode));
+                self.core
+                    .pane
                     .with_term(|term| term.scroll(ViewportScroll::Bottom));
             }
             DropAction::Send(_) => {

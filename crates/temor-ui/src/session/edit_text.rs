@@ -12,6 +12,7 @@ impl Session {
     fn selected_line(&self) -> Option<String> {
         let selection = self.selection?;
         let text = self
+            .core
             .pane
             .with_term(|term| selection.text(|row| term.row_text(row).unwrap_or_default()));
         let line = text.lines().map(str::trim).find(|line| !line.is_empty())?;

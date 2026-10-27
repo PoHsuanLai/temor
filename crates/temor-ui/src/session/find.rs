@@ -64,12 +64,12 @@ impl Session {
     /// Searches the whole screen (scrollback included) for `query` and makes the first match
     /// current. An empty query has no matches.
     pub fn set_query(&mut self, query: &str) -> Result<(), UiError> {
-        let rows = self.pane.with_term(|term| term.screen_rows())?;
+        let rows = self.core.pane.with_term(|term| term.screen_rows())?;
         let mut lines: Vec<(u32, RowText)> = Vec::with_capacity(usize::try_from(rows).unwrap_or(0));
         let mut first = 0;
         while first < rows {
             let end = first.saturating_add(ROWS_PER_LOCK).min(rows);
-            let chunk = self.pane.with_term(|term| {
+            let chunk = self.core.pane.with_term(|term| {
                 let mut chunk = Vec::new();
                 let mut block = first;
                 while block < end {
@@ -122,9 +122,9 @@ impl Session {
         selection.extend(found.end(), &line);
         self.selection = Some(selection);
         self.mirror_selection()?;
-        let (top, len) = self.pane.with_term(|term| term.viewport())?;
+        let (top, len) = self.core.pane.with_term(|term| term.viewport())?;
         if self.list_map.is_none() && (found.row < top || found.row >= top.saturating_add(len)) {
-            self.pane.with_term(|term| {
+            self.core.pane.with_term(|term| {
                 term.scroll(temor_vt::ViewportScroll::Row(temor_vt::RowCount(
                     u64::from(found.row),
                 )))

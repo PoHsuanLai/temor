@@ -258,10 +258,10 @@ impl Session {
             return;
         }
         let text = composer.text.clone();
-        let mode = self.pane.with_term(|term| term.paste_mode());
+        let mode = self.core.pane.with_term(|term| term.paste_mode());
         // A line break that is not framed as a paste would run the line.
         let shell = composer.shell_ready && (!text.contains('\n') || mode == PasteMode::Bracketed);
-        let others = self.sources.any_ready();
+        let others = self.core.sources.any_ready();
         if !shell && !others {
             return;
         }
@@ -270,17 +270,23 @@ impl Session {
         let mut waiting = Vec::new();
         if shell {
             if !text.is_empty() {
-                self.pane.send(&paste::encode(&text, mode));
+                self.core.pane.send(&paste::encode(&text, mode));
             }
-            self.pane.send(REQUEST_KEY);
+            self.core.pane.send(REQUEST_KEY);
             waiting.push(SHELL);
         }
-        if let Some(deliver) = self.sources.deliver.clone() {
+        if let Some(deliver) = self.core.sources.deliver.clone() {
             let ask = Ask {
                 line: text.clone(),
-                folder: self.folder.clone(),
+                folder: self.core.folder.clone(),
             };
-            for source in self.sources.list.iter().filter(|source| source.ready()) {
+            for source in self
+                .core
+                .sources
+                .list
+                .iter()
+                .filter(|source| source.ready())
+            {
                 waiting.push(source.id());
                 source.ask(ask.clone(), request, deliver.clone());
             }
@@ -331,7 +337,7 @@ impl Session {
     /// Whether something answers Tab: the shell's script said so at this prompt, or a source of
     /// its own is ready.
     pub fn composer_completes(&self) -> bool {
-        self.composer.shell_ready || self.sources.any_ready()
+        self.composer.shell_ready || self.core.sources.any_ready()
     }
 
     /// The suggestions offered for the line, if any.
@@ -378,10 +384,10 @@ impl Session {
         self.composer.step = None;
         self.completion_ended();
         if !text.is_empty() {
-            let mode = self.pane.with_term(|term| term.paste_mode());
-            self.pane.send(&paste::encode(&text, mode));
+            let mode = self.core.pane.with_term(|term| term.paste_mode());
+            self.core.pane.send(&paste::encode(&text, mode));
         }
-        self.pane.send(b"\r");
+        self.core.pane.send(b"\r");
         self.composer.sent = (!text.is_empty()).then_some(text);
         self.wake_cursor();
     }

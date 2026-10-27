@@ -66,9 +66,11 @@ pub const INSET: Inset = Inset {
 /// The left (and right) inset alone, for placing things beside the grid's rows.
 pub const PADDING_LOGICAL: f32 = 16.0;
 
-/// One pane's state as the window needs it.
+/// One pane's state as the window needs it: what the pane is ([`PaneCore`]) and how the window
+/// shows it and takes the person's input.
 pub struct Session {
-    pub(super) pane: PaneHandle,
+    /// The pane itself, apart from how it is shown.
+    pub(super) core: PaneCore,
     pub(super) painter: Painter,
     pub keymap: Keymap,
     pub(super) clipboard: Box<dyn Clipboard>,
@@ -81,17 +83,45 @@ pub struct Session {
     pub(super) click: Option<ClickState>,
     pub(super) finder: Option<Finder>,
     pub(super) pending: Option<PendingPaste>,
-    pub(super) title: String,
-    pub(super) lifetime: Lifetime,
     pub(super) notice: Option<String>,
-    pub(super) hold: Hold,
-    pub(super) hold_generation: u64,
     pub(super) find_text: String,
     pub(super) pending_query: Option<PendingQuery>,
-    pub(super) blocks: BlockLog,
     /// What the person did to the blocks: picked with a click or the arrows, folded away,
     /// bookmarked for the bookmark keys (while the pane lives).
     pub(super) ann: temor_core::session::Annotations,
+    /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
+    pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
+    /// The link under the pointer as last drawn in its tooltip.
+    pub(super) link_hover: Option<String>,
+    /// The block list as its view last laid it out, while the pane is drawn as one: where a
+    /// point over it lands. `None` while the pane is one grid.
+    pub(super) list_map: Option<super::list_hit::ListMap>,
+    /// The ground the live screen is drawn on while the pane is a list (the running card's).
+    pub(super) live_ground: Option<temor_vt::Rgb>,
+    /// Where the next command is typed while the list shows it.
+    pub(super) composer: super::composer::Composer,
+    pub(super) focus: Focus,
+    pub(super) blink: super::blink::Blink,
+    /// Until when the bell's visual mark stays up.
+    pub(super) bell_until: Option<Stamp>,
+    /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
+    pub(super) asked: Option<temor_pane::keys::Action>,
+    /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
+    pub(super) view_ask: Option<super::ViewAsk>,
+    /// Where the rows were shown at the last paint (see `room`).
+    pub(super) layout: Option<temor_render::RowLayout>,
+}
+
+/// What a pane is, apart from how the window shows it: its engine, what its program said (title,
+/// folder, progress, how it ended), its commands, its shell's state, its completion sources, what
+/// was answered about its clipboard, and when a finished command is worth a desktop notice.
+pub struct PaneCore {
+    pub(super) pane: PaneHandle,
+    pub(super) title: String,
+    pub(super) lifetime: Lifetime,
+    pub(super) hold: Hold,
+    pub(super) hold_generation: u64,
+    pub(super) blocks: BlockLog,
     /// What the shell holds that a new shell would need (folder, variables, aliases).
     pub(super) shell_state: temor_core::session::ShellState,
     /// The `PATH` the shell last reported: where its programs are found, which a window opened
@@ -106,32 +136,13 @@ pub struct Session {
     pub(super) sources: super::sources::Sources,
     /// The pane's folder as the shell last said it, to run a completion in.
     pub(super) folder: Option<std::path::PathBuf>,
-    /// Where the pointer last was over the grid, for the block it hovers. `None` once it left.
-    pub(super) pointer_over: Option<temor_vt::SurfacePoint>,
-    /// The link under the pointer as last drawn in its tooltip.
-    pub(super) link_hover: Option<String>,
-    /// The block list as its view last laid it out, while the pane is drawn as one: where a
-    /// point over it lands. `None` while the pane is one grid.
-    pub(super) list_map: Option<super::list_hit::ListMap>,
-    /// The ground the live screen is drawn on while the pane is a list (the running card's).
-    pub(super) live_ground: Option<temor_vt::Rgb>,
-    /// Where the next command is typed while the list shows it.
-    pub(super) composer: super::composer::Composer,
     pub(super) cwd: Option<String>,
     pub(super) progress: Option<Progress>,
-    pub(super) focus: Focus,
-    pub(super) blink: super::blink::Blink,
     pub(super) notify_after: NotifyAfter,
     pub(super) limiter: Limiter,
     pub(super) notifier: Box<dyn Notifier>,
     pub(super) clock: Box<dyn Clock>,
-    /// Until when the bell's visual mark stays up.
-    pub(super) bell_until: Option<Stamp>,
     pub(super) shelf_dir: PathBuf,
-    /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
-    pub(super) asked: Option<temor_pane::keys::Action>,
-    /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
-    pub(super) view_ask: Option<super::ViewAsk>,
     /// How the pane's shell quotes a word, for pasting dropped paths.
     pub(super) quoting: temor_core::shelf::Quoting,
     /// Whether the pane's shell runs on this computer.
@@ -142,8 +153,6 @@ pub struct Session {
     pub(super) clip_mirror: temor_pane::ClipboardMirror,
     /// A clipboard question waiting for the person.
     pub(super) clip_pending: Option<super::osc52::PendingClipboard>,
-    /// Where the rows were shown at the last paint (see `room`).
-    pub(super) layout: Option<temor_render::RowLayout>,
 }
 
 /// A find query typed but not yet run, and when it was last typed.
@@ -165,7 +174,7 @@ impl std::fmt::Debug for Session {
         f.debug_struct("Session")
             .field("fit", &self.fit)
             .field("scale", &self.scale)
-            .field("lifetime", &self.lifetime)
+            .field("lifetime", &self.core.lifetime)
             .finish_non_exhaustive()
     }
 }

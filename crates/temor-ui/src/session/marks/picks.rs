@@ -58,7 +58,7 @@ impl Session {
         let Some(hit) = self.point_hit(at) else {
             return;
         };
-        let alternate = self.pane.with_term(|term| term.on_alternate_screen());
+        let alternate = self.core.pane.with_term(|term| term.on_alternate_screen());
         match self.hit_block(&hit).filter(|_| !alternate) {
             Some(id) => {
                 let how = match () {
@@ -167,12 +167,12 @@ impl Session {
     /// its prompt, on the main screen.
     fn bookmark_keys_live(&self) -> bool {
         let at_prompt = matches!(
-            *self.blocks.machine(),
+            *self.core.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         self.ann.any_bookmarked()
             && at_prompt
-            && !self.pane.with_term(|term| term.on_alternate_screen())
+            && !self.core.pane.with_term(|term| term.on_alternate_screen())
     }
 
     /// Picks the nearest bookmark `step`'s way from the pick; none that way leaves the pick.
@@ -255,6 +255,7 @@ impl Session {
             return Ok(None);
         };
         let (alternate, tracking) = self
+            .core
             .pane
             .with_term(|term| (term.on_alternate_screen(), term.mouse_tracking()));
         if alternate || tracking {

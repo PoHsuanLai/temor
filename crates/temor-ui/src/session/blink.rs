@@ -36,14 +36,14 @@ impl Session {
     /// The half the cursor is in now; always `On` when blinking is off.
     pub(super) fn blink_now(&self) -> BlinkPhase {
         match self.blink.setting {
-            CursorBlinking::On => blink_phase(self.clock.now().since(self.blink.from)),
+            CursorBlinking::On => blink_phase(self.core.clock.now().since(self.blink.from)),
             CursorBlinking::Off => BlinkPhase::On,
         }
     }
 
     /// The cursor shows solid from now, its blink starting over.
     pub(super) fn wake_cursor(&mut self) {
-        self.blink.from = self.clock.now();
+        self.blink.from = self.core.clock.now();
     }
 
     /// Whether the pane must be painted again for its cursor: it is focused, its cursor blinks,

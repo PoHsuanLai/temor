@@ -13,7 +13,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
 use super::blocks::BlockLog;
-use super::model::{FedParts, Lifetime, SessionKit, SessionParts};
+use super::model::{FedParts, Lifetime, PaneCore, SessionKit, SessionParts};
 use crate::error::UiError;
 use crate::paint::Painter;
 use crate::pane::UiSink;
@@ -51,10 +51,10 @@ impl Session {
             .spawn(move || runner.run())
             .map_err(UiError::Thread)?;
         let mut session = Self::assemble(pane, painter, kit);
-        session.report_key = report_key;
+        session.core.report_key = report_key;
         let deliver: temor_shell::suggest::Deliver =
             Arc::new(move |answered| heard.send(PaneEvent::Suggested(answered)));
-        session.sources = super::sources::Sources::for_program(&program, deliver);
+        session.core.sources = super::sources::Sources::for_program(&program, deliver);
         Ok(session)
     }
 
@@ -69,14 +69,40 @@ impl Session {
             .spawn(move || runner.run())
             .map_err(UiError::Thread)?;
         let mut session = Self::assemble(pane, painter, kit);
-        session.site = temor_core::shelf::PaneSite::Remote;
+        session.core.site = temor_core::shelf::PaneSite::Remote;
         Ok((session, feeder))
     }
 
     fn assemble(pane: PaneHandle, painter: Painter, kit: SessionKit) -> Self {
         let clip_mirror = pane.with_term(|term| term.clipboard());
+        let blink_from = kit.clock.now();
         Self {
-            pane,
+            core: PaneCore {
+                pane,
+                title: String::new(),
+                lifetime: Lifetime::Running,
+                hold: Hold::Released,
+                hold_generation: 0,
+                blocks: BlockLog::default(),
+                shell_state: temor_core::session::ShellState::default(),
+                shell_path: None,
+                inherited: Vec::new(),
+                report_key: None,
+                sources: Default::default(),
+                folder: None,
+                cwd: None,
+                progress: None,
+                notify_after: kit.notify_after,
+                limiter: Limiter::default(),
+                notifier: kit.notifier,
+                clock: kit.clock,
+                shelf_dir: kit.shelf_dir,
+                quoting: temor_core::shelf::Quoting::Posix,
+                site: temor_core::shelf::PaneSite::Local,
+                clip_write: temor_core::remote::Grant::Ask,
+                clip_mirror,
+                clip_pending: None,
+            },
             painter,
             keymap: kit.keymap,
             clipboard: kit.clipboard,
@@ -90,47 +116,24 @@ impl Session {
             click: None,
             finder: None,
             pending: None,
-            title: String::new(),
-            lifetime: Lifetime::Running,
             notice: None,
-            hold: Hold::Released,
-            hold_generation: 0,
             find_text: String::new(),
             pending_query: None,
-            blocks: BlockLog::default(),
             ann: temor_core::session::Annotations::default(),
-            shell_state: temor_core::session::ShellState::default(),
-            shell_path: None,
-            inherited: Vec::new(),
-            report_key: None,
-            sources: Default::default(),
-            folder: None,
             pointer_over: None,
             link_hover: None,
             list_map: None,
             live_ground: None,
             composer: Default::default(),
-            cwd: None,
-            progress: None,
             focus: Focus::Focused,
             blink: super::blink::Blink {
                 setting: kit.cursor_blink,
-                from: kit.clock.now(),
+                from: blink_from,
                 painted: temor_render::BlinkPhase::On,
             },
-            notify_after: kit.notify_after,
-            limiter: Limiter::default(),
-            notifier: kit.notifier,
-            clock: kit.clock,
             bell_until: None,
-            shelf_dir: kit.shelf_dir,
             asked: None,
             view_ask: None,
-            quoting: temor_core::shelf::Quoting::Posix,
-            site: temor_core::shelf::PaneSite::Local,
-            clip_write: temor_core::remote::Grant::Ask,
-            clip_mirror,
-            clip_pending: None,
         }
     }
 }

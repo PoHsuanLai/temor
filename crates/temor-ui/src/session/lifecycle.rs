@@ -23,24 +23,24 @@ impl Session {
     /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b). The frame
     /// shown meanwhile was captured by the pane where the hold began.
     pub fn start_hold(&mut self) -> u64 {
-        self.hold_generation += 1;
-        self.hold = Hold::Held;
-        self.hold_generation
+        self.core.hold_generation += 1;
+        self.core.hold = Hold::Held;
+        self.core.hold_generation
     }
 
     /// The program released the screen.
     pub fn release_hold(&mut self) {
-        self.hold = Hold::Released;
+        self.core.hold = Hold::Released;
     }
 
     /// The timer of hold `generation` ran out: releases the hold if it is still the current one.
     /// Returns whether it released anything.
     pub fn end_hold(&mut self, generation: u64) -> bool {
-        if self.hold == Hold::Held && self.hold_generation == generation {
-            self.hold = Hold::Released;
+        if self.core.hold == Hold::Held && self.core.hold_generation == generation {
+            self.core.hold = Hold::Released;
             // The program is told nothing; its next output shows as it arrives. A terminal that
             // refuses is not the pane's failure: the next release from the program ends it.
-            let _ = self.pane.with_term(|term| term.end_hold());
+            let _ = self.core.pane.with_term(|term| term.end_hold());
             return true;
         }
         false
@@ -53,12 +53,12 @@ impl Session {
 
     /// The window's title as the program last set it.
     pub fn title(&self) -> &str {
-        &self.title
+        &self.core.title
     }
 
     /// Whether the program has ended.
     pub fn ended(&self) -> bool {
-        matches!(self.lifetime, Lifetime::Ended(_))
+        matches!(self.core.lifetime, Lifetime::Ended(_))
     }
 
     /// The pane's size and scale changed. The grid is refitted; when it changed, the terminal and
@@ -73,7 +73,7 @@ impl Session {
         let changed = self.fit.map(|f| (f.grid, f.cell)) != Some((fit.grid, fit.cell));
         if changed {
             // Recorded only once the terminal and the program have the new size.
-            self.pane.resize(fit.grid, fit.cell)?;
+            self.core.pane.resize(fit.grid, fit.cell)?;
             self.fit = Some(fit);
             self.relayout();
         }
@@ -83,7 +83,9 @@ impl Session {
     /// Makes `palette` the grid's colours: the terminal's defaults (so a program that reads them
     /// sees the new ones) and the painter's. The next paint redraws the whole grid.
     pub fn set_palette(&mut self, palette: Palette) -> Result<(), UiError> {
-        self.pane.with_term(|term| term.set_palette(&palette))?;
+        self.core
+            .pane
+            .with_term(|term| term.set_palette(&palette))?;
         self.painter.set_palette(palette);
         Ok(())
     }
@@ -110,7 +112,7 @@ impl Session {
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_pane::PaintSource`).
-        self.painter.paint(&self.pane, view, show)?;
+        self.painter.paint(&self.core.pane, view, show)?;
         Ok(self.relayout())
     }
 
@@ -119,17 +121,17 @@ impl Session {
         match event {
             PaneEvent::Dirty => {
                 // Cleared first: output that arrives while the window paints signals again.
-                self.pane.clear_dirty();
+                self.core.pane.clear_dirty();
                 Notice::Repaint
             }
             PaneEvent::RenderHold(hold) => Notice::Hold(hold),
             PaneEvent::Title(title) => {
                 let title = sanitise_title(&title);
-                self.title = title.clone();
+                self.core.title = title.clone();
                 Notice::Title(title)
             }
             PaneEvent::Bell => {
-                let now = self.clock.now();
+                let now = self.core.clock.now();
                 self.bell_until = Some(now.after_span(BELL_MARK));
                 if let Some(note) = temor_core::notify::bell_notice(self.focus) {
                     self.announce(note);
@@ -138,35 +140,35 @@ impl Session {
             }
             PaneEvent::Exited(exit) => {
                 self.shell_gone();
-                self.lifetime = Lifetime::Ended(exit);
+                self.core.lifetime = Lifetime::Ended(exit);
                 Notice::Ended(exit)
             }
             PaneEvent::Cwd(url) => {
                 // The path is shown, so it is cleaned and bounded first (it came from the shell).
-                self.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
-                self.folder = cwd_from_url(&url).map(std::path::PathBuf::from);
+                self.core.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
+                self.core.folder = cwd_from_url(&url).map(std::path::PathBuf::from);
                 if let Some(path) = cwd_from_url(&url) {
                     self.shell_step(ShellIn::Cwd(path));
                 }
-                match &self.cwd {
+                match &self.core.cwd {
                     Some(path) => Notice::Cwd(path.clone()),
                     None => Notice::Chrome,
                 }
             }
             PaneEvent::ShellReport(text) => {
                 // Anything printed in the pane can look like a report; only the shell has the key.
-                if let Some(key) = &self.report_key
+                if let Some(key) = &self.core.report_key
                     && let Ok(report) = temor_shell::report::read(&text, key)
                 {
                     if let Some((_, path)) = report.env.iter().find(|(name, _)| name == "PATH") {
-                        self.shell_path = Some(path.clone());
+                        self.core.shell_path = Some(path.clone());
                     }
                     self.shell_step(ShellIn::Reported(report));
                 }
                 Notice::Quiet
             }
             PaneEvent::Progress(progress) => {
-                self.progress = match progress.state {
+                self.core.progress = match progress.state {
                     temor_vt::ProgressState::Remove => None,
                     _ => Some(progress),
                 };
@@ -216,15 +218,18 @@ impl Session {
 
     /// Steps the shell's state on one input.
     fn shell_step(&mut self, input: ShellIn) {
-        let state = std::mem::take(&mut self.shell_state);
-        self.shell_state = shell_step(state, input).0;
+        let state = std::mem::take(&mut self.core.shell_state);
+        self.core.shell_state = shell_step(state, input).0;
     }
 
     /// What is kept of this pane when its window goes away: the shell's state and the commands it
     /// ran.
     pub fn checkpoint(&self) -> temor_core::session::Checkpoint {
-        temor_core::session::Checkpoint::of(self.shell_state.replay(), self.blocks.store().iter())
-            .after(&self.inherited)
+        temor_core::session::Checkpoint::of(
+            self.core.shell_state.replay(),
+            self.core.blocks.store().iter(),
+        )
+        .after(&self.core.inherited)
     }
 
     /// Starts from what was kept of the shell this session continues: its state until the shell
@@ -234,40 +239,40 @@ impl Session {
         state: temor_core::session::ShellState,
         kept: temor_core::session::Checkpoint,
     ) {
-        self.shell_state = state;
-        self.inherited = kept.history;
+        self.core.shell_state = state;
+        self.core.inherited = kept.history;
     }
 
     /// The key the shell's state reports carry, for a shell started elsewhere (the local daemon)
     /// or one that goes on in another pane.
     pub fn set_report_key(&mut self, key: Option<temor_shell::report::ReportKey>) {
-        self.report_key = key;
+        self.core.report_key = key;
     }
 
     /// The key of the shell this session shows, if it reports.
     pub fn report_key(&self) -> Option<&temor_shell::report::ReportKey> {
-        self.report_key.as_ref()
+        self.core.report_key.as_ref()
     }
 
     /// The commands run before this pane's screen was handed to it, for the blocks found on it.
     pub fn inherit(&mut self, history: Vec<temor_core::session::CommandRecord>) {
-        self.inherited = history;
+        self.core.inherited = history;
     }
 
     /// What the shell holds that a new shell would need to look the same.
     pub fn shell_state(&self) -> &ShellState {
-        &self.shell_state
+        &self.core.shell_state
     }
 
     /// The `PATH` the shell last reported, if it has.
     pub fn shell_path(&self) -> Option<&str> {
-        self.shell_path.as_deref()
+        self.core.shell_path.as_deref()
     }
 
     /// The bell's visual mark, while it is up.
     pub fn bell_showing(&self) -> bool {
         self.bell_until
-            .is_some_and(|until| self.clock.now() < until)
+            .is_some_and(|until| self.core.clock.now() < until)
     }
 
     /// The pane's screen and scrollback encoded, to start a pane from later. `None` for a pane on
@@ -276,6 +281,7 @@ impl Session {
     /// that cannot be cut to its newest part).
     pub fn snapshot(&self) -> Option<Snapshot> {
         let snapshot = self
+            .core
             .pane
             .with_term(|term| match term.on_alternate_screen() {
                 true => None,
@@ -286,12 +292,12 @@ impl Session {
 
     /// The working directory the shell reported, if any.
     pub fn cwd(&self) -> Option<&str> {
-        self.cwd.as_deref()
+        self.core.cwd.as_deref()
     }
 
     /// The progress the program reported (OSC 9;4), while it is shown.
     pub fn progress(&self) -> Option<temor_vt::Progress> {
-        self.progress
+        self.core.progress
     }
 }
 

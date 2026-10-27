@@ -44,9 +44,10 @@ impl Session {
         if !command.typable() {
             return false;
         }
-        let mode = self.pane.with_term(|term| term.paste_mode());
-        self.pane.send(&paste::encode(&command.0, mode));
-        self.pane
+        let mode = self.core.pane.with_term(|term| term.paste_mode());
+        self.core.pane.send(&paste::encode(&command.0, mode));
+        self.core
+            .pane
             .with_term(|term| term.scroll(ViewportScroll::Bottom));
         true
     }
@@ -81,7 +82,7 @@ impl Session {
             return Ok(());
         };
         let command = self.block_command(id).unwrap_or_default().to_owned();
-        let store = ShelfStore::new(self.shelf_dir.clone());
+        let store = ShelfStore::new(self.core.shelf_dir.clone());
         let name = FileName::sanitise(&output_name(&command));
         let saved = write_temp(store.dir(), &text).and_then(|temp| {
             store
