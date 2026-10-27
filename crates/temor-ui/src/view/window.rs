@@ -76,6 +76,7 @@ pub fn App() -> Element {
         let launch = launch.clone();
         move || {
             let mut hub = Hub::new(launch);
+            hub.set_client(super::live::client());
             let desktop = try_consume_context::<Desktop>();
             // One handed to the window wins; else the desktop's password store.
             hub.set_credentials(match (try_consume_context::<Credentials>(), &desktop) {

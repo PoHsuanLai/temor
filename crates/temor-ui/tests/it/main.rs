@@ -12,6 +12,7 @@ mod cards;
 mod coherence;
 mod desktop;
 mod drive;
+mod history;
 mod host_files;
 mod local_panes;
 mod offer;

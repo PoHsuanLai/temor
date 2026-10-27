@@ -86,6 +86,7 @@ pub struct Hub {
     /// The apps programs belong to, found as tabs run them (PLAN P22).
     pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
     pub(super) icon_pack: crate::edge::icon_pack::IconPack,
+    pub(super) history: super::history::History,
 }
 
 impl std::fmt::Debug for Hub {
@@ -153,6 +154,7 @@ impl Hub {
             live_cards: Default::default(),
             app_icons: RefCell::default(),
             icon_pack,
+            history: Default::default(),
         }
     }
 

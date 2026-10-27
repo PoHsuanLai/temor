@@ -61,12 +61,7 @@ where
     Ok(serde_json::from_value(value).unwrap_or_default())
 }
 
-/// Whether a command goes into a checkpoint's history: not one typed with a space first (the
-/// shells' way to keep a command out of history), and not one that sets a secret or holds
-/// something that looks like one.
-pub fn kept_in_history(command: &str) -> bool {
-    !command.starts_with(' ') && !holds_secret(command)
-}
+pub use temor_schema::secret::kept_in_history;
 
 /// Why a checkpoint was not read.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -61,6 +61,7 @@ impl Hub {
             };
             let heard = Heard::of(&event);
             let notice = session.absorb(event);
+            self.history_heard(pane, &notice, session);
             if self.offer_heard(pane, heard, session) == OfferRedraw::Yes {
                 out.chrome.insert(pane);
             }

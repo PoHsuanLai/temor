@@ -7,6 +7,15 @@ use temor_core::vocab::ids::BlockId;
 
 use super::super::Session;
 
+/// A finished command, as history is told of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Finished {
+    pub id: BlockId,
+    pub command: String,
+    pub exit: Option<i32>,
+    pub ran_ms: u64,
+}
+
 impl Session {
     /// How many rows the terminal has.
     pub fn rows(&self) -> u16 {
@@ -41,6 +50,24 @@ impl Session {
             .store()
             .iter()
             .map(|block| (block.id, block.outcome()))
+            .collect()
+    }
+
+    /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
+    /// them: the command, how it exited, and how long it ran.
+    pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
+        self.blocks
+            .store()
+            .iter()
+            .filter(|block| after.is_none_or(|after| block.id > after))
+            .filter_map(|block| {
+                Some(Finished {
+                    id: block.id,
+                    command: block.command.0.clone(),
+                    exit: block.exit.map(|code| code.0),
+                    ran_ms: block.elapsed_ms()?,
+                })
+            })
             .collect()
     }
 

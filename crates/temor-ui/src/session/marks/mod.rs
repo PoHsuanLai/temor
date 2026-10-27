@@ -11,6 +11,7 @@ mod mark;
 mod notify;
 mod picks;
 mod query;
+pub use query::Finished;
 mod rows;
 mod survey;
 #[cfg(test)]
