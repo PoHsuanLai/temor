@@ -12,11 +12,11 @@ use temor_client::remote::digest::ContentHash;
 use temor_client::remote::hello::HelperVersion;
 use temor_client::remote::message::{EnvVar, OpenSession, RemotePath};
 use temor_client::remote::units::{CellPx, Cols, Rows, Size};
-use temor_client::remote::{
-    Client, ClientEvent, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
-};
 use temor_client::ssh::HostAlias;
 use temor_panes::pty::SessionLauncher;
+use temor_remote::{
+    Client, ClientEvent, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
+};
 
 use super::support::Rig;
 use crate::hub::remote::{RemotePane, Shown};

@@ -14,7 +14,6 @@ pub mod install;
 pub mod ping;
 pub mod upload;
 
-// The helper's wire and its client, for the window's link steps, until those steps are the
-// client's too.
-pub use temor_remote::*;
 pub use temor_wire::{digest, hello, ids, link, message, units};
+// A host's reach and the ports it listens on, as its client reports them.
+pub use temor_remote::{HostReach, PortAction, host, port_actions};

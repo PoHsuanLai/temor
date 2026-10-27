@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use temor_client::ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
+use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
 
 use super::support::Rig;
 use crate::hub::hosts::HostRows;

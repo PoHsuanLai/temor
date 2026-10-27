@@ -228,7 +228,7 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_client::ssh::{ControlPersist, RuntimeDir, Seconds};
+    use temor_ssh::{ControlPersist, RuntimeDir, Seconds};
 
     #[test]
     fn the_connecting_ssh_has_a_terminal_leaves_the_connection_behind_and_runs_only_true() {

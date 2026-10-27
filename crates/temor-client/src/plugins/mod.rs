@@ -16,5 +16,8 @@ pub mod facts;
 pub mod host;
 pub mod offer;
 
-// The plugins' own names, for what the window keeps and draws of them.
-pub use temor_plugins::*;
+// What the window keeps and draws of the plugins: their catalog and data folders, a lens's
+// picture and the rows they offer.
+pub use temor_plugins::{
+    DataDirs, Drawing, FOLDER_TABLE, Generations, Plugin, Routed, effect_of, lens_block, message,
+};

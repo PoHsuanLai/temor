@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 use temor_client::model::bar::RowKey;
 use temor_client::model::vocab::ids::{BlockId, PaneId};
 use temor_client::model::vocab::text::Cwd;
-use temor_client::plugins::{Catalog, DataDirs, lens_block};
 use temor_panes::pane::PaneEvent;
 use temor_panes::pane::report::ReportState;
+use temor_plugins::{Catalog, DataDirs, lens_block};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::Hub;
