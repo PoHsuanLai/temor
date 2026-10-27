@@ -5,7 +5,7 @@
 use temor_schema::secret::kept_in_history;
 use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_schema::url::TemorUrl;
-use temor_store::{Shelf, SqliteStore, StoreError};
+use temor_store::{Shelf, SqliteStore, StoreError, Topics};
 
 /// A change to what is kept.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +28,9 @@ pub enum Command {
     Ran(RanCommand),
     /// Forget the history from before `at` (PLAN §2b's retention).
     ForgetBefore(At),
+    /// Keep what the window keeps between launches under `key` (its rows, its Spaces, the
+    /// hosts), or forget it (`None`).
+    Lay { key: String, value: Option<String> },
 }
 
 /// Apply `command` to `store`.
@@ -56,6 +59,10 @@ pub(crate) fn apply(store: &SqliteStore, command: Command) -> Result<(), StoreEr
             false => Ok(()),
         },
         Command::ForgetBefore(at) => store.forget_before(at).map(|_| ()),
+        Command::Lay { key, value } => match value {
+            Some(value) => store.keep(&key, &value, Topics::LAYOUT),
+            None => store.unkeep(&key, Topics::LAYOUT),
+        },
     }
 }
 
@@ -153,5 +160,19 @@ mod tests {
         assert_eq!(ended.ended, Some(At(9_000)));
         apply(&store, Command::ForgetBefore(At(1_500))).expect("forget");
         assert!(store.commands_of(session.id).expect("commands").is_empty());
+    }
+
+    #[test]
+    fn the_layout_is_kept_by_key_replaced_and_forgotten() {
+        let store = SqliteStore::in_memory().expect("store");
+        let lay = |value: Option<&str>| Command::Lay {
+            key: "space/0".to_owned(),
+            value: value.map(str::to_owned),
+        };
+        apply(&store, lay(Some("one"))).expect("kept");
+        apply(&store, lay(Some("two"))).expect("replaced");
+        assert_eq!(store.kept("space/0").expect("read").as_deref(), Some("two"));
+        apply(&store, lay(None)).expect("forgotten");
+        assert_eq!(store.kept("space/0").expect("read"), None);
     }
 }

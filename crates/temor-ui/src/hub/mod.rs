@@ -25,6 +25,7 @@ mod facts;
 mod history;
 mod hosts;
 mod keys;
+mod layout;
 mod live_cards;
 mod local;
 mod model;

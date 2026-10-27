@@ -41,6 +41,11 @@ impl Hub {
         self.history.client = Some(client);
     }
 
+    /// The client the window keeps through, when it has one.
+    pub(super) fn client(&self) -> Option<&Client> {
+        self.history.client.as_ref()
+    }
+
     /// The session of `pane`, as history knows it.
     pub fn session_id(&self, pane: PaneId) -> Option<SessionId> {
         self.history.sessions.get(&pane).map(|begun| begun.id)

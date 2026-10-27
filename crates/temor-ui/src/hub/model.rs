@@ -87,6 +87,8 @@ pub struct Hub {
     pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
     pub(super) icon_pack: crate::edge::icon_pack::IconPack,
     pub(super) history: super::history::History,
+    /// What of the layout the client was last handed.
+    pub(super) laid: super::layout::Laid,
 }
 
 impl std::fmt::Debug for Hub {
@@ -155,6 +157,7 @@ impl Hub {
             app_icons: RefCell::default(),
             icon_pack,
             history: Default::default(),
+            laid: Default::default(),
         }
     }
 

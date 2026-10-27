@@ -325,6 +325,13 @@ impl SqliteStore {
         )?;
         Ok(())
     }
+
+    /// Forget what is kept under `key`, saying it touched `topics`.
+    pub fn unkeep(&self, key: &str, topics: Topics) -> Result<(), StoreError> {
+        self.touch(topics)
+            .execute("DELETE FROM layout WHERE key = ?1", [key])?;
+        Ok(())
+    }
 }
 
 /// A count as SQLite takes it.

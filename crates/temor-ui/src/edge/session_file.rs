@@ -1,6 +1,8 @@
-//! The session file on disk (PLAN §7: a session is restored on launch). The directory is
+//! The session files an older temor wrote (`session.json`, `session-<n>.json`): temor now keeps
+//! its rows in the store (`hub::layout`) and reads these once, into it. The directory is
 //! injected; the binary resolves it from the XDG state home. A damaged file is set aside
-//! (`session.json.bad`), a newer one is left alone, and every write is atomic and private.
+//! (`session.json.bad`), a newer one is left alone. The writers stay so tests can leave a file as
+//! an older temor would.
 
 use std::io;
 use std::path::{Path, PathBuf};

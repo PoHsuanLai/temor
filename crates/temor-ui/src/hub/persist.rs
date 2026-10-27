@@ -1,16 +1,15 @@
 //! Saving the session (PLAN §4b: never in the render path). A change marks the session dirty;
-//! the window polls on a timer and the pace lets one write through per interval. The last
-//! write and the snapshots of the live panes happen when the hub is dropped, at quit.
+//! the window polls on a timer and the pace lets one write through per interval: the layout to
+//! the client (`layout`), each pane's checkpoint to its file. The last write and the snapshots of
+//! the live panes happen when the hub is dropped, at quit.
 
-use std::collections::BTreeSet;
 use std::time::Instant;
 
-use ds::components::app::spaces::SpaceId;
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::leave_out;
 
+use super::layout::Through;
 use super::model::Hub;
-use crate::edge::{Pace, checkpoint, save_session_for, save_spaces, save_with_hosts, sidecar};
+use crate::edge::{Pace, checkpoint, sidecar};
 
 impl Hub {
     /// Writes the session if a change is waiting and the pace allows it. Returns how long to
@@ -29,11 +28,10 @@ impl Hub {
     }
 
     fn write_session(&mut self) {
+        self.lay_all(Through::Client);
         let Some(dir) = self.state_dir.clone() else {
             return;
         };
-        let failures = self.save_all(&dir);
-        self.notices.extend(failures);
         // Quitting from the system's menu ends the process without dropping the hub, so what a
         // next launch needs from each pane (its shell's state, its daemon session) is kept now.
         self.write_checkpoints(&dir);
@@ -85,39 +83,14 @@ impl Hub {
             let _ = checkpoint::write(dir, kept.pane, &kept.checkpoint);
         }
     }
-
-    /// Writes every Space's session and the Spaces file; what could not be written, as text.
-    fn save_all(&self, dir: &std::path::Path) -> Vec<String> {
-        // A tab that ran a program (`temor -e`) is not brought back: it was that launch's.
-        let runs: BTreeSet<PaneId> = self.run.panes.keys().copied().collect();
-        let sessions = self
-            .book
-            .parked
-            .iter()
-            .map(|(id, ws)| (*id, ws))
-            .chain([(self.book.active, &self.ws)])
-            .map(|(id, ws)| (id, leave_out(ws, &runs)));
-        let mut failures: Vec<String> = sessions
-            .filter_map(|(id, ws)| match id {
-                // The first Space's file also keeps the hosts (answers and panes on hosts).
-                SpaceId(0) => save_with_hosts(dir, &ws, &self.hosts_file()).err(),
-                _ => save_session_for(dir, id, &ws).err(),
-            })
-            .map(|err| err.to_string())
-            .collect();
-        if let Err(err) = save_spaces(dir, &self.spaces_for_file()) {
-            failures.push(err.to_string());
-        }
-        failures
-    }
 }
 
 impl Drop for Hub {
     fn drop(&mut self) {
+        self.lay_all(Through::Now);
         let Some(dir) = self.state_dir.clone() else {
             return;
         };
-        let _ = self.save_all(&dir);
         // The links go, the host sessions stay: quitting detaches (D18).
         self.remote_quit();
         keep_at_quit(&dir, &self.kept_panes(Screens::Taken));

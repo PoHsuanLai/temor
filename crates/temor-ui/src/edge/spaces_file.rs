@@ -1,5 +1,6 @@
-//! The Spaces file on disk (PLAN §7): quire's `Spaces<Project, Place>` as the kit writes it, in
-//! the private state directory beside the session files. The directory is injected. A write is
+//! The Spaces file an older temor wrote (PLAN §7): quire's `Spaces<Project, Place>` as the kit
+//! writes it, in the private state directory beside the session files. temor now keeps its Spaces
+//! in the store (`hub::layout`) and reads this once, into it. The directory is injected. A write is
 //! atomic and owner-only (0600); a file that is not JSON or holds no Space is set aside as
 //! `spaces.json.bad`, never overwritten.
 

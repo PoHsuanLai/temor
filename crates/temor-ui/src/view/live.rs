@@ -32,6 +32,25 @@ pub(crate) fn open_client(state_dir: Option<&Path>) -> Client {
     }
 }
 
+/// The client a window keeps through: the program's, or for a window built without one (a
+/// test's), one over `temor.db` in its own state folder, so what it keeps is there when a window
+/// opens on that folder again. It is shared from the root, as [`client`] gives it.
+pub(crate) fn window_client(state_dir: Option<&Path>) -> Client {
+    if let Some(client) = try_consume_context::<Client>() {
+        return client;
+    }
+    let opened = state_dir.map(|dir| {
+        std::fs::create_dir_all(dir)
+            .map_err(|why| why.to_string())
+            .and_then(|()| SqliteStore::open(dir.join(DB_FILE)).map_err(|why| why.to_string()))
+    });
+    let client = match opened {
+        Some(Ok(store)) => Client::open(Arc::new(store), ClientConfig { external: false }),
+        _ => in_memory(),
+    };
+    provide_root_context(client)
+}
+
 /// A client over an empty database in memory, reading on the thread that asks.
 fn in_memory() -> Client {
     match SqliteStore::in_memory() {

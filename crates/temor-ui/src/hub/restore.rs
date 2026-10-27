@@ -1,44 +1,48 @@
 //! Starting the hub: every Space's last session when there is one, else a first tab in the Space
-//! on screen. The Spaces file says which Spaces there are; each Space's session file says what
-//! was open in it (a Space whose session file is missing falls back to the place the Spaces file
-//! recalls for it).
+//! on screen. The kept Spaces say which Spaces there are; each Space's kept rows say what was
+//! open in it (a Space with none falls back to the place the Spaces recall for it). They are kept
+//! in the store (`layout`); the files an older temor wrote are read into it first, once.
 
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use ds::components::app::spaces::{SpaceId, Spaces};
+use ds::components::app::spaces::SpaceId;
 use temor_core::notify::Focus;
-use temor_core::space::{Place, Project, TemorSpaces};
+use temor_core::space::Place;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan, viewer_plan};
 use temor_core::workspace::{KeepClosed, Workspace};
 
 use super::model::Hub;
-use crate::edge::{
-    SpacesStartup, Startup, checkpoint, load_hosts, load_session_for, load_spaces, sidecar,
-};
+use crate::edge::{checkpoint, sidecar};
 
 impl Hub {
     /// Restores the saved Spaces (every tab's panes, in their folders, with their scrollback
     /// where a snapshot was kept) or opens a first tab.
     pub fn start(&mut self) {
-        if let Some(dir) = self.state_dir.clone() {
-            let hosts = load_hosts(&dir);
-            self.ssh.book = hosts.book;
-            self.remote_carry_over();
-            self.ssh.restored = hosts.panes;
-            self.book.spaces = self.read_spaces(&dir);
-            self.book.active = self.book.spaces.current().id;
-            let ids: Vec<SpaceId> = self.book.spaces.list().iter().map(|s| s.id).collect();
-            let mut taken = BTreeSet::new();
-            for id in ids {
-                self.restore_space(&dir, id, &mut taken);
-            }
-            // A snapshot is good for one launch only: pane ids are reused after a restore.
-            sidecar::clear(&dir);
-            checkpoint::clear(&dir);
-            self.quiet_parked();
+        let dir = self.state_dir.clone();
+        if let Some(dir) = &dir {
+            self.import_files(dir);
         }
+        let hosts = self.laid_hosts();
+        self.ssh.book = hosts.book;
+        self.remote_carry_over();
+        self.ssh.restored = hosts.panes;
+        if let Some(spaces) = self.laid_spaces() {
+            self.book.spaces = spaces;
+        }
+        self.book.active = self.book.spaces.current().id;
+        let ids: Vec<SpaceId> = self.book.spaces.list().iter().map(|s| s.id).collect();
+        let mut taken = BTreeSet::new();
+        for id in ids {
+            self.restore_space(dir.as_deref(), id, &mut taken);
+        }
+        if let Some(dir) = &dir {
+            // A snapshot is good for one launch only: pane ids are reused after a restore.
+            sidecar::clear(dir);
+            checkpoint::clear(dir);
+        }
+        self.quiet_parked();
         // A first launch that was asked to run a program opens with its tab, not an empty shell.
         if let Some(run) = self.launch.first_run.take() {
             self.run_in_tab(run);
@@ -47,35 +51,12 @@ impl Hub {
         self.refresh_probe();
     }
 
-    fn read_spaces(&mut self, dir: &Path) -> TemorSpaces {
-        let first = || Spaces::first_run([Project::default()], Project::default);
-        match load_spaces(dir) {
-            Ok(SpacesStartup::Loaded(spaces)) => spaces,
-            Ok(SpacesStartup::NoFile) => first(),
-            Ok(SpacesStartup::Damaged) => {
-                self.notices.push(
-                    "Your Spaces file was damaged. It was set aside and a new one started."
-                        .to_owned(),
-                );
-                first()
-            }
-            Err(err) => {
-                self.notices.push(err.to_string());
-                first()
-            }
-        }
-    }
-
     /// Brings back the workspace of `id` and starts its panes. `taken` holds the panes already
     /// given to other Spaces: a file that reuses one of them is not restored.
-    fn restore_space(&mut self, dir: &Path, id: SpaceId, taken: &mut BTreeSet<PaneId>) {
-        let saved = match load_session_for(dir, id, KeepClosed::DEFAULT) {
-            Ok(Startup::Restored(ws)) if !ws.tabs.place.tabs.is_empty() => Some(*ws),
-            Ok(_) => from_place(&self.book.spaces.recall().of(id)),
-            Err(err) => {
-                self.notices.push(err.to_string());
-                None
-            }
+    fn restore_space(&mut self, dir: Option<&Path>, id: SpaceId, taken: &mut BTreeSet<PaneId>) {
+        let saved = match self.laid_space(id) {
+            Some(ws) if !ws.tabs.place.tabs.is_empty() => Some(ws),
+            _ => from_place(&self.book.spaces.recall().of(id)),
         };
         let Some(ws) = saved else { return };
         let panes = ws.tabs.panes();
@@ -97,8 +78,8 @@ impl Hub {
         }
         self.with_space(id, |hub| {
             for spawn in plan {
-                let snapshot = sidecar::take(dir, spawn.pane);
-                if let Some(kept) = checkpoint::take(dir, spawn.pane) {
+                let snapshot = dir.and_then(|dir| sidecar::take(dir, spawn.pane));
+                if let Some(kept) = dir.and_then(|dir| checkpoint::take(dir, spawn.pane)) {
                     hub.carried.insert(spawn.pane, kept);
                 }
                 hub.open_pane(&spawn, snapshot);

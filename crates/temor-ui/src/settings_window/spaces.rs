@@ -1,6 +1,6 @@
 //! The Spaces page: for each Space, under its name, the folder new tabs open in, the profile new
 //! shells start with and the routes that send new sessions to it (PLAN §7). Edits are sent to the
-//! main window (`board`), which applies them through the kit's handle and writes `spaces.json`
+//! main window (`board`), which applies them through the kit's handle and keeps them
 //! as it does for the Space menu's own edits.
 //!
 //! Variables are plain name and value fields. A credential's secret is never shown: the page says
