@@ -3,11 +3,14 @@
 //! hub starts, never on the window's. A fact that cannot be read is left out; nothing here
 //! reports an error. temor runs no git of its own: what a repository says is a plugin's to tell.
 
+mod files;
+pub mod host;
+
 use std::path::Path;
 
 use temor_core::facts::Facts;
 
-use super::facts_files::{read_runtimes, read_venv};
+use files::{read_runtimes, read_venv};
 
 /// What `read_facts` needs besides the folder.
 #[derive(Debug, Clone, Default)]
@@ -29,5 +32,4 @@ pub fn read_facts(dir: &str, env: &FactsEnv) -> Facts {
 }
 
 #[cfg(test)]
-#[path = "facts_tests.rs"]
 mod tests;

@@ -18,8 +18,8 @@ use temor_wire::message::FileStamp;
 
 use super::remote_edit::{EditTier, Overwrite};
 use crate::edge::Ambient;
-use crate::edge::desktop_feed::{NoTailnet, TailnetFeed};
 use crate::platform::{FileShell, Opener, default_file_shell, default_opener};
+use temor_client::desktop::feed::{NoTailnet, TailnetFeed};
 use temor_client::ssh::SshEnv;
 use temor_client::ssh::work::{EditId, SshEvent, SshWork};
 

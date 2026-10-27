@@ -19,8 +19,8 @@ use temor_desktop::{
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::desktop_port::{Act, Answer, Ask, DesktopLink, Snapshot};
 use crate::view::title::window_title;
+use temor_client::desktop::port::{Act, Answer, Ask, DesktopLink, Snapshot};
 
 impl Hub {
     /// What the desktop services see now, and how many agents wait on the person, for the dock.

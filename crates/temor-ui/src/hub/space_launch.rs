@@ -10,7 +10,7 @@ use temor_core::workspace::WorkspaceIn;
 use temor_shell::ChildEnv;
 
 use super::model::Hub;
-use crate::edge::space_start::read_dotenv;
+use temor_client::space::start::read_dotenv;
 
 /// Where and with what a new shell starts.
 #[derive(Debug, Default)]

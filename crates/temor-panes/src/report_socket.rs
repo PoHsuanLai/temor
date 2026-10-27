@@ -13,8 +13,6 @@ use temor_pane::PaneEvent;
 use temor_pane::report::{PaneKey, PaneSocket, SocketLimits};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::error::UiError;
-
 /// How long the thread waits for a request before it looks at the sockets again. A report is
 /// heard within this.
 const LOOK_EVERY: Duration = Duration::from_millis(100);
@@ -37,18 +35,17 @@ impl SocketHost {
     pub fn start(
         dir: PathBuf,
         events: UnboundedSender<(PaneId, PaneEvent)>,
-    ) -> Result<SocketHost, UiError> {
+    ) -> std::io::Result<SocketHost> {
         let (requests, inbox) = channel();
         std::thread::Builder::new()
             .name("temor-pane-sockets".to_owned())
-            .spawn(move || serve(inbox, events))
-            .map_err(UiError::Thread)?;
+            .spawn(move || serve(inbox, events))?;
         Ok(SocketHost { dir, requests })
     }
 
     /// Listens for `pane` and returns the socket's path for its `TEMOR_SOCKET`. A socket the pane
     /// had before (a restarted shell) is replaced.
-    pub fn open(&self, pane: PaneId) -> Result<PathBuf, UiError> {
+    pub fn open(&self, pane: PaneId) -> Result<PathBuf, temor_pane::PaneError> {
         let key = PaneKey::new(&pane.0.to_string())?;
         // An older socket of this pane is gone first: its drop removes the file by name, which
         // must not be the new socket's.

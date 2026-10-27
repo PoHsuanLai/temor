@@ -16,7 +16,7 @@ use temor_transfer::Consent;
 use super::model::Hub;
 use super::shelf::{Ask, AskKind, Live};
 use crate::edge::Clock;
-use crate::edge::shelf_files::{PlaceError, place};
+use temor_client::shelf::{PlaceError, place};
 
 /// The most names tried for one file before it is given up on.
 const MOST_NAMES: u32 = 10_000;

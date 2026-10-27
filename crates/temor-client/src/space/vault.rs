@@ -7,7 +7,7 @@ use std::sync::Arc;
 use temor_core::space::AccountRef;
 use temor_desktop::{SecretFault, SecretVault};
 
-use super::space_start::{CredentialFault, CredentialSource, Credentials};
+use super::start::{CredentialFault, CredentialSource, Credentials};
 
 /// The credentials of a Space, kept in `vault`.
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ mod tests {
     use temor_desktop::NoSecrets;
 
     use super::*;
-    use crate::edge::Held;
+    use crate::space::start::Held;
 
     /// A vault in memory; its `Debug` shows no secret.
     #[derive(Default)]

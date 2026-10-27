@@ -9,8 +9,9 @@ use temor_core::space::{Place, TemorSpaces};
 use temor_core::workspace::WorkspaceIn;
 
 use super::model::{Hub, HubRef};
-use crate::edge::{Credentials, space_agent::SpaceAgents};
+use crate::edge::Credentials;
 use crate::settings_window::SpaceRow;
+use temor_client::space::agent::SpaceAgents;
 
 /// What the window keeps of each Space besides its workspace.
 #[derive(Default)]

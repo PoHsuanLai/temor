@@ -40,6 +40,11 @@ temor-ssh = { workspace = true }
 temor-wire = { workspace = true }
 temor-remote = { workspace = true }
 temor-pty = { workspace = true }
+# The desktop's port and its password store (`desktop`, `space`), the downloads shelf's index
+# (`shelf`), and the shelf's times.
+temor-desktop = { workspace = true }
+temor-transfer = { workspace = true }
+ds-core = { workspace = true }
 
 [dev-dependencies]
 temor-client = { path = ".", features = ["testing"] }

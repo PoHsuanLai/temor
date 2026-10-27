@@ -8,7 +8,7 @@ use std::sync::Arc;
 use temor_ssh::{HostRow, merge_hosts};
 
 use super::model::{Hub, HubRef};
-use crate::edge::desktop_feed::TailnetFeed;
+use temor_client::desktop::feed::TailnetFeed;
 
 /// The rows of the host list, in the order to show them: group them by [`HostRow::group`], dim
 /// the offline ones ([`HostRow::presence`]) and connect with [`HostRow::destination`].

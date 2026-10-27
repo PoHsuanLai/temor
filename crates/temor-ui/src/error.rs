@@ -31,12 +31,6 @@ pub enum UiError {
     /// The folder for shell integration is missing, or is not private to this user.
     #[error("the folder for shell setup is not private to you: {0}")]
     RuntimeDir(#[source] std::io::Error),
-    /// The pane's background work could not start.
-    #[error("the terminal could not start its background work: {0}")]
-    Thread(#[source] std::io::Error),
-    /// A Space's key agent could not be started.
-    #[error("the Space's key agent could not start: {0}")]
-    Agent(String),
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),

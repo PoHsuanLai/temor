@@ -14,6 +14,7 @@ pub mod marks;
 pub mod notify;
 mod open;
 pub mod remote;
+pub mod report_socket;
 pub mod sources;
 
 use std::path::PathBuf;

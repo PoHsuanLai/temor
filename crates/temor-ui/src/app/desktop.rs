@@ -13,8 +13,8 @@ use temor_desktop::{
 use tokio::runtime::Handle;
 use tokio::sync::watch;
 
-use crate::edge::desktop_feed::{LiveTailnet, NoTailnet, TailnetFeed, group_of};
-use crate::edge::desktop_port::{Ask, DesktopLink, DesktopPort, desktop_pair};
+use temor_client::desktop::feed::{LiveTailnet, NoTailnet, TailnetFeed, group_of};
+use temor_client::desktop::port::{Ask, DesktopLink, DesktopPort, desktop_pair};
 
 /// What the window is given of the desktop. Cloned into the window's root context; a window
 /// without it (tests, a desktop with no session bus) reads [`Desktop::none`].

@@ -8,7 +8,7 @@ use temor_core::facts::{EnvName, FolderSource, Runtimes, runtimes_in, venv_name}
 
 use temor_wire::message::{MOST_FACT_BYTES, MOST_FACT_PARENTS};
 
-use super::facts::FactsEnv;
+use super::FactsEnv;
 
 /// The virtualenv: the environment's `VIRTUAL_ENV` if the pane has one, else a `.venv` folder
 /// in the folder.

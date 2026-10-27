@@ -9,12 +9,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use ds::components::app::spaces::SpaceId;
+use ds_style::space::list::SpaceId;
 use temor_core::space::AgentPlan;
 use temor_core::vocab::home::expand_home;
 
-use crate::error::UiError;
-use crate::platform::ensure_private_dir;
+use crate::keep::private::ensure_private_dir;
 
 /// How long the agent has to make its socket.
 const SOCKET_WAIT: Duration = Duration::from_secs(2);
@@ -41,12 +40,17 @@ impl Drop for RunningAgent {
     }
 }
 
-fn fault(what: impl std::fmt::Display) -> UiError {
-    UiError::Agent(what.to_string())
+/// Why a Space's agent could not start, in words for the person.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("the Space's key agent could not start: {0}")]
+pub struct AgentFault(pub String);
+
+fn fault(what: impl std::fmt::Display) -> AgentFault {
+    AgentFault(what.to_string())
 }
 
 /// Starts the agent of `plan` and loads its key (`~/` in the key's path is `home`).
-pub fn start(plan: &AgentPlan, home: &Path) -> Result<RunningAgent, UiError> {
+pub fn start(plan: &AgentPlan, home: &Path) -> Result<RunningAgent, AgentFault> {
     let socket = PathBuf::from(&plan.socket);
     let folder = socket
         .parent()
@@ -94,7 +98,12 @@ pub struct SpaceAgents {
 
 impl SpaceAgents {
     /// Makes sure `space` has its agent running, starting it when it has none or it has died.
-    pub fn ensure(&mut self, space: SpaceId, plan: &AgentPlan, home: &Path) -> Result<(), UiError> {
+    pub fn ensure(
+        &mut self,
+        space: SpaceId,
+        plan: &AgentPlan,
+        home: &Path,
+    ) -> Result<(), AgentFault> {
         if self
             .running
             .get_mut(&space)

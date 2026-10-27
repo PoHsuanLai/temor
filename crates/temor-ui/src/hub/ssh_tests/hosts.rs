@@ -5,8 +5,8 @@ use std::sync::Arc;
 use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
 
 use super::support::Rig;
-use crate::edge::desktop_feed::TailnetFeed;
 use crate::hub::hosts::HostRows;
+use temor_client::desktop::feed::TailnetFeed;
 
 #[derive(Debug)]
 struct Fixed(Vec<TailnetHost>);

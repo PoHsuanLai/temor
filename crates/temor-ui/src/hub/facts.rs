@@ -11,8 +11,8 @@ use temor_wire::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::model::Hub;
-use crate::edge::facts::{FactsEnv, read_facts};
-use crate::edge::facts_host::facts_from_host;
+use temor_client::facts::host::facts_from_host;
+use temor_client::facts::{FactsEnv, read_facts};
 use temor_client::remote::conn::Conn;
 
 /// Whether a result changed what the window shows.

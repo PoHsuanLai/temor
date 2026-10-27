@@ -20,10 +20,10 @@ use temor_transfer::shelf::{Clock, ShelfStore, SystemClock, UnixMillis};
 use super::bar_action::select_tab;
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::shelf_files::{persist, restore};
 use crate::platform::{FileShell, default_file_shell};
 use crate::view::launch::Launch;
 use crate::words::notices;
+use temor_client::shelf::{persist, restore};
 use temor_core::shelf::RowAction;
 
 /// What a program asks of the person.
@@ -205,7 +205,7 @@ impl Hub {
     }
 
     fn serve_request(&mut self, ask: &Ask, consent: Consent) {
-        let shelf = crate::edge::shelf_files::offered(&self.shelf.shelf);
+        let shelf = temor_client::shelf::offered(&self.shelf.shelf);
         self.live(ask.pane, |session| {
             session.pane().serve(ask.offer, consent, shelf);
         });

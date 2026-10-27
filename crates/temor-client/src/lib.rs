@@ -10,12 +10,16 @@
 
 pub mod act;
 mod client;
+pub mod desktop;
 mod error;
 mod external;
+pub mod facts;
 pub mod keep;
 mod live;
 pub mod query;
 pub mod remote;
+pub mod shelf;
+pub mod space;
 pub mod spaces;
 pub mod ssh;
 pub mod viewer_host;

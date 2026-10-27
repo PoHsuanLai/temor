@@ -15,7 +15,7 @@ use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 
 use super::desktop::{exit_of, new_tab_for, refocus_after_agent_open};
 use super::tests::hub_after;
-use crate::edge::desktop_port::Act;
+use temor_client::desktop::port::Act;
 
 fn agent_status(state: ProgramState) -> Heard {
     Heard::Window(PaneEvent::Program(ProgramStatus {
