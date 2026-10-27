@@ -2,9 +2,7 @@
 //! the program sends.
 
 use temor_core::notify::Focus;
-use temor_core::session::{ShellIn, ShellState, shell_step};
-use temor_core::vocab::text::display_text;
-use temor_pane::text::cwd_from_url;
+use temor_core::session::ShellState;
 use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
@@ -12,7 +10,7 @@ use super::model::{INSET, Lifetime, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
-use temor_pane::{Hold, PaneEvent};
+use temor_pane::PaneEvent;
 use temor_vt::Snapshot;
 
 /// How long the bell's visual mark stays up.
@@ -23,27 +21,18 @@ impl Session {
     /// passes to [`Session::end_hold`]; a hold never lasts past that timer (PLAN §4b). The frame
     /// shown meanwhile was captured by the pane where the hold began.
     pub fn start_hold(&mut self) -> u64 {
-        self.core.hold_generation += 1;
-        self.core.hold = Hold::Held;
-        self.core.hold_generation
+        self.core.start_hold()
     }
 
     /// The program released the screen.
     pub fn release_hold(&mut self) {
-        self.core.hold = Hold::Released;
+        self.core.release_hold();
     }
 
     /// The timer of hold `generation` ran out: releases the hold if it is still the current one.
     /// Returns whether it released anything.
     pub fn end_hold(&mut self, generation: u64) -> bool {
-        if self.core.hold == Hold::Held && self.core.hold_generation == generation {
-            self.core.hold = Hold::Released;
-            // The program is told nothing; its next output shows as it arrives. A terminal that
-            // refuses is not the pane's failure: the next release from the program ends it.
-            let _ = self.core.pane.with_term(|term| term.end_hold());
-            return true;
-        }
-        false
+        self.core.end_hold(generation)
     }
 
     /// A message for the person from the last action, if one is waiting; taking it clears it.
@@ -58,7 +47,7 @@ impl Session {
 
     /// Whether the program has ended.
     pub fn ended(&self) -> bool {
-        matches!(self.core.lifetime, Lifetime::Ended(_))
+        self.core.ended()
     }
 
     /// The pane's size and scale changed. The grid is refitted; when it changed, the terminal and
@@ -125,11 +114,7 @@ impl Session {
                 Notice::Repaint
             }
             PaneEvent::RenderHold(hold) => Notice::Hold(hold),
-            PaneEvent::Title(title) => {
-                let title = sanitise_title(&title);
-                self.core.title = title.clone();
-                Notice::Title(title)
-            }
+            PaneEvent::Title(title) => Notice::Title(self.core.retitle(&title)),
             PaneEvent::Bell => {
                 let now = self.core.clock.now();
                 self.bell_until = Some(now.after_span(BELL_MARK));
@@ -143,35 +128,16 @@ impl Session {
                 self.core.lifetime = Lifetime::Ended(exit);
                 Notice::Ended(exit)
             }
-            PaneEvent::Cwd(url) => {
-                // The path is shown, so it is cleaned and bounded first (it came from the shell).
-                self.core.cwd = cwd_from_url(&url).map(|path| display_text(&path, CWD_MAX_CHARS));
-                self.core.folder = cwd_from_url(&url).map(std::path::PathBuf::from);
-                if let Some(path) = cwd_from_url(&url) {
-                    self.shell_step(ShellIn::Cwd(path));
-                }
-                match &self.core.cwd {
-                    Some(path) => Notice::Cwd(path.clone()),
-                    None => Notice::Chrome,
-                }
-            }
+            PaneEvent::Cwd(url) => match self.core.moved_to(&url) {
+                Some(path) => Notice::Cwd(path),
+                None => Notice::Chrome,
+            },
             PaneEvent::ShellReport(text) => {
-                // Anything printed in the pane can look like a report; only the shell has the key.
-                if let Some(key) = &self.core.report_key
-                    && let Ok(report) = temor_shell::report::read(&text, key)
-                {
-                    if let Some((_, path)) = report.env.iter().find(|(name, _)| name == "PATH") {
-                        self.core.shell_path = Some(path.clone());
-                    }
-                    self.shell_step(ShellIn::Reported(report));
-                }
+                self.core.reported(&text);
                 Notice::Quiet
             }
             PaneEvent::Progress(progress) => {
-                self.core.progress = match progress.state {
-                    temor_vt::ProgressState::Remove => None,
-                    _ => Some(progress),
-                };
+                self.core.set_progress(progress);
                 Notice::Chrome
             }
             PaneEvent::MarkBegin { seq } => {
@@ -216,20 +182,10 @@ impl Session {
         }
     }
 
-    /// Steps the shell's state on one input.
-    fn shell_step(&mut self, input: ShellIn) {
-        let state = std::mem::take(&mut self.core.shell_state);
-        self.core.shell_state = shell_step(state, input).0;
-    }
-
     /// What is kept of this pane when its window goes away: the shell's state and the commands it
     /// ran.
     pub fn checkpoint(&self) -> temor_core::session::Checkpoint {
-        temor_core::session::Checkpoint::of(
-            self.core.shell_state.replay(),
-            self.core.blocks.store().iter(),
-        )
-        .after(&self.core.inherited)
+        self.core.checkpoint()
     }
 
     /// Starts from what was kept of the shell this session continues: its state until the shell
@@ -239,8 +195,7 @@ impl Session {
         state: temor_core::session::ShellState,
         kept: temor_core::session::Checkpoint,
     ) {
-        self.core.shell_state = state;
-        self.core.inherited = kept.history;
+        self.core.continue_from(state, kept);
     }
 
     /// The key the shell's state reports carry, for a shell started elsewhere (the local daemon)
@@ -256,7 +211,7 @@ impl Session {
 
     /// The commands run before this pane's screen was handed to it, for the blocks found on it.
     pub fn inherit(&mut self, history: Vec<temor_core::session::CommandRecord>) {
-        self.core.inherited = history;
+        self.core.inherit(history);
     }
 
     /// What the shell holds that a new shell would need to look the same.
@@ -280,14 +235,7 @@ impl Session {
     /// encoding is refused or is larger than [`SNAPSHOT_LIMIT`] bytes (the encoding is one block
     /// that cannot be cut to its newest part).
     pub fn snapshot(&self) -> Option<Snapshot> {
-        let snapshot = self
-            .core
-            .pane
-            .with_term(|term| match term.on_alternate_screen() {
-                true => None,
-                false => term.snapshot().ok(),
-            })?;
-        (snapshot.as_bytes().len() <= SNAPSHOT_LIMIT).then_some(snapshot)
+        self.core.snapshot()
     }
 
     /// The working directory the shell reported, if any.
@@ -301,15 +249,4 @@ impl Session {
     }
 }
 
-/// The most bytes a stored snapshot may have (4 MiB).
-pub const SNAPSHOT_LIMIT: usize = 4 * 1024 * 1024;
-
-/// Longest title kept; a program's title is shown, so it is bounded.
-const TITLE_MAX_CHARS: usize = 200;
-/// Longest working directory shown.
-const CWD_MAX_CHARS: usize = 512;
-
-/// A program's title with control characters removed and its length bounded.
-pub fn sanitise_title(raw: &str) -> String {
-    display_text(raw, TITLE_MAX_CHARS)
-}
+pub use temor_client::pane::{SNAPSHOT_LIMIT, sanitise_title};

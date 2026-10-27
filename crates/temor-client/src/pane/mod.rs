@@ -7,6 +7,7 @@
 pub mod blocks;
 pub mod clipboard;
 pub mod clock;
+mod heard;
 pub mod notify;
 pub mod sources;
 
@@ -23,6 +24,8 @@ use clipboard::PendingClipboard;
 use clock::Clock;
 use notify::Notifier;
 use sources::Sources;
+
+pub use heard::{SNAPSHOT_LIMIT, sanitise_title};
 
 /// What a pane is, apart from how the window shows it: its engine, what its program said (title,
 /// folder, progress, how it ended), its commands, its shell's state, its completion sources, what
