@@ -12,6 +12,7 @@ pub mod desktop_port;
 pub mod facts;
 mod facts_files;
 pub mod facts_host;
+pub mod folder_read;
 pub mod icon_pack;
 mod keymap;
 mod keymap_source;

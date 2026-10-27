@@ -57,10 +57,17 @@ impl Session {
         self.view_ask.take()
     }
 
-    /// ⌘-click at `cell`: the word there, if it names a file, is asked for. On a pane on another
-    /// computer the word is taken as a path there (the window fetches it).
+    /// ⌘-click at `cell`: the word there, if it names a file or a folder here, is asked for. On a
+    /// pane on another computer the word is taken as a path there (the window fetches it).
     pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), UiError> {
         let Some(file) = self.file_at(cell)? else {
+            if let Some(folder) = self.folder_at(cell)? {
+                self.view_ask = Some(ViewAsk {
+                    file: folder,
+                    around: Vec::new(),
+                    site: PaneSite::Local,
+                });
+            }
             return Ok(());
         };
         let cwd = self.cwd.clone();
@@ -92,6 +99,20 @@ impl Session {
             PaneSite::Remote => host_path(cwd, &token),
             PaneSite::Local => first_file(&token, cwd, &is_file),
         })
+    }
+
+    /// The folder on this computer the word at `cell` names, by the ⌘-click's rule for files.
+    fn folder_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
+        if self.site == PaneSite::Remote {
+            return Ok(None);
+        }
+        let row = self.line(cell.row)?;
+        let Some(token) = token_at(&row, cell.col) else {
+            return Ok(None);
+        };
+        Ok(first_file(&token, self.cwd.as_deref(), &|path: &Path| {
+            path.is_dir()
+        }))
     }
 
     /// The file a `file://` link names: on this computer, one that exists here; on a pane on

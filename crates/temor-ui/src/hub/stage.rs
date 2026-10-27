@@ -3,13 +3,13 @@
 //! is the tab's viewer pane; the rules for walking the pages are core's (`stage::Pages`).
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use temor_core::stage::{Layout, Pages};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::ViewerRef;
 use temor_core::workspace::WorkspaceIn;
-use temor_schema::url::{HistoryScope, TemorUrl};
+use temor_schema::url::{HistoryScope, Host, Location, TemorUrl};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -38,19 +38,42 @@ pub struct StageView {
     pub can_go_forward: bool,
 }
 
-/// The page of temor's own `file` names (`temor://history`), when it names one and not a file.
+/// The page of temor's own `file` names (`temor://history`, a folder on this computer), when it
+/// names one and not a file.
 pub fn temor_page(file: &str) -> Option<TemorUrl> {
     match file.parse::<TemorUrl>().ok()? {
-        TemorUrl::Location(_) => None,
+        TemorUrl::Location(place) => folder_page(&place).then_some(TemorUrl::Location(place)),
         page => Some(page),
     }
 }
 
-/// What a page of temor's own is called.
-pub fn temor_page_name(page: &TemorUrl) -> &'static str {
+/// Whether `place` is a folder's page: a folder on this computer, not a session in it.
+fn folder_page(place: &Location) -> bool {
+    place.host == Host::Local && place.is_folder() && place.within.is_none()
+}
+
+/// The page of the folder `path` on this computer.
+pub fn folder_url(path: &str) -> TemorUrl {
+    let path = match path.ends_with('/') {
+        true => path.to_owned(),
+        false => format!("{path}/"),
+    };
+    TemorUrl::Location(Location {
+        host: Host::Local,
+        path,
+        within: None,
+    })
+}
+
+/// What a page of temor's own is called: a folder by its name.
+pub fn temor_page_name(page: &TemorUrl) -> String {
     match page {
-        TemorUrl::Downloads => "Downloads",
-        TemorUrl::History(_) | TemorUrl::Location(_) => "History",
+        TemorUrl::Downloads => "Downloads".to_owned(),
+        TemorUrl::History(_) => "History".to_owned(),
+        TemorUrl::Location(place) => Path::new(&place.path).file_name().map_or_else(
+            || place.path.clone(),
+            |name| name.to_string_lossy().into_owned(),
+        ),
     }
 }
 
@@ -58,16 +81,18 @@ impl Hub {
     /// Open temor's page `url` on the stage of the row in front, beside the terminal with the
     /// keys (or the one the page there came from).
     pub(super) fn open_page(&mut self, url: TemorUrl) {
+        self.open_on_stage(ViewerRef(url.to_string()));
+    }
+
+    /// Open `file` (a file's path, or temor's page) on the stage of the row in front.
+    pub(super) fn open_on_stage(&mut self, file: ViewerRef) {
         let from = self
             .keyboard_pane()
             .and_then(|pane| match self.is_viewer(pane) {
                 true => self.viewer_unfocus_to(pane),
                 false => Some(pane),
             });
-        self.act(WorkspaceIn::OpenViewer {
-            file: ViewerRef(url.to_string()),
-            from,
-        });
+        self.act(WorkspaceIn::OpenViewer { file, from });
     }
 
     /// A page opened in `viewer`, on the stage of `tab`: a step Back can return from, and shown.
@@ -203,6 +228,12 @@ impl Desk {
     /// The history of every session.
     pub fn open_history(&self) {
         self.open_page(TemorUrl::History(HistoryScope::All));
+    }
+
+    /// The file `path` on the row in front's stage, as a folder's page opens it.
+    pub fn open_file(&self, path: &Path) {
+        let file = ViewerRef(path.to_string_lossy().into_owned());
+        self.settle(|hub| hub.open_on_stage(file));
     }
 
     /// The files that arrived, and those on their way to other computers.

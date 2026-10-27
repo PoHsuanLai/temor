@@ -21,6 +21,7 @@ use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
 use temor_schema::url::{HistoryScope, TemorUrl};
 
+use super::folder_page::FolderPage;
 use super::history_page::HistoryPage;
 use super::menu::{Pick, menu_items};
 use super::row_menu::show_in_folder;
@@ -93,10 +94,7 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
     let shown = desk.hub.page_file(page);
     let own = shown.as_deref().and_then(temor_page);
     let (name, folder) = match &own {
-        Some(own) => (
-            temor_page_name(own).to_owned(),
-            page_scope(own, &desk.hub.home()),
-        ),
+        Some(own) => (temor_page_name(own), page_scope(own, &desk.hub.home())),
         None => shown.as_deref().map(name_and_folder).unwrap_or_default(),
     };
     let console_tip = desk.hub.tooltip(
@@ -158,7 +156,11 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                             DownloadsPage { desk: desk.clone() }
                         }
                     },
-                    Some(TemorUrl::Location(_)) => rsx! {},
+                    Some(TemorUrl::Location(place)) => rsx! {
+                        PageKeys { pane: page, desk: desk.clone(), label: "Folder",
+                            FolderPage { key: "{place.path}", folder: place.path, desk: desk.clone() }
+                        }
+                    },
                     None => rsx! {
                         ViewerView { pane: page, desk: desk.clone() }
                     },
@@ -195,16 +197,26 @@ pub fn walk_of(button: Option<MouseButton>) -> Option<bool> {
     }
 }
 
-/// What of temor's page `page` is shown, under its name: a folder's history names the folder.
+/// What of temor's page `page` is shown, under its name: a folder's history names the folder, a
+/// folder's page the folder it is in.
 fn page_scope(page: &TemorUrl, home: &str) -> String {
     match page {
-        TemorUrl::History(HistoryScope::In(folder)) => match folder.strip_prefix(home) {
-            Some(rest) if !home.is_empty() && (rest.is_empty() || rest.starts_with('/')) => {
-                format!("in ~{rest}")
-            }
-            _ => format!("in {folder}"),
-        },
+        TemorUrl::History(HistoryScope::In(folder)) => format!("in {}", tidy(folder, home)),
+        TemorUrl::Location(place) => Path::new(place.path.trim_end_matches('/'))
+            .parent()
+            .map(|parent| tidy(&parent.to_string_lossy(), home))
+            .unwrap_or_default(),
         _ => String::new(),
+    }
+}
+
+/// `path` with the home folder written as `~`.
+fn tidy(path: &str, home: &str) -> String {
+    match path.strip_prefix(home) {
+        Some(rest) if !home.is_empty() && (rest.is_empty() || rest.starts_with('/')) => {
+            format!("~{rest}")
+        }
+        _ => path.to_owned(),
     }
 }
 
@@ -233,6 +245,15 @@ mod tests {
             ("loss.png".to_owned(), "/Users/po/ml/runs".to_owned())
         );
         assert_eq!(name_and_folder("/"), ("/".to_owned(), String::new()));
+    }
+
+    #[test]
+    fn a_folders_page_is_named_by_the_folder_it_is_in() {
+        let page = crate::hub::folder_url("/Users/po/ml/runs");
+        assert_eq!(page_scope(&page, "/Users/po"), "~/ml");
+        assert_eq!(temor_page_name(&page), "runs");
+        let history = TemorUrl::History(HistoryScope::In("/Users/po".to_owned()));
+        assert_eq!(page_scope(&history, "/Users/po"), "in ~");
     }
 
     #[test]

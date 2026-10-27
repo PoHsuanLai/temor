@@ -14,6 +14,7 @@ pub mod convert;
 pub mod dnd;
 pub mod favourites;
 pub mod find_bar;
+pub mod folder_page;
 pub mod handlers;
 pub mod history_page;
 pub mod host_banners;

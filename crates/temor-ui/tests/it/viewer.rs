@@ -146,3 +146,58 @@ fn the_page_bar_names_the_file_and_hides_the_console_and_closes_the_page() {
     chord(&mut h, '[');
     assert_eq!((terminals(&h), viewers(&h)), (1, 1), "{}", h.html());
 }
+
+/// ⌘-click on a folder the shell printed opens the folder's page: the tab open in it, then its
+/// folders and files. A folder opens its own page, Back returns, and a file opens in the viewer.
+#[test]
+fn command_click_on_a_folder_opens_its_page_and_walks_into_it() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::{press, wait_html};
+    let name = "viewer-folder";
+    let probe = Probe::new();
+    let mut h = harness(name, &probe);
+    let proj = scratch_path(name).join("home").join("proj");
+    std::fs::create_dir_all(proj.join("src")).expect("scratch folder");
+    std::fs::write(proj.join("notes.txt"), "notes\n").expect("scratch file");
+    std::fs::write(proj.join("src").join("deep.txt"), "deep\n").expect("scratch file");
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "cd proj && echo \"$PWD\"");
+    wait_until(&mut h, &probe, "the folder", |s| {
+        s.lines().any(|l| l.trim_end().ends_with("/proj"))
+    });
+    let mut y = 14.0;
+    while !h.html().contains("temor-folder") && y < 320.0 {
+        command_click(
+            &mut h,
+            Point {
+                x: Px(272.0),
+                y: Px(y),
+            },
+        );
+        y += 4.0;
+    }
+    wait_html(&mut h, "the folder's page", |html| {
+        html.contains("Tabs Here") && html.contains(">src<") && html.contains(">notes.txt<")
+    });
+    assert!(
+        h.html().contains("class=\"temor-page-name\">proj<"),
+        "the bar names the folder: {}",
+        h.html()
+    );
+    let files = ".temor-folder > .temor-history-day:last-child .temor-history-list";
+    press(&mut h, &format!("{files} > :first-child"));
+    wait_html(&mut h, "the subfolder's page", |html| {
+        html.contains(">deep.txt<") && !html.contains("Tabs Here")
+    });
+    chord(&mut h, '[');
+    wait_html(&mut h, "the folder again", |html| {
+        html.contains(">notes.txt<")
+    });
+    press(&mut h, &format!("{files} > :last-child"));
+    wait_html(&mut h, "the file in the viewer", |html| {
+        html.contains("aria-label=\"File viewer\"") && html.contains(">notes.txt<")
+    });
+}

@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use anyview_machines::StageFamily;
 use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Sequence, SequenceOrigin};
+use temor_core::shelf::PaneSite;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::ViewerRef;
 use temor_core::workspace::{ViewerOpen, WorkspaceIn};
@@ -79,6 +80,15 @@ impl ViewerHub {
 impl Hub {
     /// A file was asked for from the terminal `from` (⌘-click, View): it opens beside it.
     pub fn open_viewer(&mut self, from: PaneId, ask: ViewAsk) {
+        // A folder here is a page of its own.
+        if ask.site == PaneSite::Local && ask.file.is_dir() {
+            let folder = super::stage::folder_url(&ask.file.to_string_lossy());
+            self.act(WorkspaceIn::OpenViewer {
+                file: ViewerRef(folder.to_string()),
+                from: Some(from),
+            });
+            return;
+        }
         let file = ViewerRef(ask.file.to_string_lossy().into_owned());
         self.viewers.pending = Some(ask);
         self.act(WorkspaceIn::OpenViewer {
@@ -240,7 +250,7 @@ impl Hub {
     pub(super) fn viewer_name(&self, pane: PaneId) -> Option<String> {
         let file = self.ws.viewers.get(&pane)?;
         if let Some(page) = super::stage::temor_page(file.as_str()) {
-            return Some(super::stage::temor_page_name(&page).to_owned());
+            return Some(super::stage::temor_page_name(&page));
         }
         Path::new(file.as_str())
             .file_name()
