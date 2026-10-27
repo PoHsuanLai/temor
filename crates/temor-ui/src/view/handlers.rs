@@ -191,6 +191,11 @@ pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId
     on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
 }
 
+/// A kept command's Put in Prompt in the block list.
+pub fn list_put(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(u32) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, n| s.put_kept(n))
+}
+
 /// The composer's text as the person edits it.
 pub fn composer_input(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(String) + 'static {
     on_session(slot, ui, Redraw::WindowOnly, |s, text| {

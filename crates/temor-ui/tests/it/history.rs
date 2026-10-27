@@ -204,3 +204,97 @@ fn a_pane_brought_back_goes_on_with_its_session() {
         );
     }
 }
+
+/// A closed session's Reopen starts a tab in its folder that goes on as that session: the
+/// commands it ran are cards above the shell, with their output not kept, and Put in Prompt
+/// types one again; run, it is the session's next command.
+#[test]
+fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
+    use temor_schema::session::{At, RanCommand, Session, SessionId};
+    use temor_schema::url::Host;
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let folder = super::support::scratch("history-reopen-folder");
+    let folder = folder.to_string_lossy().into_owned();
+    let store = Arc::new(SqliteStore::in_memory().expect("store"));
+    let id = SessionId::from_bits(0xb5);
+    let day = 24 * 60 * 60 * 1000;
+    let then = temor_ui::edge::local_zone::wall_now().0 - 2 * day;
+    store
+        .save_session(&Session {
+            id,
+            host: Host::Local,
+            folder: folder.clone(),
+            program: None,
+            started: At(then),
+            ended: Some(At(then + 60_000)),
+        })
+        .expect("session");
+    for (block, command, exit) in [(0, "echo was-kept", 0), (1, "false", 1)] {
+        store
+            .record_command(&RanCommand {
+                session: id,
+                block: temor_core::vocab::ids::BlockId(block),
+                command: command.to_owned(),
+                folder: folder.clone(),
+                exit: Some(exit),
+                started: At(then + 1_000),
+                ended: Some(At(then + 1_500)),
+            })
+            .expect("command");
+    }
+    let client = Client::open(store.clone(), ClientConfig { external: false });
+    let probe = Probe::new();
+    let mut h = harness_building(
+        "history-reopen",
+        &probe,
+        None,
+        |_| {},
+        WindowHosting::Absent,
+        move |config| config.with_context(client),
+    );
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the closed session", |html| {
+        html.contains("class=\"temor-history-day\"") && html.contains("history-reopen-folder")
+    });
+    // The closed session is the oldest: the list's last row.
+    let rows = super::drive::rects(&h, ".temor-history-list .ds-row");
+    let last = rows.last().expect("a row");
+    h.send(ds_harness::Input::click(last.centre()));
+    h.advance(Duration::from_millis(200));
+    wait_html(&mut h, "its page", |html| html.contains("Reopen"));
+    press(&mut h, ".temor-history-head .ds-button");
+    wait_html(
+        &mut h,
+        "its commands as cards, the composer under them",
+        |html| {
+            html.matches("temor-blk-kept").count() >= 2
+                && html.contains("exit 1")
+                && html.contains("temor-blk-composer")
+        },
+    );
+    let put = super::drive::rects(&h, ".temor-blk-kept .temor-blk-tools");
+    h.send(ds_harness::Input::click(put[0].centre()));
+    wait_html(&mut h, "the kept command in the composer", |html| {
+        super::block_list::composer_value(html).as_deref() == Some("echo was-kept")
+    });
+    h.send(ds_harness::Input::key(ShortcutKey::Enter));
+    let start = Instant::now();
+    loop {
+        let ran = store.commands_of(id).expect("commands");
+        let session = store.session(id).expect("session").expect("kept");
+        if ran.len() == 3 {
+            assert_eq!(ran[2].command, "echo was-kept");
+            assert!(ran[2].block.0 > ran[1].block.0, "numbered after: {ran:?}");
+            assert!(session.ended.is_none(), "it runs again");
+            assert_eq!(session.started, At(then), "the same session");
+            break;
+        }
+        h.advance(Duration::from_millis(50));
+        assert!(start.elapsed() < Duration::from_secs(10), "{ran:?}");
+    }
+}

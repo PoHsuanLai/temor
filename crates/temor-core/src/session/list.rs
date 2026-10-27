@@ -4,8 +4,10 @@
 
 use std::ops::Range;
 
+use temor_schema::session::RanCommand;
+
 use crate::block::Outcome;
-use crate::vocab::ids::BlockId;
+use crate::vocab::ids::{BlockId, ExitCode};
 
 use super::frame::{BlockRead, End, Read, command_rows};
 
@@ -43,9 +45,51 @@ impl ListBlock {
     }
 }
 
+/// A command a session ran before it was reopened: what it ran and how that went, its output
+/// not kept (PLAN B5). It can be put in the prompt again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeptCard {
+    /// Its place among the kept commands, oldest first.
+    pub n: u32,
+    /// The command, every line of it.
+    pub command: String,
+    pub outcome: Outcome,
+    pub took_ms: Option<u64>,
+}
+
+impl KeptCard {
+    /// The command's first line, as the card shows it.
+    pub fn title(&self) -> &str {
+        self.command.lines().next().unwrap_or("").trim()
+    }
+}
+
+/// The cards for the commands a session ran, as history kept them, oldest first.
+pub fn kept_cards(commands: &[RanCommand]) -> Vec<KeptCard> {
+    commands
+        .iter()
+        .enumerate()
+        .map(|(n, ran)| KeptCard {
+            n: u32::try_from(n).unwrap_or(u32::MAX),
+            command: ran.command.clone(),
+            outcome: match ran.exit.map(ExitCode) {
+                None => Outcome::Unreported,
+                Some(code) if code.succeeded() => Outcome::Succeeded,
+                Some(code) if code.stopped() => Outcome::Stopped(code),
+                Some(code) => Outcome::Failed(code),
+            },
+            took_ms: ran
+                .ended
+                .and_then(|ended| u64::try_from(ended.0 - ran.started.0).ok()),
+        })
+        .collect()
+}
+
 /// One entry of the list, top to bottom.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Item {
+    /// A command the session ran before it was reopened, above the pane's own.
+    Kept(KeptCard),
     /// A finished block: its output never changes again.
     Done(ListBlock),
     /// The running block: its output rows above `live_from` have left the viewport and no longer
@@ -59,6 +103,7 @@ pub enum Item {
 /// What identifies an item across reads, for the list to keep its rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ItemKey {
+    Kept(u32),
     Block(BlockId),
     Composer,
 }
@@ -66,6 +111,7 @@ pub enum ItemKey {
 impl Item {
     pub fn key(&self) -> ItemKey {
         match self {
+            Item::Kept(card) => ItemKey::Kept(card.n),
             Item::Done(block) | Item::Running { block, .. } => ItemKey::Block(block.id),
             Item::Composer { .. } => ItemKey::Composer,
         }

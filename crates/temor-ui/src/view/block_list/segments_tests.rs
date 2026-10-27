@@ -59,6 +59,42 @@ fn a_card_is_its_head_its_tiles_and_its_foot_then_a_gap() {
 }
 
 #[test]
+fn kept_commands_are_head_cards_above_the_panes_own_that_no_point_finds_a_block_on() {
+    let kept = |n| KeptCard {
+        n,
+        command: format!("make {n}\n  --again"),
+        outcome: Outcome::Failed(ExitCode(2)),
+        took_ms: None,
+    };
+    let items = [
+        Item::Kept(kept(0)),
+        Item::Kept(kept(1)),
+        Item::Done(block(1, 0..1)),
+    ];
+    let (placed, total) = lay_out(&items, &SIZES, &[]);
+    let id = BlockId(1);
+    assert_eq!(
+        keys(&placed),
+        [
+            SegKey::Kept(0),
+            SegKey::Kept(1),
+            SegKey::Head(id),
+            SegKey::Tile(id, 0),
+            SegKey::Foot(id),
+        ]
+    );
+    // Two kept heads and their gaps, then the block's card.
+    assert_eq!(placed[2].top, 76.0);
+    assert_eq!(total, 76.0 + 30.0 + 10.0 + 5.0 + 8.0);
+    assert_eq!(kept(0).title(), "make 0");
+    // The sticky head is a block's: a kept card has none.
+    assert_eq!(card_places(&placed).len(), 1);
+    let map = list_map(&placed, 0.0);
+    assert_eq!(map.spans[0].block, None);
+    assert_eq!(map.spans[2].block, Some(id));
+}
+
+#[test]
 fn segments_follow_on_with_no_room_between() {
     let (placed, _) = lay_out(&[Item::Done(block(1, 0..9))], &SIZES, &[]);
     for pair in placed.windows(2) {

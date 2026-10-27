@@ -109,6 +109,8 @@ pub struct Session {
     pub(super) asked: Option<temor_pane::keys::Action>,
     /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
     pub(super) view_ask: Option<super::ViewAsk>,
+    /// The commands the session ran before it was reopened, shown above the pane's own.
+    pub(super) kept: Vec<temor_core::session::list::KeptCard>,
     /// Where the rows were shown at the last paint (see `room`).
     pub(super) layout: Option<temor_render::RowLayout>,
 }

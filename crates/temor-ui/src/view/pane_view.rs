@@ -35,8 +35,8 @@ use super::convert::scale_of;
 use super::find_bar::FindBar;
 use super::handlers::{
     composer_close, composer_complete, composer_history, composer_input, composer_pick,
-    composer_submit, composer_take, find_close, find_query, find_step, list_fold, pointer_gone,
-    then_regain,
+    composer_submit, composer_take, find_close, find_query, find_step, list_fold, list_put,
+    pointer_gone, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
@@ -458,6 +458,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             },
                             actions: CardActions {
                                 fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                put: EventHandler::new(then_regain(list_put(Rc::clone(&slot), ui), ime.clone(), regain)),
                                 menu: EventHandler::new({
                                     let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
                                     move |(block, point): (BlockId, Point)| {

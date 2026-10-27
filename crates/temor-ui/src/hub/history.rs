@@ -2,14 +2,17 @@
 //! first says where it is, and its commands are handed to the client as each one finishes, and
 //! its end when the program ends. The client keeps them (dropping a secret, as its rules say);
 //! nothing is written at quit. A pane brought back at launch goes on with the session it had
-//! (`carried`, from the layout): its new commands are numbered after the ones kept before.
+//! (`carried`, from the layout): its new commands are numbered after the ones kept before. So
+//! does a closed session reopened from its history page, its commands shown above the new shell.
 
 use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::time::SystemTime;
 
 use temor_client::{Client, Command};
+use temor_core::session::list::kept_cards;
 use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_core::vocab::text::Cwd;
 use temor_schema::session::{At, RanCommand, Session as Kept, SessionId};
 use temor_schema::url::Host;
 
@@ -102,6 +105,46 @@ impl Hub {
             .collect()
     }
 
+    /// Opens the closed session `id` again: a tab in its folder whose shell goes on as that
+    /// session, with the commands it ran above it as cards (their output was not kept).
+    pub fn reopen_session(&mut self, id: SessionId) {
+        let Some(client) = self.history.client.clone() else {
+            return;
+        };
+        // Once is enough: a tab that goes on with it already is brought to the front.
+        let going_on = self
+            .history
+            .sessions
+            .iter()
+            .filter(|(_, begun)| begun.id == id)
+            .map(|(pane, _)| *pane)
+            .chain(
+                self.history
+                    .carried
+                    .iter()
+                    .filter(|(_, carried)| **carried == id)
+                    .map(|(pane, _)| *pane),
+            )
+            .find_map(|pane| self.book.ws.tab_of(pane));
+        if let Some(tab) = going_on {
+            return self.act(super::select_tab(tab));
+        }
+        let store = client.store();
+        let Some(kept) = store.session(id).ok().flatten() else {
+            return;
+        };
+        let cards = kept_cards(&store.commands_of(id).unwrap_or_default());
+        let Some(pane) = self.open_tab(Some(Cwd(kept.folder))) else {
+            return;
+        };
+        self.history.carried.insert(pane, id);
+        if let Some(slot) = self.slots.get(&pane)
+            && let Some(session) = slot.borrow_mut().session.as_mut()
+        {
+            session.set_kept(cards);
+        }
+    }
+
     /// What `notice`, just taken by `session` in `pane`, means for history.
     pub(super) fn history_heard(&mut self, pane: PaneId, notice: &Notice, session: &Session) {
         let Some(client) = self.history.client.clone() else {
@@ -190,6 +233,13 @@ fn draw_id(pane: PaneId) -> SessionId {
 }
 
 impl HubRef {
+    /// See [`Hub::reopen_session`]; answers the notices it left.
+    pub fn reopen_session(&self, id: SessionId) -> Vec<String> {
+        let mut hub = self.0.borrow_mut();
+        hub.reopen_session(id);
+        std::mem::take(&mut hub.notices)
+    }
+
     /// See [`Hub::tab_of_session`].
     pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
         self.0.borrow().tab_of_session(id)

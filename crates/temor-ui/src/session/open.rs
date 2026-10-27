@@ -80,6 +80,7 @@ impl Session {
             bell_until: None,
             asked: None,
             view_ask: None,
+            kept: Vec::new(),
         }
     }
 }

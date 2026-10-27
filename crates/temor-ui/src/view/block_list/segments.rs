@@ -8,7 +8,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use temor_core::block::Outcome;
-use temor_core::session::list::{Item, ListBlock};
+use temor_core::session::list::{Item, KeptCard, ListBlock};
 use temor_core::vocab::ids::BlockId;
 
 use crate::session::{ListMap, ListSpan, Toward};
@@ -59,6 +59,8 @@ impl Standing {
 /// What a segment draws.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Seg {
+    /// A command the session ran before it was reopened: a card that is its head alone.
+    Kept(KeptCard),
     /// A card's head; `whole` when nothing is under it (no rows, folded): the card is its head.
     Head { block: ListBlock, whole: bool },
     /// Screen rows of a block's output: drawn once as a still, or, `live`, shown from the pane's
@@ -90,6 +92,7 @@ pub enum Seg {
 /// What identifies a segment across layouts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SegKey {
+    Kept(u32),
     Head(BlockId),
     /// Tile `n` of a block's settled rows.
     Tile(BlockId, u32),
@@ -169,6 +172,11 @@ pub fn lay_out(items: &[Item], sizes: &Sizes, pictures: &[Picture]) -> (Vec<Plac
     };
     for item in items {
         match item {
+            Item::Kept(card) => {
+                let seg = Seg::Kept(card.clone());
+                push(&mut out, &mut y, SegKey::Kept(card.n), sizes.head, seg);
+                y += sizes.gap;
+            }
             Item::Done(block) | Item::Running { block, .. } => {
                 let live_from = match item {
                     Item::Running { live_from, .. } => Some(*live_from),
@@ -338,6 +346,7 @@ pub fn list_map(placed: &[Placed], offset: f32) -> ListMap {
                 Seg::Rows { id, rows, .. } => (Some(*id), rows.clone(), Toward::Next),
                 Seg::Picture { id, .. } | Seg::Foot { id, .. } => (Some(*id), 0..0, Toward::Prev),
                 Seg::Composer { rows } => (None, rows.clone(), Toward::Next),
+                Seg::Kept(_) => (None, 0..0, Toward::Next),
             };
             ListSpan {
                 top: p.top,

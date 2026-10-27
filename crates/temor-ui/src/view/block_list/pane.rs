@@ -21,7 +21,7 @@ use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use
 use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
 use temor_core::block::{Outcome, format_elapsed};
-use temor_core::session::list::{Item, ListBlock};
+use temor_core::session::list::{Item, KeptCard, ListBlock};
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_render::Palette;
 use temor_vt::Rgb;
@@ -78,6 +78,8 @@ pub struct CardActions {
     pub fold: EventHandler<BlockId>,
     /// The card's "…" at the point under it: the block's menu, the one a right-click opens.
     pub menu: EventHandler<(BlockId, Point)>,
+    /// A kept command's Put in Prompt.
+    pub put: EventHandler<u32>,
 }
 
 /// Keeps the list to its bottom while it follows it, and in range when it shrinks. `total` is
@@ -115,16 +117,21 @@ fn keep_bottom(
 /// What the head says beside the command: a failure's status, how long it ran, and how many rows
 /// are folded away.
 fn meta_of(block: &ListBlock) -> String {
-    let status = match block.outcome {
-        Outcome::Failed(code) => Some(format!("exit {}", code.0)),
-        _ => None,
-    };
     let rows = block.output.len();
     let folded = (block.folded && rows > 0).then(|| match rows {
         1 => "1 line folded".to_owned(),
         n => format!("{n} lines folded"),
     });
-    [status, block.took_ms.map(format_elapsed), folded]
+    meta_words(block.outcome, block.took_ms, folded)
+}
+
+/// A failure's status, how long it ran, and `more`, between dots.
+fn meta_words(outcome: Outcome, took_ms: Option<u64>, more: Option<String>) -> String {
+    let status = match outcome {
+        Outcome::Failed(code) => Some(format!("exit {}", code.0)),
+        _ => None,
+    };
+    [status, took_ms.map(format_elapsed), more]
         .into_iter()
         .flatten()
         .collect::<Vec<_>>()
@@ -403,7 +410,7 @@ fn block_of(seg: &Seg) -> Option<BlockId> {
     match seg {
         Seg::Head { block, .. } => Some(block.id),
         Seg::Rows { id, .. } | Seg::Picture { id, .. } | Seg::Foot { id, .. } => Some(*id),
-        Seg::Composer { .. } => None,
+        Seg::Kept(_) | Seg::Composer { .. } => None,
     }
 }
 
@@ -496,6 +503,19 @@ fn segment(
                 div { key: "{key}", class: "temor-bseg temor-blk-foot", style: "{place}; background:{ground}", onpointermove: on_move }
             }
         }
+        Seg::Kept(card) => {
+            let ground = css(ground_of(palette, Standing::Done, false));
+            rsx! {
+                KeptHead {
+                    key: "{key}",
+                    card: card.clone(),
+                    style: "{place}; background:{ground}",
+                    columns: head.columns,
+                    put: head.actions.put,
+                    on_move,
+                }
+            }
+        }
         Seg::Composer { .. } if let Some(view) = composer => rsx! {
             ComposerCard {
                 key: "{key}",
@@ -516,6 +536,47 @@ fn segment(
                 }
             }
         },
+    }
+}
+
+/// A kept command's card: the command and how it went, its output not kept, and Put in Prompt.
+#[component]
+#[allow(non_snake_case)]
+fn KeptHead(
+    card: KeptCard,
+    style: String,
+    columns: usize,
+    put: EventHandler<u32>,
+    on_move: EventHandler<PointerEvent>,
+) -> Element {
+    let n = card.n;
+    let standing = Standing::of(card.outcome);
+    let meta = meta_words(card.outcome, card.took_ms, None);
+    let title = clip_chars(card.title(), columns.saturating_sub(16).max(8));
+    rsx! {
+        div {
+            class: "temor-bseg temor-blk-head temor-blk-kept",
+            "data-state": standing.slug(),
+            "data-whole": "true",
+            style,
+            onpointermove: move |e| on_move.call(e),
+            // The fold chevron's room, so titles align with the pane's own cards.
+            div { class: "temor-blk-fold", "data-none": true }
+            span { class: "temor-blk-title", "{title}" }
+            if !meta.is_empty() {
+                span { class: "temor-blk-meta", "{meta}" }
+            }
+            div { class: "temor-blk-tools",
+                ToolButton {
+                    icon: Icon::Reply,
+                    size: ControlSize::Mini,
+                    propagation: Propagation::Stop,
+                    label: "Put in Prompt",
+                    tip: "Type this command at the prompt again, without running it",
+                    onclick: move |()| put.call(n),
+                }
+            }
+        }
     }
 }
 

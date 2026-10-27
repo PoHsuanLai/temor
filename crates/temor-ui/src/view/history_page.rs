@@ -13,8 +13,6 @@ use ds::style::tokens::control_size::ControlSize;
 use temor_client::query::{Commands, History, Sessions};
 use temor_core::history::{Zone, by_day, session_title, span_of};
 use temor_core::icon::initial_of;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
 use temor_schema::session::{RanCommand, Session, SessionId};
 use temor_schema::url::{HistoryScope, TemorUrl};
 
@@ -195,7 +193,6 @@ fn SessionPage(id: SessionId, desk: Desk) -> Element {
         .collect();
     let about = session_about(&session, commands.len(), running, zone, &home);
     let (going, reopening) = (desk.clone(), desk.clone());
-    let folder = session.folder.clone();
     rsx! {
         div { class: "temor-history",
             div { class: "temor-history-head",
@@ -216,10 +213,8 @@ fn SessionPage(id: SessionId, desk: Desk) -> Element {
                         Button {
                             label: "Reopen".to_owned(),
                             size: ControlSize::Small,
-                            title: Some("Open a new tab in this session's folder".to_owned()),
-                            onclick: move |_| reopening.act(WorkspaceIn::NewTab {
-                                cwd: Some(Cwd(folder.clone())),
-                            }),
+                            title: Some("Go on with this session in a new tab in its folder".to_owned()),
+                            onclick: move |_| reopening.tell(reopening.hub.reopen_session(id)),
                         }
                     },
                 }
