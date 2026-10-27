@@ -40,7 +40,11 @@ impl Hub {
 
     /// The width in columns of the tab in front's focused pane, once it has been laid out.
     fn front_columns(&self) -> Option<Columns> {
-        let pane = self.ws.front().and_then(|tab| self.ws.focus_of(tab))?;
+        let pane = self
+            .book
+            .ws
+            .front()
+            .and_then(|tab| self.book.ws.focus_of(tab))?;
         self.columns_of(pane)
     }
 

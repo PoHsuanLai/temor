@@ -159,7 +159,9 @@ impl Hub {
 
     /// Show `layout` on the row in front. Without a page there is only the console.
     pub(super) fn set_layout(&mut self, layout: Layout) {
-        let Some(tab) = self.ws.front() else { return };
+        let Some(tab) = self.book.ws.front() else {
+            return;
+        };
         let Some(stage) = self.stages.rows.get_mut(&tab) else {
             return;
         };
@@ -189,7 +191,9 @@ impl Hub {
 
     /// Back (`back`) or Forward on the row in front: its page before or after this one opens.
     pub(super) fn walk_pages(&mut self, back: bool) {
-        let Some(tab) = self.ws.front() else { return };
+        let Some(tab) = self.book.ws.front() else {
+            return;
+        };
         let Some(stage) = self.stages.rows.get_mut(&tab) else {
             return;
         };
@@ -203,7 +207,7 @@ impl Hub {
         let from = viewer
             .and_then(|viewer| self.viewer_unfocus_to(viewer))
             .or_else(|| {
-                let panes = self.ws.tabs.tab(tab)?.tree.panes();
+                let panes = self.book.ws.tabs.tab(tab)?.tree.panes();
                 panes.into_iter().find(|pane| !self.is_viewer(*pane))
             });
         self.stages.walking = true;
@@ -224,7 +228,8 @@ impl HubRef {
     /// The file the page in the viewer `pane` is.
     pub fn page_file(&self, pane: PaneId) -> Option<String> {
         let hub = self.0.borrow();
-        hub.ws
+        hub.book
+            .ws
             .viewers
             .get(&pane)
             .map(|file| file.as_str().to_owned())
@@ -262,6 +267,7 @@ impl Desk {
     pub fn toggle_console(&self) {
         self.settle(|hub| {
             let now = hub
+                .book
                 .ws
                 .front()
                 .map(|tab| hub.stage_view(tab).layout)

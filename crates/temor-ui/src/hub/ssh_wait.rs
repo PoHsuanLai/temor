@@ -71,6 +71,7 @@ impl Hub {
     /// the reopened pane is a session on the same host.
     pub(super) fn ssh_note_closed(&mut self, pane: PaneId, host: HostAlias) {
         let in_closed_tab = self
+            .book
             .ws
             .closed
             .tabs

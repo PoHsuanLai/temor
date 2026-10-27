@@ -105,7 +105,7 @@ const MINIATURE: u32 = 1000;
 impl Hub {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
-        let plan = sidebar_plan(&self.ws.tabs);
+        let plan = sidebar_plan(&self.book.ws.tabs);
         let take =
             |ids: &[TabId]| -> Vec<TabRow> { ids.iter().filter_map(|id| self.row(*id)).collect() };
         let pinned = take(&plan.pinned);
@@ -124,8 +124,8 @@ impl Hub {
     }
 
     fn row(&self, id: TabId) -> Option<TabRow> {
-        let tab = self.ws.tabs.tab(id)?;
-        let focus = self.ws.focus_of(id)?;
+        let tab = self.book.ws.tabs.tab(id)?;
+        let focus = self.book.ws.focus_of(id)?;
         // A page with the keys names the row, as a browser tab is named by its page; the folder
         // is still its terminal's.
         let page_name = self.viewer_name(focus);
@@ -144,19 +144,19 @@ impl Hub {
         let place = self
             .live(pane, |s| s.cwd())
             .flatten()
-            .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
+            .or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
             .filter(|_| !on_host);
         let cwd = place
             .as_deref()
             .map(|path| tidy(path, &self.launch.ambient.home));
         let agent = self.agent_state_of_tab(id);
         // News, or an agent that waits or has a result the person has not looked at.
-        let news = self.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
+        let news = self.book.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
         let unread = match news {
             true => Unread::Unread,
             false => Unread::Seen,
         };
-        let selection = match self.ws.front() == Some(id) {
+        let selection = match self.book.ws.front() == Some(id) {
             true => Selection::Selected,
             false => Selection::Unselected,
         };
@@ -197,7 +197,7 @@ impl Hub {
         if let Some(host_title) = self.ssh_title(pane) {
             return host_title;
         }
-        let cwd = live_cwd.or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
+        let cwd = live_cwd.or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
         let marking = match prompts {
             0 => Marking::Unmarked,
             _ => Marking::Marked,
@@ -257,7 +257,7 @@ impl Hub {
     }
 
     fn tiles(&self, id: TabId, focus: PaneId) -> Vec<Tile> {
-        let Some(tab) = self.ws.tabs.tab(id) else {
+        let Some(tab) = self.book.ws.tabs.tab(id) else {
             return Vec::new();
         };
         let whole = MINIATURE as f32;
@@ -311,7 +311,8 @@ impl Hub {
         if !title.is_empty() {
             return title;
         }
-        self.ws
+        self.book
+            .ws
             .cwds
             .get(&pane)
             .and_then(|c| c.as_str().rsplit('/').find(|part| !part.is_empty()))

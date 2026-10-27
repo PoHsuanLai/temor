@@ -16,13 +16,13 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
     let shell = PaneId(1);
     let (ws, outs) = workspace_step(
-        hub.ws.clone(),
+        hub.book.ws.clone(),
         WorkspaceIn::OpenViewer {
             file: ViewerRef(file.to_owned()),
             from: Some(shell),
         },
     );
-    hub.ws = ws;
+    hub.book.ws = ws;
     let open = outs
         .into_iter()
         .find_map(|out| match out {
@@ -81,14 +81,14 @@ fn escape_goes_back_to_the_terminal_the_file_came_from() {
 fn escape_goes_to_another_terminal_when_the_origin_is_gone() {
     let (mut hub, shell, viewer) = with_viewer("/w/a.txt", &[]);
     let (ws, _) = workspace_step(
-        hub.ws.clone(),
+        hub.book.ws.clone(),
         WorkspaceIn::Split {
             towards: temor_core::split::Direction::Down,
         },
     );
-    hub.ws = ws;
-    let (ws, _) = workspace_step(hub.ws.clone(), WorkspaceIn::ClosePane(Some(shell)));
-    hub.ws = ws;
+    hub.book.ws = ws;
+    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::ClosePane(Some(shell)));
+    hub.book.ws = ws;
     let back = hub.viewer_unfocus(viewer);
     assert!(
         matches!(back, Some(WorkspaceIn::Focus(pane)) if pane != viewer && pane != shell),
@@ -105,7 +105,7 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
         file: ViewerRef("/nowhere/at/all/a.txt".to_owned()),
         from: None,
     });
-    assert!(hub.ws.viewers.is_empty());
+    assert!(hub.book.ws.viewers.is_empty());
     assert!(
         hub.notices.iter().any(|n| n.contains("gone")),
         "{:?}",

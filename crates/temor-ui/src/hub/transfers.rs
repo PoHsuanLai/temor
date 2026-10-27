@@ -64,8 +64,13 @@ impl Hub {
     /// Where a pane's files come from. A pane on a host (SSH, PLAN §9b) will say so here.
     fn origin_of(&self, pane: PaneId) -> Option<(Origin, String)> {
         // TODO(ssh): `Origin::Remote` for a pane that runs a host session.
-        let tab = self.ws.tab_of(pane)?;
-        let title = self.ws.tabs.tab(tab).map(|t| t.title.as_str().to_owned());
+        let tab = self.book.ws.tab_of(pane)?;
+        let title = self
+            .book
+            .ws
+            .tabs
+            .tab(tab)
+            .map(|t| t.title.as_str().to_owned());
         let from = match title.filter(|title| !title.is_empty()) {
             Some(title) => format!("A program in “{title}”"),
             None => "A program in this window".to_owned(),

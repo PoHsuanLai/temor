@@ -277,9 +277,10 @@ impl Hub {
             return;
         };
         let zoomed = self
+            .book
             .ws
             .front()
-            .and_then(|tab| self.ws.tabs.tab(tab))
+            .and_then(|tab| self.book.ws.tabs.tab(tab))
             .is_some_and(|tab| tab.tree.zoomed().is_some());
         let full = size == CardSize::Full;
         if zoomed != full {

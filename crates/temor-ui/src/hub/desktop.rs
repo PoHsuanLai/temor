@@ -26,7 +26,7 @@ impl Hub {
     /// What the desktop services see now, and how many agents wait on the person, for the dock.
     pub fn desktop_snapshot(&self) -> (Snapshot, BadgeCount) {
         let keyboard = self.keyboard_pane();
-        let order = self.ws.tabs.panes();
+        let order = self.book.ws.tabs.panes();
         let panes: Vec<PaneInfo> = order.iter().map(|p| self.pane_info(*p, keyboard)).collect();
         let commands: std::collections::BTreeMap<_, _> = order
             .iter()
@@ -68,7 +68,13 @@ impl Hub {
         let cwd = self
             .live(pane, |s| s.cwd().map(PathBuf::from))
             .flatten()
-            .or_else(|| self.ws.cwds.get(&pane).map(|c| PathBuf::from(c.as_str())));
+            .or_else(|| {
+                self.book
+                    .ws
+                    .cwds
+                    .get(&pane)
+                    .map(|c| PathBuf::from(c.as_str()))
+            });
         PaneInfo {
             id: PaneRef(pane.0),
             title: self.pane_name(pane),
@@ -123,7 +129,8 @@ impl Hub {
 
     pub(super) fn known_pane(&self, pane: PaneRef) -> Result<PaneId, PortRefusal> {
         let id = PaneId(pane.0);
-        self.ws
+        self.book
+            .ws
             .tab_of(id)
             .map(|_| id)
             .ok_or(PortRefusal::NoSuchPane)
@@ -151,7 +158,11 @@ impl Hub {
                 ));
             }
         };
-        let held = self.ws.front().and_then(|tab| self.ws.focus_of(tab));
+        let held = self
+            .book
+            .ws
+            .front()
+            .and_then(|tab| self.book.ws.focus_of(tab));
         match self.act_for_new_pane(input) {
             Some(pane) => {
                 self.hand_keyboard_back(held, pane);

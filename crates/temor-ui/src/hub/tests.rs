@@ -53,13 +53,13 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
 pub(super) fn hub_after(steps: Vec<WorkspaceIn>) -> Hub {
     let mut hub = Hub::new(launch());
     for step in steps {
-        let (ws, outs) = workspace_step(hub.ws.clone(), step);
+        let (ws, outs) = workspace_step(hub.book.ws.clone(), step);
         // The step only describes panes; starting them is the edge's, and these tests have none.
         assert!(
             outs.iter().all(|o| !matches!(o, WorkspaceOut::Refused(_))),
             "{outs:?}"
         );
-        hub.ws = ws;
+        hub.book.ws = ws;
     }
     hub
 }
@@ -198,33 +198,16 @@ mod spaces {
     }
 
     #[test]
-    fn pane_ids_stay_apart_across_spaces() {
-        let mut hub = hub_after(vec![
-            WorkspaceIn::NewTab { cwd: None },
-            WorkspaceIn::NewTab { cwd: None },
-        ]);
-        assert_eq!(hub.workspace().next_pane, 3);
-        hub.book.note(&hub.ws.clone());
-        hub.swap_to(SpaceId(1));
-        let mut other = std::mem::replace(&mut hub.ws, super::super::spaces::empty_workspace());
-        hub.book.lift(&mut other);
-        assert_eq!(
-            other.next_pane, 3,
-            "the next Space's first pane is past the first Space's"
-        );
-    }
-
-    #[test]
     fn routes_pick_a_space_by_command_or_folder_with_the_home_folder_expanded() {
         let mut hub = Hub::new(launch());
-        hub.book.spaces = Spaces::first_run(
+        hub.book.begin(Spaces::first_run(
             [
                 project(None, &[]),
                 project(None, &["ssh prod-*", "~/work"]),
                 project(None, &["/srv"]),
             ],
             Project::default,
-        );
+        ));
         #[rustfmt::skip]
         let commands: &[(&str, Option<u64>)] = &[
             ("ssh prod-web1", Some(1)),
@@ -254,7 +237,10 @@ mod spaces {
     #[test]
     fn a_new_tab_opens_in_the_spaces_project_folder_and_a_named_folder_wins() {
         let mut hub = Hub::new(launch());
-        hub.book.spaces = Spaces::first_run([project(Some("/srv/app"), &[])], Project::default);
+        hub.book.begin(Spaces::first_run(
+            [project(Some("/srv/app"), &[])],
+            Project::default,
+        ));
         let tab = |cwd: Option<&str>| WorkspaceIn::NewTab {
             cwd: cwd.map(|c| Cwd(c.to_owned())),
         };
@@ -272,7 +258,7 @@ mod spaces {
         std::fs::create_dir_all(home.path().join("app")).expect("app folder");
         std::fs::write(home.path().join("app/.env"), "FROM_DOTENV=found\n").expect("dotenv");
         let mut hub = Hub::new(super::launch_in(home.path().to_path_buf()));
-        hub.book.spaces = Spaces::first_run(
+        hub.book.begin(Spaces::first_run(
             [Project {
                 root: Some(ProjectRoot("~/app".to_owned())),
                 profile: Profile {
@@ -282,8 +268,7 @@ mod spaces {
                 ..Project::default()
             }],
             Project::default,
-        );
-        hub.book.active = hub.book.spaces.current().id;
+        ));
         let start = hub.space_start();
         let folder = home.path().join("app").display().to_string();
         assert_eq!(start.cwd, Some(Cwd(folder)));
@@ -314,8 +299,8 @@ mod spaces {
 /// A hub with one tab and a pane slot for it (no program runs in it), living in `home`.
 fn hub_with_pane(home: &std::path::Path) -> Hub {
     let mut hub = Hub::new(launch_in(home.to_path_buf()));
-    let (ws, _) = workspace_step(hub.ws.clone(), WorkspaceIn::NewTab { cwd: None });
-    hub.ws = ws;
+    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::NewTab { cwd: None });
+    hub.book.ws = ws;
     hub.slots.insert(
         PaneId(1),
         std::rc::Rc::new(std::cell::RefCell::new(crate::view::slot::Slot::default())),

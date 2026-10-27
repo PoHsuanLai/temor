@@ -8,10 +8,8 @@ use std::path::Path;
 
 use ds::components::app::spaces::SpaceId;
 use temor_core::notify::Focus;
-use temor_core::space::Place;
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::restore::{Restored, VERSION, decode, launch_plan, viewer_plan};
-use temor_core::workspace::{KeepClosed, Workspace};
+use temor_core::workspace::restore::{launch_plan, viewer_plan};
 
 use super::model::Hub;
 use crate::edge::{checkpoint, sidecar};
@@ -31,10 +29,9 @@ impl Hub {
         self.remote_carry_over();
         self.ssh.restored = hosts.panes;
         if let Some(spaces) = self.laid_spaces() {
-            self.book.spaces = spaces;
+            self.book.begin(spaces);
         }
-        self.book.active = self.book.spaces.current().id;
-        let ids: Vec<SpaceId> = self.book.spaces.list().iter().map(|s| s.id).collect();
+        let ids: Vec<SpaceId> = self.book.spaces().list().iter().map(|s| s.id).collect();
         let mut taken = BTreeSet::new();
         for id in ids {
             self.restore_space(dir.as_deref(), id, &mut taken);
@@ -58,7 +55,7 @@ impl Hub {
     fn restore_space(&mut self, dir: Option<&Path>, id: SpaceId, taken: &mut BTreeSet<PaneId>) {
         let saved = match self.laid_space(id) {
             Some(ws) if !ws.tabs.place.tabs.is_empty() => Some(ws),
-            _ => from_place(&self.book.spaces.recall().of(id)),
+            _ => self.book.recalled(id),
         };
         let Some(ws) = saved else { return };
         let panes = ws.tabs.panes();
@@ -69,15 +66,9 @@ impl Hub {
             return;
         }
         taken.extend(panes);
-        self.book.note(&ws);
         let plan = launch_plan(&ws);
         let viewers = viewer_plan(&ws);
-        match id == self.book.active {
-            true => self.ws = ws,
-            false => {
-                self.book.parked.insert(id, ws);
-            }
-        }
+        self.book.place(id, ws);
         self.with_space(id, |hub| {
             for spawn in plan {
                 let snapshot = dir.and_then(|dir| sidecar::take(dir, spawn.pane));
@@ -94,20 +85,13 @@ impl Hub {
 
     /// Only the Space on screen has the keyboard: the shells of the others are not "focused".
     fn quiet_parked(&mut self) {
-        for ws in self.book.parked.values() {
-            for pane in ws.tabs.panes() {
-                self.set_pane_focus(pane, Focus::Unfocused);
-            }
+        let parked: Vec<PaneId> = self
+            .book
+            .parked()
+            .flat_map(|(_, ws)| ws.tabs.panes())
+            .collect();
+        for pane in parked {
+            self.set_pane_focus(pane, Focus::Unfocused);
         }
-    }
-}
-
-/// A workspace from the place the Spaces file recalls: its tabs and folders, each shell starting
-/// in the Space's folder. `None` when the place holds no tab.
-fn from_place(place: &Place) -> Option<Workspace> {
-    let text = serde_json::json!({ "version": VERSION, "place": place }).to_string();
-    match decode(&text, KeepClosed::DEFAULT) {
-        Restored::Loaded(ws) if !ws.tabs.place.tabs.is_empty() => Some(*ws),
-        _ => None,
     }
 }

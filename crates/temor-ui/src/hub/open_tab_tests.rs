@@ -28,7 +28,7 @@ fn the_pane_of_a_new_tab_is_the_tabs_even_when_the_quick_terminal_has_the_keyboa
     let opened = hub.open_tab(None).expect("a tab opened");
 
     assert_ne!(opened, quick);
-    assert!(hub.ws.tab_of(opened).is_some(), "the pane is a tab's");
+    assert!(hub.book.ws.tab_of(opened).is_some(), "the pane is a tab's");
     assert_eq!(
         hub.keyboard_pane(),
         Some(quick),

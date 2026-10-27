@@ -10,7 +10,7 @@ use temor_core::session::Checkpoint;
 use temor_core::space::{Origin, spawn_plan};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut, workspace_step};
+use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
 use temor_vt::Snapshot;
 
 use super::model::{Hub, HubRef};
@@ -24,19 +24,15 @@ use crate::view::slot::{Slot, repaint};
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
-        if let Some(space) = self.parked_owner_of(&input) {
+        if let Some(space) = self.book.parked_owner_of(&input) {
             return self.with_space(space, |hub| hub.act(input));
         }
         let input = self.in_project(input);
-        self.book.lift(&mut self.ws);
         let input = self.ssh_prepare(input);
         let input = self.start_prepared(input);
         let input = self.measured(input);
         let at_home = self.split_starts_at_home(&input);
-        let (ws, outs) = workspace_step(self.ws.clone(), input);
-        self.ws = ws;
-        self.book.note(&self.ws);
-        for out in outs {
+        for out in self.book.step(input) {
             match out {
                 WorkspaceOut::Spawn(spawn) if at_home => {
                     let spawn = self.starting_at_home(spawn);
@@ -48,7 +44,7 @@ impl Hub {
         self.agents_after_act();
         self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
-        if self.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }
@@ -56,9 +52,10 @@ impl Hub {
     /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
     /// there before. A request the workspace refuses opens none.
     pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
-        let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
+        let before: BTreeSet<PaneId> = self.book.ws.tabs.panes().into_iter().collect();
         self.act(input);
-        self.ws
+        self.book
+            .ws
             .tabs
             .panes()
             .into_iter()
@@ -219,6 +216,7 @@ impl Hub {
     pub(super) fn end_pane(&mut self, pane: PaneId) {
         self.drop_pane(pane);
         let in_closed_tab = self
+            .book
             .ws
             .closed
             .tabs
@@ -275,7 +273,7 @@ impl Hub {
             return;
         }
         let start = self.space_start();
-        let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
+        let cwd = self.book.ws.cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
         self.run_restarted(pane);

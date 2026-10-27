@@ -190,7 +190,7 @@ fn a_reopened_tab_is_a_session_on_the_same_host() {
         return;
     };
     assert_eq!(rig.hub.host_of(pane), Some("fake"));
-    let tab = rig.hub.ws.tabs.place.tabs[0].id;
+    let tab = rig.hub.book.ws.tabs.place.tabs[0].id;
     // A second tab keeps the window from starting a fresh one in place of the closed tab.
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     rig.hub.act(WorkspaceIn::CloseTab(tab));

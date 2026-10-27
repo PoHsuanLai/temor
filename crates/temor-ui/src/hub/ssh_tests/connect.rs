@@ -333,7 +333,7 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
     // The last session had a host tab; it starts hidden behind a plain tab.
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     let plain = rig.front();
-    let saved = temor_core::vocab::ids::PaneId(rig.hub.ws.next_pane);
+    let saved = temor_core::vocab::ids::PaneId(rig.hub.book.ws.next_pane);
     rig.hub.ssh.restored = vec![PaneHost {
         pane: saved,
         alias: "fake".to_owned(),

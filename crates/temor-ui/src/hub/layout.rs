@@ -191,10 +191,7 @@ impl Hub {
         let runs: BTreeSet<PaneId> = self.run.panes.keys().copied().collect();
         let rows: Vec<(String, Option<String>)> = self
             .book
-            .parked
-            .iter()
-            .map(|(id, ws)| (*id, ws))
-            .chain([(self.book.active, &self.ws)])
+            .every()
             .map(|(id, ws)| (space_key(id), encode(&leave_out(ws, &runs)).ok()))
             .collect();
         let kept: BTreeSet<String> = rows.iter().map(|(key, _)| key.clone()).collect();
@@ -213,7 +210,7 @@ impl Hub {
         for key in gone {
             self.lay(key, None, through);
         }
-        let spaces = serde_json::to_string(&self.spaces_for_file()).ok();
+        let spaces = serde_json::to_string(&self.book.for_keeping()).ok();
         if let Some(text) = spaces {
             self.lay(SPACES.to_owned(), Some(text), through);
         }

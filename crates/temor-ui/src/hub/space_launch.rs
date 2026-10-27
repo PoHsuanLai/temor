@@ -25,7 +25,7 @@ impl Hub {
     /// The start of a new shell in the Space on screen. Anything that could not be had (a line
     /// of the dotenv file, the agent, a secret) is told to the person and left out.
     pub(super) fn space_start(&mut self) -> SpaceStart {
-        let space = self.book.active;
+        let space = self.book.active();
         let project = self.project_here(space);
         let dotenv = match dotenv_path(&project) {
             Ok(path) => path.and_then(|path| read_dotenv(&path)),
@@ -51,13 +51,13 @@ impl Hub {
         }
         if let Some(agent) = &plan.agent {
             let home = self.launch.ambient.home.clone();
-            if let Err(err) = self.book.agents.ensure(space, agent, &home) {
+            if let Err(err) = self.keep.agents.ensure(space, agent, &home) {
                 self.notices.push(err.to_string());
                 env.remove(agent.env.0.as_str());
             }
         }
         for credential in &plan.credentials {
-            match self.book.credentials.0.secret(&credential.account) {
+            match self.keep.credentials.0.secret(&credential.account) {
                 Ok(Some(secret)) => env.set(credential.env.as_str(), secret),
                 Ok(None) => self.notices.push(format!(
                     "No saved key for {} was found",
@@ -91,7 +91,7 @@ impl Hub {
         match input {
             WorkspaceIn::NewTab { cwd: None } => WorkspaceIn::NewTab {
                 cwd: self
-                    .project_here(self.book.active)
+                    .project_here(self.book.active())
                     .root
                     .map(|root| Cwd(root.0)),
             },

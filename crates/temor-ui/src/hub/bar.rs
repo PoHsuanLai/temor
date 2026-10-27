@@ -71,7 +71,7 @@ impl Hub {
             .collect();
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
-        let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
+        let directories = directory_uses(&self.bar.visits, self.book.ws.cwds.values(), now);
         // Pin Tab or Unpin Tab, whichever the tab in front can take; Detach only where it works.
         let pinned = self.front_pinned();
         let detach = self.can_detach_focused();
@@ -88,8 +88,8 @@ impl Hub {
         let sources = Sources {
             actions: &actions,
             spaces: &spaces,
-            tabs: &self.ws.tabs.place.tabs,
-            folders: &self.ws.tabs.place.folders,
+            tabs: &self.book.ws.tabs.place.tabs,
+            folders: &self.book.ws.tabs.place.folders,
             hosts: &hosts,
             layouts: &[],
             recent: &recent,
@@ -97,7 +97,7 @@ impl Hub {
             now,
         };
         let mut all = candidates(&sources);
-        all.extend(closed_candidate(&self.ws.closed));
+        all.extend(closed_candidate(&self.book.ws.closed));
         all.extend(self.local_tab_candidate());
         all
     }

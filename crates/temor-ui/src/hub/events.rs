@@ -157,9 +157,9 @@ impl Hub {
 
     /// The tab's title follows the program's title in the pane that has the keys in it.
     fn rename_for(&self, pane: PaneId, title: &str) -> Option<WorkspaceIn> {
-        let tab = self.ws.tab_of(pane)?;
-        let current = self.ws.tabs.tab(tab)?;
-        (self.ws.focus_of(tab) == Some(pane)
+        let tab = self.book.ws.tab_of(pane)?;
+        let current = self.book.ws.tabs.tab(tab)?;
+        (self.book.ws.focus_of(tab) == Some(pane)
             && !title.is_empty()
             && current.title.as_str() != title)
             .then(|| {

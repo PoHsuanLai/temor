@@ -35,6 +35,7 @@ impl Hub {
             Target::Action(action) => self.bar_actions.push(action),
             Target::Folder(folder) => {
                 let first = self
+                    .book
                     .ws
                     .tabs
                     .place

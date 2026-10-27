@@ -10,7 +10,7 @@ use temor_client::pane::{Heard, Hearing};
 use temor_core::quick::QuickState;
 use temor_core::split::SplitTree;
 use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::workspace::{ClosedState, KeepClosed, Workspace};
+use temor_core::workspace::Workspace;
 use temor_pane::PaneEvent;
 use temor_render::Palette;
 use temor_vt::Snapshot;
@@ -24,7 +24,7 @@ use super::peek::PeekHub;
 use super::remote::RemoteHub;
 use super::run::RunHub;
 use super::shelf::ShelfHub;
-use super::spaces::SpaceBook;
+use super::spaces::SpaceKeep;
 use super::ssh::SshHub;
 use super::viewers::ViewerHub;
 use crate::edge::SavePace;
@@ -37,9 +37,10 @@ pub(super) const SAVE_EVERY: std::time::Duration = std::time::Duration::from_sec
 
 /// Everything the window keeps about its panes. Lives on the window's thread.
 pub struct Hub {
-    /// The workspace of the Space on screen; the other Spaces' are in `book`.
-    pub(super) ws: Workspace,
-    pub(super) book: SpaceBook,
+    /// Every Space's workspace, the one on screen in `book.ws` (the client's).
+    pub(super) book: temor_client::spaces::Book,
+    /// Each Space's key agent and the account store its credentials come from.
+    pub(super) keep: SpaceKeep,
     pub(super) slots: BTreeMap<PaneId, Rc<RefCell<Slot>>>,
     /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
     pub(super) recent: BTreeMap<PaneId, Snapshot>,
@@ -135,8 +136,8 @@ impl Hub {
         let offer = OfferHub::new(&launch);
         let remote = RemoteHub::new(&launch.ambient, launch.state_dir.clone());
         Hub {
-            ws: Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
-            book: SpaceBook::new(),
+            book: temor_client::spaces::Book::new(),
+            keep: SpaceKeep::default(),
             slots: BTreeMap::new(),
             recent: BTreeMap::new(),
             carried: BTreeMap::new(),
@@ -183,14 +184,18 @@ impl Hub {
 
     /// The workspace, for reading.
     pub fn workspace(&self) -> &Workspace {
-        &self.ws
+        &self.book.ws
     }
 
     /// The pane that has the keyboard: the quick terminal's while it is shown, else the focused
     /// pane of the tab in front.
     pub fn keyboard_pane(&self) -> Option<PaneId> {
-        self.quick_shown()
-            .or_else(|| self.ws.front().and_then(|tab| self.ws.focus_of(tab)))
+        self.quick_shown().or_else(|| {
+            self.book
+                .ws
+                .front()
+                .and_then(|tab| self.book.ws.focus_of(tab))
+        })
     }
 
     /// The next message for the person, if one is waiting; taking it clears it.
@@ -232,13 +237,13 @@ impl HubRef {
     /// The tab in front with its panes and the one that has the keys.
     pub fn front(&self) -> Option<(TabId, SplitTree, PaneId)> {
         let hub = self.0.borrow();
-        let tab = hub.ws.front()?;
-        let tree = hub.ws.tabs.tab(tab)?.tree.clone();
-        Some((tab, tree, hub.ws.focus_of(tab)?))
+        let tab = hub.book.ws.front()?;
+        let tree = hub.book.ws.tabs.tab(tab)?.tree.clone();
+        Some((tab, tree, hub.book.ws.focus_of(tab)?))
     }
 
     /// The pane with the keys in `tab`.
     pub fn focus_pane_of(&self, tab: TabId) -> Option<PaneId> {
-        self.0.borrow().ws.focus_of(tab)
+        self.0.borrow().book.ws.focus_of(tab)
     }
 }

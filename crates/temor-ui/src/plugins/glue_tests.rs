@@ -235,7 +235,7 @@ fn a_lens_draws_a_block_and_a_picture_nobody_asked_for_is_dropped() {
 fn an_adapter_reports_the_agents_states_as_the_panes_status() {
     let (mut hub, mut inbox, _root) = hub_with(&[]);
     let pane = PaneId(1);
-    hub.ws.cwds.insert(pane, Cwd("/finish".to_owned()));
+    hub.book.ws.cwds.insert(pane, Cwd("/finish".to_owned()));
     // What the adapter sends, as it sends it: the pane has no session to hear it.
     let (sent, mut events) = tokio::sync::mpsc::unbounded_channel();
     hub.events = sent;
@@ -273,7 +273,7 @@ fn an_adapter_reports_the_agents_states_as_the_panes_status() {
 fn an_adapter_follows_the_agent_and_stops_when_it_leaves() {
     let (mut hub, _inbox, _root) = hub_with(&[]);
     let pane = PaneId(1);
-    hub.ws.cwds.insert(pane, Cwd("/work".to_owned()));
+    hub.book.ws.cwds.insert(pane, Cwd("/work".to_owned()));
     // was, is, adapters running after
     let steps: Vec<(Option<&str>, Option<&str>, usize)> = vec![
         (None, Some("codex"), 0),

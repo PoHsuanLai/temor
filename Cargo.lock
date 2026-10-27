@@ -7201,8 +7201,10 @@ name = "temor-client"
 version = "0.1.1"
 dependencies = [
  "ds-core",
+ "ds-style",
  "notify",
  "parking_lot",
+ "serde_json",
  "temor-client",
  "temor-core",
  "temor-pane",

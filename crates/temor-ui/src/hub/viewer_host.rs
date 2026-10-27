@@ -180,7 +180,7 @@ impl Hub {
         let Some(want) = self.viewers.host.wanted.remove(&event.id) else {
             return Vec::new();
         };
-        let open = self.ws.tab_of(want.from).is_some();
+        let open = self.book.ws.tab_of(want.from).is_some();
         match (event.outcome, &want.then) {
             (CopyOutcome::Whole, Then::View) if open => {
                 let file = want.local.clone();

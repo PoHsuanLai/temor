@@ -11,6 +11,7 @@ use super::support::Rig;
 /// The folder the workspace holds for `pane`.
 fn folder(rig: &Rig, pane: PaneId) -> Option<String> {
     rig.hub
+        .book
         .ws
         .cwds
         .get(&pane)

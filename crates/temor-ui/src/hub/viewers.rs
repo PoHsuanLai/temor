@@ -164,21 +164,22 @@ impl Hub {
     /// The request that gives the keyboard back from the viewer `pane`: to the terminal it came
     /// from, else to another terminal of its tab.
     pub fn viewer_unfocus(&self, pane: PaneId) -> Option<WorkspaceIn> {
-        let tab = self.ws.tab_of(pane)?;
+        let tab = self.book.ws.tab_of(pane)?;
         let origin = self
             .viewers
             .seats
             .get(&pane)
             .and_then(|seat| seat.origin)
-            .filter(|origin| self.ws.tab_of(*origin) == Some(tab));
+            .filter(|origin| self.book.ws.tab_of(*origin) == Some(tab));
         let other = || {
-            self.ws
+            self.book
+                .ws
                 .tabs
                 .tab(tab)?
                 .tree
                 .panes()
                 .into_iter()
-                .find(|p| !self.ws.viewers.contains_key(p))
+                .find(|p| !self.book.ws.viewers.contains_key(p))
         };
         origin.or_else(other).map(WorkspaceIn::Focus)
     }
@@ -186,7 +187,7 @@ impl Hub {
     /// The viewer now shows `path`: the session file keeps it, and the pane is left alone.
     pub fn viewer_shows(&mut self, pane: PaneId, path: &Path) {
         let file = ViewerRef(path.to_string_lossy().into_owned());
-        if self.ws.viewers.get(&pane) != Some(&file) {
+        if self.book.ws.viewers.get(&pane) != Some(&file) {
             self.act(WorkspaceIn::ViewerShows { pane, file });
         }
     }
@@ -218,7 +219,7 @@ impl Hub {
 
     /// Whether `pane` is a viewer.
     pub fn is_viewer(&self, pane: PaneId) -> bool {
-        self.ws.viewers.contains_key(&pane)
+        self.book.ws.viewers.contains_key(&pane)
     }
 
     /// What the view of the viewer `pane` is given; none for a pane that is not one, or whose
@@ -248,7 +249,7 @@ impl Hub {
 
     /// The name a viewer pane is shown by: its file's name.
     pub(super) fn viewer_name(&self, pane: PaneId) -> Option<String> {
-        let file = self.ws.viewers.get(&pane)?;
+        let file = self.book.ws.viewers.get(&pane)?;
         if let Some(page) = super::stage::temor_page(file.as_str()) {
             return Some(super::stage::temor_page_name(&page));
         }

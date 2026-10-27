@@ -15,6 +15,7 @@ mod external;
 mod live;
 pub mod pane;
 pub mod query;
+pub mod spaces;
 
 pub use act::Command;
 pub use client::{Client, ClientConfig};

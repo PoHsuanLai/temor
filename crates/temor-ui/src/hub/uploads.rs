@@ -58,7 +58,7 @@ impl Hub {
         let Some(host) = self.alias_of(pane) else {
             return Vec::new();
         };
-        let Some(folder) = self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {
+        let Some(folder) = self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {
             return vec!["temor doesn't know this pane's folder yet".to_owned()];
         };
         let tier = match self.edit_tier(&host) {

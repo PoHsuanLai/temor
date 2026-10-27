@@ -80,7 +80,7 @@ impl Hub {
         }
         let on_pane = pane.and_then(|p| {
             let host = self.alias_of(p)?;
-            let cwd = self.ws.cwds.get(&p).map(|c| c.as_str().to_owned());
+            let cwd = self.book.ws.cwds.get(&p).map(|c| c.as_str().to_owned());
             Some((host, cwd))
         });
         let target = match (parse_host_path(typed), on_pane) {

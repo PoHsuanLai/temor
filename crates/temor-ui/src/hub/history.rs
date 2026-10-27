@@ -80,13 +80,13 @@ impl Hub {
             .sessions
             .iter()
             .find(|(_, begun)| begun.id == id)?;
-        self.ws.tab_of(*pane)
+        self.book.ws.tab_of(*pane)
     }
 
     /// The session of the pane with the keys in `tab`, or of its first that has one.
     pub fn session_of_tab(&self, tab: temor_core::vocab::ids::TabId) -> Option<SessionId> {
-        let focus = self.ws.focus_of(tab);
-        let panes = self.ws.tabs.tab(tab)?.tree.panes();
+        let focus = self.book.ws.focus_of(tab);
+        let panes = self.book.ws.tabs.tab(tab)?.tree.panes();
         focus
             .into_iter()
             .chain(panes)

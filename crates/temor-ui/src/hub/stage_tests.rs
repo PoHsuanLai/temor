@@ -23,12 +23,13 @@ fn ask(file: &str) -> ViewAsk {
 /// A hub with one tab around shell 1.
 fn hub() -> (Hub, TabId, PaneId) {
     let hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
-    let tab = hub.ws.front().expect("a tab");
+    let tab = hub.book.ws.front().expect("a tab");
     (hub, tab, PaneId(1))
 }
 
 fn shown(hub: &Hub, tab: TabId) -> Option<String> {
     let pane = hub
+        .book
         .ws
         .tabs
         .tab(tab)?
@@ -36,7 +37,8 @@ fn shown(hub: &Hub, tab: TabId) -> Option<String> {
         .panes()
         .into_iter()
         .find(|pane| hub.is_viewer(*pane))?;
-    hub.ws
+    hub.book
+        .ws
         .viewers
         .get(&pane)
         .map(|file| file.as_str().to_owned())

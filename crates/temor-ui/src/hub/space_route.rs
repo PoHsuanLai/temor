@@ -24,7 +24,7 @@ impl Hub {
 
     fn with_routes<T>(&self, pick: impl FnOnce(&[SpaceRoute<'_>]) -> T) -> T {
         let home = &self.launch.ambient.home;
-        let spaces = self.book.spaces.list();
+        let spaces = self.book.spaces().list();
         let expanded: Vec<(SpaceId, RoutePattern)> = routes_of(spaces)
             .into_iter()
             .map(|route| (route.space, expand_home(route.pattern, home)))

@@ -183,7 +183,7 @@ impl Hub {
     pub(super) fn pane_folder(&self, pane: PaneId) -> Option<String> {
         self.live(pane, |s| s.cwd())
             .flatten()
-            .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
+            .or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
     }
 }
 
