@@ -16,10 +16,10 @@ use super::remote_retry::{Begin, begin_plan};
 use super::remote_source::{Blob, Source, session_source};
 use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
-use crate::edge::remote_link::{RemoteLink, Target, lock};
-use crate::edge::remote_relay::relay;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
+use temor_panes::remote::link::{RemoteLink, Target, lock};
+use temor_panes::remote::relay::relay;
 
 /// The `ssh` arguments that make the shared connection and leave: a terminal for the questions
 /// it may ask, the connection kept in the background for the helper's `ssh` to join, and `true`

@@ -4,8 +4,8 @@
 use temor_remote::PortAction;
 
 use super::host_words::{FORWARD_PORT, OPEN_DIRECT_TIP};
-use crate::edge::remote_hold::Typing;
 use crate::hub::RemoteStage;
+use temor_client::remote::hold::Typing;
 
 /// The question about putting the helper on a computer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

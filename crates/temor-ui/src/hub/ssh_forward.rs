@@ -7,8 +7,8 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::{HostAlias, Port};
 
 use super::model::Hub;
-use crate::edge::ssh_work::free_local_port;
 use crate::platform::open_link;
+use temor_client::ssh::work::free_local_port;
 
 /// What the person is told when a forward cannot be opened.
 pub(super) fn fault_words(host: &HostAlias, remote: Port, fault: ForwardFault) -> String {

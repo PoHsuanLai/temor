@@ -4,7 +4,7 @@ use temor_core::host::edit::EditFault;
 use temor_core::host::forward::ForwardFault;
 use temor_ssh::{Port, SshError};
 
-use super::ssh_work::{edit_fault, forward_fault, free_local_port};
+use crate::ssh::work::{edit_fault, forward_fault, free_local_port};
 
 #[test]
 fn failures_read_as_no_connection_or_a_refusal() {

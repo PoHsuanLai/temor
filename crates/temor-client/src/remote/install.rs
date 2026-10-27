@@ -10,7 +10,7 @@ use temor_core::vocab::text::HelperHash;
 use temor_ssh::{ControlLayout, HostAlias};
 use temor_wire::hello::{HELPER_CACHE_FOLDER, HelperVersion};
 
-use super::remote_builds::arch_of;
+use crate::remote::builds::arch_of;
 use temor_wire::digest::ContentHash;
 
 /// Where the helper build `hash` lives on the host (the login shell expands the `~`).
@@ -172,5 +172,5 @@ pub fn remove_script(hash: &ContentHash) -> String {
 }
 
 #[cfg(test)]
-#[path = "remote_install_tests.rs"]
+#[path = "install_tests.rs"]
 mod tests;

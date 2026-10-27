@@ -15,7 +15,10 @@ mod external;
 pub mod keep;
 mod live;
 pub mod query;
+pub mod remote;
 pub mod spaces;
+pub mod ssh;
+pub mod viewer_host;
 
 pub use act::Command;
 pub use client::{Client, ClientConfig};

@@ -7,7 +7,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_ssh::{HostRow, Port};
 
 use super::desk::Desk;
-use crate::edge::ssh_work::EditId;
+use temor_client::ssh::work::EditId;
 
 impl Desk {
     /// Opens a new tab on the host `row` names.

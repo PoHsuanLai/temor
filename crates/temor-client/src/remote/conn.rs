@@ -12,7 +12,7 @@ use temor_ssh::{ControlLayout, HostAlias};
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 
-use super::remote_install::helper_path;
+use crate::remote::install::helper_path;
 
 /// Why a connection could not be made.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -12,9 +12,9 @@ use temor_wire::message::ListeningPort;
 use super::model::Hub;
 use super::remote::{Busy, Reach, Shown};
 use super::ssh_events::Redraw;
-use crate::edge::remote_conn::{Conn, DialFault};
-use crate::edge::remote_event::Generation;
-use crate::edge::remote_link::lock;
+use temor_client::remote::conn::{Conn, DialFault};
+use temor_panes::remote::event::Generation;
+use temor_panes::remote::link::lock;
 
 impl Hub {
     /// Whether an event about `host` is about its current connection.

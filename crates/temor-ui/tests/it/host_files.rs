@@ -6,10 +6,10 @@ use std::sync::Arc;
 use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
 
+use temor_client::remote::conn::Conn;
+use temor_client::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use temor_core::host::edit::EditFault;
 use temor_remote::{Client, DAEMON_CAPS, hello};
-use temor_ui::edge::remote_conn::Conn;
-use temor_ui::edge::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
 use temor_wire::message::RemotePath;

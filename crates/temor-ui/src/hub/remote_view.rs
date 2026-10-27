@@ -9,8 +9,8 @@ use temor_remote::{HostReach, PortAction, port_actions};
 use super::model::{Hub, HubRef};
 use super::remote::Shown;
 use super::remote_source::{LinkShown, link_shown};
-use crate::edge::remote_hold::Typing;
-use crate::edge::remote_link::lock;
+use temor_client::remote::hold::Typing;
+use temor_panes::remote::link::lock;
 
 /// Where a pane on a helper stands, for the person.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

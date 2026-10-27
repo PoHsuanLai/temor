@@ -4,6 +4,14 @@
 //! reads on the window's thread the way it reads a pane's events. The decisions are the pure
 //! steps in temor-core and temor-wire; these only run what they name.
 
+pub mod attach;
+pub mod event;
+pub mod link;
+pub mod palette;
+pub mod pump;
+pub mod relay;
+pub mod route;
+
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
@@ -18,17 +26,17 @@ use temor_wire::link::PingPolicy;
 use temor_wire::message::Palette;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::SshEnv;
-use super::remote_attach::attach_pane;
-use super::remote_calls::{close, ports, set_palette};
-use super::remote_conn::{Conn, DialFault, dial, dial_argv, dial_local};
-use super::remote_event::{AttachFault, Generation, RemoteEvent, Ticket};
-use super::remote_install::{
+use crate::remote::attach::attach_pane;
+use crate::remote::event::{AttachFault, Generation, RemoteEvent, Ticket};
+use crate::remote::pump::pump;
+use crate::remote::route::Router;
+use temor_client::remote::calls::{close, ports, set_palette};
+use temor_client::remote::conn::{Conn, DialFault, dial, dial_argv, dial_local};
+use temor_client::remote::install::{
     Found, HelperBlob, PROBE_SCRIPT, command_argv, install_script, parse_probe, remove_script,
 };
-use super::remote_ping::watch;
-use super::remote_pump::pump;
-use super::remote_route::Router;
+use temor_client::remote::ping::watch;
+use temor_client::ssh::SshEnv;
 
 /// Starts jobs. Cloning shares the channel.
 #[derive(Debug, Clone)]

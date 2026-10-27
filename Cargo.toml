@@ -77,7 +77,7 @@ tokio = { version = "1", default-features = false, features = ["sync"] }
 # temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
 temor-wire = { path = "crates/temor-wire" }
 # temor-ui (lane remote): the helper's client, for Tier B sessions in the window.
-temor-remote = { path = "crates/temor-remote" }
+temor-remote = { path = "crates/temor-remote", default-features = false }
 sha2 = "0.10"
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
 anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "0cef94115de7ca823b198201cd15b7463e86f9ea" }

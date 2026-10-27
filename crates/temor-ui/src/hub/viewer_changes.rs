@@ -9,8 +9,8 @@ use super::model::Hub;
 use super::ssh_edit::forget_copy;
 use super::viewer_diff::{Changes, changes};
 use super::viewer_host::{Then, Wanted};
-use crate::edge::ssh_work::EditId;
-use crate::edge::viewer_host::Cap;
+use temor_client::ssh::work::EditId;
+use temor_client::viewer_host::Cap;
 
 /// The most of a file fetched to compare: more is not shown as a diff (see `viewer_diff`).
 const DIFF_CAP: u64 = 2 * 1024 * 1024;

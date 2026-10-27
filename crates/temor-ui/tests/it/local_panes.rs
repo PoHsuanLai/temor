@@ -7,9 +7,9 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds_harness::Input;
+use temor_client::remote::conn::dial_local;
 use temor_remote::host::HostEnv;
 use temor_ui::edge::Ambient;
-use temor_ui::edge::remote_conn::dial_local;
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, focus_pane, panes, rects, type_line, type_text, wait_until};

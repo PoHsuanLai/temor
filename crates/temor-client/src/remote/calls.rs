@@ -8,12 +8,12 @@ use temor_wire::ids::SessionId;
 use temor_wire::message::{EnvVar, ListeningPort, OpenSession, Palette, RemotePath};
 use temor_wire::units::{CellPx, Cols, Pixels, Rows, Size};
 
-/// One cell in the pixels the helper wants, from the pane's cell in device pixels. A side that
+/// One cell in the pixels the helper wants, from the pane's cell, `width` by `height` device pixels. A side that
 /// does not fit 16 bits is held at the most; a cell with no width or height (a pane not laid out
 /// yet) is the helper's own default.
-pub fn wire_cell(cell: temor_vt::CellPx) -> CellPx {
+pub fn wire_cell(width: u32, height: u32) -> CellPx {
     let side = |px: u32| u16::try_from(px).unwrap_or(u16::MAX);
-    match (side(cell.width.0), side(cell.height.0)) {
+    match (side(width), side(height)) {
         (0, _) | (_, 0) => CellPx::DEFAULT,
         (width, height) => CellPx {
             width: Pixels(width),
@@ -110,7 +110,7 @@ mod tests {
             ((9, 0), (8, 16)),
         ];
         for ((w, h), (want_w, want_h)) in cases {
-            let got = wire_cell(temor_vt::CellPx::new(w, h));
+            let got = wire_cell(w, h);
             assert_eq!(
                 (got.width, got.height),
                 (Pixels(want_w), Pixels(want_h)),

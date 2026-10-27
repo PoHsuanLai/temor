@@ -8,12 +8,12 @@ use temor_remote::Error;
 use temor_wire::ids::SessionId;
 use temor_wire::message::RemoteError;
 
-use super::remote_adopt::{Adoption, adoption};
-use super::remote_calls::{attach, input, open, resize, sessions, set_palette};
-use super::remote_conn::Conn;
-use super::remote_event::{AttachFault, Ticket, Wanted};
-use super::remote_link::{SharedTarget, lock};
-use super::remote_route::Router;
+use crate::remote::event::{AttachFault, Ticket, Wanted};
+use crate::remote::link::{SharedTarget, lock};
+use crate::remote::route::Router;
+use temor_client::remote::adopt::{Adoption, adoption};
+use temor_client::remote::calls::{attach, input, open, resize, sessions, set_palette};
+use temor_client::remote::conn::Conn;
 
 /// Opens or reattaches the session `ticket` names on `conn`, hands the pane its screen, and
 /// points the pane's input at it.

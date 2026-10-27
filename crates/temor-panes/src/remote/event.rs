@@ -10,9 +10,9 @@ use temor_ssh::HostAlias;
 use temor_wire::ids::SessionId;
 use temor_wire::message::{ListeningPort, Palette};
 
-use super::remote_conn::{Conn, DialFault};
-use super::remote_install::Found;
-use super::remote_link::SharedTarget;
+use crate::remote::link::SharedTarget;
+use temor_client::remote::conn::{Conn, DialFault};
+use temor_client::remote::install::Found;
 
 /// Which connection of a host an event is about; an event of an older one is stale.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]

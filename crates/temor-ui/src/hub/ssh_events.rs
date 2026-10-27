@@ -10,7 +10,7 @@ use temor_ssh::{HostAlias, MasterProbe};
 
 use super::desk::Desk;
 use super::model::Hub;
-use crate::edge::ssh_work::SshEvent;
+use temor_client::ssh::work::SshEvent;
 
 /// How often the local copies are looked at (an editor's save shows within this).
 const TICK: Duration = Duration::from_millis(300);

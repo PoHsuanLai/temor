@@ -12,10 +12,10 @@ use temor_ssh::{HostAlias, RemoteFilePath, RemoteFiles, RemoteState, SshRemoteFi
 use temor_wire::message::{RemotePath, WriteCheck};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::SshEnv;
-use super::remote_conn::Conn;
-use super::remote_edit::{conflict_of, fault_of};
-use super::ssh_work::{SshEvent, edit_fault};
+use crate::remote::conn::Conn;
+use crate::remote::edit::{conflict_of, fault_of};
+use crate::ssh::SshEnv;
+use crate::ssh::work::{SshEvent, edit_fault};
 use temor_core::host::edit::EditFault;
 
 /// Starts uploads. Cloning shares the channel.

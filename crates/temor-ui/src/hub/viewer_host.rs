@@ -18,10 +18,10 @@ use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use super::remote_edit::EditTier;
 use super::ssh_edit::{forget_copy, local_name};
-use crate::edge::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
-use crate::edge::viewer_host::{copy_from_helper, copy_with_scp};
 use crate::platform::ensure_private_dir;
 use crate::session::ViewAsk;
+use temor_client::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
+use temor_client::viewer_host::{copy_from_helper, copy_with_scp};
 
 /// What a fetched file is for.
 pub(super) enum Then {

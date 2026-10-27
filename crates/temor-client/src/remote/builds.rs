@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 use temor_core::remote::HostArch;
 use temor_core::vocab::text::HelperHash;
 
-use super::remote_install::{HelperBlob, blob_path, read_blob};
+use crate::remote::install::{HelperBlob, blob_path, read_blob};
 
 /// `uname -m` as the kinds of processor the helper is built for.
 pub fn arch_of(uname: &str) -> HostArch {
@@ -115,5 +115,5 @@ impl HelperBuilds {
 }
 
 #[cfg(test)]
-#[path = "remote_builds_tests.rs"]
+#[path = "builds_tests.rs"]
 mod tests;

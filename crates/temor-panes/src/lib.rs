@@ -13,6 +13,7 @@ mod hearing;
 pub mod marks;
 pub mod notify;
 mod open;
+pub mod remote;
 pub mod sources;
 
 use std::path::PathBuf;

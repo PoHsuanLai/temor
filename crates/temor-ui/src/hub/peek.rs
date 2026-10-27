@@ -17,8 +17,8 @@ use super::model::{Hub, HubRef};
 use super::ssh_edit::local_name;
 use crate::edge::peek_look::{Landing, PeekLook};
 use crate::edge::peek_mail::{Taken, Ticket};
-use crate::edge::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use crate::platform::ensure_private_dir;
+use temor_client::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 
 /// The biggest file of another computer that is fetched whole for a card.
 const PEEK_CAP: u64 = 8 * 1024 * 1024;

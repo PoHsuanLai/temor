@@ -34,6 +34,12 @@ parking_lot = { workspace = true }
 # The watch channel a `Live` is followed through, so an `async` window can await a change.
 tokio = { workspace = true }
 notify = { workspace = true }
+# The services (`ssh`, `remote`, `viewer_host`): Tier A's programs and Tier B's helper, its wire
+# and its client (without the daemon, so no terminal engine), and where a program is found.
+temor-ssh = { workspace = true }
+temor-wire = { workspace = true }
+temor-remote = { workspace = true }
+temor-pty = { workspace = true }
 
 [dev-dependencies]
 temor-client = { path = ".", features = ["testing"] }

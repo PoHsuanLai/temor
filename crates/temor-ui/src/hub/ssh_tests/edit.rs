@@ -7,9 +7,9 @@ use temor_core::workspace::WorkspaceIn;
 use temor_ssh::Port;
 
 use super::support::Rig;
-use crate::edge::ssh_work::EditId;
 use crate::hub::ssh::DoneAsked;
 use crate::hub::ssh_view::{EditStatus, Stage};
+use temor_client::ssh::work::EditId;
 
 /// A rig whose first host pane is connected.
 fn connected(name: &str) -> Option<(Rig, temor_core::vocab::ids::PaneId)> {

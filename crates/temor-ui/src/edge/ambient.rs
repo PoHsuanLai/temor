@@ -149,6 +149,11 @@ impl Ambient {
             .join("user-dirs.dirs")
     }
 
+    /// What the window's SSH needs from these surroundings.
+    pub fn ssh_env(&self) -> temor_client::ssh::SshEnv {
+        temor_client::ssh::SshEnv::new(self.env.get("PATH"), &self.home, &self.runtime_dir)
+    }
+
     /// The folder a pane stages the files a program sends before they are shelved.
     pub fn staging_dir(&self, pane: u64) -> PathBuf {
         self.shelf_dir()

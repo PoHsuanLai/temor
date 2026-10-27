@@ -49,7 +49,7 @@ ordered by dependency (§11), not split into versions.
 | D20 | **Every agent pane shows its approval mode,** as two fixed facts read from the actual launch profile and gate session, never inferred: **Sandbox** (on/off) and **Asks** (everything / writes / nothing). A mode changes only by an explicit action on that pane and never carries over silently to other panes or windows. §8.2 |
 | D21 | **Nothing goes to a model unseen.** Every AI request temor makes (a proposal, a ⌘T AI row, "Ask about @tab") first shows exactly what it will send, as removable chips with sizes, and the sent list is kept with the request's log record. Nothing is attached implicitly. §8.3 |
 | D22 | **Tailscale through porter.** temor never talks to tailscaled. porter's accountd publishes `Tailnet1.Machines()`/`Changed` (typed reader in porter-client); the person's tailnet computers appear as SSH hosts in ⌘T ("Your computers", deduped against `~/.ssh/config`, offline ones dimmed). Connecting is still the system `ssh` to the MagicDNS name with the same sharing, bootstrap and helper; Tailscale SSH hosts need no keys, and its browser check shows as a running row with Open (never auto-opened). Tailnet ports open directly at `name:port` before offering a forward. Design: `~/rs-wt/accounts/tailnet-temor.md`. §9b |
-| D23 | **Layered crates, each a proper library.** L0 standalone libraries (vt, pty, shell, wire, transfer, ssh), L1 headless engines (render, term), L2 the pure app model (core), L3 the app (ui, desktop, remote, bin). Dependencies point down only, checked in the gate. L0/L1 don't depend on quire: closed sets use plain `FromStr`/`Display`/serde instead of `ds-core`'s `Word` (a deliberate exception to quire's rule, for the library layers only). Each library has a small root API, crate docs with a runnable example, `#[non_exhaustive]` on growable enums, the standard traits, builders for wide constructors, injected defaults, and documented `Send`/`Sync`. §2 |
+| D23 | **Layered crates, each a proper library.** L0 standalone libraries (vt, pty, shell, wire, transfer, ssh), L1 headless engines (render, term), L2 the pure app model (core), L3 the services (client, panes, desktop, remote), L4 the app (ui, bin). Dependencies point down only, checked in the gate. L0/L1 don't depend on quire: closed sets use plain `FromStr`/`Display`/serde instead of `ds-core`'s `Word` (a deliberate exception to quire's rule, for the library layers only). Each library has a small root API, crate docs with a runnable example, `#[non_exhaustive]` on growable enums, the standard traits, builders for wide constructors, injected defaults, and documented `Send`/`Sync`. §2 |
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
@@ -114,13 +114,16 @@ temor/
     # L2: app model (pure)
     temor-core/       vocabulary, Spaces and projects, split tree, tabs, presence, command-bar
                       ranking, proposal sanitising, checkpoints, worktrees, their step machines
-    # L3: app (the only layer that names quire)
-    temor-ui/         Dioxus views: window, sidebar (tabs, split minis, foot), panes, blocks,
-                      command bar, shelf, proposal chip
+    # L3: services (what the window runs, on threads of their own; no views)
+    temor-client/     every operation on temor's data, and the services: ssh and the remote
+                      links, transfers, facts, viewers, the desktop port (§2b)
+    temor-panes/      the running terminals: each pane's engine, marks, blocks and notices
     temor-desktop/    feature `quire-desktop`: IntentProvider1, docket and companion clients,
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
     temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
                       daemon on temor-pane, ports, files, trial, agent relay
+    # L4: app (Dioxus views)
+    temor-ui/         Dioxus views: window, sidebar, panes, blocks, command bar, pages
     temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service,
                       systemd unit `org.quire.Temor.service`, intents manifest, skills)
 ```
@@ -128,7 +131,7 @@ temor/
 **Boundary rules** (checked by `scripts/check-layers.sh` from `cargo metadata`, and quire's
 `check-portable.sh`):
 - A crate depends only on crates in its own or lower layers. L0 and L1 never depend on quire
-  (`ds-*`), Dioxus or docket. Only L3 names quire.
+  (`ds-*`), Dioxus or docket; only L4 names Dioxus views.
 - `temor-core` has no I/O, no Dioxus, and no FFI.
 - Only `temor-vt` names libghostty (through `temor-vt-sys`). `unsafe` is allowed only in `temor-vt-sys`
   and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.

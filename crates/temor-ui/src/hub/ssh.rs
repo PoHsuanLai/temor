@@ -17,10 +17,11 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use temor_wire::message::FileStamp;
 
 use super::remote_edit::{EditTier, Overwrite};
+use crate::edge::Ambient;
 use crate::edge::desktop_feed::{NoTailnet, TailnetFeed};
-use crate::edge::ssh_work::{EditId, SshEvent, SshWork};
-use crate::edge::{Ambient, SshEnv};
 use crate::platform::{FileShell, Opener, default_file_shell, default_opener};
+use temor_client::ssh::SshEnv;
+use temor_client::ssh::work::{EditId, SshEvent, SshWork};
 
 /// Where a host pane's session stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,7 +146,7 @@ pub(super) struct SshHub {
 
 impl SshHub {
     pub(super) fn new(ambient: &Ambient) -> Self {
-        Self::with_env(SshEnv::from_ambient(ambient))
+        Self::with_env(ambient.ssh_env())
     }
 
     pub(super) fn with_env(env: SshEnv) -> Self {

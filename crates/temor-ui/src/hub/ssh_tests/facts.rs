@@ -19,10 +19,10 @@ use temor_wire::message::{EnvVar, OpenSession, RemotePath};
 use temor_wire::units::{CellPx, Cols, Rows, Size};
 
 use super::support::Rig;
-use crate::edge::remote_conn::Conn;
-use crate::edge::remote_link::{RemoteLink, Target};
 use crate::hub::remote::{RemotePane, Shown};
 use crate::view::remote_launch::open_fed_session;
+use temor_client::remote::conn::Conn;
+use temor_panes::remote::link::{RemoteLink, Target};
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([4; 32]));
 

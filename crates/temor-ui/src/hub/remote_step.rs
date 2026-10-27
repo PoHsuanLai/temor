@@ -11,9 +11,9 @@ use temor_wire::link::{Attempt, LinkState};
 
 use super::model::Hub;
 use super::remote::Busy;
-use crate::edge::remote_builds::no_build_words;
-use crate::edge::remote_event::{RemoteEvent, Wanted};
-use crate::edge::remote_install::Found;
+use temor_client::remote::builds::no_build_words;
+use temor_client::remote::install::Found;
+use temor_panes::remote::event::{RemoteEvent, Wanted};
 
 impl Hub {
     /// Carries out what a job or a connection reported, and returns the messages it left for the
@@ -259,12 +259,12 @@ impl Hub {
                 },
                 None => Wanted::Fresh { cwd, env, shell },
             };
-            let ticket = crate::edge::remote_event::Ticket {
+            let ticket = temor_panes::remote::event::Ticket {
                 pane,
                 target: std::sync::Arc::clone(&remote.target),
                 feeder: remote.feeder.clone(),
                 wanted,
-                palette: crate::edge::remote_palette::wire_palette(&self.palette),
+                palette: temor_panes::remote::palette::wire_palette(&self.palette),
             };
             self.remote.work.attach(
                 std::sync::Arc::clone(&conn),

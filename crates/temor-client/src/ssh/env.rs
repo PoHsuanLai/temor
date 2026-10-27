@@ -4,7 +4,7 @@
 //! when the hub asks (see `ssh_work`).
 
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use temor_ssh::{
@@ -12,8 +12,7 @@ use temor_ssh::{
     RuntimeDir, Seconds, StdRunner,
 };
 
-use super::Ambient;
-use super::ssh_hosts_cache::HostCache;
+use crate::ssh::hosts_cache::HostCache;
 
 /// How long a shared connection outlives its last pane.
 const PERSIST_SECONDS: u32 = 600;
@@ -58,16 +57,13 @@ pub struct SshEnv {
 }
 
 impl SshEnv {
-    /// The surroundings for `ambient`: the programs found on its `PATH`, sockets under its
-    /// runtime folder, the config at `~/.ssh/config`.
-    pub fn from_ambient(ambient: &Ambient) -> Self {
-        let path = ambient
-            .env
-            .get("PATH")
-            .unwrap_or(OsStr::new("/usr/bin:/bin"))
-            .to_owned();
+    /// The surroundings of a process whose `PATH` is `path`, home `home` and runtime folder
+    /// `runtime_dir`: the programs found on that `PATH`, sockets under the runtime folder, the
+    /// config at `~/.ssh/config`.
+    pub fn new(path: Option<&OsStr>, home: &Path, runtime_dir: &Path) -> Self {
+        let path = path.unwrap_or(OsStr::new("/usr/bin:/bin")).to_owned();
         let find = |name: &str| temor_pty::find_program(name, &path).unwrap_or_else(|| name.into());
-        let layout = RuntimeDir::new(&ambient.runtime_dir)
+        let layout = RuntimeDir::new(runtime_dir)
             .and_then(|runtime| {
                 let persist = Seconds::new(PERSIST_SECONDS).map(ControlPersist::Idle);
                 ControlLayout::new(runtime, persist.unwrap_or(ControlPersist::Forever))
@@ -81,11 +77,8 @@ impl SshEnv {
             },
             keygen: find("ssh-keygen"),
             runner: ArcRunner::default(),
-            config: ConfigPaths::beside(
-                ambient.home.join(".ssh").join("config"),
-                Some(ambient.home.clone()),
-            ),
-            edit_dir: ambient.runtime_dir.join("edit"),
+            config: ConfigPaths::beside(home.join(".ssh").join("config"), Some(home.to_path_buf())),
+            edit_dir: runtime_dir.join("edit"),
             hosts: HostCache::default(),
         }
     }

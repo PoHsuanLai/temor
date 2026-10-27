@@ -38,7 +38,7 @@ temor-panes = { workspace = true }
 temor-schema = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
-temor-remote = { workspace = true }
+temor-remote = { workspace = true, features = ["ghostty"] }
 temor-shell = { workspace = true }
 temor-ssh = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }

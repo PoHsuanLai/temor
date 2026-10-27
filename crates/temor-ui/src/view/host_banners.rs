@@ -16,8 +16,8 @@ use super::host_words::{
     TRY_ANYWAY, USE_THEIRS, ask_words, edit_line, forward_line, stage_line,
 };
 use super::remote::RemoteBanners;
-use crate::edge::ssh_work::EditId;
 use crate::hub::{CheckRow, Desk, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+use temor_client::ssh::work::EditId;
 
 /// The host banners of `pane`.
 #[component]

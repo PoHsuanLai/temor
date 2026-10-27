@@ -12,8 +12,8 @@ use std::time::Duration;
 use temor_remote::Error;
 use temor_wire::link::{LinkEvent, Millis, Monotonic, PingPolicy};
 
-use super::remote_calls::ping;
-use super::remote_conn::Conn;
+use crate::remote::calls::ping;
+use crate::remote::conn::Conn;
 
 /// How long past the wait for an answer the watcher itself waits before it calls a ping that
 /// has not even returned unanswered.

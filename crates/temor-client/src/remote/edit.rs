@@ -12,9 +12,9 @@ use temor_ssh::{ByteCount, RemoteStat, RemoteState, UnixSeconds};
 use temor_wire::message::{EntryKind, FileStamp, RemotePath, WriteCheck};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::remote_conn::Conn;
-use super::remote_edit_stream::fetch_to;
-use super::ssh_work::{EditId, SshEvent};
+use crate::remote::conn::Conn;
+use crate::remote::edit_stream::fetch_to;
+use crate::ssh::work::{EditId, SshEvent};
 
 /// The host's file as the edit's steps count it: whole seconds and the length.
 pub fn stat_of(stamp: FileStamp, len: u64) -> RemoteStat {

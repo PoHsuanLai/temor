@@ -17,7 +17,7 @@ use temor_ssh::{
 use temor_wire::message::FileStamp;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::SshEnv;
+use crate::ssh::SshEnv;
 
 /// One remote file being edited.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -236,7 +236,7 @@ impl SshWork {
     }
 }
 
-fn files_of(env: &SshEnv, layout: &ControlLayout) -> SshRemoteFiles<super::ArcRunner> {
+fn files_of(env: &SshEnv, layout: &ControlLayout) -> SshRemoteFiles<crate::ssh::ArcRunner> {
     SshRemoteFiles::new(env.runner.clone(), env.tools.clone(), layout.clone())
 }
 

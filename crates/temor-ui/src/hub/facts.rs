@@ -13,7 +13,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use super::model::Hub;
 use crate::edge::facts::{FactsEnv, read_facts};
 use crate::edge::facts_host::facts_from_host;
-use crate::edge::remote_conn::Conn;
+use temor_client::remote::conn::Conn;
 
 /// Whether a result changed what the window shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

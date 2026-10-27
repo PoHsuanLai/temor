@@ -19,6 +19,13 @@ temor-vt = { workspace = true, features = ["ghostty"] }
 temor-shell = { workspace = true }
 temor-pty = { workspace = true }
 ds-core = { workspace = true }
+# A pane on a host (`remote`): its helper's link, through the client's connection, and the
+# window's palette as the helper takes it.
+temor-client = { workspace = true }
+temor-render = { workspace = true, features = ["ghostty"] }
+temor-ssh = { workspace = true }
+temor-wire = { workspace = true }
+temor-remote = { workspace = true, features = ["ghostty"] }
 # The script a nushell completion runs from.
 tempfile = { workspace = true }
 thiserror = { workspace = true }

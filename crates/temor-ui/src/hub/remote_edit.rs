@@ -9,8 +9,8 @@ use temor_ssh::{HostAlias, RemoteFilePath};
 use temor_wire::message::{FileStamp, RemotePath, WriteCheck};
 
 use super::model::Hub;
-use crate::edge::remote_edit::HelperEdits;
-use crate::edge::ssh_work::EditId;
+use temor_client::remote::edit::HelperEdits;
+use temor_client::ssh::work::EditId;
 
 /// How an edit's file is read and written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -18,14 +18,14 @@ use temor_wire::message::ListeningPort;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use crate::edge::Ambient;
-use crate::edge::remote::RemoteWork;
-use crate::edge::remote_builds::{HelperBuilds, arch_of};
-use crate::edge::remote_conn::Conn;
-use crate::edge::remote_event::{Generation, RemoteEvent};
-use crate::edge::remote_grants;
-use crate::edge::remote_install::HostLogin;
-use crate::edge::remote_link::Target;
-use crate::edge::remote_route::Router;
+use temor_client::remote::builds::{HelperBuilds, arch_of};
+use temor_client::remote::conn::Conn;
+use temor_client::remote::grants;
+use temor_client::remote::install::HostLogin;
+use temor_panes::remote::RemoteWork;
+use temor_panes::remote::event::{Generation, RemoteEvent};
+use temor_panes::remote::link::Target;
+use temor_panes::remote::route::Router;
 
 /// What a host pane runs on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -150,10 +150,7 @@ pub(super) struct RemoteHub {
 impl RemoteHub {
     pub(super) fn new(ambient: &Ambient, state_dir: Option<PathBuf>) -> Self {
         let (events, inbox) = unbounded_channel();
-        let legacy = state_dir
-            .as_deref()
-            .map(remote_grants::load)
-            .unwrap_or_default();
+        let legacy = state_dir.as_deref().map(grants::load).unwrap_or_default();
         Self {
             work: RemoteWork::new(events),
             inbox: Some(inbox),

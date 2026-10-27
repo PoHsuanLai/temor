@@ -10,7 +10,7 @@ use temor_ssh::Port;
 
 use super::model::{Hub, HubRef};
 use super::ssh::{Check, Phase};
-use crate::edge::ssh_work::EditId;
+use temor_client::ssh::work::EditId;
 
 /// Where the host pane stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

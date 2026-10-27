@@ -14,11 +14,11 @@ use temor_wire::message::{EntryKind, RemotePath};
 use temor_wire::units::{ByteCount, ByteOffset, ByteRange};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::SshEnv;
-use super::remote_conn::Conn;
-use super::remote_edit::fault_of;
-use super::remote_edit_stream::fetch_to;
-use super::ssh_work::edit_fault;
+use crate::remote::conn::Conn;
+use crate::remote::edit::fault_of;
+use crate::remote::edit_stream::fetch_to;
+use crate::ssh::SshEnv;
+use crate::ssh::work::edit_fault;
 
 /// How much of a file too big to copy is read, so its type can still be told.
 const HEADER: u64 = 64 * 1024;

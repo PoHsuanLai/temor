@@ -16,8 +16,8 @@ use temor_ssh::{ByteCount, HostAlias, RemoteFilePath};
 use super::model::Hub;
 use super::remote_edit::{EditTier, Job, Overwrite};
 use super::ssh::{DoneAsked, Opened, RemoteEdit};
-use crate::edge::ssh_work::EditId;
 use crate::platform::ensure_private_dir;
+use temor_client::ssh::work::EditId;
 
 /// The name the local copy has: the host file's own name, so the editor picks the right mode.
 pub(super) fn local_name(path: &str) -> String {

@@ -10,9 +10,9 @@ use temor_vt::{CellPx, GridSize};
 use temor_wire::ids::SessionId;
 use temor_wire::units::{CellPx as WireCell, Size};
 
-use super::remote_calls::{grid_size, input, resize, wire_cell};
-use super::remote_conn::Conn;
-use super::remote_hold::Hold;
+use temor_client::remote::calls::{grid_size, input, resize, wire_cell};
+use temor_client::remote::conn::Conn;
+use temor_client::remote::hold::Hold;
 
 /// Where a pane's input goes right now: the connection and session it is attached to, if any.
 /// The size and the cell's pixels are remembered for the next attach, and input typed while
@@ -82,7 +82,7 @@ impl PaneLink for RemoteLink {
         // A gone writer means the pane is closing.
         let _ = self.wishes.send(Wish::Size(
             grid_size(grid.cols.0, grid.rows.0),
-            wire_cell(cell),
+            wire_cell(cell.width.0, cell.height.0),
         ));
     }
 }
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn a_round_keeps_input_in_order_and_only_the_newest_size() {
-        let cell = wire_cell(CellPx::new(9, 18));
+        let cell = wire_cell(9, 18);
         let mut round = Round::default();
         for wish in [
             Wish::Input(b"ls".to_vec()),

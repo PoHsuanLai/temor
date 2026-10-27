@@ -17,10 +17,10 @@ use temor_wire::link::{Attempt, LinkState};
 
 use super::model::Hub;
 use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
-use crate::edge::remote_install::blob_path;
-use crate::edge::remote_link::{RemoteLink, Target};
 use crate::view::remote_launch::open_fed_session;
 use temor_client::keep::replay::fresh_key;
+use temor_client::remote::install::blob_path;
+use temor_panes::remote::link::{RemoteLink, Target};
 
 /// The local daemon's name as a host.
 pub(super) fn local_alias() -> HostAlias {
@@ -328,7 +328,7 @@ impl Hub {
         if let Some(pane) = self.remote.panes.get_mut(&from) {
             pane.session = None;
             pane.shown = Shown::Opening;
-            let mut target = crate::edge::remote_link::lock(&pane.target);
+            let mut target = temor_panes::remote::link::lock(&pane.target);
             target.conn = None;
             target.session = None;
         }

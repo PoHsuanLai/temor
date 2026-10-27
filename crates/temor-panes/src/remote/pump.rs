@@ -9,8 +9,8 @@ use temor_ssh::HostAlias;
 use temor_wire::message::ExitStatus;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::remote_event::{Generation, RemoteEvent};
-use super::remote_route::Router;
+use crate::remote::event::{Generation, RemoteEvent};
+use crate::remote::route::Router;
 
 /// A session's end as the pane reports it.
 pub fn exit_of(status: &ExitStatus) -> ChildExit {

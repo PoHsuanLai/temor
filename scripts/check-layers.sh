@@ -30,12 +30,12 @@ temor-render 1
 temor-pane 1
 temor-plugins 1
 temor-core 2
-temor-client 2
-temor-panes 2
-temor-ui 3
+temor-client 3
+temor-panes 3
 temor-desktop 3
 temor-remote 3
-temor 3
+temor-ui 4
+temor 4
 '
 
 metadata=$(cd "$root" && cargo metadata --format-version 1 --no-deps)

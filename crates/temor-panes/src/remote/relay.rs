@@ -8,7 +8,7 @@ use temor_pane::PaneEvent;
 use temor_pty::ChildExit;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-use super::remote_event::RemoteEvent;
+use crate::remote::event::RemoteEvent;
 
 /// What an event of the connecting pane means.
 #[derive(Debug)]

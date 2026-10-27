@@ -12,7 +12,7 @@ use temor_wire::message::RemotePath;
 
 use super::model::Hub;
 use super::remote_edit::EditTier;
-use crate::edge::upload_work::UploadJobs;
+use temor_client::remote::upload::UploadJobs;
 
 /// One file to send, with where it goes.
 struct Item {

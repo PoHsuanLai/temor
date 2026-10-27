@@ -8,9 +8,9 @@ use temor_wire::link::LinkEvent;
 
 use super::model::Hub;
 use super::remote::RemoteHub;
-use crate::edge::remote_event::Generation;
-use crate::edge::remote_link::lock;
-use crate::edge::remote_palette::wire_palette;
+use temor_panes::remote::event::Generation;
+use temor_panes::remote::link::lock;
+use temor_panes::remote::palette::wire_palette;
 
 /// The session to save for a pane: the one it has now, else the one it was saved with and has
 /// not got back yet; none once the host lost it.

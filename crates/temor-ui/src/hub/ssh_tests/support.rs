@@ -12,13 +12,13 @@ use temor_testkit::{ScratchRoot, program_or_skip};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::edge::Ambient;
-use crate::edge::remote_event::RemoteEvent;
-use crate::edge::ssh_work::SshEvent;
 use crate::hub::model::Hub;
 use crate::hub::ssh_view::{HostView, Stage};
 use crate::platform::{FileShell, OpenError, Opener};
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
+use temor_client::ssh::work::SshEvent;
+use temor_panes::remote::event::RemoteEvent;
 
 /// The stand-in `ssh`. `-O check` says a connection is up when `up` exists; `-O forward` and
 /// `-O cancel` exit with the code in `control-exit`; `-G` resolves any alias to `resolved.example.com` port 2200; `-T` runs the remote command here (the file
