@@ -8,6 +8,7 @@ pub mod blocks;
 pub mod clipboard;
 pub mod clock;
 mod heard;
+pub mod marks;
 pub mod notify;
 pub mod sources;
 

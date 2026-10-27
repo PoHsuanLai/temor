@@ -4,7 +4,6 @@
 
 mod blink;
 mod block_list;
-mod blocks;
 mod clip;
 mod clipboard;
 mod composer;

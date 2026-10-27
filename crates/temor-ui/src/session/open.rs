@@ -12,11 +12,11 @@ use temor_vt::Snapshot;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
-use super::blocks::BlockLog;
 use super::model::{FedParts, Lifetime, PaneCore, SessionKit, SessionParts};
 use crate::error::UiError;
 use crate::paint::Painter;
 use crate::pane::UiSink;
+use temor_client::pane::blocks::BlockLog;
 
 impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
