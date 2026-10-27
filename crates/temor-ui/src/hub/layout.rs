@@ -1,5 +1,6 @@
 //! What the window keeps between launches (PLAN §2b, P24b): each Space's rows (`space/<id>`), the
-//! Spaces (`spaces`) and the hosts (`hosts`), kept in the store's `layout` through the client. A
+//! Spaces (`spaces`), the hosts (`hosts`) and the history session each pane goes on with
+//! (`sessions`), kept in the store's `layout` through the client. A
 //! change is handed to the client's `temor-act` thread as the save pace allows, and only what
 //! changed; at quit it is written before the window goes. Without a client nothing is kept.
 //!
@@ -17,6 +18,7 @@ use temor_core::space::TemorSpaces;
 use temor_core::vocab::ids::PaneId;
 use temor_core::workspace::restore::{FreshWhy, Restored, decode, encode};
 use temor_core::workspace::{KeepClosed, Workspace, leave_out};
+use temor_schema::session::SessionId;
 
 use super::model::Hub;
 use crate::edge::{SpacesStartup, Startup, load_session_for, load_spaces, session_file_name};
@@ -25,6 +27,8 @@ use crate::edge::{SpacesStartup, Startup, load_session_for, load_spaces, session
 const SPACES: &str = "spaces";
 /// The hosts: the answers given them and the panes on them.
 const HOSTS: &str = "hosts";
+/// The history session of each pane, by the pane's number.
+const SESSIONS: &str = "sessions";
 /// Set once the older files have been read in.
 const IMPORTED: &str = "imported/files";
 
@@ -165,6 +169,18 @@ impl Hub {
         read_hosts(&text)
     }
 
+    /// The history session each pane brought back goes on with.
+    pub(super) fn laid_sessions(&mut self) -> BTreeMap<PaneId, SessionId> {
+        let Some(text) = self.kept(SESSIONS) else {
+            return BTreeMap::new();
+        };
+        let read = serde_json::from_str::<BTreeMap<u64, SessionId>>(&text).unwrap_or_default();
+        self.laid.written.insert(SESSIONS.to_owned(), text);
+        read.into_iter()
+            .map(|(pane, id)| (PaneId(pane), id))
+            .collect()
+    }
+
     /// Hands the client every Space's rows, the Spaces and the hosts that changed, and forgets
     /// the rows of a Space that is gone.
     pub(super) fn lay_all(&mut self, through: Through) {
@@ -207,6 +223,13 @@ impl Hub {
             false => splice_hosts("{}", &hosts).ok(),
         };
         self.lay(HOSTS.to_owned(), hosts, through);
+        let sessions: BTreeMap<u64, SessionId> = self
+            .sessions_to_carry()
+            .into_iter()
+            .map(|(pane, id)| (pane.0, id))
+            .collect();
+        let sessions = serde_json::to_string(&sessions).ok();
+        self.lay(SESSIONS.to_owned(), sessions, through);
     }
 }
 

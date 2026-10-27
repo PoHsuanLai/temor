@@ -1,7 +1,8 @@
 //! History as it happens (PLAN P23): each pane's session is given a lasting id when its shell
 //! first says where it is, and its commands are handed to the client as each one finishes, and
 //! its end when the program ends. The client keeps them (dropping a secret, as its rules say);
-//! nothing is written at quit.
+//! nothing is written at quit. A pane brought back at launch goes on with the session it had
+//! (`carried`, from the layout): its new commands are numbered after the ones kept before.
 
 use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
@@ -25,6 +26,8 @@ pub(super) struct History {
     client: Option<Client>,
     /// Each pane's session, once its shell has said where it is.
     sessions: BTreeMap<PaneId, Begun>,
+    /// The sessions the panes brought back at launch had, until their shells say where they are.
+    carried: BTreeMap<PaneId, SessionId>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +35,9 @@ struct Begun {
     id: SessionId,
     /// The last block handed over; the ones after it are new.
     written: Option<BlockId>,
+    /// What is added to the pane's block numbers in history: past the commands a session kept
+    /// before this launch, whose numbers the pane counts again from the start.
+    base: u64,
 }
 
 impl Hub {
@@ -44,6 +50,22 @@ impl Hub {
     /// The client the window keeps through, when it has one.
     pub(super) fn client(&self) -> Option<&Client> {
         self.history.client.as_ref()
+    }
+
+    /// The sessions the panes brought back at launch go on with.
+    pub(super) fn carry_sessions(&mut self, carried: BTreeMap<PaneId, SessionId>) {
+        self.history.carried = carried;
+    }
+
+    /// Each pane's session, for the next launch to go on with.
+    pub(super) fn sessions_to_carry(&self) -> BTreeMap<PaneId, SessionId> {
+        self.history
+            .sessions
+            .iter()
+            .map(|(pane, begun)| (*pane, begun.id))
+            .chain(self.history.carried.iter().map(|(pane, id)| (*pane, *id)))
+            .filter(|(pane, _)| self.slots.contains_key(pane))
+            .collect()
     }
 
     /// The session of `pane`, as history knows it.
@@ -87,19 +109,37 @@ impl Hub {
         };
         match notice {
             Notice::Cwd(folder) if !self.history.sessions.contains_key(&pane) => {
-                let id = draw_id(pane);
+                // A pane brought back goes on with its session, if history still has it.
+                let store = client.store();
+                let before = self
+                    .history
+                    .carried
+                    .remove(&pane)
+                    .and_then(|id| store.session(id).ok().flatten());
+                let base = before.as_ref().map_or(0, |kept| {
+                    store
+                        .commands_of(kept.id)
+                        .ok()
+                        .and_then(|commands| commands.last().map(|ran| ran.block.0 + 1))
+                        .unwrap_or(0)
+                });
+                let id = before
+                    .as_ref()
+                    .map_or_else(|| draw_id(pane), |kept| kept.id);
                 client.act(Command::Begin(Kept {
                     id,
                     host: self.history_host(pane),
                     folder: folder.clone(),
                     program: self.run_name(pane).map(str::to_owned),
-                    started: now(),
+                    started: before.map_or_else(now, |kept| kept.started),
                     ended: None,
                 }));
                 // Blocks from before the shell said where it is (a restored screen's) are not
-                // this session's.
+                // this session's, or were handed over before.
                 let written = session.finished_after(None).last().map(|done| done.id);
-                self.history.sessions.insert(pane, Begun { id, written });
+                self.history
+                    .sessions
+                    .insert(pane, Begun { id, written, base });
             }
             Notice::CommandDone => {
                 let Some(begun) = self.history.sessions.get_mut(&pane) else {
@@ -111,7 +151,7 @@ impl Hub {
                     let ran = i64::try_from(done.ran_ms).unwrap_or(0);
                     client.act(Command::Ran(RanCommand {
                         session: begun.id,
-                        block: done.id,
+                        block: BlockId(begun.base + done.id.0),
                         command: done.command,
                         folder: folder.clone(),
                         exit: done.exit,

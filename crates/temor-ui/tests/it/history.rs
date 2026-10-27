@@ -151,3 +151,59 @@ fn a_rows_show_history_opens_its_sessions_commands() {
         html.contains("echo from-this-row") && html.contains("Go to Tab")
     });
 }
+
+/// A pane brought back at launch goes on with its session: the commands of both launches are
+/// one session's, numbered one after another.
+#[test]
+fn a_pane_brought_back_goes_on_with_its_session() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let state = super::support::scratch("history-carried-state").join("state");
+    let db = state.join("temor.db");
+    let commands = |db: &std::path::Path| -> (usize, Vec<(u64, String)>) {
+        let store = SqliteStore::open(db).expect("store");
+        let sessions = store.sessions(None, None, 10).expect("sessions");
+        let ran = sessions
+            .first()
+            .map(|session| store.commands_of(session.id).expect("commands"))
+            .unwrap_or_default();
+        (
+            sessions.len(),
+            ran.into_iter()
+                .map(|ran| (ran.block.0, ran.command))
+                .collect(),
+        )
+    };
+    let probe = Probe::new();
+    let mut h = super::window::harness_in("history-carried", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    type_line(&mut h, "echo before-restart");
+    let start = Instant::now();
+    while commands(&db).1.is_empty() {
+        h.advance(Duration::from_millis(50));
+        assert!(start.elapsed() < Duration::from_secs(10), "nothing kept");
+    }
+    drop(h);
+
+    let probe = Probe::new();
+    let mut h = super::window::harness_in("history-carried-again", &probe, Some(state));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    type_line(&mut h, "echo after-restart");
+    let start = Instant::now();
+    loop {
+        let (sessions, ran) = commands(&db);
+        if ran.len() == 2 {
+            assert_eq!(sessions, 1, "one session: {ran:?}");
+            assert_eq!(ran[0].1, "echo before-restart");
+            assert_eq!(ran[1].1, "echo after-restart");
+            assert!(ran[1].0 > ran[0].0, "numbered after: {ran:?}");
+            break;
+        }
+        h.advance(Duration::from_millis(50));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "{sessions} sessions, {ran:?}"
+        );
+    }
+}

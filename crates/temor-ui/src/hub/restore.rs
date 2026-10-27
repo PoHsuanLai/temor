@@ -24,6 +24,8 @@ impl Hub {
         if let Some(dir) = &dir {
             self.import_files(dir);
         }
+        let sessions = self.laid_sessions();
+        self.carry_sessions(sessions);
         let hosts = self.laid_hosts();
         self.ssh.book = hosts.book;
         self.remote_carry_over();
