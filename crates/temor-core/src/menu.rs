@@ -13,8 +13,9 @@ pub enum Target {
     Favourite,
     /// The blocks picked in a console.
     Block(BlockFacts),
-    /// The page on a row's stage: a file, or one of temor's own (`temor://history`), which no
-    /// other app opens and no folder holds.
+    /// The page on a row's stage. `file` is whether it is a file or a folder on this computer
+    /// (a folder's page is), which another app opens and a folder holds; temor's history and
+    /// downloads are neither.
     Page { file: bool },
     /// A file on the Downloads page.
     Download(DownloadFacts),

@@ -29,7 +29,7 @@ use super::shelf::DownloadsPage;
 use super::tool_button::ToolButton;
 use super::tree_view::TreeView;
 use super::viewer_pane::{PageKeys, ViewerView};
-use crate::hub::{Desk, temor_page, temor_page_name};
+use crate::hub::{Desk, page_path, temor_page, temor_page_name};
 
 /// The page's share of the row when it first shows beside the console.
 const STAGE_SHARE: f32 = 0.62;
@@ -170,12 +170,12 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                 Menu {
                     placement: MenuPlacement::Popup,
                     anchor,
-                    items: menu_items::<()>(Target::Page { file: own.is_none() }, false, Vec::new()),
+                    items: menu_items::<()>(Target::Page { file: !matches!(own, Some(TemorUrl::History(_) | TemorUrl::Downloads)) }, false, Vec::new()),
                     onpick: move |pick: Pick<()>| match pick {
                         Pick::Item(Item::OpenInDefaultApp) => acting.viewer_open_in_app(page),
                         Pick::Item(Item::ShowInFolder) => {
                             if let Some(file) = acting.hub.page_file(page) {
-                                show_in_folder(&acting, Path::new(&file));
+                                show_in_folder(&acting, &page_path(&file));
                             }
                         }
                         Pick::Item(Item::ClosePage) => acting.act(WorkspaceIn::ClosePane(Some(page))),
@@ -252,6 +252,8 @@ mod tests {
         let page = crate::hub::folder_url("/Users/po/ml/runs");
         assert_eq!(page_scope(&page, "/Users/po"), "~/ml");
         assert_eq!(temor_page_name(&page), "runs");
+        assert_eq!(page_path(&page.to_string()), Path::new("/Users/po/ml/runs"));
+        assert_eq!(page_path("/Users/po/a.txt"), Path::new("/Users/po/a.txt"));
         let history = TemorUrl::History(HistoryScope::In("/Users/po".to_owned()));
         assert_eq!(page_scope(&history, "/Users/po"), "in ~");
     }

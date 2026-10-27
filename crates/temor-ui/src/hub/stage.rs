@@ -65,6 +65,18 @@ pub fn folder_url(path: &str) -> TemorUrl {
     })
 }
 
+/// Where on this computer the page `file` is: a folder's page is its folder, any other page its
+/// file.
+pub fn page_path(file: &str) -> PathBuf {
+    match temor_page(file) {
+        Some(TemorUrl::Location(place)) => match place.path.trim_end_matches('/') {
+            "" => PathBuf::from("/"),
+            folder => PathBuf::from(folder),
+        },
+        _ => PathBuf::from(file),
+    }
+}
+
 /// What a page of temor's own is called: a folder by its name.
 pub fn temor_page_name(page: &TemorUrl) -> String {
     match page {
