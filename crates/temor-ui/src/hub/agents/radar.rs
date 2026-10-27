@@ -4,7 +4,6 @@
 
 use std::collections::BTreeMap;
 
-use temor_client::pane::Heard;
 use temor_core::agent::radar::{
     Millis, ProcessFact, RadarIn, RadarOut, RadarParams, RadarState, radar_step,
 };
@@ -13,6 +12,7 @@ use temor_core::presence::{AgentState, PaneFocus, PresenceOut, Seen};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Note;
 use temor_pane::PaneEvent;
+use temor_panes::Heard;
 use temor_vt::ProgramState;
 
 use super::convert::{exit_code, note_of, program_fact, status_report};

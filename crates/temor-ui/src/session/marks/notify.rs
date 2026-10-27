@@ -29,4 +29,4 @@ impl Session {
     }
 }
 
-pub use temor_client::pane::desktop_note;
+pub use temor_panes::desktop_note;

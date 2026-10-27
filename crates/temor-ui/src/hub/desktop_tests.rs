@@ -3,7 +3,6 @@
 
 use std::path::PathBuf;
 
-use temor_client::pane::Heard;
 use temor_core::block::Outcome;
 use temor_core::split::Direction;
 use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
@@ -11,6 +10,7 @@ use temor_core::vocab::text::Cwd;
 use temor_core::workspace::WorkspaceIn;
 use temor_desktop::{BadgeCount, Exit, Focus, LineRange, PaneRef, PortRefusal, Request};
 use temor_pane::PaneEvent;
+use temor_panes::Heard;
 use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 
 use super::desktop::{exit_of, new_tab_for, refocus_after_agent_open};

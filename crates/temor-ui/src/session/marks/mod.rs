@@ -9,7 +9,7 @@ mod mark;
 mod notify;
 mod picks;
 mod query;
-pub use temor_client::pane::marks::Finished;
+pub use temor_panes::marks::Finished;
 mod rows;
 mod survey;
 #[cfg(test)]

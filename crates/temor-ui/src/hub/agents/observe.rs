@@ -3,10 +3,10 @@
 
 use std::path::PathBuf;
 
-use temor_client::pane::Heard;
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
+use temor_panes::Heard;
 
 use super::radar::{Alert, Changed};
 use crate::hub::model::Hub;

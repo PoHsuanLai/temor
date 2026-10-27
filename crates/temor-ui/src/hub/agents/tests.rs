@@ -1,11 +1,11 @@
 //! The radar on a virtual clock. No threads, no window.
 
-use temor_client::pane::Heard;
 use temor_core::agent::radar::{Millis, RadarParams};
 use temor_core::presence::{AgentState, Seen, WaitKind};
 use temor_core::vocab::ids::{ExitCode, PaneId};
 use temor_pane::report::{ReportState, ReportWait, StatusLine};
 use temor_pane::{CommandLine, PaneEvent, SeenForeground};
+use temor_panes::Heard;
 use temor_pty::ChildExit;
 use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 

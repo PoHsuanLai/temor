@@ -1,5 +1,5 @@
-//! A pane as the client keeps it (PLAN §2b, P24c): what the pane is, apart from how a window
-//! shows it. Its engine, what its program said (title, folder, progress, how it ended), its
+//! temor's running terminals (PLAN §2b, P24c): what a pane is, apart from how a window shows
+//! it. Its engine, what its program said (title, folder, progress, how it ended), its
 //! commands, its shell's state, its completion sources, what was answered about its clipboard,
 //! and when a finished command is worth a desktop notice. The window holds one beside its own
 //! state for the pane (the painter, the selection, find, the composer).
@@ -30,9 +30,10 @@ use notify::Notifier;
 use sources::Sources;
 
 pub use hear::{Heard, desktop_note};
-pub use heard::{SNAPSHOT_LIMIT, sanitise_title};
+pub use heard::sanitise_title;
 pub use hearing::{Hearing, Locked, Shared, share};
 pub use open::{OpenError, PaneKit};
+pub use temor_core::session::SNAPSHOT_LIMIT;
 
 /// What a pane is, apart from how the window shows it: its engine, what its program said (title,
 /// folder, progress, how it ended), its commands, its shell's state, its completion sources, what

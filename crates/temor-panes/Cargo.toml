@@ -1,0 +1,30 @@
+[package]
+name = "temor-panes"
+description = "temor's running terminals: each pane's engine, its commands, its shell's state and what its program said, apart from how a window shows it."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Beside the client (PLAN §2b, P24c): the client keeps data, this runs terminals. A pane's
+# engine (ghostty, its pty and I/O thread), its marks and blocks, its completion sources and its
+# desktop notices; every pane is heard on one thread of its own (`Hearing`). Knows no store and
+# draws nothing: what is kept of a pane goes through the client, how it looks is the window's.
+
+[dependencies]
+temor-core = { workspace = true }
+temor-pane = { workspace = true, features = ["ghostty"] }
+temor-vt = { workspace = true, features = ["ghostty"] }
+temor-shell = { workspace = true }
+temor-pty = { workspace = true }
+ds-core = { workspace = true }
+# The script a nushell completion runs from.
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+# The channel the window hears what each pane leaves it on.
+tokio = { workspace = true }
+
+[lints]
+workspace = true

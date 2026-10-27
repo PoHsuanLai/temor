@@ -11,7 +11,7 @@ use temor_core::shelf::PaneSite;
 use temor_pane::ReadPolicy;
 use temor_vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
 
-pub use temor_client::pane::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
+pub use temor_panes::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
 
 use super::Session;
 use super::clip::PASTE_LIMIT;

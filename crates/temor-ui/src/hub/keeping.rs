@@ -59,7 +59,7 @@ impl Hub {
                 if let Some(kept) = kept {
                     hub.carried.insert(spawn.pane, kept);
                 }
-                hub.open_pane(&spawn, screen);
+                hub.open_pane(&spawn, screen.map(temor_vt::Snapshot::from_bytes));
             }
             for open in starting.viewers {
                 hub.restore_viewer(open);
@@ -135,7 +135,9 @@ impl Hub {
                 Some(KeptPane {
                     pane: *pane,
                     checkpoint,
-                    screen: screens.then(|| session.snapshot()).flatten(),
+                    screen: screens
+                        .then(|| session.snapshot().map(temor_vt::Snapshot::into_bytes))
+                        .flatten(),
                 })
             })
             .collect()

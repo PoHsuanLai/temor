@@ -21,7 +21,7 @@ use super::model::Hub;
 use super::offer::{Heard as OfferHeard, OfferRedraw};
 use crate::session::{BELL_MARK, Notice, Relaid};
 use crate::view::slot::{Slot, release_hold_later, repaint};
-use temor_client::pane::Heard;
+use temor_panes::Heard;
 
 /// What a batch of events asks the window to do.
 #[derive(Debug, Default)]

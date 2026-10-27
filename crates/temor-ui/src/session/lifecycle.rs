@@ -10,8 +10,8 @@ use super::model::{INSET, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
-use temor_client::pane::Heard;
 use temor_pane::PaneEvent;
+use temor_panes::Heard;
 use temor_vt::Snapshot;
 
 /// How long the bell's visual mark stays up.
@@ -221,4 +221,4 @@ impl Session {
     }
 }
 
-pub use temor_client::pane::{SNAPSHOT_LIMIT, sanitise_title};
+pub use temor_panes::{SNAPSHOT_LIMIT, sanitise_title};

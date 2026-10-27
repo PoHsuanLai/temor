@@ -31,6 +31,7 @@ temor-pane 1
 temor-plugins 1
 temor-core 2
 temor-client 2
+temor-panes 2
 temor-ui 3
 temor-desktop 3
 temor-remote 3

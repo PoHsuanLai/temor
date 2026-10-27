@@ -1,16 +1,15 @@
 //! What the pane's own events change of it: its title, its folder, its shell's state, its
 //! progress, a hold on its screen, and what is kept of it when the window goes.
 
-use temor_core::session::{Checkpoint, CommandRecord, ShellIn, ShellState, shell_step};
+use temor_core::session::{
+    Checkpoint, CommandRecord, SNAPSHOT_LIMIT, ShellIn, ShellState, shell_step,
+};
 use temor_core::vocab::text::display_text;
 use temor_pane::Hold;
 use temor_shell::cwd_from_url;
 use temor_vt::{Progress, ProgressState, Snapshot};
 
 use super::{Lifetime, PaneCore};
-
-/// The most bytes a stored snapshot may have (4 MiB).
-pub const SNAPSHOT_LIMIT: usize = 4 * 1024 * 1024;
 
 /// Longest title kept; a program's title is shown, so it is bounded.
 const TITLE_MAX_CHARS: usize = 200;

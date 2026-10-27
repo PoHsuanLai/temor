@@ -54,6 +54,7 @@ temor-core = { path = "crates/temor-core" }
 temor-schema = { path = "crates/temor-schema" }
 temor-store = { path = "crates/temor-store" }
 temor-client = { path = "crates/temor-client" }
+temor-panes = { path = "crates/temor-panes" }
 # temor-store: SQLite, built in (FTS5 included), with the commit hook that says a write is visible.
 rusqlite = { version = "0.40", features = ["bundled", "hooks"] }
 bitflags = "2"

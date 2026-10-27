@@ -103,7 +103,7 @@ impl FileShell for RecordFiles {
 /// One hub with stand-in programs.
 pub(super) struct Rig {
     pub hub: Hub,
-    pub panes: UnboundedReceiver<(PaneId, temor_client::pane::Heard)>,
+    pub panes: UnboundedReceiver<(PaneId, temor_panes::Heard)>,
     pub jobs: UnboundedReceiver<SshEvent>,
     /// What the helper's jobs and the connecting `ssh` report.
     pub remote: UnboundedReceiver<RemoteEvent>,

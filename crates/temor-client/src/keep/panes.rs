@@ -7,7 +7,6 @@ use std::path::Path;
 
 use temor_core::session::Checkpoint;
 use temor_core::vocab::ids::PaneId;
-use temor_vt::Snapshot;
 
 use super::{checkpoint, replay, sidecar};
 
@@ -16,8 +15,8 @@ use super::{checkpoint, replay, sidecar};
 pub struct KeptPane {
     pub pane: PaneId,
     pub checkpoint: Checkpoint,
-    /// Its screen, taken only at quit (encoding it is not free).
-    pub screen: Option<Snapshot>,
+    /// Its screen as the terminal encodes it, taken only at quit (encoding it is not free).
+    pub screen: Option<Vec<u8>>,
 }
 
 /// The panes' files, and what each pane's checkpoint file holds now, so only a change is written.
@@ -61,7 +60,7 @@ impl PaneFiles {
     }
 
     /// The screen and the checkpoint kept for `pane`, each deleted as it is read.
-    pub fn take(dir: &Path, pane: PaneId) -> (Option<Snapshot>, Option<Checkpoint>) {
+    pub fn take(dir: &Path, pane: PaneId) -> (Option<Vec<u8>>, Option<Checkpoint>) {
         (sidecar::take(dir, pane), checkpoint::take(dir, pane))
     }
 

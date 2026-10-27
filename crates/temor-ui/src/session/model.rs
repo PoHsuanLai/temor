@@ -18,9 +18,9 @@ use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
-pub use temor_client::pane::PaneCore;
-use temor_client::pane::{Locked, Shared};
 use temor_pane::PaneSpec;
+pub use temor_panes::PaneCore;
+use temor_panes::{Locked, Shared};
 
 /// What the window should do about an event from the pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,7 +185,7 @@ pub(super) struct WindowKit {
 
 impl SessionKit {
     /// The pane's part and the window's.
-    pub(super) fn split(self) -> (temor_client::pane::PaneKit, WindowKit) {
+    pub(super) fn split(self) -> (temor_panes::PaneKit, WindowKit) {
         let SessionKit {
             keymap,
             clipboard,
@@ -197,7 +197,7 @@ impl SessionKit {
             shelf_dir,
         } = self;
         (
-            temor_client::pane::PaneKit {
+            temor_panes::PaneKit {
                 notify_after,
                 notifier,
                 clock,

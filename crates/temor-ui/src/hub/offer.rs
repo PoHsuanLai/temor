@@ -11,11 +11,11 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds_settings::Store;
-use temor_client::pane::Heard as PaneHeard;
 use temor_core::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
 };
 use temor_core::vocab::ids::PaneId;
+use temor_panes::Heard as PaneHeard;
 use temor_ssh::{InnerShell, ProbeReading, prompt_after_answer, read_probe};
 
 use super::desk::Desk;

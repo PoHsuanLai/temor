@@ -48,7 +48,7 @@ impl Session {
         let blink_from = core.clock.now();
         let pane = std::sync::Arc::clone(&core.pane);
         Self {
-            core: temor_client::pane::share(core),
+            core: temor_panes::share(core),
             pane,
             painter,
             keymap: kit.keymap,

@@ -51,10 +51,10 @@ impl Via {
 
 #[cfg(test)]
 mod tests {
-    use temor_client::pane::Heard;
     use temor_core::agent::radar::{Millis, RadarParams};
     use temor_core::vocab::ids::PaneId;
     use temor_pane::PaneEvent;
+    use temor_panes::Heard;
     use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
 
     use super::super::radar::Radar;

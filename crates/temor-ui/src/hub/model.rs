@@ -6,12 +6,12 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use temor_client::pane::{Heard, Hearing};
 use temor_core::quick::QuickState;
 use temor_core::split::SplitTree;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::Workspace;
 use temor_pane::PaneEvent;
+use temor_panes::{Heard, Hearing};
 use temor_render::Palette;
 use temor_vt::Snapshot;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
