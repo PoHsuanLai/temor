@@ -6,10 +6,11 @@ use temor_core::session::ShellState;
 use temor_render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
-use super::model::{INSET, Lifetime, Notice};
+use super::model::{INSET, Notice};
 use super::room::Relaid;
 use crate::error::UiError;
 use crate::paint::PaintView;
+use temor_client::pane::Heard;
 use temor_pane::PaneEvent;
 use temor_vt::Snapshot;
 
@@ -37,7 +38,7 @@ impl Session {
 
     /// A message for the person from the last action, if one is waiting; taking it clears it.
     pub fn take_notice(&mut self) -> Option<String> {
-        self.notice.take()
+        self.notice.take().or_else(|| self.core.said.take())
     }
 
     /// The window's title as the program last set it.
@@ -91,7 +92,7 @@ impl Session {
             pixels: self.pixels,
             scale: self.scale,
             inset: INSET,
-            focus: match self.focus {
+            focus: match self.core.focus {
                 Focus::Focused => PaneFocus::Focused,
                 Focus::Unfocused => PaneFocus::Unfocused,
             },
@@ -105,80 +106,48 @@ impl Session {
         Ok(self.relayout())
     }
 
-    /// What one event from the pane means for the window. Output is never blocked on it.
+    /// What one event from the pane means for the window. Output is never blocked on it. The
+    /// pane's core takes it first (`PaneCore::hear`); the window does the rest ([`Session::take`]).
     pub fn absorb(&mut self, event: PaneEvent) -> Notice {
-        match event {
-            PaneEvent::Dirty => {
-                // Cleared first: output that arrives while the window paints signals again.
-                self.core.pane.clear_dirty();
-                Notice::Repaint
-            }
-            PaneEvent::RenderHold(hold) => Notice::Hold(hold),
-            PaneEvent::Title(title) => Notice::Title(self.core.retitle(&title)),
-            PaneEvent::Bell => {
+        let heard = self.core.hear(event);
+        self.take(heard)
+    }
+
+    /// What is left of an event for the window once the pane's core has taken it.
+    pub fn take(&mut self, heard: Heard) -> Notice {
+        match heard {
+            Heard::Repaint => Notice::Repaint,
+            Heard::Chrome => Notice::Chrome,
+            Heard::Title(title) => Notice::Title(title),
+            Heard::Bell => {
                 let now = self.core.clock.now();
                 self.bell_until = Some(now.after_span(BELL_MARK));
-                if let Some(note) = temor_core::notify::bell_notice(self.focus) {
-                    self.announce(note);
-                }
                 Notice::Bell
             }
-            PaneEvent::Exited(exit) => {
-                self.shell_gone();
-                self.core.lifetime = Lifetime::Ended(exit);
-                Notice::Ended(exit)
+            Heard::Cwd(path) => Notice::Cwd(path),
+            Heard::CommandStarted => {
+                self.completion_ended();
+                Notice::Quiet
             }
-            PaneEvent::Cwd(url) => match self.core.moved_to(&url) {
-                Some(path) => Notice::Cwd(path),
-                None => Notice::Chrome,
+            Heard::CommandDone => Notice::CommandDone,
+            Heard::Ended(exit) => Notice::Ended(exit),
+            Heard::Quiet => Notice::Quiet,
+            Heard::Window(event) => match event {
+                PaneEvent::RenderHold(hold) => Notice::Hold(hold),
+                PaneEvent::Completions(answer) => {
+                    self.completion_answer(&answer);
+                    Notice::Chrome
+                }
+                PaneEvent::Suggested(answered) => {
+                    self.completion_answered(answered);
+                    Notice::Chrome
+                }
+                PaneEvent::Transfer(event) => Notice::Transfer(event),
+                PaneEvent::Clipboard(write) => self.osc52_write(write),
+                PaneEvent::ClipboardRead(read) => self.osc52_read_asked(read),
+                // A variant this window does not draw yet: nothing to show.
+                _ => Notice::Quiet,
             },
-            PaneEvent::ShellReport(text) => {
-                self.core.reported(&text);
-                Notice::Quiet
-            }
-            PaneEvent::Progress(progress) => {
-                self.core.set_progress(progress);
-                Notice::Chrome
-            }
-            PaneEvent::MarkBegin { seq } => {
-                self.mark_begin(seq);
-                Notice::Quiet
-            }
-            PaneEvent::Prompt(mark) => {
-                if matches!(mark, temor_vt::PromptEvent::OutputStart { .. }) {
-                    self.completion_ended();
-                }
-                self.mark_event(mark);
-                Notice::Quiet
-            }
-            PaneEvent::Completions(answer) => {
-                self.completion_answer(&answer);
-                Notice::Chrome
-            }
-            PaneEvent::Suggested(answered) => {
-                self.completion_answered(answered);
-                Notice::Chrome
-            }
-            PaneEvent::Anchor { seq, anchor, at } => self.anchored(seq, anchor, at),
-            PaneEvent::Reset => {
-                self.terminal_reset();
-                // A pane fed from elsewhere is reset when its screen is restored.
-                self.find_restored_blocks();
-                Notice::Repaint
-            }
-            PaneEvent::Notification(note) => {
-                let title = sanitise_title(&note.title);
-                let body = sanitise_title(&note.body);
-                if let Some(desk) = temor_core::notify::program_notice(&title, &body, self.focus) {
-                    self.announce(desk);
-                }
-                Notice::Quiet
-            }
-            PaneEvent::Transfer(event) => Notice::Transfer(event),
-            PaneEvent::Clipboard(write) => self.osc52_write(write),
-            PaneEvent::ClipboardRead(read) => self.osc52_read_asked(read),
-            // A variant this window does not draw yet: nothing to show.
-            _ => Notice::Quiet,
         }
     }
 

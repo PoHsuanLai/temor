@@ -7,6 +7,7 @@
 pub mod blocks;
 pub mod clipboard;
 pub mod clock;
+mod hear;
 mod heard;
 pub mod marks;
 pub mod notify;
@@ -15,7 +16,7 @@ pub mod sources;
 
 use std::path::PathBuf;
 
-use temor_core::notify::Limiter;
+use temor_core::notify::{Focus, Limiter};
 use temor_pane::settings::NotifyAfter;
 use temor_pane::{Hold, PaneHandle};
 use temor_pty::ChildExit;
@@ -27,6 +28,7 @@ use clock::Clock;
 use notify::Notifier;
 use sources::Sources;
 
+pub use hear::{Heard, desktop_note};
 pub use heard::{SNAPSHOT_LIMIT, sanitise_title};
 pub use open::{OpenError, PaneKit};
 
@@ -71,6 +73,15 @@ pub struct PaneCore {
     pub clip_mirror: temor_pane::ClipboardMirror,
     /// A clipboard question waiting for the person.
     pub clip_pending: Option<PendingClipboard>,
+    /// Whether the pane is the one the person is looking at (a pane that is not notifies).
+    pub focus: Focus,
+    /// What the person last sent as a command, until the command it starts takes it: a shell
+    /// that does not say what it runs (nushell) shows a command of several lines on rows the
+    /// screen cannot give back.
+    pub sent: Option<String>,
+    /// A message for the person from the pane (a notice the desktop refused), until the window
+    /// takes it.
+    pub said: Option<String>,
 }
 
 /// Whether the program is still running, and how it ended if not.

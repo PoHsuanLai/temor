@@ -2,8 +2,7 @@
 //! numbered: its `MarkBegin`, its own event, then its `Anchor` with the same number. The rules are
 //! `mark_step` in `temor-core`; here the terminal is read into its inputs (the clock, where the
 //! anchor sits, the text typed) and its outputs are carried out (anchors handed back, a finished
-//! command's line of output kept). A command that finished is handed back, for the window to
-//! announce.
+//! command's line of output kept, and the command announced when it ran long).
 //!
 //! A screen restored from a snapshot keeps which cells were prompt, typed command and output,
 //! but none of its marks reach the log as events. Its blocks are found again from those cells:
@@ -58,13 +57,13 @@ fn kind_of(event: PromptEvent) -> MarkKind {
 
 impl PaneCore {
     /// A mark starts, numbered `seq`. Whatever an earlier mark left pending is dropped.
-    pub fn mark_begin(&mut self, seq: u64) -> Vec<Block> {
-        self.mark(MarkIn::Begin { seq })
+    pub fn mark_begin(&mut self, seq: u64) {
+        self.mark(MarkIn::Begin { seq });
     }
 
     /// A mark's own event. Kept only while its mark is the current one.
-    pub fn mark_event(&mut self, mark: PromptEvent) -> Vec<Block> {
-        self.mark(MarkIn::Event(kind_of(mark)))
+    pub fn mark_event(&mut self, mark: PromptEvent) {
+        self.mark(MarkIn::Event(kind_of(mark)));
     }
 
     /// Whether the mark in progress starts a command: `Some(true)` when the shell did not say
@@ -78,30 +77,29 @@ impl PaneCore {
 
     /// A mark's anchor arrived, read by the pane at `read`. It is paired with the event of the
     /// same number; anything else is released, so a missed anchor cannot pair with the next
-    /// mark's event. `sent` is the command as the person sent it, when the window has it (the
-    /// composer's text is the command, lines and all, where the screen's rows are only how the
-    /// shell drew it).
-    pub fn anchored(
-        &mut self,
-        seq: u64,
-        id: AnchorId,
-        read: Instant,
-        sent: Option<String>,
-    ) -> Vec<Block> {
+    /// mark's event. Returns whether a command finished.
+    pub fn anchored(&mut self, seq: u64, id: AnchorId, read: Instant) -> bool {
+        let finished_before = self.blocks.marks.finished();
+        // The composer's text is the command as sent, lines and all, where the screen's rows
+        // are only how the shell drew it; a command the shell names keeps its own name.
+        let sent = match self.starts_command() {
+            Some(unnamed) => self.sent.take().filter(|_| unnamed),
+            None => None,
+        };
         let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
         // When the pane read the mark, not when the window got to it: a command's start and end
         // taken in one go would otherwise be 0 ms apart.
         let at = self.clock.at(read);
         let typed = sent.or_else(|| self.typed_at(id));
-        let mut finished = self.mark(MarkIn::Anchored {
+        self.mark(MarkIn::Anchored {
             seq,
             anchor: handle(id),
             row,
             at,
             typed,
         });
-        finished.extend(self.sweep());
-        finished
+        self.sweep();
+        self.blocks.marks.finished() > finished_before
     }
 
     /// The command line as the person typed it, when the mark in progress starts the command
@@ -121,58 +119,54 @@ impl PaneCore {
     }
 
     /// The shell is gone: a running command ends unreported.
-    pub fn shell_gone(&mut self) -> Vec<Block> {
+    pub fn shell_gone(&mut self) {
         let at = self.clock.now();
-        let mut finished = self.mark(MarkIn::ShellGone { at });
-        finished.extend(self.sweep());
-        finished
+        self.mark(MarkIn::ShellGone { at });
+        self.sweep();
     }
 
     /// The terminal was reset: a running command is no longer on screen.
-    pub fn terminal_reset(&mut self) -> Vec<Block> {
+    pub fn terminal_reset(&mut self) {
         let at = self.clock.now();
-        self.mark(MarkIn::Reset { at })
+        self.mark(MarkIn::Reset { at });
     }
 
     /// The person pressed Enter at the shell: the cursor now sits at the end of the typed command
     /// (a right prompt lies beyond it), so the command's text ends there.
-    pub fn note_enter(&mut self) -> Vec<Block> {
+    pub fn note_enter(&mut self) {
         let anchor = self.pane.with_term(|term| term.anchor_cursor());
         self.mark(MarkIn::Entered {
             anchor: anchor.map(handle),
-        })
+        });
     }
 
     /// Drops the blocks whose marks the scrollback no longer holds.
-    fn sweep(&mut self) -> Vec<Block> {
+    fn sweep(&mut self) {
         let ids = self.swept();
         for id in &ids {
             self.blocks.notes.remove(id);
         }
-        match ids.is_empty() {
-            true => Vec::new(),
-            false => self.mark(MarkIn::Gone { ids }),
+        if !ids.is_empty() {
+            self.mark(MarkIn::Gone { ids });
         }
     }
 
-    /// Steps the mark log on one input and carries out what it says. Returns the commands that
-    /// finished.
-    fn mark(&mut self, input: MarkIn) -> Vec<Block> {
+    /// Steps the mark log on one input and carries out what it says: a command that finished
+    /// keeps its card's line and may be announced.
+    fn mark(&mut self, input: MarkIn) {
         let log = std::mem::take(&mut self.blocks.marks);
         let (log, outs) = mark_step(log, input);
         self.blocks.marks = log;
-        let mut finished = Vec::new();
         for out in outs {
             match out {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
                 MarkOut::Finished(block) => {
                     self.keep_note(&block);
-                    finished.push(block);
+                    self.notify_finished(&block);
                 }
                 _ => {}
             }
         }
-        finished
     }
 
     /// Keeps the line of output a finished block's card shows. Read once, when the block
@@ -243,18 +237,18 @@ impl PaneCore {
 
     /// The pane began as a kept screen: the commands it ran before are `history`, and the blocks
     /// on that screen are found again.
-    pub fn begin_restored(&mut self, history: Vec<CommandRecord>) -> Vec<Block> {
+    pub fn begin_restored(&mut self, history: Vec<CommandRecord>) {
         self.inherited = history;
-        self.find_restored_blocks()
+        self.find_restored_blocks();
     }
 
     /// Finds the blocks of a restored screen, when the log holds none still on it: each joins
     /// the log as a finished block, its status from what was kept of the pane's commands, and a
     /// prompt left open becomes the prompt being typed at.
-    pub fn find_restored_blocks(&mut self) -> Vec<Block> {
-        let mut finished = self.sweep();
+    pub fn find_restored_blocks(&mut self) {
+        self.sweep();
         if !self.blocks.marks.store().is_empty() {
-            return finished;
+            return;
         }
         let starts: Vec<(At, Kind)> = self
             .pane
@@ -330,20 +324,18 @@ impl PaneCore {
         self.inherited.truncate(keep);
         let at = self.clock.now();
         if !blocks.is_empty() {
-            finished.extend(self.mark(MarkIn::Restored { blocks, at }));
+            self.mark(MarkIn::Restored { blocks, at });
             let restored: Vec<_> = self.blocks.marks.store().iter().cloned().collect();
             for block in &restored {
                 self.keep_note(block);
             }
         }
         if let Some(typing) = typing {
-            finished
-                .extend(self.found_mark(MarkKind::PromptStart { primary: true }, typing.prompt));
+            self.found_mark(MarkKind::PromptStart { primary: true }, typing.prompt);
             if let Some(input) = typing.input {
-                finished.extend(self.found_mark(MarkKind::InputStart, input));
+                self.found_mark(MarkKind::InputStart, input);
             }
         }
-        finished
     }
 
     fn anchor_found(&self, at: At) -> Option<AnchorId> {
@@ -353,21 +345,20 @@ impl PaneCore {
     }
 
     /// One mark the shell sent before the snapshot was taken, given to the log as if it came now.
-    fn found_mark(&mut self, kind: MarkKind, at: At) -> Vec<Block> {
+    fn found_mark(&mut self, kind: MarkKind, at: At) {
         let Some(anchor) = self.anchor_found(at) else {
-            return Vec::new();
+            return;
         };
-        let mut finished = self.mark(MarkIn::Begin { seq: FOUND_SEQ });
-        finished.extend(self.mark(MarkIn::Event(kind)));
+        self.mark(MarkIn::Begin { seq: FOUND_SEQ });
+        self.mark(MarkIn::Event(kind));
         let now = self.clock.now();
-        finished.extend(self.mark(MarkIn::Anchored {
+        self.mark(MarkIn::Anchored {
             seq: FOUND_SEQ,
             anchor: handle(anchor),
             row: Some(GridRow(at.row)),
             at: now,
             typed: None,
-        }));
-        finished
+        });
     }
 
     /// How many rows the terminal has.

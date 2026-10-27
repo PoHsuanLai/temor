@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use temor_core::notify::Limiter;
+use temor_core::notify::{Focus, Limiter};
 use temor_pane::settings::NotifyAfter;
 use temor_pane::{
     EventSink, FedSpec, Feeder, Hold, PaneError, PaneEvent, PaneHandle, PaneSpec, start, start_fed,
@@ -127,6 +127,9 @@ impl PaneCore {
             clip_write: temor_core::remote::Grant::Ask,
             clip_mirror,
             clip_pending: None,
+            focus: Focus::Focused,
+            sent: None,
+            said: None,
         }
     }
 }

@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use temor_core::notify::Focus;
 use temor_pane::{EventSink, Feeder, PaneEvent};
 use temor_render::{PixelSize, Scale};
 use temor_vt::Snapshot;
@@ -71,7 +70,6 @@ impl Session {
             list_map: None,
             live_ground: None,
             composer: Default::default(),
-            focus: Focus::Focused,
             blink: super::blink::Blink {
                 setting: kit.cursor_blink,
                 from: blink_from,

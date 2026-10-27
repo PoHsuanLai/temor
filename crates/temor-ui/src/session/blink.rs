@@ -49,7 +49,7 @@ impl Session {
     /// Whether the pane must be painted again for its cursor: it is focused, its cursor blinks,
     /// and the half has turned since the last paint.
     pub fn blink_due(&self) -> bool {
-        self.focus == Focus::Focused
+        self.core.focus == Focus::Focused
             && self.painter.cursor_blinks()
             && self.blink_now() != self.blink.painted
     }

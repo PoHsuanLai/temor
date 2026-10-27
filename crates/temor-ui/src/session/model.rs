@@ -6,7 +6,6 @@ use std::path::PathBuf;
 
 use chordkit::Keymap;
 use ds_core::time::stamp::Stamp;
-use temor_core::notify::Focus;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::text::Finder;
 use temor_pane::text::Selection;
@@ -19,7 +18,7 @@ use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
-pub use temor_client::pane::{Lifetime, PaneCore};
+pub use temor_client::pane::PaneCore;
 use temor_pane::PaneSpec;
 
 /// What the window should do about an event from the pane.
@@ -99,7 +98,6 @@ pub struct Session {
     pub(super) live_ground: Option<temor_vt::Rgb>,
     /// Where the next command is typed while the list shows it.
     pub(super) composer: super::composer::Composer,
-    pub(super) focus: Focus,
     pub(super) blink: super::blink::Blink,
     /// Until when the bell's visual mark stays up.
     pub(super) bell_until: Option<Stamp>,
