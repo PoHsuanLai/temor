@@ -11,6 +11,8 @@ use temor_core::shelf::PaneSite;
 use temor_pane::ReadPolicy;
 use temor_vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
 
+pub use temor_client::pane::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
+
 use super::Session;
 use super::clip::PASTE_LIMIT;
 use super::lifecycle::sanitise_title;
@@ -41,31 +43,6 @@ pub(super) fn write_verdict(site: PaneSite, consent: Grant, held: ClipboardGrant
         (_, Grant::Ask, ClipboardGrant::Granted) => WriteVerdict::Write,
         (_, Grant::Ask, _) => WriteVerdict::Ask,
     }
-}
-
-/// What the person is asked about the clipboard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClipboardUse {
-    /// The program wants to put text on the clipboard.
-    Copy,
-    /// The program wants to read the clipboard.
-    Read,
-}
-
-/// A question waiting for the person.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClipboardAsk {
-    pub kind: ClipboardUse,
-    /// The program's name, cleaned for showing; empty when it gave none.
-    pub program: String,
-}
-
-/// The question and, for a copy, the text it would put on the clipboard, and where.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct PendingClipboard {
-    pub(super) ask: ClipboardAsk,
-    pub(super) text: String,
-    pub(super) to: ClipboardLocation,
 }
 
 /// The text of a write: its first plain-text form, empty for a clear. `None` when the write

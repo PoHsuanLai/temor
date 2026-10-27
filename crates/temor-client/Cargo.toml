@@ -9,7 +9,9 @@ publish = false
 
 # Between the store and the window (PLAN §2b, P24). A caller asks for a value and is handed one
 # that is already there; the reading happens on the client's threads, and again when the store
-# says what a commit touched. Draws nothing and words nothing: no dioxus, no quire.
+# says what a commit touched. Draws nothing and words nothing: no dioxus, no quire widgets (only
+# quire's `ds-core` values, as temor-core uses them). It also keeps each pane (`pane`): its engine,
+# its commands and its shell's state, apart from how a window shows it.
 
 [features]
 # What a test builds with: `Live::wait`, and a faster look for other processes' writes.
@@ -18,6 +20,14 @@ testing = []
 [dependencies]
 temor-schema = { workspace = true }
 temor-store = { workspace = true }
+temor-core = { workspace = true }
+temor-pane = { workspace = true, features = ["ghostty"] }
+temor-vt = { workspace = true, features = ["ghostty"] }
+temor-shell = { workspace = true }
+temor-pty = { workspace = true }
+ds-core = { workspace = true }
+# The script a nushell completion runs from.
+tempfile = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
 # The watch channel a `Live` is followed through, so an `async` window can await a change.

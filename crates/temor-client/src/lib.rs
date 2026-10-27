@@ -13,6 +13,7 @@ mod client;
 mod error;
 mod external;
 mod live;
+pub mod pane;
 pub mod query;
 
 pub use act::Command;

@@ -6,22 +6,21 @@ use std::path::PathBuf;
 
 use chordkit::Keymap;
 use ds_core::time::stamp::Stamp;
-use temor_core::notify::{Focus, Limiter};
+use temor_core::notify::Focus;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::text::Finder;
 use temor_pane::text::Selection;
 use temor_pty::ChildExit;
 use temor_render::{FontSet, GridFit, PixelSize, Scale};
-use temor_vt::Progress;
 
-use super::blocks::BlockLog;
 use super::clip::PendingPaste;
 use super::clipboard::Clipboard;
 use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
-use temor_pane::{Hold, PaneHandle, PaneSpec};
+pub use temor_client::pane::{Lifetime, PaneCore};
+use temor_pane::PaneSpec;
 
 /// What the window should do about an event from the pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,61 +111,11 @@ pub struct Session {
     pub(super) layout: Option<temor_render::RowLayout>,
 }
 
-/// What a pane is, apart from how the window shows it: its engine, what its program said (title,
-/// folder, progress, how it ended), its commands, its shell's state, its completion sources, what
-/// was answered about its clipboard, and when a finished command is worth a desktop notice.
-pub struct PaneCore {
-    pub(super) pane: PaneHandle,
-    pub(super) title: String,
-    pub(super) lifetime: Lifetime,
-    pub(super) hold: Hold,
-    pub(super) hold_generation: u64,
-    pub(super) blocks: BlockLog,
-    /// What the shell holds that a new shell would need (folder, variables, aliases).
-    pub(super) shell_state: temor_core::session::ShellState,
-    /// The `PATH` the shell last reported: where its programs are found, which a window opened
-    /// from the Finder is not given (its own is the system's few folders).
-    pub(super) shell_path: Option<String>,
-    /// Commands the shell this session continues ran before this window began.
-    pub(super) inherited: Vec<temor_core::session::CommandRecord>,
-    /// The key temor gave the shell it started here; a state report without it is not the
-    /// shell's and is dropped. None: nothing reports.
-    pub(super) report_key: Option<temor_shell::report::ReportKey>,
-    /// The sources that complete the composer's line besides the shell's own.
-    pub(super) sources: super::sources::Sources,
-    /// The pane's folder as the shell last said it, to run a completion in.
-    pub(super) folder: Option<std::path::PathBuf>,
-    pub(super) cwd: Option<String>,
-    pub(super) progress: Option<Progress>,
-    pub(super) notify_after: NotifyAfter,
-    pub(super) limiter: Limiter,
-    pub(super) notifier: Box<dyn Notifier>,
-    pub(super) clock: Box<dyn Clock>,
-    pub(super) shelf_dir: PathBuf,
-    /// How the pane's shell quotes a word, for pasting dropped paths.
-    pub(super) quoting: temor_core::shelf::Quoting,
-    /// Whether the pane's shell runs on this computer.
-    pub(super) site: temor_core::shelf::PaneSite,
-    /// What the person answered about the program copying to the clipboard (OSC 52).
-    pub(super) clip_write: temor_core::remote::Grant,
-    /// The pane's copy of the clipboard, for the program's reads.
-    pub(super) clip_mirror: temor_pane::ClipboardMirror,
-    /// A clipboard question waiting for the person.
-    pub(super) clip_pending: Option<super::osc52::PendingClipboard>,
-}
-
 /// A find query typed but not yet run, and when it was last typed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PendingQuery {
     pub(super) text: String,
     pub(super) at: std::time::Duration,
-}
-
-/// Whether the program is still running, and how it ended if not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Lifetime {
-    Running,
-    Ended(Option<ChildExit>),
 }
 
 impl std::fmt::Debug for Session {

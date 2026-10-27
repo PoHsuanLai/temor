@@ -7200,11 +7200,17 @@ dependencies = [
 name = "temor-client"
 version = "0.1.1"
 dependencies = [
+ "ds-core",
  "notify",
  "parking_lot",
  "temor-client",
+ "temor-core",
+ "temor-pane",
+ "temor-pty",
  "temor-schema",
+ "temor-shell",
  "temor-store",
+ "temor-vt",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
