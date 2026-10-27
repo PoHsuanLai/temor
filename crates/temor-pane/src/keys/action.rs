@@ -101,6 +101,8 @@ pub enum Action {
     Back,
     /// Open the page Back left, as a browser's Forward does.
     Forward,
+    /// Open the history page (`temor://history`) on the row's stage, as a browser's ⌘Y does (⌥⇧⌘Y: ⌘Y is Quick Look's).
+    History,
     /// Show the row's page alone.
     ShowStage,
     /// Show the row's terminal alone.
@@ -144,6 +146,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::DetachProgram, "detach-program"),
     (Action::Back, "back"),
     (Action::Forward, "forward"),
+    (Action::History, "history"),
     (Action::ShowStage, "show-stage"),
     (Action::ShowConsole, "show-console"),
     (Action::ShowStageAndConsole, "show-stage-and-console"),
@@ -214,6 +217,7 @@ impl Action {
             Self::SettingsAt(pane) => pane.row_label(),
             Self::Back => "Back",
             Self::Forward => "Forward",
+            Self::History => "History",
             Self::ShowStage => "Show page only",
             Self::ShowConsole => "Show console only",
             Self::ShowStageAndConsole => "Show page and console",

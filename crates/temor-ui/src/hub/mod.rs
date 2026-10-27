@@ -129,6 +129,6 @@ pub use space_edits::spawn_space_edits;
 pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;
 pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
-pub use stage::StageView;
+pub use stage::{StageView, temor_page, temor_page_name};
 pub use viewer_host::spawn_viewer_loop;
 pub use viewers::ViewerShow;

@@ -62,6 +62,7 @@ impl Action {
             | Self::SettingsAt(_)
             | Self::Back
             | Self::Forward
+            | Self::History
             | Self::ShowStage
             | Self::ShowConsole
             | Self::ShowStageAndConsole
@@ -116,6 +117,7 @@ impl Action {
             Self::SettingsAt(pane) => pane.row_label(),
             Self::Back => "Back",
             Self::Forward => "Forward",
+            Self::History => "Show History",
             Self::ShowStage => "Show Page Only",
             Self::ShowConsole => "Show Console Only",
             Self::ShowStageAndConsole => "Show Page and Console",

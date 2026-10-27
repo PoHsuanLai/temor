@@ -15,6 +15,7 @@ pub mod facts_host;
 pub mod icon_pack;
 mod keymap;
 mod keymap_source;
+pub mod local_zone;
 pub mod notify;
 pub mod offer;
 pub mod peek_look;

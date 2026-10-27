@@ -13,8 +13,9 @@ pub enum Target {
     Favourite,
     /// The blocks picked in a console.
     Block(BlockFacts),
-    /// The page on a row's stage.
-    Page,
+    /// The page on a row's stage: a file, or one of temor's own (`temor://history`), which no
+    /// other app opens and no folder holds.
+    Page { file: bool },
 }
 
 /// What a tab's row is.
@@ -195,9 +196,9 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(block.on_host, Item::EditLocally);
             add(true, Item::SelectAllBlocks);
         }
-        Target::Page => {
-            add(true, Item::OpenInDefaultApp);
-            add(true, Item::ShowInFolder);
+        Target::Page { file } => {
+            add(file, Item::OpenInDefaultApp);
+            add(file, Item::ShowInFolder);
             add(true, Item::ClosePage);
         }
     }
@@ -324,6 +325,12 @@ mod tests {
     }
 
     #[test]
+    fn temors_own_page_only_closes() {
+        assert_eq!(titles(Target::Page { file: false }), [vec!["Close Page"]]);
+        assert_eq!(titles(Target::Page { file: true }).len(), 3);
+    }
+
+    #[test]
     fn every_menu_keeps_the_groups_in_order_and_none_is_empty() {
         let targets = [
             Target::Row(RowFacts::default()),
@@ -335,7 +342,8 @@ mod tests {
             }),
             Target::Favourite,
             Target::Block(BlockFacts::default()),
-            Target::Page,
+            Target::Page { file: true },
+            Target::Page { file: false },
         ];
         for target in targets {
             let groups = menu_for(target);

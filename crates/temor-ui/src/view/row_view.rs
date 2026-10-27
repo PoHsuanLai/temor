@@ -19,13 +19,15 @@ use temor_core::stage::Layout;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
 use temor_pane::keys::Action;
+use temor_schema::url::{HistoryScope, TemorUrl};
 
+use super::history_page::HistoryPage;
 use super::menu::{Pick, menu_items};
 use super::row_menu::show_in_folder;
 use super::tool_button::ToolButton;
 use super::tree_view::TreeView;
-use super::viewer_pane::ViewerView;
-use crate::hub::Desk;
+use super::viewer_pane::{PageKeys, ViewerView};
+use crate::hub::{Desk, temor_page, temor_page_name};
 
 /// The page's share of the row when it first shows beside the console.
 const STAGE_SHARE: f32 = 0.62;
@@ -88,7 +90,14 @@ pub fn RowView(
 fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
     let _ = (desk.ui)();
     let shown = desk.hub.page_file(page);
-    let (name, folder) = shown.as_deref().map(name_and_folder).unwrap_or_default();
+    let own = shown.as_deref().and_then(temor_page);
+    let (name, folder) = match &own {
+        Some(own) => (
+            temor_page_name(own).to_owned(),
+            page_scope(own, &desk.hub.home()),
+        ),
+        None => shown.as_deref().map(name_and_folder).unwrap_or_default(),
+    };
     let console_tip = desk.hub.tooltip(
         match layout.shows_console() {
             true => "Hide the console",
@@ -137,13 +146,25 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                 }
             }
             div { class: "temor-page",
-                ViewerView { pane: page, desk: desk.clone() }
+                match own.clone() {
+                    Some(TemorUrl::History(scope)) => rsx! {
+                        PageKeys { pane: page, desk: desk.clone(), label: "History",
+                            HistoryPage { key: "{scope:?}", scope, desk: desk.clone() }
+                        }
+                    },
+                    Some(_) => rsx! {
+                        EmptyState { title: "Nothing here yet" }
+                    },
+                    None => rsx! {
+                        ViewerView { pane: page, desk: desk.clone() }
+                    },
+                }
             }
             if let (Shown::Visible, Some(anchor)) = (menu(), more.anchor()) {
                 Menu {
                     placement: MenuPlacement::Popup,
                     anchor,
-                    items: menu_items::<()>(Target::Page, false, Vec::new()),
+                    items: menu_items::<()>(Target::Page { file: own.is_none() }, false, Vec::new()),
                     onpick: move |pick: Pick<()>| match pick {
                         Pick::Item(Item::OpenInDefaultApp) => acting.viewer_open_in_app(page),
                         Pick::Item(Item::ShowInFolder) => {
@@ -167,6 +188,19 @@ pub fn walk_of(button: Option<MouseButton>) -> Option<bool> {
         MouseButton::Fourth => Some(true),
         MouseButton::Fifth => Some(false),
         _ => None,
+    }
+}
+
+/// What of temor's page `page` is shown, under its name: a folder's history names the folder.
+fn page_scope(page: &TemorUrl, home: &str) -> String {
+    match page {
+        TemorUrl::History(HistoryScope::In(folder)) => match folder.strip_prefix(home) {
+            Some(rest) if !home.is_empty() && (rest.is_empty() || rest.starts_with('/')) => {
+                format!("in ~{rest}")
+            }
+            _ => format!("in {folder}"),
+        },
+        _ => String::new(),
     }
 }
 

@@ -7,6 +7,7 @@ pub mod bar;
 pub mod block;
 pub mod error;
 pub mod facts;
+pub mod history;
 pub mod host;
 pub mod icon;
 pub mod key;

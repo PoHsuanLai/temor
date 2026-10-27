@@ -160,6 +160,7 @@ impl Session {
             | Action::ActualSize
             | Action::Back
             | Action::Forward
+            | Action::History
             | Action::ShowStage
             | Action::ShowConsole
             | Action::ShowStageAndConsole

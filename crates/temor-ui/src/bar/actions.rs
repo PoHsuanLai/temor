@@ -31,6 +31,7 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::ShowDownloads,
     Action::Back,
     Action::Forward,
+    Action::History,
     Action::ShowStage,
     Action::ShowConsole,
     Action::ShowStageAndConsole,

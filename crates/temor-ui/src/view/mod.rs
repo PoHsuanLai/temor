@@ -15,6 +15,7 @@ pub mod dnd;
 pub mod favourites;
 pub mod find_bar;
 pub mod handlers;
+pub mod history_page;
 pub mod host_banners;
 pub mod host_words;
 pub mod ime;

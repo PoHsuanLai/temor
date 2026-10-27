@@ -5,14 +5,15 @@
 
 use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 use temor_client::{Client, Command};
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_schema::session::{At, RanCommand, Session as Kept, SessionId};
 use temor_schema::url::Host;
 
-use super::model::Hub;
+use super::model::{Hub, HubRef};
+use crate::edge::local_zone::wall_now as now;
 use crate::session::{Notice, Session};
 
 /// How long history is kept: commands older than this are forgotten when the window opens.
@@ -43,6 +44,25 @@ impl Hub {
     /// The session of `pane`, as history knows it.
     pub fn session_id(&self, pane: PaneId) -> Option<SessionId> {
         self.history.sessions.get(&pane).map(|begun| begun.id)
+    }
+
+    /// The tab the live session `id` is in.
+    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
+        let (pane, _) = self
+            .history
+            .sessions
+            .iter()
+            .find(|(_, begun)| begun.id == id)?;
+        self.ws.tab_of(*pane)
+    }
+
+    /// The sessions still running in this window.
+    pub fn running_sessions(&self) -> std::collections::BTreeSet<SessionId> {
+        self.history
+            .sessions
+            .values()
+            .map(|begun| begun.id)
+            .collect()
     }
 
     /// What `notice`, just taken by `session` in `pane`, means for history.
@@ -106,18 +126,22 @@ impl Hub {
     }
 }
 
-/// The wall clock now. A clock set before 1970 reads as the epoch.
-fn now() -> At {
-    let since = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |since| since.as_millis());
-    At(i64::try_from(since).unwrap_or(i64::MAX))
-}
-
 /// A new session's id: 64 bits from the process's random hash keys, the pane and the time.
 fn draw_id(pane: PaneId) -> SessionId {
     let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
     pane.hash(&mut hasher);
     SystemTime::now().hash(&mut hasher);
     SessionId::from_bits(hasher.finish())
+}
+
+impl HubRef {
+    /// See [`Hub::tab_of_session`].
+    pub fn tab_of_session(&self, id: SessionId) -> Option<temor_core::vocab::ids::TabId> {
+        self.0.borrow().tab_of_session(id)
+    }
+
+    /// See [`Hub::running_sessions`].
+    pub fn running_sessions(&self) -> std::collections::BTreeSet<SessionId> {
+        self.0.borrow().running_sessions()
+    }
 }

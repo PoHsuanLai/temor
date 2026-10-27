@@ -21,6 +21,8 @@ fn our_desktop_takes_super_and_the_ctrl_shift_form_keycap_sends() {
         ("Super+T", Ran(Action::OpenBar)),
         ("Super+N", Ran(Action::NewTab)),
         ("Super+Shift+Y", Ran(Action::ToggleQuick)),
+        ("Super+Alt+Shift+Y", Ran(Action::History)),
+        ("Super+[", Ran(Action::Back)),
         ("Super+W", Ran(Action::ClosePane)),
         ("Super+D", Ran(Action::SplitRight)),
         ("Ctrl+Shift+D", Ran(Action::SplitRight)),

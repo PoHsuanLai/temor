@@ -283,6 +283,7 @@ impl Desk {
             Action::JumpToWaiting => self.jump_to_waiting(),
             Action::Back => self.go_back(),
             Action::Forward => self.go_forward(),
+            Action::History => self.open_history(),
             Action::ShowStage => self.set_layout(Layout::Stage),
             Action::ShowConsole => self.set_layout(Layout::Console),
             Action::ShowStageAndConsole => self.set_layout(Layout::Both),

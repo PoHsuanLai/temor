@@ -116,6 +116,10 @@ impl Hub {
     /// A saved viewer pane comes back if its file is still there; if not, the pane is closed.
     pub(super) fn restore_viewer(&mut self, open: ViewerOpen) {
         let pane = open.pane;
+        // temor's own pages are always there.
+        if super::stage::temor_page(open.file.as_str()).is_some() {
+            return self.viewer_opened(open);
+        }
         let file = PathBuf::from(open.file.as_str());
         // A copy of a file on another computer does not outlive the window that fetched it.
         if self.is_host_copy(&file) {
@@ -235,6 +239,9 @@ impl Hub {
     /// The name a viewer pane is shown by: its file's name.
     pub(super) fn viewer_name(&self, pane: PaneId) -> Option<String> {
         let file = self.ws.viewers.get(&pane)?;
+        if let Some(page) = super::stage::temor_page(file.as_str()) {
+            return Some(super::stage::temor_page_name(&page).to_owned());
+        }
         Path::new(file.as_str())
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())

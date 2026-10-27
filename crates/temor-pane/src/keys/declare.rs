@@ -88,6 +88,8 @@ pub fn declared() -> Vec<Declared> {
         // A browser's Back and Forward, and Arc's ⌥⌘1 to ⌥⌘3 for what a row shows.
         (Action::Back, "Primary+[", None, &[]),
         (Action::Forward, "Primary+]", None, &[]),
+        // ⌘Y is Quick Look's everywhere, and ⌥⌘Y the quick terminal's off a Mac: history is ⌥⇧⌘Y.
+        (Action::History, "Primary+Alt+Shift+Y", None, &[]),
         (Action::ShowStage, "Primary+Alt+1", None, &[]),
         (Action::ShowConsole, "Primary+Alt+2", None, &[]),
         (Action::ShowStageAndConsole, "Primary+Alt+3", None, &[]),

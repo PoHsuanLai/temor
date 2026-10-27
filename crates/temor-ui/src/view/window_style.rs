@@ -101,4 +101,15 @@ pub const WINDOW_CSS: &str = "\
 .temor-page-folder { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--f-ink-soft); font-size: var(--fs-small); }\
 .temor-page-tool { display: flex; border-radius: var(--r-tile); }\
 .temor-page-tool[*|data-pressed=true] { background: var(--f-pill); }\
-.temor-page { flex: 1 1 auto; min-height: 0; position: relative; }";
+.temor-page { flex: 1 1 auto; min-height: 0; position: relative; }\
+.temor-history { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s-18); padding: var(--s-16) var(--s-24); }\
+.temor-history > * { width: 100%; max-width: 760px; }\
+.temor-history-day { display: flex; flex-direction: column; gap: var(--s-4); }\
+.temor-history-list { display: flex; flex-direction: column; }\
+.temor-history-words { display: flex; align-items: baseline; gap: var(--s-8); min-width: 0; }\
+.temor-history-cmd { font-family: var(--font-code); font-size: var(--fs-small); color: var(--ink); }\
+.temor-history-where { color: var(--ink-soft); font-size: var(--fs-small); }\
+.temor-history-head { display: flex; align-items: center; gap: var(--s-12); }\
+.temor-history-what { display: flex; flex-direction: column; gap: var(--s-2); flex: 1 1 auto; min-width: 0; }\
+.temor-history-title { font-size: var(--fs-title); font-weight: 600; color: var(--ink); }\
+.temor-history-about { font-size: var(--fs-small); color: var(--ink-soft); }";

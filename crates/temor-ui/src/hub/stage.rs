@@ -9,6 +9,7 @@ use temor_core::stage::{Layout, Pages};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::ViewerRef;
 use temor_core::workspace::WorkspaceIn;
+use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -37,17 +38,52 @@ pub struct StageView {
     pub can_go_forward: bool,
 }
 
+/// The page of temor's own `file` names (`temor://history`), when it names one and not a file.
+pub fn temor_page(file: &str) -> Option<TemorUrl> {
+    match file.parse::<TemorUrl>().ok()? {
+        TemorUrl::Location(_) => None,
+        page => Some(page),
+    }
+}
+
+/// What a page of temor's own is called.
+pub fn temor_page_name(page: &TemorUrl) -> &'static str {
+    match page {
+        TemorUrl::Downloads => "Downloads",
+        TemorUrl::History(_) | TemorUrl::Location(_) => "History",
+    }
+}
+
 impl Hub {
+    /// Open temor's page `url` on the stage of the row in front, beside the terminal with the
+    /// keys (or the one the page there came from).
+    pub(super) fn open_page(&mut self, url: TemorUrl) {
+        let from = self
+            .keyboard_pane()
+            .and_then(|pane| match self.is_viewer(pane) {
+                true => self.viewer_unfocus_to(pane),
+                false => Some(pane),
+            });
+        self.act(WorkspaceIn::OpenViewer {
+            file: ViewerRef(url.to_string()),
+            from,
+        });
+    }
+
     /// A page opened in `viewer`, on the stage of `tab`: a step Back can return from, and shown.
     pub(super) fn stage_opened(&mut self, tab: TabId, viewer: PaneId, file: PathBuf) {
         let walking = self.stages.walking;
+        let own_page = temor_page(&file.to_string_lossy()).is_some();
         let stage = self.stages.rows.entry(tab).or_default();
         stage.viewer = Some(viewer);
         if !walking {
             stage.pages.visit(file);
         }
-        // A page asked for is a page shown.
-        if !stage.layout.shows_stage() {
+        // A page asked for is a page shown; temor's own pages are shown alone, as a browser's
+        // history is.
+        if own_page {
+            stage.layout = Layout::Stage;
+        } else if !stage.layout.shows_stage() {
             stage.layout = Layout::Both;
         }
     }
@@ -159,6 +195,16 @@ impl HubRef {
 }
 
 impl Desk {
+    /// Open temor's page `url` on the row in front (⌥⇧⌘Y opens the history).
+    pub fn open_page(&self, url: TemorUrl) {
+        self.settle(|hub| hub.open_page(url));
+    }
+
+    /// The history of every session.
+    pub fn open_history(&self) {
+        self.open_page(TemorUrl::History(HistoryScope::All));
+    }
+
     /// Show `layout` on the row in front.
     pub fn set_layout(&self, layout: Layout) {
         self.settle(|hub| hub.set_layout(layout));
