@@ -7209,6 +7209,8 @@ dependencies = [
  "temor-client",
  "temor-core",
  "temor-desktop",
+ "temor-pane",
+ "temor-plugins",
  "temor-pty",
  "temor-remote",
  "temor-schema",

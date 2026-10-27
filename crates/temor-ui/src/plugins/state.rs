@@ -47,7 +47,7 @@ pub struct PluginHub {
 impl PluginHub {
     /// The plugins of the person who started the window.
     pub fn new(launch: &Launch) -> PluginHub {
-        PluginHub::over(PluginHost::new(launch))
+        PluginHub::over(PluginHost::new(&launch.ambient.plugin_dirs()))
     }
 
     /// A hub over `host` (tests build one over a scratch catalog).

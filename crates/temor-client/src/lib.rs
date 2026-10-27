@@ -16,6 +16,7 @@ mod external;
 pub mod facts;
 pub mod keep;
 mod live;
+pub mod plugins;
 pub mod query;
 pub mod remote;
 pub mod shelf;

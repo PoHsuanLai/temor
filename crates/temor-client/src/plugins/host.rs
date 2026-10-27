@@ -5,12 +5,12 @@ use std::sync::Arc;
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_plugins::message::Item;
 use temor_plugins::{
-    CancelKind, Catalog, Drawing, Effect, Generations, Launcher, Plugin, PluginError, Waits,
+    CancelKind, Catalog, DataDirs, Drawing, Effect, Generations, Launcher, Plugin, PluginError,
+    Waits,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::facts::PluginFact;
-use crate::view::launch::Launch;
 
 /// A finished piece of work, sent from a worker thread to the window.
 #[derive(Debug)]
@@ -62,13 +62,13 @@ pub enum Done {
 
 /// The catalog found at start, the launchers that run its plugins, and the channel.
 pub struct PluginHost {
-    pub(crate) catalog: Arc<Catalog>,
+    pub catalog: Arc<Catalog>,
     /// For answers that should be quick: facts, a chosen row, a lens.
-    pub(crate) quick: Launcher,
+    pub quick: Launcher,
     /// For streams: the bar's query and an adapter.
-    pub(crate) patient: Launcher,
+    pub patient: Launcher,
     /// The bar's keystrokes: a newer one cancels the older queries.
-    pub(crate) keys: Generations,
+    pub keys: Generations,
     done: UnboundedSender<Done>,
     inbox: Option<UnboundedReceiver<Done>>,
 }
@@ -86,11 +86,10 @@ fn log(line: &str) {
 }
 
 impl PluginHost {
-    /// The plugins installed for the person of `launch`: `<data dir>/temor/plugins`, their own
-    /// directory first, then the system's. A manifest or program that cannot be used is logged
-    /// once, here.
-    pub fn new(launch: &Launch) -> PluginHost {
-        let catalog = Catalog::discover(&launch.ambient.plugin_dirs());
+    /// The plugins installed in `dirs` (`<data dir>/temor/plugins`, the person's own directory
+    /// first, then the system's). A manifest or program that cannot be used is logged once, here.
+    pub fn new(dirs: &DataDirs) -> PluginHost {
+        let catalog = Catalog::discover(dirs);
         for problem in catalog.problems() {
             eprintln!("temor: plugin set aside: {problem}");
         }
@@ -116,17 +115,13 @@ impl PluginHost {
     }
 
     /// A way back to the window for a worker.
-    pub(crate) fn sender(&self) -> UnboundedSender<Done> {
+    pub fn sender(&self) -> UnboundedSender<Done> {
         self.done.clone()
     }
 
     /// Runs `work` on a thread of its own. If the thread cannot start the work never happens,
     /// which for a plugin is the same as one that shows nothing; the caller hears of it.
-    pub(crate) fn run(
-        &self,
-        name: &str,
-        work: impl FnOnce() + Send + 'static,
-    ) -> std::io::Result<()> {
+    pub fn run(&self, name: &str, work: impl FnOnce() + Send + 'static) -> std::io::Result<()> {
         let started = std::thread::Builder::new()
             .name(name.to_owned())
             .spawn(work);
@@ -138,7 +133,7 @@ impl PluginHost {
 }
 
 /// Logs why a plugin gave no answer, unless it was stopped on purpose.
-pub(crate) fn log_trouble(error: &PluginError) {
+pub fn log_trouble(error: &PluginError) {
     if error.kind() == CancelKind::Trouble {
         eprintln!("temor: {error}");
     }
