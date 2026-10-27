@@ -89,3 +89,13 @@ impl std::fmt::Debug for PaneCore {
             .finish_non_exhaustive()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// The core can be held by a thread of the client's (P24c: the panes' events are heard there).
+    #[test]
+    fn a_pane_core_can_move_to_another_thread() {
+        fn sendable<T: Send>() {}
+        sendable::<super::PaneCore>();
+    }
+}

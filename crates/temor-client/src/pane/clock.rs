@@ -1,14 +1,14 @@
 //! The clock the session reads for block times and notice gaps: whole milliseconds since the
 //! session started (PLAN §3, `Stamp`). Injected, so tests run on a fake clock.
 
-use std::cell::Cell;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use ds_core::time::stamp::Stamp;
 
 /// Where "now" comes from.
-pub trait Clock {
+pub trait Clock: Send {
     fn now(&self) -> Stamp;
 
     /// `instant`, a moment already past (when a pane read a mark), on this clock.
@@ -49,25 +49,25 @@ impl Clock for SystemClock {
 /// A clock the test moves by hand. Clones share the time.
 #[derive(Debug, Clone, Default)]
 pub struct FakeClock {
-    now: Rc<Cell<u64>>,
+    now: Arc<AtomicU64>,
 }
 
 impl FakeClock {
     pub fn at(ms: u64) -> Self {
         Self {
-            now: Rc::new(Cell::new(ms)),
+            now: Arc::new(AtomicU64::new(ms)),
         }
     }
 
     /// Moves the time forward by `ms`.
     pub fn advance(&self, ms: u64) {
-        self.now.set(self.now.get() + ms);
+        self.now.fetch_add(ms, Ordering::Relaxed);
     }
 }
 
 impl Clock for FakeClock {
     fn now(&self) -> Stamp {
-        Stamp(self.now.get())
+        Stamp(self.now.load(Ordering::Relaxed))
     }
 
     /// The time the test set: a test moves time by hand, never by how long a mark waited.

@@ -1,8 +1,9 @@
 //! The desktop's notifications (PLAN §8.1). The session decides what is worth a notice; this edge
 //! shows it. Nothing here runs on the render path.
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use thiserror::Error;
 
@@ -19,7 +20,7 @@ pub struct DesktopNote {
 pub struct NotifyFailed(pub String);
 
 /// Shows a notice on the desktop.
-pub trait Notifier {
+pub trait Notifier: Send {
     fn notify(&self, note: &DesktopNote) -> Result<(), NotifyFailed>;
 }
 
@@ -39,19 +40,19 @@ impl Notifier for NoopNotifier {
 /// A notifier that keeps what it was given, for tests and for the window's log.
 #[derive(Debug, Default, Clone)]
 pub struct RecordingNotifier {
-    sent: Rc<RefCell<Vec<DesktopNote>>>,
+    sent: Arc<Mutex<Vec<DesktopNote>>>,
 }
 
 impl RecordingNotifier {
     /// The notices sent so far, oldest first.
     pub fn sent(&self) -> Vec<DesktopNote> {
-        self.sent.borrow().clone()
+        self.sent.lock().clone()
     }
 }
 
 impl Notifier for RecordingNotifier {
     fn notify(&self, note: &DesktopNote) -> Result<(), NotifyFailed> {
-        self.sent.borrow_mut().push(note.clone());
+        self.sent.lock().push(note.clone());
         Ok(())
     }
 }
