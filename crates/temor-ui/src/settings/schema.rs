@@ -38,6 +38,7 @@ pub fn schema() -> Schema {
         foreign: Default::default(),
         // Every key sits on one of the built-in pages.
         pages: Vec::new(),
+        footnotes: Vec::new(),
     }
 }
 

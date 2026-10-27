@@ -14,17 +14,17 @@ missing_debug_implementations = "warn"
 
 [workspace.dependencies]
 # quire, pinned the desktop-wide way (.git + full rev; the tag is a comment).
-ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48, blitz-kit 1b8edae4 (blitz 0be21979)
-quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "99cffc7d8717b75d1fa1e85867a54987df366470" }  # 99cffc7d: v0.3.48
+ds = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-core = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-style = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-blitz = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-desktop = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-intents = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-harness = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-lint = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-settings = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+ds-settings-page = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53, blitz-kit 47b6ceac (blitz 7649ca62)
+quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff767c761623b02c0cd46fffdf3ceee0bc0c" }  # 65dbff76: v0.3.53
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
@@ -68,11 +68,11 @@ temor-wire = { path = "crates/temor-wire" }
 temor-remote = { path = "crates/temor-remote" }
 sha2 = "0.10"
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
-anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
-anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "a3705f0811d6be69e625613c491759612d803398" }
+anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
+anyview-fs = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
+anyview-peek = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
+anyview-machines = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
+anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
 # The desktop's portable keymap core (actions, chords, Primary per platform); temor owns no keymap.
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "99eec9ddd03ee345b669fcc7954ed44590724290" }
 
@@ -133,16 +133,16 @@ codegen-units = 1
 # every CSS `filter` function paints on both backends. Move back to crates.io once upstream has
 # them (blitz-kit docs/blitz-gaps.md tracks the PRs).
 [patch.crates-io]
-vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "84b2c9f7debed7d15f48d0ec9ea8575c16a56938" }
-anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
-pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "d4ae3885f89a58351ff7e99cd75d9b7de5865337" }
+vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_hybrid = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+vello_sparse_shaders = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+glifo = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
+anyrender = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+anyrender_vello_cpu = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+anyrender_vello_hybrid = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+wgpu_context = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
+pixels_window_renderer = { git = "https://github.com/PoHsuanLai/anyrender", rev = "03fcbe4c746d2334d3fb91e63641741f3dacc826" }
 # dioxus-core 0.7.10 can spin forever in VirtualDom::wait_for_work: a task woken and then cancelled
 # before it is polled (a use_resource restart) leaves an empty entry in the dirty-task queue that
 # pop_task never removes. Fixed upstream in DioxusLabs/dioxus#5554 (0.8-alpha only); this fork
