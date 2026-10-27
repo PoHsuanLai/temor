@@ -590,3 +590,40 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
         );
     }
 }
+
+/// A row is led by what runs in its tab: the letter tile of its folder at the prompt, and a
+/// program's brand while it runs (bash is Bash's), back to the letter once it ends.
+#[test]
+fn a_row_shows_its_folders_letter_and_a_running_programs_brand() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-icons", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    // The one row's `data-leading`: what leads it.
+    let leading = |h: &Harness| -> (usize, Option<String>) {
+        let row = ".temor-side .temor-tab-box";
+        let leads = ".temor-side .temor-tab-box [data-leading]";
+        (h.count(row), h.attr(leads, "data-leading"))
+    };
+    let settle = |h: &mut Harness, want: &str| {
+        let start = Instant::now();
+        while leading(h) != (1, Some(want.to_owned())) {
+            h.advance(Duration::from_millis(25));
+            assert!(
+                start.elapsed() < Duration::from_secs(5),
+                "not {want}: {:?}\n{}",
+                leading(h),
+                h.html()
+            );
+        }
+    };
+    settle(&mut h, "avatar");
+    drive::type_line(&mut h, "bash -c 'sleep 30'");
+    settle(&mut h, "element");
+    assert_eq!(rects(&h, ".temor-side .temor-tab-brand").len(), 1);
+    drive::chord_with(&mut h, &[ShortcutKey::Ctrl], 'c');
+    settle(&mut h, "avatar");
+}

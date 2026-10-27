@@ -100,6 +100,7 @@ impl Session {
             blocks: BlockLog::default(),
             ann: temor_core::session::Annotations::default(),
             shell_state: temor_core::session::ShellState::default(),
+            shell_path: None,
             inherited: Vec::new(),
             report_key: None,
             sources: Default::default(),

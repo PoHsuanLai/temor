@@ -94,6 +94,9 @@ pub struct Session {
     pub(super) ann: temor_core::session::Annotations,
     /// What the shell holds that a new shell would need (folder, variables, aliases).
     pub(super) shell_state: temor_core::session::ShellState,
+    /// The `PATH` the shell last reported: where its programs are found, which a window opened
+    /// from the Finder is not given (its own is the system's few folders).
+    pub(super) shell_path: Option<String>,
     /// Commands the shell this session continues ran before this window began.
     pub(super) inherited: Vec<temor_core::session::CommandRecord>,
     /// The key temor gave the shell it started here; a state report without it is not the

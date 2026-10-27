@@ -1,5 +1,5 @@
 //! One tab's row in the sidebar (PLAN §7): quire's `Row` on one line, as mailo's and Arc's are,
-//! led by a terminal glyph, with the tab's name and, trailing, one dot when it needs the person
+//! led by what runs in it (its app's icon, its brand, or a letter tile), with the tab's name and, trailing, one dot when it needs the person
 //! (news, or an agent that waits). Its folder, and what plugins say of it, are said on hover. A tab
 //! with several panes is Arc's split row instead: a segment per pane (`split_row`). Pressing the
 //! row brings the tab to the front, and ⌘-pressing it opens a new tab in its folder; dragging it
@@ -21,7 +21,7 @@ use super::dnd::{Dnd, Target};
 use super::row_menu::RowMenu;
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
-use super::tab_glyph::prompt_glyph;
+use super::tab_glyph::row_leading;
 use super::tab_wiring::{drag_press, tab_menu_trigger, use_drag_target};
 use super::tool_button::ToolButton;
 use crate::hub::{Desk, DragKey, TabRow, Unread, select_tab};
@@ -50,9 +50,9 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
         Unread::Unread => Emphasis::Strong,
         Unread::Seen => Emphasis::Plain,
     };
-    // The prompt glyph leads the row; the one dot trails it. The words are the row's own title,
-    // so their size is quire's.
-    let leading = RowLeading::Source(prompt_glyph(IconSize::Small));
+    // What runs in the tab leads the row (`row_leading`); the one dot trails it. The words are
+    // the row's own title, so their size is quire's.
+    let leading = row_leading(&row.icon);
     let closing = desk.clone();
     let trail = rsx! {
         if row.unread == Unread::Unread {

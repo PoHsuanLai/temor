@@ -83,6 +83,9 @@ pub struct Hub {
     pub(super) run: RunHub,
     /// Running programs moved to terminals of their own, shown as live cards.
     pub(super) live_cards: super::live_cards::LiveCards,
+    /// The apps programs belong to, found as tabs run them (PLAN P22).
+    pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
+    pub(super) icon_pack: crate::edge::icon_pack::IconPack,
 }
 
 impl std::fmt::Debug for Hub {
@@ -98,11 +101,15 @@ impl Hub {
     pub fn new(launch: Launch) -> Hub {
         let (events, inbox) = unbounded_channel();
         let (shelf, trouble) = ShelfHub::open(&launch);
+        let ambient = &launch.ambient;
+        let (icon_pack, pack_trouble) =
+            crate::edge::icon_pack::IconPack::load(&ambient.config_dir, &ambient.home);
         let notices = launch
             .first_words
             .take()
             .into_iter()
             .chain(trouble)
+            .chain(pack_trouble)
             .collect();
         let agents = Agents::new(&launch, events.clone());
         let ssh = SshHub::new(&launch.ambient);
@@ -144,6 +151,8 @@ impl Hub {
 
             run: RunHub::default(),
             live_cards: Default::default(),
+            app_icons: RefCell::default(),
+            icon_pack,
         }
     }
 

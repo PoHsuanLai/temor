@@ -8,6 +8,7 @@ pub mod block;
 pub mod error;
 pub mod facts;
 pub mod host;
+pub mod icon;
 pub mod key;
 pub mod menu;
 pub mod notify;

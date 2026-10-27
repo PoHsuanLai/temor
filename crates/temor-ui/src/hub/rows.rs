@@ -2,7 +2,10 @@
 //! then the rest), each with the title and folder of its focused pane, its unread mark, and a
 //! miniature of its splits. Read from the hub; the view draws it and decides nothing.
 
+use std::sync::Arc;
+
 use ds::prelude::{Emphasis, Selection};
+use temor_core::icon::{IconAsk, TabIcon, icon_for, initial_of, programs_of};
 use temor_core::presence::{AgentState, attention};
 use temor_core::split::{Closed, SplitTree, WholePx};
 use temor_core::vocab::ids::{PaneId, TabId};
@@ -43,6 +46,17 @@ pub struct Tile {
     pub agent: AgentState,
 }
 
+/// What leads a tab's row (PLAN P22): the running program's app or brand, else a letter tile.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RowIcon {
+    /// The icon of the Mac app the program belongs to, as a PNG.
+    App(Arc<[u8]>),
+    /// A brand's glyph, in white on its colour (`0xRRGGBB`).
+    Brand { svg: Arc<str>, colour: u32 },
+    /// A letter on a tile coloured from `key`.
+    Letter { initial: char, key: String },
+}
+
 /// One tab's row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TabRow {
@@ -60,6 +74,7 @@ pub struct TabRow {
     pub selection: Selection,
     /// The pane with the keys in this tab.
     pub pane: PaneId,
+    pub icon: RowIcon,
     /// The panes drawn small; empty for a tab with a single pane.
     pub tiles: Vec<Tile>,
 }
@@ -150,8 +165,13 @@ impl Hub {
             true => self.tiles(id, pane),
             false => Vec::new(),
         };
+        let icon = match self.is_viewer(focus) {
+            true => letter(&title),
+            false => self.row_icon(pane, &title, on_host),
+        };
         Some(TabRow {
             id,
+            icon,
             title,
             cwd,
             place,
@@ -200,6 +220,45 @@ impl Hub {
             fallback: made_as.as_str(),
             marking,
         })
+    }
+
+    /// The icon of the row whose terminal is `pane`, called `title`: what runs in it, by the app
+    /// it belongs to (on this computer) or its brand; the letter tile at the prompt or for a
+    /// program with neither.
+    fn row_icon(&self, pane: PaneId, title: &str, on_host: bool) -> RowIcon {
+        let running = self
+            .live(pane, |s| s.running_command().map(|run| run.command))
+            .flatten()
+            .or_else(|| self.live_head(pane).map(|head| head.command));
+        let found = running.as_deref().and_then(|command| {
+            let program = programs_of(command).into_iter().next()?;
+            // Found where the shell finds it; a host's programs are not on this computer.
+            let path = match on_host {
+                true => return None,
+                false => self.live(pane, |s| s.shell_path().map(std::ffi::OsString::from)),
+            };
+            let path = path
+                .flatten()
+                .or_else(|| self.launch.ambient.env.get("PATH").map(ToOwned::to_owned))?;
+            self.app_icons.borrow_mut().of(&program, &path)
+        });
+        let ask = IconAsk {
+            command: running.as_deref(),
+            app: found.as_ref().map(|app| app.app.as_path()),
+            folder_icon: None,
+            title,
+        };
+        match icon_for(&ask, &self.icon_pack.pack) {
+            TabIcon::App(_) => found.map_or_else(|| letter(title), |app| RowIcon::App(app.png)),
+            TabIcon::Brand(brand) => match self.icon_pack.svg(&brand.glyph) {
+                Some(svg) => RowIcon::Brand {
+                    svg,
+                    colour: brand.colour,
+                },
+                None => letter(title),
+            },
+            TabIcon::Folder(_) | TabIcon::Letter { .. } => letter(title),
+        }
     }
 
     fn tiles(&self, id: TabId, focus: PaneId) -> Vec<Tile> {
@@ -309,6 +368,14 @@ impl Hub {
             .unwrap_or_default();
         let cwd = self.live(pane, |s| s.cwd().map(str::to_owned)).flatten();
         (title, cwd)
+    }
+}
+
+/// The letter tile for `title`.
+fn letter(title: &str) -> RowIcon {
+    RowIcon::Letter {
+        initial: initial_of(title),
+        key: title.to_owned(),
     }
 }
 

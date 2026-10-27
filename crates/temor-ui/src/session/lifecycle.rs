@@ -158,6 +158,9 @@ impl Session {
                 if let Some(key) = &self.report_key
                     && let Ok(report) = temor_shell::report::read(&text, key)
                 {
+                    if let Some((_, path)) = report.env.iter().find(|(name, _)| name == "PATH") {
+                        self.shell_path = Some(path.clone());
+                    }
                     self.shell_step(ShellIn::Reported(report));
                 }
                 Notice::Quiet
@@ -254,6 +257,11 @@ impl Session {
     /// What the shell holds that a new shell would need to look the same.
     pub fn shell_state(&self) -> &ShellState {
         &self.shell_state
+    }
+
+    /// The `PATH` the shell last reported, if it has.
+    pub fn shell_path(&self) -> Option<&str> {
+        self.shell_path.as_deref()
     }
 
     /// The bell's visual mark, while it is up.

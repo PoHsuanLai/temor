@@ -5,9 +5,12 @@ use dioxus::prelude::*;
 use ds::base::vocab::CompanionPresence;
 use ds::components::companion::orb::model::OrbSize;
 use ds::components::companion::orb::view::CompanionOrb;
-use ds::prelude::{ExternalIcon, IconSize, IconSource, IconView};
+use ds::components::content::avatar::{AvatarFace, AvatarShape, AvatarSize, AvatarTone, PersonHue};
+use ds::prelude::{ExternalIcon, IconSize, IconSource, IconView, RowLeading};
 use ds::style::icon::url::IconUrl;
 use temor_core::presence::{AgentState, companion_presence};
+
+use crate::hub::RowIcon;
 
 // Lucide's `terminal` (lucide.dev, ISC licence, Copyright (c) Lucide Contributors; see NOTICE),
 // as a mask painted in the row's text colour.
@@ -19,6 +22,38 @@ pub fn prompt_glyph(size: IconSize) -> IconSource {
         url: IconUrl::svg(PROMPT_SVG),
         size,
     })
+}
+
+/// What leads a tab's row: its app's icon as it is, a brand's glyph in white on the brand's
+/// colour, or the letter tile, each a 16 px square as a sidebar's favicon is.
+pub fn row_leading(icon: &RowIcon) -> RowLeading {
+    match icon {
+        RowIcon::App(png) => {
+            let src = IconUrl::png(png).as_str().to_owned();
+            RowLeading::Element(rsx! {
+                img { class: "temor-tab-app", src }
+            })
+        }
+        RowIcon::Brand { svg, colour } => {
+            let source = IconSource::Symbolic(ExternalIcon {
+                url: IconUrl::svg(svg),
+                size: IconSize::Micro,
+            });
+            RowLeading::Element(rsx! {
+                span {
+                    class: "temor-tab-brand",
+                    style: format!("background: #{colour:06x}"),
+                    IconView { source, size: IconSize::Micro }
+                }
+            })
+        }
+        RowIcon::Letter { initial, key } => RowLeading::Avatar(AvatarFace {
+            initial: *initial,
+            size: AvatarSize::Size16,
+            tone: AvatarTone::Person(PersonHue::of(key)),
+            shape: AvatarShape::Square,
+        }),
+    }
 }
 
 /// What stands for a tab or pane that shows no label of its own: the prompt glyph at `size`, or

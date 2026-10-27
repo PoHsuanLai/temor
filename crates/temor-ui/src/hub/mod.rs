@@ -118,7 +118,7 @@ pub use persist::spawn_save_loop;
 pub use plugin_glue::spawn_plugins_loop;
 pub use remote_loop::spawn_remote_loop;
 pub use remote_view::{PortRow, RemoteStage, RemoteView};
-pub use rows::{DragKey, SidebarData, TabRow, Tile, Unread};
+pub use rows::{DragKey, RowIcon, SidebarData, TabRow, Tile, Unread};
 pub use run::Run;
 pub use running_tick::spawn_running_loop;
 pub use say::refusal_text;
