@@ -158,6 +158,11 @@ impl Session {
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ActualSize
+            | Action::Back
+            | Action::Forward
+            | Action::ShowStage
+            | Action::ShowConsole
+            | Action::ShowStageAndConsole
             | Action::SelectTab(_)
             | Action::SelectSpace(_) => {
                 self.asked = Some(action);

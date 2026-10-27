@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use temor_core::stage::Layout;
 
 use ds::window::vocab::PageZoom;
 use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
@@ -280,6 +281,11 @@ impl Desk {
             Action::ZoomOut => self.window.page_zoom(PageZoom::Smaller),
             Action::ActualSize => self.window.page_zoom(PageZoom::ActualSize),
             Action::JumpToWaiting => self.jump_to_waiting(),
+            Action::Back => self.go_back(),
+            Action::Forward => self.go_forward(),
+            Action::ShowStage => self.set_layout(Layout::Stage),
+            Action::ShowConsole => self.set_layout(Layout::Console),
+            Action::ShowStageAndConsole => self.set_layout(Layout::Both),
             Action::SelectSpace(number) => self.switch_to_number(number),
             Action::PinTab | Action::UnpinTab => {
                 let input = self.hub.0.borrow().pin_input(action);

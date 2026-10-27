@@ -88,4 +88,12 @@ pub const WINDOW_CSS: &str = "\
 .temor-dl-dot.going { background: var(--ink-faint); }\
 .temor-dl-list { display: flex; flex-direction: column; gap: var(--s-8); width: 320px; max-height: 420px; overflow-y: auto; padding: var(--s-8); }\
 .temor-dl { display: flex; flex-direction: column; gap: var(--s-8); min-width: 0; }\
-.temor-dl-actions { display: flex; gap: var(--s-8); }";
+.temor-dl-actions { display: flex; gap: var(--s-8); }\
+.temor-stage { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; }\
+.temor-page-bar { flex: none; display: flex; align-items: center; gap: var(--s-4); height: 32px; padding: 0 var(--s-6) 0 var(--s-8); border-bottom: var(--hair) solid var(--f-line); }\
+.temor-page-title { flex: 1 1 auto; display: flex; align-items: baseline; gap: var(--s-6); min-width: 0; overflow: hidden; white-space: nowrap; }\
+.temor-page-name { flex: none; color: var(--f-ink); font-weight: 600; }\
+.temor-page-folder { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--f-ink-soft); font-size: var(--fs-small); }\
+.temor-page-tool { display: flex; border-radius: var(--r-tile); }\
+.temor-page-tool[*|data-pressed=true] { background: var(--f-pill); }\
+.temor-page { flex: 1 1 auto; min-height: 0; position: relative; }";

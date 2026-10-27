@@ -32,13 +32,13 @@ use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::quick::QuickView;
+use super::row_view::{RowView, walk_of};
 use super::sidebar_room::SidebarRoom;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
 use super::theme::dark_by_default;
 use super::title::window_title;
 use super::transfer_ask::TransferAsk;
-use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
 use crate::edge::{Credentials, VaultCredentials, read_theme_choice};
@@ -328,10 +328,21 @@ pub fn App() -> Element {
                             }
                         }
                         TransferAsk { desk: desk.clone() }
-                        div { class: "temor-content",
+                        div {
+                            class: "temor-content",
+                            // The mouse's back and forward buttons walk the row's pages.
+                            onpointerdown: {
+                                let desk = desk.clone();
+                                move |event: PointerEvent| match walk_of(event.trigger_button()) {
+                                    Some(true) => desk.go_back(),
+                                    Some(false) => desk.go_forward(),
+                                    None => {}
+                                }
+                            },
                             if let Some((tab, tree, focus)) = front {
-                                TreeView {
+                                RowView {
                                     key: "{desk.hub.active_space().0}-{tab.0}",
+                                    tab,
                                     tree,
                                     focus,
                                     desk: desk.clone(),

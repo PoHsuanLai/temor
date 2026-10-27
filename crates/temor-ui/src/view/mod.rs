@@ -42,6 +42,7 @@ pub mod remote;
 pub mod remote_launch;
 pub mod remote_words;
 pub mod row_tip;
+pub mod row_view;
 pub mod shelf;
 pub mod shelf_words;
 pub mod side_menu;

@@ -85,6 +85,12 @@ pub fn declared() -> Vec<Declared> {
         ),
         (Action::ReopenTab, "Primary+Shift+T", None, &[]),
         (Action::JumpToWaiting, "Primary+Shift+U", None, &[]),
+        // A browser's Back and Forward, and Arc's ⌥⌘1 to ⌥⌘3 for what a row shows.
+        (Action::Back, "Primary+[", None, &[]),
+        (Action::Forward, "Primary+]", None, &[]),
+        (Action::ShowStage, "Primary+Alt+1", None, &[]),
+        (Action::ShowConsole, "Primary+Alt+2", None, &[]),
+        (Action::ShowStageAndConsole, "Primary+Alt+3", None, &[]),
     ];
     let tabs = (1..=9u8).map(|n| Declared {
         action: Action::SelectTab(n),

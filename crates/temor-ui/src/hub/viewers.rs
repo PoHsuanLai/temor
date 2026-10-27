@@ -102,6 +102,7 @@ impl Hub {
             Some(ask) if ask.file == file => ask.around,
             _ => Vec::new(),
         };
+        self.stage_opened(open.tab, open.pane, file.clone());
         self.viewers.seats.insert(
             open.pane,
             Seat {
@@ -138,6 +139,7 @@ impl Hub {
 
     /// A viewer pane ended: its seat and handle go.
     pub(super) fn viewer_ended(&mut self, pane: PaneId) {
+        self.stage_closed(pane);
         self.viewers.seats.remove(&pane);
         self.viewers.handles.remove(&pane);
         self.viewers.describes_only.remove(&pane);

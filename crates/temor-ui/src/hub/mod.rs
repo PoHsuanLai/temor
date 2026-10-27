@@ -82,6 +82,9 @@ mod ssh_permits;
 mod ssh_tests;
 mod ssh_view;
 mod ssh_wait;
+mod stage;
+#[cfg(test)]
+mod stage_tests;
 mod start_folder;
 mod tab_name;
 #[cfg(test)]
@@ -125,5 +128,6 @@ pub use space_edits::spawn_space_edits;
 pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;
 pub use ssh_view::{CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+pub use stage::StageView;
 pub use viewer_host::spawn_viewer_loop;
 pub use viewers::ViewerShow;

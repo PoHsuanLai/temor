@@ -20,6 +20,7 @@ pub mod session;
 pub mod shelf;
 pub mod space;
 pub mod split;
+pub mod stage;
 pub mod transfer;
 pub mod viewer;
 pub mod vocab;

@@ -97,6 +97,16 @@ pub enum Action {
     Settings,
     /// Open the Settings window on this page. No chord: the command bar lists one row for each.
     SettingsAt(SettingsPane),
+    /// Open the page the row showed before this one, as a browser's Back does.
+    Back,
+    /// Open the page Back left, as a browser's Forward does.
+    Forward,
+    /// Show the row's page alone.
+    ShowStage,
+    /// Show the row's terminal alone.
+    ShowConsole,
+    /// Show the row's page and its terminal side by side.
+    ShowStageAndConsole,
     /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
     /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
@@ -132,6 +142,11 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::UnpinTab, "unpin-tab"),
     (Action::ShowDownloads, "show-downloads"),
     (Action::DetachProgram, "detach-program"),
+    (Action::Back, "back"),
+    (Action::Forward, "forward"),
+    (Action::ShowStage, "show-stage"),
+    (Action::ShowConsole, "show-console"),
+    (Action::ShowStageAndConsole, "show-stage-and-console"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -197,6 +212,11 @@ impl Action {
             Self::DetachProgram => "Detach running program",
             Self::Settings => "Settings",
             Self::SettingsAt(pane) => pane.row_label(),
+            Self::Back => "Back",
+            Self::Forward => "Forward",
+            Self::ShowStage => "Show page only",
+            Self::ShowConsole => "Show console only",
+            Self::ShowStageAndConsole => "Show page and console",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

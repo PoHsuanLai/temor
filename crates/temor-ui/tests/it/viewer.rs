@@ -121,3 +121,28 @@ fn escape_gives_the_keyboard_back_to_the_terminal() {
     });
     assert_eq!(viewers(&h), 1);
 }
+
+#[test]
+fn the_page_bar_names_the_file_and_hides_the_console_and_closes_the_page() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = listed("viewer-stage", &probe);
+    open_by_clicking(&mut h);
+    let html = h.html();
+    assert!(html.contains("temor-page-name"), "{html}");
+    assert!(
+        html.contains(">a.txt<") || html.contains(">b.txt<"),
+        "the bar names the page: {html}"
+    );
+    super::drive::press(&mut h, ".temor-page-tool [aria-label=\"Console\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (0, 1), "the page alone");
+    super::drive::press(&mut h, ".temor-page-tool [aria-label=\"Console\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (1, 1), "the console is back");
+    super::drive::press(&mut h, ".temor-page-bar [aria-label=\"Close Page\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (1, 0), "{}", h.html());
+    // Back opens the closed page again.
+    chord(&mut h, '[');
+    assert_eq!((terminals(&h), viewers(&h)), (1, 1), "{}", h.html());
+}

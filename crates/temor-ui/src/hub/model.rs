@@ -76,6 +76,7 @@ pub struct Hub {
     pub(super) remote: RemoteHub,
     /// The panes that show a file (PLAN §10).
     pub(super) viewers: ViewerHub,
+    pub(super) stages: super::stage::Stages,
     /// The peek card's worker (PLAN §10).
     pub(super) peek: PeekHub,
     /// Programs run in tabs of their own in place of the shell (`temor -e`).
@@ -138,6 +139,7 @@ impl Hub {
             offer,
             remote,
             viewers: ViewerHub::default(),
+            stages: super::stage::Stages::default(),
             peek: PeekHub::default(),
 
             run: RunHub::default(),
