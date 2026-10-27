@@ -10,17 +10,15 @@ use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
 use ds::prelude::*;
 use ds_blitz::TokioSpawner;
-use ds_settings::{AppearanceFile, use_environment};
 use temor_panes::pane::keys::SettingsPane;
 
 use super::edit::current;
 use super::open::SettingsAsked;
 use super::style::SETTINGS_CSS;
 use super::view::SettingsView;
-use crate::edge::read_theme_choice;
 use crate::settings::TerminalDoc;
 use crate::view::launch::Launch;
-use crate::view::theme::dark_by_default;
+use crate::view::theme::use_window_look;
 
 /// Whether the window follows `settings.toml` while it is open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,19 +45,7 @@ fn SettingsShell(follow: Follow) -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
     // The person's look and the desktop's preferences, as the first window follows them.
-    let stored = use_environment(
-        launch.appearance.store.clone(),
-        launch.appearance.system.clone(),
-        spawner.clone(),
-    );
-    let choice = use_memo({
-        let store = launch.appearance.store.clone();
-        move || {
-            let _ = stored();
-            read_theme_choice(store.path::<AppearanceFile>().as_deref())
-        }
-    });
-    let env = use_memo(move || dark_by_default(stored(), choice()));
+    let env = use_window_look(&launch.appearance, spawner.clone());
 
     let asked = try_consume_context::<SettingsAsked>();
     let first = asked.as_ref().map(SettingsAsked::at).unwrap_or_default();

@@ -40,6 +40,7 @@ pub mod peek;
 pub mod peek_card;
 pub mod peek_keys;
 pub mod pointer;
+pub mod pop_out;
 pub mod probe;
 pub mod quick;
 pub mod remote;

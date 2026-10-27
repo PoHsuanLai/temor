@@ -161,6 +161,7 @@ impl Session {
             | Action::Back
             | Action::Forward
             | Action::History
+            | Action::PopOut
             | Action::ShowStage
             | Action::ShowConsole
             | Action::ShowStageAndConsole

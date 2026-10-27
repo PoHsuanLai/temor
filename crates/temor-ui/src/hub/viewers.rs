@@ -272,6 +272,12 @@ impl HubRef {
         self.0.borrow().viewer_show(pane)
     }
 
+    /// The edge every viewer runs over, a popped-out page's too.
+    pub fn viewer_edge(&self) -> PaneEdge {
+        let hub = self.0.borrow();
+        hub.viewers.edge(hub.viewer_store.as_deref())
+    }
+
     /// See [`Hub::viewer_describes_only`].
     pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
         self.0.borrow().viewer_describes_only(pane)

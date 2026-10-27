@@ -286,6 +286,7 @@ impl Desk {
             Action::Back => self.go_back(),
             Action::Forward => self.go_forward(),
             Action::History => self.open_history(),
+            Action::PopOut => self.pop_out(),
             Action::ShowStage => self.set_layout(Layout::Stage),
             Action::ShowConsole => self.set_layout(Layout::Console),
             Action::ShowStageAndConsole => self.set_layout(Layout::Both),

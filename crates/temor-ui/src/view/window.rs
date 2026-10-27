@@ -22,7 +22,6 @@ use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
 use ds::window::host::{use_window_host, use_window_title};
 use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
-use ds_settings::{AppearanceFile, use_environment};
 use temor_client::model::split::Direction;
 use temor_client::model::vocab::ids::TabId;
 use temor_client::model::workspace::{TabsIn, WorkspaceIn};
@@ -36,12 +35,12 @@ use super::row_view::{RowView, walk_of};
 use super::sidebar_room::SidebarRoom;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
-use super::theme::dark_by_default;
+use super::theme::use_window_look;
 use super::title::window_title;
 use super::transfer_ask::TransferAsk;
 use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
-use crate::edge::{Credentials, VaultCredentials, read_theme_choice};
+use crate::edge::{Credentials, VaultCredentials};
 use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
     spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
@@ -57,21 +56,7 @@ pub fn App() -> Element {
     let _gpu = use_gpu();
     let started = use_hook(Instant::now);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
-    // The person's look and the desktop's preferences, live: a change re-themes the window.
-    let stored = use_environment(
-        launch.appearance.store.clone(),
-        launch.appearance.system.clone(),
-        spawner.clone(),
-    );
-    // Dark unless the person's file names a theme; the file is read again when it changes.
-    let choice = use_memo({
-        let store = launch.appearance.store.clone();
-        move || {
-            let _ = stored();
-            read_theme_choice(store.path::<AppearanceFile>().as_deref())
-        }
-    });
-    let env = use_memo(move || dark_by_default(stored(), choice()));
+    let env = use_window_look(&launch.appearance, spawner.clone());
     let hub = use_hook({
         let launch = launch.clone();
         move || {

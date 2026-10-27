@@ -103,6 +103,8 @@ pub enum Action {
     Forward,
     /// Open the history page (`temor://history`) on the row's stage, as a browser's ⌘Y does (⌥⇧⌘Y: ⌘Y is Quick Look's).
     History,
+    /// Move the row's page out to a small window of its own, as Arc's Little Arc does.
+    PopOut,
     /// Show the row's page alone.
     ShowStage,
     /// Show the row's terminal alone.
@@ -147,6 +149,7 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::Back, "back"),
     (Action::Forward, "forward"),
     (Action::History, "history"),
+    (Action::PopOut, "pop-out"),
     (Action::ShowStage, "show-stage"),
     (Action::ShowConsole, "show-console"),
     (Action::ShowStageAndConsole, "show-stage-and-console"),
@@ -218,6 +221,7 @@ impl Action {
             Self::Back => "Back",
             Self::Forward => "Forward",
             Self::History => "History",
+            Self::PopOut => "Pop out page",
             Self::ShowStage => "Show page only",
             Self::ShowConsole => "Show console only",
             Self::ShowStageAndConsole => "Show page and console",

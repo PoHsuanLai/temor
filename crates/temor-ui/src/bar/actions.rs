@@ -32,6 +32,7 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::Back,
     Action::Forward,
     Action::History,
+    Action::PopOut,
     Action::ShowStage,
     Action::ShowConsole,
     Action::ShowStageAndConsole,

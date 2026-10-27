@@ -14,6 +14,7 @@ use temor_schema::url::{HistoryScope, Host, Location, TemorUrl};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
+use crate::view::pop_out::PoppedOut;
 
 /// What the hub keeps of every row's stage.
 #[derive(Default)]
@@ -236,6 +237,19 @@ impl Hub {
         }
     }
 
+    /// Pop Out on the row in front: its page, when it is a file, leaves the stage (Back brings it
+    /// back) for a window of its own. Answers the file. temor's own pages stay.
+    pub(super) fn pop_out(&mut self) -> Option<PathBuf> {
+        let tab = self.book.ws.front()?;
+        let viewer = self.stages.rows.get(&tab)?.viewer?;
+        let file = self.book.ws.viewers.get(&viewer)?.as_str().to_owned();
+        if temor_page(&file).is_some() {
+            return None;
+        }
+        self.act(WorkspaceIn::ClosePane(Some(viewer)));
+        Some(PathBuf::from(file))
+    }
+
     /// Back (`back`) or Forward on the row in front: its page before or after this one opens.
     pub(super) fn walk_pages(&mut self, back: bool) {
         let Some(tab) = self.book.ws.front() else {
@@ -331,6 +345,18 @@ impl Desk {
                 .unwrap_or_default();
             hub.set_layout(now.toggle_console());
         });
+    }
+
+    /// Pop Out on the row in front: its page, a file, opens in a window of its own.
+    pub fn pop_out(&self) {
+        let mut file = None;
+        self.settle(|hub| file = hub.pop_out());
+        if let Some(file) = file {
+            crate::view::pop_out::open(PoppedOut {
+                file,
+                edge: self.hub.viewer_edge(),
+            });
+        }
     }
 
     /// Back on the row in front.

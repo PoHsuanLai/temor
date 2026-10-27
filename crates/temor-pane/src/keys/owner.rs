@@ -63,6 +63,7 @@ impl Action {
             | Self::Back
             | Self::Forward
             | Self::History
+            | Self::PopOut
             | Self::ShowStage
             | Self::ShowConsole
             | Self::ShowStageAndConsole
@@ -118,6 +119,7 @@ impl Action {
             Self::Back => "Back",
             Self::Forward => "Forward",
             Self::History => "Show History",
+            Self::PopOut => "Pop Out",
             Self::ShowStage => "Show Page Only",
             Self::ShowConsole => "Show Console Only",
             Self::ShowStageAndConsole => "Show Page and Console",

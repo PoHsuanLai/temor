@@ -131,3 +131,15 @@ fn the_address_is_the_page_shown_or_else_the_terminal_s_folder() {
         super::Address::Page(temor_schema::url::TemorUrl::Downloads)
     );
 }
+
+#[test]
+fn pop_out_takes_a_file_off_the_stage_and_back_brings_it_again() {
+    let (mut hub, tab, shell) = hub();
+    hub.open_page(temor_schema::url::TemorUrl::Downloads);
+    assert_eq!(hub.pop_out(), None, "temor's own pages stay");
+    hub.open_viewer(shell, ask("/w/a.txt"));
+    assert_eq!(hub.pop_out(), Some(PathBuf::from("/w/a.txt")));
+    assert_eq!(shown(&hub, tab), None, "the stage is empty");
+    hub.walk_pages(true);
+    assert_eq!(shown(&hub, tab).as_deref(), Some("/w/a.txt"));
+}

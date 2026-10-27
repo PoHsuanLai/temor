@@ -34,7 +34,11 @@ fn command_click(h: &mut Harness, at: Point) {
 
 /// A window whose shell has listed `a.txt` and `b.txt`, two files in its folder.
 pub fn listed(name: &str, probe: &Probe) -> Harness {
-    let mut h = harness(name, probe);
+    list_in(harness(name, probe), name, probe)
+}
+
+/// `h`, its shell having listed `a.txt` and `b.txt`, two files in its folder.
+fn list_in(mut h: Harness, name: &str, probe: &Probe) -> Harness {
     let home = scratch_path(name).join("home");
     for file in ["a.txt", "b.txt"] {
         std::fs::write(home.join(file), format!("{file} says hello\n")).expect("scratch file");
@@ -243,4 +247,52 @@ fn a_folder_in_the_address_opens_its_page_and_back_returns() {
     wait_html(&mut h, "the folder again", |html| {
         html.contains(">notes.txt<")
     });
+}
+
+/// What a test's Pop Out was asked to open.
+#[derive(Default)]
+struct PoppedOut(std::sync::Mutex<Vec<std::path::PathBuf>>);
+
+impl temor_ui::view::pop_out::OpenPopOut for PoppedOut {
+    fn open(&self, file: &std::path::Path) {
+        self.0.lock().expect("the list").push(file.to_owned());
+    }
+}
+
+/// The page bar's Pop Out takes the file off the row's stage for a window of its own; Back brings
+/// it back to the stage.
+#[test]
+fn pop_out_moves_the_page_to_a_window_of_its_own() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::press;
+    let name = "viewer-pop-out";
+    let probe = Probe::new();
+    let popped = std::sync::Arc::new(PoppedOut::default());
+    let h = super::window::harness_building(
+        name,
+        &probe,
+        None,
+        |_| {},
+        ds_harness::WindowHosting::Absent,
+        {
+            let popped = popped.clone();
+            move |config| config.with_context(temor_ui::view::pop_out::PopOutWindows(popped))
+        },
+    );
+    let mut h = list_in(h, name, &probe);
+    open_by_clicking(&mut h);
+    press(&mut h, ".temor-page-bar [aria-label=\"Pop Out\"]");
+    h.advance(Duration::from_millis(200));
+    let asked = popped.0.lock().expect("the list").clone();
+    assert_eq!(asked.len(), 1, "one window asked for");
+    assert!(
+        asked[0].ends_with("a.txt") || asked[0].ends_with("b.txt"),
+        "{asked:?}"
+    );
+    assert_eq!(viewers(&h), 0, "the page left the stage");
+    chord(&mut h, '[');
+    h.advance(Duration::from_millis(300));
+    assert_eq!(viewers(&h), 1, "Back brings it back");
 }

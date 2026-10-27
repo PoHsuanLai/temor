@@ -68,6 +68,8 @@ pub struct BlockFacts {
 pub enum Item {
     Open,
     OpenInNewTab,
+    /// Move the page out to a small window of its own.
+    PopOut,
     OpenInDefaultApp,
     PutInPrompt,
     /// Bookmark, or take the bookmarks away when they are all bookmarked.
@@ -119,7 +121,7 @@ impl Item {
     /// The group the item is in.
     pub fn group(self) -> Group {
         match self {
-            Item::Open | Item::OpenInNewTab | Item::OpenInDefaultApp => Group::Open,
+            Item::Open | Item::OpenInNewTab | Item::PopOut | Item::OpenInDefaultApp => Group::Open,
             Item::PutInPrompt
             | Item::Bookmark { .. }
             | Item::Fold { .. }
@@ -144,6 +146,7 @@ impl Item {
         match self {
             Item::Open => "Open",
             Item::OpenInNewTab => "Open in New Tab",
+            Item::PopOut => "Pop Out",
             Item::OpenInDefaultApp => "Open in Default App",
             Item::PutInPrompt => "Put in Prompt",
             Item::Bookmark { on: true } => "Remove Bookmark",
@@ -224,6 +227,7 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
             add(true, Item::SelectAllBlocks);
         }
         Target::Page { file } => {
+            add(file, Item::PopOut);
             add(file, Item::OpenInDefaultApp);
             add(file, Item::ShowInFolder);
             add(true, Item::ClosePage);
@@ -360,7 +364,10 @@ mod tests {
     #[test]
     fn temors_own_page_only_closes() {
         assert_eq!(titles(Target::Page { file: false }), [vec!["Close Page"]]);
-        assert_eq!(titles(Target::Page { file: true }).len(), 3);
+        assert_eq!(
+            titles(Target::Page { file: true })[0],
+            ["Pop Out", "Open in Default App"]
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! The row in front (PLAN §7, v14): its stage and its console. The console is the row's terminal
 //! (or Arc's Split View of two); the stage is the page a command asked for, beside it, under a bar
-//! that names the page and holds the Console button, the page's menu and Close. What the row shows of the two is
+//! that names the page and holds the Console button, Pop Out (a file's page), the page's menu and Close. What the row shows of the two is
 //! its layout (⌥⌘1 to ⌥⌘3); a row with no page is its console alone.
 
 use std::path::Path;
@@ -104,7 +104,11 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
         },
         Action::ShowStageAndConsole,
     );
-    let (toggling, closing, acting) = (desk.clone(), desk.clone(), desk.clone());
+    let (toggling, closing, acting, popping) =
+        (desk.clone(), desk.clone(), desk.clone(), desk.clone());
+    let pop_tip = desk
+        .hub
+        .tooltip(Action::PopOut.menu_title(), Action::PopOut);
     let more = use_rect();
     let mut menu = use_signal(|| Shown::Hidden);
     rsx! {
@@ -123,6 +127,15 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                         label: "Console",
                         tip: console_tip,
                         onclick: move |()| toggling.toggle_console(),
+                    }
+                }
+                if own.is_none() {
+                    ToolButton {
+                        icon: Icon::ArrowUpRight,
+                        size: ControlSize::Small,
+                        label: Action::PopOut.menu_title(),
+                        tip: pop_tip,
+                        onclick: move |()| popping.pop_out(),
                     }
                 }
                 div {
@@ -172,6 +185,7 @@ fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
                     anchor,
                     items: menu_items::<()>(Target::Page { file: !matches!(own, Some(TemorUrl::History(_) | TemorUrl::Downloads)) }, false, Vec::new()),
                     onpick: move |pick: Pick<()>| match pick {
+                        Pick::Item(Item::PopOut) => acting.pop_out(),
                         Pick::Item(Item::OpenInDefaultApp) => acting.viewer_open_in_app(page),
                         Pick::Item(Item::ShowInFolder) => {
                             if let Some(file) = acting.hub.page_file(page) {

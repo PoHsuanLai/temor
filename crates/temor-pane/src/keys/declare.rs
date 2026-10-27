@@ -90,6 +90,7 @@ pub fn declared() -> Vec<Declared> {
         (Action::Forward, "Primary+]", None, &[]),
         // ⌘Y is Quick Look's everywhere, and ⌥⌘Y the quick terminal's off a Mac: history is ⌥⇧⌘Y.
         (Action::History, "Primary+Alt+Shift+Y", None, &[]),
+        (Action::PopOut, "Primary+Alt+P", None, &[]),
         (Action::ShowStage, "Primary+Alt+1", None, &[]),
         (Action::ShowConsole, "Primary+Alt+2", None, &[]),
         (Action::ShowStageAndConsole, "Primary+Alt+3", None, &[]),
