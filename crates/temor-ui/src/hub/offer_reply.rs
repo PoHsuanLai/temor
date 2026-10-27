@@ -30,7 +30,7 @@ impl Hub {
                 named
                     .zip(session.running_line())
                     .and_then(|(program, command)| {
-                        InnerShell::named_in(command, &program.to_string())
+                        InnerShell::named_in(&command, &program.to_string())
                     }),
             ),
             None => return Vec::new(),

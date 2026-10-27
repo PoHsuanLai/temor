@@ -937,10 +937,8 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
     f.session.absorb(copy_event("there"));
     assert_eq!(*f.clipboard.0.borrow(), "here", "waits for the person");
     assert_eq!(
-        f.session
-            .clipboard_ask()
-            .map(|a| (a.kind, a.program.as_str())),
-        Some((temor_ui::session::ClipboardUse::Copy, "tool"))
+        f.session.clipboard_ask().map(|a| (a.kind, a.program)),
+        Some((temor_ui::session::ClipboardUse::Copy, "tool".to_owned()))
     );
     f.session.answer_clipboard(Grant::Allowed);
     assert_eq!(*f.clipboard.0.borrow(), "there");

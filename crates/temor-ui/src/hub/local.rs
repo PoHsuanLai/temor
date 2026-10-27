@@ -122,9 +122,7 @@ impl Hub {
         // A shell that goes on keeps the key it was started with: the detached pane's, or the
         // one kept when temor quit.
         let key = match (detached, resume) {
-            (Some((from, _)), _) => self
-                .live(from, |session| session.report_key().cloned())
-                .flatten(),
+            (Some((from, _)), _) => self.live(from, |session| session.report_key()).flatten(),
             (None, Some(_)) => kept
                 .as_ref()
                 .and_then(|kept| kept.report_key.as_deref())
@@ -163,6 +161,7 @@ impl Hub {
         if let Some((state, kept)) = seed {
             session.continue_from(state, kept);
         }
+        self.hear(spawn.pane, &session);
         let slot = crate::view::slot::Slot {
             palette: self.palette,
             session: Some(session),

@@ -236,7 +236,9 @@ fn an_adapter_reports_the_agents_states_as_the_panes_status() {
     let (mut hub, mut inbox, _root) = hub_with(&[]);
     let pane = PaneId(1);
     hub.ws.cwds.insert(pane, Cwd("/finish".to_owned()));
-    let mut events = hub.inbox.take().expect("the pane events");
+    // What the adapter sends, as it sends it: the pane has no session to hear it.
+    let (sent, mut events) = tokio::sync::mpsc::unbounded_channel();
+    hub.events = sent;
     hub.plugin_adapter_start(pane, "claude");
     let ended = next(&mut inbox);
     assert!(matches!(ended, Done::AdapterEnded { pane: p, .. } if p == pane));

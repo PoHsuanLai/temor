@@ -19,6 +19,7 @@ use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
 pub use temor_client::pane::PaneCore;
+use temor_client::pane::{Locked, Shared};
 use temor_pane::PaneSpec;
 
 /// What the window should do about an event from the pane.
@@ -67,8 +68,11 @@ pub const PADDING_LOGICAL: f32 = 16.0;
 /// One pane's state as the window needs it: what the pane is ([`PaneCore`]) and how the window
 /// shows it and takes the person's input.
 pub struct Session {
-    /// The pane itself, apart from how it is shown.
-    pub(super) core: PaneCore,
+    /// The pane itself, apart from how it is shown, shared with the client's thread that hears
+    /// it (see [`Session::core`]).
+    pub(super) core: Shared,
+    /// The pane's engine, as the core holds it: painting and typing need no lock on the core.
+    pub(super) pane: std::sync::Arc<temor_pane::PaneHandle>,
     pub(super) painter: Painter,
     pub keymap: Keymap,
     pub(super) clipboard: Box<dyn Clipboard>,
@@ -121,8 +125,31 @@ impl std::fmt::Debug for Session {
         f.debug_struct("Session")
             .field("fit", &self.fit)
             .field("scale", &self.scale)
-            .field("lifetime", &self.core.lifetime)
+            .field("lifetime", &self.core().lifetime)
             .finish_non_exhaustive()
+    }
+}
+
+/// The longest the window waits for a pane's core. The client's thread holds it only while it
+/// hears one event, so a wait this long means the core was locked twice on one thread.
+const CORE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// `core`, locked; for a statement that also borrows another of the session's fields.
+pub(super) fn locked(core: &Shared) -> Locked<'_> {
+    core.try_lock_for(CORE_WAIT)
+        .expect("a pane's core stayed locked: it was locked twice on one thread")
+}
+
+impl Session {
+    /// The pane's core, locked. Held for one statement at a time: a core locked again on the
+    /// same thread before the first is let go waits for itself.
+    pub(super) fn core(&self) -> Locked<'_> {
+        locked(&self.core)
+    }
+
+    /// The pane's core as the client's thread holds it, to make the pane known to that thread.
+    pub fn shared_core(&self) -> &Shared {
+        &self.core
     }
 }
 

@@ -9,7 +9,7 @@ use super::super::Session;
 impl Session {
     /// The focus the window reports (a pane that is not focused notifies).
     pub fn set_focus(&mut self, focus: Focus) {
-        self.core.focus = focus;
+        self.core().focus = focus;
         self.wake_cursor();
         // Something may have been copied elsewhere meanwhile: a program that reads the
         // clipboard (OSC 52) gets what is there now.
@@ -20,12 +20,12 @@ impl Session {
 
     /// Changes how long a command must run before its finish is announced, from the next one.
     pub fn set_notify_after(&mut self, after: NotifyAfter) {
-        self.core.notify_after = after;
+        self.core().notify_after = after;
     }
 
     /// The notify setting the session uses.
     pub fn notify_after(&self) -> NotifyAfter {
-        self.core.notify_after
+        self.core().notify_after
     }
 }
 

@@ -172,12 +172,7 @@ impl Hub {
         let reported = self
             .slots
             .get(&pane)
-            .and_then(|slot| {
-                slot.borrow()
-                    .session
-                    .as_ref()
-                    .and_then(|s| s.cwd().map(str::to_owned))
-            })
+            .and_then(|slot| slot.borrow().session.as_ref().and_then(|s| s.cwd()))
             .or_else(|| self.ws.cwds.get(&pane).map(|cwd| cwd.as_str().to_owned()));
         Some(host_title(host.alias.as_str(), reported.as_deref()))
     }

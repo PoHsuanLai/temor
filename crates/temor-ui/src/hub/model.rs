@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use temor_client::pane::{Heard, Hearing};
 use temor_core::quick::QuickState;
 use temor_core::split::SplitTree;
 use temor_core::vocab::ids::{PaneId, TabId};
@@ -13,7 +14,7 @@ use temor_core::workspace::{ClosedState, KeepClosed, Workspace};
 use temor_pane::PaneEvent;
 use temor_render::Palette;
 use temor_vt::Snapshot;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use super::agents::Agents;
 use super::bar::BarSlot;
@@ -47,8 +48,11 @@ pub struct Hub {
     pub(super) carried: BTreeMap<PaneId, temor_core::session::Checkpoint>,
     /// What each pane's checkpoint file holds now, so only a change is written.
     pub(super) on_disk: BTreeMap<PaneId, temor_core::session::Checkpoint>,
+    /// Where the panes' events go: the client's thread that hears them (`Hearing`).
     pub(super) events: UnboundedSender<(PaneId, PaneEvent)>,
-    pub(super) inbox: Option<UnboundedReceiver<(PaneId, PaneEvent)>>,
+    pub(super) hearing: Hearing,
+    /// What each pane's core left for the window.
+    pub(super) inbox: Option<UnboundedReceiver<(PaneId, Heard)>>,
     pub(super) launch: Launch,
     pub(super) state_dir: Option<PathBuf>,
     /// The viewer's store (shared with anyview), for a run that keeps its state.
@@ -100,9 +104,19 @@ impl std::fmt::Debug for Hub {
 }
 
 impl Hub {
+    /// Makes `pane`'s session heard: the client's thread gives the pane's events to its core.
+    /// Called as the session takes its slot.
+    pub(super) fn hear(&self, pane: PaneId, session: &crate::session::Session) {
+        self.hearing.register(pane, session.shared_core());
+    }
+}
+
+impl Hub {
     /// A hub with no panes yet; [`Hub::start`] restores the last session or opens a first tab.
     pub fn new(launch: Launch) -> Hub {
-        let (events, inbox) = unbounded_channel();
+        let (hearing, inbox) =
+            Hearing::start().expect("the thread that hears the panes could not start");
+        let events = hearing.events();
         let (shelf, trouble) = ShelfHub::open(&launch);
         let ambient = &launch.ambient;
         let (icon_pack, pack_trouble) =
@@ -128,6 +142,7 @@ impl Hub {
             carried: BTreeMap::new(),
             on_disk: BTreeMap::new(),
             events,
+            hearing,
             inbox: Some(inbox),
             bar: BarSlot::new(&launch),
             quick: QuickState::Closed,

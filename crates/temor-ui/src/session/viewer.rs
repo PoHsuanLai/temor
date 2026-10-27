@@ -70,19 +70,18 @@ impl Session {
             }
             return Ok(());
         };
-        let cwd = self.core.cwd.clone();
-        let around = match self.core.site {
+        let (cwd, site) = {
+            let core = self.core();
+            (core.cwd.clone(), core.site)
+        };
+        let around = match site {
             PaneSite::Remote => Vec::new(),
             PaneSite::Local => self
                 .output_at_row(cell.row)
                 .map(|output| output_paths(&output, cwd.as_deref(), is_file))
                 .unwrap_or_default(),
         };
-        self.view_ask = Some(ViewAsk {
-            file,
-            around,
-            site: self.core.site,
-        });
+        self.view_ask = Some(ViewAsk { file, around, site });
         Ok(())
     }
 
@@ -94,8 +93,12 @@ impl Session {
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
         };
-        let cwd = self.core.cwd.as_deref();
-        Ok(match self.core.site {
+        let (cwd, site) = {
+            let core = self.core();
+            (core.cwd.clone(), core.site)
+        };
+        let cwd = cwd.as_deref();
+        Ok(match site {
             PaneSite::Remote => host_path(cwd, &token),
             PaneSite::Local => first_file(&token, cwd, &is_file),
         })
@@ -103,25 +106,24 @@ impl Session {
 
     /// The folder on this computer the word at `cell` names, by the ⌘-click's rule for files.
     fn folder_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
-        if self.core.site == PaneSite::Remote {
+        if self.core().site == PaneSite::Remote {
             return Ok(None);
         }
         let row = self.line(cell.row)?;
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
         };
-        Ok(first_file(
-            &token,
-            self.core.cwd.as_deref(),
-            &|path: &Path| path.is_dir(),
-        ))
+        let cwd = self.core().cwd.clone();
+        Ok(first_file(&token, cwd.as_deref(), &|path: &Path| {
+            path.is_dir()
+        }))
     }
 
     /// The file a `file://` link names: on this computer, one that exists here; on a pane on
     /// another computer, the path in the link, whatever host it names (the program on the host
     /// wrote it).
     fn linked_file(&self, target: &str) -> Option<PathBuf> {
-        match self.core.site {
+        match self.core().site {
             PaneSite::Remote => cwd_from_url(target).map(PathBuf::from),
             PaneSite::Local => local_file_url(target).filter(|path| is_file(path)),
         }
@@ -133,16 +135,17 @@ impl Session {
         let Some(file) = self.linked_file(target) else {
             return false;
         };
+        let site = self.core().site;
         self.view_ask = Some(ViewAsk {
             file,
             around: Vec::new(),
-            site: self.core.site,
+            site,
         });
         true
     }
 
     fn linked_file_at(&self, cell: CellPos) -> Option<PathBuf> {
-        let target = self.core.pane.with_term(|term| {
+        let target = self.pane.with_term(|term| {
             term.hyperlink_at(GridPoint::new(PointSpace::Screen, cell.col, cell.row))
         })?;
         self.linked_file(&target)
@@ -152,7 +155,7 @@ impl Session {
     /// the text (on a pane on another computer, a path there, unchecked). None while the program
     /// has the mouse (a ⌘-click would go to it), or where nothing names a file.
     pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
-        if self.core.pane.with_term(|term| term.mouse_tracking()) {
+        if self.pane.with_term(|term| term.mouse_tracking()) {
             return None;
         }
         let cell = self.point_hit(at)?.cell;
@@ -162,7 +165,7 @@ impl Session {
 
     /// The block toolbar's View: the first file the block's output lists, with the rest around it.
     pub fn view_block(&mut self, id: BlockId) {
-        if self.core.site == PaneSite::Remote {
+        if self.core().site == PaneSite::Remote {
             self.notice =
                 Some("To view a file on another computer, \u{2318}-click its name".to_owned());
             return;
@@ -171,7 +174,7 @@ impl Session {
             self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return;
         };
-        let around = output_paths(&output, self.core.cwd.as_deref(), is_file);
+        let around = output_paths(&output, self.core().cwd.as_deref(), is_file);
         match around.first().cloned() {
             Some(file) => {
                 self.view_ask = Some(ViewAsk {

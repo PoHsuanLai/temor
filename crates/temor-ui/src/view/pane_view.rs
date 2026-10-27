@@ -255,7 +255,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .and_then(|s| s.clipboard_ask().cloned());
+        .and_then(|s| s.clipboard_ask());
     let on_host = desk.hub.is_host_pane(pane);
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
     // The block menu speaks of what is picked now.

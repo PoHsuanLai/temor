@@ -22,7 +22,6 @@ impl Session {
     pub fn copy(&mut self) -> Result<(), UiError> {
         let text = match self.selection {
             Some(selection) => self
-                .core
                 .pane
                 .with_term(|term| selection.text(|row| term.row_text(row).unwrap_or_default())),
             None => self.picked_text().unwrap_or_default(),
@@ -56,9 +55,9 @@ impl Session {
         if self.composer_takes(&text) {
             return Ok(());
         }
-        let mode = self.core.pane.with_term(|term| term.paste_mode());
+        let mode = self.pane.with_term(|term| term.paste_mode());
         match check(&text, mode, vt_verdict(&text, mode)) {
-            PasteCheck::Safe => self.core.pane.send(&encode(&text, mode)),
+            PasteCheck::Safe => self.pane.send(&encode(&text, mode)),
             PasteCheck::NeedsConfirmation(reason) => {
                 self.pending = Some(PendingPaste { text, reason })
             }
@@ -69,8 +68,8 @@ impl Session {
     /// The person agreed to the waiting paste: it is sent as it is.
     pub fn confirm_paste(&mut self) {
         if let Some(pending) = self.pending.take() {
-            let mode = self.core.pane.with_term(|term| term.paste_mode());
-            self.core.pane.send(&encode(&pending.text, mode));
+            let mode = self.pane.with_term(|term| term.paste_mode());
+            self.pane.send(&encode(&pending.text, mode));
         }
     }
 

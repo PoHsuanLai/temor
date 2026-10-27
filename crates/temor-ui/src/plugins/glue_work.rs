@@ -26,9 +26,7 @@ fn unix_millis() -> u64 {
 impl Hub {
     /// The lenses that can draw `block` of `pane`: the plugins whose trigger starts its command.
     pub fn block_lenses(&self, pane: PaneId, block: BlockId) -> Vec<LensOffer> {
-        let command = self
-            .live(pane, |s| s.block_command(block).map(str::to_owned))
-            .flatten();
+        let command = self.live(pane, |s| s.block_command(block)).flatten();
         let Some(command) = command else {
             return Vec::new();
         };
@@ -41,7 +39,7 @@ impl Hub {
     pub fn lens_run(&mut self, pane: PaneId, block: BlockId, lens: &str, width: u32) {
         let text = self
             .live(pane, |s| {
-                Some((s.block_command(block)?.to_owned(), s.block_output(block)?))
+                Some((s.block_command(block)?, s.block_output(block)?))
             })
             .flatten();
         let Some((command, output)) = text else {

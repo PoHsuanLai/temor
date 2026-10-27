@@ -75,7 +75,10 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
             .is_some_and(|b| b.1 != Outcome::Running)
     });
     let id = live.session.block_outcomes()[0].0;
-    assert_eq!(live.session.block_command(id), Some("echo rp-test"));
+    assert_eq!(
+        live.session.block_command(id).as_deref(),
+        Some("echo rp-test")
+    );
     assert_eq!(live.session.block_output(id).as_deref(), Some("rp-test"));
 }
 
@@ -200,7 +203,7 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
         });
         let id = live.session.block_outcomes()[0].0;
         assert_eq!(
-            live.session.block_command(id),
+            live.session.block_command(id).as_deref(),
             Some("echo first\necho second"),
             "{name}: both lines"
         );

@@ -13,14 +13,15 @@ use temor_core::quick::QuickIn;
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::{Cwd, TabTitle};
 use temor_core::workspace::{TabsIn, WorkspaceIn};
-use temor_pane::{Hold, PaneEvent, TransferEvent};
+use temor_pane::{Hold, TransferEvent};
 use temor_pty::ChildExit;
 
 use super::desk::Desk;
 use super::model::Hub;
-use super::offer::{Heard, OfferRedraw};
+use super::offer::{Heard as OfferHeard, OfferRedraw};
 use crate::session::{BELL_MARK, Notice, Relaid};
 use crate::view::slot::{Slot, release_hold_later, repaint};
+use temor_client::pane::Heard;
 
 /// What a batch of events asks the window to do.
 #[derive(Debug, Default)]
@@ -43,11 +44,11 @@ pub(super) struct Delivery {
 
 impl Hub {
     /// Gives each event to its pane's session and gathers what that means for the window.
-    pub(super) fn deliver(&mut self, batch: Vec<(PaneId, PaneEvent)>) -> Delivery {
+    pub(super) fn deliver(&mut self, batch: Vec<(PaneId, Heard)>) -> Delivery {
         let mut out = Delivery::default();
         // What the facts rule is told once the sessions are let go: it looks at the panes.
         let mut facts = Vec::new();
-        for (pane, event) in batch {
+        for (pane, heard) in batch {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
             };
@@ -55,13 +56,12 @@ impl Hub {
             let Some(session) = guard.session.as_mut() else {
                 continue;
             };
-            // The pane's core takes the event; the radar and the offer hear what it left, and the
-            // session then takes that.
-            let heard = session.hear(event);
+            // The pane's core took the event on the client's thread; the radar and the offer hear
+            // what it left, and the session then takes that.
             if self.agents_observe(pane, &heard) == super::agents::Changed::Yes {
                 out.chrome.insert(pane);
             }
-            let offered = Heard::of(&heard);
+            let offered = OfferHeard::of(&heard);
             let notice = session.take(heard);
             self.history_heard(pane, &notice, session);
             if self.offer_heard(pane, offered, session) == OfferRedraw::Yes {

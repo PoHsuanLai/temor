@@ -9,6 +9,7 @@ pub mod clipboard;
 pub mod clock;
 mod hear;
 mod heard;
+mod hearing;
 pub mod marks;
 pub mod notify;
 mod open;
@@ -30,13 +31,15 @@ use sources::Sources;
 
 pub use hear::{Heard, desktop_note};
 pub use heard::{SNAPSHOT_LIMIT, sanitise_title};
+pub use hearing::{Hearing, Locked, Shared, share};
 pub use open::{OpenError, PaneKit};
 
 /// What a pane is, apart from how the window shows it: its engine, what its program said (title,
 /// folder, progress, how it ended), its commands, its shell's state, its completion sources, what
 /// was answered about its clipboard, and when a finished command is worth a desktop notice.
 pub struct PaneCore {
-    pub pane: PaneHandle,
+    /// The pane's engine. The window holds it too, to paint and type without the core's lock.
+    pub pane: std::sync::Arc<PaneHandle>,
     pub title: String,
     pub lifetime: Lifetime,
     pub hold: Hold,

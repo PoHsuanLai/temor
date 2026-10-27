@@ -138,7 +138,7 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_compo
     assert_eq!(ids.len(), 2, "both commands were accepted");
 
     assert_eq!(
-        live.session.block_command(ids[0]),
+        live.session.block_command(ids[0]).as_deref(),
         Some("ls\nrm -rf /tmp/never"),
         "the lines are kept, for the card and Copy"
     );
@@ -156,7 +156,7 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_compo
     live.session.set_composer_shown(false);
 
     assert_eq!(
-        live.session.block_command(ids[1]),
+        live.session.block_command(ids[1]).as_deref(),
         Some("echo typed-not-run")
     );
     live.session.rerun(ids[1]);

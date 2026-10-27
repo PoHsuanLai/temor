@@ -158,6 +158,7 @@ impl Hub {
                         Submit::Enter,
                     );
                 }
+                self.hear(spawn.pane, &session);
                 slot.session = Some(session);
             }
             Err(err) => self.notices.push(err.to_string()),
@@ -290,6 +291,7 @@ impl Hub {
         ) {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
+                self.hear(pane, &session);
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }

@@ -52,7 +52,7 @@ impl Session {
             return Relaid::Same;
         };
         let placed = fit.lowered(self.painter.lower());
-        let (alternate, viewport, total) = self.core.pane.with_term(|term| {
+        let (alternate, viewport, total) = self.pane.with_term(|term| {
             (
                 term.on_alternate_screen(),
                 term.viewport().ok(),

@@ -146,6 +146,7 @@ impl Hub {
                 session.set_focus(self.focus_of(pane));
                 // A pane on a host files for another computer: its paths mean nothing here.
                 session.set_site(PaneSite::Remote);
+                self.hear(pane, &session);
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }

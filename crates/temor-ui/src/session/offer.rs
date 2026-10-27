@@ -12,20 +12,20 @@ use super::Session;
 impl Session {
     /// The time on the session's clock.
     pub fn now(&self) -> Stamp {
-        self.core.clock.now()
+        self.core().clock.now()
     }
 
     /// The running command's line, as the shell marked it.
-    pub fn running_line(&self) -> Option<&str> {
-        match self.core.blocks.machine() {
-            BlockState::Running(block) => Some(block.command.as_str()),
+    pub fn running_line(&self) -> Option<String> {
+        match self.core().blocks.machine() {
+            BlockState::Running(block) => Some(block.command.0.clone()),
             _ => None,
         }
     }
 
     /// The running command's block, when its command is on `list`, and which entry matched.
     pub fn running_listed(&self, list: &OfferList) -> Option<(BlockId, Program)> {
-        match self.core.blocks.machine() {
+        match self.core().blocks.machine() {
             BlockState::Running(block) => list
                 .matches(block.command.as_str())
                 .map(|program| (block.id, program)),
@@ -35,7 +35,7 @@ impl Session {
 
     /// Whether a full-screen program has the screen.
     pub fn screen_kind(&self) -> Screen {
-        match self.core.pane.with_term(|term| term.on_alternate_screen()) {
+        match self.pane.with_term(|term| term.on_alternate_screen()) {
             true => Screen::Alternate,
             false => Screen::Normal,
         }

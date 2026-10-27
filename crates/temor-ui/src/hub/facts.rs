@@ -181,7 +181,7 @@ impl Hub {
 
     /// The pane's folder: the shell's report, else where the pane started.
     pub(super) fn pane_folder(&self, pane: PaneId) -> Option<String> {
-        self.live(pane, |s| s.cwd().map(str::to_owned))
+        self.live(pane, |s| s.cwd())
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
     }

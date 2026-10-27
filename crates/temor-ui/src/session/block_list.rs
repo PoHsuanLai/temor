@@ -170,7 +170,7 @@ impl Session {
         ground: Option<temor_vt::Rgb>,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
-        let (cols, cells) = self.core.pane.with_term(|term| {
+        let (cols, cells) = self.pane.with_term(|term| {
             let cols = term.size().cols.0;
             (cols, term.styled_rows(rows.clone()))
         });
@@ -198,7 +198,7 @@ impl Session {
     /// paint drew it. `None` when none of them is in the viewport.
     pub fn live_rows(&self, rows: Range<u32>) -> Option<LiveRows> {
         let fit = self.placed()?.fit;
-        let (top, len) = self.core.pane.with_term(|term| term.viewport().ok())?;
+        let (top, len) = self.pane.with_term(|term| term.viewport().ok())?;
         let first = rows.start.max(top);
         let end = rows.end.min(top.saturating_add(len));
         if first >= end {

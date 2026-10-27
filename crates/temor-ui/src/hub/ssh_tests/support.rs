@@ -7,7 +7,6 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use temor_core::vocab::ids::PaneId;
-use temor_pane::PaneEvent;
 use temor_pane::text::LinkTarget;
 use temor_testkit::{ScratchRoot, program_or_skip};
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -104,7 +103,7 @@ impl FileShell for RecordFiles {
 /// One hub with stand-in programs.
 pub(super) struct Rig {
     pub hub: Hub,
-    pub panes: UnboundedReceiver<(PaneId, PaneEvent)>,
+    pub panes: UnboundedReceiver<(PaneId, temor_client::pane::Heard)>,
     pub jobs: UnboundedReceiver<SshEvent>,
     /// What the helper's jobs and the connecting `ssh` report.
     pub remote: UnboundedReceiver<RemoteEvent>,

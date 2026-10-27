@@ -31,7 +31,7 @@ impl Session {
 
     /// Whether the program asked for the mouse: presses and the wheel are reported to it.
     pub fn mouse_tracking(&self) -> bool {
-        self.core.pane.with_term(|term| term.mouse_tracking())
+        self.pane.with_term(|term| term.mouse_tracking())
     }
 
     /// A button went down at `at`.
@@ -45,7 +45,7 @@ impl Session {
         let Some(placed) = self.placed() else {
             return Ok(());
         };
-        let tracking = self.core.pane.with_term(|term| term.mouse_tracking());
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
         let shift = mods.contains(Modifiers::SHIFT);
         if tracking && !shift {
             // The program has the mouse: nothing of the blocks is picked under it.
@@ -61,10 +61,9 @@ impl Session {
                 at: drawn,
             };
             let bytes = self
-                .core
                 .pane
                 .with_term(|term| term.encode_mouse(&input, surface))?;
-            self.core.pane.send(&bytes);
+            self.pane.send(&bytes);
             return Ok(());
         }
         let Some(cell) = self.point_hit(at).map(|hit| hit.cell) else {
@@ -127,7 +126,7 @@ impl Session {
         let Some(placed) = self.placed() else {
             return Ok(());
         };
-        let tracking = self.core.pane.with_term(|term| term.mouse_tracking());
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
         if tracking && !mods.contains(Modifiers::SHIFT) {
             let surface = placed.fit.mouse_surface();
             let Some(drawn) = self.drawn_point(at) else {
@@ -140,10 +139,9 @@ impl Session {
                 at: drawn,
             };
             let bytes = self
-                .core
                 .pane
                 .with_term(|term| term.encode_mouse(&input, surface))?;
-            self.core.pane.send(&bytes);
+            self.pane.send(&bytes);
         }
         Ok(())
     }
@@ -164,7 +162,7 @@ impl Session {
         let Some(placed) = self.placed() else {
             return Ok(());
         };
-        let tracking = self.core.pane.with_term(|term| term.mouse_tracking());
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
         if tracking && !mods.contains(Modifiers::SHIFT) {
             let button = match direction {
                 WheelDirection::Up => MouseButton::WheelUp,
@@ -182,10 +180,9 @@ impl Session {
             };
             for _ in 0..lines.min(10) {
                 let bytes = self
-                    .core
                     .pane
                     .with_term(|term| term.encode_mouse(&input, surface))?;
-                self.core.pane.send(&bytes);
+                self.pane.send(&bytes);
             }
             return Ok(());
         }
@@ -194,8 +191,7 @@ impl Session {
             WheelDirection::Up => -rows,
             WheelDirection::Down => rows,
         };
-        self.core
-            .pane
+        self.pane
             .with_term(|term| term.scroll(ViewportScroll::Delta(RowDelta(delta))));
         Ok(())
     }
@@ -203,16 +199,16 @@ impl Session {
     /// Makes the core selection's ends the terminal's selection, so the grid draws it.
     pub(super) fn mirror_selection(&mut self) -> Result<(), UiError> {
         let text = self.selection.map(to_text_selection);
-        Ok(self.core.pane.with_term(|term| term.set_selection(text))?)
+        Ok(self.pane.with_term(|term| term.set_selection(text))?)
     }
 
     /// The text of a screen row.
     pub(super) fn line(&self, row: u32) -> Result<RowText, UiError> {
-        Ok(self.core.pane.with_term(|term| term.row_text(row))?)
+        Ok(self.pane.with_term(|term| term.row_text(row))?)
     }
 
     fn open_link_at(&mut self, cell: CellPos) -> Result<(), UiError> {
-        let link = self.core.pane.with_term(|term| {
+        let link = self.pane.with_term(|term| {
             let point = GridPoint::new(PointSpace::Screen, cell.col, cell.row);
             term.hyperlink_at(point)
         });

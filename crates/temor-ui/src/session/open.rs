@@ -46,8 +46,10 @@ impl Session {
 
     fn assemble(core: PaneCore, painter: Painter, kit: WindowKit) -> Self {
         let blink_from = core.clock.now();
+        let pane = std::sync::Arc::clone(&core.pane);
         Self {
-            core,
+            core: temor_client::pane::share(core),
+            pane,
             painter,
             keymap: kit.keymap,
             clipboard: kit.clipboard,

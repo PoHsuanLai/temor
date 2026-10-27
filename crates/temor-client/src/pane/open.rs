@@ -103,7 +103,7 @@ impl PaneCore {
     fn around(pane: PaneHandle, kit: PaneKit) -> Self {
         let clip_mirror = pane.with_term(|term| term.clipboard());
         Self {
-            pane,
+            pane: Arc::new(pane),
             title: String::new(),
             lifetime: Lifetime::Running,
             hold: Hold::Released,

@@ -232,7 +232,11 @@ impl Session {
     /// Shows the command one older or newer than the one shown; past the newest, what was typed.
     pub fn composer_history(&mut self, step: HistoryStep) {
         let ids: Vec<BlockId> = self.block_outcomes().into_iter().map(|b| b.0).collect();
-        let commands = newest_first(ids.iter().filter_map(|&id| self.block_command(id)));
+        let known: Vec<String> = ids
+            .iter()
+            .filter_map(|&id| self.block_command(id))
+            .collect();
+        let commands = newest_first(known.iter().map(String::as_str));
         let at = self.composer.step.as_ref().map(|(n, _)| *n);
         let to = stepped(at, step, commands.len());
         let shown = to.map(|n| commands[n].to_owned());
@@ -255,10 +259,10 @@ impl Session {
             return;
         }
         let text = composer.text.clone();
-        let mode = self.core.pane.with_term(|term| term.paste_mode());
+        let mode = self.pane.with_term(|term| term.paste_mode());
         // A line break that is not framed as a paste would run the line.
         let shell = composer.shell_ready && (!text.contains('\n') || mode == PasteMode::Bracketed);
-        let others = self.core.sources.any_ready();
+        let others = self.core().sources.any_ready();
         if !shell && !others {
             return;
         }
@@ -267,27 +271,23 @@ impl Session {
         let mut waiting = Vec::new();
         if shell {
             if !text.is_empty() {
-                self.core.pane.send(&paste::encode(&text, mode));
+                self.pane.send(&paste::encode(&text, mode));
             }
-            self.core.pane.send(REQUEST_KEY);
+            self.pane.send(REQUEST_KEY);
             waiting.push(SHELL);
         }
-        if let Some(deliver) = self.core.sources.deliver.clone() {
+        let core = self.core();
+        if let Some(deliver) = core.sources.deliver.clone() {
             let ask = Ask {
                 line: text.clone(),
-                folder: self.core.folder.clone(),
+                folder: core.folder.clone(),
             };
-            for source in self
-                .core
-                .sources
-                .list
-                .iter()
-                .filter(|source| source.ready())
-            {
+            for source in core.sources.list.iter().filter(|source| source.ready()) {
                 waiting.push(source.id());
                 source.ask(ask.clone(), request, deliver.clone());
             }
         }
+        drop(core);
         self.composer.asked = Some(Asked {
             request,
             line: text,
@@ -334,7 +334,7 @@ impl Session {
     /// Whether something answers Tab: the shell's script said so at this prompt, or a source of
     /// its own is ready.
     pub fn composer_completes(&self) -> bool {
-        self.composer.shell_ready || self.core.sources.any_ready()
+        self.composer.shell_ready || self.core().sources.any_ready()
     }
 
     /// The suggestions offered for the line, if any.
@@ -381,11 +381,11 @@ impl Session {
         self.composer.step = None;
         self.completion_ended();
         if !text.is_empty() {
-            let mode = self.core.pane.with_term(|term| term.paste_mode());
-            self.core.pane.send(&paste::encode(&text, mode));
+            let mode = self.pane.with_term(|term| term.paste_mode());
+            self.pane.send(&paste::encode(&text, mode));
         }
-        self.core.pane.send(b"\r");
-        self.core.sent = (!text.is_empty()).then_some(text);
+        self.pane.send(b"\r");
+        self.core().sent = (!text.is_empty()).then_some(text);
         self.wake_cursor();
     }
 

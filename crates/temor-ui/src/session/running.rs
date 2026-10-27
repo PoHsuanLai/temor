@@ -16,8 +16,8 @@ pub struct Running {
 impl Session {
     /// The newest command that is still running, if the shell marks its commands.
     pub fn running_command(&self) -> Option<Running> {
-        let block = self
-            .core
+        let core = self.core();
+        let block = core
             .blocks
             .store()
             .iter()
@@ -25,13 +25,13 @@ impl Session {
             .find(|block| block.outcome() == Outcome::Running)?;
         Some(Running {
             command: block.command.0.clone(),
-            for_ms: self.core.clock.now().since(block.started),
+            for_ms: core.clock.now().since(block.started),
         })
     }
 
     /// The block of the newest command that is still running.
     pub fn running_block(&self) -> Option<temor_core::vocab::ids::BlockId> {
-        self.core
+        self.core()
             .blocks
             .store()
             .iter()
@@ -42,12 +42,12 @@ impl Session {
 
     /// Sends `bytes` to the program as if typed (an interrupt, for one).
     pub fn send_bytes(&self, bytes: &[u8]) {
-        self.core.pane.send(bytes);
+        self.pane.send(bytes);
     }
 
     /// How the newest command stands; none before the first, or where the shell marks none.
     pub fn last_outcome(&self) -> Option<Outcome> {
-        self.core
+        self.core()
             .blocks
             .store()
             .iter()

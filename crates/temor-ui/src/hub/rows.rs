@@ -142,7 +142,7 @@ impl Hub {
         // A host's title already names its folder, and its paths are not under this home.
         let on_host = self.host_of(pane).is_some();
         let place = self
-            .live(pane, |s| s.cwd().map(str::to_owned))
+            .live(pane, |s| s.cwd())
             .flatten()
             .or_else(|| self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
             .filter(|_| !on_host);
@@ -191,12 +191,7 @@ impl Hub {
         made_as: &temor_core::vocab::text::TabTitle,
     ) -> String {
         let read = self.live(pane, |s| {
-            (
-                s.title().to_owned(),
-                s.cwd().map(str::to_owned),
-                s.running_command(),
-                s.prompts_seen(),
-            )
+            (s.title(), s.cwd(), s.running_command(), s.prompts_seen())
         });
         let (title, live_cwd, running, prompts) = read.unwrap_or_default();
         if let Some(host_title) = self.ssh_title(pane) {
@@ -312,9 +307,7 @@ impl Hub {
         if let Some(title) = self.ssh_title(pane) {
             return title;
         }
-        let title = self
-            .live(pane, |s| s.title().to_owned())
-            .unwrap_or_default();
+        let title = self.live(pane, |s| s.title()).unwrap_or_default();
         if !title.is_empty() {
             return title;
         }
@@ -363,10 +356,8 @@ impl Hub {
         if let Some(name) = self.viewer_name(pane) {
             return (name, None);
         }
-        let title = self
-            .live(pane, |s| s.title().to_owned())
-            .unwrap_or_default();
-        let cwd = self.live(pane, |s| s.cwd().map(str::to_owned)).flatten();
+        let title = self.live(pane, |s| s.title()).unwrap_or_default();
+        let cwd = self.live(pane, |s| s.cwd()).flatten();
         (title, cwd)
     }
 }

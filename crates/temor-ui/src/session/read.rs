@@ -13,7 +13,7 @@ use temor_pane::PaneHandle;
 impl Session {
     /// The pane's engine handle, for the window's painting loop and tests.
     pub fn pane(&self) -> &PaneHandle {
-        &self.core.pane
+        &self.pane
     }
 
     /// The grid as last fitted to the pane and placed in it (`None` before the first layout):
@@ -56,7 +56,7 @@ impl Session {
 
     /// The screen's text, row by row, as the terminal holds it (for tests and the probe).
     pub fn screen_text(&self) -> String {
-        self.core.pane.with_term(|term| {
+        self.pane.with_term(|term| {
             let rows = term.screen_rows().unwrap_or(0);
             (0..rows)
                 .map(|row| {
@@ -86,6 +86,6 @@ impl Session {
 
     /// The viewport's first screen row (what the pane shows at the top).
     pub(super) fn viewport_top(&self) -> Result<u32, UiError> {
-        Ok(self.core.pane.with_term(|term| term.viewport())?.0)
+        Ok(self.pane.with_term(|term| term.viewport())?.0)
     }
 }

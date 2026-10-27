@@ -26,12 +26,14 @@ impl Session {
     }
 
     pub(crate) fn survey(&self) -> Option<Read> {
+        // One hold of the core for the whole read: the blocks and the terminal under them.
+        let core = self.core();
         let typing = matches!(
-            *self.core.blocks.machine(),
+            *core.blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         let painted = self.painter.cursor_cell().map(|cell| u32::from(cell.row.0));
-        self.core.pane.with_term(|term| {
+        self.pane.with_term(|term| {
             if term.on_alternate_screen() {
                 return None;
             }
@@ -39,13 +41,12 @@ impl Session {
             // A running block ends at the cursor only where it is drawn: a program that hides it
             // draws below it too.
             let cursor = painted.map(|row| top.saturating_add(row));
-            let blocks = self
-                .core
+            let blocks = core
                 .blocks
                 .store()
                 .iter()
                 .map(|block| {
-                    let anchors = self.core.blocks.anchors_of(block.id).unwrap_or_default();
+                    let anchors = core.blocks.anchors_of(block.id).unwrap_or_default();
                     let prompt = spot(term, anchors.prompt);
                     let lead = match anchors.prompt {
                         Some(prompt) => lead_at(term, prompt, anchors.input),
@@ -71,16 +72,11 @@ impl Session {
                     }
                 })
                 .collect();
-            let live = self
-                .core
-                .blocks
-                .prompt()
-                .filter(|_| typing)
-                .and_then(|prompt| {
-                    Some(LiveRead {
-                        prompt: spot(term, Some(prompt))?,
-                    })
-                });
+            let live = core.blocks.prompt().filter(|_| typing).and_then(|prompt| {
+                Some(LiveRead {
+                    prompt: spot(term, Some(prompt))?,
+                })
+            });
             Some(Read {
                 top,
                 len,

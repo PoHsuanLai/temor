@@ -12,7 +12,6 @@ impl Session {
     fn selected_line(&self) -> Option<String> {
         let selection = self.selection?;
         let text = self
-            .core
             .pane
             .with_term(|term| selection.text(|row| term.row_text(row).unwrap_or_default()));
         let line = text.lines().map(str::trim).find(|line| !line.is_empty())?;
@@ -29,7 +28,7 @@ impl Session {
             let id = block
                 .or_else(|| self.selected_block())
                 .or_else(|| picked.last().copied())?;
-            last_path_argument(self.block_command(id)?)
+            last_path_argument(&self.block_command(id)?)
         })
     }
 }
