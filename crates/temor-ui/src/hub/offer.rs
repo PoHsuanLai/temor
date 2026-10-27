@@ -11,11 +11,11 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds_settings::Store;
+use temor_client::pane::Heard as PaneHeard;
 use temor_core::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
 };
 use temor_core::vocab::ids::PaneId;
-use temor_pane::PaneEvent;
 use temor_ssh::{InnerShell, ProbeReading, prompt_after_answer, read_probe};
 
 use super::desk::Desk;
@@ -45,10 +45,12 @@ pub(super) enum Heard {
 }
 
 impl Heard {
-    pub(super) fn of(event: &PaneEvent) -> Self {
-        match event {
-            PaneEvent::Dirty => Heard::Output,
-            PaneEvent::Anchor { .. } | PaneEvent::Reset | PaneEvent::Exited(_) => Heard::Command,
+    pub(super) fn of(heard: &PaneHeard) -> Self {
+        match heard {
+            PaneHeard::Repaint => Heard::Output,
+            PaneHeard::Marked | PaneHeard::CommandDone | PaneHeard::Reset | PaneHeard::Ended(_) => {
+                Heard::Command
+            }
             _ => Heard::Other,
         }
     }

@@ -3,10 +3,10 @@
 
 use std::path::PathBuf;
 
+use temor_client::pane::Heard;
 use temor_core::presence::AgentState;
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::workspace::WorkspaceIn;
-use temor_pane::PaneEvent;
 
 use super::radar::{Alert, Changed};
 use crate::hub::model::Hub;
@@ -44,10 +44,10 @@ impl Hub {
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.
     /// A known agent that appears or leaves is told to the plugins that adapt to it.
-    pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, event: &PaneEvent) -> Changed {
+    pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, heard: &Heard) -> Changed {
         let now = self.agents.now();
         let was = self.agents.radar.agent_of(pane).map(str::to_owned);
-        let changed = self.agents.radar.observe(pane, now, event);
+        let changed = self.agents.radar.observe(pane, now, heard);
         let is = self.agents.radar.agent_of(pane).map(str::to_owned);
         self.plugin_adapter_follows(pane, was, is);
         changed

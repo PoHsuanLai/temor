@@ -113,11 +113,16 @@ impl Session {
         self.take(heard)
     }
 
+    /// The pane's core takes one event; what is left is for [`Session::take`].
+    pub fn hear(&mut self, event: PaneEvent) -> Heard {
+        self.core.hear(event)
+    }
+
     /// What is left of an event for the window once the pane's core has taken it.
     pub fn take(&mut self, heard: Heard) -> Notice {
         match heard {
-            Heard::Repaint => Notice::Repaint,
-            Heard::Chrome => Notice::Chrome,
+            Heard::Repaint | Heard::Reset => Notice::Repaint,
+            Heard::Chrome | Heard::Marked => Notice::Chrome,
             Heard::Title(title) => Notice::Title(title),
             Heard::Bell => {
                 let now = self.core.clock.now();
@@ -131,7 +136,7 @@ impl Session {
             }
             Heard::CommandDone => Notice::CommandDone,
             Heard::Ended(exit) => Notice::Ended(exit),
-            Heard::Quiet => Notice::Quiet,
+            Heard::Quiet | Heard::PromptShown | Heard::Notified { .. } => Notice::Quiet,
             Heard::Window(event) => match event {
                 PaneEvent::RenderHold(hold) => Notice::Hold(hold),
                 PaneEvent::Completions(answer) => {

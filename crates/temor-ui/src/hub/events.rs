@@ -51,18 +51,20 @@ impl Hub {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
             };
-            // The radar hears the event first; the session then takes it.
-            if self.agents_observe(pane, &event) == super::agents::Changed::Yes {
-                out.chrome.insert(pane);
-            }
             let mut guard = slot.borrow_mut();
             let Some(session) = guard.session.as_mut() else {
                 continue;
             };
-            let heard = Heard::of(&event);
-            let notice = session.absorb(event);
+            // The pane's core takes the event; the radar and the offer hear what it left, and the
+            // session then takes that.
+            let heard = session.hear(event);
+            if self.agents_observe(pane, &heard) == super::agents::Changed::Yes {
+                out.chrome.insert(pane);
+            }
+            let offered = Heard::of(&heard);
+            let notice = session.take(heard);
             self.history_heard(pane, &notice, session);
-            if self.offer_heard(pane, heard, session) == OfferRedraw::Yes {
+            if self.offer_heard(pane, offered, session) == OfferRedraw::Yes {
                 out.chrome.insert(pane);
             }
             match notice {

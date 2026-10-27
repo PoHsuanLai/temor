@@ -22,13 +22,21 @@ pub enum Heard {
     Title(String),
     /// The bell rang.
     Bell,
+    /// A program's notification (OSC 9, OSC 777), its words cleaned; the desktop was told.
+    Notified { title: String, body: String },
     /// The shell said a new folder.
     Cwd(String),
+    /// The shell showed its prompt.
+    PromptShown,
     /// A command started: the shell running it may be another, which answers no Tab until its
     /// prompt says so.
     CommandStarted,
+    /// A mark was placed (a prompt, a command's start or end), and no command finished.
+    Marked,
     /// A command finished.
     CommandDone,
+    /// The terminal was reset (or a fed pane's screen restored): repaint.
+    Reset,
     /// The program ended.
     Ended(Option<ChildExit>),
     /// An event only the window acts on (the composer's completions, the clipboard, a hold on
@@ -76,22 +84,23 @@ impl PaneCore {
                 Heard::Quiet
             }
             PaneEvent::Prompt(mark) => {
-                let starts = matches!(mark, temor_vt::PromptEvent::OutputStart { .. });
+                let heard = match mark {
+                    temor_vt::PromptEvent::OutputStart { .. } => Heard::CommandStarted,
+                    temor_vt::PromptEvent::PromptStart(_) => Heard::PromptShown,
+                    _ => Heard::Quiet,
+                };
                 self.mark_event(mark);
-                match starts {
-                    true => Heard::CommandStarted,
-                    false => Heard::Quiet,
-                }
+                heard
             }
             PaneEvent::Anchor { seq, anchor, at } => match self.anchored(seq, anchor, at) {
                 true => Heard::CommandDone,
-                false => Heard::Chrome,
+                false => Heard::Marked,
             },
             PaneEvent::Reset => {
                 self.terminal_reset();
                 // A pane fed from elsewhere is reset when its screen is restored.
                 self.find_restored_blocks();
-                Heard::Repaint
+                Heard::Reset
             }
             PaneEvent::Notification(note) => {
                 let title = sanitise_title(&note.title);
@@ -99,7 +108,7 @@ impl PaneCore {
                 if let Some(desk) = program_notice(&title, &body, self.focus) {
                     self.announce(desk);
                 }
-                Heard::Quiet
+                Heard::Notified { title, body }
             }
             other => Heard::Window(other),
         }

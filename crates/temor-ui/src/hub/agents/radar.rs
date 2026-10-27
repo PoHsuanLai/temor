@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use temor_client::pane::Heard;
 use temor_core::agent::radar::{
     Millis, ProcessFact, RadarIn, RadarOut, RadarParams, RadarState, radar_step,
 };
@@ -12,7 +13,7 @@ use temor_core::presence::{AgentState, PaneFocus, PresenceOut, Seen};
 use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::Note;
 use temor_pane::PaneEvent;
-use temor_vt::{ProgramState, PromptEvent};
+use temor_vt::ProgramState;
 
 use super::convert::{exit_code, note_of, program_fact, status_report};
 use super::ending::{Via, front_of};
@@ -141,9 +142,9 @@ impl Radar {
 
     /// What one event from `pane` means for its radar. Only an event that is about agents moves
     /// anything; bells and notifications count only in a pane known to run an agent.
-    pub fn observe(&mut self, pane: PaneId, now: Millis, event: &PaneEvent) -> Changed {
-        match event {
-            PaneEvent::Program(status) => {
+    pub fn observe(&mut self, pane: PaneId, now: Millis, heard: &Heard) -> Changed {
+        match heard {
+            Heard::Window(PaneEvent::Program(status)) => {
                 self.know(pane, Some(status.app.as_str()), Via::Report, None);
                 let changed = self.feed(pane, now, RadarIn::Program(program_fact(status)));
                 // Clearing its status is a program saying it has ended.
@@ -153,11 +154,11 @@ impl Radar {
                 changed
             }
             #[cfg(unix)]
-            PaneEvent::Reported(line) => {
+            Heard::Window(PaneEvent::Reported(line)) => {
                 self.know(pane, line.app.as_deref(), Via::Report, None);
                 self.feed(pane, now, RadarIn::Report(status_report(pane, line)))
             }
-            PaneEvent::Foreground(Some(seen))
+            Heard::Window(PaneEvent::Foreground(Some(seen)))
                 if agent_of(&seen.name, seen.command.as_ref()).is_some() =>
             {
                 let sighting = agent_of(&seen.name, seen.command.as_ref());
@@ -172,26 +173,26 @@ impl Radar {
             }
             // The agent seen by its process left the front of the pane, or a shell came back
             // after an agent that only reported: it has exited.
-            PaneEvent::Foreground(seen) => {
+            Heard::Window(PaneEvent::Foreground(seen)) => {
                 let front = front_of(seen.as_ref().map(|seen| seen.name.as_str()));
                 self.leave(pane, |via| via.gone_with(front));
                 Changed::No
             }
-            PaneEvent::Title(title) if self.panes.contains_key(&pane) => {
+            Heard::Title(title) if self.panes.contains_key(&pane) => {
                 self.feed(pane, now, RadarIn::Title(title.clone()))
             }
-            PaneEvent::Bell if self.is_known(pane) => self.feed(pane, now, RadarIn::Notified(None)),
-            PaneEvent::Notification(note) if self.is_known(pane) => {
-                let words = match note.body.is_empty() {
-                    true => &note.title,
-                    false => &note.body,
+            Heard::Bell if self.is_known(pane) => self.feed(pane, now, RadarIn::Notified(None)),
+            Heard::Notified { title, body } if self.is_known(pane) => {
+                let words = match body.is_empty() {
+                    true => title,
+                    false => body,
                 };
                 self.feed(pane, now, RadarIn::Notified(note_of(words)))
             }
-            PaneEvent::Prompt(PromptEvent::PromptStart(_)) if self.panes.contains_key(&pane) => {
+            Heard::PromptShown if self.panes.contains_key(&pane) => {
                 self.feed(pane, now, RadarIn::PromptShown)
             }
-            PaneEvent::Exited(exit) if self.panes.contains_key(&pane) => self.feed(
+            Heard::Ended(exit) if self.panes.contains_key(&pane) => self.feed(
                 pane,
                 now,
                 RadarIn::Process(ProcessFact::Exited(exit_code(*exit))),

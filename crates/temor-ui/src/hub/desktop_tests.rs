@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+use temor_client::pane::Heard;
 use temor_core::block::Outcome;
 use temor_core::split::Direction;
 use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
@@ -16,8 +17,8 @@ use super::desktop::{exit_of, new_tab_for, refocus_after_agent_open};
 use super::tests::hub_after;
 use crate::edge::desktop_port::Act;
 
-fn agent_status(state: ProgramState) -> PaneEvent {
-    PaneEvent::Program(ProgramStatus {
+fn agent_status(state: ProgramState) -> Heard {
+    Heard::Window(PaneEvent::Program(ProgramStatus {
         state,
         wait: ProgramWait::Question,
         percent: None,
@@ -25,7 +26,7 @@ fn agent_status(state: ProgramState) -> PaneEvent {
         app: "claude".to_owned(),
         title: String::new(),
         message: String::new(),
-    })
+    }))
 }
 
 #[test]
