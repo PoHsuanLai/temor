@@ -14,15 +14,8 @@ use temor_panes::pane::paste::{self, PasteMode};
 use temor_panes::shell::complete::{Answer, REQUEST_KEY, decode};
 use temor_panes::shell::suggest::{Answered, Ask, SourceId, Suggestion, common_start};
 
-use super::Session;
+use super::{HistoryStep, Session};
 use temor_panes::sources::SHELL;
-
-/// Which way the arrows step through the commands run before.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HistoryStep {
-    Older,
-    Newer,
-}
 
 /// The composer's text and where it is in the history.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

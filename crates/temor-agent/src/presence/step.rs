@@ -1,7 +1,8 @@
 //! `presence_step`: one pane's agent state, from reports, focus, prompts and the process.
 
-use super::model::{AgentState, PaneFocus, Seen, StatusReport, StatusSource};
+use super::model::{AgentState, Seen, StatusReport, StatusSource};
 use std::collections::BTreeMap;
+use temor_core::pane::PaneFocus;
 use temor_core::vocab::ids::{ExitCode, Seq};
 use temor_core::vocab::text::Note;
 

@@ -5,7 +5,7 @@
 //! pane when a half turns (`blink_due`).
 
 use ds_core::time::stamp::Stamp;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_panes::render::BlinkPhase;
 
 use super::Session;
@@ -49,7 +49,7 @@ impl Session {
     /// Whether the pane must be painted again for its cursor: it is focused, its cursor blinks,
     /// and the half has turned since the last paint.
     pub fn blink_due(&self) -> bool {
-        let focused = self.core().focus == Focus::Focused;
+        let focused = self.core().focus == PaneFocus::Focused;
         focused && self.painter.cursor_blinks() && self.blink_now() != self.blink.painted
     }
 }

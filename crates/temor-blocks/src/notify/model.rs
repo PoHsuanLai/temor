@@ -2,15 +2,6 @@
 //! finished command is worth telling.
 
 use crate::block::Outcome;
-use ds_core::word::Word;
-
-/// Whether the pane has the keyboard. A notice only goes out while it does not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-#[word(case = snake)]
-pub enum Focus {
-    Focused,
-    Unfocused,
-}
 
 /// What the person can be told.
 #[derive(Debug, Clone, PartialEq, Eq)]

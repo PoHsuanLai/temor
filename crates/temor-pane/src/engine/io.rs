@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{RenderHold, Snapshot, UnknownKind, VtEvent};
+use temor_vt::{Snapshot, UnknownKind, VtEvent};
 
 use super::event::PaneEvent;
 use super::fed_io::{FedSetup, pump_fed};
@@ -289,10 +289,7 @@ pub(super) fn map_event(event: VtEvent, read: Instant) -> Option<PaneEvent> {
         },
         VtEvent::Progress(progress) => PaneEvent::Progress(progress),
         VtEvent::Reset => PaneEvent::Reset,
-        VtEvent::RenderHold(RenderHold::Held) => PaneEvent::RenderHold(super::event::Hold::Held),
-        VtEvent::RenderHold(RenderHold::Released) => {
-            PaneEvent::RenderHold(super::event::Hold::Released)
-        }
+        VtEvent::RenderHold(hold) => PaneEvent::RenderHold(hold),
         VtEvent::ProgramStatus(status) => PaneEvent::Program(status),
         // Colour-scheme queries and unknown sequences have no UI yet
         // (PLAN §4b, §9); they are dropped here, in one place.

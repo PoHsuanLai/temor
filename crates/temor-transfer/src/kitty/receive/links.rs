@@ -4,9 +4,9 @@
 //! own, and writes never go through a link (the edge refuses to), so a link can only point at
 //! what the transfer itself put there.
 
-use super::files::Chunk;
 use super::helpers::{refuse, reply};
 use super::model::{Effect, OpenLink, ReceiveSession, WriteOp};
+use crate::kitty::ChunkEnd;
 use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, ReplyStatus};
 use crate::name::RelPath;
 
@@ -40,7 +40,7 @@ pub(super) fn on_link_data(
     id: &KittyId,
     file_id: FileId,
     message: Message,
-    chunk: Chunk,
+    chunk: ChunkEnd,
 ) -> (ReceiveSession, Vec<Effect>) {
     let mut next = session;
     let Some(mut link) = next.open_links.remove(&file_id) else {
@@ -62,7 +62,7 @@ pub(super) fn on_link_data(
         );
     }
     link.target.extend_from_slice(&message.data);
-    if chunk == Chunk::More {
+    if chunk == ChunkEnd::More {
         next.open_links.insert(file_id, link);
         return (next, Vec::new());
     }

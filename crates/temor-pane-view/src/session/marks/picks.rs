@@ -10,7 +10,7 @@
 
 use std::collections::BTreeSet;
 
-use temor_client::model::block::{BlockState, PickClick, PickStep};
+use temor_client::model::block::{BlockState, HistoryStep, PickClick};
 use temor_client::model::session::{AnnotateIn, AnnotateOut, annotate_step};
 use temor_client::model::vocab::ids::BlockId;
 use temor_client::model::vocab::text::CommandText;
@@ -76,7 +76,7 @@ impl Session {
 
     /// ⌘↑ or ⌘↓, or an arrow while blocks are picked: the pick moves that way (with nothing
     /// picked, ⌘↑ picks the newest block) and the view follows it.
-    pub(in crate::session) fn step_pick(&mut self, step: PickStep) {
+    pub(in crate::session) fn step_pick(&mut self, step: HistoryStep) {
         let order = self.pick_order();
         self.annotate(AnnotateIn::Step { step, order });
     }
@@ -91,11 +91,11 @@ impl Session {
         if key.mods == Modifiers::ALT && self.bookmark_keys_live() {
             match key.code {
                 KeyCode::ArrowUp => {
-                    self.step_bookmark(PickStep::Older);
+                    self.step_bookmark(HistoryStep::Older);
                     return true;
                 }
                 KeyCode::ArrowDown => {
-                    self.step_bookmark(PickStep::Newer);
+                    self.step_bookmark(HistoryStep::Newer);
                     return true;
                 }
                 _ => {}
@@ -108,17 +108,17 @@ impl Session {
         let shift = key.mods == Modifiers::SHIFT;
         let plain = key.mods == Modifiers::NONE;
         match key.code {
-            KeyCode::ArrowUp if plain => self.step_pick(PickStep::Older),
-            KeyCode::ArrowDown if plain => self.step_pick(PickStep::Newer),
+            KeyCode::ArrowUp if plain => self.step_pick(HistoryStep::Older),
+            KeyCode::ArrowDown if plain => self.step_pick(HistoryStep::Newer),
             KeyCode::ArrowUp if shift => {
                 self.annotate(AnnotateIn::Extend {
-                    step: PickStep::Older,
+                    step: HistoryStep::Older,
                     order,
                 });
             }
             KeyCode::ArrowDown if shift => {
                 self.annotate(AnnotateIn::Extend {
-                    step: PickStep::Newer,
+                    step: HistoryStep::Newer,
                     order,
                 });
             }
@@ -177,7 +177,7 @@ impl Session {
     }
 
     /// Picks the nearest bookmark `step`'s way from the pick; none that way leaves the pick.
-    pub(in crate::session) fn step_bookmark(&mut self, step: PickStep) {
+    pub(in crate::session) fn step_bookmark(&mut self, step: HistoryStep) {
         let order = self.pick_order();
         self.annotate(AnnotateIn::StepBookmark { step, order });
     }

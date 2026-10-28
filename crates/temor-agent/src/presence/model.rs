@@ -75,12 +75,3 @@ pub enum StatusSource {
     /// A notification sequence or a bell.
     Notification,
 }
-
-/// Whether a pane has keyboard focus in the window the person is using.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Word)]
-pub enum PaneFocus {
-    /// It has focus.
-    Focused,
-    /// It does not.
-    Unfocused,
-}

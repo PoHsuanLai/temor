@@ -1006,7 +1006,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
 
 #[test]
 fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
-    use temor_client::model::notify::Focus;
+    use temor_client::model::pane::PaneFocus;
     if !super::support::tools_present() {
         return;
     }
@@ -1018,8 +1018,8 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
             .expect("paint");
         pixels
     };
-    // Focus starts the blink over: the first paint draws the cursor.
-    f.session.set_focus(Focus::Focused);
+    // PaneFocus starts the blink over: the first paint draws the cursor.
+    f.session.set_focus(PaneFocus::Focused);
     let on = shot(&mut f.session);
     assert!(!f.session.blink_due(), "nothing turned yet");
     wait_until("the cursor's off half", || f.session.blink_due());
@@ -1031,7 +1031,7 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
     let typed = shot(&mut f.session);
     assert_ne!(typed, off, "the cursor is back after the key");
     // An unfocused pane's hollow cursor never blinks.
-    f.session.set_focus(Focus::Unfocused);
+    f.session.set_focus(PaneFocus::Unfocused);
     shot(&mut f.session);
     std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
     assert!(!f.session.blink_due(), "an unfocused pane does not blink");

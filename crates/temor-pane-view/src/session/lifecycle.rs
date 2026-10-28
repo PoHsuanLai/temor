@@ -1,9 +1,9 @@
 //! The session's lifecycle: opening the program, fitting and painting, and taking the events
 //! the program sends.
 
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::session::ShellState;
-use temor_panes::render::{Palette, PaneFocus, PixelSize, Scale};
+use temor_panes::render::{self, Palette, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Notice};
@@ -90,8 +90,8 @@ impl Session {
             scale: self.scale,
             inset: INSET,
             focus: match self.core().focus {
-                Focus::Focused => PaneFocus::Focused,
-                Focus::Unfocused => PaneFocus::Unfocused,
+                PaneFocus::Focused => render::PaneFocus::Focused,
+                PaneFocus::Unfocused => render::PaneFocus::Unfocused,
             },
             blink,
             selection: None,

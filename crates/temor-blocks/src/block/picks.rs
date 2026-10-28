@@ -19,9 +19,10 @@ pub enum PickClick {
     Toggle,
 }
 
-/// Which way an arrow moves.
+/// Which way an arrow steps through the commands run before: through the picked blocks, or
+/// through the composer's history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PickStep {
+pub enum HistoryStep {
     Older,
     Newer,
 }
@@ -106,13 +107,13 @@ impl Picks {
     /// An arrow: the pick moves to the block before or after the active one, alone. Past the
     /// newest block nothing is picked (the person is back at the prompt); past the oldest the
     /// pick stays. With nothing picked, `Older` picks the newest block.
-    pub fn step(&mut self, step: PickStep, order: &[BlockId]) {
+    pub fn step(&mut self, step: HistoryStep, order: &[BlockId]) {
         let at = self.active.and_then(|a| place(order, a));
         let next = match (at, step) {
-            (None, PickStep::Older) => order.len().checked_sub(1),
-            (None, PickStep::Newer) => None,
-            (Some(at), PickStep::Older) => Some(at.saturating_sub(1)),
-            (Some(at), PickStep::Newer) => Some(at + 1).filter(|&n| n < order.len()),
+            (None, HistoryStep::Older) => order.len().checked_sub(1),
+            (None, HistoryStep::Newer) => None,
+            (Some(at), HistoryStep::Older) => Some(at.saturating_sub(1)),
+            (Some(at), HistoryStep::Newer) => Some(at + 1).filter(|&n| n < order.len()),
         };
         match next {
             Some(n) => self.only(order[n]),
@@ -128,16 +129,16 @@ impl Picks {
     }
 
     /// Shift and an arrow: the run from the anchor grows (or shrinks) by one block that way.
-    pub fn extend(&mut self, step: PickStep, order: &[BlockId]) {
+    pub fn extend(&mut self, step: HistoryStep, order: &[BlockId]) {
         let (Some(anchor), Some(active)) = (
             self.anchor.and_then(|a| place(order, a)),
             self.active.and_then(|a| place(order, a)),
         ) else {
-            return self.step(PickStep::Older, order);
+            return self.step(HistoryStep::Older, order);
         };
         let to = match step {
-            PickStep::Older => active.saturating_sub(1),
-            PickStep::Newer => (active + 1).min(order.len() - 1),
+            HistoryStep::Older => active.saturating_sub(1),
+            HistoryStep::Newer => (active + 1).min(order.len() - 1),
         };
         let (lo, hi) = (anchor.min(to), anchor.max(to));
         self.picked = order[lo..=hi].iter().copied().collect();
@@ -151,15 +152,15 @@ pub fn next_bookmark(
     order: &[BlockId],
     marked: &BTreeSet<BlockId>,
     from: Option<BlockId>,
-    step: PickStep,
+    step: HistoryStep,
 ) -> Option<BlockId> {
     let at = from.and_then(|id| place(order, id));
     let marked_at = |n: &usize| marked.contains(&order[*n]);
     match (step, at) {
-        (PickStep::Older, Some(at)) => (0..at).rev().find(marked_at),
-        (PickStep::Older, None) => (0..order.len()).rev().find(marked_at),
-        (PickStep::Newer, Some(at)) => (at + 1..order.len()).find(marked_at),
-        (PickStep::Newer, None) => None,
+        (HistoryStep::Older, Some(at)) => (0..at).rev().find(marked_at),
+        (HistoryStep::Older, None) => (0..order.len()).rev().find(marked_at),
+        (HistoryStep::Newer, Some(at)) => (at + 1..order.len()).find(marked_at),
+        (HistoryStep::Newer, None) => None,
     }
     .map(|n| order[n])
 }

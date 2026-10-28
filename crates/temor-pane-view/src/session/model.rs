@@ -42,7 +42,7 @@ pub enum Notice {
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
-    Hold(temor_panes::pane::Hold),
+    Hold(temor_panes::pane::RenderHold),
     /// A program offered, sent or asked for a file (PLAN §9).
     Transfer(temor_panes::pane::TransferEvent),
     /// Nothing for the window.

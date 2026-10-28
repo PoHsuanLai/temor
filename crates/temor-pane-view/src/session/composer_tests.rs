@@ -15,7 +15,7 @@ fn the_history_is_newest_first_each_command_once_where_it_last_ran() {
 
 #[test]
 fn stepping_goes_back_to_the_oldest_and_forward_past_the_newest_to_what_was_typed() {
-    use HistoryStep::{Newer, Older};
+    use super::HistoryStep::{Newer, Older};
     assert_eq!(stepped(None, Older, 3), Some(0));
     assert_eq!(stepped(Some(0), Older, 3), Some(1));
     assert_eq!(stepped(Some(2), Older, 3), Some(2), "stays at the oldest");

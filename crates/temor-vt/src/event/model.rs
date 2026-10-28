@@ -73,7 +73,6 @@ pub enum UnknownKind {
 
 /// Whether the screen is held for a synchronized update.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub enum RenderHold {
     /// Keep showing the last frame; the program is drawing the next one.
     Held,

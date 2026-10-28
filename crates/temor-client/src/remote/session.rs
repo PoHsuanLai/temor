@@ -9,22 +9,22 @@ use crate::remote::link::{GoneReason, LinkState};
 
 /// What a host pane's session runs on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Source {
+pub enum Tier {
     /// A plain `ssh` in a terminal of this computer (Tier A).
     Plain,
     /// A session on the host's helper (Tier B): it survives the connection dropping.
     Helper,
 }
 
-/// The source for a host the person has answered `grant` about, whose helper stands at
+/// The tier for a host the person has answered `grant` about, whose helper stands at
 /// `helper`. A host that was never asked is still a candidate: the question comes once the
 /// connection is up and the host has been looked at.
-pub fn session_source(grant: Grant, blob: bool, helper: &HelperState) -> Source {
+pub fn session_tier(grant: Grant, blob: bool, helper: &HelperState) -> Tier {
     match (blob, grant, helper) {
-        (false, _, _) => Source::Plain,
-        (_, Grant::Refused, _) => Source::Plain,
-        (_, _, HelperState::Refused | HelperState::Unsupported) => Source::Plain,
-        _ => Source::Helper,
+        (false, _, _) => Tier::Plain,
+        (_, Grant::Refused, _) => Tier::Plain,
+        (_, _, HelperState::Refused | HelperState::Unsupported) => Tier::Plain,
+        _ => Tier::Helper,
     }
 }
 
@@ -124,24 +124,19 @@ mod tests {
     fn a_host_gets_the_helper_unless_it_was_refused_cannot_run_it_or_there_is_none_to_put_there() {
         let ready = HelperState::Ready(HelperHash("a".repeat(64)));
         let cases = [
-            (Grant::Ask, true, HelperState::Absent, Source::Helper),
-            (Grant::Allowed, true, HelperState::Absent, Source::Helper),
-            (Grant::Allowed, true, ready, Source::Helper),
-            (Grant::Allowed, true, HelperState::Offered, Source::Helper),
-            (Grant::Ask, true, HelperState::Uploading, Source::Helper),
-            (Grant::Refused, true, HelperState::Absent, Source::Plain),
-            (Grant::Allowed, false, HelperState::Absent, Source::Plain),
-            (
-                Grant::Allowed,
-                true,
-                HelperState::Unsupported,
-                Source::Plain,
-            ),
-            (Grant::Ask, true, HelperState::Refused, Source::Plain),
+            (Grant::Ask, true, HelperState::Absent, Tier::Helper),
+            (Grant::Allowed, true, HelperState::Absent, Tier::Helper),
+            (Grant::Allowed, true, ready, Tier::Helper),
+            (Grant::Allowed, true, HelperState::Offered, Tier::Helper),
+            (Grant::Ask, true, HelperState::Uploading, Tier::Helper),
+            (Grant::Refused, true, HelperState::Absent, Tier::Plain),
+            (Grant::Allowed, false, HelperState::Absent, Tier::Plain),
+            (Grant::Allowed, true, HelperState::Unsupported, Tier::Plain),
+            (Grant::Ask, true, HelperState::Refused, Tier::Plain),
         ];
         for (grant, blob, helper, want) in cases {
             assert_eq!(
-                session_source(grant, blob, &helper),
+                session_tier(grant, blob, &helper),
                 want,
                 "{grant:?} {blob:?} {helper:?}"
             );

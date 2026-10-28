@@ -17,7 +17,7 @@ use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
-use temor_client::remote::session::{Source, session_source};
+use temor_client::remote::session::session_tier;
 use temor_panes::remote::link::{RemoteLink, Target, lock};
 use temor_panes::remote::relay::relay;
 
@@ -53,10 +53,7 @@ impl Hub {
             .lines
             .get(alias)
             .map_or(&absent, |line| &line.helper);
-        match session_source(grant, blob, helper) {
-            Source::Plain => Tier::Plain,
-            Source::Helper => Tier::Helper,
-        }
+        session_tier(grant, blob, helper)
     }
 
     /// The shared connection's turn came for a helper pane: `First` makes the connection in the

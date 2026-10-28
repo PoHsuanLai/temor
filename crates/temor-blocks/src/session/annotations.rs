@@ -5,7 +5,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::block::{PickClick, PickStep, Picks, next_bookmark};
+use crate::block::{HistoryStep, PickClick, Picks, next_bookmark};
 use temor_core::vocab::ids::BlockId;
 
 /// The picked, folded and bookmarked blocks of one pane.
@@ -89,15 +89,24 @@ pub enum AnnotateIn {
         order: Vec<BlockId>,
     },
     /// An arrow: the pick moves.
-    Step { step: PickStep, order: Vec<BlockId> },
+    Step {
+        step: HistoryStep,
+        order: Vec<BlockId>,
+    },
     /// Shift and an arrow: the run from the anchor grows or shrinks.
-    Extend { step: PickStep, order: Vec<BlockId> },
+    Extend {
+        step: HistoryStep,
+        order: Vec<BlockId>,
+    },
     /// Every block.
     SelectAll { order: Vec<BlockId> },
     /// Nothing picked.
     ClearPicks,
     /// The pick moves to the nearest bookmark that way.
-    StepBookmark { step: PickStep, order: Vec<BlockId> },
+    StepBookmark {
+        step: HistoryStep,
+        order: Vec<BlockId>,
+    },
     /// Bookmarks the picked blocks, or takes their bookmarks away when every one has one.
     ToggleBookmarks { order: Vec<BlockId> },
     /// Folds the picked blocks' output (those in `foldable`), or brings it back when every one

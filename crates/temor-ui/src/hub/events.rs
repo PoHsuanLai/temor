@@ -13,7 +13,7 @@ use temor_client::model::quick::QuickIn;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::{Cwd, TabTitle};
 use temor_client::model::workspace::{TabsIn, WorkspaceIn};
-use temor_panes::pane::{Hold, TransferEvent};
+use temor_panes::pane::{RenderHold, TransferEvent};
 use temor_panes::pty::ChildExit;
 
 use super::desk::Desk;
@@ -84,11 +84,11 @@ impl Hub {
                         out.asks.push(WorkspaceIn::ClosePane(Some(pane)));
                     }
                 }
-                Notice::Hold(Hold::Held) => {
+                Notice::Hold(RenderHold::Held) => {
                     // Each hold has its own generation: a stale timer cannot end a newer one.
                     out.holds.push((Rc::clone(&slot), session.start_hold()));
                 }
-                Notice::Hold(Hold::Released) => {
+                Notice::Hold(RenderHold::Released) => {
                     session.release_hold();
                     out.paint.insert(pane);
                 }

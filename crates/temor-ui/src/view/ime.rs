@@ -20,7 +20,7 @@ use ds::prelude::Rect;
 use super::slot::Slot;
 use super::window_help::{send_text, set_focus};
 use ds::edit::pointer::EditFocus;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 
 /// The region's IME state, shared by its handlers.
 #[derive(Clone)]
@@ -148,7 +148,7 @@ pub fn focus_handler(
     move |focus: EditFocus| match focus {
         EditFocus::In => gained(),
         EditFocus::Out => {
-            set_focus(&slot, Focus::Unfocused);
+            set_focus(&slot, PaneFocus::Unfocused);
             ime.settle(&apply);
             ime.switch(ImeSwitch::Off, || {});
         }

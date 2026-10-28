@@ -7,7 +7,7 @@ use super::GridPoint;
 pub enum SelectionShape {
     /// Reading order from one end to the other.
     Linear,
-    /// The rectangle with the two ends as corners.
+    /// The rectangle with the two ends as corners (Alt-drag).
     Block,
 }
 

@@ -17,6 +17,6 @@ mod tests;
 pub use elapsed::format_elapsed;
 pub use face::{Note, summarize};
 pub use model::{Author, Block, Outcome, Taint};
-pub use picks::{PickClick, PickStep, Picks, next_bookmark};
+pub use picks::{HistoryStep, PickClick, Picks, next_bookmark};
 pub use step::{BlockIn, BlockOut, BlockState, block_step};
 pub use store::{BlockStore, MAX_BLOCKS};

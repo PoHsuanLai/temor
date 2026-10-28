@@ -19,9 +19,9 @@ pub mod sources;
 
 use std::path::PathBuf;
 
-use temor_blocks::notify::{Focus, Limiter};
+use temor_blocks::notify::{Limiter, PaneFocus};
 use temor_pane::settings::NotifyAfter;
-use temor_pane::{Hold, PaneHandle};
+use temor_pane::{PaneHandle, RenderHold};
 use temor_pty::ChildExit;
 use temor_vt::Progress;
 
@@ -54,7 +54,7 @@ pub struct PaneCore {
     pub pane: std::sync::Arc<PaneHandle>,
     pub title: String,
     pub lifetime: Lifetime,
-    pub hold: Hold,
+    pub hold: RenderHold,
     pub hold_generation: u64,
     pub blocks: BlockLog,
     /// What the shell holds that a new shell would need (folder, variables, aliases).
@@ -89,7 +89,7 @@ pub struct PaneCore {
     /// A clipboard question waiting for the person.
     pub clip_pending: Option<PendingClipboard>,
     /// Whether the pane is the one the person is looking at (a pane that is not notifies).
-    pub focus: Focus,
+    pub focus: PaneFocus,
     /// What the person last sent as a command, until the command it starts takes it: a shell
     /// that does not say what it runs (nushell) shows a command of several lines on rows the
     /// screen cannot give back.

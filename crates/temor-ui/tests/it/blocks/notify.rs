@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use temor_client::model::block::Outcome;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_pane::PaneEvent;
 use temor_vt::Notification;
 
@@ -17,7 +17,7 @@ fn a_long_command_notifies_once_when_the_pane_is_unfocused() {
     }
     let shell = shell_path("bash").expect("bash");
     let mut live = start("blocks-notify", &shell);
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     hold(&live);
     pump(&mut live, "the command to start", |s| {
         s.block_outcomes()
@@ -49,7 +49,7 @@ fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
     }
     let shell = shell_path("bash").expect("bash");
     let mut live = start("blocks-quiet", &shell);
-    live.session.set_focus(Focus::Focused);
+    live.session.set_focus(PaneFocus::Focused);
     hold(&live);
     pump(&mut live, "the focused command to start", |s| {
         s.block_outcomes()
@@ -63,7 +63,7 @@ fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
             .first()
             .is_some_and(|b| b.1 != Outcome::Running)
     });
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     hold(&live);
     pump(&mut live, "the short command to start", |s| {
         s.block_outcomes()
@@ -87,7 +87,7 @@ fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
         return;
     }
     let mut live = start("blocks-program", &shell);
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     let note = |body: &str| {
         PaneEvent::Notification(Notification {
             title: String::new(),

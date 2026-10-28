@@ -4,11 +4,11 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use temor_blocks::notify::{Focus, Limiter};
+use temor_blocks::notify::{Limiter, PaneFocus};
 use temor_pane::settings::NotifyAfter;
 use temor_pane::{
-    EventSink, FedSpec, Feeder, Hold, PaneError, PaneEvent, PaneHandle, PaneSpec, start, start_fed,
-    start_restored,
+    EventSink, FedSpec, Feeder, PaneError, PaneEvent, PaneHandle, PaneSpec, RenderHold, start,
+    start_fed, start_restored,
 };
 use temor_shell::report::{KEY_VAR, ReportKey};
 use temor_vt::Snapshot;
@@ -106,7 +106,7 @@ impl PaneCore {
             pane: Arc::new(pane),
             title: String::new(),
             lifetime: Lifetime::Running,
-            hold: Hold::Released,
+            hold: RenderHold::Released,
             hold_generation: 0,
             blocks: BlockLog::default(),
             shell_state: temor_blocks::session::ShellState::default(),
@@ -127,7 +127,7 @@ impl PaneCore {
             clip_write: temor_hosts::remote::Grant::Ask,
             clip_mirror,
             clip_pending: None,
-            focus: Focus::Focused,
+            focus: PaneFocus::Focused,
             sent: None,
             said: None,
         }

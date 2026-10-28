@@ -4,7 +4,7 @@
 //! store its credentials come from.
 
 use ds::components::app::spaces::SpaceId;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::space::{Place, TemorSpaces};
 use temor_client::model::workspace::WorkspaceIn;
 
@@ -62,7 +62,7 @@ impl Hub {
             return;
         }
         if let Some(pane) = self.keyboard_pane() {
-            self.set_pane_focus(pane, Focus::Unfocused);
+            self.set_pane_focus(pane, PaneFocus::Unfocused);
         }
         self.swap_to(to);
         self.fill_empty();

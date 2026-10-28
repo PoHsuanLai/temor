@@ -27,14 +27,7 @@ use temor_panes::remote::event::{Generation, RemoteEvent};
 use temor_panes::remote::link::Target;
 use temor_panes::remote::route::Router;
 
-/// What a host pane runs on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Tier {
-    /// A plain `ssh` in a terminal of this computer.
-    Plain,
-    /// A session on the host's helper.
-    Helper,
-}
+pub(super) use temor_client::remote::session::Tier;
 
 /// What a connection is doing right now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

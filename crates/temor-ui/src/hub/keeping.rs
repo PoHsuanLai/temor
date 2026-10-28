@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::time::Instant;
 
 use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through, screens};
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 
 use super::model::Hub;
@@ -87,7 +87,7 @@ impl Hub {
             .flat_map(|(_, ws)| ws.tabs.panes())
             .collect();
         for pane in parked {
-            self.set_pane_focus(pane, Focus::Unfocused);
+            self.set_pane_focus(pane, PaneFocus::Unfocused);
         }
     }
 

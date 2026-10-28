@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use super::{AnnotateIn, AnnotateOut, Annotations, annotate_step};
-use crate::block::{PickClick, PickStep};
+use crate::block::{HistoryStep, PickClick};
 use temor_core::vocab::ids::BlockId;
 use temor_testkit::run_steps;
 
@@ -35,7 +35,7 @@ fn clicks_pick_and_arrows_move_the_pick_and_ask_to_reveal_it() {
             click(2, PickClick::Only),
             click(4, PickClick::Range),
             AnnotateIn::Step {
-                step: PickStep::Older,
+                step: HistoryStep::Older,
                 order: order(),
             },
         ],
@@ -78,7 +78,7 @@ fn bookmarks_toggle_for_the_picked_blocks_and_the_pick_steps_between_them() {
     let (state, outs) = annotate_step(
         state,
         AnnotateIn::StepBookmark {
-            step: PickStep::Older,
+            step: HistoryStep::Older,
             order: order(),
         },
     );
@@ -87,7 +87,7 @@ fn bookmarks_toggle_for_the_picked_blocks_and_the_pick_steps_between_them() {
     let (state, outs) = annotate_step(
         state,
         AnnotateIn::StepBookmark {
-            step: PickStep::Older,
+            step: HistoryStep::Older,
             order: order(),
         },
     );

@@ -4,7 +4,7 @@
 use temor_panes::pane::keys::Action;
 use temor_panes::vt::{KeyAction, KeyCode};
 
-use temor_client::model::block::PickStep;
+use temor_client::model::block::HistoryStep;
 
 use super::{FindStep, Session};
 use crate::error::ViewError;
@@ -88,11 +88,11 @@ impl Session {
                 Ok(())
             }
             Action::PreviousPrompt => {
-                self.step_pick(PickStep::Older);
+                self.step_pick(HistoryStep::Older);
                 Ok(())
             }
             Action::NextPrompt => {
-                self.step_pick(PickStep::Newer);
+                self.step_pick(HistoryStep::Newer);
                 Ok(())
             }
             Action::CopyCommands => {
@@ -116,11 +116,11 @@ impl Session {
                 Ok(())
             }
             Action::PreviousBookmark => {
-                self.step_bookmark(PickStep::Older);
+                self.step_bookmark(HistoryStep::Older);
                 Ok(())
             }
             Action::NextBookmark => {
-                self.step_bookmark(PickStep::Newer);
+                self.step_bookmark(HistoryStep::Newer);
                 Ok(())
             }
             Action::ReinputCommands => {

@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::session::Checkpoint;
 use temor_client::model::space::{Origin, spawn_plan};
 use temor_client::model::vocab::ids::PaneId;
@@ -261,15 +261,15 @@ impl Hub {
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.
-    pub(super) fn set_pane_focus(&self, pane: PaneId, focus: Focus) {
+    pub(super) fn set_pane_focus(&self, pane: PaneId, focus: PaneFocus) {
         let _ = self.live_mut(pane, |session| session.set_focus(focus));
     }
 
     /// Whether `pane`'s session counts as focused: only the pane with the keyboard does.
-    pub(super) fn focus_of(&self, pane: PaneId) -> Focus {
+    pub(super) fn focus_of(&self, pane: PaneId) -> PaneFocus {
         match self.keyboard_pane() == Some(pane) {
-            true => Focus::Focused,
-            false => Focus::Unfocused,
+            true => PaneFocus::Focused,
+            false => PaneFocus::Unfocused,
         }
     }
 

@@ -2,36 +2,36 @@
 
 use ds_core::time::stamp::Stamp;
 
-use super::model::{Focus, Notice};
+use super::{Notice, PaneFocus};
 use crate::block::{Block, Outcome};
 use temor_pane::settings::NotifyAfter;
 
 /// The notice for a finished block, when it is worth one: the pane is unfocused, the setting is
 /// on, and the command ran at least the threshold. `None` for a block that has not finished.
-pub fn finished_notice(block: &Block, after: NotifyAfter, focus: Focus) -> Option<Notice> {
+pub fn finished_notice(block: &Block, after: NotifyAfter, focus: PaneFocus) -> Option<Notice> {
     let threshold = after.threshold_ms()?;
     let took_ms = block.elapsed_ms()?;
     let outcome = block.outcome();
-    (focus == Focus::Unfocused && took_ms >= threshold && outcome != Outcome::Running).then(|| {
-        Notice::CommandFinished {
+    (focus == PaneFocus::Unfocused && took_ms >= threshold && outcome != Outcome::Running).then(
+        || Notice::CommandFinished {
             outcome,
             took_ms,
             command: block.command.0.clone(),
-        }
-    })
+        },
+    )
 }
 
 /// The notice for a program's notification, when the pane is unfocused.
-pub fn program_notice(title: &str, body: &str, focus: Focus) -> Option<Notice> {
-    (focus == Focus::Unfocused).then(|| Notice::Program {
+pub fn program_notice(title: &str, body: &str, focus: PaneFocus) -> Option<Notice> {
+    (focus == PaneFocus::Unfocused).then(|| Notice::Program {
         title: title.to_owned(),
         body: body.to_owned(),
     })
 }
 
 /// The notice for a bell, when the pane is unfocused.
-pub fn bell_notice(focus: Focus) -> Option<Notice> {
-    (focus == Focus::Unfocused).then_some(Notice::Bell)
+pub fn bell_notice(focus: PaneFocus) -> Option<Notice> {
+    (focus == PaneFocus::Unfocused).then_some(Notice::Bell)
 }
 
 /// Lets through at most one notice per `gap_ms`, so a program that notifies in a loop cannot

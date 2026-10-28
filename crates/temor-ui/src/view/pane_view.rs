@@ -42,7 +42,7 @@ use super::handlers::{
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
 use super::menu::Pick;
-use super::pane_focus::{PaneFocus, use_pane_focus};
+use super::pane_focus::{FocusWiring, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::{KeyRegion, key_handler};
 use super::pane_pointer::{GridPointer, GridState, grid_pointer};
@@ -205,7 +205,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         }
     });
 
-    let PaneFocus {
+    let FocusWiring {
         regain,
         on_focus,
         on_mounted,
