@@ -184,7 +184,7 @@ async fn a_sandboxed_run_is_classified_by_its_network_and_undone_by_the_window()
     .await
     .unwrap();
     assert!(text_of(&ran).0.ends_with("done"));
-    assert_eq!(s.window.log.lock().unwrap().sandboxed[0].network, false);
+    assert!(!s.window.log.lock().unwrap().sandboxed[0].network_open);
     let Undoable::Yes(token) = ran.undo else {
         panic!("a run that changed something is undoable");
     };

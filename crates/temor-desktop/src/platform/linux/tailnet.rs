@@ -97,18 +97,12 @@ pub(super) fn host_of(machine: &Machine) -> Option<TailnetHost> {
         name: machine.name.clone(),
         dns: machine.dns.clone(),
         addresses: machine.addresses.clone(),
-        online: match machine.link {
-            MachineLink::Online => true,
-            MachineLink::Offline => false,
-        },
+        online: matches!(machine.link, MachineLink::Online),
         last_seen: machine
             .last_seen
             .and_then(|at| u64::try_from(at.0).ok())
             .map(UnixSeconds),
-        ssh: match machine.ssh {
-            MachineSsh::On => true,
-            MachineSsh::Off => false,
-        },
+        tailscale_ssh: matches!(machine.ssh, MachineSsh::On),
         owner: match machine.owner {
             MachineOwner::Mine => TailnetOwner::Mine,
             MachineOwner::Shared => TailnetOwner::Shared,

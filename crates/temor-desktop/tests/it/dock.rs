@@ -31,7 +31,7 @@ async fn a_badge_is_broadcast_for_temors_desktop_entry() {
     let badge = Badge {
         count: Some(BadgeCount(2)),
         progress: None,
-        attention: true,
+        wants_attention: true,
     };
     dock.show(&badge).await.unwrap();
 

@@ -69,7 +69,7 @@ pub(super) async fn perform<W: WindowPort>(
             let run = SandboxRun {
                 line: args.need_text("line")?.to_owned(),
                 cwd: args.cwd()?,
-                network: args.network()?,
+                network_open: args.network()?,
             };
             let done = window.run_sandboxed(run).await.map_err(refusal)?;
             let status = match done.exit {

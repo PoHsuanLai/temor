@@ -59,7 +59,7 @@ impl CheckpointPort for SystemCheckpoints {
             .block_on(self.intents.checkpoint_list(id))
             .map_err(|error| client_fault("read the restore points", &error))?;
         let mut points = list_of(&list.rows);
-        points.turn = run_state_of(list.turn);
+        points.turn_running = run_state_of(list.turn);
         Ok(points)
     }
 
@@ -126,10 +126,7 @@ impl CheckpointPort for SystemCheckpoints {
 
 /// docket's turn state as the window's.
 pub(super) fn run_state_of(state: TurnState) -> bool {
-    match state {
-        TurnState::Running => true,
-        _ => false,
-    }
+    matches!(state, TurnState::Running)
 }
 
 pub(super) fn failed() -> DesktopError {
@@ -203,10 +200,7 @@ pub(super) fn list_of(rows: &[CheckpointRow]) -> PointList {
                 id: PointId(id.0),
                 turn: TurnNo(turn.0),
                 at: seconds(*at),
-                state: match state {
-                    SavedState::Available => true,
-                    SavedState::Gone => false,
-                },
+                available: matches!(state, SavedState::Available),
             }),
             CheckpointRow::NotSaved { turn, at, why } => Some(PointRow::NotSaved {
                 turn: TurnNo(turn.0),
@@ -220,7 +214,10 @@ pub(super) fn list_of(rows: &[CheckpointRow]) -> PointList {
             _ => None,
         })
         .collect();
-    PointList { rows, turn: false }
+    PointList {
+        rows,
+        turn_running: false,
+    }
 }
 
 pub(super) fn plan_of(plan: &RestorePlan) -> PointPlan {

@@ -97,11 +97,11 @@ async fn the_machines_come_back_as_plain_hosts_and_a_change_ticks() {
     assert_eq!(box_.node.as_str(), "nA");
     assert_eq!(box_.dns, "box.tail1.ts.net");
     assert_eq!(
-        (box_.online, box_.ssh, box_.owner),
+        (box_.online, box_.tailscale_ssh, box_.owner),
         (true, true, TailnetOwner::Mine)
     );
     assert_eq!(
-        (nas.online, nas.ssh, nas.owner, nas.last_seen),
+        (nas.online, nas.tailscale_ssh, nas.owner, nas.last_seen),
         (false, false, TailnetOwner::Shared, None)
     );
     assert!(box_.is_named("100.64.0.7"));

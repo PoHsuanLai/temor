@@ -60,7 +60,7 @@ fn the_dock_update_writes_every_key_so_a_clear_clears() {
     let shown = Badge {
         count: Some(BadgeCount(3)),
         progress: Some(Progress::percent(250)),
-        attention: true,
+        wants_attention: true,
     };
     let cases = [
         (
@@ -112,7 +112,7 @@ fn a_machine_maps_to_a_plain_host() {
         vec!["100.64.0.7".parse::<std::net::IpAddr>().unwrap()]
     );
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
         (true, None, true, TailnetOwner::Mine)
     );
 
@@ -123,7 +123,7 @@ fn a_machine_maps_to_a_plain_host() {
     }));
     let host = host_of(&away).expect("a usable node id");
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
         (
             false,
             Some(UnixSeconds(1_700_000_000)),
@@ -218,13 +218,13 @@ fn dockets_list_becomes_the_windows_rows_and_a_restore_names_its_plan() {
                 id: PointId(1),
                 turn: TurnNo(4),
                 at: secs,
-                state: true
+                available: true
             },
             PointRow::Saved {
                 id: PointId(2),
                 turn: TurnNo(5),
                 at: secs,
-                state: false
+                available: false
             },
             PointRow::NotSaved {
                 turn: TurnNo(6),

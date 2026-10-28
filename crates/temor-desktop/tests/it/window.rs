@@ -89,7 +89,7 @@ impl WindowPort for FakeWindow {
     }
 
     async fn run_sandboxed(&self, run: SandboxRun) -> Result<SandboxResult, PortRefusal> {
-        let changed = matches!(run.network, false);
+        let changed = !run.network_open;
         self.log.lock().unwrap().sandboxed.push(run);
         Ok(SandboxResult {
             exit: Exit::Code(0),

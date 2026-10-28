@@ -52,7 +52,7 @@ pub(super) fn launcher_update(badge: &Badge) -> HashMap<&'static str, Value<'sta
         Some(progress) => (f64::from(progress.get()) / 100.0, true),
         None => (0.0, false),
     };
-    let urgent = matches!(badge.attention, true);
+    let urgent = badge.wants_attention;
     HashMap::from([
         ("count", Value::from(count)),
         ("count-visible", Value::from(count_visible)),
