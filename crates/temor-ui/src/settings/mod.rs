@@ -18,7 +18,6 @@ mod schema;
 #[cfg(test)]
 mod tests;
 mod told;
-mod values;
 mod words;
 
 pub use convert::from_terminal;
@@ -33,5 +32,4 @@ pub use load::{Loaded, load_settings};
 pub use migrate::{Converted, Migrated, convert_terminal_conf, migrate_terminal_conf};
 pub use schema::{APP, root_for, schema, write_schema};
 pub use told::Told;
-pub use values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
 pub use words::{Blinking, CursorShape, KeepWay, PagerWay, StartFolder};

@@ -1,10 +1,15 @@
 //! The typed values of the pane's settings, and how each is read from its text. Parsing happens
-//! here, once, at the boundary: the rest of the app holds these types and needs no checks.
+//! here, once, at the boundary: the rest of the app holds these types and needs no checks. The
+//! numbers read from the settings file as they are written there: a value outside its limit is
+//! refused as it is read, with words that say the limit.
+
+use serde::{Deserialize, Serialize};
 
 use crate::error::SettingsError;
 
-/// Font size in points (the logical size the renderer scales).
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+/// Font size in points (the logical size the renderer scales). `font.size` in the file.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(try_from = "f32", into = "f32")]
 pub struct FontPoints(f32);
 
 impl FontPoints {
@@ -23,9 +28,31 @@ impl FontPoints {
     }
 }
 
+impl Default for FontPoints {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl TryFrom<f32> for FontPoints {
+    type Error = String;
+
+    fn try_from(points: f32) -> Result<Self, String> {
+        Self::new(points)
+            .ok_or_else(|| format!("a size from {} to {} points", Self::MIN, Self::MAX))
+    }
+}
+
+impl From<FontPoints> for f32 {
+    fn from(size: FontPoints) -> Self {
+        size.0
+    }
+}
+
 /// How tall a terminal line is, in percent of the font's own line: 100 keeps it, 120 opens it by
-/// a fifth.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// a fifth. `font.line_height` in the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(try_from = "u32", into = "u32")]
 pub struct LinePercent(u32);
 
 impl LinePercent {
@@ -51,8 +78,29 @@ impl LinePercent {
     }
 }
 
-/// How many lines of scrollback are kept.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+impl Default for LinePercent {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl TryFrom<u32> for LinePercent {
+    type Error = String;
+
+    fn try_from(percent: u32) -> Result<Self, String> {
+        Self::new(percent).ok_or_else(|| format!("a percent from {} to {}", Self::MIN, Self::MAX))
+    }
+}
+
+impl From<LinePercent> for u32 {
+    fn from(line: LinePercent) -> Self {
+        line.0
+    }
+}
+
+/// How many lines of scrollback are kept. `scrollback.lines` in the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(try_from = "u32", into = "u32")]
 pub struct ScrollbackLines(u32);
 
 impl ScrollbackLines {
@@ -67,6 +115,26 @@ impl ScrollbackLines {
 
     pub fn lines(self) -> u32 {
         self.0
+    }
+}
+
+impl Default for ScrollbackLines {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl TryFrom<u32> for ScrollbackLines {
+    type Error = String;
+
+    fn try_from(lines: u32) -> Result<Self, String> {
+        Self::new(lines).ok_or_else(|| format!("at most {} lines", Self::MAX))
+    }
+}
+
+impl From<ScrollbackLines> for u32 {
+    fn from(lines: ScrollbackLines) -> Self {
+        lines.0
     }
 }
 
@@ -159,11 +227,11 @@ pub fn cursor_blink(key: &str, value: &str) -> Result<bool, SettingsError> {
 pub fn notify_after(key: &str, value: &str) -> Result<NotifyAfter, SettingsError> {
     match value.trim() {
         "off" => Ok(NotifyAfter::Off),
-        text => match text.parse::<u32>() {
-            Ok(0) => Ok(NotifyAfter::Off),
-            Ok(seconds) if seconds <= NOTIFY_AFTER_MAX_SECONDS => Ok(NotifyAfter::Seconds(seconds)),
-            _ => Err(bad(key, value)),
-        },
+        text => text
+            .parse::<u32>()
+            .ok()
+            .and_then(|seconds| NotifyAfter::try_from(seconds).ok())
+            .ok_or_else(|| bad(key, value)),
     }
 }
 
@@ -206,7 +274,9 @@ fn bad(key: &str, value: &str) -> SettingsError {
 }
 
 /// How long a command must run before its finish is worth a notice. `Off` never notifies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `notify.after` in the file: seconds, 0 for off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(try_from = "u32", into = "u32")]
 pub enum NotifyAfter {
     Off,
     /// A command running at least this many seconds.
@@ -222,6 +292,33 @@ impl NotifyAfter {
         match self {
             Self::Off => None,
             Self::Seconds(s) => Some(u64::from(s) * 1000),
+        }
+    }
+}
+
+impl Default for NotifyAfter {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl TryFrom<u32> for NotifyAfter {
+    type Error = String;
+
+    fn try_from(seconds: u32) -> Result<Self, String> {
+        match seconds {
+            0 => Ok(Self::Off),
+            s if s <= NOTIFY_AFTER_MAX_SECONDS => Ok(Self::Seconds(s)),
+            _ => Err(format!("at most {NOTIFY_AFTER_MAX_SECONDS} seconds")),
+        }
+    }
+}
+
+impl From<NotifyAfter> for u32 {
+    fn from(after: NotifyAfter) -> Self {
+        match after {
+            NotifyAfter::Off => 0,
+            NotifyAfter::Seconds(seconds) => seconds,
         }
     }
 }

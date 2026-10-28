@@ -11,8 +11,8 @@ use ds_settings::{FileName, Format, SettingsDoc};
 use serde::{Deserialize, Serialize};
 
 use super::schema::APP;
-use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
 use super::words::{Blinking, CursorShape, KeepWay, PagerWay, StartFolder};
+use temor_panes::pane::settings::{FontPoints, LinePercent, NotifyAfter, ScrollbackLines};
 
 /// The page temor's keys are on in the Settings app: temor's own.
 fn page() -> Page {
@@ -37,7 +37,7 @@ pub struct FontSettings {
         range = "6..=72",
         unit = "points"
     )]
-    pub size: FontSize,
+    pub size: FontPoints,
     #[settings(
         label = "Line height",
         help = "How tall each line is, as a share of the font's own line. More opens the text up.",
@@ -45,15 +45,15 @@ pub struct FontSettings {
         range = "80..=200",
         unit = "%"
     )]
-    pub line_height: LineSpacing,
+    pub line_height: LinePercent,
 }
 
 impl Default for FontSettings {
     fn default() -> Self {
         Self {
             family: "system".to_owned(),
-            size: FontSize::default(),
-            line_height: LineSpacing::default(),
+            size: FontPoints::DEFAULT,
+            line_height: LinePercent::DEFAULT,
         }
     }
 }
@@ -89,7 +89,7 @@ pub struct ScrollbackSettings {
         range = "0..=1000000",
         unit = "lines"
     )]
-    pub lines: ScrollbackSize,
+    pub lines: ScrollbackLines,
 }
 
 /// `shell.*`: what a new pane runs.
@@ -146,7 +146,7 @@ pub struct NotifySettings {
         range = "0..=86400",
         unit = "seconds"
     )]
-    pub after: NotifySeconds,
+    pub after: NotifyAfter,
 }
 
 /// `offer.*`: the commands temor offers to set up blocks in (ssh, su, ...).

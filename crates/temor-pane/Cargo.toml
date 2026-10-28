@@ -25,6 +25,8 @@ rustix = { workspace = true, features = ["net"] }
 temor-render = { workspace = true, optional = true }
 temor-vt = { workspace = true, optional = true }
 thiserror = { workspace = true }
+# The settings file reads the numbers straight into the types below, with their limits.
+serde = { workspace = true }
 
 # `LOCAL_PEERCRED` for the status socket on macOS (`SO_PEERCRED` is Linux's).
 [target.'cfg(target_os = "macos")'.dependencies]

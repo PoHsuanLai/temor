@@ -187,7 +187,7 @@ fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
         "nothing was written"
     );
     type_into(&mut h, size, "20");
-    assert_eq!(settings_text(&ambient).font.size.0.points(), 20.0);
+    assert_eq!(settings_text(&ambient).font.size.points(), 20.0);
 }
 
 /// Shell offer entries are added and removed from the lists the page shows.

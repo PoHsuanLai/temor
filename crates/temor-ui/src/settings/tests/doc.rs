@@ -164,7 +164,7 @@ fn a_size_written_with_a_fraction_or_as_a_whole_number_both_read() {
         let (_dir, store) = store_with(&format!("[font]\n{text}\n"));
         let loaded = store.load::<TerminalDoc>();
         assert!(loaded.invalid.is_empty(), "{text}: {loaded:?}");
-        assert_eq!(loaded.value.font.size.0.points(), want, "{text}");
+        assert_eq!(loaded.value.font.size.points(), want, "{text}");
     }
 }
 
