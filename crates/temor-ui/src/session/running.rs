@@ -29,17 +29,6 @@ impl Session {
         })
     }
 
-    /// The block of the newest command that is still running.
-    pub fn running_block(&self) -> Option<temor_client::model::vocab::ids::BlockId> {
-        self.core()
-            .blocks
-            .store()
-            .iter()
-            .rev()
-            .find(|block| block.outcome() == Outcome::Running)
-            .map(|block| block.id)
-    }
-
     /// Sends `bytes` to the program as if typed (an interrupt, for one).
     pub fn send_bytes(&self, bytes: &[u8]) {
         self.pane.send(bytes);

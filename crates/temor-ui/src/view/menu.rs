@@ -61,7 +61,6 @@ fn tip_of(item: Item) -> Option<&'static str> {
         Item::PutInPrompt => "Type the command into the prompt. Press Return to run it",
         Item::Bookmark { on: false } => "Alt+Up and Alt+Down step between bookmarks",
         Item::Fold { .. } => "Show only the command's card",
-        Item::Detach => "Move the running program to a pane of its own. The prompt comes back",
         Item::Stop => "Interrupt the program (Control-C)",
         Item::SaveOutput => "Save this command's output to Downloads",
         Item::ViewFiles => "Show the files this command listed",

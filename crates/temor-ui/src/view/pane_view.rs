@@ -41,7 +41,6 @@ use super::handlers::{
 };
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
-use super::live_head::LiveCardHead;
 use super::menu::Pick;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
@@ -54,7 +53,6 @@ use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
-use crate::hub::LiveIcon;
 use temor_client::model::menu::{BlockFacts, Item};
 use temor_panes::pane::keys::Action;
 
@@ -305,7 +303,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 has_output: menu_block.is_some_and(|block| s.block_foldable(block)),
                 bookmarked: s.picks_bookmarked(),
                 folded: s.picks_folded(),
-                detachable: desk.hub.can_detach(pane),
                 on_host,
             },
             lenses,
@@ -332,7 +329,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 Pick::Item(Item::Bookmark { .. }) => run(Action::ToggleBookmark),
                 Pick::Item(Item::Fold { .. }) => run(Action::ToggleFold),
                 Pick::Item(Item::SelectAllBlocks) => run(Action::SelectAllBlocks),
-                Pick::Item(Item::Detach) => desk.detach_block(pane),
                 Pick::Item(Item::Stop) => {
                     if let Some(s) = slot.borrow_mut().session.as_mut() {
                         s.send_bytes(b"\x03");
@@ -372,7 +368,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             repaint(&slot);
         }
     };
-    let live_head = desk.hub.live_head(pane);
     // Cards and headers are set in the grid's own family, so a command reads as it was typed.
     let card_font = slot
         .borrow()
@@ -397,10 +392,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .session
         .as_ref()
         .and_then(|s| s.selected_block());
-    let live_icon = {
-        let desk = desk.clone();
-        move |icon: LiveIcon| desk.live_icon(pane, icon)
-    };
     let wheel_slot = Rc::clone(&slot);
     rsx! {
         div { class: "temor-pane",
@@ -423,9 +414,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     }
                     ConsoleTools { pane, row, finding: find.is_some(), desk: desk.clone(), on_find: find_toggle }
                 }
-            }
-            if let Some(head) = live_head {
-                LiveCardHead { head, font: card_font.clone(), on_icon: live_icon }
             }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),

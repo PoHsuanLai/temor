@@ -234,13 +234,8 @@ impl Hub {
             0 => Marking::Unmarked,
             _ => Marking::Marked,
         };
-        // A live card's pane runs the program it was given, which its own shell never marked.
-        let carried = self.live_head(pane).map(|head| head.command);
         tab_title(NameIn {
-            running: running
-                .as_ref()
-                .map(|run| run.command.as_str())
-                .or(carried.as_deref()),
+            running: running.as_ref().map(|run| run.command.as_str()),
             title: &title,
             cwd: cwd.as_deref(),
             home: &self.launch.ambient.home,
@@ -255,8 +250,7 @@ impl Hub {
     fn row_icon(&self, pane: PaneId, title: &str, on_host: bool) -> RowIcon {
         let running = self
             .live(pane, |s| s.running_command().map(|run| run.command))
-            .flatten()
-            .or_else(|| self.live_head(pane).map(|head| head.command));
+            .flatten();
         let found = running.as_deref().and_then(|command| {
             let program = programs_of(command).into_iter().next()?;
             // Found where the shell finds it; a host's programs are not on this computer.

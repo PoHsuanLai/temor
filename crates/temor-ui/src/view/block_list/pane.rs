@@ -71,8 +71,8 @@ const FIND_ROOM: f32 = 64.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
 
-/// What a card's tools do, each to the block it names; `detach` and `stop` act on the running
-/// program, `fold` folds a block's output away or brings it back.
+/// What a card's tools do, each to the block it names; `fold` folds a block's output away or
+/// brings it back.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CardActions {
     pub fold: EventHandler<BlockId>,
@@ -628,7 +628,7 @@ fn StickyHead(
 }
 
 /// A card's head: the fold chevron, the command, what it came to, and, on the card the tools are
-/// on, its tools: copy the output, type it again and more, or, while it runs, detach and stop.
+/// on, its tools: copy the output, type it again and more.
 #[component]
 #[allow(non_snake_case)]
 fn CardHead(

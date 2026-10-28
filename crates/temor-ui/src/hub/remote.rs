@@ -131,8 +131,6 @@ pub(super) struct RemoteHub {
     pub saved: BTreeMap<PaneId, SessionId>,
     /// Panes that are sessions in this computer's own daemon, and how each starts.
     pub local: BTreeMap<PaneId, LocalStart>,
-    /// A detach in progress: the pane giving up its program, and the session it takes along.
-    pub detaching: Option<(PaneId, SessionId)>,
     /// The helper builds this temor carries, one per kind of processor.
     pub builds: HelperBuilds,
     started: Instant,
@@ -150,7 +148,6 @@ impl RemoteHub {
             panes: BTreeMap::new(),
             saved: BTreeMap::new(),
             local: BTreeMap::new(),
-            detaching: None,
             builds: HelperBuilds::new(
                 arch_of(std::env::consts::ARCH),
                 ambient.env.get("TEMOR_REMOTE_HELPER"),

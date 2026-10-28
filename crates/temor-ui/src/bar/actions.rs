@@ -36,7 +36,6 @@ pub const BAR_ACTIONS: &[Action] = &[
     Action::ShowStage,
     Action::ShowConsole,
     Action::ShowStageAndConsole,
-    Action::DetachProgram,
     Action::ZoomIn,
     Action::ZoomOut,
     Action::ActualSize,

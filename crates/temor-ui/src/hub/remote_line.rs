@@ -144,9 +144,6 @@ impl Hub {
                 ended.push(*pane);
             }
         }
-        for pane in ended {
-            self.live_ended(pane, None);
-        }
         self.tell_sessions(host);
     }
 

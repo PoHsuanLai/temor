@@ -59,8 +59,6 @@ pub struct BlockFacts {
     pub bookmarked: bool,
     /// Whether every picked block's output is folded.
     pub folded: bool,
-    /// Whether the running program can move to a pane of its own.
-    pub detachable: bool,
     /// Whether the console is a session on another computer.
     pub on_host: bool,
 }
@@ -82,7 +80,6 @@ pub enum Item {
     Fold {
         folded: bool,
     },
-    Detach,
     Stop,
     SaveOutput,
     ViewFiles,
@@ -135,7 +132,6 @@ impl Item {
             Item::PutInPrompt
             | Item::Bookmark { .. }
             | Item::Fold { .. }
-            | Item::Detach
             | Item::Stop
             | Item::SaveOutput
             | Item::ViewFiles
@@ -169,7 +165,6 @@ impl Item {
                 true => "Fold Outputs",
                 false => "Fold Output",
             },
-            Item::Detach => "Detach Running Program",
             Item::Stop => "Stop",
             Item::SaveOutput => "Save Output",
             Item::ViewFiles => "View Files",
@@ -238,7 +233,6 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
                     folded: block.folded,
                 },
             );
-            add(block.running && block.detachable, Item::Detach);
             add(block.running, Item::Stop);
             add(one && done && block.has_output, Item::SaveOutput);
             add(one && done && block.has_output, Item::ViewFiles);
@@ -372,7 +366,6 @@ mod tests {
         );
         let running = BlockFacts {
             running: true,
-            detachable: true,
             ..done
         };
         assert_eq!(
@@ -380,7 +373,6 @@ mod tests {
             [vec![
                 "Bookmark",
                 "Fold Output",
-                "Detach Running Program",
                 "Stop",
                 "Select All Commands"
             ]]

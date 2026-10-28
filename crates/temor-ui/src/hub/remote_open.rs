@@ -206,7 +206,6 @@ impl Hub {
 
     /// A host pane was closed: its session on the host ends.
     pub(super) fn remote_forget(&mut self, pane: PaneId) {
-        self.live_closed(pane);
         self.remote.saved.remove(&pane);
         self.remote.local.remove(&pane);
         let Some(old) = self.remote.panes.remove(&pane) else {

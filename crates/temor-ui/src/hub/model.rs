@@ -85,8 +85,6 @@ pub struct Hub {
     pub(super) peek: PeekHub,
     /// Programs run in tabs of their own in place of the shell (`temor -e`).
     pub(super) run: RunHub,
-    /// Running programs moved to terminals of their own, shown as live cards.
-    pub(super) live_cards: super::live_cards::LiveCards,
     /// The apps programs belong to, found as tabs run them (PLAN P22).
     pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
     pub(super) icon_pack: crate::edge::icon_pack::IconPack,
@@ -168,7 +166,6 @@ impl Hub {
             peek: PeekHub::default(),
 
             run: RunHub::default(),
-            live_cards: Default::default(),
             app_icons: RefCell::default(),
             icon_pack,
             history: Default::default(),

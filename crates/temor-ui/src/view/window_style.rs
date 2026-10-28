@@ -44,10 +44,6 @@ pub const WINDOW_CSS: &str = "\
 .temor-blk-choice[data-picked=true] { background: var(--sel-neutral); }.temor-blk-choice[data-more=true] { color: var(--ink-faint); font-size: var(--fs-small); }\
 .temor-blk-field { flex: 1 1 auto; min-width: 0; color: var(--term-fg); font-size: var(--fs-reading); }\
 .temor-blk-img { position: absolute; top: 0; display: block; object-fit: contain; object-position: left top; }\
-.temor-live-head { position: relative; z-index: var(--z-raise); flex: none; display: flex; align-items: center; gap: var(--s-6); min-width: 0; padding: 0 0 var(--s-4); border-bottom: var(--hair) solid var(--line-soft); margin-bottom: var(--s-4); }\
-.temor-live-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 700; font-size: var(--fs-reading); color: var(--term-ansi-3); }\
-.temor-live-head[data-state=ended] .temor-live-title { color: var(--ink); }\
-.temor-live-status { flex: none; font-size: var(--fs-small); color: var(--ink-soft); }\
 .temor-keys:focus { outline: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\

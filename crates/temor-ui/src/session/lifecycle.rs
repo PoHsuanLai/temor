@@ -176,16 +176,6 @@ impl Session {
         self.core().report_key = key;
     }
 
-    /// The key of the shell this session shows, if it reports.
-    pub fn report_key(&self) -> Option<temor_panes::shell::report::ReportKey> {
-        self.core().report_key.clone()
-    }
-
-    /// The commands run before this pane's screen was handed to it, for the blocks found on it.
-    pub fn inherit(&mut self, history: Vec<temor_client::model::session::CommandRecord>) {
-        self.core().inherit(history);
-    }
-
     /// What the shell holds that a new shell would need to look the same.
     pub fn shell_state(&self) -> ShellState {
         self.core().shell_state.clone()

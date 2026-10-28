@@ -57,7 +57,6 @@ impl Action {
             | Self::PinTab
             | Self::UnpinTab
             | Self::ShowDownloads
-            | Self::DetachProgram
             | Self::Settings
             | Self::SettingsAt(_)
             | Self::Back
@@ -113,7 +112,6 @@ impl Action {
             Self::PinTab => "Pin Tab",
             Self::UnpinTab => "Unpin Tab",
             Self::ShowDownloads => "Downloads",
-            Self::DetachProgram => "Detach Running Program",
             Self::Settings => "Settings",
             Self::SettingsAt(pane) => pane.row_label(),
             Self::Back => "Back",

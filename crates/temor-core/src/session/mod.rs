@@ -6,9 +6,6 @@ mod annotations;
 #[cfg(test)]
 mod annotations_tests;
 
-mod cards;
-#[cfg(test)]
-mod cards_tests;
 mod checkpoint;
 pub mod found;
 pub mod frame;
@@ -17,7 +14,6 @@ mod marks;
 mod shell_state;
 
 pub use annotations::{AnnotateIn, AnnotateOut, Annotations, annotate_step};
-pub use cards::{CardIn, CardOut, CardSize, Cards, Life, Placement, Surface, SurfaceId, card_step};
 pub use checkpoint::{Checkpoint, CheckpointFault, CommandRecord};
 
 /// The most bytes a pane's kept screen may have (4 MiB): one a terminal takes, or one written
