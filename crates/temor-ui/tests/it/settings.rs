@@ -13,7 +13,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::SystemPrefs;
 use ds_harness::{Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
-use temor_core::space::{AccountRef, Credential, Profile, Project, Route};
+use temor_client::model::space::{AccountRef, Credential, Profile, Project, Route};
 use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot, RoutePattern};
 use temor_pane::keys::SettingsPane;
 use temor_pane::settings::TerminalSettings;
@@ -305,7 +305,9 @@ fn a_space_folder_sent_to_the_main_window_is_kept() {
         let kept = temor_client::SqliteStore::open(state.join("temor.db"))
             .ok()
             .and_then(|store| store.kept("spaces").ok().flatten())
-            .and_then(|text| serde_json::from_str::<temor_core::space::TemorSpaces>(&text).ok());
+            .and_then(|text| {
+                serde_json::from_str::<temor_client::model::space::TemorSpaces>(&text).ok()
+            });
         if let Some(spaces) = kept
             && spaces.list().iter().any(|s| {
                 s.payload.root.as_ref().map(ProjectRoot::as_str) == Some("/srv/work")

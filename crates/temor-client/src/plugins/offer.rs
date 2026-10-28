@@ -2,8 +2,8 @@
 
 use std::collections::BTreeMap;
 
-use temor_core::bar::PluginRow;
 use temor_core::vocab::text::PluginId;
+use temor_layout::bar::PluginRow;
 use temor_plugins::Plugin;
 use temor_plugins::message::Item;
 

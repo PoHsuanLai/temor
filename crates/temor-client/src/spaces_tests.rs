@@ -1,8 +1,8 @@
 use ds_style::space::list::{SpaceId, Spaces};
 use temor_core::error::CoreError;
-use temor_core::space::Project;
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_layout::space::Project;
+use temor_layout::workspace::WorkspaceIn;
 
 use super::Book;
 

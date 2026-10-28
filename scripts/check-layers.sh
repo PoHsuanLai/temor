@@ -32,6 +32,10 @@ temor-render 1
 temor-pane 1
 temor-plugins 1
 temor-core 2
+temor-blocks 2
+temor-hosts 2
+temor-agent 2
+temor-layout 2
 temor-client 3
 temor-panes 3
 temor-desktop 3

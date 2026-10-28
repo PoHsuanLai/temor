@@ -924,8 +924,8 @@ fn copy_to(location: temor_vt::ClipboardLocation, text: &str) -> PaneEvent {
 
 #[test]
 fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     if !super::support::tools_present() {
         return;
     }
@@ -956,8 +956,8 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
 /// alone, with the same question on another computer.
 #[test]
 fn a_program_copies_to_the_primary_selection_when_it_names_it() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     use temor_vt::ClipboardLocation::{Primary, Selection};
     if !super::support::tools_present() {
         return;
@@ -984,7 +984,7 @@ fn a_program_copies_to_the_primary_selection_when_it_names_it() {
 
 #[test]
 fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
-    use temor_core::remote::Grant;
+    use temor_client::model::remote::Grant;
     use temor_vt::VtEvent;
     if !super::support::tools_present() {
         return;
@@ -1018,7 +1018,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
 
 #[test]
 fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
-    use temor_core::notify::Focus;
+    use temor_client::model::notify::Focus;
     if !super::support::tools_present() {
         return;
     }

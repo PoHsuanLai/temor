@@ -3,8 +3,8 @@
 //! (PLAN §8.1): a long command finishing, a program's notification, the bell, each through the
 //! same rate limit.
 
-use temor_core::block::{Block, format_elapsed};
-use temor_core::notify::{Notice as Desk, bell_notice, finished_notice, program_notice};
+use temor_blocks::block::{Block, format_elapsed};
+use temor_blocks::notify::{Notice as Desk, bell_notice, finished_notice, program_notice};
 use temor_pane::PaneEvent;
 use temor_pty::ChildExit;
 
@@ -149,7 +149,7 @@ pub fn desktop_note(notice: &Desk) -> DesktopNote {
             };
             let took = format_elapsed(*took_ms);
             match outcome {
-                temor_core::block::Outcome::Failed(code) => DesktopNote {
+                temor_blocks::block::Outcome::Failed(code) => DesktopNote {
                     title: "Command failed".to_owned(),
                     body: format!("{what} failed with status {} after {took}", code.0),
                 },

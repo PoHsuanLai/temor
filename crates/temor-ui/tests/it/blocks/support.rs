@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use chordkit::{Desktop, Overrides, Platform};
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_pane::PaneEvent;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::settings::ShellChoice;
@@ -266,7 +266,7 @@ pub(super) fn shells() -> Vec<(&'static str, PathBuf)> {
 
 /// The gutter's marks for the blocks whose prompts are on screen; none on a full-screen
 /// program's screen.
-pub(super) fn marks_of(session: &Session) -> Vec<temor_core::session::frame::BlockMark> {
+pub(super) fn marks_of(session: &Session) -> Vec<temor_client::model::session::frame::BlockMark> {
     session
         .frame()
         .map(|frame| frame.marks())

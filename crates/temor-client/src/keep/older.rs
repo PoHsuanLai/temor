@@ -9,10 +9,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use ds_style::space::list::SpaceId;
-use temor_core::host::store::{HostsFile, read_hosts, splice_hosts};
-use temor_core::space::TemorSpaces;
-use temor_core::workspace::restore::{FreshWhy, Restored, decode, encode};
-use temor_core::workspace::{KeepClosed, Workspace};
+use temor_hosts::host::store::{HostsFile, read_hosts, splice_hosts};
+use temor_layout::space::TemorSpaces;
+use temor_layout::workspace::restore::{FreshWhy, Restored, decode, encode};
+use temor_layout::workspace::{KeepClosed, Workspace};
 
 use super::private::{ensure_private_dir, write_private_file};
 

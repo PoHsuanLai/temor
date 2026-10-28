@@ -1,0 +1,25 @@
+[package]
+name = "temor-hosts"
+description = "temor's rules for other computers (sans I/O): a host's consent, master, forwards and edits, the remote session and its link, transfers, and the downloads shelf."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+temor-core = { workspace = true }
+temor-schema = { workspace = true }
+temor-ssh = { workspace = true }
+temor-shell = { workspace = true }
+ds-core = { workspace = true }
+ds-style = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+temor-testkit = { workspace = true }
+ds-core = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true

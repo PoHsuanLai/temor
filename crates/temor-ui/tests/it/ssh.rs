@@ -8,11 +8,13 @@ use std::path::PathBuf;
 
 use ds_harness::Harness;
 use temor_client::keep::older::save_with_hosts;
-use temor_core::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
-use temor_core::host::store::{HostsFile, PaneHost};
-use temor_core::remote::Grant;
+use temor_client::model::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
+use temor_client::model::host::store::{HostsFile, PaneHost};
+use temor_client::model::remote::Grant;
+use temor_client::model::workspace::{
+    ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+};
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
 use temor_ui::view::probe::Probe;
 
 use super::drive::{press, wait_html, wait_until};

@@ -11,13 +11,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use ds_style::space::list::SpaceId;
-use temor_core::host::store::{HostsFile, read_hosts, splice_hosts};
-use temor_core::space::TemorSpaces;
 use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::restore::{
+use temor_hosts::host::store::{HostsFile, read_hosts, splice_hosts};
+use temor_layout::space::TemorSpaces;
+use temor_layout::workspace::restore::{
     FreshWhy, Restored, decode, encode, launch_plan, viewer_plan,
 };
-use temor_core::workspace::{KeepClosed, Spawn, ViewerOpen, Workspace, leave_out};
+use temor_layout::workspace::{KeepClosed, Spawn, ViewerOpen, Workspace, leave_out};
 use temor_schema::session::SessionId;
 
 use super::older::{SpacesStartup, Startup, file_name, load_for, load_spaces};

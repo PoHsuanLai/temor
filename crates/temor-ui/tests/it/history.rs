@@ -396,9 +396,11 @@ fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
 #[test]
 fn an_older_panes_kept_commands_start_its_session() {
     use temor_client::keep::{checkpoint, older};
-    use temor_core::session::{Checkpoint, CommandRecord, ShellState};
+    use temor_client::model::session::{Checkpoint, CommandRecord, ShellState};
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     if !super::support::window_tools_present() {
         return;
     }

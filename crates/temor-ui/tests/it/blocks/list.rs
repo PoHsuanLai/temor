@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::keys::Action;
 use temor_ui::view::block_list::segments::{Placed, SegKey, Sizes, lay_out, list_map};

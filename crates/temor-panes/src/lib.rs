@@ -19,7 +19,7 @@ pub mod sources;
 
 use std::path::PathBuf;
 
-use temor_core::notify::{Focus, Limiter};
+use temor_blocks::notify::{Focus, Limiter};
 use temor_pane::settings::NotifyAfter;
 use temor_pane::{Hold, PaneHandle};
 use temor_pty::ChildExit;
@@ -44,7 +44,7 @@ pub use hear::{Heard, desktop_note};
 pub use heard::sanitise_title;
 pub use hearing::{Hearing, Locked, Shared, share};
 pub use open::{OpenError, PaneKit};
-pub use temor_core::session::SNAPSHOT_LIMIT;
+pub use temor_blocks::session::SNAPSHOT_LIMIT;
 
 /// What a pane is, apart from how the window shows it: its engine, what its program said (title,
 /// folder, progress, how it ended), its commands, its shell's state, its completion sources, what
@@ -58,12 +58,12 @@ pub struct PaneCore {
     pub hold_generation: u64,
     pub blocks: BlockLog,
     /// What the shell holds that a new shell would need (folder, variables, aliases).
-    pub shell_state: temor_core::session::ShellState,
+    pub shell_state: temor_blocks::session::ShellState,
     /// The `PATH` the shell last reported: where its programs are found, which a window opened
     /// from the Finder is not given (its own is the system's few folders).
     pub shell_path: Option<String>,
     /// Commands the shell this session continues ran before this window began.
-    pub inherited: Vec<temor_core::session::CommandRecord>,
+    pub inherited: Vec<temor_blocks::session::CommandRecord>,
     /// The key temor gave the shell it started here; a state report without it is not the
     /// shell's and is dropped. None: nothing reports.
     pub report_key: Option<temor_shell::report::ReportKey>,
@@ -79,11 +79,11 @@ pub struct PaneCore {
     pub clock: Box<dyn Clock>,
     pub shelf_dir: PathBuf,
     /// How the pane's shell quotes a word, for pasting dropped paths.
-    pub quoting: temor_core::shelf::Quoting,
+    pub quoting: temor_hosts::shelf::Quoting,
     /// Whether the pane's shell runs on this computer.
-    pub site: temor_core::shelf::PaneSite,
+    pub site: temor_hosts::shelf::PaneSite,
     /// What the person answered about the program copying to the clipboard (OSC 52).
-    pub clip_write: temor_core::remote::Grant,
+    pub clip_write: temor_hosts::remote::Grant,
     /// The pane's copy of the clipboard, for the program's reads.
     pub clip_mirror: temor_pane::ClipboardMirror,
     /// A clipboard question waiting for the person.

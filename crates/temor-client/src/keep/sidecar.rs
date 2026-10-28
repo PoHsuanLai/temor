@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use temor_core::vocab::ids::PaneId;
 
 use super::private::{ensure_private_dir, write_private_file};
-use temor_core::session::SNAPSHOT_LIMIT;
+use temor_blocks::session::SNAPSHOT_LIMIT;
 
 /// The folder inside the state folder.
 const FOLDER: &str = "snapshots";
@@ -81,7 +81,7 @@ pub fn clear(state_dir: &Path) {
 mod tests {
     use std::path::Path;
 
-    use temor_core::session::SNAPSHOT_LIMIT;
+    use temor_blocks::session::SNAPSHOT_LIMIT;
     use temor_core::vocab::ids::PaneId;
 
     use super::{Stored, clear, remove, take, write};

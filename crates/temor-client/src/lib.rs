@@ -8,9 +8,17 @@
 //! Facts, not views: a query names sessions, commands, places. What a sidebar or a page makes of
 //! them is the window's. Ported from mailo's `mail-client`, so the two apps share one shape.
 
-// temor's pure rules and their vocabulary (`temor-core`), for the window, which names them through
-// here and no other way (PLAN §2b, the fence; decided 2026-10-28).
-pub use temor_core as model;
+/// temor's pure rules and their vocabulary, for the window, which names them through here and no
+/// other way (PLAN §2b, the fence; decided 2026-10-28): the shared vocabulary (`temor-core`), a
+/// session and its blocks (`temor-blocks`), the layout (`temor-layout`), other computers
+/// (`temor-hosts`) and agents (`temor-agent`).
+pub mod model {
+    pub use temor_agent::{agent, presence};
+    pub use temor_blocks::{block, key, notify, offer, proposal, session};
+    pub use temor_core::*;
+    pub use temor_hosts::{host, remote, shelf, transfer};
+    pub use temor_layout::{bar, quick, space, split, stage, workspace};
+}
 
 pub mod act;
 mod client;

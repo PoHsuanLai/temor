@@ -1,7 +1,7 @@
 //! What the pane's own events change of it: its title, its folder, its shell's state, its
 //! progress, a hold on its screen, and what is kept of it when the window goes.
 
-use temor_core::session::{Checkpoint, SNAPSHOT_LIMIT, ShellIn, ShellState, shell_step};
+use temor_blocks::session::{Checkpoint, SNAPSHOT_LIMIT, ShellIn, ShellState, shell_step};
 use temor_core::vocab::text::display_text;
 use temor_pane::Hold;
 use temor_shell::cwd_from_url;

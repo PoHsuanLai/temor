@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use temor_core::block::Outcome;
-use temor_core::notify::Focus;
+use temor_client::model::block::Outcome;
+use temor_client::model::notify::Focus;
 use temor_pane::PaneEvent;
 use temor_vt::Notification;
 

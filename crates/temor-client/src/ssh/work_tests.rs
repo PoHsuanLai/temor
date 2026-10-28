@@ -1,7 +1,7 @@
 //! The classifying and port-picking helpers of the SSH jobs.
 
-use temor_core::host::edit::EditFault;
-use temor_core::host::forward::ForwardFault;
+use temor_hosts::host::edit::EditFault;
+use temor_hosts::host::forward::ForwardFault;
 use temor_ssh::{Port, SshError};
 
 use crate::ssh::work::{edit_fault, forward_fault, free_local_port};

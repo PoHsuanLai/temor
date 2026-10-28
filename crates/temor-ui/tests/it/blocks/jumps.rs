@@ -1,7 +1,7 @@
 //! Ctrl+Shift+Up and Down, driven by direct calls on a real shell.
 
 use chordkit::{Key, KeyInput as Pressed, Modifier, Modifiers as ChordMods, NamedKey};
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_ui::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};

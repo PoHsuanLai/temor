@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use temor_core::space::AccountRef;
 use temor_desktop::{SecretFault, SecretVault};
+use temor_layout::space::AccountRef;
 
 use super::start::{CredentialFault, CredentialSource, Credentials};
 

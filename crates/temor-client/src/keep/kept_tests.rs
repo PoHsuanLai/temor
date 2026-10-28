@@ -2,10 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ds_style::space::list::{SpaceId, Spaces};
-use temor_core::host::store::HostsFile;
-use temor_core::space::Project;
-use temor_core::workspace::WorkspaceIn;
-use temor_core::workspace::restore::encode;
+use temor_hosts::host::store::HostsFile;
+use temor_layout::space::Project;
+use temor_layout::workspace::WorkspaceIn;
+use temor_layout::workspace::restore::encode;
 use temor_store::{SqliteStore, Topics};
 
 use super::{Kept, Laying, Through};

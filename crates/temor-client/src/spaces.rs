@@ -10,12 +10,12 @@ use std::collections::BTreeMap;
 
 use ds_style::space::list::{SpaceId, Spaces};
 use temor_core::error::CoreError;
-use temor_core::quick::adopt;
-use temor_core::space::{Place, Project, TemorSpaces, carry_tab};
 use temor_core::vocab::ids::{PaneId, TabId};
 use temor_core::vocab::text::Cwd;
-use temor_core::workspace::restore::{Restored, VERSION, decode};
-use temor_core::workspace::{
+use temor_layout::quick::adopt;
+use temor_layout::space::{Place, Project, TemorSpaces, carry_tab};
+use temor_layout::workspace::restore::{Restored, VERSION, decode};
+use temor_layout::workspace::{
     ClosedState, KeepClosed, Workspace, WorkspaceIn, WorkspaceOut, workspace_step,
 };
 

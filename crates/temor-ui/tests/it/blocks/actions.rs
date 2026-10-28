@@ -2,7 +2,7 @@
 
 use super::super::support::tools_present;
 use super::support::{pump, run_line, shell_path, start};
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_vt::SurfacePoint;
 
 #[test]

@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use temor_core::session::Checkpoint;
+use temor_blocks::session::Checkpoint;
 use temor_core::vocab::ids::PaneId;
 
 use temor_schema::session::SessionId;

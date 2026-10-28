@@ -24,6 +24,10 @@ quire-desktop = ["temor-desktop/quire-desktop"]
 temor-schema = { workspace = true }
 temor-store = { workspace = true }
 temor-core = { workspace = true }
+temor-blocks = { workspace = true }
+temor-layout = { workspace = true }
+temor-hosts = { workspace = true }
+temor-agent = { workspace = true }
 # A new shell's report key (`keep::replay`) and the private folder check (`keep::private`).
 temor-shell = { workspace = true }
 # The Spaces (`spaces`): the kit's list, which temor-core keeps its projects in.
@@ -55,6 +59,9 @@ toml = { workspace = true }
 
 [dev-dependencies]
 temor-client = { path = ".", features = ["testing"] }
+temor-testkit = { workspace = true }
+ds-core = { workspace = true, features = ["testing"] }
+serde = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 

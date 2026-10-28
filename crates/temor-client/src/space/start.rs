@@ -7,7 +7,7 @@ use std::fmt;
 use std::io::Read;
 use std::sync::Arc;
 
-use temor_core::space::AccountRef;
+use temor_layout::space::AccountRef;
 
 /// The most of a dotenv file that is read; a larger file is not a dotenv file.
 const DOTENV_LIMIT: u64 = 64 * 1024;

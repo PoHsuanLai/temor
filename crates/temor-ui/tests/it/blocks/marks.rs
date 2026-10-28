@@ -2,7 +2,7 @@
 //! pairing with the next mark, the anchors of ignored marks, a payload that tries to submit, and
 //! the gutter while a full-screen program runs. The shell is real; the marks are written here.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
