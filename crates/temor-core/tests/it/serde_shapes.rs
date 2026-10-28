@@ -1,4 +1,4 @@
-//! Stored and wire types: their serde forms (CONVENTIONS §12), round trips, and the Spaces kit's
+//! Stored and wire types: their serde forms, round trips, and the Spaces kit's
 //! flat payload.
 
 use ds_core::testing::word_matches_serde;

@@ -35,8 +35,8 @@ confidence-threshold = 0.9
 #
 # Depending on them obliges us to make *those files'* source available, which their registries
 # already do, and obliges nothing of ours. The rule that actually constrains these repositories,
-# do not copy MPL source into them, is not something a dependency gate can check; it lives in
-# CONVENTIONS.md where it can be read by the person about to break it.
+# do not copy MPL source into them, is not something a dependency gate can check: it is said
+# here, where the person about to break it reads it.
 #
 # What stays out of that list is strong copyleft: GPL, AGPL, EUPL. Those would change what this
 # project may be distributed as, and a dependency arriving under one should stop the build.

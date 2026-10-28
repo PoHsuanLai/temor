@@ -53,7 +53,7 @@ ordered by dependency (§11), not split into versions.
 | D16 | **Packaging:** temor is a lib plus a thin `main.rs`. Single binary vs dylib is decided later at desktop level. |
 
 ### Rules inherited
-- Follow quire `CONVENTIONS.md` and `CONSUMING.md`, including the four coherence rules (§5): no literal
+- Follow quire's `CONSUMING.md` coherence rules (§5): no literal
   colours, durations, fonts or radii; quire components only; anything missing goes to quire
   first; motion only through quire timers. Look: Mac-native (design/27).
 - No developer words in the UI: never "ACP", "MCP", "OSC", "PTY" or "CLI".
