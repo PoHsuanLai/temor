@@ -2,7 +2,7 @@
 //! picture must still match one drawn with room to spare: no glyph may be read from a cleared
 //! atlas.
 
-use temor_vt::{CellStyle, Col, GridSize, Rgb, Row, Selected};
+use temor_vt::{CellStyle, Col, GridSize, Rgb, Row};
 
 use super::CpuRenderer;
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
@@ -56,7 +56,7 @@ fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {
                 fg: None,
                 bg: None,
                 style: CellStyle::default(),
-                selected: Selected::No,
+                selected: false,
             })
             .collect();
         f.set_row(Row(r as u16), cells);
@@ -164,7 +164,7 @@ fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
                     style: CellStyle::default(),
                     hyperlink: temor_vt::Hyperlink::None,
                     semantic: temor_vt::SemanticMark::Output,
-                    selected: temor_vt::Selected::No,
+                    selected: false,
                 })
                 .collect()
         })

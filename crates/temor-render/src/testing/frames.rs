@@ -1,6 +1,6 @@
 //! A frame of box-drawing characters and the view that draws it.
 
-use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row, Selected};
+use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row};
 
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
 use crate::metrics::{Padding, PixelSize, Scale};
@@ -38,7 +38,7 @@ pub fn glyph_frame(first: u32, count: usize) -> PaneFrame {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    selected: Selected::No,
+                    selected: false,
                 }
             })
             .collect();

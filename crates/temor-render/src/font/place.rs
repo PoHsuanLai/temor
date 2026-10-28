@@ -4,7 +4,7 @@ use super::boxdraw;
 use super::cache::{GlyphCache, GlyphKind, RasterKey, RunGlyph, Special};
 use super::config::{FaceStyle, Slant, Weight};
 use super::decor::decoration_mask;
-use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
+use super::face::{ColorFormat, Face, FaceId, FaceRole, Synth};
 use super::raster::{colr, fit_bitmap, outline};
 use crate::platform::BitmapEmojiSource;
 
@@ -36,17 +36,11 @@ impl GlyphCache {
             }
         }
         let synth = match face.role {
-            FaceRole::Primary => (face.embolden, face.skew),
-            FaceRole::Fallback => (
-                match style.weight {
-                    Weight::Bold => Embolden::Yes,
-                    Weight::Regular => Embolden::No,
-                },
-                match style.slant {
-                    Slant::Italic => Skew::Yes,
-                    Slant::Upright => Skew::No,
-                },
-            ),
+            FaceRole::Primary => face.synth,
+            FaceRole::Fallback => Synth {
+                embolden: style.weight == Weight::Bold,
+                skew: style.slant == Slant::Italic,
+            },
         };
         // A fallback face's glyphs are centred in the cells they span.
         let shift = match face.role {
@@ -96,7 +90,7 @@ impl GlyphCache {
         face_id: FaceId,
         face: &Face,
         glyph: u16,
-        synth: (Embolden, Skew),
+        synth: Synth,
     ) -> Option<RunGlyph> {
         let key = RasterKey {
             face: face_id,
@@ -132,7 +126,7 @@ impl GlyphCache {
         let key = RasterKey {
             face: face_id,
             glyph,
-            synth: (Embolden::No, Skew::No),
+            synth: Synth::default(),
             color_box: (w, h),
         };
         if let Some(known) = self.rasters.get(&key) {

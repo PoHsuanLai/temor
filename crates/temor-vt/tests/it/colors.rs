@@ -2,7 +2,7 @@
 //! kitty placement pixel offsets.
 
 use temor_vt::{
-    GridPoint, KittyLayer, PointSpace, RenderView, Rgb, Row, RowFilter, Selected, SelectionShape,
+    GridPoint, KittyLayer, PointSpace, RenderView, Rgb, Row, RowFilter, SelectionShape,
     TextSelection,
 };
 
@@ -65,8 +65,7 @@ fn a_host_selection_marks_cells() {
         let mut selected = Vec::new();
         f.rows(RowFilter::All, |r| {
             if r.row() == Row(0) {
-                r.cells(|c| selected.push(c.selected == Selected::Yes))
-                    .expect("cells");
+                r.cells(|c| selected.push(c.selected)).expect("cells");
             }
         })
         .expect("rows");

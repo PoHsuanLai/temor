@@ -1,4 +1,4 @@
-use temor_vt::{CellStyle, Col, Rgb, Row, Selected, StyleFlags, Underline};
+use temor_vt::{CellStyle, Col, Rgb, Row, StyleFlags, Underline};
 
 use super::SceneInput;
 use super::build::build_row;
@@ -23,7 +23,7 @@ fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
             flags,
             ..CellStyle::default()
         },
-        selected: Selected::No,
+        selected: false,
     }
 }
 

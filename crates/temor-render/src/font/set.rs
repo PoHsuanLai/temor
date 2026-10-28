@@ -11,7 +11,7 @@ use fontique::{
 use quire_emoji::{EmojiChoice, Fonts, prefer_colour};
 
 use super::config::{FaceStyle, FontConfig, FontFamily, FontSource, Slant, Weight};
-use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
+use super::face::{ColorFormat, Face, FaceId, FaceRole, Synth};
 use super::fallback::{Presentation, needs, presentation, script_of};
 use crate::error::RenderError;
 use crate::metrics::{FontSize, LineHeight};
@@ -272,15 +272,9 @@ impl FontSet {
         let synthesis = info.synthesis(FontWidth::NORMAL, font_style, weight);
         let blob = info.load(Some(&mut self.cache))?;
         let mut face = Face::load(blob, info.index(), FaceRole::Primary)?;
-        face.embolden = if synthesis.embolden() {
-            Embolden::Yes
-        } else {
-            Embolden::No
-        };
-        face.skew = if synthesis.skew().is_some() {
-            Skew::Yes
-        } else {
-            Skew::No
+        face.synth = Synth {
+            embolden: synthesis.embolden(),
+            skew: synthesis.skew().is_some(),
         };
         face.variations = synthesis
             .variation_settings()

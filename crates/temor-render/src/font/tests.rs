@@ -22,12 +22,8 @@ fn the_named_family_gives_four_cuts_with_synthetic_italic() {
     let italic = set.face(set.primary(ITALIC));
     assert_eq!(regular.role, FaceRole::Primary);
     assert_ne!(set.primary(FaceStyle::REGULAR), set.primary(BOLD));
-    assert_eq!(bold.embolden, super::face::Embolden::No, "a real bold cut");
-    assert_eq!(
-        italic.skew,
-        super::face::Skew::Yes,
-        "Noto Sans Mono has no italic"
-    );
+    assert!(!bold.synth.embolden, "a real bold cut");
+    assert!(italic.synth.skew, "Noto Sans Mono has no italic");
 }
 
 #[test]

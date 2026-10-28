@@ -12,8 +12,8 @@ mod size;
 pub use anchor::AnchorId;
 pub use cell::{
     CellStyle, CellView, CellWidth, CursorBlink, CursorCell, CursorShape, CursorView, FrameColors,
-    FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, Selected, SemanticMark, StyleFlags,
-    StyledCell, Underline, Wrap,
+    FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, SemanticMark, StyleFlags, StyledCell,
+    Underline, Wrap,
 };
 pub use colour::{ColorRef, ColorScheme, Rgb};
 pub use config::TerminalConfig;

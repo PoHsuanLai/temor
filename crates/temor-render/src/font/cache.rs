@@ -11,7 +11,7 @@ use super::atlas::AtlasCopy;
 use super::atlas::{Atlas, AtlasFormat, Slot};
 use super::config::FaceStyle;
 use super::decor::Decoration;
-use super::face::{Embolden, FaceId, Skew};
+use super::face::{FaceId, Synth};
 use super::measure::cell_metrics;
 use super::set::FontSet;
 use crate::metrics::{CellMetrics, Scale};
@@ -40,7 +40,7 @@ pub(crate) struct RunGlyph {
 pub(super) struct RasterKey {
     pub face: FaceId,
     pub glyph: u16,
-    pub synth: (Embolden, Skew),
+    pub synth: Synth,
     /// Colour glyphs are fitted to their box, so its size is part of the key.
     pub color_box: (u32, u32),
 }

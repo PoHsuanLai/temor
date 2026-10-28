@@ -28,7 +28,7 @@ use temor_client::model::vocab::ids::{BlockId, PaneId};
 use super::block_edit::edit_on_this_computer;
 use super::block_list::pane::lens_request;
 use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, ComposerView};
-use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn, PictureShown};
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::console_bar::ConsoleTools;
@@ -287,12 +287,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let (lenses, picture) = match menu_block {
         Some(block) => (
             desk.hub.block_lenses(pane, block),
-            match desk.hub.lens_shown(pane, block) {
-                true => PictureShown::Yes,
-                false => PictureShown::No,
-            },
+            desk.hub.lens_shown(pane, block),
         ),
-        None => (Vec::new(), PictureShown::No),
+        None => (Vec::new(), false),
     };
     let menu_state = slot.borrow().session.as_ref().map(|s| {
         let running = menu_block.is_some_and(|block| !s.block_finished(block));

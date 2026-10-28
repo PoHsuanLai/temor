@@ -4,7 +4,7 @@ use temor_vt_sys as sys;
 
 use super::convert::{check, rgb};
 use crate::{
-    CellStyle, CellView, CellWidth, Col, ColorRef, Hyperlink, Rgb, Row, RowDirty, RowId, Selected,
+    CellStyle, CellView, CellWidth, Col, ColorRef, Hyperlink, Rgb, Row, RowDirty, RowId,
     SemanticMark, StyleFlags, Underline, VtError,
 };
 
@@ -159,11 +159,7 @@ fn read_cell<'t>(
             Hyperlink::None
         },
         semantic: semantic(raw),
-        selected: if selected {
-            Selected::Yes
-        } else {
-            Selected::No
-        },
+        selected,
     })
 }
 

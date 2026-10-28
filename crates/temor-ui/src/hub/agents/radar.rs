@@ -19,17 +19,11 @@ use super::convert::{exit_code, note_of, program_fact, status_report};
 use super::ending::{Via, front_of};
 use super::naming::Named;
 
-/// Whether a pane is known to run an agent: by its process, or because it reported.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Known {
-    No,
-    Yes,
-}
-
 #[derive(Debug, Clone)]
 struct Entry {
     state: RadarState,
-    known: Known,
+    /// The pane is known to run an agent: by its process, or because it reported.
+    known: bool,
     /// A known agent's name was seen (its process, or what it reported): plugins adapt to these
     /// panes only, never to a build tool that reports its progress.
     named: Option<Named>,
@@ -73,7 +67,7 @@ impl Radar {
         };
         self.panes.entry(pane).or_insert_with(|| Entry {
             state: RadarState::new(focus),
-            known: Known::No,
+            known: false,
             named: None,
         })
     }
@@ -96,7 +90,7 @@ impl Radar {
 
     fn know(&mut self, pane: PaneId, app: Option<&str>, via: Via, command: Option<&CommandLine>) {
         let entry = self.entry(pane);
-        entry.known = Known::Yes;
+        entry.known = true;
         if let Some(app) = app.filter(|app| is_known_agent(app)) {
             Named::learn(&mut entry.named, app, via, command);
         }
@@ -128,7 +122,7 @@ impl Radar {
     }
 
     fn is_known(&self, pane: PaneId) -> bool {
-        self.panes.get(&pane).is_some_and(|e| e.known == Known::Yes)
+        self.panes.get(&pane).is_some_and(|e| e.known)
     }
 
     /// What one event from `pane` means for its radar. Only an event that is about agents moves

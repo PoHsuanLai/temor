@@ -2,7 +2,7 @@
 //! checked against the announced size.
 
 use super::helpers::{close, failed, refuse, refuse_with, reply};
-use super::links::{Last, on_link_data, open_link};
+use super::links::{on_link_data, open_link};
 use super::model::{Effect, EndWhy, LinkPolicy, OpenFile, ReceiveSession, WriteOp};
 use crate::kitty::model::{
     Compression, ErrorCode, FileId, FileType, KittyId, Message, ReplyStatus,
@@ -173,11 +173,7 @@ pub(super) fn on_data(
         );
     };
     if session.open_links.contains_key(&file_id) {
-        let last = match chunk {
-            Chunk::More => Last::No,
-            Chunk::Last => Last::Yes,
-        };
-        return on_link_data(session, id, file_id, message, last);
+        return on_link_data(session, id, file_id, message, chunk);
     }
     let Some(open) = session.open.get(&file_id).cloned() else {
         return refuse(

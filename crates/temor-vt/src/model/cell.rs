@@ -59,13 +59,6 @@ pub enum Hyperlink {
     Linked,
 }
 
-/// Whether a cell is inside the selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Selected {
-    No,
-    Yes,
-}
-
 /// Underline shapes (SGR 4:x).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Underline {
@@ -140,7 +133,8 @@ pub struct CellView<'a> {
     pub style: CellStyle,
     pub hyperlink: Hyperlink,
     pub semantic: SemanticMark,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
 }
 
 /// One cell of any screen row, scrollback included, owned: what a frame's [`CellView`] says of
@@ -159,7 +153,8 @@ pub struct StyledCell {
     pub style: CellStyle,
     pub hyperlink: Hyperlink,
     pub semantic: SemanticMark,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
 }
 
 impl StyledCell {

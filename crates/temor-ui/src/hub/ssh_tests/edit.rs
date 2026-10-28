@@ -7,7 +7,6 @@ use temor_client::model::workspace::WorkspaceIn;
 use temor_client::ssh::Port;
 
 use super::support::Rig;
-use crate::hub::ssh::DoneAsked;
 use temor_client::ssh::view::{EditStatus, Stage};
 use temor_client::ssh::work::EditId;
 
@@ -121,7 +120,7 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
     );
     assert_eq!(
         rig.hub.ssh.edits.get(&id).map(|edit| edit.done),
-        Some(DoneAsked::No),
+        Some(false),
         "the earlier Done does not carry over"
     );
 

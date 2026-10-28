@@ -1,7 +1,7 @@
 use super::*;
 use crate::font::AtlasFormat;
 use crate::frame::CellText;
-use temor_vt::{CellStyle, Col, Selected};
+use temor_vt::{CellStyle, Col};
 
 const WIDTH: u32 = 8;
 
@@ -72,7 +72,7 @@ fn grid() -> Vec<Vec<CellDraw>> {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    selected: Selected::No,
+                    selected: false,
                 })
                 .collect()
         })

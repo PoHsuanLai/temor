@@ -55,7 +55,7 @@ mod tests {
     use crate::frame::virtual_images::VirtualTarget;
     use std::sync::Arc;
     use temor_vt::{
-        CellStyle, Col, ColorRef, Generation, ImageId, KittyLayer, PlacementId, RowDirty, Selected,
+        CellStyle, Col, ColorRef, Generation, ImageId, KittyLayer, PlacementId, RowDirty,
     };
 
     fn cell(c: char) -> CellDraw {
@@ -66,7 +66,7 @@ mod tests {
             fg: None,
             bg: None,
             style: CellStyle::default(),
-            selected: Selected::No,
+            selected: false,
         }
     }
 

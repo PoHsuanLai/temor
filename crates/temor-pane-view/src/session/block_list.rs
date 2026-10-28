@@ -197,7 +197,7 @@ impl Session {
             for (row, line) in (rows.start..).zip(cells.iter_mut()) {
                 for cell in line {
                     if selection.contains(ScreenCell::new(row, cell.col.0)) {
-                        cell.selected = temor_panes::vt::Selected::Yes;
+                        cell.selected = true;
                     }
                 }
             }

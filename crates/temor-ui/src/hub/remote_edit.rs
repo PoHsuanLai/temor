@@ -3,9 +3,7 @@
 //! `edit_step`.
 
 use temor_client::model::host::edit::{EditFault, EditIn};
-use temor_client::remote::edit_way::{
-    EditTier, HelperUp, NoWay, Overwrite, pick_tier, write_check,
-};
+use temor_client::remote::edit_way::{EditTier, NoWay, pick_tier, write_check};
 use temor_client::remote::message::{FileStamp, RemotePath};
 use temor_client::ssh::{HostAlias, RemoteFilePath};
 
@@ -24,10 +22,7 @@ pub(super) enum Job {
 impl Hub {
     /// The way to reach `host`'s files now.
     pub(super) fn edit_tier(&self, host: &HostAlias) -> Result<EditTier, NoWay> {
-        let helper = match self.remote.helper_conn(host) {
-            Some(_) => HelperUp::Yes,
-            None => HelperUp::No,
-        };
+        let helper = self.remote.helper_conn(host).is_some();
         pick_tier(helper, self.ssh.lines.get(host).map(|line| &line.master))
     }
 
@@ -39,7 +34,7 @@ impl Hub {
         let (host, path, local) = (edit.host.clone(), edit.path.clone(), edit.local.clone());
         let (tier, seen) = (edit.tier, edit.seen);
         // The choice to overwrite is for one write.
-        let overwrite = std::mem::replace(&mut edit.overwrite, Overwrite::No);
+        let overwrite = std::mem::replace(&mut edit.overwrite, false);
         match tier {
             EditTier::Scp => match job {
                 Job::Fetch => self.ssh.work.fetch(id, host, path, local),
@@ -57,7 +52,7 @@ impl Hub {
         id: EditId,
         job: Job,
         (host, path, local): (HostAlias, RemoteFilePath, std::path::PathBuf),
-        (seen, overwrite): (Option<FileStamp>, Overwrite),
+        (seen, overwrite): (Option<FileStamp>, bool),
     ) {
         let Some(conn) = self.remote.helper_conn(&host) else {
             self.on_edit(id, EditIn::Failed(EditFault::NoConnection));

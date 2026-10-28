@@ -5,7 +5,7 @@ use std::sync::Arc;
 use super::placeholder::{PLACEHOLDER, PlaceholderCell};
 use temor_vt::{
     CellStyle, CellView, CellWidth, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px,
-    Rgb, Row, RowDirty, Selected, StyleFlags, StyledCell, Underline,
+    Rgb, Row, RowDirty, StyleFlags, StyledCell, Underline,
 };
 
 /// A cell's grapheme cluster.
@@ -59,7 +59,8 @@ pub(crate) struct CellDraw {
     pub fg: Option<Rgb>,
     pub bg: Option<Rgb>,
     pub style: CellStyle,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
 }
 
 /// The terminal's current default colours: the host's (see [`crate::Palette::apply`]) unless the
@@ -279,7 +280,7 @@ pub(crate) fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
     let text = CellText::new(c.text);
     let flags = c.style.flags;
     let marked = c.bg.is_some()
-        || c.selected == temor_vt::Selected::Yes
+        || c.selected
         || c.style.underline != Underline::None
         || flags.contains(StyleFlags::INVERSE)
         || flags.contains(StyleFlags::STRIKETHROUGH)
