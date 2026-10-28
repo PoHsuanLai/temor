@@ -3,12 +3,16 @@
 //! its end when the program ends. The client keeps them (dropping a secret, as its rules say);
 //! nothing is written at quit. A pane brought back at launch goes on with the session it had
 //! (`carried`, from the layout): its new commands are numbered after the ones kept before. So
-//! does a closed session reopened from its history page, its commands shown above the new shell.
+//! does a closed session reopened from its history page, from the last screen it showed when one
+//! was kept (`keep::screens`), else with its commands shown above the new shell. A pane brought
+//! back with commands an older temor kept for it, and no session, has them written as the start
+//! of its session: the older checkpoints are read into history once.
 
 use std::collections::BTreeMap;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::time::SystemTime;
 
+use temor_client::model::session::CommandRecord;
 use temor_client::model::session::list::kept_cards;
 use temor_client::model::vocab::ids::{BlockId, PaneId};
 use temor_client::model::vocab::text::Cwd;
@@ -19,6 +23,7 @@ use temor_schema::url::Host;
 use super::model::{Hub, HubRef};
 use crate::edge::local_zone::wall_now as now;
 use crate::session::{Notice, Session};
+use temor_panes::vt::Snapshot;
 
 /// How long history is kept: commands older than this are forgotten when the window opens.
 const KEPT_FOR_MS: i64 = 90 * 24 * 60 * 60 * 1000;
@@ -31,6 +36,11 @@ pub(super) struct History {
     sessions: BTreeMap<PaneId, Begun>,
     /// The sessions the panes brought back at launch had, until their shells say where they are.
     carried: BTreeMap<PaneId, SessionId>,
+    /// Commands an older temor kept for a pane brought back with no session, until its shell says
+    /// where it is and they start its session.
+    imported: BTreeMap<PaneId, Vec<CommandRecord>>,
+    /// The screen a reopened session's tab starts from, until its pane takes it.
+    pub(super) screen: Option<Snapshot>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +68,18 @@ impl Hub {
     /// The sessions the panes brought back at launch go on with.
     pub(super) fn carry_sessions(&mut self, carried: BTreeMap<PaneId, SessionId>) {
         self.history.carried = carried;
+    }
+
+    /// The session `pane` was brought back to go on with, if any.
+    pub(super) fn history_carried(&self, pane: PaneId) -> Option<SessionId> {
+        self.history.carried.get(&pane).copied()
+    }
+
+    /// `commands`, kept for `pane` by an older temor, start the session it begins.
+    pub(super) fn history_import(&mut self, pane: PaneId, commands: &[CommandRecord]) {
+        if !commands.is_empty() && self.history.client.is_some() {
+            self.history.imported.insert(pane, commands.to_vec());
+        }
     }
 
     /// Each pane's session, for the next launch to go on with.
@@ -106,7 +128,8 @@ impl Hub {
     }
 
     /// Opens the closed session `id` again: a tab in its folder whose shell goes on as that
-    /// session, with the commands it ran above it as cards (their output was not kept).
+    /// session, from the last screen it showed; or, when none was kept (or the tab's shell runs
+    /// in the daemon, which starts from its own), with the commands it ran above it as cards.
     pub fn reopen_session(&mut self, id: SessionId) {
         let Some(client) = self.history.client.clone() else {
             return;
@@ -134,10 +157,24 @@ impl Hub {
             return;
         };
         let cards = kept_cards(&store.commands_of(id).unwrap_or_default());
-        let Some(pane) = self.open_tab(Some(Cwd(kept.folder))) else {
+        let screen = self
+            .state_dir
+            .as_deref()
+            .and_then(|dir| temor_client::keep::screens::read(dir, id))
+            .map(Snapshot::from_bytes);
+        let had_screen = screen.is_some();
+        self.history.screen = screen;
+        let opened = self.open_tab(Some(Cwd(kept.folder)));
+        // A pane that took the screen shows the session as it was; one that did not (a daemon
+        // pane) shows its commands.
+        let shown = had_screen && self.history.screen.take().is_none();
+        let Some(pane) = opened else {
             return;
         };
         self.history.carried.insert(pane, id);
+        if shown {
+            return;
+        }
         if let Some(slot) = self.slots.get(&pane)
             && let Some(session) = slot.borrow_mut().session.as_mut()
         {
@@ -159,7 +196,14 @@ impl Hub {
                     .carried
                     .remove(&pane)
                     .and_then(|id| store.session(id).ok().flatten());
-                let base = before.as_ref().map_or(0, |kept| {
+                // Commands an older temor kept for it start a session that is new.
+                let imported = self
+                    .history
+                    .imported
+                    .remove(&pane)
+                    .filter(|_| before.is_none())
+                    .unwrap_or_default();
+                let base = before.as_ref().map_or(imported.len() as u64, |kept| {
                     store
                         .commands_of(kept.id)
                         .ok()
@@ -177,6 +221,19 @@ impl Hub {
                     started: before.map_or_else(now, |kept| kept.started),
                     ended: None,
                 }));
+                let at = now();
+                for (block, kept) in (0u64..).zip(imported) {
+                    let took = kept.took_ms.and_then(|ms| i64::try_from(ms).ok());
+                    client.act(Command::Ran(RanCommand {
+                        session: id,
+                        block: BlockId(block),
+                        command: kept.command,
+                        folder: folder.clone(),
+                        exit: kept.exit,
+                        started: At(at.0 - took.unwrap_or(0)),
+                        ended: Some(at),
+                    }));
+                }
                 // Blocks from before the shell said where it is (a restored screen's) are not
                 // this session's, or were handed over before.
                 let written = session.finished_after(None).last().map(|done| done.id);

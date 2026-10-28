@@ -149,8 +149,8 @@ fn a_rows_show_history_opens_its_sessions_commands() {
     });
 }
 
-/// A pane brought back at launch goes on with its session: the commands of both launches are
-/// one session's, numbered one after another.
+/// A pane brought back at launch goes on with its session, from the screen kept under it: the
+/// commands of both launches are one session's, numbered one after another.
 #[test]
 fn a_pane_brought_back_goes_on_with_its_session() {
     if !super::support::window_tools_present() {
@@ -182,10 +182,20 @@ fn a_pane_brought_back_goes_on_with_its_session() {
         assert!(start.elapsed() < Duration::from_secs(10), "nothing kept");
     }
     drop(h);
+    // The screen is kept under the session, not the pane.
+    let id = SqliteStore::open(&db)
+        .expect("store")
+        .sessions(None, None, 10)
+        .expect("sessions")[0]
+        .id;
+    assert!(state.join("screens").join(format!("{id}.bin")).is_file());
+    assert!(!state.join("snapshots/1.bin").exists());
 
     let probe = Probe::new();
     let mut h = super::window::harness_in("history-carried-again", &probe, Some(state));
-    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    wait_until(&mut h, &probe, "the screen it had", |s| {
+        s.contains("echo before-restart")
+    });
     type_line(&mut h, "echo after-restart");
     let start = Instant::now();
     loop {
@@ -292,6 +302,148 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
             assert!(ran[2].block.0 > ran[1].block.0, "numbered after: {ran:?}");
             assert!(session.ended.is_none(), "it runs again");
             assert_eq!(session.started, At(then), "the same session");
+            break;
+        }
+        h.advance(Duration::from_millis(50));
+        assert!(start.elapsed() < Duration::from_secs(10), "{ran:?}");
+    }
+}
+
+/// A closed tab keeps its last screen under its session, and Reopen from the history page starts
+/// a tab from it: the output it showed is back, not its commands as cards.
+#[test]
+fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let state = super::support::scratch("history-screen-state").join("state");
+    let db = state.join("temor.db");
+    let probe = Probe::new();
+    let mut h = super::window::harness_in("history-screen", &probe, Some(state.clone()));
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    super::drive::chord(&mut h, 'n');
+    wait_until(&mut h, &probe, "the second tab's prompt", |s| {
+        s.contains('$')
+    });
+    type_line(&mut h, "echo shown-$((6*7))-then");
+    wait_until(&mut h, &probe, "its output", |s| {
+        s.contains("shown-42-then")
+    });
+    let ended = |db: &std::path::Path| {
+        let store = SqliteStore::open(db).expect("store");
+        let sessions = store.sessions(None, None, 10).expect("sessions");
+        sessions.into_iter().find(|session| {
+            store
+                .commands_of(session.id)
+                .expect("commands")
+                .iter()
+                .any(|ran| ran.command.contains("shown-"))
+        })
+    };
+    let start = Instant::now();
+    while ended(&db).is_none() {
+        h.advance(Duration::from_millis(50));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the command not kept"
+        );
+    }
+    let id = ended(&db).expect("its session").id;
+    super::drive::chord(&mut h, 'w');
+    let screen = state.join("screens").join(format!("{id}.bin"));
+    let start = Instant::now();
+    while !screen.is_file() {
+        h.advance(Duration::from_millis(50));
+        assert!(start.elapsed() < Duration::from_secs(10), "no screen kept");
+    }
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the sessions", |html| {
+        html.contains("class=\"temor-history-day\"")
+    });
+    // The closed session's page is the one with Reopen.
+    let rows = super::drive::rects(&h, ".temor-history-list .ds-row");
+    let mut reopened = false;
+    for row in rows {
+        h.send(ds_harness::Input::click(row.centre()));
+        h.advance(Duration::from_millis(300));
+        if h.html().contains(">Reopen<") || h.html().contains("\"Reopen\"") {
+            press(&mut h, ".temor-history-head .ds-button");
+            reopened = true;
+            break;
+        }
+        chord_with(&mut h, &[ShortcutKey::Super], '[');
+        h.advance(Duration::from_millis(300));
+    }
+    assert!(reopened, "no page with Reopen:\n{}", h.html());
+    let start = Instant::now();
+    let cards = |h: &ds_harness::Harness| h.count(".temor-blk-kept");
+    while !(probe.screen().contains("shown-42-then") && cards(&h) == 0) {
+        h.advance(Duration::from_millis(50));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "not its screen: {}\n{}",
+            probe.screen(),
+            h.html()
+        );
+    }
+}
+
+/// A pane an older temor kept, brought back with the commands its checkpoint held and no session
+/// in history, has them written as the start of its session; its new commands are numbered after
+/// them.
+#[test]
+fn an_older_panes_kept_commands_start_its_session() {
+    use temor_client::keep::{checkpoint, older};
+    use temor_core::session::{Checkpoint, CommandRecord, ShellState};
+    use temor_core::vocab::text::Cwd;
+    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let state = super::support::scratch("history-import-state").join("state");
+    let folder = super::support::scratch("history-import-folder");
+    let folder = folder.to_string_lossy().into_owned();
+    let (ws, _) = workspace_step(
+        Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
+        WorkspaceIn::NewTab {
+            cwd: Some(Cwd(folder.clone())),
+        },
+    );
+    let pane = ws.tabs.panes()[0];
+    older::save(&state, &ws).expect("the older session file");
+    let record = |command: &str, exit| CommandRecord {
+        command: command.to_owned(),
+        exit: Some(exit),
+        took_ms: Some(5),
+    };
+    let mut kept = Checkpoint::of(ShellState::default().replay(), std::iter::empty());
+    kept.cwd = Some(folder);
+    kept.history = vec![record("make older", 0), record("ls older", 2)];
+    checkpoint::write(&state, pane, &kept).expect("the older checkpoint");
+    let probe = Probe::new();
+    let mut h = super::window::harness_in("history-import", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    type_line(&mut h, "echo after-them");
+    let db = state.join("temor.db");
+    let start = Instant::now();
+    loop {
+        let store = SqliteStore::open(&db).expect("store");
+        let sessions = store.sessions(None, None, 10).expect("sessions");
+        let ran: Vec<(u64, String)> = sessions
+            .first()
+            .map(|session| store.commands_of(session.id).expect("commands"))
+            .unwrap_or_default()
+            .into_iter()
+            .map(|ran| (ran.block.0, ran.command))
+            .collect();
+        if ran.len() == 3 {
+            assert_eq!(sessions.len(), 1, "one session: {ran:?}");
+            assert_eq!(ran[0], (0, "make older".to_owned()));
+            assert_eq!(ran[1], (1, "ls older".to_owned()));
+            assert_eq!(ran[2].1, "echo after-them");
+            assert!(ran[2].0 > 1, "numbered after them: {ran:?}");
             break;
         }
         h.advance(Duration::from_millis(50));

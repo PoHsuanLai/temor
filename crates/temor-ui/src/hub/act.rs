@@ -106,10 +106,13 @@ impl Hub {
 
     /// Starts the program of `spawn` as a child of this window.
     pub(super) fn open_plain(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        let snapshot = restored.or_else(|| match spawn.start {
-            Start::Scrollback(pane) => self.recent.remove(&pane),
-            Start::Fresh => None,
-        });
+        let snapshot =
+            restored
+                .or_else(|| self.history.screen.take())
+                .or_else(|| match spawn.start {
+                    Start::Scrollback(pane) => self.recent.remove(&pane),
+                    Start::Fresh => None,
+                });
         let mut start = self.space_start();
         let kept = self.carried.remove(&spawn.pane);
         let cwd = spawn
@@ -204,6 +207,10 @@ impl Hub {
             .get(&pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(Session::snapshot));
         if let Some(snapshot) = snapshot {
+            // Kept under its session too, for the session's history page to reopen it from.
+            if let (Some(dir), Some(id)) = (&self.state_dir, self.session_id(pane)) {
+                let _ = temor_client::keep::screens::write(dir, id, snapshot.as_bytes());
+            }
             self.recent.insert(pane, snapshot);
         }
         let kept = self

@@ -1,6 +1,8 @@
 //! What is kept of each pane for the next launch, beside the layout: its checkpoint (its shell's
 //! state, the daemon session it has) and, at quit, its screen. Files keyed by pane, good for the
-//! launch that follows the quit that wrote them: pane ids are reused after a restore.
+//! launch that follows the quit that wrote them: pane ids are reused after a restore. A pane in a
+//! history session keeps its screen under the session instead ([`screens`]), for as long as
+//! history keeps the session.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -8,7 +10,9 @@ use std::path::Path;
 use temor_core::session::Checkpoint;
 use temor_core::vocab::ids::PaneId;
 
-use super::{checkpoint, replay, sidecar};
+use temor_schema::session::SessionId;
+
+use super::{checkpoint, replay, screens, sidecar};
 
 /// What is kept of one pane.
 #[derive(Debug)]
@@ -17,6 +21,8 @@ pub struct KeptPane {
     pub checkpoint: Checkpoint,
     /// Its screen as the terminal encodes it, taken only at quit (encoding it is not free).
     pub screen: Option<Vec<u8>>,
+    /// Its session in history, once it has one: its screen is kept under it.
+    pub session: Option<SessionId>,
 }
 
 /// The panes' files, and what each pane's checkpoint file holds now, so only a change is written.
@@ -53,8 +59,14 @@ impl PaneFiles {
         replay::clear(dir);
         for kept in panes {
             let _ = checkpoint::write(dir, kept.pane, &kept.checkpoint);
-            if let Some(screen) = &kept.screen {
-                let _ = sidecar::write(dir, kept.pane, screen);
+            match (&kept.screen, kept.session) {
+                (Some(screen), Some(id)) => {
+                    let _ = screens::write(dir, id, screen);
+                }
+                (Some(screen), None) => {
+                    let _ = sidecar::write(dir, kept.pane, screen);
+                }
+                (None, _) => {}
             }
         }
     }

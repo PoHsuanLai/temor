@@ -6,7 +6,7 @@
 use std::collections::BTreeSet;
 use std::time::Instant;
 
-use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through};
+use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through, screens};
 use temor_client::model::notify::Focus;
 use temor_client::model::vocab::ids::PaneId;
 
@@ -21,6 +21,9 @@ impl Hub {
         if let Some(client) = &client {
             if let Some(dir) = &dir {
                 self.kept.import(client, dir);
+                // The screens of sessions history no longer has go.
+                let store = client.store();
+                screens::sweep(dir, |id| store.session(id).ok().flatten().is_some());
             }
             let sessions = self.kept.sessions(client);
             self.carry_sessions(sessions);
@@ -48,7 +51,8 @@ impl Hub {
     }
 
     /// Starts the panes and viewers of a Space brought back, each pane with the screen and the
-    /// shell state kept for it.
+    /// shell state kept for it: the screen of the session it goes on with, else the one kept by
+    /// pane. Commands an older temor kept for a pane with no session go into its history.
     fn start_space(&mut self, dir: Option<&std::path::Path>, starting: Starting) {
         self.with_space(starting.space, |hub| {
             for spawn in starting.panes {
@@ -56,7 +60,15 @@ impl Hub {
                     Some(dir) => PaneFiles::take(dir, spawn.pane),
                     None => (None, None),
                 };
+                let session = hub.history_carried(spawn.pane);
+                let screen = session
+                    .zip(dir)
+                    .and_then(|(id, dir)| screens::read(dir, id))
+                    .or(screen);
                 if let Some(kept) = kept {
+                    if session.is_none() {
+                        hub.history_import(spawn.pane, &kept.history);
+                    }
                     hub.carried.insert(spawn.pane, kept);
                 }
                 hub.open_pane(&spawn, screen.map(temor_panes::vt::Snapshot::from_bytes));
@@ -124,6 +136,7 @@ impl Hub {
     /// session it has) and, with `screens`, its screen. The quick terminal is a throwaway, kept
     /// while temor runs and never saved; nor is a run tab.
     fn kept_panes(&self, screens: bool) -> Vec<KeptPane> {
+        let sessions = self.sessions_to_carry();
         self.slots
             .iter()
             .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
@@ -142,6 +155,7 @@ impl Hub {
                                 .map(temor_panes::vt::Snapshot::into_bytes)
                         })
                         .flatten(),
+                    session: sessions.get(pane).copied(),
                 })
             })
             .collect()
