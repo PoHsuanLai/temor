@@ -44,14 +44,6 @@ pub struct TurnNo(pub u64);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlanDigest(pub String);
 
-/// Whether a saved point can still be restored.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PointState {
-    Available,
-    /// Cleared since (kept for 20 points and 14 days).
-    Gone,
-}
-
 /// Why a turn has no restore point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NotSavedWhy {
@@ -74,7 +66,8 @@ pub enum PointRow {
         id: PointId,
         turn: TurnNo,
         at: UnixSeconds,
-        state: PointState,
+        /// The point can still be restored (points are cleared after 20, or 14 days).
+        available: bool,
     },
     NotSaved {
         turn: TurnNo,
@@ -87,21 +80,12 @@ pub enum PointRow {
     },
 }
 
-/// Whether the session's agent is working now.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum RunState {
-    #[default]
-    Idle,
-    /// A turn is running: docket refuses a restore until it ends.
-    Running,
-}
-
 /// A session's list.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PointList {
     pub rows: Vec<PointRow>,
     /// Whether a turn is running now.
-    pub turn: RunState,
+    pub turn_running: bool,
 }
 
 /// What restoring one point would change: paths relative to the folder.

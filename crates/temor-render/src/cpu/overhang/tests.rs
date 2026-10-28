@@ -1,6 +1,8 @@
 use std::convert::Infallible;
 
-use super::Overhang::{Beyond, Within};
+/// Whether a row's glyphs reach past it.
+const BEYOND: bool = true;
+const WITHIN: bool = false;
 use super::*;
 use crate::font::Slot;
 use crate::scene::{Premul, Quad};
@@ -14,12 +16,12 @@ fn composed(before: &[u16], now: &[u16], dirty: &[u16]) -> Vec<Row> {
     let mut state = Overhangs::default();
     state.fit(8);
     for &r in before {
-        state.replace(Row(r), Beyond);
+        state.replace(Row(r), BEYOND);
     }
     let mut asked = Vec::new();
     let got = compose_with_neighbours::<Infallible>(&rows(dirty), 8, &mut state, |row, _| {
         asked.push(row);
-        Ok(if now.contains(&row.0) { Beyond } else { Within })
+        Ok(if now.contains(&row.0) { BEYOND } else { WITHIN })
     })
     .expect("composes");
     assert_eq!(
@@ -85,18 +87,18 @@ fn a_changed_row_takes_its_neighbours_only_when_its_glyphs_overhang() {
 fn the_overhang_of_a_row_is_remembered_for_the_next_change() {
     let mut state = Overhangs::default();
     state.fit(4);
-    let mut run = |now: Overhang, dirty: u16| {
+    let mut run = |now: bool, dirty: u16| {
         compose_with_neighbours::<Infallible>(&rows(&[dirty]), 4, &mut state, |_, _| Ok(now))
             .expect("composes")
             .len()
     };
-    assert_eq!(run(Beyond, 1), 3, "it overhangs now");
+    assert_eq!(run(BEYOND, 1), 3, "it overhangs now");
     assert_eq!(
-        run(Within, 1),
+        run(WITHIN, 1),
         3,
         "it overhung last time, so its neighbours are cleaned"
     );
-    assert_eq!(run(Within, 1), 1, "and now it is within the row for good");
+    assert_eq!(run(WITHIN, 1), 1, "and now it is within the row for good");
 }
 
 fn quad(y: i32, h: u32, paint: QuadPaint) -> Quad {
@@ -119,16 +121,16 @@ fn only_glyphs_that_leave_the_row_overhang() {
     let solid = QuadPaint::Solid(Premul([255; 4]));
     // The row spans y 100..120. (name, glyph quad y, h, paint) -> overhang
     let cases = [
-        ("inside", quad(102, 10, mask), Within),
-        ("filling the row", quad(100, 20, mask), Within),
-        ("above", quad(98, 10, mask), Beyond),
-        ("below", quad(112, 10, mask), Beyond),
+        ("inside", quad(102, 10, mask), WITHIN),
+        ("filling the row", quad(100, 20, mask), WITHIN),
+        ("above", quad(98, 10, mask), BEYOND),
+        ("below", quad(112, 10, mask), BEYOND),
         (
             "a colour glyph below",
             quad(112, 10, QuadPaint::Color { slot }),
-            Beyond,
+            BEYOND,
         ),
-        ("a rule is not a glyph", quad(90, 40, solid), Within),
+        ("a rule is not a glyph", quad(90, 40, solid), WITHIN),
     ];
     for (name, q, want) in cases {
         let scene = RowScene {
@@ -141,16 +143,16 @@ fn only_glyphs_that_leave_the_row_overhang() {
 
 /// The `Sides` each composed row is told, for 6 rows where `kept` overhung when last composed,
 /// `now` overhang now, and `dirty` are asked.
-fn told(kept: &[u16], now: &[u16], dirty: &[u16]) -> Vec<(u16, Overhang, Overhang)> {
+fn told(kept: &[u16], now: &[u16], dirty: &[u16]) -> Vec<(u16, bool, bool)> {
     let mut state = Overhangs::default();
     state.fit(6);
     for &r in kept {
-        state.replace(Row(r), Beyond);
+        state.replace(Row(r), BEYOND);
     }
     let mut seen = Vec::new();
     compose_with_neighbours::<Infallible>(&rows(dirty), 6, &mut state, |row, sides| {
         seen.push((row.0, sides.above, sides.below));
-        Ok(if now.contains(&row.0) { Beyond } else { Within })
+        Ok(if now.contains(&row.0) { BEYOND } else { WITHIN })
     })
     .expect("composes");
     seen
@@ -165,28 +167,28 @@ fn a_row_is_told_which_neighbours_may_reach_into_it() {
             vec![],
             vec![],
             vec![2],
-            vec![(2, Within, Within)],
+            vec![(2, WITHIN, WITHIN)],
         ),
         (
             "a clean neighbour that overhung is built",
             vec![1],
             vec![1],
             vec![2],
-            vec![(2, Beyond, Within)],
+            vec![(2, BEYOND, WITHIN)],
         ),
         (
             "the grid's edges have no neighbour to build",
             vec![],
             vec![],
             vec![0, 5],
-            vec![(0, Within, Within), (5, Within, Within)],
+            vec![(0, WITHIN, WITHIN), (5, WITHIN, WITHIN)],
         ),
         (
             "a neighbour still to be composed is built, whatever it was",
             vec![],
             vec![],
             vec![2, 3],
-            vec![(2, Within, Beyond), (3, Within, Within)],
+            vec![(2, WITHIN, BEYOND), (3, WITHIN, WITHIN)],
         ),
         (
             "a neighbour composed already is told by what it is now",
@@ -194,9 +196,9 @@ fn a_row_is_told_which_neighbours_may_reach_into_it() {
             vec![2],
             vec![2, 3],
             vec![
-                (2, Within, Beyond),
-                (3, Beyond, Within),
-                (1, Within, Beyond),
+                (2, WITHIN, BEYOND),
+                (3, BEYOND, WITHIN),
+                (1, WITHIN, BEYOND),
             ],
         ),
     ];

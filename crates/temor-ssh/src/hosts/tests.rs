@@ -2,10 +2,10 @@ use std::net::IpAddr;
 
 use super::{HostGroup, HostRow, merge_hosts};
 use crate::identity::NodeId;
-use crate::tailnet::{Presence, TailnetHost, TailnetOwner, TailscaleSsh};
+use crate::tailnet::{TailnetHost, TailnetOwner};
 use crate::testing::load;
 
-fn machine(node: &str, name: &str, dns: &str, addr: &str, online: Presence) -> TailnetHost {
+fn machine(node: &str, name: &str, dns: &str, addr: &str, online: bool) -> TailnetHost {
     TailnetHost {
         node: NodeId::new(node).expect("node id"),
         name: name.to_owned(),
@@ -13,41 +13,17 @@ fn machine(node: &str, name: &str, dns: &str, addr: &str, online: Presence) -> T
         addresses: vec![addr.parse::<IpAddr>().expect("address")],
         online,
         last_seen: None,
-        ssh: TailscaleSsh::On,
+        tailscale_ssh: true,
         owner: TailnetOwner::Mine,
     }
 }
 
 fn fleet() -> Vec<TailnetHost> {
     vec![
-        machine(
-            "n1",
-            "laptop",
-            "laptop.tail1.ts.net",
-            "100.64.0.1",
-            Presence::Online,
-        ),
-        machine(
-            "n2",
-            "nas",
-            "nas.tail1.ts.net",
-            "100.64.0.7",
-            Presence::Offline,
-        ),
-        machine(
-            "n3",
-            "phone",
-            "phone.tail1.ts.net",
-            "100.64.0.3",
-            Presence::Online,
-        ),
-        machine(
-            "n4",
-            "Desk",
-            "desk.tail1.ts.net",
-            "100.64.0.4",
-            Presence::Offline,
-        ),
+        machine("n1", "laptop", "laptop.tail1.ts.net", "100.64.0.1", true),
+        machine("n2", "nas", "nas.tail1.ts.net", "100.64.0.7", false),
+        machine("n3", "phone", "phone.tail1.ts.net", "100.64.0.3", true),
+        machine("n4", "Desk", "desk.tail1.ts.net", "100.64.0.4", false),
     ]
 }
 
@@ -87,7 +63,7 @@ fn a_computer_without_an_alias_connects_by_its_magic_dns_name() {
         .map(|r| r.destination().map(|d| d.as_str().to_owned()))
         .collect();
     assert_eq!(destinations[0].as_deref(), Some("laptop.tail1.ts.net"));
-    let mut v6_only = machine("n9", "v6", "", "fd7a::9", Presence::Online);
+    let mut v6_only = machine("n9", "v6", "", "fd7a::9", true);
     v6_only.addresses = vec!["fd7a::9".parse().expect("address")];
     assert_eq!(HostRow::Computer(v6_only).destination(), None);
 }
@@ -117,7 +93,7 @@ fn a_node_id_listed_twice_counts_once() {
         "phone-again",
         "p2.tail1.ts.net",
         "100.64.0.99",
-        Presence::Online,
+        true,
     ));
     let rows = merge_hosts(&load(&[("config", "")]), &machines);
     assert_eq!(rows.len(), 4);

@@ -11,7 +11,7 @@ use porter_client::{
 };
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
+use temor_ssh::{NodeId, TailnetHost, TailnetOwner, UnixSeconds};
 use zbus::export::futures_core::Stream;
 
 /// The tailnet list over the session bus.
@@ -98,16 +98,16 @@ pub(super) fn host_of(machine: &Machine) -> Option<TailnetHost> {
         dns: machine.dns.clone(),
         addresses: machine.addresses.clone(),
         online: match machine.link {
-            MachineLink::Online => Presence::Online,
-            MachineLink::Offline => Presence::Offline,
+            MachineLink::Online => true,
+            MachineLink::Offline => false,
         },
         last_seen: machine
             .last_seen
             .and_then(|at| u64::try_from(at.0).ok())
             .map(UnixSeconds),
         ssh: match machine.ssh {
-            MachineSsh::On => TailscaleSsh::On,
-            MachineSsh::Off => TailscaleSsh::Off,
+            MachineSsh::On => true,
+            MachineSsh::Off => false,
         },
         owner: match machine.owner {
             MachineOwner::Mine => TailnetOwner::Mine,

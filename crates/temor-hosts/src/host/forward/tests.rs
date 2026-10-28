@@ -128,9 +128,9 @@ fn a_tailnet_port_is_offered_directly_before_a_forward() {
             name: "box".to_owned(),
             dns: "box.tail1.ts.net".to_owned(),
             addresses: vec![],
-            online: temor_ssh::Presence::Online,
+            online: true,
             last_seen: None,
-            ssh: temor_ssh::TailscaleSsh::On,
+            tailscale_ssh: true,
             owner: temor_ssh::TailnetOwner::Mine,
         }],
     );

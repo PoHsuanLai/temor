@@ -1,7 +1,7 @@
 //! The look of a pane that is already open, changed by the settings (PLAN §14): its font, its
 //! cursor's shape and its blinking. The rest of the settings are read when a pane starts.
 
-use temor_panes::pane::settings::{CursorBlinking, CursorStyle};
+use temor_panes::pane::settings::CursorStyle;
 use temor_panes::render::FontSet;
 
 use super::Session;
@@ -23,7 +23,7 @@ impl Session {
     }
 
     /// Whether the cursor blinks, from the next paint.
-    pub fn set_cursor_blink(&mut self, blink: CursorBlinking) {
+    pub fn set_cursor_blink(&mut self, blink: bool) {
         self.blink.setting = blink;
         self.wake_cursor();
     }

@@ -5,13 +5,6 @@ use super::limit::FrameLimit;
 use crate::WireError;
 use crate::message::Incoming;
 
-/// Whether the decoder can still take bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Health {
-    Sound,
-    Spent,
-}
-
 /// Cuts frames out of bytes as they arrive. Push whatever was read, then pull frames until
 /// `None`.
 ///
@@ -24,7 +17,8 @@ pub struct Decoder {
     buffer: Vec<u8>,
     /// Where the next unread frame starts in `buffer`.
     start: usize,
-    health: Health,
+    /// The decoder can take no more bytes.
+    spent: bool,
     failure: Option<WireError>,
 }
 
@@ -35,7 +29,7 @@ impl Decoder {
             limit,
             buffer: Vec::new(),
             start: 0,
-            health: Health::Sound,
+            spent: false,
             failure: None,
         }
     }
@@ -47,13 +41,13 @@ impl Decoder {
 
     /// The next whole frame, read as an [`Incoming`], or `None` until more bytes arrive.
     pub fn next_message(&mut self) -> Result<Option<Incoming>, WireError> {
-        if self.health == Health::Spent {
+        if self.spent {
             return Err(WireError::Spent);
         }
         match self.take() {
             Ok(incoming) => Ok(incoming),
             Err(error) => {
-                self.health = Health::Spent;
+                self.spent = true;
                 self.failure = Some(error.clone());
                 Err(error)
             }

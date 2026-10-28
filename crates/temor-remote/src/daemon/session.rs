@@ -16,7 +16,7 @@ use temor_wire::units::{CellPx as CellSize, Size};
 use super::colours::apply_palette;
 use super::config::DaemonConfig;
 use super::exit::exit_status;
-use super::input::{Backlog, Input};
+use super::input::Input;
 use super::launch::spawn_spec;
 use super::link::{Link, LinkId};
 use super::sinks::{CwdSink, Replies};
@@ -49,15 +49,9 @@ struct Shared {
     /// Every client attached: each gets the output, so several windows can show one session.
     subscribers: Vec<Arc<Link>>,
     detached_at: Option<Monotonic>,
-    closing: Closing,
-}
-
-/// Whether a client asked to close the session. A hang-up alone can be lost (a program that has
-/// not yet made its own process group misses it), so the pump also ends on this and reaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Closing {
-    Open,
-    Asked,
+    /// A client asked to close the session. A hang-up alone can be lost (a program that has
+    /// not yet made its own process group misses it), so the pump also ends on this and reaps.
+    close_asked: bool,
 }
 
 impl Session {
@@ -102,7 +96,7 @@ impl Session {
                 size,
                 subscribers: Vec::new(),
                 detached_at: Some(config.clock.now()),
-                closing: Closing::Open,
+                close_asked: false,
             }),
             pty: Mutex::new(pty),
             input,
@@ -129,11 +123,11 @@ impl Session {
         }
     }
 
-    pub(super) fn flush_input(&self) -> Backlog {
+    pub(super) fn flush_input(&self) -> bool {
         self.input.flush()
     }
 
-    pub(super) fn backlog(&self) -> Backlog {
+    pub(super) fn backlog(&self) -> bool {
         self.input.backlog()
     }
 
@@ -192,13 +186,13 @@ impl Session {
     /// Closes the session for a client: hangs the program up, and has the pump end and reap it
     /// (hang-up, grace period, kill) even if the hang-up was missed.
     pub(super) fn close(&self) {
-        self.lock().closing = Closing::Asked;
+        self.lock().close_asked = true;
         self.hang_up();
     }
 
     /// Whether a client asked to close the session.
     pub(super) fn close_asked(&self) -> bool {
-        self.lock().closing == Closing::Asked
+        self.lock().close_asked
     }
 
     /// Hangs up the program, as closing a terminal window would. The pump thread reaps it.

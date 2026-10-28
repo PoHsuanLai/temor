@@ -6,7 +6,7 @@ use crate::bus::PrivateBus;
 use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::time::Duration;
-use temor_desktop::{Attention, Badge, BadgeCount, SystemDock};
+use temor_desktop::{Badge, BadgeCount, SystemDock};
 use zbus::zvariant::OwnedValue;
 use zbus::{MatchRule, MessageStream};
 
@@ -31,7 +31,7 @@ async fn a_badge_is_broadcast_for_temors_desktop_entry() {
     let badge = Badge {
         count: Some(BadgeCount(2)),
         progress: None,
-        attention: Attention::Needed,
+        attention: true,
     };
     dock.show(&badge).await.unwrap();
 

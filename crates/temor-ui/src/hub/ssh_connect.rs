@@ -14,8 +14,8 @@ use temor_client::model::remote::Grant;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::{Spawn, WorkspaceIn};
 use temor_client::ssh::{
-    BootstrapOptions, BootstrapScript, ControlLayout, HostAlias, HostRow, Presence, RemoteFilePath,
-    SshError, bootstrap_remote_command, plain_session_argv, session_argv,
+    BootstrapOptions, BootstrapScript, ControlLayout, HostAlias, HostRow, RemoteFilePath, SshError,
+    bootstrap_remote_command, plain_session_argv, session_argv,
 };
 use temor_panes::pty::ChildExit;
 
@@ -82,7 +82,7 @@ impl Hub {
             line.key = Some(key);
         }
         line.direct = row.direct_host();
-        if row.presence() == Some(Presence::Offline) {
+        if row.online() == Some(false) {
             self.ssh.offline = Some(alias.clone());
         }
         self.open_host_tab(alias);

@@ -171,7 +171,7 @@ pub struct SessionKit {
     /// When a finished command is worth a notice.
     pub notify_after: NotifyAfter,
     /// Whether the cursor blinks.
-    pub cursor_blink: temor_panes::pane::settings::CursorBlinking,
+    pub cursor_blink: bool,
     pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     /// Where "Save output" places files (the downloads shelf).
@@ -183,7 +183,7 @@ pub(super) struct WindowKit {
     pub keymap: Keymap,
     pub clipboard: Box<dyn Clipboard>,
     pub opener: Box<dyn Opener>,
-    pub cursor_blink: temor_panes::pane::settings::CursorBlinking,
+    pub cursor_blink: bool,
 }
 
 impl SessionKit {

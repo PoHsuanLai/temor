@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
+use temor_ssh::{NodeId, TailnetHost, TailnetOwner};
 
 use super::support::Rig;
 use crate::hub::hosts::HostRows;
@@ -17,7 +17,7 @@ impl TailnetFeed for Fixed {
     }
 }
 
-fn machine(node: &str, name: &str, dns: &str, online: Presence) -> TailnetHost {
+fn machine(node: &str, name: &str, dns: &str, online: bool) -> TailnetHost {
     TailnetHost {
         node: NodeId::new(node).expect("node id"),
         name: name.to_owned(),
@@ -25,7 +25,7 @@ fn machine(node: &str, name: &str, dns: &str, online: Presence) -> TailnetHost {
         addresses: vec![],
         online,
         last_seen: None,
-        ssh: TailscaleSsh::Off,
+        tailscale_ssh: false,
         owner: TailnetOwner::Mine,
     }
 }
@@ -43,21 +43,17 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
     )
     .expect("config");
     rig.hub.set_tailnet(Arc::new(Fixed(vec![
-        machine("n1", "box", "box.tail.ts.net", Presence::Online),
-        machine("n2", "laptop", "laptop.tail.ts.net", Presence::Offline),
-        machine("n3", "desk", "desk.tail.ts.net", Presence::Online),
+        machine("n1", "box", "box.tail.ts.net", true),
+        machine("n2", "laptop", "laptop.tail.ts.net", false),
+        machine("n3", "desk", "desk.tail.ts.net", true),
     ])));
 
     let rows = rig.hub.host_rows();
     // The alias that names a machine carries it; the rest follow, online first.
     let shown: Vec<&str> = rows.iter().map(|row| row.shown()).collect();
     assert_eq!(shown, ["prod", "box", "desk", "laptop"]);
-    assert_eq!(
-        rows[1].presence(),
-        Some(Presence::Online),
-        "box is the tailnet machine"
-    );
-    assert_eq!(rows[0].presence(), None);
+    assert_eq!(rows[1].online(), Some(true), "box is the tailnet machine");
+    assert_eq!(rows[0].online(), None);
 
     // The bar lists the same hosts (a scratch ssh config, no seam stand-in).
     rig.hub.bar_toggle();
@@ -91,7 +87,7 @@ fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
         "n2",
         "laptop",
         "laptop.tail.ts.net",
-        Presence::Offline,
+        false,
     )])));
     let row = rig
         .hub

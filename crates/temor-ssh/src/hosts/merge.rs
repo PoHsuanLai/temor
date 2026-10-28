@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use super::row::HostRow;
 use crate::config::HostList;
 use crate::identity::NodeId;
-use crate::tailnet::{Presence, TailnetHost};
+use crate::tailnet::TailnetHost;
 
 /// The host list: every ssh_config host in file order, each with the tailnet machine its
 /// `HostName` names (by MagicDNS name or tailnet address), then the machines no alias names:
@@ -39,7 +39,7 @@ pub fn merge_hosts(list: &HostList, tailnet: &[TailnetHost]) -> Vec<HostRow> {
         .collect();
     rest.sort_by(|a, b| {
         let rank = |m: &TailnetHost| match m.online {
-            Presence::Online => 0,
+            true => 0,
             _ => 1,
         };
         rank(a)

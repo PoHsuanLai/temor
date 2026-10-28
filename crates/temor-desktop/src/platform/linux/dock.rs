@@ -3,7 +3,7 @@
 //! (sill's dock), so temor sends it itself.
 
 use super::bus::connect;
-use crate::{Attention, Badge, BadgeCount, DesktopEnv, DesktopError};
+use crate::{Badge, BadgeCount, DesktopEnv, DesktopError};
 use std::collections::HashMap;
 use zbus::zvariant::Value;
 
@@ -52,7 +52,7 @@ pub(super) fn launcher_update(badge: &Badge) -> HashMap<&'static str, Value<'sta
         Some(progress) => (f64::from(progress.get()) / 100.0, true),
         None => (0.0, false),
     };
-    let urgent = matches!(badge.attention, Attention::Needed);
+    let urgent = matches!(badge.attention, true);
     HashMap::from([
         ("count", Value::from(count)),
         ("count-visible", Value::from(count_visible)),

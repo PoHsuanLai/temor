@@ -25,13 +25,6 @@ pub enum UnsafeReason {
     ControlCharacters,
 }
 
-/// What libghostty's own check (`temor_vt::paste_is_safe`) said about the text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum VtVerdict {
-    Clean,
-    Flagged,
-}
-
 /// The verdict on a paste.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PasteCheck {
@@ -42,12 +35,12 @@ pub enum PasteCheck {
 /// Checks text for `mode`. A carriage return is a line break for the shell, in either mode, so
 /// it is always confirmed (libghostty does not check it). A newline is confirmed when the paste
 /// is not bracketed. Whatever libghostty flagged (the end of a frame) is confirmed in every mode.
-pub fn check(text: &str, mode: PasteMode, vt: VtVerdict) -> PasteCheck {
+pub fn check(text: &str, mode: PasteMode, vt: bool) -> PasteCheck {
     let line_break = text.contains('\r') || (mode == PasteMode::Plain && text.contains('\n'));
     if line_break {
         return PasteCheck::NeedsConfirmation(UnsafeReason::Newline);
     }
-    if vt == VtVerdict::Flagged {
+    if vt {
         return PasteCheck::NeedsConfirmation(UnsafeReason::EndOfFrame);
     }
     // Control bytes would be replaced with spaces before the program sees them: the person

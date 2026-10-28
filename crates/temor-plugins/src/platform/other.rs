@@ -2,7 +2,6 @@
 //!
 //! TODO(platform:windows): the same methods as the Unix half, over job objects.
 
-use crate::cancel::Cancel;
 use crate::catalog::Plugin;
 use crate::drawing::Drawing;
 use crate::error::PluginError;
@@ -30,7 +29,7 @@ impl Launcher {
         _: &Plugin,
         _text: &str,
         _generation: u64,
-        _cancel: &dyn Fn() -> Cancel,
+        _cancel: &dyn Fn() -> bool,
         _on_batch: &mut dyn FnMut(Batch),
     ) -> Result<(), PluginError> {
         Err(PluginError::Unsupported)
@@ -57,7 +56,7 @@ impl Launcher {
         _: &Plugin,
         _agent: &str,
         _folder: &str,
-        _cancel: &dyn Fn() -> Cancel,
+        _cancel: &dyn Fn() -> bool,
         _on_event: &mut dyn FnMut(Phase, String),
     ) -> Result<(), PluginError> {
         Err(PluginError::Unsupported)

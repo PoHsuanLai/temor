@@ -18,22 +18,10 @@ pub enum ShellStart {
     Login,
 }
 
-/// Whether temor's integration is injected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum IntegrationState {
-    On,
-    /// `TEMOR_SHELL_INTEGRATION=0`.
-    Off,
-}
-
-impl IntegrationState {
-    /// What the child's environment asks for.
-    pub fn of(env: &ChildEnv) -> Self {
-        match env.get("TEMOR_SHELL_INTEGRATION") == Some(OsStr::new("0")) {
-            true => Self::Off,
-            false => Self::On,
-        }
-    }
+/// Whether the child's environment lets temor inject its integration: it does unless
+/// `TEMOR_SHELL_INTEGRATION=0`.
+fn integration_on(env: &ChildEnv) -> bool {
+    env.get("TEMOR_SHELL_INTEGRATION") != Some(OsStr::new("0"))
 }
 
 /// One file to write under the runtime directory.
@@ -68,14 +56,14 @@ pub fn plan_integration(
 ) -> IntegrationPlan {
     let root = runtime_dir.join("shell-integration");
     let adapter = adapter_for(shell.kind);
-    let state = IntegrationState::of(&env);
+    let on = integration_on(&env);
     let caps = adapter.caps();
-    if state == IntegrationState::Off || !(caps.env || caps.aliases) {
+    if !on || !(caps.env || caps.aliases) {
         env.remove(crate::report::KEY_VAR);
     }
-    match state {
-        IntegrationState::On => adapter.plan(shell, start, env, &root),
-        IntegrationState::Off => plain(shell, start, env),
+    match on {
+        true => adapter.plan(shell, start, env, &root),
+        false => plain(shell, start, env),
     }
 }
 

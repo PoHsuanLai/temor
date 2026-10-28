@@ -11,7 +11,7 @@ use temor_transfer::kitty::{
     Action, FrameScanner, Input, KittyId, Link, Message, Offered, ReceiveSession, Waits,
     apply_write, drive_receive, drive_send, parse_message, serve,
 };
-use temor_transfer::osc1337::{Completeness, Delivery, Osc1337Reader, ReceivedFile, encode_file};
+use temor_transfer::osc1337::{Delivery, Osc1337Reader, ReceivedFile, encode_file};
 use temor_transfer::shelf::{Clock, ShelfStore, UnixMillis};
 use temor_transfer::{Bytes, Consent, FileName, HostName, Origin, Root, TransferError};
 
@@ -231,7 +231,7 @@ fn a_1337_file_is_decoded_consented_and_shelved() {
     let wire = encode_file("notes/a.txt", b"hello", Delivery::Offer);
     let payload = payload_of(&wire);
     let file = Osc1337Reader::new(limits(1024))
-        .feed(&payload, Completeness::Whole)
+        .feed(&payload, false)
         .expect("decodes");
     let Some(ReceivedFile::NeedsConsent(offer)) = file else {
         panic!("expected an offer, got {file:?}");
@@ -265,11 +265,11 @@ fn a_1337_file_is_decoded_consented_and_shelved() {
 fn a_1337_inline_flag_survives_and_a_cut_file_is_refused() {
     let wire = encode_file("p.png", b"png", Delivery::Inline);
     let payload = payload_of(&wire);
-    let got = Osc1337Reader::new(limits(1024)).feed(&payload, Completeness::Whole);
+    let got = Osc1337Reader::new(limits(1024)).feed(&payload, false);
     assert!(matches!(got, Ok(Some(ReceivedFile::Inline(_)))), "{got:?}");
-    let cut = Osc1337Reader::new(limits(1024)).feed(&payload, Completeness::Cut);
+    let cut = Osc1337Reader::new(limits(1024)).feed(&payload, true);
     assert!(matches!(cut, Err(TransferError::Cut)), "{cut:?}");
-    let small = Osc1337Reader::new(limits(2)).feed(&payload, Completeness::Whole);
+    let small = Osc1337Reader::new(limits(2)).feed(&payload, false);
     assert!(
         matches!(small, Err(TransferError::TooLarge { .. })),
         "{small:?}"

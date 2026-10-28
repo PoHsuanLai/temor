@@ -82,4 +82,4 @@ pub use identity::{
 };
 pub use master::{MasterProbe, prepare_control_dirs, probe_master, socket_appeared};
 pub use private_dir::ensure_private_dir;
-pub use tailnet::{DirectHost, Presence, TailnetHost, TailnetOwner, TailscaleSsh, UnixSeconds};
+pub use tailnet::{DirectHost, TailnetHost, TailnetOwner, UnixSeconds};

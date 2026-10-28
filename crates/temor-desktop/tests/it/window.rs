@@ -4,8 +4,8 @@
 
 use std::sync::Mutex;
 use temor_desktop::{
-    CommandInfo, CommandRef, Exit, Focus, LineRange, Network, PaneInfo, PaneKind, PaneOpen,
-    PaneRef, PortRefusal, SandboxResult, SandboxRun, SpaceRef, WindowContext, WindowPort,
+    CommandInfo, CommandRef, Exit, Focus, LineRange, PaneInfo, PaneKind, PaneOpen, PaneRef,
+    PortRefusal, SandboxResult, SandboxRun, SpaceRef, WindowContext, WindowPort,
 };
 
 /// What the fake window was asked to do.
@@ -89,7 +89,7 @@ impl WindowPort for FakeWindow {
     }
 
     async fn run_sandboxed(&self, run: SandboxRun) -> Result<SandboxResult, PortRefusal> {
-        let changed = matches!(run.network, Network::Closed);
+        let changed = matches!(run.network, false);
         self.log.lock().unwrap().sandboxed.push(run);
         Ok(SandboxResult {
             exit: Exit::Code(0),

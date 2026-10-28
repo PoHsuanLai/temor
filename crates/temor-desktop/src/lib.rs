@@ -32,11 +32,11 @@ mod secrets;
 mod tailnet;
 mod window;
 
-pub use badge::{Attention, Badge, BadgeCount, Progress};
+pub use badge::{Badge, BadgeCount, Progress};
 pub use checkpoints::{
     CheckpointPort, Named, NoCheckpoints, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
-    PointPlan, PointRow, PointState, Rewind, RunState, SessionKey, TurnHow, TurnMark, TurnNo,
-    WatchAsk, WatchOwner, Watching,
+    PointPlan, PointRow, Rewind, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk, WatchOwner,
+    Watching,
 };
 pub use env::{BusRoute, DesktopEnv};
 pub use error::DesktopError;
@@ -55,7 +55,6 @@ pub use request::{
 pub use secrets::{NoSecrets, SecretFault, SecretVault};
 pub use tailnet::TailnetChanges;
 pub use window::{
-    CommandInfo, CommandRef, Exit, Focus, LineRange, Network, PaneInfo, PaneKind, PaneOpen,
-    PaneRef, Placement, PortRefusal, SandboxResult, SandboxRun, SpaceRef, WindowContext,
-    WindowPort,
+    CommandInfo, CommandRef, Exit, Focus, LineRange, PaneInfo, PaneKind, PaneOpen, PaneRef,
+    Placement, PortRefusal, SandboxResult, SandboxRun, SpaceRef, WindowContext, WindowPort,
 };

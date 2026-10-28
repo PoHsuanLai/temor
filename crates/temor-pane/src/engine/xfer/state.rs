@@ -12,7 +12,7 @@ use temor_transfer::kitty::{
     Action, ErrorCode, KittyId, Message, Offered, Reply, ReplyStatus, encode_reply, parse_message,
     parse_reply, readable_header,
 };
-use temor_transfer::osc1337::{Completeness, FileOffer, Osc1337Reader};
+use temor_transfer::osc1337::{FileOffer, Osc1337Reader};
 use temor_vt::UnknownKind;
 
 use super::event::{OfferId, TransferEvent, TransferSetup};
@@ -218,12 +218,4 @@ fn is_multipart(payload: &[u8]) -> bool {
     payload.starts_with(b"1337;MultipartFile=")
         || payload.starts_with(b"1337;FilePart=")
         || payload == b"1337;FileEnd"
-}
-
-/// How temor-vt's truncation reads to the OSC 1337 reader.
-pub(super) fn completeness(truncation: bool) -> Completeness {
-    match truncation {
-        false => Completeness::Whole,
-        _ => Completeness::Cut,
-    }
 }

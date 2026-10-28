@@ -13,7 +13,7 @@ use porter_core::AppName;
 use prov::{ActionName, Actor, Effect, Integrity, Label, Labelled, SpaceId};
 use std::collections::HashMap;
 use std::sync::Arc;
-use temor_desktop::{APP_BUS_NAME, Network, PaneRef, SystemIntents};
+use temor_desktop::{APP_BUS_NAME, PaneRef, SystemIntents};
 use zbus::zvariant::Value as BusValue;
 
 const PROVIDER_PATH: &str = "/org/quire/IntentProvider1";
@@ -184,10 +184,7 @@ async fn a_sandboxed_run_is_classified_by_its_network_and_undone_by_the_window()
     .await
     .unwrap();
     assert!(text_of(&ran).0.ends_with("done"));
-    assert_eq!(
-        s.window.log.lock().unwrap().sandboxed[0].network,
-        Network::Closed
-    );
+    assert_eq!(s.window.log.lock().unwrap().sandboxed[0].network, false);
     let Undoable::Yes(token) = ran.undo else {
         panic!("a run that changed something is undoable");
     };

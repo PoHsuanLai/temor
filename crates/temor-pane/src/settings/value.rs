@@ -91,15 +91,6 @@ pub enum CursorStyle {
     Underline,
 }
 
-/// Whether the cursor blinks. `On`: it blinks unless the program asks for a steady one (DECSCUSR,
-/// DEC mode 12), as Ghostty's does. `Off`: it never blinks, whatever the program asks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum CursorBlinking {
-    #[default]
-    On,
-    Off,
-}
-
 /// Which font the grid uses.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum FontChoice {
@@ -155,10 +146,10 @@ pub fn cursor(key: &str, value: &str) -> Result<CursorStyle, SettingsError> {
 }
 
 /// Reads whether the cursor blinks: on or off.
-pub fn cursor_blink(key: &str, value: &str) -> Result<CursorBlinking, SettingsError> {
+pub fn cursor_blink(key: &str, value: &str) -> Result<bool, SettingsError> {
     match value.trim() {
-        "on" => Ok(CursorBlinking::On),
-        "off" => Ok(CursorBlinking::Off),
+        "on" => Ok(true),
+        "off" => Ok(false),
         _ => Err(bad(key, value)),
     }
 }

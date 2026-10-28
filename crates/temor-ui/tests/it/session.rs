@@ -396,11 +396,7 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     f.session.cancel_paste();
     assert!(f.session.pending_paste().is_none());
     // A plain paste (no bracketed paste) with a line break waits too.
-    let plain = temor_pane::paste::check(
-        "a\nb",
-        temor_pane::paste::PasteMode::Plain,
-        temor_pane::paste::VtVerdict::Clean,
-    );
+    let plain = temor_pane::paste::check("a\nb", temor_pane::paste::PasteMode::Plain, false);
     assert_eq!(
         plain,
         temor_pane::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)

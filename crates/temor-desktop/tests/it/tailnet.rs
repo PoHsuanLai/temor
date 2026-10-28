@@ -7,7 +7,7 @@ use crate::bus::PrivateBus;
 use std::collections::HashMap;
 use std::time::Duration;
 use temor_desktop::SystemTailnet;
-use temor_ssh::{Presence, TailnetOwner, TailscaleSsh};
+use temor_ssh::TailnetOwner;
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::{OwnedValue, Value};
 
@@ -98,16 +98,11 @@ async fn the_machines_come_back_as_plain_hosts_and_a_change_ticks() {
     assert_eq!(box_.dns, "box.tail1.ts.net");
     assert_eq!(
         (box_.online, box_.ssh, box_.owner),
-        (Presence::Online, TailscaleSsh::On, TailnetOwner::Mine)
+        (true, true, TailnetOwner::Mine)
     );
     assert_eq!(
         (nas.online, nas.ssh, nas.owner, nas.last_seen),
-        (
-            Presence::Offline,
-            TailscaleSsh::Off,
-            TailnetOwner::Shared,
-            None
-        )
+        (false, false, TailnetOwner::Shared, None)
     );
     assert!(box_.is_named("100.64.0.7"));
 

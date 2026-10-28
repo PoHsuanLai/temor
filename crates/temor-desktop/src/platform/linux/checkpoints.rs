@@ -7,7 +7,7 @@
 use super::bus::connect;
 use crate::checkpoints::{
     CheckpointPort, NotSavedWhy, PlanDigest, PointFault, PointId, PointList, PointPlan, PointRow,
-    PointState, RunState, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk, Watching,
+    SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk, Watching,
 };
 use crate::{DesktopEnv, DesktopError};
 use docket_client::{ClientError, DbusTransport, Intents};
@@ -125,10 +125,10 @@ impl CheckpointPort for SystemCheckpoints {
 }
 
 /// docket's turn state as the window's.
-pub(super) fn run_state_of(state: TurnState) -> RunState {
+pub(super) fn run_state_of(state: TurnState) -> bool {
     match state {
-        TurnState::Running => RunState::Running,
-        _ => RunState::Idle,
+        TurnState::Running => true,
+        _ => false,
     }
 }
 
@@ -204,8 +204,8 @@ pub(super) fn list_of(rows: &[CheckpointRow]) -> PointList {
                 turn: TurnNo(turn.0),
                 at: seconds(*at),
                 state: match state {
-                    SavedState::Available => PointState::Available,
-                    SavedState::Gone => PointState::Gone,
+                    SavedState::Available => true,
+                    SavedState::Gone => false,
                 },
             }),
             CheckpointRow::NotSaved { turn, at, why } => Some(PointRow::NotSaved {
@@ -220,10 +220,7 @@ pub(super) fn list_of(rows: &[CheckpointRow]) -> PointList {
             _ => None,
         })
         .collect();
-    PointList {
-        rows,
-        turn: RunState::Idle,
-    }
+    PointList { rows, turn: false }
 }
 
 pub(super) fn plan_of(plan: &RestorePlan) -> PointPlan {

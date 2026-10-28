@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use temor_transfer::osc1337::{Completeness, Osc1337Reader, ReceivedFile};
+use temor_transfer::osc1337::{Osc1337Reader, ReceivedFile};
 use temor_transfer::shelf::{
     Clock, Shelf, ShelfId, ShelfItem, ShelfStore, SystemClock, UnixMillis, candidate_name,
 };
@@ -143,7 +143,7 @@ fn a_consented_offer_is_placed_and_never_overwrites() {
     let payload = b"1337;File=name=cmVwb3J0LnBkZg==:aGVsbG8=";
     let mut reader =
         Osc1337Reader::new(Limits::new(Bytes::new(1024), Count::new(1), Count::new(1)));
-    let offer = match reader.feed(payload, Completeness::Whole).expect("decodes") {
+    let offer = match reader.feed(payload, false).expect("decodes") {
         Some(ReceivedFile::NeedsConsent(offer)) => offer,
         other => panic!("expected an offer, got {other:?}"),
     };

@@ -12,8 +12,8 @@ pub use env::{ArcRunner, SshEnv};
 
 // The hosts and how they are named: the host list and a host's key.
 pub use temor_ssh::{
-    DirectHost, Fingerprint, HostAlias, HostKey, HostName, HostRow, KnownName, Presence,
-    is_ipv6_literal, merge_hosts,
+    DirectHost, Fingerprint, HostAlias, HostKey, HostName, HostRow, KnownName, is_ipv6_literal,
+    merge_hosts,
 };
 // The shared connection to a host and the command lines that use it.
 pub use temor_ssh::{

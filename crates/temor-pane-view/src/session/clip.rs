@@ -1,7 +1,7 @@
 //! Copy and paste (PLAN §6): copy writes the selection's text; paste frames the clipboard for
 //! the program, and asks the person first when the text is unsafe to paste as it is.
 
-use temor_panes::pane::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
+use temor_panes::pane::paste::{PasteCheck, PasteMode, UnsafeReason, check, encode};
 
 use super::Session;
 use crate::error::ViewError;
@@ -82,13 +82,10 @@ impl Session {
 /// libghostty's check, for the framing the program will get. A bracketed paste may hold line
 /// breaks, so only the end-of-frame marker counts there: libghostty's check on the text with its
 /// newlines turned to spaces is exactly that rule.
-fn vt_verdict(text: &str, mode: PasteMode) -> VtVerdict {
+fn vt_verdict(text: &str, mode: PasteMode) -> bool {
     let safe = match mode {
         PasteMode::Bracketed => temor_panes::vt::paste_is_safe(text.replace('\n', " ").as_bytes()),
         PasteMode::Plain => temor_panes::vt::paste_is_safe(text.as_bytes()),
     };
-    match safe {
-        true => VtVerdict::Clean,
-        false => VtVerdict::Flagged,
-    }
+    !(safe)
 }

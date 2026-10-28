@@ -65,15 +65,6 @@ pub enum Placement {
     SplitDown,
 }
 
-/// Whether a sandboxed command can reach the network.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Network {
-    /// It cannot.
-    Closed,
-    /// It can.
-    Open,
-}
-
 /// How a command ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Exit {
@@ -166,7 +157,7 @@ pub struct SandboxRun {
     /// The folder to run in; the focused pane's when absent.
     pub cwd: Option<PathBuf>,
     /// Whether it can reach the network.
-    pub network: Network,
+    pub network_open: bool,
 }
 
 /// What a sandboxed run produced.

@@ -3,7 +3,7 @@
 //! lists are read when a pane starts, so they reach the panes that come next. Pure.
 
 use temor_panes::pane::settings::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, TerminalSettings,
+    CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, TerminalSettings,
 };
 
 /// What to apply to the open panes: each part is there only when it changed.
@@ -11,7 +11,7 @@ use temor_panes::pane::settings::{
 pub struct LiveChange {
     pub font: Option<(FontChoice, FontPoints, LinePercent)>,
     pub cursor: Option<CursorStyle>,
-    pub blink: Option<CursorBlinking>,
+    pub blink: Option<bool>,
     pub notify: Option<NotifyAfter>,
 }
 

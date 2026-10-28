@@ -5,7 +5,7 @@ use chordkit::Overrides;
 use ds_settings::schema::{KeyKind, Schema};
 use ds_settings::{ConfigRoot, Store};
 use temor_panes::pane::settings::{
-    CursorBlinking, CursorStyle, FontChoice, NotifyAfter, ShellChoice, StartIn, TerminalSettings,
+    CursorStyle, FontChoice, NotifyAfter, ShellChoice, StartIn, TerminalSettings,
 };
 
 use crate::settings::{APP, StartFolder, TerminalDoc, from_terminal, schema};
@@ -126,7 +126,7 @@ remove = ["su"]
     assert_eq!(settings.font_size.points(), 15.0);
     assert_eq!(settings.line_height.percent(), 125);
     assert_eq!(settings.cursor, CursorStyle::Bar);
-    assert_eq!(settings.cursor_blink, CursorBlinking::Off);
+    assert!(!settings.cursor_blink);
     assert_eq!(settings.scrollback.lines(), 500);
     assert_eq!(settings.shell, ShellChoice::Program("/bin/zsh".to_owned()));
     assert_eq!(settings.start_in, StartIn::Current);

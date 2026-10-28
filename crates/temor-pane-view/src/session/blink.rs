@@ -6,7 +6,6 @@
 
 use ds_core::time::stamp::Stamp;
 use temor_client::model::notify::Focus;
-use temor_panes::pane::settings::CursorBlinking;
 use temor_panes::render::BlinkPhase;
 
 use super::Session;
@@ -17,7 +16,7 @@ pub const BLINK_MS: u64 = 600;
 /// Where the blink stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Blink {
-    pub(super) setting: CursorBlinking,
+    pub(super) setting: bool,
     /// When the cursor last showed solid from the start of an `On` half.
     pub(super) from: Stamp,
     /// The half the last paint drew.
@@ -36,8 +35,8 @@ impl Session {
     /// The half the cursor is in now; always `On` when blinking is off.
     pub(super) fn blink_now(&self) -> BlinkPhase {
         match self.blink.setting {
-            CursorBlinking::On => blink_phase(self.core().clock.now().since(self.blink.from)),
-            CursorBlinking::Off => BlinkPhase::On,
+            true => blink_phase(self.core().clock.now().since(self.blink.from)),
+            false => BlinkPhase::On,
         }
     }
 
