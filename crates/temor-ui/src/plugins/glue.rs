@@ -222,20 +222,6 @@ impl HubRef {
     }
 }
 
-/// Carries finished plugin work into the hub for as long as the window lives, and draws the
-/// window again after each. Call once, next to the facts loop.
-pub fn spawn_plugins_loop(desk: Desk) {
-    use dioxus::prelude::spawn;
-    let Some(mut inbox) = desk.hub.0.borrow_mut().plugins.host.take_inbox() else {
-        return;
-    };
-    spawn(async move {
-        while let Some(done) = inbox.recv().await {
-            desk.settle(|hub| hub.plugin_done(done));
-        }
-    });
-}
-
 #[cfg(test)]
 #[path = "glue_tests.rs"]
 mod tests;

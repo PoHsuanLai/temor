@@ -1,19 +1,13 @@
 //! Hearing the SSH jobs, and the timer that polls what has no event of its own: the local copies
 //! of edited files, and a connection that is still being made.
 
-use dioxus::prelude::*;
-use ds::base::time::clock::sleep;
-use std::time::Duration;
 use temor_client::model::host::forward::ForwardIn;
 use temor_client::model::host::master::Master;
 use temor_client::ssh::{HostAlias, MasterProbe};
 
-use super::desk::Desk;
 use super::model::Hub;
 use temor_client::ssh::work::SshEvent;
 
-/// How often the local copies are looked at (an editor's save shows within this).
-const TICK: Duration = Duration::from_millis(300);
 /// A connection being made is asked about every this many ticks.
 const PROBE_EVERY: u32 = 3;
 
@@ -82,31 +76,4 @@ fn connecting_alone(lines: &std::collections::BTreeMap<HostAlias, super::ssh::Ho
         .filter(|line| matches!(line.master, Master::Connecting { .. }))
         .count()
         == 1
-}
-
-/// Hears the SSH jobs and polls, for as long as the window lives.
-pub fn spawn_ssh_loop(desk: Desk) {
-    let Some(mut inbox) = desk.hub.0.borrow_mut().ssh.inbox.take() else {
-        return;
-    };
-    let heard = desk.clone();
-    spawn(async move {
-        while let Some(event) = inbox.recv().await {
-            let notes = heard.hub.0.borrow_mut().ssh_event(event);
-            heard.tell(notes);
-        }
-    });
-    spawn(async move {
-        loop {
-            sleep(TICK).await;
-            let (redraw, notes) = desk.hub.0.borrow_mut().ssh_tick();
-            let shown = redraw || !notes.is_empty();
-            for note in notes {
-                desk.say(note);
-            }
-            if shown {
-                desk.bump();
-            }
-        }
-    });
 }

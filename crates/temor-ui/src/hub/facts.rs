@@ -177,19 +177,3 @@ impl Hub {
             .or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
     }
 }
-
-/// Carries finished reads into the hub for as long as the window lives, and redraws when one
-/// changed what is shown. Call once, next to the pane event loop.
-pub fn spawn_facts_loop(desk: super::Desk) {
-    use dioxus::prelude::spawn;
-    let Some(mut inbox) = desk.hub.0.borrow_mut().facts.take_inbox() else {
-        return;
-    };
-    spawn(async move {
-        while let Some(ready) = inbox.recv().await {
-            if desk.hub.0.borrow_mut().facts_ready(ready) {
-                desk.bump();
-            }
-        }
-    });
-}

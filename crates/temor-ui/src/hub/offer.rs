@@ -6,10 +6,7 @@
 
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::Duration;
 
-use dioxus::prelude::*;
-use ds::base::time::clock::sleep;
 use ds_settings::Store;
 use temor_client::model::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
@@ -22,9 +19,6 @@ use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use crate::session::Session;
 use crate::view::launch::Launch;
-
-/// How often the waiting rule is looked at.
-const TICK: Duration = Duration::from_millis(250);
 
 /// What an event from a pane means to the offer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -211,22 +205,6 @@ impl Hub {
             .and_then(OfferState::asking)
             .map(Program::to_string)
     }
-}
-
-/// Looks at the waiting rule for as long as the window lives.
-pub fn spawn_offer_loop(desk: Desk) {
-    spawn(async move {
-        loop {
-            sleep(TICK).await;
-            let (redraw, notes) = desk.hub.0.borrow_mut().offer_tick();
-            for note in notes {
-                desk.say(note);
-            }
-            if redraw {
-                desk.bump();
-            }
-        }
-    });
 }
 
 impl HubRef {

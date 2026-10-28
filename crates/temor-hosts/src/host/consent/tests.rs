@@ -220,10 +220,7 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
             .contains(r#""helper":"allowed""#)
     );
     let (same, changed) = helper(book.clone(), &prod, Grant::Allowed);
-    assert!(
-        !changed && same == book,
-        "the same answer changes nothing"
-    );
+    assert!(!changed && same == book, "the same answer changes nothing");
     let (forgotten, _) = helper(book, &prod, Grant::Ask);
     assert!(
         !serde_json::to_string(&forgotten)

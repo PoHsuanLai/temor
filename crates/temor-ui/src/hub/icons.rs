@@ -12,7 +12,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 pub struct IconsHub {
     pub(super) icons: Icons,
     pub(super) pack: IconPack,
-    done: Option<UnboundedReceiver<()>>,
+    pub(super) done: Option<UnboundedReceiver<()>>,
 }
 
 impl IconsHub {
@@ -32,19 +32,4 @@ impl IconsHub {
         };
         (hub, trouble)
     }
-}
-
-/// Draws the rows again when a look-up is done, for as long as the window lives; several done
-/// together draw once. Call once, next to the pane event loop.
-pub fn spawn_icons_loop(desk: super::Desk) {
-    use dioxus::prelude::spawn;
-    let Some(mut done) = desk.hub.0.borrow_mut().icons.done.take() else {
-        return;
-    };
-    spawn(async move {
-        while done.recv().await.is_some() {
-            while done.try_recv().is_ok() {}
-            desk.bump();
-        }
-    });
 }
