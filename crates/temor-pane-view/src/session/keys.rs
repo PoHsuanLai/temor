@@ -7,12 +7,12 @@ use temor_panes::vt::{KeyAction, KeyCode};
 use temor_client::model::block::PickStep;
 
 use super::{FindStep, Session};
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::input::{FindBar, KittyKeys, Routed, Stroke, is_altgr_text, route_with};
 
 impl Session {
     /// Routes one key event.
-    pub fn key(&mut self, stroke: Stroke) -> Result<(), UiError> {
+    pub fn key(&mut self, stroke: Stroke) -> Result<(), ViewError> {
         let find = match self.finder.is_some() {
             true => FindBar::Open,
             false => FindBar::Closed,
@@ -49,7 +49,7 @@ impl Session {
     /// (the window's own reach the window through [`Session::take_asked`]), Ctrl+C empties the
     /// composer, and any other chord does nothing: the shell's own line editor, which the
     /// composer stands for, never hears it.
-    pub fn composer_chord(&mut self, stroke: Stroke) -> Result<(), UiError> {
+    pub fn composer_chord(&mut self, stroke: Stroke) -> Result<(), ViewError> {
         let find = match self.finder.is_some() {
             true => FindBar::Open,
             false => FindBar::Closed,
@@ -71,7 +71,7 @@ impl Session {
     }
 
     /// Runs a pane action.
-    pub fn run(&mut self, action: Action) -> Result<(), UiError> {
+    pub fn run(&mut self, action: Action) -> Result<(), ViewError> {
         match action {
             Action::Copy => self.copy(),
             Action::Paste => self.paste(),

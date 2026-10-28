@@ -4,7 +4,7 @@
 use temor_panes::pane::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
 
 use super::Session;
-use crate::error::UiError;
+use crate::error::ViewError;
 
 /// The largest paste the pane sends (8 MiB). Larger ones are refused, not truncated.
 pub const PASTE_LIMIT: usize = 8 * 1024 * 1024;
@@ -19,7 +19,7 @@ pub struct PendingPaste {
 impl Session {
     /// Copies the selected text to the clipboard, else the picked blocks whole (each command and
     /// its output). Nothing selected or picked: nothing happens.
-    pub fn copy(&mut self) -> Result<(), UiError> {
+    pub fn copy(&mut self) -> Result<(), ViewError> {
         let text = match self.selection {
             Some(selection) => self
                 .pane
@@ -36,7 +36,7 @@ impl Session {
 
     /// Pastes the clipboard. An unsafe paste waits for [`Session::confirm_paste`]. A paste over
     /// [`PASTE_LIMIT`] is refused with a notice: it is never cut short.
-    pub fn paste(&mut self) -> Result<(), UiError> {
+    pub fn paste(&mut self) -> Result<(), ViewError> {
         self.wake_cursor();
         let Ok(text) = self.clipboard.read() else {
             return Ok(());

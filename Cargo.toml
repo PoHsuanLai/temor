@@ -70,6 +70,7 @@ temor-pty = { path = "crates/temor-pty" }
 temor-shell = { path = "crates/temor-shell" }
 temor-pane = { path = "crates/temor-pane", default-features = false }
 temor-ui = { path = "crates/temor-ui" }
+temor-pane-view = { path = "crates/temor-pane-view" }
 # temor-plugins (lane plugins): P11 on bayonet. A plugin is run, never linked.
 bayonet = { git = "https://github.com/PoHsuanLai/bayonet.git", rev = "d66e243188033c1b7c74e636cb5f548f75caecb8" }
 temor-plugins = { path = "crates/temor-plugins" }

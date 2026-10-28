@@ -41,6 +41,7 @@ temor-panes 3
 temor-desktop 3
 temor-remote 3
 temor-ui 4
+temor-pane-view 4
 temor 4
 '
 
@@ -59,7 +60,7 @@ banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
 DESKTOP = "temor-desktop"
 WINDOW = "temor-ui"
-FENCE = {"temor-client", "temor-panes", "temor-schema"}
+FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"}
 FEATURE = "quire-desktop"
 meta = json.loads(sys.argv[1])
 violations = []

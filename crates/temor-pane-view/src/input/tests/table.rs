@@ -9,7 +9,8 @@ use temor_panes::vt::Ime;
 
 use super::super::keys::stroke;
 use super::super::route::{FindBar, KittyKeys, Routed, route_with};
-use crate::edge::keymap_for;
+use chordkit::{ConventionSource, KeymapSource};
+use temor_panes::pane::keys::build_keymap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Went {
@@ -65,7 +66,12 @@ pub(super) fn went_with(keymap: &Keymap, row: &Row, find: FindBar, kitty: KittyK
 }
 
 pub(super) fn keymap_of(platform: Platform) -> Keymap {
-    keymap_for(platform, &Overrides::default()).0
+    build_keymap(
+        &ConventionSource as &dyn KeymapSource,
+        platform,
+        &Overrides::default(),
+    )
+    .0
 }
 
 pub(super) fn check(platform: Platform, find: FindBar, rows: &[Row]) {

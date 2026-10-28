@@ -13,7 +13,7 @@ use temor_panes::vt::ViewportScroll;
 
 use super::super::Session;
 use super::super::osc52::Copied;
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::words::notices;
 
 impl Session {
@@ -75,7 +75,7 @@ impl Session {
 
     /// Saves a finished block's output to the downloads shelf (PLAN §9): written to a fresh
     /// temporary file in the shelf folder, then placed under its own name by the shelf store.
-    pub fn save_output(&mut self, id: BlockId) -> Result<(), UiError> {
+    pub fn save_output(&mut self, id: BlockId) -> Result<(), ViewError> {
         let Some(text) = self.block_output(id) else {
             self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return Ok(());
@@ -86,7 +86,7 @@ impl Session {
         let saved = write_temp(store.dir(), &text).and_then(|temp| {
             store
                 .place(temp.as_ref(), &name)
-                .map_err(|err| UiError::Save(err.to_string()))
+                .map_err(|err| ViewError::Save(err.to_string()))
         });
         self.notice = Some(match saved {
             Ok(_) => "Saved to Downloads.".to_owned(),
@@ -109,8 +109,8 @@ pub(super) fn output_name(command: &str) -> String {
 /// Writes `text` to a new, uniquely named file in `dir`. The file is created exclusively, so a
 /// planted link at its name is never followed. The returned path removes the file when dropped
 /// (the shelf store has already moved it by then).
-fn write_temp(dir: &Path, text: &str) -> Result<tempfile::TempPath, UiError> {
-    let io = |err: std::io::Error| UiError::Save(err.to_string());
+fn write_temp(dir: &Path, text: &str) -> Result<tempfile::TempPath, ViewError> {
+    let io = |err: std::io::Error| ViewError::Save(err.to_string());
     std::fs::create_dir_all(dir).map_err(io)?;
     let mut file = tempfile::Builder::new()
         .prefix(".temor-output-")

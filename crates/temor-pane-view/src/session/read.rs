@@ -7,7 +7,7 @@ use temor_panes::render::GridFit;
 
 use super::Session;
 use super::clip::PendingPaste;
-use crate::error::UiError;
+use crate::error::ViewError;
 use temor_panes::pane::PaneHandle;
 
 impl Session {
@@ -85,7 +85,7 @@ impl Session {
     }
 
     /// The viewport's first screen row (what the pane shows at the top).
-    pub(super) fn viewport_top(&self) -> Result<u32, UiError> {
+    pub(super) fn viewport_top(&self) -> Result<u32, ViewError> {
         Ok(self.pane.with_term(|term| term.viewport())?.0)
     }
 }

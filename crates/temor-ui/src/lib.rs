@@ -7,16 +7,13 @@ pub mod bar;
 pub mod edge;
 pub mod error;
 pub mod hub;
-pub mod input;
-pub mod paint;
-pub mod pane;
-pub mod platform;
 pub mod plugins;
-pub mod session;
 pub mod settings;
 pub mod settings_window;
 pub mod view;
-pub mod words;
+
+// How a pane is shown is its own crate; the window names its parts as its own.
+pub use temor_pane_view::{input, paint, pane, platform, session, words};
 
 pub use app::run;
 pub use view::launch::LauncherChoice;

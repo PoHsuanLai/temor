@@ -8,7 +8,7 @@ use temor_panes::render::{Palette, PaneFocus, PixelSize, Scale};
 use super::Session;
 use super::model::{INSET, Notice};
 use super::room::Relaid;
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::paint::PaintView;
 use temor_panes::Heard;
 use temor_panes::pane::PaneEvent;
@@ -53,7 +53,7 @@ impl Session {
 
     /// The pane's size and scale changed. The grid is refitted; when it changed, the terminal and
     /// the program are resized too. Returns whether the grid changed.
-    pub fn layout(&mut self, pixels: PixelSize, scale: Scale) -> Result<bool, UiError> {
+    pub fn layout(&mut self, pixels: PixelSize, scale: Scale) -> Result<bool, ViewError> {
         self.pixels = pixels;
         self.scale = scale;
         if pixels.width.0 == 0 || pixels.height.0 == 0 {
@@ -72,7 +72,7 @@ impl Session {
 
     /// Makes `palette` the grid's colours: the terminal's defaults (so a program that reads them
     /// sees the new ones) and the painter's. The next paint redraws the whole grid.
-    pub fn set_palette(&mut self, palette: Palette) -> Result<(), UiError> {
+    pub fn set_palette(&mut self, palette: Palette) -> Result<(), ViewError> {
         self.pane.with_term(|term| term.set_palette(&palette))?;
         self.painter.set_palette(palette);
         Ok(())
@@ -80,7 +80,7 @@ impl Session {
 
     /// Draws the pane when it has a size, handing its pixels to `show`, and lays its rows out
     /// around the room under blocks with pictures. Whether the rows moved.
-    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<Relaid, UiError> {
+    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<Relaid, ViewError> {
         if self.pixels.width.0 == 0 || self.pixels.height.0 == 0 {
             return Ok(Relaid::Same);
         }

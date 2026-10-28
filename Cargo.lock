@@ -7353,6 +7353,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-pane-view"
+version = "0.1.1"
+dependencies = [
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-core",
+ "temor-client",
+ "temor-panes",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "temor-panes"
 version = "0.1.1"
 dependencies = [
@@ -7523,7 +7538,6 @@ dependencies = [
  "ds-settings",
  "ds-settings-page",
  "png",
- "rustix",
  "serde",
  "serde_json",
  "similar",
@@ -7531,6 +7545,7 @@ dependencies = [
  "temor-core",
  "temor-desktop",
  "temor-pane",
+ "temor-pane-view",
  "temor-panes",
  "temor-plugins",
  "temor-pty",
@@ -7547,7 +7562,6 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "toml",
- "unicode-width",
 ]
 
 [[package]]

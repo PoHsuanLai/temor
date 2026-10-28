@@ -12,9 +12,6 @@ pub enum UiError {
     /// The pane engine could not start or draw (see `temor-pane`).
     #[error(transparent)]
     Pane(#[from] temor_panes::pane::PaneError),
-    /// The program could not be started on a terminal, or the terminal failed.
-    #[error("the shell could not start: {0}")]
-    Pty(#[from] temor_panes::pty::PtyError),
     /// The settings file could not be read.
     #[error("the settings file could not be read: {0}")]
     SettingsRead(#[source] std::io::Error),
@@ -31,13 +28,10 @@ pub enum UiError {
     /// The folder for shell integration is missing, or is not private to this user.
     #[error("the folder for shell setup is not private to you: {0}")]
     RuntimeDir(#[source] std::io::Error),
-    /// The output could not be saved to the downloads shelf.
-    #[error("the output could not be saved: {0}")]
-    Save(String),
-    /// The pane could not open (see `temor-panes`).
-    #[error(transparent)]
-    Open(#[from] temor_panes::OpenError),
     /// One of temor's own rules refused.
     #[error(transparent)]
     Core(#[from] temor_client::model::error::CoreError),
+    /// A pane could not open, draw or do what was asked of it.
+    #[error(transparent)]
+    View(#[from] temor_pane_view::error::ViewError),
 }

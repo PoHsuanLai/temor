@@ -11,7 +11,7 @@ use temor_panes::pane::text::{Granularity, Selection, Shape};
 
 use super::Session;
 use super::model::PendingQuery;
-use crate::error::UiError;
+use crate::error::ViewError;
 
 /// How many screen rows are read per lock.
 const ROWS_PER_LOCK: u32 = 256;
@@ -46,7 +46,7 @@ impl Session {
     }
 
     /// Runs the queued query if the quiet period has passed by `now`. Returns whether it ran.
-    pub fn run_due_query(&mut self, now: Duration) -> Result<bool, UiError> {
+    pub fn run_due_query(&mut self, now: Duration) -> Result<bool, ViewError> {
         let due = self
             .pending_query
             .as_ref()
@@ -63,7 +63,7 @@ impl Session {
 
     /// Searches the whole screen (scrollback included) for `query` and makes the first match
     /// current. An empty query has no matches.
-    pub fn set_query(&mut self, query: &str) -> Result<(), UiError> {
+    pub fn set_query(&mut self, query: &str) -> Result<(), ViewError> {
         let rows = self.pane.with_term(|term| term.screen_rows())?;
         let mut lines: Vec<(u32, RowText)> = Vec::with_capacity(usize::try_from(rows).unwrap_or(0));
         let mut first = 0;
@@ -111,7 +111,7 @@ impl Session {
 
     /// Selects the current match and scrolls the viewport to show it; a list of blocks scrolls
     /// itself to it instead (`found_row`).
-    fn reveal_current(&mut self) -> Result<(), UiError> {
+    fn reveal_current(&mut self) -> Result<(), ViewError> {
         let Some(found) = self.finder.as_ref().and_then(|f| f.current().copied()) else {
             self.selection = None;
             return self.mirror_selection();

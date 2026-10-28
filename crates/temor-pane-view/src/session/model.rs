@@ -14,11 +14,12 @@ use temor_panes::render::{FontSet, GridFit, PixelSize, Scale};
 
 use super::clip::PendingPaste;
 use super::clipboard::Clipboard;
-use crate::edge::{Clock, Notifier};
 use crate::input::ClickState;
 use crate::paint::{Inset, Painter};
 use crate::platform::Opener;
 pub use temor_panes::PaneCore;
+use temor_panes::clock::Clock;
+use temor_panes::notify::Notifier;
 use temor_panes::pane::PaneSpec;
 use temor_panes::{Locked, Shared};
 

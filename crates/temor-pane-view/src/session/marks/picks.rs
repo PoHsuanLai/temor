@@ -17,7 +17,7 @@ use temor_client::model::vocab::text::CommandText;
 use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::super::Session;
-use crate::error::UiError;
+use crate::error::ViewError;
 
 impl Session {
     /// The blocks that can be picked, oldest first: those the scrollback still holds.
@@ -251,7 +251,7 @@ impl Session {
     /// in the pick already (then the pick stays, so the menu acts on all of it), and no text
     /// stays selected. None where there is no block, on a full-screen program's screen, or while
     /// the program has the mouse: the click is the program's then.
-    pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, UiError> {
+    pub fn block_menu_press(&mut self, at: SurfacePoint) -> Result<Option<BlockId>, ViewError> {
         let Some(hit) = self.point_hit(at) else {
             return Ok(None);
         };
@@ -273,7 +273,7 @@ impl Session {
     }
 
     /// The card `id`'s "…": the block, for its menu, picked as a right-click on it picks it.
-    pub fn block_menu_for(&mut self, id: BlockId) -> Result<(), UiError> {
+    pub fn block_menu_for(&mut self, id: BlockId) -> Result<(), ViewError> {
         if !self.ann.is_picked(id) {
             self.pick_block(id, PickClick::Only);
         }

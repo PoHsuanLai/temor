@@ -13,7 +13,7 @@ use super::Session;
 use super::list_hit::{Landing, ListMap, list_hit};
 use super::model::INSET;
 use super::pointer::screen_cell;
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::paint::Inset;
 
 /// The room between a card and the pane's sides, in logical pixels: a card's rows are drawn
@@ -187,7 +187,7 @@ impl Session {
         rows: Range<u32>,
         ground: Option<temor_panes::vt::Rgb>,
         show: impl FnOnce(&[u8], PixelSize),
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         let (cols, cells) = self.pane.with_term(|term| {
             let cols = term.size().cols.0;
             (cols, term.styled_rows(rows.clone()))

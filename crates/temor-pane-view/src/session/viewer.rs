@@ -11,7 +11,7 @@ use temor_panes::pane::text::{CellPos, cwd_from_url};
 use temor_panes::vt::{GridPoint, PointSpace, SurfacePoint};
 
 use super::Session;
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::words::notices;
 
 /// A file to show, with the files the same output lists (the viewer's arrows walk them).
@@ -59,7 +59,7 @@ impl Session {
 
     /// ⌘-click at `cell`: the word there, if it names a file or a folder here, is asked for. On a
     /// pane on another computer the word is taken as a path there (the window fetches it).
-    pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), UiError> {
+    pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), ViewError> {
         let Some(file) = self.file_at(cell)? else {
             if let Some(folder) = self.folder_at(cell)? {
                 self.view_ask = Some(ViewAsk {
@@ -88,7 +88,7 @@ impl Session {
     /// The file the word at `cell` names, if it names one that exists here; on a pane on another
     /// computer, the path it most likely names there. The rule is the ⌘-click's, and the peek's
     /// too.
-    fn file_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
+    fn file_at(&self, cell: CellPos) -> Result<Option<PathBuf>, ViewError> {
         let row = self.line(cell.row)?;
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
@@ -105,7 +105,7 @@ impl Session {
     }
 
     /// The folder on this computer the word at `cell` names, by the ⌘-click's rule for files.
-    fn folder_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
+    fn folder_at(&self, cell: CellPos) -> Result<Option<PathBuf>, ViewError> {
         if self.core().site == PaneSite::Remote {
             return Ok(None);
         }

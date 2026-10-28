@@ -9,7 +9,7 @@ use temor_panes::render::{
     fit_grid,
 };
 
-use crate::error::UiError;
+use crate::error::ViewError;
 
 /// The space between a pane's edges and its grid, in logical pixels: the same on the left and the
 /// right, and the same on the top and the bottom.
@@ -134,7 +134,7 @@ pub struct Painter {
 }
 
 impl Painter {
-    pub fn new(fonts: FontSet, palette: Palette) -> Result<Self, UiError> {
+    pub fn new(fonts: FontSet, palette: Palette) -> Result<Self, ViewError> {
         Ok(Self {
             font: GridFont::of(&fonts),
             renderer: CpuRenderer::new(fonts),
@@ -207,7 +207,7 @@ impl Painter {
         (width, scale, inset): (u32, Scale, Inset),
         ground: Option<temor_panes::vt::Rgb>,
         show: impl FnOnce(&[u8], PixelSize),
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         if rows.is_empty() || width == 0 {
             return Ok(());
         }
@@ -244,7 +244,7 @@ impl Painter {
         pane: &PaneHandle,
         view: PaintView,
         show: impl FnOnce(&[u8], PixelSize),
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         let Painter {
             renderer,
             font: _,
@@ -259,7 +259,7 @@ impl Painter {
         // Decided and begun under one hold of the pane's lock, so a frame is never begun in the
         // middle of a hold: while the program holds the screen the captured frame is drawn.
         let draw = pane.with_term(|term| {
-            Ok::<_, UiError>(match term.paint_source() {
+            Ok::<_, ViewError>(match term.paint_source() {
                 PaintSource::Live { captures } => {
                     if *showing == Showing::Held || *seen_captures != captures {
                         // A full redraw: the marks this capture would read were consumed.

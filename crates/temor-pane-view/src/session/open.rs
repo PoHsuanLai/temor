@@ -10,13 +10,16 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::Session;
 use super::model::{FedParts, PaneCore, SessionParts, WindowKit};
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::paint::Painter;
 use crate::pane::UiSink;
 
 impl Session {
     /// Starts the program and its session. Events for the window go to `events`.
-    pub fn open(parts: SessionParts, events: UnboundedSender<PaneEvent>) -> Result<Self, UiError> {
+    pub fn open(
+        parts: SessionParts,
+        events: UnboundedSender<PaneEvent>,
+    ) -> Result<Self, ViewError> {
         Self::open_with(parts, Arc::new(UiSink(events)), None)
     }
 
@@ -26,7 +29,7 @@ impl Session {
         parts: SessionParts,
         sink: Arc<dyn EventSink>,
         snapshot: Option<&Snapshot>,
-    ) -> Result<Self, UiError> {
+    ) -> Result<Self, ViewError> {
         let SessionParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
         let (core_kit, kit) = kit.split();
@@ -36,7 +39,10 @@ impl Session {
 
     /// Starts a session whose program runs elsewhere (a host's helper), its events going to
     /// `sink`. The returned feeder is how the far end's output reaches the pane.
-    pub fn open_fed(parts: FedParts, sink: Arc<dyn EventSink>) -> Result<(Self, Feeder), UiError> {
+    pub fn open_fed(
+        parts: FedParts,
+        sink: Arc<dyn EventSink>,
+    ) -> Result<(Self, Feeder), ViewError> {
         let FedParts { spec, fonts, kit } = parts;
         let painter = Painter::new(fonts, spec.palette)?;
         let (core_kit, kit) = kit.split();

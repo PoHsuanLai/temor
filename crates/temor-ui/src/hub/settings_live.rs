@@ -32,7 +32,7 @@ impl Hub {
             };
             if let Some((font, size, line)) = &change.font {
                 let applied =
-                    load_fonts(font, *size, *line).and_then(|fonts| session.set_fonts(fonts));
+                    load_fonts(font, *size, *line).and_then(|fonts| Ok(session.set_fonts(fonts)?));
                 if let Err(err) = applied {
                     said.push(format!("Settings: the font was not changed: {err}"));
                 }

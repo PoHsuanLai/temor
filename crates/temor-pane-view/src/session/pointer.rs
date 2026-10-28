@@ -14,7 +14,7 @@ use temor_panes::vt::{
 use temor_client::model::session::AnnotateIn;
 
 use super::{Drag, Session};
-use crate::error::UiError;
+use crate::error::ViewError;
 use crate::input::{Click, next_click};
 use crate::platform::open_link;
 
@@ -41,7 +41,7 @@ impl Session {
         button: MouseButton,
         mods: Modifiers,
         now: Duration,
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         let Some(placed) = self.placed() else {
             return Ok(());
         };
@@ -90,7 +90,7 @@ impl Session {
     }
 
     /// The pointer moved at `at` while a button is held.
-    pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), UiError> {
+    pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), ViewError> {
         if self.drag.is_none() {
             return Ok(());
         }
@@ -112,7 +112,7 @@ impl Session {
         at: SurfacePoint,
         button: MouseButton,
         mods: Modifiers,
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         let pressed = self.drag.take().is_some();
         if self.selection.is_some_and(|s| s.is_click()) {
             self.selection = None;
@@ -153,7 +153,7 @@ impl Session {
         direction: WheelDirection,
         lines: u32,
         mods: Modifiers,
-    ) -> Result<(), UiError> {
+    ) -> Result<(), ViewError> {
         // The wheel moves the output under a pointer that did not move: it hovers what is there now.
         self.pointer_over = Some(at);
         if lines == 0 {
@@ -197,17 +197,17 @@ impl Session {
     }
 
     /// Makes the core selection's ends the terminal's selection, so the grid draws it.
-    pub(super) fn mirror_selection(&mut self) -> Result<(), UiError> {
+    pub(super) fn mirror_selection(&mut self) -> Result<(), ViewError> {
         let text = self.selection.map(to_text_selection);
         Ok(self.pane.with_term(|term| term.set_selection(text))?)
     }
 
     /// The text of a screen row.
-    pub(super) fn line(&self, row: u32) -> Result<RowText, UiError> {
+    pub(super) fn line(&self, row: u32) -> Result<RowText, ViewError> {
         Ok(self.pane.with_term(|term| term.row_text(row))?)
     }
 
-    fn open_link_at(&mut self, cell: CellPos) -> Result<(), UiError> {
+    fn open_link_at(&mut self, cell: CellPos) -> Result<(), ViewError> {
         let link = self.pane.with_term(|term| {
             let point = GridPoint::new(PointSpace::Screen, cell.col, cell.row);
             term.hyperlink_at(point)
