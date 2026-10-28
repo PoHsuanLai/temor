@@ -109,10 +109,10 @@ fn a_blocked_program_gives_one_notification() {
 #[test]
 fn title_hints_read_only_a_leading_spinner() {
     for (title, want) in [
-        ("\u{280B} work", TitleHint::Busy),
-        ("claude", TitleHint::Quiet),
-        ("", TitleHint::Quiet),
-        ("work \u{280B}", TitleHint::Quiet),
+        ("\u{280B} work", true),
+        ("claude", false),
+        ("", false),
+        ("work \u{280B}", false),
     ] {
         assert_eq!(title_hint(title), want, "{title:?}");
     }

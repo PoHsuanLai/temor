@@ -1,15 +1,6 @@
 //! A file dropped on a pane: send it when the program there takes files, otherwise paste its
 //! path the way the shell wants it. Pure; the window carries out the answer.
 
-/// Whether the program in the pane has said it can take files.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ReceiveSupport {
-    /// It announced file receive (it answered the transfer offer, or the shell integration says so).
-    Announced,
-    /// Nothing is known.
-    Unknown,
-}
-
 /// Where the pane's shell runs. A path on this computer means nothing on another one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PaneSite {
@@ -30,7 +21,9 @@ pub enum Quoting {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dropped {
     pub paths: Vec<String>,
-    pub support: ReceiveSupport,
+    /// Whether the program in the pane said it takes files (it answered the transfer offer, or
+    /// the shell integration says so).
+    pub receives_files: bool,
     pub site: PaneSite,
     pub quoting: Quoting,
 }
@@ -54,7 +47,7 @@ pub fn drop_action(dropped: &Dropped) -> DropAction {
     if dropped.paths.is_empty() {
         return DropAction::Nothing;
     }
-    if dropped.support == ReceiveSupport::Announced {
+    if dropped.receives_files {
         return DropAction::Send(dropped.paths.clone());
     }
     if dropped.site == PaneSite::Remote {

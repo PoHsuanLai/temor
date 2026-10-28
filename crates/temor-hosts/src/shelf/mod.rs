@@ -11,7 +11,7 @@ mod tests;
 mod upload;
 mod view;
 
-pub use drop::{DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action, quote};
+pub use drop::{DropAction, Dropped, PaneSite, Quoting, drop_action, quote};
 pub use model::{Clear, FailWhy, Incoming, ItemState, Seen, Shelf, ShelfItem, Source};
 pub use naming::{candidate_name, safe_name};
 pub use step::{ShelfIn, ShelfOut, shelf_step};

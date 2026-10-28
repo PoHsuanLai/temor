@@ -9,7 +9,7 @@ use ds_settings_page::SettingEdit;
 use temor_panes::pane::keys::Action;
 
 use super::edit::{applied, current, save_edit};
-use super::keys_edit::{KeyChange, Mine, change_keys, changed_text, load_view};
+use super::keys_edit::{KeyChange, change_keys, changed_text, load_view};
 use super::open::raise;
 use crate::edge::{Ambient, keymap_for};
 use crate::error::UiError;
@@ -128,12 +128,12 @@ fn keys_conf_is_written_and_read_back_as_the_keymap_the_panes_will_build() {
     let ambient = ambient(dir.path());
     let platform = Platform::Windows;
     let before = load_view(&ambient, platform).expect("no file is fine");
-    assert_eq!(before.mine(Action::SplitRight), Mine::AsShipped);
+    assert!(!before.changed(Action::SplitRight));
 
     let ctrl_shift_alt = [Modifier::Ctrl, Modifier::Shift, Modifier::Alt];
     let change = KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'k'));
     let after = change_keys(&ambient, platform, change).expect("bound");
-    assert_eq!(after.mine(Action::SplitRight), Mine::Changed);
+    assert!(after.changed(Action::SplitRight));
     assert_eq!(
         after.chord_of(Action::SplitRight),
         Some(chord(&ctrl_shift_alt, 'k'))

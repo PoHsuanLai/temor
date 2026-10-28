@@ -4,7 +4,6 @@ use chordkit::Platform;
 use dioxus::html::{Code, Key, Modifiers as Held};
 use temor_panes::pane::keys::Action;
 
-use super::super::route::FindBar;
 use super::table::{KDE, OURS, Went, ch, check, row};
 
 /// Key events as our desktop delivers them, through the stroke and the router: ⌘ arrives as
@@ -153,7 +152,7 @@ fn our_desktop_sends_command_as_super_or_ctrl_shift() {
         ),
         row("Super+Tab", Key::Tab, Code::Tab, Held::SUPER, Went::Program),
     ];
-    check(OURS, FindBar::Closed, &rows);
+    check(OURS, false, &rows);
 }
 
 #[test]
@@ -226,7 +225,7 @@ fn windows_and_kde_use_ctrl_shift_and_leave_plain_ctrl_and_super_alone() {
         row("Super+K", ch("k"), Code::KeyK, Held::SUPER, Went::Program),
     ];
     for platform in [Platform::Windows, KDE] {
-        check(platform, FindBar::Closed, &rows);
+        check(platform, false, &rows);
     }
 }
 
@@ -256,5 +255,5 @@ fn macos_uses_command_only() {
         ),
         row("Ctrl+C", ch("c"), Code::KeyC, Held::CONTROL, Went::Program),
     ];
-    check(Platform::MacOs, FindBar::Closed, &rows);
+    check(Platform::MacOs, false, &rows);
 }

@@ -11,6 +11,6 @@ mod step;
 mod tests;
 mod watch;
 
-pub use model::{Edit, EditFault, EditIn, EditOut, Found, Queued, Resolution};
+pub use model::{Edit, EditFault, EditIn, EditOut, Found, Resolution};
 pub use step::edit_step;
 pub use watch::{LocalStamp, Watch, watch_step};

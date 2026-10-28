@@ -263,7 +263,7 @@ impl Desk {
     /// An action the window itself takes (`Owner::Window`), not a pane and not the workspace: the
     /// bar, the quick terminal, the sidebar, Downloads, Settings, the page's zoom, pinning the
     /// tab in front, the radar's jump and the Space switch.
-    pub fn window_action(&self, action: Action) -> WindowAction {
+    pub fn window_action(&self, action: Action) -> bool {
         match action {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
@@ -289,17 +289,8 @@ impl Desk {
                     self.act(input);
                 }
             }
-            _ => return WindowAction::NotMine,
+            _ => return false,
         }
-        WindowAction::Taken
+        true
     }
-}
-
-/// Whether the window took an action.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WindowAction {
-    /// The window carried it out.
-    Taken,
-    /// It is the pane's or the workspace's.
-    NotMine,
 }

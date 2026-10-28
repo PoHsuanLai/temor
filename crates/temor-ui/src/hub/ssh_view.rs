@@ -3,9 +3,7 @@
 
 use temor_client::model::host::target::host_title;
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::ssh::view::{
-    CheckRow, Direct, EditLine, ForwardLine, HostView, Stage, status_of,
-};
+use temor_client::ssh::view::{EditLine, ForwardLine, HostView, Stage, status_of};
 
 use super::model::{Hub, HubRef};
 use super::ssh::{Check, Phase};
@@ -51,14 +49,8 @@ impl Hub {
         Some(HostView {
             host: host.alias.as_str().to_owned(),
             stage,
-            check: match host.check {
-                Check::Shown(_) => CheckRow::Waiting,
-                Check::Nothing => CheckRow::Nothing,
-            },
-            direct: match line.is_some_and(|line| line.direct.is_some()) {
-                true => Direct::Available,
-                false => Direct::Unavailable,
-            },
+            check_waiting: matches!(host.check, Check::Shown(_)),
+            direct_ports: line.is_some_and(|line| line.direct.is_some()),
             forwards,
             edits,
         })

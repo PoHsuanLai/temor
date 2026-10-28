@@ -1,7 +1,7 @@
 //! Editing a host's file locally and forwarding its ports, through the stand-in `ssh` and `scp`
 //! (the stand-in `ssh` runs the file calls on this computer, so the "host" is a scratch folder).
 
-use temor_client::model::host::edit::{Edit, EditIn, Found, Queued, Resolution};
+use temor_client::model::host::edit::{Edit, EditIn, Found, Resolution};
 use temor_client::model::remote::Grant;
 use temor_client::model::workspace::WorkspaceIn;
 use temor_client::ssh::Port;
@@ -103,7 +103,7 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
     // copy (and Done has to be pressed again).
     let uploading = Edit::Uploading {
         base: stat,
-        queued: Queued::Nothing,
+        queued: false,
     };
     let set = |rig: &mut Rig, state: Edit| {
         if let Some(edit) = rig.hub.ssh.edits.get_mut(&id) {

@@ -8,16 +8,6 @@ use anyview_pane::PaneCommand;
 use ds::components::menus::palette::palette_group::PaletteRow;
 use ds::prelude::{AfterPick, PaletteClose, TextLine};
 
-/// What the field of the bar searches.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Finding {
-    /// The bar's own rows.
-    #[default]
-    Off,
-    /// The text of the open file.
-    On,
-}
-
 /// What closing the bar does: Escape and a pick, or a click outside it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Escape {
@@ -29,10 +19,10 @@ pub enum Escape {
 
 /// What the palette's close does while the field is in `finding`. Escape and a pick leave the
 /// file's find first; a click outside the bar closes it whole, as it closes any floating card.
-pub fn escape(finding: Finding, how: PaletteClose) -> Escape {
+pub fn escape(finding: bool, how: PaletteClose) -> Escape {
     match (how, finding) {
-        (PaletteClose::Outside, _) | (_, Finding::Off) => Escape::Close,
-        (_, Finding::On) => Escape::StepBack,
+        (PaletteClose::Outside, _) | (_, false) => Escape::Close,
+        (_, true) => Escape::StepBack,
     }
 }
 

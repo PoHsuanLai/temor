@@ -1,7 +1,7 @@
 //! Building a card from what the app has: fixed defaults per entry point, nothing implicit. A
 //! piece that is not there is not guessed.
 
-use super::model::{Chip, ChipId, ChipKind, ContextCard, EntryPoint, Removal};
+use super::model::{Chip, ChipId, ChipKind, ContextCard, EntryPoint};
 use temor_core::vocab::text::{CommandText, Cwd, RelPath, display_text};
 
 /// How many of the last output lines the output chip carries.
@@ -87,17 +87,14 @@ pub fn build_card(entry: EntryPoint, sources: &ContextSources) -> ContextCard {
                 .collect(),
         };
         for (label, text) in pieces {
-            let removal = match kind {
-                ChipKind::Request => Removal::Fixed,
-                _ => Removal::Removable,
-            };
+            let removable = *kind != ChipKind::Request;
             let id = ChipId(u32::try_from(chips.len()).unwrap_or(u32::MAX));
             chips.push(Chip {
                 id,
                 kind: *kind,
                 label,
                 text,
-                removal,
+                removable,
             });
         }
     }

@@ -46,7 +46,6 @@ mod tests {
     use temor_desktop::NoSecrets;
 
     use super::*;
-    use crate::space::start::Held;
 
     /// A vault in memory; its `Debug` shows no secret.
     #[derive(Default)]
@@ -84,9 +83,9 @@ mod tests {
     #[test]
     fn a_secret_set_is_held_read_and_gone_once_removed() {
         let source = VaultCredentials(Arc::new(Memory::default()));
-        assert_eq!(source.holds(&account()), Ok(Held::NotSet));
+        assert_eq!(source.holds(&account()), Ok(false));
         source.set_secret(&account(), "s3cret").unwrap();
-        assert_eq!(source.holds(&account()), Ok(Held::Set));
+        assert_eq!(source.holds(&account()), Ok(true));
         assert_eq!(source.secret(&account()), Ok(Some("s3cret".to_owned())));
         source.remove_secret(&account()).unwrap();
         assert_eq!(source.secret(&account()), Ok(None));
@@ -95,7 +94,7 @@ mod tests {
     #[test]
     fn without_a_store_nothing_is_held_and_keeping_says_why() {
         let source = VaultCredentials(Arc::new(NoSecrets));
-        assert_eq!(source.holds(&account()), Ok(Held::NotSet));
+        assert_eq!(source.holds(&account()), Ok(false));
         let refused = source.set_secret(&account(), "s3cret").unwrap_err();
         assert_eq!(
             refused.to_string(),

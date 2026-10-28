@@ -19,9 +19,7 @@ use ds::prelude::{AfterPick, CommandPalette, PaletteClose, RowChord};
 use temor_client::model::bar::{BarRow, Section};
 use temor_client::model::vocab::text::PluginId;
 
-use crate::bar::{
-    Escape, FIND_PLACEHOLDER, Finding, Reply, action_of, entry_row, escape, lift, reply,
-};
+use crate::bar::{Escape, FIND_PLACEHOLDER, Reply, action_of, entry_row, escape, lift, reply};
 use crate::hub::{BarData, Desk, HubRef};
 
 /// What a row of the bar yields when it is picked.
@@ -46,11 +44,11 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
     let wanted = use_hook(|| desk.hub.take_finding_wanted());
     let mut finding = use_signal(|| wanted);
     let mut list = use_signal(|| match wanted {
-        Finding::On => HitList::Brief,
-        Finding::Off => HitList::default(),
+        true => HitList::Brief,
+        false => HitList::default(),
     });
     // The viewer whose find is up; the bar putting it away is the bar going, however it goes.
-    let searched = use_hook(|| Rc::new(Cell::new(handle.filter(|_| wanted == Finding::On))));
+    let searched = use_hook(|| Rc::new(Cell::new(handle.filter(|_| wanted))));
     use_drop({
         let searched = Rc::clone(&searched);
         move || {
@@ -59,7 +57,7 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
             }
         }
     });
-    let searching = handle.filter(|_| finding() == Finding::On);
+    let searching = handle.filter(|_| finding());
     let stepped = Rc::clone(&searched);
     let (groups, extra) = match (searching, handle) {
         (Some(handle), _) => {
@@ -105,7 +103,7 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
                 Pick::Bar(row) => picked.bar_pick(&row.key),
                 Pick::Find => {
                     searched.set(handle);
-                    finding.set(Finding::On);
+                    finding.set(true);
                     list.set(HitList::Brief);
                     picked.bar_typed(String::new());
                 }
@@ -137,7 +135,7 @@ pub fn BarView(data: BarData, desk: Desk) -> Element {
                     if let Some(handle) = stepped.take() {
                         handle.end_find();
                     }
-                    finding.set(Finding::Off);
+                    finding.set(false);
                     list.set(HitList::default());
                     closed.bar_typed(String::new());
                 }

@@ -32,26 +32,15 @@ pub struct KeysView {
     pub changed: Overrides,
 }
 
-/// Whether a key is the person's own or as it came.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mine {
-    Changed,
-    AsShipped,
-}
-
 impl KeysView {
     /// Whether the person has changed the key of `action`.
-    pub fn mine(&self, action: Action) -> Mine {
-        let changed = action.to_chordkit().is_some_and(|named| {
+    pub fn changed(&self, action: Action) -> bool {
+        action.to_chordkit().is_some_and(|named| {
             self.changed
                 .entries()
                 .iter()
                 .any(|entry| entry.action == named)
-        });
-        match changed {
-            true => Mine::Changed,
-            false => Mine::AsShipped,
-        }
+        })
     }
 
     /// What `action` is pressed as in a terminal window, if it has a key.

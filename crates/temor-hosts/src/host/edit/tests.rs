@@ -1,6 +1,5 @@
 use super::{
-    Edit, EditFault, EditIn, EditOut, Found, LocalStamp, Queued, Resolution, Watch, edit_step,
-    watch_step,
+    Edit, EditFault, EditIn, EditOut, Found, LocalStamp, Resolution, Watch, edit_step, watch_step,
 };
 use temor_ssh::{ByteCount, RemoteStat, RemoteState, UnixSeconds};
 use temor_testkit::run_steps;
@@ -63,7 +62,7 @@ fn saves_made_during_a_write_back_are_written_in_turn() {
         state,
         Edit::Checking {
             base: v2,
-            queued: Queued::Nothing
+            queued: false
         }
     );
     assert_eq!(
@@ -119,7 +118,7 @@ fn a_conflict_waits_for_the_person_and_each_choice_does_what_it_says() {
             Resolution::Overwrite,
             Edit::Uploading {
                 base: V1,
-                queued: Queued::Nothing,
+                queued: false,
             },
             vec![EditOut::Store],
         ),
@@ -151,7 +150,7 @@ fn a_write_the_host_refuses_as_changed_asks_the_person_and_never_lands() {
     // Name, state when the refusal arrives, input, state after, outputs.
     let uploading = Edit::Uploading {
         base: V1,
-        queued: Queued::Resave,
+        queued: true,
     };
     let cases = [
         (
@@ -201,14 +200,14 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
             "checking",
             Edit::Checking {
                 base: V1,
-                queued: Queued::Nothing,
+                queued: false,
             },
         ),
         (
             "uploading",
             Edit::Uploading {
                 base: V1,
-                queued: Queued::Resave,
+                queued: true,
             },
         ),
     ] {
@@ -225,7 +224,7 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
                 (
                     Edit::Checking {
                         base: V1,
-                        queued: Queued::Nothing
+                        queued: false
                     },
                     vec![EditOut::Check]
                 ),
@@ -243,7 +242,7 @@ fn closing_stops_the_watch_and_late_replies_are_ignored() {
     let (closed, outs) = edit_step(
         Edit::Uploading {
             base: V1,
-            queued: Queued::Nothing,
+            queued: false,
         },
         EditIn::Closed,
     );

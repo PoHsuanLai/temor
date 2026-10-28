@@ -8,6 +8,6 @@ mod step;
 #[cfg(test)]
 mod tests;
 
-pub use hint::{TitleHint, title_hint};
+pub use hint::title_hint;
 pub use model::{Millis, ProcessFact, ProgramFact, ProgramKind, RadarIn, RadarOut, RadarParams};
 pub use step::{RadarState, radar_step};

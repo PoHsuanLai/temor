@@ -15,7 +15,7 @@
 
 use std::collections::BTreeMap;
 
-use super::hint::{TitleHint, title_hint};
+use super::hint::title_hint;
 use super::model::{Millis, ProcessFact, RadarIn, RadarOut, RadarParams};
 use super::records::Records;
 use crate::presence::{
@@ -23,14 +23,6 @@ use crate::presence::{
     presence_step,
 };
 use temor_core::vocab::ids::Seq;
-
-/// Whether a known agent program runs in the pane.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-enum Agent {
-    #[default]
-    Absent,
-    Running,
-}
 
 /// One pane's radar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +33,8 @@ pub struct RadarState {
     fresh: BTreeMap<StatusSource, Millis>,
     /// Who set the state now shown, and when it last spoke.
     via: Option<(StatusSource, Millis)>,
-    agent: Agent,
+    /// Whether a known agent program runs in the pane.
+    agent_running: bool,
     title_busy_until: Option<Millis>,
     next_seq: u64,
 }
@@ -54,7 +47,7 @@ impl RadarState {
             records: Records::default(),
             fresh: BTreeMap::new(),
             via: None,
-            agent: Agent::Absent,
+            agent_running: false,
             title_busy_until: None,
             next_seq: 1,
         }
@@ -102,9 +95,9 @@ pub fn radar_step(
             }
         }
         RadarIn::Title(title) => title_step(&mut state, now, params, &title, &mut presence_in),
-        RadarIn::Process(ProcessFact::AgentRunning) => state.agent = Agent::Running,
+        RadarIn::Process(ProcessFact::AgentRunning) => state.agent_running = true,
         RadarIn::Process(ProcessFact::Exited(code)) => {
-            state.agent = Agent::Absent;
+            state.agent_running = false;
             state.records.prompt_shown();
             state.title_busy_until = None;
             presence_in.push(PresenceIn::ProcessExited(code));
@@ -191,20 +184,19 @@ fn title_step(
     out: &mut Vec<PresenceIn>,
 ) {
     let weak = StatusSource::Notification;
-    if state.agent != Agent::Running || outranked(state, &weak, now, params) {
+    if !state.agent_running || outranked(state, &weak, now, params) {
         return;
     }
-    match title_hint(title) {
-        TitleHint::Busy => {
-            state.title_busy_until = Some(Millis(now.0 + params.title_hold.0));
-            if let Some((StatusSource::Notification, at)) = &mut state.via {
-                *at = now;
-            }
-            if state.presence.state == AgentState::Idle {
-                out.push(report(state, weak, now, AgentState::Working, None));
-            }
-        }
-        TitleHint::Quiet => stop_title_work(state, now, out),
+    if !title_hint(title) {
+        stop_title_work(state, now, out);
+        return;
+    }
+    state.title_busy_until = Some(Millis(now.0 + params.title_hold.0));
+    if let Some((StatusSource::Notification, at)) = &mut state.via {
+        *at = now;
+    }
+    if state.presence.state == AgentState::Idle {
+        out.push(report(state, weak, now, AgentState::Working, None));
     }
 }
 

@@ -52,15 +52,6 @@ pub enum ChipKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ChipId(pub u32);
 
-/// Whether a chip can be taken off.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Removal {
-    /// The request itself: without it there is nothing to send.
-    Fixed,
-    /// The person may remove it.
-    Removable,
-}
-
 /// One thing that will be sent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chip {
@@ -72,8 +63,9 @@ pub struct Chip {
     pub label: String,
     /// Exactly what goes to the model.
     pub text: String,
-    /// Whether it can be removed.
-    pub removal: Removal,
+    /// Whether the person may remove it. The request itself may not: without it there is
+    /// nothing to send.
+    pub removable: bool,
 }
 
 impl Chip {

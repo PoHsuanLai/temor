@@ -8,19 +8,16 @@ use temor_client::model::block::PickStep;
 
 use super::{FindStep, Session};
 use crate::error::ViewError;
-use crate::input::{FindBar, KittyKeys, Routed, Stroke, is_altgr_text, route_with};
+use crate::input::{Routed, Stroke, is_altgr_text, kitty_keys, route_with};
 
 impl Session {
     /// Routes one key event.
     pub fn key(&mut self, stroke: Stroke) -> Result<(), ViewError> {
-        let find = match self.finder.is_some() {
-            true => FindBar::Open,
-            false => FindBar::Closed,
-        };
+        let find = self.finder.is_some();
         let kitty = self
             .pane
-            .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
-        if find == FindBar::Closed && self.pick_key(&stroke.key) {
+            .with_term(|term| kitty_keys(term.kitty_keyboard_flags()));
+        if !find && self.pick_key(&stroke.key) {
             return Ok(());
         }
         match route_with(stroke, &self.keymap, find, kitty) {
@@ -50,13 +47,10 @@ impl Session {
     /// composer, and any other chord does nothing: the shell's own line editor, which the
     /// composer stands for, never hears it.
     pub fn composer_chord(&mut self, stroke: Stroke) -> Result<(), ViewError> {
-        let find = match self.finder.is_some() {
-            true => FindBar::Open,
-            false => FindBar::Closed,
-        };
+        let find = self.finder.is_some();
         let kitty = self
             .pane
-            .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
+            .with_term(|term| kitty_keys(term.kitty_keyboard_flags()));
         let clear = stroke.key.mods == temor_panes::vt::Modifiers::CTRL
             && stroke.key.unshifted == Some('c')
             && stroke.key.action != KeyAction::Release;

@@ -7,13 +7,6 @@ use crate::remote::PortAction;
 use crate::remote::hold::Typing;
 use crate::remote::link::{GoneReason, LinkState};
 
-/// Whether this temor carries a helper build to put on hosts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Blob {
-    Have,
-    Missing,
-}
-
 /// What a host pane's session runs on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
@@ -26,9 +19,9 @@ pub enum Source {
 /// The source for a host the person has answered `grant` about, whose helper stands at
 /// `helper`. A host that was never asked is still a candidate: the question comes once the
 /// connection is up and the host has been looked at.
-pub fn session_source(grant: Grant, blob: Blob, helper: &HelperState) -> Source {
+pub fn session_source(grant: Grant, blob: bool, helper: &HelperState) -> Source {
     match (blob, grant, helper) {
-        (Blob::Missing, _, _) => Source::Plain,
+        (false, _, _) => Source::Plain,
         (_, Grant::Refused, _) => Source::Plain,
         (_, _, HelperState::Refused | HelperState::Unsupported) => Source::Plain,
         _ => Source::Helper,
@@ -131,45 +124,20 @@ mod tests {
     fn a_host_gets_the_helper_unless_it_was_refused_cannot_run_it_or_there_is_none_to_put_there() {
         let ready = HelperState::Ready(HelperHash("a".repeat(64)));
         let cases = [
-            (Grant::Ask, Blob::Have, HelperState::Absent, Source::Helper),
+            (Grant::Ask, true, HelperState::Absent, Source::Helper),
+            (Grant::Allowed, true, HelperState::Absent, Source::Helper),
+            (Grant::Allowed, true, ready, Source::Helper),
+            (Grant::Allowed, true, HelperState::Offered, Source::Helper),
+            (Grant::Ask, true, HelperState::Uploading, Source::Helper),
+            (Grant::Refused, true, HelperState::Absent, Source::Plain),
+            (Grant::Allowed, false, HelperState::Absent, Source::Plain),
             (
                 Grant::Allowed,
-                Blob::Have,
-                HelperState::Absent,
-                Source::Helper,
-            ),
-            (Grant::Allowed, Blob::Have, ready, Source::Helper),
-            (
-                Grant::Allowed,
-                Blob::Have,
-                HelperState::Offered,
-                Source::Helper,
-            ),
-            (
-                Grant::Ask,
-                Blob::Have,
-                HelperState::Uploading,
-                Source::Helper,
-            ),
-            (
-                Grant::Refused,
-                Blob::Have,
-                HelperState::Absent,
-                Source::Plain,
-            ),
-            (
-                Grant::Allowed,
-                Blob::Missing,
-                HelperState::Absent,
-                Source::Plain,
-            ),
-            (
-                Grant::Allowed,
-                Blob::Have,
+                true,
                 HelperState::Unsupported,
                 Source::Plain,
             ),
-            (Grant::Ask, Blob::Have, HelperState::Refused, Source::Plain),
+            (Grant::Ask, true, HelperState::Refused, Source::Plain),
         ];
         for (grant, blob, helper, want) in cases {
             assert_eq!(

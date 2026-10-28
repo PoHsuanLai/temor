@@ -6,7 +6,7 @@ use temor_panes::pane::keys::Action;
 use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::super::keys::is_altgr_text;
-use super::super::route::{FindBar, KittyKeys, Routed, Stroke, route};
+use super::super::route::{Routed, Stroke, route};
 use super::table::{OURS, Row, Went, ch, check, keymap_of, row, went, went_with};
 
 /// The find bar's keys are the bar's only while it is open; closed, Escape and F3 are the
@@ -15,25 +15,25 @@ use super::table::{OURS, Row, Went, ch, check, keymap_of, row, went, went_with};
 fn find_keys_belong_to_the_bar_only_while_it_is_open() {
     let esc = |held| row("Escape", Key::Escape, Code::Escape, held, Went::Program);
     let close = Went::Action(Action::CloseFind);
-    let rows: [(Platform, FindBar, Row, Went); 10] = [
-        (OURS, FindBar::Open, esc(Held::empty()), close),
-        (OURS, FindBar::Closed, esc(Held::empty()), Went::Program),
-        (OURS, FindBar::Open, esc(Held::SHIFT), Went::Program),
+    let rows: [(Platform, bool, Row, Went); 10] = [
+        (OURS, true, esc(Held::empty()), close),
+        (OURS, false, esc(Held::empty()), Went::Program),
+        (OURS, true, esc(Held::SHIFT), Went::Program),
         (
             OURS,
-            FindBar::Open,
+            true,
             row("⌘G", ch("g"), Code::KeyG, Held::SUPER, Went::Program),
             Went::Action(Action::FindNext),
         ),
         (
             OURS,
-            FindBar::Closed,
+            false,
             row("⌘G", ch("g"), Code::KeyG, Held::SUPER, Went::Program),
             Went::Dropped,
         ),
         (
             OURS,
-            FindBar::Closed,
+            false,
             row(
                 "⌘⇧G",
                 ch("g"),
@@ -43,22 +43,17 @@ fn find_keys_belong_to_the_bar_only_while_it_is_open() {
             ),
             Went::Dropped,
         ),
-        (Platform::Windows, FindBar::Open, esc(Held::empty()), close),
+        (Platform::Windows, true, esc(Held::empty()), close),
+        (Platform::Windows, false, esc(Held::empty()), Went::Program),
         (
             Platform::Windows,
-            FindBar::Closed,
-            esc(Held::empty()),
-            Went::Program,
-        ),
-        (
-            Platform::Windows,
-            FindBar::Open,
+            true,
             row("F3", Key::F3, Code::F3, Held::empty(), Went::Program),
             Went::Action(Action::FindNext),
         ),
         (
             Platform::Windows,
-            FindBar::Closed,
+            false,
             row("F3", Key::F3, Code::F3, Held::empty(), Went::Program),
             Went::Program,
         ),
@@ -90,7 +85,7 @@ fn altgr_characters_reach_the_program_on_every_platform() {
         typed("AltGr flag with Shift", Held::ALT_GRAPH | Held::SHIFT),
     ];
     for platform in Platform::ALL {
-        check(platform, FindBar::Closed, &rows);
+        check(platform, false, &rows);
     }
 }
 
@@ -114,19 +109,13 @@ fn composing_releases_and_unnamed_keys_keep_their_routes() {
     );
     // The input method owns the key while composing, even a bound one.
     let composing = press(true, KeyAction::Press, Some(copy));
-    assert_eq!(route(composing, &keymap, FindBar::Closed), Routed::Ignored);
+    assert_eq!(route(composing, &keymap, false), Routed::Ignored);
     // A release goes to the program (which may have asked for releases), never to an action.
     let release = press(false, KeyAction::Release, Some(copy));
-    assert!(matches!(
-        route(release, &keymap, FindBar::Closed),
-        Routed::Shell(_)
-    ));
+    assert!(matches!(route(release, &keymap, false), Routed::Shell(_)));
     // A key chordkit has no name for is the program's.
     let unnamed = press(false, KeyAction::Press, None);
-    assert!(matches!(
-        route(unnamed, &keymap, FindBar::Closed),
-        Routed::Shell(_)
-    ));
+    assert!(matches!(route(unnamed, &keymap, false), Routed::Shell(_)));
 }
 
 #[test]
@@ -167,23 +156,23 @@ fn kitty_flags_let_unbound_primary_chords_through() {
     let rows = [
         (
             row("⌘K", ch("k"), Code::KeyK, Held::SUPER, Went::Dropped),
-            KittyKeys::Off,
+            false,
             Went::Dropped,
         ),
         (
             row("⌘K", ch("k"), Code::KeyK, Held::SUPER, Went::Dropped),
-            KittyKeys::On,
+            true,
             Went::Program,
         ),
         (
             row("⌘C", ch("c"), Code::KeyC, Held::SUPER, Went::Dropped),
-            KittyKeys::On,
+            true,
             Went::Action(Action::Copy),
         ),
     ];
     for (row, kitty, want) in &rows {
         assert_eq!(
-            went_with(&keymap, row, FindBar::Closed, *kitty),
+            went_with(&keymap, row, false, *kitty),
             *want,
             "{kitty:?} {}",
             row.name

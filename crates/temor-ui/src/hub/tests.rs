@@ -13,7 +13,7 @@ use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::keys::workspace_input;
 use super::model::Hub;
-use super::rows::{Unread, tidy};
+use super::rows::tidy;
 use super::shelf::{Ask, AskKind};
 use crate::edge::Ambient;
 use crate::view::launch::{Launch, LauncherChoice};
@@ -129,9 +129,9 @@ fn the_sidebar_lists_pinned_then_folders_then_the_rest_with_unread_marks_and_min
     assert_eq!(ids(&data.loose), [1]);
 
     let (pinned, folder, loose) = (&data.pinned[0], &data.folders[0].rows[0], &data.loose[0]);
-    assert_eq!(folder.unread, Unread::Unread);
-    assert_eq!(pinned.unread, Unread::Seen);
-    assert_eq!(loose.unread, Unread::Seen);
+    assert!(folder.unread);
+    assert!(!pinned.unread);
+    assert!(!loose.unread);
     assert_eq!(loose.tiles.len(), 2, "the split tab has a miniature");
     assert!(pinned.tiles.is_empty() && folder.tiles.is_empty());
     // Two panes side by side fill the miniature between them.

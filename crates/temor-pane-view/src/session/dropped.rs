@@ -4,9 +4,7 @@
 
 use std::path::PathBuf;
 
-use temor_client::model::shelf::{
-    DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action,
-};
+use temor_client::model::shelf::{DropAction, Dropped, PaneSite, Quoting, drop_action};
 use temor_panes::pane::paste;
 use temor_panes::vt::ViewportScroll;
 
@@ -46,7 +44,7 @@ impl Session {
         let dropped = Dropped {
             paths: words,
             // No program here has said it takes files; the paths are typed instead.
-            support: ReceiveSupport::Unknown,
+            receives_files: false,
             site,
             quoting,
         };

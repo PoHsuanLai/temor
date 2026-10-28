@@ -14,14 +14,6 @@ pub enum EditFault {
     Gone,
 }
 
-/// Whether more saves arrived while one was being written back.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Queued {
-    Nothing,
-    /// Save again once this one is done.
-    Resave,
-}
-
 /// What the host's file turned out to be when it was checked before a write-back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Found {
@@ -50,9 +42,9 @@ pub enum Edit {
     /// The local copy is open; nothing waiting.
     Open { base: RemoteStat },
     /// A save was seen; asking the host whether the file changed.
-    Checking { base: RemoteStat, queued: Queued },
+    Checking { base: RemoteStat, queued: bool },
     /// The file is unchanged on the host; writing it back.
-    Uploading { base: RemoteStat, queued: Queued },
+    Uploading { base: RemoteStat, queued: bool },
     /// The file changed on the host (or was removed); waiting for the person to choose.
     Conflict { base: RemoteStat, found: Found },
     /// A call failed. A save or a retry tries again from `base`.

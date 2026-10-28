@@ -15,7 +15,7 @@ mod store_tests;
 mod tests;
 
 pub use elapsed::format_elapsed;
-pub use face::{Note, NoteTone, age_strength, bar_share, glyph_bars, summarize};
+pub use face::{Note, summarize};
 pub use model::{Author, Block, Outcome, Taint};
 pub use picks::{PickClick, PickStep, Picks, next_bookmark};
 pub use step::{BlockIn, BlockOut, BlockState, block_step};

@@ -9,5 +9,5 @@ mod step;
 mod tests;
 
 pub use build::{ContextSources, OUTPUT_LINES, build_card};
-pub use model::{Chip, ChipId, ChipKind, ContextCard, EntryPoint, Removal, SentChip, SentList};
+pub use model::{Chip, ChipId, ChipKind, ContextCard, EntryPoint, SentChip, SentList};
 pub use step::{ContextIn, ContextOut, ContextPhase, context_step};

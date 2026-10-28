@@ -233,10 +233,10 @@ fn sizes_read_plainly() {
     }
 }
 
-fn dropped(paths: &[&str], support: ReceiveSupport, site: PaneSite) -> Dropped {
+fn dropped(paths: &[&str], receives_files: bool, site: PaneSite) -> Dropped {
     Dropped {
         paths: paths.iter().map(|p| (*p).to_owned()).collect(),
-        support,
+        receives_files,
         site,
         quoting: Quoting::Posix,
     }
@@ -246,20 +246,22 @@ fn dropped(paths: &[&str], support: ReceiveSupport, site: PaneSite) -> Dropped {
 fn a_drop_is_sent_pasted_or_explained() {
     use DropAction as A;
     use PaneSite::{Local, Remote};
-    use ReceiveSupport::{Announced, Unknown};
+    // Whether the program said it takes dropped files.
+    const ANNOUNCED: bool = true;
+    const UNKNOWN: bool = false;
     let send = |p: &[&str]| A::Send(p.iter().map(|s| (*s).to_owned()).collect());
     #[rustfmt::skip]
     let cases = vec![
-        ("nothing dropped", dropped(&[], Announced, Local), A::Nothing),
-        ("a program that takes files gets them", dropped(&["/a/b.txt", "/c d.txt"], Announced, Local), send(&["/a/b.txt", "/c d.txt"])),
-        ("a remote program that takes files too", dropped(&["/a/b.txt"], Announced, Remote), send(&["/a/b.txt"])),
-        ("a plain local shell gets quoted paths", dropped(&["/a/b c.txt", "/it's.txt"], Unknown, Local),
+        ("nothing dropped", dropped(&[], ANNOUNCED, Local), A::Nothing),
+        ("a program that takes files gets them", dropped(&["/a/b.txt", "/c d.txt"], ANNOUNCED, Local), send(&["/a/b.txt", "/c d.txt"])),
+        ("a remote program that takes files too", dropped(&["/a/b.txt"], ANNOUNCED, Remote), send(&["/a/b.txt"])),
+        ("a plain local shell gets quoted paths", dropped(&["/a/b c.txt", "/it's.txt"], UNKNOWN, Local),
             A::Paste("'/a/b c.txt' '/it'\\''s.txt' ".into())),
-        ("a plain remote shell cannot use a local path", dropped(&["/a/b.txt"], Unknown, Remote),
+        ("a plain remote shell cannot use a local path", dropped(&["/a/b.txt"], UNKNOWN, Remote),
             A::Tell("This program can't receive dropped files")),
-        ("a newline in a name is never pasted", dropped(&["/a\nb"], Unknown, Local),
+        ("a newline in a name is never pasted", dropped(&["/a\nb"], UNKNOWN, Local),
             A::Tell("That file's name can't be typed into a terminal")),
-        ("other names still paste", dropped(&["/a\nb", "/ok"], Unknown, Local), A::Paste("'/ok' ".into())),
+        ("other names still paste", dropped(&["/a\nb", "/ok"], UNKNOWN, Local), A::Paste("'/ok' ".into())),
     ];
     for (name, input, want) in cases {
         assert_eq!(drop_action(&input), want, "{name}");

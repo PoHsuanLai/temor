@@ -97,7 +97,7 @@ mod viewer_tests;
 mod viewers;
 
 pub use agents::{Agents, Alert, WaitingCount, spawn_agent_loops};
-pub use bar::{BarData, WindowAction};
+pub use bar::BarData;
 pub use bar_action::select_tab;
 pub use blink_tick::spawn_blink_loop;
 pub use desk::{Desk, HostOf, NEW_FOLDER};
@@ -113,7 +113,7 @@ pub use model::{Hub, HubRef};
 pub use offer::spawn_offer_loop;
 pub use plugin_glue::spawn_plugins_loop;
 pub use remote_loop::spawn_remote_loop;
-pub use rows::{ConsoleRow, DragKey, FolderRows, RowIcon, SidebarData, TabRow, Tile, Unread};
+pub use rows::{ConsoleRow, DragKey, FolderRows, RowIcon, SidebarData, TabRow, Tile};
 pub use run::Run;
 pub use say::refusal_text;
 pub use settings_live::spawn_settings_loop;
@@ -123,8 +123,6 @@ pub use space_rows::{KitSpaces, PendingSwitch};
 pub use ssh_events::spawn_ssh_loop;
 pub use stage::{Address, StageView, folder_url, page_path, temor_page, temor_page_name};
 pub use temor_client::remote::session::{PortRow, RemoteStage, RemoteView};
-pub use temor_client::ssh::view::{
-    CheckRow, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage,
-};
+pub use temor_client::ssh::view::{EditLine, EditStatus, ForwardLine, HostView, Stage};
 pub use viewer_host::spawn_viewer_loop;
 pub use viewers::ViewerShow;

@@ -7,7 +7,7 @@ use ds::edit::raw_key::{KeyPhase, RawKey};
 use temor_panes::pane::keys::Action;
 
 use super::super::keys::stroke;
-use super::super::route::{FindBar, KittyKeys, Routed, route_with};
+use super::super::route::{Routed, route_with};
 use chordkit::{ConventionSource, KeymapSource};
 use temor_panes::pane::keys::build_keymap;
 
@@ -43,11 +43,11 @@ pub(super) fn row(name: &'static str, key: Key, code: Code, held: Held, want: We
     }
 }
 
-pub(super) fn went(keymap: &Keymap, row: &Row, find: FindBar) -> Went {
-    went_with(keymap, row, find, KittyKeys::Off)
+pub(super) fn went(keymap: &Keymap, row: &Row, find: bool) -> Went {
+    went_with(keymap, row, find, false)
 }
 
-pub(super) fn went_with(keymap: &Keymap, row: &Row, find: FindBar, kitty: KittyKeys) -> Went {
+pub(super) fn went_with(keymap: &Keymap, row: &Row, find: bool, kitty: bool) -> Went {
     let raw = RawKey {
         phase: KeyPhase::Press,
         key: row.key.clone(),
@@ -73,7 +73,7 @@ pub(super) fn keymap_of(platform: Platform) -> Keymap {
     .0
 }
 
-pub(super) fn check(platform: Platform, find: FindBar, rows: &[Row]) {
+pub(super) fn check(platform: Platform, find: bool, rows: &[Row]) {
     let keymap = keymap_of(platform);
     for row in rows {
         assert_eq!(

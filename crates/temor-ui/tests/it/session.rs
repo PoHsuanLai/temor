@@ -17,7 +17,7 @@ use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
 use temor_ui::edge::{Ambient, keymap_for};
-use temor_ui::input::{FindBar, Routed, Stroke, route};
+use temor_ui::input::{Routed, Stroke, route};
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
@@ -482,7 +482,7 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
             composing: false,
         },
     };
-    assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
+    assert_eq!(route(stroke, &keymap, false), Routed::Ignored);
 }
 
 /// A key press as the window routes it: the press as chordkit reads it (when it has one) and

@@ -1,6 +1,6 @@
 //! `edit_step`: one remote edit from the fetch to the write-back.
 
-use super::model::{Edit, EditFault, EditIn, EditOut, Found, Queued, Resolution};
+use super::model::{Edit, EditFault, EditIn, EditOut, Found, Resolution};
 use temor_ssh::RemoteState;
 
 /// The edit after `input`, and what to do now. An input that makes no sense in the current
@@ -22,24 +22,12 @@ pub fn edit_step(state: Edit, input: EditIn) -> (Edit, Vec<EditOut>) {
         (S::Open { base } | S::Stalled { base }, I::LocalSaved | I::Retry) => (
             S::Checking {
                 base,
-                queued: Queued::Nothing,
+                queued: false,
             },
             vec![EditOut::Check],
         ),
-        (S::Checking { base, .. }, I::LocalSaved) => (
-            S::Checking {
-                base,
-                queued: Queued::Resave,
-            },
-            vec![],
-        ),
-        (S::Uploading { base, .. }, I::LocalSaved) => (
-            S::Uploading {
-                base,
-                queued: Queued::Resave,
-            },
-            vec![],
-        ),
+        (S::Checking { base, .. }, I::LocalSaved) => (S::Checking { base, queued: true }, vec![]),
+        (S::Uploading { base, .. }, I::LocalSaved) => (S::Uploading { base, queued: true }, vec![]),
 
         (S::Checking { base, queued }, I::Checked(RemoteState::Present(now))) if now == base => {
             (S::Uploading { base, queued }, vec![EditOut::Store])
@@ -49,16 +37,10 @@ pub fn edit_step(state: Edit, input: EditIn) -> (Edit, Vec<EditOut>) {
         }
         (S::Checking { base, .. }, I::Checked(_)) => conflict(base, Found::Deleted),
 
-        (
-            S::Uploading {
-                queued: Queued::Resave,
-                ..
-            },
-            I::Stored { stat },
-        ) => (
+        (S::Uploading { queued: true, .. }, I::Stored { stat }) => (
             S::Checking {
                 base: stat,
-                queued: Queued::Nothing,
+                queued: false,
             },
             vec![EditOut::Saved, EditOut::Check],
         ),
@@ -73,7 +55,7 @@ pub fn edit_step(state: Edit, input: EditIn) -> (Edit, Vec<EditOut>) {
         (S::Conflict { base, .. }, I::Resolved(Resolution::Overwrite)) => (
             S::Uploading {
                 base,
-                queued: Queued::Nothing,
+                queued: false,
             },
             vec![EditOut::Store],
         ),

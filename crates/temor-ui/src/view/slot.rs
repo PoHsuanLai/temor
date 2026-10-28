@@ -20,10 +20,10 @@ pub struct Slot {
     pub session: Option<Session>,
     pub texture: Option<TextureHandle>,
     /// Whether the window's GPU device exists: pixels can be shown only then.
-    pub device: Device,
+    pub has_device: bool,
     /// Whether the pane is on screen. A pane in a tab that is not in front is neither laid out
     /// nor painted; it paints when its tab is shown again.
-    pub display: Display,
+    pub shown: bool,
     /// Where the screen's text is published for tests (see [`Launch::probe`](super::Launch)).
     /// Only the pane that has the keyboard publishes.
     pub probe: Option<Probe>,
@@ -37,25 +37,9 @@ impl std::fmt::Debug for Slot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Slot")
             .field("session", &self.session)
-            .field("display", &self.display)
+            .field("shown", &self.shown)
             .finish_non_exhaustive()
     }
-}
-
-/// Whether the window has a GPU device yet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Device {
-    #[default]
-    NotYet,
-    Ready,
-}
-
-/// Whether a pane's view is mounted in the window.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Display {
-    #[default]
-    Away,
-    Shown,
 }
 
 /// Repaints the pane's texture (when it is shown and the device exists) and publishes the screen
@@ -66,8 +50,8 @@ pub fn repaint(slot: &RefCell<Slot>) -> bool {
     let Slot {
         session,
         texture,
-        device,
-        display,
+        has_device,
+        shown,
         probe,
         tiles,
         ..
@@ -76,8 +60,8 @@ pub fn repaint(slot: &RefCell<Slot>) -> bool {
         return false;
     };
     let mut relaid = false;
-    if *device == Device::Ready
-        && *display == Display::Shown
+    if *has_device
+        && *shown
         && let Some(texture) = texture.as_ref()
     {
         let painted = session.paint(|bytes, size| {
@@ -116,11 +100,11 @@ pub fn layout(
     slot: &RefCell<Slot>,
     pixels: PixelSize,
     scale: Scale,
-    device: Device,
+    device: bool,
 ) -> Option<String> {
     let failure = {
         let mut s = slot.borrow_mut();
-        s.device = device;
+        s.has_device = device;
         s.session
             .as_mut()
             .and_then(|session| session.layout(pixels, scale).err())

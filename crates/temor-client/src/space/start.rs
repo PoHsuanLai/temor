@@ -32,14 +32,6 @@ impl fmt::Display for CredentialFault {
 
 impl std::error::Error for CredentialFault {}
 
-/// Whether the store holds a secret for an account. Asked instead of the secret itself wherever
-/// only "is it set" is shown.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Held {
-    Set,
-    NotSet,
-}
-
 /// Where a Space's secrets come from: the account store. `Send + Sync` so it can be handed to
 /// the window as a root context.
 pub trait CredentialSource: Send + Sync {
@@ -47,11 +39,8 @@ pub trait CredentialSource: Send + Sync {
     fn secret(&self, account: &AccountRef) -> Result<Option<String>, CredentialFault>;
 
     /// Whether the store has a secret for `account`.
-    fn holds(&self, account: &AccountRef) -> Result<Held, CredentialFault> {
-        Ok(match self.secret(account)? {
-            Some(_) => Held::Set,
-            None => Held::NotSet,
-        })
+    fn holds(&self, account: &AccountRef) -> Result<bool, CredentialFault> {
+        Ok(self.secret(account)?.is_some())
     }
 
     /// Keeps `secret` as the secret of `account`, replacing one that is there. The Settings

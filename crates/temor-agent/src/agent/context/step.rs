@@ -1,6 +1,6 @@
 //! `context_step`: taking chips off and putting them back, then sending exactly what is left.
 
-use super::model::{ChipId, ContextCard, Removal, SentChip, SentList};
+use super::model::{ChipId, ContextCard, SentChip, SentList};
 use temor_core::vocab::ai::AiSwitch;
 
 /// Where the card stands.
@@ -42,11 +42,7 @@ pub fn context_step(phase: ContextPhase, input: ContextIn) -> (ContextPhase, Vec
     };
     match input {
         ContextIn::Remove(id) => {
-            if let Some(at) = card
-                .chips
-                .iter()
-                .position(|c| c.id == id && c.removal == Removal::Removable)
-            {
+            if let Some(at) = card.chips.iter().position(|c| c.id == id && c.removable) {
                 let chip = card.chips.remove(at);
                 card.removed.push(chip);
             }

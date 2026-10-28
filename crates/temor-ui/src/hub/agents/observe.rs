@@ -94,8 +94,8 @@ impl Hub {
         match sockets.open(pane) {
             Ok(path) => Some(path),
             Err(err) => {
-                if self.agents.socket_told == super::state::Told::Not {
-                    self.agents.socket_told = super::state::Told::Once;
+                if !self.agents.socket_told {
+                    self.agents.socket_told = true;
                     self.notices
                         .push(format!("Agents cannot report to this window: {err}"));
                 }
