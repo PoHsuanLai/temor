@@ -644,3 +644,83 @@ fn a_row_shows_its_folders_letter_and_a_running_programs_brand() {
     drive::chord_with(&mut h, &[ShortcutKey::Ctrl], 'c');
     settle(&mut h, "avatar");
 }
+
+/// At its prompt a row shows the icon Finder set on its folder, found off the window's thread,
+/// and its letter again in a folder without one.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_row_at_its_prompt_shows_the_icon_set_on_its_folder() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let dir = tempfile::tempdir().expect("dir");
+    let png = temor_client::icons::app_png(
+        std::path::Path::new("/System/Applications/Calculator.app"),
+        32,
+    )
+    .expect("a PNG to put in the icon");
+    let icon = dir.path().join("Icon\r");
+    std::fs::write(&icon, "").expect("Icon file");
+    std::fs::write(icon.join("..namedfork/rsrc"), fork_holding(&icns_of(&png))).expect("fork");
+    let probe = Probe::new();
+    let mut h = harness("sidebar-folder-icon", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let app = ".temor-side .temor-tab-box .temor-tab-app";
+    drive::type_line(&mut h, &format!("cd '{}'", dir.path().display()));
+    let start = Instant::now();
+    while h.count(app) != 1 {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "no folder icon:\n{}",
+            h.html()
+        );
+    }
+    drive::type_line(&mut h, "cd /");
+    let start = Instant::now();
+    while h.count(app) != 0 {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the icon stayed:\n{}",
+            h.html()
+        );
+    }
+}
+
+/// An icon file holding `png`.
+#[cfg(target_os = "macos")]
+fn icns_of(png: &[u8]) -> Vec<u8> {
+    let mut icns = b"icns".to_vec();
+    icns.extend_from_slice(&(16 + png.len() as u32).to_be_bytes());
+    icns.extend_from_slice(b"ic11");
+    icns.extend_from_slice(&(8 + png.len() as u32).to_be_bytes());
+    icns.extend_from_slice(png);
+    icns
+}
+
+/// A resource fork with one `icns` resource, as Finder writes a folder's custom icon.
+#[cfg(target_os = "macos")]
+fn fork_holding(icns: &[u8]) -> Vec<u8> {
+    let body: Vec<u8> = [(icns.len() as u32).to_be_bytes().as_slice(), icns].concat();
+    let (data_at, map_at) = (256u32, 256 + body.len() as u32);
+    let mut map = vec![0u8; 24];
+    for half in [28u16, 0, 0] {
+        map.extend_from_slice(&half.to_be_bytes());
+    }
+    map.extend_from_slice(b"icns");
+    map.extend_from_slice(&0u16.to_be_bytes());
+    map.extend_from_slice(&10u16.to_be_bytes());
+    map.extend_from_slice(&(-16455i16).to_be_bytes());
+    map.extend_from_slice(&0xFFFFu16.to_be_bytes());
+    map.extend_from_slice(&[0; 8]);
+    let mut fork: Vec<u8> = [data_at, map_at, body.len() as u32, map.len() as u32]
+        .iter()
+        .flat_map(|n| n.to_be_bytes())
+        .collect();
+    fork.resize(data_at as usize, 0);
+    fork.extend_from_slice(&body);
+    fork.extend_from_slice(&map);
+    fork
+}

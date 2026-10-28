@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use temor_client::model::icon::{Brand, Glyph, Pack};
+use temor_core::icon::{Brand, Glyph, Pack};
 
 /// The file the person's entries are in, inside temor's config folder.
 const FILE: &str = "icons.toml";
@@ -180,7 +180,7 @@ fn hex(text: &str) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    use temor_client::model::icon::carried_slugs;
+    use temor_core::icon::carried_slugs;
 
     use super::*;
 

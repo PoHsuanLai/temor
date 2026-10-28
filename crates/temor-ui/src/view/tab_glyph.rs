@@ -11,6 +11,7 @@ use ds::style::icon::url::IconUrl;
 use temor_client::model::presence::{AgentState, companion_presence};
 
 use crate::hub::RowIcon;
+use temor_client::icons::Image;
 
 // Lucide's `terminal` (lucide.dev, ISC licence, Copyright (c) Lucide Contributors; see NOTICE),
 // as a mask painted in the row's text colour.
@@ -24,12 +25,16 @@ pub fn prompt_glyph(size: IconSize) -> IconSource {
     })
 }
 
-/// What leads a tab's row: its app's icon as it is, a brand's glyph in white on the brand's
-/// colour, or the letter tile, each a 16 px square as a sidebar's favicon is.
+/// What leads a tab's row: its app's or its folder's icon as it is, a brand's glyph in white on
+/// the brand's colour, or the letter tile, each a 16 px square as a sidebar's favicon is.
 pub fn row_leading(icon: &RowIcon) -> RowLeading {
     match icon {
-        RowIcon::App(png) => {
-            let src = IconUrl::png(png).as_str().to_owned();
+        RowIcon::Image(image) => {
+            let src = match image {
+                Image::Png(png) => IconUrl::png(png),
+                Image::Svg(svg) => IconUrl::svg(svg),
+            };
+            let src = src.as_str().to_owned();
             RowLeading::Element(rsx! {
                 img { class: "temor-tab-app", src }
             })

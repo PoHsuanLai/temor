@@ -43,9 +43,9 @@ use crate::app::Desktop;
 use crate::edge::{Credentials, VaultCredentials};
 use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
-    spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
-    spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_save_loop, spawn_settings_loop,
-    spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
+    spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_icons_loop,
+    spawn_keys_loop, spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_save_loop,
+    spawn_settings_loop, spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
 };
 
 /// The window's root component.
@@ -113,6 +113,7 @@ pub fn App() -> Element {
             spawn_settings_loop(desk.clone(), spawner);
             spawn_agent_loops(desk.clone());
             spawn_facts_loop(desk.clone());
+            spawn_icons_loop(desk.clone());
             spawn_plugins_loop(desk.clone());
             spawn_ssh_loop(desk.clone());
             spawn_viewer_loop(desk.clone());

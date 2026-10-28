@@ -4,6 +4,8 @@
 //! else the letter tile. Pure: the window finds the app and the folder's icon and draws what this
 //! picks.
 
+pub mod find;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

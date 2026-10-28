@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use ds::prelude::{Emphasis, Selection};
+use temor_client::icons::Image;
 use temor_client::model::icon::{IconAsk, TabIcon, icon_for, initial_of, programs_of};
 use temor_client::model::presence::{AgentState, attention};
 use temor_client::model::split::{Closed, SplitTree, WholePx};
@@ -46,11 +47,12 @@ pub struct Tile {
     pub agent: AgentState,
 }
 
-/// What leads a tab's row (PLAN P22): the running program's app or brand, else a letter tile.
+/// What leads a tab's row (PLAN P22): the running program's app or brand, at the prompt the
+/// folder's own icon, else a letter tile.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RowIcon {
-    /// The icon of the Mac app the program belongs to, as a PNG.
-    App(Arc<[u8]>),
+    /// A picture drawn as it is: the icon of the app the program belongs to, or the folder's.
+    Image(Image),
     /// A brand's glyph, in white on its colour (`0xRRGGBB`).
     Brand { svg: Arc<str>, colour: u32 },
     /// A letter on a tile coloured from `key`.
@@ -261,24 +263,37 @@ impl Hub {
             let path = path
                 .flatten()
                 .or_else(|| self.launch.ambient.env.get("PATH").map(ToOwned::to_owned))?;
-            self.app_icons.borrow_mut().of(&program, &path)
+            self.icons.icons.app(&program, &path)
+        });
+        // At the prompt, the icon set on the folder; a host's folders are not on this computer.
+        let folder = match (&running, on_host) {
+            (None, false) => self.pane_folder(pane),
+            _ => None,
+        };
+        let folder_icon = folder.as_deref().and_then(|dir| {
+            let dir = std::path::Path::new(dir);
+            let image = self.icons.icons.folder(dir)?;
+            Some((dir, image))
         });
         let ask = IconAsk {
             command: running.as_deref(),
             app: found.as_ref().map(|app| app.app.as_path()),
-            folder_icon: None,
+            folder_icon: folder_icon.as_ref().map(|(dir, _)| *dir),
             title,
         };
-        match icon_for(&ask, &self.icon_pack.pack) {
-            TabIcon::App(_) => found.map_or_else(|| letter(title), |app| RowIcon::App(app.png)),
-            TabIcon::Brand(brand) => match self.icon_pack.svg(&brand.glyph) {
+        match icon_for(&ask, &self.icons.pack.pack) {
+            TabIcon::App(_) => found.map_or_else(|| letter(title), |app| RowIcon::Image(app.image)),
+            TabIcon::Folder(_) => {
+                folder_icon.map_or_else(|| letter(title), |(_, image)| RowIcon::Image(image))
+            }
+            TabIcon::Brand(brand) => match self.icons.pack.svg(&brand.glyph) {
                 Some(svg) => RowIcon::Brand {
                     svg,
                     colour: brand.colour,
                 },
                 None => letter(title),
             },
-            TabIcon::Folder(_) | TabIcon::Letter { .. } => letter(title),
+            TabIcon::Letter { .. } => letter(title),
         }
     }
 

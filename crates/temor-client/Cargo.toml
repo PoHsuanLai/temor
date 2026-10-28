@@ -50,6 +50,8 @@ ds-core = { workspace = true }
 # The plugins' work (`plugins`), and an agent adapter's status as the pane's report.
 temor-plugins = { workspace = true }
 temor-pane = { workspace = true }
+# The person's icon pack (`icons`).
+toml = { workspace = true }
 
 [dev-dependencies]
 temor-client = { path = ".", features = ["testing"] }

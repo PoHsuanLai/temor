@@ -85,9 +85,8 @@ pub struct Hub {
     pub(super) peek: PeekHub,
     /// Programs run in tabs of their own in place of the shell (`temor -e`).
     pub(super) run: RunHub,
-    /// The apps programs belong to, found as tabs run them (PLAN P22).
-    pub(super) app_icons: RefCell<crate::edge::app_icons::AppIcons>,
-    pub(super) icon_pack: crate::edge::icon_pack::IconPack,
+    /// The rows' icons: the apps programs belong to and the folders' own (PLAN P22).
+    pub(super) icons: super::icons::IconsHub,
     pub(super) history: super::history::History,
     /// What of the layout the client was last handed (the client's).
     pub(super) kept: temor_client::keep::Kept,
@@ -117,8 +116,7 @@ impl Hub {
         let events = hearing.events();
         let (shelf, trouble) = ShelfHub::open(&launch);
         let ambient = &launch.ambient;
-        let (icon_pack, pack_trouble) =
-            crate::edge::icon_pack::IconPack::load(&ambient.config_dir, &ambient.home);
+        let (icons, pack_trouble) = super::icons::IconsHub::new(&ambient.config_dir, &ambient.home);
         let notices = launch
             .first_words
             .take()
@@ -166,8 +164,7 @@ impl Hub {
             peek: PeekHub::default(),
 
             run: RunHub::default(),
-            app_icons: RefCell::default(),
-            icon_pack,
+            icons,
             history: Default::default(),
             kept: Default::default(),
         }

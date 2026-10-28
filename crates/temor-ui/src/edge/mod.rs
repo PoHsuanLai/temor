@@ -3,10 +3,8 @@
 //! of the app as values or trait objects.
 
 mod ambient;
-pub mod app_icons;
 pub mod clock;
 pub mod folder_read;
-pub mod icon_pack;
 mod keymap;
 mod keymap_source;
 pub mod local_zone;

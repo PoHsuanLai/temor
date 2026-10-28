@@ -18,6 +18,7 @@ pub mod desktop;
 mod error;
 mod external;
 pub mod facts;
+pub mod icons;
 pub mod keep;
 mod live;
 pub mod plugins;
