@@ -1,6 +1,6 @@
 //! Where and how the cursor is drawn this frame.
 
-use temor_vt::{Col, CursorBlink, CursorCell, CursorShape, CursorView, Rgb, Row};
+use temor_vt::{Col, CursorShape, CursorView, Rgb, Row};
 
 use crate::frame::{CellDraw, TermColors};
 use crate::palette::Palette;
@@ -43,12 +43,12 @@ pub(crate) fn resolve_cursor(
     colors: &TermColors,
 ) -> Option<CursorDraw> {
     let view = view?;
-    if (focus, blink, view.blink) == (PaneFocus::Focused, BlinkPhase::Off, CursorBlink::Blinking) {
+    if (focus, blink, view.blinking) == (PaneFocus::Focused, BlinkPhase::Off, true) {
         return None;
     }
-    let col = match view.cell {
-        CursorCell::WideTail => Col(view.col.0.saturating_sub(1)),
-        CursorCell::Normal => view.col,
+    let col = match view.wide_tail {
+        true => Col(view.col.0.saturating_sub(1)),
+        false => view.col,
     };
     let span = row_cells(view.row)
         .and_then(|cells| cells.into_iter().find(|(c, _)| *c == col).map(|(_, s)| s))

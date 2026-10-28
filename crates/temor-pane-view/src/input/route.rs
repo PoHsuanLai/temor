@@ -6,7 +6,7 @@
 
 use chordkit::{Context, Key as ChordKey, Keymap, NamedKey};
 use temor_panes::pane::keys::Action;
-use temor_panes::vt::{Ime, KeyAction, KeyInput, KittyKeyFlags};
+use temor_panes::vt::{KeyAction, KeyInput, KittyKeyFlags};
 
 /// A key as the window heard it: the press as chordkit reads it (when it has a name there) and
 /// what the program would get.
@@ -59,7 +59,7 @@ pub fn route(stroke: Stroke, keymap: &Keymap, find: FindBar) -> Routed {
 
 /// [`route`], knowing whether the program turned on the kitty keyboard flags.
 pub fn route_with(stroke: Stroke, keymap: &Keymap, find: FindBar, kitty: KittyKeys) -> Routed {
-    if stroke.key.ime == Ime::Composing {
+    if stroke.key.composing {
         return Routed::Ignored;
     }
     if stroke.key.action == KeyAction::Release {

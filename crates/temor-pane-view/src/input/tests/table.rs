@@ -5,7 +5,6 @@ use chordkit::{Desktop, Keymap, Overrides, Platform};
 use dioxus::html::{Code, Key, Location, Modifiers as Held};
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use temor_panes::pane::keys::Action;
-use temor_panes::vt::Ime;
 
 use super::super::keys::stroke;
 use super::super::route::{FindBar, KittyKeys, Routed, route_with};
@@ -57,7 +56,7 @@ pub(super) fn went_with(keymap: &Keymap, row: &Row, find: FindBar, kitty: KittyK
         location: Location::Standard,
         text: (!row.text.is_empty()).then(|| row.text.to_owned()),
     };
-    let stroke = stroke(&raw, Ime::Idle).unwrap_or_else(|| panic!("{}: no stroke", row.name));
+    let stroke = stroke(&raw, false).unwrap_or_else(|| panic!("{}: no stroke", row.name));
     match route_with(stroke, keymap, find, kitty) {
         Routed::Action(action) => Went::Action(action),
         Routed::Shell(_) => Went::Program,

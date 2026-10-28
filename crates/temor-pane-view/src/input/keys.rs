@@ -4,7 +4,7 @@
 
 use dioxus::html::{Code, Key, Modifiers as HeldMods};
 use ds::edit::raw_key::{KeyPhase, RawKey};
-use temor_panes::vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
+use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::route::Stroke;
 
@@ -12,7 +12,7 @@ use super::route::Stroke;
 /// with the input method's state for it. `None` for a key with no physical or known logical
 /// identity (a dead or unidentified key): it is ignored rather than sent to the program as
 /// something else.
-pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
+pub fn stroke(raw: &RawKey, composing: bool) -> Option<Stroke> {
     let code = code_key(&raw.code).or_else(|| logical_key(&raw.key))?;
     let action = match raw.phase {
         KeyPhase::Press => KeyAction::Press,
@@ -34,7 +34,7 @@ pub fn stroke(raw: &RawKey, ime: Ime) -> Option<Stroke> {
         mods: vt_mods(raw.modifiers),
         text: raw.text.clone().unwrap_or_default(),
         unshifted,
-        ime,
+        composing,
     };
     Some(Stroke {
         input: pressed(&chord_key(raw), raw.modifiers, &key),
@@ -424,7 +424,7 @@ mod tests {
             ("&", Code::Digit1, HeldMods::empty(), "&", '&'),
         ];
         for (key, code, held, text, want) in rows {
-            let got = stroke(&raw(key, code, held, text), Ime::Idle).expect("stroke");
+            let got = stroke(&raw(key, code, held, text), false).expect("stroke");
             assert_eq!(got.key.unshifted, Some(want), "{key} {code:?}");
         }
     }

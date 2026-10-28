@@ -483,7 +483,7 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
             mods: Modifiers::CTRL.with(Modifiers::SHIFT),
             text: String::new(),
             unshifted: Some('g'),
-            ime: temor_vt::Ime::Idle,
+            composing: false,
         },
     };
     assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
@@ -910,7 +910,7 @@ fn copy_to(location: temor_vt::ClipboardLocation, text: &str) -> PaneEvent {
             data: text.as_bytes().to_vec(),
         }],
         program: "tool".to_owned(),
-        grant: temor_vt::ClipboardGrant::Ask,
+        granted: false,
     })
 }
 

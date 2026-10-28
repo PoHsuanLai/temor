@@ -11,7 +11,6 @@ use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::focus::request::FocusRequest;
 use ds::host::measure::RectProbe;
 use temor_client::model::vocab::ids::PaneId;
-use temor_panes::vt::Ime;
 
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
@@ -39,7 +38,7 @@ fn to_composer(
         .modifiers
         .intersects(Modifiers::SUPER | Modifiers::META | Modifiers::CONTROL)
     {
-        return Some(match stroke(raw, Ime::Idle) {
+        return Some(match stroke(raw, false) {
             Some(stroke) => session.composer_chord(stroke),
             None => Ok(()),
         });
@@ -98,13 +97,13 @@ pub fn key_handler(
             Some(outcome) => Some(outcome),
             None => {
                 let composing = match ime.composing.get() {
-                    Composing::Active => Ime::Composing,
-                    Composing::Idle | Composing::Cleared => Ime::Idle,
+                    Composing::Active => true,
+                    Composing::Idle | Composing::Cleared => false,
                 };
                 if raw.phase != KeyPhase::Release {
                     ime.settle(&apply);
                 }
-                if composing == Ime::Composing {
+                if composing {
                     return;
                 }
                 // An unidentified key is ignored; the rest go to the session.

@@ -13,7 +13,6 @@ use ds::root::pass_through::ExtraClass;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::pane::keys::Action;
-use temor_panes::vt::Ime;
 
 use crate::hub::{Desk, Origin};
 use crate::input::{Routed, stroke};
@@ -52,7 +51,7 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
             if raw.phase == KeyPhase::Release {
                 return;
             }
-            if let Some(action) = stroke(&raw, Ime::Idle).and_then(|s| action_of(&desk, s)) {
+            if let Some(action) = stroke(&raw, false).and_then(|s| action_of(&desk, s)) {
                 desk.run_action(action, Origin::Viewer);
             }
         }
@@ -142,7 +141,7 @@ pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> E
             if raw.phase == KeyPhase::Release {
                 return;
             }
-            if let Some(action) = stroke(&raw, Ime::Idle).and_then(|s| action_of(&desk, s)) {
+            if let Some(action) = stroke(&raw, false).and_then(|s| action_of(&desk, s)) {
                 desk.run_action(action, Origin::Viewer);
             }
         }

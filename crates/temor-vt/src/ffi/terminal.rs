@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 use temor_vt_sys as sys;
 
 use super::anchor::Anchors;
-use super::callbacks::{self, Callbacks, TitleChange};
+use super::callbacks::{self, Callbacks};
 use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
 use super::snapshot::Snapshot;
@@ -155,7 +155,7 @@ impl Terminal {
             dropped: Cell::new(0),
             color_scheme: Cell::new(config.color_scheme),
             size: Cell::new((config.size, config.cell_px)),
-            title: Cell::new(TitleChange::Unchanged),
+            title: Cell::new(false),
             clipboard: RefCell::new(None),
             hold: Cell::new(RenderHold::Released),
             mark: Cell::new(None),

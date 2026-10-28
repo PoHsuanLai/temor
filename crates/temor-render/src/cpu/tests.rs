@@ -162,7 +162,7 @@ fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    hyperlink: temor_vt::Hyperlink::None,
+                    linked: false,
                     semantic: temor_vt::SemanticMark::Output,
                     selected: false,
                 })

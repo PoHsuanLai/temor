@@ -9,7 +9,7 @@
 use temor_client::model::remote::Grant;
 use temor_client::model::shelf::PaneSite;
 use temor_panes::pane::ReadPolicy;
-use temor_panes::vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
+use temor_panes::vt::{ClipboardLocation, ClipboardRead, ClipboardWrite};
 
 pub use temor_panes::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
 
@@ -27,13 +27,13 @@ pub(super) enum WriteVerdict {
 }
 
 /// Decides a write from where the pane's program runs, what the person has answered for it, and
-/// whether the terminal already holds a grant for it.
-pub(super) fn write_verdict(site: PaneSite, consent: Grant, held: ClipboardGrant) -> WriteVerdict {
-    match (site, consent, held) {
+/// whether the terminal already holds a grant for it (`granted`).
+pub(super) fn write_verdict(site: PaneSite, consent: Grant, granted: bool) -> WriteVerdict {
+    match (site, consent, granted) {
         (PaneSite::Local, _, _) => WriteVerdict::Write,
         (_, Grant::Allowed, _) => WriteVerdict::Write,
         (_, Grant::Refused, _) => WriteVerdict::Drop,
-        (_, Grant::Ask, ClipboardGrant::Granted) => WriteVerdict::Write,
+        (_, Grant::Ask, true) => WriteVerdict::Write,
         (_, Grant::Ask, _) => WriteVerdict::Ask,
     }
 }
@@ -74,7 +74,7 @@ impl Session {
             let core = self.core();
             (core.site, core.clip_write, core.clip_pending.is_some())
         };
-        match write_verdict(site, consent, write.grant) {
+        match write_verdict(site, consent, write.granted) {
             WriteVerdict::Write => self.osc52_put(write.location, &text),
             WriteVerdict::Drop => {}
             WriteVerdict::Ask if asking => {}
@@ -177,20 +177,19 @@ mod tests {
 
     #[test]
     fn a_write_is_decided_by_where_the_program_runs_and_what_was_answered() {
-        use ClipboardGrant::{Ask as NoGrant, Granted};
         use PaneSite::{Local, Remote};
         use WriteVerdict::{Ask, Drop, Write};
         let table = [
-            (Local, Grant::Ask, NoGrant, Write),
-            (Local, Grant::Refused, NoGrant, Write),
-            (Remote, Grant::Ask, NoGrant, Ask),
-            (Remote, Grant::Ask, Granted, Write),
-            (Remote, Grant::Allowed, NoGrant, Write),
-            (Remote, Grant::Refused, Granted, Drop),
+            (Local, Grant::Ask, false, Write),
+            (Local, Grant::Refused, false, Write),
+            (Remote, Grant::Ask, false, Ask),
+            (Remote, Grant::Ask, true, Write),
+            (Remote, Grant::Allowed, false, Write),
+            (Remote, Grant::Refused, true, Drop),
         ];
-        for (site, consent, held, want) in table {
+        for (site, consent, granted, want) in table {
             assert_eq!(
-                write_verdict(site, consent, held),
+                write_verdict(site, consent, granted),
                 want,
                 "{site:?} {consent:?}"
             );

@@ -3,7 +3,7 @@
 use chordkit::Platform;
 use dioxus::html::{Code, Key, Modifiers as Held};
 use temor_panes::pane::keys::Action;
-use temor_panes::vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
+use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::super::keys::is_altgr_text;
 use super::super::route::{FindBar, KittyKeys, Routed, Stroke, route};
@@ -97,7 +97,7 @@ fn altgr_characters_reach_the_program_on_every_platform() {
 #[test]
 fn composing_releases_and_unnamed_keys_keep_their_routes() {
     let keymap = keymap_of(OURS);
-    let press = |ime, action, input: Option<chordkit::KeyInput>| Stroke {
+    let press = |composing, action, input: Option<chordkit::KeyInput>| Stroke {
         input,
         key: KeyInput {
             code: KeyCode::C,
@@ -105,7 +105,7 @@ fn composing_releases_and_unnamed_keys_keep_their_routes() {
             mods: Modifiers::SUPER,
             text: String::new(),
             unshifted: Some('c'),
-            ime,
+            composing,
         },
     };
     let copy = chordkit::KeyInput::new(
@@ -113,16 +113,16 @@ fn composing_releases_and_unnamed_keys_keep_their_routes() {
         chordkit::Key::Char('c'),
     );
     // The input method owns the key while composing, even a bound one.
-    let composing = press(Ime::Composing, KeyAction::Press, Some(copy));
+    let composing = press(true, KeyAction::Press, Some(copy));
     assert_eq!(route(composing, &keymap, FindBar::Closed), Routed::Ignored);
     // A release goes to the program (which may have asked for releases), never to an action.
-    let release = press(Ime::Idle, KeyAction::Release, Some(copy));
+    let release = press(false, KeyAction::Release, Some(copy));
     assert!(matches!(
         route(release, &keymap, FindBar::Closed),
         Routed::Shell(_)
     ));
     // A key chordkit has no name for is the program's.
-    let unnamed = press(Ime::Idle, KeyAction::Press, None);
+    let unnamed = press(false, KeyAction::Press, None);
     assert!(matches!(
         route(unnamed, &keymap, FindBar::Closed),
         Routed::Shell(_)

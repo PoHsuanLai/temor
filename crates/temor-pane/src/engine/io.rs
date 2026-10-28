@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{RenderHold, Snapshot, Truncation, UnknownKind, VtEvent};
+use temor_vt::{RenderHold, Snapshot, UnknownKind, VtEvent};
 
 use super::event::PaneEvent;
 use super::fed_io::{FedSetup, pump_fed};
@@ -205,7 +205,7 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         if let VtEvent::Unknown {
             kind: UnknownKind::Osc,
             payload,
-            truncation: Truncation::Complete,
+            truncated: false,
         } = &event
             && let Some(report) = payload.strip_prefix(REPORT_HEAD)
         {
@@ -217,7 +217,7 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         if let VtEvent::Unknown {
             kind: UnknownKind::Osc,
             payload,
-            truncation: Truncation::Complete,
+            truncated: false,
         } = &event
             && let Some(answer) = payload.strip_prefix(COMPLETE_HEAD)
         {
@@ -229,11 +229,11 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         if let VtEvent::Unknown {
             kind,
             payload,
-            truncation,
+            truncated,
         } = &event
             && let Some(transfers) = io.transfers.as_mut()
         {
-            let reaction = transfers.on_unknown(*kind, payload, *truncation);
+            let reaction = transfers.on_unknown(*kind, payload, *truncated);
             carry_out(io, Some(reaction));
             continue;
         }

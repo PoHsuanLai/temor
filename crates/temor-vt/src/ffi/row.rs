@@ -4,8 +4,8 @@ use temor_vt_sys as sys;
 
 use super::convert::{check, rgb};
 use crate::{
-    CellStyle, CellView, CellWidth, Col, ColorRef, Hyperlink, Rgb, Row, RowDirty, RowId,
-    SemanticMark, StyleFlags, Underline, VtError,
+    CellStyle, CellView, CellWidth, Col, ColorRef, Rgb, Row, RowId, SemanticMark, StyleFlags,
+    Underline, VtError,
 };
 
 /// One row of a [`crate::Frame`], valid during the row walk.
@@ -54,7 +54,7 @@ impl<'a> RowView<'a> {
     }
 
     /// Whether the row changed since the frame was last marked drawn.
-    pub fn dirty(&self) -> RowDirty {
+    pub fn dirty(&self) -> bool {
         let mut dirty = true;
         // SAFETY: DIRTY writes a `bool`.
         unsafe {
@@ -64,11 +64,7 @@ impl<'a> RowView<'a> {
                 (&raw mut dirty).cast(),
             )
         };
-        if dirty {
-            RowDirty::Dirty
-        } else {
-            RowDirty::Clean
-        }
+        dirty
     }
 
     /// The row's identity across frames.
@@ -153,11 +149,7 @@ fn read_cell<'t>(
         fg: has_fg.then(|| rgb(fg)),
         bg: has_bg.then(|| rgb(bg)),
         style: cell_style(&style, palette),
-        hyperlink: if cell_flag(raw, sys::CellData::HAS_HYPERLINK) {
-            Hyperlink::Linked
-        } else {
-            Hyperlink::None
-        },
+        linked: cell_flag(raw, sys::CellData::HAS_HYPERLINK),
         semantic: semantic(raw),
         selected,
     })

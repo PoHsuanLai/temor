@@ -53,7 +53,8 @@ pub enum VtEvent {
     Unknown {
         kind: UnknownKind,
         payload: Vec<u8>,
-        truncation: Truncation,
+        /// The payload was cut at the configured limit.
+        truncated: bool,
     },
 }
 
@@ -68,14 +69,6 @@ pub enum UnknownKind {
     /// An iTerm2 inline file (`ESC ] 1337 ; File= ... BEL|ST`) or a piece of a multipart one
     /// (`MultipartFile=`, `FilePart=`, `FileEnd`).
     Osc1337File,
-}
-
-/// Whether a payload is whole or was cut at the configured limit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Truncation {
-    Complete,
-    Truncated,
 }
 
 /// Whether the screen is held for a synchronized update.
@@ -95,16 +88,6 @@ pub enum ClipboardLocation {
     Standard,
     Selection,
     Primary,
-}
-
-/// Whether the terminal already holds the person's permission for this program's writes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum ClipboardGrant {
-    /// Write without asking.
-    Granted,
-    /// Ask (or apply the host's policy) first.
-    Ask,
 }
 
 /// One representation of the value being copied.
@@ -131,7 +114,8 @@ pub struct ClipboardWrite {
     pub items: Vec<ClipboardItem>,
     /// The program's name for permission prompts, when the protocol carries one.
     pub program: String,
-    pub grant: ClipboardGrant,
+    /// The terminal already holds the person's permission for this program's writes.
+    pub granted: bool,
 }
 
 /// A program's request to read a clipboard.
