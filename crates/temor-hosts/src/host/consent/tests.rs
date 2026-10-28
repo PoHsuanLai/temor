@@ -1,6 +1,6 @@
 use super::{
-    BootstrapAction as Action, BootstrapGrants, ConsentBook, ConsentIn, ConsentOut, Gate, Permit,
-    RunMode, Who, carry_host_consent, consent_step, gate,
+    BootstrapAction as Action, BootstrapGrants, ConsentBook, ConsentIn, Gate, Permit, RunMode, Who,
+    carry_host_consent, consent_step, gate,
 };
 use crate::remote::{Grant, HostConsent};
 use temor_ssh::{HostKey, TerminfoPolicy};
@@ -93,18 +93,18 @@ fn answers_given_by_alias_join_the_machine_once_a_connection_proves_it() {
     assert_eq!(gate(&book, &typed), INSTALL);
 
     let proven = who("prod", Some(FP), None);
-    let (book, outs) = consent_step(
+    let (book, changed) = consent_step(
         book,
         ConsentIn::Identified {
             who: proven.clone(),
         },
     );
-    assert_eq!(outs, vec![ConsentOut::Persist]);
+    assert!(changed);
     // Reached by another name later (a rename in ssh_config), it is the same machine.
     assert_eq!(gate(&book, &who("renamed", Some(FP), None)), INSTALL);
     // Identifying again changes nothing and asks for no save.
-    let (again, outs) = consent_step(book.clone(), ConsentIn::Identified { who: proven });
-    assert_eq!((again, outs), (book, Vec::new()));
+    let (again, changed) = consent_step(book.clone(), ConsentIn::Identified { who: proven });
+    assert_eq!((again, changed), (book, false));
 }
 
 #[test]
@@ -206,8 +206,8 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
             },
         )
     };
-    let (next, outs) = helper(book.clone(), &alias_only, Grant::Allowed);
-    assert_eq!(outs, vec![ConsentOut::Persist]);
+    let (next, changed) = helper(book.clone(), &alias_only, Grant::Allowed);
+    assert!(changed);
     book = next;
     let kept = book.grants(&prod);
     assert_eq!(
@@ -219,9 +219,9 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
             .expect("encode")
             .contains(r#""helper":"allowed""#)
     );
-    let (same, outs) = helper(book.clone(), &prod, Grant::Allowed);
+    let (same, changed) = helper(book.clone(), &prod, Grant::Allowed);
     assert!(
-        outs.is_empty() && same == book,
+        !changed && same == book,
         "the same answer changes nothing"
     );
     let (forgotten, _) = helper(book, &prod, Grant::Ask);
@@ -246,13 +246,13 @@ fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() 
             },
         )
     };
-    let (book, outs) = permit(
+    let (book, changed) = permit(
         ConsentBook::default(),
         &alias_only,
         Permit::Clipboard,
         Grant::Refused,
     );
-    assert_eq!(outs, vec![ConsentOut::Persist]);
+    assert!(changed);
     let (book, _) = permit(book, &prod, Permit::Transfers, Grant::Allowed);
     let kept = book.grants(&prod);
     // Name, permit, answer: each is its own question, and the alias joined the machine.
@@ -269,8 +269,8 @@ fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() 
         !json.contains("notifications"),
         "an open answer is not written: {json}"
     );
-    let (same, outs) = permit(book.clone(), &prod, Permit::Transfers, Grant::Allowed);
-    assert!(outs.is_empty() && same == book);
+    let (same, changed) = permit(book.clone(), &prod, Permit::Transfers, Grant::Allowed);
+    assert!(!changed && same == book);
 }
 
 #[test]

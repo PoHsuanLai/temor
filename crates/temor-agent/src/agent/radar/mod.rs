@@ -9,5 +9,5 @@ mod step;
 mod tests;
 
 pub use hint::title_hint;
-pub use model::{Millis, ProcessFact, ProgramFact, ProgramKind, RadarIn, RadarOut, RadarParams};
+pub use model::{Millis, ProcessFact, ProgramFact, ProgramKind, RadarIn, RadarParams};
 pub use step::{RadarState, radar_step};

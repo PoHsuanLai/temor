@@ -9,4 +9,4 @@ mod tests;
 
 pub use carry::carry_host_consent;
 pub use model::{BootstrapAction, BootstrapGrants, ConsentBook, HostRecord, Permit, Who};
-pub use step::{ConsentIn, ConsentOut, Gate, RunMode, consent_step, gate};
+pub use step::{ConsentIn, Gate, RunMode, consent_step, gate};

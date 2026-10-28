@@ -102,7 +102,7 @@ fn a_blocked_program_gives_one_notification() {
     );
     assert!(out.iter().any(|o| matches!(
         o,
-        RadarOut::Presence(PresenceOut::Notify { note: Some(Note(n)), .. }) if n == "m"
+        PresenceOut::Notify { note: Some(Note(n)), .. } if n == "m"
     )));
 }
 

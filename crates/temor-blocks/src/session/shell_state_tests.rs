@@ -1,13 +1,11 @@
-//! The shell's state from its reports: what is kept, what changed, and what a new shell is told.
+//! The shell's state from its reports: what is kept, and what a new shell is told.
 
 use proptest::prelude::*;
 use temor_shell::report::Report;
 
 use super::{
-    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, holds_secret, is_secret,
-    looks_secret, never_carried, shell_step,
+    EnvEntry, Replay, ShellIn, ShellState, holds_secret, is_secret, looks_secret, never_carried,
 };
-use temor_testkit::run_steps;
 
 fn report(env: &[(&str, &str)], aliases: &[(&str, &str)]) -> ShellIn {
     let own = |items: &[(&str, &str)]| {
@@ -27,50 +25,43 @@ fn value(text: &str) -> EnvEntry {
     EnvEntry::Value(text.to_owned())
 }
 
+/// The state after taking in each of `inputs`, from nothing.
+fn applied(inputs: impl IntoIterator<Item = ShellIn>) -> ShellState {
+    let mut state = ShellState::default();
+    for input in inputs {
+        state.apply(input);
+    }
+    state
+}
+
 #[test]
-fn a_report_says_what_was_added_changed_and_removed() {
-    let (state, outs) = shell_step(
-        ShellState::default(),
-        report(&[("EDITOR", "vim"), ("LANG", "C")], &[("ll", "ls -l")]),
-    );
+fn each_report_replaces_the_variables_and_aliases() {
+    let mut state = applied([report(
+        &[("EDITOR", "vim"), ("LANG", "C")],
+        &[("ll", "ls -l")],
+    )]);
+    let env = |state: &ShellState| state.env().clone().into_iter().collect::<Vec<_>>();
     assert_eq!(
-        outs,
-        [ShellOut::Changed(ShellDelta {
-            env_set: vec![("EDITOR".into(), value("vim")), ("LANG".into(), value("C"))],
-            alias_set: vec![("ll".into(), "ls -l".into())],
-            ..ShellDelta::default()
-        })]
+        env(&state),
+        [("EDITOR".into(), value("vim")), ("LANG".into(), value("C"))]
     );
-    let (state, outs) = shell_step(
-        state,
-        report(&[("EDITOR", "nvim"), ("PAGER", "less")], &[("ll", "ls -l")]),
-    );
+    state.apply(report(&[("EDITOR", "nvim"), ("PAGER", "less")], &[]));
     assert_eq!(
-        outs,
-        [ShellOut::Changed(ShellDelta {
-            env_set: vec![
-                ("EDITOR".into(), value("nvim")),
-                ("PAGER".into(), value("less"))
-            ],
-            env_unset: vec!["LANG".into()],
-            ..ShellDelta::default()
-        })]
+        env(&state),
+        [
+            ("EDITOR".into(), value("nvim")),
+            ("PAGER".into(), value("less"))
+        ]
     );
-    // The same report again changes nothing and says nothing.
-    let (_, outs) = shell_step(
-        state.clone(),
-        report(&[("EDITOR", "nvim"), ("PAGER", "less")], &[("ll", "ls -l")]),
+    assert!(
+        state.aliases().is_empty(),
+        "an alias the report leaves out is gone"
     );
-    assert_eq!(outs, []);
 }
 
 #[test]
 fn the_folder_is_state_too() {
-    let (state, outs) = shell_step(ShellState::default(), ShellIn::Cwd("/a".into()));
-    assert_eq!(state.cwd(), Some("/a"));
-    assert_eq!(outs.len(), 1);
-    let (_, outs) = shell_step(state, ShellIn::Cwd("/a".into()));
-    assert_eq!(outs, [], "the same folder is no change");
+    assert_eq!(applied([ShellIn::Cwd("/a".into())]).cwd(), Some("/a"));
 }
 
 #[test]
@@ -112,10 +103,10 @@ fn a_secret_is_a_name_only_and_is_never_replayed() {
     for name in plain {
         assert!(!is_secret(name), "{name}");
     }
-    let (state, _) = shell_step(
-        ShellState::default(),
-        report(&[("EDITOR", "vim"), ("GITHUB_TOKEN", "ghp_abc")], &[]),
-    );
+    let state = applied([report(
+        &[("EDITOR", "vim"), ("GITHUB_TOKEN", "ghp_abc")],
+        &[],
+    )]);
     assert_eq!(state.env().get("GITHUB_TOKEN"), Some(&EnvEntry::Secret));
     let replay = state.replay();
     assert_eq!(replay.env, [("EDITOR".to_owned(), "vim".to_owned())]);
@@ -128,32 +119,25 @@ fn a_secret_is_a_name_only_and_is_never_replayed() {
 
 #[test]
 fn what_the_shell_sets_for_itself_is_not_carried() {
-    let (state, _) = shell_step(
-        ShellState::default(),
-        report(
-            &[
-                ("PWD", "/x"),
-                ("SHLVL", "2"),
-                ("ZDOTDIR", "/z"),
-                ("TEMOR_PROMPT", "1"),
-                ("A", "1"),
-            ],
-            &[],
-        ),
-    );
+    let state = applied([report(
+        &[
+            ("PWD", "/x"),
+            ("SHLVL", "2"),
+            ("ZDOTDIR", "/z"),
+            ("TEMOR_PROMPT", "1"),
+            ("A", "1"),
+        ],
+        &[],
+    )]);
     assert_eq!(state.replay().env, [("A".to_owned(), "1".to_owned())]);
 }
 
 #[test]
 fn the_replay_is_the_folder_the_variables_and_the_aliases() {
-    let (state, _) = run_steps(
-        ShellState::default(),
-        [
-            ShellIn::Cwd("/work".into()),
-            report(&[("A", "1")], &[("g", "git")]),
-        ],
-        shell_step,
-    );
+    let state = applied([
+        ShellIn::Cwd("/work".into()),
+        report(&[("A", "1")], &[("g", "git")]),
+    ]);
     assert_eq!(
         state.replay(),
         Replay {
@@ -177,8 +161,8 @@ proptest! {
             .iter()
             .map(|env| ShellIn::Reported(Report { key: String::new(), env: env.clone(), aliases: vec![] }))
             .collect();
-        let (all, _) = run_steps(ShellState::default(), ins.clone(), shell_step);
-        let (last, _) = run_steps(ShellState::default(), vec![ins.last().cloned().unwrap()], shell_step);
+        let all = applied(ins.clone());
+        let last = applied(ins.last().cloned());
         prop_assert_eq!(all, last);
     }
 }
@@ -230,10 +214,7 @@ fn a_value_that_looks_like_a_secret_is_one_whatever_its_name() {
     for value in plain {
         assert!(!looks_secret(value), "{value}");
     }
-    let (state, _) = shell_step(
-        ShellState::default(),
-        report(&[("DATABASE_URL", "postgres://u:pw@db/app")], &[]),
-    );
+    let state = applied([report(&[("DATABASE_URL", "postgres://u:pw@db/app")], &[])]);
     assert_eq!(state.env().get("DATABASE_URL"), Some(&EnvEntry::Secret));
 }
 
@@ -249,17 +230,14 @@ fn an_alias_that_holds_a_secret_is_not_kept() {
     assert!(!holds_secret("ls -la"));
     assert!(!holds_secret("echo $GITHUB_TOKEN"));
     assert!(!holds_secret("git log --author=me"));
-    let (state, _) = shell_step(
-        ShellState::default(),
-        report(
-            &[],
-            &[
-                ("ll", "ls -l"),
-                ("deploy", "AWS_SECRET_ACCESS_KEY=abc ./deploy"),
-                ("gh2", concat!("gh --token ghp_", "0123456789abcdefABCDEF")),
-            ],
-        ),
-    );
+    let state = applied([report(
+        &[],
+        &[
+            ("ll", "ls -l"),
+            ("deploy", "AWS_SECRET_ACCESS_KEY=abc ./deploy"),
+            ("gh2", concat!("gh --token ghp_", "0123456789abcdefABCDEF")),
+        ],
+    )]);
     assert_eq!(
         state.replay().aliases,
         [("ll".to_owned(), "ls -l".to_owned())]
@@ -324,6 +302,6 @@ fn what_names_the_session_or_loads_code_is_never_carried() {
         assert!(!never_carried(name), "{name}");
     }
     let reported: Vec<(&str, &str)> = never.iter().map(|name| (*name, "x")).collect();
-    let (state, _) = shell_step(ShellState::default(), report(&reported, &[]));
+    let state = applied([report(&reported, &[])]);
     assert_eq!(state.replay().env, []);
 }

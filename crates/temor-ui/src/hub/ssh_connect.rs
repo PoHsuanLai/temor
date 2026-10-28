@@ -6,9 +6,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_client::model::host::consent::{
-    ConsentIn, ConsentOut, Gate, RunMode, Who, consent_step, gate,
-};
+use temor_client::model::host::consent::{ConsentIn, Gate, RunMode, Who, consent_step, gate};
 use temor_client::model::host::master::MasterIn;
 use temor_client::model::remote::Grant;
 use temor_client::model::vocab::ids::PaneId;
@@ -255,9 +253,9 @@ impl Hub {
     }
 
     pub(super) fn step_book(&mut self, input: ConsentIn) {
-        let (book, outs) = consent_step(std::mem::take(&mut self.ssh.book), input);
+        let (book, changed) = consent_step(std::mem::take(&mut self.ssh.book), input);
         self.ssh.book = book;
-        if outs.contains(&ConsentOut::Persist) {
+        if changed {
             self.pace.changed();
         }
     }

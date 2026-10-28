@@ -21,6 +21,5 @@ pub use checkpoint::{Checkpoint, CheckpointFault, CommandRecord};
 pub const SNAPSHOT_LIMIT: usize = 4 * 1024 * 1024;
 pub use marks::{Anchor, BlockAnchors, KeptBlock, MarkIn, MarkKind, MarkLog, MarkOut, mark_step};
 pub use shell_state::{
-    EnvEntry, Replay, ShellDelta, ShellIn, ShellOut, ShellState, holds_secret, is_secret,
-    looks_secret, never_carried, shell_step,
+    EnvEntry, Replay, ShellIn, ShellState, holds_secret, is_secret, looks_secret, never_carried,
 };

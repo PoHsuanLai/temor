@@ -16,11 +16,11 @@
 use std::collections::BTreeMap;
 
 use super::hint::title_hint;
-use super::model::{Millis, ProcessFact, RadarIn, RadarOut, RadarParams};
+use super::model::{Millis, ProcessFact, RadarIn, RadarParams};
 use super::records::Records;
 use crate::presence::{
-    AgentState, PaneFocus, PresenceIn, PresenceState, StatusReport, StatusSource, WaitKind,
-    presence_step,
+    AgentState, PaneFocus, PresenceIn, PresenceOut, PresenceState, StatusReport, StatusSource,
+    WaitKind, presence_step,
 };
 use temor_core::vocab::ids::Seq;
 
@@ -59,13 +59,14 @@ impl RadarState {
     }
 }
 
-/// The radar after `input` at `now`.
+/// The radar after `input` at `now`, and what its presence machine asks for: the state changed,
+/// or notify.
 pub fn radar_step(
     state: RadarState,
     now: Millis,
     input: RadarIn,
     params: &RadarParams,
-) -> (RadarState, Vec<RadarOut>) {
+) -> (RadarState, Vec<PresenceOut>) {
     let mut state = state;
     let mut presence_in = Vec::new();
     match input {
@@ -132,7 +133,7 @@ pub fn radar_step(
     for input in presence_in {
         let (next, outs) = presence_step(state.presence.clone(), input);
         state.presence = next;
-        out.extend(outs.into_iter().map(RadarOut::Presence));
+        out.extend(outs);
     }
     (state, out)
 }

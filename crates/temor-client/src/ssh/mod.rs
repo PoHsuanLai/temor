@@ -23,8 +23,8 @@ pub use temor_ssh::{
 // The shell on the host: its probe, the line that loads temor's integration there and what is
 // said before it starts.
 pub use temor_ssh::{
-    CheckScan, CheckUrl, InnerLoadLine, InnerShell, LoadToken, PreShellEvent, ProbeReading,
-    probe_line, prompt_after_answer, read_probe,
+    CheckScan, CheckUrl, InnerLoadLine, InnerShell, LoadToken, ProbeReading, probe_line,
+    prompt_after_answer, read_probe,
 };
 // A file on a host, and the words of the faults.
 pub use temor_ssh::{ByteCount, Port, RemoteFilePath, RemoteStat, SshError, UnixSeconds};

@@ -60,15 +60,8 @@ pub enum ConsentIn {
     Identified { who: Who },
 }
 
-/// What the book wants done.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ConsentOut {
-    /// The book changed: write it to the session file.
-    Persist,
-}
-
-/// The book after `input`.
-pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, Vec<ConsentOut>) {
+/// The book after `input`, and whether it changed (so the session file is written again).
+pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
     let mut next = book.clone();
     match input {
         ConsentIn::Answered { who, action, grant } => {
@@ -93,8 +86,6 @@ pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, Vec<Co
             }
         }
     }
-    match next == book {
-        true => (book, Vec::new()),
-        false => (next, vec![ConsentOut::Persist]),
-    }
+    let changed = next != book;
+    (next, changed)
 }

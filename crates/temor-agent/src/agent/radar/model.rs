@@ -1,6 +1,6 @@
 //! Radar inputs and outputs: typed facts, no raw sequences.
 
-use crate::presence::{PaneFocus, PresenceOut, StatusReport, WaitKind};
+use crate::presence::{PaneFocus, StatusReport, WaitKind};
 use temor_core::vocab::ids::ExitCode;
 use temor_core::vocab::text::Note;
 
@@ -89,11 +89,4 @@ impl Default for RadarParams {
             stale_working: Millis(15 * 60_000),
         }
     }
-}
-
-/// What follows.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RadarOut {
-    /// What `presence_step` asks for: the state changed, or notify.
-    Presence(PresenceOut),
 }

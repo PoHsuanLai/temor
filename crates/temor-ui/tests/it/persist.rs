@@ -175,7 +175,7 @@ fn saves_are_paced_to_one_per_interval_and_owed_at_quit() {
 #[test]
 fn checkpoint_files_are_private_read_once_and_hold_no_secret_value() {
     use temor_client::keep::checkpoint::{take, write};
-    use temor_client::model::session::{Checkpoint, ShellIn, ShellState, shell_step};
+    use temor_client::model::session::{Checkpoint, ShellIn, ShellState};
 
     let dir = tempfile::tempdir().unwrap();
     let state = dir.path().join("temor");
@@ -187,7 +187,8 @@ fn checkpoint_files_are_private_read_once_and_hold_no_secret_value() {
         ],
         aliases: vec![],
     };
-    let (shell, _) = shell_step(ShellState::default(), ShellIn::Reported(report));
+    let mut shell = ShellState::default();
+    shell.apply(ShellIn::Reported(report));
     let kept = Checkpoint::of(shell.replay(), std::iter::empty());
     write(&state, PaneId(1), &kept).unwrap();
     let file = state.join("checkpoints/1.json");

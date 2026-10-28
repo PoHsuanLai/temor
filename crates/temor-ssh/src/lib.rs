@@ -64,7 +64,7 @@ pub use bootstrap::{
     MAX_REMOTE_COMMAND_BYTES, MAX_TTY_LINE_BYTES, ProbeReading, TerminfoPolicy,
     bootstrap_remote_command, probe_line, prompt_after_answer, read_probe, wrap_script,
 };
-pub use check_mode::{CheckScan, CheckUrl, PreShellEvent};
+pub use check_mode::{CheckScan, CheckUrl};
 pub use config::{
     ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
     IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal,

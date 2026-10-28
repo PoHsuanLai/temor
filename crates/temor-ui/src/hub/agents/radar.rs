@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use temor_client::model::agent::radar::{
-    Millis, ProcessFact, RadarIn, RadarOut, RadarParams, RadarState, radar_step,
+    Millis, ProcessFact, RadarIn, RadarParams, RadarState, radar_step,
 };
 use temor_client::model::agent::seen::{CommandLine, agent_of, is_known_agent};
 use temor_client::model::presence::{AgentState, PaneFocus, PresenceOut, Seen};
@@ -81,7 +81,7 @@ impl Radar {
         entry.state = state;
         let after = entry.state.state();
         for out in outs {
-            if let RadarOut::Presence(PresenceOut::Notify { state, note }) = out {
+            if let PresenceOut::Notify { state, note } = out {
                 self.alerts.push(Alert { pane, state, note });
             }
         }

@@ -1,7 +1,7 @@
 //! What the pane's own events change of it: its title, its folder, its shell's state, its
 //! progress, a hold on its screen, and what is kept of it when the window goes.
 
-use temor_blocks::session::{Checkpoint, SNAPSHOT_LIMIT, ShellIn, ShellState, shell_step};
+use temor_blocks::session::{Checkpoint, SNAPSHOT_LIMIT, ShellIn, ShellState};
 use temor_core::vocab::text::display_text;
 use temor_pane::RenderHold;
 use temor_shell::cwd_from_url;
@@ -66,7 +66,7 @@ impl PaneCore {
             .map(|path| display_text(path, CWD_MAX_CHARS));
         self.folder = path.as_deref().map(std::path::PathBuf::from);
         if let Some(path) = path {
-            self.shell_step(ShellIn::Cwd(path));
+            self.shell_state.apply(ShellIn::Cwd(path));
         }
         self.cwd.clone()
     }
@@ -83,7 +83,7 @@ impl PaneCore {
         if let Some((_, path)) = report.env.iter().find(|(name, _)| name == "PATH") {
             self.shell_path = Some(path.clone());
         }
-        self.shell_step(ShellIn::Reported(report));
+        self.shell_state.apply(ShellIn::Reported(report));
     }
 
     /// The program reported its progress (OSC 9;4).
@@ -92,12 +92,6 @@ impl PaneCore {
             ProgressState::Remove => None,
             _ => Some(progress),
         };
-    }
-
-    /// Steps the shell's state on one input.
-    pub fn shell_step(&mut self, input: ShellIn) {
-        let state = std::mem::take(&mut self.shell_state);
-        self.shell_state = shell_step(state, input).0;
     }
 
     /// What is kept of this pane when its window goes away: the shell's state and the commands it

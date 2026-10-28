@@ -1,7 +1,7 @@
 //! What a pane's shell holds that a new shell would need to look the same: its folder, exported
 //! variables and aliases. Built from the shell's own reports, one step at a time, so the same
-//! reports in the same order give the same state; a change is said as a [`ShellDelta`] and the
-//! whole state can be turned into what a fresh shell must be told ([`ShellState::replay`]).
+//! reports in the same order give the same state, and the whole state can be turned into what a
+//! fresh shell must be told ([`ShellState::replay`]).
 //!
 //! A variable whose name says it is a secret (`*_TOKEN`, `*_KEY`, `*_SECRET`, `*PASSWORD*`,
 //! credentials), or whose value looks like one (a URL with a password in it, a well-known token
@@ -28,23 +28,6 @@ pub struct ShellState {
     aliases: BTreeMap<String, String>,
 }
 
-/// What changed between two states.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ShellDelta {
-    pub cwd: Option<String>,
-    pub env_set: Vec<(String, EnvEntry)>,
-    pub env_unset: Vec<String>,
-    pub alias_set: Vec<(String, String)>,
-    pub alias_unset: Vec<String>,
-}
-
-impl ShellDelta {
-    /// Whether nothing changed.
-    pub fn is_empty(&self) -> bool {
-        self == &Self::default()
-    }
-}
-
 /// What reaches the shell's state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -53,13 +36,6 @@ pub enum ShellIn {
     Cwd(String),
     /// The shell's own report of its variables and aliases.
     Reported(Report),
-}
-
-/// What a step says.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum ShellOut {
-    Changed(ShellDelta),
 }
 
 /// What a fresh shell must be told to be like the one recorded: no secrets, no variables the
@@ -145,6 +121,26 @@ pub fn never_carried(name: &str) -> bool {
 pub use temor_schema::secret::{holds_secret, is_secret, looks_secret};
 
 impl ShellState {
+    /// Takes in `input`: the folder, or a report that replaces the variables and aliases.
+    pub fn apply(&mut self, input: ShellIn) {
+        match input {
+            ShellIn::Cwd(path) => self.cwd = Some(path),
+            ShellIn::Reported(report) => {
+                self.env = report
+                    .env
+                    .iter()
+                    .filter(|(name, _)| !never_carried(name))
+                    .map(|(name, value)| (name.clone(), entry_of(name, value)))
+                    .collect();
+                self.aliases = report
+                    .aliases
+                    .into_iter()
+                    .filter(|(_, value)| !holds_secret(value))
+                    .collect();
+            }
+        }
+    }
+
     pub fn cwd(&self) -> Option<&str> {
         self.cwd.as_deref()
     }
@@ -204,61 +200,6 @@ fn entry_of(name: &str, value: &str) -> EnvEntry {
         true => EnvEntry::Secret,
         false => EnvEntry::Value(value.to_owned()),
     }
-}
-
-/// The state after `input`, and what changed.
-pub fn shell_step(mut state: ShellState, input: ShellIn) -> (ShellState, Vec<ShellOut>) {
-    let mut delta = ShellDelta::default();
-    match input {
-        ShellIn::Cwd(path) => {
-            if state.cwd.as_deref() != Some(path.as_str()) {
-                state.cwd = Some(path.clone());
-                delta.cwd = Some(path);
-            }
-        }
-        ShellIn::Reported(report) => {
-            let env: BTreeMap<String, EnvEntry> = report
-                .env
-                .iter()
-                .filter(|(name, _)| !never_carried(name))
-                .map(|(name, value)| (name.clone(), entry_of(name, value)))
-                .collect();
-            let aliases: BTreeMap<String, String> = report
-                .aliases
-                .into_iter()
-                .filter(|(_, value)| !holds_secret(value))
-                .collect();
-            for (name, entry) in &env {
-                if state.env.get(name) != Some(entry) {
-                    delta.env_set.push((name.clone(), entry.clone()));
-                }
-            }
-            delta.env_unset = state
-                .env
-                .keys()
-                .filter(|name| !env.contains_key(*name))
-                .cloned()
-                .collect();
-            for (name, value) in &aliases {
-                if state.aliases.get(name) != Some(value) {
-                    delta.alias_set.push((name.clone(), value.clone()));
-                }
-            }
-            delta.alias_unset = state
-                .aliases
-                .keys()
-                .filter(|name| !aliases.contains_key(*name))
-                .cloned()
-                .collect();
-            state.env = env;
-            state.aliases = aliases;
-        }
-    }
-    let outs = match delta.is_empty() {
-        true => Vec::new(),
-        false => vec![ShellOut::Changed(delta)],
-    };
-    (state, outs)
 }
 
 #[cfg(test)]
