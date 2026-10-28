@@ -17,13 +17,6 @@ const TICK: Duration = Duration::from_millis(300);
 /// A connection being made is asked about every this many ticks.
 const PROBE_EVERY: u32 = 3;
 
-/// Whether the window must be drawn again.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Redraw {
-    Yes,
-    No,
-}
-
 impl Hub {
     /// Carries out what a job found, and returns the messages it left for the person.
     pub fn ssh_event(&mut self, event: SshEvent) -> Vec<String> {
@@ -46,15 +39,14 @@ impl Hub {
         std::mem::take(&mut self.notices)
     }
 
-    /// One tick: polls the local copies, and asks after a connection still being made.
-    pub(super) fn ssh_tick(&mut self) -> (Redraw, Vec<String>) {
+    /// One tick: polls the local copies, and asks after a connection still being made. Returns
+    /// whether the window must be drawn again, and what the person should be told.
+    pub(super) fn ssh_tick(&mut self) -> (bool, Vec<String>) {
         self.ssh.ticks = self.ssh.ticks.wrapping_add(1);
         self.ssh_start_shown();
         self.poll_waiting_edits();
-        let redraw = match (self.poll_edits(), self.remote_tick()) {
-            (Redraw::No, Redraw::No) => Redraw::No,
-            _ => Redraw::Yes,
-        };
+        // Both run, whatever the first says.
+        let redraw = self.poll_edits() | self.remote_tick();
         let connecting: Vec<HostAlias> = self
             .ssh
             .lines
@@ -108,7 +100,7 @@ pub fn spawn_ssh_loop(desk: Desk) {
         loop {
             sleep(TICK).await;
             let (redraw, notes) = desk.hub.0.borrow_mut().ssh_tick();
-            let shown = redraw == Redraw::Yes || !notes.is_empty();
+            let shown = redraw || !notes.is_empty();
             for note in notes {
                 desk.say(note);
             }

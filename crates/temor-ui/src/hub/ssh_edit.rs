@@ -247,8 +247,8 @@ impl Hub {
         }
     }
 
-    /// Polls the local copies: a settled save goes on to the host.
-    pub(super) fn poll_edits(&mut self) -> super::ssh_events::Redraw {
+    /// Polls the local copies: a settled save goes on to the host. True when one did.
+    pub(super) fn poll_edits(&mut self) -> bool {
         let saves: Vec<EditId> = self
             .ssh
             .edits
@@ -263,10 +263,7 @@ impl Hub {
         for id in &saves {
             self.on_edit(*id, EditIn::LocalSaved);
         }
-        match saves.is_empty() {
-            true => super::ssh_events::Redraw::No,
-            false => super::ssh_events::Redraw::Yes,
-        }
+        !saves.is_empty()
     }
 
     /// The local copy of an edit, for the person to find.

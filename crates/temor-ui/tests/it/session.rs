@@ -877,17 +877,9 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
     });
     // (column, the target shown, whether the tooltip must be drawn again)
     let table = [
-        (
-            1,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Changed,
-        ),
-        (
-            2,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Same,
-        ),
-        (20, None, temor_ui::session::LinkHover::Changed),
+        (1, Some("https://example.com/a?b=1"), true),
+        (2, Some("https://example.com/a?b=1"), false),
+        (20, None, true),
     ];
     for (col, want, redraw) in table {
         f.session.pointer_moved(point_at(&f.session, 0, col));

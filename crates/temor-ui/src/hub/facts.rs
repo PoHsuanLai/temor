@@ -15,13 +15,6 @@ use temor_client::facts::host::facts_from_host;
 use temor_client::facts::{FactsEnv, read_facts};
 use temor_client::remote::conn::Conn;
 
-/// Whether a result changed what the window shows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Shown {
-    Same,
-    Changed,
-}
-
 /// A finished read.
 #[derive(Debug)]
 pub struct Ready {
@@ -148,26 +141,24 @@ impl Hub {
     }
 
     /// A finished read: stored, and the rule told. Results for a pane that is gone are dropped.
-    pub(super) fn facts_ready(&mut self, ready: Ready) -> Shown {
+    /// True when it changed what the window shows.
+    pub(super) fn facts_ready(&mut self, ready: Ready) -> bool {
         let Ready { pane, facts } = ready;
         if !self.slots.contains_key(&pane) {
             self.facts.panes.remove(&pane);
-            return Shown::Same;
+            return false;
         }
         let entry = self.facts.panes.entry(pane).or_default();
-        let shown = match facts {
+        let changed = match facts {
             Some(facts) => {
                 let changed = entry.facts != facts;
                 entry.facts = facts;
-                match changed {
-                    true => Shown::Changed,
-                    false => Shown::Same,
-                }
+                changed
             }
-            None => Shown::Same,
+            None => false,
         };
         self.facts_in(pane, FactsIn::RunDone);
-        shown
+        changed
     }
 
     /// The facts last read for the pane (empty before the first read).
@@ -196,8 +187,7 @@ pub fn spawn_facts_loop(desk: super::Desk) {
     };
     spawn(async move {
         while let Some(ready) = inbox.recv().await {
-            let shown = desk.hub.0.borrow_mut().facts_ready(ready);
-            if shown == Shown::Changed {
+            if desk.hub.0.borrow_mut().facts_ready(ready) {
                 desk.bump();
             }
         }

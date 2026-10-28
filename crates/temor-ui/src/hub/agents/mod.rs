@@ -16,5 +16,5 @@ mod tests;
 
 pub use loops::spawn_agent_loops;
 pub use observe::WaitingCount;
-pub use radar::{Alert, Changed, Radar};
+pub use radar::{Alert, Radar};
 pub use state::Agents;

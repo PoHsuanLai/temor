@@ -12,7 +12,6 @@ use temor_panes::pane::paste;
 use temor_panes::vt::ViewportScroll;
 
 use super::super::Session;
-use super::super::osc52::Copied;
 use crate::error::ViewError;
 use crate::words::notices;
 
@@ -68,7 +67,7 @@ impl Session {
     }
 
     pub(super) fn copy_text(&mut self, text: &str) {
-        if self.put_on_clipboard(text) == Copied::No {
+        if !self.put_on_clipboard(text) {
             self.notice = Some(notices::TEXT_NOT_COPIED.to_owned());
         }
     }

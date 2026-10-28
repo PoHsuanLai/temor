@@ -10,13 +10,6 @@ use super::Session;
 /// The longest link target shown.
 const LINK_MAX_CHARS: usize = 300;
 
-/// Whether the link under the pointer is another since it was last looked at.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LinkHover {
-    Same,
-    Changed,
-}
-
 /// A hovered link's target and where the pointer is, in logical pixels from the grid's corner.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinkTipSpot {
@@ -54,25 +47,21 @@ impl Session {
         (!shown.is_empty()).then_some(shown)
     }
 
-    /// Looks at the link under the pointer again; `Changed` when the tooltip must be drawn
-    /// again.
-    pub fn refresh_link(&mut self) -> LinkHover {
+    /// Looks at the link under the pointer again; true when it is another since it was last
+    /// looked at, so the tooltip must be drawn again.
+    pub fn refresh_link(&mut self) -> bool {
         let now = self.link_under_pointer();
         self.note_link(now)
     }
 
-    /// The pointer left the grid: no link is hovered.
-    pub fn link_left(&mut self) -> LinkHover {
+    /// The pointer left the grid: no link is hovered. True when one was.
+    pub fn link_left(&mut self) -> bool {
         self.note_link(None)
     }
 
-    fn note_link(&mut self, now: Option<String>) -> LinkHover {
-        match self.link_hover == now {
-            true => LinkHover::Same,
-            false => {
-                self.link_hover = now;
-                LinkHover::Changed
-            }
-        }
+    fn note_link(&mut self, now: Option<String>) -> bool {
+        let changed = self.link_hover != now;
+        self.link_hover = now;
+        changed
     }
 }

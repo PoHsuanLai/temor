@@ -10,14 +10,6 @@ use super::Session;
 /// The most rows a lens's picture takes in its block's card.
 pub const LENS_MOST_ROWS: u32 = 24;
 
-/// Whether the rows moved since the last layout: the window draws the slices again then, so they
-/// never drift from the picture of the grid.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Relaid {
-    Same,
-    Moved,
-}
-
 /// The grid as the last paint placed it, and where its rows are shown.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placed {
@@ -45,11 +37,12 @@ impl Session {
         self.layout.as_ref()
     }
 
-    /// Lays the rows out without the folded blocks' output, as they are on the screen now.
-    /// Whether the rows moved.
-    pub(super) fn relayout(&mut self) -> Relaid {
+    /// Lays the rows out without the folded blocks' output, as they are on the screen now. True
+    /// when the rows moved since the last layout: the window draws the slices again then, so they
+    /// never drift from the picture of the grid.
+    pub(super) fn relayout(&mut self) -> bool {
         let Some(fit) = self.fit else {
-            return Relaid::Same;
+            return false;
         };
         let placed = fit.lowered(self.painter.lower());
         let (alternate, viewport, total) = self.pane.with_term(|term| {
@@ -95,13 +88,9 @@ impl Session {
                 false => Screen::Primary,
             },
         });
-        match self.layout.as_ref() == Some(&layout) {
-            true => Relaid::Same,
-            false => {
-                self.layout = Some(layout);
-                Relaid::Moved
-            }
-        }
+        let moved = self.layout.as_ref() != Some(&layout);
+        self.layout = Some(layout);
+        moved
     }
 
     /// The grid as the last paint placed it and where its rows are shown (`None` before the

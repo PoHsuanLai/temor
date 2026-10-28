@@ -11,7 +11,6 @@ use temor_panes::pane::paste;
 use temor_panes::vt::ViewportScroll;
 
 use super::Session;
-use super::osc52::Copied;
 use crate::words::notices;
 
 impl Session {
@@ -71,7 +70,7 @@ impl Session {
 
     /// Puts a file's path on the clipboard.
     pub fn copy_path(&mut self, path: &str) {
-        if self.put_on_clipboard(path) == Copied::No {
+        if !self.put_on_clipboard(path) {
             self.notice = Some(notices::PATH_NOT_COPIED.to_owned());
         }
     }

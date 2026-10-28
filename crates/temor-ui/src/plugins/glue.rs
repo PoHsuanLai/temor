@@ -14,7 +14,6 @@ use crate::plugins::effects::carry_out;
 use crate::plugins::facts::{PluginFact, from_plugin, summary};
 use crate::plugins::hands::DesktopHands;
 use crate::plugins::host::{Done, log_trouble};
-use crate::plugins::lens::Wanted;
 
 #[path = "glue_work.rs"]
 mod work;
@@ -94,7 +93,7 @@ impl Hub {
                 plugin,
                 drawing,
             } => {
-                if self.plugins.lens.arrived(pane, block) == Wanted::Yes {
+                if self.plugins.lens.arrived(pane, block) {
                     self.plugins.lens.put(pane, block, plugin, drawing);
                 }
             }

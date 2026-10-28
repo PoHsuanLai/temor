@@ -13,7 +13,7 @@ use super::block_menu::BlockMenuAt;
 use super::handlers::{block_menu_opened, grid_pressed, pointer_over};
 use super::peek::PeekHandles;
 use super::slot::Slot;
-use crate::session::{LinkHover, Session};
+use crate::session::Session;
 
 /// What the grid element is given.
 pub struct GridPointer {
@@ -78,7 +78,7 @@ pub fn grid_pointer(
                 .session
                 .as_mut()
                 .map(Session::refresh_link);
-            if changed == Some(LinkHover::Changed) {
+            if changed == Some(true) {
                 link_ui += 1;
             }
         }),
@@ -94,7 +94,7 @@ pub fn grid_pointer(
                 .session
                 .as_mut()
                 .map(Session::link_left);
-            if changed == Some(LinkHover::Changed) {
+            if changed == Some(true) {
                 gone_ui += 1;
             }
         }),

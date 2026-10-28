@@ -67,15 +67,6 @@ fn png_of(drawing: &Drawing) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// Whether a picture that arrived was asked for and is still wanted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Wanted {
-    /// It was asked for.
-    Yes,
-    /// Nobody is waiting for it (the pane went away, or it came twice).
-    No,
-}
-
 /// The pictures drawn for blocks, by pane and block, and the ones still being drawn.
 #[derive(Debug, Clone, Default)]
 pub struct LensBook {
@@ -89,12 +80,10 @@ impl LensBook {
         self.asked.insert((pane, block));
     }
 
-    /// A picture for the block arrived (or its lens failed): whether it was waited for.
-    pub fn arrived(&mut self, pane: PaneId, block: BlockId) -> Wanted {
-        match self.asked.remove(&(pane, block)) {
-            true => Wanted::Yes,
-            false => Wanted::No,
-        }
+    /// A picture for the block arrived (or its lens failed): whether it was waited for. Nobody
+    /// waits for one whose pane went away, or one that came twice.
+    pub fn arrived(&mut self, pane: PaneId, block: BlockId) -> bool {
+        self.asked.remove(&(pane, block))
     }
 
     /// Keeps the picture `plugin` drew for the block; a later one replaces it. A picture that
@@ -171,17 +160,13 @@ mod tests {
         book.want(p1, BlockId(3));
         book.forget_pane(p1);
         assert!(book.image(p1, BlockId(1)).is_none());
-        assert_eq!(
-            book.arrived(p1, BlockId(3)),
-            Wanted::No,
-            "the pane went away"
-        );
+        assert!(!book.arrived(p1, BlockId(3)), "the pane went away");
         assert_eq!(
             book.image(p2, BlockId(1)).map(|i| i.plugin.as_str()),
             Some("b")
         );
         book.want(p2, BlockId(2));
-        assert_eq!(book.arrived(p2, BlockId(2)), Wanted::Yes);
-        assert_eq!(book.arrived(p2, BlockId(2)), Wanted::No, "only once");
+        assert!(book.arrived(p2, BlockId(2)));
+        assert!(!book.arrived(p2, BlockId(2)), "only once");
     }
 }

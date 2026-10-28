@@ -18,13 +18,6 @@ use super::clip::PASTE_LIMIT;
 use super::lifecycle::sanitise_title;
 use super::model::Notice;
 
-/// Whether the desktop clipboard took a copy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Copied {
-    Yes,
-    No,
-}
-
 /// What to do with a program's clipboard write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum WriteVerdict {
@@ -159,15 +152,14 @@ impl Session {
 
     /// Puts `text` on the desktop clipboard and keeps the pane's copy in step: every copy to the
     /// clipboard goes through here. A clipboard that refuses is not the pane's failure: the copy
-    /// simply did not happen, and the caller says so if it wants to.
-    pub(super) fn put_on_clipboard(&mut self, text: &str) -> Copied {
-        match self.clipboard.write(text) {
-            Ok(()) => {
-                self.refresh_clipboard_copy();
-                Copied::Yes
-            }
-            Err(_) => Copied::No,
+    /// simply did not happen, and the caller says so if it wants to. True when the clipboard
+    /// took it.
+    pub(super) fn put_on_clipboard(&mut self, text: &str) -> bool {
+        let copied = self.clipboard.write(text).is_ok();
+        if copied {
+            self.refresh_clipboard_copy();
         }
+        copied
     }
 
     /// Re-reads the desktop clipboard into the pane's copy, when the person lets programs read it.

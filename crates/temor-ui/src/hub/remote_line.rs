@@ -11,7 +11,6 @@ use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::{Busy, Reach, Shown};
-use super::ssh_events::Redraw;
 use temor_client::remote::conn::{Conn, DialFault};
 use temor_panes::remote::event::Generation;
 use temor_panes::remote::link::lock;
@@ -171,8 +170,9 @@ impl Hub {
         self.step_link(host, LinkEvent::Tick { at });
     }
 
-    /// One tick: connections that are waiting dial when their wait is over.
-    pub(super) fn remote_tick(&mut self) -> Redraw {
+    /// One tick: connections that are waiting dial when their wait is over. True when one moved,
+    /// so the window must be drawn again.
+    pub(super) fn remote_tick(&mut self) -> bool {
         let waiting: Vec<HostAlias> = self
             .remote
             .lines
@@ -180,13 +180,11 @@ impl Hub {
             .filter(|(_, line)| matches!(line.link, LinkState::Backoff { .. }))
             .map(|(host, _)| host.clone())
             .collect();
-        let mut redraw = Redraw::No;
+        let mut redraw = false;
         for host in waiting {
             let before = self.remote.lines.get(&host).map(|line| line.generation);
             self.remote_tick_host(&host);
-            if self.remote.lines.get(&host).map(|line| line.generation) != before {
-                redraw = Redraw::Yes;
-            }
+            redraw |= self.remote.lines.get(&host).map(|line| line.generation) != before;
         }
         redraw
     }

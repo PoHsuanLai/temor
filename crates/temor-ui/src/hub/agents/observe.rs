@@ -8,7 +8,7 @@ use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::Heard;
 
-use super::radar::{Alert, Changed};
+use super::radar::Alert;
 use crate::hub::model::Hub;
 use crate::hub::select_tab;
 
@@ -44,7 +44,7 @@ impl Hub {
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.
     /// A known agent that appears or leaves is told to the plugins that adapt to it.
-    pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, heard: &Heard) -> Changed {
+    pub(in crate::hub) fn agents_observe(&mut self, pane: PaneId, heard: &Heard) -> bool {
         let now = self.agents.now();
         let was = self.agents.radar.agent_of(pane).map(str::to_owned);
         let changed = self.agents.radar.observe(pane, now, heard);
@@ -106,7 +106,7 @@ impl Hub {
 
     /// Time passed (about once a second): the radar settles. Returns whether the chrome shows
     /// something new.
-    pub fn agent_tick(&mut self) -> Changed {
+    pub fn agent_tick(&mut self) -> bool {
         let now = self.agents.now();
         self.agents.radar.tick(now)
     }

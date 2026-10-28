@@ -7,7 +7,6 @@ use temor_panes::render::{Palette, PaneFocus, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Notice};
-use super::room::Relaid;
 use crate::error::ViewError;
 use crate::paint::PaintView;
 use temor_panes::Heard;
@@ -79,10 +78,10 @@ impl Session {
     }
 
     /// Draws the pane when it has a size, handing its pixels to `show`, and lays its rows out
-    /// around the room under blocks with pictures. Whether the rows moved.
-    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<Relaid, ViewError> {
+    /// around the room under blocks with pictures. True when the rows moved.
+    pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<bool, ViewError> {
         if self.pixels.width.0 == 0 || self.pixels.height.0 == 0 {
-            return Ok(Relaid::Same);
+            return Ok(false);
         }
         let blink = self.blink_now();
         self.blink.painted = blink;

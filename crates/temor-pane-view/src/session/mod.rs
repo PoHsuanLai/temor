@@ -33,7 +33,7 @@ pub use clipboard::{Clipboard, ClipboardFailed};
 pub use composer::HistoryStep;
 pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
-pub use links::{LinkHover, LinkTipSpot};
+pub use links::LinkTipSpot;
 pub use list_hit::{ListMap, ListSpan, Toward};
 pub use marks::Finished;
 pub use marks::desktop_note;
@@ -42,6 +42,6 @@ pub use model::{
 };
 pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
-pub use room::{LENS_MOST_ROWS, Placed, Relaid};
+pub use room::{LENS_MOST_ROWS, Placed};
 pub use running::Running;
 pub use viewer::ViewAsk;

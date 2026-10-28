@@ -12,7 +12,7 @@ use temor_panes::render::{Palette, PixelSize, Scale};
 
 use super::block_list::tiles::Tiles;
 use super::probe::Probe;
-use crate::session::{Relaid, Session};
+use crate::session::Session;
 
 /// What the window keeps for one pane between renders.
 #[derive(Default)]
@@ -61,7 +61,7 @@ pub enum Display {
 /// Repaints the pane's texture (when it is shown and the device exists) and publishes the screen
 /// to the probe. Whether the rows moved around the room under blocks: the window then draws its
 /// slices of the texture again.
-pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
+pub fn repaint(slot: &RefCell<Slot>) -> bool {
     let mut slot = slot.borrow_mut();
     let Slot {
         session,
@@ -73,9 +73,9 @@ pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
         ..
     } = &mut *slot;
     let Some(session) = session.as_mut() else {
-        return Relaid::Same;
+        return false;
     };
-    let mut relaid = Relaid::Same;
+    let mut relaid = false;
     if *device == Device::Ready
         && *display == Display::Shown
         && let Some(texture) = texture.as_ref()
@@ -90,7 +90,7 @@ pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
                 let _ = texture.update(&pixels);
             }
         });
-        relaid = painted.unwrap_or(Relaid::Same);
+        relaid = painted.unwrap_or(false);
         tiles.follow_selection(session);
     }
     if let Some(probe) = probe {

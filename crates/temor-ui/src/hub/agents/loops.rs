@@ -6,7 +6,6 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 
-use super::radar::Changed;
 use crate::hub::Desk;
 
 /// How often the radar is ticked.
@@ -17,8 +16,7 @@ pub fn spawn_agent_loops(desk: Desk) {
     spawn(async move {
         loop {
             sleep(TICK).await;
-            let changed = desk.hub.0.borrow_mut().agent_tick();
-            if changed == Changed::Yes {
+            if desk.hub.0.borrow_mut().agent_tick() {
                 desk.bump();
             }
         }

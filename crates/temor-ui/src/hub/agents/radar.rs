@@ -55,13 +55,6 @@ pub struct Radar {
     alerts: Vec<Alert>,
 }
 
-/// Whether feeding the radar changed what the window shows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Changed {
-    Yes,
-    No,
-}
-
 impl Radar {
     /// A radar with nothing reported.
     pub fn new(params: RadarParams) -> Radar {
@@ -85,7 +78,8 @@ impl Radar {
         })
     }
 
-    fn feed(&mut self, pane: PaneId, now: Millis, input: RadarIn) -> Changed {
+    /// Feeds `input` to `pane`'s radar; true when that changed what the window shows.
+    fn feed(&mut self, pane: PaneId, now: Millis, input: RadarIn) -> bool {
         let params = self.params;
         let entry = self.entry(pane);
         let before = entry.state.state();
@@ -97,10 +91,7 @@ impl Radar {
                 self.alerts.push(Alert { pane, state, note });
             }
         }
-        match before == after {
-            true => Changed::No,
-            false => Changed::Yes,
-        }
+        before != after
     }
 
     fn know(&mut self, pane: PaneId, app: Option<&str>, via: Via, command: Option<&CommandLine>) {
@@ -141,8 +132,9 @@ impl Radar {
     }
 
     /// What one event from `pane` means for its radar. Only an event that is about agents moves
-    /// anything; bells and notifications count only in a pane known to run an agent.
-    pub fn observe(&mut self, pane: PaneId, now: Millis, heard: &Heard) -> Changed {
+    /// anything; bells and notifications count only in a pane known to run an agent. True when
+    /// what the window shows changed.
+    pub fn observe(&mut self, pane: PaneId, now: Millis, heard: &Heard) -> bool {
         match heard {
             Heard::Window(PaneEvent::Program(status)) => {
                 self.know(pane, Some(status.app.as_str()), Via::Report, None);
@@ -176,7 +168,7 @@ impl Radar {
             Heard::Window(PaneEvent::Foreground(seen)) => {
                 let front = front_of(seen.as_ref().map(|seen| seen.name.as_str()));
                 self.leave(pane, |via| via.gone_with(front));
-                Changed::No
+                false
             }
             Heard::Title(title) if self.panes.contains_key(&pane) => {
                 self.feed(pane, now, RadarIn::Title(title.clone()))
@@ -197,37 +189,36 @@ impl Radar {
                 now,
                 RadarIn::Process(ProcessFact::Exited(exit_code(*exit))),
             ),
-            _ => Changed::No,
+            _ => false,
         }
     }
 
-    /// The pane that has the keyboard changed: every pane's focus follows.
-    pub fn set_focus(&mut self, now: Millis, focused: Option<PaneId>) -> Changed {
+    /// The pane that has the keyboard changed: every pane's focus follows. True when what the
+    /// window shows changed.
+    pub fn set_focus(&mut self, now: Millis, focused: Option<PaneId>) -> bool {
         self.focused = focused;
         let panes: Vec<PaneId> = self.panes.keys().copied().collect();
-        let mut changed = Changed::No;
+        let mut changed = false;
         for pane in panes {
             let focus = match Some(pane) == focused {
                 true => PaneFocus::Focused,
                 false => PaneFocus::Unfocused,
             };
             let current = self.panes.get(&pane).map(|e| e.state.presence.focus);
-            if current != Some(focus) && self.feed(pane, now, RadarIn::Focus(focus)) == Changed::Yes
-            {
-                changed = Changed::Yes;
+            if current != Some(focus) {
+                changed |= self.feed(pane, now, RadarIn::Focus(focus));
             }
         }
         changed
     }
 
-    /// Time passed: stale and title-driven states settle. Called about once a second.
-    pub fn tick(&mut self, now: Millis) -> Changed {
+    /// Time passed: stale and title-driven states settle. Called about once a second. True when
+    /// what the window shows changed.
+    pub fn tick(&mut self, now: Millis) -> bool {
         let panes: Vec<PaneId> = self.panes.keys().copied().collect();
-        let mut changed = Changed::No;
+        let mut changed = false;
         for pane in panes {
-            if self.feed(pane, now, RadarIn::Tick) == Changed::Yes {
-                changed = Changed::Yes;
-            }
+            changed |= self.feed(pane, now, RadarIn::Tick);
         }
         changed
     }
