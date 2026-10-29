@@ -4,13 +4,13 @@
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use std::time::Duration;
-use temor_core::host::forward::ForwardIn;
-use temor_core::host::master::Master;
-use temor_ssh::{HostAlias, MasterProbe};
+use temor_client::model::host::forward::ForwardIn;
+use temor_client::model::host::master::Master;
+use temor_client::ssh::{HostAlias, MasterProbe};
 
 use super::desk::Desk;
 use super::model::Hub;
-use crate::edge::ssh_work::SshEvent;
+use temor_client::ssh::work::SshEvent;
 
 /// How often the local copies are looked at (an editor's save shows within this).
 const TICK: Duration = Duration::from_millis(300);

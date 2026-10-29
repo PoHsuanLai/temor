@@ -10,10 +10,10 @@ use dioxus::prelude::*;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::keys::Action;
-use temor_vt::Ime;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::Ime;
 
 use crate::hub::{Desk, Origin};
 use crate::input::{Routed, stroke};
@@ -126,6 +126,43 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
                         }
                     },
                 }}
+            }
+        }
+    }
+}
+
+/// One of temor's own pages on a row's stage (`temor://history`) in the viewer pane `pane`: the
+/// window's chords work in it as they do in a file viewer, and a press gives it the keyboard.
+#[component]
+#[allow(non_snake_case)]
+pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> Element {
+    let on_key = {
+        let desk = desk.clone();
+        move |raw: RawKey| {
+            if raw.phase == KeyPhase::Release {
+                return;
+            }
+            if let Some(action) = stroke(&raw, Ime::Idle).and_then(|s| action_of(&desk, s)) {
+                desk.run_action(action, Origin::Viewer);
+            }
+        }
+    };
+    let pressed = move |_: PointerEvent| {
+        if desk.hub.keyboard_pane() != Some(pane) {
+            desk.act(WorkspaceIn::Focus(pane));
+        }
+    };
+    rsx! {
+        div { class: "temor-pane",
+            RawKeySurface {
+                on_key: EventHandler::new(on_key),
+                onpointerdown: EventHandler::new(pressed),
+                common: Common {
+                    aria_label: Some(label),
+                    extra_class: ExtraClass::parse("temor-keys").ok(),
+                    ..Common::default()
+                },
+                {children}
             }
         }
     }

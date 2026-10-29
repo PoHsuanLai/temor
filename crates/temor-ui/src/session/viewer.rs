@@ -4,11 +4,11 @@
 
 use std::path::{Path, PathBuf};
 
-use temor_core::shelf::PaneSite;
-use temor_core::viewer::{candidates, first_file, output_paths, resolve, token_at};
-use temor_core::vocab::ids::BlockId;
-use temor_pane::text::{CellPos, cwd_from_url};
-use temor_vt::{GridPoint, PointSpace, SurfacePoint};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::viewer::{candidates, first_file, output_paths, resolve, token_at};
+use temor_client::model::vocab::ids::BlockId;
+use temor_panes::pane::text::{CellPos, cwd_from_url};
+use temor_panes::vt::{GridPoint, PointSpace, SurfacePoint};
 
 use super::Session;
 use crate::error::UiError;
@@ -57,25 +57,31 @@ impl Session {
         self.view_ask.take()
     }
 
-    /// ⌘-click at `cell`: the word there, if it names a file, is asked for. On a pane on another
-    /// computer the word is taken as a path there (the window fetches it).
+    /// ⌘-click at `cell`: the word there, if it names a file or a folder here, is asked for. On a
+    /// pane on another computer the word is taken as a path there (the window fetches it).
     pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), UiError> {
         let Some(file) = self.file_at(cell)? else {
+            if let Some(folder) = self.folder_at(cell)? {
+                self.view_ask = Some(ViewAsk {
+                    file: folder,
+                    around: Vec::new(),
+                    site: PaneSite::Local,
+                });
+            }
             return Ok(());
         };
-        let cwd = self.cwd.clone();
-        let around = match self.site {
+        let (cwd, site) = {
+            let core = self.core();
+            (core.cwd.clone(), core.site)
+        };
+        let around = match site {
             PaneSite::Remote => Vec::new(),
             PaneSite::Local => self
                 .output_at_row(cell.row)
                 .map(|output| output_paths(&output, cwd.as_deref(), is_file))
                 .unwrap_or_default(),
         };
-        self.view_ask = Some(ViewAsk {
-            file,
-            around,
-            site: self.site,
-        });
+        self.view_ask = Some(ViewAsk { file, around, site });
         Ok(())
     }
 
@@ -87,18 +93,37 @@ impl Session {
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
         };
-        let cwd = self.cwd.as_deref();
-        Ok(match self.site {
+        let (cwd, site) = {
+            let core = self.core();
+            (core.cwd.clone(), core.site)
+        };
+        let cwd = cwd.as_deref();
+        Ok(match site {
             PaneSite::Remote => host_path(cwd, &token),
             PaneSite::Local => first_file(&token, cwd, &is_file),
         })
+    }
+
+    /// The folder on this computer the word at `cell` names, by the ⌘-click's rule for files.
+    fn folder_at(&self, cell: CellPos) -> Result<Option<PathBuf>, UiError> {
+        if self.core().site == PaneSite::Remote {
+            return Ok(None);
+        }
+        let row = self.line(cell.row)?;
+        let Some(token) = token_at(&row, cell.col) else {
+            return Ok(None);
+        };
+        let cwd = self.core().cwd.clone();
+        Ok(first_file(&token, cwd.as_deref(), &|path: &Path| {
+            path.is_dir()
+        }))
     }
 
     /// The file a `file://` link names: on this computer, one that exists here; on a pane on
     /// another computer, the path in the link, whatever host it names (the program on the host
     /// wrote it).
     fn linked_file(&self, target: &str) -> Option<PathBuf> {
-        match self.site {
+        match self.core().site {
             PaneSite::Remote => cwd_from_url(target).map(PathBuf::from),
             PaneSite::Local => local_file_url(target).filter(|path| is_file(path)),
         }
@@ -110,10 +135,11 @@ impl Session {
         let Some(file) = self.linked_file(target) else {
             return false;
         };
+        let site = self.core().site;
         self.view_ask = Some(ViewAsk {
             file,
             around: Vec::new(),
-            site: self.site,
+            site,
         });
         true
     }
@@ -139,7 +165,7 @@ impl Session {
 
     /// The block toolbar's View: the first file the block's output lists, with the rest around it.
     pub fn view_block(&mut self, id: BlockId) {
-        if self.site == PaneSite::Remote {
+        if self.core().site == PaneSite::Remote {
             self.notice =
                 Some("To view a file on another computer, \u{2318}-click its name".to_owned());
             return;
@@ -148,7 +174,7 @@ impl Session {
             self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return;
         };
-        let around = output_paths(&output, self.cwd.as_deref(), is_file);
+        let around = output_paths(&output, self.core().cwd.as_deref(), is_file);
         match around.first().cloned() {
             Some(file) => {
                 self.view_ask = Some(ViewAsk {

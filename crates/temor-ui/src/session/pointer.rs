@@ -4,14 +4,14 @@
 
 use std::time::Duration;
 
-use temor_pane::text::RowText;
-use temor_pane::text::{CellPos, Granularity, Selection, Shape};
-use temor_vt::{
+use temor_panes::pane::text::RowText;
+use temor_panes::pane::text::{CellPos, Granularity, Selection, Shape};
+use temor_panes::vt::{
     GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
     SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
 };
 
-use temor_core::session::AnnotateIn;
+use temor_client::model::session::AnnotateIn;
 
 use super::{Drag, Session};
 use crate::error::UiError;

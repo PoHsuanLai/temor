@@ -81,16 +81,12 @@ fn a_word_takes_the_place_of_the_lines_end_counted_in_characters() {
 }
 
 #[test]
-fn the_words_share_what_they_all_start_with() {
-    // (words, what they share)
-    let cases: [(&[&str], &str); 5] = [
-        (&[], ""),
-        (&["checkout"], "checkout"),
-        (&["checkout", "cherry-pick"], "che"),
-        (&["src/", "src/lib.rs"], "src/"),
-        (&["éa", "éb"], "é"),
-    ];
-    for (words, shared) in cases {
-        assert_eq!(completed(0, words).shared(), shared, "{words:?}");
-    }
+fn the_words_are_suggestions_for_the_lines_end() {
+    let got = completed(4, &["checkout", "src/"]).suggestions("git ch");
+    assert_eq!(got.len(), 2);
+    assert_eq!(
+        (got[0].word.as_str(), got[0].from, got[0].to, got[0].space),
+        ("checkout", 4, 6, true)
+    );
+    assert_eq!((got[1].word.as_str(), got[1].space), ("src/", false));
 }

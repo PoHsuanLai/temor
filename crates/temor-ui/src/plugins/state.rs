@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use std::rc::Rc;
 
-use temor_core::vocab::ids::PaneId;
-use temor_plugins::Generations;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::plugins::Generations;
 
 use super::effects::Hands;
 use super::facts::PluginFact;
@@ -47,7 +47,7 @@ pub struct PluginHub {
 impl PluginHub {
     /// The plugins of the person who started the window.
     pub fn new(launch: &Launch) -> PluginHub {
-        PluginHub::over(PluginHost::new(launch))
+        PluginHub::over(PluginHost::new(&launch.ambient.plugin_dirs()))
     }
 
     /// A hub over `host` (tests build one over a scratch catalog).

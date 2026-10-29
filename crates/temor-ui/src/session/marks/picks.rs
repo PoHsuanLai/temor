@@ -6,15 +6,15 @@
 //! copy only the commands or only the outputs, ⌘I puts the commands back in the prompt, and ⌘B
 //! bookmarks the picked blocks; Alt+↑ and Alt+↓ step between bookmarks while the pane has one
 //! and is at its prompt. Any other key goes to the shell and lets go of the pick. The rules are
-//! `temor_core::block::Picks`; this reads the blocks and moves the view.
+//! `temor_client::model::block::Picks`; this reads the blocks and moves the view.
 
 use std::collections::BTreeSet;
 
-use temor_core::block::{BlockState, PickClick, PickStep};
-use temor_core::session::{AnnotateIn, AnnotateOut, annotate_step};
-use temor_core::vocab::ids::BlockId;
-use temor_core::vocab::text::CommandText;
-use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
+use temor_client::model::block::{BlockState, PickClick, PickStep};
+use temor_client::model::session::{AnnotateIn, AnnotateOut, annotate_step};
+use temor_client::model::vocab::ids::BlockId;
+use temor_client::model::vocab::text::CommandText;
+use temor_panes::vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::super::Session;
 use crate::error::UiError;
@@ -153,7 +153,8 @@ impl Session {
             .picked_blocks()
             .into_iter()
             .map(|id| {
-                let command = self.block_command(id).unwrap_or_default().trim();
+                let command = self.block_command(id).unwrap_or_default();
+                let command = command.trim();
                 match self.block_output(id).filter(|out| !out.is_empty()) {
                     Some(output) => format!("{command}\n{output}"),
                     None => command.to_owned(),
@@ -167,7 +168,7 @@ impl Session {
     /// its prompt, on the main screen.
     fn bookmark_keys_live(&self) -> bool {
         let at_prompt = matches!(
-            *self.blocks.machine(),
+            *self.core().blocks.machine(),
             BlockState::Prompting { .. } | BlockState::Typing { .. }
         );
         self.ann.any_bookmarked()
@@ -269,6 +270,15 @@ impl Session {
         self.selection = None;
         self.mirror_selection()?;
         Ok(Some(id))
+    }
+
+    /// The card `id`'s "…": the block, for its menu, picked as a right-click on it picks it.
+    pub fn block_menu_for(&mut self, id: BlockId) -> Result<(), UiError> {
+        if !self.ann.is_picked(id) {
+            self.pick_block(id, PickClick::Only);
+        }
+        self.selection = None;
+        self.mirror_selection()
     }
 
     /// Whether `id`'s output is folded away.

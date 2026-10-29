@@ -1,14 +1,14 @@
 //! The questions before a first connection, how `ssh` starts, sharing the connection between
 //! panes, and the browser check.
 
-use temor_core::host::consent::BootstrapAction;
-use temor_core::remote::Grant;
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::host::consent::BootstrapAction;
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::support::Rig;
-use crate::hub::ssh_view::{CheckRow, Stage};
+use temor_client::ssh::view::{CheckRow, Stage};
 
 /// Longer than the 80-column screen, so on screen it wraps; the link is read from the bytes.
 const CHECK_URL: &str =
@@ -152,7 +152,7 @@ fn a_split_or_new_tab_of_a_host_pane_joins_its_connection_in_its_folder() {
         (
             2,
             WorkspaceIn::Split {
-                towards: temor_core::split::Direction::Right,
+                towards: temor_client::model::split::Direction::Right,
             },
         ),
         (3, WorkspaceIn::NewTab { cwd: None }),
@@ -161,7 +161,10 @@ fn a_split_or_new_tab_of_a_host_pane_joins_its_connection_in_its_folder() {
         let pane = rig.front();
         assert_eq!(rig.hub.host_of(pane), Some("fake"), "session {n}");
         let name = format!("session-{n}.script");
-        rig.pump("the joined session", |_| dir.join(&name).exists());
+        // The fake host writes the script as it reads it: wait for its folder line, not the file.
+        rig.pump("the joined session", |_| {
+            std::fs::read_to_string(dir.join(&name)).is_ok_and(|s| s.contains("temor_start_dir="))
+        });
         let script = rig.got(&name).unwrap_or_default();
         assert!(
             script.contains("\ntemor_start_dir='/srv/it'\\''s here'\n"),
@@ -264,7 +267,7 @@ fn a_plain_aliass_fingerprint_is_looked_up_by_the_name_and_port_ssh_resolves() {
     let dir = rig.dir.clone();
     rig.pump("the first session", |_| dir.join("session-1").exists());
     rig.put("up", "");
-    let alias = temor_ssh::HostAlias::new("fake").expect("alias");
+    let alias = temor_client::ssh::HostAlias::new("fake").expect("alias");
     rig.pump("the host to be known by its key", |hub| {
         hub.ssh
             .lines
@@ -298,7 +301,7 @@ fn a_plain_session_sends_nothing_so_a_split_of_it_starts_in_the_hosts_home_folde
         cwd: Cwd("/srv/it".to_owned()),
     });
     rig.hub.act(WorkspaceIn::Split {
-        towards: temor_core::split::Direction::Right,
+        towards: temor_client::model::split::Direction::Right,
     });
     assert_eq!(rig.hub.host_of(rig.front()), Some("fake"));
     rig.pump("the joined session", |_| dir.join("session-2").exists());
@@ -312,8 +315,8 @@ fn a_plain_session_sends_nothing_so_a_split_of_it_starts_in_the_hosts_home_folde
 
 #[test]
 fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
-    use temor_core::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
-    use temor_core::host::store::PaneHost;
+    use temor_client::model::host::consent::{BootstrapGrants, ConsentBook, HostRecord};
+    use temor_client::model::host::store::PaneHost;
 
     let Some(mut rig) = Rig::new("restored") else {
         return;
@@ -330,7 +333,7 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
     // The last session had a host tab; it starts hidden behind a plain tab.
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     let plain = rig.front();
-    let saved = temor_core::vocab::ids::PaneId(rig.hub.ws.next_pane);
+    let saved = temor_client::model::vocab::ids::PaneId(rig.hub.book.ws.next_pane);
     rig.hub.ssh.restored = vec![PaneHost {
         pane: saved,
         alias: "fake".to_owned(),

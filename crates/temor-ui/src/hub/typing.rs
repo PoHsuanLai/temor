@@ -2,7 +2,7 @@
 //! bar picked, and a line an agent asks to type. Text from anywhere else is the program's, and
 //! a control character in it is never sent.
 
-use temor_core::vocab::text::CommandText;
+use temor_client::model::vocab::text::CommandText;
 
 use crate::session::Session;
 

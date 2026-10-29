@@ -5,9 +5,9 @@
 //! pane when a half turns (`blink_due`).
 
 use ds_core::time::stamp::Stamp;
-use temor_core::notify::Focus;
-use temor_pane::settings::CursorBlinking;
-use temor_render::BlinkPhase;
+use temor_client::model::notify::Focus;
+use temor_panes::pane::settings::CursorBlinking;
+use temor_panes::render::BlinkPhase;
 
 use super::Session;
 
@@ -36,22 +36,22 @@ impl Session {
     /// The half the cursor is in now; always `On` when blinking is off.
     pub(super) fn blink_now(&self) -> BlinkPhase {
         match self.blink.setting {
-            CursorBlinking::On => blink_phase(self.clock.now().since(self.blink.from)),
+            CursorBlinking::On => blink_phase(self.core().clock.now().since(self.blink.from)),
             CursorBlinking::Off => BlinkPhase::On,
         }
     }
 
     /// The cursor shows solid from now, its blink starting over.
     pub(super) fn wake_cursor(&mut self) {
-        self.blink.from = self.clock.now();
+        let now = self.core().clock.now();
+        self.blink.from = now;
     }
 
     /// Whether the pane must be painted again for its cursor: it is focused, its cursor blinks,
     /// and the half has turned since the last paint.
     pub fn blink_due(&self) -> bool {
-        self.focus == Focus::Focused
-            && self.painter.cursor_blinks()
-            && self.blink_now() != self.blink.painted
+        let focused = self.core().focus == Focus::Focused;
+        focused && self.painter.cursor_blinks() && self.blink_now() != self.blink.painted
     }
 }
 

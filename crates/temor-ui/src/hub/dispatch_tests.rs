@@ -1,6 +1,6 @@
 //! The action table: every action the keymap can bind has its owner's route.
 
-use temor_pane::keys::{Action, Owner, bindable};
+use temor_panes::pane::keys::{Action, Owner, bindable};
 
 use super::dispatch::Origin;
 use super::keys::workspace_input;

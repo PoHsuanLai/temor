@@ -3,6 +3,10 @@
 //! unix sockets for the daemon (so a local daemon runs on macOS too). What a system lacks is a
 //! stub that refuses with `Error::Unsupported`.
 
+// Without the daemon (feature `ghostty`) its listening socket, its lock and its port reading go
+// unused: a client only connects.
+#![cfg_attr(not(feature = "ghostty"), allow(dead_code, unused_imports))]
+
 mod model;
 
 #[cfg(target_os = "linux")]

@@ -2,11 +2,11 @@
 //! line that makes the inner shell name itself; once the tick has heard the name, the
 //! integration written for that shell is typed. Nothing is typed before a Yes.
 
-use temor_core::offer::{Line, OfferIn, OfferOut, OfferState, Program, Reply, Screen};
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::offer::{Line, OfferIn, OfferOut, OfferState, Program, Reply, Screen};
+use temor_client::model::vocab::ids::PaneId;
 
 use super::model::Hub;
-use temor_ssh::InnerShell;
+use temor_client::ssh::InnerShell;
 
 use crate::edge::offer::{load_line, probe_text, remember_never};
 use crate::session::Session;
@@ -30,7 +30,7 @@ impl Hub {
                 named
                     .zip(session.running_line())
                     .and_then(|(program, command)| {
-                        InnerShell::named_in(command, &program.to_string())
+                        InnerShell::named_in(&command, &program.to_string())
                     }),
             ),
             None => return Vec::new(),

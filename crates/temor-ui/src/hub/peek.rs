@@ -10,15 +10,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyview_peek::AnyPeeked;
-use temor_core::vocab::ids::PaneId;
-use temor_wire::message::RemotePath;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::message::RemotePath;
 
 use super::model::{Hub, HubRef};
 use super::ssh_edit::local_name;
 use crate::edge::peek_look::{Landing, PeekLook};
 use crate::edge::peek_mail::{Taken, Ticket};
-use crate::edge::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use crate::platform::ensure_private_dir;
+use temor_client::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 
 /// The biggest file of another computer that is fetched whole for a card.
 const PEEK_CAP: u64 = 8 * 1024 * 1024;

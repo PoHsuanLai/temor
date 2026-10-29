@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::SidebarSection;
 use ds::prelude::*;
-use temor_pane::keys::SettingsPane;
+use temor_panes::pane::keys::SettingsPane;
 
 use super::general::SchemaPage;
 use super::keyboard::KeyboardPage;

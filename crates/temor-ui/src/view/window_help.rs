@@ -12,8 +12,8 @@ use ds::host::ime::ImeSwitch;
 use ds::host::measure::RectProbe;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
-use temor_core::notify::Focus;
-use temor_render::{PixelSize, Scale};
+use temor_client::model::notify::Focus;
+use temor_panes::render::{PixelSize, Scale};
 
 use super::convert::{device_point, scale_of};
 use super::ime::ImeGlue;
@@ -115,7 +115,7 @@ pub(super) fn device_at(
     client: ClientPoint,
     rect: &RectProbe,
     signals: Option<HostSignals>,
-) -> temor_vt::SurfacePoint {
+) -> temor_panes::vt::SurfacePoint {
     let (x, y) = pane_logical(client, rect);
     device_point(x, y, scale_of(signals.as_ref()))
 }

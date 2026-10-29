@@ -1,30 +1,25 @@
-//! The radar on a virtual clock, the worktree look timing and the
-//! path rule for files put back. No threads, no git, no window.
+//! The radar on a virtual clock. No threads, no window.
 
-use std::path::Path;
-
-use temor_core::agent::radar::{Millis, RadarParams};
-use temor_core::presence::{AgentState, Seen, WaitKind};
-use temor_core::vocab::ids::{ExitCode, PaneId, TabId};
-use temor_core::worktree::{AgentWorktree, Oid, WorktreeName};
-use temor_pane::report::{ReportState, ReportWait, StatusLine};
-use temor_pane::{CommandLine, PaneEvent, SeenForeground};
-use temor_pty::ChildExit;
-use temor_vt::{Notification, ProgramState, ProgramStatus, ProgramWait};
+use temor_client::model::agent::radar::{Millis, RadarParams};
+use temor_client::model::presence::{AgentState, Seen, WaitKind};
+use temor_client::model::vocab::ids::{ExitCode, PaneId};
+use temor_panes::Heard;
+use temor_panes::pane::report::{ReportState, ReportWait, StatusLine};
+use temor_panes::pane::{CommandLine, PaneEvent, SeenForeground};
+use temor_panes::pty::ChildExit;
+use temor_panes::vt::{ProgramState, ProgramStatus, ProgramWait};
 
 use super::convert::exit_code;
 use super::radar::Radar;
-use super::trees::Trees;
-use super::work::safe_join;
 
 const P1: PaneId = PaneId(1);
 
-pub(super) fn status(state: ProgramState, wait: ProgramWait) -> PaneEvent {
+pub(super) fn status(state: ProgramState, wait: ProgramWait) -> Heard {
     status_of("claude", state, wait)
 }
 
-pub(super) fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> PaneEvent {
-    PaneEvent::Program(ProgramStatus {
+pub(super) fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> Heard {
+    Heard::Window(PaneEvent::Program(ProgramStatus {
         state,
         wait,
         percent: None,
@@ -32,21 +27,21 @@ pub(super) fn status_of(app: &str, state: ProgramState, wait: ProgramWait) -> Pa
         app: app.to_owned(),
         title: String::new(),
         message: String::new(),
-    })
+    }))
 }
 
-fn line(seq: u64, state: ReportState, wait: Option<ReportWait>) -> PaneEvent {
-    PaneEvent::Reported(StatusLine {
+fn line(seq: u64, state: ReportState, wait: Option<ReportWait>) -> Heard {
+    Heard::Window(PaneEvent::Reported(StatusLine {
         seq,
         state,
         wait,
         app: Some("claude".to_owned()),
         note: None,
-    })
+    }))
 }
 
 enum Step {
-    Event(PaneEvent),
+    Event(Heard),
     Focus(Option<PaneId>),
     Tick,
 }
@@ -74,20 +69,20 @@ fn run(steps: Vec<(u64, Step)>) -> Vec<AgentState> {
 }
 
 /// A program in front of the pane, with no command line read.
-pub(super) fn front(name: &str) -> PaneEvent {
-    PaneEvent::Foreground(Some(SeenForeground {
+pub(super) fn front(name: &str) -> Heard {
+    Heard::Window(PaneEvent::Foreground(Some(SeenForeground {
         name: name.to_owned(),
         command: None,
-    }))
+    })))
 }
 
 /// A wrapper in front of the pane, with the command line it was started with.
-pub(super) fn front_running(name: &str, tokens: &[&str]) -> PaneEvent {
+pub(super) fn front_running(name: &str, tokens: &[&str]) -> Heard {
     let bytes: Vec<u8> = tokens.iter().flat_map(|t| t.bytes().chain([0])).collect();
-    PaneEvent::Foreground(Some(SeenForeground {
+    Heard::Window(PaneEvent::Foreground(Some(SeenForeground {
         name: name.to_owned(),
         command: CommandLine::from_cmdline(&bytes),
-    }))
+    })))
 }
 
 use AgentState::{Done, Failed, Idle, Waiting, Working};
@@ -95,7 +90,7 @@ use Step::{Event, Focus, Tick};
 
 #[test]
 fn what_a_pane_says_moves_its_orb_over_time() {
-    let spinner = || PaneEvent::Title("\u{280B} fixing tests".to_owned());
+    let spinner = || Heard::Title("\u{280B} fixing tests".to_owned());
     let claude = || front("claude");
     #[rustfmt::skip]
     #[allow(clippy::type_complexity)] // a table of named rows
@@ -109,14 +104,14 @@ fn what_a_pane_says_moves_its_orb_over_time() {
             ],
             vec![Working, Waiting(WaitKind::Permission), Done(Seen::Unseen), Done(Seen::Seen)]),
         ("a bell in a pane that runs no agent says nothing",
-            vec![(0, Event(PaneEvent::Bell))], vec![Idle]),
+            vec![(0, Event(Heard::Bell))], vec![Idle]),
         ("a bell in an agent pane makes it wait until it is focused",
-            vec![(0, Event(claude())), (1, Event(PaneEvent::Bell)), (2, Focus(Some(P1)))],
+            vec![(0, Event(claude())), (1, Event(Heard::Bell)), (2, Focus(Some(P1)))],
             vec![Idle, Waiting(WaitKind::Question), Idle]),
         ("a notification carries the agent's words and waits the same way",
             vec![
                 (0, Event(claude())),
-                (1, Event(PaneEvent::Notification(Notification { title: "claude".into(), body: "Run tests?".into() }))),
+                (1, Event(Heard::Notified { title: "claude".into(), body: "Run tests?".into() })),
             ],
             vec![Idle, Waiting(WaitKind::Question)]),
         ("a spinner title is work for four seconds after it last changed",
@@ -134,13 +129,13 @@ fn what_a_pane_says_moves_its_orb_over_time() {
         ("the program exiting while it works is its result",
             vec![
                 (0, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
-                (1, Event(PaneEvent::Exited(Some(ChildExit::Exited(0))))),
+                (1, Event(Heard::Ended(Some(ChildExit::Exited(0))))),
             ],
             vec![Working, Done(Seen::Unseen)]),
         ("a signal ending it is a failure",
             vec![
                 (0, Event(status(ProgramState::Working, ProgramWait::Unspecified))),
-                (1, Event(PaneEvent::Exited(Some(ChildExit::Signaled(9))))),
+                (1, Event(Heard::Ended(Some(ChildExit::Signaled(9))))),
             ],
             vec![Working, Failed(Seen::Unseen)]),
         ("a report in the focused pane is seen as it finishes",
@@ -190,13 +185,13 @@ fn a_pane_that_needs_you_while_unfocused_asks_for_a_notification_with_its_words(
     radar.observe(
         P1,
         Millis(0),
-        &PaneEvent::Reported(StatusLine {
+        &Heard::Window(PaneEvent::Reported(StatusLine {
             seq: 1,
             state: ReportState::Waiting,
             wait: Some(ReportWait::Permission),
             app: Some("claude".to_owned()),
             note: Some("Run cargo test?".to_owned()),
-        }),
+        })),
     );
     let alerts = radar.take_alerts();
     assert_eq!(alerts.len(), 1);
@@ -217,65 +212,5 @@ fn exits_are_read_as_the_radar_needs() {
     ];
     for (exit, want) in exits {
         assert_eq!(exit_code(*exit), ExitCode(*want), "{exit:?}");
-    }
-}
-
-fn worktree(path: &str) -> AgentWorktree {
-    AgentWorktree {
-        tab: TabId(0),
-        name: WorktreeName::from_task("fix login").expect("name"),
-        repo: "/r".to_owned(),
-        path: path.to_owned(),
-        base_ref: "main".to_owned(),
-        base: Oid::parse(&format!("{:040x}", 1)).expect("oid"),
-    }
-}
-
-#[test]
-fn a_worktree_is_looked_at_once_after_its_commands_settle() {
-    let mut trees = Trees::default();
-    trees.adopt(TabId(4), worktree("/d/w"), Millis(10_000));
-    // The first look is due at once.
-    assert_eq!(trees.due(Millis(10_000)).len(), 1);
-    assert!(trees.due(Millis(11_000)).is_empty(), "one look at a time");
-    let tip = Oid::parse(&format!("{:040x}", 2)).expect("tip");
-    let snap = temor_core::worktree::Snapshot {
-        commit: tip.clone(),
-        tree: tip.clone(),
-    };
-    trees.snapshotted(TabId(4), tip, snap);
-    // A burst of commands counts once, and only after two quiet seconds.
-    trees.command_done(TabId(4), Millis(20_000));
-    trees.command_done(TabId(4), Millis(20_500));
-    assert!(trees.due(Millis(21_000)).is_empty());
-    assert_eq!(trees.due(Millis(22_000)).len(), 1);
-    // A failed look is asked for again after the next command, not at once.
-    trees.snapshot_failed(TabId(4));
-    assert!(trees.due(Millis(40_000)).is_empty());
-    trees.command_done(TabId(4), Millis(40_000));
-    assert_eq!(trees.due(Millis(42_000)).len(), 1);
-    trees.gone(TabId(4));
-    assert!(trees.by_tab.is_empty());
-}
-
-#[test]
-fn files_are_put_back_only_inside_the_repository() {
-    let root = Path::new("/r");
-    #[rustfmt::skip]
-    let rows: &[(&str, Option<&str>)] = &[
-        ("a.txt", Some("/r/a.txt")),
-        ("src/deep/b.rs", Some("/r/src/deep/b.rs")),
-        ("../escape", None),
-        ("src/../../escape", None),
-        ("/etc/passwd", None),
-        ("./a", None),
-        ("", None),
-    ];
-    for (rel, want) in rows {
-        assert_eq!(
-            safe_join(root, rel).as_deref(),
-            want.map(Path::new),
-            "{rel:?}"
-        );
     }
 }

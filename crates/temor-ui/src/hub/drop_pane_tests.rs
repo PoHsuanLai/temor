@@ -1,7 +1,7 @@
 //! A pane that goes, whichever way it goes, leaves nothing behind that still waits on it.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::workspace::WorkspaceIn;
 use temor_desktop::{CLOSED_WHILE_RUNNING, RunEnd, RunEnds, RunTicket};
 
 use super::run::Found;
@@ -25,10 +25,10 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
     hub.set_run_ends(RunEnds::new(ends));
     let ticket = RunTicket(4);
     // The Space's only tab is a run tab; the Space is put away, then deleted.
-    let parked = std::mem::replace(&mut hub.ws, super::spaces::empty_workspace());
+    let parked = std::mem::replace(&mut hub.book.ws, temor_client::spaces::empty_workspace());
     let pane = parked.tabs.panes()[0];
     hub.run.panes.insert(pane, run_tab(ticket));
-    hub.book.parked.insert(SpaceId(7), parked);
+    hub.book.place(SpaceId(7), parked);
 
     hub.forget_space(SpaceId(7));
 
@@ -40,5 +40,5 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
         }
     );
     assert!(hub.run.panes.is_empty());
-    assert!(hub.book.parked.is_empty());
+    assert_eq!(hub.book.parked().count(), 0);
 }

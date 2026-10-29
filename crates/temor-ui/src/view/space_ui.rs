@@ -9,8 +9,9 @@ use ds::components::app::spaces::{
 };
 use ds::components::menus::item::item::MenuItem;
 use ds::prelude::{Point, Px};
-use temor_core::space::{Place, Project, TemorSpaces};
+use temor_client::model::space::{Place, Project, TemorSpaces};
 
+use super::address_bar::{AddressBar, WalkButtons};
 use super::shelf::ShelfButton;
 use super::space_handle::SpacesOf;
 use crate::hub::{Desk, HubRef};
@@ -44,19 +45,26 @@ pub fn use_window_spaces(
 enum SpaceAct {
     /// Bring the tab in front into this Space.
     MoveTabHere,
+    /// A folder of tabs in the Space on screen, named where it stands.
+    NewFolder,
 }
 
 /// The head of the sidebar, as mailo's is: the name of the Space on screen, one Space or several,
-/// so it says where you are; Downloads stands at the row's right end.
+/// so it says where you are, then Back and Forward; Downloads stands at the row's right end. The
+/// address of the row in front is under it.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceHeader(desk: Desk) -> Element {
     rsx! {
-        div { class: "temor-head",
-            div { class: "temor-head-title",
-                SpaceHead { handle: desk.spaces }
+        div { class: "temor-head-stack",
+            div { class: "temor-head",
+                div { class: "temor-head-title",
+                    SpaceHead { handle: desk.spaces }
+                }
+                WalkButtons { desk: desk.clone() }
+                ShelfButton { desk: desk.clone() }
             }
-            ShelfButton { desk: desk.clone() }
+            AddressBar { desk: desk.clone() }
         }
     }
 }
@@ -83,8 +91,9 @@ pub fn space_menu_on(desk: &Desk) -> impl FnMut(MouseEvent) + 'static {
 }
 
 /// The foot of the sidebar: a dot for each Space once there are several (quire's `SpacesFoot`
-/// draws none for one), and its `trailing` (the chevron, whose menu holds New Space: the foot
-/// draws no `+`). The Space switch has no chord of its own here: the desktop owns Ctrl+digit.
+/// draws none for one) between its two ends, `trailing` the right one (the foot draws no `+`:
+/// New Space is in the Space's menu). The Space switch has no chord of its own here: the desktop
+/// owns Ctrl+digit.
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
@@ -113,7 +122,8 @@ pub fn SpaceFoot(desk: Desk, trailing: Element) -> Element {
     }
 }
 
-/// The Space's menu (rename, colour, appearance, new, delete) and "Move Tab Here".
+/// The Space's menu (rename, colour, appearance, new, delete), "Move Tab Here" and, for the Space
+/// on screen, "New Folder".
 #[component]
 #[allow(non_snake_case)]
 pub fn SpaceMenus(desk: Desk) -> Element {
@@ -124,8 +134,14 @@ pub fn SpaceMenus(desk: Desk) -> Element {
         true => Availability::Disabled,
         false => Availability::Enabled,
     };
-    let extra =
-        vec![MenuItem::new(SpaceAct::MoveTabHere, "Move Tab Here").with_availability(availability)];
+    let here = match availability {
+        Availability::Disabled => Availability::Enabled,
+        _ => Availability::Disabled,
+    };
+    let extra = vec![
+        MenuItem::new(SpaceAct::NewFolder, crate::hub::NEW_FOLDER).with_availability(here),
+        MenuItem::new(SpaceAct::MoveTabHere, "Move Tab Here").with_availability(availability),
+    ];
     rsx! {
         SpaceMenu::<Project, Place, SpaceAct> {
             handle,
@@ -133,6 +149,7 @@ pub fn SpaceMenus(desk: Desk) -> Element {
             extra,
             on_extra: move |(space, act): (SpaceId, SpaceAct)| match act {
                 SpaceAct::MoveTabHere => desk.move_front_tab_to(space),
+                SpaceAct::NewFolder => desk.new_folder(None, None),
             },
             kept: "Everything on disk".to_owned(),
         }

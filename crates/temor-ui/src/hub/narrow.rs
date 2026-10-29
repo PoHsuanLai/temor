@@ -2,10 +2,9 @@
 //! step decides, from the width the window tells it here.
 
 use dioxus::prelude::WritableExt;
-use ds::base::vocab::Shown;
-use temor_core::split::Columns;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::split::Columns;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -41,7 +40,11 @@ impl Hub {
 
     /// The width in columns of the tab in front's focused pane, once it has been laid out.
     fn front_columns(&self) -> Option<Columns> {
-        let pane = self.ws.front().and_then(|tab| self.ws.focus_of(tab))?;
+        let pane = self
+            .book
+            .ws
+            .front()
+            .and_then(|tab| self.book.ws.focus_of(tab))?;
         self.columns_of(pane)
     }
 
@@ -59,18 +62,5 @@ impl Desk {
         let mut sidebar = self.sidebar;
         let next = toggled(sidebar());
         sidebar.set(next);
-    }
-
-    /// Opens the Downloads list, or closes it. Its button is in the sidebar's head, so a hidden
-    /// sidebar is shown first.
-    pub(super) fn shelf_toggle(&self) {
-        let mut shelf = self.shelf;
-        if shelf() == Shown::Visible {
-            shelf.set(Shown::Hidden);
-            return;
-        }
-        let mut sidebar = self.sidebar;
-        sidebar.set(Shown::Visible);
-        shelf.set(Shown::Visible);
     }
 }

@@ -4,14 +4,14 @@
 
 use std::sync::Arc;
 
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::ids::SessionId;
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::Shown;
-use crate::edge::remote_event::{AttachFault, Generation, Ticket, Wanted};
-use crate::edge::remote_palette::wire_palette;
+use temor_panes::remote::event::{AttachFault, Generation, Ticket, Wanted};
+use temor_panes::remote::palette::wire_palette;
 
 impl Hub {
     /// Reattaches the sessions `sessions` on the new connection, each pane getting its screen.

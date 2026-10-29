@@ -4,7 +4,7 @@
 //! here and nowhere else; everything after it is the pure `build_keymap`.
 
 use chordkit::{ConventionSource, Keymap, KeymapSource, Overrides, Platform, detect_process};
-use temor_pane::keys::{KeyIssue, build_keymap};
+use temor_panes::pane::keys::{KeyIssue, build_keymap};
 
 use super::{Ambient, system_keys};
 

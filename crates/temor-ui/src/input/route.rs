@@ -5,8 +5,8 @@
 //! Pure: no window, no terminal.
 
 use chordkit::{Context, Key as ChordKey, Keymap, NamedKey};
-use temor_pane::keys::Action;
-use temor_vt::{Ime, KeyAction, KeyInput, KittyKeyFlags};
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::{Ime, KeyAction, KeyInput, KittyKeyFlags};
 
 /// A key as the window heard it: the press as chordkit reads it (when it has a name there) and
 /// what the program would get.

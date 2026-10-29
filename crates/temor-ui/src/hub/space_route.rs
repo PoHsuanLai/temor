@@ -5,9 +5,9 @@
 use std::path::Path;
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::{SpaceRoute, route, route_folder, routes_of};
-use temor_core::vocab::home;
-use temor_core::vocab::text::RoutePattern;
+use temor_client::model::space::{SpaceRoute, route, route_folder, routes_of};
+use temor_client::model::vocab::home;
+use temor_client::model::vocab::text::RoutePattern;
 
 use super::model::{Hub, HubRef};
 
@@ -24,7 +24,7 @@ impl Hub {
 
     fn with_routes<T>(&self, pick: impl FnOnce(&[SpaceRoute<'_>]) -> T) -> T {
         let home = &self.launch.ambient.home;
-        let spaces = self.book.spaces.list();
+        let spaces = self.book.spaces().list();
         let expanded: Vec<(SpaceId, RoutePattern)> = routes_of(spaces)
             .into_iter()
             .map(|route| (route.space, expand_home(route.pattern, home)))

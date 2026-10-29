@@ -13,6 +13,7 @@
 //! know is skipped, so a newer script can say more than an older temor reads.
 
 use crate::osc7::percent_decode_strict;
+use crate::suggest::Suggestion;
 
 /// The OSC number the answers travel in.
 pub const OSC_NUMBER: &str = "7504";
@@ -100,20 +101,20 @@ impl Completions {
         Some(format!("{}{word}", &line[..start]))
     }
 
-    /// What every word starts with, on whole characters.
-    pub fn shared(&self) -> &str {
-        let Some((first, rest)) = self.words.split_first() else {
-            return "";
-        };
-        let mut end = first.len();
-        for word in rest {
-            end = first
-                .char_indices()
-                .zip(word.chars())
-                .find(|((_, a), b)| a != b)
-                .map_or(end.min(word.len()), |((i, _), _)| i.min(end));
-        }
-        &first[..end]
+    /// The words as suggestions for `line`: each takes the place of the characters from `at` to
+    /// the line's end, and a space follows unless it names a folder.
+    pub fn suggestions(&self, line: &str) -> Vec<Suggestion> {
+        let to = line.chars().count();
+        self.words
+            .iter()
+            .map(|word| Suggestion {
+                word: word.clone(),
+                from: self.at,
+                to,
+                space: !word.ends_with('/'),
+                detail: None,
+            })
+            .collect()
     }
 }
 

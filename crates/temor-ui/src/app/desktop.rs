@@ -6,16 +6,15 @@
 
 use std::sync::Arc;
 
-use temor_desktop::{
-    Badge, BadgeCount, CheckpointPort, Claim, DesktopEnv, DesktopError, NoCheckpoints, NoSecrets,
-    Primary, Request, RunEnds, SecretVault, SystemCheckpoints, SystemDock, SystemInstance,
-    SystemIntents, SystemSecrets, SystemTailnet,
+use temor_client::desktop::{
+    Badge, BadgeCount, Claim, DesktopEnv, DesktopError, NoSecrets, Primary, Request, RunEnds,
+    SecretVault, SystemDock, SystemInstance, SystemIntents, SystemSecrets, SystemTailnet,
 };
 use tokio::runtime::Handle;
 use tokio::sync::watch;
 
-use crate::edge::desktop_feed::{LiveTailnet, NoTailnet, TailnetFeed, group_of};
-use crate::edge::desktop_port::{Ask, DesktopLink, DesktopPort, desktop_pair};
+use temor_client::desktop::feed::{LiveTailnet, NoTailnet, TailnetFeed, group_of};
+use temor_client::desktop::port::{Ask, DesktopLink, DesktopPort, desktop_pair};
 
 /// What the window is given of the desktop. Cloned into the window's root context; a window
 /// without it (tests, a desktop with no session bus) reads [`Desktop::none`].
@@ -25,8 +24,6 @@ pub struct Desktop {
     pub link: Option<DesktopLink>,
     /// The Tailscale computers; the group is absent when empty.
     pub tailnet: Arc<dyn TailnetFeed>,
-    /// An agent run's restore points; none are listed without the agent layer.
-    pub checkpoints: Arc<dyn CheckpointPort>,
     /// Where a Space's secrets are kept; nothing is kept without a desktop.
     pub secrets: Arc<dyn SecretVault>,
     /// Where a run tab's closing is told to the `temor -e` launch waiting on it.
@@ -39,7 +36,6 @@ impl Desktop {
         Desktop {
             link: None,
             tailnet: Arc::new(NoTailnet),
-            checkpoints: Arc::new(NoCheckpoints),
             secrets: Arc::new(NoSecrets),
             run_ends: RunEnds::default(),
         }
@@ -99,12 +95,6 @@ fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
     let tailnet = LiveTailnet::default();
     runtime.spawn(hear_and_serve(env.clone(), primary, port, link.clone()));
     runtime.spawn(show_badge(env.clone(), count));
-    // A desktop without the agent layer lists no restore points.
-    let checkpoints: Arc<dyn CheckpointPort> =
-        match runtime.block_on(SystemCheckpoints::connect(&env, runtime.clone())) {
-            Ok(live) => Arc::new(live),
-            Err(_) => Arc::new(NoCheckpoints),
-        };
     // Without a password store, Spaces keep no secrets and say so when asked to.
     let secrets: Arc<dyn SecretVault> = match SystemSecrets::new(runtime.clone()) {
         Ok(live) => Arc::new(live),
@@ -114,7 +104,6 @@ fn serve(runtime: &Handle, env: DesktopEnv, primary: Primary) -> Desktop {
     Desktop {
         link: Some(link),
         tailnet: Arc::new(tailnet),
-        checkpoints,
         secrets,
         run_ends,
     }

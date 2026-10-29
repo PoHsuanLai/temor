@@ -48,6 +48,11 @@ impl TabsState {
         self.place.tabs.iter().find(|tab| tab.id == id)
     }
 
+    /// The folder with `id`, if it is in the list.
+    pub fn folder(&self, id: FolderId) -> Option<&Folder> {
+        self.place.folders.iter().find(|folder| folder.id == id)
+    }
+
     /// Every pane of every tab, for the workspace's bookkeeping.
     pub fn panes(&self) -> Vec<PaneId> {
         self.place
@@ -103,8 +108,17 @@ pub enum TabsIn {
         tab: TabId,
         folder: Option<FolderId>,
     },
-    /// Make a folder at the end of the sidebar's folders.
-    NewFolder { title: TabTitle },
+    /// Make a folder after the others, at the top or in `parent`.
+    NewFolder {
+        title: TabTitle,
+        parent: Option<FolderId>,
+    },
+    /// Call a folder something else.
+    RenameFolder { folder: FolderId, title: TabTitle },
+    /// Show what a folder holds under it, or hide it.
+    OpenFolder { folder: FolderId, open: bool },
+    /// Take a folder away: what it held, tabs and folders, goes to the folder it was in.
+    RemoveFolder(FolderId),
     /// Rename a tab.
     Rename { tab: TabId, title: TabTitle },
     /// Move a tab to where `at` stands in the list (a drag in the sidebar): after it when the
@@ -155,15 +169,12 @@ pub fn tabs_step(mut state: TabsState, input: TabsIn) -> (TabsState, Vec<TabsOut
         }),
         TabsIn::Unpin(tab) => edit_tab(&mut state, tab, |t| t.pin = Pin::Loose),
         TabsIn::MoveToFolder { tab, folder } => move_to_folder(&mut state, tab, folder),
-        TabsIn::NewFolder { title } => {
-            let Some(next) = state.next_folder.checked_add(1) else {
-                return (state, refuse(TabRefusal::IdsExhausted));
-            };
-            let id = FolderId(state.next_folder);
-            state.next_folder = next;
-            state.place.folders.push(Folder { id, title });
-            vec![TabsOut::Created(id)]
+        TabsIn::NewFolder { title, parent } => new_folder(&mut state, title, parent),
+        TabsIn::RenameFolder { folder, title } => {
+            edit_folder(&mut state, folder, |f| f.title = title)
         }
+        TabsIn::OpenFolder { folder, open } => edit_folder(&mut state, folder, |f| f.open = open),
+        TabsIn::RemoveFolder(folder) => remove_folder(&mut state, folder),
         TabsIn::Rename { tab, title } => edit_tab(&mut state, tab, |t| t.title = title),
         TabsIn::Place { tab, at } => place(&mut state, tab, at),
         TabsIn::Unread(tab) => unread(&mut state, tab),
@@ -227,6 +238,51 @@ fn edit_tab(state: &mut TabsState, id: TabId, edit: impl FnOnce(&mut Tab)) -> Ve
         }
         None => refuse(TabRefusal::NoSuchTab(id)),
     }
+}
+
+fn new_folder(state: &mut TabsState, title: TabTitle, parent: Option<FolderId>) -> Vec<TabsOut> {
+    if let Some(wanted) = parent.filter(|wanted| state.folder(*wanted).is_none()) {
+        return refuse(TabRefusal::NoSuchFolder(wanted));
+    }
+    let Some(next) = state.next_folder.checked_add(1) else {
+        return refuse(TabRefusal::IdsExhausted);
+    };
+    let id = FolderId(state.next_folder);
+    state.next_folder = next;
+    state.place.folders.push(Folder::new(id, title, parent));
+    vec![TabsOut::Created(id)]
+}
+
+fn edit_folder(
+    state: &mut TabsState,
+    id: FolderId,
+    change: impl FnOnce(&mut Folder),
+) -> Vec<TabsOut> {
+    match state.place.folders.iter_mut().find(|f| f.id == id) {
+        Some(folder) => {
+            change(folder);
+            Vec::new()
+        }
+        None => refuse(TabRefusal::NoSuchFolder(id)),
+    }
+}
+
+fn remove_folder(state: &mut TabsState, id: FolderId) -> Vec<TabsOut> {
+    let Some(at) = state.place.folders.iter().position(|f| f.id == id) else {
+        return refuse(TabRefusal::NoSuchFolder(id));
+    };
+    let gone = state.place.folders.remove(at);
+    for folder in &mut state.place.folders {
+        if folder.parent == Some(id) {
+            folder.parent = gone.parent;
+        }
+    }
+    for tab in &mut state.place.tabs {
+        if tab.folder == Some(id) {
+            tab.folder = gone.parent;
+        }
+    }
+    Vec::new()
 }
 
 fn move_to_folder(state: &mut TabsState, id: TabId, folder: Option<FolderId>) -> Vec<TabsOut> {

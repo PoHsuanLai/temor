@@ -5,8 +5,10 @@
 //! panes follow the file (`hub::keys`); nothing here tells them.
 
 use chordkit::{Chord, Context, Keymap, Overrides, Platform};
-use temor_pane::SettingsError;
-use temor_pane::keys::{Action, bind_key, build_keymap, portable_chord, reset_all_keys, reset_key};
+use temor_panes::pane::SettingsError;
+use temor_panes::pane::keys::{
+    Action, bind_key, build_keymap, portable_chord, reset_all_keys, reset_key,
+};
 
 use crate::edge::{Ambient, system_keys};
 use crate::error::UiError;

@@ -1,11 +1,10 @@
 //! The block list's segments from plain lists: no session, no window.
 
 use super::*;
-use temor_core::vocab::ids::ExitCode;
+use temor_client::model::vocab::ids::ExitCode;
 
 const SIZES: Sizes = Sizes {
     row: 10.0,
-    section: 20.0,
     head: 30.0,
     foot: 5.0,
     gap: 8.0,
@@ -57,6 +56,42 @@ fn a_card_is_its_head_its_tiles_and_its_foot_then_a_gap() {
     // 30 head + 100 rows + 5 foot + 8 gap + 40 composer.
     assert_eq!(total, 183.0);
     assert_eq!(placed[5].top, 143.0);
+}
+
+#[test]
+fn kept_commands_are_head_cards_above_the_panes_own_that_no_point_finds_a_block_on() {
+    let kept = |n| KeptCard {
+        n,
+        command: format!("make {n}\n  --again"),
+        outcome: Outcome::Failed(ExitCode(2)),
+        took_ms: None,
+    };
+    let items = [
+        Item::Kept(kept(0)),
+        Item::Kept(kept(1)),
+        Item::Done(block(1, 0..1)),
+    ];
+    let (placed, total) = lay_out(&items, &SIZES, &[]);
+    let id = BlockId(1);
+    assert_eq!(
+        keys(&placed),
+        [
+            SegKey::Kept(0),
+            SegKey::Kept(1),
+            SegKey::Head(id),
+            SegKey::Tile(id, 0),
+            SegKey::Foot(id),
+        ]
+    );
+    // Two kept heads and their gaps, then the block's card.
+    assert_eq!(placed[2].top, 76.0);
+    assert_eq!(total, 76.0 + 30.0 + 10.0 + 5.0 + 8.0);
+    assert_eq!(kept(0).title(), "make 0");
+    // The sticky head is a block's: a kept card has none.
+    assert_eq!(card_places(&placed).len(), 1);
+    let map = list_map(&placed, 0.0);
+    assert_eq!(map.spans[0].block, None);
+    assert_eq!(map.spans[2].block, Some(id));
 }
 
 #[test]
@@ -136,20 +171,12 @@ fn the_running_block_keeps_its_settled_tiles_as_it_grows_and_shows_the_rest_live
 }
 
 #[test]
-fn a_new_folder_has_its_line_and_a_failed_card_its_standing() {
+fn a_failed_card_has_its_standing() {
     let mut failed = block(1, 0..2);
     failed.outcome = Outcome::Failed(ExitCode(1));
-    let items = [
-        Item::Section {
-            folder: "/tmp".to_owned(),
-            before: BlockId(1),
-        },
-        Item::Done(failed),
-    ];
-    let (placed, _) = lay_out(&items, &SIZES, &[]);
-    assert_eq!(placed[0].seg, Seg::Section("/tmp".to_owned()));
+    let (placed, _) = lay_out(&[Item::Done(failed)], &SIZES, &[]);
     assert!(matches!(
-        placed[2].seg,
+        placed[1].seg,
         Seg::Rows {
             standing: Standing::Failed,
             ..

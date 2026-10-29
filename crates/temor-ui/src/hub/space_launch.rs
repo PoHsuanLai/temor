@@ -4,13 +4,13 @@
 //! starts the agent and asks the account store.
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::{Project, RuntimeDir, dotenv_path, launch};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_shell::ChildEnv;
+use temor_client::model::space::{Project, RuntimeDir, dotenv_path, launch};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::shell::ChildEnv;
 
 use super::model::Hub;
-use crate::edge::space_start::read_dotenv;
+use temor_client::space::start::read_dotenv;
 
 /// Where and with what a new shell starts.
 #[derive(Debug, Default)]
@@ -25,7 +25,7 @@ impl Hub {
     /// The start of a new shell in the Space on screen. Anything that could not be had (a line
     /// of the dotenv file, the agent, a secret) is told to the person and left out.
     pub(super) fn space_start(&mut self) -> SpaceStart {
-        let space = self.book.active;
+        let space = self.book.active();
         let project = self.project_here(space);
         let dotenv = match dotenv_path(&project) {
             Ok(path) => path.and_then(|path| read_dotenv(&path)),
@@ -51,13 +51,13 @@ impl Hub {
         }
         if let Some(agent) = &plan.agent {
             let home = self.launch.ambient.home.clone();
-            if let Err(err) = self.book.agents.ensure(space, agent, &home) {
+            if let Err(err) = self.keep.agents.ensure(space, agent, &home) {
                 self.notices.push(err.to_string());
                 env.remove(agent.env.0.as_str());
             }
         }
         for credential in &plan.credentials {
-            match self.book.credentials.0.secret(&credential.account) {
+            match self.keep.credentials.0.secret(&credential.account) {
                 Ok(Some(secret)) => env.set(credential.env.as_str(), secret),
                 Ok(None) => self.notices.push(format!(
                     "No saved key for {} was found",
@@ -91,7 +91,7 @@ impl Hub {
         match input {
             WorkspaceIn::NewTab { cwd: None } => WorkspaceIn::NewTab {
                 cwd: self
-                    .project_here(self.book.active)
+                    .project_here(self.book.active())
                     .root
                     .map(|root| Cwd(root.0)),
             },

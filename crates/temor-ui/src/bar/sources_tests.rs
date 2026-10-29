@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use temor_core::bar::{Target, UnixSecs, Visits};
-use temor_core::space::{Pin, Tab};
-use temor_core::split::SplitTree;
-use temor_core::vocab::ids::{PaneId, Seq, TabId};
-use temor_core::vocab::text::{CommandText, Cwd, TabTitle};
-use temor_core::workspace::{ClosedIn, ClosedState, KeepClosed, closed_step};
+use temor_client::model::bar::{Target, UnixSecs, Visits};
+use temor_client::model::space::{Pin, Tab};
+use temor_client::model::split::SplitTree;
+use temor_client::model::vocab::ids::{PaneId, Seq, TabId};
+use temor_client::model::vocab::text::{CommandText, Cwd, TabTitle};
+use temor_client::model::workspace::{ClosedIn, ClosedState, KeepClosed, closed_step};
 
 use super::{closed_candidate, directory_uses, recent_commands};
 

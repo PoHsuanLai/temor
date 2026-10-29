@@ -11,7 +11,7 @@ publish = false
 # The Linux desktop's services (PLAN D15): the agent layer, single instance, the dock badge and the
 # Tailscale list. Off, temor-desktop is its portable half and the build has no zbus.
 default = ["quire-desktop"]
-quire-desktop = ["temor-desktop/quire-desktop"]
+quire-desktop = ["temor-client/quire-desktop"]
 
 [dependencies]
 anyview-core = { workspace = true }
@@ -31,25 +31,32 @@ rustix = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 similar = { workspace = true }
-temor-core = { workspace = true }
-temor-desktop = { workspace = true }
-temor-pty = { workspace = true }
-temor-remote = { workspace = true }
-temor-shell = { workspace = true }
-temor-ssh = { workspace = true }
-temor-pane = { workspace = true, features = ["ghostty"] }
-temor-plugins = { workspace = true }
-temor-transfer = { workspace = true }
+# temor, as the window may name it (PLAN §2b, the fence): its data and services through the
+# client, the running terminals and their engine through temor-panes, the data's types.
+temor-client = { workspace = true }
+temor-panes = { workspace = true }
+temor-schema = { workspace = true }
 tempfile = { workspace = true }
 toml = { workspace = true }
-temor-render = { workspace = true, features = ["ghostty"] }
-temor-vt = { workspace = true, features = ["ghostty"] }
-temor-wire = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
 unicode-width = { workspace = true }
 
 [dev-dependencies]
+# The tests drive the window against real panes, helpers and desktop ports, so they name the
+# crates under the fence directly; the window itself does not.
+temor-core = { workspace = true }
+temor-desktop = { workspace = true }
+temor-pty = { workspace = true }
+temor-remote = { workspace = true, features = ["ghostty"] }
+temor-shell = { workspace = true }
+temor-ssh = { workspace = true }
+temor-pane = { workspace = true, features = ["ghostty"] }
+temor-plugins = { workspace = true }
+temor-transfer = { workspace = true }
+temor-render = { workspace = true, features = ["ghostty"] }
+temor-vt = { workspace = true, features = ["ghostty"] }
+temor-wire = { workspace = true }
 temor-testkit = { workspace = true }
 ds-harness = { workspace = true }
 ds-lint = { workspace = true }

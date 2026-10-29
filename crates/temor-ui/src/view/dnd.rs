@@ -1,7 +1,8 @@
 //! Dragging in the sidebar (PLAN §7): a tab row dropped on another row joins its tab, a pane's
-//! segment dropped outside the sidebar tears it off into a tab of its own, and pinned tabs move as
-//! Arc's do: a pinned tile dropped on another takes its place, on a row it is unpinned there, and
-//! a row dropped on a pinned tile is pinned there. The drag
+//! segment dropped outside the sidebar tears it off into a tab of its own, pinned tabs move as
+//! Arc's do (a pinned row dropped on another takes its place, on a loose row it is unpinned there,
+//! and a loose row dropped on a pinned one is pinned there), and a row dropped on the Favourites
+//! keeps its folder there; a loose row dropped on a folder goes in it. The drag
 //! machine and the ghost are quire's (`use_drag`, `DragGhost`, `DropLine`); this holds where the
 //! rows are and the rule for what a release means. The rule is pure.
 
@@ -13,13 +14,32 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use ds::motion::drag::{DragPhase, DragTracker};
 use ds::prelude::{Point, Px, Rect};
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::ids::{FolderId, PaneId, TabId};
 
 use crate::hub::DragKey;
 
-/// Where each tab row is on the page, as the rows report it. Two are equal when they are the same.
+/// What a drag can be let go over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    /// A tab's row.
+    Tab(TabId),
+    /// The Favourites, at the top of the sidebar.
+    Favourites,
+    /// A folder's own row.
+    Folder(FolderId),
+}
+
+/// Where each tab row is on the page, and the Favourites, as they report it. Two are equal when
+/// they are the same.
 #[derive(Clone, Default)]
-pub struct RowRects(Rc<RefCell<BTreeMap<TabId, Rect>>>);
+pub struct RowRects(Rc<RefCell<Places>>);
+
+#[derive(Default)]
+struct Places {
+    rows: BTreeMap<TabId, Rect>,
+    folders: BTreeMap<FolderId, Rect>,
+    favourites: Option<Rect>,
+}
 
 impl PartialEq for RowRects {
     fn eq(&self, other: &Self) -> bool {
@@ -36,26 +56,53 @@ impl std::fmt::Debug for RowRects {
 impl RowRects {
     /// A row is at `rect`.
     pub fn set(&self, tab: TabId, rect: Rect) {
-        self.0.borrow_mut().insert(tab, rect);
+        self.0.borrow_mut().rows.insert(tab, rect);
     }
 
     /// A row left the page.
     pub fn forget(&self, tab: TabId) {
-        self.0.borrow_mut().remove(&tab);
+        self.0.borrow_mut().rows.remove(&tab);
     }
 
-    /// The row under `at`.
-    pub fn at(&self, at: Point) -> Option<TabId> {
-        self.0
-            .borrow()
+    /// A folder's row is at `rect`.
+    pub fn set_folder(&self, folder: FolderId, rect: Rect) {
+        self.0.borrow_mut().folders.insert(folder, rect);
+    }
+
+    /// A folder's row left the page.
+    pub fn forget_folder(&self, folder: FolderId) {
+        self.0.borrow_mut().folders.remove(&folder);
+    }
+
+    /// The Favourites are at `rect`, or (`None`) not on the page.
+    pub fn set_favourites(&self, rect: Option<Rect>) {
+        self.0.borrow_mut().favourites = rect;
+    }
+
+    /// What is under `at`: the Favourites, a row, or a folder's row.
+    pub fn at(&self, at: Point) -> Option<Target> {
+        let inside = |r: &Rect| {
+            at.x.0 >= r.left().0
+                && at.x.0 < r.right().0
+                && at.y.0 >= r.top().0
+                && at.y.0 < r.bottom().0
+        };
+        let places = self.0.borrow();
+        if places.favourites.as_ref().is_some_and(inside) {
+            return Some(Target::Favourites);
+        }
+        let row = places
+            .rows
             .iter()
-            .find(|(_, r)| {
-                at.x.0 >= r.left().0
-                    && at.x.0 < r.right().0
-                    && at.y.0 >= r.top().0
-                    && at.y.0 < r.bottom().0
-            })
-            .map(|(tab, _)| *tab)
+            .find(|(_, r)| inside(r))
+            .map(|(tab, _)| Target::Tab(*tab));
+        row.or_else(|| {
+            places
+                .folders
+                .iter()
+                .find(|(_, r)| inside(r))
+                .map(|(folder, _)| Target::Folder(*folder))
+        })
     }
 }
 
@@ -72,7 +119,7 @@ pub enum Click {
 pub struct Dnd {
     pub drag: DragTracker<DragKey>,
     pub rects: RowRects,
-    pub over: Signal<Option<TabId>>,
+    pub over: Signal<Option<Target>>,
     pub click: ClickCell,
 }
 
@@ -135,17 +182,23 @@ pub enum Dropped {
     Pin { from: TabId, onto: TabId },
     /// The pane leaves its tab for one of its own.
     Tear(PaneId),
+    /// Tab `from`'s folder is kept among the Favourites.
+    Favourite(TabId),
+    /// Tab `from` goes into `folder`.
+    IntoFolder { from: TabId, folder: FolderId },
     /// Nothing happens.
     Nothing,
 }
 
-/// What releasing a drag in `phase` means, with `over` the row or tile under the pointer,
+/// What releasing a drag in `phase` means, with `over` what is under the pointer,
 /// `sidebar_right` the sidebar's right edge (when it is known) and `pinned` whether a tab is
 /// pinned. A tab dropped on another row joins it; pinned tabs move, pin or unpin instead (a pinned
-/// tab keeps its panes); a segment dropped on no row and past the sidebar's edge tears off.
+/// tab keeps its panes); a tab dropped on the Favourites is kept there; a loose tab dropped on a
+/// folder goes in it (a pinned one stands above every folder); a segment dropped on
+/// nothing and past the sidebar's edge tears off.
 pub fn resolve(
     phase: &DragPhase<DragKey>,
-    over: Option<TabId>,
+    over: Option<Target>,
     sidebar_right: Option<Px>,
     pinned: impl Fn(TabId) -> bool,
 ) -> Dropped {
@@ -154,7 +207,12 @@ pub fn resolve(
             key: DragKey::Tab(from),
             ..
         } => match over {
-            Some(onto) if onto != *from => {
+            Some(Target::Favourites) => Dropped::Favourite(*from),
+            Some(Target::Folder(folder)) if !pinned(*from) => Dropped::IntoFolder {
+                from: *from,
+                folder,
+            },
+            Some(Target::Tab(onto)) if onto != *from => {
                 let from = *from;
                 match (pinned(from), pinned(onto)) {
                     (true, true) => Dropped::Place { from, onto },
@@ -213,15 +271,19 @@ mod tests {
         let edge = Some(Px(200.0));
         #[rustfmt::skip]
         #[allow(clippy::type_complexity)] // a table of named rows
-        let rows: &[(&str, DragPhase<DragKey>, Option<TabId>, Option<Px>, Dropped)] = &[
-            ("a tab over another row", live(DragKey::Tab(a), 50.0), Some(b), edge, Dropped::Join { from: a, onto: b }),
-            ("a tab over its own row", live(DragKey::Tab(a), 50.0), Some(a), edge, Dropped::Nothing),
+        let rows: &[(&str, DragPhase<DragKey>, Option<Target>, Option<Px>, Dropped)] = &[
+            ("a tab over another row", live(DragKey::Tab(a), 50.0), Some(Target::Tab(b)), edge, Dropped::Join { from: a, onto: b }),
+            ("a tab over its own row", live(DragKey::Tab(a), 50.0), Some(Target::Tab(a)), edge, Dropped::Nothing),
+            ("a tab over the Favourites", live(DragKey::Tab(a), 50.0), Some(Target::Favourites), edge, Dropped::Favourite(a)),
             ("a tab over no row", live(DragKey::Tab(a), 50.0), None, edge, Dropped::Nothing),
             ("a tile past the sidebar", live(DragKey::Tile(pane), 300.0), None, edge, Dropped::Tear(pane)),
             ("a tile inside the sidebar", live(DragKey::Tile(pane), 100.0), None, edge, Dropped::Nothing),
-            ("a tile over a row", live(DragKey::Tile(pane), 300.0), Some(b), edge, Dropped::Nothing),
+            ("a tile over a row", live(DragKey::Tile(pane), 300.0), Some(Target::Tab(b)), edge, Dropped::Nothing),
+            ("a tab over a folder", live(DragKey::Tab(a), 50.0), Some(Target::Folder(FolderId(3))), edge, Dropped::IntoFolder { from: a, folder: FolderId(3) }),
+            ("a tile over a folder", live(DragKey::Tile(pane), 300.0), Some(Target::Folder(FolderId(3))), edge, Dropped::Nothing),
+            ("a tile over the Favourites", live(DragKey::Tile(pane), 50.0), Some(Target::Favourites), edge, Dropped::Nothing),
             ("a tile when the sidebar is not measured", live(DragKey::Tile(pane), 300.0), None, None, Dropped::Nothing),
-            ("a press that never became a drag", DragPhase::Pending { key: DragKey::Tab(a), from: Point { x: Px(0.0), y: Px(0.0) } }, Some(b), edge, Dropped::Nothing),
+            ("a press that never became a drag", DragPhase::Pending { key: DragKey::Tab(a), from: Point { x: Px(0.0), y: Px(0.0) } }, Some(Target::Tab(b)), edge, Dropped::Nothing),
         ];
         for (name, phase, over, edge, want) in rows {
             assert_eq!(resolve(phase, *over, *edge, |_| false), *want, "{name}");
@@ -235,19 +297,29 @@ mod tests {
         let edge = Some(Px(200.0));
         #[rustfmt::skip]
         let rows: &[(&str, TabId, TabId, Dropped)] = &[
-            ("a pinned tile on another", p, q, Dropped::Place { from: p, onto: q }),
-            ("a pinned tile on a row", p, l, Dropped::Unpin { from: p, onto: l }),
-            ("a row on a pinned tile", l, q, Dropped::Pin { from: l, onto: q }),
+            ("a pinned row on another", p, q, Dropped::Place { from: p, onto: q }),
+            ("a pinned row on a loose one", p, l, Dropped::Unpin { from: p, onto: l }),
+            ("a loose row on a pinned one", l, q, Dropped::Pin { from: l, onto: q }),
             ("a row on a row", l, m, Dropped::Join { from: l, onto: m }),
         ];
+        let folder = live(DragKey::Tab(p), 50.0);
+        assert_eq!(
+            resolve(&folder, Some(Target::Folder(FolderId(1))), edge, pinned),
+            Dropped::Nothing,
+            "a pinned row on a folder"
+        );
         for (name, from, onto, want) in rows {
             let phase = live(DragKey::Tab(*from), 50.0);
-            assert_eq!(resolve(&phase, Some(*onto), edge, pinned), *want, "{name}");
+            assert_eq!(
+                resolve(&phase, Some(Target::Tab(*onto)), edge, pinned),
+                *want,
+                "{name}"
+            );
         }
     }
 
     #[test]
-    fn the_row_under_a_point_is_found_and_a_row_that_left_is_forgotten() {
+    fn what_is_under_a_point_is_found_and_what_left_is_forgotten() {
         let rects = RowRects::default();
         let rect = |top: f32| Rect {
             origin: Point {
@@ -265,10 +337,18 @@ mod tests {
             x: Px(5.0),
             y: Px(y),
         };
-        assert_eq!(rects.at(at(5.0)), Some(TabId(1)));
-        assert_eq!(rects.at(at(20.0)), Some(TabId(2)));
+        assert_eq!(rects.at(at(5.0)), Some(Target::Tab(TabId(1))));
+        assert_eq!(rects.at(at(20.0)), Some(Target::Tab(TabId(2))));
         assert_eq!(rects.at(at(45.0)), None);
         rects.forget(TabId(2));
         assert_eq!(rects.at(at(25.0)), None);
+        rects.set_favourites(Some(rect(40.0)));
+        assert_eq!(rects.at(at(45.0)), Some(Target::Favourites));
+        rects.set_favourites(None);
+        assert_eq!(rects.at(at(45.0)), None);
+        rects.set_folder(FolderId(1), rect(60.0));
+        assert_eq!(rects.at(at(65.0)), Some(Target::Folder(FolderId(1))));
+        rects.forget_folder(FolderId(1));
+        assert_eq!(rects.at(at(65.0)), None);
     }
 }

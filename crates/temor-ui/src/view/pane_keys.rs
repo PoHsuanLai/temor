@@ -10,8 +10,8 @@ use ds::edit::input::EditInput;
 use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::focus::request::FocusRequest;
 use ds::host::measure::RectProbe;
-use temor_core::vocab::ids::PaneId;
-use temor_vt::Ime;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::vt::Ime;
 
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};

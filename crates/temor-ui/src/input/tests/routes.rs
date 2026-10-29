@@ -2,8 +2,8 @@
 
 use chordkit::Platform;
 use dioxus::html::{Code, Key, Modifiers as Held};
-use temor_pane::keys::Action;
-use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::super::keys::is_altgr_text;
 use super::super::route::{FindBar, KittyKeys, Routed, Stroke, route};

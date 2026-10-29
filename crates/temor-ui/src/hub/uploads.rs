@@ -1,18 +1,18 @@
 //! Files dropped on a pane that runs on another computer (PLAN §9, §9b): each regular file is
 //! copied into the pane's folder there, through the computer's helper when it has one and with
 //! `scp` otherwise, and never over a file of the same name. The shelf lists them while they go
-//! (`temor_core::shelf::upload_step`). A folder is not sent: it says so.
+//! (`temor_client::model::shelf::upload_step`). A folder is not sent: it says so.
 
 use std::path::{Path, PathBuf};
 
-use temor_core::shelf::{UploadFault, UploadId, UploadIn, upload_step};
-use temor_core::vocab::ids::{Bytes, PaneId};
-use temor_ssh::{HostAlias, RemoteFilePath};
-use temor_wire::message::RemotePath;
+use temor_client::model::shelf::{UploadFault, UploadId, UploadIn, upload_step};
+use temor_client::model::vocab::ids::{Bytes, PaneId};
+use temor_client::remote::message::RemotePath;
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
-use super::remote_edit::EditTier;
-use crate::edge::upload_work::UploadJobs;
+use temor_client::remote::edit_way::EditTier;
+use temor_client::remote::upload::UploadJobs;
 
 /// One file to send, with where it goes.
 struct Item {
@@ -58,7 +58,7 @@ impl Hub {
         let Some(host) = self.alias_of(pane) else {
             return Vec::new();
         };
-        let Some(folder) = self.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {
+        let Some(folder) = self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {
             return vec!["temor doesn't know this pane's folder yet".to_owned()];
         };
         let tier = match self.edit_tier(&host) {

@@ -34,7 +34,11 @@ fn command_click(h: &mut Harness, at: Point) {
 
 /// A window whose shell has listed `a.txt` and `b.txt`, two files in its folder.
 pub fn listed(name: &str, probe: &Probe) -> Harness {
-    let mut h = harness(name, probe);
+    list_in(harness(name, probe), name, probe)
+}
+
+/// `h`, its shell having listed `a.txt` and `b.txt`, two files in its folder.
+fn list_in(mut h: Harness, name: &str, probe: &Probe) -> Harness {
     let home = scratch_path(name).join("home");
     for file in ["a.txt", "b.txt"] {
         std::fs::write(home.join(file), format!("{file} says hello\n")).expect("scratch file");
@@ -120,4 +124,175 @@ fn escape_gives_the_keyboard_back_to_the_terminal() {
         s.lines().any(|l| l.trim_end() == "found")
     });
     assert_eq!(viewers(&h), 1);
+}
+
+#[test]
+fn the_page_bar_names_the_file_and_hides_the_console_and_closes_the_page() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = listed("viewer-stage", &probe);
+    open_by_clicking(&mut h);
+    let html = h.html();
+    assert!(html.contains("temor-page-name"), "{html}");
+    assert!(
+        html.contains(">a.txt<") || html.contains(">b.txt<"),
+        "the bar names the page: {html}"
+    );
+    super::drive::press(&mut h, ".temor-page-tool [aria-label=\"Console\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (0, 1), "the page alone");
+    super::drive::press(&mut h, ".temor-page-tool [aria-label=\"Console\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (1, 1), "the console is back");
+    super::drive::press(&mut h, ".temor-page-bar [aria-label=\"Close Page\"]");
+    assert_eq!((terminals(&h), viewers(&h)), (1, 0), "{}", h.html());
+    // Back opens the closed page again.
+    chord(&mut h, '[');
+    assert_eq!((terminals(&h), viewers(&h)), (1, 1), "{}", h.html());
+}
+
+/// ⌘-click on a folder the shell printed opens the folder's page: the tab open in it, then its
+/// folders and files. A folder opens its own page, Back returns, and a file opens in the viewer.
+#[test]
+fn command_click_on_a_folder_opens_its_page_and_walks_into_it() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::{press, wait_html};
+    let name = "viewer-folder";
+    let probe = Probe::new();
+    let mut h = harness(name, &probe);
+    let proj = scratch_path(name).join("home").join("proj");
+    std::fs::create_dir_all(proj.join("src")).expect("scratch folder");
+    std::fs::write(proj.join("notes.txt"), "notes\n").expect("scratch file");
+    std::fs::write(proj.join("src").join("deep.txt"), "deep\n").expect("scratch file");
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "cd proj && echo \"$PWD\"");
+    wait_until(&mut h, &probe, "the folder", |s| {
+        s.lines().any(|l| l.trim_end().ends_with("/proj"))
+    });
+    let mut y = 14.0;
+    while !h.html().contains("temor-folder") && y < 320.0 {
+        command_click(
+            &mut h,
+            Point {
+                x: Px(272.0),
+                y: Px(y),
+            },
+        );
+        y += 4.0;
+    }
+    wait_html(&mut h, "the folder's page", |html| {
+        html.contains("Tabs Here") && html.contains(">src<") && html.contains(">notes.txt<")
+    });
+    assert!(
+        h.html().contains("class=\"temor-page-name\">proj<"),
+        "the bar names the folder: {}",
+        h.html()
+    );
+    let files = ".temor-folder > .temor-history-day:last-child .temor-history-list";
+    press(&mut h, &format!("{files} > :first-child"));
+    wait_html(&mut h, "the subfolder's page", |html| {
+        html.contains(">deep.txt<") && !html.contains("Tabs Here")
+    });
+    chord(&mut h, '[');
+    wait_html(&mut h, "the folder again", |html| {
+        html.contains(">notes.txt<")
+    });
+    press(&mut h, &format!("{files} > :last-child"));
+    wait_html(&mut h, "the file in the viewer", |html| {
+        html.contains("aria-label=\"File viewer\"") && html.contains(">notes.txt<")
+    });
+}
+
+/// The address under the sidebar's head names the shell's folder; a folder in it opens that
+/// folder's page, the address follows the page, and Back in the head returns.
+#[test]
+fn a_folder_in_the_address_opens_its_page_and_back_returns() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::{press, wait_html};
+    let name = "viewer-address";
+    let probe = Probe::new();
+    let mut h = harness(name, &probe);
+    let proj = scratch_path(name).join("home").join("proj");
+    std::fs::create_dir_all(proj.join("src")).expect("scratch folder");
+    std::fs::write(proj.join("notes.txt"), "notes\n").expect("scratch file");
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "cd proj/src && echo \"$PWD\"");
+    let crumbs = ".temor-address .ds-path-segment";
+    wait_html(&mut h, "the shell's folder", |html| {
+        html.contains("class=\"ds-path-name ds-truncate\">src<")
+    });
+    let names = |h: &Harness| -> Vec<String> {
+        (1..=3)
+            .filter_map(|at| h.text_of(&format!("{crumbs}:nth-of-type({at})")))
+            .map(|name| name.trim().to_owned())
+            .collect()
+    };
+    assert_eq!(names(&h), ["~", "proj", "src"]);
+    press(&mut h, &format!("{crumbs}:nth-of-type(2)"));
+    wait_html(&mut h, "the folder's page", |html| {
+        html.contains(">notes.txt<")
+    });
+    assert_eq!(names(&h), ["~", "proj"], "the address follows the page");
+    press(&mut h, &format!("{crumbs}:nth-of-type(1)"));
+    wait_html(&mut h, "the home folder's page", |html| {
+        html.contains("class=\"temor-page-name\">home<")
+    });
+    press(&mut h, ".temor-walk > :first-child");
+    wait_html(&mut h, "the folder again", |html| {
+        html.contains(">notes.txt<")
+    });
+}
+
+/// What a test's Pop Out was asked to open.
+#[derive(Default)]
+struct PoppedOut(std::sync::Mutex<Vec<std::path::PathBuf>>);
+
+impl temor_ui::view::pop_out::OpenPopOut for PoppedOut {
+    fn open(&self, file: &std::path::Path) {
+        self.0.lock().expect("the list").push(file.to_owned());
+    }
+}
+
+/// The page bar's Pop Out takes the file off the row's stage for a window of its own; Back brings
+/// it back to the stage.
+#[test]
+fn pop_out_moves_the_page_to_a_window_of_its_own() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::press;
+    let name = "viewer-pop-out";
+    let probe = Probe::new();
+    let popped = std::sync::Arc::new(PoppedOut::default());
+    let h = super::window::harness_building(
+        name,
+        &probe,
+        None,
+        |_| {},
+        ds_harness::WindowHosting::Absent,
+        {
+            let popped = popped.clone();
+            move |config| config.with_context(temor_ui::view::pop_out::PopOutWindows(popped))
+        },
+    );
+    let mut h = list_in(h, name, &probe);
+    open_by_clicking(&mut h);
+    press(&mut h, ".temor-page-bar [aria-label=\"Pop Out\"]");
+    h.advance(Duration::from_millis(200));
+    let asked = popped.0.lock().expect("the list").clone();
+    assert_eq!(asked.len(), 1, "one window asked for");
+    assert!(
+        asked[0].ends_with("a.txt") || asked[0].ends_with("b.txt"),
+        "{asked:?}"
+    );
+    assert_eq!(viewers(&h), 0, "the page left the stage");
+    chord(&mut h, '[');
+    h.advance(Duration::from_millis(300));
+    assert_eq!(viewers(&h), 1, "Back brings it back");
 }

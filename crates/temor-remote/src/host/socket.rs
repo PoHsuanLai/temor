@@ -15,7 +15,9 @@ use crate::platform::ensure_private_dir;
 pub(super) struct SocketSpot {
     /// Who this helper is.
     pub(super) helper: HelperVersion,
-    /// The private folder the socket is in, made if it was not there.
+    /// The private folder the socket is in, made if it was not there (the daemon's lock lives
+    /// there).
+    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(super) dir: PathBuf,
     /// The socket's path.
     pub(super) socket: PathBuf,

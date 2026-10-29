@@ -1,0 +1,23 @@
+[package]
+name = "temor-store"
+description = "Where temor's data is kept: SQLite in WAL mode with FTS5, one writer, readers beside it, and a word to listeners when a commit is visible."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+temor-schema = { workspace = true }
+# `hooks`: the writer's commit hook, which is how the store knows a write committed and says so
+# (`changes`).
+rusqlite = { workspace = true }
+bitflags = { workspace = true }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

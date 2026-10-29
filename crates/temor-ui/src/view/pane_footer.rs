@@ -6,8 +6,8 @@ use std::rc::Rc;
 
 use dioxus::prelude::*;
 use ds::prelude::*;
-use temor_core::vocab::ids::PaneId;
-use temor_pane::paste::UnsafeReason;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::paste::UnsafeReason;
 
 use super::blocks::Chrome;
 use super::confirm::PasteConfirm;

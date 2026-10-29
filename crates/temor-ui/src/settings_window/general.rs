@@ -12,7 +12,7 @@ use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use ds_settings::schema::KeySpec;
 use ds_settings_page::{SectionRows, SettingEdit, SettingsPage};
-use temor_pane::keys::SettingsPane;
+use temor_panes::pane::keys::SettingsPane;
 
 use super::edit::{save_edit, values_of};
 use super::own_rows::OwnRow;

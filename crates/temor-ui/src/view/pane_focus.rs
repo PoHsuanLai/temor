@@ -10,9 +10,9 @@ use ds::edit::input::EditInput;
 use ds::edit::pointer::EditFocus;
 use ds::host::ime::ImeEvent;
 use ds::host::measure::RectProbe;
-use temor_core::notify::Focus;
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::notify::Focus;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::ime::{ImeGlue, focus_handler};
 use super::slot::Slot;

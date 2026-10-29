@@ -1,7 +1,7 @@
 //! What the host views say, in plain words (no jargon): the questions before a first connection,
 //! the state of the connection, and what to do about a file that changed on the computer.
 
-use temor_core::host::consent::BootstrapAction;
+use temor_client::model::host::consent::BootstrapAction;
 
 use crate::hub::{EditStatus, Stage};
 
@@ -143,7 +143,7 @@ pub fn forward_line(host: &str, remote: u16, local: Option<u16>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use temor_core::host::consent::BootstrapAction;
+    use temor_client::model::host::consent::BootstrapAction;
 
     use super::*;
     use crate::hub::{EditStatus, Stage};

@@ -57,9 +57,15 @@ impl Action {
             | Self::PinTab
             | Self::UnpinTab
             | Self::ShowDownloads
-            | Self::DetachProgram
             | Self::Settings
             | Self::SettingsAt(_)
+            | Self::Back
+            | Self::Forward
+            | Self::History
+            | Self::PopOut
+            | Self::ShowStage
+            | Self::ShowConsole
+            | Self::ShowStageAndConsole
             | Self::SelectSpace(_) => Owner::Window,
         }
     }
@@ -106,9 +112,15 @@ impl Action {
             Self::PinTab => "Pin Tab",
             Self::UnpinTab => "Unpin Tab",
             Self::ShowDownloads => "Downloads",
-            Self::DetachProgram => "Detach Running Program",
             Self::Settings => "Settings",
             Self::SettingsAt(pane) => pane.row_label(),
+            Self::Back => "Back",
+            Self::Forward => "Forward",
+            Self::History => "Show History",
+            Self::PopOut => "Pop Out",
+            Self::ShowStage => "Show Page Only",
+            Self::ShowConsole => "Show Console Only",
+            Self::ShowStageAndConsole => "Show Page and Console",
             Self::SelectTab(_) => "Select Tab",
             Self::SelectSpace(_) => "Select Space",
         }

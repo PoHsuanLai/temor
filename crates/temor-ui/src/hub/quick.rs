@@ -5,10 +5,10 @@
 //! window's.
 
 use ds::style::space::list::SpaceId;
-use temor_core::quick::{QuickIn, QuickOut, QuickState, quick_step};
-use temor_core::vocab::ids::{PaneId, TabId};
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::{Spawn, Start};
+use temor_client::model::quick::{QuickIn, QuickOut, QuickState, quick_step};
+use temor_client::model::vocab::ids::{PaneId, TabId};
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::{Spawn, Start};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -48,7 +48,7 @@ impl Hub {
         };
         let cwd = self
             .keyboard_pane()
-            .and_then(|front| self.ws.cwds.get(&front).cloned());
+            .and_then(|front| self.book.ws.cwds.get(&front).cloned());
         self.quick_input(QuickIn::Toggle { pane, cwd });
     }
 
@@ -78,9 +78,9 @@ impl Hub {
 
     /// The next pane id, from the counter every pane takes its id from.
     fn mint_pane(&mut self) -> Option<PaneId> {
-        let next = self.ws.next_pane.checked_add(1)?;
-        let pane = PaneId(self.ws.next_pane);
-        self.ws.next_pane = next;
+        let next = self.book.ws.next_pane.checked_add(1)?;
+        let pane = PaneId(self.book.ws.next_pane);
+        self.book.ws.next_pane = next;
         Some(pane)
     }
 

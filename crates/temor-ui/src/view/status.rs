@@ -2,13 +2,12 @@
 //! status strip: the folder is in the card header and the tab's row, the title in the window's.
 
 use dioxus::prelude::*;
-use ds::components::content::label::LabelStyle;
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
 use ds::components::overlays::tooltip::Tooltip;
 use ds::prelude::*;
-use temor_vt::{Progress, ProgressState};
+use temor_panes::vt::{Progress, ProgressState};
 
 use super::names::named;
 
@@ -43,23 +42,21 @@ pub fn progress_line(progress: Progress) -> Option<ProgressLine> {
 #[component]
 #[allow(non_snake_case)]
 pub fn PaneEdge(progress: Option<ProgressLine>, bell: bool) -> Element {
-    if progress.is_none() && !bell {
+    let share = match progress {
+        Some(ProgressLine::Share(percent)) => Some(percent),
+        _ => None,
+    };
+    if share.is_none() && !bell {
         return rsx! {};
     }
     rsx! {
         div { class: "temor-edge",
-            if let Some(ProgressLine::Share(percent)) = progress {
+            if let Some(percent) = share {
                 ProgressIndicator {
                     style: ProgressStyle::Bar,
                     progress: Share::Known(Fraction(u16::from(percent) * 10)),
                     common: named("Progress"),
                 }
-            }
-            if progress == Some(ProgressLine::Busy) {
-                Label { text: "Working", style: LabelStyle::Footnote }
-            }
-            if progress == Some(ProgressLine::Failed) {
-                Label { text: "Failed", style: LabelStyle::Footnote }
             }
             if bell {
                 Tooltip { text: "The bell rang", shown: None,

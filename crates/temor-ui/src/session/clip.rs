@@ -1,7 +1,7 @@
 //! Copy and paste (PLAN §6): copy writes the selection's text; paste frames the clipboard for
 //! the program, and asks the person first when the text is unsafe to paste as it is.
 
-use temor_pane::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
+use temor_panes::pane::paste::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
 
 use super::Session;
 use crate::error::UiError;
@@ -84,8 +84,8 @@ impl Session {
 /// newlines turned to spaces is exactly that rule.
 fn vt_verdict(text: &str, mode: PasteMode) -> VtVerdict {
     let safe = match mode {
-        PasteMode::Bracketed => temor_vt::paste_is_safe(text.replace('\n', " ").as_bytes()),
-        PasteMode::Plain => temor_vt::paste_is_safe(text.as_bytes()),
+        PasteMode::Bracketed => temor_panes::vt::paste_is_safe(text.replace('\n', " ").as_bytes()),
+        PasteMode::Plain => temor_panes::vt::paste_is_safe(text.as_bytes()),
     };
     match safe {
         true => VtVerdict::Clean,

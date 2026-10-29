@@ -211,7 +211,6 @@ fn reply_samples() -> Vec<Reply> {
         Reply::Watching { watch: WatchId(1) },
         Reply::Facts(FolderFacts {
             dir: path(),
-            git: None,
             venv: None,
             home: None,
             root: None,

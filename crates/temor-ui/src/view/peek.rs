@@ -12,8 +12,8 @@ use ds::base::time::clock::sleep;
 use ds::edit::raw_key::RawKey;
 use ds::host::measure::{RectProbe, use_rect};
 use ds::host::signals::HostSignals;
-use temor_core::vocab::ids::PaneId;
-use temor_vt::SurfacePoint;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::vt::SurfacePoint;
 
 use super::peek_card::PeekCard;
 use super::peek_keys::{KeySays, says};

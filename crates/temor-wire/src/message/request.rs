@@ -105,7 +105,7 @@ pub enum Request {
         /// The watch.
         watch: WatchId,
     },
-    /// Read a session's folder for the chips (git, version files). Replies
+    /// Read a session's folder for its facts (the version files). Replies
     /// [`Reply::Facts`](super::Reply::Facts). Needs the `Facts` capability.
     Facts {
         /// The session whose folder is read.

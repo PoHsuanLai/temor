@@ -5,8 +5,8 @@ use std::sync::Arc;
 use temor_ssh::{NodeId, Presence, TailnetHost, TailnetOwner, TailscaleSsh};
 
 use super::support::Rig;
-use crate::edge::desktop_feed::TailnetFeed;
 use crate::hub::hosts::HostRows;
+use temor_client::desktop::feed::TailnetFeed;
 
 #[derive(Debug)]
 struct Fixed(Vec<TailnetHost>);
@@ -81,8 +81,8 @@ fn the_list_has_each_machine_once_grouped_with_offline_ones_dimmed() {
 
 #[test]
 fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
-    use crate::hub::ssh_view::Stage;
-    use temor_core::host::consent::BootstrapAction;
+    use temor_client::model::host::consent::BootstrapAction;
+    use temor_client::ssh::view::Stage;
 
     let Some(mut rig) = Rig::new("offline") else {
         return;
@@ -112,9 +112,9 @@ fn an_offline_machine_says_so_and_connects_only_on_try_anyway() {
 
 #[test]
 fn what_a_host_may_do_here_is_remembered_per_host() {
-    use temor_core::host::consent::Permit;
-    use temor_core::remote::Grant;
-    use temor_ssh::HostAlias;
+    use temor_client::model::host::consent::Permit;
+    use temor_client::model::remote::Grant;
+    use temor_client::ssh::HostAlias;
 
     let Some(mut rig) = Rig::new("permits") else {
         return;

@@ -4,9 +4,11 @@
 
 use std::path::PathBuf;
 
-use temor_core::shelf::{DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action};
-use temor_pane::paste;
-use temor_vt::ViewportScroll;
+use temor_client::model::shelf::{
+    DropAction, Dropped, PaneSite, Quoting, ReceiveSupport, drop_action,
+};
+use temor_panes::pane::paste;
+use temor_panes::vt::ViewportScroll;
 
 use super::Session;
 use super::osc52::Copied;
@@ -15,17 +17,17 @@ use crate::words::notices;
 impl Session {
     /// Says how the pane's shell quotes a word (from the shell the pane runs).
     pub fn set_quoting(&mut self, quoting: Quoting) {
-        self.quoting = quoting;
+        self.core().quoting = quoting;
     }
 
     /// Says whether the pane's shell runs on this computer or on another.
     pub fn set_site(&mut self, site: PaneSite) {
-        self.site = site;
+        self.core().site = site;
     }
 
     /// Whether the pane's shell runs on this computer or on another.
     pub fn site(&self) -> PaneSite {
-        self.site
+        self.core().site
     }
 
     /// Carries out a drop: the quoted paths are pasted, or the person is told why not.
@@ -38,12 +40,16 @@ impl Session {
             self.notice = Some("That file's name can't be typed into a terminal".to_owned());
             return;
         }
+        let (site, quoting) = {
+            let core = self.core();
+            (core.site, core.quoting)
+        };
         let dropped = Dropped {
             paths: words,
             // No program here has said it takes files; the paths are typed instead.
             support: ReceiveSupport::Unknown,
-            site: self.site,
-            quoting: self.quoting,
+            site,
+            quoting,
         };
         match drop_action(&dropped) {
             DropAction::Paste(text) => {

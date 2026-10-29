@@ -8,7 +8,7 @@ use std::time::Duration;
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
 use ds_blitz::{PixelFormat, Pixels, TextureHandle};
-use temor_render::{Palette, PixelSize, Scale};
+use temor_panes::render::{Palette, PixelSize, Scale};
 
 use super::block_list::tiles::Tiles;
 use super::probe::Probe;

@@ -4,7 +4,6 @@
 
 mod blink;
 mod block_list;
-mod blocks;
 mod clip;
 mod clipboard;
 mod composer;
@@ -36,6 +35,7 @@ pub use find::{FindStep, QUERY_DEBOUNCE};
 pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::{LinkHover, LinkTipSpot};
 pub use list_hit::{ListMap, ListSpan, Toward};
+pub use marks::Finished;
 pub use marks::desktop_note;
 pub use model::{
     Drag, FedParts, INSET, Notice, PADDING_LOGICAL, Session, SessionKit, SessionParts,
@@ -44,5 +44,4 @@ pub use osc52::{ClipboardAsk, ClipboardUse};
 pub use pointer::WheelDirection;
 pub use room::{LENS_MOST_ROWS, Placed, Relaid};
 pub use running::Running;
-pub use temor_core::session::HeaderFacts;
 pub use viewer::ViewAsk;

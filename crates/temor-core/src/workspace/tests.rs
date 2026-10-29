@@ -32,10 +32,7 @@ fn fixture() -> TabsState {
             tab(3, Pin::Loose, Some(1)),
             tab(4, Pin::Loose, None),
         ],
-        folders: vec![Folder {
-            id: FolderId(1),
-            title: TabTitle("Work".into()),
-        }],
+        folders: vec![Folder::new(FolderId(1), TabTitle("Work".into()), None)],
         focused: Some(TabId(3)),
         viewers: vec![],
         cwds: vec![],
@@ -55,10 +52,7 @@ fn sidebar_order_is_pinned_then_folders_then_the_rest() {
         SidebarPlan {
             pinned: ids(&[2]),
             folders: vec![(
-                Folder {
-                    id: FolderId(1),
-                    title: TabTitle("Work".into())
-                },
+                Folder::new(FolderId(1), TabTitle("Work".into()), None),
                 ids(&[3]),
             )],
             loose: ids(&[1, 4]),
@@ -150,6 +144,7 @@ fn new_folders_take_the_next_id() {
         fixture(),
         TabsIn::NewFolder {
             title: TabTitle("Ops".into()),
+            parent: None,
         },
     );
     assert_eq!(outs, vec![TabsOut::Created(FolderId(2))]);
@@ -222,4 +217,108 @@ fn placing_a_tab_moves_it_to_where_the_other_stands() {
         },
     );
     assert_eq!(out, vec![TabsOut::Refused(TabRefusal::NoSuchTab(TabId(9)))]);
+}
+
+/// "Work" with "Ops" in it: t3 in Work, t1 in Ops.
+fn nested() -> TabsState {
+    let (state, _) = tabs_step(
+        fixture(),
+        TabsIn::NewFolder {
+            title: TabTitle("Ops".into()),
+            parent: Some(FolderId(1)),
+        },
+    );
+    let (state, _) = tabs_step(
+        state,
+        TabsIn::MoveToFolder {
+            tab: TabId(1),
+            folder: Some(FolderId(2)),
+        },
+    );
+    state
+}
+
+#[test]
+fn a_folder_in_a_folder_follows_its_tabs_and_the_keys_count_along() {
+    let state = nested();
+    let plan = sidebar_plan(&state);
+    let listed: Vec<(u64, Option<u64>, Vec<TabId>)> = plan
+        .folders
+        .iter()
+        .map(|(folder, tabs)| (folder.id.0, folder.parent.map(|p| p.0), tabs.clone()))
+        .collect();
+    assert_eq!(listed, [(1, None, ids(&[3])), (2, Some(1), ids(&[1]))]);
+    assert_eq!(order(&state), ids(&[2, 3, 1, 4]));
+}
+
+#[test]
+fn a_new_folder_in_a_folder_that_is_not_there_is_refused() {
+    let (_, outs) = tabs_step(
+        fixture(),
+        TabsIn::NewFolder {
+            title: TabTitle("x".into()),
+            parent: Some(FolderId(9)),
+        },
+    );
+    assert_eq!(
+        outs,
+        [TabsOut::Refused(TabRefusal::NoSuchFolder(FolderId(9)))]
+    );
+}
+
+#[test]
+fn a_folder_is_renamed_closed_and_opened() {
+    let (state, _) = tabs_step(
+        fixture(),
+        TabsIn::RenameFolder {
+            folder: FolderId(1),
+            title: TabTitle("Servers".into()),
+        },
+    );
+    let (state, _) = tabs_step(
+        state,
+        TabsIn::OpenFolder {
+            folder: FolderId(1),
+            open: false,
+        },
+    );
+    let folder = state.folder(FolderId(1)).expect("the folder");
+    assert_eq!((folder.title.0.as_str(), folder.open), ("Servers", false));
+}
+
+#[test]
+fn a_folder_taken_away_leaves_what_it_held_to_the_folder_it_was_in() {
+    let (state, outs) = tabs_step(nested(), TabsIn::RemoveFolder(FolderId(1)));
+    assert!(outs.is_empty());
+    assert_eq!(state.tab(TabId(3)).and_then(|t| t.folder), None);
+    assert_eq!(state.folder(FolderId(2)).and_then(|f| f.parent), None);
+    assert_eq!(order(&state), ids(&[2, 1, 3, 4]));
+}
+
+#[test]
+fn a_folder_in_a_loop_or_under_a_lost_folder_stands_at_the_top() {
+    let mut state = fixture();
+    state.place.folders = vec![
+        Folder::new(FolderId(1), TabTitle("a".into()), Some(FolderId(2))),
+        Folder::new(FolderId(2), TabTitle("b".into()), Some(FolderId(1))),
+        Folder::new(FolderId(3), TabTitle("c".into()), Some(FolderId(7))),
+    ];
+    let listed: Vec<(u64, Option<u64>)> = sidebar_plan(&state)
+        .folders
+        .iter()
+        .map(|(folder, _)| (folder.id.0, folder.parent.map(|p| p.0)))
+        .collect();
+    assert_eq!(listed, [(3, None), (1, None), (2, Some(1))]);
+}
+
+#[test]
+fn an_open_folder_keeps_the_file_as_it_was_and_a_closed_one_says_so() {
+    let open = serde_json::to_string(&Folder::new(FolderId(1), TabTitle("w".into()), None))
+        .expect("written");
+    assert!(!open.contains("open") && !open.contains("parent"), "{open}");
+    let closed: Folder =
+        serde_json::from_str(r#"{"id":1,"title":"w","parent":2,"open":false}"#).expect("read");
+    assert_eq!((closed.parent, closed.open), (Some(FolderId(2)), false));
+    let old: Folder = serde_json::from_str(r#"{"id":1,"title":"w"}"#).expect("read");
+    assert!(old.open);
 }

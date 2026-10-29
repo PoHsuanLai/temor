@@ -4,9 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use temor_core::host::consent::{ConsentBook, ConsentIn, Who, consent_step};
-use temor_core::remote::Grant;
-use temor_ssh::HostAlias;
+use temor_client::model::host::consent::{ConsentBook, ConsentIn, Who, consent_step};
+use temor_client::model::remote::Grant;
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 

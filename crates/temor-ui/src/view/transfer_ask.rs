@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 use ds::base::press::Press;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_transfer::Consent;
+use temor_client::shelf::transfer::Consent;
 
 use crate::hub::Desk;
 

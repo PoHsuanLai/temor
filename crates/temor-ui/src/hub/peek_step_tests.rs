@@ -142,7 +142,7 @@ fn show_and_hide_decisions() {
 
 #[test]
 fn command_is_the_click_chord() {
-    use temor_vt::Modifiers;
+    use temor_panes::vt::Modifiers;
     let both = Modifiers::CTRL.with(Modifiers::SHIFT);
     let table = [
         (Modifiers::NONE, Command::Up),

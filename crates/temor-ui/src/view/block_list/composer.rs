@@ -105,6 +105,8 @@ pub struct ComposerActions {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ChoicesView {
     pub words: Vec<String>,
+    /// What each says about itself, in the same order (shorter than the words when none do).
+    pub details: Vec<Option<String>>,
     pub picked: usize,
 }
 
@@ -142,7 +144,6 @@ pub fn ComposerCard(
     /// The grid's family as CSS: a command reads as it will be run.
     font: String,
     text: String,
-    folder: Option<String>,
     selection: bool,
     focus: FocusRequest,
     take: bool,
@@ -257,9 +258,6 @@ pub fn ComposerCard(
                 ChoiceList { choices, font: font.clone(), take: take_word }
             }
             div { class: "temor-blk-line",
-            if let Some(folder) = folder {
-                span { class: "temor-blk-where", "{folder}" }
-            }
             div { class: "temor-blk-field", style: "{font}",
                 TextField {
                     label: "Command".to_owned(),
@@ -304,6 +302,9 @@ fn ChoiceList(choices: ChoicesView, font: String, take: EventHandler<Option<usiz
                         take.call(Some(index));
                     },
                     "{choices.words[index]}"
+                    if let Some(Some(detail)) = choices.details.get(index) {
+                        span { class: "temor-blk-choice-note", "{detail}" }
+                    }
                 }
             }
             if more > 0 {

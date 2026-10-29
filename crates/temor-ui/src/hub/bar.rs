@@ -4,11 +4,14 @@
 
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use temor_client::model::stage::Layout;
 
 use ds::window::vocab::PageZoom;
-use temor_core::bar::{BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates};
-use temor_core::vocab::text::{CommandText, HostAlias};
-use temor_pane::keys::Action;
+use temor_client::model::bar::{
+    BarContext, BarRow, Candidate, RowKey, Sources, Visits, candidates,
+};
+use temor_client::model::vocab::text::{CommandText, HostAlias};
+use temor_panes::pane::keys::Action;
 
 use super::desk::Desk;
 use super::dispatch::Origin;
@@ -70,25 +73,23 @@ impl Hub {
             .collect();
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
-        let directories = directory_uses(&self.bar.visits, self.ws.cwds.values(), now);
-        // Pin Tab or Unpin Tab, whichever the tab in front can take; Detach only where it works.
+        let directories = directory_uses(&self.bar.visits, self.book.ws.cwds.values(), now);
+        // Pin Tab or Unpin Tab, whichever the tab in front can take.
         let pinned = self.front_pinned();
-        let detach = self.can_detach_focused();
         let actions: Vec<Action> = BAR_ACTIONS
             .iter()
             .copied()
             .filter(|action| match action {
                 Action::PinTab => pinned == Some(false),
                 Action::UnpinTab => pinned == Some(true),
-                Action::DetachProgram => detach,
                 _ => true,
             })
             .collect();
         let sources = Sources {
             actions: &actions,
             spaces: &spaces,
-            tabs: &self.ws.tabs.place.tabs,
-            folders: &self.ws.tabs.place.folders,
+            tabs: &self.book.ws.tabs.place.tabs,
+            folders: &self.book.ws.tabs.place.folders,
             hosts: &hosts,
             layouts: &[],
             recent: &recent,
@@ -96,7 +97,7 @@ impl Hub {
             now,
         };
         let mut all = candidates(&sources);
-        all.extend(closed_candidate(&self.ws.closed));
+        all.extend(closed_candidate(&self.book.ws.closed));
         all.extend(self.local_tab_candidate());
         all
     }
@@ -205,7 +206,7 @@ impl HubRef {
     }
 
     /// The Spaces a quick terminal can be moved to.
-    pub fn bar_spaces(&self) -> Vec<temor_core::bar::SpaceEntry> {
+    pub fn bar_spaces(&self) -> Vec<temor_client::model::bar::SpaceEntry> {
         self.0.borrow().bar.seams.spaces.spaces()
     }
 }
@@ -267,19 +268,20 @@ impl Desk {
             Action::OpenBar => self.bar_toggle(),
             Action::ToggleQuick => self.quick_toggle(),
             Action::ToggleSidebar => self.sidebar_toggle(),
-            Action::ShowDownloads => self.shelf_toggle(),
-            Action::DetachProgram => {
-                let pane = self.hub.keyboard_pane();
-                if let Some(pane) = pane {
-                    self.settle(|hub| hub.detach_block(pane));
-                }
-            }
+            Action::ShowDownloads => self.open_downloads(),
             Action::Settings => crate::settings_window::open(),
             Action::SettingsAt(pane) => crate::settings_window::open_at(pane),
             Action::ZoomIn => self.window.page_zoom(PageZoom::Bigger),
             Action::ZoomOut => self.window.page_zoom(PageZoom::Smaller),
             Action::ActualSize => self.window.page_zoom(PageZoom::ActualSize),
             Action::JumpToWaiting => self.jump_to_waiting(),
+            Action::Back => self.go_back(),
+            Action::Forward => self.go_forward(),
+            Action::History => self.open_history(),
+            Action::PopOut => self.pop_out(),
+            Action::ShowStage => self.set_layout(Layout::Stage),
+            Action::ShowConsole => self.set_layout(Layout::Console),
+            Action::ShowStageAndConsole => self.set_layout(Layout::Both),
             Action::SelectSpace(number) => self.switch_to_number(number),
             Action::PinTab | Action::UnpinTab => {
                 let input = self.hub.0.borrow().pin_input(action);

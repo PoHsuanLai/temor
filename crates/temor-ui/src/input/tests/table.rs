@@ -4,8 +4,8 @@
 use chordkit::{Desktop, Keymap, Overrides, Platform};
 use dioxus::html::{Code, Key, Location, Modifiers as Held};
 use ds::edit::raw_key::{KeyPhase, RawKey};
-use temor_pane::keys::Action;
-use temor_vt::Ime;
+use temor_panes::pane::keys::Action;
+use temor_panes::vt::Ime;
 
 use super::super::keys::stroke;
 use super::super::route::{FindBar, KittyKeys, Routed, route_with};

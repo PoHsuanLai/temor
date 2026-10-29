@@ -1,7 +1,7 @@
 //! What the Downloads list says about each thing a person can do with a file: one label for the
 //! button, the menu item and the hover on its own, and the hover hint.
 
-use temor_core::shelf::RowAction as Act;
+use temor_client::model::shelf::RowAction as Act;
 
 use crate::hub::PaneTarget;
 

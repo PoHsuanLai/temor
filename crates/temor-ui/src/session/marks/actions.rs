@@ -4,12 +4,12 @@
 use std::io::Write;
 use std::path::Path;
 
-use temor_core::vocab::ids::BlockId;
-use temor_core::vocab::text::CommandText;
-use temor_pane::paste;
-use temor_transfer::FileName;
-use temor_transfer::shelf::ShelfStore;
-use temor_vt::ViewportScroll;
+use temor_client::model::vocab::ids::BlockId;
+use temor_client::model::vocab::text::CommandText;
+use temor_client::shelf::transfer::FileName;
+use temor_client::shelf::transfer::shelf::ShelfStore;
+use temor_panes::pane::paste;
+use temor_panes::vt::ViewportScroll;
 
 use super::super::Session;
 use super::super::osc52::Copied;
@@ -22,7 +22,7 @@ impl Session {
     /// break in it can submit anything. A command that is not safe to type is refused with a
     /// notice.
     pub fn rerun(&mut self, id: BlockId) {
-        let Some(command) = self.block_command(id).map(str::to_owned) else {
+        let Some(command) = self.block_command(id) else {
             return;
         };
         if !self.put_in_prompt(CommandText(command)) {
@@ -53,7 +53,7 @@ impl Session {
 
     /// Copies a block's command to the clipboard.
     pub fn copy_command(&mut self, id: BlockId) {
-        let Some(command) = self.block_command(id).map(str::to_owned) else {
+        let Some(command) = self.block_command(id) else {
             return;
         };
         self.copy_text(&command);
@@ -81,7 +81,7 @@ impl Session {
             return Ok(());
         };
         let command = self.block_command(id).unwrap_or_default().to_owned();
-        let store = ShelfStore::new(self.shelf_dir.clone());
+        let store = ShelfStore::new(self.core().shelf_dir.clone());
         let name = FileName::sanitise(&output_name(&command));
         let saved = write_temp(store.dir(), &text).and_then(|temp| {
             store

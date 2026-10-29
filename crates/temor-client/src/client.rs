@@ -1,0 +1,420 @@
+//! The [`Client`]: who holds the store, reads what its callers ask for, and reads it again when
+//! the store changes.
+//!
+//! # Threads
+//!
+//! None of them a caller's.
+//!
+//! - **Readers** (`temor-read-N`), one fewer than the store has reader connections. Each takes a
+//!   stale value from the queue and reads it, in one moment of the database.
+//! - **Changes** (`temor-changes`) hears every commit the store makes, gathers the ones that come
+//!   together, and marks stale every value that reads what they touched.
+//! - **Act** (`temor-act`) applies [`Command`]s, one at a time, in the order they were given: the
+//!   only one that waits on the store's writer.
+//! - **External** (`temor-external`) watches the store's file for another process's commits
+//!   (`external`).
+//!
+//! A value is in the queue at most once, and read by at most one thread at a time; one that goes
+//! stale while it is read is read again when that reading ends.
+
+use std::any::{Any, TypeId};
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::sync::{Arc, Weak};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
+
+use parking_lot::{Condvar, Mutex};
+use temor_store::{Committed, SqliteStore, Topics};
+
+use crate::act::Command;
+use crate::live::{Entry, Job, Live, Query};
+
+/// How long the change thread waits for more commits after one before it marks anything stale:
+/// a burst of commands finishing is one reading, not one each.
+const GATHER: Duration = Duration::from_millis(30);
+
+/// The longest a commit waits to be acted on while more keep coming.
+const AT_MOST: Duration = Duration::from_millis(150);
+
+/// How a [`Client`] is made.
+#[derive(Debug, Clone)]
+pub struct ClientConfig {
+    /// Whether to watch the store's file for other processes' commits (a second temor, or the
+    /// command line). Off for a store no other process opens.
+    pub external: bool,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self { external: true }
+    }
+}
+
+/// temor's data as values, read and kept read. Clone it freely: every clone is the same client,
+/// and one process needs only one.
+#[derive(Clone)]
+pub struct Client(Arc<Inner>);
+
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Client")
+    }
+}
+
+/// The client, with the threads it started: stopped when the last clone goes.
+struct Inner {
+    shared: Arc<Shared>,
+    threads: Mutex<Vec<JoinHandle<()>>>,
+}
+
+/// What the client's threads share.
+pub(crate) struct Shared {
+    store: Arc<SqliteStore>,
+    /// Every value held, by its query.
+    registry: Mutex<Registry>,
+    /// The values waiting to be read.
+    queue: Mutex<VecDeque<Weak<dyn Job>>>,
+    queued: Condvar,
+    /// Values in the queue or being read: none is a client at rest.
+    busy: AtomicUsize,
+    stopping: AtomicBool,
+    /// Read on the thread that asks, never on threads of the client's own (`Client::inline`).
+    inline: bool,
+    /// For an inline client, the commits not acted on yet ([`Client::settle`]).
+    heard: Mutex<Option<Receiver<Committed>>>,
+    /// One more each time values were marked stale, by a commit here or another process's.
+    moved: tokio::sync::watch::Sender<u64>,
+    /// How the external watch is woken: by a write to the store's file, or to stop.
+    pub(crate) external: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    /// Where commands go to be applied; `None` for an inline client, and once stopping.
+    acts: Mutex<Option<std::sync::mpsc::Sender<Command>>>,
+}
+
+#[derive(Default)]
+struct Registry {
+    /// The values of each type of query, found by equality: a caller holds a handful, not
+    /// thousands, and a query need not hash.
+    by_query: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    /// Every value, whatever its query, for the change thread to go through.
+    every: Vec<Weak<dyn Job>>,
+}
+
+impl Client {
+    /// The client over `store`, its threads started.
+    pub fn open(store: Arc<SqliteStore>, config: ClientConfig) -> Client {
+        let heard = store.subscribe();
+        let shared = Arc::new(Shared::new(store, false));
+        let mut threads = Vec::new();
+        for n in 0..readers(&shared.store) {
+            let shared = shared.clone();
+            threads.push(spawn(&format!("temor-read-{n}"), move || shared.read()));
+        }
+        {
+            let shared = shared.clone();
+            threads.push(spawn("temor-changes", move || shared.hear(&heard)));
+        }
+        {
+            let (tx, asked) = std::sync::mpsc::channel::<Command>();
+            *shared.acts.lock() = Some(tx);
+            let shared = shared.clone();
+            threads.push(spawn("temor-act", move || {
+                // Every command given is applied, even once the client is stopping: a change the
+                // person made is not dropped because the window closed after it.
+                for command in asked {
+                    shared.apply(command);
+                }
+            }));
+        }
+        if config.external
+            && let Some(watching) = crate::external::start(shared.clone())
+        {
+            threads.push(watching);
+        }
+        Client(Arc::new(Inner {
+            shared,
+            threads: Mutex::new(threads),
+        }))
+    }
+
+    /// A client that reads on the thread that asks, at once, and starts no thread: for a test,
+    /// whose first look at a value should find it read. What the store commits is acted on at
+    /// [`Client::settle`].
+    pub fn inline(store: Arc<SqliteStore>) -> Client {
+        let heard = store.subscribe();
+        let shared = Arc::new(Shared::new(store, true));
+        *shared.heard.lock() = Some(heard);
+        Client(Arc::new(Inner {
+            shared,
+            threads: Mutex::new(Vec::new()),
+        }))
+    }
+
+    /// The store, for what writes to it. Reading goes through [`Client::live`].
+    pub fn store(&self) -> &Arc<SqliteStore> {
+        &self.0.shared.store
+    }
+
+    /// The value `query` answers, kept read. Never reads the store here: a value someone already
+    /// holds is handed over as it stands, and a new one is queued to be read (or, for an inline
+    /// client, read now).
+    pub fn live<Q: Query>(&self, query: Q) -> Live<Q::Output> {
+        let shared = &self.0.shared;
+        let (entry, fresh) = {
+            let mut registry = shared.registry.lock();
+            let held = registry
+                .by_query
+                .entry(TypeId::of::<Q>())
+                .or_insert_with(|| Box::new(Vec::<(Q, Weak<Entry<Q>>)>::new()))
+                .downcast_mut::<Vec<(Q, Weak<Entry<Q>>)>>()
+                .expect("each type of query has a list of its own type");
+            let found = held
+                .iter()
+                .find(|(asked, _)| *asked == query)
+                .and_then(|(_, entry)| entry.upgrade());
+            match found {
+                Some(entry) => (entry, false),
+                None => {
+                    held.retain(|(_, entry)| entry.strong_count() > 0);
+                    let entry = Entry::new(query.clone());
+                    held.push((query, Arc::downgrade(&entry)));
+                    let job: Arc<dyn Job> = entry.clone();
+                    registry.every.push(Arc::downgrade(&job));
+                    (entry, true)
+                }
+            }
+        };
+        let live = entry.live();
+        if fresh {
+            shared.enqueue(Arc::downgrade(&(entry as Arc<dyn Job>)));
+        }
+        live
+    }
+
+    /// Apply `command`, in order after every command given before it. Never waits on the store;
+    /// what it changed is heard through the values that read it. An inline client applies it
+    /// here, now.
+    pub fn act(&self, command: Command) {
+        let shared = &self.0.shared;
+        if shared.inline {
+            shared.apply(command);
+            return;
+        }
+        if let Some(acts) = shared.acts.lock().as_ref() {
+            // A thread that has gone has stopped with the client; nothing is applied any more.
+            let _ = acts.send(command);
+        }
+    }
+
+    /// Mark stale every value that reads any of `topics`, as a commit that touched them would:
+    /// what the client says for what it keeps in memory ([`Topics::RUNTIME`]).
+    pub fn invalidate(&self, topics: Topics) {
+        self.0.shared.invalidate(topics);
+    }
+
+    /// Told each time values were marked stale, here or because of another process: for what
+    /// still reads the store itself rather than through a [`Live`]. Commits that come together
+    /// are told once.
+    pub fn moved(&self) -> tokio::sync::watch::Receiver<u64> {
+        self.0.shared.moved.subscribe()
+    }
+
+    /// Whether nothing is waiting to be read or being read.
+    pub fn idle(&self) -> bool {
+        self.0.shared.busy.load(Ordering::Acquire) == 0
+    }
+
+    /// For an inline client: act on every commit made since the last time, here. Nothing for a
+    /// client with threads of its own, which does that by itself.
+    pub fn settle(&self) {
+        self.0.shared.settle();
+    }
+
+    /// Stop the client's threads, waiting at most `within` for them: a value being read is let
+    /// finish and its answer thrown away, and nothing waiting is read. Every clone of this client
+    /// stops with it.
+    pub fn shutdown(self, within: Duration) {
+        self.0.stop(within);
+    }
+}
+
+impl Drop for Inner {
+    fn drop(&mut self) {
+        self.stop(Duration::from_millis(500));
+    }
+}
+
+impl Inner {
+    fn stop(&self, within: Duration) {
+        self.shared.stopping.store(true, Ordering::Release);
+        // Nothing more is taken; what was given is still applied.
+        self.shared.acts.lock().take();
+        self.shared.queued.notify_all();
+        crate::external::wake(&self.shared);
+        let deadline = Instant::now() + within;
+        for thread in self.threads.lock().drain(..) {
+            while !thread.is_finished() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            if thread.is_finished() {
+                // A thread that panicked has already said so; there is nothing left to stop.
+                let _ = thread.join();
+            }
+        }
+    }
+}
+
+/// How many threads read: one fewer than the store's readers, and at least one.
+fn readers(store: &SqliteStore) -> usize {
+    store.reader_count().saturating_sub(1).max(1)
+}
+
+pub(crate) fn spawn(name: &str, run: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
+    std::thread::Builder::new()
+        .name(name.to_owned())
+        .spawn(run)
+        .expect("the system starts a thread")
+}
+
+impl Shared {
+    fn new(store: Arc<SqliteStore>, inline: bool) -> Self {
+        Self {
+            store,
+            registry: Mutex::new(Registry::default()),
+            queue: Mutex::new(VecDeque::new()),
+            queued: Condvar::new(),
+            busy: AtomicUsize::new(0),
+            stopping: AtomicBool::new(false),
+            inline,
+            heard: Mutex::new(None),
+            moved: tokio::sync::watch::Sender::new(0),
+            external: Mutex::new(None),
+            acts: Mutex::new(None),
+        }
+    }
+
+    pub(crate) fn store(&self) -> &SqliteStore {
+        &self.store
+    }
+
+    /// Apply `command`, and for an inline client act on what it committed.
+    fn apply(&self, command: Command) {
+        if let Err(why) = crate::act::apply(&self.store, command) {
+            eprintln!("temor: a change could not be kept: {why}");
+        }
+        if self.inline {
+            self.settle();
+        }
+    }
+
+    fn settle(&self) {
+        let topics = self
+            .heard
+            .lock()
+            .as_ref()
+            .map(|heard| {
+                heard
+                    .try_iter()
+                    .fold(Topics::empty(), |all, commit| all | commit.topics)
+            })
+            .unwrap_or_default();
+        if !topics.is_empty() {
+            self.invalidate(topics);
+        }
+    }
+
+    pub(crate) fn stopping(&self) -> bool {
+        self.stopping.load(Ordering::Acquire)
+    }
+
+    /// Put `job` in the queue, already marked as queued. An inline client reads it now instead.
+    fn enqueue(&self, job: Weak<dyn Job>) {
+        if self.inline {
+            if let Some(job) = job.upgrade() {
+                while job.run(&self.store) {}
+            }
+            return;
+        }
+        self.busy.fetch_add(1, Ordering::AcqRel);
+        self.queue.lock().push_back(job);
+        self.queued.notify_one();
+    }
+
+    /// Mark stale every value held that reads any of `topics`.
+    pub(crate) fn invalidate(&self, topics: Topics) {
+        self.moved.send_modify(|moved| *moved += 1);
+        let stale: Vec<Arc<dyn Job>> = {
+            let mut registry = self.registry.lock();
+            registry.every.retain(|job| job.strong_count() > 0);
+            registry
+                .every
+                .iter()
+                .filter_map(Weak::upgrade)
+                .filter(|job| job.reads().intersects(topics))
+                .collect()
+        };
+        for job in stale {
+            if job.stale() {
+                self.enqueue(Arc::downgrade(&job));
+            }
+        }
+    }
+
+    /// A reader thread: read what the queue holds until the client stops.
+    fn read(&self) {
+        loop {
+            let job = {
+                let mut queue = self.queue.lock();
+                loop {
+                    if self.stopping() {
+                        return;
+                    }
+                    if let Some(job) = queue.pop_front() {
+                        break job;
+                    }
+                    self.queued.wait(&mut queue);
+                }
+            };
+            // A value nobody holds any more is not read: dropping it took it out of the queue.
+            if let Some(job) = job.upgrade()
+                && job.run(&self.store)
+                && !self.stopping()
+            {
+                self.enqueue(Arc::downgrade(&job));
+            }
+            self.busy.fetch_sub(1, Ordering::AcqRel);
+        }
+    }
+
+    /// The change thread: hear each commit, gather the ones that come together, and mark stale
+    /// what reads what they touched.
+    fn hear(&self, heard: &Receiver<Committed>) {
+        while !self.stopping() {
+            let first = match heard.recv_timeout(Duration::from_millis(100)) {
+                Ok(commit) => commit,
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => return,
+            };
+            let mut topics = first.topics;
+            let until = Instant::now() + AT_MOST;
+            loop {
+                let left = until.saturating_duration_since(Instant::now());
+                match heard.recv_timeout(GATHER.min(left)) {
+                    Ok(commit) if !left.is_zero() => topics |= commit.topics,
+                    Ok(commit) => {
+                        topics |= commit.topics;
+                        break;
+                    }
+                    Err(RecvTimeoutError::Timeout) => break,
+                    Err(RecvTimeoutError::Disconnected) => return,
+                }
+            }
+            self.invalidate(topics);
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "client_tests.rs"]
+mod tests;

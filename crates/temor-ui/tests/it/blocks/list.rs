@@ -40,7 +40,6 @@ fn listed(name: &str) -> Option<(Live, [BlockId; 3], Vec<Placed>)> {
     let row = live.session.row_height().expect("laid out");
     let sizes = Sizes {
         row,
-        section: 28.0,
         head: 40.0,
         foot: 10.0,
         gap: 10.0,

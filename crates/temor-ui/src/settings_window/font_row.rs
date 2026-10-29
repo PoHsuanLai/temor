@@ -11,7 +11,7 @@ use ds::components::menus::pop_up_button::PopUpButton;
 use ds::prelude::*;
 use ds_settings::schema::KeySpec;
 use ds_settings_page::SettingEdit;
-use temor_render::font_catalog;
+use temor_panes::render::font_catalog;
 
 use crate::view::names::named;
 

@@ -90,7 +90,7 @@ fn a_failed_card_says_its_exit_status_in_its_head_however_long_its_command() {
 }
 
 #[test]
-fn hovering_a_card_shows_its_tools_and_the_first_copies_the_output() {
+fn hovering_a_card_shows_its_more_button_and_it_opens_the_blocks_menu() {
     if !window_tools_present() {
         return;
     }
@@ -112,19 +112,22 @@ fn hovering_a_card_shows_its_tools_and_the_first_copies_the_output() {
         "no tools over the card:\n{}",
         h.html()
     );
-    let tools = rects(&h, ".temor-blk-tools .ds-button");
-    let copy = tools
-        .iter()
+    // One button: the "…".
+    let tools: Vec<_> = rects(&h, ".temor-blk-tools .ds-button")
+        .into_iter()
         .filter(|r| r.y < first.y)
-        .min_by(|a, b| a.x.total_cmp(&b.x))
-        .copied()
-        .unwrap_or_else(|| panic!("no tool on the hovered card:\n{}", h.html()));
-    h.send(Input::click(copy.centre()));
-    h.advance(Duration::from_millis(200));
-    let copied = h.clipboard_text().unwrap_or_default();
+        .collect();
+    assert_eq!(tools.len(), 1, "one tool on the card:\n{}", h.html());
+    h.send(Input::click(tools[0].centre()));
+    h.advance(Duration::from_millis(300));
+    let html = h.html();
     assert!(
-        copied.contains("hover-one") && !copied.contains("echo"),
-        "copied {copied:?}"
+        html.contains("Put in Prompt") && html.contains("Select All Commands"),
+        "the block's menu:\n{html}"
+    );
+    assert!(
+        html.contains("data-picked=\"true\""),
+        "the card's block is picked, so the menu acts on it"
     );
 }
 
@@ -187,32 +190,34 @@ fn a_right_click_on_a_card_opens_its_menu_and_the_menu_acts_on_the_block() {
     right_click(&mut h, second);
     let html = h.html();
     for title in [
-        "Copy Output",
         "Put in Prompt",
         "Bookmark",
         "Fold Output",
+        "Save Output",
+        "View Files",
         "Select All Commands",
     ] {
         assert!(html.contains(title), "no {title:?} in the menu:\n{html}");
     }
-    // Copy, Copy Command, Copy Output, Put in Prompt, Bookmark, Fold Output, Select All Commands.
-    let found = items(&h);
-    assert_eq!(found.len(), 7, "the menu's items:\n{html}");
-    h.send(Input::click(found[2]));
-    h.advance(Duration::from_millis(300));
-    assert_eq!(
-        h.clipboard_text().unwrap_or_default(),
-        "menu-two",
-        "Copy Output: the right-clicked block's output"
+    assert!(
+        !html.contains(">Copy"),
+        "no Copy items: the copy key copies"
     );
+    let found = items(&h);
+    assert_eq!(found.len(), 6, "the menu's items:\n{html}");
+    h.send(Input::click(found[0]));
+    h.advance(Duration::from_millis(300));
     assert!(items(&h).is_empty(), "the menu closed after the pick");
+    wait_html(&mut h, "the command back in the prompt", |html| {
+        html.contains("echo menu-two")
+    });
     // Bookmarked, the card shows its star and the item turns around.
     assert!(
         !h.html().contains("class=\"temor-blk-mark\""),
         "a star before"
     );
     right_click(&mut h, second);
-    h.send(Input::click(items(&h)[4]));
+    h.send(Input::click(items(&h)[1]));
     h.advance(Duration::from_millis(300));
     wait_html(&mut h, "the star", |html| {
         html.matches("class=\"temor-blk-mark\"").count() == 1

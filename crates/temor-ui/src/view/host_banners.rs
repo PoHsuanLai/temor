@@ -5,10 +5,10 @@
 use dioxus::prelude::*;
 use ds::components::content::label::LabelStyle;
 use ds::prelude::*;
-use temor_core::host::edit::Resolution;
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::Port;
+use temor_client::model::host::edit::Resolution;
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::Port;
 
 use super::host_words::{
     CLOSE_FORWARD, DECIDE_LATER, DONE_EDITING, EDIT_LOCALLY, FORWARD_PORT, OPEN_CHECK,
@@ -16,8 +16,8 @@ use super::host_words::{
     TRY_ANYWAY, USE_THEIRS, ask_words, edit_line, forward_line, stage_line,
 };
 use super::remote::RemoteBanners;
-use crate::edge::ssh_work::EditId;
 use crate::hub::{CheckRow, Desk, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+use temor_client::ssh::work::EditId;
 
 /// The host banners of `pane`.
 #[component]
@@ -94,7 +94,7 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
 #[allow(non_snake_case)]
 fn Question(
     pane: PaneId,
-    action: temor_core::host::consent::BootstrapAction,
+    action: temor_client::model::host::consent::BootstrapAction,
     desk: Desk,
 ) -> Element {
     let ask = ask_words(action);

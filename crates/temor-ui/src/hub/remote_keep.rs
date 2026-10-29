@@ -2,15 +2,15 @@
 //! into the session file and come back on restore, quitting lets go of the links without
 //! ending anything, a stalled link is dropped, and the window's colours follow to the host.
 
-use temor_core::host::store::{HostSession, HostsFile};
-use temor_wire::ids::SessionId;
-use temor_wire::link::LinkEvent;
+use temor_client::model::host::store::{HostSession, HostsFile};
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::LinkEvent;
 
 use super::model::Hub;
 use super::remote::RemoteHub;
-use crate::edge::remote_event::Generation;
-use crate::edge::remote_link::lock;
-use crate::edge::remote_palette::wire_palette;
+use temor_panes::remote::event::Generation;
+use temor_panes::remote::link::lock;
+use temor_panes::remote::palette::wire_palette;
 
 /// The session to save for a pane: the one it has now, else the one it was saved with and has
 /// not got back yet; none once the host lost it.
@@ -41,7 +41,11 @@ impl Hub {
     }
 
     /// A ping went unanswered: the machine decides, and a link it drops is dialed again.
-    pub(super) fn remote_stalled(&mut self, host: &temor_ssh::HostAlias, generation: Generation) {
+    pub(super) fn remote_stalled(
+        &mut self,
+        host: &temor_client::ssh::HostAlias,
+        generation: Generation,
+    ) {
         if !self.current(host, generation) {
             return;
         }
@@ -52,7 +56,7 @@ impl Hub {
 
     /// Ends the `ssh` of a connection that stalled, so what waits on it fails; its panes stop
     /// sending until the next connection.
-    pub(super) fn remote_drop_link(&mut self, host: &temor_ssh::HostAlias) {
+    pub(super) fn remote_drop_link(&mut self, host: &temor_client::ssh::HostAlias) {
         if let Some(line) = self.remote.lines.get_mut(host) {
             if let Some(conn) = line.conn.take() {
                 conn.drop_link();

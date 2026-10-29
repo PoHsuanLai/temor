@@ -4,14 +4,18 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Cwd;
-use temor_pane::settings::{FontChoice, FontPoints, LinePercent, PagerChoice, TerminalSettings};
-use temor_pty::SessionLauncher;
-use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, LineHeight, Palette};
-use temor_shell::ChildEnv;
-use temor_vt::Snapshot;
-use temor_vt::{CellPx, GridSize};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Cwd;
+use temor_panes::pane::settings::{
+    FontChoice, FontPoints, LinePercent, PagerChoice, TerminalSettings,
+};
+use temor_panes::pty::SessionLauncher;
+use temor_panes::render::{
+    FontConfig, FontFamily, FontSet, FontSize, FontSource, LineHeight, Palette,
+};
+use temor_panes::shell::ChildEnv;
+use temor_panes::vt::Snapshot;
+use temor_panes::vt::{CellPx, GridSize};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;
@@ -23,10 +27,10 @@ use crate::hub::Run;
 use crate::pane::TaggedSink;
 use crate::platform::{default_opener, ensure_private_dir};
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
-use temor_core::shelf::Quoting;
-use temor_pane::{ByteTap, PaneEvent, TransferSetup};
-use temor_shell::ShellKind;
-use temor_transfer::{Bytes, Count, Limits};
+use temor_client::model::shelf::Quoting;
+use temor_client::shelf::transfer::{Bytes, Count, Limits};
+use temor_panes::pane::{ByteTap, PaneEvent, TransferSetup};
+use temor_panes::shell::ShellKind;
 
 /// Given to the session's own process as its first argument: the program becomes the session
 /// leader and runs the shell (temor-pty's trampoline; the binary's `main` handles it).
@@ -275,7 +279,7 @@ pub fn load_fonts(
     line: LinePercent,
 ) -> Result<FontSet, UiError> {
     // The Settings window's font list is read while the first pane starts, not when it is opened.
-    temor_render::warm_font_catalog();
+    temor_panes::render::warm_font_catalog();
     let family = match font {
         FontChoice::SystemMonospace => FontFamily::Monospace,
         FontChoice::Named(name) => FontFamily::Named(name.clone()),

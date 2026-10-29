@@ -6,8 +6,8 @@ use std::hash::{BuildHasher, Hasher};
 use std::path::PathBuf;
 
 use ds_settings::Store;
-use temor_core::offer::Program;
-use temor_ssh::{InnerLoadLine, InnerShell, LoadToken, SshError, probe_line};
+use temor_client::model::offer::Program;
+use temor_client::ssh::{InnerLoadLine, InnerShell, LoadToken, SshError, probe_line};
 
 use crate::error::UiError;
 use crate::settings::TerminalDoc;
@@ -20,7 +20,11 @@ pub fn probe_text() -> String {
 /// The lines to type into the pane once `shell` has named itself. Built from the scripts temor
 /// ships, with a name nobody can guess for the one file they write on the host.
 pub fn load_line(shell: InnerShell) -> Result<InnerLoadLine, SshError> {
-    InnerLoadLine::build_for(shell, &temor_shell::integration_scripts(), &fresh_token())
+    InnerLoadLine::build_for(
+        shell,
+        &temor_panes::shell::integration_scripts(),
+        &fresh_token(),
+    )
 }
 
 /// Two words the standard library seeds randomly for each hasher.
@@ -52,7 +56,7 @@ mod tests {
         let scratch = tempfile::tempdir().expect("scratch");
         let ambient = Ambient {
             home: scratch.path().join("home"),
-            env: temor_shell::ChildEnv::new(),
+            env: temor_panes::shell::ChildEnv::new(),
             config_dir: scratch.path().join("config/temor"),
             runtime_dir: scratch.path().join("runtime"),
         };

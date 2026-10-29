@@ -1,5 +1,5 @@
-//! A pane on a host's helper: what the helper reads of its folder (the folder, the branch, the
-//! changes) reaches the chips as a pane on this computer's facts do. The helper is a real one in
+//! A pane on a host's helper: what the helper reads of its folder (the folder, the versions a
+//! project asks for) reaches the window as a pane on this computer's facts do. The helper is a real one in
 //! this process over pipes; nothing here reaches a network.
 
 use std::path::Path;
@@ -7,23 +7,22 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use temor_core::facts::FactsIn;
-use temor_pty::SessionLauncher;
+use temor_client::model::facts::FactsIn;
+use temor_client::remote::digest::ContentHash;
+use temor_client::remote::hello::HelperVersion;
+use temor_client::remote::message::{EnvVar, OpenSession, RemotePath};
+use temor_client::remote::units::{CellPx, Cols, Rows, Size};
+use temor_client::ssh::HostAlias;
+use temor_panes::pty::SessionLauncher;
 use temor_remote::{
     Client, ClientEvent, Clock, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, ManualClock, hello,
 };
-use temor_ssh::HostAlias;
-use temor_testkit::{git, program_or_skip};
-use temor_wire::digest::ContentHash;
-use temor_wire::hello::HelperVersion;
-use temor_wire::message::{EnvVar, OpenSession, RemotePath};
-use temor_wire::units::{CellPx, Cols, Rows, Size};
 
 use super::support::Rig;
-use crate::edge::remote_conn::Conn;
-use crate::edge::remote_link::{RemoteLink, Target};
 use crate::hub::remote::{RemotePane, Shown};
 use crate::view::remote_launch::open_fed_session;
+use temor_client::remote::conn::Conn;
+use temor_panes::remote::link::{RemoteLink, Target};
 
 const HELPER: HelperVersion = HelperVersion(ContentHash([4; 32]));
 
@@ -32,9 +31,13 @@ fn helper_session(
     rig: &Rig,
     home: &Path,
     cwd: &Path,
-) -> (Arc<Conn>, temor_wire::ids::SessionId, Receiver<ClientEvent>) {
-    let setsid =
-        temor_pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin")).expect("setsid");
+) -> (
+    Arc<Conn>,
+    temor_client::remote::ids::SessionId,
+    Receiver<ClientEvent>,
+) {
+    let setsid = temor_panes::pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
+        .expect("setsid");
     let daemon = Daemon::new(DaemonConfig {
         helper: HELPER,
         launcher: SessionLauncher::Setsid(setsid),
@@ -78,21 +81,14 @@ fn helper_session(
 }
 
 #[test]
-fn a_host_panes_folder_branch_and_changes_from_its_helper_show_as_its_chips() {
-    let Some(mut rig) = Rig::new("host-chips") else {
+fn a_host_panes_folder_and_versions_come_from_its_helper() {
+    let Some(mut rig) = Rig::new("host-facts") else {
         return;
     };
-    if program_or_skip("git", "a_host_panes_folder_branch_and_changes").is_none() {
-        return;
-    }
     let home = rig.dir.join("hosthome");
     let repo = home.join("app");
     std::fs::create_dir_all(&repo).expect("the host's folders");
-    git(&repo, &["init", "-q", "-b", "main"]);
-    std::fs::write(repo.join("a.txt"), "one\n").expect("file");
-    git(&repo, &["add", "."]);
-    git(&repo, &["commit", "-q", "-m", "first"]);
-    std::fs::write(repo.join("a.txt"), "one\ntwo\n").expect("a change");
+    std::fs::write(repo.join(".nvmrc"), "v20\n").expect("a version file");
     let (conn, session, _events) = helper_session(&rig, &home, &repo);
 
     // A host pane that is attached to a session on the helper (the begin the connection makes).
@@ -138,21 +134,10 @@ fn a_host_panes_folder_branch_and_changes_from_its_helper_show_as_its_chips() {
         }
     }
 
-    let folder = rig
-        .hub
-        .chip_folder(pane)
-        .expect("the folder as its chip says it");
     let facts = rig.hub.facts_of(pane);
-    assert_eq!(folder, "~/app", "the host's folder");
     assert_eq!(
-        facts.branch.as_ref().map(|b| b.as_str()),
-        Some("main"),
-        "the host's branch"
-    );
-    let changes = facts.changes.expect("the host's changes");
-    assert_eq!(
-        (changes.added, changes.removed, changes.files),
-        (1, 0, 1),
-        "the host's changes"
+        facts.node.as_ref().map(|v| v.as_str()),
+        Some("v20"),
+        "the host's Node version"
     );
 }

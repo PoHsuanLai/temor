@@ -1,10 +1,10 @@
 //! A dropped file on its way to a host: the shelf row shows the bytes that have gone.
 
-use temor_core::shelf::{UploadId, UploadIn, upload_step};
-use temor_core::vocab::ids::Bytes;
+use temor_client::model::shelf::{UploadId, UploadIn, upload_step};
+use temor_client::model::vocab::ids::Bytes;
 
 use super::support::Rig;
-use crate::edge::ssh_work::SshEvent;
+use temor_client::ssh::work::SshEvent;
 
 #[test]
 fn the_shelf_row_of_an_upload_moves_as_parts_arrive() {

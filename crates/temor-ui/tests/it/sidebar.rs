@@ -13,11 +13,11 @@ use ds_harness::{Harness, Input};
 use temor_ui::view::probe::Probe;
 
 use ds::components::app::spaces::{SpaceId, Spaces};
+use temor_client::keep::older::save_spaces;
 use temor_core::space::Project;
-use temor_ui::edge::save_spaces;
 
 use super::drive;
-use super::drive::{chord, started, type_line, wait_until};
+use super::drive::{chord, wait_until};
 use super::window::{harness, harness_in};
 
 /// A box in the window: left, top, right, bottom, and what it is.
@@ -135,7 +135,7 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
     let (wa, wb) = (a.right - a.left, b.right - b.left);
     assert!(wa > 40.0 && (wa - wb).abs() < 2.0, "even: {wa} and {wb}");
     // With one Space its name still heads the sidebar (it says where you are), but there is no
-    // dot to switch to. Downloads stands at the head's right end, the chevron at the foot's.
+    // dot to switch to. Downloads stands at the head's right end.
     assert_eq!(
         rects(&h, ".temor-side .temor-head .ds-space-head").len(),
         1,
@@ -145,25 +145,33 @@ fn no_two_controls_in_the_sidebar_lie_over_one_another() {
         rects(&h, ".temor-side .ds-spaces-dots").is_empty(),
         "no lone dot"
     );
-    let side = &rects(&h, ".temor-side")[0];
     let head = &rects(&h, ".temor-side .temor-head")[0];
     let downloads = &rects(&h, ".temor-head .temor-dl-hold")[0];
-    let chevron = &rects(&h, ".temor-side .temor-foot-end .ds-button")[0];
     assert!(
         (head.right - downloads.right).abs() <= 1.0,
         "Downloads ends the head: {} and {}",
         downloads.right,
         head.right
     );
+    // Back and Forward stand before Downloads, with nowhere to go yet; the address of the row in
+    // front is under the head.
+    let walk = &rects(&h, ".temor-head .temor-walk")[0];
     assert!(
-        (downloads.right - chevron.right).abs() <= 1.0,
-        "Downloads stands over the chevron: {} and {}",
-        downloads.right,
-        chevron.right
+        walk.right <= downloads.left,
+        "Back and Forward, then Downloads"
     );
+    assert_eq!(
+        rects(&h, ".temor-head .temor-walk .ds-button[disabled]").len(),
+        2,
+        "nowhere to go"
+    );
+    let address = rects(&h, ".temor-side .temor-address .ds-path-segment");
+    assert!(!address.is_empty(), "the shell's folder");
+    assert!(address[0].top >= head.bottom, "under the head");
+    // The foot has no menu of its own: New Space is in the Space's menu.
     assert!(
-        chevron.top > side.top + (side.bottom - side.top) / 2.0,
-        "the chevron is at the foot"
+        rects(&h, ".temor-side .temor-foot .ds-button").is_empty(),
+        "no chevron"
     );
     // A split's panes close from their menu, never from a button on hover.
     assert!(rects(&h, ".temor-seg-close").is_empty(), "no hover close");
@@ -273,13 +281,7 @@ fn a_split_pane_closes_from_its_menu() {
         "the segment's menu:\n{}",
         h.html()
     );
-    // Pin Tab, then Close Pane.
-    let item = rects(&h, ".ds-menu-item");
-    assert!(item.len() >= 2, "the segment's menu opens:\n{}", h.html());
-    let close = ds::prelude::Point {
-        x: ds::prelude::Px(((item[1].left + item[1].right) / 2.0) as f32),
-        y: ds::prelude::Px(((item[1].top + item[1].bottom) / 2.0) as f32),
-    };
+    let close = super::drive::menu_item(&h, "Close Pane").centre();
     h.send(Input::click(close));
     h.advance(Duration::from_millis(400));
     assert!(
@@ -326,41 +328,6 @@ fn rects(h: &Harness, selector: &str) -> Vec<Box4> {
         .collect()
 }
 
-#[test]
-fn a_running_tab_counts_up_with_no_output() {
-    if !super::support::window_tools_present() {
-        return;
-    }
-    let probe = Probe::new();
-    let mut h = started("sidebar-running-ticks", &probe);
-    h.send(Input::click(ds::prelude::Point {
-        x: ds::prelude::Px(700.0),
-        y: ds::prelude::Px(300.0),
-    }));
-    type_line(&mut h, "sleep 30");
-    let start = std::time::Instant::now();
-    // `sleep` prints nothing: only the timer can move the row's time from 0s or 1s to 3s.
-    let time = |h: &Harness| {
-        h.with_doc(|doc| {
-            doc.query_selector(".temor-tab-time")
-                .ok()
-                .flatten()
-                .and_then(|id| doc.get_node(id).map(|node| node.text_content()))
-        })
-    };
-    while time(&h).as_deref().map(str::trim) != Some("3s") {
-        h.advance(Duration::from_millis(50));
-        assert!(
-            start.elapsed() < Duration::from_secs(20),
-            "the tab's time did not count up: {:?}",
-            time(&h)
-        );
-    }
-    h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
-}
-
-/// Hidden, the sidebar waits at the window's edge: the pointer there floats it over the pane, as
-/// mailo's does, and a click on the edge pins it again.
 #[test]
 fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
     if !super::support::window_tools_present() {
@@ -452,10 +419,10 @@ fn a_split_of_three_shows_one_name_and_two_glyphs() {
     );
 }
 
-/// Pinned tabs move as Arc's do: a row dropped on a pinned tile is pinned, a tile dropped on a row
-/// is unpinned there.
+/// Pinned tabs move as Arc's do: a loose row dropped on a pinned row is pinned, a pinned row
+/// dropped on a loose one is unpinned there.
 #[test]
-fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
+fn a_row_dropped_on_a_pinned_row_pins_and_a_pinned_row_dropped_on_a_loose_one_unpins() {
     if !super::support::window_tools_present() {
         return;
     }
@@ -469,38 +436,291 @@ fn a_row_dropped_on_a_tile_pins_and_a_tile_dropped_on_a_row_unpins() {
         x: ds::prelude::Px(((b.left + b.right) / 2.0) as f32),
         y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
     };
-    let rows = |h: &Harness| rects(h, ".temor-side .temor-tab-box");
-    let tiles = |h: &Harness| rects(h, ".temor-side .temor-pin");
-    assert_eq!((rows(&h).len(), tiles(&h).len()), (3, 0), "three tabs");
-    // Pin Tab heads the row's menu.
-    let first = centre(&rows(&h)[0]);
+    let pinned = |h: &Harness| rects(h, ".temor-side .temor-tab-box[data-pinned=true]");
+    let loose = |h: &Harness| {
+        let all = rects(h, ".temor-side .temor-tab-box");
+        let pins = pinned(h);
+        all.into_iter()
+            .filter(|row| !pins.iter().any(|pin| pin.top == row.top))
+            .collect::<Vec<_>>()
+    };
+    let counts = |h: &Harness| (loose(h).len(), pinned(h).len());
+    assert_eq!(counts(&h), (3, 0), "three tabs");
+    // Pin Tab is in the row's menu.
+    let first = centre(&loose(&h)[0]);
     h.send(Input::press(first, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-    let item = rects(&h, ".ds-menu-item");
-    assert!(!item.is_empty(), "the row's menu opens");
-    h.send(Input::click(centre(&item[0])));
+    let pin = super::drive::menu_item(&h, "Pin Tab");
+    h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (2, 1),
-        "pinned from the menu"
-    );
-    // A row onto the tile: pinned too.
-    let (row, tile) = (centre(&rows(&h)[0]), centre(&tiles(&h)[0]));
-    h.send(Input::drag(row, tile, 12));
+    assert_eq!(counts(&h), (2, 1), "pinned from the menu");
+    // A loose row onto the pinned one: pinned too.
+    let (row, pin) = (centre(&loose(&h)[0]), centre(&pinned(&h)[0]));
+    h.send(Input::drag(row, pin, 12));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (1, 2),
-        "a row dropped on a tile"
-    );
-    // A tile onto the row: unpinned.
-    let (tile, row) = (centre(&tiles(&h)[0]), centre(&rows(&h)[0]));
-    h.send(Input::drag(tile, row, 12));
+    assert_eq!(counts(&h), (1, 2), "a row dropped on a pinned row");
+    // A pinned row onto the loose one: unpinned.
+    let (pin, row) = (centre(&pinned(&h)[0]), centre(&loose(&h)[0]));
+    h.send(Input::drag(pin, row, 12));
     h.advance(Duration::from_millis(400));
-    assert_eq!(
-        (rows(&h).len(), tiles(&h).len()),
-        (2, 1),
-        "a tile dropped on a row"
+    assert_eq!(counts(&h), (2, 1), "a pinned row dropped on a loose one");
+}
+
+/// A row dragged to the top of the sidebar keeps its folder among the Favourites, as Arc's do; the
+/// tile's menu lets it go.
+#[test]
+fn a_row_dropped_on_the_favourites_keeps_its_folder_there() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-favourite", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let centre = |b: &Box4| ds::prelude::Point {
+        x: ds::prelude::Px(((b.left + b.right) / 2.0) as f32),
+        y: ds::prelude::Px(((b.top + b.bottom) / 2.0) as f32),
+    };
+    let tiles = |h: &Harness| rects(h, ".temor-side .temor-fav");
+    // None kept: they take no room until a drag shows where to drop one.
+    assert!(
+        rects(&h, ".temor-favs-drop").is_empty(),
+        "no drop box at rest"
     );
+    let row = centre(&rects(&h, ".temor-side .temor-tab-box")[0]);
+    let first_top = rects(&h, ".temor-side .temor-tab-box")[0].top;
+    h.send(Input::pointer_down(row));
+    for step in 1..=6 {
+        let mut at = row;
+        at.y.0 -= step as f32 * 3.0;
+        h.send(Input::pointer_move(at));
+        h.advance(Duration::from_millis(16));
+    }
+    h.advance(Duration::from_millis(100));
+    let zone = rects(&h, ".temor-favs-drop");
+    assert_eq!(zone.len(), 1, "a drag shows the drop box:\n{}", h.html());
+    assert_eq!(
+        rects(&h, ".temor-side .temor-tab-box")[0].top,
+        first_top,
+        "the rows do not move under the drag"
+    );
+    let over = centre(&zone[0]);
+    h.send(Input::pointer_move(over));
+    h.advance(Duration::from_millis(16));
+    h.send(Input::pointer_up(over));
+    h.advance(Duration::from_millis(400));
+    assert!(rects(&h, ".temor-favs-drop").is_empty(), "the box goes");
+    assert_eq!(tiles(&h).len(), 1, "kept:\n{}", h.html());
+    // Its menu lets it go.
+    h.send(Input::press(
+        centre(&tiles(&h)[0]),
+        PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(300));
+    let remove = super::drive::menu_item(&h, "Remove from Favourites");
+    h.send(Input::click(remove.centre()));
+    h.advance(Duration::from_millis(400));
+    assert!(tiles(&h).is_empty(), "let go:\n{}", h.html());
+}
+
+/// ⌘-pressing a row (Ctrl off a Mac) opens a new tab in its folder, as a browser's link opens
+/// beside the page; a plain press only brings the tab to the front.
+#[test]
+fn a_command_press_on_a_row_opens_a_new_tab_beside_it() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-command-press", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let first = &rects(&h, ".temor-side .temor-tab-box")[0];
+    let row = Point {
+        x: Px(((first.left + first.right) / 2.0) as f32),
+        y: Px(((first.top + first.bottom) / 2.0) as f32),
+    };
+    h.send(Input::click(row));
+    h.advance(Duration::from_millis(300));
+    assert_eq!(drive::rows(&h), 1, "a press opens nothing");
+    let command = match cfg!(target_os = "macos") {
+        true => dioxus::prelude::Modifiers::SUPER,
+        false => dioxus::prelude::Modifiers::CONTROL,
+    };
+    h.send(Input::Pointer(
+        ds_harness::PointerInput::new(
+            row,
+            ds_harness::PointerAction::Click(PointerButton::Primary),
+        )
+        .with_mods(command),
+    ));
+    h.advance(Duration::from_millis(400));
+    assert_eq!(drive::rows(&h), 2, "a new tab:\n{}", h.html());
+}
+
+/// A row's menu is the one menu: open, keep, show, close, in that order; Add to Favourites keeps
+/// its folder as a tile.
+#[test]
+fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-row-menu", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let row = &rects(&h, ".temor-side .temor-tab-box")[0];
+    let at = ds::prelude::Point {
+        x: ds::prelude::Px(((row.left + row.right) / 2.0) as f32),
+        y: ds::prelude::Px(((row.top + row.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let titles: Vec<String> = h.with_doc(|doc| {
+        doc.query_selector_all(".ds-menu-item")
+            .map(|found| found.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|id| Some(doc.get_node(id)?.text_content().trim().to_owned()))
+            .collect()
+    });
+    assert_eq!(
+        titles,
+        [
+            "Open in New Tab",
+            "Add to Favourites",
+            "Pin Tab",
+            "Move to Folder",
+            "Show in Folder",
+            "Show History",
+            "Close Tab"
+        ]
+    );
+    let keep = drive::menu_item(&h, "Add to Favourites");
+    h.send(Input::click(keep.centre()));
+    let start = Instant::now();
+    while rects(&h, ".temor-side .temor-fav").is_empty() {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "no tile:\n{}",
+            h.html()
+        );
+    }
+}
+
+/// A row is led by what runs in its tab: the letter tile of its folder at the prompt, and a
+/// program's brand while it runs (bash is Bash's), back to the letter once it ends.
+#[test]
+fn a_row_shows_its_folders_letter_and_a_running_programs_brand() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-icons", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    // The one row's `data-leading`: what leads it.
+    let leading = |h: &Harness| -> (usize, Option<String>) {
+        let row = ".temor-side .temor-tab-box";
+        let leads = ".temor-side .temor-tab-box [data-leading]";
+        (h.count(row), h.attr(leads, "data-leading"))
+    };
+    let settle = |h: &mut Harness, want: &str| {
+        let start = Instant::now();
+        while leading(h) != (1, Some(want.to_owned())) {
+            h.advance(Duration::from_millis(25));
+            assert!(
+                start.elapsed() < Duration::from_secs(5),
+                "not {want}: {:?}\n{}",
+                leading(h),
+                h.html()
+            );
+        }
+    };
+    settle(&mut h, "avatar");
+    drive::type_line(&mut h, "bash -c 'sleep 30'");
+    settle(&mut h, "element");
+    assert_eq!(rects(&h, ".temor-side .temor-tab-brand").len(), 1);
+    drive::chord_with(&mut h, &[ShortcutKey::Ctrl], 'c');
+    settle(&mut h, "avatar");
+}
+
+/// At its prompt a row shows the icon Finder set on its folder, found off the window's thread,
+/// and its letter again in a folder without one.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_row_at_its_prompt_shows_the_icon_set_on_its_folder() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let dir = tempfile::tempdir().expect("dir");
+    let png = temor_client::icons::app_png(
+        std::path::Path::new("/System/Applications/Calculator.app"),
+        32,
+    )
+    .expect("a PNG to put in the icon");
+    let icon = dir.path().join("Icon\r");
+    std::fs::write(&icon, "").expect("Icon file");
+    std::fs::write(icon.join("..namedfork/rsrc"), fork_holding(&icns_of(&png))).expect("fork");
+    let probe = Probe::new();
+    let mut h = harness("sidebar-folder-icon", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let app = ".temor-side .temor-tab-box .temor-tab-app";
+    drive::type_line(&mut h, &format!("cd '{}'", dir.path().display()));
+    let start = Instant::now();
+    while h.count(app) != 1 {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "no folder icon:\n{}",
+            h.html()
+        );
+    }
+    drive::type_line(&mut h, "cd /");
+    let start = Instant::now();
+    while h.count(app) != 0 {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the icon stayed:\n{}",
+            h.html()
+        );
+    }
+}
+
+/// An icon file holding `png`.
+#[cfg(target_os = "macos")]
+fn icns_of(png: &[u8]) -> Vec<u8> {
+    let mut icns = b"icns".to_vec();
+    icns.extend_from_slice(&(16 + png.len() as u32).to_be_bytes());
+    icns.extend_from_slice(b"ic11");
+    icns.extend_from_slice(&(8 + png.len() as u32).to_be_bytes());
+    icns.extend_from_slice(png);
+    icns
+}
+
+/// A resource fork with one `icns` resource, as Finder writes a folder's custom icon.
+#[cfg(target_os = "macos")]
+fn fork_holding(icns: &[u8]) -> Vec<u8> {
+    let body: Vec<u8> = [(icns.len() as u32).to_be_bytes().as_slice(), icns].concat();
+    let (data_at, map_at) = (256u32, 256 + body.len() as u32);
+    let mut map = vec![0u8; 24];
+    for half in [28u16, 0, 0] {
+        map.extend_from_slice(&half.to_be_bytes());
+    }
+    map.extend_from_slice(b"icns");
+    map.extend_from_slice(&0u16.to_be_bytes());
+    map.extend_from_slice(&10u16.to_be_bytes());
+    map.extend_from_slice(&(-16455i16).to_be_bytes());
+    map.extend_from_slice(&0xFFFFu16.to_be_bytes());
+    map.extend_from_slice(&[0; 8]);
+    let mut fork: Vec<u8> = [data_at, map_at, body.len() as u32, map.len() as u32]
+        .iter()
+        .flat_map(|n| n.to_be_bytes())
+        .collect();
+    fork.resize(data_at as usize, 0);
+    fork.extend_from_slice(&body);
+    fork.extend_from_slice(&map);
+    fork
 }

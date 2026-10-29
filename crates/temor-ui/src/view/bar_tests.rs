@@ -1,7 +1,7 @@
 //! The bar's headers: a plugin's rows sit under its name.
 
-use temor_core::bar::{BarAction, BarRow, RowGroup, RowKey, Section};
-use temor_core::vocab::text::PluginId;
+use temor_client::model::bar::{BarAction, BarRow, RowGroup, RowKey, Section};
+use temor_client::model::vocab::text::PluginId;
 
 use super::{runs, title_of};
 

@@ -8,12 +8,12 @@ use dioxus::prelude::*;
 use ds::base::press::Press;
 use ds::prelude::*;
 use ds::style::space::list::SpaceId;
-use temor_core::bar::SpaceEntry;
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::bar::SpaceEntry;
+use temor_client::model::vocab::ids::PaneId;
 
 use super::pane_view::PaneView;
 use crate::hub::Desk;
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
 /// The quick terminal's overlay. `spaces` are the places it can be moved to; with none, it is
 /// kept as a tab of this window.

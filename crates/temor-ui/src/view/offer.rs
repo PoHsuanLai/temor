@@ -4,8 +4,8 @@
 use dioxus::prelude::*;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::offer::Reply;
-use temor_core::vocab::ids::PaneId;
+use temor_client::model::offer::Reply;
+use temor_client::model::vocab::ids::PaneId;
 
 use crate::hub::Desk;
 

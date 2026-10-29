@@ -5,18 +5,18 @@
 
 use std::path::Path;
 
-use temor_core::remote::Grant;
-use temor_core::shelf::{FailWhy, Incoming, ShelfIn, ShelfOut, Source};
-use temor_core::transfer::{Origin, TransferOut, offer};
-use temor_core::vocab::ids::{Bytes, DownloadId, PaneId};
-use temor_core::vocab::text::HostName;
-use temor_pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
-use temor_transfer::Consent;
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::{FailWhy, Incoming, ShelfIn, ShelfOut, Source};
+use temor_client::model::transfer::{Origin, TransferOut, offer};
+use temor_client::model::vocab::ids::{Bytes, DownloadId, PaneId};
+use temor_client::model::vocab::text::HostName;
+use temor_client::shelf::transfer::Consent;
+use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::model::Hub;
 use super::shelf::{Ask, AskKind, Live};
 use crate::edge::Clock;
-use crate::edge::shelf_files::{PlaceError, place};
+use temor_client::shelf::{PlaceError, place};
 
 /// The most names tried for one file before it is given up on.
 const MOST_NAMES: u32 = 10_000;
@@ -64,8 +64,13 @@ impl Hub {
     /// Where a pane's files come from. A pane on a host (SSH, PLAN §9b) will say so here.
     fn origin_of(&self, pane: PaneId) -> Option<(Origin, String)> {
         // TODO(ssh): `Origin::Remote` for a pane that runs a host session.
-        let tab = self.ws.tab_of(pane)?;
-        let title = self.ws.tabs.tab(tab).map(|t| t.title.as_str().to_owned());
+        let tab = self.book.ws.tab_of(pane)?;
+        let title = self
+            .book
+            .ws
+            .tabs
+            .tab(tab)
+            .map(|t| t.title.as_str().to_owned());
         let from = match title.filter(|title| !title.is_empty()) {
             Some(title) => format!("A program in “{title}”"),
             None => "A program in this window".to_owned(),

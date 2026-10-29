@@ -1,10 +1,10 @@
 //! The tab in front and pinning (PLAN §7): what Pin Tab and Unpin Tab ask for. Running an action
 //! picked in the bar is `dispatch`, as for every other route.
 
-use temor_core::space::Pin;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{TabSel, TabsIn, WorkspaceIn};
-use temor_pane::keys::Action;
+use temor_client::model::space::Pin;
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::{TabSel, TabsIn, WorkspaceIn};
+use temor_panes::pane::keys::Action;
 
 use super::model::Hub;
 
@@ -17,7 +17,7 @@ impl Hub {
     /// What Pin Tab or Unpin Tab asks of the tab in front; `None` for any other action, or with
     /// no tab.
     pub(super) fn pin_input(&self, action: Action) -> Option<WorkspaceIn> {
-        let tab = self.ws.front()?;
+        let tab = self.book.ws.front()?;
         let tabs = match action {
             Action::PinTab => TabsIn::pin_as_shell(tab),
             Action::UnpinTab => TabsIn::Unpin(tab),
@@ -28,7 +28,7 @@ impl Hub {
 
     /// Whether the tab in front is pinned; `None` with no tab.
     pub(super) fn front_pinned(&self) -> Option<bool> {
-        let tab = self.ws.tabs.tab(self.ws.front()?)?;
+        let tab = self.book.ws.tabs.tab(self.book.ws.front()?)?;
         Some(matches!(tab.pin, Pin::Pinned { .. }))
     }
 }

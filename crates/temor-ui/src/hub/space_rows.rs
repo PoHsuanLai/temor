@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use dioxus::prelude::ReadableExt;
 use ds::components::app::spaces::SpaceId;
-use temor_core::bar::{SpaceEntry, space_entries};
+use temor_client::model::bar::{SpaceEntry, space_entries};
 
 use super::desk::Desk;
 use crate::bar::SpaceRows;

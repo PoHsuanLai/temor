@@ -110,6 +110,38 @@ fn the_find_field_takes_the_keyboard_and_gives_it_back() {
     });
 }
 
+/// The console's bar heads the row's terminal: its Find opens the find field in the bar, a second
+/// press closes it, and its "…" is the row's menu.
+#[test]
+fn the_console_bar_finds_and_opens_the_rows_menu() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use super::drive::press;
+    let probe = Probe::new();
+    let mut h = started("console-bar", &probe);
+    focus_pane(&mut h);
+    let find = ".temor-console-bar .temor-console-tools > :first-child .ds-button";
+    press(&mut h, find);
+    h.advance(Duration::from_millis(100));
+    assert_eq!(
+        h.count(".temor-console-bar .temor-find-inline"),
+        1,
+        "the field opens in the bar"
+    );
+    assert_eq!(h.count(".temor-find.temor-sheet"), 0, "not on the corner");
+    assert_eq!(h.focus_of(".temor-find input"), FocusState::Focused);
+    press(&mut h, find);
+    h.advance(Duration::from_millis(100));
+    assert_eq!(h.count(".temor-find"), 0, "a second press closes it");
+    press(
+        &mut h,
+        ".temor-console-bar .temor-console-tools > :last-child .ds-button",
+    );
+    h.advance(Duration::from_millis(100));
+    assert!(h.html().contains(">Close Tab<"), "the row's menu");
+}
+
 /// Every declared action is a row under a header: "spl" lists Split right and Split down under
 /// Actions, with no per-row kind caption, and picking one does what its chord does.
 #[test]
@@ -175,7 +207,7 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
     let probe = Probe::new();
     let mut h = started("bar-pin", &probe);
     focus_pane(&mut h);
-    let tiles = |h: &Harness| h.html().matches("class=\"temor-pin\"").count();
+    let tiles = |h: &Harness| h.html().matches("data-pinned=\"true\"").count();
     let listed = |h: &mut Harness, typed: &str| {
         chord(h, 't');
         type_text(h, typed);
@@ -203,8 +235,8 @@ fn the_bar_pins_the_tab_and_opens_downloads() {
     h.send(Input::key(ShortcutKey::Enter));
     h.advance(Duration::from_millis(400));
     assert!(
-        h.html().contains("class=\"temor-dl-list\""),
-        "the Downloads list is open:\n{}",
+        h.html().contains("class=\"temor-downloads\""),
+        "the Downloads page is open:\n{}",
         h.html()
     );
 }

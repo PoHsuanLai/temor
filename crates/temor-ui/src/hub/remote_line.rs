@@ -4,17 +4,17 @@
 
 use std::sync::Arc;
 
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{LinkEffect, LinkEvent, LinkState, RetryPolicy, link_step};
-use temor_wire::message::ListeningPort;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{LinkEffect, LinkEvent, LinkState, RetryPolicy, link_step};
+use temor_client::remote::message::ListeningPort;
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::{Busy, Reach, Shown};
 use super::ssh_events::Redraw;
-use crate::edge::remote_conn::{Conn, DialFault};
-use crate::edge::remote_event::Generation;
-use crate::edge::remote_link::lock;
+use temor_client::remote::conn::{Conn, DialFault};
+use temor_panes::remote::event::Generation;
+use temor_panes::remote::link::lock;
 
 impl Hub {
     /// Whether an event about `host` is about its current connection.
@@ -102,7 +102,7 @@ impl Hub {
             (Err(fault), Reach::Never) => {
                 self.notices.push(never_words(host, &fault));
                 if let Some(line) = self.remote.lines.get_mut(host) {
-                    line.helper = temor_core::remote::HelperState::Unsupported;
+                    line.helper = temor_client::model::remote::HelperState::Unsupported;
                 }
                 self.remote_fallback_all(host);
             }
@@ -143,9 +143,6 @@ impl Hub {
                 remote.shown = Shown::Gone;
                 ended.push(*pane);
             }
-        }
-        for pane in ended {
-            self.live_ended(pane, None);
         }
         self.tell_sessions(host);
     }

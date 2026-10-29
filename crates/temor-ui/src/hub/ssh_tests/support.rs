@@ -6,20 +6,19 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use temor_core::vocab::ids::PaneId;
-use temor_pane::PaneEvent;
-use temor_pane::text::LinkTarget;
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::text::LinkTarget;
 use temor_testkit::{ScratchRoot, program_or_skip};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::edge::Ambient;
-use crate::edge::remote_event::RemoteEvent;
-use crate::edge::ssh_work::SshEvent;
 use crate::hub::model::Hub;
-use crate::hub::ssh_view::{HostView, Stage};
 use crate::platform::{FileShell, OpenError, Opener};
 use crate::view::launch::{Launch, LauncherChoice};
 use crate::view::theme::AppearanceSource;
+use temor_client::ssh::view::{HostView, Stage};
+use temor_client::ssh::work::SshEvent;
+use temor_panes::remote::event::RemoteEvent;
 
 /// The stand-in `ssh`. `-O check` says a connection is up when `up` exists; `-O forward` and
 /// `-O cancel` exit with the code in `control-exit`; `-G` resolves any alias to `resolved.example.com` port 2200; `-T` runs the remote command here (the file
@@ -104,7 +103,7 @@ impl FileShell for RecordFiles {
 /// One hub with stand-in programs.
 pub(super) struct Rig {
     pub hub: Hub,
-    pub panes: UnboundedReceiver<(PaneId, PaneEvent)>,
+    pub panes: UnboundedReceiver<(PaneId, temor_panes::Heard)>,
     pub jobs: UnboundedReceiver<SshEvent>,
     /// What the helper's jobs and the connecting `ssh` report.
     pub remote: UnboundedReceiver<RemoteEvent>,
@@ -158,7 +157,7 @@ impl Rig {
             )
             .0,
             launcher: LauncherChoice::Setsid(setsid),
-            settings: temor_pane::settings::TerminalSettings::default(),
+            settings: temor_panes::pane::settings::TerminalSettings::default(),
             ambient,
             probe: None,
             state_dir: None,

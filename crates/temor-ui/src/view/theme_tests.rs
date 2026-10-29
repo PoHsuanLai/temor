@@ -2,7 +2,7 @@
 //! colours their names say, in both schemes.
 
 use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, Theme};
-use temor_vt::Rgb;
+use temor_panes::vt::Rgb;
 
 use ds_settings::Environment;
 

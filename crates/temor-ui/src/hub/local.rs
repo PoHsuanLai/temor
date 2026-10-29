@@ -5,22 +5,22 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_core::session::{Checkpoint, ShellState};
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::Spawn;
-use temor_pane::settings::ShellChoice;
-use temor_remote::host::HostEnv;
-use temor_shell::report::{KEY_VAR, ReportKey};
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{Attempt, LinkState};
+use temor_client::model::session::{Checkpoint, ShellState};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::Spawn;
+use temor_client::remote::host::HostEnv;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{Attempt, LinkState};
+use temor_client::ssh::HostAlias;
+use temor_panes::pane::settings::ShellChoice;
+use temor_panes::shell::report::{KEY_VAR, ReportKey};
 
 use super::model::Hub;
 use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
-use crate::edge::remote_install::blob_path;
-use crate::edge::remote_link::{RemoteLink, Target};
-use crate::edge::replay::fresh_key;
 use crate::view::remote_launch::open_fed_session;
+use temor_client::keep::replay::fresh_key;
+use temor_client::remote::install::blob_path;
+use temor_panes::remote::link::{RemoteLink, Target};
 
 /// The local daemon's name as a host.
 pub(super) fn local_alias() -> HostAlias {
@@ -81,7 +81,7 @@ impl Hub {
             })
             .unwrap_or_else(|| "/".to_owned());
         let surroundings = self.launch.ambient.env.clone().overlay(&start.env);
-        let mut env: Vec<(String, String)> = temor_pty::base_env(surroundings.iter())
+        let mut env: Vec<(String, String)> = temor_panes::pty::base_env(surroundings.iter())
             .iter()
             .map(|(k, v)| {
                 (
@@ -116,20 +116,13 @@ impl Hub {
     /// daemon has answered. Without a helper beside temor the pane is an ordinary one.
     pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<SessionId>) {
         let kept = self.carried.remove(&spawn.pane);
-        // A pane made while a program is being detached takes that program's session.
-        let detached = self.remote.detaching.filter(|_| resume.is_none());
-        let resume = resume.or(detached.map(|(_, session)| session));
-        // A shell that goes on keeps the key it was started with: the detached pane's, or the
-        // one kept when temor quit.
-        let key = match (detached, resume) {
-            (Some((from, _)), _) => self
-                .live(from, |session| session.report_key().cloned())
-                .flatten(),
-            (None, Some(_)) => kept
+        // A shell that goes on keeps the key it was started with, the one kept when temor quit.
+        let key = match resume {
+            Some(_) => kept
                 .as_ref()
                 .and_then(|kept| kept.report_key.as_deref())
                 .and_then(ReportKey::parse),
-            (None, None) => None,
+            None => None,
         }
         .unwrap_or_else(fresh_key);
         // A shell that goes on is known by what was kept of it until it next reports.
@@ -163,6 +156,7 @@ impl Hub {
         if let Some((state, kept)) = seed {
             session.continue_from(state, kept);
         }
+        self.hear(spawn.pane, &session);
         let slot = crate::view::slot::Slot {
             palette: self.palette,
             session: Some(session),
@@ -238,7 +232,10 @@ impl Hub {
 
     /// The session a pane has in the local daemon, to ask for again at the next launch: the one
     /// it has now, else the one it was saved with and has not got back yet.
-    pub(super) fn local_session(&self, pane: temor_core::vocab::ids::PaneId) -> Option<u64> {
+    pub(super) fn local_session(
+        &self,
+        pane: temor_client::model::vocab::ids::PaneId,
+    ) -> Option<u64> {
         self.remote.local.contains_key(&pane).then_some(())?;
         let live = self.remote.panes.get(&pane).and_then(|p| p.session);
         live.or_else(|| self.remote.saved.get(&pane).copied())
@@ -258,87 +255,5 @@ impl Hub {
     /// Starts the daemon's helper for the dial.
     pub(super) fn local_dial_env(&self) -> Option<HostEnv> {
         self.local_env()
-    }
-}
-
-impl Hub {
-    /// The focused pane and its daemon session, when it is a daemon pane with a program running.
-    fn detachable(&self) -> Option<(PaneId, SessionId)> {
-        let pane = self.keyboard_pane()?;
-        self.remote.local.contains_key(&pane).then_some(())?;
-        let session = self.remote.panes.get(&pane)?.session?;
-        self.live(pane, |session| session.running_command())??;
-        Some((pane, session))
-    }
-
-    /// Whether "Detach running program" can do anything now (the command bar lists it only
-    /// then).
-    pub(super) fn can_detach_focused(&self) -> bool {
-        self.detachable().is_some()
-    }
-
-    /// The focused pane, when it is a daemon pane with a program running: the pane and its
-    /// session are noted for [`Hub::detach_finish`], and the caller splits the pane.
-    pub(super) fn detach_prepare(&mut self) -> Option<PaneId> {
-        let (pane, session) = self.detachable()?;
-        self.remote.detaching = Some((pane, session));
-        Some(pane)
-    }
-
-    /// Ends a daemon session without closing the pane that shows it: the pane keeps its last
-    /// frame when the daemon says the session is gone.
-    pub(super) fn local_hang_up(&mut self, session: SessionId) {
-        let conn = self
-            .remote
-            .lines
-            .get(&local_alias())
-            .and_then(|line| line.conn.clone());
-        if let Some(conn) = conn {
-            self.remote.work.close(conn, session);
-        }
-    }
-
-    /// The split happened: the new pane took the program's session, and the old pane gets a new
-    /// shell with the folder and variables of the one it had.
-    pub(super) fn detach_finish(&mut self) {
-        let Some((from, session)) = self.remote.detaching.take() else {
-            return;
-        };
-        let taken = self
-            .remote
-            .local
-            .iter()
-            .any(|(pane, own)| *pane != from && own.resume == Some(session));
-        let Some(old) = self.remote.local.get(&from).map(|own| own.spawn.clone()) else {
-            return;
-        };
-        if !taken {
-            return;
-        }
-        let kept = self
-            .live(from, |session| session.checkpoint())
-            .unwrap_or_default();
-        let own = self.local_start(&old, Some(kept), (None, fresh_key()));
-        if let Some(slot) = self.slots.get(&from)
-            && let Some(session) = slot.borrow_mut().session.as_mut()
-        {
-            session.set_report_key(Some(own.report_key.clone()));
-        }
-        self.remote.local.insert(from, own);
-        self.remote.saved.remove(&from);
-        if let Some(pane) = self.remote.panes.get_mut(&from) {
-            pane.session = None;
-            pane.shown = Shown::Opening;
-            let mut target = crate::edge::remote_link::lock(&pane.target);
-            target.conn = None;
-            target.session = None;
-        }
-        self.remote
-            .lines
-            .entry(local_alias())
-            .or_default()
-            .waiting
-            .push(from);
-        self.local_advance();
     }
 }

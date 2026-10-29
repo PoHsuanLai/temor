@@ -7,7 +7,7 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use ds::components::app::spaces::SpaceId;
-use temor_core::space::Project;
+use temor_client::model::space::Project;
 use tokio::sync::watch;
 
 use super::space_edit::SpaceChange;
@@ -129,7 +129,7 @@ mod tests {
         for root in ["/a", "/b"] {
             board.send(SpaceEdit {
                 space: SpaceId(1),
-                change: SpaceChange::Root(Some(temor_core::vocab::text::ProjectRoot(
+                change: SpaceChange::Root(Some(temor_client::model::vocab::text::ProjectRoot(
                     root.to_owned(),
                 ))),
             });

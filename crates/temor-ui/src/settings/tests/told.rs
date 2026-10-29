@@ -10,7 +10,7 @@ fn ambient(scratch: &Path) -> Ambient {
     let home = scratch.join("home");
     Ambient {
         home: home.clone(),
-        env: temor_shell::ChildEnv::new(),
+        env: temor_panes::shell::ChildEnv::new(),
         config_dir: scratch.join("config/temor"),
         runtime_dir: home.join("runtime"),
     }

@@ -3,7 +3,7 @@
 //! is: the pane's own, the workspace's, or the window's. A route differs only in what it knows
 //! about where the action came from, which is [`Origin`].
 
-use temor_pane::keys::{Action, Owner};
+use temor_panes::pane::keys::{Action, Owner};
 
 use super::desk::Desk;
 use super::keys::workspace_input;

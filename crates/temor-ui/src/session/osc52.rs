@@ -4,12 +4,14 @@
 //! once per tab (the host's remembered answer, when the app has one, is set with
 //! [`Session::set_clipboard_consent`]) and the answer is kept. Reads: every program asks once per
 //! tab. libghostty wants a read answered at once, so the first request gets nothing; after the
-//! person allows, the pane's copy of the clipboard (see `temor_pane::ClipboardMirror`) answers.
+//! person allows, the pane's copy of the clipboard (see `temor_panes::pane::ClipboardMirror`) answers.
 
-use temor_core::remote::Grant;
-use temor_core::shelf::PaneSite;
-use temor_pane::ReadPolicy;
-use temor_vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
+use temor_client::model::remote::Grant;
+use temor_client::model::shelf::PaneSite;
+use temor_panes::pane::ReadPolicy;
+use temor_panes::vt::{ClipboardGrant, ClipboardLocation, ClipboardRead, ClipboardWrite};
+
+pub use temor_panes::clipboard::{ClipboardAsk, ClipboardUse, PendingClipboard};
 
 use super::Session;
 use super::clip::PASTE_LIMIT;
@@ -43,31 +45,6 @@ pub(super) fn write_verdict(site: PaneSite, consent: Grant, held: ClipboardGrant
     }
 }
 
-/// What the person is asked about the clipboard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClipboardUse {
-    /// The program wants to put text on the clipboard.
-    Copy,
-    /// The program wants to read the clipboard.
-    Read,
-}
-
-/// A question waiting for the person.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClipboardAsk {
-    pub kind: ClipboardUse,
-    /// The program's name, cleaned for showing; empty when it gave none.
-    pub program: String,
-}
-
-/// The question and, for a copy, the text it would put on the clipboard, and where.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct PendingClipboard {
-    pub(super) ask: ClipboardAsk,
-    pub(super) text: String,
-    pub(super) to: ClipboardLocation,
-}
-
 /// The text of a write: its first plain-text form, empty for a clear. `None` when the write
 /// carries only other kinds of data.
 fn write_text(write: &ClipboardWrite) -> Option<String> {
@@ -82,12 +59,12 @@ impl Session {
     /// Sets what the person has answered about this program's copying (a remembered answer for
     /// the host); `Grant::Ask` asks on the next write.
     pub fn set_clipboard_consent(&mut self, grant: Grant) {
-        self.clip_write = grant;
+        self.core().clip_write = grant;
     }
 
     /// The clipboard question waiting for an answer, if any.
-    pub fn clipboard_ask(&self) -> Option<&ClipboardAsk> {
-        self.clip_pending.as_ref().map(|p| &p.ask)
+    pub fn clipboard_ask(&self) -> Option<ClipboardAsk> {
+        self.core().clip_pending.as_ref().map(|p| p.ask.clone())
     }
 
     /// A program wrote to the clipboard.
@@ -100,16 +77,20 @@ impl Session {
                 Some("A program tried to copy more than 8 MiB, so it was not copied.".into());
             return Notice::Quiet;
         }
-        match write_verdict(self.site, self.clip_write, write.grant) {
+        let (site, consent, asking) = {
+            let core = self.core();
+            (core.site, core.clip_write, core.clip_pending.is_some())
+        };
+        match write_verdict(site, consent, write.grant) {
             WriteVerdict::Write => self.osc52_put(write.location, &text),
             WriteVerdict::Drop => {}
-            WriteVerdict::Ask if self.clip_pending.is_some() => {}
+            WriteVerdict::Ask if asking => {}
             WriteVerdict::Ask => {
                 let ask = ClipboardAsk {
                     kind: ClipboardUse::Copy,
                     program: sanitise_title(&write.program),
                 };
-                self.clip_pending = Some(PendingClipboard {
+                self.core().clip_pending = Some(PendingClipboard {
                     ask,
                     text,
                     to: write.location,
@@ -122,14 +103,14 @@ impl Session {
 
     /// A program asked to read the clipboard before the person was asked.
     pub(super) fn osc52_read_asked(&mut self, read: ClipboardRead) -> Notice {
-        if self.clip_pending.is_some() {
+        if self.core().clip_pending.is_some() {
             return Notice::Quiet;
         }
         let ask = ClipboardAsk {
             kind: ClipboardUse::Read,
             program: sanitise_title(&read.program),
         };
-        self.clip_pending = Some(PendingClipboard {
+        self.core().clip_pending = Some(PendingClipboard {
             ask,
             text: String::new(),
             to: read.location,
@@ -139,12 +120,12 @@ impl Session {
 
     /// The person answered the waiting question. The answer is kept for this tab.
     pub fn answer_clipboard(&mut self, grant: Grant) {
-        let Some(pending) = self.clip_pending.take() else {
+        let Some(pending) = self.core().clip_pending.take() else {
             return;
         };
         match pending.ask.kind {
             ClipboardUse::Copy => {
-                self.clip_write = grant;
+                self.core().clip_write = grant;
                 if grant == Grant::Allowed {
                     self.osc52_put(pending.to, &pending.text);
                 }
@@ -155,7 +136,7 @@ impl Session {
                     Grant::Refused => ReadPolicy::Refused,
                     Grant::Ask => ReadPolicy::Ask,
                 };
-                self.clip_mirror.set_policy(policy);
+                self.core().clip_mirror.set_policy(policy);
                 self.refresh_clipboard_copy();
             }
         }
@@ -191,10 +172,10 @@ impl Session {
 
     /// Re-reads the desktop clipboard into the pane's copy, when the person lets programs read it.
     pub(super) fn refresh_clipboard_copy(&self) {
-        if self.clip_mirror.policy() != ReadPolicy::Allowed {
+        if self.core().clip_mirror.policy() != ReadPolicy::Allowed {
             return;
         }
-        self.clip_mirror.set_text(self.clipboard.read().ok());
+        self.core().clip_mirror.set_text(self.clipboard.read().ok());
     }
 }
 

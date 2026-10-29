@@ -266,10 +266,9 @@ fn wait_for(h: &mut Harness, what: &str, mut ok: impl FnMut(&mut Harness) -> boo
         h.advance(Duration::from_millis(25));
         assert!(
             start.elapsed() < WAIT,
-            "timed out waiting for {what}; cards {:?}; presence working={} waiting={}; screen: {}",
+            "timed out waiting for {what}; cards {:?}; dots {}; screen: {}",
             metas(h),
-            presence(h, "working"),
-            presence(h, "waiting"),
+            needs(h),
             screen_tail()
         );
     }
@@ -325,10 +324,9 @@ fn metas(h: &Harness) -> Vec<String> {
         .collect()
 }
 
-fn presence(h: &Harness, which: &str) -> usize {
-    h.html()
-        .matches(&format!("data-presence=\"{which}\""))
-        .count()
+/// How many tab rows show the dot that says the tab needs the person.
+fn needs(h: &Harness) -> usize {
+    h.html().matches("class=\"temor-tab-needs\"").count()
 }
 
 /// The label of each button in the first inline banner under `scope`.
@@ -362,17 +360,18 @@ fn drag_files(h: &mut Harness, at: Point, files: Vec<PathBuf>) {
     h.advance(Duration::from_millis(300));
 }
 
-/// Opens the Downloads popover, returns its text, and closes it again.
+/// Opens the Downloads page, returns its text, and closes it again.
 fn shelf_text(h: &mut Harness) -> String {
     let trigger = h
         .centre(".temor-dl-hold .ds-button")
         .unwrap_or_else(|| panic!("no Downloads button in the head"));
     click(h, trigger);
     h.advance(Duration::from_millis(200));
-    let text = h.text_of(".temor-dl-list").unwrap_or_default();
+    let text = h.text_of(".temor-downloads").unwrap_or_default();
     let rows = h.count(".temor-dl");
-    if let Some(again) = h.centre(".temor-dl-hold .ds-button") {
-        click(h, again);
+    if let Some(close) = h.centre(".temor-page-bar [aria-label=\"Close Page\"]") {
+        click(h, close);
+        h.advance(Duration::from_millis(200));
     }
     format!("[{rows} rows] {}", one_line(&text))
 }
@@ -464,12 +463,7 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
             m.iter().all(|t| !t.contains("exit")),
             "a card failed: {m:?}"
         );
-        let html = h.html();
-        assert!(
-            html.contains("class=\"temor-blk-where\""),
-            "the composer names no folder"
-        );
-        format!("2 cards {m:?}, no exit; the composer names the folder")
+        format!("2 cards {m:?}, no exit")
     });
 
     steps.run("W2", || {
@@ -501,21 +495,20 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
         wait_screen(&mut h, &probe, "the agent working", |s| {
             s.contains("FAKE-AGENT-WORKING")
         });
-        let worked = presence(&h, "working");
         let start = Instant::now();
-        while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+        while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
             h.advance(Duration::from_millis(50));
         }
-        if presence(&h, "waiting") == 0 {
+        if needs(&h) == 0 {
             // Control: the same script under a name that is not an agent's.
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             h.advance(Duration::from_millis(300));
             type_line(&mut h, "cp \"$(command -v claude)\" ./fakeagent && ./fakeagent");
             let start = Instant::now();
-            while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+            while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
                 h.advance(Duration::from_millis(50));
             }
-            let renamed = (presence(&h, "waiting"), presence(&h, "working"));
+            let renamed = needs(&h);
             // Second control: the other pane of the same split, the shell line agents_window uses.
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             let left = first_pane(&h);
@@ -525,18 +518,16 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
                 "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
             );
             let start = Instant::now();
-            while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+            while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
                 h.advance(Duration::from_millis(50));
             }
-            let first = presence(&h, "waiting");
+            let first = needs(&h);
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             h.advance(Duration::from_millis(300));
             panic!(
-                "no orb for the `claude` script's OSC 7501 working/blocked in the split (working \
-                 orbs {worked}; a split tab's row draws no orb, see agents_window's \
-                 a_waiting_program_in_a_split_tab_still_shows_its_orb); same script named fakeagent: waiting={} working={}; the \
-                 agents_window shell line in the left pane: waiting={first}",
-                renamed.0, renamed.1
+                "no dot for the `claude` script's OSC 7501 blocked in the split (see agents_window's \
+                 a_waiting_program_in_a_split_tab_still_shows_its_dot); same script named \
+                 fakeagent: {renamed}; the agents_window shell line in the left pane: {first}"
             );
         }
         // The keyboard to the other pane, then the chord brings it back to the agent.
@@ -553,7 +544,7 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
         wait_screen(&mut h, &probe, "the agent pane to have the keys", |s| {
             s.contains("FAKE-AGENT-WAITING")
         });
-        format!("working orbs seen {worked}, then waiting=1; ⌘⇧U moved the keys to the agent pane")
+        "the waiting dot; ⌘⇧U moved the keys to the agent pane".to_owned()
     });
 
     steps.run("W3", || {

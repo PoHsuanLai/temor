@@ -3,29 +3,29 @@
 //! changes the session.
 
 use ds_core::time::stamp::Stamp;
-use temor_core::block::BlockState;
-use temor_core::offer::{Line, OfferList, Program, Screen, asks_for_secret};
-use temor_core::vocab::ids::BlockId;
+use temor_client::model::block::BlockState;
+use temor_client::model::offer::{Line, OfferList, Program, Screen, asks_for_secret};
+use temor_client::model::vocab::ids::BlockId;
 
 use super::Session;
 
 impl Session {
     /// The time on the session's clock.
     pub fn now(&self) -> Stamp {
-        self.clock.now()
+        self.core().clock.now()
     }
 
     /// The running command's line, as the shell marked it.
-    pub fn running_line(&self) -> Option<&str> {
-        match self.blocks.machine() {
-            BlockState::Running(block) => Some(block.command.as_str()),
+    pub fn running_line(&self) -> Option<String> {
+        match self.core().blocks.machine() {
+            BlockState::Running(block) => Some(block.command.0.clone()),
             _ => None,
         }
     }
 
     /// The running command's block, when its command is on `list`, and which entry matched.
     pub fn running_listed(&self, list: &OfferList) -> Option<(BlockId, Program)> {
-        match self.blocks.machine() {
+        match self.core().blocks.machine() {
             BlockState::Running(block) => list
                 .matches(block.command.as_str())
                 .map(|program| (block.id, program)),

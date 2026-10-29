@@ -8,24 +8,24 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use temor_core::remote::{Grant, HelperState, HostArch};
-use temor_core::vocab::ids::PaneId;
-use temor_pane::Feeder;
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{LinkState, Monotonic};
-use temor_wire::message::ListeningPort;
+use temor_client::model::remote::{Grant, HelperState, HostArch};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{LinkState, Monotonic};
+use temor_client::remote::message::ListeningPort;
+use temor_client::ssh::HostAlias;
+use temor_panes::pane::Feeder;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use crate::edge::Ambient;
-use crate::edge::remote::RemoteWork;
-use crate::edge::remote_builds::{HelperBuilds, arch_of};
-use crate::edge::remote_conn::Conn;
-use crate::edge::remote_event::{Generation, RemoteEvent};
-use crate::edge::remote_grants;
-use crate::edge::remote_install::HostLogin;
-use crate::edge::remote_link::Target;
-use crate::edge::remote_route::Router;
+use temor_client::remote::builds::{HelperBuilds, arch_of};
+use temor_client::remote::conn::Conn;
+use temor_client::remote::grants;
+use temor_client::remote::install::HostLogin;
+use temor_panes::remote::RemoteWork;
+use temor_panes::remote::event::{Generation, RemoteEvent};
+use temor_panes::remote::link::Target;
+use temor_panes::remote::route::Router;
 
 /// What a host pane runs on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,23 +51,14 @@ pub(super) enum Reach {
     Reached,
 }
 
-/// Where a pane's session stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Shown {
-    /// Waiting for the helper, or for the host to open the session.
-    Opening,
-    /// Open on the host and showing its screen.
-    Attached,
-    /// The host no longer has the session.
-    Gone,
-}
+pub(super) use temor_client::remote::session::Shown;
 
 /// The name the window gives this computer's own daemon among the hosts.
 pub(super) const LOCAL: &str = "local";
 
 /// How a pane that is a session in the local daemon starts, and what to do if the daemon cannot.
 pub(super) struct LocalStart {
-    pub spawn: temor_core::workspace::Spawn,
+    pub spawn: temor_client::model::workspace::Spawn,
     pub cwd: String,
     pub env: Vec<(String, String)>,
     /// The program the person chose in settings; none is their login shell.
@@ -76,7 +67,7 @@ pub(super) struct LocalStart {
     pub resume: Option<SessionId>,
     /// The key the pane's shell signs its state reports with: the one it was started with when
     /// it goes on, else a new one (a session opened anew is given the same).
-    pub report_key: temor_shell::report::ReportKey,
+    pub report_key: temor_panes::shell::report::ReportKey,
 }
 
 /// One pane that is a session on a helper.
@@ -140,8 +131,6 @@ pub(super) struct RemoteHub {
     pub saved: BTreeMap<PaneId, SessionId>,
     /// Panes that are sessions in this computer's own daemon, and how each starts.
     pub local: BTreeMap<PaneId, LocalStart>,
-    /// A detach in progress: the pane giving up its program, and the session it takes along.
-    pub detaching: Option<(PaneId, SessionId)>,
     /// The helper builds this temor carries, one per kind of processor.
     pub builds: HelperBuilds,
     started: Instant,
@@ -150,10 +139,7 @@ pub(super) struct RemoteHub {
 impl RemoteHub {
     pub(super) fn new(ambient: &Ambient, state_dir: Option<PathBuf>) -> Self {
         let (events, inbox) = unbounded_channel();
-        let legacy = state_dir
-            .as_deref()
-            .map(remote_grants::load)
-            .unwrap_or_default();
+        let legacy = state_dir.as_deref().map(grants::load).unwrap_or_default();
         Self {
             work: RemoteWork::new(events),
             inbox: Some(inbox),
@@ -162,7 +148,6 @@ impl RemoteHub {
             panes: BTreeMap::new(),
             saved: BTreeMap::new(),
             local: BTreeMap::new(),
-            detaching: None,
             builds: HelperBuilds::new(
                 arch_of(std::env::consts::ARCH),
                 ambient.env.get("TEMOR_REMOTE_HELPER"),

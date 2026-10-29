@@ -51,16 +51,17 @@ impl Via {
 
 #[cfg(test)]
 mod tests {
-    use temor_core::agent::radar::{Millis, RadarParams};
-    use temor_core::vocab::ids::PaneId;
-    use temor_pane::PaneEvent;
-    use temor_vt::{ProgramState, ProgramStatus, ProgramWait};
+    use temor_client::model::agent::radar::{Millis, RadarParams};
+    use temor_client::model::vocab::ids::PaneId;
+    use temor_panes::Heard;
+    use temor_panes::pane::PaneEvent;
+    use temor_panes::vt::{ProgramState, ProgramStatus, ProgramWait};
 
     use super::super::radar::Radar;
     use super::*;
 
-    fn report(state: ProgramState) -> PaneEvent {
-        PaneEvent::Program(ProgramStatus {
+    fn report(state: ProgramState) -> Heard {
+        Heard::Window(PaneEvent::Program(ProgramStatus {
             state,
             wait: ProgramWait::Unspecified,
             percent: None,
@@ -68,10 +69,10 @@ mod tests {
             app: "claude".to_owned(),
             title: String::new(),
             message: String::new(),
-        })
+        }))
     }
 
-    fn front(name: &str) -> PaneEvent {
+    fn front(name: &str) -> Heard {
         super::super::tests::front(name)
     }
 
@@ -94,7 +95,7 @@ mod tests {
     #[test]
     fn an_agent_that_only_reported_is_gone_on_clear_or_when_a_shell_returns() {
         // Each row: what happens after a report; whether the agent is still there at the end.
-        let rows: Vec<(&str, Vec<PaneEvent>, Option<&str>)> = vec![
+        let rows: Vec<(&str, Vec<Heard>, Option<&str>)> = vec![
             ("nothing", vec![], Some("claude")),
             ("another program", vec![front("node")], Some("claude")),
             ("a shell", vec![front("node"), front("zsh")], None),

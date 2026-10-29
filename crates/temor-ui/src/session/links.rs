@@ -2,8 +2,8 @@
 //! tooltip by the pointer, so the person sees where a click would go. Hovering never opens
 //! anything.
 
-use temor_core::vocab::text::display_text;
-use temor_vt::{GridPoint, PointSpace};
+use temor_client::model::vocab::text::display_text;
+use temor_panes::vt::{GridPoint, PointSpace};
 
 use super::Session;
 
@@ -43,7 +43,7 @@ impl Session {
     pub fn link_under_pointer(&self) -> Option<String> {
         let at = self.pointer_over?;
         let hit = self.point_hit(at)?;
-        if hit.region != temor_render::HitRegion::Grid {
+        if hit.region != temor_panes::render::HitRegion::Grid {
             return None;
         }
         let cell = hit.cell;

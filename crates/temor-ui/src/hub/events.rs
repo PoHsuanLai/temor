@@ -8,19 +8,20 @@ use std::rc::Rc;
 
 use dioxus::prelude::*;
 use ds::base::time::clock::sleep;
-use temor_core::facts::FactsIn;
-use temor_core::quick::QuickIn;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::{Cwd, TabTitle};
-use temor_core::workspace::{TabsIn, WorkspaceIn};
-use temor_pane::{Hold, PaneEvent, TransferEvent};
-use temor_pty::ChildExit;
+use temor_client::model::facts::FactsIn;
+use temor_client::model::quick::QuickIn;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::{Cwd, TabTitle};
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
+use temor_panes::pane::{Hold, TransferEvent};
+use temor_panes::pty::ChildExit;
 
 use super::desk::Desk;
 use super::model::Hub;
-use super::offer::{Heard, OfferRedraw};
+use super::offer::{Heard as OfferHeard, OfferRedraw};
 use crate::session::{BELL_MARK, Notice, Relaid};
 use crate::view::slot::{Slot, release_hold_later, repaint};
+use temor_panes::Heard;
 
 /// What a batch of events asks the window to do.
 #[derive(Debug, Default)]
@@ -43,25 +44,27 @@ pub(super) struct Delivery {
 
 impl Hub {
     /// Gives each event to its pane's session and gathers what that means for the window.
-    pub(super) fn deliver(&mut self, batch: Vec<(PaneId, PaneEvent)>) -> Delivery {
+    pub(super) fn deliver(&mut self, batch: Vec<(PaneId, Heard)>) -> Delivery {
         let mut out = Delivery::default();
         // What the facts rule is told once the sessions are let go: it looks at the panes.
         let mut facts = Vec::new();
-        for (pane, event) in batch {
+        for (pane, heard) in batch {
             let Some(slot) = self.slots.get(&pane).cloned() else {
                 continue;
             };
-            // The radar hears the event first; the session then takes it.
-            if self.agents_observe(pane, &event) == super::agents::Changed::Yes {
-                out.chrome.insert(pane);
-            }
             let mut guard = slot.borrow_mut();
             let Some(session) = guard.session.as_mut() else {
                 continue;
             };
-            let heard = Heard::of(&event);
-            let notice = session.absorb(event);
-            if self.offer_heard(pane, heard, session) == OfferRedraw::Yes {
+            // The pane's core took the event on the client's thread; the radar and the offer hear
+            // what it left, and the session then takes that.
+            if self.agents_observe(pane, &heard) == super::agents::Changed::Yes {
+                out.chrome.insert(pane);
+            }
+            let offered = OfferHeard::of(&heard);
+            let notice = session.take(heard);
+            self.history_heard(pane, &notice, session);
+            if self.offer_heard(pane, offered, session) == OfferRedraw::Yes {
                 out.chrome.insert(pane);
             }
             match notice {
@@ -70,11 +73,6 @@ impl Hub {
                 }
                 Notice::Ended(exit) => {
                     let keep = self.keeps_ended_pane(pane, exit, session.prompts_seen() > 0);
-                    let code = match exit {
-                        Some(ChildExit::Exited(code)) => Some(code),
-                        _ => None,
-                    };
-                    self.live_ended(pane, code);
                     self.run_ended(pane, exit);
                     self.ssh_ended(pane, exit);
                     out.paint.insert(pane);
@@ -118,7 +116,6 @@ impl Hub {
                     });
                 }
                 Notice::CommandDone => {
-                    self.agents_command_done(pane);
                     facts.push((pane, FactsIn::CommandDone));
                     out.chrome.insert(pane);
                     out.asks.push(WorkspaceIn::Activity(pane));
@@ -147,7 +144,6 @@ impl Hub {
         let dropped = host == Some(super::ssh::Phase::Up) && exit == Some(ChildExit::Exited(255));
         self.run_name(pane).is_some()
             || self.is_quick(pane)
-            || self.shows_live_card(pane)
             || !prompted
             || host.is_some_and(|phase| phase != super::ssh::Phase::Up)
             || dropped
@@ -155,9 +151,9 @@ impl Hub {
 
     /// The tab's title follows the program's title in the pane that has the keys in it.
     fn rename_for(&self, pane: PaneId, title: &str) -> Option<WorkspaceIn> {
-        let tab = self.ws.tab_of(pane)?;
-        let current = self.ws.tabs.tab(tab)?;
-        (self.ws.focus_of(tab) == Some(pane)
+        let tab = self.book.ws.tab_of(pane)?;
+        let current = self.book.ws.tabs.tab(tab)?;
+        (self.book.ws.focus_of(tab) == Some(pane)
             && !title.is_empty()
             && current.title.as_str() != title)
             .then(|| {

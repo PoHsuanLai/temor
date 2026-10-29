@@ -2,18 +2,20 @@
 //! found, the person's answer, the upload, the dial. `helper_step` decides; this runs what it
 //! names. The connection's life after that is in `remote_link`.
 
-use temor_core::remote::{CacheDir, Grant, HelperIn, HelperOut, HelperState, HostOs, helper_step};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::HelperHash;
-use temor_ssh::HostAlias;
-use temor_wire::digest::ContentHash;
-use temor_wire::link::{Attempt, LinkState};
+use temor_client::model::remote::{
+    CacheDir, Grant, HelperIn, HelperOut, HelperState, HostOs, helper_step,
+};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::HelperHash;
+use temor_client::remote::digest::ContentHash;
+use temor_client::remote::link::{Attempt, LinkState};
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::Busy;
-use crate::edge::remote_builds::no_build_words;
-use crate::edge::remote_event::{RemoteEvent, Wanted};
-use crate::edge::remote_install::Found;
+use temor_client::remote::builds::no_build_words;
+use temor_client::remote::install::Found;
+use temor_panes::remote::event::{RemoteEvent, Wanted};
 
 impl Hub {
     /// Carries out what a job or a connection reported, and returns the messages it left for the
@@ -259,12 +261,12 @@ impl Hub {
                 },
                 None => Wanted::Fresh { cwd, env, shell },
             };
-            let ticket = crate::edge::remote_event::Ticket {
+            let ticket = temor_panes::remote::event::Ticket {
                 pane,
                 target: std::sync::Arc::clone(&remote.target),
                 feeder: remote.feeder.clone(),
                 wanted,
-                palette: crate::edge::remote_palette::wire_palette(&self.palette),
+                palette: temor_panes::remote::palette::wire_palette(&self.palette),
             };
             self.remote.work.attach(
                 std::sync::Arc::clone(&conn),

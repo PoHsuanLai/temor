@@ -1,0 +1,62 @@
+[package]
+name = "temor-client"
+description = "temor's data as values that are already read, and kept read as the store changes: what the window asks, answered on threads of the client's own."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Between the store and the window (PLAN §2b, P24). A caller asks for a value and is handed one
+# that is already there; the reading happens on the client's threads, and again when the store
+# says what a commit touched. Draws nothing and words nothing: no dioxus, no quire widgets (only
+# quire's Spaces list, as temor-core keeps it). It keeps the window's Spaces and workspaces
+# (`spaces`) and what is kept between launches (`keep`). The running terminals are temor-panes':
+# no terminal engine is built here.
+
+[features]
+# What a test builds with: `Live::wait`, and a faster look for other processes' writes.
+testing = []
+# The Linux desktop's services through `temor-desktop` (PLAN D15); off, its portable half.
+quire-desktop = ["temor-desktop/quire-desktop"]
+
+[dependencies]
+temor-schema = { workspace = true }
+temor-store = { workspace = true }
+temor-core = { workspace = true }
+# A new shell's report key (`keep::replay`) and the private folder check (`keep::private`).
+temor-shell = { workspace = true }
+# The Spaces (`spaces`): the kit's list, which temor-core keeps its projects in.
+ds-style = { workspace = true }
+serde_json = { workspace = true }
+# The private state folder's owner check (`keep::private`).
+rustix = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+# The watch channel a `Live` is followed through, so an `async` window can await a change.
+tokio = { workspace = true }
+notify = { workspace = true }
+# The services (`ssh`, `remote`, `viewer_host`): Tier A's programs and Tier B's helper, its wire
+# and its client (without the daemon, so no terminal engine), and where a program is found.
+temor-ssh = { workspace = true }
+temor-wire = { workspace = true }
+temor-remote = { workspace = true }
+temor-pty = { workspace = true }
+# The desktop's port and its password store (`desktop`, `space`), the downloads shelf's index
+# (`shelf`), and the shelf's times.
+temor-desktop = { workspace = true }
+temor-transfer = { workspace = true }
+ds-core = { workspace = true }
+# The plugins' work (`plugins`), and an agent adapter's status as the pane's report.
+temor-plugins = { workspace = true }
+temor-pane = { workspace = true }
+# The person's icon pack (`icons`).
+toml = { workspace = true }
+
+[dev-dependencies]
+temor-client = { path = ".", features = ["testing"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+
+[lints]
+workspace = true

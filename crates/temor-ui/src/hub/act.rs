@@ -5,18 +5,17 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
-use temor_core::notify::Focus;
-use temor_core::session::Checkpoint;
-use temor_core::space::{Origin, spawn_plan};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::{CommandText, Cwd};
-use temor_core::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut, workspace_step};
-use temor_vt::Snapshot;
+use temor_client::model::notify::Focus;
+use temor_client::model::session::Checkpoint;
+use temor_client::model::space::{Origin, spawn_plan};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::{CommandText, Cwd};
+use temor_client::model::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
+use temor_panes::vt::Snapshot;
 
 use super::model::{Hub, HubRef};
 use super::say::refusal_text;
 use super::typing::{Submit, type_command};
-use crate::edge::{checkpoint, sidecar};
 use crate::session::Session;
 use crate::view::launch::open_session_with;
 use crate::view::slot::{Slot, repaint};
@@ -24,19 +23,15 @@ use crate::view::slot::{Slot, repaint};
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
-        if let Some(space) = self.parked_owner_of(&input) {
+        if let Some(space) = self.book.parked_owner_of(&input) {
             return self.with_space(space, |hub| hub.act(input));
         }
         let input = self.in_project(input);
-        self.book.lift(&mut self.ws);
         let input = self.ssh_prepare(input);
         let input = self.start_prepared(input);
         let input = self.measured(input);
         let at_home = self.split_starts_at_home(&input);
-        let (ws, outs) = workspace_step(self.ws.clone(), input);
-        self.ws = ws;
-        self.book.note(&self.ws);
-        for out in outs {
+        for out in self.book.step(input) {
             match out {
                 WorkspaceOut::Spawn(spawn) if at_home => {
                     let spawn = self.starting_at_home(spawn);
@@ -48,7 +43,7 @@ impl Hub {
         self.agents_after_act();
         self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
-        if self.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws.tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }
@@ -56,9 +51,10 @@ impl Hub {
     /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
     /// there before. A request the workspace refuses opens none.
     pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
-        let before: BTreeSet<PaneId> = self.ws.tabs.panes().into_iter().collect();
+        let before: BTreeSet<PaneId> = self.book.ws.tabs.panes().into_iter().collect();
         self.act(input);
-        self.ws
+        self.book
+            .ws
             .tabs
             .panes()
             .into_iter()
@@ -102,7 +98,7 @@ impl Hub {
                 .carried
                 .get(&spawn.pane)
                 .and_then(|kept| kept.daemon_session)
-                .map(temor_wire::ids::SessionId);
+                .map(temor_client::remote::ids::SessionId);
             return self.begin_local(spawn, resume);
         }
         self.open_plain(spawn, restored);
@@ -110,10 +106,13 @@ impl Hub {
 
     /// Starts the program of `spawn` as a child of this window.
     pub(super) fn open_plain(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        let snapshot = restored.or_else(|| match spawn.start {
-            Start::Scrollback(pane) => self.recent.remove(&pane),
-            Start::Fresh => None,
-        });
+        let snapshot =
+            restored
+                .or_else(|| self.history.screen.take())
+                .or_else(|| match spawn.start {
+                    Start::Scrollback(pane) => self.recent.remove(&pane),
+                    Start::Fresh => None,
+                });
         let mut start = self.space_start();
         let kept = self.carried.remove(&spawn.pane);
         let cwd = spawn
@@ -158,6 +157,7 @@ impl Hub {
                         Submit::Enter,
                     );
                 }
+                self.hear(spawn.pane, &session);
                 slot.session = Some(session);
             }
             Err(err) => self.notices.push(err.to_string()),
@@ -170,13 +170,17 @@ impl Hub {
     /// new shell reads once at its first prompt (where it is returned).
     pub(super) fn carry_env(
         &self,
-        env: &mut temor_shell::ChildEnv,
+        env: &mut temor_panes::shell::ChildEnv,
         pane: PaneId,
         kept: &Checkpoint,
     ) -> Option<std::path::PathBuf> {
         let carried = kept.replay();
         let replay = self.state_dir.as_deref().and_then(|dir| {
-            crate::edge::replay::write(dir, pane, &temor_shell::alias_script(&carried.aliases))
+            temor_client::keep::replay::write(
+                dir,
+                pane,
+                &temor_panes::shell::alias_script(&carried.aliases),
+            )
         });
         let base = self.launch.ambient.env.clone().overlay(env);
         let base: Vec<(String, String)> = base
@@ -203,6 +207,10 @@ impl Hub {
             .get(&pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(Session::snapshot));
         if let Some(snapshot) = snapshot {
+            // Kept under its session too, for the session's history page to reopen it from.
+            if let (Some(dir), Some(id)) = (&self.state_dir, self.session_id(pane)) {
+                let _ = temor_client::keep::screens::write(dir, id, snapshot.as_bytes());
+            }
             self.recent.insert(pane, snapshot);
         }
         let kept = self
@@ -218,6 +226,7 @@ impl Hub {
     pub(super) fn end_pane(&mut self, pane: PaneId) {
         self.drop_pane(pane);
         let in_closed_tab = self
+            .book
             .ws
             .closed
             .tabs
@@ -247,12 +256,8 @@ impl Hub {
     pub(super) fn forget_pane(&mut self, pane: PaneId) {
         self.recent.remove(&pane);
         self.ssh.closed.remove(&pane);
-        if let Some(dir) = &self.state_dir {
-            sidecar::remove(dir, pane);
-            checkpoint::remove(dir, pane);
-        }
+        self.files.forget(self.state_dir.as_deref(), pane);
         self.carried.remove(&pane);
-        self.on_disk.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.
@@ -274,7 +279,7 @@ impl Hub {
             return;
         }
         let start = self.space_start();
-        let cwd = self.ws.cwds.get(&pane).cloned().or(start.cwd);
+        let cwd = self.book.ws.cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
         self.run_restarted(pane);
@@ -290,6 +295,7 @@ impl Hub {
         ) {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
+                self.hear(pane, &session);
                 if let Some(slot) = self.slots.get(&pane) {
                     slot.borrow_mut().session = Some(session);
                 }
@@ -313,7 +319,7 @@ impl Hub {
     }
 
     /// Makes `palette` the grid's colours in every pane; the first failure comes back as text.
-    pub fn set_palette(&mut self, palette: temor_render::Palette) -> Option<String> {
+    pub fn set_palette(&mut self, palette: temor_panes::render::Palette) -> Option<String> {
         self.palette = palette;
         self.remote_palette();
         let mut failure = None;
@@ -342,7 +348,7 @@ impl HubRef {
     }
 
     /// Makes `palette` the grid's colours in every pane.
-    pub fn set_palette(&self, palette: temor_render::Palette) -> Option<String> {
+    pub fn set_palette(&self, palette: temor_panes::render::Palette) -> Option<String> {
         self.0.borrow_mut().set_palette(palette)
     }
 }

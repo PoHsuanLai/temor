@@ -6,10 +6,10 @@
 
 use std::time::Duration;
 
+use temor_client::desktop::port::Ask;
 use temor_desktop::{DesktopEnv, Request};
 use temor_testkit::PrivateBus;
 use temor_ui::app::desktop::{Joined, join};
-use temor_ui::edge::desktop_port::Ask;
 
 #[test]
 fn a_second_launch_is_handed_over_and_the_first_window_hears_its_request() {

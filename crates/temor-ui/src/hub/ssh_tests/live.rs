@@ -1,7 +1,7 @@
 //! A setting changed while panes are open: the ones open follow it.
 
-use temor_core::remote::Grant;
-use temor_pane::settings::NotifyAfter;
+use temor_client::model::remote::Grant;
+use temor_panes::pane::settings::NotifyAfter;
 
 use super::support::Rig;
 use crate::settings::{NotifySeconds, TerminalDoc};

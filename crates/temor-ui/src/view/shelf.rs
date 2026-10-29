@@ -1,43 +1,39 @@
-//! The downloads shelf in the sidebar's head (PLAN §7, §9), as mailo's is: a button at the head's
-//! right end, with a dot while a file arrives or one arrived unopened, that opens the files that
-//! arrived, newest first, in a popover below it. The command bar's Downloads opens it too. Each row opens its file on a press, and offers to show it in the
-//! folder, to paste its path into the terminal the person was using (or send the file there when
-//! that terminal is on another computer), to jump back to its tab, and to take it off the list
-//! (the file stays). A secondary press opens all of these, and Copy Path, as a menu. A file that
-//! is still arriving shows a bar.
+//! Downloads (PLAN §7, §9, P23): a button at the right end of the sidebar's head, with a dot while
+//! a file arrives or one arrived unopened, that opens the page `temor://downloads` on the row's
+//! stage, as the command bar's Downloads and its chord do. The page lists the files that arrived,
+//! newest first, under those on their way to other computers. A press opens a file; beside it are
+//! Show in Folder, Paste Path into the terminal the person was using (or Send to the computer
+//! that terminal is on), and Show Tab, the tab it came from; its X takes it off the list (the file
+//! stays). A secondary press is the one menu. A file that is still arriving shows a bar.
 
 use dioxus::prelude::*;
-use ds::base::geometry::placement::{Align, Side};
-use ds::base::press::Press;
+use ds::base::press::{PointerButton, Press};
 use ds::base::vocab::RowState;
-use ds::components::content::label::{LabelRole, LabelStyle};
 use ds::components::controls::progress::model::{Progress as Share, ProgressStyle};
 use ds::components::controls::progress::view::ProgressIndicator;
-use ds::components::overlays::popover::Arrow;
-use ds::host::measure::{Anchor, MountedRef, use_rect};
+use ds::components::overlays::empty_state::EmptyForm;
+use ds::host::measure::Anchor;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_core::shelf::{
+use temor_client::model::menu::{DownloadFacts, Item, Target};
+use temor_client::model::shelf::{
     Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
 };
 
+use super::menu::{Pick, menu_items};
 use super::names::named;
 use super::shelf_words::{ActWords, REMOVE_FROM_LIST, act_words};
 use super::tool_button::ToolButton;
 use crate::hub::Desk;
-use temor_pane::keys::Action;
+use temor_panes::pane::keys::Action;
 
-/// The Downloads button for the head of the sidebar, and its list while it is open.
+/// The Downloads button for the head of the sidebar.
 #[component]
 #[allow(non_snake_case)]
 pub fn ShelfButton(desk: Desk) -> Element {
     let _ = (desk.ui)();
     let view = desk.hub.shelf_view();
-    let uploads = desk.hub.uploads();
-    let mut shown = desk.shelf;
-    let toggling = desk.clone();
-    let mut hold = use_signal(|| None::<MountedRef>);
-    let going = !uploads.is_empty()
+    let going = !desk.hub.uploads().is_empty()
         || view
             .rows
             .iter()
@@ -47,68 +43,67 @@ pub fn ShelfButton(desk: Desk) -> Element {
         (false, 0) => None,
         (false, _) => Some("temor-dl-dot"),
     };
-    let anchor = hold().map_or(Anchor::Point(Point::default()), Anchor::Mounted);
+    let opening = desk.clone();
     rsx! {
-        span {
-            class: "temor-dl-hold",
-            onmounted: move |event: MountedEvent| hold.set(Some(MountedRef(event.data()))),
+        span { class: "temor-dl-hold",
             ToolButton {
                 icon: Icon::Download,
                 label: Action::ShowDownloads.label(),
                 tip: desk.hub.tooltip(Action::ShowDownloads.label(), Action::ShowDownloads),
-                // The same path as the chord and the bar: it shows a sidebar that is only peeking
-                // before it opens the list.
-                onclick: move |()| {
-                    let _ = toggling.window_action(Action::ShowDownloads);
-                },
+                onclick: move |()| opening.open_downloads(),
             }
             if let Some(class) = dot {
                 span { class, aria_hidden: "true" }
-            }
-            if shown() == Shown::Visible {
-                Popover {
-                    anchor,
-                    placement: Placement::new(Side::Bottom, Align::End),
-                    gap: Px(6.0),
-                    arrow: Arrow::None,
-                    common: named(Action::ShowDownloads.label()),
-                    onclose: move |()| shown.set(Shown::Hidden),
-                    div { class: "temor-dl-list",
-                        Label { text: Action::ShowDownloads.label(), role: LabelRole::Secondary }
-                        for upload in uploads.iter().cloned() {
-                            UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
-                        }
-                        if view.rows.is_empty() && uploads.is_empty() {
-                            Label { text: view.empty, style: LabelStyle::Footnote }
-                        }
-                        for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
-                            DownloadRow { key: "{id}", row, desk: desk.clone() }
-                        }
-                    }
-                }
             }
         }
     }
 }
 
-/// One file on the shelf.
+/// The page `temor://downloads`.
+#[component]
+#[allow(non_snake_case)]
+pub fn DownloadsPage(desk: Desk) -> Element {
+    let _ = (desk.ui)();
+    let view = desk.hub.shelf_view();
+    let uploads = desk.hub.uploads();
+    rsx! {
+        div { class: "temor-downloads", role: "list", "aria-label": "Downloads",
+            if view.rows.is_empty() && uploads.is_empty() {
+                EmptyState {
+                    form: EmptyForm::Empty,
+                    title: "No downloads",
+                    description: Some(TextLine::from(view.empty)),
+                }
+            }
+            for upload in uploads {
+                UploadRow { key: "up{upload.id.0}", upload, desk: desk.clone() }
+            }
+            for (id, row) in view.rows.into_iter().map(|row| (row.id.0, row)) {
+                DownloadRow { key: "{id}", row, desk: desk.clone() }
+            }
+        }
+    }
+}
+
+/// One file that arrived, or is arriving.
 #[component]
 #[allow(non_snake_case)]
 fn DownloadRow(row: Download, desk: Desk) -> Element {
     let id = row.id;
     let can = |want: Act| row.actions.contains(&want);
-    let tab = row.actions.iter().find_map(|action| match action {
-        Act::ShowInTab(tab) => Some(*tab),
-        _ => None,
-    });
+    // The tab it came from, unless that is the tab in front.
+    let front = desk.hub.front().map(|(tab, ..)| tab);
+    let tab = row
+        .actions
+        .iter()
+        .find_map(|action| match action {
+            Act::ShowInTab(tab) => Some(*tab),
+            _ => None,
+        })
+        .filter(|tab| Some(*tab) != front);
     let act = {
         let desk = desk.clone();
-        move |action: Act| {
-            for text in desk.hub.shelf_act(id, action) {
-                desk.say(text);
-            }
-            desk.bump();
-        }
+        move |action: Act| desk.shelf_act(id, action)
     };
     let remove = can(Act::Clear).then(|| {
         let act = act.clone();
@@ -120,33 +115,28 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
     });
     let open = can(Act::Open).then(|| {
         let act = act.clone();
-        EventHandler::new(move |_: Press| act(Act::Open))
+        EventHandler::new(move |press: Press| {
+            // A secondary press is the file's menu (`oncontextmenu` below).
+            if !matches!(press.button, PointerButton::Secondary) {
+                act(Act::Open);
+            }
+        })
     });
-    // Use in pane puts the list away, so the person is back in the terminal it typed into.
-    let mut shown = desk.shelf;
-    let mut give = {
-        let act = act.clone();
-        move || {
-            act(Act::UseInPane);
-            shown.set(Shown::Hidden);
-        }
-    };
     let target = desk.hub.shelf_target();
     let words = |action: Act| act_words(action, &target);
-    let give_button = can(Act::UseInPane).then(|| words(Act::UseInPane)).flatten();
-    let rect = use_rect();
-    let mut menu = use_signal(|| Shown::Hidden);
-    let has_menu = !row.actions.is_empty();
-    let mut items = Vec::new();
-    for action in &row.actions {
-        let Some(ActWords { label, .. }) = words(*action) else {
-            continue;
-        };
-        if *action == Act::Clear {
-            items.push(MenuItem::Separator);
-        }
-        items.push(MenuItem::new(*action, label));
-    }
+    let give = can(Act::UseInPane).then(|| words(Act::UseInPane)).flatten();
+    let mut menu = use_signal(|| None::<Point>);
+    let facts = DownloadFacts {
+        ready: can(Act::Open),
+        from_tab: tab.is_some(),
+        clearable: can(Act::Clear),
+    };
+    // Paste Path (or Send to) is the file's own: its words follow where the terminal is.
+    let own: Vec<MenuItem<Act>> = give
+        .iter()
+        .map(|ActWords { label, .. }| MenuItem::new(Act::UseInPane, label.clone()))
+        .collect();
+    let items = menu_items(Target::Download(facts), false, own);
     let percent = match &row.state {
         Arriving::Receiving { percent } => *percent,
         _ => None,
@@ -158,15 +148,31 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         }
         _ => row.detail.clone(),
     };
+    let button = |action: Act, words: ActWords| {
+        let act = act.clone();
+        rsx! {
+            Button {
+                label: words.label,
+                size: ControlSize::Small,
+                title: Some(words.tip),
+                onclick: move |_: Press| act(action),
+            }
+        }
+    };
+    let reveal = words(Act::Reveal).filter(|_| can(Act::Reveal));
+    let show_tab = tab.and_then(|tab| words(Act::ShowInTab(tab)).map(|words| (tab, words)));
+    let picking = act.clone();
     rsx! {
         div {
             class: "temor-dl",
-            onmounted: move |event: MountedEvent| rect.on_mounted(event),
+            role: "listitem",
             oncontextmenu: move |event: MouseEvent| {
                 event.prevent_default();
-                if has_menu {
-                    menu.set(Shown::Visible);
-                }
+                let at = event.client_coordinates();
+                menu.set(Some(Point {
+                    x: Px(at.x as f32),
+                    y: Px(at.y as f32),
+                }));
             },
             Row {
                 leading: RowLeading::Icon(Icon::Download),
@@ -184,53 +190,35 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
                 }
             }
             div { class: "temor-dl-actions",
-                if let Some(ActWords { label, tip }) = words(Act::Reveal).filter(|_| can(Act::Reveal)) {
-                    Button {
-                        label,
-                        size: ControlSize::Small,
-                        title: Some(tip),
-                        onclick: {
-                            let act = act.clone();
-                            move |_: Press| act(Act::Reveal)
-                        },
-                    }
+                if let Some(words) = reveal {
+                    {button(Act::Reveal, words)}
                 }
-                if let Some(ActWords { label, tip }) = give_button {
-                    Button {
-                        label,
-                        size: ControlSize::Small,
-                        title: Some(tip),
-                        onclick: {
-                            let mut give = give.clone();
-                            move |_: Press| give()
-                        },
-                    }
+                if let Some(words) = give {
+                    {button(Act::UseInPane, words)}
                 }
-                if let Some((tab, ActWords { label, tip })) = tab.and_then(|tab| {
-                    words(Act::ShowInTab(tab)).map(|w| (tab, w))
-                }) {
-                    Button {
-                        label,
-                        size: ControlSize::Small,
-                        title: Some(tip),
-                        onclick: {
-                            let act = act.clone();
-                            move |_: Press| act(Act::ShowInTab(tab))
-                        },
-                    }
+                if let Some((tab, words)) = show_tab {
+                    {button(Act::ShowInTab(tab), words)}
                 }
             }
         }
-        if let (Shown::Visible, Some(at)) = (menu(), rect.rect()) {
+        if let Some(at) = menu() {
             Menu {
                 placement: MenuPlacement::Context,
-                anchor: Anchor::Rect(at),
+                anchor: Anchor::Point(at),
                 items,
-                onpick: move |pick: Act| match pick {
-                    Act::UseInPane => give(),
-                    pick => act(pick),
+                onpick: move |pick: Pick<Act>| match pick {
+                    Pick::Item(Item::Open) => picking(Act::Open),
+                    Pick::Item(Item::ShowInFolder) => picking(Act::Reveal),
+                    Pick::Item(Item::ShowTab) => {
+                        if let Some(tab) = tab {
+                            picking(Act::ShowInTab(tab));
+                        }
+                    }
+                    Pick::Item(Item::RemoveFromList) => picking(Act::Clear),
+                    Pick::Own(action) => picking(action),
+                    Pick::Item(_) => {}
                 },
-                onclose: move |()| menu.set(Shown::Hidden),
+                onclose: move |()| menu.set(None),
             }
         }
     }
@@ -252,7 +240,7 @@ fn UploadRow(upload: Upload, desk: Desk) -> Element {
         )
     });
     rsx! {
-        div { class: "temor-dl",
+        div { class: "temor-dl", role: "listitem",
             Row {
                 leading: RowLeading::Icon(Icon::Upload),
                 title: upload.name.clone(),

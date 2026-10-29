@@ -2,9 +2,9 @@
 //! connected opens once it is (connect, then edit); a reopened tab keeps its host; and a host
 //! pane that wants the person's eyes marks its tab unread.
 
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
-use temor_ssh::{HostAlias, RemoteFilePath};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use super::ssh::Phase;
@@ -71,6 +71,7 @@ impl Hub {
     /// the reopened pane is a session on the same host.
     pub(super) fn ssh_note_closed(&mut self, pane: PaneId, host: HostAlias) {
         let in_closed_tab = self
+            .book
             .ws
             .closed
             .tabs

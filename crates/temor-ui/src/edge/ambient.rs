@@ -6,11 +6,11 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use ds_settings::Store;
-use temor_plugins::DataDirs;
-use temor_shell::ChildEnv;
+use temor_client::plugins::DataDirs;
+use temor_panes::shell::ChildEnv;
 
-use super::session_file::resolve_state_dir;
 use crate::settings::{APP, root_for};
+use temor_client::keep::older::resolve_state_dir;
 
 /// What the app needs from its surroundings.
 #[derive(Debug, Clone, PartialEq)]
@@ -110,7 +110,7 @@ impl Ambient {
         DataDirs::from_env(&self.home, &get)
     }
 
-    /// temor's own data directory: outside every repository, where agent worktrees live.
+    /// temor's own data directory.
     pub fn data_dir(&self) -> PathBuf {
         self.data_home().join("temor")
     }
@@ -147,6 +147,11 @@ impl Ambient {
             .parent()
             .map_or_else(|| self.home.join(".config"), PathBuf::from)
             .join("user-dirs.dirs")
+    }
+
+    /// What the window's SSH needs from these surroundings.
+    pub fn ssh_env(&self) -> temor_client::ssh::SshEnv {
+        temor_client::ssh::SshEnv::new(self.env.get("PATH"), &self.home, &self.runtime_dir)
     }
 
     /// The folder a pane stages the files a program sends before they are shelved.

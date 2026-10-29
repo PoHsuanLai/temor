@@ -4,13 +4,12 @@
 //! actions read the anchors back.
 
 mod actions;
-mod anchors;
-mod found;
 mod lead;
 mod mark;
 mod notify;
 mod picks;
 mod query;
+pub use temor_panes::marks::Finished;
 mod rows;
 mod survey;
 #[cfg(test)]

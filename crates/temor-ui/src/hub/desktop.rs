@@ -6,27 +6,27 @@ use std::path::PathBuf;
 
 use dioxus::prelude::spawn;
 use ds_blitz::WindowHandle;
-use temor_core::block::Outcome;
-use temor_core::notify::Focus as NoteFocus;
-use temor_core::split::Direction;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_desktop::{
+use temor_client::desktop::{
     BadgeCount, CommandInfo, CommandRef, Exit, Focus, PaneInfo, PaneKind, PaneOpen, PaneRef,
     Placement, PortRefusal, Request, SpaceRef, WindowContext,
 };
+use temor_client::model::block::Outcome;
+use temor_client::model::notify::Focus as NoteFocus;
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use crate::edge::desktop_port::{Act, Answer, Ask, DesktopLink, Snapshot};
 use crate::view::title::window_title;
+use temor_client::desktop::port::{Act, Answer, Ask, DesktopLink, Snapshot};
 
 impl Hub {
     /// What the desktop services see now, and how many agents wait on the person, for the dock.
     pub fn desktop_snapshot(&self) -> (Snapshot, BadgeCount) {
         let keyboard = self.keyboard_pane();
-        let order = self.ws.tabs.panes();
+        let order = self.book.ws.tabs.panes();
         let panes: Vec<PaneInfo> = order.iter().map(|p| self.pane_info(*p, keyboard)).collect();
         let commands: std::collections::BTreeMap<_, _> = order
             .iter()
@@ -68,7 +68,13 @@ impl Hub {
         let cwd = self
             .live(pane, |s| s.cwd().map(PathBuf::from))
             .flatten()
-            .or_else(|| self.ws.cwds.get(&pane).map(|c| PathBuf::from(c.as_str())));
+            .or_else(|| {
+                self.book
+                    .ws
+                    .cwds
+                    .get(&pane)
+                    .map(|c| PathBuf::from(c.as_str()))
+            });
         PaneInfo {
             id: PaneRef(pane.0),
             title: self.pane_name(pane),
@@ -123,7 +129,8 @@ impl Hub {
 
     pub(super) fn known_pane(&self, pane: PaneRef) -> Result<PaneId, PortRefusal> {
         let id = PaneId(pane.0);
-        self.ws
+        self.book
+            .ws
             .tab_of(id)
             .map(|_| id)
             .ok_or(PortRefusal::NoSuchPane)
@@ -151,7 +158,11 @@ impl Hub {
                 ));
             }
         };
-        let held = self.ws.front().and_then(|tab| self.ws.focus_of(tab));
+        let held = self
+            .book
+            .ws
+            .front()
+            .and_then(|tab| self.book.ws.focus_of(tab));
         match self.act_for_new_pane(input) {
             Some(pane) => {
                 self.hand_keyboard_back(held, pane);

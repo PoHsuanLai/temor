@@ -431,11 +431,60 @@ fn a_saved_session_is_restored_on_launch() {
         Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
         |ws, step| workspace_step(ws, step).0,
     );
-    temor_ui::edge::save_session(&state, &ws).expect("saved");
+    temor_client::keep::older::save(&state, &ws).expect("saved");
     let probe = Probe::new();
     let mut h = harness_in("window-restore", &probe, Some(state));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
     assert_eq!(rows(&h), 2, "{}", h.html());
+}
+
+/// The rows are kept in the store: a session file an older temor left is read in once, and what
+/// the window keeps after that is what comes back, not the file.
+#[test]
+fn the_rows_are_kept_in_the_store_after_the_old_file_is_read_in_once() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use temor_core::vocab::text::Cwd;
+    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
+    let state = scratch("window-layout-state").join("state");
+    let here = Cwd(state.parent().expect("a parent").display().to_string());
+    let ws = [
+        WorkspaceIn::NewTab {
+            cwd: Some(here.clone()),
+        },
+        WorkspaceIn::NewTab { cwd: Some(here) },
+    ]
+    .into_iter()
+    .fold(
+        Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
+        |ws, step| workspace_step(ws, step).0,
+    );
+    temor_client::keep::older::save(&state, &ws).expect("saved");
+    let probe = Probe::new();
+    let mut h = harness_in("window-layout", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    assert_eq!(rows(&h), 2, "the old file's tabs: {}", h.html());
+    focus_pane(&mut h);
+    chord(&mut h, 'w');
+    let start = Instant::now();
+    while rows(&h) != 1 {
+        h.advance(Duration::from_millis(25));
+        assert!(start.elapsed() < Duration::from_secs(10), "{}", h.html());
+    }
+    drop(h);
+    assert!(
+        state.join("session.json").is_file(),
+        "the old file is left where it was"
+    );
+
+    let probe = Probe::new();
+    let mut h = harness_in("window-layout-again", &probe, Some(state));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    for _ in 0..20 {
+        h.advance(Duration::from_millis(25));
+    }
+    assert_eq!(rows(&h), 1, "what was kept, not the file: {}", h.html());
 }
 
 #[test]

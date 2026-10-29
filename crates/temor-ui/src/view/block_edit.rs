@@ -5,7 +5,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::slot::Slot;
 use crate::hub::Desk;
@@ -40,15 +40,6 @@ pub fn edit_on_this_computer(
         Err(words) => desk.say(words.to_owned()),
     }
     desk.bump();
-}
-
-/// The toolbar's press.
-pub fn bar_edit(
-    slot: Rc<RefCell<Slot>>,
-    desk: Desk,
-    pane: PaneId,
-) -> impl FnMut(BlockId) + 'static {
-    move |block: BlockId| edit_on_this_computer(&slot, &desk, pane, Some(block))
 }
 
 #[cfg(test)]

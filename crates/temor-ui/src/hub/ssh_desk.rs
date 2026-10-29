@@ -1,13 +1,13 @@
 //! What the host views ask of the window: each call runs on the hub, shows the messages it left,
 //! and draws the window again.
 
-use temor_core::host::edit::Resolution;
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{HostRow, Port};
+use temor_client::model::host::edit::Resolution;
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{HostRow, Port};
 
 use super::desk::Desk;
-use crate::edge::ssh_work::EditId;
+use temor_client::ssh::work::EditId;
 
 impl Desk {
     /// Opens a new tab on the host `row` names.

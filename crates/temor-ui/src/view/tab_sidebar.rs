@@ -1,6 +1,6 @@
 //! The sidebar (PLAN §7), laid out as mailo's and Arc's are: the Space's name and Downloads at the
-//! top, the pinned tabs as tiles, each folder's tabs under its name, then New Tab and the rest; at
-//! the foot, the Space dots and one chevron that holds everything else. The name and the dots show
+//! top, the Favourites as tiles, the pinned tabs' rows and a hairline under them, the folders as
+//! Arc's are (a row that opens on its tabs and the folders in it), then New Tab and the rest; at the foot, the Space dots and one chevron that holds everything else. The name and the dots show
 //! only once there is a second Space. It is quire's `Sidebar` on the ladder's 32, each row one
 //! line. The sections' order is the model's (`hub::rows`), so a row and its ⌘1 to ⌘9 key always
 //! name the same tab. The sidebar is drawn in the Space's frame ink (`use_space_frame`), so a
@@ -14,22 +14,24 @@ use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
 use ds::prelude::*;
 use ds::style::tokens::control_size::SidebarSize;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::keys::Action;
+use temor_client::model::vocab::ids::{FolderId, TabId};
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
+use temor_panes::pane::keys::Action;
 
 use super::dnd::Dnd;
-use super::pinned_tabs::PinnedTabs;
+use super::favourites::Favourites;
+use super::folder_row::FolderRowView;
 use super::row_tip::RowTip;
-use super::side_menu::SideMenu;
 use super::space_ui::{SpaceFoot, SpaceHeader, space_menu_on};
 use super::tab_row::TabRowView;
-use crate::hub::{Desk, SidebarData, TabRow, select_tab};
+use crate::hub::{Desk, FolderRows, SidebarData, TabRow, select_tab};
 
-/// A row of the sidebar: a tab, or Arc's New Tab row above the loose tabs.
+/// A row of the sidebar: a tab, a folder at the top (with what it holds), or Arc's New Tab row
+/// above the loose tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SideKey {
     Tab(TabId),
+    Folder(FolderId),
     NewTab,
 }
 
@@ -39,33 +41,49 @@ pub enum SideKey {
 pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Element {
     let frame = use_space_frame();
     let mut sections = Vec::new();
+    let every: Vec<TabRow> = data.every().cloned().collect();
+    sections.push(SidebarSection::Custom(rsx! {
+        Favourites { rows: every.clone(), desk: desk.clone(), dnd: dnd.clone() }
+    }));
+    // The pinned tabs are rows, as Arc's are, over a hairline that parts them from the rest.
     if !data.pinned.is_empty() {
+        sections.push(SidebarSection::List(items_of(
+            &data.pinned,
+            true,
+            &desk,
+            &dnd,
+        )));
         sections.push(SidebarSection::Custom(rsx! {
-            PinnedTabs { rows: data.pinned.clone(), desk: desk.clone(), dnd: dnd.clone() }
+            div { class: "temor-side-rule", role: "separator" }
         }));
     }
-    for (title, rows) in &data.folders {
-        group(&mut sections, title, rows, &desk, &dnd);
+    if !data.folders.is_empty() {
+        sections.push(SidebarSection::List(folder_items(
+            &data.folders,
+            &desk,
+            &dnd,
+        )));
     }
-    // New Tab heads the loose tabs, as Arc's does; they need a name only when a folder is named.
-    if data.folders.iter().any(|(_, rows)| !rows.is_empty()) {
-        sections.push(SidebarSection::Custom(rsx! {
-            SectionHeader { title: "Tabs".to_owned() }
-        }));
-    }
+    // New Tab heads the loose tabs, as Arc's does.
     let mut loose = vec![new_tab_row(&desk)];
-    loose.extend(items_of(&data.loose, &desk, &dnd));
+    loose.extend(items_of(&data.loose, false, &desk, &dnd));
     sections.push(SidebarSection::List(loose));
-    let cursor = [&data.loose]
-        .into_iter()
-        .chain(data.folders.iter().map(|(_, rows)| rows))
-        .flatten()
+    // A tab in a folder is not a row of the list: its folder stands for it.
+    let cursor = every
+        .iter()
         .find(|row| row.selection == Selection::Selected)
-        .map(|row| SideKey::Tab(row.id));
+        .map(|row| match top_folder_of(&data.folders, row.id) {
+            Some(folder) => SideKey::Folder(folder),
+            None => SideKey::Tab(row.id),
+        });
     let select = {
         let desk = desk.clone();
         EventHandler::new(move |key: SideKey| match key {
             SideKey::Tab(tab) => desk.act(select_tab(tab)),
+            SideKey::Folder(folder) => {
+                let open = !data_open(&desk, folder);
+                desk.act(WorkspaceIn::Tabs(TabsIn::OpenFolder { folder, open }));
+            }
             SideKey::NewTab => desk.act(WorkspaceIn::NewTab { cwd: None }),
         })
     };
@@ -87,13 +105,14 @@ pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Ele
                 size: SidebarSize::Medium,
                 fill: SidebarFill::Flat,
                 header: rsx! { SpaceHeader { desk: desk.clone() } },
-                // The Space dots, and the chevron at the end.
+                // The Space dots; a new Space is in the Space's menu (a right-click on the sidebar).
                 foot: rsx! {
                     div { class: "temor-foot",
                     SpaceFoot {
                         desk: desk.clone(),
                         trailing: rsx! {
-                            div { class: "temor-foot-end", SideMenu { desk: desk.clone() } }
+                            // As wide as the lead, so the dots stand at the centre.
+                            div { class: "temor-foot-end" }
                         },
                     }
                     }
@@ -130,29 +149,55 @@ fn new_tab_row(desk: &Desk) -> ListItem<SideKey> {
     ListItem::row(SideKey::NewTab, title.to_owned(), view)
 }
 
-/// A named group: its heading, then its rows. A group with no rows is left out.
-fn group(
-    sections: &mut Vec<SidebarSection<SideKey>>,
-    title: &str,
-    rows: &[TabRow],
-    desk: &Desk,
-    dnd: &Dnd,
-) {
-    if rows.is_empty() {
-        return;
-    }
-    sections.push(SidebarSection::Custom(rsx! {
-        SectionHeader { title: title.to_owned() }
-    }));
-    sections.push(SidebarSection::List(items_of(rows, desk, dnd)));
+/// The folders at the top, each one item of the list with what it holds under it.
+fn folder_items(folders: &[FolderRows], desk: &Desk, dnd: &Dnd) -> Vec<ListItem<SideKey>> {
+    folders
+        .iter()
+        .filter(|folder| folder.parent.is_none())
+        .map(|folder| {
+            let view = rsx! {
+                FolderRowView {
+                    folder: folder.clone(),
+                    all: folders.to_vec(),
+                    desk: desk.clone(),
+                    dnd: dnd.clone(),
+                }
+            };
+            ListItem::row(SideKey::Folder(folder.id), folder.title.clone(), view)
+        })
+        .collect()
 }
 
-/// The rows of a list of tabs.
-fn items_of(rows: &[TabRow], desk: &Desk, dnd: &Dnd) -> Vec<ListItem<SideKey>> {
+/// The folder at the top that holds `tab`, through the folders in it.
+fn top_folder_of(folders: &[FolderRows], tab: TabId) -> Option<FolderId> {
+    let mut folder = folders
+        .iter()
+        .find(|folder| folder.rows.iter().any(|row| row.id == tab))?;
+    // The plan lists a folder's parent before it, and has no loops.
+    while let Some(parent) = folder
+        .parent
+        .and_then(|id| folders.iter().find(|other| other.id == id))
+    {
+        folder = parent;
+    }
+    Some(folder.id)
+}
+
+/// Whether `folder` is open now.
+fn data_open(desk: &Desk, folder: FolderId) -> bool {
+    desk.hub
+        .sidebar()
+        .folders
+        .iter()
+        .any(|rows| rows.id == folder && rows.open)
+}
+
+/// The rows of a list of tabs, `pinned` or not.
+fn items_of(rows: &[TabRow], pinned: bool, desk: &Desk, dnd: &Dnd) -> Vec<ListItem<SideKey>> {
     rows.iter()
         .map(|row| {
             let view = rsx! {
-                TabRowView { row: row.clone(), desk: desk.clone(), dnd: dnd.clone() }
+                TabRowView { row: row.clone(), pinned, desk: desk.clone(), dnd: dnd.clone() }
             };
             ListItem::row(SideKey::Tab(row.id), row.title.clone(), view)
         })

@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use dioxus::html::{Code, Key, Location, Modifiers as Held};
 use ds::edit::raw_key::{KeyPhase, RawKey};
-use temor_pane::text::CellPos;
-use temor_vt::Ime;
+use temor_panes::pane::text::CellPos;
+use temor_panes::vt::Ime;
 
 use super::super::click::{Click, MULTI_CLICK, next_click};
 use super::super::keys::stroke;

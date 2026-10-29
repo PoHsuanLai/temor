@@ -8,13 +8,13 @@ use thiserror::Error;
 pub enum UiError {
     /// The fonts or the renderer refused.
     #[error("drawing the terminal failed: {0}")]
-    Render(#[from] temor_render::RenderError),
+    Render(#[from] temor_panes::render::RenderError),
     /// The pane engine could not start or draw (see `temor-pane`).
     #[error(transparent)]
-    Pane(#[from] temor_pane::PaneError),
+    Pane(#[from] temor_panes::pane::PaneError),
     /// The program could not be started on a terminal, or the terminal failed.
     #[error("the shell could not start: {0}")]
-    Pty(#[from] temor_pty::PtyError),
+    Pty(#[from] temor_panes::pty::PtyError),
     /// The settings file could not be read.
     #[error("the settings file could not be read: {0}")]
     SettingsRead(#[source] std::io::Error),
@@ -31,26 +31,13 @@ pub enum UiError {
     /// The folder for shell integration is missing, or is not private to this user.
     #[error("the folder for shell setup is not private to you: {0}")]
     RuntimeDir(#[source] std::io::Error),
-    /// The pane's background work could not start.
-    #[error("the terminal could not start its background work: {0}")]
-    Thread(#[source] std::io::Error),
-    /// The session file could not be read or written.
-    #[error("the session file could not be saved: {0}")]
-    Session(#[source] std::io::Error),
-    /// A Space's key agent could not be started.
-    #[error("the Space's key agent could not start: {0}")]
-    Agent(String),
     /// The output could not be saved to the downloads shelf.
     #[error("the output could not be saved: {0}")]
     Save(String),
-    /// git could not do what an agent worktree needed.
+    /// The pane could not open (see `temor-panes`).
     #[error(transparent)]
-    Git(#[from] temor_core::error::CoreError),
-    /// A file of an agent worktree could not be copied, written back or removed.
-    #[error("{path}: {source}")]
-    AgentFile {
-        path: String,
-        #[source]
-        source: std::io::Error,
-    },
+    Open(#[from] temor_panes::OpenError),
+    /// One of temor's own rules refused.
+    #[error(transparent)]
+    Core(#[from] temor_client::model::error::CoreError),
 }

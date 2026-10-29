@@ -17,9 +17,7 @@ use temor_core::space::{AccountRef, Credential, Profile, Project, Route};
 use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot, RoutePattern};
 use temor_pane::keys::SettingsPane;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::edge::{
-    Ambient, CredentialFault, CredentialSource, Credentials, SpacesStartup, load_spaces,
-};
+use temor_ui::edge::{Ambient, CredentialFault, CredentialSource, Credentials};
 use temor_ui::settings::TerminalDoc;
 use temor_ui::settings_window::{
     OpenSettings, SETTINGS_CSS, SettingsAsked, SettingsWindows, SpaceBoard, SpaceChange, SpaceEdit,
@@ -266,10 +264,10 @@ fn a_spaces_folder_typed_in_the_page_is_sent_to_the_main_window() {
     );
 }
 
-/// A change the Settings window sends (a folder, a variable) reaches `spaces.json`: the main window applies it through
-/// the kit's handle, as a Space menu's edit goes, and the file is written.
+/// A change the Settings window sends (a folder, a variable) is kept: the main window applies it
+/// through the kit's handle, as a Space menu's edit goes, and the Spaces are kept in the store.
 #[test]
-fn a_space_folder_sent_to_the_main_window_reaches_spaces_json() {
+fn a_space_folder_sent_to_the_main_window_is_kept() {
     if !tools_present() {
         return;
     }
@@ -304,7 +302,11 @@ fn a_space_folder_sent_to_the_main_window_reaches_spaces_json() {
     let start = std::time::Instant::now();
     loop {
         h.advance(Duration::from_millis(100));
-        if let Ok(SpacesStartup::Loaded(spaces)) = load_spaces(&state)
+        let kept = temor_client::SqliteStore::open(state.join("temor.db"))
+            .ok()
+            .and_then(|store| store.kept("spaces").ok().flatten())
+            .and_then(|text| serde_json::from_str::<temor_core::space::TemorSpaces>(&text).ok());
+        if let Some(spaces) = kept
             && spaces.list().iter().any(|s| {
                 s.payload.root.as_ref().map(ProjectRoot::as_str) == Some("/srv/work")
                     && s.payload.profile.env == [(key("RUST_LOG"), EnvValue("debug".to_owned()))]
@@ -314,7 +316,7 @@ fn a_space_folder_sent_to_the_main_window_reaches_spaces_json() {
         }
         assert!(
             start.elapsed() < super::support::SLOW_WAIT,
-            "the folder and the variable never reached spaces.json"
+            "the folder and the variable were never kept"
         );
     }
 }

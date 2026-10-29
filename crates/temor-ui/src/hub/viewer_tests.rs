@@ -3,9 +3,9 @@
 
 use std::path::PathBuf;
 
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::ViewerRef;
-use temor_core::workspace::{ViewerOpen, WorkspaceIn, WorkspaceOut, workspace_step};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::ViewerRef;
+use temor_client::model::workspace::{ViewerOpen, WorkspaceIn, WorkspaceOut, workspace_step};
 
 use super::model::Hub;
 use super::tests::hub_after;
@@ -16,13 +16,13 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
     let shell = PaneId(1);
     let (ws, outs) = workspace_step(
-        hub.ws.clone(),
+        hub.book.ws.clone(),
         WorkspaceIn::OpenViewer {
             file: ViewerRef(file.to_owned()),
             from: Some(shell),
         },
     );
-    hub.ws = ws;
+    hub.book.ws = ws;
     let open = outs
         .into_iter()
         .find_map(|out| match out {
@@ -34,22 +34,19 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     hub.viewers_ask(ViewAsk {
         file: PathBuf::from(file),
         around: around.iter().map(PathBuf::from).collect(),
-        site: temor_core::shelf::PaneSite::Local,
+        site: temor_client::model::shelf::PaneSite::Local,
     });
     hub.viewer_opened(open);
     (hub, shell, pane)
 }
 
 #[test]
-fn a_viewer_tile_is_named_by_its_file() {
-    let (hub, _, viewer) = with_viewer("/w/notes/a.txt", &[]);
+fn a_page_is_the_rows_stage_not_a_tile_and_names_the_row() {
+    let (hub, _, _) = with_viewer("/w/notes/a.txt", &[]);
     let data = hub.sidebar();
-    let tiles = &data.loose[0].tiles;
-    let name = tiles
-        .iter()
-        .find(|t| t.pane == viewer)
-        .map(|t| t.title.as_str());
-    assert_eq!(name, Some("a.txt"));
+    let row = &data.loose[0];
+    assert!(row.tiles.is_empty(), "one terminal: no split row");
+    assert_eq!(row.title, "a.txt");
     assert_eq!(hub.window_parts(), ("a.txt".to_owned(), None));
 }
 
@@ -84,14 +81,14 @@ fn escape_goes_back_to_the_terminal_the_file_came_from() {
 fn escape_goes_to_another_terminal_when_the_origin_is_gone() {
     let (mut hub, shell, viewer) = with_viewer("/w/a.txt", &[]);
     let (ws, _) = workspace_step(
-        hub.ws.clone(),
+        hub.book.ws.clone(),
         WorkspaceIn::Split {
-            towards: temor_core::split::Direction::Down,
+            towards: temor_client::model::split::Direction::Down,
         },
     );
-    hub.ws = ws;
-    let (ws, _) = workspace_step(hub.ws.clone(), WorkspaceIn::ClosePane(Some(shell)));
-    hub.ws = ws;
+    hub.book.ws = ws;
+    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::ClosePane(Some(shell)));
+    hub.book.ws = ws;
     let back = hub.viewer_unfocus(viewer);
     assert!(
         matches!(back, Some(WorkspaceIn::Focus(pane)) if pane != viewer && pane != shell),
@@ -104,11 +101,11 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
     let (mut hub, _, viewer) = with_viewer("/nowhere/at/all/a.txt", &[]);
     hub.restore_viewer(ViewerOpen {
         pane: viewer,
-        tab: temor_core::vocab::ids::TabId(1),
+        tab: temor_client::model::vocab::ids::TabId(1),
         file: ViewerRef("/nowhere/at/all/a.txt".to_owned()),
         from: None,
     });
-    assert!(hub.ws.viewers.is_empty());
+    assert!(hub.book.ws.viewers.is_empty());
     assert!(
         hub.notices.iter().any(|n| n.contains("gone")),
         "{:?}",

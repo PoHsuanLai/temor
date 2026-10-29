@@ -36,16 +36,17 @@ fn the_bar_offers_a_tab_on_this_computer_only_in_a_host_pane_and_it_opens_one() 
                 .find(|row| row.title == LOCAL_TAB_TITLE)
         })
         .expect("the row");
-    let tabs = rig.hub.ws.tabs.place.tabs.len();
+    let tabs = rig.hub.book.ws.tabs.place.tabs.len();
     rig.hub.bar_pick(&row.key);
 
     let local = rig.front();
     assert_ne!(local, host);
     assert_eq!(rig.hub.host_of(local), None, "a tab on this computer");
-    assert_eq!(rig.hub.ws.tabs.place.tabs.len(), tabs + 1);
+    assert_eq!(rig.hub.book.ws.tabs.place.tabs.len(), tabs + 1);
     // A plain new tab from the host pane still goes to the host.
-    rig.hub.act(temor_core::workspace::WorkspaceIn::Focus(host));
     rig.hub
-        .act(temor_core::workspace::WorkspaceIn::NewTab { cwd: None });
+        .act(temor_client::model::workspace::WorkspaceIn::Focus(host));
+    rig.hub
+        .act(temor_client::model::workspace::WorkspaceIn::NewTab { cwd: None });
     assert_eq!(rig.hub.host_of(rig.front()), Some("fake"));
 }

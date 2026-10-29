@@ -5,21 +5,21 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_core::host::master::OpenAs;
-use temor_core::remote::HelperState;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{ControlLayout, HostAlias};
+use temor_client::model::host::master::OpenAs;
+use temor_client::model::remote::HelperState;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::{ControlLayout, HostAlias};
 
 use super::model::Hub;
 use super::remote::{Busy, RemotePane, Shown, Tier};
 use super::remote_retry::{Begin, begin_plan};
-use super::remote_source::{Blob, Source, session_source};
 use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
-use crate::edge::remote_link::{RemoteLink, Target, lock};
-use crate::edge::remote_relay::relay;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
+use temor_client::remote::session::{Blob, Source, session_source};
+use temor_panes::remote::link::{RemoteLink, Target, lock};
+use temor_panes::remote::relay::relay;
 
 /// The `ssh` arguments that make the shared connection and leave: a terminal for the questions
 /// it may ask, the connection kept in the background for the helper's `ssh` to join, and `true`
@@ -130,6 +130,7 @@ impl Hub {
             Err(err) => return self.fail_host(pane, err.to_string()),
         };
         session.set_focus(self.focus_of(pane));
+        self.hear(pane, &session);
         if let Some(slot) = self.slots.get(&pane) {
             slot.borrow_mut().session = Some(session);
         }
@@ -205,7 +206,6 @@ impl Hub {
 
     /// A host pane was closed: its session on the host ends.
     pub(super) fn remote_forget(&mut self, pane: PaneId) {
-        self.live_closed(pane);
         self.remote.saved.remove(&pane);
         self.remote.local.remove(&pane);
         let Some(old) = self.remote.panes.remove(&pane) else {

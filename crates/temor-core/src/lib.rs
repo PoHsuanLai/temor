@@ -2,13 +2,18 @@
 //! machine, the command-bar ranking and proposal sanitising. No I/O, no threads, no UI and no
 //! foreign code: the other crates feed these functions values and carry out what they return.
 
+pub mod address;
 pub mod agent;
 pub mod bar;
 pub mod block;
 pub mod error;
 pub mod facts;
+pub mod folder;
+pub mod history;
 pub mod host;
+pub mod icon;
 pub mod key;
+pub mod menu;
 pub mod notify;
 pub mod offer;
 pub mod pane;
@@ -20,11 +25,11 @@ pub mod session;
 pub mod shelf;
 pub mod space;
 pub mod split;
+pub mod stage;
 pub mod transfer;
 pub mod viewer;
 pub mod vocab;
 pub mod workspace;
-pub mod worktree;
 
 #[cfg(test)]
 mod test_support;

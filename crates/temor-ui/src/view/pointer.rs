@@ -11,7 +11,7 @@ use ds::host::captured::{CapturedPointer, PointerPhase};
 use ds::host::measure::RectProbe;
 use ds::host::pointer_capture::{PointerCapture, PointerHold, use_pointer_capture};
 use ds::host::signals::HostSignals;
-use temor_vt::MouseButton as VtButton;
+use temor_panes::vt::MouseButton as VtButton;
 
 use super::convert::{device_point, scale_of, vt_button, vt_mods, wheel_lines};
 use super::slot::{Slot, repaint};

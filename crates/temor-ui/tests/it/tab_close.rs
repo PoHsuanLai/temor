@@ -56,13 +56,19 @@ fn the_terminal_has_room_around_it_in_the_sidebars_measure() {
     let h = started("pane-room", &probe);
     let pane = rect(&h, ".temor-pane");
     let keys = rect(&h, ".temor-keys");
+    // The console's bar heads the pane, the terminal under it.
+    let bar = rect(&h, ".temor-console-bar");
     assert!(
         (keys.x - pane.x - 10.0).abs() < 1.0,
         "left room: {pane:?} {keys:?}"
     );
     assert!(
-        (keys.y - pane.y - 8.0).abs() < 1.0,
-        "top room: {pane:?} {keys:?}"
+        (bar.y - pane.y - 8.0).abs() < 1.0,
+        "top room: {pane:?} {bar:?}"
+    );
+    assert!(
+        (keys.y - (bar.y + bar.h) - 4.0).abs() < 1.0,
+        "room under the bar: {bar:?} {keys:?}"
     );
     assert!(
         (pane.x + pane.w - (keys.x + keys.w) - 10.0).abs() < 1.0,

@@ -4,10 +4,10 @@
 //! key prompt shows. When it ends well the pane becomes a session on the helper again, and the
 //! session it had is asked for, not a new one.
 
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
-use temor_wire::link::{Attempt, LinkState};
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::ids::SessionId;
+use temor_client::remote::link::{Attempt, LinkState};
+use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
 use super::remote::Shown;
@@ -87,8 +87,8 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_core::host::consent::BootstrapAction;
-    use temor_wire::link::{GoneReason, Millis, Monotonic};
+    use temor_client::model::host::consent::BootstrapAction;
+    use temor_client::remote::link::{GoneReason, Millis, Monotonic};
 
     #[test]
     fn retry_connects_in_the_pane_only_for_a_lost_connection_that_is_not_already_connecting() {

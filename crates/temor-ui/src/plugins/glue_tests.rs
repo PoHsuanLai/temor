@@ -7,11 +7,11 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use temor_core::bar::RowKey;
-use temor_core::vocab::ids::{BlockId, PaneId};
-use temor_core::vocab::text::Cwd;
-use temor_pane::PaneEvent;
-use temor_pane::report::ReportState;
+use temor_client::model::bar::RowKey;
+use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::model::vocab::text::Cwd;
+use temor_panes::pane::PaneEvent;
+use temor_panes::pane::report::ReportState;
 use temor_plugins::{Catalog, DataDirs, lens_block};
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -235,8 +235,10 @@ fn a_lens_draws_a_block_and_a_picture_nobody_asked_for_is_dropped() {
 fn an_adapter_reports_the_agents_states_as_the_panes_status() {
     let (mut hub, mut inbox, _root) = hub_with(&[]);
     let pane = PaneId(1);
-    hub.ws.cwds.insert(pane, Cwd("/finish".to_owned()));
-    let mut events = hub.inbox.take().expect("the pane events");
+    hub.book.ws.cwds.insert(pane, Cwd("/finish".to_owned()));
+    // What the adapter sends, as it sends it: the pane has no session to hear it.
+    let (sent, mut events) = tokio::sync::mpsc::unbounded_channel();
+    hub.events = sent;
     hub.plugin_adapter_start(pane, "claude");
     let ended = next(&mut inbox);
     assert!(matches!(ended, Done::AdapterEnded { pane: p, .. } if p == pane));
@@ -271,7 +273,7 @@ fn an_adapter_reports_the_agents_states_as_the_panes_status() {
 fn an_adapter_follows_the_agent_and_stops_when_it_leaves() {
     let (mut hub, _inbox, _root) = hub_with(&[]);
     let pane = PaneId(1);
-    hub.ws.cwds.insert(pane, Cwd("/work".to_owned()));
+    hub.book.ws.cwds.insert(pane, Cwd("/work".to_owned()));
     // was, is, adapters running after
     let steps: Vec<(Option<&str>, Option<&str>, usize)> = vec![
         (None, Some("codex"), 0),

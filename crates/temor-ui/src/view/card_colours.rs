@@ -2,8 +2,8 @@
 //! theme: a failed card on red (ANSI 1) at 10%, a picked one on the selection's colour at 45%,
 //! and any other raised a little off the background (the foreground at 5%).
 
-use temor_render::Palette;
-use temor_vt::Rgb;
+use temor_panes::render::Palette;
+use temor_panes::vt::Rgb;
 
 /// A colour laid over the background at an opacity out of 255.
 struct Tint {
@@ -61,23 +61,23 @@ mod tests {
     #[test]
     fn a_ground_is_the_background_under_the_fill() {
         let mut ansi = Palette::default().ansi;
-        ansi[1] = temor_vt::Rgb { r: 255, g: 0, b: 0 };
+        ansi[1] = temor_panes::vt::Rgb { r: 255, g: 0, b: 0 };
         let palette = Palette {
-            background: temor_vt::Rgb { r: 0, g: 0, b: 0 },
-            foreground: temor_vt::Rgb {
+            background: temor_panes::vt::Rgb { r: 0, g: 0, b: 0 },
+            foreground: temor_panes::vt::Rgb {
                 r: 255,
                 g: 255,
                 b: 255,
             },
-            selection: temor_vt::Rgb { r: 0, g: 0, b: 200 },
+            selection: temor_panes::vt::Rgb { r: 0, g: 0, b: 200 },
             ansi,
             ..Palette::default()
         };
         // (fill, want): white at 5% (13 of 255), red at 10% (26), the selection at 45% (115).
         for (fill, want) in [
-            (CardFill::None, temor_vt::Rgb::new(13, 13, 13)),
-            (CardFill::Failed, temor_vt::Rgb::new(26, 0, 0)),
-            (CardFill::Picked, temor_vt::Rgb::new(0, 0, 90)),
+            (CardFill::None, temor_panes::vt::Rgb::new(13, 13, 13)),
+            (CardFill::Failed, temor_panes::vt::Rgb::new(26, 0, 0)),
+            (CardFill::Picked, temor_panes::vt::Rgb::new(0, 0, 90)),
         ] {
             assert_eq!(card_ground_rgb(&palette, fill), want, "{fill:?}");
         }

@@ -110,8 +110,7 @@ pub(super) fn started(name: &str, probe: &Probe) -> Harness {
 
 /// How many tab rows the sidebar shows.
 pub(super) fn rows(h: &Harness) -> usize {
-    let html = h.html();
-    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
+    h.html().matches("class=\"temor-tab-box\"").count()
 }
 
 /// How many terminal panes the tab in front shows.
@@ -164,4 +163,26 @@ pub(super) fn rect(h: &Harness, selector: &str) -> Rect {
     let found = rects(h, selector);
     assert_eq!(found.len(), 1, "one {selector}: {found:?}");
     found[0]
+}
+
+/// The box of the open menu's item that says `title`; panics, with the page, if none does.
+pub(super) fn menu_item(h: &Harness, title: &str) -> Rect {
+    let found = h.with_doc(|doc| {
+        doc.query_selector_all(".ds-menu-item")
+            .map(|found| found.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .find(|id| {
+                doc.get_node(*id)
+                    .is_some_and(|node| node.text_content().trim() == title)
+            })
+            .and_then(|id| doc.get_client_bounding_rect(id))
+            .map(|r| Rect {
+                x: r.x,
+                y: r.y,
+                w: r.width,
+                h: r.height,
+            })
+    });
+    found.unwrap_or_else(|| panic!("no menu item {title:?}:\n{}", h.html()))
 }

@@ -1,7 +1,7 @@
 //! Opening a link in the desktop's own handler (PLAN §6: ⌘-click on a hyperlink). The caller
-//! checks the link first (`temor_pane::link`); this only hands it over.
+//! checks the link first (`temor_panes::pane::link`); this only hands it over.
 
-use temor_pane::text::{LinkTarget, LinkVerdict, check_link};
+use temor_panes::pane::text::{LinkTarget, LinkVerdict, check_link};
 use thiserror::Error;
 
 use crate::words::notices;
@@ -36,8 +36,8 @@ pub fn open_link(opener: &dyn Opener, target: &str) -> Result<(), &'static str> 
 mod linux {
     use std::process::{Child, Command, Stdio};
 
-    use temor_desktop::{BusRoute, DesktopEnv, SystemLinks};
-    use temor_pane::text::LinkTarget;
+    use temor_client::desktop::{BusRoute, DesktopEnv, SystemLinks};
+    use temor_panes::pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
@@ -106,7 +106,7 @@ mod linux {
 mod macos {
     use std::process::{Command, Stdio};
 
-    use temor_pane::text::LinkTarget;
+    use temor_panes::pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
@@ -135,7 +135,7 @@ mod macos {
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod other {
-    use temor_pane::text::LinkTarget;
+    use temor_panes::pane::text::LinkTarget;
 
     use super::{OpenError, Opener};
 
@@ -156,7 +156,7 @@ pub fn default_opener() -> Box<dyn Opener> {
     #[cfg(target_os = "linux")]
     {
         Box::new(linux::DesktopOpen {
-            env: temor_desktop::DesktopEnv::from_process(),
+            env: temor_client::desktop::DesktopEnv::from_process(),
         })
     }
     #[cfg(target_os = "macos")]

@@ -44,7 +44,6 @@ mod daemon;
 mod error;
 pub mod facts;
 pub mod files;
-#[cfg(feature = "ghostty")]
 pub mod host;
 mod idle;
 mod platform;

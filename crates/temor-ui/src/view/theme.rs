@@ -2,14 +2,20 @@
 //! accent of the root decide them, so light and dark, and the Space look that overrides the
 //! theme, all apply to the terminal too.
 
+use std::sync::Arc;
+
+use dioxus::prelude::*;
+use ds::base::spawner::Spawner;
 use ds::prelude::{Accent, Appearance, Scheme, SpaceLook, SystemPrefs, Theme, resolve};
 use ds::style::tokens::hex::{Colour, Hex};
 use ds::style::tokens::terminal::TerminalColour;
-use ds_settings::{AppName, ConfigRoot, Environment, Store, SystemPrefsSource};
-use temor_render::Palette;
-use temor_vt::Rgb;
+use ds_settings::{
+    AppName, AppearanceFile, ConfigRoot, Environment, Store, SystemPrefsSource, use_environment,
+};
+use temor_panes::render::Palette;
+use temor_panes::vt::Rgb;
 
-use crate::edge::ThemeChoice;
+use crate::edge::{ThemeChoice, read_theme_choice};
 
 /// Where the look comes from: the design system's own settings (`appearance.toml`, the person's
 /// theme, accent and motion) and the desktop's preferences. The window follows both live.
@@ -44,6 +50,21 @@ pub fn dark_by_default(mut env: Environment, choice: ThemeChoice) -> Environment
         env.settings.appearance.theme = Theme::Dark;
     }
     env
+}
+
+/// The look of a window of temor's, live: the person's look and the desktop's preferences from
+/// `source`, a change re-theming the window, dark unless the person's file names a theme (the file
+/// is read again when it changes).
+pub fn use_window_look(source: &AppearanceSource, spawner: Arc<dyn Spawner>) -> Memo<Environment> {
+    let stored = use_environment(source.store.clone(), source.system.clone(), spawner);
+    let choice = use_memo({
+        let store = source.store.clone();
+        move || {
+            let _ = stored();
+            read_theme_choice(store.path::<AppearanceFile>().as_deref())
+        }
+    });
+    use_memo(move || dark_by_default(stored(), choice()))
 }
 
 /// The palette the root with `appearance`, `look` and `system` resolves to.

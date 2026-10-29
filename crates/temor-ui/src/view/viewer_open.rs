@@ -4,8 +4,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::slot::Slot;
 use super::window_help::take_notice;

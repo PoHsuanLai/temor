@@ -2,10 +2,10 @@
 //! once, kept in the consent book per machine beside the bootstrap's answers (PLAN §9b,
 //! "Consent per host"). Local panes need no answer.
 
-use temor_core::host::consent::{ConsentIn, Permit};
-use temor_core::remote::Grant;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::HostAlias;
+use temor_client::model::host::consent::{ConsentIn, Permit};
+use temor_client::model::remote::Grant;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::ssh::HostAlias;
 
 use super::model::{Hub, HubRef};
 

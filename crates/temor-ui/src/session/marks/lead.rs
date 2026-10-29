@@ -2,10 +2,10 @@
 //! begins on that line begins across its middle. `leads_blank` is pure; `lead_at` reads the
 //! terminal.
 
-use temor_core::session::frame::Lead;
-use temor_pane::Term;
-use temor_pane::text::RowText;
-use temor_vt::{AnchorId, PointSpace};
+use temor_client::model::session::frame::Lead;
+use temor_panes::pane::Term;
+use temor_panes::pane::text::RowText;
+use temor_panes::vt::{AnchorId, PointSpace};
 
 /// Whether a prompt's first row is a blank line: nothing but spaces, and a row below it that the
 /// prompt goes on to (its header).

@@ -3,10 +3,12 @@
 //! draws the look: the root, the palette, the title and the message bar. The panes are
 //! `pane_view`, the tab's tree is `tree_view`, the sidebar is `tab_sidebar`.
 
+use super::favourites::folder_url;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
+use temor_client::{Command, Shelf};
 
 use dioxus::prelude::*;
 use ds::base::spawner::Spawner;
@@ -20,31 +22,29 @@ use ds::motion::drag::{DRAG_THRESHOLD, DragPhase, use_drag};
 use ds::prelude::*;
 use ds::window::host::{use_window_host, use_window_title};
 use ds_blitz::{TokioSpawner, use_gpu, use_window_handle};
-use ds_settings::{AppearanceFile, use_environment};
-use temor_core::split::Direction;
-use temor_core::vocab::ids::TabId;
-use temor_core::workspace::{TabsIn, WorkspaceIn};
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::TabId;
+use temor_client::model::workspace::{TabsIn, WorkspaceIn};
 
 use super::bar::BarView;
 use super::dnd::{ClickCell, Dnd, Dropped, RowRects, point_of, resolve};
 use super::launch::Launch;
 use super::palette::PaletteFollow;
 use super::quick::QuickView;
-use super::radar::AgentSheets;
+use super::row_view::{RowView, walk_of};
 use super::sidebar_room::SidebarRoom;
 use super::space_ui::{SpaceMenus, use_window_spaces};
 use super::tab_sidebar::TabSidebar;
-use super::theme::dark_by_default;
+use super::theme::use_window_look;
 use super::title::window_title;
 use super::transfer_ask::TransferAsk;
-use super::tree_view::TreeView;
 use super::window_style::WINDOW_CSS;
 use crate::app::Desktop;
-use crate::edge::{Credentials, VaultCredentials, read_theme_choice};
+use crate::edge::{Credentials, VaultCredentials};
 use crate::hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_agent_loops,
-    spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_keys_loop,
-    spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_running_loop, spawn_save_loop,
+    spawn_blink_loop, spawn_desktop_loop, spawn_event_loop, spawn_facts_loop, spawn_icons_loop,
+    spawn_keys_loop, spawn_offer_loop, spawn_plugins_loop, spawn_remote_loop, spawn_save_loop,
     spawn_settings_loop, spawn_space_edits, spawn_ssh_loop, spawn_viewer_loop,
 };
 
@@ -56,25 +56,13 @@ pub fn App() -> Element {
     let _gpu = use_gpu();
     let started = use_hook(Instant::now);
     let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
-    // The person's look and the desktop's preferences, live: a change re-themes the window.
-    let stored = use_environment(
-        launch.appearance.store.clone(),
-        launch.appearance.system.clone(),
-        spawner.clone(),
-    );
-    // Dark unless the person's file names a theme; the file is read again when it changes.
-    let choice = use_memo({
-        let store = launch.appearance.store.clone();
-        move || {
-            let _ = stored();
-            read_theme_choice(store.path::<AppearanceFile>().as_deref())
-        }
-    });
-    let env = use_memo(move || dark_by_default(stored(), choice()));
+    let env = use_window_look(&launch.appearance, spawner.clone());
     let hub = use_hook({
         let launch = launch.clone();
         move || {
+            let client = super::live::window_client(launch.state_dir.as_deref());
             let mut hub = Hub::new(launch);
+            hub.set_client(client);
             let desktop = try_consume_context::<Desktop>();
             // One handed to the window wins; else the desktop's password store.
             hub.set_credentials(match (try_consume_context::<Credentials>(), &desktop) {
@@ -84,7 +72,6 @@ pub fn App() -> Element {
             });
             if let Some(desktop) = desktop {
                 hub.set_tailnet(desktop.tailnet.clone());
-                hub.set_checkpoints(desktop.checkpoints.clone());
                 hub.set_run_ends(desktop.run_ends.clone());
             }
             hub.start();
@@ -108,16 +95,15 @@ pub fn App() -> Element {
         move || hub.set_bar_spaces(Rc::new(KitSpaces::new(spaces, picked)))
     });
     let mut sidebar = use_signal(|| Shown::Visible);
-    let shelf = use_signal(|| Shown::Hidden);
     let desk = Desk {
         sidebar,
-        shelf,
         hub: hub.clone(),
         ui,
         notice,
         spaces,
         picked_space,
         window: HostOf(use_window_host()),
+        naming: use_signal(|| None),
     };
     use_hook({
         let desk = desk.clone();
@@ -127,11 +113,11 @@ pub fn App() -> Element {
             spawn_settings_loop(desk.clone(), spawner);
             spawn_agent_loops(desk.clone());
             spawn_facts_loop(desk.clone());
+            spawn_icons_loop(desk.clone());
             spawn_plugins_loop(desk.clone());
             spawn_ssh_loop(desk.clone());
             spawn_viewer_loop(desk.clone());
             spawn_offer_loop(desk.clone());
-            spawn_running_loop(desk.clone());
             spawn_blink_loop(desk.clone());
             spawn_remote_loop(desk.clone());
             if let Some(board) = board {
@@ -216,7 +202,21 @@ pub fn App() -> Element {
                         at: onto,
                     });
                 }
+                Dropped::IntoFolder { from, folder } => tabs(TabsIn::MoveToFolder {
+                    tab: from,
+                    folder: Some(folder),
+                }),
                 Dropped::Tear(pane) => desk.act(WorkspaceIn::Tear(pane)),
+                Dropped::Favourite(tab) => {
+                    let place = desk.hub.sidebar().row(tab).and_then(|row| row.place);
+                    if let Some(place) = place {
+                        super::live::client().act(Command::Keep {
+                            shelf: Shelf::Favourites,
+                            place: folder_url(&place),
+                            at: None,
+                        });
+                    }
+                }
                 Dropped::Nothing => {}
             }
         })
@@ -264,6 +264,11 @@ pub fn App() -> Element {
         DragPhase::Idle | DragPhase::Pending { .. } => None,
     };
     let now = env();
+    // One monospace in the window: the terminal's.
+    let code_font = hub
+        .grid_font()
+        .map(|font| font.code_css())
+        .unwrap_or_default();
     // Pinned, the sidebar is the pane's body; hidden, it moves out of the pane (which clips what
     // floats over it) into a zero-width host at the window's edge, where it peeks.
     let side_box = |pinned: Shown| {
@@ -297,6 +302,7 @@ pub fn App() -> Element {
             }
             div {
                 class: "temor-shell",
+                style: code_font,
                 onmounted: move |event: MountedEvent| shell.on_mounted(event),
                 onpointermove: moved,
                 onpointerup: move |_| release.call(()),
@@ -318,10 +324,21 @@ pub fn App() -> Element {
                             }
                         }
                         TransferAsk { desk: desk.clone() }
-                        div { class: "temor-content",
+                        div {
+                            class: "temor-content",
+                            // The mouse's back and forward buttons walk the row's pages.
+                            onpointerdown: {
+                                let desk = desk.clone();
+                                move |event: PointerEvent| match walk_of(event.trigger_button()) {
+                                    Some(true) => desk.go_back(),
+                                    Some(false) => desk.go_forward(),
+                                    None => {}
+                                }
+                            },
                             if let Some((tab, tree, focus)) = front {
-                                TreeView {
+                                RowView {
                                     key: "{desk.hub.active_space().0}-{tab.0}",
+                                    tab,
                                     tree,
                                     focus,
                                     desk: desk.clone(),
@@ -345,7 +362,6 @@ pub fn App() -> Element {
             if let Some(((name, sub), at)) = ghost {
                 DragGhost { title: name, sub, at }
             }
-            AgentSheets { desk: desk.clone() }
         }
     }
 }
@@ -364,11 +380,7 @@ const SIDEBAR_WIDTH: f32 = 232.0;
 
 /// What the drag ghost says: the tab's title and folder, or the tile's pane.
 fn ghost_text(data: &SidebarData, key: DragKey) -> (String, String) {
-    let rows = data
-        .pinned
-        .iter()
-        .chain(data.folders.iter().flat_map(|(_, rows)| rows))
-        .chain(&data.loose);
+    let rows = data.every();
     match key {
         DragKey::Tab(tab) => rows
             .filter(|row| row.id == tab)

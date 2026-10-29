@@ -8,6 +8,8 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+# The data as types (L0): ids and named text live there and are re-exported from `vocab`.
+temor-schema = { workspace = true }
 temor-pane = { workspace = true, default-features = false }
 # Host identity, forwards and remote file signatures (L0, pure data).
 temor-ssh = { workspace = true }

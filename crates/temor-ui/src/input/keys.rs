@@ -4,7 +4,7 @@
 
 use dioxus::html::{Code, Key, Modifiers as HeldMods};
 use ds::edit::raw_key::{KeyPhase, RawKey};
-use temor_vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
+use temor_panes::vt::{Ime, KeyAction, KeyCode, KeyInput, Modifiers};
 
 use super::route::Stroke;
 

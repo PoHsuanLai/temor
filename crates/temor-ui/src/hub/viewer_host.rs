@@ -7,21 +7,21 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use dioxus::prelude::spawn;
-use temor_core::host::edit::EditFault;
-use temor_core::shelf::PaneSite;
-use temor_core::vocab::ids::PaneId;
-use temor_ssh::{HostAlias, RemoteFilePath};
-use temor_wire::message::RemotePath;
+use temor_client::model::host::edit::EditFault;
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::remote::message::RemotePath;
+use temor_client::ssh::{HostAlias, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
-use super::remote_edit::EditTier;
 use super::ssh_edit::{forget_copy, local_name};
-use crate::edge::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
-use crate::edge::viewer_host::{copy_from_helper, copy_with_scp};
 use crate::platform::ensure_private_dir;
 use crate::session::ViewAsk;
+use temor_client::remote::edit_way::EditTier;
+use temor_client::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
+use temor_client::viewer_host::{copy_from_helper, copy_with_scp};
 
 /// What a fetched file is for.
 pub(super) enum Then {
@@ -180,7 +180,7 @@ impl Hub {
         let Some(want) = self.viewers.host.wanted.remove(&event.id) else {
             return Vec::new();
         };
-        let open = self.ws.tab_of(want.from).is_some();
+        let open = self.book.ws.tab_of(want.from).is_some();
         match (event.outcome, &want.then) {
             (CopyOutcome::Whole, Then::View) if open => {
                 let file = want.local.clone();

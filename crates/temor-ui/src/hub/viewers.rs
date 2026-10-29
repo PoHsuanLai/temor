@@ -11,9 +11,10 @@ use std::sync::Arc;
 
 use anyview_machines::StageFamily;
 use anyview_pane::{FilePath, NonEmpty, PaneEdge, PaneHandle, Sequence, SequenceOrigin};
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::ViewerRef;
-use temor_core::workspace::{ViewerOpen, WorkspaceIn};
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::ViewerRef;
+use temor_client::model::workspace::{ViewerOpen, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
 use crate::bar::Finding;
@@ -79,6 +80,15 @@ impl ViewerHub {
 impl Hub {
     /// A file was asked for from the terminal `from` (⌘-click, View): it opens beside it.
     pub fn open_viewer(&mut self, from: PaneId, ask: ViewAsk) {
+        // A folder here is a page of its own.
+        if ask.site == PaneSite::Local && ask.file.is_dir() {
+            let folder = super::stage::folder_url(&ask.file.to_string_lossy());
+            self.act(WorkspaceIn::OpenViewer {
+                file: ViewerRef(folder.to_string()),
+                from: Some(from),
+            });
+            return;
+        }
         let file = ViewerRef(ask.file.to_string_lossy().into_owned());
         self.viewers.pending = Some(ask);
         self.act(WorkspaceIn::OpenViewer {
@@ -102,6 +112,7 @@ impl Hub {
             Some(ask) if ask.file == file => ask.around,
             _ => Vec::new(),
         };
+        self.stage_opened(open.tab, open.pane, file.clone());
         self.viewers.seats.insert(
             open.pane,
             Seat {
@@ -115,6 +126,10 @@ impl Hub {
     /// A saved viewer pane comes back if its file is still there; if not, the pane is closed.
     pub(super) fn restore_viewer(&mut self, open: ViewerOpen) {
         let pane = open.pane;
+        // temor's own pages are always there.
+        if super::stage::temor_page(open.file.as_str()).is_some() {
+            return self.viewer_opened(open);
+        }
         let file = PathBuf::from(open.file.as_str());
         // A copy of a file on another computer does not outlive the window that fetched it.
         if self.is_host_copy(&file) {
@@ -138,6 +153,7 @@ impl Hub {
 
     /// A viewer pane ended: its seat and handle go.
     pub(super) fn viewer_ended(&mut self, pane: PaneId) {
+        self.stage_closed(pane);
         self.viewers.seats.remove(&pane);
         self.viewers.handles.remove(&pane);
         self.viewers.describes_only.remove(&pane);
@@ -148,21 +164,22 @@ impl Hub {
     /// The request that gives the keyboard back from the viewer `pane`: to the terminal it came
     /// from, else to another terminal of its tab.
     pub fn viewer_unfocus(&self, pane: PaneId) -> Option<WorkspaceIn> {
-        let tab = self.ws.tab_of(pane)?;
+        let tab = self.book.ws.tab_of(pane)?;
         let origin = self
             .viewers
             .seats
             .get(&pane)
             .and_then(|seat| seat.origin)
-            .filter(|origin| self.ws.tab_of(*origin) == Some(tab));
+            .filter(|origin| self.book.ws.tab_of(*origin) == Some(tab));
         let other = || {
-            self.ws
+            self.book
+                .ws
                 .tabs
                 .tab(tab)?
                 .tree
                 .panes()
                 .into_iter()
-                .find(|p| !self.ws.viewers.contains_key(p))
+                .find(|p| !self.book.ws.viewers.contains_key(p))
         };
         origin.or_else(other).map(WorkspaceIn::Focus)
     }
@@ -170,7 +187,7 @@ impl Hub {
     /// The viewer now shows `path`: the session file keeps it, and the pane is left alone.
     pub fn viewer_shows(&mut self, pane: PaneId, path: &Path) {
         let file = ViewerRef(path.to_string_lossy().into_owned());
-        if self.ws.viewers.get(&pane) != Some(&file) {
+        if self.book.ws.viewers.get(&pane) != Some(&file) {
             self.act(WorkspaceIn::ViewerShows { pane, file });
         }
     }
@@ -202,7 +219,7 @@ impl Hub {
 
     /// Whether `pane` is a viewer.
     pub fn is_viewer(&self, pane: PaneId) -> bool {
-        self.ws.viewers.contains_key(&pane)
+        self.book.ws.viewers.contains_key(&pane)
     }
 
     /// What the view of the viewer `pane` is given; none for a pane that is not one, or whose
@@ -232,7 +249,10 @@ impl Hub {
 
     /// The name a viewer pane is shown by: its file's name.
     pub(super) fn viewer_name(&self, pane: PaneId) -> Option<String> {
-        let file = self.ws.viewers.get(&pane)?;
+        let file = self.book.ws.viewers.get(&pane)?;
+        if let Some(page) = super::stage::temor_page(file.as_str()) {
+            return Some(super::stage::temor_page_name(&page));
+        }
         Path::new(file.as_str())
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
@@ -250,6 +270,12 @@ impl HubRef {
     /// See [`Hub::viewer_show`].
     pub fn viewer_show(&self, pane: PaneId) -> Option<ViewerShow> {
         self.0.borrow().viewer_show(pane)
+    }
+
+    /// The edge every viewer runs over, a popped-out page's too.
+    pub fn viewer_edge(&self) -> PaneEdge {
+        let hub = self.0.borrow();
+        hub.viewers.edge(hub.viewer_store.as_deref())
     }
 
     /// See [`Hub::viewer_describes_only`].

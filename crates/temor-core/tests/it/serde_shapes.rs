@@ -25,7 +25,6 @@ use temor_core::transfer::{Download, Origin, Transfer};
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::*;
 use temor_core::vocab::text::*;
-use temor_core::worktree::{CloseChoice, MergeMethod, Placement};
 
 fn round_trips<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(value: &T) -> Value {
     let json = serde_json::to_value(value).unwrap();
@@ -93,9 +92,6 @@ fn closed_sets_serialise_as_their_slugs() {
     word_matches_serde::<SandboxMode>();
     word_matches_serde::<ChipKind>();
     word_matches_serde::<EntryPoint>();
-    word_matches_serde::<CloseChoice>();
-    word_matches_serde::<MergeMethod>();
-    word_matches_serde::<Placement>();
 }
 
 #[test]

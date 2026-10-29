@@ -87,19 +87,17 @@ fn a_tab_menu_open_while_the_window_is_resized_stays_inside_it_and_takes_clicks(
     }
     h.resize_window(Extent::new(1280, 800));
     h.advance(Duration::from_millis(400));
-    // Open still, the first item is where it is drawn; closed, a new menu opens and its first
-    // item is. Either way the click lands: the tab is pinned.
+    // Open still, Pin Tab is where it is drawn; closed, a new menu opens and Pin Tab is in it. Either way the click lands: the tab is pinned.
     if rects(&h, ".ds-menu-item").is_empty() {
         let row = rects(&h, ".temor-side .temor-tab-box")[0].centre();
         h.send(Input::press(row, PointerButton::Secondary));
         h.advance(Duration::from_millis(300));
     }
-    let items = rects(&h, ".ds-menu-item");
-    assert!(!items.is_empty(), "a menu to click:\n{}", h.html());
-    h.send(Input::click(items[0].centre()));
+    let pin = super::drive::menu_item(&h, "Pin Tab");
+    h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
     assert_eq!(
-        rects(&h, ".temor-side .temor-pin").len(),
+        rects(&h, ".temor-side .temor-tab-box[data-pinned=true]").len(),
         1,
         "the click landed on Pin Tab:\n{}",
         h.html()

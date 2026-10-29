@@ -20,7 +20,7 @@ use ds::prelude::Rect;
 use super::slot::Slot;
 use super::window_help::{send_text, set_focus};
 use ds::edit::pointer::EditFocus;
-use temor_core::notify::Focus;
+use temor_client::model::notify::Focus;
 
 /// The region's IME state, shared by its handlers.
 #[derive(Clone)]

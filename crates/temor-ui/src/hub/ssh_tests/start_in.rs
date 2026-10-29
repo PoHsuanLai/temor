@@ -1,16 +1,17 @@
 //! Where a new tab and a split start, by the "New tabs start in" setting.
 
-use temor_core::split::Direction;
-use temor_core::vocab::ids::PaneId;
-use temor_core::vocab::text::Cwd;
-use temor_core::workspace::WorkspaceIn;
-use temor_pane::settings::StartIn;
+use temor_client::model::split::Direction;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::vocab::text::Cwd;
+use temor_client::model::workspace::WorkspaceIn;
+use temor_panes::pane::settings::StartIn;
 
 use super::support::Rig;
 
 /// The folder the workspace holds for `pane`.
 fn folder(rig: &Rig, pane: PaneId) -> Option<String> {
     rig.hub
+        .book
         .ws
         .cwds
         .get(&pane)

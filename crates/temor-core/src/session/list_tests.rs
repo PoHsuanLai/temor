@@ -116,45 +116,12 @@ fn a_running_block_wholly_in_view_is_live_from_its_first_row() {
 }
 
 #[test]
-fn a_folder_is_named_where_it_changes() {
-    let folders = |id: BlockId| BlockFacts {
-        folder: Some(match id.0 {
-            1 | 2 => "/work".to_owned(),
-            _ => "/tmp".to_owned(),
-        }),
-        ..BlockFacts::default()
-    };
-    let items = list_of(
-        &read(
-            0,
-            24,
-            None,
-            vec![done(1, 0, 3), done(2, 3, 6), done(3, 6, 9)],
-        ),
-        folders,
-    );
-    let keys: Vec<ItemKey> = items.iter().map(Item::key).collect();
-    assert_eq!(
-        keys,
-        [
-            ItemKey::Section(BlockId(1)),
-            ItemKey::Block(BlockId(1)),
-            ItemKey::Block(BlockId(2)),
-            ItemKey::Section(BlockId(3)),
-            ItemKey::Block(BlockId(3)),
-            ItemKey::Composer,
-        ]
-    );
-}
-
-#[test]
 fn a_folded_block_shows_no_rows_and_a_failed_one_keeps_its_outcome() {
     let mut b = done(1, 0, 6);
     b.outcome = Outcome::Failed(ExitCode(2));
     let items = list_of(&read(0, 24, None, vec![b]), |_| BlockFacts {
         folded: true,
         bookmarked: true,
-        ..BlockFacts::default()
     });
     match &items[0] {
         Item::Done(block) => {
@@ -183,4 +150,39 @@ fn the_composer_holds_the_prompt_rows_through_the_cursor() {
     r.live = Some(crate::session::frame::LiveRead { prompt: at(5, 0) });
     let items = list_of(&r, plain);
     assert_eq!(items.last(), Some(&Item::Composer { rows: 5..8 }));
+}
+
+#[test]
+fn a_sessions_kept_commands_become_cards_with_how_each_went() {
+    use temor_schema::session::{At, RanCommand, SessionId};
+    let ran = |block, command: &str, exit, ended: Option<i64>| RanCommand {
+        session: SessionId::from_bits(7),
+        block: BlockId(block),
+        command: command.to_owned(),
+        folder: "/w".to_owned(),
+        exit,
+        started: At(1_000),
+        ended: ended.map(At),
+    };
+    let cards = kept_cards(&[
+        ran(4, "ls", Some(0), Some(1_250)),
+        ran(5, "make\n test", Some(2), None),
+        ran(9, "yes", Some(130), Some(900)),
+        ran(10, "true", None, Some(1_000)),
+    ]);
+    let seen: Vec<(u32, &str, Outcome, Option<u64>)> = cards
+        .iter()
+        .map(|card| (card.n, card.title(), card.outcome, card.took_ms))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (0, "ls", Outcome::Succeeded, Some(250)),
+            (1, "make", Outcome::Failed(ExitCode(2)), None),
+            // A clock that went back gives no time, not a wrapped one.
+            (2, "yes", Outcome::Stopped(ExitCode(130)), None),
+            (3, "true", Outcome::Unreported, Some(0)),
+        ]
+    );
+    assert_eq!(cards[1].command, "make\n test");
 }

@@ -3,8 +3,8 @@
 //! a short note rather than ignored.
 
 use anyview_pane::{FileRequest, PaneRequest};
-use temor_core::vocab::ids::PaneId;
-use temor_core::workspace::WorkspaceIn;
+use temor_client::model::vocab::ids::PaneId;
+use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
 use super::model::Hub;
@@ -65,8 +65,8 @@ impl Hub {
     fn viewer_file_in_app(&mut self, pane: PaneId) {
         // A file that could not be opened was never recorded as shown: it is the one to hand on.
         let file = self.viewer_failed_file(pane).cloned().or_else(|| {
-            self.ws.viewers.get(&pane).and_then(|file| {
-                anyview_pane::FilePath::new(std::path::Path::new(file.as_str())).ok()
+            self.book.ws.viewers.get(&pane).and_then(|file| {
+                anyview_pane::FilePath::new(super::stage::page_path(file.as_str())).ok()
             })
         });
         if let Some(file) = file {

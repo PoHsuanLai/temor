@@ -1,6 +1,6 @@
 //! The Settings window's changes to a Space's project, applied in the main window (PLAN §7): the
 //! kit's handle belongs to this window, so a change comes here through the board and goes in the
-//! way a Space menu's edit does, and the kit then writes `spaces.json`.
+//! way a Space menu's edit does, and the Spaces are then kept.
 
 use dioxus::prelude::spawn;
 
