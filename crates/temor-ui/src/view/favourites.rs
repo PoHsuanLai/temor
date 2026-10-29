@@ -174,6 +174,7 @@ fn FavouriteTile(
                 anchor: Anchor::Rect(at),
                 items: menu_items::<()>(Clicked::Favourite, false, Vec::new()),
                 onpick: move |pick: Pick<()>| {
+                    acting.keyboard_back();
                     let Pick::Item(item) = pick else { return };
                     match item {
                         Item::Open => match tab {

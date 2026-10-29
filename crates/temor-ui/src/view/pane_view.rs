@@ -147,19 +147,23 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             composer: composer_focus,
         },
     );
-    // The pane that becomes the keyboard pane while the composer is shown gives it the caret.
+    // The pane that becomes the keyboard pane while the composer is shown gives it the caret,
+    // and again when a menu's pick gives the keyboard back.
     {
         let (slot, desk) = (Rc::clone(&slot), desk.clone());
         let wanted = use_hook(|| Rc::new(std::cell::Cell::new(false)));
+        let regained = use_hook(|| Rc::new(std::cell::Cell::new(0)));
         use_effect(move || {
             let _ = (desk.ui)();
+            let regain = (desk.regain)();
             let s = slot.borrow();
             let want = desk.hub.keyboard_pane() == Some(pane)
                 && !desk.hub.bar_is_open()
                 && s.session
                     .as_ref()
                     .is_some_and(|s| s.composer_shown() && s.finder().is_none());
-            if want && !wanted.replace(want) {
+            let asked = regained.replace(regain) != regain;
+            if want && (!wanted.replace(want) || asked) {
                 composer_focus.request();
             }
             wanted.set(want);

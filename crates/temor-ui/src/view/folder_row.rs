@@ -130,6 +130,10 @@ fn FolderMenu(folder: FolderId, at: Rect, desk: Desk, onclose: EventHandler<()>)
             items: menu_items::<()>(MenuTarget::Folder, false, Vec::new()),
             onpick: move |pick: Pick<()>| {
                 let Pick::Item(item) = pick else { return };
+                // A folder being named has the keyboard in its name field instead.
+                if !matches!(item, Item::NewFolderInside | Item::RenameFolder) {
+                    desk.keyboard_back();
+                }
                 match item {
                     Item::NewFolderInside => desk.new_folder(Some(folder), None),
                     Item::RenameFolder => {

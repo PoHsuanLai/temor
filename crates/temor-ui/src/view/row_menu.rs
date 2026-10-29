@@ -57,6 +57,10 @@ pub fn RowMenu(
             anchor: Anchor::Rect(at),
             items,
             onpick: move |pick: Pick<MoveTo>| {
+                // A new folder's name field takes the keyboard instead.
+                if !matches!(pick, Pick::Own(MoveTo::NewFolder)) {
+                    desk.keyboard_back();
+                }
                 let item = match pick {
                     Pick::Item(item) => item,
                     Pick::Own(MoveTo::Folder(folder)) => {

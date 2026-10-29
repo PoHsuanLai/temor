@@ -606,6 +606,29 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
             h.html()
         );
     }
+    // The tile has the menu too, and Remove from Favourites lets it go.
+    h.advance(Duration::from_millis(300));
+    let tile = &rects(&h, ".temor-side .temor-fav")[0];
+    let at = Point {
+        x: Px(((tile.left + tile.right) / 2.0) as f32),
+        y: Px(((tile.top + tile.bottom) / 2.0) as f32),
+    };
+    // Its tip is up first: the pointer rests on it.
+    h.send(Input::pointer_move(at));
+    h.advance(Duration::from_millis(1500));
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let remove = drive::menu_item(&h, "Remove from Favourites");
+    h.send(Input::click(remove.centre()));
+    let start = Instant::now();
+    while !rects(&h, ".temor-side .temor-fav").is_empty() {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "the tile stays:\n{}",
+            h.html()
+        );
+    }
 }
 
 /// A row is led by what runs in its tab: the letter tile of its folder at the prompt, and a
@@ -795,4 +818,27 @@ fn a_rows_tooltip_goes_when_its_row_is_hidden() {
         .map(|r| format!("{:?} at {},{}", r.what, r.left, r.top))
         .collect();
     assert!(tips.is_empty(), "no tooltip left: {tips:?}");
+}
+
+/// A pick in a row's menu gives the keyboard back to the pane: the next line typed runs (the
+/// click on the item used to leave the focus nowhere).
+#[test]
+fn typing_goes_on_after_a_pick_in_a_rows_menu() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-menu-keys", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let row = drive::rect(&h, ".temor-side .temor-tab-box");
+    h.send(Input::press(row.centre(), PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let pin = drive::menu_item(&h, "Pin Tab");
+    h.send(Input::click(pin.centre()));
+    h.advance(Duration::from_millis(400));
+    drive::type_line(&mut h, "echo after-the-menu");
+    drive::wait_html(&mut h, "the line run", |html| {
+        html.contains("after-the-menu")
+    });
 }
