@@ -54,9 +54,7 @@ mod tests {
     use crate::frame::model::ImagePixels;
     use crate::frame::virtual_images::VirtualTarget;
     use std::sync::Arc;
-    use temor_vt::{
-        CellStyle, Col, ColorRef, Generation, ImageId, KittyLayer, PlacementId, RowDirty, Selected,
-    };
+    use temor_vt::{CellStyle, Col, ColorRef, Generation, ImageId, KittyLayer, PlacementId};
 
     fn cell(c: char) -> CellDraw {
         CellDraw {
@@ -66,7 +64,7 @@ mod tests {
             fg: None,
             bg: None,
             style: CellStyle::default(),
-            selected: Selected::No,
+            selected: false,
         }
     }
 
@@ -106,7 +104,7 @@ mod tests {
             .apply(update(6, 3), vec![Ok((Row(0), vec![cell('b')]))])
             .expect("retry");
         assert_eq!(frame.size(), GridSize::new(6, 3));
-        assert!(frame.dirty.iter().all(|d| *d == RowDirty::Dirty));
+        assert!(frame.dirty.iter().all(|d| *d));
     }
 
     #[test]
@@ -124,8 +122,8 @@ mod tests {
             col: Col(0),
             row: Row(5),
             shape: temor_vt::CursorShape::Block,
-            blink: temor_vt::CursorBlink::Steady,
-            cell: temor_vt::CursorCell::Normal,
+            blinking: false,
+            wide_tail: false,
         });
         frame
             .apply(at, vec![Ok((Row(2), vec![cell('a')]))])

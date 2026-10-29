@@ -10,6 +10,6 @@ mod value;
 pub use parse::{ParsedSettings, TerminalSettings, parse_settings};
 pub use start::{PagerChoice, StartIn};
 pub use value::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NOTIFY_AFTER_MAX_SECONDS,
-    NotifyAfter, ScrollbackLines, ShellChoice, font_family, line_percent, offer_command, shell,
+    CursorStyle, FontChoice, FontPoints, LinePercent, NOTIFY_AFTER_MAX_SECONDS, NotifyAfter,
+    ScrollbackLines, ShellChoice, font_family, line_percent, offer_command, shell,
 };

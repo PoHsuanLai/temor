@@ -67,13 +67,12 @@ fn line_height_is_a_percent_from_80_to_200() {
 
 #[test]
 fn cursor_blink_reads_on_and_off() {
-    use super::CursorBlinking;
     // (line, what it gives, refused)
     for (line, want, refused) in [
-        ("", CursorBlinking::On, false),
-        ("cursor.blink = off", CursorBlinking::Off, false),
-        ("cursor.blink = on", CursorBlinking::On, false),
-        ("cursor.blink = yes", CursorBlinking::On, true),
+        ("", true, false),
+        ("cursor.blink = off", false, false),
+        ("cursor.blink = on", true, false),
+        ("cursor.blink = yes", true, true),
     ] {
         let parsed = parse_settings(line);
         assert_eq!(parsed.settings.cursor_blink, want, "{line}");

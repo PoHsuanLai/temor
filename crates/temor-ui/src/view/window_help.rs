@@ -12,7 +12,7 @@ use ds::host::ime::ImeSwitch;
 use ds::host::measure::RectProbe;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_panes::render::{PixelSize, Scale};
 
 use super::convert::{device_point, scale_of};
@@ -122,7 +122,7 @@ pub(super) fn device_at(
 
 /// Tells the session whether the pane has the keyboard (a notice goes out only when it does not),
 /// and draws the cursor as the pane's focus says.
-pub(super) fn set_focus(slot: &RefCell<Slot>, focus: Focus) {
+pub(super) fn set_focus(slot: &RefCell<Slot>, focus: PaneFocus) {
     if let Some(s) = slot.borrow_mut().session.as_mut() {
         s.set_focus(focus);
     }

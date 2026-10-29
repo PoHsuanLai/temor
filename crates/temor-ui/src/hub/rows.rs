@@ -14,7 +14,7 @@ use temor_client::model::workspace::sidebar_plan;
 use temor_client::ssh::HostAlias;
 
 use super::model::{Hub, HubRef};
-use super::tab_name::{Marking, NameIn, tab_title};
+use super::tab_name::{NameIn, tab_title};
 
 /// What a drag in the sidebar carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -23,13 +23,6 @@ pub enum DragKey {
     Tab(TabId),
     /// One pane, by its tile in a row's miniature.
     Tile(PaneId),
-}
-
-/// Whether a tab has news the person has not seen.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Unread {
-    Seen,
-    Unread,
 }
 
 /// One pane of a tab drawn small, placed in percent of the miniature.
@@ -67,7 +60,7 @@ pub struct TabRow {
     pub cwd: Option<String>,
     /// The folder as this computer writes it (an absolute path); none on a host, or not known.
     pub place: Option<String>,
-    pub unread: Unread,
+    pub unread: bool,
     /// What the agent in the tab is doing: the most urgent of its panes.
     pub agent: AgentState,
     /// What plugins say about the pane's folder, on one line, for hover.
@@ -186,10 +179,7 @@ impl Hub {
         let agent = self.agent_state_of_tab(id);
         // News, or an agent that waits or has a result the person has not looked at.
         let news = self.book.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
-        let unread = match news {
-            true => Unread::Unread,
-            false => Unread::Seen,
-        };
+        let unread = news;
         let selection = match self.book.ws.front() == Some(id) {
             true => Selection::Selected,
             false => Selection::Unselected,
@@ -232,17 +222,13 @@ impl Hub {
             return host_title;
         }
         let cwd = live_cwd.or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
-        let marking = match prompts {
-            0 => Marking::Unmarked,
-            _ => Marking::Marked,
-        };
         tab_title(NameIn {
             running: running.as_ref().map(|run| run.command.as_str()),
             title: &title,
             cwd: cwd.as_deref(),
             home: &self.launch.ambient.home,
             fallback: made_as.as_str(),
-            marking,
+            marked: prompts > 0,
         })
     }
 

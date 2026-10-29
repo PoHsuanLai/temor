@@ -4,11 +4,11 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use temor_core::notify::{Focus, Limiter};
+use temor_blocks::notify::{Limiter, PaneFocus};
 use temor_pane::settings::NotifyAfter;
 use temor_pane::{
-    EventSink, FedSpec, Feeder, Hold, PaneError, PaneEvent, PaneHandle, PaneSpec, start, start_fed,
-    start_restored,
+    EventSink, FedSpec, Feeder, PaneError, PaneEvent, PaneHandle, PaneSpec, RenderHold, start,
+    start_fed, start_restored,
 };
 use temor_shell::report::{KEY_VAR, ReportKey};
 use temor_vt::Snapshot;
@@ -95,7 +95,7 @@ impl PaneCore {
             .spawn(move || runner.run())
             .map_err(OpenError::Thread)?;
         let mut core = Self::around(pane, kit);
-        core.site = temor_core::shelf::PaneSite::Remote;
+        core.site = temor_hosts::shelf::PaneSite::Remote;
         Ok((core, feeder))
     }
 
@@ -106,10 +106,10 @@ impl PaneCore {
             pane: Arc::new(pane),
             title: String::new(),
             lifetime: Lifetime::Running,
-            hold: Hold::Released,
+            hold: RenderHold::Released,
             hold_generation: 0,
             blocks: BlockLog::default(),
-            shell_state: temor_core::session::ShellState::default(),
+            shell_state: temor_blocks::session::ShellState::default(),
             shell_path: None,
             inherited: Vec::new(),
             report_key: None,
@@ -122,12 +122,12 @@ impl PaneCore {
             notifier: kit.notifier,
             clock: kit.clock,
             shelf_dir: kit.shelf_dir,
-            quoting: temor_core::shelf::Quoting::Posix,
-            site: temor_core::shelf::PaneSite::Local,
-            clip_write: temor_core::remote::Grant::Ask,
+            quoting: temor_hosts::shelf::Quoting::Posix,
+            site: temor_hosts::shelf::PaneSite::Local,
+            clip_write: temor_hosts::remote::Grant::Ask,
             clip_mirror,
             clip_pending: None,
-            focus: Focus::Focused,
+            focus: PaneFocus::Focused,
             sent: None,
             said: None,
         }

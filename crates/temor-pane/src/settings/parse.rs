@@ -3,9 +3,9 @@
 
 use super::start::{PagerChoice, StartIn};
 use super::value::{
-    CursorBlinking, CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, ScrollbackLines,
-    ShellChoice, cursor, cursor_blink, font_family, font_points, line_percent, notify_after,
-    offer_command, scrollback, shell,
+    CursorStyle, FontChoice, FontPoints, LinePercent, NotifyAfter, ScrollbackLines, ShellChoice,
+    cursor, cursor_blink, font_family, font_points, line_percent, notify_after, offer_command,
+    scrollback, shell,
 };
 use crate::error::SettingsError;
 use crate::keys::Action;
@@ -21,7 +21,7 @@ pub struct TerminalSettings {
     pub scrollback: ScrollbackLines,
     pub cursor: CursorStyle,
     /// Whether the cursor blinks (`cursor.blink = on | off`).
-    pub cursor_blink: CursorBlinking,
+    pub cursor_blink: bool,
     pub shell: ShellChoice,
     /// Where a new tab and a split start (`shell.start_in` in `settings.toml`).
     pub start_in: StartIn,
@@ -50,7 +50,7 @@ impl Default for TerminalSettings {
             line_height: LinePercent::DEFAULT,
             scrollback: ScrollbackLines::DEFAULT,
             cursor: CursorStyle::default(),
-            cursor_blink: CursorBlinking::default(),
+            cursor_blink: true,
             shell: ShellChoice::default(),
             start_in: StartIn::default(),
             pager: PagerChoice::default(),

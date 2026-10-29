@@ -6,7 +6,6 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use dioxus::prelude::spawn;
 use temor_client::model::host::edit::EditFault;
 use temor_client::model::shelf::PaneSite;
 use temor_client::model::vocab::ids::PaneId;
@@ -14,7 +13,6 @@ use temor_client::remote::message::RemotePath;
 use temor_client::ssh::{HostAlias, RemoteFilePath};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use super::ssh_edit::{forget_copy, local_name};
 use crate::platform::ensure_private_dir;
@@ -45,7 +43,7 @@ pub(super) struct Wanted {
 pub(super) struct HostCopies {
     next: u64,
     events: UnboundedSender<CopyEvent>,
-    inbox: Option<UnboundedReceiver<CopyEvent>>,
+    pub(super) inbox: Option<UnboundedReceiver<CopyEvent>>,
     wanted: BTreeMap<CopyId, Wanted>,
     /// The copy each viewer pane shows, removed when the pane ends.
     shown: BTreeMap<PaneId, PathBuf>,
@@ -228,17 +226,4 @@ impl HubRef {
         hub.open_host_viewer(from, path);
         std::mem::take(&mut hub.notices)
     }
-}
-
-/// Hears the fetches of host files for the viewer, for as long as the window lives.
-pub fn spawn_viewer_loop(desk: Desk) {
-    let Some(mut inbox) = desk.hub.0.borrow_mut().viewers.host.inbox.take() else {
-        return;
-    };
-    spawn(async move {
-        while let Some(event) = inbox.recv().await {
-            let notes = desk.hub.0.borrow_mut().host_copy_done(event);
-            desk.tell(notes);
-        }
-    });
 }

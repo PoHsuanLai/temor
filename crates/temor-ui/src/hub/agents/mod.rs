@@ -4,7 +4,6 @@
 mod convert;
 mod desk;
 mod ending;
-mod loops;
 mod naming;
 #[cfg(test)]
 mod naming_tests;
@@ -14,7 +13,6 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use loops::spawn_agent_loops;
 pub use observe::WaitingCount;
-pub use radar::{Alert, Changed, Radar};
+pub use radar::{Alert, Radar};
 pub use state::Agents;

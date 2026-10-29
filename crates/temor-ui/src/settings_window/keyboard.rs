@@ -10,7 +10,7 @@ use ds::components::fields::field_row::FieldRow;
 use ds::prelude::*;
 use temor_panes::pane::keys::{Action, bindable};
 
-use super::keys_edit::{KeyChange, Mine, change_keys, load_view};
+use super::keys_edit::{KeyChange, change_keys, load_view};
 use crate::view::launch::Launch;
 use crate::view::names::named;
 
@@ -81,7 +81,7 @@ pub fn KeyboardPage() -> Element {
                         key: "{action:?}",
                         action,
                         value: current.chord_of(action),
-                        mine: current.mine(action),
+                        changed: current.changed(action),
                         said: about(Some(action)),
                         onchange: change,
                     }
@@ -110,7 +110,7 @@ pub fn KeyboardPage() -> Element {
 fn KeyRow(
     action: Action,
     value: Option<Chord>,
-    mine: Mine,
+    changed: bool,
     said: Option<TextLine>,
     onchange: Callback<(Option<Action>, KeyChange)>,
 ) -> Element {
@@ -131,7 +131,7 @@ fn KeyRow(
                     }
                 },
             }
-            if mine == Mine::Changed {
+            if changed {
                 Button {
                     label: "Reset".to_owned(),
                     title: Some(format!("Put {name} back as it came")),

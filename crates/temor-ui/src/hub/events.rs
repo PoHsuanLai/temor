@@ -13,13 +13,13 @@ use temor_client::model::quick::QuickIn;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::{Cwd, TabTitle};
 use temor_client::model::workspace::{TabsIn, WorkspaceIn};
-use temor_panes::pane::{Hold, TransferEvent};
+use temor_panes::pane::{RenderHold, TransferEvent};
 use temor_panes::pty::ChildExit;
 
 use super::desk::Desk;
 use super::model::Hub;
-use super::offer::{Heard as OfferHeard, OfferRedraw};
-use crate::session::{BELL_MARK, Notice, Relaid};
+use super::offer::Heard as OfferHeard;
+use crate::session::{BELL_MARK, Notice};
 use crate::view::slot::{Slot, release_hold_later, repaint};
 use temor_panes::Heard;
 
@@ -58,13 +58,13 @@ impl Hub {
             };
             // The pane's core took the event on the client's thread; the radar and the offer hear
             // what it left, and the session then takes that.
-            if self.agents_observe(pane, &heard) == super::agents::Changed::Yes {
+            if self.agents_observe(pane, &heard) {
                 out.chrome.insert(pane);
             }
             let offered = OfferHeard::of(&heard);
             let notice = session.take(heard);
             self.history_heard(pane, &notice, session);
-            if self.offer_heard(pane, offered, session) == OfferRedraw::Yes {
+            if self.offer_heard(pane, offered, session) {
                 out.chrome.insert(pane);
             }
             match notice {
@@ -84,11 +84,11 @@ impl Hub {
                         out.asks.push(WorkspaceIn::ClosePane(Some(pane)));
                     }
                 }
-                Notice::Hold(Hold::Held) => {
+                Notice::Hold(RenderHold::Held) => {
                     // Each hold has its own generation: a stale timer cannot end a newer one.
                     out.holds.push((Rc::clone(&slot), session.start_hold()));
                 }
-                Notice::Hold(Hold::Released) => {
+                Notice::Hold(RenderHold::Released) => {
                     session.release_hold();
                     out.paint.insert(pane);
                 }
@@ -199,7 +199,7 @@ pub fn spawn_event_loop(desk: Desk) {
             let mut moved = false;
             for pane in &paint {
                 if let Some(slot) = desk.hub.slot(*pane) {
-                    moved |= repaint(&slot) == Relaid::Moved;
+                    moved |= repaint(&slot);
                 }
             }
             // A list of blocks grows with the output: it is drawn again for every paint.

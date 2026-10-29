@@ -23,7 +23,7 @@ pub use keymap_source::{LOOK_EVERY, system_keys, watch_file};
 pub use notify::{DesktopNote, NoopNotifier, Notifier, NotifyFailed, RecordingNotifier};
 pub use settings_file::{ThemeChoice, read_theme_choice, theme_choice};
 pub use temor_client::space::start::{
-    CredentialFault, CredentialSource, Credentials, Held, NoCredentials,
+    CredentialFault, CredentialSource, Credentials, NoCredentials,
 };
 pub use temor_client::space::vault::VaultCredentials;
 pub use temor_panes::report_socket::SocketHost;

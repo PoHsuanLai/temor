@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex, Weak};
 
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::ssh::{CheckScan, CheckUrl, PreShellEvent};
+use temor_client::ssh::{CheckScan, CheckUrl};
 use temor_panes::pane::ByteTap;
 
 use super::model::Hub;
@@ -67,10 +67,8 @@ impl ByteTap for Listener {
         let mut state = check.lock();
         let RawState { scan, found } = &mut *state;
         let Some(scan) = scan.as_mut() else { return };
-        for event in scan.feed(data) {
-            if let PreShellEvent::ConfirmInBrowser(url) = event {
-                *found = Some(url);
-            }
+        if let Some(url) = scan.feed(data).pop() {
+            *found = Some(url);
         }
     }
 }

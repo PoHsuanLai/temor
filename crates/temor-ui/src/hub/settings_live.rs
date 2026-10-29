@@ -32,7 +32,7 @@ impl Hub {
             };
             if let Some((font, size, line)) = &change.font {
                 let applied =
-                    load_fonts(font, *size, *line).and_then(|fonts| session.set_fonts(fonts));
+                    load_fonts(font, *size, *line).and_then(|fonts| Ok(session.set_fonts(fonts)?));
                 if let Err(err) = applied {
                     said.push(format!("Settings: the font was not changed: {err}"));
                 }
@@ -98,7 +98,6 @@ mod tests {
     use temor_panes::pane::settings::{FontPoints, ShellChoice};
 
     use super::{Hub, TerminalDoc};
-    use crate::settings::FontSize;
 
     #[test]
     fn a_changed_file_reaches_the_next_panes_and_the_offer_and_keeps_the_keys() {
@@ -106,7 +105,7 @@ mod tests {
         let (keys, _) = Overrides::parse("temor.split-right = Primary+Alt+N\n");
         hub.launch.settings.keys = keys.clone();
         let mut doc = TerminalDoc::default();
-        doc.font.size = FontSize(FontPoints::new(20.0).expect("in range"));
+        doc.font.size = FontPoints::new(20.0).expect("in range");
         doc.shell.program = "/bin/zsh".to_owned();
         doc.offer.add = vec!["kubectl debug -it".to_owned()];
         // A family that is only blanks cannot be used: one problem, said once.

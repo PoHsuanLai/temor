@@ -1,0 +1,254 @@
+//! The pointer (PLAN §6): a press selects (one click cells, two words, three lines; Alt makes a
+//! rectangle), or reports to the program when it asked for the mouse; the wheel scrolls the
+//! scrollback unless the program takes it; ⌘-click (Ctrl+Shift) opens a hyperlink.
+
+use std::time::Duration;
+
+use temor_panes::pane::text::RowText;
+use temor_panes::pane::text::{CellPos, Granularity, Selection, Shape};
+use temor_panes::vt::{
+    GridPoint, Modifiers, MouseAction, MouseButton, MouseInput, PointSpace, RowDelta,
+    SelectionShape, SurfacePoint, TextSelection, ViewportScroll,
+};
+
+use temor_client::model::session::AnnotateIn;
+
+use super::{Drag, Session};
+use crate::error::ViewError;
+use crate::input::{Click, next_click};
+use crate::platform::open_link;
+
+impl Session {
+    /// The pointer is over the grid at `at`.
+    pub fn pointer_moved(&mut self, at: SurfacePoint) {
+        self.pointer_over = Some(at);
+    }
+
+    /// The pointer left the grid: no link is under it.
+    pub fn pointer_left(&mut self) {
+        self.pointer_over = None;
+    }
+
+    /// Whether the program asked for the mouse: presses and the wheel are reported to it.
+    pub fn mouse_tracking(&self) -> bool {
+        self.pane.with_term(|term| term.mouse_tracking())
+    }
+
+    /// A button went down at `at`.
+    pub fn press(
+        &mut self,
+        at: SurfacePoint,
+        button: MouseButton,
+        mods: Modifiers,
+        now: Duration,
+    ) -> Result<(), ViewError> {
+        let Some(placed) = self.placed() else {
+            return Ok(());
+        };
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
+        let shift = mods.contains(Modifiers::SHIFT);
+        if tracking && !shift {
+            // The program has the mouse: nothing of the blocks is picked under it.
+            self.annotate(AnnotateIn::ClearPicks);
+            let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
+            let input = MouseInput {
+                action: MouseAction::Press,
+                button: Some(button),
+                mods,
+                at: drawn,
+            };
+            let bytes = self
+                .pane
+                .with_term(|term| term.encode_mouse(&input, surface))?;
+            self.pane.send(&bytes);
+            return Ok(());
+        }
+        let Some(cell) = self.point_hit(at).map(|hit| hit.cell) else {
+            return Ok(());
+        };
+        if mods.contains(Modifiers::CTRL) && mods.contains(Modifiers::SHIFT) {
+            return self.open_link_at(cell);
+        }
+        let line = self.line(cell.row)?;
+        let (click, state) = next_click(self.click, now, cell);
+        self.click = Some(state);
+        let granularity = match click {
+            Click::Single => Granularity::Cells,
+            Click::Double => Granularity::Words,
+            Click::Triple => Granularity::Lines,
+        };
+        let shape = match mods.contains(Modifiers::ALT) {
+            true => Shape::Block,
+            false => Shape::Linear,
+        };
+        self.selection = Some(Selection::begin(cell, &line, granularity, shape));
+        self.drag = Some(Drag { granularity, shape });
+        self.mirror_selection()
+    }
+
+    /// The pointer moved at `at` while a button is held.
+    pub fn drag_to(&mut self, at: SurfacePoint) -> Result<(), ViewError> {
+        if self.drag.is_none() {
+            return Ok(());
+        }
+        let Some(cell) = self.point_hit(at).map(|hit| hit.cell) else {
+            return Ok(());
+        };
+        let line = self.line(cell.row)?;
+        if let Some(selection) = self.selection.as_mut() {
+            selection.extend(cell, &line);
+        }
+        self.mirror_selection()
+    }
+
+    /// The button came up at `at`: the drag, if any, is over. A plain click that never left its
+    /// cell leaves no text selected and picks the block it landed on; a drag that selected text
+    /// lets go of the picked blocks.
+    pub fn release(
+        &mut self,
+        at: SurfacePoint,
+        button: MouseButton,
+        mods: Modifiers,
+    ) -> Result<(), ViewError> {
+        let pressed = self.drag.take().is_some();
+        if self.selection.is_some_and(|s| s.is_click()) {
+            self.selection = None;
+            self.mirror_selection()?;
+            if pressed {
+                self.pick_at(at, mods);
+            }
+        } else if self.selection.is_some() {
+            self.annotate(AnnotateIn::ClearPicks);
+        }
+        let Some(placed) = self.placed() else {
+            return Ok(());
+        };
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
+        if tracking && !mods.contains(Modifiers::SHIFT) {
+            let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
+            let input = MouseInput {
+                action: MouseAction::Release,
+                button: Some(button),
+                mods,
+                at: drawn,
+            };
+            let bytes = self
+                .pane
+                .with_term(|term| term.encode_mouse(&input, surface))?;
+            self.pane.send(&bytes);
+        }
+        Ok(())
+    }
+
+    /// The wheel turned `lines` detents up (`up`) or down, at `at`.
+    pub fn wheel(
+        &mut self,
+        at: SurfacePoint,
+        direction: WheelDirection,
+        lines: u32,
+        mods: Modifiers,
+    ) -> Result<(), ViewError> {
+        // The wheel moves the output under a pointer that did not move: it hovers what is there now.
+        self.pointer_over = Some(at);
+        if lines == 0 {
+            return Ok(());
+        }
+        let Some(placed) = self.placed() else {
+            return Ok(());
+        };
+        let tracking = self.pane.with_term(|term| term.mouse_tracking());
+        if tracking && !mods.contains(Modifiers::SHIFT) {
+            let button = match direction {
+                WheelDirection::Up => MouseButton::WheelUp,
+                WheelDirection::Down => MouseButton::WheelDown,
+            };
+            let surface = placed.fit.mouse_surface();
+            let Some(drawn) = self.drawn_point(at) else {
+                return Ok(());
+            };
+            let input = MouseInput {
+                action: MouseAction::Press,
+                button: Some(button),
+                mods,
+                at: drawn,
+            };
+            for _ in 0..lines.min(10) {
+                let bytes = self
+                    .pane
+                    .with_term(|term| term.encode_mouse(&input, surface))?;
+                self.pane.send(&bytes);
+            }
+            return Ok(());
+        }
+        let rows = isize::try_from(lines).unwrap_or(isize::MAX);
+        let delta = match direction {
+            WheelDirection::Up => -rows,
+            WheelDirection::Down => rows,
+        };
+        self.pane
+            .with_term(|term| term.scroll(ViewportScroll::Delta(RowDelta(delta))));
+        Ok(())
+    }
+
+    /// Makes the core selection's ends the terminal's selection, so the grid draws it.
+    pub(super) fn mirror_selection(&mut self) -> Result<(), ViewError> {
+        let text = self.selection.map(to_text_selection);
+        Ok(self.pane.with_term(|term| term.set_selection(text))?)
+    }
+
+    /// The text of a screen row.
+    pub(super) fn line(&self, row: u32) -> Result<RowText, ViewError> {
+        Ok(self.pane.with_term(|term| term.row_text(row))?)
+    }
+
+    fn open_link_at(&mut self, cell: CellPos) -> Result<(), ViewError> {
+        let link = self.pane.with_term(|term| {
+            let point = GridPoint::new(PointSpace::Screen, cell.col, cell.row);
+            term.hyperlink_at(point)
+        });
+        let Some(target) = link else {
+            // Not a link: a path in the text may be a file to look at.
+            return self.view_path_at(cell);
+        };
+        if self.view_link(&target) {
+            return Ok(());
+        }
+        if let Err(words) = open_link(&*self.opener, &target) {
+            self.notice = Some(words.to_owned());
+        }
+        Ok(())
+    }
+}
+
+/// Which way the wheel turned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WheelDirection {
+    /// Towards older output.
+    Up,
+    /// Towards the live screen.
+    Down,
+}
+
+/// A viewport cell as a screen cell (the viewport starts at screen row `top`).
+pub(super) fn screen_cell(top: u32, row: u16, col: u16) -> CellPos {
+    CellPos::new(top.saturating_add(u32::from(row)), col)
+}
+
+/// The selection as the terminal draws it, in screen points.
+fn to_text_selection(selection: Selection) -> TextSelection {
+    let (start, end) = selection.ends();
+    TextSelection {
+        start: GridPoint::new(PointSpace::Screen, start.col, start.row),
+        end: GridPoint::new(PointSpace::Screen, end.col, end.row),
+        shape: match selection.shape() {
+            Shape::Linear => SelectionShape::Linear,
+            Shape::Block => SelectionShape::Block,
+        },
+    }
+}

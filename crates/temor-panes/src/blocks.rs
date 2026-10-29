@@ -3,8 +3,8 @@
 //! and the chips each block's header carried. The rules are in `temor-core`; the session reads
 //! the terminal into the log's inputs and carries out what it says.
 
-use temor_core::block::{BlockState, BlockStore};
-use temor_core::session::{Anchor, MarkLog};
+use temor_blocks::block::{BlockState, BlockStore};
+use temor_blocks::session::{Anchor, MarkLog};
 use temor_core::vocab::ids::BlockId;
 use temor_vt::AnchorId;
 
@@ -32,7 +32,7 @@ pub fn anchor_id(anchor: Anchor) -> AnchorId {
 pub struct BlockLog {
     pub marks: MarkLog,
     /// What each finished block's card says of its output.
-    pub notes: std::collections::BTreeMap<BlockId, temor_core::block::Note>,
+    pub notes: std::collections::BTreeMap<BlockId, temor_blocks::block::Note>,
 }
 
 impl BlockLog {

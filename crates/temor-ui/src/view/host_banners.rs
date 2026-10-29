@@ -16,7 +16,7 @@ use super::host_words::{
     TRY_ANYWAY, USE_THEIRS, ask_words, edit_line, forward_line, stage_line,
 };
 use super::remote::RemoteBanners;
-use crate::hub::{CheckRow, Desk, Direct, EditLine, EditStatus, ForwardLine, HostView, Stage};
+use crate::hub::{Desk, EditLine, EditStatus, ForwardLine, HostView, Stage};
 use temor_client::ssh::work::EditId;
 
 /// The host banners of `pane`.
@@ -58,7 +58,7 @@ pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
                     },
                 }
             }
-            if view.check == CheckRow::Waiting {
+            if view.check_waiting {
                 InlineBanner {
                     severity: Severity::Info,
                     text: "Confirm it's you in your browser".to_owned(),
@@ -135,7 +135,7 @@ fn Tools(
     let direct = desk.clone();
     let editing = desk.clone();
     let typed = port();
-    let opens_direct = view.direct == Direct::Available;
+    let opens_direct = view.direct_ports;
     rsx! {
         BannerActionRow {
             label: "Forward a port",

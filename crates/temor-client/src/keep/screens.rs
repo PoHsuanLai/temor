@@ -7,7 +7,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use temor_core::session::SNAPSHOT_LIMIT;
+use temor_blocks::session::SNAPSHOT_LIMIT;
 use temor_schema::session::SessionId;
 
 use super::private::{ensure_private_dir, write_private_file};

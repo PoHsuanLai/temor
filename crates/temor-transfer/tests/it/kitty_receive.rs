@@ -1,8 +1,8 @@
 //! The receive machine's core flow: consent, files, folders, names and links.
 
 use temor_transfer::kitty::{
-    Action, Effect, EndWhy, FileType, FirstAnswer, Input, LinkPolicy, Message, Mode, ReplyStatus,
-    WriteOp,
+    Action, Effect, FileType, FirstAnswer, Input, LinkPolicy, Message, Mode, ReplyStatus,
+    TransferEnd, WriteOp,
 };
 use temor_transfer::{Bytes, Consent, RelPath};
 
@@ -38,7 +38,7 @@ fn refusal_replies_with_permission_denied_and_ends_without_writes() {
     let (s, _) = send(session(1024));
     let (_, effects) = s.step(Input::Decided(Consent::Refuse));
     assert!(writes(&effects).is_empty());
-    assert!(effects.contains(&Effect::Ended(EndWhy::Refused)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Refused)));
     assert_eq!(replies(&effects).len(), 1);
     assert!(matches!(
         &replies(&effects)[0],

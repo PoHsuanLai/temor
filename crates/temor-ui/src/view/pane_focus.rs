@@ -10,7 +10,7 @@ use ds::edit::input::EditInput;
 use ds::edit::pointer::EditFocus;
 use ds::host::ime::ImeEvent;
 use ds::host::measure::RectProbe;
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::WorkspaceIn;
 
@@ -20,7 +20,7 @@ use super::window_help::{focus_in, set_focus};
 use crate::hub::Desk;
 
 /// What the pane's region is given for the keyboard.
-pub struct PaneFocus {
+pub struct FocusWiring {
     /// Where the keyboard goes back to when the find bar closes (its field leaves the page).
     pub regain: EventHandler<()>,
     /// The region gained or lost the keyboard.
@@ -29,9 +29,9 @@ pub struct PaneFocus {
     pub on_mounted: EventHandler<MountedEvent>,
 }
 
-impl std::fmt::Debug for PaneFocus {
+impl std::fmt::Debug for FocusWiring {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PaneFocus").finish_non_exhaustive()
+        f.debug_struct("FocusWiring").finish_non_exhaustive()
     }
 }
 
@@ -44,7 +44,7 @@ pub fn use_pane_focus(
     rect: RectProbe,
     apply: impl Fn(EditInput) + Clone + 'static,
     heard: EventHandler<ImeEvent>,
-) -> PaneFocus {
+) -> FocusWiring {
     // Whether this pane had the keyboard the last time it was drawn.
     let had_keyboard = use_hook(|| Rc::new(Cell::new(false)));
 
@@ -53,7 +53,7 @@ pub fn use_pane_focus(
     let gained = {
         let (ime, slot, desk) = (ime.clone(), Rc::clone(slot), desk.clone());
         move || {
-            set_focus(&slot, Focus::Focused);
+            set_focus(&slot, PaneFocus::Focused);
             desk.pane_focused(pane);
             if desk.hub.keyboard_pane() != Some(pane) {
                 desk.act(WorkspaceIn::Focus(pane));
@@ -125,7 +125,7 @@ pub fn use_pane_focus(
             });
         }
     };
-    PaneFocus {
+    FocusWiring {
         regain,
         on_focus: EventHandler::new(on_focus),
         on_mounted: EventHandler::new(on_mounted),

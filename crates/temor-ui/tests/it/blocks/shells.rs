@@ -1,6 +1,6 @@
 //! Real shells mark their commands: one block per command, with its output and exit status.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 
 use super::super::support::tools_present;
 use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
@@ -211,7 +211,7 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
         assert!(
             listed
                 .iter()
-                .any(|item| matches!(item, temor_core::session::list::Item::Done(b) if b.id == id)),
+                .any(|item| matches!(item, temor_client::model::session::list::Item::Done(b) if b.id == id)),
             "{name}: the block is in the list: {listed:?}"
         );
     }

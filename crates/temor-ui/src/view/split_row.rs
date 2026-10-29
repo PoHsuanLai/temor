@@ -32,10 +32,7 @@ pub fn SplitSegments(
     dnd: Dnd,
     onmenu: EventHandler<PaneId>,
 ) -> Element {
-    let squeezed = match tiles.len() > SIDE_BY_SIDE {
-        true => Squeeze::Squeezed,
-        false => Squeeze::Named,
-    };
+    let squeezed = tiles.len() > SIDE_BY_SIDE;
     rsx! {
         div { class: "temor-split", role: "group", "aria-label": "Panes in this tab",
             for (index, tile) in tiles.into_iter().enumerate() {
@@ -51,23 +48,16 @@ pub fn SplitSegments(
 /// How many panes stand side by side with their names; more are squeezed.
 const SIDE_BY_SIDE: usize = 2;
 
-/// Whether the panes other than the one with the keys show their names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Squeeze {
-    Named,
-    Squeezed,
-}
-
 fn segment(
     tile: Tile,
-    squeeze: Squeeze,
+    squeeze: bool,
     desk: Desk,
     dnd: Dnd,
     onmenu: EventHandler<PaneId>,
 ) -> Element {
     let pane = tile.pane;
     let selected = selected_attr(tile.selection);
-    let glyph_only = (squeeze == Squeeze::Squeezed && selected.is_none()).then_some("true");
+    let glyph_only = (squeeze && selected.is_none()).then_some("true");
     let click = dnd.click.clone();
     // A right click on a segment is the tab's menu, with Close Pane for this pane alone.
     let opening = tab_menu_trigger(move || onmenu.call(pane));

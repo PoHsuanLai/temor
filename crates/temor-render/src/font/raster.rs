@@ -5,7 +5,7 @@ use swash::scale::image::Content;
 use swash::scale::{Render, ScaleContext, Source};
 use swash::zeno::{Angle, Format, Transform};
 
-use super::face::{Embolden, Face, Skew};
+use super::face::{Face, Synth};
 use crate::platform::ColorBitmap;
 
 /// A coverage mask placed relative to the pen: `left` right of it, `top` above the baseline.
@@ -32,7 +32,7 @@ pub(crate) fn outline(
     face: &Face,
     glyph: u16,
     px: f32,
-    synth: (Embolden, Skew),
+    synth: Synth,
 ) -> Option<MaskImage> {
     let mut scaler = ctx
         .builder(face.font())
@@ -42,13 +42,13 @@ pub(crate) fn outline(
         .build();
     let mut render = Render::new(&[Source::Outline]);
     render.format(Format::Alpha);
-    if synth.1 == Skew::Yes {
+    if synth.skew {
         render.transform(Some(Transform::skew(
             Angle::from_degrees(12.0),
             Angle::ZERO,
         )));
     }
-    if synth.0 == Embolden::Yes {
+    if synth.embolden {
         render.embolden((px / 24.0).max(0.5));
     }
     let image = render.render(&mut scaler, glyph)?;

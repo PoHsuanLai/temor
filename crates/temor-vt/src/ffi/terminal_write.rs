@@ -3,7 +3,7 @@
 
 use temor_vt_sys as sys;
 
-use super::callbacks::{MarkKind, TitleChange};
+use super::callbacks::MarkKind;
 use super::terminal::Terminal;
 use crate::scan::{Scanned, ends_within};
 use crate::{AnchorId, PointSpace, RenderHold, UnknownKind, VtEvent};
@@ -48,17 +48,14 @@ impl Terminal {
         for (i, seg) in segments.iter().enumerate() {
             match seg {
                 Scanned::Bytes(b) => self.write_marked(b, &segments[i + 1..]),
-                Scanned::File {
-                    payload,
-                    truncation,
-                } => self.callbacks().send(VtEvent::Unknown {
+                Scanned::File { payload, truncated } => self.callbacks().send(VtEvent::Unknown {
                     kind: UnknownKind::Osc1337File,
                     payload: payload.clone(),
-                    truncation: *truncation,
+                    truncated: *truncated,
                 }),
             }
         }
-        if self.callbacks().title.replace(TitleChange::Unchanged) == TitleChange::Changed {
+        if self.callbacks().title.replace(false) {
             let title = self.title();
             self.callbacks().sink.send(VtEvent::Title(title));
         }

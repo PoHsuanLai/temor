@@ -11,15 +11,14 @@ use ds::edit::raw_key::{KeyPhase, RawKey};
 use ds::focus::request::FocusRequest;
 use ds::host::measure::RectProbe;
 use temor_client::model::vocab::ids::PaneId;
-use temor_panes::vt::Ime;
 
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{place_cursor, take_notice};
-use crate::error::UiError;
 use crate::hub::{Desk, Origin};
 use crate::input::stroke;
 use crate::session::HistoryStep;
+use temor_pane_view::error::ViewError;
 
 /// A key the region hears, or the composer's field hands on, while the list shows the
 /// composer: a typed key is the composer's (its text, Enter, Backspace, the arrows through the
@@ -29,7 +28,7 @@ fn to_composer(
     slot: &RefCell<Slot>,
     raw: &RawKey,
     focus: FocusRequest,
-) -> Option<Result<(), UiError>> {
+) -> Option<Result<(), ViewError>> {
     let mut slot = slot.borrow_mut();
     let session = slot.session.as_mut().filter(|s| s.composer_shown())?;
     if raw.phase == KeyPhase::Release {
@@ -39,7 +38,7 @@ fn to_composer(
         .modifiers
         .intersects(Modifiers::SUPER | Modifiers::META | Modifiers::CONTROL)
     {
-        return Some(match stroke(raw, Ime::Idle) {
+        return Some(match stroke(raw, false) {
             Some(stroke) => session.composer_chord(stroke),
             None => Ok(()),
         });
@@ -98,13 +97,13 @@ pub fn key_handler(
             Some(outcome) => Some(outcome),
             None => {
                 let composing = match ime.composing.get() {
-                    Composing::Active => Ime::Composing,
-                    Composing::Idle | Composing::Cleared => Ime::Idle,
+                    Composing::Active => true,
+                    Composing::Idle | Composing::Cleared => false,
                 };
                 if raw.phase != KeyPhase::Release {
                     ime.settle(&apply);
                 }
-                if composing == Ime::Composing {
+                if composing {
                     return;
                 }
                 // An unidentified key is ignored; the rest go to the session.

@@ -15,9 +15,9 @@ use temor_client::ssh::{ByteCount, HostAlias, RemoteFilePath};
 
 use super::model::Hub;
 use super::remote_edit::Job;
-use super::ssh::{DoneAsked, Opened, RemoteEdit};
+use super::ssh::RemoteEdit;
 use crate::platform::ensure_private_dir;
-use temor_client::remote::edit_way::{EditTier, Overwrite};
+use temor_client::remote::edit_way::EditTier;
 use temor_client::ssh::work::EditId;
 
 /// The name the local copy has: the host file's own name, so the editor picks the right mode.
@@ -122,12 +122,12 @@ impl Hub {
                 local,
                 state: Edit::Opening,
                 watch: None,
-                opened: Opened::No,
+                opened: false,
                 asking: None,
                 tier,
                 seen: None,
-                overwrite: Overwrite::No,
-                done: DoneAsked::No,
+                overwrite: false,
+                done: false,
             },
         );
         self.start_job(id, Job::Fetch);
@@ -157,17 +157,17 @@ impl Hub {
         let Some(edit) = self.ssh.edits.get_mut(&id) else {
             return;
         };
-        if edit.done == DoneAsked::No {
+        if !edit.done {
             return;
         }
         match edit.state {
             Edit::Checking { .. } | Edit::Uploading { .. } => {}
             Edit::Open { .. } => {
-                edit.done = DoneAsked::No;
+                edit.done = false;
                 self.close_edit(id);
             }
             _ => {
-                edit.done = DoneAsked::No;
+                edit.done = false;
                 let host = edit.host.as_str().to_owned();
                 self.notices.push(format!(
                     "The save didn't reach {host}, so the copy here is kept"
@@ -187,8 +187,8 @@ impl Hub {
                 EditOut::Check => self.start_job(id, Job::Check),
                 EditOut::Store => self.start_job(id, Job::Store),
                 EditOut::OpenLocal => {
-                    if edit.opened == Opened::No {
-                        edit.opened = Opened::Yes;
+                    if !edit.opened {
+                        edit.opened = true;
                         if let Err(err) = self.ssh.file_opener.open(&local) {
                             self.notices.push(err.to_string());
                         }
@@ -214,7 +214,7 @@ impl Hub {
         if choice == Resolution::Overwrite
             && let Some(edit) = self.ssh.edits.get_mut(&id)
         {
-            edit.overwrite = Overwrite::Yes;
+            edit.overwrite = true;
         }
         self.on_edit(id, EditIn::Resolved(choice));
     }
@@ -236,7 +236,7 @@ impl Hub {
                 return;
             }
             Edit::Checking { .. } | Edit::Uploading { .. } => {
-                edit.done = DoneAsked::Yes;
+                edit.done = true;
                 return;
             }
             _ => {}
@@ -247,8 +247,8 @@ impl Hub {
         }
     }
 
-    /// Polls the local copies: a settled save goes on to the host.
-    pub(super) fn poll_edits(&mut self) -> super::ssh_events::Redraw {
+    /// Polls the local copies: a settled save goes on to the host. True when one did.
+    pub(super) fn poll_edits(&mut self) -> bool {
         let saves: Vec<EditId> = self
             .ssh
             .edits
@@ -263,10 +263,7 @@ impl Hub {
         for id in &saves {
             self.on_edit(*id, EditIn::LocalSaved);
         }
-        match saves.is_empty() {
-            true => super::ssh_events::Redraw::No,
-            false => super::ssh_events::Redraw::Yes,
-        }
+        !saves.is_empty()
     }
 
     /// The local copy of an edit, for the person to find.

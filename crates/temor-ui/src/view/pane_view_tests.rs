@@ -6,11 +6,11 @@ use std::cell::RefCell;
 use dioxus::prelude::*;
 use ds_blitz::use_gpu;
 
-use super::super::slot::{Display, Slot};
+use super::super::slot::Slot;
 use super::{hide, show};
 
 thread_local! {
-    static OUTCOME: RefCell<Option<(bool, Display)>> = const { RefCell::new(None) };
+    static OUTCOME: RefCell<Option<(bool, bool)>> = const { RefCell::new(None) };
 }
 
 /// Two views of one pane: the new one shows, then the old one is dropped.
@@ -23,7 +23,7 @@ fn MovedPane() -> Element {
     show(&slot, new.clone());
     hide(&slot, &old);
     let s = slot.borrow();
-    OUTCOME.with(|o| *o.borrow_mut() = Some((s.texture.as_ref() == Some(&new), s.display)));
+    OUTCOME.with(|o| *o.borrow_mut() = Some((s.texture.as_ref() == Some(&new), s.shown)));
     rsx! {}
 }
 
@@ -36,11 +36,11 @@ fn ClosedPane() -> Element {
     show(&slot, only.clone());
     hide(&slot, &only);
     let s = slot.borrow();
-    OUTCOME.with(|o| *o.borrow_mut() = Some((s.texture.is_none(), s.display)));
+    OUTCOME.with(|o| *o.borrow_mut() = Some((s.texture.is_none(), s.shown)));
     rsx! {}
 }
 
-fn run(app: fn() -> Element) -> (bool, Display) {
+fn run(app: fn() -> Element) -> (bool, bool) {
     let mut dom = VirtualDom::new(app);
     dom.rebuild_in_place();
     OUTCOME
@@ -50,10 +50,10 @@ fn run(app: fn() -> Element) -> (bool, Display) {
 
 #[test]
 fn the_old_view_going_away_leaves_the_new_views_texture() {
-    assert_eq!(run(MovedPane), (true, Display::Shown));
+    assert_eq!(run(MovedPane), (true, true));
 }
 
 #[test]
 fn the_last_view_going_away_takes_the_pane_off_the_screen() {
-    assert_eq!(run(ClosedPane), (true, Display::Away));
+    assert_eq!(run(ClosedPane), (true, false));
 }

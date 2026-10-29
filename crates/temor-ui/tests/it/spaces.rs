@@ -10,11 +10,13 @@ use ds_harness::{Harness, Input};
 use temor_client::keep::older::{
     SpacesStartup, load_spaces, save_for as save_session_for, save_spaces,
 };
-use temor_core::space::{Place, Profile, Project, Route};
-use temor_core::split::Direction;
+use temor_client::model::space::{Place, Profile, Project, Route};
+use temor_client::model::split::Direction;
+use temor_client::model::workspace::{
+    ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+};
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::{Cwd, EnvKey, EnvValue, ProjectRoot, RelPath, RoutePattern};
-use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord, rows, type_line, wait_until};

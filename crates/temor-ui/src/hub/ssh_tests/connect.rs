@@ -8,7 +8,7 @@ use temor_client::model::vocab::text::Cwd;
 use temor_client::model::workspace::WorkspaceIn;
 
 use super::support::Rig;
-use temor_client::ssh::view::{CheckRow, Stage};
+use temor_client::ssh::view::Stage;
 
 /// Longer than the 80-column screen, so on screen it wraps; the link is read from the bytes.
 const CHECK_URL: &str =
@@ -196,8 +196,7 @@ fn the_browser_check_is_shown_and_opens_only_on_a_click_and_goes_when_the_shell_
     rig.hub.answer_host(pane, Grant::Allowed);
     rig.hub.answer_host(pane, Grant::Allowed);
     rig.pump("the check row", |hub| {
-        hub.host_view(pane)
-            .is_some_and(|v| v.check == CheckRow::Waiting)
+        hub.host_view(pane).is_some_and(|v| v.check_waiting)
     });
     assert!(
         rig.links.0.borrow().is_empty(),
@@ -211,7 +210,7 @@ fn the_browser_check_is_shown_and_opens_only_on_a_click_and_goes_when_the_shell_
     rig.put("up", "");
     rig.pump("the connection", |hub| {
         hub.host_view(pane)
-            .is_some_and(|v| v.check == CheckRow::Nothing && v.stage == Stage::Up)
+            .is_some_and(|v| !v.check_waiting && v.stage == Stage::Up)
     });
 }
 

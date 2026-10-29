@@ -28,7 +28,7 @@ use temor_client::model::vocab::ids::{BlockId, PaneId};
 use super::block_edit::edit_on_this_computer;
 use super::block_list::pane::lens_request;
 use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, ComposerView};
-use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn, PictureShown};
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::console_bar::ConsoleTools;
@@ -42,14 +42,14 @@ use super::handlers::{
 use super::ime::{ImeGlue, composed_sink};
 use super::link_tip::LinkTip;
 use super::menu::Pick;
-use super::pane_focus::{PaneFocus, use_pane_focus};
+use super::pane_focus::{FocusWiring, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::{KeyRegion, key_handler};
 use super::pane_pointer::{GridPointer, GridState, grid_pointer};
 use super::peek::use_peek;
 use super::peek_card::peek_card;
 use super::pointer::use_pane_mouse;
-use super::slot::{Device, Display, Slot, layout, repaint};
+use super::slot::{Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
@@ -60,7 +60,7 @@ use temor_panes::pane::keys::Action;
 fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {
     let mut s = slot.borrow_mut();
     s.texture = Some(texture);
-    s.display = Display::Shown;
+    s.shown = true;
 }
 
 /// Takes the pane off the screen: nothing paints into a texture that is gone. Only when the slot
@@ -72,7 +72,7 @@ fn hide(slot: &RefCell<Slot>, texture: &ds_blitz::TextureHandle) {
         return;
     }
     s.texture = None;
-    s.display = Display::Away;
+    s.shown = false;
 }
 
 /// One terminal pane. `started` is when the window opened (the pointer's click clock).
@@ -120,10 +120,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             let scale = scale_of(signals.as_ref());
             let Some(logical) = rect.rect() else { return };
             let pixels = device_pixels(logical.size.width.0, logical.size.height.0, scale);
-            let device = match gpu.device().is_some() {
-                true => Device::Ready,
-                false => Device::NotYet,
-            };
+            let device = gpu.device().is_some();
             if let Some(text) = layout(&slot, pixels, scale, device) {
                 desk.say(text);
             }
@@ -208,7 +205,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         }
     });
 
-    let PaneFocus {
+    let FocusWiring {
         regain,
         on_focus,
         on_mounted,
@@ -287,12 +284,9 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let (lenses, picture) = match menu_block {
         Some(block) => (
             desk.hub.block_lenses(pane, block),
-            match desk.hub.lens_shown(pane, block) {
-                true => PictureShown::Yes,
-                false => PictureShown::No,
-            },
+            desk.hub.lens_shown(pane, block),
         ),
-        None => (Vec::new(), PictureShown::No),
+        None => (Vec::new(), false),
     };
     let menu_state = slot.borrow().session.as_ref().map(|s| {
         let running = menu_block.is_some_and(|block| !s.block_finished(block));

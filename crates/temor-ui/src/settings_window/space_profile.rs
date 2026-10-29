@@ -10,7 +10,6 @@ use ds::components::fields::text_field_model::{FieldKind, FieldText};
 use ds::prelude::*;
 
 use super::row_parts::{AddButton, KeptField, RemoveButton};
-use crate::edge::Held;
 use crate::view::names::named;
 
 /// One variable: its name, its value, and Remove.
@@ -81,14 +80,14 @@ pub fn AddVariable(onadd: EventHandler<(String, String)>) -> Element {
 pub fn CredentialRow(
     env: String,
     account: String,
-    held: Held,
+    held: bool,
     onset: EventHandler<String>,
     onremove: EventHandler<()>,
 ) -> Element {
     let mut draft = use_signal(String::new);
     let (state, act) = match held {
-        Held::Set => ("Set", "Replace"),
-        Held::NotSet => ("Not set", "Set"),
+        true => ("Set", "Replace"),
+        false => ("Not set", "Set"),
     };
     let give = Callback::new(move |(): ()| {
         let secret = draft();

@@ -1,10 +1,10 @@
-use temor_transfer::osc1337::{Completeness, Dimension, Osc1337Reader, ReceivedFile};
+use temor_transfer::osc1337::{Dimension, Osc1337Reader, ReceivedFile};
 use temor_transfer::{Consent, Malformed, TransferError};
 
 use crate::support::{b64, limits};
 
 fn feed_one(payload: &[u8]) -> Result<Option<ReceivedFile>, TransferError> {
-    Osc1337Reader::new(limits(1024)).feed(payload, Completeness::Whole)
+    Osc1337Reader::new(limits(1024)).feed(payload, false)
 }
 
 fn file_payload(args: &str, data: &[u8]) -> Vec<u8> {
@@ -77,7 +77,7 @@ fn a_size_that_disagrees_with_the_data_is_refused() {
 #[test]
 fn a_cut_sequence_is_refused_whatever_it_holds() {
     let payload = file_payload("", b"hello");
-    let result = Osc1337Reader::new(limits(1024)).feed(&payload, Completeness::Cut);
+    let result = Osc1337Reader::new(limits(1024)).feed(&payload, true);
     assert!(matches!(result, Err(TransferError::Cut)));
 }
 
@@ -106,7 +106,7 @@ fn bad_base64_and_bad_values_are_typed_errors() {
 #[test]
 fn a_payload_over_the_limit_is_too_large() {
     let payload = file_payload("", &[0u8; 64]);
-    let result = Osc1337Reader::new(limits(16)).feed(&payload, Completeness::Whole);
+    let result = Osc1337Reader::new(limits(16)).feed(&payload, false);
     assert!(matches!(result, Err(TransferError::TooLarge { .. })));
 }
 
@@ -140,27 +140,14 @@ fn hostile_names_are_cleaned_never_used_as_paths() {
 fn multipart_pieces_join_in_order_and_end_the_file() {
     let mut reader = Osc1337Reader::new(limits(1024));
     let start = format!("1337;MultipartFile=name={};size=6", b64(b"m.bin"));
-    assert_eq!(
-        reader
-            .feed(start.as_bytes(), Completeness::Whole)
-            .expect("start"),
-        None
-    );
+    assert_eq!(reader.feed(start.as_bytes(), false).expect("start"), None);
     let text = b64(b"abcdef");
     let (first, second) = text.split_at(4);
     for piece in [first, second] {
         let part = format!("1337;FilePart={piece}");
-        assert_eq!(
-            reader
-                .feed(part.as_bytes(), Completeness::Whole)
-                .expect("part"),
-            None
-        );
+        assert_eq!(reader.feed(part.as_bytes(), false).expect("part"), None);
     }
-    match reader
-        .feed(b"1337;FileEnd", Completeness::Whole)
-        .expect("end")
-    {
+    match reader.feed(b"1337;FileEnd", false).expect("end") {
         Some(ReceivedFile::NeedsConsent(offer)) => {
             assert_eq!(offer.name().as_str(), "m.bin");
             assert_eq!(
@@ -176,27 +163,25 @@ fn multipart_pieces_join_in_order_and_end_the_file() {
 fn multipart_order_errors_reset_the_reader() {
     let mut reader = Osc1337Reader::new(limits(1024));
     assert!(matches!(
-        reader.feed(b"1337;FilePart=eA==", Completeness::Whole),
+        reader.feed(b"1337;FilePart=eA==", false),
         Err(TransferError::Malformed(Malformed::PartWithoutStart))
     ));
     assert!(matches!(
-        reader.feed(b"1337;FileEnd", Completeness::Whole),
+        reader.feed(b"1337;FileEnd", false),
         Err(TransferError::Malformed(Malformed::EndWithoutStart))
     ));
-    reader
-        .feed(b"1337;MultipartFile=", Completeness::Whole)
-        .expect("start");
+    reader.feed(b"1337;MultipartFile=", false).expect("start");
     assert!(matches!(
-        reader.feed(b"1337;MultipartFile=", Completeness::Whole),
+        reader.feed(b"1337;MultipartFile=", false),
         Err(TransferError::Malformed(Malformed::StartWhileOpen))
     ));
     // The error above dropped the open file, so a fresh start works.
     assert!(matches!(
-        reader.feed(b"1337;FileEnd", Completeness::Whole),
+        reader.feed(b"1337;FileEnd", false),
         Err(TransferError::Malformed(Malformed::EndWithoutStart))
     ));
     assert!(matches!(
-        reader.feed(b"1337;File=:eA==", Completeness::Whole),
+        reader.feed(b"1337;File=:eA==", false),
         Ok(Some(ReceivedFile::NeedsConsent(_)))
     ));
 }
@@ -204,12 +189,10 @@ fn multipart_order_errors_reset_the_reader() {
 #[test]
 fn multipart_text_over_the_cap_is_too_large() {
     let mut reader = Osc1337Reader::new(limits(3));
-    reader
-        .feed(b"1337;MultipartFile=", Completeness::Whole)
-        .expect("start");
+    reader.feed(b"1337;MultipartFile=", false).expect("start");
     let big = format!("1337;FilePart={}", "A".repeat(20_000));
     assert!(matches!(
-        reader.feed(big.as_bytes(), Completeness::Whole),
+        reader.feed(big.as_bytes(), false),
         Err(TransferError::TooLarge { .. })
     ));
 }

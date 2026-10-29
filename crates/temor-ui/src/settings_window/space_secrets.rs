@@ -9,11 +9,11 @@ use temor_client::model::space::{AccountRef, Credential};
 use temor_client::model::vocab::text::EnvKey;
 
 use super::space_edit::{account_for, credentials_with, credentials_without, variable_name};
-use crate::edge::{CredentialSource, Held};
+use crate::edge::CredentialSource;
 
 /// Whether the store holds the secret of `account`. A store that cannot answer reads as not set.
-pub fn held(store: &dyn CredentialSource, account: &AccountRef) -> Held {
-    store.holds(account).unwrap_or(Held::NotSet)
+pub fn held(store: &dyn CredentialSource, account: &AccountRef) -> bool {
+    store.holds(account).unwrap_or(false)
 }
 
 /// Replaces the secret of `account` with `secret`. An empty secret is refused.
@@ -95,7 +95,7 @@ mod tests {
         let list = add(&store, SpaceId(1), Vec::new(), "API_KEY", "s3cret").expect("added");
         assert_eq!(list.len(), 1);
         let account = list[0].account.clone();
-        assert_eq!(held(&store, &account), Held::Set);
+        assert!(held(&store, &account));
         assert_eq!(
             store.secret(&account).expect("ok").as_deref(),
             Some("s3cret")
@@ -112,7 +112,7 @@ mod tests {
 
         let none = remove(&store, list, &EnvKey::new("API_KEY").expect("a name")).expect("removed");
         assert!(none.is_empty());
-        assert_eq!(held(&store, &account), Held::NotSet);
+        assert!(!held(&store, &account));
     }
 
     #[test]

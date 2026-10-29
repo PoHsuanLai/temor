@@ -6,10 +6,7 @@
 
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::Duration;
 
-use dioxus::prelude::*;
-use ds::base::time::clock::sleep;
 use ds_settings::Store;
 use temor_client::model::offer::{
     Answer, OfferIn, OfferList, OfferOut, OfferState, Program, Reply, offer_step,
@@ -22,16 +19,6 @@ use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use crate::session::Session;
 use crate::view::launch::Launch;
-
-/// How often the waiting rule is looked at.
-const TICK: Duration = Duration::from_millis(250);
-
-/// Whether the window must be drawn again.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum OfferRedraw {
-    Yes,
-    No,
-}
 
 /// What an event from a pane means to the offer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,15 +79,11 @@ impl OfferHub {
 }
 
 impl Hub {
-    /// Gives the offer what one event from `pane` means, after its session took the event.
-    pub(super) fn offer_heard(
-        &mut self,
-        pane: PaneId,
-        heard: Heard,
-        session: &Session,
-    ) -> OfferRedraw {
+    /// Gives the offer what one event from `pane` means, after its session took the event. True
+    /// when the window must be drawn again.
+    pub(super) fn offer_heard(&mut self, pane: PaneId, heard: Heard, session: &Session) -> bool {
         if self.host_of(pane).is_some() {
-            return OfferRedraw::No;
+            return false;
         }
         let at = session.now();
         let input = match heard {
@@ -112,11 +95,11 @@ impl Hub {
                     )
                 });
                 if !watched {
-                    return OfferRedraw::No;
+                    return false;
                 }
                 let line = line_hash(&session.last_line());
                 if self.offer.lines.insert(pane, line) == Some(line) {
-                    return OfferRedraw::No;
+                    return false;
                 }
                 OfferIn::Output { at }
             }
@@ -124,7 +107,7 @@ impl Hub {
                 now: session.running_listed(&self.offer.list),
                 at,
             },
-            Heard::Other => return OfferRedraw::No,
+            Heard::Other => return false,
         };
         let started = matches!(input, OfferIn::Running { now: Some(_), .. });
         let redraw = self.offer_feed(pane, input).0;
@@ -137,9 +120,9 @@ impl Hub {
     }
 
     /// One timer tick: panes whose listed command has run a while may now get the offer, and
-    /// panes that were asked which shell they run may have answered. Returns what the person
-    /// should be told.
-    pub(super) fn offer_tick(&mut self) -> (OfferRedraw, Vec<String>) {
+    /// panes that were asked which shell they run may have answered. Returns whether the window
+    /// must be drawn again, and what the person should be told.
+    pub(super) fn offer_tick(&mut self) -> (bool, Vec<String>) {
         let waiting: Vec<PaneId> = self
             .offer
             .states
@@ -152,7 +135,7 @@ impl Hub {
             })
             .map(|(pane, _)| *pane)
             .collect();
-        let mut redraw = OfferRedraw::No;
+        let mut redraw = false;
         let mut notes = Vec::new();
         for pane in waiting {
             let Some(slot) = self.slots.get(&pane).cloned() else {
@@ -191,19 +174,13 @@ impl Hub {
                 None => continue,
             };
             let (seen, outs) = self.offer_feed(pane, input);
-            if seen == OfferRedraw::Yes {
-                redraw = OfferRedraw::Yes;
-            }
+            redraw |= seen;
             notes.extend(self.offer_outs(pane, outs));
         }
         (redraw, notes)
     }
 
-    pub(super) fn offer_feed(
-        &mut self,
-        pane: PaneId,
-        input: OfferIn,
-    ) -> (OfferRedraw, Vec<OfferOut>) {
+    pub(super) fn offer_feed(&mut self, pane: PaneId, input: OfferIn) -> (bool, Vec<OfferOut>) {
         let state = self.offer.states.remove(&pane).unwrap_or_default();
         let (next, outs) = offer_step(state, input);
         if !matches!(next, OfferState::Probing { .. }) {
@@ -217,11 +194,7 @@ impl Hub {
                 self.offer.states.insert(pane, next);
             }
         }
-        let redraw = match outs.contains(&OfferOut::Redraw) {
-            true => OfferRedraw::Yes,
-            false => OfferRedraw::No,
-        };
-        (redraw, outs)
+        (outs.contains(&OfferOut::Redraw), outs)
     }
 
     /// The listed command being offered in `pane`, while its offer shows.
@@ -232,22 +205,6 @@ impl Hub {
             .and_then(OfferState::asking)
             .map(Program::to_string)
     }
-}
-
-/// Looks at the waiting rule for as long as the window lives.
-pub fn spawn_offer_loop(desk: Desk) {
-    spawn(async move {
-        loop {
-            sleep(TICK).await;
-            let (redraw, notes) = desk.hub.0.borrow_mut().offer_tick();
-            for note in notes {
-                desk.say(note);
-            }
-            if redraw == OfferRedraw::Yes {
-                desk.bump();
-            }
-        }
-    });
 }
 
 impl HubRef {

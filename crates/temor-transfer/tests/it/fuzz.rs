@@ -3,7 +3,7 @@
 use proptest::prelude::*;
 use temor_transfer::Consent;
 use temor_transfer::kitty::{Input, ReceiveSession, parse_message};
-use temor_transfer::osc1337::{Completeness, Osc1337Reader};
+use temor_transfer::osc1337::Osc1337Reader;
 use temor_transfer::{FileName, HostName, Origin, RelPath};
 
 use crate::support::limits;
@@ -14,7 +14,7 @@ proptest! {
     #[test]
     fn random_bytes_never_panic_the_osc1337_reader(payload in proptest::collection::vec(any::<u8>(), 0..512)) {
         let mut reader = Osc1337Reader::new(limits(256));
-        let _ = reader.feed(&payload, Completeness::Whole);
+        let _ = reader.feed(&payload, false);
     }
 
     #[test]
@@ -30,8 +30,8 @@ proptest! {
         let mut payload = prefix.as_bytes().to_vec();
         payload.extend_from_slice(&tail);
         let mut reader = Osc1337Reader::new(limits(256));
-        let _ = reader.feed(&payload, Completeness::Whole);
-        let _ = reader.feed(&payload, Completeness::Cut);
+        let _ = reader.feed(&payload, false);
+        let _ = reader.feed(&payload, true);
     }
 
     #[test]

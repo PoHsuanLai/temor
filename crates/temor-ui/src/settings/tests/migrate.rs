@@ -54,7 +54,7 @@ fn old_names(ambient: &Ambient) -> Vec<PathBuf> {
 #[test]
 fn the_old_text_splits_into_settings_and_keys_and_keeps_what_it_cannot_read() {
     let converted = convert_terminal_conf(OLD);
-    assert_eq!(converted.doc.font.size.0.points(), 15.0);
+    assert_eq!(converted.doc.font.size.points(), 15.0);
     assert_eq!(converted.doc.offer.add, ["kubectl debug -it"]);
     // The key line is in chordkit's form; the refused ones are comments, never lost.
     let (keys, problems) = Overrides::parse(&converted.keys_text);
@@ -113,7 +113,7 @@ fn a_launch_converts_once_and_keeps_the_old_file() {
     assert!(ambient.keys_path().is_file());
     assert!(ambient.settings_dir().join("settings.toml").is_file());
     let doc = ambient.settings_store().load::<TerminalDoc>().value;
-    assert_eq!(doc.font.size.0.points(), 15.0);
+    assert_eq!(doc.font.size.points(), 15.0);
 
     // The second launch reads the new files and says nothing about the old.
     let second = load_settings(&ambient).expect("loads");

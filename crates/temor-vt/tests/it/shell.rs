@@ -1,9 +1,9 @@
 //! `shell.bin`: OSC 7, 133 A/B/C/D with an exit code, 0, 7501, 9, 777, 9;4, 52 and 8, then BEL.
 
 use temor_vt::{
-    ClipboardGrant, ClipboardLocation, ExitCode, ExitStatus, GridPoint, Hyperlink, Notification,
-    Percent, PointSpace, ProgramState, ProgramWait, Progress, ProgressState, PromptEvent,
-    PromptKind, SemanticMark, VtEvent,
+    ClipboardLocation, ExitCode, ExitStatus, GridPoint, Notification, Percent, PointSpace,
+    ProgramState, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind, SemanticMark,
+    VtEvent,
 };
 
 use crate::support::{drain, fixture, row_cells, term};
@@ -96,8 +96,8 @@ fn shell_integration_and_reports_arrive_as_typed_events_in_order() {
         panic!("expected a clipboard write")
     };
     assert_eq!(
-        (write.location, write.grant),
-        (ClipboardLocation::Standard, ClipboardGrant::Ask)
+        (write.location, write.granted),
+        (ClipboardLocation::Standard, false)
     );
     assert_eq!(
         write
@@ -128,7 +128,7 @@ fn prompt_marks_and_hyperlinks_show_on_cells() {
     let link_row = row_cells(&mut t, 1);
     let linked: String = link_row
         .iter()
-        .filter(|c| c.hyperlink == Hyperlink::Linked)
+        .filter(|c| c.linked)
         .map(|c| c.text.as_str())
         .collect();
     assert_eq!(linked, "link");

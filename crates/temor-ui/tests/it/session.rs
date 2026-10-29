@@ -17,7 +17,7 @@ use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
 use temor_ui::edge::{Ambient, keymap_for};
-use temor_ui::input::{FindBar, Routed, Stroke, route};
+use temor_ui::input::{Routed, Stroke, route};
 use temor_ui::platform::{OpenError, Opener};
 use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
@@ -396,11 +396,7 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     f.session.cancel_paste();
     assert!(f.session.pending_paste().is_none());
     // A plain paste (no bracketed paste) with a line break waits too.
-    let plain = temor_pane::paste::check(
-        "a\nb",
-        temor_pane::paste::PasteMode::Plain,
-        temor_pane::paste::VtVerdict::Clean,
-    );
+    let plain = temor_pane::paste::check("a\nb", temor_pane::paste::PasteMode::Plain, false);
     assert_eq!(
         plain,
         temor_pane::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
@@ -483,10 +479,10 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
             mods: Modifiers::CTRL.with(Modifiers::SHIFT),
             text: String::new(),
             unshifted: Some('g'),
-            ime: temor_vt::Ime::Idle,
+            composing: false,
         },
     };
-    assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
+    assert_eq!(route(stroke, &keymap, false), Routed::Ignored);
 }
 
 /// A key press as the window routes it: the press as chordkit reads it (when it has one) and
@@ -877,17 +873,9 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
     });
     // (column, the target shown, whether the tooltip must be drawn again)
     let table = [
-        (
-            1,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Changed,
-        ),
-        (
-            2,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Same,
-        ),
-        (20, None, temor_ui::session::LinkHover::Changed),
+        (1, Some("https://example.com/a?b=1"), true),
+        (2, Some("https://example.com/a?b=1"), false),
+        (20, None, true),
     ];
     for (col, want, redraw) in table {
         f.session.pointer_moved(point_at(&f.session, 0, col));
@@ -918,14 +906,14 @@ fn copy_to(location: temor_vt::ClipboardLocation, text: &str) -> PaneEvent {
             data: text.as_bytes().to_vec(),
         }],
         program: "tool".to_owned(),
-        grant: temor_vt::ClipboardGrant::Ask,
+        granted: false,
     })
 }
 
 #[test]
 fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     if !super::support::tools_present() {
         return;
     }
@@ -956,8 +944,8 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
 /// alone, with the same question on another computer.
 #[test]
 fn a_program_copies_to_the_primary_selection_when_it_names_it() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     use temor_vt::ClipboardLocation::{Primary, Selection};
     if !super::support::tools_present() {
         return;
@@ -984,7 +972,7 @@ fn a_program_copies_to_the_primary_selection_when_it_names_it() {
 
 #[test]
 fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
-    use temor_core::remote::Grant;
+    use temor_client::model::remote::Grant;
     use temor_vt::VtEvent;
     if !super::support::tools_present() {
         return;
@@ -1018,7 +1006,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
 
 #[test]
 fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
-    use temor_core::notify::Focus;
+    use temor_client::model::pane::PaneFocus;
     if !super::support::tools_present() {
         return;
     }
@@ -1030,8 +1018,8 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
             .expect("paint");
         pixels
     };
-    // Focus starts the blink over: the first paint draws the cursor.
-    f.session.set_focus(Focus::Focused);
+    // PaneFocus starts the blink over: the first paint draws the cursor.
+    f.session.set_focus(PaneFocus::Focused);
     let on = shot(&mut f.session);
     assert!(!f.session.blink_due(), "nothing turned yet");
     wait_until("the cursor's off half", || f.session.blink_due());
@@ -1043,7 +1031,7 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
     let typed = shot(&mut f.session);
     assert_ne!(typed, off, "the cursor is back after the key");
     // An unfocused pane's hollow cursor never blinks.
-    f.session.set_focus(Focus::Unfocused);
+    f.session.set_focus(PaneFocus::Unfocused);
     shot(&mut f.session);
     std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
     assert!(!f.session.blink_due(), "an unfocused pane does not blink");

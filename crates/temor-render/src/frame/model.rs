@@ -5,7 +5,7 @@ use std::sync::Arc;
 use super::placeholder::{PLACEHOLDER, PlaceholderCell};
 use temor_vt::{
     CellStyle, CellView, CellWidth, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px,
-    Rgb, Row, RowDirty, Selected, StyleFlags, StyledCell, Underline,
+    Rgb, Row, StyleFlags, StyledCell, Underline,
 };
 
 /// A cell's grapheme cluster.
@@ -59,7 +59,8 @@ pub(crate) struct CellDraw {
     pub fg: Option<Rgb>,
     pub bg: Option<Rgb>,
     pub style: CellStyle,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
 }
 
 /// The terminal's current default colours: the host's (see [`crate::Palette::apply`]) unless the
@@ -103,7 +104,7 @@ pub(crate) struct ImagePlacement {
 pub struct PaneFrame {
     pub(crate) size: GridSize,
     pub(crate) rows: Vec<Vec<CellDraw>>,
-    pub(crate) dirty: Vec<RowDirty>,
+    pub(crate) dirty: Vec<bool>,
     pub(crate) cursor: Option<CursorView>,
     pub(crate) colors: TermColors,
     /// Each row's kitty unicode-placeholder cells, which draw no text of their own.
@@ -143,7 +144,7 @@ impl PaneFrame {
                 .take(usize::from(height))
                 .map(|row| row.iter().filter_map(|c| drawable(&c.view())).collect())
                 .collect(),
-            dirty: vec![RowDirty::Dirty; usize::from(height)],
+            dirty: vec![true; usize::from(height)],
             cursor: None,
             colors: like.colors,
             placeholders: vec![Vec::new(); usize::from(height)],
@@ -173,9 +174,7 @@ impl PaneFrame {
 
     /// Whether the cursor is shown and the terminal asks for it to blink.
     pub fn cursor_blinks(&self) -> bool {
-        self.cursor
-            .as_ref()
-            .is_some_and(|c| c.blink == temor_vt::CursorBlink::Blinking)
+        self.cursor.as_ref().is_some_and(|c| c.blinking)
     }
 
     /// How many rows at the bottom of the screen are empty below everything drawn and below the
@@ -208,7 +207,7 @@ impl PaneFrame {
         self.dirty
             .iter()
             .enumerate()
-            .filter(|(_, d)| **d == RowDirty::Dirty)
+            .filter(|(_, d)| **d)
             .map(|(y, _)| Row(y as u16))
             .collect()
     }
@@ -219,7 +218,7 @@ impl PaneFrame {
             self.size = size;
             self.rows = vec![Vec::new(); usize::from(size.rows.0)];
             self.placeholders = vec![Vec::new(); usize::from(size.rows.0)];
-            self.dirty = vec![RowDirty::Dirty; usize::from(size.rows.0)];
+            self.dirty = vec![true; usize::from(size.rows.0)];
         }
     }
 
@@ -228,7 +227,7 @@ impl PaneFrame {
         let y = usize::from(row.0);
         if let (Some(slot), Some(dirty)) = (self.rows.get_mut(y), self.dirty.get_mut(y)) {
             *slot = cells;
-            *dirty = RowDirty::Dirty;
+            *dirty = true;
         }
         if let Some(slot) = self.placeholders.get_mut(y) {
             slot.clear();
@@ -245,7 +244,7 @@ impl PaneFrame {
 
     #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn mark_all_dirty(&mut self) {
-        self.dirty.fill(RowDirty::Dirty);
+        self.dirty.fill(true);
     }
 
     #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
@@ -259,7 +258,7 @@ impl PaneFrame {
     /// Clears the marks; returns the rows that were marked.
     pub(crate) fn take_dirty(&mut self) -> Vec<Row> {
         let rows = self.dirty_rows();
-        self.dirty.fill(RowDirty::Clean);
+        self.dirty.fill(false);
         rows
     }
 }
@@ -279,7 +278,7 @@ pub(crate) fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
     let text = CellText::new(c.text);
     let flags = c.style.flags;
     let marked = c.bg.is_some()
-        || c.selected == temor_vt::Selected::Yes
+        || c.selected
         || c.style.underline != Underline::None
         || flags.contains(StyleFlags::INVERSE)
         || flags.contains(StyleFlags::STRIKETHROUGH)

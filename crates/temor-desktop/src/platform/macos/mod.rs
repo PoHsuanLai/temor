@@ -10,7 +10,7 @@ pub use instance::SystemInstance;
 
 use crate::platform::stored::{NAMESPACE, StoredSecrets};
 use crate::secrets::{SecretFault, SecretVault};
-use crate::{Attention, Badge, BadgeCount, DesktopEnv, DesktopError};
+use crate::{Badge, BadgeCount, DesktopEnv, DesktopError};
 use dispatch2::DispatchQueue;
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSApplication, NSRequestUserAttentionType};
@@ -65,8 +65,8 @@ impl SystemDock {
     /// (winit's) is that thread's run loop.
     pub async fn show(&self, badge: &Badge) -> Result<(), DesktopError> {
         let label = label_of(badge.count);
-        let attention = matches!(badge.attention, Attention::Needed);
-        DispatchQueue::main().exec_async(move || draw(label.as_deref(), attention));
+        let wants_attention = badge.wants_attention;
+        DispatchQueue::main().exec_async(move || draw(label.as_deref(), wants_attention));
         Ok(())
     }
 }

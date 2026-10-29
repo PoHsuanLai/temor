@@ -7,7 +7,7 @@ use temor_vt_sys as sys;
 use super::convert::check;
 use super::key_code::ghostty_key;
 use super::terminal::Terminal;
-use crate::{Ime, KeyAction, KeyInput, KittyKeyFlags, Modifiers, OptionAsAlt, VtError};
+use crate::{KeyAction, KeyInput, KittyKeyFlags, Modifiers, OptionAsAlt, VtError};
 
 /// Encodes key events. Call [`KeyEncoder::sync`] with the terminal before encoding so the
 /// program's modes (cursor keys, keypad, kitty flags) apply.
@@ -134,7 +134,7 @@ impl KeyEncoder {
             sys::ghostty_key_event_set_key(ev, ghostty_key(key.code));
             sys::ghostty_key_event_set_mods(ev, key.mods.bits());
             sys::ghostty_key_event_set_consumed_mods(ev, consumed_mods(key));
-            sys::ghostty_key_event_set_composing(ev, key.ime == Ime::Composing);
+            sys::ghostty_key_event_set_composing(ev, key.composing);
             sys::ghostty_key_event_set_unshifted_codepoint(ev, key.unshifted.map_or(0, u32::from));
             if text.is_empty() {
                 sys::ghostty_key_event_set_utf8(ev, std::ptr::null(), 0);

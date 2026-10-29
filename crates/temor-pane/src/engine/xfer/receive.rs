@@ -6,12 +6,12 @@ use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 
 use temor_transfer::kitty::{
-    Effect, EndWhy, ErrorCode, FileId, FileType, Input, KittyId, Message, SavedFile, WriteKind,
-    WriteOp, apply_write, wire_code,
+    Effect, ErrorCode, FileId, FileType, Input, KittyId, Message, SavedFile, TransferEnd,
+    WriteKind, WriteOp, apply_write, wire_code,
 };
 use temor_transfer::{Consent, HostName, Origin, Root};
 
-use super::event::{OfferId, OfferKind, TransferEnd, TransferEvent};
+use super::event::{OfferId, OfferKind, TransferEvent};
 use super::state::{Reaction, Transfers, ended};
 
 /// Progress is reported at most this often, in bytes.
@@ -135,7 +135,7 @@ impl Transfers {
         &mut self,
         id: &KittyId,
         receive: Receive,
-        ended_why: Option<EndWhy>,
+        ended_why: Option<TransferEnd>,
         out: &mut Reaction,
     ) {
         match ended_why {
@@ -147,26 +147,16 @@ impl Transfers {
                     // Empty once the window has taken the files; otherwise it stays for it.
                     let _ = std::fs::remove_dir(dir);
                 }
-                out.events.push(ended(receive.offer, how(why)));
+                out.events.push(ended(receive.offer, why));
             }
         }
-    }
-}
-
-fn how(why: EndWhy) -> TransferEnd {
-    match why {
-        EndWhy::Finished => TransferEnd::Finished,
-        EndWhy::Refused => TransferEnd::Refused,
-        EndWhy::Cancelled => TransferEnd::Cancelled,
-        EndWhy::Aborted => TransferEnd::Aborted,
-        _ => TransferEnd::Failed,
     }
 }
 
 impl Receive {
     /// Runs inputs through the machine until nothing is left, carrying out its effects. Returns
     /// how the transfer ended, if it did.
-    fn run(&mut self, mut work: Work, out: &mut Reaction) -> Option<EndWhy> {
+    fn run(&mut self, mut work: Work, out: &mut Reaction) -> Option<TransferEnd> {
         let mut over = None;
         while let Some((input, fid)) = work.pop_front() {
             self.note_size(&input);

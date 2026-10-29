@@ -47,4 +47,5 @@ pub fn open_fed_session(
         },
         Arc::new(TaggedSink::new(pane, events)),
     )
+    .map_err(UiError::from)
 }

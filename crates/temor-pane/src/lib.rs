@@ -33,8 +33,8 @@ mod shell;
 
 #[cfg(feature = "ghostty")]
 pub use engine::{
-    ByteTap, ClipboardMirror, EventSink, FedSpec, Feeder, Hold, OfferId, OfferKind, Output,
-    PaintSource, PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, SeenForeground,
+    ByteTap, ClipboardMirror, EventSink, FedSpec, Feeder, OfferId, OfferKind, Output, PaintSource,
+    PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, RenderHold, SeenForeground,
     Term, TransferEnd, TransferEvent, TransferSetup, start, start_fed, start_restored,
 };
 pub use error::{PaneError, SettingsError};

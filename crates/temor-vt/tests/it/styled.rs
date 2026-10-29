@@ -12,7 +12,7 @@ fn owned(c: &StyledCell) -> Cell {
         fg: c.fg,
         bg: c.bg,
         style: c.style,
-        hyperlink: c.hyperlink,
+        linked: c.linked,
         semantic: c.semantic,
     }
 }

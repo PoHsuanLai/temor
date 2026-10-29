@@ -1,11 +1,11 @@
 use super::{InlineFileScanner, Scanned};
-use crate::{ByteCount, Truncation};
+use crate::ByteCount;
 
 /// What a run of chunks produced: the bytes libghostty gets and each file's payload.
 #[derive(Debug, Default, PartialEq, Eq)]
 struct Outcome {
     passed: Vec<u8>,
-    files: Vec<(Vec<u8>, Truncation)>,
+    files: Vec<(Vec<u8>, bool)>,
 }
 
 fn run(chunks: &[&[u8]], max: usize) -> Outcome {
@@ -14,17 +14,14 @@ fn run(chunks: &[&[u8]], max: usize) -> Outcome {
     for chunk in chunks {
         scanner.feed(chunk, |s| match s {
             Scanned::Bytes(b) => outcome.passed.extend_from_slice(b),
-            Scanned::File {
-                payload,
-                truncation,
-            } => outcome.files.push((payload, truncation)),
+            Scanned::File { payload, truncated } => outcome.files.push((payload, truncated)),
         });
     }
     outcome
 }
 
-fn file(payload: &str) -> (Vec<u8>, Truncation) {
-    (payload.as_bytes().to_vec(), Truncation::Complete)
+fn file(payload: &str) -> (Vec<u8>, bool) {
+    (payload.as_bytes().to_vec(), false)
 }
 
 /// (name, input, bytes passed on, payloads taken out)
@@ -151,10 +148,7 @@ fn a_held_prefix_at_the_end_is_released_by_the_next_chunk() {
 #[test]
 fn payload_over_the_limit_is_cut_and_marked() {
     let got = run(&[b"\x1b]1337;File=:0123456789\x07"], 4);
-    assert_eq!(
-        got.files,
-        [(b"1337;File=:012".to_vec(), Truncation::Truncated)]
-    );
+    assert_eq!(got.files, [(b"1337;File=:012".to_vec(), true)]);
     assert_eq!(got.passed, b"");
 }
 

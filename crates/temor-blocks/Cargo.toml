@@ -1,0 +1,25 @@
+[package]
+name = "temor-blocks"
+description = "temor's rules for a shell session and its blocks (sans I/O): the shell's state and marks, the blocks it ran, the notices it raises and the command offer."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+temor-core = { workspace = true }
+temor-schema = { workspace = true }
+temor-shell = { workspace = true }
+temor-pane = { workspace = true, default-features = false }
+ds-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+temor-testkit = { workspace = true }
+ds-core = { workspace = true, features = ["testing"] }
+proptest = { workspace = true }
+
+[lints]
+workspace = true

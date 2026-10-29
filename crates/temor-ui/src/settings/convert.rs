@@ -12,7 +12,6 @@ use super::doc::{
     CursorSettings, FontSettings, NotifySettings, OfferSettings, ScrollbackSettings, ShellSettings,
     TerminalDoc,
 };
-use super::values::{FontSize, LineSpacing, NotifySeconds, ScrollbackSize};
 
 impl TerminalDoc {
     /// The settings the pane reads, with the person's `keys` (from `keys.conf`) put in. What the
@@ -26,9 +25,9 @@ impl TerminalDoc {
         let offer_remove = commands("offer.remove", &self.offer.remove, &mut problems);
         let settings = TerminalSettings {
             font,
-            font_size: self.font.size.0,
-            line_height: self.font.line_height.0,
-            scrollback: self.scrollback.lines.0,
+            font_size: self.font.size,
+            line_height: self.font.line_height,
+            scrollback: self.scrollback.lines,
             cursor: self.cursor.style.into(),
             cursor_blink: self.cursor.blink.into(),
             shell: program,
@@ -36,7 +35,7 @@ impl TerminalDoc {
             pager: self.shell.pager.into(),
             keep_running: self.shell.keep_running.into(),
             keys,
-            notify_after: self.notify.after.0,
+            notify_after: self.notify.after,
             offer_add,
             offer_remove,
         };
@@ -52,15 +51,15 @@ pub fn from_terminal(settings: &TerminalSettings) -> TerminalDoc {
                 FontChoice::SystemMonospace => "system".to_owned(),
                 FontChoice::Named(name) => name.clone(),
             },
-            size: FontSize(settings.font_size),
-            line_height: LineSpacing(settings.line_height),
+            size: settings.font_size,
+            line_height: settings.line_height,
         },
         cursor: CursorSettings {
             style: settings.cursor.into(),
             blink: settings.cursor_blink.into(),
         },
         scrollback: ScrollbackSettings {
-            lines: ScrollbackSize(settings.scrollback),
+            lines: settings.scrollback,
         },
         shell: ShellSettings {
             program: match &settings.shell {
@@ -72,7 +71,7 @@ pub fn from_terminal(settings: &TerminalSettings) -> TerminalDoc {
             keep_running: settings.keep_running.into(),
         },
         notify: NotifySettings {
-            after: NotifySeconds(settings.notify_after),
+            after: settings.notify_after,
         },
         offer: OfferSettings {
             add: settings.offer_add.clone(),

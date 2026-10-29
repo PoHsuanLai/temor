@@ -11,13 +11,6 @@ use temor_pty::{PtyError, PtyIo, WriteOutcome};
 /// The most reply bytes that may wait (1 MiB).
 const REPLY_CAP: usize = 1 << 20;
 
-/// Whether bytes are still waiting for the terminal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Backlog {
-    Empty,
-    Waiting,
-}
-
 /// A session's input queue and the terminal's writing end. `Send` and `Sync`.
 #[derive(Debug)]
 pub(super) struct Input {
@@ -50,13 +43,13 @@ impl Input {
     }
 
     /// Writes what the terminal takes now.
-    pub(super) fn flush(&self) -> Backlog {
+    pub(super) fn flush(&self) -> bool {
         let mut queue = self.lock();
         self.drain(&mut queue);
         backlog(&queue)
     }
 
-    pub(super) fn backlog(&self) -> Backlog {
+    pub(super) fn backlog(&self) -> bool {
         backlog(&self.lock())
     }
 
@@ -86,10 +79,6 @@ impl Input {
     }
 }
 
-fn backlog(queue: &VecDeque<u8>) -> Backlog {
-    if queue.is_empty() {
-        Backlog::Empty
-    } else {
-        Backlog::Waiting
-    }
+fn backlog(queue: &VecDeque<u8>) -> bool {
+    !queue.is_empty()
 }

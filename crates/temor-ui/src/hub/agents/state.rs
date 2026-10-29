@@ -10,19 +10,12 @@ use super::radar::Radar;
 use crate::edge::{Clock, SocketHost, SystemClock};
 use crate::view::launch::Launch;
 
-/// Whether a socket problem was already told to the person.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Told {
-    Not,
-    Once,
-}
-
 /// The window's agent state.
 pub struct Agents {
     pub(super) clock: Box<dyn Clock>,
     pub radar: Radar,
     pub(super) sockets: Option<SocketHost>,
-    pub(super) socket_told: Told,
+    pub(super) socket_told: bool,
 }
 
 impl std::fmt::Debug for Agents {
@@ -39,7 +32,7 @@ impl Agents {
             clock: Box::new(SystemClock::new()),
             radar: Radar::new(RadarParams::default()),
             sockets: SocketHost::start(launch.ambient.runtime_dir.clone(), events).ok(),
-            socket_told: Told::Not,
+            socket_told: false,
         }
     }
 

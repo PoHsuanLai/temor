@@ -1,7 +1,7 @@
 use super::*;
 use crate::font::AtlasFormat;
 use crate::frame::CellText;
-use temor_vt::{CellStyle, Col, Selected};
+use temor_vt::{CellStyle, Col};
 
 const WIDTH: u32 = 8;
 
@@ -72,7 +72,7 @@ fn grid() -> Vec<Vec<CellDraw>> {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    selected: Selected::No,
+                    selected: false,
                 })
                 .collect()
         })
@@ -81,32 +81,34 @@ fn grid() -> Vec<Vec<CellDraw>> {
 
 #[test]
 fn only_the_neighbours_that_may_overhang_are_taken() {
-    use Overhang::{Beyond, Within};
+    /// Whether a row's glyphs reach past it.
+    const BEYOND: bool = true;
+    const WITHIN: bool = false;
     let rows = grid();
     // (name, row, above, below) -> lengths of the neighbours taken
     let cases = [
         (
             "none overhang: none are shaped",
             1,
-            Within,
-            Within,
+            WITHIN,
+            WITHIN,
             [None, None],
         ),
-        ("the one above", 1, Beyond, Within, [Some(1), None]),
-        ("the one below", 1, Within, Beyond, [None, Some(3)]),
-        ("both", 1, Beyond, Beyond, [Some(1), Some(3)]),
+        ("the one above", 1, BEYOND, WITHIN, [Some(1), None]),
+        ("the one below", 1, WITHIN, BEYOND, [None, Some(3)]),
+        ("both", 1, BEYOND, BEYOND, [Some(1), Some(3)]),
         (
             "the top row has no row above",
             0,
-            Beyond,
-            Beyond,
+            BEYOND,
+            BEYOND,
             [None, Some(2)],
         ),
         (
             "the last row has no row below",
             3,
-            Beyond,
-            Beyond,
+            BEYOND,
+            BEYOND,
             [Some(3), None],
         ),
     ];

@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use temor_core::remote::Grant;
+use temor_hosts::remote::Grant;
 
 /// The file's name inside the state folder.
 pub const FILE_NAME: &str = "remote.json";

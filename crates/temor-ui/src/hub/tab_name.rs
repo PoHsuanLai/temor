@@ -5,16 +5,6 @@
 
 use std::path::Path;
 
-/// Whether the shell marks its commands (so that a command that is not running is known to be
-/// idle) or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Marking {
-    /// The shell reported at least one prompt.
-    Marked,
-    /// It reported none: the program's own title is all there is to go on.
-    Unmarked,
-}
-
 /// What names a tab.
 #[derive(Debug, Clone, Copy)]
 pub struct NameIn<'a> {
@@ -28,12 +18,15 @@ pub struct NameIn<'a> {
     pub home: &'a Path,
     /// What the tab was called when it was made.
     pub fallback: &'a str,
-    pub marking: Marking,
+    /// Whether the shell marks its commands (it reported at least one prompt), so that a
+    /// command that is not running is known to be idle. Without marks the program's own title
+    /// is all there is to go on.
+    pub marked: bool,
 }
 
 /// The tab's name.
 pub fn tab_title(input: NameIn<'_>) -> String {
-    let program_runs = input.running.is_some() || input.marking == Marking::Unmarked;
+    let program_runs = input.running.is_some() || !input.marked;
     if program_runs && usable(input.title) {
         return input.title.trim().to_owned();
     }
@@ -90,16 +83,16 @@ fn folder_name(cwd: &str, home: &Path) -> Option<String> {
 mod tests {
     use std::path::Path;
 
-    use super::{Marking, NameIn, is_host_form, tab_title};
+    use super::{NameIn, is_host_form, tab_title};
 
-    fn name(running: Option<&str>, title: &str, cwd: Option<&str>, marking: Marking) -> String {
+    fn name(running: Option<&str>, title: &str, cwd: Option<&str>, marked: bool) -> String {
         tab_title(NameIn {
             running,
             title,
             cwd,
             home: Path::new("/home/me"),
             fallback: "Shell",
-            marking,
+            marked,
         })
     }
 
@@ -109,26 +102,27 @@ mod tests {
         Option<&'a str>,
         &'a str,
         Option<&'a str>,
-        Marking,
+        bool,
         &'a str,
     );
 
     #[test]
     fn a_tab_is_named_by_its_program_while_one_runs_else_by_its_folder() {
-        use Marking::{Marked, Unmarked};
+        const MARKED: bool = true;
+        const UNMARKED: bool = false;
         #[rustfmt::skip]
         let rows: &[Case] = &[
-            ("program title wins",       Some("vim a.md"),    "vim a.md",        Some("/home/me/doc"),  Marked,   "vim a.md"),
-            ("host-form title ignored",  Some("ssh box"),     "me@box: ~/doc",   Some("/home/me/doc"),  Marked,   "ssh box"),
-            ("idle shell: the folder",   None,                "vim a.md",        Some("/home/me/temor"),Marked,   "temor"),
-            ("idle, host-form title",    None,                "me@box:~/temor",  Some("/home/me/temor"),Marked,   "temor"),
-            ("home is a tilde",          None,                "",                Some("/home/me"),      Marked,   "~"),
-            ("home with a slash",        None,                "",                Some("/home/me/"),     Marked,   "~"),
-            ("root",                     None,                "",                Some("/"),             Marked,   "/"),
-            ("no folder: the made name", None,                "",                None,                  Marked,   "Shell"),
-            ("no marks: a program title",None,                "htop",            Some("/home/me/doc"),  Unmarked, "htop"),
-            ("no marks, host-form",      None,                "me@box:~",        Some("/home/me/doc"),  Unmarked, "doc"),
-            ("running, empty title",     Some("sleep 30"),    "",                Some("/home/me/doc"),  Marked,   "sleep 30"),
+            ("program title wins",       Some("vim a.md"),    "vim a.md",        Some("/home/me/doc"),  MARKED,   "vim a.md"),
+            ("host-form title ignored",  Some("ssh box"),     "me@box: ~/doc",   Some("/home/me/doc"),  MARKED,   "ssh box"),
+            ("idle shell: the folder",   None,                "vim a.md",        Some("/home/me/temor"),MARKED,   "temor"),
+            ("idle, host-form title",    None,                "me@box:~/temor",  Some("/home/me/temor"),MARKED,   "temor"),
+            ("home is a tilde",          None,                "",                Some("/home/me"),      MARKED,   "~"),
+            ("home with a slash",        None,                "",                Some("/home/me/"),     MARKED,   "~"),
+            ("root",                     None,                "",                Some("/"),             MARKED,   "/"),
+            ("no folder: the made name", None,                "",                None,                  MARKED,   "Shell"),
+            ("no marks: a program title",None,                "htop",            Some("/home/me/doc"),  UNMARKED, "htop"),
+            ("no marks, host-form",      None,                "me@box:~",        Some("/home/me/doc"),  UNMARKED, "doc"),
+            ("running, empty title",     Some("sleep 30"),    "",                Some("/home/me/doc"),  MARKED,   "sleep 30"),
         ];
         for (why, running, title, cwd, marking, want) in rows {
             assert_eq!(name(*running, title, *cwd, *marking), *want, "{why}");

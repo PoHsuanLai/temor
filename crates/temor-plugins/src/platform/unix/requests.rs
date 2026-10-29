@@ -4,7 +4,6 @@
 use std::ops::ControlFlow;
 
 use super::launcher::{Launcher, said, unexpected};
-use crate::cancel::Cancel;
 use crate::capability::Cap;
 use crate::catalog::Plugin;
 use crate::drawing::{Drawing, MOST_DRAWING_BYTES};
@@ -13,12 +12,12 @@ use crate::message::{Activation, Batch, Choice, Fact, Item, LensBlock, Message, 
 use crate::tidy::{tidy_batch, tidy_facts};
 
 /// A plugin that says it failed after temor asked it to stop was stopped, not broken.
-fn failure(plugin: &Plugin, cancel: &dyn Fn() -> Cancel, message: String) -> PluginError {
+fn failure(plugin: &Plugin, cancel: &dyn Fn() -> bool, message: String) -> PluginError {
     match cancel() {
-        Cancel::Stop => PluginError::Cancelled {
+        true => PluginError::Cancelled {
             plugin: plugin.id().to_owned(),
         },
-        Cancel::Go => said(plugin, message),
+        false => said(plugin, message),
     }
 }
 
@@ -46,7 +45,7 @@ impl Launcher {
         plugin: &Plugin,
         text: &str,
         generation: u64,
-        cancel: &dyn Fn() -> Cancel,
+        cancel: &dyn Fn() -> bool,
         on_batch: &mut dyn FnMut(Batch),
     ) -> Result<(), PluginError> {
         let request = Request::Query {
@@ -55,7 +54,7 @@ impl Launcher {
         };
         let mut session = self.open(plugin, Cap::OpenProvider, &request, 0)?;
         session.stream(
-            |_| cancel() == Cancel::Stop,
+            |_| cancel(),
             &Request::Cancel,
             |_, frame| -> Result<ControlFlow<()>, PluginError> {
                 match frame.message {
@@ -117,7 +116,7 @@ impl Launcher {
         plugin: &Plugin,
         agent: &str,
         folder: &str,
-        cancel: &dyn Fn() -> Cancel,
+        cancel: &dyn Fn() -> bool,
         on_event: &mut dyn FnMut(Phase, String),
     ) -> Result<(), PluginError> {
         let request = Request::Adapt {
@@ -126,7 +125,7 @@ impl Launcher {
         };
         let mut session = self.open(plugin, Cap::AgentAdapter, &request, 0)?;
         session.stream(
-            |_| cancel() == Cancel::Stop,
+            |_| cancel(),
             &Request::Cancel,
             |_, frame| -> Result<ControlFlow<()>, PluginError> {
                 match frame.message {

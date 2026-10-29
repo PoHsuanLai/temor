@@ -411,9 +411,11 @@ fn a_saved_session_is_restored_on_launch() {
     if !super::support::window_tools_present() {
         return;
     }
-    use temor_core::split::Direction;
+    use temor_client::model::split::Direction;
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     // The window's own scratch folder is emptied when it opens, so the session lives beside it.
     let state = scratch("window-restore-state").join("state");
     let here = Cwd(state.parent().expect("a parent").display().to_string());
@@ -445,8 +447,10 @@ fn the_rows_are_kept_in_the_store_after_the_old_file_is_read_in_once() {
     if !super::support::window_tools_present() {
         return;
     }
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     let state = scratch("window-layout-state").join("state");
     let here = Cwd(state.parent().expect("a parent").display().to_string());
     let ws = [

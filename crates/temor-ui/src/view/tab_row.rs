@@ -24,7 +24,7 @@ use super::split_row::SplitSegments;
 use super::tab_glyph::row_leading;
 use super::tab_wiring::{drag_press, tab_menu_trigger, use_drag_target};
 use super::tool_button::ToolButton;
-use crate::hub::{Desk, DragKey, TabRow, Unread, select_tab};
+use crate::hub::{Desk, DragKey, TabRow, select_tab};
 
 /// The row for one tab.
 #[component]
@@ -47,15 +47,15 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
         },
     };
     let emphasis = match row.unread {
-        Unread::Unread => Emphasis::Strong,
-        Unread::Seen => Emphasis::Plain,
+        true => Emphasis::Strong,
+        false => Emphasis::Plain,
     };
     // What runs in the tab leads the row (`row_leading`); the one dot trails it. The words are
     // the row's own title, so their size is quire's.
     let leading = row_leading(&row.icon);
     let closing = desk.clone();
     let trail = rsx! {
-        if row.unread == Unread::Unread {
+        if row.unread {
             span { class: "temor-tab-needs",
                 Badge { content: BadgeContent::Dot, tone: BadgeTone::Alert }
             }

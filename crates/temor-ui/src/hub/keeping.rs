@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::time::Instant;
 
 use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through, screens};
-use temor_client::model::notify::Focus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 
 use super::model::Hub;
@@ -87,7 +87,7 @@ impl Hub {
             .flat_map(|(_, ws)| ws.tabs.panes())
             .collect();
         for pane in parked {
-            self.set_pane_focus(pane, Focus::Unfocused);
+            self.set_pane_focus(pane, PaneFocus::Unfocused);
         }
     }
 
@@ -172,17 +172,4 @@ impl Drop for Hub {
         self.remote_quit();
         PaneFiles::keep_at_quit(&dir, &self.kept_panes(true));
     }
-}
-
-/// How often the window asks whether a change is waiting to be written.
-const SAVE_TICK: std::time::Duration = std::time::Duration::from_millis(500);
-
-/// Starts the timer that writes what is kept for as long as the window lives.
-pub fn spawn_save_loop(hub: super::model::HubRef) {
-    dioxus::prelude::spawn(async move {
-        loop {
-            ds::base::time::clock::sleep(SAVE_TICK).await;
-            let _ = hub.0.borrow_mut().poll_save(Instant::now());
-        }
-    });
 }

@@ -27,20 +27,20 @@ ds-core = { workspace = true }
 ds-settings = { workspace = true, features = ["dioxus"] }
 ds-settings-page = { workspace = true }
 png = { workspace = true }
-rustix = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 similar = { workspace = true }
 # temor, as the window may name it (PLAN §2b, the fence): its data and services through the
-# client, the running terminals and their engine through temor-panes, the data's types.
+# client, the running terminals and their engine through temor-panes, how a pane is shown
+# (temor-pane-view), the data's types.
 temor-client = { workspace = true }
 temor-panes = { workspace = true }
+temor-pane-view = { workspace = true }
 temor-schema = { workspace = true }
 tempfile = { workspace = true }
 toml = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
-unicode-width = { workspace = true }
 
 [dev-dependencies]
 # The tests drive the window against real panes, helpers and desktop ports, so they name the

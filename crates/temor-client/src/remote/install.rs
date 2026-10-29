@@ -5,8 +5,8 @@
 
 use std::path::{Path, PathBuf};
 
-use temor_core::remote::{CacheDir, HostArch, HostOs, Probe};
 use temor_core::vocab::text::HelperHash;
+use temor_hosts::remote::{CacheDir, HostArch, HostOs, Probe};
 use temor_ssh::{ControlLayout, HostAlias};
 use temor_wire::hello::{HELPER_CACHE_FOLDER, HelperVersion};
 

@@ -10,9 +10,9 @@
 
 use std::time::Instant;
 
-use temor_core::block::{Block, Note, Outcome, summarize};
-use temor_core::session::found::{At, Kind, find_blocks, match_history};
-use temor_core::session::{
+use temor_blocks::block::{Block, Note, Outcome, summarize};
+use temor_blocks::session::found::{At, Kind, find_blocks, match_history};
+use temor_blocks::session::{
     BlockAnchors, CommandRecord, KeptBlock, MarkIn, MarkKind, MarkOut, mark_step,
 };
 use temor_core::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};

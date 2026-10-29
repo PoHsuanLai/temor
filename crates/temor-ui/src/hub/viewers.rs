@@ -17,7 +17,6 @@ use temor_client::model::vocab::text::ViewerRef;
 use temor_client::model::workspace::{ViewerOpen, WorkspaceIn};
 
 use super::model::{Hub, HubRef};
-use crate::bar::Finding;
 use crate::edge::viewer_workers::ViewerWorkers;
 use crate::session::ViewAsk;
 
@@ -36,7 +35,7 @@ pub(super) struct ViewerHub {
     /// which another app may still open. A later open of any file clears it.
     not_opened: BTreeMap<PaneId, anyview_pane::FilePath>,
     /// Whether the bar that is about to open starts as a search of the viewer's file (⌘F).
-    find_wanted: Finding,
+    find_wanted: bool,
     /// The files fetched from other computers, and the copies the viewers show.
     pub(super) host: super::viewer_host::HostCopies,
 }
@@ -303,12 +302,12 @@ impl HubRef {
     pub fn want_find_in_viewer(&self) {
         let mut hub = self.0.borrow_mut();
         if hub.keyboard_viewer().is_some() {
-            hub.viewers.find_wanted = Finding::On;
+            hub.viewers.find_wanted = true;
         }
     }
 
     /// What the bar that just opened starts as; asking clears it, so the next ⌘T opens plain.
-    pub fn take_finding_wanted(&self) -> Finding {
+    pub fn take_finding_wanted(&self) -> bool {
         std::mem::take(&mut self.0.borrow_mut().viewers.find_wanted)
     }
 
@@ -316,7 +315,7 @@ impl HubRef {
     /// an action.
     pub fn route_key(&self, stroke: crate::input::Stroke) -> crate::input::Routed {
         let hub = self.0.borrow();
-        crate::input::route(stroke, &hub.launch.keymap, crate::input::FindBar::Closed)
+        crate::input::route(stroke, &hub.launch.keymap, false)
     }
 
     /// The viewer's view hands over its palette handle while it is drawn.

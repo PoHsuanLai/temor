@@ -17,13 +17,6 @@ pub struct BlockMenuAt {
     pub point: Point,
 }
 
-/// Whether a lens has drawn a picture under the block: the menu then offers to hide it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PictureShown {
-    Yes,
-    No,
-}
-
 /// The block menu's own items: a lens to draw the block with (its id), or hiding its picture.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockOwn {
@@ -37,7 +30,8 @@ pub struct BlockMenuState {
     pub facts: BlockFacts,
     /// The lenses that can draw the selected block; offered when one block is picked.
     pub lenses: Vec<LensOffer>,
-    pub picture: PictureShown,
+    /// A lens has drawn a picture under the block: the menu offers to hide it.
+    pub picture: bool,
 }
 
 /// The menu's items: the one menu's for the picked blocks, then the lenses and Hide.
@@ -50,7 +44,7 @@ pub fn block_menu_items(state: BlockMenuState) -> Vec<MenuItem<Pick<BlockOwn>>> 
                 .with_tip("Draw the output as a picture under the command")
         }));
     }
-    if state.picture == PictureShown::Yes {
+    if state.picture {
         own.push(MenuItem::new(BlockOwn::HidePicture, "Hide").with_tip("Take the picture away"));
     }
     menu_items(Target::Block(state.facts), many, own)
@@ -90,7 +84,7 @@ mod tests {
             .collect()
     }
 
-    fn state(picked: usize, lenses: &[(&str, &str)], picture: PictureShown) -> BlockMenuState {
+    fn state(picked: usize, lenses: &[(&str, &str)], picture: bool) -> BlockMenuState {
         BlockMenuState {
             facts: BlockFacts {
                 picked,
@@ -113,16 +107,16 @@ mod tests {
         let kube = [("kube", "Show with Kube"), ("graph", "Show with Graph")];
         let tail = |state| -> Vec<String> { titles(state).into_iter().skip(6).collect() };
         assert_eq!(
-            tail(state(1, &kube, PictureShown::No)),
+            tail(state(1, &kube, false)),
             ["Show with Kube", "Show with Graph"]
         );
         assert_eq!(
-            tail(state(1, &kube, PictureShown::Yes)),
+            tail(state(1, &kube, true)),
             ["Show with Kube", "Show with Graph", "Hide"]
         );
-        assert_eq!(tail(state(1, &[], PictureShown::Yes)), ["Hide"]);
+        assert_eq!(tail(state(1, &[], true)), ["Hide"]);
         assert!(
-            !titles(state(2, &kube, PictureShown::No)).contains(&"Show with Kube".to_owned()),
+            !titles(state(2, &kube, false)).contains(&"Show with Kube".to_owned()),
             "a lens draws one block"
         );
     }

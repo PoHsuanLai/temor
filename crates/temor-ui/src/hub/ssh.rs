@@ -19,7 +19,7 @@ use temor_client::remote::message::FileStamp;
 use crate::edge::Ambient;
 use crate::platform::{FileShell, Opener, default_file_shell, default_opener};
 use temor_client::desktop::feed::{NoTailnet, TailnetFeed};
-use temor_client::remote::edit_way::{EditTier, Overwrite};
+use temor_client::remote::edit_way::EditTier;
 use temor_client::ssh::SshEnv;
 use temor_client::ssh::work::{EditId, SshEvent, SshWork};
 
@@ -76,20 +76,6 @@ pub(super) struct HostLine {
     pub direct: Option<DirectHost>,
 }
 
-/// Whether the editor has been opened on a local copy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Opened {
-    No,
-    Yes,
-}
-
-/// Whether the person pressed Done while a save was still on its way to the host.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum DoneAsked {
-    No,
-    Yes,
-}
-
 /// One remote file open for editing.
 pub(super) struct RemoteEdit {
     pub host: HostAlias,
@@ -97,7 +83,8 @@ pub(super) struct RemoteEdit {
     pub local: std::path::PathBuf,
     pub state: Edit,
     pub watch: Option<Watch>,
-    pub opened: Opened,
+    /// The editor has been opened on the local copy.
+    pub opened: bool,
     /// The question waiting for the person, when the host's file changed under the edit.
     pub asking: Option<Found>,
     /// How the file is fetched and written back.
@@ -106,9 +93,10 @@ pub(super) struct RemoteEdit {
     /// Always `None` for a host without a helper.
     pub seen: Option<FileStamp>,
     /// Set once the person chose to overwrite, for the one write that follows.
-    pub overwrite: Overwrite,
-    /// Done waits for a save on its way; the edit closes once it reaches the host.
-    pub done: DoneAsked,
+    pub overwrite: bool,
+    /// The person pressed Done while a save was still on its way: the edit closes once it
+    /// reaches the host.
+    pub done: bool,
 }
 
 /// The hub's SSH state.

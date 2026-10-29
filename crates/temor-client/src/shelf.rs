@@ -14,10 +14,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use ds_core::time::stamp::Stamp;
-use temor_core::shelf::{Incoming, ItemState, Shelf, ShelfIn, ShelfItem, Source, shelf_step};
-use temor_core::transfer::Origin;
 use temor_core::vocab::ids::{BlockId, Bytes, DownloadId, TabId};
 use temor_core::vocab::text::{HostName, ShelfPath};
+use temor_hosts::shelf::{Incoming, ItemState, Shelf, ShelfIn, ShelfItem, Source, shelf_step};
+use temor_hosts::transfer::Origin;
 use temor_transfer::kitty::Offered;
 use temor_transfer::shelf::{Clock, ShelfId, ShelfStore, UnixMillis};
 use temor_transfer::{

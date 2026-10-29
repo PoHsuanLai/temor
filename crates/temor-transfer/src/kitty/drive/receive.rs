@@ -10,7 +10,7 @@ use crate::kitty::frames::FrameScanner;
 use crate::kitty::io::{apply_write, wire_code};
 use crate::kitty::model::{FileId, KittyId, Message, ReplyStatus, WriteKind};
 use crate::kitty::receive::{
-    Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp,
+    Effect, Input, LinkPolicy, ReceiveSession, SavedFile, TransferEnd, WriteOp,
 };
 use crate::kitty::wire::{
     encode_message, encode_reply, parse_message, parse_reply, readable_header,
@@ -131,11 +131,11 @@ fn frame_input(payload: &[u8], id: &KittyId, limits: Limits) -> Option<Input> {
     }
 }
 
-fn end(why: EndWhy, saved: Vec<SavedFile>) -> Result<Vec<SavedFile>, TransferError> {
+fn end(why: TransferEnd, saved: Vec<SavedFile>) -> Result<Vec<SavedFile>, TransferError> {
     let message = match why {
-        EndWhy::Finished => return Ok(saved),
-        EndWhy::Refused => "the other side did not allow it",
-        EndWhy::Cancelled => "the transfer was cancelled",
+        TransferEnd::Finished => return Ok(saved),
+        TransferEnd::Refused => "the other side did not allow it",
+        TransferEnd::Cancelled => "the transfer was cancelled",
         _ => "the transfer broke off",
     };
     Err(declined(message))

@@ -11,15 +11,14 @@ mod size;
 
 pub use anchor::AnchorId;
 pub use cell::{
-    CellStyle, CellView, CellWidth, CursorBlink, CursorCell, CursorShape, CursorView, FrameColors,
-    FrameDirty, Hyperlink, RowDirty, RowFilter, RowId, Selected, SemanticMark, StyleFlags,
-    StyledCell, Underline, Wrap,
+    CellStyle, CellView, CellWidth, CursorShape, CursorView, FrameColors, FrameDirty, RowFilter,
+    RowId, SemanticMark, StyleFlags, StyledCell, Underline, Wrap,
 };
 pub use colour::{ColorRef, ColorScheme, Rgb};
 pub use config::TerminalConfig;
 pub use media::{
     Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementIdFrom, PlacementKind,
-    PlacementRender, TextFormat, TextSpan, Visibility, ZIndex,
+    PlacementRender, TextFormat, TextSpan, ZIndex,
 };
 #[cfg(feature = "ghostty")]
 pub(crate) use mode::ModeFamily;

@@ -7,6 +7,7 @@
 //! - [`eventually`], [`eventually_some`] and [`pid_from_file`] poll until a deadline;
 //! - [`PrivateBus`] is a private session bus, and [`git()`] runs git on a scratch repository;
 //! - [`example_program`], [`manifest_for`] and [`with_program`] are the fake plugin's fixtures;
+//! - [`run_steps`] drives a step machine through its inputs;
 //! - [`assert_modules_declared`] is the "every test module is in `main.rs`" check.
 
 mod bus;
@@ -15,6 +16,7 @@ mod modules;
 mod plugin;
 mod program;
 mod scratch;
+mod steps;
 mod wait;
 
 pub use bus::PrivateBus;
@@ -25,6 +27,7 @@ pub use program::{
     find_program, optional_program, program_or_skip, programs_or_skip, skip, tools_required,
 };
 pub use scratch::{SOCKET_PATH_MAX, Scratch, ScratchRoot};
+pub use steps::run_steps;
 pub use wait::{SLOW, contains, eventually, eventually_some, find, pid_from_file, proc_alive};
 
 #[cfg(test)]

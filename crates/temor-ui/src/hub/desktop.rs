@@ -11,7 +11,7 @@ use temor_client::desktop::{
     Placement, PortRefusal, Request, SpaceRef, WindowContext,
 };
 use temor_client::model::block::Outcome;
-use temor_client::model::notify::Focus as NoteFocus;
+use temor_client::model::pane::PaneFocus;
 use temor_client::model::split::Direction;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::Cwd;
@@ -185,7 +185,7 @@ impl Hub {
             return;
         };
         self.act(WorkspaceIn::Focus(held));
-        self.set_pane_focus(opened, NoteFocus::Unfocused);
+        self.set_pane_focus(opened, PaneFocus::Unfocused);
     }
 }
 

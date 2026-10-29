@@ -17,7 +17,7 @@ use super::ssh::{Check, Phase};
 use super::ssh_check::RawCheck;
 use crate::view::launch::{Program, open_session_with};
 use crate::view::remote_launch::open_fed_session;
-use temor_client::remote::session::{Blob, Source, session_source};
+use temor_client::remote::session::session_tier;
 use temor_panes::remote::link::{RemoteLink, Target, lock};
 use temor_panes::remote::relay::relay;
 
@@ -45,10 +45,7 @@ pub fn connect_argv(alias: &HostAlias, layout: &ControlLayout) -> Vec<String> {
 impl Hub {
     /// What a session on `alias` runs on, given what the person answered and what is known.
     pub(super) fn remote_tier(&self, alias: &HostAlias) -> Tier {
-        let blob = match self.remote.builds.any() {
-            true => Blob::Have,
-            false => Blob::Missing,
-        };
+        let blob = self.remote.builds.any();
         let grant = self.helper_grant(alias);
         let absent = HelperState::Absent;
         let helper = self
@@ -56,10 +53,7 @@ impl Hub {
             .lines
             .get(alias)
             .map_or(&absent, |line| &line.helper);
-        match session_source(grant, blob, helper) {
-            Source::Plain => Tier::Plain,
-            Source::Helper => Tier::Helper,
-        }
+        session_tier(grant, blob, helper)
     }
 
     /// The shared connection's turn came for a helper pane: `First` makes the connection in the

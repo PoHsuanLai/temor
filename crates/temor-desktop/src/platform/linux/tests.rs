@@ -4,14 +4,14 @@ use super::intents::load_manifest;
 use super::perform::{class_of, pane_of_token, pane_token};
 use super::tailnet::host_of;
 use crate::{
-    APP_BUS_NAME, Attention, Badge, BadgeCount, Focus, Network, PaneInfo, PaneKind, PaneRef,
-    Progress, SpaceRef, WindowContext,
+    APP_BUS_NAME, Badge, BadgeCount, Focus, PaneInfo, PaneKind, PaneRef, Progress, SpaceRef,
+    WindowContext,
 };
 use docket_core::{Here, Selection};
 use porter_client::Machine;
 use porter_core::AppName;
 use prov::{Effect, Integrity};
-use temor_ssh::{Presence, TailnetOwner, TailscaleSsh, UnixSeconds};
+use temor_ssh::{TailnetOwner, UnixSeconds};
 use zbus::zvariant::Value;
 
 #[test]
@@ -43,8 +43,8 @@ fn the_shipped_manifest_validates_and_matches_the_plan_table() {
 
 #[test]
 fn a_sandboxed_run_is_classified_by_its_network() {
-    assert_eq!(class_of(Network::Closed), Effect::UndoableWrite);
-    assert_eq!(class_of(Network::Open), Effect::Outbound);
+    assert_eq!(class_of(false), Effect::UndoableWrite);
+    assert_eq!(class_of(true), Effect::Outbound);
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn the_dock_update_writes_every_key_so_a_clear_clears() {
     let shown = Badge {
         count: Some(BadgeCount(3)),
         progress: Some(Progress::percent(250)),
-        attention: Attention::Needed,
+        wants_attention: true,
     };
     let cases = [
         (
@@ -112,8 +112,8 @@ fn a_machine_maps_to_a_plain_host() {
         vec!["100.64.0.7".parse::<std::net::IpAddr>().unwrap()]
     );
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
-        (Presence::Online, None, TailscaleSsh::On, TailnetOwner::Mine)
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
+        (true, None, true, TailnetOwner::Mine)
     );
 
     let away = machine(serde_json::json!({
@@ -123,11 +123,11 @@ fn a_machine_maps_to_a_plain_host() {
     }));
     let host = host_of(&away).expect("a usable node id");
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
         (
-            Presence::Offline,
+            false,
             Some(UnixSeconds(1_700_000_000)),
-            TailscaleSsh::Off,
+            false,
             TailnetOwner::Tagged
         )
     );
@@ -178,8 +178,7 @@ fn the_context_carries_program_text_as_untrusted() {
 fn dockets_list_becomes_the_windows_rows_and_a_restore_names_its_plan() {
     use super::checkpoints::{fault_of, list_of, refusal_fault, restore_call};
     use crate::{
-        DesktopError, NotSavedWhy, PlanDigest, PointFault, PointId, PointRow, PointState,
-        SessionKey, TurnNo,
+        DesktopError, NotSavedWhy, PlanDigest, PointFault, PointId, PointRow, SessionKey, TurnNo,
     };
     use docket_core::{
         CheckpointFault, CheckpointId, CheckpointRow, DenyCode, SavedState, SkipReason, TurnId,
@@ -219,13 +218,13 @@ fn dockets_list_becomes_the_windows_rows_and_a_restore_names_its_plan() {
                 id: PointId(1),
                 turn: TurnNo(4),
                 at: secs,
-                state: PointState::Available
+                available: true
             },
             PointRow::Saved {
                 id: PointId(2),
                 turn: TurnNo(5),
                 at: secs,
-                state: PointState::Gone
+                available: false
             },
             PointRow::NotSaved {
                 turn: TurnNo(6),

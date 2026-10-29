@@ -92,33 +92,25 @@ fn full_reset_is_reported_and_clears_title_and_cwd() {
 
 #[test]
 fn unknown_osc_and_apc_are_reported_with_their_payload() {
-    use temor_vt::{Truncation, UnknownKind};
+    use temor_vt::UnknownKind;
     let (mut t, rx) = term(80, 24);
     t.write(&crate::support::fixture("unknown.bin"));
-    let unknown: Vec<(UnknownKind, Vec<u8>, Truncation)> = drain(&rx)
+    let unknown: Vec<(UnknownKind, Vec<u8>, bool)> = drain(&rx)
         .into_iter()
         .filter_map(|e| match e {
             VtEvent::Unknown {
                 kind,
                 payload,
-                truncation,
-            } => Some((kind, payload, truncation)),
+                truncated,
+            } => Some((kind, payload, truncated)),
             _ => None,
         })
         .collect();
     assert_eq!(
         unknown,
         [
-            (
-                UnknownKind::Osc,
-                b"5113;ac=send;id=xfer1".to_vec(),
-                Truncation::Complete
-            ),
-            (
-                UnknownKind::Apc,
-                b"Zsome-apc".to_vec(),
-                Truncation::Complete
-            ),
+            (UnknownKind::Osc, b"5113;ac=send;id=xfer1".to_vec(), false),
+            (UnknownKind::Apc, b"Zsome-apc".to_vec(), false),
         ]
     );
 }

@@ -4,5 +4,5 @@
 mod key;
 mod mouse;
 
-pub use key::{Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, OptionAsAlt};
+pub use key::{KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, OptionAsAlt};
 pub use mouse::{MouseAction, MouseButton, MouseFormat, MouseInput, MouseSurface, SurfacePoint};

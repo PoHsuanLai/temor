@@ -117,14 +117,6 @@ pub enum KeyAction {
     Release,
 }
 
-/// Whether an input method is composing (pre-edit) while the key arrives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Ime {
-    #[default]
-    Idle,
-    Composing,
-}
-
 /// Held modifiers, as a bit set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Modifiers(u16);
@@ -210,7 +202,8 @@ pub struct KeyInput {
     pub text: String,
     /// The key's character with no modifiers on the current layout, when it has one.
     pub unshifted: Option<char>,
-    pub ime: Ime,
+    /// An input method is composing (pre-edit) while the key arrives.
+    pub composing: bool,
 }
 
 impl KeyInput {
@@ -222,7 +215,7 @@ impl KeyInput {
             mods,
             text: text.to_owned(),
             unshifted: text.chars().next().filter(|_| text.chars().count() == 1),
-            ime: Ime::Idle,
+            composing: false,
         }
     }
 }

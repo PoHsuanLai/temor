@@ -25,21 +25,6 @@ pub enum Stage {
     Failed,
 }
 
-/// Whether the host's ports can be opened without a forward.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direct {
-    Available,
-    Unavailable,
-}
-
-/// How the browser check stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CheckRow {
-    /// The host wants the person to confirm in a browser: an Open button is shown.
-    Waiting,
-    Nothing,
-}
-
 /// A forwarded port. `local` is the port on this computer once the forward is open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ForwardLine {
@@ -80,8 +65,10 @@ pub struct EditLine {
 pub struct HostView {
     pub host: String,
     pub stage: Stage,
-    pub check: CheckRow,
-    pub direct: Direct,
+    /// The host wants the person to confirm in a browser: an Open button is shown.
+    pub check_waiting: bool,
+    /// Whether the host's ports can be opened without a forward.
+    pub direct_ports: bool,
     pub forwards: Vec<ForwardLine>,
     pub edits: Vec<EditLine>,
 }

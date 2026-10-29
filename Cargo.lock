@@ -7197,6 +7197,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-agent"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "serde",
+ "temor-core",
+ "temor-pane",
+]
+
+[[package]]
+name = "temor-blocks"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "proptest",
+ "serde",
+ "serde_json",
+ "temor-core",
+ "temor-pane",
+ "temor-schema",
+ "temor-shell",
+ "temor-testkit",
+]
+
+[[package]]
 name = "temor-client"
 version = "0.1.1"
 dependencies = [
@@ -7205,10 +7230,15 @@ dependencies = [
  "notify",
  "parking_lot",
  "rustix",
+ "serde",
  "serde_json",
+ "temor-agent",
+ "temor-blocks",
  "temor-client",
  "temor-core",
  "temor-desktop",
+ "temor-hosts",
+ "temor-layout",
  "temor-pane",
  "temor-plugins",
  "temor-pty",
@@ -7217,6 +7247,7 @@ dependencies = [
  "temor-shell",
  "temor-ssh",
  "temor-store",
+ "temor-testkit",
  "temor-transfer",
  "temor-wire",
  "tempfile",
@@ -7230,17 +7261,11 @@ name = "temor-core"
 version = "0.1.1"
 dependencies = [
  "ds-core",
- "ds-style",
- "icu_properties",
  "proptest",
  "serde",
  "serde_json",
  "temor-pane",
  "temor-schema",
- "temor-shell",
- "temor-ssh",
- "temor-testkit",
- "tempfile",
  "thiserror 2.0.21",
 ]
 
@@ -7277,6 +7302,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-hosts"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "ds-style",
+ "serde",
+ "serde_json",
+ "temor-core",
+ "temor-schema",
+ "temor-shell",
+ "temor-ssh",
+ "temor-testkit",
+]
+
+[[package]]
+name = "temor-layout"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "ds-style",
+ "proptest",
+ "serde",
+ "serde_json",
+ "temor-blocks",
+ "temor-core",
+ "temor-pane",
+ "temor-schema",
+ "temor-shell",
+ "temor-testkit",
+]
+
+[[package]]
 name = "temor-pane"
 version = "0.1.1"
 dependencies = [
@@ -7284,6 +7341,7 @@ dependencies = [
  "nix",
  "percent-encoding",
  "rustix",
+ "serde",
  "temor-pty",
  "temor-render",
  "temor-shell",
@@ -7295,13 +7353,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-pane-view"
+version = "0.1.1"
+dependencies = [
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-core",
+ "temor-client",
+ "temor-panes",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "temor-panes"
 version = "0.1.1"
 dependencies = [
  "ds-core",
  "parking_lot",
+ "temor-blocks",
  "temor-client",
  "temor-core",
+ "temor-hosts",
  "temor-pane",
  "temor-pty",
  "temor-remote",
@@ -7463,7 +7538,6 @@ dependencies = [
  "ds-settings",
  "ds-settings-page",
  "png",
- "rustix",
  "serde",
  "serde_json",
  "similar",
@@ -7471,6 +7545,7 @@ dependencies = [
  "temor-core",
  "temor-desktop",
  "temor-pane",
+ "temor-pane-view",
  "temor-panes",
  "temor-plugins",
  "temor-pty",
@@ -7487,7 +7562,6 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "toml",
- "unicode-width",
 ]
 
 [[package]]

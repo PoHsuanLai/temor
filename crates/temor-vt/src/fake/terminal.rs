@@ -5,8 +5,7 @@ use super::screen::Screen;
 use crate::scan::{InlineFileScanner, Scanned, parse_program_status};
 use crate::{
     CellPx, EventSink, ExitCode, ExitStatus, GridSize, ModeState, PromptEvent, PromptKind,
-    ReplySink, TerminalConfig, TerminalMode, Truncation, UnknownKind, ViewportScroll, Vt, VtError,
-    VtEvent,
+    ReplySink, TerminalConfig, TerminalMode, UnknownKind, ViewportScroll, Vt, VtError, VtEvent,
 };
 
 /// A stand-in for `Terminal` that needs no Zig: see the module docs for what it understands.
@@ -19,15 +18,9 @@ pub struct FakeVt {
     pwd: String,
     /// Set when OSC 0/2 changed the title; the event goes out once the write is done, as in
     /// the real terminal.
-    title_changed: TitleChange,
+    title_changed: bool,
     sink: Box<dyn EventSink>,
     replies: Box<dyn ReplySink>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TitleChange {
-    Unchanged,
-    Changed,
 }
 
 const DEFAULT_MODES: [TerminalMode; 3] = [
@@ -59,7 +52,7 @@ impl FakeVt {
             modes: DEFAULT_MODES.to_vec(),
             title: String::new(),
             pwd: String::new(),
-            title_changed: TitleChange::Unchanged,
+            title_changed: false,
             sink,
             replies,
         }
@@ -89,7 +82,7 @@ impl FakeVt {
         self.modes = DEFAULT_MODES.to_vec();
         self.title.clear();
         self.pwd.clear();
-        self.title_changed = TitleChange::Unchanged;
+        self.title_changed = false;
         self.sink.send(VtEvent::Reset);
     }
 
@@ -132,7 +125,7 @@ impl FakeVt {
         match number {
             "0" | "2" => {
                 self.title = rest.to_owned();
-                self.title_changed = TitleChange::Changed;
+                self.title_changed = true;
             }
             "7" => {
                 self.pwd = rest.to_owned();
@@ -152,7 +145,7 @@ impl FakeVt {
             _ => self.sink.send(VtEvent::Unknown {
                 kind: UnknownKind::Osc,
                 payload: body,
-                truncation: Truncation::Complete,
+                truncated: false,
             }),
         }
     }
@@ -202,16 +195,13 @@ impl Vt for FakeVt {
         let parser = &mut self.parser;
         self.scanner.feed(bytes, |seg| match seg {
             Scanned::Bytes(b) => actions.extend(b.iter().filter_map(|&byte| parser.step(byte))),
-            Scanned::File {
-                payload,
-                truncation,
-            } => {
+            Scanned::File { payload, truncated } => {
                 files.push((
                     actions.len(),
                     VtEvent::Unknown {
                         kind: UnknownKind::Osc1337File,
                         payload,
-                        truncation,
+                        truncated,
                     },
                 ));
             }
@@ -226,9 +216,7 @@ impl Vt for FakeVt {
         for (_, event) in files {
             self.sink.send(event);
         }
-        if std::mem::replace(&mut self.title_changed, TitleChange::Unchanged)
-            == TitleChange::Changed
-        {
+        if std::mem::replace(&mut self.title_changed, false) {
             self.sink.send(VtEvent::Title(self.title.clone()));
         }
     }

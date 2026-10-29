@@ -4,8 +4,8 @@
 use super::args::{Reader, failed, refusal};
 use crate::{
     COMMAND_LIST, COMMAND_READ, COMMAND_RUN_IN_PANE, COMMAND_RUN_SANDBOXED, CommandInfo, Exit,
-    Focus, Network, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ, PaneInfo, PaneKind, PaneOpen,
-    PaneRef, SandboxRun, WindowPort,
+    Focus, PANE_CWD, PANE_LIST, PANE_OPEN, PANE_READ, PaneInfo, PaneKind, PaneOpen, PaneRef,
+    SandboxRun, WindowPort,
 };
 use docket_core::{
     AppRefusal, Follow, Invocation, LabelText, Outcome, Preview, UndoToken, Undoable, Value,
@@ -69,7 +69,7 @@ pub(super) async fn perform<W: WindowPort>(
             let run = SandboxRun {
                 line: args.need_text("line")?.to_owned(),
                 cwd: args.cwd()?,
-                network: args.network()?,
+                network_open: args.network()?,
             };
             let done = window.run_sandboxed(run).await.map_err(refusal)?;
             let status = match done.exit {
@@ -95,10 +95,10 @@ pub(super) async fn perform<W: WindowPort>(
 }
 
 /// The effect one sandboxed call has: with the network closed the overlay is the undo.
-pub(super) fn class_of(network: Network) -> Effect {
+pub(super) fn class_of(network: bool) -> Effect {
     match network {
-        Network::Closed => Effect::UndoableWrite,
-        Network::Open => Effect::Outbound,
+        false => Effect::UndoableWrite,
+        true => Effect::Outbound,
     }
 }
 

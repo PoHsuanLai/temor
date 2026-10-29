@@ -7,7 +7,6 @@ use std::time::Duration;
 use temor_pty::{Interest, PtyIo, ReadOutcome, Ready};
 
 use super::core::Daemon;
-use super::input::Backlog;
 use super::session::Session;
 
 /// How long a wait for the terminal lasts before the loop looks around again.
@@ -28,8 +27,8 @@ pub(super) fn run(daemon: Arc<Daemon>, session: Arc<Session>, io: PtyIo) {
             break;
         }
         let interest = match session.backlog() {
-            Backlog::Waiting => Interest::ReadWrite,
-            Backlog::Empty => Interest::Read,
+            true => Interest::ReadWrite,
+            false => Interest::Read,
         };
         let Ok(ready) = io.wait(interest, Some(POLL)) else {
             break;

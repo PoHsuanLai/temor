@@ -9,7 +9,7 @@ use ds_settings_page::SettingEdit;
 use temor_panes::pane::keys::Action;
 
 use super::edit::{applied, current, save_edit};
-use super::keys_edit::{KeyChange, Mine, change_keys, changed_text, load_view};
+use super::keys_edit::{KeyChange, change_keys, changed_text, load_view};
 use super::open::raise;
 use crate::edge::{Ambient, keymap_for};
 use crate::error::UiError;
@@ -68,7 +68,7 @@ fn a_saved_edit_lands_in_the_file_over_what_it_holds_now() {
     let first = save_edit(&ambient, &edit("font.size", toml::Value::Float(20.0)))
         .expect("saved")
         .doc;
-    assert_eq!(first.font.size.0.points(), 20.0);
+    assert_eq!(first.font.size.points(), 20.0);
     // Another program changes the cursor; the next edit from this window keeps it.
     let mut other = current(&ambient);
     other.cursor.style = crate::settings::CursorShape::Bar;
@@ -81,7 +81,7 @@ fn a_saved_edit_lands_in_the_file_over_what_it_holds_now() {
     .doc;
     assert_eq!(next.cursor.style, crate::settings::CursorShape::Bar);
     assert_eq!(current(&ambient), next);
-    assert_eq!(next.font.size.0.points(), 20.0);
+    assert_eq!(next.font.size.points(), 20.0);
     // A refused edit leaves the file alone.
     let refused = save_edit(&ambient, &edit("font.size", toml::Value::Float(500.0)));
     assert!(refused.is_err());
@@ -128,12 +128,12 @@ fn keys_conf_is_written_and_read_back_as_the_keymap_the_panes_will_build() {
     let ambient = ambient(dir.path());
     let platform = Platform::Windows;
     let before = load_view(&ambient, platform).expect("no file is fine");
-    assert_eq!(before.mine(Action::SplitRight), Mine::AsShipped);
+    assert!(!before.changed(Action::SplitRight));
 
     let ctrl_shift_alt = [Modifier::Ctrl, Modifier::Shift, Modifier::Alt];
     let change = KeyChange::Bind(Action::SplitRight, chord(&ctrl_shift_alt, 'k'));
     let after = change_keys(&ambient, platform, change).expect("bound");
-    assert_eq!(after.mine(Action::SplitRight), Mine::Changed);
+    assert!(after.changed(Action::SplitRight));
     assert_eq!(
         after.chord_of(Action::SplitRight),
         Some(chord(&ctrl_shift_alt, 'k'))
@@ -178,7 +178,7 @@ fn an_edit_over_an_unreadable_file_keeps_it_aside_and_says_where() {
         std::fs::read_to_string(&kept).expect("kept"),
         "font = [ this is not\n"
     );
-    assert_eq!(current(&ambient).font.size.0.points(), 20.0);
+    assert_eq!(current(&ambient).font.size.points(), 20.0);
     let said = crate::settings::kept_aside(&kept);
     assert!(said.contains(&kept.display().to_string()), "{said}");
     // The next edit finds a good file and sets nothing aside.

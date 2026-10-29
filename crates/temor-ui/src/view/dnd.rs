@@ -106,13 +106,6 @@ impl RowRects {
     }
 }
 
-/// Whether the click that follows a drag's release still counts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Click {
-    Counts,
-    Swallowed,
-}
-
 /// Everything the sidebar's drag shares: the machine, the rows' places, the row under the pointer
 /// and the click a finished drag swallows.
 #[derive(Clone, PartialEq)]
@@ -129,9 +122,10 @@ impl std::fmt::Debug for Dnd {
     }
 }
 
-/// The click flag, shared and equal only to itself.
+/// Whether the next click is swallowed (it follows a drag's release), shared and equal only to
+/// itself.
 #[derive(Clone, Default)]
-pub struct ClickCell(Rc<Cell<Option<Click>>>);
+pub struct ClickCell(Rc<Cell<bool>>);
 
 impl std::fmt::Debug for ClickCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -148,22 +142,22 @@ impl PartialEq for ClickCell {
 impl ClickCell {
     /// Marks the next click as swallowed (a drag just finished).
     pub fn swallow(&self) {
-        self.0.set(Some(Click::Swallowed));
+        self.0.set(true);
     }
 
     /// A press starts: its click counts.
     pub fn reset(&self) {
-        self.0.set(Some(Click::Counts));
+        self.0.set(false);
     }
 
     /// Whether the click that is happening counts; asking resets it.
-    pub fn take(&self) -> Click {
-        self.0.replace(Some(Click::Counts)).unwrap_or(Click::Counts)
+    pub fn take(&self) -> bool {
+        !self.0.replace(false)
     }
 
     /// Runs `act` for a click that counts: not the one that follows a drag's release.
     pub fn counted(&self, act: impl FnOnce()) {
-        if self.take() == Click::Counts {
+        if self.take() {
             act();
         }
     }

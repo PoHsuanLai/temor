@@ -5,9 +5,9 @@ mod sink;
 mod status;
 
 pub use model::{
-    ClipboardAnswer, ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardRead,
-    ClipboardWrite, ExitCode, ExitStatus, Notification, Percent, Progress, ProgressState,
-    PromptEvent, PromptKind, RenderHold, Truncation, UnknownKind, VtEvent,
+    ClipboardAnswer, ClipboardItem, ClipboardLocation, ClipboardRead, ClipboardWrite, ExitCode,
+    ExitStatus, Notification, Percent, Progress, ProgressState, PromptEvent, PromptKind,
+    RenderHold, UnknownKind, VtEvent,
 };
 pub use sink::{ClipboardSource, EventSink, ReplySink};
 pub use status::{ProgramState, ProgramStatus, ProgramWait};

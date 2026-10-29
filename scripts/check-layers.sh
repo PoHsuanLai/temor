@@ -32,11 +32,16 @@ temor-render 1
 temor-pane 1
 temor-plugins 1
 temor-core 2
+temor-blocks 2
+temor-hosts 2
+temor-agent 2
+temor-layout 2
 temor-client 3
 temor-panes 3
 temor-desktop 3
 temor-remote 3
 temor-ui 4
+temor-pane-view 4
 temor 4
 '
 
@@ -55,7 +60,7 @@ banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
 DESKTOP = "temor-desktop"
 WINDOW = "temor-ui"
-FENCE = {"temor-client", "temor-panes", "temor-schema"}
+FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"}
 FEATURE = "quire-desktop"
 meta = json.loads(sys.argv[1])
 violations = []

@@ -6,7 +6,7 @@ use super::convert::check;
 use super::terminal::Terminal;
 use crate::{
     Generation, ImageId, KittyLayer, KittyPixelFormat, PlacementId, PlacementIdFrom, PlacementKind,
-    PlacementRender, Px, Visibility, VtError, ZIndex,
+    PlacementRender, Px, VtError, ZIndex,
 };
 
 /// The kitty image storage of a terminal's active screen, borrowed until the terminal is next
@@ -205,11 +205,7 @@ impl<'t> KittyImages<'t> {
                 viewport_row: info.viewport_row,
                 x_offset,
                 y_offset,
-                visibility: if info.viewport_visible {
-                    Visibility::Visible
-                } else {
-                    Visibility::Hidden
-                },
+                visible: info.viewport_visible,
                 source_x: info.source_x,
                 source_y: info.source_y,
                 source_width: info.source_width,

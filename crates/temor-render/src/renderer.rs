@@ -23,14 +23,7 @@ pub enum BlinkPhase {
     Off,
 }
 
-/// How a selection covers cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SelectionShape {
-    /// Reading order from `start` to `end`.
-    Linear,
-    /// The rectangle with `start` and `end` as corners.
-    Block,
-}
+pub use temor_vt::SelectionShape;
 
 /// A selection the UI holds, drawn over the cells (both ends included). Cells libghostty marks
 /// selected are drawn the same way.

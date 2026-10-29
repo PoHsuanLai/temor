@@ -8,7 +8,7 @@
 
 use temor_vt::{KittyLayer, Row};
 
-use super::overhang::{Overhang, Sides, overhang_of};
+use super::overhang::{Sides, overhang_of};
 use super::pixels::Target;
 use crate::error::RenderError;
 use crate::font::{Atlas, BUILD_ATTEMPTS, GlyphCache};
@@ -27,7 +27,7 @@ pub(crate) fn compose_row(
     images: &[ImagePlacement],
     glyphs: &mut GlyphCache,
     scene: &mut RowScene,
-) -> Result<Overhang, RenderError> {
+) -> Result<bool, RenderError> {
     let ch = input.metrics.height() as i32;
     let y0 = input.origin.1 + i32::from(row.0) * ch;
     let total = u16::try_from(rows.len()).unwrap_or(u16::MAX);
@@ -127,9 +127,9 @@ fn neighbour_cells(
     at: usize,
     beside: Sides,
 ) -> [Option<&Vec<CellDraw>>; 2] {
-    let reaching = |side: Overhang, row: Option<usize>| match side {
-        Overhang::Beyond => row.and_then(|i| rows.get(i)),
-        Overhang::Within => None,
+    let reaching = |side: bool, row: Option<usize>| match side {
+        true => row.and_then(|i| rows.get(i)),
+        false => None,
     };
     [
         reaching(beside.above, at.checked_sub(1)),

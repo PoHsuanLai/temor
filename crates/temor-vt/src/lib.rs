@@ -45,23 +45,22 @@ mod ffi;
 
 pub use error::VtError;
 pub use event::{
-    ClipboardAnswer, ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardRead,
-    ClipboardSource, ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent,
-    ProgramState, ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind,
-    RenderHold, ReplySink, Truncation, UnknownKind, VtEvent,
+    ClipboardAnswer, ClipboardItem, ClipboardLocation, ClipboardRead, ClipboardSource,
+    ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent, ProgramState,
+    ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind, RenderHold,
+    ReplySink, UnknownKind, VtEvent,
 };
 pub use input::{
-    Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,
-    MouseFormat, MouseInput, MouseSurface, OptionAsAlt, SurfacePoint,
+    KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton, MouseFormat,
+    MouseInput, MouseSurface, OptionAsAlt, SurfacePoint,
 };
 pub use model::{
     AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorRef, ColorScheme, Cols,
-    CursorBlink, CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation,
-    GridPoint, GridSize, Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState,
-    PlacementId, PlacementIdFrom, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row,
-    RowCount, RowDelta, RowDirty, RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape,
-    SemanticMark, StyleFlags, StyledCell, TerminalConfig, TerminalMode, TextFormat, TextSelection,
-    TextSpan, Underline, ViewportScroll, Visibility, Wrap, ZIndex,
+    CursorShape, CursorView, FrameColors, FrameDirty, Generation, GridPoint, GridSize, ImageId,
+    KittyLayer, KittyPixelFormat, LineCount, ModeState, PlacementId, PlacementIdFrom,
+    PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta, RowFilter, RowId,
+    Rows, Scrollbar, SelectionShape, SemanticMark, StyleFlags, StyledCell, TerminalConfig,
+    TerminalMode, TextFormat, TextSelection, TextSpan, Underline, ViewportScroll, Wrap, ZIndex,
 };
 pub use vt::Vt;
 

@@ -4,7 +4,7 @@
 
 use ds_core::word::Word;
 use serde::{Deserialize, Serialize};
-use temor_panes::pane::settings::{CursorBlinking, CursorStyle, PagerChoice, StartIn};
+use temor_panes::pane::settings::{CursorStyle, PagerChoice, StartIn};
 
 /// `cursor.style`: the cursor's shape, until a program asks for another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Word)]
@@ -47,20 +47,17 @@ impl From<CursorStyle> for CursorShape {
     }
 }
 
-impl From<Blinking> for CursorBlinking {
+impl From<Blinking> for bool {
     fn from(blinking: Blinking) -> Self {
-        match blinking {
-            Blinking::On => Self::On,
-            Blinking::Off => Self::Off,
-        }
+        blinking == Blinking::On
     }
 }
 
-impl From<CursorBlinking> for Blinking {
-    fn from(blinking: CursorBlinking) -> Self {
+impl From<bool> for Blinking {
+    fn from(blinking: bool) -> Self {
         match blinking {
-            CursorBlinking::On => Self::On,
-            CursorBlinking::Off => Self::Off,
+            true => Self::On,
+            false => Self::Off,
         }
     }
 }

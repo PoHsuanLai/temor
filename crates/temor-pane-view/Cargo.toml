@@ -1,0 +1,22 @@
+[package]
+name = "temor-pane-view"
+description = "How temor's window shows a pane: its session drawn, read, pointed at and typed into, with its keys, its painter and the words it says."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+chordkit = { workspace = true }
+dioxus = { workspace = true }
+ds = { workspace = true }
+ds-core = { workspace = true }
+temor-client = { workspace = true }
+temor-panes = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
+
+[lints]
+workspace = true

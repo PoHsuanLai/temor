@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use chordkit::{Key, KeyInput as Pressed, Modifiers as ChordMods, NamedKey};
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::keys::Action;
 use temor_ui::input::Stroke;
