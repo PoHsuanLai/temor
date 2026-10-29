@@ -1821,4 +1821,6 @@ rows in the bar, `block.lens` and `agent.adapter` host sides). Left:
 - [ ] CI after the merge: `a_running_program_is_detached_into_its_own_pane_and_the_old_pane_gets_a_new_shell`
       timed out once on Arch (the screen still showed the parked program after the click on the
       left pane); it passes locally. The macOS window tests failed one each run, a different one each
-      time (sidebar right-click, tab menu while resizing).
+      time (sidebar right-click, tab menu while resizing). On c74048f (quire v0.3.53) three failed
+      at once (those two and the sidebar's pin from the row's menu: a click on a menu item did
+      nothing) and all passed on a rerun: flaky menu clicks in the macOS harness, for the owner.
