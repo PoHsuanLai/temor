@@ -14,7 +14,7 @@
 /// (`temor-hosts`) and agents (`temor-agent`).
 pub mod model {
     pub use temor_agent::{agent, presence};
-    pub use temor_blocks::{block, key, notify, offer, proposal, session};
+    pub use temor_blocks::{block, key, notify, offer, session};
     pub use temor_core::*;
     pub use temor_hosts::{host, remote, shelf, transfer};
     pub use temor_layout::{bar, quick, space, split, stage, workspace};

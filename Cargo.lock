@@ -7211,7 +7211,6 @@ name = "temor-blocks"
 version = "0.1.1"
 dependencies = [
  "ds-core",
- "icu_properties",
  "proptest",
  "serde",
  "serde_json",
@@ -7342,6 +7341,7 @@ dependencies = [
  "nix",
  "percent-encoding",
  "rustix",
+ "serde",
  "temor-pty",
  "temor-render",
  "temor-shell",

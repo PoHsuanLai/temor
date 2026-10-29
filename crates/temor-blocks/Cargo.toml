@@ -1,6 +1,6 @@
 [package]
 name = "temor-blocks"
-description = "temor's rules for a shell session and its blocks (sans I/O): the shell's state and marks, the blocks it ran, the notices it raises, the command offer, and sanitising what a model proposes."
+description = "temor's rules for a shell session and its blocks (sans I/O): the shell's state and marks, the blocks it ran, the notices it raises and the command offer."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -19,7 +19,6 @@ serde_json = { workspace = true }
 [dev-dependencies]
 temor-testkit = { workspace = true }
 ds-core = { workspace = true, features = ["testing"] }
-icu_properties = { workspace = true }
 proptest = { workspace = true }
 
 [lints]

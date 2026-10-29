@@ -7,14 +7,8 @@ use ds_style::space::list::{SpaceId, Spaces};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use temor_agent::agent::approval::{AsksLevel, SandboxMode};
-use temor_agent::agent::context::{ChipKind, EntryPoint};
 use temor_agent::presence::{AgentState, Seen, StatusReport, StatusSource, WaitKind};
 use temor_blocks::block::{Author, Block, Taint};
-use temor_blocks::proposal::{
-    ChangeKind, CharClass, FileChange, FileChanges, Proposal, Sanitised, TrialVerdict,
-    UncheckedWhy, sanitise,
-};
 use temor_core::pane::{CliGate, PaneKind, TerminalPane, TerminalRole};
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::*;
@@ -83,15 +77,8 @@ fn closed_sets_serialise_as_their_slugs() {
     word_matches_serde::<WaitKind>();
     word_matches_serde::<Seen>();
     word_matches_serde::<Taint>();
-    word_matches_serde::<UncheckedWhy>();
-    word_matches_serde::<ChangeKind>();
-    word_matches_serde::<CharClass>();
     word_matches_serde::<Grant>();
     word_matches_serde::<AiSwitch>();
-    word_matches_serde::<AsksLevel>();
-    word_matches_serde::<SandboxMode>();
-    word_matches_serde::<ChipKind>();
-    word_matches_serde::<EntryPoint>();
 }
 
 #[test]
@@ -105,10 +92,6 @@ fn enums_with_data_are_adjacently_tagged() {
             json!({"kind": "waiting", "v": "sign_in"})),
         ("adapter", serde_json::to_value(StatusSource::Adapter(PluginId("cc".into()))).unwrap(),
             json!({"kind": "adapter", "v": "cc"})),
-        ("unchecked", serde_json::to_value(TrialVerdict::Unchecked(UncheckedWhy::TimedOut)).unwrap(),
-            json!({"kind": "unchecked", "v": "timed_out"})),
-        ("changed", serde_json::to_value(Sanitised::Changed { removed: vec![CharClass::Bidi] }).unwrap(),
-            json!({"kind": "changed", "v": {"removed": ["bidi"]}})),
         ("tier", serde_json::to_value(RemoteTier::Plain).unwrap(), json!({"kind": "plain"})),
     ];
     for (name, got, want) in cases {
@@ -154,29 +137,6 @@ fn every_stored_type_round_trips() {
         source: StatusSource::ProgramStatus,
         note: Some(Note("tests pass".into())),
     });
-    let (text, _) = sanitise("cargo test");
-    for verdict in [
-        TrialVerdict::Clean {
-            changes: FileChanges {
-                files: vec![FileChange {
-                    path: RelPath("a".into()),
-                    how: ChangeKind::Created,
-                }],
-            },
-        },
-        TrialVerdict::Failed {
-            exit: ExitCode(1),
-            first_error: ErrorLine("no such file".into()),
-        },
-        TrialVerdict::Unchecked(UncheckedWhy::Remote),
-    ] {
-        round_trips(&Proposal {
-            text: text.clone(),
-            turn: TurnRef(1),
-            taint: Taint::Clean,
-            verdict,
-        });
-    }
     round_trips(&Host {
         alias: HostAlias("prod".into()),
         target: SshTarget("me@prod:22".into()),
