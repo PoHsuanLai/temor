@@ -157,7 +157,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 [[package]]
 name = "almanac-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/almanac?rev=70782a6ccd02bf433f5e3767f9d8c6252c1a748f#70782a6ccd02bf433f5e3767f9d8c6252c1a748f"
+source = "git+https://github.com/PoHsuanLai/almanac?rev=0e1bc07512e730f328a2d7b334fa455af63005af#0e1bc07512e730f328a2d7b334fa455af63005af"
 dependencies = [
  "porter-core",
  "prov",
@@ -1670,7 +1670,7 @@ dependencies = [
 [[package]]
 name = "cua-action"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=f30d2808a9f05901a952c1fac6db2c6479a1bfe2#f30d2808a9f05901a952c1fac6db2c6479a1bfe2"
 dependencies = [
  "keyboard-types 0.7.0",
  "serde",
@@ -2153,7 +2153,7 @@ dependencies = [
 [[package]]
 name = "docket-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=41ddb1c7fe4b234d638e67628f6700dba67bfa07#41ddb1c7fe4b234d638e67628f6700dba67bfa07"
 dependencies = [
  "docket-core",
  "docket-dbus",
@@ -2168,7 +2168,7 @@ dependencies = [
 [[package]]
 name = "docket-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=41ddb1c7fe4b234d638e67628f6700dba67bfa07#41ddb1c7fe4b234d638e67628f6700dba67bfa07"
 dependencies = [
  "almanac-core",
  "bulkhead",
@@ -2185,7 +2185,7 @@ dependencies = [
 [[package]]
 name = "docket-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/docket.git?rev=7c9b57cb41516f8e050e797852bc1cc3d18736f0#7c9b57cb41516f8e050e797852bc1cc3d18736f0"
+source = "git+https://github.com/PoHsuanLai/docket.git?rev=41ddb1c7fe4b234d638e67628f6700dba67bfa07#41ddb1c7fe4b234d638e67628f6700dba67bfa07"
 dependencies = [
  "docket-core",
  "porter-core",
@@ -2905,7 +2905,7 @@ dependencies = [
 [[package]]
 name = "genai-names"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=f30d2808a9f05901a952c1fac6db2c6479a1bfe2#f30d2808a9f05901a952c1fac6db2c6479a1bfe2"
 
 [[package]]
 name = "generational-box"
@@ -4360,7 +4360,7 @@ dependencies = [
 [[package]]
 name = "model-provider"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=f30d2808a9f05901a952c1fac6db2c6479a1bfe2#f30d2808a9f05901a952c1fac6db2c6479a1bfe2"
 dependencies = [
  "base64 0.22.1",
  "cua-action",
@@ -5361,7 +5361,18 @@ version = "0.1.8"
 source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.8#bba63d4761b750c0789ca7689df4b86e5213905f"
 dependencies = [
  "nix",
- "peephole-core",
+ "peephole-core 0.1.8",
+ "rustix",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "peephole"
+version = "0.1.9"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.9#f22e99b447d1ef7f84d81ddce6ceb614088ee0ef"
+dependencies = [
+ "nix",
+ "peephole-core 0.1.9",
  "rustix",
  "thiserror 2.0.21",
 ]
@@ -5372,8 +5383,21 @@ version = "0.1.8"
 source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.8#bba63d4761b750c0789ca7689df4b86e5213905f"
 dependencies = [
  "futures-timer",
- "peephole",
- "peephole-core",
+ "peephole 0.1.8",
+ "peephole-core 0.1.8",
+ "thiserror 2.0.21",
+ "tokio",
+ "zbus",
+]
+
+[[package]]
+name = "peephole-bus"
+version = "0.1.9"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.9#f22e99b447d1ef7f84d81ddce6ceb614088ee0ef"
+dependencies = [
+ "futures-timer",
+ "peephole 0.1.9",
+ "peephole-core 0.1.9",
  "thiserror 2.0.21",
  "tokio",
  "zbus",
@@ -5383,6 +5407,16 @@ dependencies = [
 name = "peephole-core"
 version = "0.1.8"
 source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.8#bba63d4761b750c0789ca7689df4b86e5213905f"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
+name = "peephole-core"
+version = "0.1.9"
+source = "git+https://github.com/PoHsuanLai/peephole?tag=v0.1.9#f22e99b447d1ef7f84d81ddce6ceb614088ee0ef"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -5630,7 +5664,7 @@ dependencies = [
 [[package]]
 name = "porter-client"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
  "porter-core",
  "porter-dbus",
@@ -5646,9 +5680,9 @@ dependencies = [
 [[package]]
 name = "porter-core"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
- "peephole-core",
+ "peephole-core 0.1.9",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -5658,11 +5692,11 @@ dependencies = [
 [[package]]
 name = "porter-dbus"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
- "peephole",
- "peephole-bus",
- "peephole-core",
+ "peephole 0.1.9",
+ "peephole-bus 0.1.9",
+ "peephole-core 0.1.9",
  "porter-core",
  "serde",
  "serde_json",
@@ -5675,12 +5709,12 @@ dependencies = [
 [[package]]
 name = "porter-fs"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 
 [[package]]
 name = "porter-infer"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
  "base64 0.22.1",
  "cua-action",
@@ -5693,7 +5727,7 @@ dependencies = [
 [[package]]
 name = "porter-secrets"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
  "apple-native-keyring-store",
  "keyring-core",
@@ -5810,7 +5844,7 @@ dependencies = [
 [[package]]
 name = "prov"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/porter.git?rev=b2adc64da9ce49b41c83c73888a7d4da9e57a8bf#b2adc64da9ce49b41c83c73888a7d4da9e57a8bf"
+source = "git+https://github.com/PoHsuanLai/porter.git?rev=dcc16ada850559c7c8ae213cd7a9b153672e5031#dcc16ada850559c7c8ae213cd7a9b153672e5031"
 dependencies = [
  "porter-core",
  "serde",
@@ -7114,8 +7148,8 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
- "peephole-bus",
- "peephole-core",
+ "peephole-bus 0.1.8",
+ "peephole-core 0.1.8",
  "porter-client",
  "porter-core",
  "porter-secrets",
@@ -7297,6 +7331,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "toml",
+ "unicode-width",
 ]
 
 [[package]]
@@ -7905,7 +7940,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vision-prep"
 version = "0.1.0"
-source = "git+https://github.com/PoHsuanLai/stoker?rev=45c5a8947f2caa735688ef55f8be012d5fe346a9#45c5a8947f2caa735688ef55f8be012d5fe346a9"
+source = "git+https://github.com/PoHsuanLai/stoker?rev=f30d2808a9f05901a952c1fac6db2c6479a1bfe2#f30d2808a9f05901a952c1fac6db2c6479a1bfe2"
 dependencies = [
  "cua-action",
  "serde",

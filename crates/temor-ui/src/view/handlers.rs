@@ -9,19 +9,19 @@ use std::time::Instant;
 use dioxus::prelude::*;
 use ds::base::time::FRAME_SLACK;
 use ds::base::time::clock::sleep;
+use ds::host::measure::RectProbe;
 use ds::host::signals::HostSignals;
 use ds::prelude::{Point, Px};
 use temor_core::vocab::ids::{BlockId, PaneId};
 use temor_pane::keys::Action;
 
 use super::block_menu::BlockMenuAt;
-use super::convert::{device_point, scale_of};
 use super::find_bar::StepDirection;
 use super::ime::ImeGlue;
 use super::slot::{Slot, repaint};
 use super::window_help::{device_at, run_query_later};
 use crate::hub::Desk;
-use crate::session::Session;
+use crate::session::{HistoryStep, Session};
 
 /// The find bar's query, run once typing pauses.
 pub fn find_query(
@@ -75,19 +75,19 @@ pub fn find_close(
     }
 }
 
-/// A press in the pane: in the gutter it picks a block; a right press on a block picks it for
-/// its menu (which opens on the `contextmenu` that follows the release, see
-/// [`block_menu_opened`]); anywhere else it is the grid's.
-pub fn gutter_pressed(
+/// A press in the pane: a right press on a block picks it for its menu (which opens on the
+/// `contextmenu` that follows the release, see [`block_menu_opened`]); anything else is the
+/// grid's.
+pub fn grid_pressed(
     slot: Rc<RefCell<Slot>>,
-    signals: Option<HostSignals>,
+    (rect, signals): (RectProbe, Option<HostSignals>),
     mut ui: Signal<u32>,
     mut notice: Signal<Option<String>>,
     mouse_down: Rc<dyn Fn(PointerEvent)>,
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
-        let at = device_at(&e, signals);
         if e.trigger_button() == Some(dioxus::html::input_data::MouseButton::Secondary) {
+            let at = device_at(e.client_coordinates(), &rect, signals);
             let block = match slot.borrow_mut().session.as_mut() {
                 Some(s) => s.block_menu_press(at),
                 None => Ok(None),
@@ -102,18 +102,7 @@ pub fn gutter_pressed(
                 Err(err) => notice.set(Some(err.to_string())),
             }
         }
-        let gutter = match slot.borrow_mut().session.as_mut() {
-            Some(s) => s.gutter_press(at),
-            None => Ok(false),
-        };
-        match gutter {
-            Ok(true) => {
-                ui += 1;
-                repaint(&slot);
-            }
-            Ok(false) => mouse_down(e),
-            Err(err) => notice.set(Some(err.to_string())),
-        }
+        mouse_down(e);
     }
 }
 
@@ -122,13 +111,12 @@ pub fn gutter_pressed(
 /// release from landing outside a menu that has just opened, and closing it.
 pub fn block_menu_opened(
     slot: Rc<RefCell<Slot>>,
-    signals: Option<HostSignals>,
+    (rect, signals): (RectProbe, Option<HostSignals>),
     mut ui: Signal<u32>,
     mut menu: Signal<Option<BlockMenuAt>>,
 ) -> impl FnMut(MouseEvent) + 'static {
     move |e: MouseEvent| {
-        let p = e.element_coordinates();
-        let at = device_point(p.x, p.y, scale_of(signals.as_ref()));
+        let at = device_at(e.client_coordinates(), &rect, signals);
         let block = slot
             .borrow_mut()
             .session
@@ -148,37 +136,24 @@ pub fn block_menu_opened(
     }
 }
 
-/// The pointer over the pane: the block under it, if any, is hovered (its toolbar shows). The
-/// session keeps where the pointer is, so the wheel moves the hover with it.
-pub fn block_hovered(
+/// The pointer over the pane: the session keeps where it is, for the link under it.
+pub fn pointer_over(
     slot: Rc<RefCell<Slot>>,
-    signals: Option<HostSignals>,
-    mut hovered: Signal<Option<BlockId>>,
+    (rect, signals): (RectProbe, Option<HostSignals>),
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
-        let at = device_at(&e, signals);
-        let over = slot.borrow_mut().session.as_mut().and_then(|s| {
+        let at = device_at(e.client_coordinates(), &rect, signals);
+        if let Some(s) = slot.borrow_mut().session.as_mut() {
             s.pointer_moved(at);
-            s.hovered_block()
-        });
-        if over != hovered() {
-            hovered.set(over);
         }
     }
 }
 
-/// The pointer left the pane: no block is hovered, and its toolbar goes unless the block is
-/// selected.
-pub fn block_unhovered(
-    slot: Rc<RefCell<Slot>>,
-    mut hovered: Signal<Option<BlockId>>,
-) -> impl FnMut(PointerEvent) + 'static {
+/// The pointer left the pane: no link is under it.
+pub fn pointer_gone(slot: Rc<RefCell<Slot>>) -> impl FnMut(PointerEvent) + 'static {
     move |_: PointerEvent| {
         if let Some(s) = slot.borrow_mut().session.as_mut() {
             s.pointer_left();
-        }
-        if hovered().is_some() {
-            hovered.set(None);
         }
     }
 }
@@ -221,6 +196,65 @@ pub fn bar_copy_output(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(B
     on_session(slot, ui, Redraw::WindowOnly, |s, id| s.copy_output(id))
 }
 
+/// A card's chevron in the block list: folds its output away or brings it back.
+pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
+}
+
+/// The composer's text as the person edits it.
+pub fn composer_input(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(String) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, text| {
+        s.set_composer_text(text)
+    })
+}
+
+/// The composer's Enter: its text goes to the shell.
+pub fn composer_submit(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.composer_submit())
+}
+
+/// The composer's arrows through the pane's commands.
+pub fn composer_history(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(HistoryStep) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
+        s.composer_history(step)
+    })
+}
+
+/// The composer's Tab: the shell is asked to complete the line.
+pub fn composer_complete(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, ()| s.composer_complete())
+}
+
+/// The pick among the words the shell offered moves.
+pub fn composer_pick(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(HistoryStep) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
+        s.composer_pick(step)
+    })
+}
+
+/// A word the shell offered goes into the line: the picked one, or the one pressed.
+pub fn composer_take(
+    slot: Rc<RefCell<Slot>>,
+    ui: Signal<u32>,
+) -> impl FnMut(Option<usize>) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, index| {
+        s.composer_take_choice(index)
+    })
+}
+
+/// The words the shell offered are put away.
+pub fn composer_close(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WindowOnly, |s, ()| {
+        s.composer_close_choices()
+    })
+}
+
 /// The block toolbar's save of an output to Downloads.
 pub fn bar_save(
     slot: Rc<RefCell<Slot>>,
@@ -245,11 +279,9 @@ pub fn bar_rerun(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId
     on_session(slot, ui, Redraw::WithGrid, |s, id| s.rerun(id))
 }
 
-/// The sticky header's press: the block's prompt scrolls to the top of the pane.
-pub fn header_press(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, id| {
-        s.scroll_block_to_top(id)
-    })
+/// The running card's Stop: the program is interrupted.
+pub fn block_stop(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
+    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.send_bytes(b"\x03"))
 }
 
 /// A header or toolbar press, then the keyboard back to the terminal: the button the person

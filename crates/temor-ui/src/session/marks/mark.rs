@@ -3,6 +3,8 @@
 //! anchor sits, the text typed) and its outputs are carried out (anchors handed back, a finished
 //! command announced).
 
+use std::time::Instant;
+
 use temor_core::session::{MarkIn, MarkKind, MarkOut, mark_step};
 use temor_core::vocab::ids::{ExitCode, GridRow};
 use temor_vt::{AnchorId, ExitStatus, PromptEvent, PromptKind};
@@ -42,13 +44,26 @@ impl Session {
         self.mark(MarkIn::Event(kind_of(mark)));
     }
 
-    /// A mark's anchor arrived. It is paired with the event of the same number; anything else is
-    /// released, so a missed anchor cannot pair with the next mark's event.
-    pub(in crate::session) fn anchored(&mut self, seq: u64, id: AnchorId) -> Notice {
+    /// A mark's anchor arrived, read by the pane at `read`. It is paired with the event of the
+    /// same number; anything else is released, so a missed anchor cannot pair with the next
+    /// mark's event.
+    pub(in crate::session) fn anchored(&mut self, seq: u64, id: AnchorId, read: Instant) -> Notice {
         let finished_before = self.blocks.marks.finished();
         let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
-        let at = self.clock.now();
-        let typed = self.typed_at(id);
+        // When the pane read the mark, not when the window got to it: a command's start and end
+        // taken in one go would otherwise be 0 ms apart.
+        let at = self.clock.at(read);
+        // The composer's text is the command as sent, lines and all, where the screen's rows
+        // are only how the shell drew it; a command the shell names keeps its own name.
+        let starts = match self.blocks.marks.pending() {
+            Some(MarkKind::OutputStart { command }) => Some(command.is_empty()),
+            _ => None,
+        };
+        let sent = match starts {
+            Some(unnamed) => self.take_composer_sent().filter(|_| unnamed),
+            None => None,
+        };
+        let typed = sent.or_else(|| self.typed_at(id));
         self.mark(MarkIn::Anchored {
             seq,
             anchor: handle(id),
@@ -105,6 +120,9 @@ impl Session {
     /// Drops the blocks whose marks the scrollback no longer holds.
     pub(super) fn sweep(&mut self) {
         let ids = self.swept();
+        for id in &ids {
+            self.blocks.notes.remove(id);
+        }
         if !ids.is_empty() {
             self.mark(MarkIn::Gone { ids });
         }
@@ -118,7 +136,10 @@ impl Session {
         for out in outs {
             match out {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
-                MarkOut::Finished(block) => self.notify_finished(&block),
+                MarkOut::Finished(block) => {
+                    self.keep_note(&block);
+                    self.notify_finished(&block);
+                }
                 _ => {}
             }
         }

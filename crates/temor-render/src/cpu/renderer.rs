@@ -5,7 +5,6 @@ use temor_vt::Row;
 use super::compose::compose_row;
 use super::overhang::{Overhangs, compose_with_neighbours};
 use super::pixels::Target;
-use crate::bands::STRIPE_LOGICAL;
 use crate::error::RenderError;
 use crate::font::{FontSet, GlyphCache};
 use crate::frame::PaneFrame;
@@ -28,6 +27,9 @@ pub struct CpuRenderer {
     tracker: ChangeTracker,
     overhangs: Overhangs,
     scene: RowScene,
+    /// Stills are drawn whole into memory of their own, so the live frame's stays as it was.
+    still: Vec<u8>,
+    still_overhangs: Overhangs,
 }
 
 /// One rendered frame.
@@ -58,6 +60,8 @@ impl CpuRenderer {
             tracker: ChangeTracker::default(),
             overhangs: Overhangs::default(),
             scene: RowScene::default(),
+            still: Vec::new(),
+            still_overhangs: Overhangs::default(),
         }
     }
 
@@ -71,6 +75,78 @@ impl CpuRenderer {
             alpha_max,
             color_max,
         ))
+    }
+}
+
+impl CpuRenderer {
+    /// Draws every row of a [`PaneFrame::still`] (a finished block's output) whole, sharing
+    /// this renderer's glyphs but not its memory or its record of what the live frame drew:
+    /// `view.size` is the still's own (its rows' height plus `view.padding`), the selection is
+    /// in the still's rows, and the cursor and lowering are not drawn.
+    pub fn render_still(
+        &mut self,
+        frame: &PaneFrame,
+        view: &PaneView<'_>,
+    ) -> Result<CpuFrame<'_>, RenderError> {
+        let (w, h) = (view.size.width.0, view.size.height.0);
+        if w > MAX_SIDE || h > MAX_SIDE {
+            return Err(RenderError::PaneTooLarge {
+                width: w,
+                height: h,
+            });
+        }
+        let resets = self.glyphs.epoch();
+        self.glyphs.set_scale(view.scale);
+        let metrics = self.glyphs.metrics();
+        let fit = fit_grid(view.size, &metrics, view.padding);
+        self.still.clear();
+        self.still.resize((w * h * 4) as usize, 0);
+        let input = SceneInput {
+            metrics,
+            origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
+            cols: frame.size.cols.0,
+            palette: view.palette,
+            colors: &frame.colors,
+            cursor: None,
+            selection: view.selection,
+        };
+        let mut target = Target {
+            data: &mut self.still,
+            width: w,
+            height: h,
+            band: (0, h as i32),
+        };
+        target.clear_band(Premul::opaque(frame.colors.background));
+        let rows: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
+        self.still_overhangs.fit(frame.size.rows.0);
+        let composed = compose_with_neighbours(
+            &rows,
+            frame.size.rows.0,
+            &mut self.still_overhangs,
+            |row, beside| {
+                compose_row(
+                    &mut target,
+                    &input,
+                    (row, beside),
+                    &frame.rows,
+                    &[],
+                    &mut self.glyphs,
+                    &mut self.scene,
+                )
+            },
+        )?;
+        self.glyphs.forget_uploads();
+        Ok(CpuFrame {
+            pixels: &self.still,
+            size: view.size,
+            damage: &[],
+            fit,
+            stats: RenderStats {
+                rows_composed: composed.len() as u32,
+                atlas_resets: (self.glyphs.epoch() - resets) as u32,
+                images_skipped: 0,
+            },
+        })
     }
 }
 
@@ -126,7 +202,6 @@ impl Renderer for CpuRenderer {
             cursor,
             view.selection,
             &frame.images,
-            view.bands,
         );
         let input = SceneInput {
             metrics,
@@ -136,9 +211,6 @@ impl Renderer for CpuRenderer {
             colors: &frame.colors,
             cursor,
             selection: view.selection,
-            bands: view.bands,
-            pane_width: w,
-            stripe_width: view.scale.device(STRIPE_LOGICAL).0.max(1),
         };
         let mut target = Target {
             data: &mut self.buf,

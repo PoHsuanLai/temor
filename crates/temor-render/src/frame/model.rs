@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use super::placeholder::PlaceholderCell;
+use super::placeholder::{PLACEHOLDER, PlaceholderCell};
 use temor_vt::{
-    CellStyle, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px, Rgb, Row, RowDirty,
-    Selected,
+    CellStyle, CellView, CellWidth, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px,
+    Rgb, Row, RowDirty, Selected, StyleFlags, StyledCell, Underline,
 };
 
 /// A cell's grapheme cluster.
@@ -131,6 +131,39 @@ impl PaneFrame {
         }
     }
 
+    /// A frame of `rows` read from anywhere in the screen (a finished block's output), `cols`
+    /// wide, in the default colours `like` has: nothing changes in it, it has no cursor and no
+    /// images, and every row is to be drawn.
+    pub fn still(cols: u16, rows: &[Vec<StyledCell>], like: &PaneFrame) -> Self {
+        let height = u16::try_from(rows.len()).unwrap_or(u16::MAX);
+        Self {
+            size: GridSize::new(cols, height),
+            rows: rows
+                .iter()
+                .take(usize::from(height))
+                .map(|row| row.iter().filter_map(|c| drawable(&c.view())).collect())
+                .collect(),
+            dirty: vec![RowDirty::Dirty; usize::from(height)],
+            cursor: None,
+            colors: like.colors,
+            placeholders: vec![Vec::new(); usize::from(height)],
+            images: Vec::new(),
+        }
+    }
+
+    /// The same frame drawn on `background` where a cell has no colour of its own (a still set
+    /// on a card).
+    pub fn on_background(mut self, background: Rgb) -> Self {
+        self.set_background(background);
+        self
+    }
+
+    /// Draws this frame on `background` where a cell has no colour of its own, until the next
+    /// capture sets the terminal's own again.
+    pub fn set_background(&mut self, background: Rgb) {
+        self.colors.background = background;
+    }
+
     /// The cursor's cell as of the last capture, when the cursor is shown.
     pub fn cursor_cell(&self) -> Option<crate::metrics::CellPos> {
         self.cursor
@@ -229,4 +262,38 @@ impl PaneFrame {
         self.dirty.fill(RowDirty::Clean);
         rows
     }
+}
+
+/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders (kept apart as
+/// [`PlaceholderCell`]) and blank narrow default cells. Blank wide cells are kept, so a cursor
+/// on one spans both columns.
+pub(crate) fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
+    let span = match c.width {
+        CellWidth::Narrow => 1,
+        CellWidth::Wide => 2,
+        CellWidth::SpacerTail | CellWidth::SpacerHead => return None,
+    };
+    if c.text.starts_with(PLACEHOLDER) {
+        return None;
+    }
+    let text = CellText::new(c.text);
+    let flags = c.style.flags;
+    let marked = c.bg.is_some()
+        || c.selected == temor_vt::Selected::Yes
+        || c.style.underline != Underline::None
+        || flags.contains(StyleFlags::INVERSE)
+        || flags.contains(StyleFlags::STRIKETHROUGH)
+        || flags.contains(StyleFlags::OVERLINE);
+    if text.is_blank() && !marked && span == 1 {
+        return None;
+    }
+    Some(CellDraw {
+        col: c.col,
+        span,
+        text,
+        fg: c.fg,
+        bg: c.bg,
+        style: c.style,
+        selected: c.selected,
+    })
 }

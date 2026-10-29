@@ -1,5 +1,6 @@
-//! One pane in the window (PLAN §2, temor-ui): the terminal region with its find bar, sticky header, block toolbar,
-//! status line and paste confirmation. The component wires Dioxus events to the pane's session and
+//! One pane in the window (PLAN §2, temor-ui): the terminal region drawn as its list of blocks
+//! (or, while a full-screen program holds it, as that program's screen), with its find bar,
+//! block menu, status line and paste confirmation. The component wires Dioxus events to the pane's session and
 //! the session's state to elements; the session does the work (see `slot` for the state and
 //! `convert` for the event values). A pane is mounted only while its tab is in front, and what it
 //! holds on the page (the element handles of the input method and the rect) goes with it.
@@ -9,42 +10,44 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use dioxus::prelude::*;
+use ds::edit::raw_key::RawKey;
 use ds::file_drop::drag::FileDrop;
 use ds::file_drop::hook::use_file_drop;
+use ds::focus::request::use_focus_request;
+use ds::host::caret::InitialCaret;
 use ds::host::document::use_document_host;
 use ds::host::ime::ImeEvent;
 use ds::host::measure::use_rect;
 use ds::host::signals::HostSignals;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
-use ds_blitz::use_gpu;
+use ds_blitz::{Sampling, TextureFit, TextureLayer, use_gpu};
 use temor_core::remote::Grant;
-use temor_core::vocab::ids::{BlockId, PaneId};
+use temor_core::vocab::ids::PaneId;
 
 use super::block_edit::{bar_edit, edit_on_this_computer};
-use super::block_header::BlockHeader;
+use super::block_list::pane::lens_request;
+use super::block_list::{
+    BlockPane, CardActions, CardOffers, ChoicesView, ComposerActions, ComposerView,
+};
 use super::block_menu::{
     BlockMenu, BlockMenuAt, BlockMenuState, BlockPick, PaneKind, PictureShown,
 };
-use super::block_meta::BlockMetas;
-use super::block_tools::{BlockTools, ToolsView};
 use super::blocks::{Chrome, chrome_of};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::convert::scale_of;
-use super::fact_chips::{ChipPlace, FactChips, chips_for, header_chips};
 use super::find_bar::FindBar;
-use super::first_hint::{FirstHint, hint_for};
-use super::grid_slices::{GridTexture, grid_cut};
 use super::handlers::{
-    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_unhovered, find_close,
-    find_query, find_step, header_press, then_regain,
+    bar_copy_command, bar_copy_output, bar_rerun, bar_save, block_stop, composer_close,
+    composer_complete, composer_history, composer_input, composer_pick, composer_submit,
+    composer_take, find_close, find_query, find_step, list_fold, pointer_gone, then_regain,
 };
 use super::ime::{ImeGlue, composed_sink};
-use super::lens_picture::{LensPictures, lens_request, lens_views};
 use super::link_tip::LinkTip;
+use super::live_head::LiveCardHead;
 use super::pane_focus::{PaneFocus, use_pane_focus};
 use super::pane_footer::{Shell, pane_footer};
-use super::pane_keys::key_handler;
+use super::pane_keys::{KeyRegion, key_handler};
 use super::pane_pointer::{GridPointer, GridState, grid_pointer};
 use super::peek::use_peek;
 use super::peek_card::peek_card;
@@ -53,10 +56,8 @@ use super::slot::{Device, Display, Slot, layout, repaint};
 use super::viewer_open::{bar_view, view_if_asked};
 use super::window_help::device_pixels;
 use crate::hub::Desk;
+use crate::hub::LiveIcon;
 use temor_pane::keys::Action;
-
-/// How far the find bar sits below the pane's top (`.temor-find`'s `top`, `--s-4`).
-const FIND_TOP: f32 = 4.0;
 
 /// Puts the pane on screen: it paints into `texture` from now on.
 fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {
@@ -110,10 +111,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     }
     let ui = desk.ui;
     let preedit = use_signal(|| None::<String>);
-    let hovered = use_signal(|| None::<BlockId>);
-    // The block whose "more" menu is up keeps its tools whatever the pointer does.
-    let held = use_signal(|| None::<BlockId>);
-    let find_height = use_signal(|| 0.0_f32);
     let block_menu = use_signal(|| None::<BlockMenuAt>);
     // The ⌘-hover preview of a file path (PLAN §10).
     let peek = use_peek(pane, Rc::clone(&slot), desk.clone(), rect, signals);
@@ -142,14 +139,50 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         use_callback(move |event: ImeEvent| ime.event(event, &apply))
     };
 
+    // The composer's field takes the caret at its end: typing goes on from what is there.
+    let composer_focus = use_focus_request().with_caret(InitialCaret::End);
     let on_key = key_handler(
         Rc::clone(&slot),
         ime.clone(),
         apply.clone(),
         desk.clone(),
         peek.key.clone(),
-        pane,
-        rect,
+        KeyRegion {
+            pane,
+            rect,
+            composer: composer_focus,
+        },
+    );
+    // The pane that becomes the keyboard pane while the composer is shown gives it the caret.
+    {
+        let (slot, desk) = (Rc::clone(&slot), desk.clone());
+        let wanted = use_hook(|| Rc::new(std::cell::Cell::new(false)));
+        use_effect(move || {
+            let _ = (desk.ui)();
+            let s = slot.borrow();
+            let want = desk.hub.keyboard_pane() == Some(pane)
+                && !desk.hub.bar_is_open()
+                && s.session
+                    .as_ref()
+                    .is_some_and(|s| s.composer_shown() && s.finder().is_none());
+            if want && !wanted.replace(want) {
+                composer_focus.request();
+            }
+            wanted.set(want);
+        });
+    }
+    // A chord typed in the composer's field is the terminal's, as if typed in the region.
+    let composer_chord = key_handler(
+        Rc::clone(&slot),
+        ime.clone(),
+        apply.clone(),
+        desk.clone(),
+        peek.key.clone(),
+        KeyRegion {
+            pane,
+            rect,
+            composer: composer_focus,
+        },
     );
 
     // A ⌘-click's viewer opens once the press is released: opening it splits the pane, which must
@@ -195,10 +228,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         &peek,
         signals,
         GridState {
-            hovered,
             ui,
             notice: desk.notice,
             menu: block_menu,
+            rect,
         },
         mouse.down.clone(),
     );
@@ -219,63 +252,22 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         .borrow()
         .session
         .as_ref()
-        .map_or_else(Chrome::default, |s| chrome_of(s, hovered(), held()));
+        .map_or_else(Chrome::default, chrome_of);
     let clip_ask = slot
         .borrow()
         .session
         .as_ref()
         .and_then(|s| s.clipboard_ask().cloned());
-    // The find bar stands over the pane's top rows: the meta and tools there would lie under it.
-    let under_find = |top: f32| find.is_some() && top < FIND_TOP + find_height();
-    let metas: Vec<_> = chrome
-        .metas
-        .iter()
-        .filter(|meta| !under_find(meta.top))
-        .cloned()
-        .collect();
     let facts = desk.hub.facts_of(pane);
     let plugin_facts = desk.hub.plugin_facts_of(pane);
     let folder = desk.hub.chip_folder(pane);
     let on_host = desk.hub.is_host_pane(pane);
-    // "Edit Locally" is only for a pane on another computer.
-    let tools = chrome
-        .tools
-        .clone()
-        .filter(|tools| !under_find(tools.top))
-        .map(|tools| ToolsView {
-            edit: on_host.then_some(Availability::Enabled),
-            copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
-            ..tools
-        });
-    let chips = slot
-        .borrow()
-        .session
-        .as_ref()
-        .and_then(|s| chips_for(s, &facts, &plugin_facts, folder.as_deref()));
-    // What the prompt's chips say now is kept for the block it becomes.
-    let over = chips.as_ref().map(|c| c.place) == Some(ChipPlace::Over);
-    if let Some((folder, s)) = folder
-        .as_ref()
-        .filter(|_| over)
-        .zip(slot.borrow_mut().session.as_mut())
-    {
+    // What the shell's folder and facts are now is kept for the block the prompt becomes: its
+    // card's folder line says where it ran.
+    if let Some((folder, s)) = folder.as_ref().zip(slot.borrow_mut().session.as_mut()) {
         s.keep_header_facts(folder, &facts, &plugin_facts);
     }
-    let older_chips: Vec<_> = {
-        let slot = slot.borrow();
-        let palette = slot.palette;
-        slot.session
-            .as_ref()
-            .zip(chrome.frame.as_ref())
-            .map(|(s, frame)| header_chips(s, frame, &metas, &palette))
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|(_, view)| !under_find(view.top))
-            .collect()
-    };
     let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
-    // The grid in slices around the room under blocks with pictures, as the last paint laid it out.
-    let cut = slot.borrow().session.as_ref().and_then(grid_cut);
     // The block menu speaks of what is picked now.
     let menu_block = match block_menu() {
         Some(_) => slot
@@ -298,6 +290,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let menu_state = slot.borrow().session.as_ref().map(|s| BlockMenuState {
         picked: s.picked_blocks().len(),
         bookmarked: s.picks_bookmarked(),
+        folded: s.picks_folded(),
+        detachable: desk.hub.can_detach(pane),
         pane: match on_host {
             true => PaneKind::OnHost,
             false => PaneKind::ThisComputer,
@@ -305,26 +299,13 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         lenses,
         picture,
     });
-    // Pictures lenses drew, each under its block.
-    let lens_pictures = {
-        let pictures = desk.hub.lens_pictures(pane);
-        match pictures.is_empty() {
-            true => Vec::new(),
-            false => slot
-                .borrow()
-                .session
-                .as_ref()
-                .zip(chrome.frame.as_ref())
-                .map(|(s, frame)| lens_views(s, frame, pictures))
-                .unwrap_or_default(),
-        }
-    };
     let menu_pick = {
         let (slot, mut ui, mut menu) = (Rc::clone(&slot), ui, block_menu);
         let desk = desk.clone();
         move |pick: BlockPick| {
             menu.set(None);
             match pick {
+                BlockPick::Do(Action::DetachProgram) => desk.detach_block(pane),
                 BlockPick::Do(action) => {
                     if let Some(s) = slot.borrow_mut().session.as_mut() {
                         let _ = s.run(action);
@@ -352,17 +333,42 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             repaint(&slot);
         }
     };
-    // One quiet line under a new window's first prompt, until the first command runs.
-    let hint = desk.hub.first_hint(pane).and_then(|text| {
-        slot.borrow()
-            .session
-            .as_ref()
-            .and_then(|s| hint_for(s, text))
-    });
+    let live_head = desk.hub.live_head(pane);
+    // Cards and headers are set in the grid's own family, so a command reads as it was typed.
+    let card_font = slot
+        .borrow()
+        .session
+        .as_ref()
+        .map(|s| s.grid_font().family_css())
+        .unwrap_or_default();
+    // The pane as a list of blocks, but for a full-screen program's screen.
+    let block_items = slot.borrow().session.as_ref().and_then(|s| s.block_list());
+    let listed = block_items.is_some();
+    let reground = !listed
+        && slot.borrow_mut().session.as_mut().is_some_and(|s| {
+            s.set_list_map(None);
+            s.set_composer_shown(false);
+            s.set_live_ground(None)
+        });
+    if reground {
+        repaint(&slot);
+    }
+    let picked_block = slot
+        .borrow()
+        .session
+        .as_ref()
+        .and_then(|s| s.selected_block());
+    let live_icon = {
+        let desk = desk.clone();
+        move |icon: LiveIcon| desk.live_icon(pane, icon)
+    };
+    let wheel_slot = Rc::clone(&slot);
     rsx! {
         div { class: "temor-pane",
-            // On the pane, not the grid: the block toolbar beside the grid keeps the hover.
-            onpointerleave: block_unhovered(Rc::clone(&slot), hovered),
+            onpointerleave: pointer_gone(Rc::clone(&slot)),
+            if let Some(head) = live_head {
+                LiveCardHead { head, font: card_font.clone(), on_icon: live_icon }
+            }
             RawKeySurface {
                 on_key: EventHandler::new(on_key),
                 on_focus,
@@ -374,7 +380,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                 },
                 div {
                     class: "temor-grid",
-                    "data-wheel": "capture",
+                    // A list of blocks scrolls itself: the wheel is the window's to give it.
+                    "data-wheel": (!listed).then_some("capture"),
                     "data-drop": dropper.drop_attr(),
                     onmounted: move |e: MountedEvent| {
                         dropper.mounted(e.clone());
@@ -386,53 +393,79 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     onpointerleave: on_leave,
                     oncontextmenu: on_context,
                     onwheel: move |e| {
+                        // A list scrolls itself; only a program that asked for the mouse hears
+                        // the wheel over its live rows (they capture it), and never with Shift,
+                        // which would scroll the terminal under the list.
+                        let program = wheel_slot.borrow().session.as_ref().is_some_and(|s| s.mouse_tracking());
+                        if listed && !(program && !e.modifiers().contains(Modifiers::SHIFT)) {
+                            return;
+                        }
                         (mouse.wheel)(e);
-                        // The hovered block follows the wheel; draw it again.
-                        let mut ui = ui;
-                        ui += 1;
                     },
-                    GridTexture { texture: texture.clone(), cut: cut.clone() }
+                    if let Some(items) = block_items {
+                        BlockPane {
+                            pane,
+                            desk: desk.clone(),
+                            items,
+                            texture: texture.clone(),
+                            font: card_font.clone(),
+                            reveal: picked_block,
+                            found: slot.borrow().session.as_ref().and_then(|s| s.found_row()),
+                            pictures: desk.hub.lens_pictures(pane),
+                            composer: ComposerView {
+                                text: slot.borrow().session.as_ref().map(|s| s.composer_text().to_owned()).unwrap_or_default(),
+                                font: card_font.clone(),
+                                folder: folder.clone(),
+                                selection: slot.borrow().session.as_ref().is_some_and(|s| s.has_selection()),
+                                focus: composer_focus,
+                                take: desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open() && find.is_none(),
+                                actions: ComposerActions {
+                                    input: EventHandler::new(composer_input(Rc::clone(&slot), ui)),
+                                    submit: EventHandler::new(then_regain(composer_submit(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                    history: EventHandler::new(composer_history(Rc::clone(&slot), ui)),
+                                    chord: EventHandler::new(composer_chord),
+                                    gone: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
+                                    key: EventHandler::new({ let key = peek.key.clone(); move |raw: RawKey| key(&raw) }),
+                                    complete: EventHandler::new(composer_complete(Rc::clone(&slot), ui)),
+                                    pick: EventHandler::new(composer_pick(Rc::clone(&slot), ui)),
+                                    take: EventHandler::new(composer_take(Rc::clone(&slot), ui)),
+                                    close: EventHandler::new(composer_close(Rc::clone(&slot), ui)),
+                                },
+                                choices: slot.borrow().session.as_ref().and_then(|s| s.composer_choices()).map(|c| ChoicesView {
+                                    words: c.words().to_vec(),
+                                    picked: c.picked(),
+                                }),
+                            },
+                            actions: CardActions {
+                                copy_command: EventHandler::new(then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                copy_output: EventHandler::new(then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                save: EventHandler::new(then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain)),
+                                rerun: EventHandler::new(then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                view: EventHandler::new(bar_view(Rc::clone(&slot), desk.clone(), pane)),
+                                edit: EventHandler::new(bar_edit(Rc::clone(&slot), desk.clone(), pane)),
+                                fold: EventHandler::new(then_regain(list_fold(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                detach: EventHandler::new({ let desk = desk.clone(); move |()| desk.detach_block(pane) }),
+                                stop: EventHandler::new(then_regain(block_stop(Rc::clone(&slot), ui), ime.clone(), regain)),
+                                menu_closed: EventHandler::new({ let ime = ime.clone(); move |()| ime.take_focus(regain) }),
+                            },
+                            offers: CardOffers {
+                                detach: desk.hub.can_detach(pane),
+                                on_host,
+                                copy_command_key: desk.hub.shortcut_of(Action::CopyCommands),
+                            },
+                        }
+                    } else {
+                        TextureLayer { texture: Some(texture.clone()), fit: TextureFit::Actual, sampling: Sampling::Nearest }
+                    }
                     if let Some(text) = preedit() {
                         div { class: "temor-preedit", "{text}" }
                     }
                 }
-                // Beside the grid, not in it: a press on these never reaches the terminal.
-                if !lens_pictures.is_empty() {
-                    LensPictures { views: lens_pictures }
-                }
-                if let Some(header) = chrome.header.clone() {
-                    BlockHeader {
-                        header,
-                        on_press:then_regain(header_press(Rc::clone(&slot), ui), ime.clone(), regain),
-                    }
-                }
-                if let Some(view) = chips {
-                    FactChips { view }
-                }
-                for (id, view) in older_chips {
-                    FactChips { key: "{id.0}", view }
-                }
                 if let Some(spot) = link_tip {
                     LinkTip { spot }
                 }
-                BlockMetas { metas }
-                if let Some(view) = hint {
-                    FirstHint { view }
-                }
                 if let Some(card) = (peek.card)() {
                     {peek_card(&card, peek.measure)}
-                }
-                if let Some(tools) = tools {
-                    BlockTools {
-                        tools,
-                        held,
-                        on_copy_command:then_regain(bar_copy_command(Rc::clone(&slot), ui), ime.clone(), regain),
-                        on_copy_output:then_regain(bar_copy_output(Rc::clone(&slot), ui), ime.clone(), regain),
-                        on_save:then_regain(bar_save(Rc::clone(&slot), ui, desk.notice), ime.clone(), regain),
-                        on_rerun:then_regain(bar_rerun(Rc::clone(&slot), ui), ime.clone(), regain),
-                        on_view:bar_view(Rc::clone(&slot), desk.clone(), pane),
-                        on_edit:bar_edit(Rc::clone(&slot), desk.clone(), pane),
-                    }
                 }
             }
             if let (Some(at), Some(state)) = (block_menu(), menu_state) {
@@ -456,12 +489,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     previous_tip: desk.hub.tooltip("Previous match", Action::FindPrevious),
                     next_tip: desk.hub.tooltip("Next match", Action::FindNext),
                     on_close:find_close(Rc::clone(&slot), ui, ime.clone(), regain),
-                    on_height: move |height: f32| {
-                        let mut find_height = find_height;
-                        if *find_height.peek() != height {
-                            find_height.set(height);
-                        }
-                    },
                 }
             }
             if let Some(ask) = clip_ask {

@@ -51,6 +51,10 @@ impl Session {
             ));
             return Ok(());
         }
+        // The composer shows what it is given before anything runs: no check is needed.
+        if self.composer_takes(&text) {
+            return Ok(());
+        }
         let mode = self.pane.with_term(|term| term.paste_mode());
         match check(&text, mode, vt_verdict(&text, mode)) {
             PasteCheck::Safe => self.pane.send(&encode(&text, mode)),

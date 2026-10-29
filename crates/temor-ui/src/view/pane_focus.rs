@@ -81,7 +81,8 @@ pub fn use_pane_focus(
     });
 
     // The pane that becomes the keyboard pane (a chord moved focus, a tile was pressed) takes the
-    // keyboard on the page too; not while the bar's field has it, and back when the bar closes.
+    // keyboard on the page too; not while the bar's field or the composer's has it, and back when
+    // the bar closes or the composer goes (a command runs).
     {
         let (ime, gained, desk, had, slot) = (
             ime.clone(),
@@ -94,7 +95,10 @@ pub fn use_pane_focus(
             let _ = (desk.ui)();
             // Not while the bar's or the find bar's field has it (Escape in the find hands it back).
             let finding = find_is_open(&slot);
-            let has = desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open() && !finding;
+            let has = desk.hub.keyboard_pane() == Some(pane)
+                && !desk.hub.bar_is_open()
+                && !finding
+                && !composing(&slot);
             let before = had.replace(has);
             if has && !before {
                 let gained = gained.clone();
@@ -126,6 +130,14 @@ pub fn use_pane_focus(
         on_focus: EventHandler::new(on_focus),
         on_mounted: EventHandler::new(on_mounted),
     }
+}
+
+/// Whether the list shows the composer: its field has the keyboard.
+fn composing(slot: &Rc<RefCell<Slot>>) -> bool {
+    slot.borrow()
+        .session
+        .as_ref()
+        .is_some_and(|s| s.composer_shown())
 }
 
 /// Whether the pane's find bar is up: its field has the keyboard until it closes.

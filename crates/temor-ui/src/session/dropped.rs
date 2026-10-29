@@ -47,6 +47,9 @@ impl Session {
         };
         match drop_action(&dropped) {
             DropAction::Paste(text) => {
+                if self.composer_takes(&text) {
+                    return;
+                }
                 let mode = self.pane.with_term(|term| term.paste_mode());
                 self.pane.send(&paste::encode(&text, mode));
                 self.pane

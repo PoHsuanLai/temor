@@ -1,19 +1,13 @@
-//! Room under blocks for the pictures lenses drew (PLAN P11): the grid is drawn as always and shown
-//! in slices with the room between them (`temor_render::RowLayout`). The hub says which blocks
-//! have a picture and how tall it is; the session turns that into room under each block's last
-//! row each time it paints, so every place that maps a point to a cell, or a row to a place
-//! beside the grid, reads the rows where they are shown.
+//! Where the grid's rows are shown (`temor_render::RowLayout`): folded blocks' output rows taken
+//! out, and the rows pinned to the top at the start of the scrollback. Every place that maps a
+//! point to a cell reads the rows where they are shown.
 
-use temor_core::vocab::ids::BlockId;
-use temor_render::{
-    CellHit, CellPos, CellSide, Fold, GridFit, GridHit, HitRegion, Insert, LayoutParams, Pin,
-    RowLayout, Screen,
-};
-use temor_vt::{Col, Px, Row, SurfacePoint};
+use temor_render::{CellHit, Fold, GridFit, LayoutParams, Pin, RowLayout, Screen};
+use temor_vt::{Row, SurfacePoint};
 
 use super::Session;
 
-/// The most rows a picture takes under its block.
+/// The most rows a lens's picture takes in its block's card.
 pub const LENS_MOST_ROWS: u32 = 24;
 
 /// Whether the rows moved since the last layout: the window draws the slices again then, so they
@@ -33,71 +27,31 @@ pub struct Placed {
 }
 
 impl Placed {
-    /// The cell under a pane point. A point in the room under a block is taken as the end of
-    /// the block's last row (a drag into it selects to there), outside the grid.
+    /// The cell under a pane point.
     pub fn cell_at(&self, at: SurfacePoint) -> CellHit {
-        match self.layout.to_grid(at) {
-            GridHit::Gap { after } => CellHit {
-                pos: CellPos {
-                    row: after,
-                    col: Col(self.fit.grid.cols.0.saturating_sub(1)),
-                },
-                side: CellSide::Right,
-                region: HitRegion::Padding,
-            },
-            GridHit::Grid(drawn) => self.fit.cell_at(drawn),
-            _ => self.fit.cell_at(at),
-        }
+        self.fit.cell_at(self.drawn_point(at))
     }
 
     /// The point of the drawn grid a pane point is over, for reports to a program that has the
-    /// mouse: in the room under a block, the last cell of the block's last row.
+    /// mouse.
     pub fn drawn_point(&self, at: SurfacePoint) -> SurfacePoint {
-        match self.layout.to_grid(at) {
-            GridHit::Grid(drawn) => drawn,
-            GridHit::Gap { after } => {
-                let (x, y) = self.fit.cell_origin(CellPos {
-                    row: after,
-                    col: Col(self.fit.grid.cols.0.saturating_sub(1)),
-                });
-                SurfacePoint {
-                    x: i32::try_from(x.0).unwrap_or(i32::MAX),
-                    y: i32::try_from(y.0).unwrap_or(i32::MAX),
-                }
-            }
-            _ => at,
-        }
+        self.layout.to_grid(at)
     }
-}
-
-/// `height` device pixels as whole rows of `cell_h`, between one row and [`LENS_MOST_ROWS`].
-fn whole_rows(height: Px, cell_h: u32) -> Px {
-    let ch = cell_h.max(1);
-    let rows = height.0.div_ceil(ch).clamp(1, LENS_MOST_ROWS);
-    Px(rows * ch)
 }
 
 impl Session {
-    /// The blocks that have a picture under them, with its height in device pixels at this
-    /// pane's scale. The room is laid out at once; the window draws again (the hub's change does).
-    pub fn set_inserts(&mut self, inserts: Vec<(BlockId, Px)>) {
-        self.inserts = inserts;
-        self.relayout();
-    }
-
     /// Where the rows are shown, as of the last paint (`None` before the first layout).
     pub fn row_layout(&self) -> Option<&RowLayout> {
         self.layout.as_ref()
     }
 
-    /// Lays the rows out around the room under the blocks with pictures, as they are on the
-    /// screen now. Whether the rows moved.
+    /// Lays the rows out without the folded blocks' output, as they are on the screen now.
+    /// Whether the rows moved.
     pub(super) fn relayout(&mut self) -> Relaid {
         let Some(fit) = self.fit else {
             return Relaid::Same;
         };
-        let lower = self.painter.lower();
-        let placed = fit.lowered(lower);
+        let placed = fit.lowered(self.painter.lower());
         let (alternate, viewport, total) = self.pane.with_term(|term| {
             (
                 term.on_alternate_screen(),
@@ -106,20 +60,6 @@ impl Session {
             )
         });
         let frame = self.frame().filter(|_| !alternate);
-        let inserts: Vec<Insert> = match alternate {
-            true => Vec::new(),
-            false => self
-                .inserts
-                .iter()
-                .filter_map(|&(block, height)| {
-                    let after = u16::try_from(frame.as_ref()?.last_row(block)?).ok()?;
-                    Some(Insert {
-                        after: Row(after),
-                        height: whole_rows(height, fit.cell.height.0),
-                    })
-                })
-                .collect(),
-        };
         // Folded blocks' output rows, cut to the rows on screen.
         let rows = i64::from(fit.grid.rows.0);
         let folded: Vec<Fold> = match alternate {
@@ -148,8 +88,6 @@ impl Session {
         };
         let layout = RowLayout::new(LayoutParams {
             fit: placed,
-            lower,
-            inserts: &inserts,
             folded: &folded,
             pin,
             screen: match alternate {
@@ -176,26 +114,5 @@ impl Session {
             .filter(|layout| layout.fit() == fit)
             .unwrap_or_else(|| RowLayout::identity(fit));
         Some(Placed { fit, layout })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::whole_rows;
-    use temor_vt::Px;
-
-    #[test]
-    fn a_picture_takes_whole_rows_from_one_to_the_most() {
-        // (height, cell height, want)
-        let cases = [
-            (1, 20, 20),
-            (20, 20, 20),
-            (21, 20, 40),
-            (0, 20, 20),
-            (5000, 20, 480),
-        ];
-        for (height, cell, want) in cases {
-            assert_eq!(whole_rows(Px(height), cell), Px(want), "{height} in {cell}");
-        }
     }
 }

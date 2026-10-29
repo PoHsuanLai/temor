@@ -5,8 +5,8 @@
 use temor_pane::{PaintSource, PaneHandle};
 use temor_render::{
     BlinkPhase, CapturedFrame, CellMetrics, CellPos, CpuRenderer, FontSet, FrameCapture, GridFit,
-    Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, RowBand, Scale,
-    SelectionOverlay, fit_grid,
+    Padding, Palette, PaneFocus, PaneFrame, PaneView, PixelSize, Renderer, Scale, SelectionOverlay,
+    fit_grid,
 };
 
 use crate::error::UiError;
@@ -34,7 +34,7 @@ impl Inset {
 
 /// What one paint is for: the pane's pixels, scale, focus and selection.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PaintView<'a> {
+pub struct PaintView {
     pub pixels: PixelSize,
     pub scale: Scale,
     pub inset: Inset,
@@ -42,8 +42,9 @@ pub struct PaintView<'a> {
     /// The cursor's blink half now.
     pub blink: BlinkPhase,
     pub selection: Option<SelectionOverlay>,
-    /// The command cards over the grid's rows.
-    pub bands: &'a [RowBand],
+    /// The live screen drawn on this where a cell has no colour of its own: the running card's
+    /// ground while the pane is a list, so its live rows sit on the card.
+    pub ground: Option<temor_vt::Rgb>,
 }
 
 /// Which frame the pane's pixels were last drawn from.
@@ -78,6 +79,21 @@ impl GridFont {
             "font-family:\"{}\", var(--term-font); font-size:{}px",
             self.family.replace(['"', '\\'], ""),
             self.px
+        )
+    }
+
+    /// The CSS `font-family` for text set like the grid beside it (a block card's command, the
+    /// sticky header): the grid's family, then the symbol families the grid falls back to, so a
+    /// TUI's arrows and marks are drawn there too, then the terminal's monospace token. Inline,
+    /// as the grid's family is no quire token.
+    pub fn family_css(&self) -> String {
+        let symbols: String = temor_render::SYMBOL_FAMILIES
+            .iter()
+            .map(|family| format!("\"{family}\", "))
+            .collect();
+        format!(
+            "font-family:\"{}\", {symbols}var(--term-font)",
+            self.family.replace(['"', '\\', ';'], "")
         )
     }
 
@@ -172,13 +188,52 @@ impl Painter {
         fit_grid(pixels, &metrics, inset.padding(scale))
     }
 
+    /// Draws `rows` (read from anywhere in the screen) whole, `cols` wide, as the pane's grid
+    /// would draw them: `width` device pixels wide with the pane's side inset and no room above
+    /// or below, in the live frame's colours (on `ground` where a cell has none). Hands the premultiplied RGBA8 pixels to `show`.
+    pub fn still(
+        &mut self,
+        cols: u16,
+        rows: &[Vec<temor_vt::StyledCell>],
+        (width, scale, inset): (u32, Scale, Inset),
+        ground: Option<temor_vt::Rgb>,
+        show: impl FnOnce(&[u8], PixelSize),
+    ) -> Result<(), UiError> {
+        if rows.is_empty() || width == 0 {
+            return Ok(());
+        }
+        let metrics = self.renderer.cell_metrics(scale);
+        let frame = PaneFrame::still(cols, rows, &self.frame);
+        let frame = match ground {
+            Some(ground) => frame.on_background(ground),
+            None => frame,
+        };
+        let mut padding = inset.padding(scale);
+        padding.top = temor_vt::Px(0);
+        padding.bottom = temor_vt::Px(0);
+        let height = u32::try_from(rows.len()).unwrap_or(u32::MAX) * metrics.height();
+        let view = PaneView {
+            size: PixelSize::new(width, height),
+            scale,
+            padding,
+            palette: &self.palette,
+            focus: PaneFocus::Focused,
+            blink: BlinkPhase::On,
+            selection: None,
+            lower: 0,
+        };
+        let drawn = self.renderer.render_still(&frame, &view)?;
+        show(drawn.pixels, drawn.size);
+        Ok(())
+    }
+
     /// Draws what changed in the terminal since the last frame and hands the whole pane's
     /// premultiplied RGBA8 pixels, with their size, to `show`. The terminal is locked only while
     /// libghostty begins the frame.
     pub fn paint(
         &mut self,
         pane: &PaneHandle,
-        view: PaintView<'_>,
+        view: PaintView,
         show: impl FnOnce(&[u8], PixelSize),
     ) -> Result<(), UiError> {
         let Painter {
@@ -219,6 +274,9 @@ impl Painter {
         let source = match draw {
             Draw::Live(captured) => {
                 captured.finish(frame)?;
+                if let Some(ground) = view.ground {
+                    frame.set_background(ground);
+                }
                 *lower = frame.blank_rows_below();
                 Some(Showing::Live)
             }
@@ -237,7 +295,6 @@ impl Painter {
             focus: view.focus,
             blink: view.blink,
             selection: view.selection,
-            bands: view.bands,
         };
         let drawn = match source {
             Some(Showing::Live) => renderer.render(frame, &pane_view)?,

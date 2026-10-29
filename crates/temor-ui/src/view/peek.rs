@@ -18,7 +18,7 @@ use temor_vt::SurfacePoint;
 use super::peek_card::PeekCard;
 use super::peek_keys::{KeySays, says};
 use super::slot::Slot;
-use super::window_help::device_at;
+use super::window_help::{device_at, pane_logical};
 use crate::edge::peek_mail::Taken;
 use crate::hub::Desk;
 use crate::hub::peek_step::{Command, Peek, PeekEffect, PeekEvent, Under, step};
@@ -164,11 +164,12 @@ pub fn use_peek(
     let moved = {
         let feeder = feeder.clone();
         move |event: PointerEvent| {
-            let p = event.element_coordinates();
+            let client = event.client_coordinates();
+            let (x, y) = pane_logical(client, &feeder.rect);
             feeder.memo.borrow_mut().last = Some(Pointed {
-                at: device_at(&event, signals),
-                x: p.x as f32,
-                y: p.y as f32,
+                at: device_at(client, &feeder.rect, signals),
+                x: x as f32,
+                y: y as f32,
             });
             let command = Command::of(vt_mods(event.modifiers()));
             let under = feeder.under(command);

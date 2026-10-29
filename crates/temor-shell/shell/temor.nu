@@ -78,6 +78,36 @@ if ($env.TEMOR_SHELL_INTEGRATION? != "0") and ($env.TEMOR_PROMPT? != "shell") {
     )
 }
 
+# Tells temor the shell's exported variables (OSC 7503, see temor-shell's report module) before
+# every prompt, but only when they differ from what it last said. Only text values are said: a
+# list or a record has no one way to be written. Too large a report is not sent. The report key
+# temor gave this shell is taken out of the environment at load (the hook keeps it), so no program
+# sees it, and signs each report; a shell without it (one started inside the pane) says nothing.
+if ($env.TEMOR_SHELL_INTEGRATION? != "0") {
+    let key = ($env.TEMOR_REPORT_KEY? | default "")
+    hide-env --ignore-errors TEMOR_REPORT_KEY
+    $env.config.hooks.pre_prompt = (
+        $env.config.hooks.pre_prompt? | default [] | append {||
+          if $key != "" {
+            let skip = [_ PWD OLDPWD SHLVL FILE_PWD CURRENT_FILE LAST_EXIT_CODE CMD_DURATION_MS PROMPT_COMMAND PROMPT_COMMAND_RIGHT PROMPT_INDICATOR TEMOR_PROMPT_COMMAND TEMOR_REPORTED]
+            let pairs = ($env | transpose name value
+                | where {|row| ($row.value | describe) == "string" and not ($row.name in $skip) })
+            let raw = ($pairs | each {|row| $"e=($row.name)=($row.value)" } | str join "\n")
+            if $raw != ($env.TEMOR_REPORTED? | default "") {
+                $env.TEMOR_REPORTED = $raw
+                let entries = ($pairs | each {|row|
+                    $";e=($row.name | url encode --all)=($row.value | url encode --all)"
+                } | str join "")
+                let out = $"v2;k=($key)($entries)"
+                if ($out | str length) <= 60000 {
+                    print -n $"(ansi escape)]7503;($out)(ansi escape)\\"
+                }
+            }
+          }
+        }
+    )
+}
+
 # A program that erases the scrollback (CSI 3 J) to redraw itself takes only its own rows; the
 # blocks above it stay. Your own `clear` should take them all, so it says so to temor first
 # (not `clear -x`, which keeps the scrollback). It

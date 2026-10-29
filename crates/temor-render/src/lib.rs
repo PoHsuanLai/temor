@@ -48,7 +48,6 @@
 //! assert_eq!(fit.grid.rows.0, 24);
 //! ```
 
-mod bands;
 mod error;
 mod font;
 mod frame;
@@ -65,7 +64,6 @@ mod gpu;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};
 pub use error::RenderError;
 pub use font::{
@@ -77,11 +75,11 @@ pub use frame::{CapturedFrame, FrameCapture};
 #[cfg(feature = "gpu")]
 pub use gpu::{GpuFrame, GpuRenderer};
 pub use metrics::{
-    CellHit, CellMetrics, CellPos, CellSide, Fold, FontSize, Gap, GridFit, GridHit, HitRegion,
-    Insert, LayoutParams, LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice,
-    fit_grid,
+    CellHit, CellMetrics, CellPos, CellSide, Fold, FontSize, GridFit, HitRegion, LayoutParams,
+    LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
 };
 pub use palette::Palette;
+pub use platform::SYMBOLS as SYMBOL_FAMILIES;
 pub use renderer::{
     BlinkPhase, DamageRect, PaneFocus, PaneView, RenderStats, Renderer, SelectionOverlay,
     SelectionShape,

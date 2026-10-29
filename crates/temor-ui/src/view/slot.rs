@@ -10,6 +10,7 @@ use ds::base::time::clock::sleep;
 use ds_blitz::{PixelFormat, Pixels, TextureHandle};
 use temor_render::{Palette, PixelSize, Scale};
 
+use super::block_list::tiles::Tiles;
 use super::probe::Probe;
 use crate::session::{Relaid, Session};
 
@@ -28,6 +29,8 @@ pub struct Slot {
     pub probe: Option<Probe>,
     /// The grid's colours: the session opens with them, and a running one is re-coloured.
     pub palette: Palette,
+    /// The block list's drawn rows, while the pane is drawn as one.
+    pub tiles: Tiles,
 }
 
 impl std::fmt::Debug for Slot {
@@ -66,6 +69,7 @@ pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
         device,
         display,
         probe,
+        tiles,
         ..
     } = &mut *slot;
     let Some(session) = session.as_mut() else {
@@ -87,6 +91,7 @@ pub fn repaint(slot: &RefCell<Slot>) -> Relaid {
             }
         });
         relaid = painted.unwrap_or(Relaid::Same);
+        tiles.follow_selection(session);
     }
     if let Some(probe) = probe {
         probe.publish(session.screen_text());

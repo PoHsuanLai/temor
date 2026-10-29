@@ -28,6 +28,7 @@ quire-emoji = { git = "https://github.com/PoHsuanLai/quire.git", rev = "65dbff76
 # Copied from quire/docs/workspace-deps.toml at the rev above.
 dioxus = { version = "0.7", default-features = false, features = ["macro", "html", "hooks", "signals"] }
 serde = { version = "1", features = ["derive"] }
+unicode-width = "0.2"
 serde_json = "1"
 thiserror = "2"
 proptest = "1"
@@ -77,18 +78,18 @@ anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c0
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "99eec9ddd03ee345b669fcc7954ed44590724290" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
-# docket 4ec8abb locks porter 125272e (as anyview 0927e4a does), so docket and porter-client share
+# docket 41ddb1c7 locks porter dcc16ada (as anyview 373afbbc does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
-docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0", default-features = false, features = ["dbus"] }
-docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
+docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07", default-features = false, features = ["dbus"] }
+docket-core = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07" }
 # Who may call temor's provider (intentd's unit), and the stand-in a test names for it.
-docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "7c9b57cb41516f8e050e797852bc1cc3d18736f0" }
-prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
-porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf" }
-porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", default-features = false, features = ["dbus"] }
+docket-dbus = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07" }
+prov = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031" }
+porter-core = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031" }
+porter-client = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031", default-features = false, features = ["dbus"] }
 # The Secret Service store a Space's secrets are kept in (temor-desktop only), under temor's own name.
-porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "b2adc64da9ce49b41c83c73888a7d4da9e57a8bf", features = ["oo7"] }
+porter-secrets = { git = "https://github.com/PoHsuanLai/porter.git", rev = "dcc16ada850559c7c8ae213cd7a9b153672e5031", features = ["oo7"] }
 # zbus on tokio, as docket and porter build it (quire CONSUMING §1: a program that owns a tokio runtime).
 # peephole: which program is calling (a pinned process judged against a table), as porter and
 # docket use it, by the same tag; temor-desktop checks the caller of `org.quire.Temor1.Run` with it.
@@ -130,8 +131,11 @@ codegen-units = 1
 # Patches apply only at a workspace root, so this root repeats quire's block verbatim.
 # vello and anyrender come from our forks (github.com/PoHsuanLai/vello and /anyrender, branch
 # quire-filters): the colour matrix filter, multi-threaded filter layers and CSS filter lists, so
-# every CSS `filter` function paints on both backends. Move back to crates.io once upstream has
-# them (blitz-kit docs/blitz-gaps.md tracks the PRs).
+# every CSS `filter` function paints on both backends; d4ae3885 lets a window renderer name the wgpu
+# backends it probes, falling back once to the default set; 03fcbe4c does not carry a skipped frame
+# into the next one on vello_hybrid; vello 84b2c9f7 draws bitmap glyphs (colour emoji from `sbix`
+# and CBDT fonts) on vello_hybrid, and 5c986661 tests it (branch fix/atlas-limit). Move back to
+# crates.io once upstream has them (blitz-kit docs/blitz-gaps.md tracks the PRs).
 [patch.crates-io]
 vello_common = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }
 vello_cpu = { git = "https://github.com/PoHsuanLai/vello", rev = "5c986661c9e943d26dac8e8ea7812895947722b8" }

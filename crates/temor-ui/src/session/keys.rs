@@ -45,6 +45,31 @@ impl Session {
         }
     }
 
+    /// A chord typed while the composer has the keys: the action the keymap binds it to runs
+    /// (the window's own reach the window through [`Session::take_asked`]), Ctrl+C empties the
+    /// composer, and any other chord does nothing: the shell's own line editor, which the
+    /// composer stands for, never hears it.
+    pub fn composer_chord(&mut self, stroke: Stroke) -> Result<(), UiError> {
+        let find = match self.finder.is_some() {
+            true => FindBar::Open,
+            false => FindBar::Closed,
+        };
+        let kitty = self
+            .pane
+            .with_term(|term| KittyKeys::of(term.kitty_keyboard_flags()));
+        let clear = stroke.key.mods == temor_vt::Modifiers::CTRL
+            && stroke.key.unshifted == Some('c')
+            && stroke.key.action != KeyAction::Release;
+        match route_with(stroke, &self.keymap, find, kitty) {
+            Routed::Action(action) => self.run(action),
+            _ if clear => {
+                self.set_composer_text(String::new());
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
     /// Runs a pane action.
     pub fn run(&mut self, action: Action) -> Result<(), UiError> {
         match action {

@@ -136,11 +136,16 @@ impl Hub {
         if !self.current(host, generation) {
             return;
         }
-        for remote in self.remote.panes.values_mut() {
+        let mut ended = Vec::new();
+        for (pane, remote) in &mut self.remote.panes {
             if remote.alias == *host && remote.session == Some(session) {
                 remote.session = None;
                 remote.shown = Shown::Gone;
+                ended.push(*pane);
             }
+        }
+        for pane in ended {
+            self.live_ended(pane, None);
         }
         self.tell_sessions(host);
     }

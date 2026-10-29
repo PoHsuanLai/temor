@@ -11,7 +11,6 @@ use temor_pane::text::{CellPos, cwd_from_url};
 use temor_vt::{GridPoint, PointSpace, SurfacePoint};
 
 use super::Session;
-use super::pointer::screen_cell;
 use crate::error::UiError;
 use crate::words::notices;
 
@@ -130,13 +129,10 @@ impl Session {
     /// the text (on a pane on another computer, a path there, unchecked). None while the program
     /// has the mouse (a ⌘-click would go to it), or where nothing names a file.
     pub fn file_under(&self, at: SurfacePoint) -> Option<PathBuf> {
-        let placed = self.placed()?;
         if self.pane.with_term(|term| term.mouse_tracking()) {
             return None;
         }
-        let hit = placed.cell_at(at);
-        let top = self.viewport_top().ok()?;
-        let cell = screen_cell(top, hit.pos.row.0, hit.pos.col.0);
+        let cell = self.point_hit(at)?.cell;
         self.linked_file_at(cell)
             .or_else(|| self.file_at(cell).ok().flatten())
     }

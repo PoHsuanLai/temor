@@ -161,3 +161,103 @@ fn a_running_program_is_detached_into_its_own_pane_and_the_old_pane_gets_a_new_s
     });
     assert_ne!(number_after(&probe.screen(), "fresh="), Some(old));
 }
+
+/// The centre of each element `selector` finds, top to bottom and left to right.
+fn centres(h: &ds_harness::Harness, selector: &str) -> Vec<ds::prelude::Point> {
+    let mut found = rects(h, selector);
+    found.sort_by(|a, b| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
+    found.into_iter().map(|r| r.centre()).collect()
+}
+
+/// Steps the window until `ok` holds for its page, or panics with what it shows.
+fn wait_html(h: &mut ds_harness::Harness, what: &str, ok: impl Fn(&str) -> bool) {
+    let until = Instant::now() + Duration::from_secs(20);
+    while !ok(&h.html()) {
+        assert!(
+            Instant::now() < until,
+            "timed out waiting for {what}:\n{}",
+            h.html()
+        );
+        h.advance(Duration::from_millis(50));
+    }
+}
+
+/// The block menu moves a running program to a live card: a pane of its own with a head that
+/// names the command. Stop interrupts it and hangs the session up after the grace; the card keeps
+/// its last frame until it is put away, and then its pane goes.
+#[test]
+fn a_running_program_moves_to_a_live_card_that_stops_and_is_put_away() {
+    let Some(rig) = Rig::new() else {
+        return;
+    };
+    let probe = Probe::new();
+    let mut h = harness_with("local-live-card", &probe, None, |a| rig.tweak(a));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "echo before; (exit 3)");
+    wait_html(&mut h, "the first command's status", |html| {
+        html.contains(">exit 3")
+    });
+    type_line(&mut h, "echo live=$$; sleep 300");
+    wait_until(&mut h, &probe, "the shell's pid", |s| {
+        number_after(s, "live=").is_some()
+    });
+    // Its head, not a count of heads: the sticky head over the list is a head too.
+    wait_html(&mut h, "the running card", |html| {
+        html.contains("temor-bseg temor-blk-head\" data-state=\"running\"")
+    });
+
+    // The running block's menu offers to detach it.
+    let card = *centres(&h, ".temor-blk-head").last().unwrap();
+    h.send(Input::press(
+        ds::prelude::Point {
+            x: ds::prelude::Px(300.0),
+            y: card.y,
+        },
+        ds::base::press::PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(300));
+    assert!(
+        h.html().contains("Detach Running Program"),
+        "no Detach in the menu:\n{}",
+        h.html()
+    );
+    let items = centres(&h, ".ds-menu-item");
+    h.send(Input::click(items[6]));
+    wait_html(&mut h, "the live card's head", |html| {
+        html.contains("class=\"temor-live-head\"") && html.contains("echo live=$$; sleep 300")
+    });
+    assert_eq!(panes(&h), 2);
+    // The command before it came along on the card's screen, with how it ended.
+    wait_html(&mut h, "the earlier command's status on the card", |html| {
+        html.contains(">exit 3")
+    });
+    assert!(
+        h.html().contains("data-state=\"running\""),
+        "the card runs:\n{}",
+        h.html()
+    );
+
+    // Size, Full, Stop.
+    let icons = centres(&h, ".temor-live-head .ds-button");
+    assert_eq!(icons.len(), 3, "{}", h.html());
+    h.send(Input::click(icons[2]));
+    // The interrupt ends `sleep`; the session's shell is hung up when the grace is over.
+    wait_html(&mut h, "the card to end", |html| {
+        html.contains("class=\"temor-live-head\" data-state=\"ended\"")
+            || html.contains("data-state=\"ended\" class=\"temor-live-head\"")
+    });
+    let icons = centres(&h, ".temor-live-head .ds-button");
+    assert_eq!(icons.len(), 1, "only Put away:\n{}", h.html());
+    h.send(Input::click(icons[0]));
+    let until = Instant::now() + Duration::from_secs(10);
+    while panes(&h) != 1 {
+        assert!(
+            Instant::now() < until,
+            "the card's pane stays:\n{}",
+            h.html()
+        );
+        h.advance(Duration::from_millis(50));
+    }
+    assert!(!h.html().contains("class=\"temor-live-head"));
+}

@@ -95,15 +95,16 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in Folder")
     });
 
-    // Paste path types the quoted path into the terminal the person was using and puts the list
-    // away; nothing runs.
+    // Paste path types the quoted path into the composer of the terminal the person was using
+    // and puts the list away; nothing runs.
     let paste = settled_centre(
         &mut h,
         ".temor-dl-actions .ds-button[aria-description=\"Type the file's path into the terminal you were using\"]",
     );
     h.send(Input::click(paste));
-    wait_until(&mut h, &probe, "the pasted path", |s| {
-        s.replace('\n', "").contains("Downloads/note.txt")
+    wait_html(&mut h, "the pasted path", |html| {
+        html.find("temor-blk-composer")
+            .is_some_and(|at| html[at..].contains("Downloads/note.txt"))
     });
     assert!(
         !h.html().contains("Show in Folder"),

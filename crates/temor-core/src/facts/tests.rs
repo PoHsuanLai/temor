@@ -163,35 +163,6 @@ fn untracked_counts() {
     }
 }
 
-#[test]
-fn chips_stop_where_the_typing_reaches() {
-    // Ten-pixel cells on an 800-pixel pane with 10 pixels of padding. Chips of 4, 6 and 8
-    // characters are 60, 80 and 100 pixels wide with 10-pixel gaps. All three start at 530,
-    // the first two at 640, the first alone at 730; the cursor needs one cell (10) of room.
-    let row = ChipRow {
-        pane_width: 800.0,
-        inset: 10.0,
-        cell_width: 10.0,
-    };
-    let chars = [4, 6, 8];
-    #[rustfmt::skip]
-    let cases: Vec<(&str, Option<f32>, usize)> = vec![
-        ("cursor on another row", None, 3),
-        ("short typing", Some(100.0), 3),
-        ("just clear of all three", Some(520.0), 3),
-        ("one pixel in the way drops the last chip", Some(521.0), 2),
-        ("just clear of two", Some(630.0), 2),
-        ("two in the way leaves one", Some(631.0), 1),
-        ("just clear of the first", Some(720.0), 1),
-        ("under the first chip too", Some(721.0), 0),
-        ("past the right edge", Some(900.0), 0),
-    ];
-    for (name, cursor, want) in cases {
-        assert_eq!(chips_that_fit(&chars, row, cursor), want, "{name}");
-    }
-    assert_eq!(chips_that_fit(&[], row, Some(5.0)), 0, "no chips");
-}
-
 fn state(flight: Flight, prompted: bool) -> FactsState {
     FactsState { flight, prompted }
 }

@@ -293,25 +293,34 @@ fn first_pane(h: &Harness) -> ds::prelude::Rect {
         .unwrap_or_else(|| panic!("no terminal pane in the page"))
 }
 
-/// The finished command cards in the panes in front: their meta texts ("4 ms", "exit 1 · 4 ms").
+/// The finished command cards in the panes in front, each as its state and the status it says
+/// ("done", "failed exit 1"). A card still running is left out, and so is the copy of a head
+/// that sticks to the top of a list scrolled into its card (drawn after the list).
 fn metas(h: &Harness) -> Vec<String> {
     let html = h.html();
-    html.split("class=\"temor-card-meta\"")
+    let list = html
+        .split("class=\"temor-blk-sticky\"")
+        .next()
+        .unwrap_or_default();
+    list.split("class=\"temor-bseg temor-blk-head\"")
         .skip(1)
-        .map(|part| {
-            let body = part.split_once('>').map_or("", |(_, rest)| rest);
-            let mut text = String::new();
-            let mut tag = false;
-            let body = body.split("</div>").next().unwrap_or("");
-            for c in body.chars() {
-                match c {
-                    '<' => tag = true,
-                    '>' => tag = false,
-                    c if !tag => text.push(c),
-                    _ => {}
-                }
+        .filter_map(|part| {
+            let state = part
+                .split_once("data-state=\"")
+                .and_then(|(_, rest)| rest.split_once('"'))
+                .map(|(state, _)| state)?;
+            if state == "running" {
+                return None;
             }
-            text.split_whitespace().collect::<Vec<_>>().join(" ")
+            let status = part
+                .split_once("class=\"temor-blk-meta\">")
+                .and_then(|(_, rest)| rest.split_once('<'))
+                .map(|(text, _)| text.split(" \u{b7} ").next().unwrap_or(text).trim())
+                .filter(|_| state == "failed");
+            Some(match status {
+                Some(status) => format!("{state} {status}"),
+                None => state.to_owned(),
+            })
         })
         .collect()
 }
@@ -456,19 +465,11 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
             "a card failed: {m:?}"
         );
         let html = h.html();
-        let chips = html
-            .split("class=\"temor-fact-chips")
-            .nth(1)
-            .map(|c| c[..c.len().min(3000)].to_owned())
-            .unwrap_or_default();
-        for kind in ["folder", "branch"] {
-            assert!(
-                chips.contains(&format!("data-kind=\"{kind}\"")),
-                "no {kind} chip: {chips}"
-            );
-        }
-        assert!(chips.contains(">main<"), "the branch chip lacks main");
-        format!("2 cards {m:?}, no exit; chips folder+branch(main)")
+        assert!(
+            html.contains("class=\"temor-blk-where\""),
+            "the composer names no folder"
+        );
+        format!("2 cards {m:?}, no exit; the composer names the folder")
     });
 
     steps.run("W2", || {

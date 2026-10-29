@@ -144,6 +144,13 @@ impl ShellAdapter for FishAdapter {
         &[FISH_SCRIPT]
     }
 
+    fn caps(&self) -> ReportCaps {
+        ReportCaps {
+            env: true,
+            aliases: true,
+        }
+    }
+
     fn plan(
         &self,
         shell: &Shell,
@@ -179,6 +186,14 @@ impl ShellAdapter for NuAdapter {
 
     fn scripts(&self) -> &'static [ShellScript] {
         &[NU_SCRIPT]
+    }
+
+    /// Variables only: an alias given back would need nushell's own syntax, read at parse time.
+    fn caps(&self) -> ReportCaps {
+        ReportCaps {
+            env: true,
+            aliases: false,
+        }
     }
 
     fn plan(

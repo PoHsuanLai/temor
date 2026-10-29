@@ -15,23 +15,34 @@ pub const WINDOW_CSS: &str = "\
 .temor-sheet { background: var(--raise); border: var(--hair) solid var(--line); box-shadow: var(--shadow-sheet); }\
 .temor-find { position: absolute; top: var(--s-4); right: var(--s-4); display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4); border-radius: var(--r-item); }\
 .temor-find-field { width: calc(var(--s-16) * 12); }\
-.temor-first-hint { position: absolute; pointer-events: none; white-space: nowrap; }\
 .temor-keys { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }\
 .temor-grid { position: relative; width: 100%; height: 100%; overflow: hidden; }\
-.temor-grid-slice { position: absolute; left: 0; right: 0; pointer-events: none; }\
-.temor-row-gap { position: absolute; left: 0; right: 0; pointer-events: none; background: var(--term-bg); }\
-.temor-block-header { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; min-width: 0; overflow: hidden; background: var(--raise); border-bottom: var(--hair) solid var(--line); }\
-.temor-lens-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }\
-.temor-lens { position: absolute; display: block; object-fit: contain; object-position: left top; }\
-.temor-fact-chips { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: var(--s-6); pointer-events: none; overflow: hidden; }\
-.temor-fact-chips[data-place=over], .temor-fact-chips[data-place=header] { justify-content: flex-start; background: var(--term-bg); }\
-.temor-chip { display: flex; flex: none; align-items: center; gap: var(--s-5); box-sizing: border-box; height: calc(100% - var(--s-2)); max-height: var(--s-22); padding: 0 var(--s-6); border-radius: var(--r-micro); background: var(--fill-quaternary); border: var(--hair) solid var(--line-soft); color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-small); white-space: nowrap; --chip-hue: var(--ink); }\
-.temor-chip[data-kind=folder] { flex: 0 1 auto; min-width: 0; --chip-hue: var(--term-ansi-12); }\
-.temor-chip-words { display: flex; gap: 0.6ch; min-width: 0; overflow: hidden; }.temor-chip-words > span { flex: none; }.temor-chip[data-kind=folder] .temor-chip-words > span { flex: 0 1 auto; min-width: 0; overflow: hidden; }\
-.temor-chip-icon { display: flex; color: var(--chip-hue); }.temor-chip [data-tone=strong] { color: var(--chip-hue); font-weight: 600; }\
-.temor-chip[data-kind=branch] { --chip-hue: var(--term-ansi-13); }.temor-chip[data-kind=changes] { --chip-hue: var(--ink-soft); }.temor-chip[data-kind=new] { --chip-hue: var(--term-ansi-3); color: var(--chip-hue); }\
-.temor-chip[data-kind=python] { --chip-hue: var(--term-ansi-11); }.temor-chip[data-kind=ruby] { --chip-hue: var(--term-ansi-9); }.temor-chip[data-kind=go] { --chip-hue: var(--term-ansi-14); }.temor-chip[data-kind=node] { --chip-hue: var(--term-ansi-10); }.temor-chip [data-tone=added] { color: var(--ok); }.temor-chip [data-tone=removed] { color: var(--danger); }\
-.temor-block-tools { position: absolute; display: flex; align-items: center; gap: var(--s-4); }.temor-block-more { display: flex; }.temor-card-meta { position: absolute; display: flex; align-items: center; white-space: nowrap; pointer-events: none; }\
+.temor-blist { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; background: var(--term-bg); }\
+.temor-blist-scroll { flex: 1 1 0; }\
+.temor-blist-content { position: relative; }\
+.temor-bseg { position: absolute; left: var(--s-8); right: var(--s-8); box-sizing: border-box; overflow: hidden; }\
+.temor-blk-section { display: flex; align-items: flex-end; padding: 0 var(--s-8) var(--s-6); color: var(--term-ansi-12); font-size: var(--fs-small); white-space: nowrap; }\
+.temor-blk-head { display: flex; align-items: center; gap: var(--s-8); padding: 0 var(--s-8) 0 var(--s-4); border-radius: var(--r-item) var(--r-item) 0 0; }\
+.temor-blk-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: var(--fs-reading); color: var(--term-fg); }\
+.temor-blk-head[data-state=failed] .temor-blk-title { color: var(--term-ansi-1); }.temor-blk-head[data-state=running] .temor-blk-title { color: var(--term-ansi-3); }\
+.temor-blk-mark { flex: none; display: flex; color: var(--term-ansi-11); }.temor-blk-fold { flex: none; display: flex; }.temor-blk-fold[data-none=true] { visibility: hidden; }\
+.temor-blk-tools { flex: none; display: flex; align-items: center; gap: var(--s-4); }.temor-blk-more { display: flex; }\
+.temor-blk-meta { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--ink-faint); }.temor-blk-head[data-state=failed] .temor-blk-meta { color: var(--term-ansi-1); }\
+.temor-blk-sticky { position: absolute; top: 0; left: 0; right: 0; }.temor-blk-sticky .temor-blk-head { border-bottom: var(--hair) solid var(--line-soft); }\
+.temor-blk-foot { border-radius: 0 0 var(--r-item) var(--r-item); }.temor-blk-head[data-whole=true] { border-radius: var(--r-item); }\
+.temor-blk-composer { display: flex; flex-direction: column; justify-content: center; padding: 0 var(--s-12); border-radius: var(--r-item); }\
+.temor-blk-composer[data-lines=many], .temor-blk-composer[data-choices=true] { justify-content: flex-start; padding-top: var(--s-8); }\
+.temor-blk-line { display: flex; align-items: center; gap: var(--s-8); min-width: 0; }.temor-blk-composer[data-lines=many] .temor-blk-line { align-items: flex-start; }\
+.temor-blk-choices { flex: none; display: flex; flex-direction: column; padding-bottom: var(--s-6); margin-bottom: var(--s-6); border-bottom: var(--hair) solid var(--line-soft); }\
+.temor-blk-choice { flex: none; display: flex; align-items: center; padding: 0 var(--s-6); border-radius: var(--r-item); overflow: hidden; white-space: nowrap; color: var(--term-fg); font-size: var(--fs-reading); }\
+.temor-blk-choice[data-picked=true] { background: var(--sel-neutral); }.temor-blk-choice[data-more=true] { color: var(--ink-faint); font-size: var(--fs-small); }\
+.temor-blk-where { flex: none; white-space: nowrap; color: var(--term-ansi-12); font-size: var(--fs-small); }\
+.temor-blk-field { flex: 1 1 auto; min-width: 0; color: var(--term-fg); font-size: var(--fs-reading); }\
+.temor-blk-img { position: absolute; top: 0; display: block; object-fit: contain; object-position: left top; }\
+.temor-live-head { position: relative; z-index: var(--z-raise); flex: none; display: flex; align-items: center; gap: var(--s-6); min-width: 0; padding: 0 0 var(--s-4); border-bottom: var(--hair) solid var(--line-soft); margin-bottom: var(--s-4); }\
+.temor-live-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 700; font-size: var(--fs-reading); color: var(--term-ansi-3); }\
+.temor-live-head[data-state=ended] .temor-live-title { color: var(--ink); }\
+.temor-live-status { flex: none; font-size: var(--fs-small); color: var(--ink-soft); }\
 .temor-keys:focus { outline: none; }\
 .temor-peek { position: absolute; box-sizing: content-box; padding: var(--s-16); pointer-events: none; overflow: hidden; border-radius: var(--r-panel); }\
 .temor-preedit { position: absolute; left: 0; bottom: 0; white-space: pre; text-decoration: underline; }\

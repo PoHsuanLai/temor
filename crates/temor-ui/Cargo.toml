@@ -47,6 +47,7 @@ temor-vt = { workspace = true, features = ["ghostty"] }
 temor-wire = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
+unicode-width = { workspace = true }
 
 [dev-dependencies]
 temor-testkit = { workspace = true }

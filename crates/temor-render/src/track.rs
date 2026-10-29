@@ -5,7 +5,6 @@ use std::collections::BTreeSet;
 
 use temor_vt::{Generation, GridSize, ImageId, KittyLayer, Px, Row};
 
-use crate::bands::{RowBand, RowLook, look_of};
 use crate::frame::{ImagePlacement, TermColors};
 use crate::metrics::{CellMetrics, GridFit, Padding, PixelSize, Scale};
 use crate::palette::Palette;
@@ -68,8 +67,6 @@ pub(crate) struct ChangeTracker {
     cursor: Option<CursorDraw>,
     selection: Option<SelectionOverlay>,
     images: Vec<ImageKey>,
-    /// How each grid row looked under the bands.
-    looks: Vec<RowLook>,
 }
 
 impl ChangeTracker {
@@ -85,14 +82,9 @@ impl ChangeTracker {
         cursor: Option<CursorDraw>,
         selection: Option<SelectionOverlay>,
         images: &[ImagePlacement],
-        bands: &[RowBand],
     ) -> Compose {
         let ch = view.metrics.height().max(1) as i32;
         let keys: Vec<ImageKey> = images.iter().map(|p| image_key(p, ch)).collect();
-        let looks: Vec<RowLook> = (0..view.grid.rows.0)
-            .map(|r| look_of(bands, Row(r)))
-            .collect();
-        let old_looks = std::mem::replace(&mut self.looks, looks);
         let full = self.view != Some(view);
         let old_cursor = std::mem::replace(&mut self.cursor, cursor);
         let old_selection = std::mem::replace(&mut self.selection, selection);
@@ -113,11 +105,6 @@ impl ChangeTracker {
             .chain(self.images.iter().filter(|k| !old_images.contains(k)));
         for k in changed {
             for r in k.first_row.max(0)..=k.last_row.min(rows - 1) {
-                set.insert(r as u16);
-            }
-        }
-        for (r, look) in self.looks.iter().enumerate() {
-            if old_looks.get(r) != Some(look) {
                 set.insert(r as u16);
             }
         }

@@ -5,7 +5,6 @@ use temor_vt::{Col, Row, StyleFlags, Underline};
 use super::colors::{CellColors, UnderCursor, cell_colors};
 use super::cursor::{CursorDraw, CursorStyle};
 use super::model::{Premul, Quad, QuadPaint, RowScene};
-use crate::bands::{RowBand, RowBox, RowWeight, look_of, push_quads};
 use crate::font::{Decoration, FaceStyle, GlyphCache, GlyphKind, RunGlyph, Slant, Weight};
 use crate::frame::{CellDraw, TermColors};
 use crate::metrics::{CellMetrics, CellPos};
@@ -23,10 +22,6 @@ pub(crate) struct SceneInput<'a> {
     pub colors: &'a TermColors,
     pub cursor: Option<CursorDraw>,
     pub selection: Option<SelectionOverlay>,
-    pub bands: &'a [RowBand],
-    /// The pane's width and the stripe's, in device pixels.
-    pub pane_width: u32,
-    pub stripe_width: u32,
 }
 
 /// Builds `row`'s quads into `out` (cleared first).
@@ -47,7 +42,6 @@ pub(crate) fn build_row(
         out.bg
             .push(Quad::solid(x_of(c0), y0, w, ch, input.palette.selection));
     }
-    let look = look_of(input.bands, row);
     let cursor = input.cursor.filter(|c| c.row == row);
     let block = cursor.filter(|c| c.style == CursorStyle::Block);
     for cell in cells {
@@ -70,17 +64,10 @@ pub(crate) fn build_row(
             out.bg.push(Quad::solid(x0, y0, span_w, ch, bg));
         }
         if !cell.style.flags.contains(StyleFlags::INVISIBLE) {
-            text(cell, &colors, look.weight, (x0, y0), glyphs, out);
+            text(cell, &colors, (x0, y0), glyphs, out);
             decorations(cell, &colors, (x0, y0), &m, glyphs, out);
         }
     }
-    let at = RowBox {
-        y: y0,
-        height: ch,
-        pane_width: input.pane_width,
-        stripe_width: input.stripe_width,
-    };
-    push_quads(&look, at, out);
     if let Some(c) = cursor {
         cursor_quads(&c, (x_of(c.col), y0), &m, out);
     }
@@ -89,7 +76,6 @@ pub(crate) fn build_row(
 fn text(
     cell: &CellDraw,
     colors: &CellColors,
-    weight: RowWeight,
     at: (i32, i32),
     glyphs: &mut GlyphCache,
     out: &mut RowScene,
@@ -99,7 +85,7 @@ fn text(
     }
     let flags = cell.style.flags;
     let style = FaceStyle {
-        weight: if flags.contains(StyleFlags::BOLD) || weight.bolds(cell.col) {
+        weight: if flags.contains(StyleFlags::BOLD) {
             Weight::Bold
         } else {
             Weight::Regular
