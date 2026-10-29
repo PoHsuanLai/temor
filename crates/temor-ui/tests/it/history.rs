@@ -480,3 +480,33 @@ fn back_leaves_the_history_page_for_the_shell() {
         !html.contains("class=\"temor-history\"") && html.contains("aria-label=\"Terminal\"")
     });
 }
+
+/// The history page's search field takes what is typed into it: the page's keys are only the
+/// window's chords. Found by the UI hunt: the page took every key, and the field stayed empty.
+#[test]
+fn the_history_search_field_takes_typing() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = super::window::harness("history-search-typing", &probe);
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the history page", |html| {
+        html.contains("class=\"temor-history\"")
+    });
+    press(&mut h, ".temor-history-search input");
+    super::drive::type_text(&mut h, "zzq");
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        h.attr(".temor-history-search input", "value").as_deref(),
+        Some("zzq")
+    );
+    // The window's chords still work from the field.
+    chord_with(&mut h, &primary[..1], '[');
+    wait_html(&mut h, "the shell again", |html| {
+        !html.contains("class=\"temor-history\"")
+    });
+}

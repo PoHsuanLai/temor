@@ -157,13 +157,18 @@ pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> E
             }
         });
     }
+    // A plain block, not a `RawKeySurface`: that one takes every key, and the page's own fields
+    // (History's search) would get no typing. Only the window's chords are taken here.
     let on_key = {
         let desk = desk.clone();
-        move |raw: RawKey| {
-            if raw.phase == KeyPhase::Release {
-                return;
-            }
+        move |event: KeyboardEvent| {
+            let raw = RawKey::new(
+                KeyPhase::Press,
+                (event.key(), event.code()),
+                (event.modifiers(), event.location()),
+            );
             if let Some(action) = stroke(&raw, false).and_then(|s| action_of(&desk, s)) {
+                event.prevent_default();
                 desk.run_action(action, Origin::Viewer);
             }
         }
@@ -175,17 +180,14 @@ pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> E
     };
     rsx! {
         div { class: "temor-pane",
-            RawKeySurface {
-                on_key: EventHandler::new(on_key),
-                onpointerdown: EventHandler::new(pressed),
-                common: Common {
-                    aria_label: Some(label),
-                    extra_class: ExtraClass::parse("temor-keys").ok(),
-                    mounted: Some(EventHandler::new(move |event: MountedEvent| {
-                        element.set(Some(event.data()));
-                    })),
-                    ..Common::default()
-                },
+            div {
+                class: "ds-raw-keys temor-keys",
+                role: "application",
+                "aria-label": label,
+                tabindex: "0",
+                onmounted: move |event: MountedEvent| element.set(Some(event.data())),
+                onkeydown: on_key,
+                onpointerdown: pressed,
                 {children}
             }
         }
