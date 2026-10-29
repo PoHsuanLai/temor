@@ -724,3 +724,75 @@ fn fork_holding(icns: &[u8]) -> Vec<u8> {
     fork.extend_from_slice(&map);
     fork
 }
+
+/// A new tab's row is brought into view when the sidebar holds more rows than fit, as the row of
+/// the tab in front always is. Found by the UI hunt: the 25th row is made below the window's
+/// bottom edge and stays there.
+#[test]
+fn the_row_in_front_is_scrolled_into_view() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-scroll-to-row", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    for _ in 0..24 {
+        drive::chord_with(&mut h, &[ShortcutKey::Super], 'n');
+    }
+    assert_eq!(drive::rows(&h), 25, "25 rows");
+    let side = &rects(&h, ".temor-side")[0];
+    let front = rects(&h, ".temor-side [aria-selected=\"true\"]");
+    let row = front
+        .iter()
+        .find(|r| r.bottom > r.top)
+        .expect("the row in front");
+    assert!(
+        row.top >= side.top && row.bottom <= side.bottom,
+        "the row in front ({}..{}) is inside the sidebar ({}..{})",
+        row.top,
+        row.bottom,
+        side.top,
+        side.bottom
+    );
+}
+
+/// A row's tooltip goes with its row: once the window is too narrow for the sidebar and the
+/// pointer is elsewhere, no tooltip is left over the pane. Found by the UI hunt: a row's "~" tip
+/// stays floating over the terminal where the hidden row was.
+#[test]
+fn a_rows_tooltip_goes_when_its_row_is_hidden() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-tip-hidden", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'n');
+    let row = &rects(&h, ".temor-side .temor-tab-box")[1];
+    let at = Point {
+        x: Px(((row.left + row.right) / 2.0) as f32),
+        y: Px(((row.top + row.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    h.send(Input::key(ShortcutKey::Escape));
+    h.advance(Duration::from_millis(300));
+    h.resize_window(Extent::new(600, 400));
+    h.advance(Duration::from_millis(400));
+    h.send(Input::press(
+        Point {
+            x: Px(590.0),
+            y: Px(390.0),
+        },
+        PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(1500));
+    let tips: Vec<String> = rects(&h, "[role=tooltip]")
+        .into_iter()
+        .filter(|r| r.right - r.left > 0.5)
+        .map(|r| format!("{:?} at {},{}", r.what, r.left, r.top))
+        .collect();
+    assert!(tips.is_empty(), "no tooltip left: {tips:?}");
+}

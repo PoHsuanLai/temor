@@ -12,7 +12,9 @@ use ds::base::press::{PointerButton, Press};
 use ds::components::app::edge_peek::EdgePeek;
 use ds::components::chrome::sidebar::Sidebar;
 use ds::components::chrome::sidebar_model::{SidebarFill, SidebarSection};
+use ds::motion::hover_intent::HoverEvent;
 use ds::prelude::*;
+use ds::stack::hover_hub::use_hover_hub;
 use ds::style::tokens::control_size::SidebarSize;
 use temor_client::model::vocab::ids::{FolderId, TabId};
 use temor_client::model::workspace::{TabsIn, WorkspaceIn};
@@ -40,6 +42,17 @@ pub enum SideKey {
 #[allow(non_snake_case)]
 pub fn TabSidebar(data: SidebarData, desk: Desk, dnd: Dnd, pinned: Shown) -> Element {
     let frame = use_space_frame();
+    // The sidebar going (the window narrowed, or ⌃⌘S moved it to the edge) moves no pointer off
+    // its rows, so a row's tip would stay over the pane: it closes with the sidebar.
+    let hover = use_hover_hub();
+    use_drop(move || {
+        if hover
+            .open()
+            .is_some_and(|(key, _)| key.0.starts_with("temor:"))
+        {
+            hover.feed(HoverEvent::Out);
+        }
+    });
     let mut sections = Vec::new();
     let every: Vec<TabRow> = data.every().cloned().collect();
     sections.push(SidebarSection::Custom(rsx! {

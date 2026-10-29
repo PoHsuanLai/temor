@@ -452,3 +452,31 @@ fn an_older_panes_kept_commands_start_its_session() {
         assert!(start.elapsed() < Duration::from_secs(10), "{ran:?}");
     }
 }
+
+/// History opened over a shell is left with Back (⌘[ or the head's button), as a browser leaves
+/// the page it opened: the shell's console comes back. Found by the UI hunt: Back stays disabled
+/// and ⌘[ does nothing, so only the page's × gets the shell back.
+#[test]
+fn back_leaves_the_history_page_for_the_shell() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = super::window::harness("history-back", &probe);
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the history page", |html| {
+        html.contains("class=\"temor-history\"")
+    });
+    let disabled = super::drive::rects(&h, ".temor-walk .ds-button[disabled]").len();
+    assert!(
+        disabled < 2,
+        "Back is live on the page ({disabled} of 2 disabled)"
+    );
+    chord_with(&mut h, &primary[..1], '[');
+    wait_html(&mut h, "the shell again", |html| {
+        !html.contains("class=\"temor-history\"") && html.contains("aria-label=\"Terminal\"")
+    });
+}

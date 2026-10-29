@@ -5,9 +5,14 @@
 //! The pane asks the window for what it cannot do itself (close, give the keyboard back, open a
 //! file in another program); `Desk::viewer_request` answers.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use anyview_pane::{PaneRequest, ViewerPane, use_pane_handle};
 use dioxus::prelude::*;
 use ds::edit::raw_key::{KeyPhase, RawKey};
+use ds::focus::select::Select;
+use ds::focus::soon::focus_soon_told;
 use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use temor_client::model::vocab::ids::PaneId;
@@ -131,10 +136,27 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
 }
 
 /// One of temor's own pages on a row's stage (`temor://history`) in the viewer pane `pane`: the
-/// window's chords work in it as they do in a file viewer, and a press gives it the keyboard.
+/// window's chords work in it as they do in a file viewer, a press gives it the keyboard, and
+/// the keyboard given it (the page opened, or a step Back or Forward) moves into it.
 #[component]
 #[allow(non_snake_case)]
 pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> Element {
+    let mut element = use_signal(|| None::<Rc<MountedData>>);
+    let had = use_hook(|| Rc::new(Cell::new(false)));
+    {
+        let desk = desk.clone();
+        use_effect(move || {
+            let _ = (desk.ui)();
+            match (has_keyboard(&desk, pane), element()) {
+                (true, Some(element)) if !had.get() => {
+                    had.set(true);
+                    focus_soon_told(element, Select::None, EventHandler::new(|()| {}));
+                }
+                (false, _) => had.set(false),
+                _ => {}
+            }
+        });
+    }
     let on_key = {
         let desk = desk.clone();
         move |raw: RawKey| {
@@ -159,6 +181,9 @@ pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> E
                 common: Common {
                     aria_label: Some(label),
                     extra_class: ExtraClass::parse("temor-keys").ok(),
+                    mounted: Some(EventHandler::new(move |event: MountedEvent| {
+                        element.set(Some(event.data()));
+                    })),
                     ..Common::default()
                 },
                 {children}
