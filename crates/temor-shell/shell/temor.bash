@@ -137,7 +137,18 @@ _temor_complete() {
             local COMP_LINE=$line COMP_POINT=${#line} COMP_CWORD=$cword COMP_TYPE=9 COMP_KEY=9
             local -a COMP_WORDS=("${words[@]}")
             COMPREPLY=()
+            # A function that completes files says so with `compopt -o filenames` (bash-completion's
+            # _filedir), which fails outside a real completion: this one hears it instead.
+            compopt() {
+                local a o=
+                for a; do
+                    [[ $o == -o && ($a == filenames || $a == dirnames) ]] && dirs=1
+                    o=$a
+                done
+                return 0
+            }
             "$func" "$cmd" "$cur" "$prev" >/dev/null 2>&1
+            unset -f compopt
             hits=("${COMPREPLY[@]}")
         elif [[ -n $spec ]]; then
             spec=${spec#complete }
