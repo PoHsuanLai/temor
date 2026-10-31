@@ -13,6 +13,7 @@ default = ["ghostty"]
 ghostty = ["dep:temor-vt-sys", "temor-vt-sys/native", "dep:png"]
 
 [dependencies]
+temor-schema = { workspace = true }
 thiserror = { workspace = true }
 png = { workspace = true, optional = true }
 temor-vt-sys = { workspace = true, optional = true }

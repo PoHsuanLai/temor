@@ -2,15 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Terminal columns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Cols(pub u16);
-
-/// Terminal rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Rows(pub u16);
+pub use temor_schema::units::{Cols, Rows};
 
 /// A terminal's size in cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

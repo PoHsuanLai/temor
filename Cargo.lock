@@ -7573,6 +7573,7 @@ name = "temor-vt"
 version = "0.1.1"
 dependencies = [
  "png",
+ "temor-schema",
  "temor-testkit",
  "temor-vt-sys",
  "thiserror 2.0.21",

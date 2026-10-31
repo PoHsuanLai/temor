@@ -1,12 +1,6 @@
 //! Grid sizes, pixel sizes, counts and positions.
 
-/// A number of columns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Cols(pub u16);
-
-/// A number of rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Rows(pub u16);
+pub use temor_schema::units::{Cols, Rows};
 
 /// A zero-based row from the top of the viewport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
