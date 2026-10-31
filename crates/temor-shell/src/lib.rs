@@ -35,7 +35,7 @@ pub use error::ShellError;
 pub use osc7::{cwd_from_url, percent_decode_strict};
 pub use platform::SOCKET_PATH_MAX;
 #[cfg(feature = "io")]
-pub use platform::ensure_private_dir;
+pub use platform::{ensure_private_dir, ensure_private_dir_all};
 pub use quote::sh_quote;
 pub use replay::alias_script;
 #[cfg(feature = "io")]
