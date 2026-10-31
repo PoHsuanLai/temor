@@ -16,6 +16,7 @@ mod open;
 pub mod remote;
 pub mod report_socket;
 pub mod sources;
+pub mod start;
 
 use std::path::PathBuf;
 

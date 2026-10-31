@@ -6,9 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::Cwd;
-use temor_panes::pane::settings::{
-    FontChoice, FontPoints, LinePercent, PagerChoice, TerminalSettings,
-};
+use temor_panes::pane::settings::{FontChoice, FontPoints, LinePercent, TerminalSettings};
 use temor_panes::pty::SessionLauncher;
 use temor_panes::render::{
     FontConfig, FontFamily, FontSet, FontSize, FontSource, LineHeight, Palette,
@@ -20,17 +18,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::probe::Probe;
 use super::theme::AppearanceSource;
-use crate::app::shell_pane_with_socket;
 use crate::edge::{Ambient, NoopNotifier, SystemClock};
 use crate::error::UiError;
 use crate::hub::Run;
 use crate::pane::TaggedSink;
-use crate::platform::{default_opener, ensure_private_dir};
+use crate::platform::default_opener;
 use crate::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_client::model::shelf::Quoting;
 use temor_client::shelf::transfer::{Bytes, Count, Limits};
-use temor_panes::pane::{ByteTap, PaneEvent, TransferSetup};
+use temor_panes::pane::{PaneEvent, TransferSetup};
 use temor_panes::shell::ShellKind;
+use temor_panes::start::{ShellStart, shell_spec};
 
 /// Given to the session's own process as its first argument: the program becomes the session
 /// leader and runs the shell (temor-pty's trampoline; the binary's `main` handles it).
@@ -141,14 +139,7 @@ impl Clipboard for DesktopClipboard {
     }
 }
 
-/// A program to run in a pane in place of the person's shell (the `ssh` of a host session).
-#[derive(Debug, Clone)]
-pub struct Program {
-    pub program: PathBuf,
-    pub args: Vec<std::ffi::OsString>,
-    /// Hears what the program prints, before the terminal parses it.
-    pub tap: Option<Arc<dyn ByteTap>>,
-}
+pub use temor_panes::start::Program;
 
 /// Opens a session for pane `pane`: a shell at 80 by 24 cells (the first layout refits it) in
 /// `cwd` when that is a folder, else the home folder. With a `snapshot` the terminal begins as
@@ -185,7 +176,6 @@ pub fn open_session_with(
     socket: Option<&std::path::Path>,
     program: Option<Program>,
 ) -> Result<Session, UiError> {
-    ensure_private_dir(&launch.ambient.runtime_dir).map_err(UiError::RuntimeDir)?;
     let settings = &launch.settings;
     let fonts = load_fonts(&settings.font, settings.font_size, settings.line_height)?;
     let launcher = match &launch.launcher {
@@ -199,41 +189,26 @@ pub fn open_session_with(
             args: Vec::new(),
         },
     };
-    let (grid, cell) = first_size();
-    // The shell starts in the pane's folder when it is still there.
-    let mut ambient = launch.ambient.clone();
-    ambient.env = ambient.env.overlay(env);
-    if settings.pager == PagerChoice::System && ambient.env.get("TEMOR_PAGER").is_none() {
-        ambient.env.set("TEMOR_PAGER", "system");
-    }
-    if let Some(dir) = cwd
-        .map(|c| PathBuf::from(c.as_str()))
-        .filter(|p| p.is_absolute() && p.is_dir())
-    {
-        ambient.home = dir;
-    }
-    let mut spec = shell_pane_with_socket(
-        &ambient,
+    let ambient = &launch.ambient;
+    let spec = shell_spec(ShellStart {
+        runtime_dir: &ambient.runtime_dir,
+        home: &ambient.home,
+        env: ambient.env.clone().overlay(env),
         settings,
-        pane.0,
-        (grid, cell),
+        pane: pane.0,
+        size: first_size(),
         palette,
         launcher,
-        (
-            socket.map(std::path::Path::to_path_buf),
-            replay.map(std::path::Path::to_path_buf),
-        ),
-    )?;
-    spec.transfers = Some(TransferSetup {
-        staging: launch.ambient.staging_dir(pane.0),
-        limits: transfer_limits(),
-    });
-    if let Some(run) = program {
-        // The pane's environment and size stay; only what runs in it changes.
-        spec.spawn.program = run.program;
-        spec.spawn.args = run.args;
-        spec.tap = run.tap;
-    }
+        cwd: cwd.map(Cwd::as_str),
+        socket: socket.map(std::path::Path::to_path_buf),
+        replay: replay.map(std::path::Path::to_path_buf),
+        program,
+        transfers: Some(TransferSetup {
+            staging: ambient.staging_dir(pane.0),
+            limits: transfer_limits(),
+        }),
+    })
+    .map_err(UiError::from)?;
     let quoting = quoting_of(&spec.spawn.program);
     let mut session = Session::open_with(
         SessionParts {
