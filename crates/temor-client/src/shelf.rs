@@ -18,14 +18,12 @@ use std::path::{Path, PathBuf};
 
 use ds_core::time::stamp::Stamp;
 use temor_core::vocab::ids::{BlockId, Bytes, DownloadId, TabId};
-use temor_core::vocab::text::{HostName, ShelfPath};
+use temor_core::vocab::text::ShelfPath;
 use temor_hosts::shelf::{Incoming, ItemState, Shelf, ShelfIn, ShelfItem, Source, shelf_step};
 use temor_hosts::transfer::Origin;
 use temor_transfer::kitty::Offered;
 use temor_transfer::shelf::{Clock, ShelfId, ShelfStore, UnixMillis};
-use temor_transfer::{
-    BlockKey, FileName, HostName as StoredHost, Origin as StoredOrigin, PaneKey, TabKey,
-};
+use temor_transfer::{BlockKey, FileName, Origin as StoredOrigin, PaneKey, TabKey};
 
 /// Saves `text` temor made (a block's output) on the shelf in `dir` under `name`, or the next
 /// free name: the file is created exclusively, so a link planted at the name is never followed.
@@ -163,9 +161,7 @@ fn offer_of(item: &ShelfItem) -> Option<Offered> {
 
 fn origin_to(origin: &Origin) -> StoredOrigin {
     match origin {
-        Origin::Remote { host, .. } => StoredOrigin::Host {
-            host: StoredHost::new(host.as_str()),
-        },
+        Origin::Remote { host, .. } => StoredOrigin::Host { host: host.clone() },
         Origin::LocalStream { tab } => StoredOrigin::LocalPane {
             tab: TabKey::new(tab.0),
             pane: PaneKey::new(0),
@@ -191,7 +187,7 @@ fn origin_to(origin: &Origin) -> StoredOrigin {
 fn origin_from(origin: &StoredOrigin) -> Origin {
     match origin {
         StoredOrigin::Host { host } => Origin::Remote {
-            host: HostName(host.as_str().to_owned()),
+            host: host.clone(),
             tab: TabId(0),
         },
         StoredOrigin::LocalPane { tab, .. } => Origin::LocalStream {

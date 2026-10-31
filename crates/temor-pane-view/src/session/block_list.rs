@@ -3,7 +3,7 @@
 
 use std::ops::Range;
 
-use temor_client::model::session::list::{BlockFacts, Item, KeptCard, list_of};
+use temor_client::model::session::list::{BlockMarks, Item, KeptCard, list_of};
 use temor_client::model::vocab::ids::BlockId;
 use temor_panes::pane::text::CellPos as ScreenCell;
 use temor_panes::render::{CellPos, HitRegion, PixelSize};
@@ -52,7 +52,7 @@ impl Session {
             .saturating_add(read.len.saturating_sub(1))
             .saturating_sub(u32::from(self.painter.lower()));
         read.cursor = Some(read.cursor.map_or(drawn, |cursor| cursor.max(drawn)));
-        let own = list_of(&read, |id| BlockFacts {
+        let own = list_of(&read, |id| BlockMarks {
             folded: self.block_folded(id),
             bookmarked: self.block_bookmarked(id),
         });

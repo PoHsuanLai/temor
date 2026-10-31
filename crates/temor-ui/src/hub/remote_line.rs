@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::{LinkEffect, LinkEvent, LinkState, RetryPolicy, link_step};
 use temor_client::remote::message::ListeningPort;
 use temor_client::ssh::HostAlias;
@@ -52,7 +52,7 @@ impl Hub {
 
     /// The sessions the host holds for this window's panes, for the machine to reattach.
     pub(super) fn tell_sessions(&mut self, host: &HostAlias) {
-        let sessions: Vec<SessionId> = self
+        let sessions: Vec<RemoteSessionId> = self
             .remote
             .panes
             .values()
@@ -130,7 +130,7 @@ impl Hub {
         &mut self,
         host: &HostAlias,
         generation: Generation,
-        session: SessionId,
+        session: RemoteSessionId,
     ) {
         if !self.current(host, generation) {
             return;

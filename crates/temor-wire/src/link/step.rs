@@ -2,7 +2,7 @@
 
 use super::model::{GoneReason, LinkEffect, LinkEvent, LinkState, Millis, Monotonic};
 use super::policy::{Attempt, RetryPolicy};
-use crate::ids::SessionId;
+use crate::ids::RemoteSessionId;
 
 /// One step of the reconnect machine: the next state and what the caller must do.
 pub fn link_step(
@@ -41,7 +41,7 @@ pub fn link_step(
 }
 
 fn on_connected(
-    sessions: Vec<SessionId>,
+    sessions: Vec<RemoteSessionId>,
     event: LinkEvent,
     policy: &RetryPolicy,
 ) -> (LinkState, Vec<LinkEffect>) {
@@ -59,7 +59,7 @@ fn on_connected(
 }
 
 fn on_backoff(
-    sessions: Vec<SessionId>,
+    sessions: Vec<RemoteSessionId>,
     attempt: Attempt,
     delay: Millis,
     due: Monotonic,
@@ -93,7 +93,7 @@ fn on_backoff(
 }
 
 fn on_reattaching(
-    sessions: Vec<SessionId>,
+    sessions: Vec<RemoteSessionId>,
     attempt: Attempt,
     event: LinkEvent,
     policy: &RetryPolicy,
@@ -128,7 +128,7 @@ fn on_reattaching(
 
 /// The state that waits for `attempt`, from `now`, and the timer that wakes it.
 fn schedule(
-    sessions: Vec<SessionId>,
+    sessions: Vec<RemoteSessionId>,
     attempt: Attempt,
     now: Monotonic,
     policy: &RetryPolicy,

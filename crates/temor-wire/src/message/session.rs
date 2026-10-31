@@ -2,7 +2,7 @@
 
 use super::files::RemotePath;
 use super::palette::Palette;
-use crate::ids::SessionId;
+use crate::ids::RemoteSessionId;
 use crate::units::{CellPx, ExitCode, Seconds, Size};
 use serde::{Deserialize, Serialize};
 
@@ -61,7 +61,7 @@ pub enum SessionState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionInfo {
     /// The session.
-    pub session: SessionId,
+    pub session: RemoteSessionId,
     /// Its folder when the listing was made.
     pub cwd: RemotePath,
     /// Its size.

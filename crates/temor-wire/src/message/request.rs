@@ -5,7 +5,7 @@ use super::palette::Palette;
 use super::relay::RelayCall;
 use super::session::{IdleLimit, OpenSession};
 use super::trial::TrialRequest;
-use crate::ids::{SessionId, WatchId};
+use crate::ids::{RemoteSessionId, WatchId};
 use crate::units::{ByteRange, CellPx, Size};
 use serde::{Deserialize, Serialize};
 
@@ -19,23 +19,23 @@ pub enum Request {
     /// stay attached: each gets the output from then on (several windows on one session).
     AttachSession {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// Detach a session, which keeps running. Replies `Ack`.
     DetachSession {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// End a session: send it a hangup, then reap its program and drop its screen. Replies `Ack`.
     /// Unlike detaching, nothing of the session survives.
     Close {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// Resize a session. Replies `Ack`.
     ResizeSession {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// The new size.
         size: Size,
         /// One cell in pixels. A client that sends none gets 8 by 16.
@@ -45,12 +45,12 @@ pub enum Request {
     /// Input for a session. The payload is the bytes. Replies `Ack`.
     SendInput {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// Set the colours a session's terminal answers colour queries with. Replies `Ack`.
     SetPalette {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// The window's colours.
         palette: Palette,
     },
@@ -109,7 +109,7 @@ pub enum Request {
     /// [`Reply::Facts`](super::Reply::Facts). Needs the `Facts` capability.
     Facts {
         /// The session whose folder is read.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// Run a proposal's trial. Replies [`Reply::Verdict`](super::Reply::Verdict).
     RunTrial(TrialRequest),

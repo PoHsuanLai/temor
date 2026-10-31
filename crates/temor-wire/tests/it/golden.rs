@@ -3,7 +3,7 @@
 
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::{Capability, Hello, HelperVersion, ProtocolVersion};
-use temor_wire::ids::{RequestId, SessionId};
+use temor_wire::ids::{RemoteSessionId, RequestId};
 use temor_wire::message::{
     Event, FileChange, FileChanges, Message, PartEnd, RelPath, RemoteError, RemotePath, Reply,
     Request, TrialVerdict, UncheckedWhy, WriteCheck, WriteMode,
@@ -35,7 +35,7 @@ fn a_request_with_fields_names_them() {
     let message = Message::Request {
         id: RequestId(5),
         body: Request::ResizeSession {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
             size: Size {
                 cols: temor_wire::units::Cols(80),
                 rows: temor_wire::units::Rows(24),
@@ -57,7 +57,7 @@ fn close_is_a_request_for_a_session() {
     let message = Message::Request {
         id: RequestId(10),
         body: Request::Close {
-            session: SessionId(9),
+            session: RemoteSessionId(9),
         },
     };
     assert_eq!(
@@ -88,7 +88,7 @@ fn an_ok_reply_and_an_error_are_under_their_outcome_key() {
 #[test]
 fn an_event_names_its_session() {
     let message = Message::Event(Event::Output {
-        session: SessionId(4),
+        session: RemoteSessionId(4),
     });
     assert_eq!(json(&message), r#"{"Event":{"Output":{"session":4}}}"#);
 }

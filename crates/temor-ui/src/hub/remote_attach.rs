@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
@@ -15,7 +15,7 @@ use temor_panes::remote::palette::wire_palette;
 
 impl Hub {
     /// Reattaches the sessions `sessions` on the new connection, each pane getting its screen.
-    pub(super) fn remote_reattach(&mut self, host: &HostAlias, sessions: &[SessionId]) {
+    pub(super) fn remote_reattach(&mut self, host: &HostAlias, sessions: &[RemoteSessionId]) {
         let Some(line) = self.remote.lines.get(host) else {
             return;
         };
@@ -52,7 +52,7 @@ impl Hub {
         host: &HostAlias,
         generation: Generation,
         pane: PaneId,
-        session: SessionId,
+        session: RemoteSessionId,
     ) {
         if !self.current(host, generation) {
             return;

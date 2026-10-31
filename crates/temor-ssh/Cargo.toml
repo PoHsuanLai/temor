@@ -18,6 +18,7 @@ io = ["dep:rustix", "temor-shell/io"]
 
 [dependencies]
 base64 = { workspace = true }
+temor-schema = { workspace = true }
 temor-shell = { workspace = true }
 thiserror = { workspace = true }
 

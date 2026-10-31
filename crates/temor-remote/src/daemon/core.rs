@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_wire::hello::Capability;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{IdleLimit, ListeningPort, Message, OpenSession};
 use temor_wire::units::UnixMillis;
 
@@ -70,7 +70,7 @@ impl Daemon {
     pub(super) fn open_session(
         self: &Arc<Self>,
         request: &OpenSession,
-    ) -> Result<SessionId, Error> {
+    ) -> Result<RemoteSessionId, Error> {
         let id = self.registry.next_id();
         let (session, reader) = Session::start(id, request, &self.config)?;
         // The session's folder is something the client asked for, so its files are reachable.
@@ -103,7 +103,7 @@ impl Daemon {
         }
     }
 
-    pub(super) fn remove_session(&self, id: SessionId) {
+    pub(super) fn remove_session(&self, id: RemoteSessionId) {
         self.registry.remove(id);
     }
 

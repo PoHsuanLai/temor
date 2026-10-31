@@ -3,9 +3,7 @@
 use crate::error::SshError;
 use crate::tailnet::UnixSeconds;
 
-/// A byte count.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ByteCount(pub u64);
+pub use temor_schema::units::ByteCount;
 
 /// An absolute path on the host. No control characters and none of `* ? [ ] { } \`, which
 /// scp's file transfer would expand; spaces and quotes are fine because no shell reads them.

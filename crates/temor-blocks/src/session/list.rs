@@ -13,7 +13,7 @@ use super::frame::{BlockRead, End, Read, command_rows};
 
 /// What the list needs to know of a block that the terminal does not say.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BlockFacts {
+pub struct BlockMarks {
     /// The person folded its output away.
     pub folded: bool,
     /// The person bookmarked it.
@@ -155,7 +155,7 @@ fn output_of(read: &BlockRead, cursor: Option<u32>, bottom: u32) -> Option<Range
 
 /// The list for `read`: every block the terminal still holds whose command is known, oldest
 /// first, with `facts` for each.
-pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockFacts) -> Vec<Item> {
+pub fn list_of(read: &Read, facts: impl Fn(BlockId) -> BlockMarks) -> Vec<Item> {
     let bottom = read.top.saturating_add(read.len.saturating_sub(1));
     let mut items = Vec::with_capacity(read.blocks.len() + 1);
     let mut running = false;

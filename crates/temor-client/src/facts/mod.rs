@@ -10,7 +10,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use temor_core::facts::Facts;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 
 use crate::remote::conn::Conn;
 use crate::serial::Serial;
@@ -27,7 +27,7 @@ pub fn read_later(dir: String, env: FactsEnv, done: impl FnOnce(Facts) + Send + 
 /// that is slow to answer holds up no local read), and hands them to `done`: none when it did not
 /// answer. False when that thread could not start: `done` is never called.
 pub fn ask_host_later(
-    (conn, session): (Arc<Conn>, SessionId),
+    (conn, session): (Arc<Conn>, RemoteSessionId),
     done: impl FnOnce(Option<Facts>) + Send + 'static,
 ) -> bool {
     static LINE: Serial = Serial::new("temor-facts-host");

@@ -7481,6 +7481,7 @@ version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
@@ -7516,6 +7517,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
@@ -7587,6 +7589,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "thiserror 2.0.21",
 ]

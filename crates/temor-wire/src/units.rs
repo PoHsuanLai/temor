@@ -50,10 +50,7 @@ impl Default for CellPx {
     }
 }
 
-/// A count of bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ByteCount(pub u64);
+pub use temor_schema::units::ByteCount;
 
 /// A position in a file, in bytes from its start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

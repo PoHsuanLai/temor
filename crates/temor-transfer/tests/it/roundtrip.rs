@@ -59,7 +59,7 @@ const WAITS: Waits = Waits {
 
 fn host() -> Origin {
     Origin::Host {
-        host: HostName::new("prod-1"),
+        host: HostName("prod-1".into()),
     }
 }
 

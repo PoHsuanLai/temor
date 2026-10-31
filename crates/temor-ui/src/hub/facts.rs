@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use temor_client::model::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::model::Hub;
@@ -80,7 +80,7 @@ impl FactsHub {
 
     /// Asks the helper of a host for the facts of `session`'s folder. False when the ask could
     /// not start.
-    fn spawn_host(&self, pane: PaneId, source: (Arc<Conn>, SessionId)) -> bool {
+    fn spawn_host(&self, pane: PaneId, source: (Arc<Conn>, RemoteSessionId)) -> bool {
         let done = self.done.clone();
         ask_host_later(source, move |facts| {
             let _ = done.send(Ready { pane, facts });
@@ -102,7 +102,7 @@ impl Hub {
     /// The helper connection and session of a pane on a host's helper (Tier B), once it is
     /// attached. A host without the helper (Tier A) has no chips: nothing there can read its
     /// folder but the shell.
-    fn helper_facts_source(&self, pane: PaneId) -> Option<(Arc<Conn>, SessionId)> {
+    fn helper_facts_source(&self, pane: PaneId) -> Option<(Arc<Conn>, RemoteSessionId)> {
         let remote = self.remote.panes.get(&pane)?;
         let session = remote.session?;
         Some((self.remote.helper_conn(&remote.alias)?, session))

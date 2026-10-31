@@ -21,7 +21,7 @@ fn item(shelf: &Shelf, name: &str, at: i64, path: PathBuf) -> ShelfItem {
         path,
         size: Bytes::new(3),
         origin: Origin::Host {
-            host: HostName::new("prod-1"),
+            host: HostName("prod-1".into()),
         },
         received_at: FixedClock(at).now(),
     }

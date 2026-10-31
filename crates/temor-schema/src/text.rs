@@ -83,7 +83,8 @@ text_newtype!(
     SshTarget
 );
 text_newtype!(
-    /// A host's name as OSC 7 reports it.
+    /// A host's name: as OSC 7 reports it, or the one a download came from as the person named it
+    /// (an ssh alias or a host name).
     HostName
 );
 text_newtype!(

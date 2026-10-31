@@ -130,7 +130,7 @@ impl Hub {
         if let Some(at) = self.ssh.restored.iter().position(|r| r.pane == spawn.pane) {
             let saved = self.ssh.restored.remove(at);
             if let Some(session) = saved.session {
-                let session = temor_client::remote::ids::SessionId(session.0);
+                let session = temor_client::remote::ids::RemoteSessionId(session.0);
                 self.remote.saved.insert(spawn.pane, session);
             }
             self.ssh.deferred.insert(spawn.pane);

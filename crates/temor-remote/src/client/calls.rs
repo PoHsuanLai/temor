@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
-use temor_wire::ids::{RequestId, SessionId, WatchId};
+use temor_wire::ids::{RemoteSessionId, RequestId, WatchId};
 use temor_wire::message::{
     DirEntry, FileMeta, FileStamp, IdleLimit, ListeningPort, OpenSession, RemotePath, Reply,
     Request, SessionInfo, WriteCheck, WriteMode,
@@ -36,7 +36,7 @@ impl InFlight {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attached {
     /// The session.
-    pub session: SessionId,
+    pub session: RemoteSessionId,
     /// Its size now.
     pub size: Size,
     /// libghostty's encoding of the screen, scrollback and modes.
@@ -142,7 +142,7 @@ impl Client {
     }
 
     /// Starts a session. It begins detached: [`Client::attach`] it to see its screen.
-    pub fn open_session(&self, request: OpenSession) -> Result<SessionId, Error> {
+    pub fn open_session(&self, request: OpenSession) -> Result<RemoteSessionId, Error> {
         match self.ask(Request::OpenSession(request))? {
             Reply::Opened { session } => Ok(session),
             _ => Err(Error::UnexpectedReply),
@@ -151,7 +151,7 @@ impl Client {
 
     /// Attaches to a session: its screen as a snapshot, and from then on its output as events.
     /// Attaching a session another link holds takes it over.
-    pub fn attach(&self, session: SessionId) -> Result<Attached, Error> {
+    pub fn attach(&self, session: RemoteSessionId) -> Result<Attached, Error> {
         let answer = self.call(Request::AttachSession { session }, None)?;
         match (answer.outcome.map_err(Error::Remote)?, answer.payload) {
             (Reply::Attached { session, size }, Some(snapshot)) => Ok(Attached {
@@ -164,18 +164,18 @@ impl Client {
     }
 
     /// Detaches: the session keeps running with its screen.
-    pub fn detach(&self, session: SessionId) -> Result<(), Error> {
+    pub fn detach(&self, session: RemoteSessionId) -> Result<(), Error> {
         self.ack(Request::DetachSession { session })
     }
 
     /// Ends a session: its program is hung up and nothing of it survives.
-    pub fn close_session(&self, session: SessionId) -> Result<(), Error> {
+    pub fn close_session(&self, session: RemoteSessionId) -> Result<(), Error> {
         self.ack(Request::Close { session })
     }
 
     /// Resizes a session's screen and terminal. `cell` is one cell in pixels, for the program's
     /// pixel size reports.
-    pub fn resize(&self, session: SessionId, size: Size, cell: CellPx) -> Result<(), Error> {
+    pub fn resize(&self, session: RemoteSessionId, size: Size, cell: CellPx) -> Result<(), Error> {
         self.ack(Request::ResizeSession {
             session,
             size,
@@ -184,7 +184,7 @@ impl Client {
     }
 
     /// Sends keys, a paste or a mouse report to a session's program.
-    pub fn send_input(&self, session: SessionId, bytes: &[u8]) -> Result<(), Error> {
+    pub fn send_input(&self, session: RemoteSessionId, bytes: &[u8]) -> Result<(), Error> {
         let answer = self.call(Request::SendInput { session }, Some(bytes))?;
         answer.outcome.map(drop).map_err(Error::Remote)
     }

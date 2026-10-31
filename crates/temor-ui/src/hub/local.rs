@@ -9,7 +9,7 @@ use temor_client::model::session::{Checkpoint, ShellState};
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::Spawn;
 use temor_client::remote::host::HostEnv;
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::{Attempt, LinkState};
 use temor_client::ssh::HostAlias;
 use temor_panes::pane::settings::ShellChoice;
@@ -60,7 +60,7 @@ impl Hub {
         &mut self,
         spawn: &Spawn,
         kept: Option<Checkpoint>,
-        (resume, report_key): (Option<SessionId>, ReportKey),
+        (resume, report_key): (Option<RemoteSessionId>, ReportKey),
     ) -> LocalStart {
         let mut start = self.space_start();
         let replay = kept
@@ -114,7 +114,7 @@ impl Hub {
 
     /// Makes `spawn`'s pane a session in the local daemon: an empty pane now, its screen when the
     /// daemon has answered. Without a helper beside temor the pane is an ordinary one.
-    pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<SessionId>) {
+    pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<RemoteSessionId>) {
         let kept = self.carried.remove(&spawn.pane);
         // A shell that goes on keeps the key it was started with, the one kept when temor quit.
         let key = match resume {
