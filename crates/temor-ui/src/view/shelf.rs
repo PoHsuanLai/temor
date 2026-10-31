@@ -17,12 +17,14 @@ use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_client::model::menu::{DownloadFacts, Item, Target};
 use temor_client::model::shelf::{
-    Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState, upload_detail,
+    Row as Download, RowAction as Act, RowState as Arriving, Upload, UploadState,
 };
 
 use super::menu::{Pick, menu_items};
 use super::names::named;
-use super::shelf_words::{ActWords, REMOVE_FROM_LIST, act_words};
+use super::shelf_words::{
+    ActWords, EMPTY, REMOVE_FROM_LIST, act_words, detail as row_detail, failure, upload_detail,
+};
 use super::tool_button::ToolButton;
 use crate::hub::Desk;
 use temor_panes::pane::keys::Action;
@@ -72,7 +74,7 @@ pub fn DownloadsPage(desk: Desk) -> Element {
                 EmptyState {
                     form: EmptyForm::Empty,
                     title: "No downloads",
-                    description: Some(TextLine::from(view.empty)),
+                    description: Some(TextLine::from(EMPTY)),
                 }
             }
             for upload in uploads {
@@ -142,11 +144,11 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
         _ => None,
     };
     let detail = match &row.state {
-        Arriving::Failed { message } => message.clone(),
+        Arriving::Failed { why } => failure(*why).to_owned(),
         Arriving::Receiving { percent: None } | Arriving::Waiting => {
-            format!("Receiving, {}", row.detail)
+            format!("Receiving, {}", row_detail(&row))
         }
-        _ => row.detail.clone(),
+        _ => row_detail(&row),
     };
     let button = |action: Act, words: ActWords| {
         let act = act.clone();

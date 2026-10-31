@@ -6,8 +6,6 @@ use std::cmp::Ordering;
 
 use temor_schema::time::UnixMillis;
 
-use crate::history::{Zone, day_heading};
-
 /// At most this many entries are listed; a bigger folder says how many more it holds.
 pub const LISTED: usize = 500;
 
@@ -34,15 +32,6 @@ pub fn listed(entries: Vec<Entry>) -> (Vec<Entry>, usize) {
     let more = shown.len().saturating_sub(LISTED);
     shown.truncate(LISTED);
     (shown, more)
-}
-
-/// When an entry changed, seen on `today`: the time today or yesterday, else the day.
-pub fn modified_words(at: UnixMillis, zone: Zone, today: i64) -> String {
-    let day = zone.day_of(at);
-    match today - day {
-        0 | 1 => format!("{} {}", day_heading(day, today), zone.time_of(at)),
-        _ => day_heading(day, today),
-    }
 }
 
 /// Names compared as a person reads them: runs of digits by their value, the rest without case.
@@ -129,23 +118,5 @@ mod tests {
             .collect();
         let (shown, more) = listed(many);
         assert_eq!((shown.len(), more), (LISTED, 7));
-    }
-
-    #[test]
-    fn a_change_today_or_yesterday_says_its_time_and_an_older_one_its_day() {
-        let day = 20_000_i64;
-        let at = |day: i64, minutes: i64| UnixMillis(day * 86_400_000 + minutes * 60_000);
-        assert_eq!(
-            modified_words(at(day, 9 * 60 + 5), Zone(0), day),
-            "Today 09:05"
-        );
-        assert_eq!(
-            modified_words(at(day - 1, 0), Zone(0), day),
-            "Yesterday 00:00"
-        );
-        assert_eq!(
-            modified_words(at(day - 3, 0), Zone(0), day),
-            day_heading(day - 3, day)
-        );
     }
 }

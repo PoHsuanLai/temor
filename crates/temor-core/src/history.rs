@@ -1,36 +1,11 @@
-//! How the history page words what it lists (PLAN P23): sessions and commands by day, "Today",
-//! "Yesterday", then the day's name and date; each session by what it ran or where, and when.
-//! Pure: the window gives the time now and the local zone's offset.
+//! The calendar the history page lists by (PLAN P23): which local day a moment falls on, that
+//! day's date, runs of items one day each, and what a session is called. Pure: the window gives
+//! the local zone's offset, and words the days itself.
 
 use temor_schema::session::Session;
 use temor_schema::time::UnixMillis;
 
 const DAY_MS: i64 = 86_400_000;
-
-const WEEKDAYS: [&str; 7] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-];
-
-const MONTHS: [&str; 12] = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
 
 /// The local wall clock: how far the zone is ahead of UTC, in seconds (negative west of
 /// Greenwich). The offset of now is used for every time, so a day before a change of daylight
@@ -55,35 +30,6 @@ impl Zone {
     }
 }
 
-/// The heading over a day's sessions, seen on `today`: "Today", "Yesterday", "Thursday 23
-/// October", and the year too when it is not this one.
-pub fn day_heading(day: i64, today: i64) -> String {
-    match today - day {
-        0 => "Today".to_owned(),
-        1 => "Yesterday".to_owned(),
-        _ => {
-            let (year, month, date) = civil(day);
-            let weekday = WEEKDAYS[usize::try_from((day + 4).rem_euclid(7)).unwrap_or(0)];
-            let month = MONTHS[month];
-            match civil(today).0 == year {
-                true => format!("{weekday} {date} {month}"),
-                false => format!("{weekday} {date} {month} {year}"),
-            }
-        }
-    }
-}
-
-/// When a session ran: "10:20 – now" while it runs, "17:02 – 18:10" once it ended, and only its
-/// start when it neither runs nor said it ended.
-pub fn span_of(session: &Session, running: bool, zone: Zone) -> String {
-    let start = zone.time_of(session.started);
-    match (running, session.ended) {
-        (true, _) => format!("{start} – now"),
-        (false, Some(end)) => format!("{start} – {}", zone.time_of(end)),
-        (false, None) => start,
-    }
-}
-
 /// What a session is called: the program it was started to run, else the last part of its
 /// folder (`~` for the home folder itself).
 pub fn session_title(session: &Session, home: &str) -> String {
@@ -100,13 +46,12 @@ pub fn session_title(session: &Session, home: &str) -> String {
     folder.rsplit('/').next().unwrap_or(folder).to_owned()
 }
 
-/// `items` in runs of the same day, newest first as they come, each under its heading.
+/// `items` in runs of the same local day, newest first as they come, each with its day.
 pub fn by_day<T>(
     items: impl IntoIterator<Item = T>,
     at: impl Fn(&T) -> UnixMillis,
     zone: Zone,
-    today: i64,
-) -> Vec<(String, Vec<T>)> {
+) -> Vec<(i64, Vec<T>)> {
     let mut days: Vec<(i64, Vec<T>)> = Vec::new();
     for item in items {
         let day = zone.day_of(at(&item));
@@ -115,9 +60,30 @@ pub fn by_day<T>(
             _ => days.push((day, vec![item])),
         }
     }
-    days.into_iter()
-        .map(|(day, run)| (day_heading(day, today), run))
-        .collect()
+    days
+}
+
+/// A day on the calendar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CivilDay {
+    pub year: i64,
+    /// From 1 for January.
+    pub month: u8,
+    pub date: u8,
+    /// From 0 for Sunday.
+    pub weekday: u8,
+}
+
+/// The calendar day of `day`, counted from 1970-01-01 (a Thursday).
+pub fn civil_day(day: i64) -> CivilDay {
+    let (year, month, date) = civil(day);
+    let small = |n: i64| u8::try_from(n).unwrap_or(0);
+    CivilDay {
+        year,
+        month: small(i64::try_from(month).unwrap_or(0) + 1),
+        date: small(date),
+        weekday: small((day + 4).rem_euclid(7)),
+    }
 }
 
 /// The civil date of `days` since 1970-01-01 (Howard Hinnant's `civil_from_days`); the month is
@@ -162,13 +128,18 @@ mod tests {
     }
 
     #[test]
-    fn days_read_today_yesterday_then_their_name_and_date() {
-        let zone = Zone(0);
-        let today = zone.day_of(NOW);
-        assert_eq!(day_heading(today, today), "Today");
-        assert_eq!(day_heading(today - 1, today), "Yesterday");
-        assert_eq!(day_heading(today - 4, today), "Friday 23 October");
-        assert_eq!(day_heading(today - 365, today), "Monday 27 October 2025");
+    fn a_day_has_its_date_and_weekday() {
+        let today = Zone(0).day_of(NOW);
+        let day = |year, month, date, weekday| CivilDay {
+            year,
+            month,
+            date,
+            weekday,
+        };
+        assert_eq!(civil_day(today), day(2026, 10, 27, 2));
+        assert_eq!(civil_day(today - 4), day(2026, 10, 23, 5));
+        assert_eq!(civil_day(today - 365), day(2025, 10, 27, 1));
+        assert_eq!(civil_day(0), day(1970, 1, 1, 4));
     }
 
     #[test]
@@ -181,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn a_session_is_named_by_its_program_or_its_folder_and_said_when_it_ran() {
+    fn a_session_is_named_by_its_program_or_its_folder() {
         let home = "/Users/po";
         assert_eq!(
             session_title(&session(Some("claude"), "/x"), home),
@@ -190,11 +161,6 @@ mod tests {
         assert_eq!(session_title(&session(None, "/Users/po/ml/"), home), "ml");
         assert_eq!(session_title(&session(None, "/Users/po"), home), "~");
         assert_eq!(session_title(&session(None, "/"), home), "/");
-        let mut ran = session(None, "/x");
-        assert_eq!(span_of(&ran, true, Zone(0)), "10:20 – now");
-        assert_eq!(span_of(&ran, false, Zone(0)), "10:20");
-        ran.ended = Some(UnixMillis(NOW.0 + 50 * 60_000));
-        assert_eq!(span_of(&ran, false, Zone(0)), "10:20 – 11:10");
     }
 
     #[test]
@@ -207,9 +173,9 @@ mod tests {
             UnixMillis(NOW.0 - DAY_MS),
             UnixMillis(NOW.0 - 3 * DAY_MS),
         ];
-        let days = by_day(ats, |at| *at, zone, today);
-        let headings: Vec<&str> = days.iter().map(|(h, _)| h.as_str()).collect();
-        assert_eq!(headings, ["Today", "Yesterday", "Saturday 24 October"]);
+        let days = by_day(ats, |at| *at, zone);
+        let starts: Vec<i64> = days.iter().map(|(day, _)| *day).collect();
+        assert_eq!(starts, [today, today - 1, today - 3]);
         assert_eq!(days[0].1.len(), 2);
     }
 }

@@ -10,7 +10,9 @@ use ds::components::content::avatar::{AvatarFace, AvatarShape, AvatarSize, Avata
 use ds::components::overlays::empty_state::EmptyForm;
 use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
-use temor_client::model::history::{Zone, by_day, session_title, span_of};
+use temor_client::model::history::{Zone, by_day, session_title};
+
+use super::when_words::{day_heading, span_of};
 use temor_client::model::icon::initial_of;
 use temor_client::query::{Commands, History, Sessions};
 use temor_schema::session::{RanCommand, Session, SessionId};
@@ -79,7 +81,9 @@ fn SessionsPage(folder: Option<String>, desk: Desk) -> Element {
                 .map(|all| all.as_ref().clone())
                 .unwrap_or_default();
             let running = desk.hub.running_sessions();
-            let days = by_day(listed, |session| session.started, zone, today);
+            let days = by_day(listed, |session| session.started, zone)
+                .into_iter()
+                .map(|(day, run)| (day_heading(day, today), run));
             rsx! {
                 for (heading, run) in days {
                     div { key: "{heading}", class: "temor-history-day",
@@ -255,7 +259,9 @@ fn commands_by_day(
     home: Option<&str>,
     desk: &Desk,
 ) -> Element {
-    let days = by_day(commands, |ran| ran.started, zone, today);
+    let days = by_day(commands, |ran| ran.started, zone)
+        .into_iter()
+        .map(|(day, run)| (day_heading(day, today), run));
     rsx! {
         for (heading, run) in days {
             div { key: "{heading}", class: "temor-history-day",

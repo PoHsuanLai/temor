@@ -9,8 +9,10 @@ use dioxus::prelude::*;
 use ds::base::press::Press;
 use ds::components::overlays::empty_state::EmptyForm;
 use ds::prelude::*;
-use temor_client::model::folder::{Entry, listed, modified_words};
+use temor_client::model::folder::{Entry, listed};
 use temor_client::model::history::Zone;
+
+use super::when_words::modified_words;
 use temor_client::query::Folder;
 
 use super::live::{use_client, use_live};

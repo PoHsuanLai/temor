@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use temor_client::model::remote::Grant;
 use temor_client::model::shelf::{
-    Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, human_size, shelf_view,
+    Clear, Shelf, ShelfIn, ShelfOut, ShelfView, Source, Uploads, shelf_view,
 };
 use temor_client::model::stage::Layout;
 use temor_client::model::transfer::Origin;
@@ -22,6 +22,7 @@ use super::desk::Desk;
 use super::model::{Hub, HubRef};
 use crate::platform::{FileShell, default_file_shell};
 use crate::view::launch::Launch;
+use crate::view::shelf_words::human_size;
 use crate::words::notices;
 use temor_client::model::shelf::RowAction;
 use temor_client::shelf::{persist, restore};

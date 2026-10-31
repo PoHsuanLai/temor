@@ -149,45 +149,6 @@ impl Item {
             | Item::DeleteFolder => Group::TakeAway,
         }
     }
-
-    /// What the item says. `many` is whether it acts on several things.
-    pub fn title(self, many: bool) -> &'static str {
-        match self {
-            Item::Open => "Open",
-            Item::OpenInNewTab => "Open in New Tab",
-            Item::PopOut => "Pop Out",
-            Item::OpenInDefaultApp => "Open in Default App",
-            Item::PutInPrompt => "Put in Prompt",
-            Item::Bookmark { on: true } => "Remove Bookmark",
-            Item::Bookmark { on: false } => "Bookmark",
-            Item::Fold { folded: true } => "Unfold Output",
-            Item::Fold { folded: false } => match many {
-                true => "Fold Outputs",
-                false => "Fold Output",
-            },
-            Item::Stop => "Stop",
-            Item::SaveOutput => "Save Output",
-            Item::ViewFiles => "View Files",
-            Item::EditLocally => "Edit Locally",
-            Item::SelectAllBlocks => "Select All Commands",
-            Item::Favourite { kept: true } => "Remove from Favourites",
-            Item::Favourite { kept: false } => "Add to Favourites",
-            Item::Pin { pinned: true } => "Unpin Tab",
-            Item::Pin { pinned: false } => "Pin Tab",
-            Item::ShowInFolder => "Show in Folder",
-            Item::ShowHistory => "Show History",
-            Item::ShowTab => "Show Tab",
-            Item::MoveToFolder => "Move to Folder",
-            Item::NewFolderInside => "New Folder Inside",
-            Item::RenameFolder => "Rename Folder",
-            Item::DeleteFolder => "Delete Folder",
-            Item::ClosePane => "Close Pane",
-            Item::CloseTab => "Close Tab",
-            Item::ClosePage => "Close Page",
-            Item::RemoveFromFavourites => "Remove from Favourites",
-            Item::RemoveFromList => "Remove from List",
-        }
-    }
 }
 
 /// The menu for `target`: its items in groups, in the groups' order, none empty.
@@ -273,13 +234,6 @@ pub fn menu_for(target: Target) -> Vec<Vec<Item>> {
 mod tests {
     use super::*;
 
-    fn titles(target: Target) -> Vec<Vec<&'static str>> {
-        menu_for(target)
-            .into_iter()
-            .map(|group| group.into_iter().map(|item| item.title(false)).collect())
-            .collect()
-    }
-
     #[test]
     fn a_rows_menu_opens_keeps_shows_and_closes_in_that_order() {
         let row = RowFacts {
@@ -287,12 +241,16 @@ mod tests {
             ..RowFacts::default()
         };
         assert_eq!(
-            titles(Target::Row(row)),
+            menu_for(Target::Row(row)),
             [
-                vec!["Open in New Tab"],
-                vec!["Add to Favourites", "Pin Tab", "Move to Folder"],
-                vec!["Show in Folder", "Show History"],
-                vec!["Close Tab"],
+                vec![Item::OpenInNewTab],
+                vec![
+                    Item::Favourite { kept: false },
+                    Item::Pin { pinned: false },
+                    Item::MoveToFolder
+                ],
+                vec![Item::ShowInFolder, Item::ShowHistory],
+                vec![Item::CloseTab],
             ]
         );
         let kept = RowFacts {
@@ -302,11 +260,11 @@ mod tests {
             ..row
         };
         assert_eq!(
-            titles(Target::Row(kept))[1..],
+            menu_for(Target::Row(kept))[1..],
             [
-                vec!["Remove from Favourites", "Unpin Tab"],
-                vec!["Show in Folder", "Show History"],
-                vec!["Close Pane", "Close Tab"],
+                vec![Item::Favourite { kept: true }, Item::Pin { pinned: true }],
+                vec![Item::ShowInFolder, Item::ShowHistory],
+                vec![Item::ClosePane, Item::CloseTab],
             ]
         );
     }
@@ -314,11 +272,11 @@ mod tests {
     #[test]
     fn a_row_on_another_computer_has_no_folder_here_to_open_keep_or_show() {
         assert_eq!(
-            titles(Target::Row(RowFacts::default())),
+            menu_for(Target::Row(RowFacts::default())),
             [
-                vec!["Pin Tab", "Move to Folder"],
-                vec!["Show History"],
-                vec!["Close Tab"]
+                vec![Item::Pin { pinned: false }, Item::MoveToFolder],
+                vec![Item::ShowHistory],
+                vec![Item::CloseTab]
             ]
         );
     }
@@ -326,10 +284,10 @@ mod tests {
     #[test]
     fn a_folders_menu_makes_one_inside_renames_and_deletes() {
         assert_eq!(
-            titles(Target::Folder),
+            menu_for(Target::Folder),
             [
-                vec!["New Folder Inside", "Rename Folder"],
-                vec!["Delete Folder"]
+                vec![Item::NewFolderInside, Item::RenameFolder],
+                vec![Item::DeleteFolder]
             ]
         );
     }
@@ -337,11 +295,11 @@ mod tests {
     #[test]
     fn a_favourite_opens_shows_and_goes() {
         assert_eq!(
-            titles(Target::Favourite),
+            menu_for(Target::Favourite),
             [
-                vec!["Open", "Open in New Tab"],
-                vec!["Show in Folder", "Show History"],
-                vec!["Remove from Favourites"],
+                vec![Item::Open, Item::OpenInNewTab],
+                vec![Item::ShowInFolder, Item::ShowHistory],
+                vec![Item::RemoveFromFavourites],
             ]
         );
     }
@@ -354,14 +312,14 @@ mod tests {
             ..BlockFacts::default()
         };
         assert_eq!(
-            titles(Target::Block(done)),
+            menu_for(Target::Block(done)),
             [vec![
-                "Put in Prompt",
-                "Bookmark",
-                "Fold Output",
-                "Save Output",
-                "View Files",
-                "Select All Commands"
+                Item::PutInPrompt,
+                Item::Bookmark { on: false },
+                Item::Fold { folded: false },
+                Item::SaveOutput,
+                Item::ViewFiles,
+                Item::SelectAllBlocks
             ]]
         );
         let running = BlockFacts {
@@ -369,12 +327,12 @@ mod tests {
             ..done
         };
         assert_eq!(
-            titles(Target::Block(running)),
+            menu_for(Target::Block(running)),
             [vec![
-                "Bookmark",
-                "Fold Output",
-                "Stop",
-                "Select All Commands"
+                Item::Bookmark { on: false },
+                Item::Fold { folded: false },
+                Item::Stop,
+                Item::SelectAllBlocks
             ]]
         );
         let many = BlockFacts {
@@ -394,10 +352,13 @@ mod tests {
 
     #[test]
     fn temors_own_page_only_closes() {
-        assert_eq!(titles(Target::Page { file: false }), [vec!["Close Page"]]);
         assert_eq!(
-            titles(Target::Page { file: true })[0],
-            ["Pop Out", "Open in Default App"]
+            menu_for(Target::Page { file: false }),
+            [vec![Item::ClosePage]]
+        );
+        assert_eq!(
+            menu_for(Target::Page { file: true })[0],
+            [Item::PopOut, Item::OpenInDefaultApp]
         );
     }
 
@@ -409,16 +370,16 @@ mod tests {
             clearable: true,
         };
         assert_eq!(
-            titles(Target::Download(arrived)),
+            menu_for(Target::Download(arrived)),
             [
-                vec!["Open"],
-                vec!["Show in Folder", "Show Tab"],
-                vec!["Remove from List"],
+                vec![Item::Open],
+                vec![Item::ShowInFolder, Item::ShowTab],
+                vec![Item::RemoveFromList],
             ]
         );
         assert_eq!(
-            titles(Target::Download(DownloadFacts::default())),
-            Vec::<Vec<&str>>::new()
+            menu_for(Target::Download(DownloadFacts::default())),
+            Vec::<Vec<Item>>::new()
         );
     }
 

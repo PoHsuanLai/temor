@@ -177,14 +177,14 @@ fn failures_and_clearing() {
     assert_eq!(
         view.rows[2].state,
         RowState::Failed {
-            message: "The transfer stopped before it finished".into()
+            why: FailWhy::Broken
         }
     );
     assert_eq!(
         view.rows[2].actions,
         vec![RowAction::ShowInTab(TabId(4)), RowAction::Clear]
     );
-    assert_eq!(view.rows[2].detail, "from prod");
+    assert_eq!(view.rows[2].size, None);
     assert_eq!(
         view.rows[1].actions,
         vec![
@@ -203,34 +203,6 @@ fn failures_and_clearing() {
     assert_eq!(one.items().len(), 2);
     let (none, _) = run(s, vec![ShelfIn::Cleared(Clear::All)]);
     assert!(none.items().is_empty());
-}
-
-#[test]
-fn sizes_read_plainly() {
-    let cases = [
-        (1, "1 byte"),
-        (999, "999 bytes"),
-        (1000, "1.0 KB"),
-        (12_345_678, "12.3 MB"),
-        (2_000_000_000, "2.0 GB"),
-    ];
-    for (n, want) in cases {
-        let (s, _) = run(
-            shelf(),
-            vec![
-                incoming("a", None, Origin::Pipe),
-                ShelfIn::Done {
-                    id: DownloadId(1),
-                    size: Bytes(n),
-                },
-            ],
-        );
-        assert_eq!(
-            shelf_view(&s).rows[0].detail,
-            format!("{want}, from a pipe"),
-            "{n}"
-        );
-    }
 }
 
 fn dropped(paths: &[&str], receives_files: bool, site: PaneSite) -> Dropped {

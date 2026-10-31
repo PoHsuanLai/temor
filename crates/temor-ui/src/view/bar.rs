@@ -217,11 +217,18 @@ fn runs(rows: &[BarRow]) -> Vec<(Section, Vec<&BarRow>)> {
     runs
 }
 
+/// The header's words; a plugin's section takes its plugin's name.
 fn title_of(section: &Section, name_of: impl Fn(&PluginId) -> String) -> String {
-    match (section.title(), section) {
-        (Some(fixed), _) => fixed.to_owned(),
-        (None, Section::Plugin(plugin)) => name_of(plugin),
-        (None, _) => String::new(),
+    match section {
+        Section::Actions => "Actions".to_owned(),
+        Section::Tabs => "Tabs".to_owned(),
+        Section::Spaces => "Spaces".to_owned(),
+        Section::Computers => "Computers".to_owned(),
+        Section::RecentCommands => "Recent commands".to_owned(),
+        Section::Folders => "Folders".to_owned(),
+        Section::Run => "Run".to_owned(),
+        Section::Plugin(plugin) => name_of(plugin),
+        Section::Ask => "Ask".to_owned(),
     }
 }
 

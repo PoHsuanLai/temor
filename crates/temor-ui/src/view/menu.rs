@@ -47,10 +47,49 @@ pub fn menu_items<T: Clone>(
 }
 
 fn item_of<T>(item: Item, many: bool) -> MenuItem<Pick<T>> {
-    let row = MenuItem::new(Pick::Item(item), item.title(many));
+    let row = MenuItem::new(Pick::Item(item), title_of(item, many));
     match tip_of(item) {
         Some(tip) => row.with_tip(tip),
         None => row,
+    }
+}
+
+/// What `item` says. `many` is whether it acts on several things.
+fn title_of(item: Item, many: bool) -> &'static str {
+    match item {
+        Item::Open => "Open",
+        Item::OpenInNewTab => "Open in New Tab",
+        Item::PopOut => "Pop Out",
+        Item::OpenInDefaultApp => "Open in Default App",
+        Item::PutInPrompt => "Put in Prompt",
+        Item::Bookmark { on: true } => "Remove Bookmark",
+        Item::Bookmark { on: false } => "Bookmark",
+        Item::Fold { folded: true } => "Unfold Output",
+        Item::Fold { folded: false } => match many {
+            true => "Fold Outputs",
+            false => "Fold Output",
+        },
+        Item::Stop => "Stop",
+        Item::SaveOutput => "Save Output",
+        Item::ViewFiles => "View Files",
+        Item::EditLocally => "Edit Locally",
+        Item::SelectAllBlocks => "Select All Commands",
+        Item::Favourite { kept: true } => "Remove from Favourites",
+        Item::Favourite { kept: false } => "Add to Favourites",
+        Item::Pin { pinned: true } => "Unpin Tab",
+        Item::Pin { pinned: false } => "Pin Tab",
+        Item::ShowInFolder => "Show in Folder",
+        Item::ShowHistory => "Show History",
+        Item::ShowTab => "Show Tab",
+        Item::MoveToFolder => "Move to Folder",
+        Item::NewFolderInside => "New Folder Inside",
+        Item::RenameFolder => "Rename Folder",
+        Item::DeleteFolder => "Delete Folder",
+        Item::ClosePane => "Close Pane",
+        Item::CloseTab => "Close Tab",
+        Item::ClosePage => "Close Page",
+        Item::RemoveFromFavourites => "Remove from Favourites",
+        Item::RemoveFromList => "Remove from List",
     }
 }
 
