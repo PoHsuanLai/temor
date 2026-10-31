@@ -17,6 +17,7 @@ use temor_panes::pane::keys::SettingsPane;
 use super::edit::{save_edit, values_of};
 use super::own_rows::OwnRow;
 use super::pages::{own_sections, page_schema};
+use super::{NO_LINE, SETTINGS_LINE};
 use crate::platform::default_file_shell;
 use crate::settings::{TerminalDoc, kept_aside};
 use crate::view::launch::Launch;
@@ -43,15 +44,21 @@ pub fn SchemaPage(pane: SettingsPane) -> Element {
     let values = values_of(&doc.read());
     let save = Callback::new({
         let ambient = launch.ambient.clone();
-        move |edit: SettingEdit| match save_edit(&ambient, &edit) {
-            Ok(edited) => {
-                doc.set(edited.doc);
-                said.set(None);
-                if edited.kept.is_some() {
-                    kept.set(edited.kept);
+        move |edit: SettingEdit| {
+            let ambient = ambient.clone();
+            spawn(async move {
+                match SETTINGS_LINE.run(move || save_edit(&ambient, &edit)).await {
+                    Some(Ok(edited)) => {
+                        doc.set(edited.doc);
+                        said.set(None);
+                        if edited.kept.is_some() {
+                            kept.set(edited.kept);
+                        }
+                    }
+                    Some(Err(why)) => said.set(Some(why.to_string())),
+                    None => said.set(Some(NO_LINE.to_owned())),
                 }
-            }
-            Err(why) => said.set(Some(why.to_string())),
+            });
         }
     });
     let say = Callback::new(move |text: String| said.set(Some(text)));

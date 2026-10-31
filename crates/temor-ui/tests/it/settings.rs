@@ -174,10 +174,14 @@ fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
     let (mut h, ambient) = settings_window("settings-font", SettingsPane::Appearance, |c| c);
     let size = "input[aria-label=\"Font size\"]";
     type_into(&mut h, size, "3");
-    assert!(
-        h.html().contains("takes a number from 6 to 72"),
-        "a refusal says what the setting takes:\n{}",
-        h.html()
+    settle(
+        &mut h,
+        "a refusal that says what the setting takes",
+        |h: &mut Harness| {
+            h.html()
+                .contains("takes a number from 6 to 72")
+                .then_some(())
+        },
     );
     assert!(
         ambient
@@ -187,7 +191,9 @@ fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
         "nothing was written"
     );
     type_into(&mut h, size, "20");
-    assert_eq!(settings_text(&ambient).font.size.points(), 20.0);
+    settle(&mut h, "the size written", |_| {
+        (settings_text(&ambient).font.size.points() == 20.0).then_some(())
+    });
 }
 
 /// Shell offer entries are added and removed from the lists the page shows.
@@ -199,9 +205,13 @@ fn the_shell_offer_list_adds_and_removes_a_command() {
         "input[aria-label=\"Also offer for\"]",
         "kubectl debug -it",
     );
-    assert_eq!(settings_text(&ambient).offer.add, ["kubectl debug -it"]);
+    settle(&mut h, "the command added", |_| {
+        (settings_text(&ambient).offer.add == ["kubectl debug -it"]).then_some(())
+    });
     press(&mut h, "button[aria-label=\"Remove kubectl debug -it\"]");
-    assert!(settings_text(&ambient).offer.add.is_empty());
+    settle(&mut h, "the command removed", |_| {
+        settings_text(&ambient).offer.add.is_empty().then_some(())
+    });
 }
 
 /// A recorded chord is written to `keys.conf`, one a second action holds is refused naming that
@@ -212,29 +222,35 @@ fn a_recorded_chord_writes_keys_conf_a_held_one_is_refused_and_reset_all_clears(
     let split_right = "button[aria-label=\"Change the shortcut for Split right\"]";
     let split_down = "button[aria-label=\"Change the shortcut for Split down\"]";
     let all = [ShortcutKey::Ctrl, ShortcutKey::Shift, ShortcutKey::Alt];
+    // The keys are read on the settings' own thread.
+    settle(&mut h, "the shortcuts", |h: &mut Harness| {
+        (!rects(h, split_right).is_empty()).then_some(())
+    });
 
     record(&mut h, split_right, &all, 'n');
-    assert!(
-        keys_text(&ambient).contains("temor.split-right"),
-        "{}",
+    settle(&mut h, "the chord written", |_| {
         keys_text(&ambient)
-    );
+            .contains("temor.split-right")
+            .then_some(())
+    });
 
     // Split right now holds the chord it was just given.
     record(&mut h, split_down, &all, 'n');
-    assert!(
-        h.html().contains("is already used by Split right"),
-        "the refusal names the action that holds the chord:\n{}",
-        h.html()
+    settle(
+        &mut h,
+        "the refusal naming the action that holds the chord",
+        |h: &mut Harness| {
+            h.html()
+                .contains("is already used by Split right")
+                .then_some(())
+        },
     );
     assert!(!keys_text(&ambient).contains("temor.split-down"));
 
     press(&mut h, "button[aria-label=\"Reset every shortcut\"]");
-    assert!(
-        !keys_text(&ambient).contains("temor.split-right"),
-        "{}",
-        keys_text(&ambient)
-    );
+    settle(&mut h, "the changes taken away", |_| {
+        (!keys_text(&ambient).contains("temor.split-right")).then_some(())
+    });
 }
 
 /// The Spaces page sends a folder typed into it to the main window, by the board.

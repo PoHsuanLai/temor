@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 use temor_layout::space::AccountRef;
 
+use crate::serial::Serial;
+
 /// The most of a dotenv file that is read; a larger file is not a dotenv file.
 const DOTENV_LIMIT: u64 = 64 * 1024;
 
@@ -82,23 +84,16 @@ impl Default for Credentials {
 }
 
 impl Credentials {
-    /// `job` run with the store on a thread of its own, for a caller that must not wait on it:
-    /// the macOS keychain and the Secret Service answer over IPC, and may ask the person first.
-    /// `None` when no thread could start.
+    /// `job` run with the store on the credentials' own thread, after every job asked before
+    /// it, for a caller that must not wait on it: the macOS keychain and the Secret Service
+    /// answer over IPC, and may ask the person first. `None` when no thread could start.
     pub async fn ask<T: Send + 'static>(
         &self,
         job: impl FnOnce(&dyn CredentialSource) -> T + Send + 'static,
     ) -> Option<T> {
+        static LINE: Serial = Serial::new("temor-credentials");
         let store = self.0.clone();
-        let (tell, answer) = tokio::sync::oneshot::channel();
-        std::thread::Builder::new()
-            .name("temor-credentials".to_owned())
-            .spawn(move || {
-                // The asker may have gone.
-                let _ = tell.send(job(&*store));
-            })
-            .ok()?;
-        answer.await.ok()
+        LINE.run(move || job(&*store)).await
     }
 }
 

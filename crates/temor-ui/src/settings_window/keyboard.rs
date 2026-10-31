@@ -11,6 +11,7 @@ use ds::prelude::*;
 use temor_panes::pane::keys::{Action, bindable};
 
 use super::keys_edit::{KeyChange, change_keys, load_view};
+use super::{NO_LINE, SETTINGS_LINE};
 use crate::view::launch::Launch;
 use crate::view::names::named;
 
@@ -36,25 +37,46 @@ pub fn KeyboardPage() -> Element {
     let launch = use_hook(consume_context::<Launch>);
     let platform = launch.keymap.platform();
     let ambient = launch.ambient.clone();
-    let mut view = use_signal({
+    // `None` while the keys are read, then what they are (`None` again when they can't be).
+    let mut view = use_signal(|| None);
+    use_hook({
         let ambient = ambient.clone();
-        move || load_view(&ambient, platform).ok()
+        move || {
+            spawn(async move {
+                let read = SETTINGS_LINE
+                    .run(move || load_view(&ambient, platform).ok())
+                    .await;
+                view.set(Some(read.flatten()));
+            })
+        }
     });
     let mut said = use_signal(|| None::<Said>);
-    let change =
-        Callback::new(move |(about, change): (Option<Action>, KeyChange)| {
-            match change_keys(&ambient, platform, change) {
-                Ok(next) => {
-                    view.set(Some(next));
+    let change = Callback::new(move |(about, change): (Option<Action>, KeyChange)| {
+        let ambient = ambient.clone();
+        spawn(async move {
+            let done = SETTINGS_LINE
+                .run(move || change_keys(&ambient, platform, change))
+                .await;
+            match done {
+                Some(Ok(next)) => {
+                    view.set(Some(Some(next)));
                     said.set(None);
                 }
-                Err(why) => said.set(Some(Said {
+                Some(Err(why)) => said.set(Some(Said {
                     about,
                     text: why.to_string(),
                 })),
+                None => said.set(Some(Said {
+                    about,
+                    text: NO_LINE.to_owned(),
+                })),
             }
         });
+    });
     let Some(current) = view() else {
+        return rsx! {};
+    };
+    let Some(current) = current else {
         return rsx! {
             Form {
                 FormSection { title: Some("Shortcuts".to_owned()),

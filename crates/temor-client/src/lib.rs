@@ -33,6 +33,7 @@ mod live;
 pub mod plugins;
 pub mod query;
 pub mod remote;
+pub mod serial;
 pub mod shelf;
 pub mod space;
 pub mod spaces;
