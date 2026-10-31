@@ -48,6 +48,12 @@ impl Serial {
         answer.await.ok()
     }
 
+    /// Does `job` once every job given before it is done, with nobody waiting for it. False when
+    /// the line's thread could not start, and `job` is dropped.
+    pub fn start(&self, job: impl FnOnce() + Send + 'static) -> bool {
+        self.give(Box::new(job)).is_ok()
+    }
+
     fn give(&self, job: Job) -> Result<(), ()> {
         let jobs = self.jobs.get_or_init(|| Mutex::new(None));
         let mut jobs = jobs.lock();

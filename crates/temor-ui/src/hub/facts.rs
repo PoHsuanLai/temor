@@ -1,5 +1,6 @@
-//! The pane's context facts in the hub (PLAN P16): when to read them again (`facts_step`), the
-//! worker thread that reads them (`edge::facts`), and what the sidebar row and the chips show.
+//! The pane's context facts in the hub (PLAN P16): when to read them again (`facts_step`), and
+//! what the sidebar row and the chips show. The client reads them on a thread of its own
+//! (`temor_client::facts`).
 //! The window's thread only steps the rule and stores results; it never waits for git.
 
 use std::collections::BTreeMap;
@@ -11,8 +12,7 @@ use temor_client::remote::ids::SessionId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::model::Hub;
-use temor_client::facts::host::facts_from_host;
-use temor_client::facts::{FactsEnv, read_facts};
+use temor_client::facts::{FactsEnv, ask_host_later, read_later};
 use temor_client::remote::conn::Conn;
 
 /// A finished read.
@@ -65,34 +65,26 @@ impl FactsHub {
         self.inbox.take()
     }
 
-    /// Reads `dir` on a thread of its own and sends the result to the window.
-    fn spawn(&self, pane: PaneId, dir: String) {
-        let (env, done) = (self.env.clone(), self.done.clone());
-        // If the thread cannot start the run never reports; `facts_step` was told it is in
-        // flight, so this pane's facts stay as they are until the window restarts the pane.
-        let _ = std::thread::Builder::new()
-            .name("temor-facts".to_owned())
-            .spawn(move || {
-                let facts = Some(read_facts(&dir, &env));
-                // A closed channel means the window is gone.
-                let _ = done.send(Ready { pane, facts });
+    /// Reads `dir` off the window's thread and sends the result to the window. False when the
+    /// read could not start.
+    fn spawn(&self, pane: PaneId, dir: String) -> bool {
+        let done = self.done.clone();
+        // A closed channel means the window is gone.
+        read_later(dir, self.env.clone(), move |facts| {
+            let _ = done.send(Ready {
+                pane,
+                facts: Some(facts),
             });
+        })
     }
 
-    /// Asks the helper of a host for the facts of `session`'s folder, on a thread of its own.
-    fn spawn_host(&self, pane: PaneId, (conn, session): (Arc<Conn>, SessionId)) {
+    /// Asks the helper of a host for the facts of `session`'s folder. False when the ask could
+    /// not start.
+    fn spawn_host(&self, pane: PaneId, source: (Arc<Conn>, SessionId)) -> bool {
         let done = self.done.clone();
-        // As for a local read: if the thread cannot start, the pane's facts stay as they are.
-        let _ = std::thread::Builder::new()
-            .name("temor-facts-host".to_owned())
-            .spawn(move || {
-                let facts = conn
-                    .client()
-                    .folder_facts(session)
-                    .ok()
-                    .map(|sent| facts_from_host(&sent));
-                let _ = done.send(Ready { pane, facts });
-            });
+        ask_host_later(source, move |facts| {
+            let _ = done.send(Ready { pane, facts });
+        })
     }
 }
 
@@ -121,16 +113,21 @@ impl Hub {
     /// nothing to read: both count the run as done at once.
     fn facts_run(&mut self, pane: PaneId) {
         if self.host_of(pane).is_some() {
-            match self.helper_facts_source(pane) {
-                Some(source) => self.facts.spawn_host(pane, source),
-                None => self.facts_in(pane, FactsIn::RunDone),
+            let started = self
+                .helper_facts_source(pane)
+                .is_some_and(|source| self.facts.spawn_host(pane, source));
+            if !started {
+                self.facts_in(pane, FactsIn::RunDone);
             }
             return;
         }
         match self.pane_folder(pane) {
             Some(dir) => {
                 self.plugin_facts_start(pane, &dir);
-                self.facts.spawn(pane, dir);
+                // A read that could not start is done: the facts stay as they are.
+                if !self.facts.spawn(pane, dir) {
+                    self.facts_in(pane, FactsIn::RunDone);
+                }
             }
             None => {
                 // The rule only ever answers `Run` to `RunDone` after a trigger, so this cannot
