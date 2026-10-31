@@ -51,6 +51,7 @@ temor-pty = { workspace = true }
 temor-remote = { workspace = true, features = ["ghostty"] }
 temor-shell = { workspace = true }
 temor-ssh = { workspace = true }
+temor-store = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
 temor-plugins = { workspace = true }
 temor-transfer = { workspace = true }

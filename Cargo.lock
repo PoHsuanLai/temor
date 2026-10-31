@@ -7554,6 +7554,7 @@ dependencies = [
  "temor-schema",
  "temor-shell",
  "temor-ssh",
+ "temor-store",
  "temor-testkit",
  "temor-transfer",
  "temor-vt",

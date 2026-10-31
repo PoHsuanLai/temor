@@ -14,8 +14,8 @@
 /// (`temor-hosts`) and agents (`temor-agent`).
 pub mod model {
     pub use temor_agent::{agent, presence};
-    pub use temor_blocks::{block, key, notify, offer, session};
-    pub use temor_core::*;
+    pub use temor_blocks::{block, notify, offer, session};
+    pub use temor_core::{address, error, facts, folder, history, icon, menu, pane, viewer, vocab};
     pub use temor_hosts::{host, remote, shelf, transfer};
     pub use temor_layout::{bar, quick, space, split, stage, workspace};
 }
@@ -39,7 +39,7 @@ pub mod ssh;
 pub mod viewer_host;
 
 pub use act::Command;
-pub use client::{Client, ClientConfig};
+pub use client::{Client, ClientConfig, DB_FILE};
 pub use error::ClientError;
 pub use live::{Live, Query, Snapshot};
-pub use temor_store::{Generation, Shelf, SqliteStore, Topics};
+pub use temor_store::{Generation, Shelf, Topics};

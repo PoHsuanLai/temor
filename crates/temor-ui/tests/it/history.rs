@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds_harness::WindowHosting;
-use temor_client::{Client, ClientConfig, SqliteStore};
+use temor_client::{Client, ClientConfig};
+use temor_store::SqliteStore;
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord_with, press, type_line, wait_html, wait_until};

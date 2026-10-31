@@ -152,11 +152,10 @@ impl Hub {
         if let Some(tab) = going_on {
             return self.act(super::select_tab(tab));
         }
-        let store = client.store();
-        let Some(kept) = store.session(id).ok().flatten() else {
+        let Some(kept) = client.session(id).ok().flatten() else {
             return;
         };
-        let cards = kept_cards(&store.commands_of(id).unwrap_or_default());
+        let cards = kept_cards(&client.commands_of(id).unwrap_or_default());
         let screen = self
             .state_dir
             .as_deref()
@@ -190,12 +189,11 @@ impl Hub {
         match notice {
             Notice::Cwd(folder) if !self.history.sessions.contains_key(&pane) => {
                 // A pane brought back goes on with its session, if history still has it.
-                let store = client.store();
                 let before = self
                     .history
                     .carried
                     .remove(&pane)
-                    .and_then(|id| store.session(id).ok().flatten());
+                    .and_then(|id| client.session(id).ok().flatten());
                 // Commands an older temor kept for it start a session that is new.
                 let imported = self
                     .history
@@ -204,7 +202,7 @@ impl Hub {
                     .filter(|_| before.is_none())
                     .unwrap_or_default();
                 let base = before.as_ref().map_or(imported.len() as u64, |kept| {
-                    store
+                    client
                         .commands_of(kept.id)
                         .ok()
                         .and_then(|commands| commands.last().map(|ran| ran.block.0 + 1))

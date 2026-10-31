@@ -302,7 +302,7 @@ fn a_space_folder_sent_to_the_main_window_is_kept() {
     let start = std::time::Instant::now();
     loop {
         h.advance(Duration::from_millis(100));
-        let kept = temor_client::SqliteStore::open(state.join("temor.db"))
+        let kept = temor_store::SqliteStore::open(state.join("temor.db"))
             .ok()
             .and_then(|store| store.kept("spaces").ok().flatten())
             .and_then(|text| {

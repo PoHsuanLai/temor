@@ -8,7 +8,8 @@
 #     crates, and there each such dependency is optional and listed in its `quire-desktop` feature,
 #     so `--no-default-features` builds with none of them;
 #   - the fence (PLAN §2b): temor-ui depends on no temor crate but temor-client, temor-panes and
-#     temor-schema (its tests may name more, as dev-dependencies).
+#     temor-schema (its tests may name more, as dev-dependencies);
+#   - no crate re-exports a temor crate whole or by glob: what crosses the fence is listed.
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
 # `crate -> dep (rule)` and exits 1 when there is any.
@@ -108,6 +109,22 @@ for v in violations:
     print(v)
 sys.exit(1 if violations else 0)
 ' "$metadata"; then
+  layers_ok=1
+else
+  layers_ok=0
+fi
+
+# No crate hands on a temor crate whole (`pub use temor_x;`, `pub use temor_x as y;`) or by glob
+# (`pub use temor_x::*;`): what goes through the fence is listed item by item, where a review sees
+# it (PLAN §2b).
+whole=$(grep -rnE 'pub use temor_[a-z_]+( as [a-z_]+)?;|pub use temor_[a-z_:]+::\*;' \
+  "$root"/crates/*/src || true)
+if [ -n "$whole" ]; then
+  printf '%s (re-exports a temor crate whole or by glob)\n' "$whole"
+  layers_ok=0
+fi
+
+if [ "$layers_ok" = 1 ]; then
   echo "check-layers: ok"
   exit 0
 fi

@@ -19,6 +19,7 @@
 
 use std::any::{Any, TypeId};
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::sync::{Arc, Weak};
@@ -26,9 +27,14 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
+use temor_schema::session::{RanCommand, Session, SessionId};
 use temor_store::{Committed, SqliteStore, Topics};
 
+/// The database's name in a state folder.
+pub const DB_FILE: &str = "temor.db";
+
 use crate::act::Command;
+use crate::error::ClientError;
 use crate::live::{Entry, Job, Live, Query};
 
 /// How long the change thread waits for more commits after one before it marks anything stale:
@@ -164,9 +170,43 @@ impl Client {
         }))
     }
 
-    /// The store, for what writes to it. Reading goes through [`Client::live`].
-    pub fn store(&self) -> &Arc<SqliteStore> {
+    /// The client over `temor.db` in `state_dir`, the folder made if it is not there.
+    pub fn open_in(state_dir: &Path, config: ClientConfig) -> Result<Client, ClientError> {
+        std::fs::create_dir_all(state_dir).map_err(|why| ClientError::Store(why.to_string()))?;
+        let store = SqliteStore::open(state_dir.join(DB_FILE))?;
+        Ok(Client::open(Arc::new(store), config))
+    }
+
+    /// A client over an empty database in memory, which keeps nothing past the process: reads
+    /// on the thread that asks, as [`Client::inline`].
+    pub fn in_memory() -> Client {
+        match SqliteStore::in_memory() {
+            Ok(store) => Client::inline(Arc::new(store)),
+            // SQLite is built in, and memory it cannot have is memory nothing else will have
+            // either.
+            Err(why) => panic!("an empty database in memory: {why}"),
+        }
+    }
+
+    /// The store, for the client's own writes. Nothing outside the client names it: a write goes
+    /// through [`Client::act`], a read through [`Client::live`] or the reads below.
+    pub(crate) fn store(&self) -> &Arc<SqliteStore> {
         &self.0.shared.store
+    }
+
+    /// The database's file; none for one in memory.
+    pub fn file(&self) -> Option<&Path> {
+        self.0.shared.store.file()
+    }
+
+    /// The session `id`, if history has it, read now on this thread.
+    pub fn session(&self, id: SessionId) -> Result<Option<Session>, ClientError> {
+        Ok(self.0.shared.store.session(id)?)
+    }
+
+    /// The commands session `id` ran, in order, read now on this thread.
+    pub fn commands_of(&self, id: SessionId) -> Result<Vec<RanCommand>, ClientError> {
+        Ok(self.0.shared.store.commands_of(id)?)
     }
 
     /// The value `query` answers, kept read. Never reads the store here: a value someone already

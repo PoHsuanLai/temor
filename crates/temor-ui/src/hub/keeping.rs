@@ -23,8 +23,7 @@ impl Hub {
                 self.kept.import(client, dir);
                 // The screens of sessions history no longer has go; none while history cannot
                 // be read (another temor holding it, say).
-                let store = client.store();
-                let _ = screens::sweep(dir, |id| store.session(id).map(|kept| kept.is_some()));
+                let _ = screens::sweep(dir, |id| client.session(id).map(|kept| kept.is_some()));
             }
             let sessions = self.kept.sessions(client);
             self.carry_sessions(sessions);
