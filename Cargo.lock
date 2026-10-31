@@ -7364,7 +7364,6 @@ dependencies = [
  "ds-core",
  "temor-client",
  "temor-panes",
- "tempfile",
  "thiserror 2.0.21",
  "tokio",
 ]

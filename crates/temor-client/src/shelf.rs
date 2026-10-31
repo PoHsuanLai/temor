@@ -27,6 +27,16 @@ use temor_transfer::{
     BlockKey, FileName, HostName as StoredHost, Origin as StoredOrigin, PaneKey, TabKey,
 };
 
+/// Saves `text` temor made (a block's output) on the shelf in `dir` under `name`, or the next
+/// free name: the file is created exclusively, so a link planted at the name is never followed.
+pub fn save_text(
+    dir: &Path,
+    text: &str,
+    name: &FileName,
+) -> Result<PathBuf, temor_transfer::TransferError> {
+    ShelfStore::new(dir.to_path_buf()).place_text(text, name)
+}
+
 /// Why a staged file could not be placed.
 #[derive(Debug)]
 pub enum PlaceError {
