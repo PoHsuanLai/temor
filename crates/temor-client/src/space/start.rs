@@ -81,6 +81,27 @@ impl Default for Credentials {
     }
 }
 
+impl Credentials {
+    /// `job` run with the store on a thread of its own, for a caller that must not wait on it:
+    /// the macOS keychain and the Secret Service answer over IPC, and may ask the person first.
+    /// `None` when no thread could start.
+    pub async fn ask<T: Send + 'static>(
+        &self,
+        job: impl FnOnce(&dyn CredentialSource) -> T + Send + 'static,
+    ) -> Option<T> {
+        let store = self.0.clone();
+        let (tell, answer) = tokio::sync::oneshot::channel();
+        std::thread::Builder::new()
+            .name("temor-credentials".to_owned())
+            .spawn(move || {
+                // The asker may have gone.
+                let _ = tell.send(job(&*store));
+            })
+            .ok()?;
+        answer.await.ok()
+    }
+}
+
 impl fmt::Debug for Credentials {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Credentials")

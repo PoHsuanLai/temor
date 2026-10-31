@@ -472,6 +472,27 @@ impl CredentialSource for Memory {
     }
 }
 
+/// What `got` finds, once it finds something: the page is drawn again meanwhile, so what was
+/// handed to a thread of its own comes back.
+fn settle<T>(h: &mut Harness, what: &str, mut got: impl FnMut(&mut Harness) -> Option<T>) -> T {
+    let start = std::time::Instant::now();
+    loop {
+        if let Some(found) = got(h) {
+            return found;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "timed out waiting for {what}"
+        );
+        h.advance(Duration::from_millis(20));
+    }
+}
+
+/// The edits the page has sent since the last look, once there are any.
+fn edits_of(board: &SpaceBoard) -> Option<Vec<SpaceEdit>> {
+    Some(board.take_edits()).filter(|edits| !edits.is_empty())
+}
+
 /// A credential is set, replaced and removed on the Spaces page; its secret goes to the store
 /// alone and is in neither the page nor the change sent to the main window.
 #[test]
@@ -490,8 +511,10 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
         "input[aria-label=\"New secret value\"]",
         "first-s3cret",
     );
+    // The store is asked on a thread of its own.
+    let edits = settle(&mut h, "the credential added", |_| edits_of(&board));
     assert_eq!(store.get(account).as_deref(), Some("first-s3cret"));
-    let change = last_change(&board);
+    let change = edits.last().expect("an edit").change.clone();
     let credential = Credential {
         env: key("API_KEY"),
         account: AccountRef::new(account).expect("an account"),
@@ -508,20 +531,27 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
         credentials: vec![credential],
         ..Profile::default()
     })]);
-    h.advance(Duration::from_millis(300));
-    assert!(h.html().contains("Replace API_KEY"), "{}", h.html());
+    settle(&mut h, "the credential shown as set", |h: &mut Harness| {
+        h.html().contains("Replace API_KEY").then_some(())
+    });
 
     type_into(
         &mut h,
         "input[aria-label=\"New value for API_KEY\"]",
         "second-s3cret",
     );
-    assert_eq!(store.get(account).as_deref(), Some("second-s3cret"));
+    settle(&mut h, "the secret replaced", |_| {
+        (store.get(account).as_deref() == Some("second-s3cret")).then_some(())
+    });
     assert!(!h.html().contains("first-s3cret") && !h.html().contains("second-s3cret"));
 
     press(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
+    let edits = settle(&mut h, "the credential removed", |_| edits_of(&board));
     assert_eq!(store.get(account), None);
-    assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
+    assert_eq!(
+        edits.last().expect("an edit").change,
+        SpaceChange::Credentials(Vec::new())
+    );
 }
 
 /// The Font row is a pop-up of every font the computer has with the system's first. (A pop-up's
