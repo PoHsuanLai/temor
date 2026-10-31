@@ -1,5 +1,5 @@
 //! Sizes that cross from one crate to another: a terminal's grid (told to the pty, kept by the
-//! terminal, sent on the wire) and a count of bytes.
+//! terminal, sent on the wire), a length in pixels and a count of bytes.
 
 use serde::{Deserialize, Serialize};
 
@@ -21,3 +21,10 @@ pub struct Cols(pub u16);
 )]
 #[serde(transparent)]
 pub struct Rows(pub u16);
+
+/// A length in whole device pixels.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
+)]
+#[serde(transparent)]
+pub struct Px(pub u32);

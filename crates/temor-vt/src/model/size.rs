@@ -1,6 +1,6 @@
 //! Grid sizes, pixel sizes, counts and positions.
 
-pub use temor_schema::units::{Cols, Rows};
+pub use temor_schema::units::{Cols, Px, Rows};
 
 /// A zero-based row from the top of the viewport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -26,10 +26,6 @@ impl GridSize {
         }
     }
 }
-
-/// A length in device pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Px(pub u32);
 
 /// The size of one cell in pixels, used for pixel-based reports and image placement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -1,10 +1,6 @@
 //! The size a terminal is told: cells and pixels.
 
-pub use temor_schema::units::{Cols, Rows};
-
-/// A length in whole device pixels, as `TIOCSWINSZ` carries it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Px(pub u16);
+pub use temor_schema::units::{Cols, Px, Rows};
 
 /// The grid in cells, plus the text area's size in pixels (0 when unknown).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

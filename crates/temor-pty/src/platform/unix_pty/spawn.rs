@@ -134,9 +134,14 @@ pub(super) fn set_size(fd: impl AsFd, size: GridSize) -> std::io::Result<()> {
     let winsize = Winsize {
         ws_row: size.rows.0,
         ws_col: size.cols.0,
-        ws_xpixel: size.width.0,
-        ws_ypixel: size.height.0,
+        ws_xpixel: saturate(size.width.0),
+        ws_ypixel: saturate(size.height.0),
     };
     tcsetwinsize(fd, winsize)?;
     Ok(())
+}
+
+/// A length as `TIOCSWINSZ` carries it: 16 bits, the most it can say for a longer one.
+fn saturate(px: u32) -> u16 {
+    u16::try_from(px).unwrap_or(u16::MAX)
 }
