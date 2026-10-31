@@ -127,3 +127,39 @@ fn without_a_client_a_space_comes_back_where_the_spaces_recall_it() {
     let starting = Kept::default().restore(None, &mut back);
     assert_eq!(starting.len(), 2, "both Spaces recall a tab");
 }
+
+/// What is kept at quit is written after every change still waiting on the client's thread, so
+/// an older layout handed over before it never lands over it.
+#[test]
+fn the_layout_written_at_quit_lands_after_the_ones_still_waiting() {
+    let dir = tempfile::tempdir().expect("dir");
+    let store = SqliteStore::open(dir.path().join("temor.db")).expect("store");
+    let client = Client::open(Arc::new(store), crate::ClientConfig { external: false });
+    let book = two_spaces();
+    let mut kept = Kept::default();
+    // Changes handed to the client's thread, the last of them an older layout of the Spaces.
+    for n in 0..200 {
+        client.act(crate::Command::Lay {
+            key: format!("other/{n}"),
+            value: Some("x".to_owned()),
+        });
+    }
+    client.act(crate::Command::Lay {
+        key: "spaces".to_owned(),
+        value: Some("older".to_owned()),
+    });
+    let laying = Laying {
+        book: &book,
+        leave: &BTreeSet::new(),
+        hosts: &HostsFile::default(),
+        sessions: &BTreeMap::new(),
+    };
+    kept.lay_all(&client, laying, Through::Now);
+    assert!(client.flush(std::time::Duration::from_secs(5)));
+    let spaces = client.store().kept("spaces").expect("read").expect("kept");
+    assert_ne!(spaces, "older");
+    assert_eq!(
+        client.store().kept("other/199").expect("read").as_deref(),
+        Some("x")
+    );
+}

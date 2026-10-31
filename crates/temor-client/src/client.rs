@@ -89,7 +89,14 @@ pub(crate) struct Shared {
     /// How the external watch is woken: by a write to the store's file, or to stop.
     pub(crate) external: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     /// Where commands go to be applied; `None` for an inline client, and once stopping.
-    acts: Mutex<Option<std::sync::mpsc::Sender<Command>>>,
+    acts: Mutex<Option<std::sync::mpsc::Sender<Asked>>>,
+}
+
+/// What the `temor-act` thread is handed: a command, or a caller waiting until every command
+/// handed before it is applied ([`Client::flush`]).
+enum Asked {
+    Apply(Command),
+    Flush(std::sync::mpsc::SyncSender<()>),
 }
 
 #[derive(Default)]
@@ -116,14 +123,20 @@ impl Client {
             threads.push(spawn("temor-changes", move || shared.hear(&heard)));
         }
         {
-            let (tx, asked) = std::sync::mpsc::channel::<Command>();
+            let (tx, asked) = std::sync::mpsc::channel::<Asked>();
             *shared.acts.lock() = Some(tx);
             let shared = shared.clone();
             threads.push(spawn("temor-act", move || {
                 // Every command given is applied, even once the client is stopping: a change the
                 // person made is not dropped because the window closed after it.
-                for command in asked {
-                    shared.apply(command);
+                for asked in asked {
+                    match asked {
+                        Asked::Apply(command) => shared.apply(command),
+                        // The caller may have stopped waiting.
+                        Asked::Flush(done) => {
+                            let _ = done.send(());
+                        }
+                    }
                 }
             }));
         }
@@ -203,8 +216,25 @@ impl Client {
         }
         if let Some(acts) = shared.acts.lock().as_ref() {
             // A thread that has gone has stopped with the client; nothing is applied any more.
-            let _ = acts.send(command);
+            let _ = acts.send(Asked::Apply(command));
         }
+    }
+
+    /// Waits, at most `within`, until every command given before this call is applied: for a
+    /// write made directly that must land after them (what is kept at quit). Whether they were.
+    pub fn flush(&self, within: Duration) -> bool {
+        let shared = &self.0.shared;
+        // Inline, every command was applied as it was given.
+        if shared.inline {
+            return true;
+        }
+        let (done, applied) = std::sync::mpsc::sync_channel(1);
+        let sent = match shared.acts.lock().as_ref() {
+            Some(acts) => acts.send(Asked::Flush(done)).is_ok(),
+            // Stopping: what was given is still being applied, and nothing more is taken.
+            None => false,
+        };
+        sent && applied.recv_timeout(within).is_ok()
     }
 
     /// Mark stale every value that reads any of `topics`, as a commit that touched them would:

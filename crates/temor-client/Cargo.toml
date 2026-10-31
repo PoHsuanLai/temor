@@ -37,8 +37,9 @@ serde_json = { workspace = true }
 rustix = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
-# The watch channel a `Live` is followed through, so an `async` window can await a change.
-tokio = { workspace = true }
+# The watch channel a `Live` is followed through, so an `async` window can await a change; the
+# desktop port's timer, so a bus task awaits the window instead of blocking its worker.
+tokio = { workspace = true, features = ["time"] }
 notify = { workspace = true }
 # The services (`ssh`, `remote`, `viewer_host`): Tier A's programs and Tier B's helper, its wire
 # and its client (without the daemon, so no terminal engine), and where a program is found.

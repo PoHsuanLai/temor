@@ -53,12 +53,13 @@ pub fn remove(state_dir: &Path, id: SessionId) {
 }
 
 /// Deletes the screens of the sessions `kept` says history no longer has, and all but the newest
-/// [`MOST`] of the rest.
-pub fn sweep(state_dir: &Path, kept: impl Fn(SessionId) -> bool) {
+/// [`MOST`] of the rest. A history that cannot be read (`kept` fails: busy, say) deletes nothing:
+/// a session it could not find is not a session gone.
+pub fn sweep<E>(state_dir: &Path, kept: impl Fn(SessionId) -> Result<bool, E>) -> Result<(), E> {
     let Ok(entries) = std::fs::read_dir(folder(state_dir)) else {
-        return;
+        return Ok(());
     };
-    let mut screens = Vec::new();
+    let (mut screens, mut gone) = (Vec::new(), Vec::new());
     for path in entries.flatten().map(|entry| entry.path()) {
         let id = path
             .file_stem()
@@ -68,20 +69,20 @@ pub fn sweep(state_dir: &Path, kept: impl Fn(SessionId) -> bool) {
             .then_some(id)
             .flatten();
         match screen {
-            Some(id) if kept(id) => {
+            Some(id) if kept(id)? => {
                 let changed = std::fs::metadata(&path).and_then(|meta| meta.modified());
                 screens.push((changed.ok(), path));
             }
             // Another session's, or a write cut short.
-            _ => {
-                let _ = std::fs::remove_file(path);
-            }
+            _ => gone.push(path),
         }
     }
     screens.sort_by_key(|(changed, _)| std::cmp::Reverse(*changed));
-    for (_, path) in screens.into_iter().skip(MOST) {
+    let old = screens.into_iter().skip(MOST).map(|(_, path)| path);
+    for path in gone.into_iter().chain(old) {
         let _ = std::fs::remove_file(path);
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -103,7 +104,7 @@ mod tests {
         write(dir.path(), one, b"again").expect("write");
         assert_eq!(read(dir.path(), one).as_deref(), Some(b"again".as_slice()));
         std::fs::write(folder(dir.path()).join("stray.tmp"), "").expect("stray");
-        sweep(dir.path(), |id| id == two);
+        sweep(dir.path(), |id| Ok::<_, ()>(id == two)).expect("swept");
         assert_eq!(read(dir.path(), one), None);
         assert_eq!(read(dir.path(), two).as_deref(), Some(b"second".as_slice()));
         assert_eq!(
@@ -127,10 +128,21 @@ mod tests {
         for bits in 0..(MOST as u64 + 3) {
             write(dir.path(), SessionId::from_bits(bits), b"s").expect("write");
         }
-        sweep(dir.path(), |_| true);
+        sweep(dir.path(), |_| Ok::<_, ()>(true)).expect("swept");
         assert_eq!(
             std::fs::read_dir(folder(dir.path())).expect("dir").count(),
             MOST
         );
+    }
+
+    #[test]
+    fn a_history_that_cannot_be_read_deletes_no_screen() {
+        let dir = tempfile::tempdir().expect("dir");
+        let (one, two) = (SessionId::from_bits(1), SessionId::from_bits(2));
+        write(dir.path(), one, b"first").expect("write");
+        write(dir.path(), two, b"second").expect("write");
+        assert_eq!(sweep(dir.path(), |_| Err("busy")), Err("busy"));
+        assert_eq!(read(dir.path(), one).as_deref(), Some(b"first".as_slice()));
+        assert_eq!(read(dir.path(), two).as_deref(), Some(b"second".as_slice()));
     }
 }

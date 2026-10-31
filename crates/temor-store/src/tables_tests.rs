@@ -103,6 +103,24 @@ fn a_command_is_kept_once_and_then_told_how_it_ended() {
     assert_eq!(kept, [done, ran(1, 2, "pwd", ML, 7)]);
 }
 
+/// A command history may not keep is not written, by whoever writes to the store.
+#[test]
+fn a_secret_or_a_command_typed_after_a_space_is_never_written() {
+    let store = store();
+    store.save_session(&session(1, ML, 0)).expect("save");
+    for (block, line) in [
+        (1, " curl -u me:hunter2 example.com"),
+        (2, "export GITHUB_TOKEN=ghp_0123456789abcdefghijklmn"),
+        (3, "ls"),
+    ] {
+        store
+            .record_command(&ran(1, block, line, ML, 1))
+            .expect("record");
+    }
+    let kept = store.commands_of(SessionId::from_bits(1)).expect("read");
+    assert_eq!(commands(&kept), ["ls"]);
+}
+
 #[test]
 fn a_command_needs_its_session_and_goes_with_it() {
     let store = store();

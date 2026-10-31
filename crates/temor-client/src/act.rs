@@ -2,7 +2,6 @@
 //! in the order they were given, so the window never waits on the store's writer. What a change
 //! does to a value is heard as any commit is, through the values that read it.
 
-use temor_schema::secret::kept_in_history;
 use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_schema::url::TemorUrl;
 use temor_store::{Shelf, SqliteStore, StoreError, Topics};
@@ -24,7 +23,7 @@ pub enum Command {
     /// A session ended at `at`.
     End { session: SessionId, at: At },
     /// A command a session ran, or how it ended. One history may not keep (typed after a space,
-    /// or holding a secret) is dropped here, so no caller can write one.
+    /// or holding a secret) is dropped by the store, so no caller can write one.
     Ran(RanCommand),
     /// Forget the history from before `at` (PLAN §2b's retention).
     ForgetBefore(At),
@@ -54,10 +53,7 @@ pub(crate) fn apply(store: &SqliteStore, command: Command) -> Result<(), StoreEr
         }
         Command::Begin(session) => store.save_session(&session),
         Command::End { session, at } => store.end_session(session, at),
-        Command::Ran(ran) => match kept_in_history(&ran.command) {
-            true => store.record_command(&ran),
-            false => Ok(()),
-        },
+        Command::Ran(ran) => store.record_command(&ran),
         Command::ForgetBefore(at) => store.forget_before(at).map(|_| ()),
         Command::Lay { key, value } => match value {
             Some(value) => store.keep(&key, &value, Topics::LAYOUT),

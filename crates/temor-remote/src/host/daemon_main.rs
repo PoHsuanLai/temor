@@ -15,7 +15,7 @@ use crate::clock::SystemClock;
 use crate::daemon::{Daemon, DaemonConfig};
 use crate::error::Error;
 use crate::idle::DEFAULT_IDLE;
-use crate::platform::{Listener, SocketLock, connect, remove_socket};
+use crate::platform::{Half, Listener, SocketLock, connect, remove_socket};
 
 /// How often the daemon does its periodic work.
 const TICK: Duration = Duration::from_secs(1);
@@ -148,16 +148,26 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
                 continue;
             }
         };
-        let accepted = daemon.accepted();
-        let writer = connection.duplicate()?;
-        let serving = Arc::clone(&daemon);
-        std::thread::Builder::new()
-            .name("temor-remote-connection".to_string())
-            .spawn(move || {
-                // A connection that ends badly has nobody to tell; its sessions stay.
-                let _ = serving.serve(connection, writer);
-                drop(accepted);
-            })
-            .map_err(|error| Error::io("starting a connection's thread", error))?;
+        // A connection that cannot be served (out of descriptors or threads, say) is let go, and
+        // its window dials again: the daemon, and every session in it, stays.
+        if serve_apart(&daemon, connection).is_err() {
+            std::thread::sleep(Duration::from_millis(100));
+        }
     }
+}
+
+/// Serves `connection` on a thread of its own.
+fn serve_apart(daemon: &Arc<Daemon>, connection: Half) -> Result<(), Error> {
+    let accepted = daemon.accepted();
+    let writer = connection.duplicate()?;
+    let serving = Arc::clone(daemon);
+    std::thread::Builder::new()
+        .name("temor-remote-connection".to_string())
+        .spawn(move || {
+            // A connection that ends badly has nobody to tell; its sessions stay.
+            let _ = serving.serve(connection, writer);
+            drop(accepted);
+        })
+        .map_err(|error| Error::io("starting a connection's thread", error))?;
+    Ok(())
 }
