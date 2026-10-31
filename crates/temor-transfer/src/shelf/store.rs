@@ -111,6 +111,12 @@ impl ShelfStore {
         self.claim(offer.name(), |dest| dest.write_all(offer.data()))
     }
 
+    /// Writes `text` temor made itself (a block's output) into the folder under `name`, or the
+    /// next free name, and returns the final path.
+    pub fn place_text(&self, text: &str, name: &FileName) -> Result<PathBuf, TransferError> {
+        self.claim(name, |dest| dest.write_all(text.as_bytes()))
+    }
+
     /// Creates the first free name for `name` and fills it with `write`, syncing the file. A
     /// failed write removes its partial file.
     fn claim(

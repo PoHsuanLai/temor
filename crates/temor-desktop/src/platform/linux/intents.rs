@@ -129,7 +129,7 @@ impl<W: WindowPort> IntentProvider for TemorIntents<W> {
     async fn undo(&self, token: UndoToken, _actor: Actor) -> Result<(), UndoFault> {
         let token = token.as_str();
         let done = match (pane_of_token(token), token.strip_prefix(RUN_TOKEN)) {
-            (Some(pane), _) => self.window.close_pane(pane),
+            (Some(pane), _) => self.window.close_pane(pane).await,
             (None, Some(run)) => self.window.undo(run),
             (None, None) => return Err(UndoFault::Gone),
         };

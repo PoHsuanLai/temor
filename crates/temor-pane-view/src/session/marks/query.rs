@@ -2,7 +2,6 @@
 //! Nothing here is drawn; the views decide how to show it.
 
 use temor_client::model::block::Outcome;
-use temor_client::model::session::AnnotateIn;
 use temor_client::model::vocab::ids::BlockId;
 
 use super::super::Session;
@@ -38,11 +37,6 @@ impl Session {
     /// Whether a block's command has finished (its output is complete).
     pub fn block_finished(&self, id: BlockId) -> bool {
         self.core().block_finished(id)
-    }
-
-    /// Picks no block.
-    pub fn clear_block_selection(&mut self) {
-        self.annotate(AnnotateIn::ClearPicks);
     }
 
     /// The picked block the arrows move (the last one clicked), if any.

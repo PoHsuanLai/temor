@@ -3,6 +3,7 @@
 
 use rusqlite::{OptionalExtension, Row, params};
 use temor_schema::ids::BlockId;
+use temor_schema::secret::kept_in_history;
 use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_schema::url::{Host, TemorUrl};
 
@@ -184,8 +185,12 @@ impl SqliteStore {
         rows.into_iter().map(session_of).collect()
     }
 
-    /// Keep one command a session ran, or what more is known of it (how it ended).
+    /// Keep one command a session ran, or what more is known of it (how it ended). One history
+    /// may not keep (typed after a space, or holding a secret) is not written, whoever asks.
     pub fn record_command(&self, command: &RanCommand) -> Result<(), StoreError> {
+        if !kept_in_history(&command.command) {
+            return Ok(());
+        }
         self.touch(Topics::BLOCKS).execute(
             "INSERT INTO commands (session, block, command, folder, exit, started, ended)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)

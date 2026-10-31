@@ -1,5 +1,6 @@
 //! The private runtime directory and the ControlMaster options derived from it.
 
+#[cfg(feature = "io")]
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
@@ -100,6 +101,7 @@ impl ControlLayout {
     /// The names of the finished sockets in the socket directory: a master listens under a
     /// temporary name and renames it into place, so a name of exactly the hash's length is a
     /// master ready for sessions. Empty when the directory cannot be read.
+    #[cfg(feature = "io")]
     pub fn finished_sockets(&self) -> BTreeSet<String> {
         let Ok(entries) = std::fs::read_dir(self.socket_dir()) else {
             return BTreeSet::new();

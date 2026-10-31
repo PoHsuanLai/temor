@@ -190,16 +190,6 @@ impl SshHub {
 }
 
 impl super::model::Hub {
-    /// Replaces the SSH surroundings (the programs, the config, the runtime folder); tests point
-    /// them at stand-ins.
-    pub fn set_ssh_env(&mut self, env: SshEnv) {
-        let book = std::mem::take(&mut self.ssh.book);
-        let tailnet = Arc::clone(&self.ssh.tailnet);
-        self.ssh = SshHub::with_env(env);
-        self.ssh.book = book;
-        self.ssh.tailnet = tailnet;
-    }
-
     /// Replaces how links and files are handed to the desktop (tests record them).
     pub fn set_openers(&mut self, links: Box<dyn Opener>, files: Box<dyn FileShell>) {
         self.ssh.opener = links;

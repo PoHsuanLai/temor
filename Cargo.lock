@@ -7203,7 +7203,7 @@ dependencies = [
  "ds-core",
  "serde",
  "temor-core",
- "temor-pane",
+ "temor-schema",
 ]
 
 [[package]]
@@ -7227,11 +7227,13 @@ version = "0.1.1"
 dependencies = [
  "ds-core",
  "ds-style",
+ "jiff",
  "notify",
  "parking_lot",
  "rustix",
  "serde",
  "serde_json",
+ "similar",
  "temor-agent",
  "temor-blocks",
  "temor-client",
@@ -7306,7 +7308,6 @@ name = "temor-hosts"
 version = "0.1.1"
 dependencies = [
  "ds-core",
- "ds-style",
  "serde",
  "serde_json",
  "temor-core",
@@ -7362,7 +7363,6 @@ dependencies = [
  "ds-core",
  "temor-client",
  "temor-panes",
- "tempfile",
  "thiserror 2.0.21",
  "tokio",
 ]
@@ -7397,6 +7397,7 @@ dependencies = [
  "bayonet",
  "serde",
  "temor-plugins",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
@@ -7409,6 +7410,7 @@ dependencies = [
  "libproc",
  "nix",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
@@ -7479,6 +7481,7 @@ version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
@@ -7514,6 +7517,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
@@ -7540,7 +7544,6 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
- "similar",
  "temor-client",
  "temor-core",
  "temor-desktop",
@@ -7554,6 +7557,7 @@ dependencies = [
  "temor-schema",
  "temor-shell",
  "temor-ssh",
+ "temor-store",
  "temor-testkit",
  "temor-transfer",
  "temor-vt",
@@ -7568,10 +7572,9 @@ dependencies = [
 name = "temor-vt"
 version = "0.1.1"
 dependencies = [
- "base64 0.22.1",
  "png",
+ "temor-schema",
  "temor-testkit",
- "temor-vt",
  "temor-vt-sys",
  "thiserror 2.0.21",
 ]
@@ -7587,6 +7590,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "thiserror 2.0.21",
 ]

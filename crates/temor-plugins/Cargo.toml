@@ -14,6 +14,7 @@ testing = ["bayonet/testing"]
 [dependencies]
 bayonet = { workspace = true }
 serde = { workspace = true }
+temor-schema = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

@@ -78,16 +78,6 @@ impl Hub {
             });
         Some(host_title(host.alias.as_str(), reported.as_deref()))
     }
-
-    /// The folder on the host the pane is in, as the pane's shell last reported it.
-    pub fn host_folder(&self, pane: PaneId) -> Option<String> {
-        self.ssh.panes.get(&pane)?;
-        self.book
-            .ws
-            .cwds
-            .get(&pane)
-            .map(|cwd| cwd.as_str().to_owned())
-    }
 }
 
 impl HubRef {

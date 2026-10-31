@@ -5,13 +5,22 @@
 //! row brings the tab to the front, and ⌘-pressing it opens a new tab in its folder; dragging it
 //! onto another row joins the two tabs.
 
+use std::cell::Cell;
+use std::rc::Rc;
+use std::time::Duration;
+
 use dioxus::prelude::*;
 use ds::base::press::{PointerButton, Press};
+use ds::base::time::clock::sleep;
 use ds::base::vocab::{Availability, DropState, Emphasis, RowState};
 use ds::components::controls::badge::{Badge, BadgeContent, BadgeTone};
 use ds::components::controls::press::Propagation;
 use ds::components::overlays::drag_ghost::DropLine;
+use ds::host::document::use_document_host;
+use ds::host::found::Found;
+use ds::host::reveal::reveal;
 use ds::prelude::*;
+use ds::style::busy::wait_out_busy;
 use ds::style::tokens::control_size::ControlSize;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::Cwd;
@@ -36,6 +45,7 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
     let mut menu_pane = use_signal(|| None::<PaneId>);
     // The drag finds the row under the pointer from where the rows are.
     let rect = use_drag_target(id, &dnd.rects);
+    let element = use_reveal_when(row.selection == Selection::Selected);
     let drop = match (dnd.over)() {
         Some(Target::Tab(over)) if over == id => DropState::Target,
         _ => match dnd.drag.phase() {
@@ -149,7 +159,10 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
                 },
                 onpointerdown: dragging,
                 common: Common {
-                    mounted: Some(EventHandler::new(move |event: MountedEvent| rect.on_mounted(event))),
+                    mounted: Some(EventHandler::new(move |event: MountedEvent| {
+                        element.clone().set(Some(event.data()));
+                        rect.on_mounted(event);
+                    })),
                     ..Common::default()
                 },
             }
@@ -179,6 +192,41 @@ fn hover_words(folder: Option<&str>, about: Option<&str>, title: &str) -> String
     match lines.is_empty() {
         true => title.to_owned(),
         false => lines.join("\n"),
+    }
+}
+
+/// The row's element, scrolled into the sidebar's view each time `front` turns true: the row of
+/// the tab in front is never left below the sidebar's edge (a new tab's, or one ⌘9 chose).
+fn use_reveal_when(front: bool) -> Signal<Option<Rc<MountedData>>> {
+    let element = use_signal(|| None::<Rc<MountedData>>);
+    let was = use_hook(|| Rc::new(Cell::new(false)));
+    match (front, element()) {
+        (true, Some(row)) if !was.get() => {
+            was.set(true);
+            spawn(reveal_in_sidebar(row));
+        }
+        (false, _) => was.set(false),
+        _ => {}
+    }
+    element
+}
+
+/// Scrolls the sidebar's list the least that shows `row`, found through quire's host (Blitz's own
+/// `scroll_to` moves only the window's viewport), once now and once the list has settled: a new
+/// row is laid out before the rows around it have their final heights.
+async fn reveal_in_sidebar(row: Rc<MountedData>) {
+    let host = use_document_host();
+    for attempt in 0..8 {
+        match host.geometry().find(".temor-side .ds-sidebar-body") {
+            Found::Element(list) => {
+                let _ = reveal(&list, &row).await;
+                sleep(Duration::from_millis(300)).await;
+                let _ = reveal(&list, &row).await;
+                return;
+            }
+            Found::Busy => wait_out_busy(attempt).await,
+            _ => return,
+        }
     }
 }
 

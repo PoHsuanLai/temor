@@ -31,6 +31,8 @@ const HOSTS: &str = "hosts";
 const SESSIONS: &str = "sessions";
 /// Set once the older files have been read in.
 const IMPORTED: &str = "imported/files";
+/// How long a write at quit waits for the ones handed to the client's thread before it.
+const FLUSH_WITHIN: std::time::Duration = std::time::Duration::from_secs(2);
 
 /// The key of the rows of Space `id`.
 fn space_key(id: SpaceId) -> String {
@@ -90,14 +92,24 @@ impl Kept {
         if self.newer.contains(&key) || self.written.get(&key) == value.as_ref() {
             return;
         }
-        match &value {
-            Some(value) => self.written.insert(key.clone(), value.clone()),
+        let laid = match through {
+            Through::Client => {
+                client.act(Command::Lay {
+                    key: key.clone(),
+                    value: value.clone(),
+                });
+                true
+            }
+            Through::Now => write_now(client, &key, value.as_deref()),
+        };
+        // A write that failed is not what is kept: the next change tries it again.
+        if !laid {
+            return;
+        }
+        match value {
+            Some(value) => self.written.insert(key, value),
             None => self.written.remove(&key),
         };
-        match through {
-            Through::Client => client.act(Command::Lay { key, value }),
-            Through::Now => write_now(client, &key, value.as_deref()),
-        }
     }
 
     /// Reads the files an older temor left in `dir` into the store, once.
@@ -105,12 +117,15 @@ impl Kept {
         if Self::kept(client, IMPORTED).is_some() {
             return;
         }
+        // The files are marked read only once all they held is in the store: a write that
+        // failed is tried again at the next launch.
+        let mut all = true;
         let mut ids = vec![SpaceId(0)];
         match load_spaces(dir) {
             Ok(SpacesStartup::Loaded(spaces)) => {
                 ids = spaces.list().iter().map(|space| space.id).collect();
                 if let Ok(text) = serde_json::to_string(&spaces) {
-                    write_now(client, SPACES, Some(&text));
+                    all &= write_now(client, SPACES, Some(&text));
                 }
             }
             Ok(SpacesStartup::NoFile) => {}
@@ -123,7 +138,7 @@ impl Kept {
             match load_for(dir, id, KeepClosed::DEFAULT) {
                 Ok(Startup::Restored(ws)) => {
                     if let Ok(text) = encode(&ws) {
-                        write_now(client, &space_key(id), Some(&text));
+                        all &= write_now(client, &space_key(id), Some(&text));
                     }
                 }
                 Ok(_) => {}
@@ -136,9 +151,11 @@ impl Kept {
         if hosts != HostsFile::default()
             && let Ok(text) = splice_hosts("{}", &hosts)
         {
-            write_now(client, HOSTS, Some(&text));
+            all &= write_now(client, HOSTS, Some(&text));
         }
-        write_now(client, IMPORTED, Some("1"));
+        if all {
+            write_now(client, IMPORTED, Some("1"));
+        }
     }
 
     /// The Spaces kept; none when nothing usable is.
@@ -244,6 +261,10 @@ impl Kept {
     /// Hands the client every Space's rows, the Spaces, the hosts and the panes' sessions that
     /// changed, and forgets the rows of a Space that is gone.
     pub fn lay_all(&mut self, client: &Client, laying: Laying<'_>, through: Through) {
+        // A write still waiting on the client's thread is older than this one: it lands first.
+        if through == Through::Now {
+            client.flush(FLUSH_WITHIN);
+        }
         let rows: Vec<(String, Option<String>)> = laying
             .book
             .every()
@@ -268,28 +289,33 @@ impl Kept {
         if let Some(text) = spaces {
             self.lay(client, SPACES.to_owned(), Some(text), through);
         }
+        // What could not be written out is left as it was kept, not forgotten.
         let hosts = match *laying.hosts == HostsFile::default() {
-            true => None,
-            false => splice_hosts("{}", laying.hosts).ok(),
+            true => Ok(None),
+            false => splice_hosts("{}", laying.hosts).map(Some),
         };
-        self.lay(client, HOSTS.to_owned(), hosts, through);
+        if let Ok(hosts) = hosts {
+            self.lay(client, HOSTS.to_owned(), hosts, through);
+        }
         let sessions: BTreeMap<u64, SessionId> = laying
             .sessions
             .iter()
             .map(|(pane, id)| (pane.0, *id))
             .collect();
-        let sessions = serde_json::to_string(&sessions).ok();
-        self.lay(client, SESSIONS.to_owned(), sessions, through);
+        if let Ok(sessions) = serde_json::to_string(&sessions) {
+            self.lay(client, SESSIONS.to_owned(), Some(sessions), through);
+        }
     }
 }
 
-/// Writes `value` under `key` (forgets it with `None`) on this thread.
-fn write_now(client: &Client, key: &str, value: Option<&str>) {
+/// Writes `value` under `key` (forgets it with `None`) on this thread. Whether it was written.
+fn write_now(client: &Client, key: &str, value: Option<&str>) -> bool {
     let store = client.store();
-    let _ = match value {
+    let written = match value {
         Some(value) => store.keep(key, value, Topics::LAYOUT),
         None => store.unkeep(key, Topics::LAYOUT),
     };
+    written.is_ok()
 }
 
 #[cfg(test)]

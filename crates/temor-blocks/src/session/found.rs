@@ -16,7 +16,7 @@ pub enum Kind {
 
 /// A point on the screen: its row (0 is the oldest kept row) and column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct At {
+pub struct ScreenPoint {
     pub row: u64,
     pub col: u16,
 }
@@ -24,27 +24,27 @@ pub struct At {
 /// One block found on the screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Found {
-    pub prompt: At,
-    pub input: At,
-    pub output: At,
+    pub prompt: ScreenPoint,
+    pub input: ScreenPoint,
+    pub output: ScreenPoint,
     /// Where the next prompt starts, when there is one: the block ends before it.
-    pub end: Option<At>,
+    pub end: Option<ScreenPoint>,
 }
 
 /// The prompt being typed at, found on the screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Typing {
-    pub prompt: At,
-    pub input: Option<At>,
+    pub prompt: ScreenPoint,
+    pub input: Option<ScreenPoint>,
 }
 
 /// The blocks among `starts` (where each kind begins, top to bottom), and the prompt the last
 /// run leaves open, if any. A prompt after a typed command with no output between is a
 /// continuation prompt and belongs to the same command; typing with no prompt before it starts
 /// a command of its own.
-pub fn find_blocks(starts: &[(At, Kind)]) -> (Vec<Found>, Option<Typing>) {
+pub fn find_blocks(starts: &[(ScreenPoint, Kind)]) -> (Vec<Found>, Option<Typing>) {
     let mut blocks = Vec::new();
-    let mut open: Option<(At, Option<At>, Option<At>)> = None;
+    let mut open: Option<(ScreenPoint, Option<ScreenPoint>, Option<ScreenPoint>)> = None;
     for &(at, kind) in starts {
         match (kind, open) {
             (Kind::Prompt, Some((_, Some(_), None))) => {}
@@ -121,8 +121,8 @@ pub fn match_history<'a>(
 mod tests {
     use super::*;
 
-    fn at(row: u64, col: u16) -> At {
-        At { row, col }
+    fn at(row: u64, col: u16) -> ScreenPoint {
+        ScreenPoint { row, col }
     }
 
     #[test]

@@ -13,7 +13,7 @@ use temor_core::pane::{CliGate, PaneKind, TerminalPane, TerminalRole};
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::*;
 use temor_core::vocab::text::*;
-use temor_hosts::remote::{Grant, Host, HostConsent, RemoteSession, RemoteTier};
+use temor_hosts::remote::Grant;
 use temor_hosts::transfer::{Download, Origin, Transfer};
 use temor_layout::space::{
     AccountRef, Credential, Pin, Place, Profile, Project, Route, Tab, TemorSpaces,
@@ -92,7 +92,6 @@ fn enums_with_data_are_adjacently_tagged() {
             json!({"kind": "waiting", "v": "sign_in"})),
         ("adapter", serde_json::to_value(StatusSource::Adapter(PluginId("cc".into()))).unwrap(),
             json!({"kind": "adapter", "v": "cc"})),
-        ("tier", serde_json::to_value(RemoteTier::Plain).unwrap(), json!({"kind": "plain"})),
     ];
     for (name, got, want) in cases {
         assert_eq!(got, want, "{name}");
@@ -136,24 +135,6 @@ fn every_stored_type_round_trips() {
         seq: Seq(5),
         source: StatusSource::ProgramStatus,
         note: Some(Note("tests pass".into())),
-    });
-    round_trips(&Host {
-        alias: HostAlias("prod".into()),
-        target: SshTarget("me@prod:22".into()),
-        space_pin: Some(SpaceId(2)),
-        consent: HostConsent {
-            clipboard: Grant::Refused,
-            transfers: Grant::Allowed,
-            ..HostConsent::default()
-        },
-        tier: RemoteTier::Helper {
-            version: HelperHash("abc".into()),
-        },
-    });
-    round_trips(&RemoteSession {
-        host: HostAlias("prod".into()),
-        id: RemoteSessionId(1),
-        cwd: RemotePath("/srv".into()),
     });
     for (from, state) in [
         (

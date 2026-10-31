@@ -3,7 +3,7 @@
 //! ending anything, a stalled link is dropped, and the window's colours follow to the host.
 
 use temor_client::model::host::store::{HostSession, HostsFile};
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::LinkEvent;
 
 use super::model::Hub;
@@ -15,8 +15,8 @@ use temor_panes::remote::palette::wire_palette;
 /// The session to save for a pane: the one it has now, else the one it was saved with and has
 /// not got back yet; none once the host lost it.
 pub(super) fn session_to_save(
-    live: Option<SessionId>,
-    waiting: Option<SessionId>,
+    live: Option<RemoteSessionId>,
+    waiting: Option<RemoteSessionId>,
 ) -> Option<HostSession> {
     live.or(waiting).map(|session| HostSession(session.0))
 }
@@ -75,7 +75,7 @@ impl Hub {
             let Some(conn) = line.conn.clone() else {
                 continue;
             };
-            let sessions: Vec<SessionId> = self
+            let sessions: Vec<RemoteSessionId> = self
                 .remote
                 .panes
                 .values()
@@ -109,9 +109,13 @@ mod tests {
     #[test]
     fn a_pane_is_saved_with_its_live_session_else_the_one_it_has_yet_to_get_back() {
         let cases = [
-            (Some(SessionId(4)), Some(SessionId(2)), Some(HostSession(4))),
-            (Some(SessionId(4)), None, Some(HostSession(4))),
-            (None, Some(SessionId(2)), Some(HostSession(2))),
+            (
+                Some(RemoteSessionId(4)),
+                Some(RemoteSessionId(2)),
+                Some(HostSession(4)),
+            ),
+            (Some(RemoteSessionId(4)), None, Some(HostSession(4))),
+            (None, Some(RemoteSessionId(2)), Some(HostSession(2))),
             (None, None, None),
         ];
         for (live, waiting, want) in cases {

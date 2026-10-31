@@ -1,6 +1,10 @@
 //! What can be asked: the store's facts, as values. Each is a fact and nothing more; what a
 //! sidebar or the history page makes of it is the window's.
 
+use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
+
+use temor_core::folder::Entry;
 use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_schema::url::TemorUrl;
 use temor_store::{Found, Shelf, SqliteStore};
@@ -84,5 +88,69 @@ impl Query for OnShelf {
 
     fn run(&self, store: &SqliteStore) -> Result<Vec<TemorUrl>, ClientError> {
         Ok(store.shelf(self.0)?)
+    }
+}
+
+/// What is in a folder on this computer, for its page: `None` when it cannot be read. A link to
+/// a folder is listed as a folder, as Finder does. Read once when asked: a folder is not
+/// watched, and nothing the store commits changes it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Folder(pub PathBuf);
+
+impl Query for Folder {
+    type Output = Option<Vec<Entry>>;
+
+    const READS: Topics = Topics::empty();
+
+    fn run(&self, _: &SqliteStore) -> Result<Self::Output, ClientError> {
+        let Ok(items) = std::fs::read_dir(&self.0) else {
+            return Ok(None);
+        };
+        let mut entries = Vec::new();
+        for item in items {
+            let Ok(item) = item else { continue };
+            let path = item.path();
+            let meta = std::fs::metadata(&path).or_else(|_| item.metadata());
+            let (folder, modified) = match meta {
+                Ok(meta) => (meta.is_dir(), meta.modified().ok()),
+                Err(_) => (false, None),
+            };
+            let modified = modified
+                .and_then(|at| at.duration_since(UNIX_EPOCH).ok())
+                .and_then(|since| i64::try_from(since.as_millis()).ok())
+                .map(At);
+            entries.push(Entry {
+                name: item.file_name().to_string_lossy().into_owned(),
+                folder,
+                modified,
+            });
+        }
+        Ok(Some(entries))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_folder_lists_its_files_and_folders_with_when_they_changed() {
+        let dir = tempfile::tempdir().expect("a folder");
+        std::fs::create_dir(dir.path().join("sub")).expect("a folder in it");
+        std::fs::write(dir.path().join("a.txt"), "a").expect("a file");
+        let store = SqliteStore::in_memory().expect("a store");
+        let mut entries = Folder(dir.path().to_path_buf())
+            .run(&store)
+            .expect("read")
+            .expect("readable");
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        let seen: Vec<(&str, bool)> = entries
+            .iter()
+            .map(|entry| (entry.name.as_str(), entry.folder))
+            .collect();
+        assert_eq!(seen, [("a.txt", false), ("sub", true)]);
+        assert!(entries.iter().all(|entry| entry.modified.is_some()));
+        let gone = Folder(dir.path().join("none")).run(&store).expect("read");
+        assert_eq!(gone, None);
     }
 }

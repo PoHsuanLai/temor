@@ -35,6 +35,15 @@ mod tests;
 mod view;
 
 pub use board::{SpaceBoard, SpaceEdit, SpaceRow};
+
+/// Where the settings window reads and writes `settings.toml` and `keys.conf`, in the order the
+/// person made the changes: never on the window's thread (the keys' desktop half may run
+/// `dconf`).
+pub(crate) static SETTINGS_LINE: temor_client::serial::Serial =
+    temor_client::serial::Serial::new("temor-settings");
+
+/// What the page says when the settings' thread cannot start.
+pub(crate) const NO_LINE: &str = "Settings can't be changed right now.";
 pub use edit::{Edited, applied, save_edit};
 pub use keys_edit::{KeyChange, change_keys, load_view};
 pub use open::{

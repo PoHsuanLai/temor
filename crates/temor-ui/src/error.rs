@@ -35,3 +35,13 @@ pub enum UiError {
     #[error(transparent)]
     View(#[from] temor_pane_view::error::ViewError),
 }
+
+impl From<temor_panes::start::StartError> for UiError {
+    fn from(error: temor_panes::start::StartError) -> Self {
+        match error {
+            temor_panes::start::StartError::RuntimeDir(io) => UiError::RuntimeDir(io),
+            temor_panes::start::StartError::Pane(pane) => UiError::Pane(pane),
+            other => UiError::RuntimeDir(std::io::Error::other(other.to_string())),
+        }
+    }
+}

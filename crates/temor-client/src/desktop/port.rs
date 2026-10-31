@@ -10,7 +10,6 @@
 //! Both are `Send + Sync`.
 
 use std::collections::BTreeMap;
-use std::sync::mpsc::{SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -73,8 +72,8 @@ pub enum Answer {
     Done,
 }
 
-/// Where an answer goes: a one-slot channel the bus task waits on.
-pub type Reply = SyncSender<Result<Answer, PortRefusal>>;
+/// Where an answer goes: a one-shot channel the bus task awaits.
+pub type Reply = tokio::sync::oneshot::Sender<Result<Answer, PortRefusal>>;
 
 /// A message for the window thread.
 #[derive(Debug)]
@@ -152,18 +151,21 @@ impl DesktopLink {
 }
 
 impl DesktopPort {
-    fn ask(&self, act: Act) -> Result<Answer, PortRefusal> {
-        let (reply, answer) = sync_channel(1);
+    /// Hands `act` to the window and awaits its answer: busy when the window is gone or takes
+    /// longer than [`ASK_TIMEOUT`]. The bus task's worker is free meanwhile.
+    async fn ask(&self, act: Act) -> Result<Answer, PortRefusal> {
+        let (reply, answer) = tokio::sync::oneshot::channel();
         self.asks
             .send(Ask::Act(act, reply))
             .map_err(|_| PortRefusal::Busy)?;
-        answer
-            .recv_timeout(ASK_TIMEOUT)
-            .map_err(|_| PortRefusal::Busy)?
+        match tokio::time::timeout(ASK_TIMEOUT, answer).await {
+            Ok(Ok(answer)) => answer,
+            _ => Err(PortRefusal::Busy),
+        }
     }
 
-    fn text(&self, act: Act) -> Result<String, PortRefusal> {
-        match self.ask(act)? {
+    async fn text(&self, act: Act) -> Result<String, PortRefusal> {
+        match self.ask(act).await? {
             Answer::Text(text) => Ok(text),
             other => Err(PortRefusal::Failed(format!("unexpected answer: {other:?}"))),
         }
@@ -188,31 +190,35 @@ impl WindowPort for DesktopPort {
         locked(&self.snapshot).panes.clone()
     }
 
-    fn read_pane(&self, pane: PaneRef, range: LineRange) -> Result<String, PortRefusal> {
-        self.text(Act::ReadPane(pane, range))
+    async fn read_pane(&self, pane: PaneRef, range: LineRange) -> Result<String, PortRefusal> {
+        self.text(Act::ReadPane(pane, range)).await
     }
 
     fn commands(&self, pane: PaneRef) -> Result<Vec<CommandInfo>, PortRefusal> {
         self.known(pane)
     }
 
-    fn read_command(&self, pane: PaneRef, command: CommandRef) -> Result<String, PortRefusal> {
-        self.text(Act::ReadCommand(pane, command))
+    async fn read_command(
+        &self,
+        pane: PaneRef,
+        command: CommandRef,
+    ) -> Result<String, PortRefusal> {
+        self.text(Act::ReadCommand(pane, command)).await
     }
 
-    fn open_pane(&self, open: PaneOpen) -> Result<PaneRef, PortRefusal> {
-        match self.ask(Act::Open(open))? {
+    async fn open_pane(&self, open: PaneOpen) -> Result<PaneRef, PortRefusal> {
+        match self.ask(Act::Open(open)).await? {
             Answer::Pane(pane) => Ok(pane),
             other => Err(PortRefusal::Failed(format!("unexpected answer: {other:?}"))),
         }
     }
 
-    fn close_pane(&self, pane: PaneRef) -> Result<(), PortRefusal> {
-        self.ask(Act::Close(pane)).map(drop)
+    async fn close_pane(&self, pane: PaneRef) -> Result<(), PortRefusal> {
+        self.ask(Act::Close(pane)).await.map(drop)
     }
 
-    fn run_in_pane(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal> {
-        self.ask(Act::Run(pane, line.to_owned())).map(drop)
+    async fn run_in_pane(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal> {
+        self.ask(Act::Run(pane, line.to_owned())).await.map(drop)
     }
 
     async fn run_sandboxed(&self, _run: SandboxRun) -> Result<SandboxResult, PortRefusal> {

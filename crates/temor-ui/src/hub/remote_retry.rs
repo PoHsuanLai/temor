@@ -5,7 +5,7 @@
 //! session it had is asked for, not a new one.
 
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::{Attempt, LinkState};
 use temor_client::ssh::HostAlias;
 
@@ -38,11 +38,11 @@ pub(super) enum Begin {
     /// A new session on the host.
     Fresh,
     /// The session the pane had before the link was lost, to be attached again.
-    Rejoin(SessionId),
+    Rejoin(RemoteSessionId),
 }
 
 /// How a pane begins, given the session it had (if it was one) and where that stood.
-pub(super) fn begin_plan(before: Option<(Option<SessionId>, Shown)>) -> Begin {
+pub(super) fn begin_plan(before: Option<(Option<RemoteSessionId>, Shown)>) -> Begin {
     match before {
         Some((Some(session), Shown::Opening | Shown::Attached)) => Begin::Rejoin(session),
         _ => Begin::Fresh,
@@ -66,7 +66,7 @@ impl Hub {
 
     /// The shared connection is up again: dial the helper and reattach every session of `host`.
     pub(super) fn remote_rejoin(&mut self, host: &HostAlias) {
-        let sessions: Vec<SessionId> = self
+        let sessions: Vec<RemoteSessionId> = self
             .remote
             .panes
             .values()
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn a_pane_that_had_a_live_session_asks_for_it_again_else_starts_a_new_one() {
-        let session = SessionId(7);
+        let session = RemoteSessionId(7);
         let cases = [
             (None, Begin::Fresh),
             (Some((None, Shown::Opening)), Begin::Fresh),

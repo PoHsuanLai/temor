@@ -1,5 +1,4 @@
-//! What differs by operating system (PLAN §0): the opener. Linux is written; other systems get
-//! a stub that reports the open as unsupported (`TODO(platform:<os>)`).
+//! The openers a view is handed (PLAN §0), over the desktop's own (`SystemOpen`).
 
 mod files;
 mod opener;

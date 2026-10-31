@@ -1,7 +1,7 @@
 //! The sizes a session is given, as each of its three users wants them: the wire's, the
 //! pseudo-terminal's (which carries pixels) and the screen's.
 
-use temor_pty::{Cols, GridSize, Px, Rows};
+use temor_pty::{GridSize, Px};
 use temor_vt::{CellPx, GridSize as ScreenSize};
 use temor_wire::units::{CellPx as CellSize, Size};
 
@@ -27,8 +27,8 @@ pub(super) fn usable(cell: CellSize) -> CellSize {
 /// The terminal's size with the text area in pixels, as `TIOCSWINSZ` carries it.
 pub(super) fn pty_size(size: Size, cell: CellSize) -> GridSize {
     GridSize {
-        cols: Cols(size.cols.0),
-        rows: Rows(size.rows.0),
+        cols: size.cols,
+        rows: size.rows,
         width: Px(size.cols.0.saturating_mul(cell.width.0)),
         height: Px(size.rows.0.saturating_mul(cell.height.0)),
     }

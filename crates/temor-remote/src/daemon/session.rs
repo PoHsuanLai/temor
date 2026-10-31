@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use temor_pty::{ChildExit, Pty, PtyIo};
 use temor_vt::{Terminal, TerminalConfig};
-use temor_wire::ids::{RequestId, SessionId};
+use temor_wire::ids::{RemoteSessionId, RequestId};
 use temor_wire::link::Monotonic;
 use temor_wire::message::{
     Event, Message, OpenSession, Palette, RemotePath, Reply, SessionInfo, SessionState,
@@ -34,7 +34,7 @@ const POLL: Duration = Duration::from_millis(20);
 /// A session. `Send` and `Sync`: the pump thread and the connections share it.
 #[derive(Debug)]
 pub(super) struct Session {
-    pub(super) id: SessionId,
+    pub(super) id: RemoteSessionId,
     shared: Mutex<Shared>,
     pty: Mutex<Pty>,
     input: Arc<Input>,
@@ -58,7 +58,7 @@ impl Session {
     /// Starts the program and its screen. The session begins detached. The terminal's read end is
     /// returned for the pump thread.
     pub(super) fn start(
-        id: SessionId,
+        id: RemoteSessionId,
         request: &OpenSession,
         config: &DaemonConfig,
     ) -> Result<(Arc<Self>, PtyIo), Error> {

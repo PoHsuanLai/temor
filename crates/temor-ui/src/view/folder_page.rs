@@ -10,10 +10,11 @@ use ds::base::press::Press;
 use ds::components::overlays::empty_state::EmptyForm;
 use ds::prelude::*;
 use temor_client::model::folder::{Entry, listed, modified_words};
+use temor_client::model::history::Zone;
+use temor_client::query::Folder;
 
+use super::live::{use_client, use_live};
 use super::tab_glyph::row_leading;
-use crate::edge::folder_read::read_folder;
-use crate::edge::local_zone::{local_zone, wall_now};
 use crate::hub::{Desk, TabRow, folder_url, select_tab};
 
 /// The page of `folder`, an absolute path ending in `/`.
@@ -21,26 +22,34 @@ use crate::hub::{Desk, TabRow, folder_url, select_tab};
 #[allow(non_snake_case)]
 pub fn FolderPage(folder: String, desk: Desk) -> Element {
     let _ = (desk.ui)();
-    // Read once each time the page is shown: a folder is not watched.
-    let read = use_hook({
+    // Read once each time the page is shown, off the window's thread: a folder is not watched.
+    let read = use_live({
         let folder = folder.clone();
-        move || read_folder(Path::new(&folder)).map(listed).ok()
+        move || Folder(PathBuf::from(&folder))
     });
     let here = tabs_in(&desk, &folder);
-    let zone = local_zone();
-    let today = zone.day_of(wall_now());
+    let time = use_client().local_time().clone();
+    let now = time.now();
+    let zone = time.zone_at(now);
+    let today = zone.day_of(now);
+    let read = read
+        .read()
+        .value()
+        .map(|read| read.as_ref().clone().map(listed));
     let body = match &read {
-        None => rsx! {
+        // Being read: the page stays empty for the moment that takes.
+        None => rsx! {},
+        Some(None) => rsx! {
             EmptyState {
                 form: EmptyForm::NoResults,
                 title: "This folder can't be read",
                 description: Some(TextLine::from("It may have been moved, or temor may not be allowed to read it.")),
             }
         },
-        Some((entries, _)) if entries.is_empty() => rsx! {
+        Some(Some((entries, _))) if entries.is_empty() => rsx! {
             EmptyState { form: EmptyForm::Empty, title: "This folder is empty" }
         },
-        Some((entries, more)) => rsx! {
+        Some(Some((entries, more))) => rsx! {
             div { class: "temor-history-day",
                 SectionHeader { title: "Files".to_owned() }
                 div { class: "temor-history-list",
@@ -49,6 +58,7 @@ pub fn FolderPage(folder: String, desk: Desk) -> Element {
                             key: "{entry.name}",
                             path: Path::new(&folder).join(&entry.name),
                             entry,
+                            zone,
                             when_today: today,
                             desk: desk.clone(),
                         }
@@ -109,8 +119,7 @@ fn TabHere(row: TabRow, desk: Desk) -> Element {
 /// A file or folder in the folder.
 #[component]
 #[allow(non_snake_case)]
-fn EntryRow(entry: Entry, path: PathBuf, when_today: i64, desk: Desk) -> Element {
-    let zone = local_zone();
+fn EntryRow(entry: Entry, path: PathBuf, zone: Zone, when_today: i64, desk: Desk) -> Element {
     let when = entry
         .modified
         .map(|at| modified_words(at, zone, when_today))

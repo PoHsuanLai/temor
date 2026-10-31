@@ -174,10 +174,14 @@ fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
     let (mut h, ambient) = settings_window("settings-font", SettingsPane::Appearance, |c| c);
     let size = "input[aria-label=\"Font size\"]";
     type_into(&mut h, size, "3");
-    assert!(
-        h.html().contains("takes a number from 6 to 72"),
-        "a refusal says what the setting takes:\n{}",
-        h.html()
+    settle(
+        &mut h,
+        "a refusal that says what the setting takes",
+        |h: &mut Harness| {
+            h.html()
+                .contains("takes a number from 6 to 72")
+                .then_some(())
+        },
     );
     assert!(
         ambient
@@ -187,7 +191,9 @@ fn a_changed_font_size_writes_settings_toml_and_a_bad_one_is_refused() {
         "nothing was written"
     );
     type_into(&mut h, size, "20");
-    assert_eq!(settings_text(&ambient).font.size.points(), 20.0);
+    settle(&mut h, "the size written", |_| {
+        (settings_text(&ambient).font.size.points() == 20.0).then_some(())
+    });
 }
 
 /// Shell offer entries are added and removed from the lists the page shows.
@@ -199,9 +205,13 @@ fn the_shell_offer_list_adds_and_removes_a_command() {
         "input[aria-label=\"Also offer for\"]",
         "kubectl debug -it",
     );
-    assert_eq!(settings_text(&ambient).offer.add, ["kubectl debug -it"]);
+    settle(&mut h, "the command added", |_| {
+        (settings_text(&ambient).offer.add == ["kubectl debug -it"]).then_some(())
+    });
     press(&mut h, "button[aria-label=\"Remove kubectl debug -it\"]");
-    assert!(settings_text(&ambient).offer.add.is_empty());
+    settle(&mut h, "the command removed", |_| {
+        settings_text(&ambient).offer.add.is_empty().then_some(())
+    });
 }
 
 /// A recorded chord is written to `keys.conf`, one a second action holds is refused naming that
@@ -212,29 +222,35 @@ fn a_recorded_chord_writes_keys_conf_a_held_one_is_refused_and_reset_all_clears(
     let split_right = "button[aria-label=\"Change the shortcut for Split right\"]";
     let split_down = "button[aria-label=\"Change the shortcut for Split down\"]";
     let all = [ShortcutKey::Ctrl, ShortcutKey::Shift, ShortcutKey::Alt];
+    // The keys are read on the settings' own thread.
+    settle(&mut h, "the shortcuts", |h: &mut Harness| {
+        (!rects(h, split_right).is_empty()).then_some(())
+    });
 
     record(&mut h, split_right, &all, 'n');
-    assert!(
-        keys_text(&ambient).contains("temor.split-right"),
-        "{}",
+    settle(&mut h, "the chord written", |_| {
         keys_text(&ambient)
-    );
+            .contains("temor.split-right")
+            .then_some(())
+    });
 
     // Split right now holds the chord it was just given.
     record(&mut h, split_down, &all, 'n');
-    assert!(
-        h.html().contains("is already used by Split right"),
-        "the refusal names the action that holds the chord:\n{}",
-        h.html()
+    settle(
+        &mut h,
+        "the refusal naming the action that holds the chord",
+        |h: &mut Harness| {
+            h.html()
+                .contains("is already used by Split right")
+                .then_some(())
+        },
     );
     assert!(!keys_text(&ambient).contains("temor.split-down"));
 
     press(&mut h, "button[aria-label=\"Reset every shortcut\"]");
-    assert!(
-        !keys_text(&ambient).contains("temor.split-right"),
-        "{}",
-        keys_text(&ambient)
-    );
+    settle(&mut h, "the changes taken away", |_| {
+        (!keys_text(&ambient).contains("temor.split-right")).then_some(())
+    });
 }
 
 /// The Spaces page sends a folder typed into it to the main window, by the board.
@@ -302,7 +318,7 @@ fn a_space_folder_sent_to_the_main_window_is_kept() {
     let start = std::time::Instant::now();
     loop {
         h.advance(Duration::from_millis(100));
-        let kept = temor_client::SqliteStore::open(state.join("temor.db"))
+        let kept = temor_store::SqliteStore::open(state.join("temor.db"))
             .ok()
             .and_then(|store| store.kept("spaces").ok().flatten())
             .and_then(|text| {
@@ -472,6 +488,27 @@ impl CredentialSource for Memory {
     }
 }
 
+/// What `got` finds, once it finds something: the page is drawn again meanwhile, so what was
+/// handed to a thread of its own comes back.
+fn settle<T>(h: &mut Harness, what: &str, mut got: impl FnMut(&mut Harness) -> Option<T>) -> T {
+    let start = std::time::Instant::now();
+    loop {
+        if let Some(found) = got(h) {
+            return found;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "timed out waiting for {what}"
+        );
+        h.advance(Duration::from_millis(20));
+    }
+}
+
+/// The edits the page has sent since the last look, once there are any.
+fn edits_of(board: &SpaceBoard) -> Option<Vec<SpaceEdit>> {
+    Some(board.take_edits()).filter(|edits| !edits.is_empty())
+}
+
 /// A credential is set, replaced and removed on the Spaces page; its secret goes to the store
 /// alone and is in neither the page nor the change sent to the main window.
 #[test]
@@ -490,8 +527,10 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
         "input[aria-label=\"New secret value\"]",
         "first-s3cret",
     );
+    // The store is asked on a thread of its own.
+    let edits = settle(&mut h, "the credential added", |_| edits_of(&board));
     assert_eq!(store.get(account).as_deref(), Some("first-s3cret"));
-    let change = last_change(&board);
+    let change = edits.last().expect("an edit").change.clone();
     let credential = Credential {
         env: key("API_KEY"),
         account: AccountRef::new(account).expect("an account"),
@@ -508,20 +547,27 @@ fn a_credential_is_set_replaced_and_removed_and_its_secret_is_never_in_the_page(
         credentials: vec![credential],
         ..Profile::default()
     })]);
-    h.advance(Duration::from_millis(300));
-    assert!(h.html().contains("Replace API_KEY"), "{}", h.html());
+    settle(&mut h, "the credential shown as set", |h: &mut Harness| {
+        h.html().contains("Replace API_KEY").then_some(())
+    });
 
     type_into(
         &mut h,
         "input[aria-label=\"New value for API_KEY\"]",
         "second-s3cret",
     );
-    assert_eq!(store.get(account).as_deref(), Some("second-s3cret"));
+    settle(&mut h, "the secret replaced", |_| {
+        (store.get(account).as_deref() == Some("second-s3cret")).then_some(())
+    });
     assert!(!h.html().contains("first-s3cret") && !h.html().contains("second-s3cret"));
 
     press(&mut h, "button[aria-label=\"Remove credential API_KEY\"]");
+    let edits = settle(&mut h, "the credential removed", |_| edits_of(&board));
     assert_eq!(store.get(account), None);
-    assert_eq!(last_change(&board), SpaceChange::Credentials(Vec::new()));
+    assert_eq!(
+        edits.last().expect("an edit").change,
+        SpaceChange::Credentials(Vec::new())
+    );
 }
 
 /// The Font row is a pop-up of every font the computer has with the system's first. (A pop-up's

@@ -1,4 +1,4 @@
-use temor_pane::CommandLine;
+use temor_schema::process::CommandLine;
 
 use super::{node, wrapper};
 

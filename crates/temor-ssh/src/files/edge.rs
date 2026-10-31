@@ -4,7 +4,6 @@
 
 use std::io;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
 use super::argv::{FileTools, fetch_argv, stat_argv, store_argv};
 use super::path::{RemoteFilePath, RemoteStat, RemoteState, parse_stat};
@@ -21,28 +20,10 @@ pub struct CommandOutput {
     pub stderr: Vec<u8>,
 }
 
-/// Runs a program to completion with no input. The app uses [`StdRunner`] on a worker thread;
-/// a call blocks until the program ends.
+/// Runs a program to completion with no input. The app uses `StdRunner` (feature `io`) on a
+/// worker thread; a call blocks until the program ends.
 pub trait CommandRunner {
     fn run(&self, program: &Path, args: &[String]) -> io::Result<CommandOutput>;
-}
-
-/// Runs the program as a child process of this one.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct StdRunner;
-
-impl CommandRunner for StdRunner {
-    fn run(&self, program: &Path, args: &[String]) -> io::Result<CommandOutput> {
-        let out = Command::new(program)
-            .args(args)
-            .stdin(Stdio::null())
-            .output()?;
-        Ok(CommandOutput {
-            code: out.status.code(),
-            stdout: out.stdout,
-            stderr: out.stderr,
-        })
-    }
 }
 
 /// The three operations a remote edit needs, all on the shared connection to one host. They

@@ -85,9 +85,9 @@ impl<T: Clone + PartialEq> Pages<T> {
         self.forward.clear();
     }
 
-    /// Whether Back has a page to open.
+    /// Whether Back has somewhere to go: a page before this one, or the console behind the first.
     pub fn can_go_back(&self) -> bool {
-        !self.back.is_empty()
+        !self.back.is_empty() || self.current.is_some()
     }
 
     /// Whether Forward has a page to open.
@@ -95,12 +95,14 @@ impl<T: Clone + PartialEq> Pages<T> {
         !self.forward.is_empty()
     }
 
-    /// Back: the page before this one, now on the stage; `None` when there is none.
+    /// Back: the page before this one, now on the stage; `None` when there is none, and from the
+    /// first page the stage empties (the console it was opened from), with Forward to reopen it.
     pub fn back(&mut self) -> Option<&T> {
-        let page = self.back.pop()?;
-        if let Some(was) = self.current.replace(page) {
+        let page = self.back.pop();
+        if let Some(was) = self.current.take() {
             self.forward.push(was);
         }
+        self.current = page;
         self.current.as_ref()
     }
 
@@ -129,8 +131,11 @@ mod tests {
         pages.visit("c");
         assert_eq!(pages.back(), Some(&"b"));
         assert_eq!(pages.back(), Some(&"a"));
-        assert_eq!(pages.back(), None, "nothing before the first");
-        assert_eq!(pages.current(), Some(&"a"));
+        assert!(pages.can_go_back(), "the console is before the first");
+        assert_eq!(pages.back(), None, "the console");
+        assert_eq!(pages.current(), None);
+        assert!(!pages.can_go_back());
+        assert_eq!(pages.forward(), Some(&"a"));
         assert_eq!(pages.forward(), Some(&"b"));
         // A page opened from here drops what Forward had.
         pages.visit("d");
@@ -143,7 +148,8 @@ mod tests {
         let mut pages = Pages::default();
         pages.visit("a");
         pages.visit("a");
-        assert!(!pages.can_go_back());
+        assert_eq!(pages.back(), None, "only the console before it");
+        assert_eq!(pages.forward(), Some(&"a"));
         pages.close();
         assert_eq!(pages.current(), None);
         assert_eq!(pages.back(), Some(&"a"));
@@ -161,7 +167,7 @@ mod tests {
             steps += 1;
         }
         assert_eq!(steps, REMEMBERED);
-        assert_eq!(pages.current(), Some(&9));
+        assert_eq!(pages.forward(), Some(&9), "the oldest remembered");
     }
 
     #[test]

@@ -33,7 +33,7 @@ fn helper_session(
     cwd: &Path,
 ) -> (
     Arc<Conn>,
-    temor_client::remote::ids::SessionId,
+    temor_client::remote::ids::RemoteSessionId,
     Receiver<ClientEvent>,
 ) {
     let setsid = temor_panes::pty::find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))

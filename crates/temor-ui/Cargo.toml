@@ -29,7 +29,6 @@ ds-settings-page = { workspace = true }
 png = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-similar = { workspace = true }
 # temor, as the window may name it (PLAN §2b, the fence): its data and services through the
 # client, the running terminals and their engine through temor-panes, how a pane is shown
 # (temor-pane-view), the data's types.
@@ -49,8 +48,9 @@ temor-core = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
 temor-remote = { workspace = true, features = ["ghostty"] }
-temor-shell = { workspace = true }
-temor-ssh = { workspace = true }
+temor-shell = { workspace = true, features = ["io"] }
+temor-ssh = { workspace = true, features = ["io"] }
+temor-store = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
 temor-plugins = { workspace = true }
 temor-transfer = { workspace = true }

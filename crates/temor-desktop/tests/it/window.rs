@@ -54,7 +54,7 @@ impl WindowPort for FakeWindow {
         vec![Self::pane()]
     }
 
-    fn read_pane(&self, pane: PaneRef, range: LineRange) -> Result<String, PortRefusal> {
+    async fn read_pane(&self, pane: PaneRef, range: LineRange) -> Result<String, PortRefusal> {
         match pane {
             PaneRef(1) => Ok(format!("lines {}+{}", range.from, range.count)),
             _ => Err(PortRefusal::NoSuchPane),
@@ -69,21 +69,25 @@ impl WindowPort for FakeWindow {
         }])
     }
 
-    fn read_command(&self, _pane: PaneRef, _command: CommandRef) -> Result<String, PortRefusal> {
+    async fn read_command(
+        &self,
+        _pane: PaneRef,
+        _command: CommandRef,
+    ) -> Result<String, PortRefusal> {
         Ok("a b c".to_owned())
     }
 
-    fn open_pane(&self, open: PaneOpen) -> Result<PaneRef, PortRefusal> {
+    async fn open_pane(&self, open: PaneOpen) -> Result<PaneRef, PortRefusal> {
         self.log.lock().unwrap().opened.push(open);
         Ok(PaneRef(9))
     }
 
-    fn close_pane(&self, pane: PaneRef) -> Result<(), PortRefusal> {
+    async fn close_pane(&self, pane: PaneRef) -> Result<(), PortRefusal> {
         self.log.lock().unwrap().closed.push(pane);
         Ok(())
     }
 
-    fn run_in_pane(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal> {
+    async fn run_in_pane(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal> {
         self.log.lock().unwrap().typed.push((pane, line.to_owned()));
         Ok(())
     }

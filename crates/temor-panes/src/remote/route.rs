@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use temor_pane::Feeder;
 use temor_pty::ChildExit;
 use temor_vt::Snapshot;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 
 /// The most output kept for a session whose pane has not taken its screen yet (1 MiB).
 pub const BACKLOG_CAP: usize = 1 << 20;
@@ -42,10 +42,10 @@ struct Route {
 
 /// The sessions of one connection and the panes that show them. Cloning shares the table.
 #[derive(Debug, Clone, Default)]
-pub struct Router(Arc<Mutex<BTreeMap<SessionId, Route>>>);
+pub struct Router(Arc<Mutex<BTreeMap<RemoteSessionId, Route>>>);
 
 impl Router {
-    fn table(&self) -> MutexGuard<'_, BTreeMap<SessionId, Route>> {
+    fn table(&self) -> MutexGuard<'_, BTreeMap<RemoteSessionId, Route>> {
         // A poisoned table still holds the routes; output keeps flowing.
         self.0
             .lock()
@@ -53,7 +53,7 @@ impl Router {
     }
 
     /// Output of `session`: to its pane, or to the backlog until the pane has its screen.
-    pub fn output(&self, session: SessionId, bytes: Vec<u8>) {
+    pub fn output(&self, session: RemoteSessionId, bytes: Vec<u8>) {
         let mut table = self.table();
         let route = table.entry(session).or_default();
         match &route.feeder {
@@ -63,7 +63,7 @@ impl Router {
     }
 
     /// The pane shows `session` from `screen` on; what arrived meanwhile follows it.
-    pub fn attach(&self, session: SessionId, feeder: Feeder, screen: Snapshot) {
+    pub fn attach(&self, session: RemoteSessionId, feeder: Feeder, screen: Snapshot) {
         let mut table = self.table();
         let route = table.entry(session).or_default();
         feeder.restore(screen);
@@ -72,7 +72,7 @@ impl Router {
     }
 
     /// The session's program ended: its pane says so, and the route goes.
-    pub fn ended(&self, session: SessionId, exit: Option<ChildExit>) {
+    pub fn ended(&self, session: RemoteSessionId, exit: Option<ChildExit>) {
         if let Some(Route {
             feeder: Some(feeder),
             ..
@@ -83,7 +83,7 @@ impl Router {
     }
 
     /// Forgets `session` (its pane closed).
-    pub fn forget(&self, session: SessionId) {
+    pub fn forget(&self, session: RemoteSessionId) {
         self.table().remove(&session);
     }
 }

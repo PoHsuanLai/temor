@@ -6,7 +6,7 @@ use super::kinds::{EVENT_KINDS, MESSAGE_KINDS, REMOTE_ERROR_KINDS, REPLY_KINDS, 
 use super::*;
 use crate::digest::ContentHash;
 use crate::hello::{Capability, Hello, HelperVersion, ProtocolVersion};
-use crate::ids::{RequestId, SessionId, TerminalId, WatchId};
+use crate::ids::{RemoteSessionId, RequestId, TerminalId, WatchId};
 use crate::units::{
     ByteCount, ByteOffset, ByteRange, CellPx, Cols, Pid, Port, Rows, Size, UnixMillis,
 };
@@ -76,28 +76,28 @@ fn request_samples() -> Vec<Request> {
             palette: Some(palette()),
         }),
         Request::AttachSession {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Request::DetachSession {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Request::Close {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Request::ResizeSession {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
             size: size(),
             cell: CellPx::DEFAULT,
         },
         Request::SendInput {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Request::ListSessions,
         Request::SetIdleLimit {
             limit: IdleLimit::Never,
         },
         Request::SetPalette {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
             palette: palette(),
         },
         Request::Ping,
@@ -119,7 +119,7 @@ fn request_samples() -> Vec<Request> {
         Request::Watch { path: path() },
         Request::Unwatch { watch: WatchId(1) },
         Request::Facts {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Request::RunTrial(TrialRequest {
             command: "true".to_string(),
@@ -146,10 +146,10 @@ fn event_kind(value: &Event) -> &'static str {
 fn event_samples() -> Vec<Event> {
     vec![
         Event::Output {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Event::Exited {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
             status: ExitStatus::Code(crate::units::ExitCode(0)),
         },
         Event::Ports(vec![ListeningPort {
@@ -189,10 +189,10 @@ fn reply_samples() -> Vec<Reply> {
         Reply::Ack,
         Reply::Pong,
         Reply::Opened {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         Reply::Attached {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
             size: size(),
         },
         Reply::Sessions(vec![]),
@@ -243,7 +243,7 @@ fn remote_error_samples() -> Vec<RemoteError> {
     vec![
         RemoteError::UnknownRequest,
         RemoteError::NoSuchSession {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
         RemoteError::NoSuchWatch { watch: WatchId(1) },
         RemoteError::NoSuchTerminal {
@@ -299,7 +299,7 @@ fn message_samples() -> Vec<Message> {
             outcome: Ok(Reply::Ack),
         },
         Message::Event(Event::Output {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         }),
     ]
 }

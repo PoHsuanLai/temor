@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use temor_client::model::remote::{Grant, HelperState, HostArch};
 use temor_client::model::vocab::ids::PaneId;
-use temor_client::remote::ids::SessionId;
+use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::{LinkState, Monotonic};
 use temor_client::remote::message::ListeningPort;
 use temor_client::ssh::HostAlias;
@@ -57,7 +57,7 @@ pub(super) struct LocalStart {
     /// The program the person chose in settings; none is their login shell.
     pub shell: Option<String>,
     /// The session the pane had when temor last quit.
-    pub resume: Option<SessionId>,
+    pub resume: Option<RemoteSessionId>,
     /// The key the pane's shell signs its state reports with: the one it was started with when
     /// it goes on, else a new one (a session opened anew is given the same).
     pub report_key: temor_panes::shell::report::ReportKey,
@@ -68,7 +68,7 @@ pub(super) struct RemotePane {
     pub alias: HostAlias,
     pub target: Arc<Mutex<Target>>,
     pub feeder: Feeder,
-    pub session: Option<SessionId>,
+    pub session: Option<RemoteSessionId>,
     pub shown: Shown,
 }
 
@@ -121,7 +121,7 @@ pub(super) struct RemoteHub {
     pub panes: BTreeMap<PaneId, RemotePane>,
     /// The sessions panes were saved with, until each pane has its session again or is told the
     /// host lost it.
-    pub saved: BTreeMap<PaneId, SessionId>,
+    pub saved: BTreeMap<PaneId, RemoteSessionId>,
     /// Panes that are sessions in this computer's own daemon, and how each starts.
     pub local: BTreeMap<PaneId, LocalStart>,
     /// The helper builds this temor carries, one per kind of processor.

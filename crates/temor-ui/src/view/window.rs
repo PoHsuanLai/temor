@@ -103,6 +103,7 @@ pub fn App() -> Element {
         picked_space,
         window: HostOf(use_window_host()),
         naming: use_signal(|| None),
+        regain: use_signal(|| 0),
     };
     use_hook({
         let desk = desk.clone();

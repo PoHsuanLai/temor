@@ -22,8 +22,7 @@ mod unsupported;
 
 #[cfg(all(target_os = "linux", feature = "quire-desktop"))]
 pub use linux::{
-    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets,
-    SystemTailnet,
+    SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets, SystemTailnet,
 };
 #[cfg(all(target_os = "macos", feature = "quire-desktop"))]
 pub use macos::{SystemDock, SystemInstance, SystemSecrets};
@@ -32,8 +31,7 @@ pub use macos::{SystemDock, SystemInstance, SystemSecrets};
     feature = "quire-desktop"
 )))]
 pub use unsupported::{
-    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets,
-    SystemTailnet,
+    SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets, SystemTailnet,
 };
 #[cfg(all(target_os = "macos", feature = "quire-desktop"))]
-pub use unsupported::{SystemCheckpoints, SystemIntents, SystemLinks, SystemTailnet};
+pub use unsupported::{SystemIntents, SystemLinks, SystemTailnet};

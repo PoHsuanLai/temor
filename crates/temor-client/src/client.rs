@@ -19,6 +19,7 @@
 
 use std::any::{Any, TypeId};
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::sync::{Arc, Weak};
@@ -26,10 +27,19 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
+use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_store::{Committed, SqliteStore, Topics};
 
+/// The database's name in a state folder.
+pub const DB_FILE: &str = "temor.db";
+
 use crate::act::Command;
+use crate::error::ClientError;
 use crate::live::{Entry, Job, Live, Query};
+use crate::time::LocalTime;
+
+/// How long history is kept: what is older is forgotten when a client opens a state folder.
+const KEPT_FOR_MS: i64 = 90 * 24 * 60 * 60 * 1000;
 
 /// How long the change thread waits for more commits after one before it marks anything stale:
 /// a burst of commands finishing is one reading, not one each.
@@ -89,7 +99,15 @@ pub(crate) struct Shared {
     /// How the external watch is woken: by a write to the store's file, or to stop.
     pub(crate) external: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     /// Where commands go to be applied; `None` for an inline client, and once stopping.
-    acts: Mutex<Option<std::sync::mpsc::Sender<Command>>>,
+    acts: Mutex<Option<std::sync::mpsc::Sender<Asked>>>,
+    time: LocalTime,
+}
+
+/// What the `temor-act` thread is handed: a command, or a caller waiting until every command
+/// handed before it is applied ([`Client::flush`]).
+enum Asked {
+    Apply(Command),
+    Flush(std::sync::mpsc::SyncSender<()>),
 }
 
 #[derive(Default)]
@@ -116,14 +134,20 @@ impl Client {
             threads.push(spawn("temor-changes", move || shared.hear(&heard)));
         }
         {
-            let (tx, asked) = std::sync::mpsc::channel::<Command>();
+            let (tx, asked) = std::sync::mpsc::channel::<Asked>();
             *shared.acts.lock() = Some(tx);
             let shared = shared.clone();
             threads.push(spawn("temor-act", move || {
                 // Every command given is applied, even once the client is stopping: a change the
                 // person made is not dropped because the window closed after it.
-                for command in asked {
-                    shared.apply(command);
+                for asked in asked {
+                    match asked {
+                        Asked::Apply(command) => shared.apply(command),
+                        // The caller may have stopped waiting.
+                        Asked::Flush(done) => {
+                            let _ = done.send(());
+                        }
+                    }
                 }
             }));
         }
@@ -151,9 +175,62 @@ impl Client {
         }))
     }
 
-    /// The store, for what writes to it. Reading goes through [`Client::live`].
-    pub fn store(&self) -> &Arc<SqliteStore> {
+    /// The client over `temor.db` in `state_dir`, the folder made if it is not there. History
+    /// older than it is kept for is forgotten.
+    pub fn open_in(state_dir: &Path, config: ClientConfig) -> Result<Client, ClientError> {
+        std::fs::create_dir_all(state_dir).map_err(|why| ClientError::Store(why.to_string()))?;
+        let store = SqliteStore::open(state_dir.join(DB_FILE))?;
+        let client = Client::open(Arc::new(store), config);
+        let now = client.local_time().now();
+        client.act(Command::ForgetBefore(At(now.0 - KEPT_FOR_MS)));
+        Ok(client)
+    }
+
+    /// The wall clock and the local zone.
+    pub fn local_time(&self) -> &LocalTime {
+        &self.0.shared.time
+    }
+
+    /// An id for a session that begins now: 64 bits from the process's random hash keys, the
+    /// time, and `salt` (the pane it begins in, say).
+    pub fn fresh_session(&self, salt: impl std::hash::Hash) -> SessionId {
+        use std::hash::{BuildHasher, Hash, Hasher};
+        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        salt.hash(&mut hasher);
+        std::time::SystemTime::now().hash(&mut hasher);
+        SessionId::from_bits(hasher.finish())
+    }
+
+    /// A client over an empty database in memory, which keeps nothing past the process: reads
+    /// on the thread that asks, as [`Client::inline`].
+    pub fn in_memory() -> Client {
+        match SqliteStore::in_memory() {
+            Ok(store) => Client::inline(Arc::new(store)),
+            // SQLite is built in, and memory it cannot have is memory nothing else will have
+            // either.
+            Err(why) => panic!("an empty database in memory: {why}"),
+        }
+    }
+
+    /// The store, for the client's own writes. Nothing outside the client names it: a write goes
+    /// through [`Client::act`], a read through [`Client::live`] or the reads below.
+    pub(crate) fn store(&self) -> &Arc<SqliteStore> {
         &self.0.shared.store
+    }
+
+    /// The database's file; none for one in memory.
+    pub fn file(&self) -> Option<&Path> {
+        self.0.shared.store.file()
+    }
+
+    /// The session `id`, if history has it, read now on this thread.
+    pub fn session(&self, id: SessionId) -> Result<Option<Session>, ClientError> {
+        Ok(self.0.shared.store.session(id)?)
+    }
+
+    /// The commands session `id` ran, in order, read now on this thread.
+    pub fn commands_of(&self, id: SessionId) -> Result<Vec<RanCommand>, ClientError> {
+        Ok(self.0.shared.store.commands_of(id)?)
     }
 
     /// The value `query` answers, kept read. Never reads the store here: a value someone already
@@ -203,8 +280,25 @@ impl Client {
         }
         if let Some(acts) = shared.acts.lock().as_ref() {
             // A thread that has gone has stopped with the client; nothing is applied any more.
-            let _ = acts.send(command);
+            let _ = acts.send(Asked::Apply(command));
         }
+    }
+
+    /// Waits, at most `within`, until every command given before this call is applied: for a
+    /// write made directly that must land after them (what is kept at quit). Whether they were.
+    pub fn flush(&self, within: Duration) -> bool {
+        let shared = &self.0.shared;
+        // Inline, every command was applied as it was given.
+        if shared.inline {
+            return true;
+        }
+        let (done, applied) = std::sync::mpsc::sync_channel(1);
+        let sent = match shared.acts.lock().as_ref() {
+            Some(acts) => acts.send(Asked::Flush(done)).is_ok(),
+            // Stopping: what was given is still being applied, and nothing more is taken.
+            None => false,
+        };
+        sent && applied.recv_timeout(within).is_ok()
     }
 
     /// Mark stale every value that reads any of `topics`, as a commit that touched them would:
@@ -291,6 +385,7 @@ impl Shared {
             moved: tokio::sync::watch::Sender::new(0),
             external: Mutex::new(None),
             acts: Mutex::new(None),
+            time: LocalTime::system(),
         }
     }
 

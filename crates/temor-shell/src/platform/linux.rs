@@ -13,9 +13,6 @@ use rustix::io::Errno;
 
 use crate::error::ShellError;
 
-/// The longest unix socket path: `sun_path` is 108 bytes including the terminating NUL.
-pub const SOCKET_PATH_MAX: usize = 107;
-
 const PRIVATE_MODE: u32 = 0o700;
 const MODE_BITS: u32 = 0o777;
 

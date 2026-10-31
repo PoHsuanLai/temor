@@ -10,18 +10,24 @@ publish = false
 [features]
 # In-memory `~/.ssh/config` fixtures (`testing::load`) for tests here and in other crates.
 testing = []
+default = ["io"]
+# What touches the system: running ssh and scp, reading the config files, making the control
+# folders private and listing their sockets. Without it the crate is the pure builders and
+# parsers, for the model crates that name its vocabulary (PLAN §2: L2 does no I/O).
+io = ["dep:rustix", "temor-shell/io"]
 
 [dependencies]
 base64 = { workspace = true }
+temor-schema = { workspace = true }
 temor-shell = { workspace = true }
 thiserror = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-rustix = { workspace = true }
+rustix = { workspace = true, optional = true }
 
 [dev-dependencies]
 temor-testkit = { workspace = true }
-temor-ssh = { workspace = true, features = ["testing"] }
+temor-ssh = { workspace = true, features = ["io", "testing"] }
 tempfile = { workspace = true }
 
 [[test]]

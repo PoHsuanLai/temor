@@ -147,8 +147,10 @@ impl Hub {
         }
     }
 
-    /// The viewer pane `viewer` ended: its row's stage is empty, and Back opens its page again.
+    /// The viewer pane `viewer` ended: its row's stage is empty, and Back opens its page again
+    /// (unless Back itself closed it, for the console).
     pub(super) fn stage_closed(&mut self, viewer: PaneId) {
+        let walking = self.stages.walking;
         if let Some(stage) = self
             .stages
             .rows
@@ -156,7 +158,9 @@ impl Hub {
             .find(|stage| stage.viewer == Some(viewer))
         {
             stage.viewer = None;
-            stage.pages.close();
+            if !walking {
+                stage.pages.close();
+            }
             stage.layout = Layout::default();
         }
     }
@@ -250,7 +254,8 @@ impl Hub {
         Some(PathBuf::from(file))
     }
 
-    /// Back (`back`) or Forward on the row in front: its page before or after this one opens.
+    /// Back (`back`) or Forward on the row in front: its page before or after this one opens, or,
+    /// Back from its first page, the page closes for the console.
     pub(super) fn walk_pages(&mut self, back: bool) {
         let Some(tab) = self.book.ws.front() else {
             return;
@@ -263,7 +268,14 @@ impl Hub {
             false => stage.pages.forward().cloned(),
         };
         let viewer = stage.viewer;
-        let Some(page) = page else { return };
+        let Some(page) = page else {
+            if let Some(viewer) = viewer.filter(|_| back) {
+                self.stages.walking = true;
+                self.act(WorkspaceIn::ClosePane(Some(viewer)));
+                self.stages.walking = false;
+            }
+            return;
+        };
         // From the terminal the page came from, or the row's first.
         let from = viewer
             .and_then(|viewer| self.viewer_unfocus_to(viewer))

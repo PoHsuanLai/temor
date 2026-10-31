@@ -19,7 +19,7 @@ use super::space_edit::{
     root_warning, routes_edited, routes_with, routes_without,
 };
 use super::space_fields::{AddRoute, RouteRow, SpaceText};
-use super::space_profile::{AddCredential, AddVariable, CredentialRow, VariableRow};
+use super::space_profile::{AddCredential, AddVariable, CredentialRow, NO_THREAD, VariableRow};
 use super::space_secrets;
 use crate::app::Desktop;
 use crate::edge::{Credentials, VaultCredentials};
@@ -94,7 +94,8 @@ pub fn SpacesPage() -> Element {
 fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>) -> Element {
     let SpaceRow { id, name, project } = row;
     let change = move |change: SpaceChange| onchange.call((id, change));
-    let store = use_hook(|| match try_consume_context::<Credentials>() {
+    // Shared with the credential rows; every call on it is made on a thread of its own.
+    let store = use_context_provider(|| match try_consume_context::<Credentials>() {
         Some(given) => given,
         None => try_consume_context::<Desktop>()
             .map(|desktop| VaultCredentials::credentials(desktop.secrets.clone()))
@@ -190,22 +191,21 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>
             }
             for credential in credentials.iter() {
                 CredentialRow {
-                    key: "credential-{credential.env.as_str()}",
-                    env: credential.env.as_str().to_owned(),
-                    account: credential.account.as_str().to_owned(),
-                    held: space_secrets::held(&*store.0, &credential.account),
-                    onset: {
-                        let (store, account) = (store.clone(), credential.account.clone());
-                        move |secret: String| {
-                            if let Err(why) = space_secrets::replace(&*store.0, &account, &secret) {
-                                onsay.call(why);
-                            }
-                        }
-                    },
+                    key: "credential-{credential.env.as_str()}-{credential.account.as_str()}",
+                    credential: credential.clone(),
+                    onsay,
                     onremove: {
                         let (store, list, env) =
                             (store.clone(), credentials.clone(), credential.env.clone());
-                        move |()| try_credentials(space_secrets::remove(&*store.0, list.clone(), &env))
+                        move |()| {
+                            let (store, list, env) = (store.clone(), list.clone(), env.clone());
+                            spawn(async move {
+                                let done = store
+                                    .ask(move |store| space_secrets::remove(store, list, &env))
+                                    .await;
+                                try_credentials(done.unwrap_or_else(|| Err(NO_THREAD.to_owned())));
+                            });
+                        }
                     },
                 }
             }
@@ -213,7 +213,13 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>
                 onadd: {
                     let (store, list) = (store.clone(), credentials.clone());
                     move |(name, secret): (String, String)| {
-                        try_credentials(space_secrets::add(&*store.0, id, list.clone(), &name, &secret));
+                        let (store, list) = (store.clone(), list.clone());
+                        spawn(async move {
+                            let done = store
+                                .ask(move |store| space_secrets::add(store, id, list, &name, &secret))
+                                .await;
+                            try_credentials(done.unwrap_or_else(|| Err(NO_THREAD.to_owned())));
+                        });
                     }
                 },
             }

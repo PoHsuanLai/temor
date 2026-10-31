@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
-use temor_pty::{Cols, Pty, Px as PtyPx, Rows, SessionLauncher, SpawnSpec};
+use temor_pty::{Pty, Px as PtyPx, SessionLauncher, SpawnSpec};
 use temor_render::Palette;
 use temor_vt::{CellPx, GridSize, LineCount, Snapshot};
 
@@ -44,8 +44,8 @@ pub struct PaneSpec {
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
 pub(crate) fn pty_size(grid: GridSize, cell: CellPx) -> temor_pty::GridSize {
     temor_pty::GridSize {
-        cols: Cols(grid.cols.0),
-        rows: Rows(grid.rows.0),
+        cols: grid.cols,
+        rows: grid.rows,
         width: PtyPx(saturate(u32::from(grid.cols.0) * cell.width.0)),
         height: PtyPx(saturate(u32::from(grid.rows.0) * cell.height.0)),
     }

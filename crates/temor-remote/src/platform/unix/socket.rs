@@ -4,11 +4,9 @@
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::Shutdown;
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
-
-use temor_shell::ShellError;
 
 use crate::error::Error;
 
@@ -17,22 +15,8 @@ use crate::error::Error;
 /// otherwise fail the socket later); one that is not ours, or is a link, is refused. The check
 /// is temor-shell's.
 pub fn ensure_private_dir(path: &Path) -> Result<(), Error> {
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(parent)
-            .map_err(|error| Error::io(format!("making {}", parent.display()), error))?;
-    }
-    temor_shell::ensure_private_dir(path).map_err(|error| match error {
-        ShellError::PrivateDir { source, .. } => {
-            Error::io(format!("making {}", path.display()), source)
-        }
-        other => Error::io(
-            format!("using {}", path.display()),
-            io::Error::new(io::ErrorKind::PermissionDenied, other.to_string()),
-        ),
-    })
+    temor_shell::ensure_private_dir_all(path)
+        .map_err(|error| Error::io(format!("making {}", path.display()), error))
 }
 
 /// One end of a connection. `Send`; clone it for the other direction with [`Half::duplicate`].

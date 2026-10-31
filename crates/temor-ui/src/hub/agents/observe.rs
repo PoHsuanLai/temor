@@ -8,7 +8,6 @@ use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::Heard;
 
-use super::radar::Alert;
 use crate::hub::model::Hub;
 use crate::hub::select_tab;
 
@@ -34,12 +33,6 @@ impl Hub {
     /// How many agent panes wait for the person.
     pub fn waiting_count(&self) -> usize {
         WaitingCount::waiting_count(self)
-    }
-
-    /// The notifications the radar wants made now: a pane that needs the person while it is not
-    /// the one in use, with the agent's own words. Taking them clears them.
-    pub fn take_agent_alerts(&mut self) -> Vec<Alert> {
-        self.agents.radar.take_alerts()
     }
 
     /// What one pane event means for the radar. Returns whether the chrome shows something new.

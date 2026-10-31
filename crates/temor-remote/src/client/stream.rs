@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{
     FileStamp, Palette, PartEnd, RemotePath, Reply, Request, WriteCheck, WriteMode,
 };
@@ -31,7 +31,7 @@ impl Client {
 
     /// Sets the colours a session's terminal answers colour queries with, so programs on the host
     /// that ask get the window's.
-    pub fn set_palette(&self, session: SessionId, palette: Palette) -> Result<(), Error> {
+    pub fn set_palette(&self, session: RemoteSessionId, palette: Palette) -> Result<(), Error> {
         self.ack(Request::SetPalette { session, palette })
     }
 

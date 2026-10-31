@@ -82,7 +82,7 @@ pub fn use_pane_focus(
 
     // The pane that becomes the keyboard pane (a chord moved focus, a tile was pressed) takes the
     // keyboard on the page too; not while the bar's field or the composer's has it, and back when
-    // the bar closes or the composer goes (a command runs).
+    // the bar closes, the composer goes (a command runs) or a menu's pick gives it back.
     {
         let (ime, gained, desk, had, slot) = (
             ime.clone(),
@@ -91,8 +91,11 @@ pub fn use_pane_focus(
             Rc::clone(&had_keyboard),
             Rc::clone(slot),
         );
+        let regained = use_hook(|| Rc::new(Cell::new(0)));
         use_effect(move || {
             let _ = (desk.ui)();
+            let regain = (desk.regain)();
+            let asked = regained.replace(regain) != regain;
             // Not while the bar's or the find bar's field has it (Escape in the find hands it back).
             let finding = find_is_open(&slot);
             let has = desk.hub.keyboard_pane() == Some(pane)
@@ -100,7 +103,7 @@ pub fn use_pane_focus(
                 && !finding
                 && !composing(&slot);
             let before = had.replace(has);
-            if has && !before {
+            if has && (!before || asked) {
                 let gained = gained.clone();
                 ime.take_focus(EventHandler::new(move |()| gained()));
             }

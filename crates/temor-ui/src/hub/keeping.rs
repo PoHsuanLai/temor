@@ -21,9 +21,9 @@ impl Hub {
         if let Some(client) = &client {
             if let Some(dir) = &dir {
                 self.kept.import(client, dir);
-                // The screens of sessions history no longer has go.
-                let store = client.store();
-                screens::sweep(dir, |id| store.session(id).ok().flatten().is_some());
+                // The screens of sessions history no longer has go; none while history cannot
+                // be read (another temor holding it, say).
+                let _ = screens::sweep(dir, |id| client.session(id).map(|kept| kept.is_some()));
             }
             let sessions = self.kept.sessions(client);
             self.carry_sessions(sessions);

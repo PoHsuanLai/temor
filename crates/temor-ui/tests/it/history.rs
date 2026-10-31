@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use ds::base::vocab::ShortcutKey;
 use ds_harness::WindowHosting;
-use temor_client::{Client, ClientConfig, SqliteStore};
+use temor_client::{Client, ClientConfig};
+use temor_store::SqliteStore;
 use temor_ui::view::probe::Probe;
 
 use super::drive::{chord_with, press, type_line, wait_html, wait_until};
@@ -230,7 +231,7 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
     let store = Arc::new(SqliteStore::in_memory().expect("store"));
     let id = SessionId::from_bits(0xb5);
     let day = 24 * 60 * 60 * 1000;
-    let then = temor_ui::edge::local_zone::wall_now().0 - 2 * day;
+    let then = temor_client::time::LocalTime::system().now().0 - 2 * day;
     store
         .save_session(&Session {
             id,
@@ -451,4 +452,62 @@ fn an_older_panes_kept_commands_start_its_session() {
         h.advance(Duration::from_millis(50));
         assert!(start.elapsed() < Duration::from_secs(10), "{ran:?}");
     }
+}
+
+/// History opened over a shell is left with Back (⌘[ or the head's button), as a browser leaves
+/// the page it opened: the shell's console comes back. Found by the UI hunt: Back stays disabled
+/// and ⌘[ does nothing, so only the page's × gets the shell back.
+#[test]
+fn back_leaves_the_history_page_for_the_shell() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = super::window::harness("history-back", &probe);
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the history page", |html| {
+        html.contains("class=\"temor-history\"")
+    });
+    let disabled = super::drive::rects(&h, ".temor-walk .ds-button[disabled]").len();
+    assert!(
+        disabled < 2,
+        "Back is live on the page ({disabled} of 2 disabled)"
+    );
+    chord_with(&mut h, &primary[..1], '[');
+    wait_html(&mut h, "the shell again", |html| {
+        !html.contains("class=\"temor-history\"") && html.contains("aria-label=\"Terminal\"")
+    });
+}
+
+/// The history page's search field takes what is typed into it: the page's keys are only the
+/// window's chords. Found by the UI hunt: the page took every key, and the field stayed empty.
+#[test]
+fn the_history_search_field_takes_typing() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = super::window::harness("history-search-typing", &probe);
+    h.resize_window(ds_blitz::Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
+    chord_with(&mut h, primary, 'y');
+    wait_html(&mut h, "the history page", |html| {
+        html.contains("class=\"temor-history\"")
+    });
+    press(&mut h, ".temor-history-search input");
+    super::drive::type_text(&mut h, "zzq");
+    h.advance(Duration::from_millis(400));
+    assert_eq!(
+        h.attr(".temor-history-search input", "value").as_deref(),
+        Some("zzq")
+    );
+    // The window's chords still work from the field.
+    chord_with(&mut h, &primary[..1], '[');
+    wait_html(&mut h, "the shell again", |html| {
+        !html.contains("class=\"temor-history\"")
+    });
 }

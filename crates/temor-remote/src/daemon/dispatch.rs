@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use temor_wire::hello::Capability;
-use temor_wire::ids::{RequestId, SessionId};
+use temor_wire::ids::{RemoteSessionId, RequestId};
 use temor_wire::message::{RemoteError, Reply, Request, WriteMode};
 
 use super::core::Daemon;
@@ -36,7 +36,7 @@ fn wire(error: Error) -> RemoteError {
 }
 
 impl Daemon {
-    fn session(&self, session: SessionId) -> Result<Arc<Session>, RemoteError> {
+    fn session(&self, session: RemoteSessionId) -> Result<Arc<Session>, RemoteError> {
         self.registry
             .get(session)
             .ok_or(RemoteError::NoSuchSession { session })

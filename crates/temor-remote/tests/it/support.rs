@@ -12,10 +12,10 @@ use temor_pty::SessionLauncher;
 use temor_remote::{
     Client, ClientEvent, DAEMON_CAPS, DEFAULT_IDLE, Daemon, DaemonConfig, Error, ManualClock, hello,
 };
-use temor_vt::{GridSize, Terminal, TerminalConfig, Vt};
+use temor_vt::{GridSize, Terminal, TerminalConfig};
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::HelperVersion;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{EnvVar, OpenSession, RemotePath};
 use temor_wire::units::{CellPx, Cols, Rows, Size};
 
@@ -254,7 +254,7 @@ pub fn snapshot_text(attached: &temor_remote::Attached) -> String {
 }
 
 /// The id of the one session a listing holds.
-pub fn only_session(conn: &Conn) -> Option<SessionId> {
+pub fn only_session(conn: &Conn) -> Option<RemoteSessionId> {
     let sessions = conn.client.list_sessions().ok()?;
     match sessions.as_slice() {
         [one] => Some(one.session),

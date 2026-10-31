@@ -4,7 +4,7 @@
 use super::files::{FileStamp, RemotePath};
 use super::trial::UncheckedWhy;
 use crate::hello::Capability;
-use crate::ids::{SessionId, TerminalId, WatchId};
+use crate::ids::{RemoteSessionId, TerminalId, WatchId};
 use serde::{Deserialize, Serialize};
 
 /// Why the host refused a relayed call.
@@ -31,7 +31,7 @@ pub enum RemoteError {
     /// No session has that id (it ended, or it was never opened here).
     NoSuchSession {
         /// The id asked for.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// No watch has that id.
     NoSuchWatch {

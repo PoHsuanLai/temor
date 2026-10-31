@@ -34,6 +34,9 @@ pub struct Desk {
     pub window: HostOf,
     /// The folder of the sidebar being named where it stands (one just made, or Rename Folder).
     pub naming: Signal<Option<FolderId>>,
+    /// Bumped to give the keyboard back to the pane that has it: a pick in a menu leaves it
+    /// nowhere (Blitz ends a click on a plain element by clearing the focus).
+    pub regain: Signal<u32>,
 }
 
 /// The window's host, if there is one. Always equal: a desk holds its own window's.
@@ -66,6 +69,12 @@ impl Desk {
     pub fn bump(&self) {
         let mut ui = self.ui;
         ui += 1;
+    }
+
+    /// Gives the keyboard back to the pane that has it, as a menu's pick ends.
+    pub fn keyboard_back(&self) {
+        let mut regain = self.regain;
+        regain += 1;
     }
 
     /// Shows `text` to the person.

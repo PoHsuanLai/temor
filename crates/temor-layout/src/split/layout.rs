@@ -3,7 +3,6 @@
 //! from one integer partition, so the parts of a split always add up to the split exactly.
 
 use super::model::{Axis, Handle, Node, SplitTree};
-use ds_core::geometry::units::{Point, Px, Rect, Size};
 use temor_core::vocab::ids::PaneId;
 
 /// The side of the normalised square, in spatial units. Far more than [`MOST_PANES`] units, so
@@ -31,23 +30,7 @@ pub struct PaneRect {
     pub height: WholePx,
 }
 
-impl PaneRect {
-    /// The rectangle in the design system's logical pixels, for a view to place.
-    pub fn to_rect(self) -> Rect {
-        // u32 -> f32 rounds above 2^24 px, far beyond any window.
-        let px = |v: WholePx| Px(v.0 as f32);
-        Rect {
-            origin: Point {
-                x: px(self.x),
-                y: px(self.y),
-            },
-            size: Size {
-                width: px(self.width),
-                height: px(self.height),
-            },
-        }
-    }
-}
+impl PaneRect {}
 
 /// One node's place, in whatever unit the partition ran in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

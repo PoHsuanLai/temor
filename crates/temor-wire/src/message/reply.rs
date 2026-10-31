@@ -6,7 +6,7 @@ use super::ports::ListeningPort;
 use super::relay::RelayReply;
 use super::session::SessionInfo;
 use super::trial::TrialVerdict;
-use crate::ids::{SessionId, WatchId};
+use crate::ids::{RemoteSessionId, WatchId};
 use crate::units::{ByteCount, Size};
 use serde::{Deserialize, Serialize};
 
@@ -22,13 +22,13 @@ pub enum Reply {
     /// A session was opened. Its id is the helper's to choose.
     Opened {
         /// The new session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// A session was attached. The payload is its snapshot: the screen state that reproduces it
     /// exactly, then the live output follows as events.
     Attached {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// Its size now.
         size: Size,
     },

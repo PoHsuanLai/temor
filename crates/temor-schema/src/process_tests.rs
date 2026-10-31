@@ -1,4 +1,4 @@
-use super::command::{CommandLine, MAX_BYTES, MAX_TOKENS};
+use super::{CommandLine, MAX_BYTES, MAX_TOKENS};
 
 /// A row: its name, the bytes of `/proc/<pid>/cmdline`, and the tokens wanted (none: no line).
 type Case<'a> = (&'a str, &'a [u8], Option<Vec<&'a str>>);

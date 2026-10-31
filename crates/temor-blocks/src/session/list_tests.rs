@@ -36,8 +36,8 @@ fn read(top: u32, len: u32, cursor: Option<u32>, blocks: Vec<BlockRead>) -> Read
     }
 }
 
-fn plain(_: BlockId) -> BlockFacts {
-    BlockFacts::default()
+fn plain(_: BlockId) -> BlockMarks {
+    BlockMarks::default()
 }
 
 fn outputs(items: &[Item]) -> Vec<(ItemKey, Range<u32>)> {
@@ -119,7 +119,7 @@ fn a_running_block_wholly_in_view_is_live_from_its_first_row() {
 fn a_folded_block_shows_no_rows_and_a_failed_one_keeps_its_outcome() {
     let mut b = done(1, 0, 6);
     b.outcome = Outcome::Failed(ExitCode(2));
-    let items = list_of(&read(0, 24, None, vec![b]), |_| BlockFacts {
+    let items = list_of(&read(0, 24, None, vec![b]), |_| BlockMarks {
         folded: true,
         bookmarked: true,
     });

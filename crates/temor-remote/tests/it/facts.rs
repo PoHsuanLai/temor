@@ -2,7 +2,7 @@
 
 use temor_remote::{Error, hello};
 use temor_wire::hello::Capability;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{RemoteError, RemotePath};
 
 use crate::support::{HELPER, Rig, tools_present};
@@ -70,7 +70,7 @@ fn facts_are_asked_only_of_a_helper_that_offers_them_and_only_for_a_session_it_h
     ));
     let conn = rig.connect();
     assert!(matches!(
-        conn.client.folder_facts(SessionId(999)),
+        conn.client.folder_facts(RemoteSessionId(999)),
         Err(Error::Remote(RemoteError::NoSuchSession { .. }))
     ));
 }

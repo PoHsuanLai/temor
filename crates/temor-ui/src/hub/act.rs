@@ -98,7 +98,7 @@ impl Hub {
                 .carried
                 .get(&spawn.pane)
                 .and_then(|kept| kept.daemon_session)
-                .map(temor_client::remote::ids::SessionId);
+                .map(temor_client::remote::ids::RemoteSessionId);
             return self.begin_local(spawn, resume);
         }
         self.open_plain(spawn, restored);

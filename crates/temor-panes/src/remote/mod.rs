@@ -21,7 +21,7 @@ use temor_remote::ClientEvent;
 use temor_remote::host::HostEnv;
 use temor_ssh::{CommandOutput, CommandRunner, HostAlias};
 use temor_wire::digest::ContentHash;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::link::PingPolicy;
 use temor_wire::message::Palette;
 use tokio::sync::mpsc::UnboundedSender;
@@ -223,7 +223,7 @@ impl RemoteWork {
 
     /// Gives the sessions `sessions` of `conn` the window's new colours. Its outcome does not
     /// matter: the next attach sends them again.
-    pub fn palette(&self, conn: Arc<Conn>, sessions: Vec<SessionId>, palette: Palette) {
+    pub fn palette(&self, conn: Arc<Conn>, sessions: Vec<RemoteSessionId>, palette: Palette) {
         self.run(
             move |_| {
                 for session in sessions {
@@ -235,7 +235,7 @@ impl RemoteWork {
     }
 
     /// Ends a pane's session on the host. Its outcome does not matter.
-    pub fn close(&self, conn: Arc<Conn>, session: SessionId) {
+    pub fn close(&self, conn: Arc<Conn>, session: RemoteSessionId) {
         self.run(
             move |_| {
                 // The session may already be gone with its link.

@@ -17,8 +17,9 @@ use super::model::{Hub, HubRef};
 use super::ssh_edit::{forget_copy, local_name};
 use crate::platform::ensure_private_dir;
 use crate::session::ViewAsk;
+use temor_client::changes::Compare;
 use temor_client::remote::edit_way::EditTier;
-use temor_client::viewer_host::{Cap, CopyEvent, CopyId, CopyOutcome, ToHub};
+use temor_client::viewer_host::{Cap, CopyDone, CopyEvent, CopyId, CopyOutcome, ToHub};
 use temor_client::viewer_host::{copy_from_helper, copy_with_scp};
 
 /// What a fetched file is for.
@@ -65,6 +66,11 @@ impl Default for HostCopies {
 /// Where the copies of host files are kept: private to the person, beside the edit copies.
 pub(super) fn copies_dir(runtime: &Path) -> PathBuf {
     runtime.join("view")
+}
+
+/// Where the differences of the fetched copy `local` of `name` are written.
+pub(super) fn diff_beside(local: &Path, name: &str) -> PathBuf {
+    local.with_file_name(format!("{name}.diff"))
 }
 
 /// What the person is told when a file could not be fetched.
@@ -137,10 +143,20 @@ impl Hub {
         }
         let name = local_name(path);
         let local = folder.join(&name);
-        let done = Box::new(ToHub {
+        let to_hub = Box::new(ToHub {
             id,
             events: self.viewers.host.events.clone(),
         });
+        let done: Box<dyn CopyDone> = match &then {
+            Then::View => to_hub,
+            Then::Diff { yours } => Box::new(Compare {
+                theirs: local.clone(),
+                yours: yours.clone(),
+                diff: diff_beside(&local, &name),
+                names: (format!("On {} now", host.as_str()), "Your copy".to_owned()),
+                then: to_hub,
+            }),
+        };
         let started = match tier {
             EditTier::Helper => self.remote.helper_conn(&host).map(|conn| {
                 let remote = RemotePath(path.to_owned());
@@ -184,7 +200,9 @@ impl Hub {
                 let file = want.local.clone();
                 self.show_file(want.from, file);
             }
-            (CopyOutcome::Whole, Then::Diff { yours }) if open => self.show_changes(&want, yours),
+            (CopyOutcome::Compared(compared), Then::Diff { .. }) if open => {
+                self.show_changes(&want, compared);
+            }
             (CopyOutcome::Failed(fault), _) => {
                 forget_copy(&want.local);
                 let words = fault_words(&want.host, &want.name, fault);

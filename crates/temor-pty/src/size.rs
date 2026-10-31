@@ -1,12 +1,6 @@
 //! The size a terminal is told: cells and pixels.
 
-/// A width in cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Cols(pub u16);
-
-/// A height in cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Rows(pub u16);
+pub use temor_schema::units::{Cols, Rows};
 
 /// A length in whole device pixels, as `TIOCSWINSZ` carries it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]

@@ -9,26 +9,18 @@ use std::sync::Arc;
 
 use dioxus::dioxus_core::{Task, provide_root_context};
 use dioxus::prelude::*;
-use temor_client::{Client, ClientConfig, Live, Query, Snapshot, SqliteStore};
-
-/// The database's name in the state folder.
-const DB_FILE: &str = "temor.db";
+use temor_client::{Client, ClientConfig, Live, Query, Snapshot};
 
 /// The process's client: over `temor.db` in `state_dir`, or with no state folder (or a database
 /// that cannot be opened, which is said), over an empty one in memory that keeps nothing.
 pub(crate) fn open_client(state_dir: Option<&Path>) -> Client {
-    let opened = state_dir.map(|dir| {
-        std::fs::create_dir_all(dir)
-            .map_err(|why| why.to_string())
-            .and_then(|()| SqliteStore::open(dir.join(DB_FILE)).map_err(|why| why.to_string()))
-    });
-    match opened {
-        Some(Ok(store)) => Client::open(Arc::new(store), ClientConfig::default()),
+    match state_dir.map(|dir| Client::open_in(dir, ClientConfig::default())) {
+        Some(Ok(client)) => client,
         Some(Err(why)) => {
             eprintln!("temor: history is not kept this time: {why}");
-            in_memory()
+            Client::in_memory()
         }
-        None => in_memory(),
+        None => Client::in_memory(),
     }
 }
 
@@ -39,25 +31,9 @@ pub(crate) fn window_client(state_dir: Option<&Path>) -> Client {
     if let Some(client) = try_consume_context::<Client>() {
         return client;
     }
-    let opened = state_dir.map(|dir| {
-        std::fs::create_dir_all(dir)
-            .map_err(|why| why.to_string())
-            .and_then(|()| SqliteStore::open(dir.join(DB_FILE)).map_err(|why| why.to_string()))
-    });
-    let client = match opened {
-        Some(Ok(store)) => Client::open(Arc::new(store), ClientConfig { external: false }),
-        _ => in_memory(),
-    };
-    provide_root_context(client)
-}
-
-/// A client over an empty database in memory, reading on the thread that asks.
-fn in_memory() -> Client {
-    match SqliteStore::in_memory() {
-        Ok(store) => Client::inline(Arc::new(store)),
-        // SQLite is built in, and memory it cannot have is memory nothing else will have either.
-        Err(why) => panic!("an empty database in memory: {why}"),
-    }
+    let opened =
+        state_dir.and_then(|dir| Client::open_in(dir, ClientConfig { external: false }).ok());
+    provide_root_context(opened.unwrap_or_else(Client::in_memory))
 }
 
 /// The app's client: the one the program gave every window, or for a window built without one
@@ -71,7 +47,7 @@ pub(crate) fn use_client() -> Client {
 pub(crate) fn client() -> Client {
     match try_consume_context::<Client>() {
         Some(client) => client,
-        None => provide_root_context(in_memory()),
+        None => provide_root_context(Client::in_memory()),
     }
 }
 
@@ -150,8 +126,13 @@ mod tests {
     fn a_state_folder_keeps_the_database_and_none_keeps_nothing() {
         let dir = tempfile::tempdir().expect("dir");
         let kept = open_client(Some(&dir.path().join("state")));
-        assert!(kept.store().file().is_some());
-        assert!(dir.path().join("state").join(DB_FILE).exists());
-        assert!(open_client(None).store().file().is_none());
+        assert!(kept.file().is_some());
+        assert!(
+            dir.path()
+                .join("state")
+                .join(temor_client::DB_FILE)
+                .exists()
+        );
+        assert!(open_client(None).file().is_none());
     }
 }

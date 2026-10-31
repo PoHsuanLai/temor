@@ -99,6 +99,7 @@ temor/
     temor-vt-sys/     bindgen output (checked in) plus a build.rs that builds the pinned Ghostty with Zig
     temor-vt/         the only libghostty-vt user: Terminal, RenderState, encoders, callbacks
                       → typed events
+    temor-schema/     the shared vocabulary: ids, sessions, URLs, the store's rows, `CommandLine`
     temor-pty/        openpty and spawn, shell resolution, the child env contract
     temor-shell/      the shell integration scripts (bash, zsh, fish, nu) and their injection plan;
                       used by temor-pty locally and temor-ssh remotely
@@ -132,7 +133,10 @@ temor/
 `check-portable.sh`):
 - A crate depends only on crates in its own or lower layers. L0 and L1 never depend on quire
   (`ds-*`), Dioxus or docket; only L4 names Dioxus views.
-- `temor-core` has no I/O, no Dioxus, and no FFI.
+- `temor-core` has no I/O, no Dioxus, and no FFI. No L2 crate links I/O: they name no
+  temor-pty, temor-transfer or temor-vt, and name temor-shell, temor-ssh and temor-pane without
+  their default features (`io`, and `engine` for temor-pane), which hold the process, file and
+  socket code. A crate that runs things opts in with `features = ["io"]`.
 - Only `temor-vt` names libghostty (through `temor-vt-sys`). `unsafe` is allowed only in `temor-vt-sys`
   and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.
 - Only `temor-desktop` names zbus or docket. Nothing in the core reaches `desktop/`.

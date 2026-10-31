@@ -3,7 +3,7 @@
 //! goes through `watch_step` and `edit_step`, which check the host's file first and write back,
 //! or ask what to do when it changed in between.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use temor_client::model::host::edit::{
@@ -264,10 +264,5 @@ impl Hub {
             self.on_edit(*id, EditIn::LocalSaved);
         }
         !saves.is_empty()
-    }
-
-    /// The local copy of an edit, for the person to find.
-    pub fn edit_copy(&self, id: EditId) -> Option<PathBuf> {
-        self.ssh.edits.get(&id).map(|edit| edit.local.clone())
     }
 }

@@ -3,18 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A host the transfer came from, as the person named it (an ssh alias or a host name).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct HostName(String);
-
-impl HostName {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
+pub use temor_schema::text::HostName;
 
 /// The tab a local pane belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
