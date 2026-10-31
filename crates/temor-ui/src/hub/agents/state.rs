@@ -1,7 +1,7 @@
 //! Everything the window keeps about agents: the radar and the pane sockets. Lives in the hub, on
 //! the window's thread.
 
-use temor_client::model::agent::radar::{Millis, RadarParams};
+use temor_client::model::agent::radar::{Monotonic, RadarParams};
 use temor_client::model::vocab::ids::PaneId;
 use temor_panes::pane::PaneEvent;
 use tokio::sync::mpsc::UnboundedSender;
@@ -37,7 +37,7 @@ impl Agents {
     }
 
     /// The window's clock, for the radar's timing.
-    pub fn now(&self) -> Millis {
-        Millis(self.clock.now().0)
+    pub fn now(&self) -> Monotonic {
+        Monotonic(self.clock.now().0)
     }
 }

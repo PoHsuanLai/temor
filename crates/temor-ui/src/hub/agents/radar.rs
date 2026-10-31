@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use temor_client::model::agent::radar::{
-    Millis, ProcessFact, RadarIn, RadarParams, RadarState, radar_step,
+    Monotonic, ProcessFact, RadarIn, RadarParams, RadarState, radar_step,
 };
 use temor_client::model::agent::seen::{CommandLine, agent_of, is_known_agent};
 use temor_client::model::presence::{AgentState, PaneFocus, PresenceOut, Seen};
@@ -73,7 +73,7 @@ impl Radar {
     }
 
     /// Feeds `input` to `pane`'s radar; true when that changed what the window shows.
-    fn feed(&mut self, pane: PaneId, now: Millis, input: RadarIn) -> bool {
+    fn feed(&mut self, pane: PaneId, now: Monotonic, input: RadarIn) -> bool {
         let params = self.params;
         let entry = self.entry(pane);
         let before = entry.state.state();
@@ -128,7 +128,7 @@ impl Radar {
     /// What one event from `pane` means for its radar. Only an event that is about agents moves
     /// anything; bells and notifications count only in a pane known to run an agent. True when
     /// what the window shows changed.
-    pub fn observe(&mut self, pane: PaneId, now: Millis, heard: &Heard) -> bool {
+    pub fn observe(&mut self, pane: PaneId, now: Monotonic, heard: &Heard) -> bool {
         match heard {
             Heard::Window(PaneEvent::Program(status)) => {
                 self.know(pane, Some(status.app.as_str()), Via::Report, None);
@@ -189,7 +189,7 @@ impl Radar {
 
     /// The pane that has the keyboard changed: every pane's focus follows. True when what the
     /// window shows changed.
-    pub fn set_focus(&mut self, now: Millis, focused: Option<PaneId>) -> bool {
+    pub fn set_focus(&mut self, now: Monotonic, focused: Option<PaneId>) -> bool {
         self.focused = focused;
         let panes: Vec<PaneId> = self.panes.keys().copied().collect();
         let mut changed = false;
@@ -208,7 +208,7 @@ impl Radar {
 
     /// Time passed: stale and title-driven states settle. Called about once a second. True when
     /// what the window shows changed.
-    pub fn tick(&mut self, now: Millis) -> bool {
+    pub fn tick(&mut self, now: Monotonic) -> bool {
         let panes: Vec<PaneId> = self.panes.keys().copied().collect();
         let mut changed = false;
         for pane in panes {

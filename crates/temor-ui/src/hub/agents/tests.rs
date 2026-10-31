@@ -1,6 +1,6 @@
 //! The radar on a virtual clock. No threads, no window.
 
-use temor_client::model::agent::radar::{Millis, RadarParams};
+use temor_client::model::agent::radar::{Monotonic, RadarParams};
 use temor_client::model::presence::{AgentState, Seen, WaitKind};
 use temor_client::model::vocab::ids::{ExitCode, PaneId};
 use temor_panes::Heard;
@@ -51,7 +51,7 @@ fn run(steps: Vec<(u64, Step)>) -> Vec<AgentState> {
     let mut radar = Radar::new(RadarParams::default());
     let mut shown = Vec::new();
     for (secs, step) in steps {
-        let now = Millis(secs * 1000);
+        let now = Monotonic(secs * 1000);
         match step {
             Step::Event(event) => {
                 radar.observe(P1, now, &event);
@@ -156,11 +156,11 @@ fn the_waiting_count_and_the_next_waiting_pane_follow_the_radar() {
     let mut radar = Radar::new(RadarParams::default());
     let blocked = status(ProgramState::Blocked, ProgramWait::Question);
     for pane in [PaneId(2), PaneId(5), PaneId(9)] {
-        radar.observe(pane, Millis(0), &blocked);
+        radar.observe(pane, Monotonic(0), &blocked);
     }
     radar.observe(
         PaneId(9),
-        Millis(1),
+        Monotonic(1),
         &status(ProgramState::Working, ProgramWait::Unspecified),
     );
     assert_eq!(radar.waiting(), [PaneId(2), PaneId(5)]);
@@ -184,7 +184,7 @@ fn a_pane_that_needs_you_while_unfocused_asks_for_a_notification_with_its_words(
     let mut radar = Radar::new(RadarParams::default());
     radar.observe(
         P1,
-        Millis(0),
+        Monotonic(0),
         &Heard::Window(PaneEvent::Reported(StatusLine {
             seq: 1,
             state: ReportState::Waiting,

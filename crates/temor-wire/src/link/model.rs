@@ -3,14 +3,8 @@
 use super::policy::Attempt;
 use crate::ids::RemoteSessionId;
 
-/// A point on the caller's monotonic clock, in milliseconds since whatever origin the caller
-/// picked. The step never reads a clock itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Monotonic(pub u64);
-
-/// A length of time in milliseconds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Millis(pub u64);
+/// The step never reads a clock itself: it is handed the caller's.
+pub use temor_schema::time::{Millis, Monotonic};
 
 /// Where the link is.
 ///

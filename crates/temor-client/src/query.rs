@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
 use temor_core::folder::Entry;
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::TemorUrl;
 use temor_store::{Found, Shelf, SqliteStore};
 
@@ -17,7 +18,7 @@ pub struct Sessions {
     /// Only those that started in this folder or under it (an absolute path).
     pub folder: Option<String>,
     /// Only those that started before this, for the next page.
-    pub before: Option<At>,
+    pub before: Option<UnixMillis>,
     /// At most this many.
     pub limit: usize,
 }
@@ -57,7 +58,7 @@ pub struct History {
     /// Only commands run in this folder or under it (an absolute path).
     pub folder: Option<String>,
     /// Only commands started before this, for the next page.
-    pub before: Option<At>,
+    pub before: Option<UnixMillis>,
     /// At most this many.
     pub limit: usize,
 }
@@ -118,7 +119,7 @@ impl Query for Folder {
             let modified = modified
                 .and_then(|at| at.duration_since(UNIX_EPOCH).ok())
                 .and_then(|since| i64::try_from(since.as_millis()).ok())
-                .map(At);
+                .map(UnixMillis);
             entries.push(Entry {
                 name: item.file_name().to_string_lossy().into_owned(),
                 folder,

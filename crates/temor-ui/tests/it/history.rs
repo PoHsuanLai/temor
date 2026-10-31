@@ -221,7 +221,8 @@ fn a_pane_brought_back_goes_on_with_its_session() {
 /// types one again; run, it is the session's next command.
 #[test]
 fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
-    use temor_schema::session::{At, RanCommand, Session, SessionId};
+    use temor_schema::session::{RanCommand, Session, SessionId};
+    use temor_schema::time::UnixMillis;
     use temor_schema::url::Host;
     if !super::support::window_tools_present() {
         return;
@@ -238,8 +239,8 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
             host: Host::Local,
             folder: folder.clone(),
             program: None,
-            started: At(then),
-            ended: Some(At(then + 60_000)),
+            started: UnixMillis(then),
+            ended: Some(UnixMillis(then + 60_000)),
         })
         .expect("session");
     for (block, command, exit) in [(0, "echo was-kept", 0), (1, "false", 1)] {
@@ -250,8 +251,8 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
                 command: command.to_owned(),
                 folder: folder.clone(),
                 exit: Some(exit),
-                started: At(then + 1_000),
-                ended: Some(At(then + 1_500)),
+                started: UnixMillis(then + 1_000),
+                ended: Some(UnixMillis(then + 1_500)),
             })
             .expect("command");
     }
@@ -302,7 +303,7 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
             assert_eq!(ran[2].command, "echo was-kept");
             assert!(ran[2].block.0 > ran[1].block.0, "numbered after: {ran:?}");
             assert!(session.ended.is_none(), "it runs again");
-            assert_eq!(session.started, At(then), "the same session");
+            assert_eq!(session.started, UnixMillis(then), "the same session");
             break;
         }
         h.advance(Duration::from_millis(50));

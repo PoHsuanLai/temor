@@ -2,7 +2,8 @@
 //! "Yesterday", then the day's name and date; each session by what it ran or where, and when.
 //! Pure: the window gives the time now and the local zone's offset.
 
-use temor_schema::session::{At, Session};
+use temor_schema::session::Session;
+use temor_schema::time::UnixMillis;
 
 const DAY_MS: i64 = 86_400_000;
 
@@ -38,17 +39,17 @@ const MONTHS: [&str; 12] = [
 pub struct Zone(pub i32);
 
 impl Zone {
-    fn local_ms(self, at: At) -> i64 {
+    fn local_ms(self, at: UnixMillis) -> i64 {
         at.0 + i64::from(self.0) * 1000
     }
 
     /// The local day `at` falls on, counted from 1970-01-01.
-    pub fn day_of(self, at: At) -> i64 {
+    pub fn day_of(self, at: UnixMillis) -> i64 {
         self.local_ms(at).div_euclid(DAY_MS)
     }
 
     /// The time of day of `at`: `09:05`.
-    pub fn time_of(self, at: At) -> String {
+    pub fn time_of(self, at: UnixMillis) -> String {
         let minute = self.local_ms(at).rem_euclid(DAY_MS) / 60_000;
         format!("{:02}:{:02}", minute / 60, minute % 60)
     }
@@ -102,7 +103,7 @@ pub fn session_title(session: &Session, home: &str) -> String {
 /// `items` in runs of the same day, newest first as they come, each under its heading.
 pub fn by_day<T>(
     items: impl IntoIterator<Item = T>,
-    at: impl Fn(&T) -> At,
+    at: impl Fn(&T) -> UnixMillis,
     zone: Zone,
     today: i64,
 ) -> Vec<(String, Vec<T>)> {
@@ -147,7 +148,7 @@ mod tests {
     use super::*;
 
     /// 2026-10-27 10:20 UTC, a Tuesday.
-    const NOW: At = At(1_793_096_400_000);
+    const NOW: UnixMillis = UnixMillis(1_793_096_400_000);
 
     fn session(program: Option<&str>, folder: &str) -> Session {
         Session {
@@ -176,7 +177,7 @@ mod tests {
         assert_eq!(Zone(8 * 3600).time_of(NOW), "18:20");
         let late = Zone(14 * 3600);
         assert_eq!(late.day_of(NOW), Zone(0).day_of(NOW) + 1);
-        assert_eq!(Zone(-5 * 3600).time_of(At(0)), "19:00");
+        assert_eq!(Zone(-5 * 3600).time_of(UnixMillis(0)), "19:00");
     }
 
     #[test]
@@ -192,7 +193,7 @@ mod tests {
         let mut ran = session(None, "/x");
         assert_eq!(span_of(&ran, true, Zone(0)), "10:20 – now");
         assert_eq!(span_of(&ran, false, Zone(0)), "10:20");
-        ran.ended = Some(At(NOW.0 + 50 * 60_000));
+        ran.ended = Some(UnixMillis(NOW.0 + 50 * 60_000));
         assert_eq!(span_of(&ran, false, Zone(0)), "10:20 – 11:10");
     }
 
@@ -202,9 +203,9 @@ mod tests {
         let today = zone.day_of(NOW);
         let ats = [
             NOW,
-            At(NOW.0 - 3_600_000),
-            At(NOW.0 - DAY_MS),
-            At(NOW.0 - 3 * DAY_MS),
+            UnixMillis(NOW.0 - 3_600_000),
+            UnixMillis(NOW.0 - DAY_MS),
+            UnixMillis(NOW.0 - 3 * DAY_MS),
         ];
         let days = by_day(ats, |at| *at, zone, today);
         let headings: Vec<&str> = days.iter().map(|(h, _)| h.as_str()).collect();

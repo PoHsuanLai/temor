@@ -2,7 +2,8 @@
 //! in the order they were given, so the window never waits on the store's writer. What a change
 //! does to a value is heard as any commit is, through the values that read it.
 
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::TemorUrl;
 use temor_store::{Shelf, SqliteStore, StoreError, Topics};
 
@@ -21,12 +22,12 @@ pub enum Command {
     /// A session began, or what is known of it changed.
     Begin(Session),
     /// A session ended at `at`.
-    End { session: SessionId, at: At },
+    End { session: SessionId, at: UnixMillis },
     /// A command a session ran, or how it ended. One history may not keep (typed after a space,
     /// or holding a secret) is dropped by the store, so no caller can write one.
     Ran(RanCommand),
     /// Forget the history from before `at` (PLAN §2b's retention).
-    ForgetBefore(At),
+    ForgetBefore(UnixMillis),
     /// Keep what the window keeps between launches under `key` (its rows, its Spaces, the
     /// hosts), or forget it (`None`).
     Lay { key: String, value: Option<String> },
@@ -116,8 +117,8 @@ mod tests {
             command: command.to_owned(),
             folder: "/src".to_owned(),
             exit: Some(0),
-            started: At(1_000),
-            ended: Some(At(2_000)),
+            started: UnixMillis(1_000),
+            ended: Some(UnixMillis(2_000)),
         })
     }
 
@@ -129,7 +130,7 @@ mod tests {
             host: Host::Local,
             folder: "/src".to_owned(),
             program: None,
-            started: At(500),
+            started: UnixMillis(500),
             ended: None,
         };
         for command in [
@@ -140,7 +141,7 @@ mod tests {
             ran(4, "ls"),
             Command::End {
                 session: session.id,
-                at: At(9_000),
+                at: UnixMillis(9_000),
             },
         ] {
             apply(&store, command).expect("apply");
@@ -153,8 +154,8 @@ mod tests {
             .collect();
         assert_eq!(kept, ["cargo build", "ls"]);
         let ended = store.session(session.id).expect("read").expect("kept");
-        assert_eq!(ended.ended, Some(At(9_000)));
-        apply(&store, Command::ForgetBefore(At(1_500))).expect("forget");
+        assert_eq!(ended.ended, Some(UnixMillis(9_000)));
+        apply(&store, Command::ForgetBefore(UnixMillis(1_500))).expect("forget");
         assert!(store.commands_of(session.id).expect("commands").is_empty());
     }
 

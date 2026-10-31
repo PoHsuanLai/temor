@@ -51,7 +51,7 @@ impl ShelfStore {
 
     /// Renames a corrupt index to a name no existing file holds.
     fn set_aside(&self, path: &Path, clock: &impl Clock) -> Result<(), TransferError> {
-        let stamp = clock.now().get();
+        let stamp = clock.now().0;
         let mut n = 0;
         loop {
             let name = match n {

@@ -4,7 +4,7 @@
 
 use std::cmp::Ordering;
 
-use temor_schema::session::At;
+use temor_schema::time::UnixMillis;
 
 use crate::history::{Zone, day_heading};
 
@@ -17,7 +17,7 @@ pub struct Entry {
     pub name: String,
     pub folder: bool,
     /// When it last changed, where the file system says.
-    pub modified: Option<At>,
+    pub modified: Option<UnixMillis>,
 }
 
 /// `entries` as the page lists them, and how many more there were than it lists.
@@ -37,7 +37,7 @@ pub fn listed(entries: Vec<Entry>) -> (Vec<Entry>, usize) {
 }
 
 /// When an entry changed, seen on `today`: the time today or yesterday, else the day.
-pub fn modified_words(at: At, zone: Zone, today: i64) -> String {
+pub fn modified_words(at: UnixMillis, zone: Zone, today: i64) -> String {
     let day = zone.day_of(at);
     match today - day {
         0 | 1 => format!("{} {}", day_heading(day, today), zone.time_of(at)),
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn a_change_today_or_yesterday_says_its_time_and_an_older_one_its_day() {
         let day = 20_000_i64;
-        let at = |day: i64, minutes: i64| At(day * 86_400_000 + minutes * 60_000);
+        let at = |day: i64, minutes: i64| UnixMillis(day * 86_400_000 + minutes * 60_000);
         assert_eq!(
             modified_words(at(day, 9 * 60 + 5), Zone(0), day),
             "Today 09:05"

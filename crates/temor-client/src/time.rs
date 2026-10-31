@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use jiff::Timestamp;
 use jiff::tz::{Offset, TimeZone};
 use temor_core::history::Zone;
-use temor_schema::session::At;
+use temor_schema::time::UnixMillis;
 
 /// The clock on the wall, and the zone it is read in.
 #[derive(Debug, Clone)]
@@ -34,15 +34,15 @@ impl LocalTime {
     }
 
     /// The wall clock now. A clock set before 1970 reads as the epoch.
-    pub fn now(&self) -> At {
+    pub fn now(&self) -> UnixMillis {
         let since = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |since| since.as_millis());
-        At(i64::try_from(since).unwrap_or(i64::MAX))
+        UnixMillis(i64::try_from(since).unwrap_or(i64::MAX))
     }
 
     /// The zone's offset at `at`.
-    pub fn zone_at(&self, at: At) -> Zone {
+    pub fn zone_at(&self, at: UnixMillis) -> Zone {
         Timestamp::from_millisecond(at.0).map_or_else(
             |_| Zone::default(),
             |at| Zone(self.zone.to_offset(at).seconds()),
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn a_fixed_zone_is_its_offset_at_any_time() {
         let time = LocalTime::fixed(8 * 3600);
-        assert_eq!(time.zone_at(At(0)), Zone(8 * 3600));
+        assert_eq!(time.zone_at(UnixMillis(0)), Zone(8 * 3600));
         assert_eq!(time.zone_at(time.now()), Zone(8 * 3600));
     }
 
@@ -68,7 +68,7 @@ mod tests {
         };
         let time = LocalTime { zone };
         // 2026-01-15 and 2026-07-15, noon UTC.
-        assert_eq!(time.zone_at(At(1_768_478_400_000)), Zone(0));
-        assert_eq!(time.zone_at(At(1_784_116_800_000)), Zone(3600));
+        assert_eq!(time.zone_at(UnixMillis(1_768_478_400_000)), Zone(0));
+        assert_eq!(time.zone_at(UnixMillis(1_784_116_800_000)), Zone(3600));
     }
 }

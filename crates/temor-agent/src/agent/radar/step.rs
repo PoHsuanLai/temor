@@ -16,7 +16,7 @@
 use std::collections::BTreeMap;
 
 use super::hint::title_hint;
-use super::model::{Millis, ProcessFact, RadarIn, RadarParams};
+use super::model::{Monotonic, ProcessFact, RadarIn, RadarParams};
 use super::records::Records;
 use crate::presence::{
     AgentState, PaneFocus, PresenceIn, PresenceOut, PresenceState, StatusReport, StatusSource,
@@ -30,12 +30,12 @@ pub struct RadarState {
     /// The lower-level machine: state, focus, per-source sequence numbers.
     pub presence: PresenceState,
     records: Records,
-    fresh: BTreeMap<StatusSource, Millis>,
+    fresh: BTreeMap<StatusSource, Monotonic>,
     /// Who set the state now shown, and when it last spoke.
-    via: Option<(StatusSource, Millis)>,
+    via: Option<(StatusSource, Monotonic)>,
     /// Whether a known agent program runs in the pane.
     agent_running: bool,
-    title_busy_until: Option<Millis>,
+    title_busy_until: Option<Monotonic>,
     next_seq: u64,
 }
 
@@ -63,7 +63,7 @@ impl RadarState {
 /// or notify.
 pub fn radar_step(
     state: RadarState,
-    now: Millis,
+    now: Monotonic,
     input: RadarIn,
     params: &RadarParams,
 ) -> (RadarState, Vec<PresenceOut>) {
@@ -142,7 +142,7 @@ pub fn radar_step(
 fn report(
     state: &mut RadarState,
     source: StatusSource,
-    now: Millis,
+    now: Monotonic,
     shown: AgentState,
     note: Option<temor_core::vocab::text::Note>,
 ) -> PresenceIn {
@@ -161,7 +161,12 @@ fn report(
 }
 
 /// Whether a stronger source reported within the hold.
-fn outranked(state: &RadarState, source: &StatusSource, now: Millis, params: &RadarParams) -> bool {
+fn outranked(
+    state: &RadarState,
+    source: &StatusSource,
+    now: Monotonic,
+    params: &RadarParams,
+) -> bool {
     state.fresh.iter().any(|(other, at)| {
         strength(other) < strength(source) && now.since(*at) < params.precedence_hold.0
     })
@@ -179,7 +184,7 @@ fn strength(source: &StatusSource) -> u8 {
 
 fn title_step(
     state: &mut RadarState,
-    now: Millis,
+    now: Monotonic,
     params: &RadarParams,
     title: &str,
     out: &mut Vec<PresenceIn>,
@@ -192,7 +197,7 @@ fn title_step(
         stop_title_work(state, now, out);
         return;
     }
-    state.title_busy_until = Some(Millis(now.0 + params.title_hold.0));
+    state.title_busy_until = Some(Monotonic(now.0 + params.title_hold.0));
     if let Some((StatusSource::Notification, at)) = &mut state.via {
         *at = now;
     }
@@ -202,7 +207,7 @@ fn title_step(
 }
 
 /// A title-driven Working ends; one a stronger source set is left alone.
-fn stop_title_work(state: &mut RadarState, now: Millis, out: &mut Vec<PresenceIn>) {
+fn stop_title_work(state: &mut RadarState, now: Monotonic, out: &mut Vec<PresenceIn>) {
     let by_title = matches!(&state.via, Some((StatusSource::Notification, _)));
     if state.title_busy_until.take().is_some()
         && by_title
@@ -218,7 +223,12 @@ fn stop_title_work(state: &mut RadarState, now: Millis, out: &mut Vec<PresenceIn
     }
 }
 
-fn tick_step(state: &mut RadarState, now: Millis, params: &RadarParams, out: &mut Vec<PresenceIn>) {
+fn tick_step(
+    state: &mut RadarState,
+    now: Monotonic,
+    params: &RadarParams,
+    out: &mut Vec<PresenceIn>,
+) {
     if state.title_busy_until.is_some_and(|until| now >= until) {
         stop_title_work(state, now, out);
     }

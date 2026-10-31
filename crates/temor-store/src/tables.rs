@@ -4,7 +4,8 @@
 use rusqlite::{OptionalExtension, Row, params};
 use temor_schema::ids::BlockId;
 use temor_schema::secret::kept_in_history;
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::{Host, TemorUrl};
 
 use crate::{SqliteStore, StoreError, Topics};
@@ -42,7 +43,7 @@ pub struct Found<'a> {
     /// Only commands run in this folder or under it (an absolute path).
     pub folder: Option<&'a str>,
     /// Only commands started before this, for the next page.
-    pub before: Option<At>,
+    pub before: Option<UnixMillis>,
     /// At most this many.
     pub limit: usize,
 }
@@ -95,8 +96,8 @@ fn session_of(
         host,
         folder,
         program,
-        started: At(started),
-        ended: ended.map(At),
+        started: UnixMillis(started),
+        ended: ended.map(UnixMillis),
     })
 }
 
@@ -107,8 +108,8 @@ fn command_of(row: &Row<'_>) -> rusqlite::Result<RanCommand> {
         command: row.get(2)?,
         folder: row.get(3)?,
         exit: row.get(4)?,
-        started: At(row.get(5)?),
-        ended: row.get::<_, Option<i64>>(6)?.map(At),
+        started: UnixMillis(row.get(5)?),
+        ended: row.get::<_, Option<i64>>(6)?.map(UnixMillis),
     })
 }
 
@@ -141,7 +142,7 @@ impl SqliteStore {
     }
 
     /// The session ended at `at`.
-    pub fn end_session(&self, id: SessionId, at: At) -> Result<(), StoreError> {
+    pub fn end_session(&self, id: SessionId, at: UnixMillis) -> Result<(), StoreError> {
         self.touch(Topics::SESSIONS).execute(
             "UPDATE sessions SET ended = ?2 WHERE id = ?1",
             params![id_bits(id), at.0],
@@ -166,7 +167,7 @@ impl SqliteStore {
     pub fn sessions(
         &self,
         folder: Option<&str>,
-        before: Option<At>,
+        before: Option<UnixMillis>,
         limit: usize,
     ) -> Result<Vec<Session>, StoreError> {
         let db = self.reader();
@@ -253,7 +254,7 @@ impl SqliteStore {
     /// Forget what happened before `at`: every command started before it, and every session that
     /// ended before it and has no command left. Returns how many sessions were forgotten. A
     /// session that never said it ended is kept: the client ends those it finds not running.
-    pub fn forget_before(&self, at: At) -> Result<usize, StoreError> {
+    pub fn forget_before(&self, at: UnixMillis) -> Result<usize, StoreError> {
         let db = self.touch(Topics::SESSIONS | Topics::BLOCKS);
         let tx = db.unchecked_transaction()?;
         tx.execute("DELETE FROM commands WHERE started < ?1", [at.0])?;

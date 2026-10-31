@@ -10,7 +10,7 @@ struct FixedClock(i64);
 
 impl Clock for FixedClock {
     fn now(&self) -> UnixMillis {
-        UnixMillis::new(self.0)
+        UnixMillis(self.0)
     }
 }
 
@@ -105,7 +105,7 @@ fn placing_a_file_never_overwrites_and_moves_the_source() {
 
 #[test]
 fn the_system_clock_reads_a_plausible_time() {
-    assert!(SystemClock.now().get() > 1_700_000_000_000);
+    assert!(SystemClock.now().0 > 1_700_000_000_000);
 }
 
 #[test]

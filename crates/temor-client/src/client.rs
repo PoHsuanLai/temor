@@ -27,7 +27,8 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_store::{Committed, SqliteStore, Topics};
 
 /// The database's name in a state folder.
@@ -182,7 +183,7 @@ impl Client {
         let store = SqliteStore::open(state_dir.join(DB_FILE))?;
         let client = Client::open(Arc::new(store), config);
         let now = client.local_time().now();
-        client.act(Command::ForgetBefore(At(now.0 - KEPT_FOR_MS)));
+        client.act(Command::ForgetBefore(UnixMillis(now.0 - KEPT_FOR_MS)));
         Ok(client)
     }
 

@@ -154,15 +154,16 @@ fn the_composer_holds_the_prompt_rows_through_the_cursor() {
 
 #[test]
 fn a_sessions_kept_commands_become_cards_with_how_each_went() {
-    use temor_schema::session::{At, RanCommand, SessionId};
+    use temor_schema::session::{RanCommand, SessionId};
+    use temor_schema::time::UnixMillis;
     let ran = |block, command: &str, exit, ended: Option<i64>| RanCommand {
         session: SessionId::from_bits(7),
         block: BlockId(block),
         command: command.to_owned(),
         folder: "/w".to_owned(),
         exit,
-        started: At(1_000),
-        ended: ended.map(At),
+        started: UnixMillis(1_000),
+        ended: ended.map(UnixMillis),
     };
     let cards = kept_cards(&[
         ran(4, "ls", Some(0), Some(1_250)),

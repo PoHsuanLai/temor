@@ -358,7 +358,7 @@ fn tidy(path: &str, home: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use temor_schema::session::At;
+    use temor_schema::time::UnixMillis;
     use temor_schema::url::Host;
 
     use super::*;
@@ -370,8 +370,8 @@ mod tests {
             host: Host::Local,
             folder: "/Users/po/ml".to_owned(),
             program: None,
-            started: At(0),
-            ended: Some(At(60 * 60_000)),
+            started: UnixMillis(0),
+            ended: Some(UnixMillis(60 * 60_000)),
         };
         assert_eq!(
             session_about(&session, 3, false, Zone(0), "/Users/po"),

@@ -15,7 +15,7 @@ fn session(bits: u64, folder: &str, started: i64) -> Session {
         host: Host::Local,
         folder: folder.to_owned(),
         program: None,
-        started: At(started),
+        started: UnixMillis(started),
         ended: None,
     }
 }
@@ -27,7 +27,7 @@ fn ran(bits: u64, block: u64, command: &str, folder: &str, started: i64) -> RanC
         command: command.to_owned(),
         folder: folder.to_owned(),
         exit: None,
-        started: At(started),
+        started: UnixMillis(started),
         ended: None,
     }
 }
@@ -52,10 +52,10 @@ fn a_session_reads_back_as_kept_and_its_high_bits_survive() {
     kept.program = Some("claude".to_owned());
     store.save_session(&kept).expect("save");
     assert_eq!(store.session(kept.id).expect("read"), Some(kept.clone()));
-    store.end_session(kept.id, At(20)).expect("end");
+    store.end_session(kept.id, UnixMillis(20)).expect("end");
     assert_eq!(
         store.session(kept.id).expect("read").and_then(|s| s.ended),
-        Some(At(20))
+        Some(UnixMillis(20))
     );
 }
 
@@ -80,7 +80,7 @@ fn sessions_are_newest_first_narrowed_to_a_folder_and_paged() {
         [3, 2, 1]
     );
     assert_eq!(
-        ids(store.sessions(None, Some(At(30)), 1).expect("page")),
+        ids(store.sessions(None, Some(UnixMillis(30)), 1).expect("page")),
         [2]
     );
 }
@@ -94,7 +94,7 @@ fn a_command_is_kept_once_and_then_told_how_it_ended() {
         .expect("record");
     let mut done = ran(1, 1, "ls", ML, 5);
     done.exit = Some(0);
-    done.ended = Some(At(6));
+    done.ended = Some(UnixMillis(6));
     store.record_command(&done).expect("again");
     store
         .record_command(&ran(1, 2, "pwd", ML, 7))
@@ -200,7 +200,7 @@ fn search_pages_by_start() {
         .search(&Found {
             text: Some("make"),
             folder: None,
-            before: Some(At(4)),
+            before: Some(UnixMillis(4)),
             limit: 2,
         })
         .expect("page");
@@ -211,7 +211,7 @@ fn search_pages_by_start() {
 fn old_history_is_forgotten_and_a_running_session_is_not() {
     let store = store();
     let mut old = session(1, ML, 0);
-    old.ended = Some(At(5));
+    old.ended = Some(UnixMillis(5));
     store.save_session(&old).expect("save");
     store
         .record_command(&ran(1, 1, "ls", ML, 1))
@@ -223,7 +223,7 @@ fn old_history_is_forgotten_and_a_running_session_is_not() {
     store
         .record_command(&ran(2, 2, "new", ML, 200))
         .expect("record");
-    assert_eq!(store.forget_before(At(100)).expect("forget"), 1);
+    assert_eq!(store.forget_before(UnixMillis(100)).expect("forget"), 1);
     assert_eq!(store.session(old.id).expect("read"), None);
     assert_eq!(
         commands(&store.commands_of(SessionId::from_bits(2)).expect("read")),
@@ -280,7 +280,7 @@ fn each_write_says_what_it_touched_once_it_is_committed() {
         .expect("set");
     // Ending a session that is not kept changes no row, and is not said.
     store
-        .end_session(SessionId::from_bits(9), At(1))
+        .end_session(SessionId::from_bits(9), UnixMillis(1))
         .expect("end");
     store.keep("hosts", "[]", Topics::HOSTS).expect("keep");
     let said: Vec<Committed> = heard.try_iter().collect();

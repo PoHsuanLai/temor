@@ -48,7 +48,7 @@ struct Fixed;
 
 impl Clock for Fixed {
     fn now(&self) -> UnixMillis {
-        UnixMillis::new(5_000)
+        UnixMillis(5_000)
     }
 }
 

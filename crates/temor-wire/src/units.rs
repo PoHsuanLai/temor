@@ -58,10 +58,8 @@ pub struct ByteRange {
     pub len: ByteCount,
 }
 
-/// A point in time: milliseconds since the Unix epoch, as the host's clock reads it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct UnixMillis(pub i64);
+/// A point in time, as the host's clock reads it.
+pub use temor_schema::time::UnixMillis;
 
 /// A length of time, in whole seconds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]

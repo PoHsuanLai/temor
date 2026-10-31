@@ -51,7 +51,7 @@ impl Via {
 
 #[cfg(test)]
 mod tests {
-    use temor_client::model::agent::radar::{Millis, RadarParams};
+    use temor_client::model::agent::radar::{Monotonic, RadarParams};
     use temor_client::model::vocab::ids::PaneId;
     use temor_panes::Heard;
     use temor_panes::pane::PaneEvent;
@@ -108,9 +108,9 @@ mod tests {
         ];
         for (name, events, want) in rows {
             let mut radar = Radar::new(RadarParams::default());
-            radar.observe(PaneId(1), Millis(0), &report(ProgramState::Working));
+            radar.observe(PaneId(1), Monotonic(0), &report(ProgramState::Working));
             for (at, event) in events.iter().enumerate() {
-                radar.observe(PaneId(1), Millis(1 + at as u64), event);
+                radar.observe(PaneId(1), Monotonic(1 + at as u64), event);
             }
             assert_eq!(radar.agent_of(PaneId(1)), want, "{name}");
         }
@@ -119,8 +119,8 @@ mod tests {
     #[test]
     fn an_agent_seen_by_its_process_outlasts_a_clear() {
         let mut radar = Radar::new(RadarParams::default());
-        radar.observe(PaneId(1), Millis(0), &front("claude"));
-        radar.observe(PaneId(1), Millis(1), &report(ProgramState::Clear));
+        radar.observe(PaneId(1), Monotonic(0), &front("claude"));
+        radar.observe(PaneId(1), Monotonic(1), &report(ProgramState::Clear));
         assert_eq!(radar.agent_of(PaneId(1)), Some("claude"));
     }
 }

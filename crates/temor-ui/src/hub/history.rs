@@ -15,7 +15,8 @@ use temor_client::model::session::list::kept_cards;
 use temor_client::model::vocab::ids::{BlockId, PaneId};
 use temor_client::model::vocab::text::Cwd;
 use temor_client::{Client, Command};
-use temor_schema::session::{At, RanCommand, Session as Kept, SessionId};
+use temor_schema::session::{RanCommand, Session as Kept, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::Host;
 
 use super::model::{Hub, HubRef};
@@ -221,7 +222,7 @@ impl Hub {
                         command: kept.command,
                         folder: folder.clone(),
                         exit: kept.exit,
-                        started: At(at.0 - took.unwrap_or(0)),
+                        started: UnixMillis(at.0 - took.unwrap_or(0)),
                         ended: Some(at),
                     }));
                 }
@@ -246,7 +247,7 @@ impl Hub {
                         command: done.command,
                         folder: folder.clone(),
                         exit: done.exit,
-                        started: At(ended.0 - ran),
+                        started: UnixMillis(ended.0 - ran),
                         ended: Some(ended),
                     }));
                     begun.written = Some(done.id);
