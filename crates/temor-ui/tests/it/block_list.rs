@@ -9,7 +9,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{Rect, rects, started, type_line, wait_html, wait_until};
 use super::window::harness_building;

@@ -11,7 +11,7 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, type_line, wait_until};
 use super::support::scratch_path;

@@ -9,7 +9,7 @@ use ds::base::vocab::ShortcutKey;
 use ds_harness::WindowHosting;
 use temor_client::{Client, ClientConfig};
 use temor_store::SqliteStore;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord_with, press, type_line, wait_html, wait_until};
 use super::window::harness_building;

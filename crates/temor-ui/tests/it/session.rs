@@ -12,14 +12,14 @@ use temor_pane::keys::Action;
 use temor_pane::paste::UnsafeReason;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
+use temor_pane_view::input::{Routed, Stroke, route};
+use temor_pane_view::platform::{OpenError, Opener};
+use temor_pane_view::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_pty::SessionLauncher;
 use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
-use temor_ui::edge::{Ambient, keymap_for};
-use temor_ui::input::{Routed, Stroke, route};
-use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
+use temor_ui_base::edge::{Ambient, keymap_for};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::support::scratch;
@@ -113,8 +113,8 @@ fn fixture(name: &str) -> Fixture {
                 opener: Box::new(NoOpener),
                 notify_after: TerminalSettings::default().notify_after,
                 cursor_blink: TerminalSettings::default().cursor_blink,
-                notifier: Box::new(temor_ui::edge::NoopNotifier),
-                clock: Box::new(temor_ui::edge::SystemClock::new()),
+                notifier: Box::new(temor_ui_base::edge::NoopNotifier),
+                clock: Box::new(temor_ui_base::edge::SystemClock::new()),
                 shelf_dir: home.join("shelf"),
             },
         },
@@ -611,7 +611,7 @@ fn a_theme_change_repaints_the_grid_in_the_new_ground() {
         return;
     }
     use ds::prelude::{Accent, Scheme};
-    use temor_ui::view::theme::palette_of;
+    use temor_ui_base::theme::palette_of;
     let mut f = ready("session-theme");
     let dark = palette_of(Scheme::Dark, Accent::default());
     let light = palette_of(Scheme::Light, Accent::default());
@@ -672,7 +672,7 @@ fn a_paste_over_the_limit_is_refused_with_a_notice_and_never_cut() {
         return;
     }
     let mut f = ready("session-paste-limit");
-    *f.clipboard.0.borrow_mut() = "x".repeat(temor_ui::session::PASTE_LIMIT + 1);
+    *f.clipboard.0.borrow_mut() = "x".repeat(temor_pane_view::session::PASTE_LIMIT + 1);
     f.session.run(Action::Paste).expect("paste");
     let notice = f
         .session
@@ -926,7 +926,10 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
     assert_eq!(*f.clipboard.0.borrow(), "here", "waits for the person");
     assert_eq!(
         f.session.clipboard_ask().map(|a| (a.kind, a.program)),
-        Some((temor_ui::session::ClipboardUse::Copy, "tool".to_owned()))
+        Some((
+            temor_pane_view::session::ClipboardUse::Copy,
+            "tool".to_owned()
+        ))
     );
     f.session.answer_clipboard(Grant::Allowed);
     assert_eq!(*f.clipboard.0.borrow(), "there");
@@ -992,7 +995,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
     f.session.absorb(PaneEvent::ClipboardRead(read));
     assert_eq!(
         f.session.clipboard_ask().map(|a| a.kind),
-        Some(temor_ui::session::ClipboardUse::Read)
+        Some(temor_pane_view::session::ClipboardUse::Read)
     );
     f.session.answer_clipboard(Grant::Allowed);
     let out = f.session.pane().with_term(|t| t.write(query));
@@ -1033,7 +1036,9 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
     // An unfocused pane's hollow cursor never blinks.
     f.session.set_focus(PaneFocus::Unfocused);
     shot(&mut f.session);
-    std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
+    std::thread::sleep(Duration::from_millis(
+        2 * temor_pane_view::session::BLINK_MS,
+    ));
     assert!(!f.session.blink_due(), "an unfocused pane does not blink");
 }
 
@@ -1043,7 +1048,7 @@ fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
         return;
     }
     use temor_pane::settings::{CursorStyle, FontChoice, FontPoints, LinePercent};
-    use temor_ui::view::launch::load_fonts;
+    use temor_ui_base::launch::load_fonts;
 
     let mut f = ready("session-font-size");
     let before = f.session.fit().expect("fitted");

@@ -123,8 +123,14 @@ temor/
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
     temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
                       daemon on temor-pane, ports, files, trial, agent relay
-    # L4: app (Dioxus views)
-    temor-ui/         Dioxus views: window, sidebar, panes, blocks, command bar, pages
+    # L4 and up: the window, four crates, each naming only those below it
+    temor-pane-view/  how a pane is shown: its input, painting and words
+    temor-ui-base/    what the window is launched with, the settings file, the edges, a pane's
+                      slot of window state, the look, the shared words
+    temor-hub/        the window's state: the hub, the command bar's and plugins' glue, what the
+                      Settings window shares; no components
+    temor-views/      Dioxus views: window, sidebar, panes, blocks, command bar, pages, Settings
+    temor-ui/         joins them and opens the window
     temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service,
                       systemd unit `org.quire.Temor.service`, intents manifest, skills)
 ```
@@ -153,7 +159,9 @@ temor-store    where the data is kept: SQLite (rusqlite, bundled, FTS5), WAL, on
 temor-client   every operation on the data, on threads of its own; no Dioxus, no quire widgets
 temor-panes    the running terminals, beside the client: each pane's engine, marks, blocks,
                shell state and notices; knows no store (decided 2026-10-28)
-temor-ui       views only; reaches the rest through temor-client and temor-panes
+temor-ui-base, temor-hub, temor-views, temor-ui
+               the window: its base, its state, its views and its launch, in that order; reaches
+               the rest through temor-client and temor-panes
 temor          the binary: makes one Client per process and launches the window
 ```
 
@@ -202,9 +210,12 @@ imports `session.json` and `checkpoints/` and leaves them in place.
 - `Client::builder(store).inline()` (feature `testing`) answers on subscribe, synchronously, so
   SSR tests see data on the first frame; `client.idle()` says nothing is running.
 
-**temor-ui**: views, input, texture upload, the settings window, words. `use_client()` and
-`use_live(key)` are its only way to data; `Cargo.toml` names `temor-client`, `temor-panes` and
-`temor-schema` and no other temor crate, so a store, a pty or a socket is not something a view can name. That
+**The window** (`temor-ui-base`, `temor-hub`, `temor-views`, `temor-ui`; split 2026-11-01 so a
+component's change rebuilds no hub and the hub names no component): views, input, texture
+upload, the settings window, words. `use_client()` and `use_live(key)` are its only way to data;
+each of its crates names `temor-client`, `temor-panes`, `temor-pane-view`, `temor-schema` and the
+window's crates under it, and no other temor crate, so a store, a pty or a socket is not
+something a view can name. That
 is the fence, kept by the compiler and by `scripts/check-layers.sh`; there is no allowlist. The
 terminal engine (temor-pane, temor-vt, temor-render, temor-pty, temor-shell) comes through
 `temor-panes`, temor-core's rules through `temor_client::model`, and a service's own vocabulary

@@ -1,0 +1,66 @@
+//! The window's Dioxus views: the root component, the sidebar of tabs, the tree of panes, one
+//! pane's view with its find bar and paste confirmation, and the input method glue. Views read the
+//! session's state and send it the person's events; they decide nothing themselves.
+
+pub mod address_bar;
+pub mod bar;
+pub mod block_edit;
+pub mod block_list;
+pub mod block_menu;
+pub mod blocks;
+pub mod clipboard_ask;
+pub mod confirm;
+pub mod console_bar;
+pub mod convert;
+pub mod dnd;
+pub mod favourites;
+pub mod find_bar;
+pub mod folder_page;
+pub mod folder_row;
+pub mod handlers;
+pub mod history_page;
+pub mod host_banners;
+pub mod host_words;
+pub mod ime;
+pub mod link_tip;
+pub mod live;
+pub mod menu;
+pub mod menu_key;
+pub mod names;
+pub mod offer;
+pub mod palette;
+pub mod pane_focus;
+pub mod pane_footer;
+pub mod pane_keys;
+pub mod pane_pointer;
+pub mod pane_view;
+pub mod peek;
+pub mod peek_card;
+pub mod peek_keys;
+pub mod pointer;
+pub mod quick;
+pub mod remote;
+pub mod remote_words;
+pub mod row_menu;
+pub mod row_tip;
+pub mod row_view;
+pub mod settings_window;
+pub mod shelf;
+pub mod space_ui;
+pub mod split_row;
+pub mod status;
+pub mod tab_glyph;
+pub mod tab_row;
+pub mod tab_sidebar;
+pub mod tab_wiring;
+pub mod tool_button;
+pub mod transfer_ask;
+pub mod tree_view;
+pub mod viewer_open;
+pub mod viewer_pane;
+pub mod when_words;
+pub mod window;
+pub mod window_help;
+pub mod window_style;
+
+pub use window::App;

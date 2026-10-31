@@ -7,8 +7,9 @@
 #   - the quire-desktop boundary (PLAN §2, D15): only temor-desktop names zbus, docket or porter
 #     crates, and there each such dependency is optional and listed in its `quire-desktop` feature,
 #     so `--no-default-features` builds with none of them;
-#   - the fence (PLAN §2b): temor-ui depends on no temor crate but temor-client, temor-panes and
-#     temor-schema (its tests may name more, as dev-dependencies);
+#   - the fence (PLAN §2b): the window's crates (temor-ui-base, temor-hub, temor-views, temor-ui)
+#     depend on no temor crate but temor-client, temor-panes, temor-pane-view, temor-schema and
+#     each other, downwards in that order (their tests may name more, as dev-dependencies);
 #   - L2 does no I/O (PLAN §2): an L2 crate names no temor-pty, temor-transfer or temor-vt, and
 #     names temor-shell, temor-ssh and temor-pane without their default features (`io`,
 #     `engine`), so it links their vocabulary and none of their process or socket code;
@@ -44,9 +45,12 @@ temor-client 3
 temor-panes 3
 temor-desktop 3
 temor-remote 3
-temor-ui 4
 temor-pane-view 4
-temor 4
+temor-ui-base 5
+temor-hub 6
+temor-views 7
+temor-ui 8
+temor 8
 '
 
 metadata=$(cd "$root" && cargo metadata --format-version 1 --no-deps)
@@ -63,8 +67,8 @@ for line in sys.stdin.read().split("\n"):
 banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
 DESKTOP = "temor-desktop"
-WINDOW = "temor-ui"
-FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"}
+WINDOW = {"temor-ui-base", "temor-hub", "temor-views", "temor-ui"}
+FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"} | WINDOW
 FEATURE = "quire-desktop"
 IO_CRATES = {"temor-pty", "temor-transfer", "temor-vt"}
 IO_FEATURES = {"temor-shell", "temor-ssh", "temor-pane"}
@@ -98,12 +102,12 @@ for pkg in meta["packages"]:
             elif not dep.get("optional") or dname not in gated:
                 violations.append(f"{name} -> {dname} (must be optional and in feature {FEATURE})")
         if (
-            name == WINDOW
+            name in WINDOW
             and dname.startswith("temor")
             and dname not in FENCE
             and dep.get("kind") != "dev"
         ):
-            violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes and temor-schema)")
+            violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes, temor-pane-view, temor-schema and its own crates)")
         if layer == 2 and dep.get("kind") != "dev":
             if dname in IO_CRATES:
                 violations.append(f"{name} -> {dname} (L2 does no I/O)")

@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use ds_harness::Input;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, rect, rects, started, type_line, wait_until};
 

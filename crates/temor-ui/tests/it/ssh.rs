@@ -15,7 +15,7 @@ use temor_client::model::workspace::{
     ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
 };
 use temor_core::vocab::ids::PaneId;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{press, wait_html, wait_until};
 use super::support::{ScratchRoot, socket_root, tools_present};

@@ -12,12 +12,12 @@ use temor_pane::PaneEvent;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
+use temor_pane_view::platform::{OpenError, Opener};
+use temor_pane_view::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane_with_socket;
-use temor_ui::edge::{Ambient, FakeClock, RecordingNotifier};
-use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
+use temor_ui_base::edge::{Ambient, FakeClock, RecordingNotifier};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::super::support::scratch;
@@ -144,7 +144,7 @@ pub(super) fn start_with(
             spec,
             fonts,
             kit: SessionKit {
-                keymap: temor_ui::edge::keymap_for(
+                keymap: temor_ui_base::edge::keymap_for(
                     Platform::Linux {
                         desktop: Desktop::Ours,
                     },

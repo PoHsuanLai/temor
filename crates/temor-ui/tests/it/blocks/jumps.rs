@@ -3,7 +3,7 @@
 use chordkit::{Key, KeyInput as Pressed, Modifier, Modifiers as ChordMods, NamedKey};
 use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
-use temor_ui::input::Stroke;
+use temor_pane_view::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 use super::super::support::tools_present;

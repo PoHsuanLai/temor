@@ -4,7 +4,7 @@ use temor_client::model::block::Outcome;
 
 use super::super::support::tools_present;
 use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
-use temor_ui::input::Stroke;
+use temor_pane_view::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 #[test]

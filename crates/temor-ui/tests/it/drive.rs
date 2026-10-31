@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::window::harness;
 

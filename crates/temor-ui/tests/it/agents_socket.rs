@@ -13,7 +13,7 @@ use temor_pane::PaneEvent;
 use temor_pane::report::{ReportState, StatusLine, encode_hello, encode_status};
 use temor_pty::SessionLauncher;
 use temor_ui::app::shell_pane_with_socket;
-use temor_ui::edge::{Ambient, SocketHost};
+use temor_ui_base::edge::{Ambient, SocketHost};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::support::{bash_path, scratch, tools_present};

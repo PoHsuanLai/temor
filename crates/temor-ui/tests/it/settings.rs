@@ -15,16 +15,16 @@ use ds_harness::{Harness, HarnessConfig, Input, Viewport, WindowHosting};
 use ds_lint::{LintConfig, Rule, markup};
 use temor_client::model::space::{AccountRef, Credential, Profile, Project, Route};
 use temor_core::vocab::text::{EnvKey, EnvValue, ProjectRoot, RoutePattern};
+use temor_hub::settings_link::board::{SpaceBoard, SpaceEdit, SpaceRow};
+use temor_hub::settings_link::space_edit::SpaceChange;
+use temor_hub::settings_link::{OpenSettings, SettingsAsked, SettingsWindows};
 use temor_pane::keys::SettingsPane;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::edge::{Ambient, CredentialFault, CredentialSource, Credentials};
-use temor_ui::settings::TerminalDoc;
-use temor_ui::settings_window::{
-    OpenSettings, SETTINGS_CSS, SettingsAsked, SettingsWindows, SpaceBoard, SpaceChange, SpaceEdit,
-    SpaceRow, settings_root,
-};
-use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, LauncherChoice};
+use temor_ui_base::edge::{Ambient, CredentialFault, CredentialSource, Credentials};
+use temor_ui_base::probe::Probe;
+use temor_ui_base::settings::TerminalDoc;
+use temor_views::settings_window::{SETTINGS_CSS, settings_root};
 
 use super::drive::{chord, focus_pane, press, rects, wait_until};
 use super::support::{scratch, tools_present};
@@ -69,7 +69,7 @@ fn settings_window(
         ambient: ambient.clone(),
         settings: TerminalSettings::default(),
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
-        keymap: temor_ui::edge::keymap_for(
+        keymap: temor_ui_base::edge::keymap_for(
             chordkit::Platform::Linux {
                 desktop: chordkit::Desktop::Ours,
             },

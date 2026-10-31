@@ -8,7 +8,7 @@ use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{self, chord, menu_item, rects, type_text, wait_until};
 use super::window::harness;

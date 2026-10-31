@@ -17,7 +17,7 @@ use temor_client::model::workspace::{
 };
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::{Cwd, EnvKey, EnvValue, ProjectRoot, RelPath, RoutePattern};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, rows, type_line, wait_until};
 use super::support::scratch;

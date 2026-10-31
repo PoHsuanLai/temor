@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use temor_client::remote::conn::dial_local;
 use temor_remote::host::HostEnv;
-use temor_ui::edge::Ambient;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::edge::Ambient;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{focus_pane, type_line, wait_until};
 use super::support::{scratch, window_tools_present};

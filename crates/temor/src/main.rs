@@ -9,10 +9,9 @@ use std::process::ExitCode;
 
 use temor_desktop::{DesktopEnv, NOT_FOUND, Request, SystemInstance};
 use temor_ui::app::desktop::{Joined, join};
-use temor_ui::edge::{Ambient, load_keymap};
-use temor_ui::settings::{load_settings, write_schema};
 use temor_ui::{
-    AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG, TakeOnce,
+    Ambient, AppearanceSource, FirstWords, Launch, LauncherChoice, SESSION_LEADER_ARG, TakeOnce,
+    load_keymap, load_settings, write_schema,
 };
 
 fn main() -> ExitCode {

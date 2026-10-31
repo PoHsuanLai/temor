@@ -9,8 +9,8 @@ use temor_panes::pty::SessionLauncher;
 use temor_panes::start::{ShellStart, shell_spec};
 use temor_panes::vt::{CellPx, GridSize};
 
-use crate::edge::Ambient;
-use crate::error::UiError;
+use temor_ui_base::edge::Ambient;
+use temor_ui_base::error::UiError;
 
 /// Builds the pane spec for a new shell of `grid` cells of `cell` pixels.
 pub fn shell_pane(
