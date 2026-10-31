@@ -7397,6 +7397,7 @@ dependencies = [
  "bayonet",
  "serde",
  "temor-plugins",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",

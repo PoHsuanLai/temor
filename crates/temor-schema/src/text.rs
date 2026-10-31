@@ -185,7 +185,7 @@ pub fn display_text(raw: &str, max: usize) -> String {
 }
 
 /// The Unicode Bidi_Control characters (the Arabic letter mark, the left and right marks, the
-/// embeddings, overrides and isolates): they reorder what is shown. The one table for core.
+/// embeddings, overrides and isolates): they reorder what is shown. The one table, for core and the plugins alike.
 pub fn is_bidi_control(c: char) -> bool {
     matches!(
         c,
