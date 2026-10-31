@@ -49,6 +49,8 @@ pub enum CopyOutcome {
     Gone,
     /// The copy could not be made.
     Failed(EditFault),
+    /// The whole file was compared with the person's copy ([`crate::changes::Compare`]).
+    Compared(crate::changes::Compared),
 }
 
 /// A copy finished.

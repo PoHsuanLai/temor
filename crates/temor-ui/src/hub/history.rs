@@ -9,8 +9,6 @@
 //! of its session: the older checkpoints are read into history once.
 
 use std::collections::BTreeMap;
-use std::hash::{BuildHasher, Hash, Hasher};
-use std::time::SystemTime;
 
 use temor_client::model::session::CommandRecord;
 use temor_client::model::session::list::kept_cards;
@@ -21,12 +19,8 @@ use temor_schema::session::{At, RanCommand, Session as Kept, SessionId};
 use temor_schema::url::Host;
 
 use super::model::{Hub, HubRef};
-use crate::edge::local_zone::wall_now as now;
 use crate::session::{Notice, Session};
 use temor_panes::vt::Snapshot;
-
-/// How long history is kept: commands older than this are forgotten when the window opens.
-const KEPT_FOR_MS: i64 = 90 * 24 * 60 * 60 * 1000;
 
 /// The sessions history is told of.
 #[derive(Debug, Default)]
@@ -54,9 +48,8 @@ struct Begun {
 }
 
 impl Hub {
-    /// Keep history with `client`, and forget what is older than history is kept for.
+    /// Keep history with `client`.
     pub fn set_client(&mut self, client: Client) {
-        client.act(Command::ForgetBefore(At(now().0 - KEPT_FOR_MS)));
         self.history.client = Some(client);
     }
 
@@ -210,16 +203,16 @@ impl Hub {
                 });
                 let id = before
                     .as_ref()
-                    .map_or_else(|| draw_id(pane), |kept| kept.id);
+                    .map_or_else(|| client.fresh_session(pane), |kept| kept.id);
                 client.act(Command::Begin(Kept {
                     id,
                     host: self.history_host(pane),
                     folder: folder.clone(),
                     program: self.run_name(pane).map(str::to_owned),
-                    started: before.map_or_else(now, |kept| kept.started),
+                    started: before.map_or_else(|| client.local_time().now(), |kept| kept.started),
                     ended: None,
                 }));
-                let at = now();
+                let at = client.local_time().now();
                 for (block, kept) in (0u64..).zip(imported) {
                     let took = kept.took_ms.and_then(|ms| i64::try_from(ms).ok());
                     client.act(Command::Ran(RanCommand {
@@ -244,7 +237,7 @@ impl Hub {
                     return;
                 };
                 let folder = session.cwd().unwrap_or_default().to_owned();
-                let ended = now();
+                let ended = client.local_time().now();
                 for done in session.finished_after(begun.written) {
                     let ran = i64::try_from(done.ran_ms).unwrap_or(0);
                     client.act(Command::Ran(RanCommand {
@@ -263,7 +256,7 @@ impl Hub {
                 if let Some(begun) = self.history.sessions.remove(&pane) {
                     client.act(Command::End {
                         session: begun.id,
-                        at: now(),
+                        at: client.local_time().now(),
                     });
                 }
             }
@@ -277,14 +270,6 @@ impl Hub {
             .and_then(|alias| Host::named(alias.as_str()).ok())
             .unwrap_or(Host::Local)
     }
-}
-
-/// A new session's id: 64 bits from the process's random hash keys, the pane and the time.
-fn draw_id(pane: PaneId) -> SessionId {
-    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
-    pane.hash(&mut hasher);
-    SystemTime::now().hash(&mut hasher);
-    SessionId::from_bits(hasher.finish())
 }
 
 impl HubRef {

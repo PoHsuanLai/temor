@@ -29,7 +29,6 @@ ds-settings-page = { workspace = true }
 png = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-similar = { workspace = true }
 # temor, as the window may name it (PLAN §2b, the fence): its data and services through the
 # client, the running terminals and their engine through temor-panes, how a pane is shown
 # (temor-pane-view), the data's types.

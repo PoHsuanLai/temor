@@ -21,6 +21,7 @@ pub mod model {
 }
 
 pub mod act;
+pub mod changes;
 mod client;
 pub mod desktop;
 mod error;
@@ -36,6 +37,7 @@ pub mod shelf;
 pub mod space;
 pub mod spaces;
 pub mod ssh;
+pub mod time;
 pub mod viewer_host;
 
 pub use act::Command;

@@ -89,7 +89,6 @@ mod transfers;
 mod typing;
 mod uploads;
 mod viewer_changes;
-mod viewer_diff;
 mod viewer_host;
 mod viewer_requests;
 #[cfg(test)]

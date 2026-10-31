@@ -27,7 +27,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
-use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::session::{At, RanCommand, Session, SessionId};
 use temor_store::{Committed, SqliteStore, Topics};
 
 /// The database's name in a state folder.
@@ -36,6 +36,10 @@ pub const DB_FILE: &str = "temor.db";
 use crate::act::Command;
 use crate::error::ClientError;
 use crate::live::{Entry, Job, Live, Query};
+use crate::time::LocalTime;
+
+/// How long history is kept: what is older is forgotten when a client opens a state folder.
+const KEPT_FOR_MS: i64 = 90 * 24 * 60 * 60 * 1000;
 
 /// How long the change thread waits for more commits after one before it marks anything stale:
 /// a burst of commands finishing is one reading, not one each.
@@ -96,6 +100,7 @@ pub(crate) struct Shared {
     pub(crate) external: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     /// Where commands go to be applied; `None` for an inline client, and once stopping.
     acts: Mutex<Option<std::sync::mpsc::Sender<Asked>>>,
+    time: LocalTime,
 }
 
 /// What the `temor-act` thread is handed: a command, or a caller waiting until every command
@@ -170,11 +175,30 @@ impl Client {
         }))
     }
 
-    /// The client over `temor.db` in `state_dir`, the folder made if it is not there.
+    /// The client over `temor.db` in `state_dir`, the folder made if it is not there. History
+    /// older than it is kept for is forgotten.
     pub fn open_in(state_dir: &Path, config: ClientConfig) -> Result<Client, ClientError> {
         std::fs::create_dir_all(state_dir).map_err(|why| ClientError::Store(why.to_string()))?;
         let store = SqliteStore::open(state_dir.join(DB_FILE))?;
-        Ok(Client::open(Arc::new(store), config))
+        let client = Client::open(Arc::new(store), config);
+        let now = client.local_time().now();
+        client.act(Command::ForgetBefore(At(now.0 - KEPT_FOR_MS)));
+        Ok(client)
+    }
+
+    /// The wall clock and the local zone.
+    pub fn local_time(&self) -> &LocalTime {
+        &self.0.shared.time
+    }
+
+    /// An id for a session that begins now: 64 bits from the process's random hash keys, the
+    /// time, and `salt` (the pane it begins in, say).
+    pub fn fresh_session(&self, salt: impl std::hash::Hash) -> SessionId {
+        use std::hash::{BuildHasher, Hash, Hasher};
+        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        salt.hash(&mut hasher);
+        std::time::SystemTime::now().hash(&mut hasher);
+        SessionId::from_bits(hasher.finish())
     }
 
     /// A client over an empty database in memory, which keeps nothing past the process: reads
@@ -361,6 +385,7 @@ impl Shared {
             moved: tokio::sync::watch::Sender::new(0),
             external: Mutex::new(None),
             acts: Mutex::new(None),
+            time: LocalTime::system(),
         }
     }
 

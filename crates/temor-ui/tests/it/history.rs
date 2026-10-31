@@ -231,7 +231,7 @@ fn a_reopened_session_shows_its_commands_as_cards_and_goes_on() {
     let store = Arc::new(SqliteStore::in_memory().expect("store"));
     let id = SessionId::from_bits(0xb5);
     let day = 24 * 60 * 60 * 1000;
-    let then = temor_ui::edge::local_zone::wall_now().0 - 2 * day;
+    let then = temor_client::time::LocalTime::system().now().0 - 2 * day;
     store
         .save_session(&Session {
             id,

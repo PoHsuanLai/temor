@@ -57,6 +57,10 @@ temor-plugins = { workspace = true }
 temor-pane = { workspace = true }
 # The person's icon pack (`icons`).
 toml = { workspace = true }
+# The local time zone (`time`), read from the system's zone files without the C library.
+jiff = { workspace = true }
+# An edit conflict's differences (`changes`).
+similar = { workspace = true }
 
 [dev-dependencies]
 temor-client = { path = ".", features = ["testing"] }

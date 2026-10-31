@@ -129,6 +129,7 @@ tempfile = "3"
 base64 = "0.22"
 percent-encoding = "2"
 # The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).
+jiff = "0.2"
 similar = { version = "2", default-features = false, features = ["text"] }
 
 # Release binaries carry no symbol table (a third of temor's size, never loaded; a panic still

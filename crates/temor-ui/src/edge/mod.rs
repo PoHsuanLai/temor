@@ -4,10 +4,8 @@
 
 mod ambient;
 pub mod clock;
-pub mod folder_read;
 mod keymap;
 mod keymap_source;
-pub mod local_zone;
 pub mod notify;
 pub mod offer;
 pub mod peek_look;

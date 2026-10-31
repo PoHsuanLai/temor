@@ -16,9 +16,8 @@ use temor_client::query::{Commands, History, Sessions};
 use temor_schema::session::{RanCommand, Session, SessionId};
 use temor_schema::url::{HistoryScope, TemorUrl};
 
-use super::live::use_live;
+use super::live::{use_client, use_live};
 use super::tab_glyph::prompt_glyph;
-use crate::edge::local_zone::{local_zone, wall_now};
 use crate::hub::{Desk, select_tab};
 
 /// How many sessions or commands the page lists.
@@ -62,8 +61,10 @@ fn SessionsPage(folder: Option<String>, desk: Desk) -> Element {
         before: None,
         limit: LISTED,
     });
-    let zone = local_zone();
-    let today = zone.day_of(wall_now());
+    let time = use_client().local_time().clone();
+    let now = time.now();
+    let zone = time.zone_at(now);
+    let today = zone.day_of(now);
     let home = desk.hub.home();
     let tokens = folder
         .as_deref()
@@ -171,8 +172,10 @@ fn SessionPage(id: SessionId, desk: Desk) -> Element {
     let _ = (desk.ui)();
     let mut text = use_signal(String::new);
     let kept = use_live(move || Commands(id));
-    let zone = local_zone();
-    let today = zone.day_of(wall_now());
+    let time = use_client().local_time().clone();
+    let now = time.now();
+    let zone = time.zone_at(now);
+    let today = zone.day_of(now);
     let home = desk.hub.home();
     let Some((session, commands)) = kept.read().value().and_then(|kept| kept.as_ref().clone())
     else {

@@ -64,7 +64,10 @@ impl CopyDone for Landed {
         let Landed { landing, local } = *self;
         match outcome {
             CopyOutcome::Whole | CopyOutcome::Header { .. } => landing.at(&local),
-            CopyOutcome::NotAFile | CopyOutcome::Gone | CopyOutcome::Failed(_) => landing.none(),
+            CopyOutcome::NotAFile
+            | CopyOutcome::Gone
+            | CopyOutcome::Failed(_)
+            | CopyOutcome::Compared(_) => landing.none(),
         }
     }
 }
