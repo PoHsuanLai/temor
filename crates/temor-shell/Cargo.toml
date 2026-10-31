@@ -7,14 +7,21 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+default = ["io"]
+# What touches the disk: writing the integration files and making a folder private. Without it the
+# crate is pure (the scripts, the plan, quoting, the child environment, the socket limit), for the
+# model crates that name its vocabulary (PLAN §2: L2 does no I/O).
+io = ["dep:tempfile", "dep:rustix"]
+
 [dependencies]
 percent-encoding = { workspace = true }
 serde_json = { workspace = true }
-tempfile = { workspace = true }
+tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-rustix = { workspace = true }
+rustix = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

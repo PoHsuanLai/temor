@@ -49,8 +49,8 @@ temor-core = { workspace = true }
 temor-desktop = { workspace = true }
 temor-pty = { workspace = true }
 temor-remote = { workspace = true, features = ["ghostty"] }
-temor-shell = { workspace = true }
-temor-ssh = { workspace = true }
+temor-shell = { workspace = true, features = ["io"] }
+temor-ssh = { workspace = true, features = ["io"] }
 temor-store = { workspace = true }
 temor-pane = { workspace = true, features = ["ghostty"] }
 temor-plugins = { workspace = true }

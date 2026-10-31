@@ -48,7 +48,7 @@ wgpu = "29"
 bytemuck = { version = "1", features = ["derive"] }
 pollster = "0.4"
 temor-render = { path = "crates/temor-render", default-features = false }
-temor-ssh = { path = "crates/temor-ssh" }
+temor-ssh = { path = "crates/temor-ssh", default-features = false }
 # temor's app crates (lane app): the pure core, the pseudo-terminal, and the window.
 temor-core = { path = "crates/temor-core" }
 temor-blocks = { path = "crates/temor-blocks" }
@@ -67,7 +67,7 @@ parking_lot = "0.12"
 # quire's ds-settings already locks.
 notify = "8.2"
 temor-pty = { path = "crates/temor-pty" }
-temor-shell = { path = "crates/temor-shell" }
+temor-shell = { path = "crates/temor-shell", default-features = false }
 temor-pane = { path = "crates/temor-pane", default-features = false }
 temor-ui = { path = "crates/temor-ui" }
 temor-pane-view = { path = "crates/temor-pane-view" }

@@ -6,6 +6,7 @@ pub mod error;
 pub mod home;
 pub mod ids;
 pub mod lenient;
+pub mod process;
 pub mod secret;
 pub mod session;
 pub mod text;

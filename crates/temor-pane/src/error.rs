@@ -16,12 +16,14 @@ pub enum PaneError {
     #[error("drawing the terminal failed: {0}")]
     Render(#[from] temor_render::RenderError),
     /// The program could not be started on a terminal, or the terminal failed.
+    #[cfg(feature = "engine")]
     #[error("the shell could not start: {0}")]
     Pty(#[from] temor_pty::PtyError),
     /// A pane id was not 1 to 32 letters, digits, `-` or `_`; the caller allocates a valid one.
     #[error("not a usable pane id: {0:?}")]
     BadPaneId(String),
     /// The pane's status socket folder could not be made private to this user.
+    #[cfg(feature = "engine")]
     #[error("the status socket folder is not private: {0}")]
     SocketDir(#[from] temor_shell::ShellError),
     /// The pane's status socket folder is not there, and its parent is missing too.

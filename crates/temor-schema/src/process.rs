@@ -48,3 +48,7 @@ impl fmt::Debug for CommandLine {
         write!(f, "CommandLine({} tokens)", self.0.len())
     }
 }
+
+#[cfg(test)]
+#[path = "process_tests.rs"]
+mod tests;

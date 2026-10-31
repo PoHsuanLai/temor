@@ -7203,7 +7203,7 @@ dependencies = [
  "ds-core",
  "serde",
  "temor-core",
- "temor-pane",
+ "temor-schema",
 ]
 
 [[package]]
@@ -7409,6 +7409,7 @@ dependencies = [
  "libproc",
  "nix",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",

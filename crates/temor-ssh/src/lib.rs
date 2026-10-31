@@ -46,7 +46,9 @@ mod files;
 mod hosts;
 mod identity;
 mod master;
+#[cfg(feature = "io")]
 mod platform;
+#[cfg(feature = "io")]
 mod private_dir;
 mod tailnet;
 
@@ -65,21 +67,28 @@ pub use bootstrap::{
     bootstrap_remote_command, probe_line, prompt_after_answer, read_probe, wrap_script,
 };
 pub use check_mode::{CheckScan, CheckUrl};
+#[cfg(feature = "io")]
+pub use config::FsConfigFiles;
 pub use config::{
-    ConfigFiles, ConfigIssue, ConfigPaths, FsConfigFiles, HostAlias, HostEntry, HostList, HostName,
-    IdentityFile, IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal,
-    known_host_names, load_host_list,
+    ConfigFiles, ConfigIssue, ConfigPaths, HostAlias, HostEntry, HostList, HostName, IdentityFile,
+    IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal, known_host_names,
+    load_host_list,
 };
 pub use error::SshError;
+#[cfg(feature = "io")]
+pub use files::StdRunner;
 pub use files::{
     ByteCount, CommandOutput, CommandRunner, FileTools, RemoteFilePath, RemoteFiles, RemoteStat,
-    RemoteState, SshRemoteFiles, StdRunner, fetch_argv, parse_stat, stat_argv, store_argv,
+    RemoteState, SshRemoteFiles, fetch_argv, parse_stat, stat_argv, store_argv,
 };
 pub use hosts::{HostGroup, HostRow, merge_hosts};
 pub use identity::{
     Fingerprint, HostId, HostKey, KnownName, NodeId, ShownName, fingerprint_from_keygen,
     keygen_lookup_argv, known_name_from_resolved, resolve_argv,
 };
-pub use master::{MasterProbe, prepare_control_dirs, probe_master, socket_appeared};
+#[cfg(feature = "io")]
+pub use master::prepare_control_dirs;
+pub use master::{MasterProbe, probe_master, socket_appeared};
+#[cfg(feature = "io")]
 pub use private_dir::ensure_private_dir;
 pub use tailnet::{DirectHost, TailnetHost, TailnetOwner, UnixSeconds};

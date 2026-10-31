@@ -9,6 +9,9 @@
 #     so `--no-default-features` builds with none of them;
 #   - the fence (PLAN §2b): temor-ui depends on no temor crate but temor-client, temor-panes and
 #     temor-schema (its tests may name more, as dev-dependencies);
+#   - L2 does no I/O (PLAN §2): an L2 crate names no temor-pty, temor-transfer or temor-vt, and
+#     names temor-shell, temor-ssh and temor-pane without their default features (`io`,
+#     `engine`), so it links their vocabulary and none of their process or socket code;
 #   - no crate re-exports a temor crate whole or by glob: what crosses the fence is listed.
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
@@ -63,6 +66,8 @@ DESKTOP = "temor-desktop"
 WINDOW = "temor-ui"
 FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"}
 FEATURE = "quire-desktop"
+IO_CRATES = {"temor-pty", "temor-transfer", "temor-vt"}
+IO_FEATURES = {"temor-shell", "temor-ssh", "temor-pane"}
 meta = json.loads(sys.argv[1])
 violations = []
 seen = set()
@@ -99,6 +104,11 @@ for pkg in meta["packages"]:
             and dep.get("kind") != "dev"
         ):
             violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes and temor-schema)")
+        if layer == 2 and dep.get("kind") != "dev":
+            if dname in IO_CRATES:
+                violations.append(f"{name} -> {dname} (L2 does no I/O)")
+            elif dname in IO_FEATURES and (dep["uses_default_features"] or dep["features"]):
+                violations.append(f"{name} -> {dname} (L2 names it without default features or io)")
         if layer <= 1 and banned.match(dname):
             violations.append(f"{name} -> {dname} (L{layer} never depends on quire, dioxus, docket or zbus)")
             continue

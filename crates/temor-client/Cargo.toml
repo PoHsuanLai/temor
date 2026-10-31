@@ -29,7 +29,7 @@ temor-layout = { workspace = true }
 temor-hosts = { workspace = true }
 temor-agent = { workspace = true }
 # A new shell's report key (`keep::replay`) and the private folder check (`keep::private`).
-temor-shell = { workspace = true }
+temor-shell = { workspace = true, features = ["io"] }
 # The Spaces (`spaces`): the kit's list, which temor-core keeps its projects in.
 ds-style = { workspace = true }
 serde_json = { workspace = true }
@@ -43,7 +43,7 @@ tokio = { workspace = true, features = ["time"] }
 notify = { workspace = true }
 # The services (`ssh`, `remote`, `viewer_host`): Tier A's programs and Tier B's helper, its wire
 # and its client (without the daemon, so no terminal engine), and where a program is found.
-temor-ssh = { workspace = true }
+temor-ssh = { workspace = true, features = ["io"] }
 temor-wire = { workspace = true }
 temor-remote = { workspace = true }
 temor-pty = { workspace = true }
