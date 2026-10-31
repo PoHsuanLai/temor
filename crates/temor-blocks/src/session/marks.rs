@@ -113,11 +113,6 @@ impl MarkLog {
         self.anchors.get(&id).copied()
     }
 
-    /// Every block the log holds with its anchors.
-    pub fn anchor_table(&self) -> impl Iterator<Item = (BlockId, BlockAnchors)> + '_ {
-        self.anchors.iter().map(|(&id, &anchors)| (id, anchors))
-    }
-
     /// The anchor of the prompt being typed at.
     pub fn prompt(&self) -> Option<Anchor> {
         self.prompt

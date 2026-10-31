@@ -71,8 +71,7 @@ pub use check_mode::{CheckScan, CheckUrl};
 pub use config::FsConfigFiles;
 pub use config::{
     ConfigFiles, ConfigIssue, ConfigPaths, HostAlias, HostEntry, HostList, HostName, IdentityFile,
-    IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal, known_host_names,
-    load_host_list,
+    IssueReason, LineNo, Port, ProxyJump, UserName, is_ipv6_literal, load_host_list,
 };
 pub use error::SshError;
 #[cfg(feature = "io")]

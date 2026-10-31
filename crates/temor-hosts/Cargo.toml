@@ -13,7 +13,6 @@ temor-schema = { workspace = true }
 temor-ssh = { workspace = true }
 temor-shell = { workspace = true }
 ds-core = { workspace = true }
-ds-style = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

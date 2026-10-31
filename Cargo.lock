@@ -7308,7 +7308,6 @@ name = "temor-hosts"
 version = "0.1.1"
 dependencies = [
  "ds-core",
- "ds-style",
  "serde",
  "serde_json",
  "temor-core",
@@ -7570,10 +7569,8 @@ dependencies = [
 name = "temor-vt"
 version = "0.1.1"
 dependencies = [
- "base64 0.22.1",
  "png",
  "temor-testkit",
- "temor-vt",
  "temor-vt-sys",
  "thiserror 2.0.21",
 ]

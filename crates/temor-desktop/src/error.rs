@@ -21,9 +21,6 @@ pub enum DesktopError {
     /// never ships, so this is a packaging mistake.
     #[error("temor's actions file is not valid: {0}")]
     Manifest(String),
-    /// docket would not list, plan or restore restore points.
-    #[error("{0}")]
-    Checkpoint(crate::PointFault),
     /// This system or this build has no such service.
     #[error("this desktop has no {what}")]
     Unsupported {

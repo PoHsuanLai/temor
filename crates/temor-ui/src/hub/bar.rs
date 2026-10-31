@@ -50,11 +50,6 @@ pub struct BarData {
 }
 
 impl Hub {
-    /// Replaces what the bar reads from outside (the Spaces, the model).
-    pub fn set_bar_seams(&mut self, seams: BarSeams) {
-        self.bar.seams = seams;
-    }
-
     /// Lists these Spaces in the bar and switches through them.
     pub fn set_bar_spaces(&mut self, spaces: Rc<dyn SpaceRows>) {
         self.bar.seams.spaces = spaces;

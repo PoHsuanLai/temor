@@ -16,6 +16,7 @@ mod key_code;
 mod kitty;
 mod mouse;
 mod paste;
+mod plain;
 mod png;
 mod render;
 mod reports;
@@ -27,7 +28,6 @@ mod styled;
 mod terminal;
 mod terminal_read;
 mod terminal_write;
-mod vt_impl;
 mod wrap;
 
 pub use cells::GridCell;

@@ -4,10 +4,6 @@
 
 #[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 use crate::Badge;
-use crate::checkpoints::{
-    CheckpointPort, NoCheckpoints, PlanDigest, PointId, PointList, PointPlan, RESTORE_POINTS,
-    SessionKey, TurnHow, TurnMark, WatchAsk, Watching,
-};
 #[cfg(not(all(target_os = "macos", feature = "quire-desktop")))]
 use crate::secrets::{NoSecrets, SecretFault, SecretVault};
 use crate::tailnet::TailnetChanges;
@@ -140,66 +136,6 @@ impl SystemTailnet {
     /// A stream that has already ended.
     pub async fn changes(&self) -> Result<TailnetChanges, DesktopError> {
         Ok(TailnetChanges::ended())
-    }
-}
-
-/// Docket's restore points. Absent here.
-/// TODO(platform:macos): through the agent layer's transport once docket has one there.
-/// TODO(platform:windows): the same.
-#[derive(Debug)]
-pub struct SystemCheckpoints;
-
-impl SystemCheckpoints {
-    /// Always [`DesktopError::Unsupported`].
-    pub async fn connect(
-        _env: &DesktopEnv,
-        _runtime: tokio::runtime::Handle,
-    ) -> Result<Self, DesktopError> {
-        Err(DesktopError::Unsupported {
-            what: RESTORE_POINTS,
-        })
-    }
-}
-
-/// Its constructor always fails, so no value of it exists; if one did, it would answer as
-/// [`NoCheckpoints`] does.
-impl CheckpointPort for SystemCheckpoints {
-    fn list(&self, session: &SessionKey) -> Result<PointList, DesktopError> {
-        NoCheckpoints.list(session)
-    }
-
-    fn plan(&self, session: &SessionKey, id: PointId) -> Result<PointPlan, DesktopError> {
-        NoCheckpoints.plan(session, id)
-    }
-
-    fn restore(
-        &self,
-        session: &SessionKey,
-        id: PointId,
-        digest: &PlanDigest,
-    ) -> Result<(), DesktopError> {
-        NoCheckpoints.restore(session, id, digest)
-    }
-
-    fn watch(&self, ask: &WatchAsk) -> Result<Watching, DesktopError> {
-        NoCheckpoints.watch(ask)
-    }
-
-    fn mark(&self, session: &SessionKey) -> Result<TurnMark, DesktopError> {
-        NoCheckpoints.mark(session)
-    }
-
-    fn turn_ended(
-        &self,
-        session: &SessionKey,
-        turn: TurnMark,
-        how: TurnHow,
-    ) -> Result<(), DesktopError> {
-        NoCheckpoints.turn_ended(session, turn, how)
-    }
-
-    fn close(&self, session: &SessionKey) -> Result<(), DesktopError> {
-        NoCheckpoints.close(session)
     }
 }
 

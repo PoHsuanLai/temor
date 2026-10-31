@@ -6,7 +6,6 @@ mod argv_values;
 mod fs;
 mod glob;
 mod include;
-mod known_hosts;
 mod lex;
 mod model;
 mod parse;
@@ -25,7 +24,6 @@ pub use argv_values::is_ipv6_literal;
 #[cfg(feature = "io")]
 pub use fs::FsConfigFiles;
 pub use include::{ConfigFiles, ConfigPaths};
-pub use known_hosts::known_host_names;
 pub use model::{
     ConfigIssue, HostAlias, HostEntry, HostList, HostName, IdentityFile, IssueReason, LineNo, Port,
     ProxyJump, UserName,

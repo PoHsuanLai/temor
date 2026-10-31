@@ -33,14 +33,4 @@ impl Session {
     pub fn send_bytes(&self, bytes: &[u8]) {
         self.pane.send(bytes);
     }
-
-    /// How the newest command stands; none before the first, or where the shell marks none.
-    pub fn last_outcome(&self) -> Option<Outcome> {
-        self.core()
-            .blocks
-            .store()
-            .iter()
-            .next_back()
-            .map(|block| block.outcome())
-    }
 }

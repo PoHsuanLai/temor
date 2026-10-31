@@ -43,6 +43,5 @@ pub use shell::write_shims;
 pub use shell::{
     BashAdapter, FishAdapter, IntegrationPlan, NuAdapter, PROBE_WORD, PlainAdapter, Shell,
     ShellAdapter, ShellKind, ShellScript, ShellStart, ShimFile, UserId, XDG_DATA_DIRS_DEFAULT,
-    ZshAdapter, adapter_for, integration_scripts, passwd_login_shell, plan_integration, probe_line,
-    resolve_shell,
+    ZshAdapter, adapter_for, integration_scripts, plan_integration, probe_line, resolve_shell,
 };

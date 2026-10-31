@@ -10,8 +10,6 @@
 //! - **Dock badge.** [`SystemDock::show`] publishes a count, progress and attention.
 //! - **Links.** [`SystemLinks::open`] hands a link to the desktop portal's opener.
 //! - **Opening.** [`SystemOpen`] hands a file, a folder or a link to the desktop's own opener.
-//! - **Restore points.** [`CheckpointPort`] lists an agent run's restore points, says what a
-//!   restore would change and performs it, through docket; [`SystemCheckpoints`] is the live one.
 //! - **Tailscale.** [`SystemTailnet::hosts`] lists the person's other computers as
 //!   [`temor_ssh::TailnetHost`]s, and [`SystemTailnet::changes`] says when to read again.
 //!
@@ -23,7 +21,6 @@
 //! Types that cross threads are `Send + Sync` unless their docs say otherwise.
 
 mod badge;
-mod checkpoints;
 mod env;
 mod error;
 mod manifest;
@@ -35,11 +32,6 @@ mod tailnet;
 mod window;
 
 pub use badge::{Badge, BadgeCount, Progress};
-pub use checkpoints::{
-    CheckpointPort, Named, NoCheckpoints, NotSavedWhy, PlanDigest, PointFault, PointId, PointList,
-    PointPlan, PointRow, Rewind, SessionKey, TurnHow, TurnMark, TurnNo, WatchAsk, WatchOwner,
-    Watching,
-};
 pub use env::{BusRoute, DesktopEnv};
 pub use error::DesktopError;
 pub use manifest::{
@@ -48,8 +40,7 @@ pub use manifest::{
 };
 pub use open::SystemOpen;
 pub use platform::{
-    SystemCheckpoints, SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets,
-    SystemTailnet,
+    SystemDock, SystemInstance, SystemIntents, SystemLinks, SystemSecrets, SystemTailnet,
 };
 pub use request::{
     CLOSED_WHILE_RUNNING, Claim, Handover, NOT_FOUND, Primary, Request, RunEnd, RunEnds,

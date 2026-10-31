@@ -54,14 +54,6 @@ impl Session {
         self.copy_text(&command);
     }
 
-    /// Copies a finished block's output to the clipboard.
-    pub fn copy_output(&mut self, id: BlockId) {
-        match self.block_output(id) {
-            Some(text) => self.copy_text(&text),
-            None => self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned()),
-        }
-    }
-
     pub(super) fn copy_text(&mut self, text: &str) {
         if !self.put_on_clipboard(text) {
             self.notice = Some(notices::TEXT_NOT_COPIED.to_owned());

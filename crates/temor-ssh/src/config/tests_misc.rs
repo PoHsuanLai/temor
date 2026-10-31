@@ -1,7 +1,6 @@
-//! Lexer, glob matching and known_hosts names.
+//! Lexer and glob matching.
 
 use super::glob::glob_match;
-use super::known_host_names;
 use super::lex::lex_line;
 
 #[test]
@@ -26,23 +25,4 @@ fn glob_matching_is_case_insensitive_with_wildcards() {
     assert!(!glob_match("a*b", "ac"));
     assert!(!glob_match("w?b", "wb"));
     assert!(glob_match("*.conf", "x.conf"));
-}
-
-#[test]
-fn known_hosts_names_skip_hashed_wildcards_and_markers() {
-    let text = "\
-# comment
-example.com,10.0.0.1 ssh-ed25519 AAAA
-[alpha]:2222 ssh-ed25519 AAAA
-|1|hashedvalue= ssh-rsa AAAA
-*.internal ssh-rsa AAAA
-!blocked.example ssh-rsa AAAA
-@cert-authority *.corp ssh-rsa AAAA
-example.com ssh-rsa AAAA
-";
-    let names: Vec<String> = known_host_names(text)
-        .iter()
-        .map(|n| n.as_str().to_owned())
-        .collect();
-    assert_eq!(names, vec!["example.com", "10.0.0.1", "alpha"]);
 }
