@@ -1,7 +1,7 @@
 //! `gate`: what to do for the next connection to a host. `consent_step`: remember an answer, or
 //! tie an alias to the machine a connection proved it reaches.
 
-use super::model::{BootstrapAction, ConsentBook, Permit, Who};
+use super::model::{BootstrapAction, BootstrapGrants, ConsentBook, Permit, Who};
 use crate::remote::Grant;
 use temor_ssh::TerminfoPolicy;
 
@@ -62,30 +62,19 @@ pub enum ConsentIn {
 
 /// The book after `input`, and whether it changed (so the session file is written again).
 pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
-    let mut next = book.clone();
-    match input {
+    let next = match input {
         ConsentIn::Answered { who, action, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_grant(index, action, grant);
+            book.clone().with_host(&who, |g| g.with(action, grant))
         }
-        ConsentIn::HelperAnswered { who, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_helper(index, grant);
-        }
-        ConsentIn::PermitAnswered { who, permit, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_permit(index, permit, grant);
-        }
-        ConsentIn::Identified { who } => {
-            let at = next.matching(&who);
-            if !at.is_empty() {
-                next.fold(&at, &who);
-            }
-        }
-    }
+        ConsentIn::HelperAnswered { who, grant } => book
+            .clone()
+            .with_host(&who, |g| BootstrapGrants { helper: grant, ..g }),
+        ConsentIn::PermitAnswered { who, permit, grant } => book
+            .clone()
+            .with_host(&who, |g| g.with_permit(permit, grant)),
+        ConsentIn::Identified { who } if book.knows(&who) => book.clone().with_host(&who, |g| g),
+        ConsentIn::Identified { .. } => book.clone(),
+    };
     let changed = next != book;
     (next, changed)
 }
