@@ -72,7 +72,7 @@ impl Session {
         };
         let (cwd, site) = {
             let core = self.core();
-            (core.cwd.clone(), core.site)
+            (core.cwd(), core.site)
         };
         let around = match site {
             PaneSite::Remote => Vec::new(),
@@ -95,7 +95,7 @@ impl Session {
         };
         let (cwd, site) = {
             let core = self.core();
-            (core.cwd.clone(), core.site)
+            (core.cwd(), core.site)
         };
         let cwd = cwd.as_deref();
         Ok(match site {
@@ -113,7 +113,7 @@ impl Session {
         let Some(token) = token_at(&row, cell.col) else {
             return Ok(None);
         };
-        let cwd = self.core().cwd.clone();
+        let cwd = self.core().cwd();
         Ok(first_file(&token, cwd.as_deref(), &|path: &Path| {
             path.is_dir()
         }))
@@ -174,7 +174,7 @@ impl Session {
             self.notice = Some(notices::OUTPUT_NOT_FINISHED.to_owned());
             return;
         };
-        let around = output_paths(&output, self.core().cwd.as_deref(), is_file);
+        let around = output_paths(&output, self.core().cwd().as_deref(), is_file);
         match around.first().cloned() {
             Some(file) => {
                 self.view_ask = Some(ViewAsk {

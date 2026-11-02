@@ -113,7 +113,6 @@ pub struct PaneCore {
     pub sources: Sources,
     /// The pane's folder as the shell last said it, to run a completion in.
     pub folder: Option<std::path::PathBuf>,
-    pub cwd: Option<String>,
     pub progress: Option<Progress>,
     pub notify_after: NotifyAfter,
     pub limiter: Limiter,
@@ -152,7 +151,7 @@ impl std::fmt::Debug for PaneCore {
         f.debug_struct("PaneCore")
             .field("title", &self.title)
             .field("lifetime", &self.lifetime)
-            .field("cwd", &self.cwd)
+            .field("folder", &self.folder)
             .finish_non_exhaustive()
     }
 }

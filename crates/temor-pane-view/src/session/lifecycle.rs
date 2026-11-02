@@ -206,7 +206,7 @@ impl Session {
 
     /// The working directory the shell reported, if any.
     pub fn cwd(&self) -> Option<String> {
-        self.core().cwd.clone()
+        self.core().cwd()
     }
 
     /// The progress the program reported (OSC 9;4), while it is shown.

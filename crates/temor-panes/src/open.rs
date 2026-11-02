@@ -113,7 +113,6 @@ impl PaneCore {
             report_key: None,
             sources: Sources::default(),
             folder: None,
-            cwd: None,
             progress: None,
             notify_after: kit.notify_after,
             limiter: Limiter::default(),
