@@ -71,7 +71,11 @@ impl Hub {
                     }
                     hub.memory.of(spawn.pane).checkpoint = Some(kept);
                 }
-                hub.open_pane(&spawn, screen.map(temor_panes::vt::Snapshot::from_bytes));
+                hub.open_pane(
+                    &spawn,
+                    screen.map(temor_panes::vt::Snapshot::from_bytes),
+                    &mut Default::default(),
+                );
             }
             for open in starting.viewers {
                 hub.restore_viewer(open);

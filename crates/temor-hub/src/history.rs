@@ -19,7 +19,9 @@ use temor_schema::session::{RanCommand, Session as Kept, SessionId};
 use temor_schema::time::UnixMillis;
 use temor_schema::url::Host;
 
+use super::act::ActCtx;
 use super::model::{Hub, HubRef};
+use temor_client::model::workspace::WorkspaceIn;
 use temor_pane_view::session::{Finished, Notice, Session};
 use temor_panes::vt::Snapshot;
 
@@ -27,8 +29,6 @@ use temor_panes::vt::Snapshot;
 #[derive(Debug, Default)]
 pub(super) struct History {
     client: Option<Client>,
-    /// The screen a reopened session's tab starts from, until its pane takes it.
-    pub(super) screen: Option<Snapshot>,
 }
 
 /// Where one pane's session stands, kept in its record.
@@ -186,11 +186,18 @@ impl Hub {
             .and_then(|dir| temor_client::keep::screens::read(dir, id))
             .map(Snapshot::from_bytes);
         let had_screen = screen.is_some();
-        self.history.screen = screen;
-        let opened = self.open_tab(Some(Cwd(kept.folder)));
+        let (opened, left) = self.act_for_new_pane_with(
+            WorkspaceIn::NewTab {
+                cwd: Some(Cwd(kept.folder)),
+            },
+            ActCtx {
+                screen,
+                ..ActCtx::default()
+            },
+        );
         // A pane that took the screen shows the session as it was; one that did not (a daemon
         // pane) shows its commands.
-        let shown = had_screen && self.history.screen.take().is_none();
+        let shown = had_screen && left.screen.is_none();
         let Some(pane) = opened else {
             return;
         };

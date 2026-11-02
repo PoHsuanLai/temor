@@ -11,6 +11,7 @@ use temor_client::model::space::{Origin, spawn_plan};
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::{CommandText, Cwd};
 use temor_client::model::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
+use temor_client::ssh::HostAlias;
 use temor_panes::vt::Snapshot;
 
 use super::model::{Hub, HubRef};
@@ -20,45 +21,96 @@ use temor_pane_view::session::Session;
 use temor_ui_base::launch::open_session_with;
 use temor_ui_base::slot::{Slot, repaint};
 
+/// What a request is asked with, beyond the request itself: decided before the workspace step
+/// ([`Hub::prepare`]) and handed down to what carries out its answers, in place of fields set
+/// on the hub around the call.
+#[derive(Default)]
+pub(super) struct ActCtx {
+    /// The host the pane it starts is a session on.
+    pub host: Option<HostAlias>,
+    /// That host is shown offline: its pane waits for "Try anyway".
+    pub offline: bool,
+    /// Back or Forward walks the stage's pages: the page opened or closed is not a step.
+    pub walking: bool,
+    /// The screen the pane it starts shows (a reopened session's last); taken by the pane that
+    /// shows it.
+    pub screen: Option<Snapshot>,
+    /// The pane it starts belongs in the home folder, not where it came from.
+    pub at_home: bool,
+}
+
+impl ActCtx {
+    /// A request that starts a session on `host`.
+    pub(super) fn on_host(host: HostAlias, offline: bool) -> ActCtx {
+        ActCtx {
+            host: Some(host),
+            offline,
+            ..ActCtx::default()
+        }
+    }
+}
+
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
+        self.act_with(input, ActCtx::default());
+    }
+
+    /// [`Hub::act`] with what the request is asked with; answers what is left of it (the screen
+    /// no pane took).
+    pub(super) fn act_with(&mut self, input: WorkspaceIn, ctx: ActCtx) -> ActCtx {
         if let Some(space) = self.book.parked_owner_of(&input) {
-            return self.with_space(space, |hub| hub.act(input));
+            return self.with_space(space, |hub| hub.act_with(input, ctx));
         }
-        let input = self.in_project(input);
-        let input = self.ssh_prepare(input);
-        let input = self.start_prepared(input);
-        let input = self.measured(input);
-        let at_home = self.split_starts_at_home(&input);
+        let (input, mut ctx) = self.prepare(input, ctx);
         for out in self.book.step(input) {
-            match out {
-                WorkspaceOut::Spawn(spawn) if at_home => {
-                    let spawn = self.starting_at_home(spawn);
-                    self.carry_out(WorkspaceOut::Spawn(spawn));
-                }
-                other => self.carry_out(other),
-            }
+            self.carry_out(out, &mut ctx);
         }
         self.agents_after_act();
-        self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
         if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
+        ctx
+    }
+
+    /// The request as the workspace is to take it, and what it is asked with. The host comes
+    /// first: a tab or split of a host pane is on that host, in its folder, so neither the
+    /// Space's project folder nor the folder in front is put in for it.
+    pub(super) fn prepare(&self, input: WorkspaceIn, ctx: ActCtx) -> (WorkspaceIn, ActCtx) {
+        let (input, mut ctx) = self.ssh_prepare(input, ctx);
+        let on_host = ctx.host.is_some();
+        let input = match on_host {
+            true => input,
+            false => self.start_prepared(self.in_project(input)),
+        };
+        let input = self.measured(input);
+        ctx.at_home = self.split_starts_at_home(&input);
+        (input, ctx)
     }
 
     /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
     /// there before. A request the workspace refuses opens none.
     pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
+        self.act_for_new_pane_with(input, ActCtx::default()).0
+    }
+
+    /// [`Hub::act_for_new_pane`] with what the request is asked with, and what is left of it.
+    pub(super) fn act_for_new_pane_with(
+        &mut self,
+        input: WorkspaceIn,
+        ctx: ActCtx,
+    ) -> (Option<PaneId>, ActCtx) {
         let before: BTreeSet<PaneId> = self.book.ws().tabs.panes().into_iter().collect();
-        self.act(input);
-        self.book
+        let left = self.act_with(input, ctx);
+        let opened = self
+            .book
             .ws()
             .tabs
             .panes()
             .into_iter()
-            .find(|pane| !before.contains(pane))
+            .find(|pane| !before.contains(pane));
+        (opened, left)
     }
 
     /// Opens a tab in `cwd` (the default folder with `None`) and answers its pane.
@@ -66,12 +118,21 @@ impl Hub {
         self.act_for_new_pane(WorkspaceIn::NewTab { cwd })
     }
 
-    pub(super) fn carry_out(&mut self, out: WorkspaceOut) {
+    pub(super) fn carry_out(&mut self, out: WorkspaceOut, ctx: &mut ActCtx) {
         match out {
-            WorkspaceOut::Spawn(spawn) => self.open_pane(&spawn, None),
-            WorkspaceOut::Viewer(open) => self.viewer_opened(open),
+            WorkspaceOut::Spawn(spawn) => {
+                let spawn = match ctx.at_home {
+                    true => self.starting_at_home(spawn),
+                    false => spawn,
+                };
+                self.open_pane(&spawn, None, ctx);
+            }
+            WorkspaceOut::Viewer(open) => self.viewer_opened(open, ctx.walking),
             WorkspaceOut::Snapshot(pane) => self.keep_scrollback(pane),
-            WorkspaceOut::End(pane) => self.end_pane(pane),
+            WorkspaceOut::End(pane) => {
+                self.stage_closed(pane, ctx.walking);
+                self.end_pane(pane);
+            }
             WorkspaceOut::Forgotten(panes) => {
                 for pane in panes {
                     self.forget_pane(pane);
@@ -89,9 +150,15 @@ impl Hub {
     /// Starts the program of `spawn` in a slot of its own. `restored` is a snapshot read from
     /// disk; otherwise a pane that is coming back from the recently closed list takes its own.
     /// A pane that cannot start still gets a slot (empty), and the reason is for the person.
-    pub(super) fn open_pane(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        if let Some(claim) = self.ssh_claims(spawn) {
-            return self.begin_host(spawn, claim);
+    /// `ctx` says what the request that started it was asked with.
+    pub(super) fn open_pane(
+        &mut self,
+        spawn: &Spawn,
+        restored: Option<Snapshot>,
+        ctx: &mut ActCtx,
+    ) {
+        if let Some(claim) = self.ssh_claims(spawn, ctx.host.take()) {
+            return self.begin_host(spawn, claim, ctx.offline);
         }
         if self.local_wanted(spawn) {
             let resume = self
@@ -101,18 +168,16 @@ impl Hub {
                 .map(temor_client::remote::ids::RemoteSessionId);
             return self.begin_local(spawn, resume);
         }
+        let restored = restored.or_else(|| ctx.screen.take());
         self.open_plain(spawn, restored);
     }
 
     /// Starts the program of `spawn` as a child of this window.
     pub(super) fn open_plain(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        let snapshot =
-            restored
-                .or_else(|| self.history.screen.take())
-                .or_else(|| match spawn.start {
-                    Start::Scrollback(pane) => self.memory.take(pane, |kept| kept.screen.take()),
-                    Start::Fresh => None,
-                });
+        let snapshot = restored.or_else(|| match spawn.start {
+            Start::Scrollback(pane) => self.memory.take(pane, |kept| kept.screen.take()),
+            Start::Fresh => None,
+        });
         let mut start = self.space_start();
         let kept = self.memory.take(spawn.pane, |kept| kept.checkpoint.take());
         let cwd = spawn

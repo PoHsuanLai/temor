@@ -253,6 +253,46 @@ mod spaces {
     }
 
     #[test]
+    fn a_tab_of_a_host_pane_in_a_project_space_is_on_that_host_not_in_the_project_folder() {
+        use crate::act::ActCtx;
+        use crate::ssh::{Check, HostPane, Phase};
+        use temor_client::ssh::HostAlias;
+
+        let mut hub = Hub::new(launch());
+        hub.book.begin(Spaces::first_run(
+            [project(Some("/srv/app"), &[])],
+            Project::default,
+        ));
+        hub.act(WorkspaceIn::NewTab { cwd: None });
+        let pane = hub.keyboard_pane().expect("the new tab's pane");
+        hub.book
+            .edit(|ws| ws.cwds.insert(pane, Cwd("/home/me/src".to_owned())));
+        let alias = HostAlias::new("box").expect("an alias");
+        hub.panes.record(pane).host = Some(HostPane {
+            alias: alias.clone(),
+            phase: Phase::Up,
+            mode: None,
+            start_dir: None,
+            scan: None,
+            check: Check::Nothing,
+            tier: crate::remote::Tier::Plain,
+            deferred: false,
+        });
+        let tab = |cwd: Option<&str>| WorkspaceIn::NewTab {
+            cwd: cwd.map(|c| Cwd(c.to_owned())),
+        };
+
+        // ⌘T in the host pane: a session on the same host, in its folder there.
+        let (input, ctx) = hub.prepare(tab(None), ActCtx::default());
+        assert_eq!(input, tab(Some("/home/me/src")));
+        assert_eq!(ctx.host, Some(alias.clone()));
+        // A host tab opened from the list starts in the host's home, not the project's folder.
+        let (input, ctx) = hub.prepare(tab(None), ActCtx::on_host(alias.clone(), false));
+        assert_eq!(input, tab(None));
+        assert_eq!(ctx.host, Some(alias));
+    }
+
+    #[test]
     fn a_root_written_with_a_tilde_is_the_home_folder_for_the_shell_and_its_variables_file() {
         use temor_client::model::space::Profile;
         use temor_client::model::vocab::text::{ProjectRoot, RelPath};

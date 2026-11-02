@@ -36,7 +36,7 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
         around: around.iter().map(PathBuf::from).collect(),
         site: temor_client::model::shelf::PaneSite::Local,
     });
-    hub.viewer_opened(open);
+    hub.viewer_opened(open, false);
     (hub, shell, pane)
 }
 
@@ -130,12 +130,15 @@ fn a_viewer_of_a_host_file_takes_its_copy_away_with_it_and_never_a_file_of_the_p
     std::fs::write(&theirs, "mine").expect("a local file");
     let tab = hub.book.ws().tab_of(viewer).expect("the viewer's tab");
     let shows = |hub: &mut Hub, file: &std::path::Path| {
-        hub.viewer_opened(ViewerOpen {
-            pane: viewer,
-            tab,
-            file: ViewerRef(file.to_string_lossy().into_owned()),
-            from: None,
-        });
+        hub.viewer_opened(
+            ViewerOpen {
+                pane: viewer,
+                tab,
+                file: ViewerRef(file.to_string_lossy().into_owned()),
+                from: None,
+            },
+            false,
+        );
     };
     shows(&mut hub, &theirs);
     hub.viewer_ended(viewer);
@@ -204,12 +207,15 @@ fn a_viewer_that_shows_the_next_file_in_place_lets_the_copy_it_showed_go() {
     std::fs::write(&copy, "from the host").expect("copy");
     let tab = hub.book.ws().tab_of(viewer).expect("the viewer's tab");
     for file in [copy.to_string_lossy().into_owned(), "/w/b.txt".to_owned()] {
-        hub.viewer_opened(ViewerOpen {
-            pane: viewer,
-            tab,
-            file: ViewerRef(file),
-            from: Some(shell),
-        });
+        hub.viewer_opened(
+            ViewerOpen {
+                pane: viewer,
+                tab,
+                file: ViewerRef(file),
+                from: Some(shell),
+            },
+            false,
+        );
     }
     assert!(!copy.exists(), "the copy no pane shows goes");
     assert!(hub.viewer_show(viewer).is_some(), "the viewer stays");

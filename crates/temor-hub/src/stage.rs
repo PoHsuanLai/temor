@@ -20,8 +20,6 @@ use temor_ui_base::pop_out::PoppedOut;
 #[derive(Default)]
 pub(super) struct Stages {
     rows: BTreeMap<TabId, Stage>,
-    /// Set while Back or Forward opens a page, so opening it is not a step of its own.
-    walking: bool,
 }
 
 #[derive(Default)]
@@ -130,8 +128,14 @@ impl Hub {
     }
 
     /// A page opened in `viewer`, on the stage of `tab`: a step Back can return from, and shown.
-    pub(super) fn stage_opened(&mut self, tab: TabId, viewer: PaneId, file: PathBuf) {
-        let walking = self.stages.walking;
+    /// `walking`: Back or Forward opened it, so it is not a step of its own.
+    pub(super) fn stage_opened(
+        &mut self,
+        tab: TabId,
+        viewer: PaneId,
+        file: PathBuf,
+        walking: bool,
+    ) {
         let own_page = temor_page(&file.to_string_lossy()).is_some();
         let stage = self.stages.rows.entry(tab).or_default();
         stage.viewer = Some(viewer);
@@ -149,8 +153,7 @@ impl Hub {
 
     /// The viewer pane `viewer` ended: its row's stage is empty, and Back opens its page again
     /// (unless Back itself closed it, for the console).
-    pub(super) fn stage_closed(&mut self, viewer: PaneId) {
-        let walking = self.stages.walking;
+    pub(super) fn stage_closed(&mut self, viewer: PaneId, walking: bool) {
         if let Some(stage) = self
             .stages
             .rows
@@ -270,9 +273,7 @@ impl Hub {
         let viewer = stage.viewer;
         let Some(page) = page else {
             if let Some(viewer) = viewer.filter(|_| back) {
-                self.stages.walking = true;
-                self.act(WorkspaceIn::ClosePane(Some(viewer)));
-                self.stages.walking = false;
+                self.act_with(WorkspaceIn::ClosePane(Some(viewer)), walk());
             }
             return;
         };
@@ -283,12 +284,13 @@ impl Hub {
                 let panes = self.book.ws().tabs.tab(tab)?.tree.panes();
                 panes.into_iter().find(|pane| !self.is_viewer(*pane))
             });
-        self.stages.walking = true;
-        self.act(WorkspaceIn::OpenViewer {
-            file: ViewerRef(page.to_string_lossy().into_owned()),
-            from,
-        });
-        self.stages.walking = false;
+        self.act_with(
+            WorkspaceIn::OpenViewer {
+                file: ViewerRef(page.to_string_lossy().into_owned()),
+                from,
+            },
+            walk(),
+        );
     }
 }
 
@@ -379,5 +381,13 @@ impl Desk {
     /// Forward on the row in front.
     pub fn go_forward(&self) {
         self.settle(|hub| hub.walk_pages(false));
+    }
+}
+
+/// What a request made by Back or Forward is asked with.
+fn walk() -> super::act::ActCtx {
+    super::act::ActCtx {
+        walking: true,
+        ..Default::default()
     }
 }

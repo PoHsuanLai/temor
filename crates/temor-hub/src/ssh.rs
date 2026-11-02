@@ -103,10 +103,6 @@ pub(super) struct SshHub {
     pub lines: BTreeMap<HostAlias, HostLine>,
     /// Panes of the last session that were on hosts; they reconnect as their panes start.
     pub restored: Vec<PaneHost>,
-    /// The host the next pane started is a session on.
-    pub intent: Option<HostAlias>,
-    /// A host picked while the tailnet shows it offline: its pane waits for "Try anyway".
-    pub offline: Option<HostAlias>,
     pub edits: BTreeMap<EditId, RemoteEdit>,
     pub next_edit: u64,
     /// Files asked for on a host that was not connected yet; they open once it is.
@@ -135,8 +131,6 @@ impl SshHub {
             tailnet: Arc::new(NoTailnet),
             lines: BTreeMap::new(),
             restored: Vec::new(),
-            intent: None,
-            offline: None,
             edits: BTreeMap::new(),
             next_edit: 1,
             waiting: Vec::new(),

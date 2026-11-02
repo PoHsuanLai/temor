@@ -13,8 +13,7 @@ impl Hub {
     /// Runs after the host and Space rules, so it only fills in what they left open.
     pub(super) fn start_prepared(&self, input: WorkspaceIn) -> WorkspaceIn {
         let plain = matches!(input, WorkspaceIn::NewTab { cwd: None });
-        if !plain || self.launch.settings.start_in != StartIn::Current || self.ssh.intent.is_some()
-        {
+        if !plain || self.launch.settings.start_in != StartIn::Current {
             return input;
         }
         let front = self

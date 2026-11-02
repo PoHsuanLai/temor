@@ -64,7 +64,9 @@ impl Hub {
         let asked = !outs.is_empty();
         for out in outs {
             match out {
-                QuickOut::Spawn { pane, cwd } => self.open_pane(&quick_spawn(pane, cwd), None),
+                QuickOut::Spawn { pane, cwd } => {
+                    self.open_pane(&quick_spawn(pane, cwd), None, &mut Default::default())
+                }
                 QuickOut::End(pane) => self.end_pane(pane),
                 QuickOut::Promote { pane, space, cwd } => self.adopt_quick_pane(space, pane, cwd),
                 // The overlay follows `quick_shown`; the shell is not touched.

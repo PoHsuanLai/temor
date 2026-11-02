@@ -115,13 +115,14 @@ impl Hub {
     }
 
     /// The workspace announced a viewer pane: it has no program, only a seat.
-    pub(super) fn viewer_opened(&mut self, open: ViewerOpen) {
+    /// `walking`: Back or Forward opened it ([`ActCtx`](super::act::ActCtx)).
+    pub(super) fn viewer_opened(&mut self, open: ViewerOpen, walking: bool) {
         let file = PathBuf::from(open.file.as_str());
         let around = match self.viewers.pending.take() {
             Some(ask) if ask.file == file => ask.around,
             _ => Vec::new(),
         };
-        self.stage_opened(open.tab, open.pane, file.clone());
+        self.stage_opened(open.tab, open.pane, file.clone(), walking);
         let host_copy = self.is_host_copy(&file).then(|| file.clone());
         let record = self.panes.record(open.pane);
         // A tab's viewer shows the next file in place: its view, and so its handle, stay.
@@ -150,13 +151,13 @@ impl Hub {
         let pane = open.pane;
         // temor's own pages are always there.
         if super::stage::temor_page(open.file.as_str()).is_some() {
-            return self.viewer_opened(open);
+            return self.viewer_opened(open, false);
         }
         let file = PathBuf::from(open.file.as_str());
         // A copy of a file on another computer does not outlive the window that fetched it.
         if self.is_host_copy(&file) {
             super::ssh_edit::forget_copy(&file);
-            self.viewer_opened(open);
+            self.viewer_opened(open, false);
             self.act(WorkspaceIn::ClosePane(Some(pane)));
             self.notices.push(
                 "A file from another computer was closed with the window; ⌘-click it to get it again."
@@ -165,7 +166,7 @@ impl Hub {
             return;
         }
         let there = file.is_file();
-        self.viewer_opened(open);
+        self.viewer_opened(open, false);
         if !there {
             self.act(WorkspaceIn::ClosePane(Some(pane)));
             self.notices
@@ -173,9 +174,9 @@ impl Hub {
         }
     }
 
-    /// A viewer pane ended: what it kept goes, and the copy of a host's file it showed.
+    /// A viewer pane ended: what it kept goes, and the copy of a host's file it showed. Its
+    /// stage is the caller's.
     pub(super) fn viewer_ended(&mut self, pane: PaneId) {
-        self.stage_closed(pane);
         let ended = self
             .panes
             .get_mut(pane)
