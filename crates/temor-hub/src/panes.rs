@@ -12,6 +12,7 @@ use super::history::PaneHistory;
 use super::offer::PaneOffer;
 use super::run::Found;
 use super::viewers::PaneViewer;
+use crate::plugins::state::PanePlugins;
 
 /// What the hub keeps of one live pane. Made by the first part of the hub that hears of the pane,
 /// dropped whole when the pane closes ([`Hub::drop_pane`](super::model::Hub)).
@@ -28,6 +29,8 @@ pub(super) struct PaneRecord {
     pub offer: PaneOffer,
     /// What it keeps while it is a viewer.
     pub viewer: Option<PaneViewer>,
+    /// What plugins have given it: its folder's facts, lens pictures, its agent's adapter.
+    pub plugins: PanePlugins,
 }
 
 /// The live panes' records.

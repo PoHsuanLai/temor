@@ -1,10 +1,7 @@
 //! What the hub keeps of its plugins.
 
-use std::collections::{BTreeMap, BTreeSet};
-
 use std::rc::Rc;
 
-use temor_client::model::vocab::ids::PaneId;
 use temor_client::plugins::Generations;
 
 use super::effects::Hands;
@@ -23,21 +20,27 @@ pub struct Running {
     pub stop: Generations,
 }
 
-/// Everything plugins have given the window, and the way to ask for more.
+/// What plugins have given one pane, kept in its record.
+#[derive(Debug, Default)]
+pub struct PanePlugins {
+    /// The facts plugins last gave for its folder.
+    pub facts: Vec<PluginFact>,
+    /// Whether plugins are reading its folder now.
+    pub reading: bool,
+    /// The pictures lenses drew for its blocks.
+    pub lens: LensBook,
+    /// The adapter running for its agent.
+    pub adapter: Option<Running>,
+}
+
+/// What plugins have given the window as a whole, and the way to ask for more. What they gave
+/// each pane is in the pane's record ([`PanePlugins`]).
 #[derive(Debug)]
 pub struct PluginHub {
     /// The catalog, the launchers and the channel.
     pub host: PluginHost,
-    /// The facts plugins last gave for each pane's folder.
-    pub facts: BTreeMap<PaneId, Vec<PluginFact>>,
-    /// The panes whose folder is being read by plugins now.
-    pub reading: BTreeSet<PaneId>,
     /// The rows plugins offered for the text in the bar.
     pub offers: OfferBook,
-    /// The pictures lenses drew.
-    pub lens: LensBook,
-    /// The adapters running, by pane.
-    pub adapters: BTreeMap<PaneId, Running>,
     /// The number of the next adapter run.
     pub next_run: u64,
     /// What carries out a chosen row; the desktop's when none is set (tests set a fake).
@@ -54,23 +57,9 @@ impl PluginHub {
     pub fn over(host: PluginHost) -> PluginHub {
         PluginHub {
             host,
-            facts: BTreeMap::new(),
-            reading: BTreeSet::new(),
             offers: OfferBook::default(),
-            lens: LensBook::default(),
-            adapters: BTreeMap::new(),
             next_run: 0,
             hands: None,
-        }
-    }
-
-    /// Forgets everything about a pane that is gone, and stops its adapter.
-    pub fn forget_pane(&mut self, pane: PaneId) {
-        self.facts.remove(&pane);
-        self.reading.remove(&pane);
-        self.lens.forget_pane(pane);
-        if let Some(running) = self.adapters.remove(&pane) {
-            running.stop.begin();
         }
     }
 }

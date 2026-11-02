@@ -244,7 +244,7 @@ fn an_adapter_reports_the_agents_states_as_the_panes_status() {
     let ended = next(&mut inbox);
     assert!(matches!(ended, Done::AdapterEnded { pane: p, .. } if p == pane));
     hub.plugin_done(ended);
-    assert!(hub.plugins.adapters.is_empty());
+    assert!(hub.panes.iter().all(|(_, r)| r.plugins.adapter.is_none()));
 
     let mut seen = Vec::new();
     while let Ok((owner, event)) = events.try_recv() {
@@ -285,6 +285,11 @@ fn an_adapter_follows_the_agent_and_stops_when_it_leaves() {
     ];
     for (was, is, running) in steps {
         hub.plugin_adapter_follows(pane, was.map(str::to_owned), is.map(str::to_owned));
-        assert_eq!(hub.plugins.adapters.len(), running, "{was:?} to {is:?}");
+        let adapters = hub
+            .panes
+            .iter()
+            .filter(|(_, r)| r.plugins.adapter.is_some())
+            .count();
+        assert_eq!(adapters, running, "{was:?} to {is:?}");
     }
 }

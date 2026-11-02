@@ -66,7 +66,7 @@ impl Hub {
         plugin: Plugin,
         request: LensBlock,
     ) {
-        self.plugins.lens.want(pane, block);
+        self.panes.record(pane).plugins.lens.want(block);
         let launcher = self.plugins.host.quick.clone();
         let done = self.plugins.host.sender();
         let started = self.plugins.host.run("temor-plugin-lens", move || {
@@ -82,19 +82,23 @@ impl Hub {
                 Err(error) => log_trouble(&error),
             }
         });
-        if started.is_err() {
-            self.plugins.lens.arrived(pane, block);
+        if started.is_err()
+            && let Some(record) = self.panes.get_mut(pane)
+        {
+            record.plugins.lens.arrived(block);
         }
     }
 
     /// The picture a lens drew for the block, if one did.
     pub fn lens_image_of(&self, pane: PaneId, block: BlockId) -> Option<LensImage> {
-        self.plugins.lens.image(pane, block).cloned()
+        self.panes.get(pane)?.plugins.lens.image(block).cloned()
     }
 
     /// Takes the block's picture away.
     pub fn lens_hide(&mut self, pane: PaneId, block: BlockId) {
-        self.plugins.lens.remove(pane, block);
+        if let Some(record) = self.panes.get_mut(pane) {
+            record.plugins.lens.remove(block);
+        }
     }
 
     /// The agent in `pane` changed from `was` to `is`: the adapter for the old one stops and the
@@ -115,8 +119,13 @@ impl Hub {
         }
     }
 
-    fn plugin_adapter_stop(&mut self, pane: PaneId) {
-        if let Some(running) = self.plugins.adapters.remove(&pane) {
+    /// Stops the adapter running in `pane`, if one is.
+    pub(crate) fn plugin_adapter_stop(&mut self, pane: PaneId) {
+        let running = self
+            .panes
+            .get_mut(pane)
+            .and_then(|r| r.plugins.adapter.take());
+        if let Some(running) = running {
             running.stop.begin();
         }
     }
@@ -134,13 +143,10 @@ impl Hub {
         let run = self.plugins.next_run;
         let stop = Generations::new();
         let mine = stop.begin();
-        self.plugins.adapters.insert(
-            pane,
-            Running {
-                run,
-                stop: stop.clone(),
-            },
-        );
+        self.panes.record(pane).plugins.adapter = Some(Running {
+            run,
+            stop: stop.clone(),
+        });
         let launcher = self.plugins.host.patient.clone();
         let (events, done) = (self.events.clone(), self.plugins.host.sender());
         let agent = agent.to_owned();
@@ -162,8 +168,10 @@ impl Hub {
             }
             let _ = done.send(Done::AdapterEnded { pane, run });
         });
-        if started.is_err() {
-            self.plugins.adapters.remove(&pane);
+        if started.is_err()
+            && let Some(record) = self.panes.get_mut(pane)
+        {
+            record.plugins.adapter = None;
         }
     }
 }
@@ -181,12 +189,16 @@ impl HubRef {
 
     /// The pictures lenses drew in the pane, as the window draws them.
     pub fn lens_pictures(&self, pane: PaneId) -> Vec<LensPicture> {
-        self.0.borrow().plugins.lens.pictures(pane)
+        let hub = self.0.borrow();
+        hub.panes
+            .get(pane)
+            .map(|record| record.plugins.lens.pictures())
+            .unwrap_or_default()
     }
 
     /// Whether a lens drew a picture for the block (the menu then offers to hide it).
     pub fn lens_shown(&self, pane: PaneId, block: BlockId) -> bool {
-        self.0.borrow().plugins.lens.image(pane, block).is_some()
+        self.0.borrow().lens_image_of(pane, block).is_some()
     }
 }
 

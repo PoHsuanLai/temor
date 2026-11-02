@@ -74,7 +74,7 @@ impl Hub {
     /// A pane's program ended and the pane is gone.
     pub(crate) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);
-        self.plugins.forget_pane(pane);
+        self.plugin_adapter_stop(pane);
         if let Some(sockets) = &self.agents.sockets {
             sockets.close(pane);
         }

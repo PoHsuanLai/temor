@@ -23,7 +23,8 @@ impl Hub {
     /// read at a time for a pane: a folder that changed meanwhile is read again when it ends.
     pub(super) fn plugin_facts_start(&mut self, pane: PaneId, dir: &str) {
         let sources = self.plugins.host.catalog.facts_sources(FOLDER_TABLE);
-        if sources.is_empty() || !self.plugins.reading.insert(pane) {
+        let plugins = &mut self.panes.record(pane).plugins;
+        if sources.is_empty() || std::mem::replace(&mut plugins.reading, true) {
             return;
         }
         let launcher = self.plugins.host.quick.clone();
@@ -44,15 +45,20 @@ impl Hub {
                 facts,
             });
         });
-        if started.is_err() {
-            self.plugins.reading.remove(&pane);
+        if started.is_err()
+            && let Some(record) = self.panes.get_mut(pane)
+        {
+            record.plugins.reading = false;
         }
     }
 
     /// The facts plugins last gave for the pane's folder (none before the first read, and none
     /// from a plugin that failed).
     pub fn plugin_facts_of(&self, pane: PaneId) -> Vec<PluginFact> {
-        self.plugins.facts.get(&pane).cloned().unwrap_or_default()
+        self.panes
+            .get(pane)
+            .map(|record| record.plugins.facts.clone())
+            .unwrap_or_default()
     }
 
     /// The facts as the sidebar row says them (`cluster prod · region eu`).
@@ -93,18 +99,22 @@ impl Hub {
                 plugin,
                 drawing,
             } => {
-                if self.plugins.lens.arrived(pane, block) {
-                    self.plugins.lens.put(pane, block, plugin, drawing);
+                // Nobody waits for a picture whose pane went away.
+                if let Some(record) = self.panes.get_mut(pane)
+                    && record.plugins.lens.arrived(block)
+                {
+                    record.plugins.lens.put(block, plugin, drawing);
                 }
             }
             Done::AdapterEnded { pane, run } => {
-                if self
-                    .plugins
-                    .adapters
-                    .get(&pane)
-                    .is_some_and(|r| r.run == run)
+                if let Some(record) = self.panes.get_mut(pane)
+                    && record
+                        .plugins
+                        .adapter
+                        .as_ref()
+                        .is_some_and(|r| r.run == run)
                 {
-                    self.plugins.adapters.remove(&pane);
+                    record.plugins.adapter = None;
                 }
             }
         }
@@ -112,13 +122,13 @@ impl Hub {
 
     fn plugin_facts_ready(&mut self, pane: PaneId, folder: &str, facts: Vec<PluginFact>) {
         // A pane that went away while its folder was read is no longer reading.
-        if !self.plugins.reading.remove(&pane) {
+        let Some(record) = self.panes.get_mut(pane) else {
+            return;
+        };
+        if !std::mem::replace(&mut record.plugins.reading, false) {
             return;
         }
-        match facts.is_empty() {
-            true => self.plugins.facts.remove(&pane),
-            false => self.plugins.facts.insert(pane, facts),
-        };
+        record.plugins.facts = facts;
         // The folder moved while the plugins were reading it: read the new one.
         if self.host_of(pane).is_none()
             && let Some(now) = self.pane_folder(pane)
