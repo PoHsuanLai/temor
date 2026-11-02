@@ -94,10 +94,7 @@ impl Pane {
             lower: 0,
             ground: self.ground,
         };
-        let out = self
-            .renderer
-            .render(&mut self.frame, &view)
-            .expect("render");
+        let out = self.renderer.render(&self.frame, &view).expect("render");
         Shot {
             rgba: out.pixels.to_vec(),
             size: out.size,

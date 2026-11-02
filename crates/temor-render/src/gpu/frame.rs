@@ -11,7 +11,7 @@ use crate::frame::{ImagePlacement, PaneFrame};
 use crate::metrics::{CellMetrics, Scale, fit_grid};
 use crate::renderer::{PaneView, RenderStats, Renderer};
 use crate::scene::{Quad, QuadPaint, SceneInput, build_row, resolve_cursor, spans};
-use crate::track::{Compose, Reach, ViewKey, damage};
+use crate::track::{Compose, Drawn, Reach, ViewKey, damage, plan};
 
 pub(super) fn inst(q: &Quad) -> Inst {
     let rect = [q.x as f32, q.y as f32, q.w as f32, q.h as f32];
@@ -64,7 +64,7 @@ impl Renderer for GpuRenderer {
 
     fn render(
         &mut self,
-        frame: &mut PaneFrame,
+        frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<GpuFrame<'_>, RenderError> {
         let (w, h) = (view.size.width.0.max(1), view.size.height.0.max(1));
@@ -94,7 +94,7 @@ impl Renderer for GpuRenderer {
             let size = [w as f32, h as f32, 0.0, 0.0];
             self.queue
                 .write_buffer(&self.pipe.uniform, 0, bytemuck::cast_slice(&size));
-            self.tracker.invalidate();
+            self.drawn = None;
         }
         let cursor = resolve_cursor(
             frame.cursor,
@@ -113,13 +113,8 @@ impl Renderer for GpuRenderer {
             colors,
             focus: view.focus,
         };
-        let plan = self.tracker.plan(
-            key,
-            frame.take_dirty(),
-            cursor,
-            view.selection,
-            &frame.images,
-        );
+        let now = Drawn::of(key, &frame.written, cursor, view.selection, &frame.images);
+        let plan = plan(self.drawn.as_ref(), &now);
         let all: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
         let reach = plan.reach();
         let mut rows = match plan {
@@ -160,20 +155,15 @@ impl Renderer for GpuRenderer {
         // all of it, since nothing cached survives.
         let groups = match settled {
             true => None,
-            false => match self.build_groups(frame, &input) {
-                Ok(groups) => Some(groups),
-                Err(e) => {
-                    // The plan took the dirty rows: the next frame draws everything.
-                    self.tracker.invalidate();
-                    return Err(e);
-                }
-            },
+            // A failed draw leaves the last one standing: the next plans from it again.
+            false => Some(self.build_groups(frame, &input)?),
         };
         let (reach, rows) = match groups {
             Some(_) => (Reach::Pane, all),
             None => (reach, rows),
         };
         let (commands, images_skipped) = self.record(frame, &input, groups.as_deref())?;
+        self.drawn = Some(now);
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         let texture = self.target.as_ref().ok_or(RenderError::NoRenderTarget)?;
         Ok(GpuFrame {

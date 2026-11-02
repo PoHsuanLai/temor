@@ -11,7 +11,7 @@ use crate::frame::PaneFrame;
 use crate::metrics::{CellMetrics, GridFit, PixelSize, Scale, fit_grid};
 use crate::renderer::{DamageRect, PaneView, RenderStats, Renderer};
 use crate::scene::{Premul, RowScene, SceneInput, resolve_cursor, spans};
-use crate::track::{ChangeTracker, Compose, ViewKey, damage};
+use crate::track::{Compose, Drawn, ViewKey, damage, plan};
 
 /// The largest pane side the CPU path draws.
 const MAX_SIDE: u32 = 16_384;
@@ -24,7 +24,8 @@ pub struct CpuRenderer {
     buf: Vec<u8>,
     size: PixelSize,
     damage: Vec<DamageRect>,
-    tracker: ChangeTracker,
+    /// What the last draw that succeeded showed.
+    drawn: Option<Drawn>,
     overhangs: Overhangs,
     scene: RowScene,
     /// Stills are drawn whole into memory of their own, so the live frame's stays as it was.
@@ -57,7 +58,7 @@ impl CpuRenderer {
             buf: Vec::new(),
             size: PixelSize::new(0, 0),
             damage: Vec::new(),
-            tracker: ChangeTracker::default(),
+            drawn: None,
             overhangs: Overhangs::default(),
             scene: RowScene::default(),
             still: Vec::new(),
@@ -161,7 +162,7 @@ impl Renderer for CpuRenderer {
 
     fn render(
         &mut self,
-        frame: &mut PaneFrame,
+        frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<CpuFrame<'_>, RenderError> {
         let (w, h) = (view.size.width.0, view.size.height.0);
@@ -179,7 +180,7 @@ impl Renderer for CpuRenderer {
         if view.size != self.size {
             self.size = view.size;
             self.buf = vec![0; (w * h * 4) as usize];
-            self.tracker.invalidate();
+            self.drawn = None;
         }
         let cursor = resolve_cursor(
             frame.cursor,
@@ -198,13 +199,8 @@ impl Renderer for CpuRenderer {
             colors,
             focus: view.focus,
         };
-        let plan = self.tracker.plan(
-            key,
-            frame.take_dirty(),
-            cursor,
-            view.selection,
-            &frame.images,
-        );
+        let now = Drawn::of(key, &frame.written, cursor, view.selection, &frame.images);
+        let plan = plan(self.drawn.as_ref(), &now);
         let input = SceneInput {
             metrics,
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
@@ -245,14 +241,9 @@ impl Renderer for CpuRenderer {
                 )
             },
         );
-        let rows = match composed {
-            Ok(rows) => rows,
-            Err(e) => {
-                // The plan already took the frame's dirty rows: the next frame draws everything.
-                self.tracker.invalidate();
-                return Err(e);
-            }
-        };
+        // A failed draw leaves the last one standing: the next plans from it again.
+        let rows = composed?;
+        self.drawn = Some(now);
         self.glyphs.forget_uploads();
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         Ok(CpuFrame {

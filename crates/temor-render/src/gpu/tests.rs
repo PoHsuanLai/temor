@@ -23,9 +23,7 @@ fn gpu_draw(
 ) -> (Vec<u8>, crate::renderer::RenderStats) {
     let size = size_for(gpu);
     let palette = Palette::default();
-    let out = gpu
-        .render(&mut f, &view(size, &palette))
-        .expect("gpu render");
+    let out = gpu.render(&f, &view(size, &palette)).expect("gpu render");
     let stats = out.stats;
     queue.submit([out.commands]);
     let tex = out.texture;

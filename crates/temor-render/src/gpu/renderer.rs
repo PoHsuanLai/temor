@@ -10,7 +10,7 @@ use crate::font::{FontSet, GlyphCache};
 use crate::metrics::{CellMetrics, GridFit, PixelSize, Scale};
 use crate::renderer::{DamageRect, RenderStats};
 use crate::scene::RowScene;
-use crate::track::ChangeTracker;
+use crate::track::Drawn;
 
 /// Renders panes on a wgpu device into its own `Rgba8Unorm` (premultiplied) texture.
 #[derive(Debug)]
@@ -27,7 +27,8 @@ pub struct GpuRenderer {
     pub(super) rows: Vec<(Vec<Inst>, Vec<Inst>)>,
     /// The glyph-cache epoch the cached rows were built in.
     pub(super) epoch: u64,
-    pub(super) tracker: ChangeTracker,
+    /// What the last draw that succeeded showed.
+    pub(super) drawn: Option<Drawn>,
     pub(super) scene: RowScene,
     pub(super) instances: Option<wgpu::Buffer>,
     pub(super) images: HashMap<ImageId, DeviceImage>,
@@ -96,7 +97,7 @@ impl GpuRenderer {
             size: PixelSize::new(0, 0),
             rows: Vec::new(),
             epoch: 0,
-            tracker: ChangeTracker::default(),
+            drawn: None,
             scene: RowScene::default(),
             instances: None,
             images: HashMap::new(),

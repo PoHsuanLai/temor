@@ -138,11 +138,11 @@ pub trait Renderer {
     /// The cell at `scale`, for sizing the terminal (`Terminal::resize`) before drawing.
     fn cell_metrics(&mut self, scale: Scale) -> CellMetrics;
 
-    /// Draws what changed in `frame` since the last render (everything when the view's size,
-    /// scale or colours changed) and clears the frame's dirty marks.
+    /// Draws what changed in `frame` since the last render that succeeded (everything when the
+    /// view's size, scale or colours changed).
     fn render(
         &mut self,
-        frame: &mut PaneFrame,
+        frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<Self::Output<'_>, RenderError>;
 }
