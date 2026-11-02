@@ -9,12 +9,13 @@ use super::anchor::Anchors;
 use super::callbacks::{self, Callbacks};
 use super::convert::{check, mode_bits};
 use super::png::install_png_decoder;
+use super::shell_phase::ShellPhase;
 use super::snapshot::Snapshot;
 use super::terminal_read::raw_size;
 use crate::scan::{InlineFileScanner, MarkCuts, SeqCuts};
 use crate::{
-    AnchorId, CellPx, EventSink, GridSize, ModeState, RenderHold, ReplySink, TerminalConfig,
-    TerminalMode, ViewportScroll, VtError,
+    CellPx, EventSink, GridSize, ModeState, RenderHold, ReplySink, TerminalConfig, TerminalMode,
+    ViewportScroll, VtError,
 };
 
 /// A terminal emulator backed by libghostty-vt. Feed it program output with
@@ -39,15 +40,8 @@ pub struct Terminal {
     pub(super) screen_erases: SeqCuts,
     /// Where the person's own `clear` is announced, carried across writes.
     pub(super) person_clears: SeqCuts,
-    /// The running command's output mark, while its output runs: a `CSI 3 J` then erases the
-    /// scrollback only from that mark down, so earlier commands stay. None at a prompt and
-    /// after the person's own `clear`.
-    pub(super) floor: Option<AnchorId>,
-    /// The prompt being typed at, while no command runs: its prompt mark and its input mark. A
-    /// screen erase at the prompt is the shell's own (Ctrl+L), and the shell draws the prompt
-    /// again at the top.
-    pub(super) prompt: Option<AnchorId>,
-    pub(super) input: Option<AnchorId>,
+    /// Where the shell is, as its marks said.
+    pub(super) phase: ShellPhase,
     /// Captures the frame when a hold begins.
     pub(super) hold_hook: Option<Box<dyn super::HoldHook>>,
     /// The number of the last mark cut (see `VtEvent::MarkBegin`).
@@ -170,9 +164,7 @@ impl Terminal {
             erases: SeqCuts::erase_history(),
             screen_erases: SeqCuts::erase_screen(),
             person_clears: SeqCuts::person_clears(),
-            floor: None,
-            prompt: None,
-            input: None,
+            phase: ShellPhase::Between,
             hold_hook: None,
             mark_seq: 0,
             anchors: Anchors::default(),

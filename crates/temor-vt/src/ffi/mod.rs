@@ -22,6 +22,7 @@ mod render;
 mod reports;
 mod row;
 mod semantic;
+mod shell_phase;
 mod signals;
 mod snapshot;
 mod styled;

@@ -17,8 +17,7 @@ pub struct Decoder {
     buffer: Vec<u8>,
     /// Where the next unread frame starts in `buffer`.
     start: usize,
-    /// The decoder can take no more bytes.
-    spent: bool,
+    /// What ended the stream; once set the decoder takes no more frames.
     failure: Option<WireError>,
 }
 
@@ -29,7 +28,6 @@ impl Decoder {
             limit,
             buffer: Vec::new(),
             start: 0,
-            spent: false,
             failure: None,
         }
     }
@@ -41,13 +39,12 @@ impl Decoder {
 
     /// The next whole frame, read as an [`Incoming`], or `None` until more bytes arrive.
     pub fn next_message(&mut self) -> Result<Option<Incoming>, WireError> {
-        if self.spent {
+        if self.failure.is_some() {
             return Err(WireError::Spent);
         }
         match self.take() {
             Ok(incoming) => Ok(incoming),
             Err(error) => {
-                self.spent = true;
                 self.failure = Some(error.clone());
                 Err(error)
             }

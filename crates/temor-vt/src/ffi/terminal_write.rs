@@ -3,7 +3,6 @@
 
 use temor_vt_sys as sys;
 
-use super::callbacks::MarkKind;
 use super::terminal::Terminal;
 use crate::scan::{Scanned, ends_within};
 use crate::{AnchorId, PointSpace, RenderHold, UnknownKind, VtEvent};
@@ -108,18 +107,8 @@ impl Terminal {
                     if let Some(anchor) = anchor {
                         self.callbacks().send(VtEvent::Anchor { seq, anchor });
                     }
-                    match self.callbacks().mark.take() {
-                        Some(MarkKind::Prompt) => {
-                            (self.floor, self.prompt, self.input) = (None, anchor, None);
-                        }
-                        Some(MarkKind::Input) => self.input = anchor,
-                        Some(MarkKind::Output) => {
-                            (self.floor, self.prompt, self.input) = (anchor, None, None);
-                        }
-                        Some(MarkKind::End) => {
-                            (self.floor, self.prompt, self.input) = (None, None, None)
-                        }
-                        None => {}
+                    if let Some(kind) = self.callbacks().mark.take() {
+                        self.phase = self.phase.after_mark(kind, anchor);
                     }
                 }
                 Cut::Hold => {
@@ -164,7 +153,7 @@ impl Terminal {
                 }
                 Cut::PersonClears => {
                     self.vt_write(&bytes[start..end]);
-                    self.floor = None;
+                    self.phase = self.phase.after_person_clears();
                     // libghostty clears a screen that does not end at a prompt in place, so the
                     // anchors there would stay on blank rows under the next prompt. The ones in
                     // the scrollback end with the erase that follows.
@@ -200,17 +189,17 @@ impl Terminal {
         if self.on_alternate_screen() {
             return;
         }
-        if let Some(prompt) = self.prompt {
+        if let Some(prompt) = self.phase.prompt() {
             self.move_anchor_to_top(prompt);
         }
         for &anchor in shown {
-            if Some(anchor) == self.prompt || Some(anchor) == self.input {
+            if self.phase.typing_at(anchor) {
                 continue;
             }
             if self.anchor_point(anchor, PointSpace::Active).is_none() {
                 continue;
             }
-            if Some(anchor) == self.floor {
+            if self.phase.floor() == Some(anchor) {
                 self.move_anchor_to_top(anchor);
             } else {
                 self.release_anchor(anchor);
@@ -221,7 +210,7 @@ impl Terminal {
     /// How much of the scrollback a `CSI 3 J` arriving now erases. While a command's output runs
     /// on the shell's screen, only its own rows: the ones from its output mark down.
     fn erase_floor(&self) -> Floor {
-        let Some(anchor) = self.floor else {
+        let Some(anchor) = self.phase.floor() else {
             return Floor::None;
         };
         if self.on_alternate_screen() {
