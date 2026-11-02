@@ -5,7 +5,6 @@ use temor_client::model::block::Outcome;
 use temor_client::model::vocab::ids::BlockId;
 
 use super::super::Session;
-use super::Finished;
 
 impl Session {
     /// How many rows the terminal has.
@@ -26,12 +25,6 @@ impl Session {
     /// Every block the session holds, oldest first, with how each stands.
     pub fn block_outcomes(&self) -> Vec<(BlockId, Outcome)> {
         self.core().block_outcomes()
-    }
-
-    /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
-    /// them: the command, how it exited, and how long it ran.
-    pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
-        self.core().finished_after(after)
     }
 
     /// Whether a block's command has finished (its output is complete).

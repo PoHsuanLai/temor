@@ -20,7 +20,7 @@ use temor_schema::time::UnixMillis;
 use temor_schema::url::Host;
 
 use super::model::{Hub, HubRef};
-use temor_pane_view::session::{Notice, Session};
+use temor_pane_view::session::{Finished, Notice, Session};
 use temor_panes::vt::Snapshot;
 
 /// The sessions history is told of.
@@ -41,8 +41,6 @@ pub(super) struct History {
 #[derive(Debug, Clone)]
 struct Begun {
     id: SessionId,
-    /// The last block handed over; the ones after it are new.
-    written: Option<BlockId>,
     /// What is added to the pane's block numbers in history: past the commands a session kept
     /// before this launch, whose numbers the pane counts again from the start.
     base: u64,
@@ -226,31 +224,18 @@ impl Hub {
                         ended: Some(at),
                     }));
                 }
-                // Blocks from before the shell said where it is (a restored screen's) are not
-                // this session's, or were handed over before.
-                let written = session.finished_after(None).last().map(|done| done.id);
-                self.history
-                    .sessions
-                    .insert(pane, Begun { id, written, base });
+                // Commands that finished before the shell said where it is (a restored screen's)
+                // were heard before the session began, and are not its.
+                self.history.sessions.insert(pane, Begun { id, base });
             }
-            Notice::CommandDone => {
-                let Some(begun) = self.history.sessions.get_mut(&pane) else {
+            Notice::Finished(finished) => {
+                let Some(begun) = self.history.sessions.get(&pane) else {
                     return;
                 };
                 let folder = session.cwd().unwrap_or_default().to_owned();
                 let ended = client.local_time().now();
-                for done in session.finished_after(begun.written) {
-                    let ran = i64::try_from(done.ran_ms).unwrap_or(0);
-                    client.act(Command::Ran(RanCommand {
-                        session: begun.id,
-                        block: BlockId(begun.base + done.id.0),
-                        command: done.command,
-                        folder: folder.clone(),
-                        exit: done.exit,
-                        started: UnixMillis(ended.0 - ran),
-                        ended: Some(ended),
-                    }));
-                    begun.written = Some(done.id);
+                for done in finished {
+                    client.act(Command::Ran(ran(begun, &folder, done, ended)));
                 }
             }
             Notice::Ended(_) => {
@@ -294,5 +279,20 @@ impl HubRef {
     /// See [`Hub::running_sessions`].
     pub fn running_sessions(&self) -> std::collections::BTreeSet<SessionId> {
         self.0.borrow().running_sessions()
+    }
+}
+
+/// What history keeps of `done`, a command of `begun`'s session in `folder` heard to end at
+/// `ended`.
+fn ran(begun: &Begun, folder: &str, done: &Finished, ended: UnixMillis) -> RanCommand {
+    let took = i64::try_from(done.ran_ms).unwrap_or(0);
+    RanCommand {
+        session: begun.id,
+        block: BlockId(begun.base + done.id.0),
+        command: done.command.clone(),
+        folder: folder.to_owned(),
+        exit: done.exit,
+        started: UnixMillis(ended.0 - took),
+        ended: Some(ended),
     }
 }

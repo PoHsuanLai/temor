@@ -9,9 +9,9 @@ use super::Session;
 use super::model::{INSET, Notice};
 use crate::error::ViewError;
 use crate::paint::PaintView;
-use temor_panes::Heard;
 use temor_panes::pane::PaneEvent;
 use temor_panes::vt::Snapshot;
+use temor_panes::{Heard, PaneEffect};
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
@@ -37,7 +37,7 @@ impl Session {
 
     /// A message for the person from the last action, if one is waiting; taking it clears it.
     pub fn take_notice(&mut self) -> Option<String> {
-        self.notice.take().or_else(|| self.core().said.take())
+        self.notice.take()
     }
 
     /// The window's title as the program last set it.
@@ -103,16 +103,20 @@ impl Session {
         Ok(self.relayout())
     }
 
-    /// What one event from the pane means for the window. Output is never blocked on it. The
-    /// pane's core takes it first (`PaneCore::hear`); the window does the rest ([`Session::take`]).
+    /// What one event from the pane means for the window, for a session that hears its pane
+    /// itself rather than on the client's thread. Output is never blocked on it. The pane's core
+    /// takes it first (`PaneCore::hear`), the session shows the notices it asks for, and the
+    /// window does the rest ([`Session::take`]); finished commands are not recorded.
     pub fn absorb(&mut self, event: PaneEvent) -> Notice {
-        let heard = self.core().hear(event);
+        let (heard, effects) = self.core().hear(event);
+        for effect in effects {
+            if let PaneEffect::Notify(note) = effect
+                && let Err(err) = self.notifier.notify(&note)
+            {
+                eprintln!("temor: {err}");
+            }
+        }
         self.take(heard)
-    }
-
-    /// The pane's core takes one event; what is left is for [`Session::take`].
-    pub fn hear(&mut self, event: PaneEvent) -> Heard {
-        self.core().hear(event)
     }
 
     /// What is left of an event for the window once the pane's core has taken it.
@@ -132,6 +136,7 @@ impl Session {
                 Notice::Quiet
             }
             Heard::CommandDone => Notice::CommandDone,
+            Heard::Finished(done) => Notice::Finished(done),
             Heard::Ended(exit) => Notice::Ended(exit),
             Heard::Quiet | Heard::PromptShown | Heard::Notified { .. } => Notice::Quiet,
             Heard::Window(event) => match event {

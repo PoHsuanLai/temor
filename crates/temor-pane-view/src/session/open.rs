@@ -60,6 +60,7 @@ impl Session {
             keymap: kit.keymap,
             clipboard: kit.clipboard,
             opener: kit.opener,
+            notifier: kit.notifier,
             fit: None,
             layout: None,
             scale: Scale::new(1.0),

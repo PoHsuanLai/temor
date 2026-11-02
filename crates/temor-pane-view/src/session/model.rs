@@ -39,6 +39,8 @@ pub enum Notice {
     Cwd(String),
     /// A command finished (a block ended).
     CommandDone,
+    /// Commands that finished, as history keeps them.
+    Finished(Vec<temor_panes::marks::Finished>),
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
@@ -78,6 +80,8 @@ pub struct Session {
     pub keymap: Keymap,
     pub(super) clipboard: Box<dyn Clipboard>,
     pub(super) opener: Box<dyn Opener>,
+    /// Shows the desktop notices of events the session hears itself ([`Session::absorb`]).
+    pub(super) notifier: Box<dyn Notifier>,
     pub(super) fit: Option<GridFit>,
     pub(super) scale: Scale,
     pub(super) pixels: PixelSize,
@@ -183,6 +187,7 @@ pub(super) struct WindowKit {
     pub keymap: Keymap,
     pub clipboard: Box<dyn Clipboard>,
     pub opener: Box<dyn Opener>,
+    pub notifier: Box<dyn Notifier>,
     pub cursor_blink: bool,
 }
 
@@ -202,7 +207,6 @@ impl SessionKit {
         (
             temor_panes::PaneKit {
                 notify_after,
-                notifier,
                 clock,
                 shelf_dir,
             },
@@ -210,6 +214,7 @@ impl SessionKit {
                 keymap,
                 clipboard,
                 opener,
+                notifier,
                 cursor_blink,
             },
         )

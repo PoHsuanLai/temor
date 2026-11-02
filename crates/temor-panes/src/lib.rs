@@ -29,7 +29,6 @@ use temor_vt::Progress;
 use blocks::BlockLog;
 use clipboard::PendingClipboard;
 use clock::Clock;
-use notify::Notifier;
 use sources::Sources;
 
 // The terminal engine, for the window that draws and types into the panes: the pane engine, the
@@ -83,7 +82,7 @@ pub mod vt {
     };
 }
 
-pub use hear::{Heard, desktop_note};
+pub use hear::{Heard, PaneEffect, desktop_note};
 pub use heard::sanitise_title;
 pub use hearing::{Hearing, Locked, Shared, share};
 pub use open::{OpenError, PaneKit};
@@ -118,7 +117,6 @@ pub struct PaneCore {
     pub progress: Option<Progress>,
     pub notify_after: NotifyAfter,
     pub limiter: Limiter,
-    pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     pub shelf_dir: PathBuf,
     /// How the pane's shell quotes a word, for pasting dropped paths.
@@ -137,9 +135,9 @@ pub struct PaneCore {
     /// that does not say what it runs (nushell) shows a command of several lines on rows the
     /// screen cannot give back.
     pub sent: Option<String>,
-    /// A message for the person from the pane (a notice the desktop refused), until the window
-    /// takes it.
-    pub said: Option<String>,
+    /// What the pane's steps have asked of the edges since the last event was heard, handed out
+    /// by [`PaneCore::hear`].
+    effects: Vec<PaneEffect>,
 }
 
 /// Whether the program is still running, and how it ended if not.

@@ -10,6 +10,7 @@ use temor_client::model::quick::QuickState;
 use temor_client::model::split::SplitTree;
 use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::workspace::Workspace;
+use temor_panes::notify::NoopNotifier;
 use temor_panes::pane::PaneEvent;
 use temor_panes::render::Palette;
 use temor_panes::vt::Snapshot;
@@ -112,7 +113,9 @@ impl Hub {
     /// A hub with no panes yet; [`Hub::start`] restores the last session or opens a first tab.
     pub fn new(launch: Launch) -> Hub {
         let (hearing, inbox) =
-            Hearing::start().expect("the thread that hears the panes could not start");
+            // TODO(quire-desktop): the desktop's notification service (see `NoopNotifier`).
+            Hearing::start(Box::new(NoopNotifier))
+                .expect("the thread that hears the panes could not start");
         let events = hearing.events();
         let (shelf, trouble) = ShelfHub::open(&launch);
         let ambient = &launch.ambient;

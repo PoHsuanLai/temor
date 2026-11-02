@@ -124,7 +124,7 @@ impl Hub {
                     out.bell.insert(pane);
                 }
                 Notice::Transfer(event) => out.transfers.push((pane, event)),
-                Notice::Quiet => {}
+                Notice::Finished(_) | Notice::Quiet => {}
             }
         }
         self.ssh_scan(&out.paint);
