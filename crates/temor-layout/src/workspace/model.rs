@@ -7,7 +7,7 @@ use super::closed::ClosedState;
 use super::tabs::{TabSel, TabsIn, TabsOut, TabsState, tabs_step};
 use crate::space::{Pin, Tab};
 use crate::split::SplitTree;
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_core::vocab::ids::{Counter, PaneId, TabId};
 use temor_core::vocab::text::{Cwd, TabTitle, ViewerRef};
 
 /// Everything the window shows that is not inside a pane.
@@ -24,9 +24,9 @@ pub struct Workspace {
     /// The recently closed tabs.
     pub closed: ClosedState,
     /// The id the next tab takes.
-    pub next_tab: u64,
+    pub next_tab: Counter,
     /// The id the next pane takes.
-    pub next_pane: u64,
+    pub next_pane: Counter,
 }
 
 impl Workspace {
@@ -37,8 +37,8 @@ impl Workspace {
             cwds: BTreeMap::new(),
             viewers: BTreeMap::new(),
             closed,
-            next_tab: 1,
-            next_pane: 1,
+            next_tab: Counter::FROM_ONE,
+            next_pane: Counter::FROM_ONE,
         }
     }
 

@@ -136,7 +136,7 @@ fn a_pane_minted_in_a_space_never_opened_takes_an_id_past_every_space() {
 #[test]
 fn a_workspace_changed_in_place_still_counts_towards_every_spaces_ids() {
     let mut book = book_of(2);
-    book.edit(|ws| ws.next_pane = 40);
+    book.edit(|ws| ws.next_pane.0 = 40);
     book.swap_to(SpaceId(1));
     assert_eq!(book.mint_pane(), Some(PaneId(40)));
 }

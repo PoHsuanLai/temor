@@ -19,7 +19,7 @@ use super::step_types::{Spawn, Start, ViewerOpen};
 use super::tabs::TabsState;
 use crate::space::Place;
 use temor_core::error::CoreError;
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_core::vocab::ids::{Counter, PaneId, TabId};
 use temor_core::vocab::text::{Cwd, ViewerRef};
 use temor_schema::lenient::{lenient_list, lenient_or_default};
 
@@ -127,8 +127,8 @@ pub fn encode(ws: &Workspace) -> Result<String, CoreError> {
                 file: file.clone(),
             })
             .collect(),
-        next_tab: ws.next_tab,
-        next_pane: ws.next_pane,
+        next_tab: ws.next_tab.0,
+        next_pane: ws.next_pane.0,
     };
     serde_json::to_string_pretty(&write).map_err(|e| CoreError::SessionEncode(e.to_string()))
 }
@@ -240,16 +240,12 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     if tabs.place.folders.iter().any(|f| f.id.0 == u64::MAX) {
         return None;
     }
-    let top_tab = ids
-        .iter()
-        .map(|t| t.0.checked_add(1))
-        .try_fold(1, |top: u64, next| next.map(|n| top.max(n)))?;
-    let top_pane = seen_panes
-        .iter()
-        .map(|p| p.0.checked_add(1))
-        .try_fold(1, |top: u64, next| next.map(|n| top.max(n)))?;
-    ws.next_tab = read.next_tab.max(top_tab).max(1);
-    ws.next_pane = read.next_pane.max(top_pane).max(1);
+    ws.next_tab = Counter(read.next_tab)
+        .max(Counter::FROM_ONE)
+        .past_all(ids.iter().map(|t| t.0))?;
+    ws.next_pane = Counter(read.next_pane)
+        .max(Counter::FROM_ONE)
+        .past_all(seen_panes.iter().map(|p| p.0))?;
     ws.tabs = tabs;
     Some(ws)
 }

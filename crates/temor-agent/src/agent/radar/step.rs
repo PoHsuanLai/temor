@@ -22,7 +22,7 @@ use crate::presence::{
     AgentState, PaneFocus, PresenceIn, PresenceOut, PresenceState, StatusReport, StatusSource,
     WaitKind, presence_step,
 };
-use temor_core::vocab::ids::Seq;
+use temor_core::vocab::ids::{Counter, Seq};
 
 /// One pane's radar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +36,7 @@ pub struct RadarState {
     /// Whether a known agent program runs in the pane.
     agent_running: bool,
     title_busy_until: Option<Monotonic>,
-    next_seq: u64,
+    next_seq: Counter,
 }
 
 impl RadarState {
@@ -49,7 +49,7 @@ impl RadarState {
             via: None,
             agent_running: false,
             title_busy_until: None,
-            next_seq: 1,
+            next_seq: Counter::FROM_ONE,
         }
     }
 
@@ -146,8 +146,8 @@ fn report(
     shown: AgentState,
     note: Option<temor_core::vocab::text::Note>,
 ) -> PresenceIn {
-    let seq = Seq(state.next_seq);
-    state.next_seq += 1;
+    // With no number left the report keeps the last one: it is still the newest.
+    let seq = Seq(state.next_seq.take().unwrap_or(u64::MAX));
     state.fresh.insert(source.clone(), now);
     state.via = Some((source.clone(), now));
     PresenceIn::Report(StatusReport {

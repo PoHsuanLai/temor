@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ds_core::time::stamp::Stamp;
 
 use crate::block::{Author, Block, BlockIn, BlockOut, BlockState, BlockStore, block_step};
-use temor_core::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};
+use temor_core::vocab::ids::{BlockId, Counter, ExitCode, GridRow, GridSpan};
 use temor_core::vocab::text::CommandText;
 
 /// One tracked reference to a cell of the terminal, as the edge numbers them. Ids are never
@@ -70,7 +70,7 @@ pub struct MarkLog {
     prompt: Option<Anchor>,
     input: Option<Anchor>,
     /// The id the next command will get.
-    next_id: u64,
+    next_id: Counter,
     /// How many primary prompts the shell has marked.
     prompts: usize,
     /// How many commands have finished.
@@ -87,7 +87,7 @@ impl Default for MarkLog {
             enter: None,
             prompt: None,
             input: None,
-            next_id: 1,
+            next_id: Counter::FROM_ONE,
             prompts: 0,
             finished: 0,
         }
@@ -142,7 +142,7 @@ impl MarkLog {
 
     /// The id the next command will get.
     pub fn next_id(&self) -> BlockId {
-        BlockId(self.next_id)
+        BlockId(self.next_id.0)
     }
 
     /// How many primary prompts the shell has marked.
@@ -258,8 +258,9 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
         }
         MarkIn::Restored { blocks, at } => {
             for kept in blocks {
-                let id = BlockId(log.next_id);
-                log.next_id += 1;
+                let Some(id) = log.next_id.take().map(BlockId) else {
+                    break;
+                };
                 let took = kept.took_ms.unwrap_or(0);
                 let block = Block {
                     id,
@@ -380,7 +381,10 @@ impl MarkLog {
             true => typed.unwrap_or_default(),
             false => command.to_owned(),
         };
-        let block = BlockId(self.next_id);
+        let Some((block, after)) = self.next_id.mint() else {
+            return;
+        };
+        let block = BlockId(block);
         let accepted = self.run(
             BlockIn::OutputStart {
                 id: block,
@@ -392,7 +396,7 @@ impl MarkLog {
             outs,
         );
         if accepted {
-            self.next_id += 1;
+            self.next_id = after;
             // The input anchor stays: the card's command rows (drawn bold) run from it to the
             // output anchor.
             self.anchors.insert(

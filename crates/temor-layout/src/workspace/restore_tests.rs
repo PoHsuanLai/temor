@@ -97,8 +97,8 @@ fn the_id_counters_move_past_every_id_in_use() {
     value["next_tab"] = serde_json::json!(0);
     value["next_pane"] = serde_json::json!(1);
     let ws = loaded(&value.to_string());
-    assert_eq!(ws.next_tab, 3);
-    assert_eq!(ws.next_pane, 4);
+    assert_eq!(ws.next_tab.0, 3);
+    assert_eq!(ws.next_pane.0, 4);
 }
 
 #[test]

@@ -428,7 +428,7 @@ impl HubRef {
 
     /// The id the next folder made in the Space on screen gets.
     pub fn next_folder(&self) -> FolderId {
-        FolderId(self.0.borrow().book.ws().tabs.next_folder)
+        FolderId(self.0.borrow().book.ws().tabs.next_folder.0)
     }
 
     /// Whether the Space on screen has `folder`.

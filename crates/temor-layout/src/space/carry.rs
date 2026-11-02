@@ -26,12 +26,11 @@ pub fn carry_tab(
     let mut src = from.clone();
     let mut dst = to.clone();
 
-    let id = TabId(dst.next_tab);
-    dst.next_tab = dst.next_tab.checked_add(1).ok_or(CoreError::IdsExhausted)?;
-    for pane in &panes {
-        let past = pane.0.checked_add(1).ok_or(CoreError::IdsExhausted)?;
-        dst.next_pane = dst.next_pane.max(past);
-    }
+    let id = TabId(dst.next_tab.take().ok_or(CoreError::IdsExhausted)?);
+    dst.next_pane = dst
+        .next_pane
+        .past_all(panes.iter().map(|pane| pane.0))
+        .ok_or(CoreError::IdsExhausted)?;
 
     src.tabs_do(TabsIn::Remove(tab));
     for pane in &panes {

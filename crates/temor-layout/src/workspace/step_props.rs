@@ -202,10 +202,13 @@ fn check(ws: &Workspace, seen: &mut Seen) -> Result<(), TestCaseError> {
         "folders are kept only for live or recently closed panes"
     );
     prop_assert!(
-        ws.next_pane > seen.pane,
+        ws.next_pane.0 > seen.pane,
         "pane ids are never handed out twice"
     );
-    prop_assert!(ws.next_tab > seen.tab, "tab ids are never handed out twice");
+    prop_assert!(
+        ws.next_tab.0 > seen.tab,
+        "tab ids are never handed out twice"
+    );
     Ok(())
 }
 

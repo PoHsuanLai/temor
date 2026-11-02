@@ -80,7 +80,7 @@ fn a_promoted_pane_becomes_the_front_tab_and_the_counters_move_past_it() {
     assert_eq!(after.front(), Some(TabId(3)));
     assert_eq!(after.focus_of(TabId(3)), Some(PaneId(40)));
     assert_eq!(after.cwds.get(&PaneId(40)), cwd("/work").as_ref());
-    assert_eq!((after.next_tab, after.next_pane), (4, 41));
+    assert_eq!((after.next_tab.0, after.next_pane.0), (4, 41));
     let (after, _) = workspace_step(after, WorkspaceIn::NewTab { cwd: None });
     assert_eq!(after.front(), Some(TabId(4)));
     assert_eq!(
@@ -98,7 +98,7 @@ fn a_pane_already_in_a_tab_or_an_exhausted_counter_is_refused_and_nothing_change
         Err(CoreError::DuplicatePane(2))
     );
     let mut full = ws.clone();
-    full.next_tab = u64::MAX;
+    full.next_tab.0 = u64::MAX;
     assert_eq!(adopt(&full, PaneId(40), None), Err(CoreError::IdsExhausted));
     assert_eq!(
         adopt(&ws, PaneId(u64::MAX), None),

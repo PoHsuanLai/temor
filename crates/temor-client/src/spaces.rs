@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use ds_style::space::list::{SpaceId, Spaces};
 use temor_core::error::CoreError;
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_core::vocab::ids::{Counter, PaneId, TabId};
 use temor_core::vocab::text::Cwd;
 use temor_layout::quick::adopt;
 use temor_layout::space::{Place, Project, TemorSpaces, carry_tab};
@@ -46,7 +46,7 @@ pub struct Book {
     /// The workspaces of the other Spaces.
     parked: BTreeMap<SpaceId, Workspace>,
     /// Every pane id below this is taken by some Space.
-    floor: u64,
+    floor: Counter,
 }
 
 impl Default for Book {
@@ -64,7 +64,7 @@ impl Book {
             active: spaces.current().id,
             spaces,
             parked: BTreeMap::new(),
-            floor: 1,
+            floor: Counter::FROM_ONE,
         }
     }
 
@@ -84,8 +84,9 @@ impl Book {
     /// A pane id no Space holds, taken for a pane outside every workspace (the quick
     /// terminal's). `None` when the ids have run out.
     pub fn mint_pane(&mut self) -> Option<PaneId> {
-        let pane = self.ws.next_pane.max(self.floor);
-        self.ws.next_pane = pane.checked_add(1)?;
+        let mut next = self.ws.next_pane.max(self.floor);
+        let pane = next.take()?;
+        self.ws.next_pane = next;
         self.note_ws();
         Some(PaneId(pane))
     }
