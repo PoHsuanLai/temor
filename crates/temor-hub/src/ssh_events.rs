@@ -53,16 +53,13 @@ impl Hub {
             .retain(|alias, _| connecting.contains(alias));
         // The connection's socket appearing says it is up; `ssh -O check` is asked only when
         // that cannot say (several connections at once, or one joined without a new socket).
-        let mut unsure = Vec::new();
+        let alone = connecting_alone(&self.ssh.lines);
+        let due = self.ssh.ticks.is_multiple_of(PROBE_EVERY);
         for alias in connecting {
-            match connecting_alone(&self.ssh.lines) && self.socket_up(&alias) {
-                true => self.on_probed(alias, MasterProbe::Running),
-                false => unsure.push(alias),
-            }
-        }
-        if self.ssh.ticks.is_multiple_of(PROBE_EVERY) {
-            for alias in unsure {
-                self.ssh.work.probe(alias);
+            match ask_after(alone, alone && self.socket_up(&alias), due) {
+                Ask::Up => self.on_probed(alias, MasterProbe::Running),
+                Ask::Probe => self.ssh.work.probe(alias),
+                Ask::Wait => {}
             }
         }
         (redraw, std::mem::take(&mut self.notices))
@@ -76,4 +73,50 @@ fn connecting_alone(lines: &std::collections::BTreeMap<HostAlias, super::ssh::Ho
         .filter(|line| matches!(line.master, Master::Connecting { .. }))
         .count()
         == 1
+}
+
+/// What a tick does about a connection being made.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ask {
+    /// It is up.
+    Up,
+    /// Ask `ssh -O check`.
+    Probe,
+    /// Wait for a later tick.
+    Wait,
+}
+
+/// What to do about a connection being made: up once its socket appeared, which says so only
+/// while it is the one being made (`alone`); else asked after on the ticks that are `due`.
+fn ask_after(alone: bool, appeared: bool, due: bool) -> Ask {
+    match (alone && appeared, due) {
+        (true, _) => Ask::Up,
+        (false, true) => Ask::Probe,
+        (false, false) => Ask::Wait,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Ask, ask_after};
+
+    #[test]
+    fn a_connection_is_up_by_its_socket_only_when_alone_else_asked_after_when_due() {
+        // alone, its socket appeared, a probe tick, what is done
+        let table = [
+            (true, true, false, Ask::Up),
+            (true, true, true, Ask::Up),
+            (false, true, false, Ask::Wait),
+            (false, true, true, Ask::Probe),
+            (true, false, true, Ask::Probe),
+            (true, false, false, Ask::Wait),
+        ];
+        for (alone, appeared, due, want) in table {
+            assert_eq!(
+                ask_after(alone, appeared, due),
+                want,
+                "{alone} {appeared} {due}"
+            );
+        }
+    }
 }
