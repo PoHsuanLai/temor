@@ -19,7 +19,7 @@ const SHARE: usize = 60;
 fn gpu_draw(
     (device, queue): &(wgpu::Device, wgpu::Queue),
     gpu: &mut GpuRenderer,
-    mut f: PaneFrame,
+    f: PaneFrame,
 ) -> (Vec<u8>, crate::renderer::RenderStats) {
     let size = size_for(gpu);
     let palette = Palette::default();

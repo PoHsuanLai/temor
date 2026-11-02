@@ -58,8 +58,8 @@ pub(super) fn image_inst(p: &ImagePlacement, origin: (i32, i32), m: &CellMetrics
 impl Renderer for GpuRenderer {
     type Output<'a> = GpuFrame<'a>;
 
-    fn cell_metrics(&mut self, scale: Scale) -> CellMetrics {
-        self.metrics(scale)
+    fn cell_metrics(&self, scale: Scale) -> CellMetrics {
+        self.glyphs.metrics_at(scale)
     }
 
     fn render(

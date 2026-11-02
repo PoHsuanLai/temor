@@ -86,6 +86,15 @@ impl std::fmt::Debug for GlyphCache {
     }
 }
 
+/// The cell `fonts` make at `scale`.
+fn metrics_at(fonts: &FontSet, scale: Scale) -> CellMetrics {
+    cell_metrics(
+        fonts.face(fonts.primary(FaceStyle::REGULAR)),
+        fonts.size().device(scale),
+        fonts.line_height(),
+    )
+}
+
 /// Atlas sizes: start small, grow to the cap, then clear.
 const ALPHA_ATLAS: (u32, u32, u32) = (1024, 256, 4096);
 const COLOR_ATLAS: (u32, u32, u32) = (1024, 256, 2048);
@@ -109,11 +118,7 @@ impl GlyphCache {
         color_max: u32,
     ) -> Self {
         let px = fonts.size().device(scale);
-        let metrics = cell_metrics(
-            fonts.face(fonts.primary(FaceStyle::REGULAR)),
-            px,
-            fonts.line_height(),
-        );
+        let metrics = metrics_at(&fonts, scale);
         Self {
             fonts,
             px,
@@ -137,6 +142,11 @@ impl GlyphCache {
         self.metrics
     }
 
+    /// The cell at `scale`, whatever scale the cache is at: nothing cached changes.
+    pub fn metrics_at(&self, scale: Scale) -> CellMetrics {
+        metrics_at(&self.fonts, scale)
+    }
+
     /// Moves to `scale`; everything cached is dropped when it changes. Returns whether it did.
     pub fn set_scale(&mut self, scale: Scale) -> bool {
         if scale == self.scale {
@@ -144,11 +154,7 @@ impl GlyphCache {
         }
         self.scale = scale;
         self.px = self.fonts.size().device(scale);
-        self.metrics = cell_metrics(
-            self.fonts.face(self.fonts.primary(FaceStyle::REGULAR)),
-            self.px,
-            self.fonts.line_height(),
-        );
+        self.metrics = metrics_at(&self.fonts, scale);
         self.reset();
         true
     }

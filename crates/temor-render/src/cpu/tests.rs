@@ -241,3 +241,23 @@ fn a_renderer_drawing_two_frames_in_turn_draws_each_whole() {
         );
     }
 }
+
+#[test]
+fn asking_the_cell_at_another_scale_changes_nothing_drawn() {
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let size = size_for(&mut renderer);
+    let palette = Palette::default();
+    let frame = lines(["ÅÄÖ", "gjpqy", "", "", "", "", "", ""]);
+    renderer
+        .render(&frame, &view(size, &palette))
+        .expect("first render");
+    let double = crate::metrics::Scale::new(2.0);
+    let asked = renderer.cell_metrics(double);
+    let one = renderer.cell_metrics(crate::metrics::Scale::new(1.0));
+    assert!(asked.height() > one.height(), "the cell at that scale");
+    let again = renderer
+        .render(&frame, &view(size, &palette))
+        .expect("second render");
+    assert_eq!(again.stats.rows_composed, 0);
+    assert_eq!(again.stats.atlas_resets, 0);
+}

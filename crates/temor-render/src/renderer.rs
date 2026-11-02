@@ -136,7 +136,7 @@ pub trait Renderer {
         Self: 'a;
 
     /// The cell at `scale`, for sizing the terminal (`Terminal::resize`) before drawing.
-    fn cell_metrics(&mut self, scale: Scale) -> CellMetrics;
+    fn cell_metrics(&self, scale: Scale) -> CellMetrics;
 
     /// Draws what changed in `frame` since the last render that succeeded (everything when the
     /// view's size, scale or colours changed).

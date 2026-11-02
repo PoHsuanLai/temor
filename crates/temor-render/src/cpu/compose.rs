@@ -8,7 +8,7 @@
 
 use temor_vt::{KittyLayer, Row};
 
-use super::overhang::{Sides, overhang_of};
+use super::overhang::{Overhangs, Sides, compose_with_neighbours, overhang_of};
 use super::pixels::Target;
 use crate::error::RenderError;
 use crate::font::{Atlas, BUILD_ATTEMPTS, GlyphCache};
@@ -16,10 +16,30 @@ use crate::frame::{CellDraw, ImagePlacement};
 use crate::scene::{Premul, Quad, QuadPaint, RowScene, SceneInput, build_row};
 use crate::track::band_of;
 
+/// Composes `rows` of the frame's `cells` into `target`, and the rows beside them that their
+/// glyphs, or the rows' own, reach (see [`compose_with_neighbours`]). The rows composed.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn compose_rows(
+    target: &mut Target<'_>,
+    input: &SceneInput<'_>,
+    rows: &[Row],
+    cells: &[Vec<CellDraw>],
+    images: &[ImagePlacement],
+    overhangs: &mut Overhangs,
+    glyphs: &mut GlyphCache,
+    scene: &mut RowScene,
+) -> Result<Vec<Row>, RenderError> {
+    let total = u16::try_from(cells.len()).unwrap_or(u16::MAX);
+    overhangs.fit(total);
+    compose_with_neighbours(rows, total, overhangs, |row, beside| {
+        compose_row(target, input, (row, beside), cells, images, glyphs, scene)
+    })
+}
+
 /// Repaints the band of `row` (the full width, padding included) from the frame's `rows`, with
 /// `beside` saying which neighbours' glyphs may reach into it, and says whether the row's own glyphs reach outside it. Fails when the row's glyphs do not fit
 /// the atlases.
-pub(crate) fn compose_row(
+fn compose_row(
     target: &mut Target<'_>,
     input: &SceneInput<'_>,
     (row, beside): (Row, Sides),

@@ -2,8 +2,8 @@
 
 use temor_vt::Row;
 
-use super::compose::compose_row;
-use super::overhang::{Overhangs, compose_with_neighbours};
+use super::compose::compose_rows;
+use super::overhang::Overhangs;
 use super::pixels::Target;
 use crate::error::RenderError;
 use crate::font::{FontSet, GlyphCache};
@@ -15,6 +15,15 @@ use crate::track::{Compose, Drawn, ViewKey, damage, plan};
 
 /// The largest pane side the CPU path draws.
 const MAX_SIDE: u32 = 16_384;
+
+/// The pane's width and height, when the CPU path draws a pane that big.
+fn drawable(size: PixelSize) -> Result<(u32, u32), RenderError> {
+    let (width, height) = (size.width.0, size.height.0);
+    match width > MAX_SIDE || height > MAX_SIDE {
+        true => Err(RenderError::PaneTooLarge { width, height }),
+        false => Ok((width, height)),
+    }
+}
 
 /// Composes frames on the calling thread into memory it owns. Upload `pixels` (format
 /// `Rgba8Unorm`, premultiplied, rows `size.width * 4` bytes) or just its `damage` rectangles.
@@ -89,13 +98,7 @@ impl CpuRenderer {
         frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<CpuFrame<'_>, RenderError> {
-        let (w, h) = (view.size.width.0, view.size.height.0);
-        if w > MAX_SIDE || h > MAX_SIDE {
-            return Err(RenderError::PaneTooLarge {
-                width: w,
-                height: h,
-            });
-        }
+        let (w, h) = drawable(view.size)?;
         let resets = self.glyphs.epoch();
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
@@ -120,22 +123,15 @@ impl CpuRenderer {
         };
         target.clear_band(Premul::opaque(colors.background));
         let rows: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
-        self.still_overhangs.fit(frame.size.rows.0);
-        let composed = compose_with_neighbours(
+        let composed = compose_rows(
+            &mut target,
+            &input,
             &rows,
-            frame.size.rows.0,
+            &frame.rows,
+            &[],
             &mut self.still_overhangs,
-            |row, beside| {
-                compose_row(
-                    &mut target,
-                    &input,
-                    (row, beside),
-                    &frame.rows,
-                    &[],
-                    &mut self.glyphs,
-                    &mut self.scene,
-                )
-            },
+            &mut self.glyphs,
+            &mut self.scene,
         )?;
         self.glyphs.forget_uploads();
         Ok(CpuFrame {
@@ -155,9 +151,8 @@ impl CpuRenderer {
 impl Renderer for CpuRenderer {
     type Output<'a> = CpuFrame<'a>;
 
-    fn cell_metrics(&mut self, scale: Scale) -> CellMetrics {
-        self.glyphs.set_scale(scale);
-        self.glyphs.metrics()
+    fn cell_metrics(&self, scale: Scale) -> CellMetrics {
+        self.glyphs.metrics_at(scale)
     }
 
     fn render(
@@ -165,13 +160,7 @@ impl Renderer for CpuRenderer {
         frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<CpuFrame<'_>, RenderError> {
-        let (w, h) = (view.size.width.0, view.size.height.0);
-        if w > MAX_SIDE || h > MAX_SIDE {
-            return Err(RenderError::PaneTooLarge {
-                width: w,
-                height: h,
-            });
-        }
+        let (w, h) = drawable(view.size)?;
         let resets = self.glyphs.epoch();
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
@@ -224,25 +213,17 @@ impl Renderer for CpuRenderer {
             }
             Compose::Rows(rows) => rows,
         };
-        self.overhangs.fit(frame.size.rows.0);
-        let composed = compose_with_neighbours(
-            &rows,
-            frame.size.rows.0,
-            &mut self.overhangs,
-            |row, beside| {
-                compose_row(
-                    &mut target,
-                    &input,
-                    (row, beside),
-                    &frame.rows,
-                    &frame.images,
-                    &mut self.glyphs,
-                    &mut self.scene,
-                )
-            },
-        );
         // A failed draw leaves the last one standing: the next plans from it again.
-        let rows = composed?;
+        let rows = compose_rows(
+            &mut target,
+            &input,
+            &rows,
+            &frame.rows,
+            &frame.images,
+            &mut self.overhangs,
+            &mut self.glyphs,
+            &mut self.scene,
+        )?;
         self.drawn = Some(now);
         self.glyphs.forget_uploads();
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);

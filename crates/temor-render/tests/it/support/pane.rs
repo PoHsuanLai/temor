@@ -45,7 +45,7 @@ pub struct Shot {
 impl Pane {
     pub fn new(cols: u16, rows: u16, scale: f32, font_px: f32) -> Self {
         let scale = Scale::new(scale);
-        let mut renderer = CpuRenderer::new(fonts(font_px));
+        let renderer = CpuRenderer::new(fonts(font_px));
         let m = renderer.cell_metrics(scale);
         let pad = Padding::uniform(Px(PADDING)).left.0 * 2;
         let size = PixelSize::new(
