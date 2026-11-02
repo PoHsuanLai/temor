@@ -73,19 +73,23 @@ pub struct HostView {
     pub edits: Vec<EditLine>,
 }
 
-/// How an edit in `state` reads, with what the host was found to hold when it is `asking`.
-pub fn status_of(state: Edit, asking: Option<Found>) -> EditStatus {
-    match (state, asking) {
-        (Edit::Opening, _) => EditStatus::Opening,
-        (Edit::Open { .. }, _) => EditStatus::Open,
-        (Edit::Checking { .. } | Edit::Uploading { .. }, _) => EditStatus::Saving,
-        (Edit::Conflict { .. }, Some(Found::Deleted)) => EditStatus::Deleted,
-        (Edit::Conflict { base, .. }, Some(Found::Changed(now))) if base == now => {
-            EditStatus::Rewritten
-        }
-        (Edit::Conflict { .. }, _) => EditStatus::Changed,
-        (Edit::Stalled { .. }, _) => EditStatus::Stalled,
-        (Edit::Broken(_) | Edit::Closed, _) => EditStatus::Broken,
+/// How an edit in `state` reads; a conflict by what the host was found to hold.
+pub fn status_of(state: Edit) -> EditStatus {
+    match state {
+        Edit::Opening { .. } => EditStatus::Opening,
+        Edit::Open { .. } => EditStatus::Open,
+        Edit::Checking { .. } | Edit::Uploading { .. } => EditStatus::Saving,
+        Edit::Conflict {
+            found: Found::Deleted,
+            ..
+        } => EditStatus::Deleted,
+        Edit::Conflict {
+            base,
+            found: Found::Changed(now),
+        } if base == now => EditStatus::Rewritten,
+        Edit::Conflict { .. } => EditStatus::Changed,
+        Edit::Stalled { .. } => EditStatus::Stalled,
+        Edit::Broken(_) | Edit::Closed => EditStatus::Broken,
     }
 }
 
@@ -121,7 +125,7 @@ mod tests {
             ("removed", Found::Deleted, EditStatus::Deleted),
         ];
         for (name, found, want) in cases {
-            assert_eq!(status_of(conflict(found), Some(found)), want, "{name}");
+            assert_eq!(status_of(conflict(found)), want, "{name}");
         }
     }
 }

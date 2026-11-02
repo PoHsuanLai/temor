@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use temor_client::model::host::consent::{ConsentBook, RunMode};
-use temor_client::model::host::edit::{Edit, Found, Watch};
+use temor_client::model::host::edit::{Edit, Watch};
 use temor_client::model::host::forward::Forwards;
 use temor_client::model::host::master::Master;
 use temor_client::model::host::store::{HostsFile, PaneHost};
@@ -86,20 +86,11 @@ pub(super) struct RemoteEdit {
     pub local: std::path::PathBuf,
     pub state: Edit,
     pub watch: Option<Watch>,
-    /// The editor has been opened on the local copy.
-    pub opened: bool,
-    /// The question waiting for the person, when the host's file changed under the edit.
-    pub asking: Option<Found>,
     /// How the file is fetched and written back.
     pub tier: EditTier,
     /// The host's file as the helper last read or wrote it; the write-back must still find it.
     /// Always `None` for a host without a helper.
     pub seen: Option<FileStamp>,
-    /// Set once the person chose to overwrite, for the one write that follows.
-    pub overwrite: bool,
-    /// The person pressed Done while a save was still on its way: the edit closes once it
-    /// reaches the host.
-    pub done: bool,
 }
 
 /// The hub's SSH state.

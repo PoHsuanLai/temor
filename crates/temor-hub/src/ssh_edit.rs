@@ -120,14 +120,10 @@ impl Hub {
                 host,
                 path,
                 local,
-                state: Edit::Opening,
+                state: Edit::Opening { shown: false },
                 watch: None,
-                opened: false,
-                asking: None,
                 tier,
                 seen: None,
-                overwrite: false,
-                done: false,
             },
         );
         self.start_job(id, Job::Fetch);
@@ -144,36 +140,7 @@ impl Hub {
             // The copy was just written: restart the watch so the fetch is not taken for a save.
             edit.watch = stamp_of(&edit.local).map(Watch::new);
         }
-        if matches!(input, EditIn::Resolved(_)) {
-            edit.asking = None;
-        }
         self.carry_out_edit(id, outs);
-        self.finish_done(id);
-    }
-
-    /// Done was pressed while a save was on its way: close once it has reached the host, or
-    /// keep the copy and say so when it could not.
-    fn finish_done(&mut self, id: EditId) {
-        let Some(edit) = self.ssh.edits.get_mut(&id) else {
-            return;
-        };
-        if !edit.done {
-            return;
-        }
-        match edit.state {
-            Edit::Checking { .. } | Edit::Uploading { .. } => {}
-            Edit::Open { .. } => {
-                edit.done = false;
-                self.close_edit(id);
-            }
-            _ => {
-                edit.done = false;
-                let host = edit.host.as_str().to_owned();
-                self.notices.push(format!(
-                    "The save didn't reach {host}, so the copy here is kept"
-                ));
-            }
-        }
     }
 
     fn carry_out_edit(&mut self, id: EditId, outs: Vec<EditOut>) {
@@ -185,17 +152,13 @@ impl Hub {
             match out {
                 EditOut::Fetch => self.start_job(id, Job::Fetch),
                 EditOut::Check => self.start_job(id, Job::Check),
-                EditOut::Store => self.start_job(id, Job::Store),
+                EditOut::Store { overwrite } => self.start_job(id, Job::Store { overwrite }),
                 EditOut::OpenLocal => {
-                    if !edit.opened {
-                        edit.opened = true;
-                        if let Err(err) = self.ssh.file_opener.open(&local) {
-                            self.notices.push(err.to_string());
-                        }
+                    if let Err(err) = self.ssh.file_opener.open(&local) {
+                        self.notices.push(err.to_string());
                     }
                 }
-                EditOut::AskConflict(found) => {
-                    edit.asking = Some(found);
+                EditOut::AskConflict(_) => {
                     let panes = self.panes.on_host(&host);
                     self.host_attention(panes);
                 }
@@ -205,17 +168,24 @@ impl Hub {
                 }
                 EditOut::Report(fault) => self.notices.push(fault_words(&host, fault)),
                 EditOut::StopWatching => edit.watch = None,
+                EditOut::Discard => {
+                    if let Some(edit) = self.ssh.edits.remove(&id) {
+                        forget_copy(&edit.local);
+                    }
+                }
+                EditOut::ChooseFirst => self
+                    .notices
+                    .push("Choose what to do about the changed file first".to_owned()),
+                EditOut::Kept => self.notices.push(format!(
+                    "The save didn't reach {}, so the copy here is kept",
+                    host.as_str()
+                )),
             }
         }
     }
 
     /// The person chose what to do about a changed file.
     pub fn resolve_edit(&mut self, id: EditId, choice: Resolution) {
-        if choice == Resolution::Overwrite
-            && let Some(edit) = self.ssh.edits.get_mut(&id)
-        {
-            edit.overwrite = true;
-        }
         self.on_edit(id, EditIn::Resolved(choice));
     }
 
@@ -226,25 +196,7 @@ impl Hub {
     /// While a changed file waits for the person's choice the copy stays: it holds the only
     /// copy of their edits.
     pub fn close_edit(&mut self, id: EditId) {
-        let Some(edit) = self.ssh.edits.get_mut(&id) else {
-            return;
-        };
-        match edit.state {
-            Edit::Conflict { .. } => {
-                self.notices
-                    .push("Choose what to do about the changed file first".to_owned());
-                return;
-            }
-            Edit::Checking { .. } | Edit::Uploading { .. } => {
-                edit.done = true;
-                return;
-            }
-            _ => {}
-        }
-        self.on_edit(id, EditIn::Closed);
-        if let Some(edit) = self.ssh.edits.remove(&id) {
-            forget_copy(&edit.local);
-        }
+        self.on_edit(id, EditIn::Done);
     }
 
     /// Polls the local copies: a settled save goes on to the host. True when one did.

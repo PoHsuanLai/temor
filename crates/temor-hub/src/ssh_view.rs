@@ -43,7 +43,7 @@ impl Hub {
             .map(|(id, edit)| EditLine {
                 id: *id,
                 name: format!("{}:{}", edit.host.as_str(), edit.path.as_str()),
-                status: status_of(edit.state, edit.asking),
+                status: status_of(edit.state),
             })
             .collect();
         Some(HostView {
