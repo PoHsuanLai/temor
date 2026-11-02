@@ -11,7 +11,7 @@ use temor_wire::units::UnixMillis;
 use super::command::LEADER;
 use super::env::HostEnv;
 use super::socket::{SocketSpot, Whose, socket_spot};
-use crate::clock::SystemClock;
+use crate::clock::{SystemClock, unix_secs_now};
 use crate::daemon::{Daemon, DaemonConfig};
 use crate::error::Error;
 use crate::idle::DEFAULT_IDLE;
@@ -45,6 +45,7 @@ fn config(
         proc_root: PathBuf::from("/proc"),
         idle: DEFAULT_IDLE,
         clock: Arc::new(SystemClock::new()),
+        started: unix_secs_now(),
     }
 }
 
@@ -58,6 +59,16 @@ fn linger(env: &HostEnv) -> Duration {
         .and_then(|value| value.parse::<u64>().ok())
         .unwrap_or(60);
     Duration::from_secs(seconds)
+}
+
+/// How long the daemon has been unused after one more tick, and whether that is long enough
+/// to leave: `unused` so far, whether it is unused now.
+fn linger_step(unused: Duration, unused_now: bool, linger: Duration) -> (Duration, bool) {
+    let unused = match unused_now {
+        true => unused + TICK,
+        false => Duration::ZERO,
+    };
+    (unused, unused >= linger)
 }
 
 /// Clears uploads left half-staged by writers that are gone. On a thread of its own: the walk
@@ -121,12 +132,9 @@ pub fn run_daemon(env: &HostEnv, local: bool) -> Result<(), Error> {
                 std::thread::sleep(TICK);
                 ticking.tick();
                 // A daemon nobody uses goes away; the next window starts a new one.
-                unused = if ticking.is_unused() {
-                    unused + TICK
-                } else {
-                    Duration::ZERO
-                };
-                if unused >= linger {
+                let leave;
+                (unused, leave) = linger_step(unused, ticking.is_unused(), linger);
+                if leave {
                     // Only the socket this daemon bound; the lock goes with the process.
                     if let Some(bound) = bound {
                         remove_socket(&own_socket, bound);
@@ -170,4 +178,27 @@ fn serve_apart(daemon: &Arc<Daemon>, connection: Half) -> Result<(), Error> {
         })
         .map_err(|error| Error::io("starting a connection's thread", error))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TICK, linger_step};
+    use std::time::Duration;
+
+    #[test]
+    fn a_daemon_leaves_after_lingering_unused_and_any_use_starts_the_wait_over() {
+        let linger = TICK * 3;
+        let (unused, leave) = linger_step(Duration::ZERO, true, linger);
+        assert_eq!((unused, leave), (TICK, false));
+        let (unused, leave) = linger_step(unused, true, linger);
+        assert!(!leave);
+        let (unused, leave) = linger_step(unused, false, linger);
+        assert_eq!(
+            (unused, leave),
+            (Duration::ZERO, false),
+            "a use starts it over"
+        );
+        let after = (0..3).fold((unused, false), |(u, _), _| linger_step(u, true, linger));
+        assert_eq!(after, (linger, true));
+    }
 }

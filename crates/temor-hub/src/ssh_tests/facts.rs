@@ -48,6 +48,7 @@ fn helper_session(
         proc_root: "/proc".into(),
         idle: DEFAULT_IDLE,
         clock: Arc::new(ManualClock::new()) as Arc<dyn Clock>,
+        started: temor_remote::unix_secs_now(),
     });
     let (served_in, client_out) = std::io::pipe().expect("pipe");
     let (client_in, served_out) = std::io::pipe().expect("pipe");

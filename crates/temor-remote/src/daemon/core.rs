@@ -12,7 +12,7 @@ use temor_wire::units::UnixMillis;
 use super::config::DaemonConfig;
 use super::link::Link;
 use super::pump;
-use super::registry::Registry;
+use super::registry::{Registry, id_base};
 use super::session::Session;
 use crate::error::Error;
 use crate::files::{FileService, STALE_AFTER, Scope};
@@ -50,8 +50,8 @@ impl Daemon {
         Arc::new(Self {
             files: FileService::new(Scope::new(config.file_roots.clone())),
             idle: Mutex::new(config.idle),
+            registry: Registry::from(id_base(config.started)),
             config,
-            registry: Registry::default(),
             links: Mutex::new(Vec::new()),
             ports: Mutex::new(Vec::new()),
             next_link: AtomicU64::new(0),

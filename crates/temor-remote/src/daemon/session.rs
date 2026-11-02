@@ -31,6 +31,25 @@ const GRACE: Duration = Duration::from_millis(500);
 const KILLED: Duration = Duration::from_secs(2);
 const POLL: Duration = Duration::from_millis(20);
 
+/// What reaping does next, `waited` after the hang-up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Reap {
+    /// Give the program its grace period.
+    Wait,
+    /// The grace is over: kill the whole process group, and wait for it to go.
+    KillGroup,
+    /// It still has not gone: kill the program and take what status there is.
+    Kill,
+}
+
+fn reap_step(waited: Duration) -> Reap {
+    match waited {
+        w if w >= GRACE + KILLED => Reap::Kill,
+        w if w >= GRACE => Reap::KillGroup,
+        _ => Reap::Wait,
+    }
+}
+
 /// A session. `Send` and `Sync`: the pump thread and the connections share it.
 #[derive(Debug)]
 pub(super) struct Session {
@@ -241,11 +260,12 @@ impl Session {
                 if let Ok(Some(exit)) = pty.try_exit() {
                     return Some(exit);
                 }
-                if waited >= GRACE + KILLED {
-                    return pty.kill().ok();
-                }
-                if waited >= GRACE {
-                    let _ = pty.signal_group(temor_pty::SignalKind::Kill);
+                match reap_step(waited) {
+                    Reap::Kill => return pty.kill().ok(),
+                    Reap::KillGroup => {
+                        let _ = pty.signal_group(temor_pty::SignalKind::Kill);
+                    }
+                    Reap::Wait => {}
                 }
             }
             drain();
@@ -273,5 +293,21 @@ impl Session {
 
     fn pty(&self) -> MutexGuard<'_, Pty> {
         lock(&self.pty)
+    }
+}
+
+#[cfg(test)]
+mod reap_tests {
+    use super::{GRACE, KILLED, Reap, reap_step};
+    use std::time::Duration;
+
+    #[test]
+    fn a_hung_up_program_has_its_grace_then_its_group_then_itself_killed() {
+        let ms = Duration::from_millis;
+        assert_eq!(reap_step(Duration::ZERO), Reap::Wait);
+        assert_eq!(reap_step(GRACE - ms(1)), Reap::Wait);
+        assert_eq!(reap_step(GRACE), Reap::KillGroup);
+        assert_eq!(reap_step(GRACE + KILLED - ms(1)), Reap::KillGroup);
+        assert_eq!(reap_step(GRACE + KILLED), Reap::Kill);
     }
 }
