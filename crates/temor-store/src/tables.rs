@@ -1,7 +1,7 @@
 //! What the store keeps, table by table: sessions and their commands (history), the pins and the
 //! favourites, and the window's own values.
 
-use rusqlite::{OptionalExtension, Row, params};
+use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 use temor_schema::ids::BlockId;
 use temor_schema::secret::kept_in_history;
 use temor_schema::session::{RanCommand, Session, SessionId};
@@ -276,21 +276,7 @@ impl SqliteStore {
 
     /// The places on `shelf`, in order.
     pub fn shelf(&self, shelf: Shelf) -> Result<Vec<TemorUrl>, StoreError> {
-        let db = self.reader();
-        let mut stmt =
-            db.prepare_cached(&format!("SELECT url FROM {} ORDER BY place", shelf.table()))?;
-        let urls = stmt
-            .query_map([], |row| row.get::<_, String>(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-        urls.iter()
-            .map(|url| {
-                url.parse()
-                    .map_err(|e: temor_schema::error::SchemaError| StoreError::Decode {
-                        what: "a kept URL",
-                        why: e.to_string(),
-                    })
-            })
-            .collect()
+        read_shelf(&self.reader(), shelf)
     }
 
     /// Put `places` on `shelf`, in this order, in place of what was there. A place named twice is
@@ -298,15 +284,25 @@ impl SqliteStore {
     pub fn set_shelf(&self, shelf: Shelf, places: &[TemorUrl]) -> Result<(), StoreError> {
         let db = self.touch(shelf.topic());
         let tx = db.unchecked_transaction()?;
-        tx.execute(&format!("DELETE FROM {}", shelf.table()), [])?;
-        {
-            let mut insert = tx.prepare_cached(&format!(
-                "INSERT OR IGNORE INTO {} (place, url) VALUES (?1, ?2)",
-                shelf.table()
-            ))?;
-            for (place, url) in places.iter().enumerate() {
-                insert.execute(params![limit_of(place), url.to_string()])?;
-            }
+        write_shelf(&tx, shelf, places)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Changes `shelf` to what `edit` makes of it, in one write: `edit` is given the shelf as the
+    /// writer holds it, so what another process wrote between a read and this write is not lost.
+    /// Nothing is written when `edit` changes nothing.
+    pub fn edit_shelf(
+        &self,
+        shelf: Shelf,
+        edit: impl FnOnce(Vec<TemorUrl>) -> Vec<TemorUrl>,
+    ) -> Result<(), StoreError> {
+        let db = self.touch(shelf.topic());
+        let tx = Transaction::new_unchecked(&db, TransactionBehavior::Immediate)?;
+        let before = read_shelf(&tx, shelf)?;
+        let after = edit(before.clone());
+        if after != before {
+            write_shelf(&tx, shelf, &after)?;
         }
         tx.commit()?;
         Ok(())
@@ -348,3 +344,34 @@ fn limit_of(n: usize) -> i64 {
 #[cfg(test)]
 #[path = "tables_tests.rs"]
 mod tests;
+
+/// The places on `shelf`, in order, as `db` sees them.
+fn read_shelf(db: &Connection, shelf: Shelf) -> Result<Vec<TemorUrl>, StoreError> {
+    let mut stmt =
+        db.prepare_cached(&format!("SELECT url FROM {} ORDER BY place", shelf.table()))?;
+    let urls = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    urls.iter()
+        .map(|url| {
+            url.parse()
+                .map_err(|e: temor_schema::error::SchemaError| StoreError::Decode {
+                    what: "a kept URL",
+                    why: e.to_string(),
+                })
+        })
+        .collect()
+}
+
+/// Puts `places` on `shelf` in place of what was there, inside the caller's transaction.
+fn write_shelf(db: &Connection, shelf: Shelf, places: &[TemorUrl]) -> Result<(), StoreError> {
+    db.execute(&format!("DELETE FROM {}", shelf.table()), [])?;
+    let mut insert = db.prepare_cached(&format!(
+        "INSERT OR IGNORE INTO {} (place, url) VALUES (?1, ?2)",
+        shelf.table()
+    ))?;
+    for (place, url) in places.iter().enumerate() {
+        insert.execute(params![limit_of(place), url.to_string()])?;
+    }
+    Ok(())
+}

@@ -325,3 +325,34 @@ fn a_file_store_is_private_read_beside_its_writer_and_seen_by_another() {
     assert_eq!(pinned, (1, 1), "one read, one moment");
     assert_eq!(one.sessions(None, None, 10).expect("after").len(), 2);
 }
+
+#[test]
+fn a_shelf_edited_while_another_process_writes_it_loses_neither_change() {
+    let dir = tempfile::tempdir().expect("dir");
+    let file = dir.path().join("temor.db");
+    let here = SqliteStore::open(&file).expect("store");
+    let other = SqliteStore::open(&file).expect("the other process's store");
+    here.set_shelf(Shelf::Pins, &[place("/a/")]).expect("set");
+    let (wrote, written) = std::sync::mpsc::channel();
+    let edited = std::thread::scope(|s| {
+        here.edit_shelf(Shelf::Pins, |mut places| {
+            // The other process adds its pin while this edit is under way.
+            s.spawn(|| {
+                other
+                    .edit_shelf(Shelf::Pins, |mut places| {
+                        places.push(place("/other/"));
+                        places
+                    })
+                    .expect("the other edit");
+                wrote.send(()).expect("told");
+            });
+            let _ = written.recv_timeout(std::time::Duration::from_millis(300));
+            places.push(place("/here/"));
+            places
+        })
+    });
+    edited.expect("this edit");
+    let pins = here.shelf(Shelf::Pins).expect("read");
+    assert!(pins.contains(&place("/here/")), "{pins:?}");
+    assert!(pins.contains(&place("/other/")), "{pins:?}");
+}
