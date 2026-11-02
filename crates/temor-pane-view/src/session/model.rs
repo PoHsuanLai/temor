@@ -101,10 +101,9 @@ pub struct Session {
     /// The link under the pointer as last drawn in its tooltip.
     pub(super) link_hover: Option<String>,
     /// The block list as its view last laid it out, while the pane is drawn as one: where a
-    /// point over it lands. `None` while the pane is one grid.
-    pub(super) list_map: Option<super::list_hit::ListMap>,
-    /// The ground the live screen is drawn on while the pane is a list (the running card's).
-    pub(super) live_ground: Option<temor_panes::vt::Rgb>,
+    /// point over it lands, the live rows' ground, whether the composer shows. `None` while the
+    /// pane is one grid.
+    pub(super) list: Option<super::block_list::ListView>,
     /// Where the next command is typed while the list shows it.
     pub(super) composer: super::composer::Composer,
     pub(super) blink: super::blink::Blink,

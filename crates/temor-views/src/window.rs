@@ -240,12 +240,21 @@ pub fn App() -> Element {
     };
 
     let _ = ui();
-    if let Some(board) = &published {
-        board.publish(hub.space_rows());
-    }
-    if let Some(link) = &desktop.link {
-        hub.publish_to(link);
-    }
+    // What the Settings window and the desktop are shown is read here and handed to them once
+    // the window is drawn, when it changed.
+    let rows = published.as_ref().map(|_| hub.space_rows());
+    let snapshot = desktop
+        .link
+        .as_ref()
+        .map(|_| hub.0.borrow().desktop_snapshot());
+    use_effect(use_reactive!(|rows, snapshot| {
+        if let (Some(board), Some(rows)) = (&published, rows) {
+            board.publish(rows);
+        }
+        if let (Some(link), Some((snapshot, count))) = (&desktop.link, snapshot) {
+            link.publish(snapshot, count);
+        }
+    }));
     let data = hub.sidebar();
     let front = hub.front();
     let bar = hub.bar_data();

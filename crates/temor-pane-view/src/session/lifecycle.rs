@@ -95,7 +95,7 @@ impl Session {
             },
             blink,
             selection: None,
-            ground: self.live_ground,
+            ground: self.live_ground(),
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_panes::pane::PaintSource`).

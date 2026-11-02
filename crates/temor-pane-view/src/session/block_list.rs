@@ -20,6 +20,16 @@ use crate::paint::Inset;
 /// this much narrower than the pane, with this much less inset, so its columns are the grid's.
 pub const CARD_MARGIN: f32 = 8.0;
 
+/// What the list shows, as its view laid it out (PLAN §4c: handed over once drawn, in one go).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListView {
+    pub map: ListMap,
+    /// The running card's ground, which the live rows are drawn on.
+    pub ground: temor_panes::vt::Rgb,
+    /// The composer stands for the prompt's rows: typing goes there, not to the shell.
+    pub composing: bool,
+}
+
 /// The screen cell under a point in the pane, as the pane draws it: one grid or a list of blocks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct PointHit {
@@ -76,30 +86,36 @@ impl Session {
         }
     }
 
-    /// The list as its view laid it out now, or `None` while the pane is one grid.
-    pub fn set_list_map(&mut self, map: Option<ListMap>) {
-        self.list_map = map;
-    }
-
-    /// The ground the live screen is drawn on: the running card's while the pane is a list, the
-    /// terminal's own (`None`) while it is one grid. Whether it changed: the pane is drawn again.
-    pub fn set_live_ground(&mut self, ground: Option<temor_panes::vt::Rgb>) -> bool {
-        let changed = self.live_ground != ground;
-        self.live_ground = ground;
+    /// What the list showed as its view last laid it out, or `None` while the pane is one grid.
+    /// Whether the live screen's ground changed: the pane is drawn again.
+    pub fn set_list_view(&mut self, view: Option<ListView>) -> bool {
+        let ground = |view: &Option<ListView>| view.as_ref().map(|view| view.ground);
+        let changed = ground(&self.list) != ground(&view);
+        self.list = view;
         changed
     }
 
     /// How far the list is scrolled now, in logical pixels.
     pub fn set_list_offset(&mut self, offset: f32) {
-        if let Some(map) = self.list_map.as_mut() {
-            map.offset = offset;
+        if let Some(list) = self.list.as_mut() {
+            list.map.offset = offset;
         }
+    }
+
+    pub(super) fn list_map(&self) -> Option<&ListMap> {
+        self.list.as_ref().map(|list| &list.map)
+    }
+
+    /// The ground the live screen is drawn on: the running card's while the pane is a list, the
+    /// terminal's own (`None`) while it is one grid.
+    pub(super) fn live_ground(&self) -> Option<temor_panes::vt::Rgb> {
+        self.list.as_ref().map(|list| list.ground)
     }
 
     /// The screen cell under `at` (device pixels in the pane). `None` before the first layout.
     pub(crate) fn point_hit(&self, at: SurfacePoint) -> Option<PointHit> {
         let placed = self.placed()?;
-        let Some(map) = &self.list_map else {
+        let Some(map) = self.list_map() else {
             let hit = placed.cell_at(at);
             let top = self.viewport_top().ok()?;
             return Some(PointHit {
@@ -148,7 +164,7 @@ impl Session {
     /// viewport, where the program drew it.
     pub(crate) fn drawn_point(&self, at: SurfacePoint) -> Option<SurfacePoint> {
         let placed = self.placed()?;
-        if self.list_map.is_none() {
+        if self.list.is_none() {
             return Some(placed.drawn_point(at));
         }
         let hit = self.point_hit(at)?;

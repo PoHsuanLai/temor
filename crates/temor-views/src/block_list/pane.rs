@@ -30,7 +30,7 @@ use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_heigh
 use crate::tool_button::ToolButton;
 use temor_hub::Desk;
 use temor_hub::plugins::lens::LensPicture;
-use temor_pane_view::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
+use temor_pane_view::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, ListView, Session};
 use temor_ui_base::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
     near_view, picture_size, row_top, sticky_head,
@@ -311,19 +311,30 @@ pub fn BlockPane(
         Item::Running { block, .. } => block.picked,
         _ => false,
     });
-    let live_ground = ground_of(&palette, Standing::Running, live_picked);
-    let reground = {
+    let shown = ListView {
+        map: list_map(&placed, scroll.offset.0),
+        ground: ground_of(&palette, Standing::Running, live_picked),
+        composing,
+    };
+    // What the list shows goes to the session once it is drawn, and only when it changed.
+    let shown_to = Rc::clone(&slot);
+    use_effect(use_reactive!(|shown| {
+        let slot = &shown_to;
+        let reground = slot
+            .borrow_mut()
+            .session
+            .as_mut()
+            .is_some_and(|session| session.set_list_view(Some(shown)));
+        if reground {
+            repaint(slot);
+        }
+    }));
+    {
         let mut s = slot.borrow_mut();
         let Slot { session, tiles, .. } = &mut *s;
-        session.as_mut().is_some_and(|session| {
-            session.set_list_map(Some(list_map(&placed, scroll.offset.0)));
-            session.set_composer_shown(composing);
+        if let Some(session) = session.as_mut() {
             tiles.draw(session, &mounted, &palette, || gpu.handle());
-            session.set_live_ground(Some(live_ground))
-        })
-    };
-    if reground {
-        repaint(&slot);
+        }
     }
     // Where live rows are in the pane's picture.
     let live_rect = |rows: &Range<u32>| {

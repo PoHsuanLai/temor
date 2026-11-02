@@ -272,3 +272,18 @@ pub(super) fn marks_of(session: &Session) -> Vec<temor_client::model::session::f
         .map(|frame| frame.marks())
         .unwrap_or_default()
 }
+
+/// The session drawn as a list laid out as `map`, the composer shown or not, as the list view
+/// hands it over.
+pub(super) fn drawn_as_list(
+    live: &mut Live,
+    map: temor_pane_view::session::ListMap,
+    composing: bool,
+) {
+    live.session
+        .set_list_view(Some(temor_pane_view::session::ListView {
+            map,
+            ground: temor_vt::Rgb { r: 0, g: 0, b: 0 },
+            composing,
+        }));
+}

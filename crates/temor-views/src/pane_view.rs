@@ -376,15 +376,20 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     // The pane as a list of blocks, but for a full-screen program's screen.
     let block_items = slot.borrow().session.as_ref().and_then(|s| s.block_list());
     let listed = block_items.is_some();
-    let reground = !listed
-        && slot.borrow_mut().session.as_mut().is_some_and(|s| {
-            s.set_list_map(None);
-            s.set_composer_shown(false);
-            s.set_live_ground(None)
-        });
-    if reground {
-        repaint(&slot);
-    }
+    // A pane that stops being a list says so once it is drawn (the list says what it shows).
+    let unlisted = Rc::clone(&slot);
+    use_effect(use_reactive!(|listed| {
+        let slot = &unlisted;
+        let reground = !listed
+            && slot
+                .borrow_mut()
+                .session
+                .as_mut()
+                .is_some_and(|s| s.set_list_view(None));
+        if reground {
+            repaint(slot);
+        }
+    }));
     let picked_block = slot
         .borrow()
         .session

@@ -8,7 +8,7 @@ use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::support::tools_present;
-use super::support::{Live, marks_of, pump, settle, shell_path, start};
+use super::support::{Live, drawn_as_list, marks_of, pump, settle, shell_path, start};
 use std::time::Duration;
 
 /// Sends one whole mark: its number, its event, and its anchor at the cursor.
@@ -148,12 +148,12 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_compo
         Some("This command cannot be typed again.")
     );
     // The composer holds lines and sends nothing until Return: there it goes in whole.
-    live.session.set_composer_shown(true);
+    drawn_as_list(&mut live, Default::default(), true);
     live.session.rerun(ids[0]);
     assert_eq!(live.session.take_notice(), None);
     assert_eq!(live.session.composer_text(), "ls\nrm -rf /tmp/never");
     live.session.set_composer_text(String::new());
-    live.session.set_composer_shown(false);
+    live.session.set_list_view(None);
 
     assert_eq!(
         live.session.block_command(ids[1]).as_deref(),

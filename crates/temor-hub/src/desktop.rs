@@ -18,7 +18,7 @@ use temor_client::model::vocab::text::Cwd;
 use temor_client::model::workspace::WorkspaceIn;
 
 use super::desk::Desk;
-use super::model::{Hub, HubRef};
+use super::model::Hub;
 use temor_client::desktop::port::{Act, Answer, Ask, DesktopLink, Snapshot};
 use temor_ui_base::title::window_title;
 
@@ -240,12 +240,4 @@ pub fn spawn_desktop_loop(desk: Desk, link: DesktopLink, window: Option<WindowHa
             desk.settle(|hub| hub.serve(ask));
         }
     });
-}
-
-impl HubRef {
-    /// Shows the desktop services the window as it is now.
-    pub fn publish_to(&self, link: &DesktopLink) {
-        let (snapshot, count) = self.0.borrow().desktop_snapshot();
-        link.publish(snapshot, count);
-    }
 }

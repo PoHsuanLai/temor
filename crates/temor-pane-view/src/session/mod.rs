@@ -27,7 +27,7 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
-pub use block_list::{CARD_MARGIN, LiveRows};
+pub use block_list::{CARD_MARGIN, ListView, LiveRows};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};

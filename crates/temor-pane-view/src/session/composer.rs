@@ -20,8 +20,6 @@ use temor_panes::sources::SHELL;
 /// The composer's text and where it is in the history.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Composer {
-    /// Whether the list shows it: the shell is at its prompt and nothing runs.
-    shown: bool,
     text: String,
     /// The command shown from the history, counted from the newest (`Some(0)`), and what was
     /// typed before the first step back.
@@ -179,14 +177,10 @@ impl Composer {
 }
 
 impl Session {
-    /// The list shows the composer, or stopped showing it.
-    pub fn set_composer_shown(&mut self, shown: bool) {
-        self.composer.shown = shown;
-    }
-
-    /// Whether the list shows the composer: typing goes there, not to the shell.
+    /// Whether the list shows the composer (the shell is at its prompt and nothing runs): typing
+    /// goes there, not to the shell.
     pub fn composer_shown(&self) -> bool {
-        self.composer.shown
+        self.list.as_ref().is_some_and(|list| list.composing)
     }
 
     /// Whether text is selected in the pane.
@@ -247,10 +241,10 @@ impl Session {
     /// (none of it runs), then the key its script answers; the script empties its line again.
     /// A source that is not ready is not asked, nor is anything asked while answers are awaited.
     pub fn composer_complete(&mut self) {
-        let composer = &self.composer;
-        if !composer.shown || composer.asked.is_some() {
+        if !self.composer_shown() || self.composer.asked.is_some() {
             return;
         }
+        let composer = &self.composer;
         let text = composer.text.clone();
         let mode = self.pane.with_term(|term| term.paste_mode());
         // A line break that is not framed as a paste would run the line.
@@ -385,10 +379,11 @@ impl Session {
     /// Text the window types for the person (a drop, a paste): into the composer while it is
     /// shown, else to the shell as a paste. Whether the composer took it.
     pub(crate) fn composer_takes(&mut self, text: &str) -> bool {
-        if self.composer.shown {
+        let shown = self.composer_shown();
+        if shown {
             self.composer_append(text);
         }
-        self.composer.shown
+        shown
     }
 }
 
