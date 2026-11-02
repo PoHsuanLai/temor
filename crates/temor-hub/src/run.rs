@@ -4,7 +4,6 @@
 //! the person closes it; then the launch, which waits on its ticket, hears the status to exit
 //! with: the program's last, or a hang-up's when the tab closed while it ran.
 
-use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -46,7 +45,6 @@ impl Found {
 pub(super) struct RunHub {
     /// Taken by the next pane that starts.
     pub intent: Option<Found>,
-    pub panes: BTreeMap<PaneId, Found>,
     /// Where a closed run tab is told to its waiting launch.
     pub ends: RunEnds,
 }
@@ -103,7 +101,7 @@ impl Hub {
     /// The run a pane about to start takes, if one is waiting; the pane keeps it for Restart.
     pub(super) fn run_claims(&mut self, pane: PaneId) -> Option<Found> {
         let found = self.run.intent.take()?;
-        self.run.panes.insert(pane, found.clone());
+        self.panes.record(pane).run = Some(found.clone());
         Some(found)
     }
 
@@ -114,21 +112,21 @@ impl Hub {
 
     /// `pane`'s program ended `exit`; a run tab keeps it for its launch.
     pub(super) fn run_ended(&mut self, pane: PaneId, exit: Option<ChildExit>) {
-        if let Some(found) = self.run.panes.get_mut(&pane) {
+        if let Some(found) = self.panes.get_mut(pane).and_then(|r| r.run.as_mut()) {
             found.status = Some(status_of(exit));
         }
     }
 
     /// `pane`'s program is starting again (Restart): it runs, so nothing has ended yet.
     pub(super) fn run_restarted(&mut self, pane: PaneId) {
-        if let Some(found) = self.run.panes.get_mut(&pane) {
+        if let Some(found) = self.panes.get_mut(pane).and_then(|r| r.run.as_mut()) {
             found.status = None;
         }
     }
 
-    /// `pane` is gone: a run tab's launch stops waiting.
-    pub(super) fn run_closed(&mut self, pane: PaneId) {
-        let Some(found) = self.run.panes.remove(&pane) else {
+    /// A pane that ran `found` is gone: a run tab's launch stops waiting.
+    pub(super) fn run_closed(&mut self, found: Option<Found>) {
+        let Some(found) = found else {
             return;
         };
         if let Some(ticket) = found.ticket {
@@ -140,7 +138,12 @@ impl Hub {
 
     /// The name of the program `pane` runs in place of the shell, if it does.
     pub fn run_name(&self, pane: PaneId) -> Option<&str> {
-        self.run.panes.get(&pane).map(|found| found.name.as_str())
+        self.run_of(pane).map(|found| found.name.as_str())
+    }
+
+    /// What `pane` runs in place of the shell, if it does.
+    pub(super) fn run_of(&self, pane: PaneId) -> Option<&Found> {
+        self.panes.get(pane)?.run.as_ref()
     }
 }
 

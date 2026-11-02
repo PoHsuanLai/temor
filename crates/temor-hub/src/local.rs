@@ -162,8 +162,7 @@ impl Hub {
             session: Some(session),
             ..Default::default()
         };
-        self.slots
-            .insert(spawn.pane, std::rc::Rc::new(std::cell::RefCell::new(slot)));
+        self.panes.record(spawn.pane).slot = Some(std::rc::Rc::new(std::cell::RefCell::new(slot)));
         let host = local_alias();
         self.remote.panes.insert(
             spawn.pane,

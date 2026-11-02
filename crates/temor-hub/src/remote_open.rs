@@ -125,7 +125,7 @@ impl Hub {
         };
         session.set_focus(self.focus_of(pane));
         self.hear(pane, &session);
-        if let Some(slot) = self.slots.get(&pane) {
+        if let Some(slot) = self.panes.slot(pane) {
             slot.borrow_mut().session = Some(session);
         }
         self.remote.panes.insert(

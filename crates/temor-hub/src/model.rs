@@ -41,7 +41,8 @@ pub struct Hub {
     pub(super) book: temor_client::spaces::Book,
     /// Each Space's key agent and the account store its credentials come from.
     pub(super) keep: SpaceKeep,
-    pub(super) slots: BTreeMap<PaneId, Rc<RefCell<Slot>>>,
+    /// What is kept of each live pane, dropped whole when it closes.
+    pub(super) panes: super::panes::Panes,
     /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
     pub(super) recent: BTreeMap<PaneId, Snapshot>,
     /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
@@ -96,7 +97,7 @@ pub struct Hub {
 impl std::fmt::Debug for Hub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Hub")
-            .field("panes", &self.slots.len())
+            .field("panes", &self.panes.len())
             .finish_non_exhaustive()
     }
 }
@@ -136,7 +137,7 @@ impl Hub {
         Hub {
             book: temor_client::spaces::Book::new(),
             keep: SpaceKeep::default(),
-            slots: BTreeMap::new(),
+            panes: Default::default(),
             recent: BTreeMap::new(),
             carried: BTreeMap::new(),
             files: Default::default(),
@@ -175,7 +176,7 @@ impl Hub {
 
     /// The slot of `pane`, if it has one.
     pub fn slot(&self, pane: PaneId) -> Option<Rc<RefCell<Slot>>> {
-        self.slots.get(&pane).cloned()
+        self.panes.slot(pane).cloned()
     }
 
     /// The workspace, for reading.

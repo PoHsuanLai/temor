@@ -304,10 +304,9 @@ fn hub_with_pane(home: &std::path::Path) -> Hub {
     let mut hub = Hub::new(launch_in(home.to_path_buf()));
     let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::NewTab { cwd: None });
     hub.book.place(hub.book.active(), ws);
-    hub.slots.insert(
-        PaneId(1),
-        std::rc::Rc::new(std::cell::RefCell::new(temor_ui_base::slot::Slot::default())),
-    );
+    hub.panes.record(PaneId(1)).slot = Some(std::rc::Rc::new(std::cell::RefCell::new(
+        temor_ui_base::slot::Slot::default(),
+    )));
     hub
 }
 

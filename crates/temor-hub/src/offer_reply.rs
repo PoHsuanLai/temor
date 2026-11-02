@@ -19,7 +19,7 @@ impl Hub {
     /// at once, with no question to land in the shell's history. Returns what the person should
     /// be told.
     pub fn offer_reply(&mut self, pane: PaneId, reply: Reply) -> Vec<String> {
-        let Some(slot) = self.slots.get(&pane).cloned() else {
+        let Some(slot) = self.panes.slot(pane).cloned() else {
             return Vec::new();
         };
         let named = self.offer.states.get(&pane).and_then(OfferState::asking);
@@ -81,7 +81,7 @@ impl Hub {
     /// in raw mode (nushell's) reads `\n` as Ctrl+J and runs nothing, and a terminal in line
     /// mode turns `\r` back into `\n`.
     fn offer_type(&self, pane: PaneId, text: &str) -> Option<String> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let guard = slot.borrow();
         guard
             .session

@@ -369,7 +369,7 @@ fn a_new_host_pane_is_remote_from_its_first_frame() {
     let dir = rig.dir.clone();
     rig.pump("the session to start", |_| dir.join("session-1").exists());
     // No prompt or folder report has come, so no read of the pane's facts has been asked for.
-    let slot = rig.hub.slots.get(&pane).expect("the pane's slot");
+    let slot = rig.hub.panes.slot(pane).expect("the pane's slot");
     let site = slot.borrow().session.as_ref().map(|s| s.site());
     assert_eq!(site, Some(PaneSite::Remote));
 }

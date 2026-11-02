@@ -103,7 +103,7 @@ impl Hub {
         let Some(pane) = self.open_tab(None) else {
             return;
         };
-        if let Some(slot) = self.slots.get(&pane)
+        if let Some(slot) = self.panes.slot(pane)
             && let Some(session) = slot.borrow().session.as_ref()
         {
             type_command(session, command, submit);

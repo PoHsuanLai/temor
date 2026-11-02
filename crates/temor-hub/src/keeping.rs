@@ -121,7 +121,11 @@ impl Hub {
             return;
         };
         // A tab that ran a program (`temor -e`) is not brought back: it was that launch's.
-        let leave: BTreeSet<PaneId> = self.run.panes.keys().copied().collect();
+        let leave: BTreeSet<PaneId> = self
+            .panes
+            .iter()
+            .filter_map(|(pane, record)| record.run.as_ref().map(|_| pane))
+            .collect();
         let hosts = self.hosts_file();
         let sessions = self.sessions_to_carry();
         let laying = Laying {
@@ -138,16 +142,16 @@ impl Hub {
     /// while temor runs and never saved; nor is a run tab.
     fn kept_panes(&self, screens: bool) -> Vec<KeptPane> {
         let sessions = self.sessions_to_carry();
-        self.slots
-            .iter()
-            .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
+        self.panes
+            .slots()
+            .filter(|(pane, _)| !self.is_quick(*pane) && self.run_of(*pane).is_none())
             .filter_map(|(pane, slot)| {
                 let slot = slot.borrow();
                 let session = slot.session.as_ref()?;
                 let mut checkpoint = session.checkpoint();
-                self.keep_local(*pane, &mut checkpoint);
+                self.keep_local(pane, &mut checkpoint);
                 Some(KeptPane {
-                    pane: *pane,
+                    pane,
                     checkpoint,
                     screen: screens
                         .then(|| {
@@ -156,7 +160,7 @@ impl Hub {
                                 .map(temor_panes::vt::Snapshot::into_bytes)
                         })
                         .flatten(),
-                    session: sessions.get(pane).copied(),
+                    session: sessions.get(&pane).copied(),
                 })
             })
             .collect()

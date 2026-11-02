@@ -25,7 +25,7 @@ impl Hub {
             .map(|problem| format!("Settings: {problem}"))
             .collect();
         let change = live_changes(&self.launch.settings, &new);
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let mut slot = slot.borrow_mut();
             let Some(session) = slot.session.as_mut() else {
                 continue;
@@ -83,7 +83,7 @@ impl super::model::HubRef {
     /// (a page's text, a peek), so the window has one monospace.
     pub fn grid_font(&self) -> Option<temor_pane_view::paint::GridFont> {
         let hub = self.0.borrow();
-        hub.slots.values().find_map(|slot| {
+        hub.panes.slots().map(|(_, slot)| slot).find_map(|slot| {
             let slot = slot.borrow();
             slot.session
                 .as_ref()

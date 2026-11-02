@@ -369,7 +369,7 @@ impl Hub {
         pane: PaneId,
         change: impl FnOnce(&mut temor_pane_view::session::Session) -> T,
     ) -> Option<T> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let mut slot = slot.borrow_mut();
         slot.session.as_mut().map(change)
     }
@@ -380,7 +380,7 @@ impl Hub {
         pane: PaneId,
         read: impl FnOnce(&temor_pane_view::session::Session) -> T,
     ) -> Option<T> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let slot = slot.borrow();
         slot.session.as_ref().map(read)
     }

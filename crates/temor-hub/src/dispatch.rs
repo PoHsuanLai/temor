@@ -84,7 +84,7 @@ impl Hub {
     /// Has the pane with the keyboard run its own `action`. Whatever it says, or fails with,
     /// is left for the person in the notices, as a key would show it.
     pub(super) fn run_in_keyboard_pane(&mut self, action: Action) {
-        let Some(slot) = self.keyboard_pane().and_then(|pane| self.slots.get(&pane)) else {
+        let Some(slot) = self.keyboard_pane().and_then(|pane| self.panes.slot(pane)) else {
             return;
         };
         let mut said = Vec::new();

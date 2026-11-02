@@ -17,16 +17,16 @@ fn an_open_pane_follows_a_changed_notice_threshold() {
     rig.hub.answer_host(pane, Grant::Allowed);
     let after = |rig: &Rig| {
         rig.hub
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().map(|s| s.notify_after()))
     };
     let dir = rig.dir.clone();
     rig.pump("the pane's session", |hub| {
         dir.join("session-1").exists()
             && hub
-                .slots
-                .get(&pane)
+                .panes
+                .slot(pane)
                 .is_some_and(|slot| slot.borrow().session.is_some())
     });
     assert_eq!(after(&rig), Some(NotifyAfter::DEFAULT));

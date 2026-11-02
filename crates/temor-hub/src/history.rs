@@ -81,7 +81,7 @@ impl Hub {
             .iter()
             .map(|(pane, begun)| (*pane, begun.id))
             .chain(self.history.carried.iter().map(|(pane, id)| (*pane, *id)))
-            .filter(|(pane, _)| self.slots.contains_key(pane))
+            .filter(|(pane, _)| self.panes.slot(*pane).is_some())
             .collect()
     }
 
@@ -166,7 +166,7 @@ impl Hub {
         if shown {
             return;
         }
-        if let Some(slot) = self.slots.get(&pane)
+        if let Some(slot) = self.panes.slot(pane)
             && let Some(session) = slot.borrow_mut().session.as_mut()
         {
             session.set_kept(cards);

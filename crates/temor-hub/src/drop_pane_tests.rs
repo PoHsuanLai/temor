@@ -29,7 +29,7 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
         .book
         .edit(|ws| std::mem::replace(ws, temor_client::spaces::empty_workspace()));
     let pane = parked.tabs.panes()[0];
-    hub.run.panes.insert(pane, run_tab(ticket));
+    hub.panes.record(pane).run = Some(run_tab(ticket));
     hub.book.place(SpaceId(7), parked);
 
     hub.forget_space(SpaceId(7));
@@ -41,7 +41,7 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
             status: CLOSED_WHILE_RUNNING
         }
     );
-    assert!(hub.run.panes.is_empty());
+    assert!(hub.run_of(pane).is_none());
     assert_eq!(hub.book.parked().count(), 0);
 }
 

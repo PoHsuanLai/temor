@@ -37,6 +37,7 @@ mod offer;
 mod offer_reply;
 #[cfg(test)]
 mod open_tab_tests;
+mod panes;
 mod peek;
 pub mod peek_step;
 pub mod plugins;

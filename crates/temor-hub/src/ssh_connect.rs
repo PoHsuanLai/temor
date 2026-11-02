@@ -147,7 +147,7 @@ impl Hub {
             palette: self.palette,
             ..Slot::default()
         };
-        self.slots.insert(spawn.pane, Rc::new(RefCell::new(slot)));
+        self.panes.record(spawn.pane).slot = Some(Rc::new(RefCell::new(slot)));
         let start_dir = spawn
             .cwd
             .as_ref()

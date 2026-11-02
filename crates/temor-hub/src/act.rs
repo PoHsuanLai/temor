@@ -162,7 +162,7 @@ impl Hub {
             }
             Err(err) => self.notices.push(err.to_string()),
         }
-        self.slots.insert(spawn.pane, Rc::new(RefCell::new(slot)));
+        self.panes.record(spawn.pane).slot = Some(Rc::new(RefCell::new(slot)));
     }
 
     /// Gives a new shell what the person had set in the one it replaces: the variables that differ
@@ -203,8 +203,8 @@ impl Hub {
     /// Takes the scrollback of a pane that is about to end, for a reopen.
     fn keep_scrollback(&mut self, pane: PaneId) {
         let snapshot = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(Session::snapshot));
         if let Some(snapshot) = snapshot {
             // Kept under its session too, for the session's history page to reopen it from.
@@ -214,8 +214,8 @@ impl Hub {
             self.recent.insert(pane, snapshot);
         }
         let kept = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().map(Session::checkpoint));
         if let Some(kept) = kept {
             self.carried.insert(pane, kept);
@@ -241,12 +241,13 @@ impl Hub {
     /// viewer, agent sockets and host state go, and so does its session. The one path for a pane
     /// that closes and for a pane whose Space is deleted. Its scrollback is the caller's.
     pub(super) fn drop_pane(&mut self, pane: PaneId) {
-        self.run_closed(pane);
+        let found = self.panes.get_mut(pane).and_then(|r| r.run.take());
+        self.run_closed(found);
         self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
         self.offer.forget(pane);
-        if let Some(slot) = self.slots.remove(&pane) {
+        if let Some(slot) = self.panes.remove(pane).and_then(|record| record.slot) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;
         }
@@ -284,7 +285,7 @@ impl Hub {
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
         self.run_restarted(pane);
-        let run = self.run.panes.get(&pane).cloned();
+        let run = self.run_of(pane).cloned();
         match open_session_with(
             &self.launch,
             self.palette,
@@ -297,7 +298,7 @@ impl Hub {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
                 self.hear(pane, &session);
-                if let Some(slot) = self.slots.get(&pane) {
+                if let Some(slot) = self.panes.slot(pane) {
                     slot.borrow_mut().session = Some(session);
                 }
             }
@@ -308,13 +309,13 @@ impl Hub {
     /// Only the pane that has the keyboard publishes its screen to the probe; it publishes at once.
     pub(super) fn refresh_probe(&mut self) {
         let keyboard = self.keyboard_pane();
-        for (pane, slot) in &self.slots {
-            slot.borrow_mut().probe = match Some(*pane) == keyboard {
+        for (pane, slot) in self.panes.slots() {
+            slot.borrow_mut().probe = match Some(pane) == keyboard {
                 true => self.launch.probe.clone(),
                 false => None,
             };
         }
-        if let Some(slot) = keyboard.and_then(|pane| self.slots.get(&pane)) {
+        if let Some(slot) = keyboard.and_then(|pane| self.panes.slot(pane)) {
             repaint(slot);
         }
     }
@@ -324,7 +325,7 @@ impl Hub {
         self.palette = palette;
         self.remote_palette();
         let mut failure = None;
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let said = slot.borrow_mut().set_palette(palette);
             failure = failure.or(said);
             repaint(slot);

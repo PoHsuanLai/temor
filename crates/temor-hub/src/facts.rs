@@ -141,7 +141,7 @@ impl Hub {
     /// True when it changed what the window shows.
     pub(super) fn facts_ready(&mut self, ready: Ready) -> bool {
         let Ready { pane, facts } = ready;
-        if !self.slots.contains_key(&pane) {
+        if !self.panes.slot(pane).is_some() {
             self.facts.panes.remove(&pane);
             return false;
         }

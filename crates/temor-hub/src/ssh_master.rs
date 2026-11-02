@@ -148,7 +148,7 @@ impl Hub {
                 // A pane on a host files for another computer: its paths mean nothing here.
                 session.set_site(PaneSite::Remote);
                 self.hear(pane, &session);
-                if let Some(slot) = self.slots.get(&pane) {
+                if let Some(slot) = self.panes.slot(pane) {
                     slot.borrow_mut().session = Some(session);
                 }
                 if let Some(host) = self.ssh.panes.get_mut(&pane) {

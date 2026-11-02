@@ -172,8 +172,8 @@ impl Hub {
     /// The question in front, if a program is waiting on the person. Questions of panes that
     /// have gone are dropped first.
     pub fn front_ask(&mut self) -> Option<Ask> {
-        let slots = &self.slots;
-        self.shelf.asks.retain(|ask| slots.contains_key(&ask.pane));
+        let panes = &self.panes;
+        self.shelf.asks.retain(|ask| panes.slot(ask.pane).is_some());
         self.shelf.asks.front().cloned()
     }
 
@@ -314,7 +314,7 @@ impl Hub {
         if self.is_host_pane(pane) {
             return self.upload_drop(pane, paths);
         }
-        let said = self.slots.get(&pane).and_then(|slot| {
+        let said = self.panes.slot(pane).and_then(|slot| {
             let mut slot = slot.borrow_mut();
             let session = slot.session.as_mut()?;
             session.drop_files(paths);

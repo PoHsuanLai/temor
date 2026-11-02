@@ -100,7 +100,7 @@ impl Hub {
     /// The commands every pane's blocks ran, newest first within a pane.
     fn block_commands(&self) -> Vec<CommandText> {
         let mut out = Vec::new();
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let slot = slot.borrow();
             let Some(session) = slot.session.as_ref() else {
                 continue;

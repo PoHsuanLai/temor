@@ -146,7 +146,7 @@ impl Hub {
         let mut redraw = false;
         let mut notes = Vec::new();
         for pane in waiting {
-            let Some(slot) = self.slots.get(&pane).cloned() else {
+            let Some(slot) = self.panes.slot(pane).cloned() else {
                 continue;
             };
             let probing = matches!(

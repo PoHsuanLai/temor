@@ -57,8 +57,8 @@ impl Hub {
     }
 
     fn has_session(&self, pane: PaneId) -> bool {
-        self.slots
-            .get(&pane)
+        self.panes
+            .slot(pane)
             .is_some_and(|slot| slot.borrow().session.is_some())
     }
 
@@ -66,8 +66,8 @@ impl Hub {
     pub(super) fn ssh_title(&self, pane: PaneId) -> Option<String> {
         let host = self.ssh.panes.get(&pane)?;
         let reported = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(|s| s.cwd()))
             .or_else(|| {
                 self.book
