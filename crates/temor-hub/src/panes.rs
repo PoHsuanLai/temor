@@ -9,6 +9,7 @@ use temor_client::model::vocab::ids::PaneId;
 use temor_ui_base::slot::Slot;
 
 use super::history::PaneHistory;
+use super::offer::PaneOffer;
 use super::run::Found;
 
 /// What the hub keeps of one live pane. Made by the first part of the hub that hears of the pane,
@@ -22,6 +23,8 @@ pub(super) struct PaneRecord {
     /// Its session in history: the one it goes on with until its shell says where it is, then
     /// the one it began.
     pub history: PaneHistory,
+    /// The shell offer in it.
+    pub offer: PaneOffer,
 }
 
 /// The live panes' records.

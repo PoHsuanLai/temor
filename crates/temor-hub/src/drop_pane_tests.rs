@@ -56,15 +56,13 @@ fn a_pane_that_goes_while_its_offer_shows_leaves_no_offer_behind() {
         block: BlockId(1),
         program: Program("python".to_owned()),
     };
-    hub.offer.states.insert(pane, asking);
-    hub.offer.lines.insert(pane, 1);
-    hub.offer.screens.insert(pane, 2);
+    hub.panes.record(pane).offer.state = asking;
+    assert!(hub.offer_asking(pane).is_some());
 
     hub.drop_pane(pane);
 
-    assert!(hub.offer.states.is_empty());
-    assert!(hub.offer.lines.is_empty());
-    assert!(hub.offer.screens.is_empty());
+    assert_eq!(hub.offer_asking(pane), None);
+    assert_eq!(hub.panes.len(), 0);
 }
 
 #[test]

@@ -246,7 +246,6 @@ impl Hub {
         self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
-        self.offer.forget(pane);
         if let Some(slot) = self.panes.remove(pane).and_then(|record| record.slot) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;

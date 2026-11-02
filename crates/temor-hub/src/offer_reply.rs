@@ -2,7 +2,7 @@
 //! line that makes the inner shell name itself; once the tick has heard the name, the
 //! integration written for that shell is typed. Nothing is typed before a Yes.
 
-use temor_client::model::offer::{Line, OfferIn, OfferOut, OfferState, Program, Reply, Screen};
+use temor_client::model::offer::{Line, OfferIn, OfferOut, Program, Reply, Screen};
 use temor_client::model::vocab::ids::PaneId;
 
 use super::model::Hub;
@@ -19,10 +19,13 @@ impl Hub {
     /// at once, with no question to land in the shell's history. Returns what the person should
     /// be told.
     pub fn offer_reply(&mut self, pane: PaneId, reply: Reply) -> Vec<String> {
-        let Some(slot) = self.panes.slot(pane).cloned() else {
+        let Some(record) = self.panes.get(pane) else {
             return Vec::new();
         };
-        let named = self.offer.states.get(&pane).and_then(OfferState::asking);
+        let Some(slot) = record.slot.clone() else {
+            return Vec::new();
+        };
+        let named = record.offer.state.asking();
         let (at, busy, shell) = match slot.borrow().session.as_ref() {
             Some(session) => (
                 session.now(),
@@ -44,7 +47,9 @@ impl Hub {
         };
         let input = match (reply, shell) {
             (Reply::Yes, Some(shell)) => {
-                self.offer.shells.insert(pane, shell);
+                if let Some(record) = self.panes.get_mut(pane) {
+                    record.offer.shell = Some(shell);
+                }
                 OfferIn::YesNamed(at)
             }
             (reply, _) => OfferIn::Reply(reply, at),
@@ -67,7 +72,9 @@ impl Hub {
                 OfferOut::Probe => self.offer_type(pane, &probe_text()),
                 OfferOut::Load => self.offer_load(pane),
                 OfferOut::Unsure => {
-                    self.offer.shells.remove(&pane);
+                    if let Some(record) = self.panes.get_mut(pane) {
+                        record.offer.shell = None;
+                    }
                     Some("Not set up: could not tell which shell this is.".to_owned())
                 }
                 OfferOut::Never(program) => self.offer_never(&program),
@@ -93,7 +100,7 @@ impl Hub {
 
     /// Types the integration written for the shell the pane named.
     fn offer_load(&mut self, pane: PaneId) -> Option<String> {
-        let shell = self.offer.shells.remove(&pane)?;
+        let shell = self.panes.get_mut(pane)?.offer.shell.take()?;
         match load_line(shell) {
             Ok(line) => self.offer_type(pane, line.as_str()),
             Err(_) => Some("Could not set up blocks in this shell.".to_owned()),
