@@ -61,6 +61,9 @@ pub(super) struct HostPane {
     pub check: Check,
     /// What the pane's session runs on.
     pub tier: super::remote::Tier,
+    /// A restored pane whose connection waits until its tab is first in front, so a launch does
+    /// not ask for a password in every tab the last session had open.
+    pub deferred: bool,
 }
 
 /// One host's shared connection, forwards and identity.
@@ -107,12 +110,8 @@ pub(super) struct SshHub {
     pub book: ConsentBook,
     pub tailnet: Arc<dyn TailnetFeed>,
     pub lines: BTreeMap<HostAlias, HostLine>,
-    pub panes: BTreeMap<PaneId, HostPane>,
     /// Panes of the last session that were on hosts; they reconnect as their panes start.
     pub restored: Vec<PaneHost>,
-    /// Restored panes whose connection waits until their tab is first in front, so a launch does
-    /// not ask for a password in every tab the last session had open.
-    pub deferred: BTreeSet<PaneId>,
     /// The host the next pane started is a session on.
     pub intent: Option<HostAlias>,
     /// A host picked while the tailnet shows it offline: its pane waits for "Try anyway".
@@ -146,9 +145,7 @@ impl SshHub {
             book: ConsentBook::default(),
             tailnet: Arc::new(NoTailnet),
             lines: BTreeMap::new(),
-            panes: BTreeMap::new(),
             restored: Vec::new(),
-            deferred: BTreeSet::new(),
             intent: None,
             offline: None,
             edits: BTreeMap::new(),
@@ -163,29 +160,19 @@ impl SshHub {
     }
 
     /// What the session file keeps: the answers, and which panes are on which host.
-    pub(super) fn hosts_file(&self) -> HostsFile {
+    pub(super) fn hosts_file(&self, panes: &super::panes::Panes) -> HostsFile {
         HostsFile {
             book: self.book.clone(),
-            panes: self
-                .panes
-                .iter()
+            panes: panes
+                .hosts()
                 .map(|(pane, host)| PaneHost {
-                    pane: *pane,
+                    pane,
                     alias: host.alias.as_str().to_owned(),
                     // The hub adds the helper session (`Hub::hosts_file`).
                     session: None,
                 })
                 .collect(),
         }
-    }
-
-    /// The panes alive on `alias`.
-    pub(super) fn panes_on(&self, alias: &HostAlias) -> Vec<PaneId> {
-        self.panes
-            .iter()
-            .filter(|(_, host)| &host.alias == alias)
-            .map(|(pane, _)| *pane)
-            .collect()
     }
 }
 
@@ -198,6 +185,6 @@ impl super::model::Hub {
 
     /// The host `pane` is a session on, if it is one.
     pub fn host_of(&self, pane: PaneId) -> Option<&str> {
-        self.ssh.panes.get(&pane).map(|host| host.alias.as_str())
+        self.panes.host(pane).map(|host| host.alias.as_str())
     }
 }

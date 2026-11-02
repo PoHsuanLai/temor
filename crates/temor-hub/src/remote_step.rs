@@ -240,9 +240,8 @@ impl Hub {
             let (cwd, env, shell) = match self.remote.local.get(&pane) {
                 Some(own) => (own.cwd.clone(), own.env.clone(), own.shell.clone()),
                 None => (
-                    self.ssh
-                        .panes
-                        .get(&pane)
+                    self.panes
+                        .host(pane)
                         .and_then(|host| host.start_dir.as_ref())
                         .map(|dir| dir.as_str().to_owned())
                         .or_else(|| home.clone())

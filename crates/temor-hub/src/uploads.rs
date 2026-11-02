@@ -49,7 +49,7 @@ fn item_for(path: &Path, folder: &str) -> Result<Item, String> {
 impl Hub {
     /// Whether `pane` is a session on another computer.
     pub(super) fn is_host_pane(&self, pane: PaneId) -> bool {
-        self.ssh.panes.contains_key(&pane)
+        self.panes.host(pane).is_some()
     }
 
     /// Sends the dropped files to the folder of the host pane `pane`. What the person should be

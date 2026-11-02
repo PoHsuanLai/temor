@@ -90,8 +90,8 @@ impl Hub {
     /// disk; otherwise a pane that is coming back from the recently closed list takes its own.
     /// A pane that cannot start still gets a slot (empty), and the reason is for the person.
     pub(super) fn open_pane(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        if let Some(alias) = self.ssh_claims(spawn) {
-            return self.begin_host(spawn, alias);
+        if let Some(claim) = self.ssh_claims(spawn) {
+            return self.begin_host(spawn, claim);
         }
         if self.local_wanted(spawn) {
             let resume = self

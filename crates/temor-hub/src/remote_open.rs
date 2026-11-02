@@ -95,7 +95,7 @@ impl Hub {
 
     /// The shared connection is up: the pane becomes a session on the helper.
     pub(super) fn remote_begin(&mut self, pane: PaneId) {
-        let Some(host) = self.ssh.panes.get_mut(&pane) else {
+        let Some(host) = self.panes.host_mut(pane) else {
             return;
         };
         host.phase = Phase::Up;
@@ -175,7 +175,7 @@ impl Hub {
         };
         self.remote_drop_pane(pane);
         self.remote.saved.remove(&pane);
-        if let Some(host) = self.ssh.panes.get_mut(&pane) {
+        if let Some(host) = self.panes.host_mut(pane) {
             host.tier = Tier::Plain;
         }
         self.start_session(&alias, pane, OpenAs::Join);

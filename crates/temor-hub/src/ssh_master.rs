@@ -36,9 +36,9 @@ impl Hub {
             return self.fail_host(pane, err.to_string());
         }
         // A connection nobody uses may have timed out since: ask the system again.
-        let busy = self.ssh.panes.iter().any(|(other, host)| {
+        let busy = self.panes.hosts().any(|(other, host)| {
             host.alias == *alias
-                && *other != pane
+                && other != pane
                 && !matches!(host.phase, Phase::Failed | Phase::Offline)
         });
         let line = self.ssh.lines.entry(alias.clone()).or_default();
@@ -89,7 +89,7 @@ impl Hub {
 
     /// Starts `ssh` in `pane`, to make the connection (`First`) or join it (`Join`).
     pub(super) fn start_session(&mut self, alias: &HostAlias, pane: PaneId, how: OpenAs) {
-        let Some(host) = self.ssh.panes.get(&pane) else {
+        let Some(host) = self.panes.host(pane) else {
             return;
         };
         if host.tier == Tier::Helper {
@@ -151,7 +151,7 @@ impl Hub {
                 if let Some(slot) = self.panes.slot(pane) {
                     slot.borrow_mut().session = Some(session);
                 }
-                if let Some(host) = self.ssh.panes.get_mut(&pane) {
+                if let Some(host) = self.panes.host_mut(pane) {
                     host.phase = phase;
                     host.scan = scan;
                 }
@@ -177,8 +177,8 @@ impl Hub {
 
     /// The first session of a host is connected: the host's key was verified.
     pub(super) fn established(&mut self, alias: &HostAlias) {
-        for pane in self.ssh.panes_on(alias) {
-            if let Some(host) = self.ssh.panes.get_mut(&pane) {
+        for pane in self.panes.on_host(alias) {
+            if let Some(host) = self.panes.host_mut(pane) {
                 if host.phase == Phase::Connecting {
                     host.phase = Phase::Up;
                 }

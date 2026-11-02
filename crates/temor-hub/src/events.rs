@@ -140,7 +140,7 @@ impl Hub {
     /// why), a host session that never came up or whose connection dropped (Restart connects
     /// again), and the quick terminal (it closes itself).
     fn keeps_ended_pane(&self, pane: PaneId, exit: Option<ChildExit>, prompted: bool) -> bool {
-        let host = self.ssh.panes.get(&pane).map(|host| host.phase);
+        let host = self.panes.host(pane).map(|host| host.phase);
         let dropped = host == Some(super::ssh::Phase::Up) && exit == Some(ChildExit::Exited(255));
         self.run_name(pane).is_some()
             || self.is_quick(pane)

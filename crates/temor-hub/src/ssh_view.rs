@@ -11,7 +11,7 @@ use super::ssh::{Check, Phase};
 impl Hub {
     /// What to show for `pane`, when it is a session on a host.
     pub fn host_view(&self, pane: PaneId) -> Option<HostView> {
-        let host = self.ssh.panes.get(&pane)?;
+        let host = self.panes.host(pane)?;
         let line = self.ssh.lines.get(&host.alias);
         let stage = match host.phase {
             Phase::Asking(action) => Stage::Asking(action),
@@ -64,7 +64,7 @@ impl Hub {
 
     /// The title of a host pane: `host:folder`, the folder as the pane's shell last reported it.
     pub(super) fn ssh_title(&self, pane: PaneId) -> Option<String> {
-        let host = self.ssh.panes.get(&pane)?;
+        let host = self.panes.host(pane)?;
         let reported = self
             .panes
             .slot(pane)

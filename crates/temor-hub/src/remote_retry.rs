@@ -55,7 +55,7 @@ impl Hub {
         let Some(host) = self.alias_of(pane) else {
             return;
         };
-        let phase = self.ssh.panes.get(&pane).map(|p| p.phase);
+        let phase = self.panes.host(pane).map(|p| p.phase);
         let Some(line) = self.remote.lines.get(&host) else {
             return;
         };

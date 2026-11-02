@@ -109,9 +109,8 @@ impl Hub {
     /// Opens the forwarded port in the browser, on the person's click.
     pub fn open_forwarded(&mut self, pane: PaneId, remote: Port) {
         let local = self
-            .ssh
             .panes
-            .get(&pane)
+            .host(pane)
             .and_then(|host| self.ssh.lines.get(&host.alias))
             .and_then(|line| line.forwards.local_of(remote));
         if let Some(local) = local {
@@ -122,9 +121,8 @@ impl Hub {
     /// Opens the host's port straight over the tailnet (no forward), on the person's click.
     pub fn open_direct(&mut self, pane: PaneId, remote: Port) {
         let direct = self
-            .ssh
             .panes
-            .get(&pane)
+            .host(pane)
             .and_then(|host| self.ssh.lines.get(&host.alias))
             .and_then(|line| line.direct.clone());
         if let Some(direct) = direct {

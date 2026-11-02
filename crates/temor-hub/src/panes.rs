@@ -11,6 +11,7 @@ use temor_ui_base::slot::Slot;
 use super::history::PaneHistory;
 use super::offer::PaneOffer;
 use super::run::Found;
+use super::ssh::HostPane;
 use super::viewers::PaneViewer;
 use crate::plugins::state::PanePlugins;
 
@@ -31,6 +32,8 @@ pub(super) struct PaneRecord {
     pub viewer: Option<PaneViewer>,
     /// What plugins have given it: its folder's facts, lens pictures, its agent's adapter.
     pub plugins: PanePlugins,
+    /// What it keeps while it is a session on another computer.
+    pub host: Option<HostPane>,
 }
 
 /// The live panes' records.
@@ -71,6 +74,30 @@ impl Panes {
     /// `pane`'s terminal, if it is live and has one.
     pub fn slot(&self, pane: PaneId) -> Option<&Rc<RefCell<Slot>>> {
         self.get(pane)?.slot.as_ref()
+    }
+
+    /// What `pane` keeps while it is a session on another computer.
+    pub fn host(&self, pane: PaneId) -> Option<&HostPane> {
+        self.get(pane)?.host.as_ref()
+    }
+
+    /// What `pane` keeps while it is a session on another computer, to change.
+    pub fn host_mut(&mut self, pane: PaneId) -> Option<&mut HostPane> {
+        self.get_mut(pane)?.host.as_mut()
+    }
+
+    /// Every pane that is a session on another computer.
+    pub fn hosts(&self) -> impl Iterator<Item = (PaneId, &HostPane)> {
+        self.iter()
+            .filter_map(|(pane, record)| Some((pane, record.host.as_ref()?)))
+    }
+
+    /// The panes alive on `alias`.
+    pub fn on_host(&self, alias: &temor_client::ssh::HostAlias) -> Vec<PaneId> {
+        self.hosts()
+            .filter(|(_, host)| &host.alias == alias)
+            .map(|(pane, _)| pane)
+            .collect()
     }
 
     /// Every live terminal, with its pane.

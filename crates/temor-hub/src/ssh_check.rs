@@ -81,7 +81,7 @@ impl Hub {
     pub(super) fn ssh_scan(&mut self, painted: &BTreeSet<PaneId>) {
         let mut news = Vec::new();
         for pane in painted {
-            let Some(host) = self.ssh.panes.get_mut(pane) else {
+            let Some(host) = self.panes.host_mut(*pane) else {
                 continue;
             };
             let Some(url) = host.scan.as_ref().and_then(|raw| raw.take()) else {
@@ -97,7 +97,7 @@ impl Hub {
 
     /// The shell started (its first folder report): the check, if any, is over.
     pub(super) fn ssh_shell_started(&mut self, pane: PaneId) {
-        if let Some(host) = self.ssh.panes.get_mut(&pane) {
+        if let Some(host) = self.panes.host_mut(pane) {
             host.scan = None;
             host.check = Check::Nothing;
         }
@@ -105,8 +105,7 @@ impl Hub {
 
     /// The person pressed Open on the check row.
     pub fn open_check(&mut self, pane: PaneId) {
-        let Some(Check::Shown(url)) = self.ssh.panes.get(&pane).map(|host| host.check.clone())
-        else {
+        let Some(Check::Shown(url)) = self.panes.host(pane).map(|host| host.check.clone()) else {
             return;
         };
         self.open_url(url.as_str());

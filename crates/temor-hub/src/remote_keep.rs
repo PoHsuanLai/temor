@@ -35,7 +35,7 @@ impl Hub {
     /// What the session file keeps about hosts: the answers, which panes are on which host, and
     /// the helper session each of those panes has.
     pub(super) fn hosts_file(&self) -> HostsFile {
-        let mut hosts = self.ssh.hosts_file();
+        let mut hosts = self.ssh.hosts_file(&self.panes);
         self.remote.note_sessions(&mut hosts);
         hosts
     }

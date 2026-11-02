@@ -27,7 +27,7 @@ impl Hub {
             edit.local.clone(),
             edit.tier,
         );
-        let Some(from) = self.ssh.panes_on(&host).first().copied() else {
+        let Some(from) = self.panes.on_host(&host).first().copied() else {
             self.notices.push(format!(
                 "Open a tab on {} to see the changes",
                 host.as_str()

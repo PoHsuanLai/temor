@@ -103,7 +103,7 @@ fn each_question_is_asked_alone_and_the_answers_decide_how_ssh_starts() {
             false => assert_eq!(tail, ["--", "fake"], "{name}: plain ssh has no command"),
         }
         // What was answered is kept for the machine, so the session file can hold it.
-        let book = rig.hub.ssh.hosts_file().book;
+        let book = rig.hub.ssh.hosts_file(&rig.hub.panes).book;
         assert_eq!(book.records().len(), 1, "{name}");
         assert_eq!(book.records()[0].aliases, ["fake"], "{name}");
         assert_eq!(book.records()[0].grants.integrate, integrate, "{name}");

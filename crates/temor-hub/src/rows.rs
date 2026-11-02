@@ -360,7 +360,7 @@ impl Hub {
 
     /// The host `pane` is a session on, if it is one.
     pub(super) fn alias_of(&self, pane: PaneId) -> Option<HostAlias> {
-        self.ssh.panes.get(&pane).map(|host| host.alias.clone())
+        self.panes.host(pane).map(|host| host.alias.clone())
     }
 
     /// Changes the pane's session, if it has one. The mutable twin of [`Hub::live`].

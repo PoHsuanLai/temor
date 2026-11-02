@@ -196,7 +196,7 @@ impl Hub {
                 }
                 EditOut::AskConflict(found) => {
                     edit.asking = Some(found);
-                    let panes = self.ssh.panes_on(&host);
+                    let panes = self.panes.on_host(&host);
                     self.host_attention(panes);
                 }
                 EditOut::Saved => {

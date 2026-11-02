@@ -26,7 +26,7 @@ impl Hub {
     /// opens `path` as soon as the connection is up.
     pub(super) fn edit_when_up(&mut self, host: HostAlias, path: RemoteFilePath) {
         let name = host.as_str().to_owned();
-        if self.ssh.panes_on(&host).is_empty() {
+        if self.panes.on_host(&host).is_empty() {
             self.open_host_named(&name);
         }
         self.notices.push(format!(
@@ -60,11 +60,10 @@ impl Hub {
 
     /// Whether a pane of `host` has not given up.
     fn host_is_trying(&self, host: &HostAlias) -> bool {
-        self.ssh
-            .panes_on(host)
-            .iter()
-            .filter_map(|pane| self.ssh.panes.get(pane))
-            .any(|pane| !matches!(pane.phase, Phase::Failed | Phase::Offline))
+        self.panes
+            .hosts()
+            .filter(|(_, pane)| &pane.alias == host)
+            .any(|(_, pane)| !matches!(pane.phase, Phase::Failed | Phase::Offline))
     }
 
     /// A pane of `pane`'s host that closed inside a tab kept for reopening is remembered, so

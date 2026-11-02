@@ -126,23 +126,24 @@ impl Hub {
 
     /// The host a pane about to start is a session on: the one just asked for, or the one it was
     /// on when the session was saved.
-    pub(super) fn ssh_claims(&mut self, spawn: &Spawn) -> Option<HostAlias> {
+    /// A pane brought back so is restored: it connects once its tab is first in front.
+    pub(super) fn ssh_claims(&mut self, spawn: &Spawn) -> Option<(HostAlias, bool)> {
         if let Some(at) = self.ssh.restored.iter().position(|r| r.pane == spawn.pane) {
             let saved = self.ssh.restored.remove(at);
             if let Some(session) = saved.session {
                 let session = temor_client::remote::ids::RemoteSessionId(session.0);
                 self.remote.saved.insert(spawn.pane, session);
             }
-            self.ssh.deferred.insert(spawn.pane);
-            return HostAlias::new(&saved.alias).ok();
+            return HostAlias::new(&saved.alias).ok().map(|alias| (alias, true));
         }
         self.ssh_reclaim(spawn.pane)
             .or_else(|| self.ssh.intent.take())
+            .map(|alias| (alias, false))
     }
 
     /// Makes `spawn`'s pane a session on `alias`: an empty pane now, `ssh` in it once the
     /// questions are answered and the connection's turn comes.
-    pub(super) fn begin_host(&mut self, spawn: &Spawn, alias: HostAlias) {
+    pub(super) fn begin_host(&mut self, spawn: &Spawn, (alias, deferred): (HostAlias, bool)) {
         let slot = Slot {
             palette: self.palette,
             ..Slot::default()
@@ -153,22 +154,20 @@ impl Hub {
             .as_ref()
             .and_then(|cwd| RemoteFilePath::new(cwd.as_str()).ok());
         let offline = self.ssh.offline.take().as_ref() == Some(&alias);
-        self.ssh.panes.insert(
-            spawn.pane,
-            HostPane {
-                alias,
-                phase: Phase::Waiting,
-                mode: None,
-                start_dir,
-                scan: None,
-                check: Check::Nothing,
-                tier: Tier::Plain,
-            },
-        );
+        self.panes.record(spawn.pane).host = Some(HostPane {
+            alias,
+            phase: Phase::Waiting,
+            mode: None,
+            start_dir,
+            scan: None,
+            check: Check::Nothing,
+            tier: Tier::Plain,
+            deferred,
+        });
         self.pace.changed();
         if offline {
             // Say why before dialling a computer the tailnet cannot reach.
-            if let Some(host) = self.ssh.panes.get_mut(&spawn.pane) {
+            if let Some(host) = self.panes.host_mut(spawn.pane) {
                 host.phase = Phase::Offline;
             }
             return;
@@ -178,7 +177,7 @@ impl Hub {
 
     /// The person pressed "Try anyway" on a computer shown offline.
     pub fn try_offline(&mut self, pane: PaneId) {
-        if self.ssh.panes.get(&pane).map(|host| host.phase) == Some(Phase::Offline) {
+        if self.panes.host(pane).map(|host| host.phase) == Some(Phase::Offline) {
             self.gate_host(pane);
         }
     }
@@ -197,10 +196,10 @@ impl Hub {
         };
         let verdict = gate(&self.ssh.book, &self.who_of(&alias));
         let tier = self.remote_tier(&alias);
-        let hidden = self.ssh.deferred.contains(&pane);
-        let Some(host) = self.ssh.panes.get_mut(&pane) else {
+        let Some(host) = self.panes.host_mut(pane) else {
             return;
         };
+        let hidden = host.deferred;
         match verdict {
             Gate::Ask(action) => host.phase = Phase::Asking(action),
             Gate::Run(mode) => {
@@ -225,14 +224,15 @@ impl Hub {
             .map(|tab| tab.tree.panes())
             .unwrap_or_default();
         let shown: Vec<PaneId> = self
-            .ssh
-            .deferred
-            .iter()
-            .filter(|pane| front.contains(pane))
-            .copied()
+            .panes
+            .hosts()
+            .filter(|(pane, host)| host.deferred && front.contains(pane))
+            .map(|(pane, _)| pane)
             .collect();
         for pane in shown {
-            self.ssh.deferred.remove(&pane);
+            if let Some(host) = self.panes.host_mut(pane) {
+                host.deferred = false;
+            }
             self.gate_host(pane);
         }
     }
@@ -240,9 +240,8 @@ impl Hub {
     /// The person answered the question a host pane asks.
     pub fn answer_host(&mut self, pane: PaneId, grant: Grant) {
         let Some((alias, Phase::Asking(action))) = self
-            .ssh
             .panes
-            .get(&pane)
+            .host(pane)
             .map(|host| (host.alias.clone(), host.phase))
         else {
             return;
@@ -262,14 +261,14 @@ impl Hub {
 
     pub(super) fn fail_host(&mut self, pane: PaneId, why: String) {
         self.notices.push(why);
-        if let Some(host) = self.ssh.panes.get_mut(&pane) {
+        if let Some(host) = self.panes.host_mut(pane) {
             host.phase = Phase::Failed;
         }
     }
 
     /// A host pane's program ended.
     pub(super) fn ssh_ended(&mut self, pane: PaneId, exit: Option<ChildExit>) {
-        let Some(host) = self.ssh.panes.get_mut(&pane) else {
+        let Some(host) = self.panes.host_mut(pane) else {
             return;
         };
         let (alias, was, tier) = (host.alias.clone(), host.phase, host.tier);
@@ -297,7 +296,7 @@ impl Hub {
             .cwds
             .get(&pane)
             .and_then(|cwd| RemoteFilePath::new(cwd.as_str()).ok());
-        let Some(host) = self.ssh.panes.get_mut(&pane) else {
+        let Some(host) = self.panes.host_mut(pane) else {
             return false;
         };
         host.phase = Phase::Waiting;
@@ -309,8 +308,11 @@ impl Hub {
     /// A host pane was closed.
     pub(super) fn ssh_forget(&mut self, pane: PaneId) {
         self.remote_forget(pane);
-        self.ssh.deferred.remove(&pane);
-        if let Some(host) = self.ssh.panes.remove(&pane) {
+        if let Some(host) = self
+            .panes
+            .get_mut(pane)
+            .and_then(|record| record.host.take())
+        {
             self.ssh_note_closed(pane, host.alias.clone());
             if matches!(host.phase, Phase::Connecting | Phase::Waiting) {
                 self.feed_master(&host.alias, MasterIn::Failed(pane));
