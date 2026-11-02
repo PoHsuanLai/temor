@@ -13,7 +13,9 @@
 #   - L2 does no I/O (PLAN §2): an L2 crate names no temor-pty, temor-transfer or temor-vt, and
 #     names temor-shell, temor-ssh and temor-pane without their default features (`io`,
 #     `engine`), so it links their vocabulary and none of their process or socket code;
-#   - no crate re-exports a temor crate whole or by glob: what crosses the fence is listed.
+#   - no crate re-exports a temor crate whole or by glob: what crosses the fence is listed;
+#   - the model crates are rules only (PLAN §4c): outside their tests they read no clock,
+#     environment or file, start no thread and hold no interior mutability.
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
 # `crate -> dep (rule)` and exits 1 when there is any.
@@ -135,6 +137,32 @@ whole=$(grep -rnE 'pub use temor_[a-z_]+( as [a-z_]+)?;|pub use temor_[a-z_:]+::
   "$root"/crates/*/src || true)
 if [ -n "$whole" ]; then
   printf '%s (re-exports a temor crate whole or by glob)\n' "$whole"
+  layers_ok=0
+fi
+
+# The model crates are rules only (PLAN §4c): what a step needs of a clock, the environment or a
+# file comes in as a value. A line that must do otherwise is marked `// pure-ok: <why>`.
+if ! python3 -I -c '
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+crates = ["temor-schema", "temor-core", "temor-blocks", "temor-layout", "temor-hosts", "temor-agent"]
+bad = re.compile(r"\b(Instant::now|SystemTime::now|std::env::|env::var|std::fs::|fs::read|fs::write|thread::spawn|static mut|thread_local!|RefCell|Cell<|Mutex|RwLock|OnceLock|rand::)")
+tests = re.compile(r"(^|/)(tests?|[a-z_]*_tests|[a-z_]*_props|testing)\.rs$|/tests/")
+hits = []
+for crate in crates:
+    for f in sorted((root / "crates" / crate / "src").rglob("*.rs")):
+        rel = f.relative_to(root).as_posix()
+        if tests.search(rel):
+            continue
+        for n, line in enumerate(f.read_text().splitlines(), 1):
+            if line.strip().startswith("#[cfg(test)]"):
+                break
+            if bad.search(line.split("//")[0]) and "pure-ok:" not in line:
+                hits.append(f"{rel}:{n}: {line.strip()} (a model crate reads no clock, environment or file, and holds no shared state)")
+for hit in hits:
+    print(hit)
+sys.exit(1 if hits else 0)
+' "$root"; then
   layers_ok=0
 fi
 
