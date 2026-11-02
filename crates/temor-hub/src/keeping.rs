@@ -6,7 +6,7 @@
 use std::collections::BTreeSet;
 use std::time::Instant;
 
-use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through, screens};
+use temor_client::keep::{Kept, KeptPane, Laying, Pace, PaneFiles, Starting, screens};
 use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 
@@ -102,7 +102,7 @@ impl Hub {
             Pace::Idle => None,
             Pace::WaitFor(wait) => Some(wait),
             Pace::WriteNow => {
-                self.lay_all(Through::Client);
+                self.lay_all(Kept::lay_all);
                 // Quitting from the system's menu ends the process without dropping the hub,
                 // so what a next launch needs from each pane is kept now.
                 if let Some(dir) = &self.state_dir {
@@ -114,8 +114,9 @@ impl Hub {
         }
     }
 
-    /// Hands the client the layout of every Space, the hosts and the panes' sessions.
-    fn lay_all(&mut self, through: Through) {
+    /// Hands the client the layout of every Space, the hosts and the panes' sessions, by `lay`
+    /// ([`Kept::lay_all`], or [`Kept::lay_at_quit`] to wait for it to be written).
+    fn lay_all(&mut self, lay: fn(&mut Kept, &temor_client::Client, Laying<'_>)) {
         let Some(client) = self.client().cloned() else {
             return;
         };
@@ -129,7 +130,7 @@ impl Hub {
             hosts: &hosts,
             sessions: &sessions,
         };
-        self.kept.lay_all(&client, laying, through);
+        lay(&mut self.kept, &client, laying);
     }
 
     /// What is kept of each pane that outlives the window: its checkpoint (with the daemon
@@ -164,7 +165,7 @@ impl Hub {
 
 impl Drop for Hub {
     fn drop(&mut self) {
-        self.lay_all(Through::Now);
+        self.lay_all(Kept::lay_at_quit);
         let Some(dir) = self.state_dir.clone() else {
             return;
         };

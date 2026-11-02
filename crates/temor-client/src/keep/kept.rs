@@ -39,12 +39,13 @@ fn space_key(id: SpaceId) -> String {
     format!("space/{}", id.0)
 }
 
-/// How a write reaches the store: through the client's thread, or now (at quit, when the
-/// window may be gone before the thread gets to it).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Through {
-    Client,
-    Now,
+/// What is to be kept under a key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Lay {
+    Write(String),
+    Forget,
+    /// Left as it is kept: what it should be could not be made (it would not encode).
+    Leave,
 }
 
 /// A Space brought back at launch: the panes to start in it and the files its viewers show,
@@ -87,29 +88,26 @@ impl Kept {
         client.store().kept(key).ok().flatten()
     }
 
-    /// Keep `value` under `key` (forget it with `None`), unless that is what is kept already.
-    fn lay(&mut self, client: &Client, key: String, value: Option<String>, through: Through) {
-        if self.newer.contains(&key) || self.written.get(&key) == value.as_ref() {
-            return;
-        }
-        let laid = match through {
-            Through::Client => {
-                client.act(Command::Lay {
-                    key: key.clone(),
-                    value: value.clone(),
-                });
-                true
+    /// The writes that make what is kept what `plan` says: each key that changed, and the rows
+    /// of a Space that is gone. Keys a newer temor wrote are left alone.
+    pub fn changes(&self, plan: &BTreeMap<String, Lay>) -> Vec<(String, Option<String>)> {
+        let gone = self
+            .written
+            .keys()
+            .filter(|key| key.starts_with("space/") && !plan.contains_key(*key))
+            .map(|key| (key.clone(), None));
+        let changed = plan.iter().filter_map(|(key, lay)| {
+            let kept = self.written.get(key);
+            match lay {
+                Lay::Write(text) if kept != Some(text) => Some((key.clone(), Some(text.clone()))),
+                Lay::Forget if kept.is_some() => Some((key.clone(), None)),
+                Lay::Write(_) | Lay::Forget | Lay::Leave => None,
             }
-            Through::Now => write_now(client, &key, value.as_deref()),
-        };
-        // A write that failed is not what is kept: the next change tries it again.
-        if !laid {
-            return;
-        }
-        match value {
-            Some(value) => self.written.insert(key, value),
-            None => self.written.remove(&key),
-        };
+        });
+        changed
+            .chain(gone)
+            .filter(|(key, _)| !self.newer.contains(key))
+            .collect()
     }
 
     /// Reads the files an older temor left in `dir` into the store, once.
@@ -260,52 +258,54 @@ impl Kept {
 
     /// Hands the client every Space's rows, the Spaces, the hosts and the panes' sessions that
     /// changed, and forgets the rows of a Space that is gone.
-    pub fn lay_all(&mut self, client: &Client, laying: Laying<'_>, through: Through) {
-        // A write still waiting on the client's thread is older than this one: it lands first.
-        if through == Through::Now {
-            client.flush(FLUSH_WITHIN);
-        }
-        let rows: Vec<(String, Option<String>)> = laying
-            .book
-            .every()
-            .map(|(id, ws)| (space_key(id), encode(&leave_out(ws, laying.leave)).ok()))
-            .collect();
-        let kept: BTreeSet<String> = rows.iter().map(|(key, _)| key.clone()).collect();
-        let gone: Vec<String> = self
-            .written
-            .keys()
-            .filter(|key| key.starts_with("space/") && !kept.contains(*key))
-            .cloned()
-            .collect();
-        for (key, text) in rows {
-            if let Some(text) = text {
-                self.lay(client, key, Some(text), through);
-            }
-        }
-        for key in gone {
-            self.lay(client, key, None, through);
-        }
-        let spaces = serde_json::to_string(&laying.book.for_keeping()).ok();
-        if let Some(text) = spaces {
-            self.lay(client, SPACES.to_owned(), Some(text), through);
-        }
-        // What could not be written out is left as it was kept, not forgotten.
-        let hosts = match *laying.hosts == HostsFile::default() {
-            true => Ok(None),
-            false => splice_hosts("{}", laying.hosts).map(Some),
-        };
-        if let Ok(hosts) = hosts {
-            self.lay(client, HOSTS.to_owned(), hosts, through);
-        }
-        let sessions: BTreeMap<u64, SessionId> = laying
-            .sessions
-            .iter()
-            .map(|(pane, id)| (pane.0, *id))
-            .collect();
-        if let Ok(sessions) = serde_json::to_string(&sessions) {
-            self.lay(client, SESSIONS.to_owned(), Some(sessions), through);
+    pub fn lay_all(&mut self, client: &Client, laying: Laying<'_>) {
+        for (key, value) in self.changes(&lay_plan(&laying)) {
+            client.act(Command::Lay {
+                key: key.clone(),
+                value: value.clone(),
+            });
+            match value {
+                Some(value) => self.written.insert(key, value),
+                None => self.written.remove(&key),
+            };
         }
     }
+
+    /// [`Kept::lay_all`] at quit: the window may be gone before the client's thread gets to the
+    /// writes, so they are waited for (after every write handed over before them).
+    pub fn lay_at_quit(&mut self, client: &Client, laying: Laying<'_>) {
+        self.lay_all(client, laying);
+        client.flush(FLUSH_WITHIN);
+    }
+}
+
+/// What of the layout is to be kept: every Space's rows, the Spaces, the hosts and the panes'
+/// sessions, by key. What could not be made is left as it was kept, not forgotten.
+pub fn lay_plan(laying: &Laying<'_>) -> BTreeMap<String, Lay> {
+    let made = |text: Option<String>| text.map_or(Lay::Leave, Lay::Write);
+    let rows = laying.book.every().map(|(id, ws)| {
+        (
+            space_key(id),
+            made(encode(&leave_out(ws, laying.leave)).ok()),
+        )
+    });
+    let spaces = made(serde_json::to_string(&laying.book.for_keeping()).ok());
+    let hosts = match *laying.hosts == HostsFile::default() {
+        true => Lay::Forget,
+        false => made(splice_hosts("{}", laying.hosts).ok()),
+    };
+    let sessions: BTreeMap<u64, SessionId> = laying
+        .sessions
+        .iter()
+        .map(|(pane, id)| (pane.0, *id))
+        .collect();
+    let sessions = made(serde_json::to_string(&sessions).ok());
+    rows.chain([
+        (SPACES.to_owned(), spaces),
+        (HOSTS.to_owned(), hosts),
+        (SESSIONS.to_owned(), sessions),
+    ])
+    .collect()
 }
 
 /// Writes `value` under `key` (forgets it with `None`) on this thread. Whether it was written.
