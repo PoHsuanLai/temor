@@ -15,17 +15,24 @@ fn who(alias: &str, fp: Option<&str>, node: Option<&str>) -> Who {
     }
 }
 
+/// The book after `input`, and whether it changed.
+fn stepped(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
+    let next = consent_step(book.clone(), input);
+    let changed = next != book;
+    (next, changed)
+}
+
 fn answer(book: ConsentBook, who: &Who, action: Action, grant: Grant) -> ConsentBook {
     let input = ConsentIn::Answered {
         who: who.clone(),
         action,
         grant,
     };
-    consent_step(book, input).0
+    stepped(book, input).0
 }
 
 fn identify(book: ConsentBook, who: &Who) -> ConsentBook {
-    consent_step(book, ConsentIn::Identified { who: who.clone() }).0
+    stepped(book, ConsentIn::Identified { who: who.clone() }).0
 }
 
 const INSTALL: Gate = Gate::Run(RunMode::Bootstrap(TerminfoPolicy::Install));
@@ -93,7 +100,7 @@ fn answers_given_by_alias_join_the_machine_once_a_connection_proves_it() {
     assert_eq!(gate(&book, &typed), INSTALL);
 
     let proven = who("prod", Some(FP), None);
-    let (book, changed) = consent_step(
+    let (book, changed) = stepped(
         book,
         ConsentIn::Identified {
             who: proven.clone(),
@@ -103,7 +110,7 @@ fn answers_given_by_alias_join_the_machine_once_a_connection_proves_it() {
     // Reached by another name later (a rename in ssh_config), it is the same machine.
     assert_eq!(gate(&book, &who("renamed", Some(FP), None)), INSTALL);
     // Identifying again changes nothing and asks for no save.
-    let (again, changed) = consent_step(book.clone(), ConsentIn::Identified { who: proven });
+    let (again, changed) = stepped(book.clone(), ConsentIn::Identified { who: proven });
     assert_eq!((again, changed), (book, false));
 }
 
@@ -198,7 +205,7 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
     );
     assert_eq!(book.grants(&prod).helper, Grant::Ask);
     let helper = |book, who: &Who, grant| {
-        consent_step(
+        stepped(
             book,
             ConsentIn::HelperAnswered {
                 who: who.clone(),
@@ -234,7 +241,7 @@ fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() 
     let prod = who("prod", Some(FP), Some("n1"));
     let alias_only = who("prod", None, None);
     let permit = |book, who: &Who, permit, grant| {
-        consent_step(
+        stepped(
             book,
             ConsentIn::PermitAnswered {
                 who: who.clone(),

@@ -95,14 +95,15 @@ impl Hub {
         }
     }
 
-    /// Writes what is kept if a change is waiting and the pace allows it. Returns how long to
-    /// wait before asking again, when a write is waiting for its turn.
+    /// Writes what is kept if it differs from what was written and the pace allows it. Returns
+    /// how long to wait before asking again, when a write is waiting for its turn.
     pub fn poll_save(&mut self, now: Instant) -> Option<std::time::Duration> {
         if let Some(dir) = self.state_dir.clone() {
             let panes = self.kept_panes(false);
             self.files.keep_changed(&dir, panes);
         }
-        match self.pace.poll(now) {
+        let owed = self.client().is_some() && self.laid(|kept, laying| kept.owed(&laying));
+        match self.pace.poll(now, owed) {
             Pace::Idle => None,
             Pace::WaitFor(wait) => Some(wait),
             Pace::WriteNow => {
@@ -124,6 +125,12 @@ impl Hub {
         let Some(client) = self.client().cloned() else {
             return;
         };
+        self.laid(|kept, laying| lay(kept, &client, laying));
+    }
+
+    /// `then` of what is kept and the layout to keep: every Space, the hosts and the panes'
+    /// sessions.
+    pub(super) fn laid<R>(&mut self, then: impl FnOnce(&mut Kept, Laying<'_>) -> R) -> R {
         // A tab that ran a program (`temor -e`) is not brought back: it was that launch's.
         let leave: BTreeSet<PaneId> = self
             .panes
@@ -138,7 +145,7 @@ impl Hub {
             hosts: &hosts,
             sessions: &sessions,
         };
-        lay(&mut self.kept, &client, laying);
+        then(&mut self.kept, laying)
     }
 
     /// What is kept of each pane that outlives the window: its checkpoint (with the daemon

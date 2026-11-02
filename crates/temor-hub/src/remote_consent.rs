@@ -24,7 +24,7 @@ pub(super) fn carry_over(book: ConsentBook, old: &BTreeMap<String, Grant>) -> Co
             match held {
                 Grant::Ask => {
                     let input = ConsentIn::HelperAnswered { who, grant: *grant };
-                    consent_step(book, input).0
+                    consent_step(book, input)
                 }
                 _ => book,
             }
@@ -49,12 +49,7 @@ impl Hub {
         if old.is_empty() {
             return;
         }
-        let book = std::mem::take(&mut self.ssh.book);
-        let next = carry_over(book.clone(), &old);
-        if next != book {
-            self.pace.changed();
-        }
-        self.ssh.book = next;
+        self.ssh.book = carry_over(std::mem::take(&mut self.ssh.book), &old);
     }
 }
 
@@ -85,8 +80,7 @@ mod tests {
                 },
                 grant: Grant::Allowed,
             },
-        )
-        .0;
+        );
         let old = answers(&[
             ("prod", Grant::Allowed),
             ("box", Grant::Refused),

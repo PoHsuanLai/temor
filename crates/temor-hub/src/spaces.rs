@@ -67,7 +67,6 @@ impl Hub {
         self.swap_to(to);
         self.fill_empty();
         self.refresh_probe();
-        self.pace.changed();
     }
 
     /// A Space with no tab gets one, as a window closing its last tab does.
@@ -83,7 +82,6 @@ impl Hub {
         for id in self.book.follow(all) {
             self.forget_space(id);
         }
-        self.pace.changed();
     }
 }
 

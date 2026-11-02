@@ -60,8 +60,6 @@ impl Hub {
             .filter_map(|pane| pane.session)
             .collect();
         self.step_link(host, LinkEvent::SessionsChanged { sessions });
-        // The session file keeps the numbers; they changed.
-        self.pace.changed();
     }
 
     pub(super) fn remote_dialed(

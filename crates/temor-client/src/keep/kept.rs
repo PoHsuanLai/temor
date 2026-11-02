@@ -256,6 +256,11 @@ impl Kept {
         starting
     }
 
+    /// Whether what `laying` keeps differs from what was last handed over.
+    pub fn owed(&self, laying: &Laying<'_>) -> bool {
+        !self.changes(&lay_plan(laying)).is_empty()
+    }
+
     /// Hands the client every Space's rows, the Spaces, the hosts and the panes' sessions that
     /// changed, and forgets the rows of a Space that is gone.
     pub fn lay_all(&mut self, client: &Client, laying: Laying<'_>) {

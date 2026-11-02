@@ -173,7 +173,6 @@ impl Hub {
             tier: Tier::Plain,
             deferred,
         });
-        self.pace.changed();
         if offline {
             // Say why before dialling a computer the tailnet cannot reach.
             self.host_in(spawn.pane, HostIn::Offline);
@@ -243,11 +242,7 @@ impl Hub {
     }
 
     pub(super) fn step_book(&mut self, input: ConsentIn) {
-        let (book, changed) = consent_step(std::mem::take(&mut self.ssh.book), input);
-        self.ssh.book = book;
-        if changed {
-            self.pace.changed();
-        }
+        self.ssh.book = consent_step(std::mem::take(&mut self.ssh.book), input);
     }
 
     pub(super) fn fail_host(&mut self, pane: PaneId, why: String) {
@@ -282,7 +277,6 @@ impl Hub {
             self.ssh_note_closed(pane, host.alias.clone());
             let outs = host.step(HostIn::Closed);
             self.host_outs(pane, &host.alias, outs);
-            self.pace.changed();
         }
     }
 }

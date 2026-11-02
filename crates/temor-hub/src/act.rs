@@ -141,7 +141,8 @@ impl Hub {
             WorkspaceOut::Focused(_) => self.refresh_probe(),
             WorkspaceOut::Tab(_) => {}
             WorkspaceOut::Refused(why) => self.notices.push(refusal_text(&why)),
-            WorkspaceOut::Changed => self.pace.changed(),
+            // What is kept follows from the book (`Hub::poll_save`).
+            WorkspaceOut::Changed => {}
             // An output a later core adds has nothing for the window to do yet.
             _ => {}
         }

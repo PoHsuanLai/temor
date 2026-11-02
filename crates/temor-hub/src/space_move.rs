@@ -21,7 +21,6 @@ impl Hub {
                 // The Space it left may have been left with nothing.
                 self.fill_empty();
                 self.refresh_probe();
-                self.pace.changed();
             }
             Err(err) => self.notices.push(err.to_string()),
         }
@@ -40,7 +39,6 @@ impl Hub {
         for out in self.book.adopt(space, pane, cwd)? {
             match out {
                 WorkspaceOut::Focused(_) if current => self.refresh_probe(),
-                WorkspaceOut::Changed => self.pace.changed(),
                 _ => {}
             }
         }

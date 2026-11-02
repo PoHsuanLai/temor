@@ -12,7 +12,7 @@ use temor_panes::pane::keys::Action;
 use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::keys::workspace_input;
-use super::model::Hub;
+use super::model::{Hub, SAVE_EVERY};
 use super::rows::tidy;
 use super::shelf::{Ask, AskKind};
 use temor_ui_base::edge::Ambient;
@@ -571,4 +571,28 @@ fn a_change_hands_back_what_it_said_in_order_and_leaves_nothing_said() {
         (7, vec!["first".to_owned(), "second".to_owned()])
     );
     assert!(hub.take_notices().is_empty());
+}
+
+#[test]
+fn what_is_kept_is_written_when_it_differs_from_what_was_written_and_otherwise_rests() {
+    use std::time::{Duration, Instant};
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
+    hub.set_client(temor_client::Client::in_memory());
+    let owed = |hub: &mut Hub| hub.laid(|kept, laying| kept.owed(&laying));
+    let start = Instant::now();
+    assert!(owed(&mut hub), "the first tab was never written");
+    assert_eq!(hub.poll_save(start), None);
+    assert!(!owed(&mut hub), "written");
+    assert_eq!(hub.poll_save(start + Duration::from_millis(100)), None);
+
+    let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::NewTab { cwd: None });
+    hub.book.place(hub.book.active(), ws);
+    assert!(owed(&mut hub), "a second tab");
+    let soon = start + Duration::from_millis(100);
+    assert_eq!(
+        hub.poll_save(soon),
+        Some(SAVE_EVERY - Duration::from_millis(100))
+    );
+    assert_eq!(hub.poll_save(start + SAVE_EVERY), None);
+    assert!(!owed(&mut hub), "written once its turn came");
 }

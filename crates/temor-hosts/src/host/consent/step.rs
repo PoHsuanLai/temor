@@ -60,21 +60,19 @@ pub enum ConsentIn {
     Identified { who: Who },
 }
 
-/// The book after `input`, and whether it changed (so the session file is written again).
-pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
-    let next = match input {
+/// The book after `input`.
+pub fn consent_step(book: ConsentBook, input: ConsentIn) -> ConsentBook {
+    match input {
         ConsentIn::Answered { who, action, grant } => {
-            book.clone().with_host(&who, |g| g.with(action, grant))
+            book.with_host(&who, |g| g.with(action, grant))
         }
-        ConsentIn::HelperAnswered { who, grant } => book
-            .clone()
-            .with_host(&who, |g| BootstrapGrants { helper: grant, ..g }),
-        ConsentIn::PermitAnswered { who, permit, grant } => book
-            .clone()
-            .with_host(&who, |g| g.with_permit(permit, grant)),
-        ConsentIn::Identified { who } if book.knows(&who) => book.clone().with_host(&who, |g| g),
-        ConsentIn::Identified { .. } => book.clone(),
-    };
-    let changed = next != book;
-    (next, changed)
+        ConsentIn::HelperAnswered { who, grant } => {
+            book.with_host(&who, |g| BootstrapGrants { helper: grant, ..g })
+        }
+        ConsentIn::PermitAnswered { who, permit, grant } => {
+            book.with_host(&who, |g| g.with_permit(permit, grant))
+        }
+        ConsentIn::Identified { who } if book.knows(&who) => book.with_host(&who, |g| g),
+        ConsentIn::Identified { .. } => book,
+    }
 }
