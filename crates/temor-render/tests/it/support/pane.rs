@@ -28,6 +28,8 @@ pub struct Pane {
     pub size: PixelSize,
     pub scale: Scale,
     pub palette: Palette,
+    /// The window's ground under the pane, where the terminal's own background is not drawn.
+    pub ground: Option<temor_vt::Rgb>,
 }
 
 pub const PADDING: u32 = 4;
@@ -66,6 +68,7 @@ impl Pane {
             size,
             scale,
             palette,
+            ground: None,
         }
     }
 
@@ -89,6 +92,7 @@ impl Pane {
             blink: temor_render::BlinkPhase::On,
             selection: None,
             lower: 0,
+            ground: self.ground,
         };
         let out = self
             .renderer

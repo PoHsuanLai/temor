@@ -3,7 +3,7 @@
 use temor_vt::{Col, Px, Row};
 
 use crate::error::RenderError;
-use crate::frame::PaneFrame;
+use crate::frame::{PaneFrame, TermColors};
 use crate::metrics::{CellMetrics, CellPos, Padding, PixelSize, Scale};
 use crate::palette::Palette;
 
@@ -90,6 +90,19 @@ pub struct PaneView<'a> {
     /// How many rows the grid is drawn lower than its fit, so its last drawn row meets the
     /// pane's bottom while the screen below it is empty (see [`PaneFrame::blank_rows_below`]).
     pub lower: u16,
+    /// The window's ground, drawn where a cell has no colour of its own in place of the
+    /// terminal's background (a block list's pane, a still set on a card).
+    pub ground: Option<temor_vt::Rgb>,
+}
+
+impl PaneView<'_> {
+    /// The frame's colours as this view draws them: on its ground, when it has one.
+    pub(crate) fn colors(&self, frame: &PaneFrame) -> TermColors {
+        TermColors {
+            background: self.ground.unwrap_or(frame.colors.background),
+            ..frame.colors
+        }
+    }
 }
 
 /// A changed rectangle of the output, in device pixels from its top-left.

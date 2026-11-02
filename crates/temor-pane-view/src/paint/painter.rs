@@ -213,10 +213,6 @@ impl Painter {
         }
         let metrics = self.renderer.cell_metrics(scale);
         let frame = PaneFrame::still(cols, rows, &self.frame);
-        let frame = match ground {
-            Some(ground) => frame.on_background(ground),
-            None => frame,
-        };
         let mut padding = inset.padding(scale);
         padding.top = temor_panes::vt::Px(0);
         padding.bottom = temor_panes::vt::Px(0);
@@ -230,6 +226,7 @@ impl Painter {
             blink: BlinkPhase::On,
             selection: None,
             lower: 0,
+            ground,
         };
         let drawn = self.renderer.render_still(&frame, &view)?;
         show(drawn.pixels, drawn.size);
@@ -283,9 +280,6 @@ impl Painter {
         let source = match draw {
             Draw::Live(captured) => {
                 captured.finish(frame)?;
-                if let Some(ground) = view.ground {
-                    frame.set_background(ground);
-                }
                 *lower = frame.blank_rows_below();
                 Some(Showing::Live)
             }
@@ -304,6 +298,8 @@ impl Painter {
             focus: view.focus,
             blink: view.blink,
             selection: view.selection,
+            // The ground is the live screen's: a program holding the screen draws its own.
+            ground: view.ground.filter(|_| source == Some(Showing::Live)),
         };
         let drawn = match source {
             Some(Showing::Live) => renderer.render(frame, &pane_view)?,

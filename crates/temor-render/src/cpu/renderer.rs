@@ -99,6 +99,7 @@ impl CpuRenderer {
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
         let fit = fit_grid(view.size, &metrics, view.padding);
+        let colors = view.colors(frame);
         self.still.clear();
         self.still.resize((w * h * 4) as usize, 0);
         let input = SceneInput {
@@ -106,7 +107,7 @@ impl CpuRenderer {
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
             cols: frame.size.cols.0,
             palette: view.palette,
-            colors: &frame.colors,
+            colors: &colors,
             cursor: None,
             selection: view.selection,
         };
@@ -116,7 +117,7 @@ impl CpuRenderer {
             height: h,
             band: (0, h as i32),
         };
-        target.clear_band(Premul::opaque(frame.colors.background));
+        target.clear_band(Premul::opaque(colors.background));
         let rows: Vec<Row> = (0..frame.size.rows.0).map(Row).collect();
         self.still_overhangs.fit(frame.size.rows.0);
         let composed = compose_with_neighbours(
@@ -174,6 +175,7 @@ impl Renderer for CpuRenderer {
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
         let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
+        let colors = view.colors(frame);
         if view.size != self.size {
             self.size = view.size;
             self.buf = vec![0; (w * h * 4) as usize];
@@ -184,7 +186,7 @@ impl Renderer for CpuRenderer {
             |r: Row| frame.rows.get(usize::from(r.0)).map(|c| spans(c)),
             (view.focus, view.blink),
             view.palette,
-            &frame.colors,
+            &colors,
         );
         let key = ViewKey {
             size: view.size,
@@ -193,7 +195,7 @@ impl Renderer for CpuRenderer {
             padding: fit.padding,
             grid: frame.size,
             palette: *view.palette,
-            colors: frame.colors,
+            colors,
             focus: view.focus,
         };
         let plan = self.tracker.plan(
@@ -208,7 +210,7 @@ impl Renderer for CpuRenderer {
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
             cols: frame.size.cols.0,
             palette: view.palette,
-            colors: &frame.colors,
+            colors: &colors,
             cursor,
             selection: view.selection,
         };
@@ -221,7 +223,7 @@ impl Renderer for CpuRenderer {
         let reach = plan.reach();
         let rows: Vec<Row> = match plan {
             Compose::All => {
-                target.clear_band(Premul::opaque(frame.colors.background));
+                target.clear_band(Premul::opaque(colors.background));
                 (0..frame.size.rows.0).map(Row).collect()
             }
             Compose::Rows(rows) => rows,

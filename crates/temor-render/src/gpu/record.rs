@@ -13,7 +13,7 @@ use super::groups::{Group, bind_group};
 use super::pipeline::Inst;
 use crate::error::RenderError;
 use crate::frame::PaneFrame;
-use crate::metrics::CellMetrics;
+use crate::scene::SceneInput;
 
 /// A kitty image to draw: its layer, id and instance index.
 type Draw = (KittyLayer, ImageId, u32);
@@ -33,10 +33,10 @@ impl GpuRenderer {
     pub(super) fn record(
         &mut self,
         frame: &PaneFrame,
-        origin: (i32, i32),
-        m: &CellMetrics,
+        input: &SceneInput<'_>,
         groups: Option<&[Group]>,
     ) -> Result<(wgpu::CommandBuffer, u32), RenderError> {
+        let (origin, m) = (input.origin, &input.metrics);
         let spans: Vec<Range<usize>> = match groups {
             Some(groups) => groups.iter().map(|g| g.rows.clone()).collect(),
             None => std::iter::once(0..self.rows.len()).collect(),
@@ -77,7 +77,7 @@ impl GpuRenderer {
             .sync(&self.device, &self.queue, &self.pipe, &mut self.glyphs);
         self.upload_instances(&all)?;
         let layout = Layout { draws, bg, fg };
-        let commands = self.encode(frame, &layout, groups)?;
+        let commands = self.encode(input.colors.background, &layout, groups)?;
         Ok((commands, images_skipped))
     }
 
@@ -103,7 +103,7 @@ impl GpuRenderer {
 
     fn encode(
         &self,
-        frame: &PaneFrame,
+        bg: temor_vt::Rgb,
         layout: &Layout,
         groups: Option<&[Group]>,
     ) -> Result<wgpu::CommandBuffer, RenderError> {
@@ -112,7 +112,6 @@ impl GpuRenderer {
         };
         let view = target.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());
-        let bg = frame.colors.background;
         let c = |v: u8| f64::from(v) / 255.0;
         let clear = wgpu::LoadOp::Clear(wgpu::Color {
             r: c(bg.r),

@@ -78,6 +78,7 @@ impl Renderer for GpuRenderer {
         let resets = self.glyphs.epoch();
         let metrics = self.metrics(view.scale);
         let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
+        let colors = view.colors(frame);
         if view.size != self.size || self.target.is_none() {
             self.size = view.size;
             let usage = wgpu::TextureUsages::TEXTURE_BINDING
@@ -100,7 +101,7 @@ impl Renderer for GpuRenderer {
             |r: Row| frame.rows.get(usize::from(r.0)).map(|c| spans(c)),
             (view.focus, view.blink),
             view.palette,
-            &frame.colors,
+            &colors,
         );
         let key = ViewKey {
             size: view.size,
@@ -109,7 +110,7 @@ impl Renderer for GpuRenderer {
             padding: fit.padding,
             grid: frame.size,
             palette: *view.palette,
-            colors: frame.colors,
+            colors,
             focus: view.focus,
         };
         let plan = self.tracker.plan(
@@ -134,7 +135,7 @@ impl Renderer for GpuRenderer {
             origin: (fit.padding.left.0 as i32, fit.padding.top.0 as i32),
             cols: frame.size.cols.0,
             palette: view.palette,
-            colors: &frame.colors,
+            colors: &colors,
             cursor,
             selection: view.selection,
         };
@@ -172,8 +173,7 @@ impl Renderer for GpuRenderer {
             Some(_) => (Reach::Pane, all),
             None => (reach, rows),
         };
-        let (commands, images_skipped) =
-            self.record(frame, input.origin, &metrics, groups.as_deref())?;
+        let (commands, images_skipped) = self.record(frame, &input, groups.as_deref())?;
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         let texture = self.target.as_ref().ok_or(RenderError::NoRenderTarget)?;
         Ok(GpuFrame {
