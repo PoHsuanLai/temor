@@ -95,9 +95,9 @@ impl Hub {
         }
         if self.local_wanted(spawn) {
             let resume = self
-                .carried
-                .get(&spawn.pane)
-                .and_then(|kept| kept.daemon_session)
+                .memory
+                .get(spawn.pane)
+                .and_then(|kept| kept.checkpoint.as_ref()?.daemon_session)
                 .map(temor_client::remote::ids::RemoteSessionId);
             return self.begin_local(spawn, resume);
         }
@@ -110,11 +110,11 @@ impl Hub {
             restored
                 .or_else(|| self.history.screen.take())
                 .or_else(|| match spawn.start {
-                    Start::Scrollback(pane) => self.recent.remove(&pane),
+                    Start::Scrollback(pane) => self.memory.take(pane, |kept| kept.screen.take()),
                     Start::Fresh => None,
                 });
         let mut start = self.space_start();
-        let kept = self.carried.remove(&spawn.pane);
+        let kept = self.memory.take(spawn.pane, |kept| kept.checkpoint.take());
         let cwd = spawn
             .cwd
             .clone()
@@ -211,14 +211,14 @@ impl Hub {
             if let (Some(dir), Some(id)) = (&self.state_dir, self.session_id(pane)) {
                 let _ = temor_client::keep::screens::write(dir, id, snapshot.as_bytes());
             }
-            self.recent.insert(pane, snapshot);
+            self.memory.of(pane).screen = Some(snapshot);
         }
         let kept = self
             .panes
             .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().map(Session::checkpoint));
         if let Some(kept) = kept {
-            self.carried.insert(pane, kept);
+            self.memory.of(pane).checkpoint = Some(kept);
         }
     }
 
@@ -233,7 +233,7 @@ impl Hub {
             .iter()
             .any(|closed| closed.tab.tree.contains(pane));
         if !in_closed_tab {
-            self.recent.remove(&pane);
+            self.memory.take(pane, |kept| kept.screen.take());
         }
     }
 
@@ -255,10 +255,8 @@ impl Hub {
     /// What is kept of a pane that can no longer come back: its scrollback, its place in the
     /// closed list of hosts, and its sidecar file.
     pub(super) fn forget_pane(&mut self, pane: PaneId) {
-        self.recent.remove(&pane);
-        self.ssh.closed.remove(&pane);
+        self.memory.forget(pane);
         self.files.forget(self.state_dir.as_deref(), pane);
-        self.carried.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.

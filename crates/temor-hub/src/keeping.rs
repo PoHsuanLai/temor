@@ -69,7 +69,7 @@ impl Hub {
                     if session.is_none() {
                         hub.history_import(spawn.pane, &kept.history);
                     }
-                    hub.carried.insert(spawn.pane, kept);
+                    hub.memory.of(spawn.pane).checkpoint = Some(kept);
                 }
                 hub.open_pane(&spawn, screen.map(temor_panes::vt::Snapshot::from_bytes));
             }

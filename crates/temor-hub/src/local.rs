@@ -115,7 +115,7 @@ impl Hub {
     /// Makes `spawn`'s pane a session in the local daemon: an empty pane now, its screen when the
     /// daemon has answered. Without a helper beside temor the pane is an ordinary one.
     pub(super) fn begin_local(&mut self, spawn: &Spawn, resume: Option<RemoteSessionId>) {
-        let kept = self.carried.remove(&spawn.pane);
+        let kept = self.memory.take(spawn.pane, |kept| kept.checkpoint.take());
         // A shell that goes on keeps the key it was started with, the one kept when temor quit.
         let key = match resume {
             Some(_) => kept

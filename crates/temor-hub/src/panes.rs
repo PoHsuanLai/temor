@@ -16,6 +16,9 @@ use super::run::Found;
 use super::ssh::HostPane;
 use super::viewers::PaneViewer;
 use crate::plugins::state::PanePlugins;
+use temor_client::model::session::Checkpoint;
+use temor_client::ssh::HostAlias;
+use temor_panes::vt::Snapshot;
 
 /// What the hub keeps of one live pane. Made by the first part of the hub that hears of the pane,
 /// dropped whole when the pane closes ([`Hub::drop_pane`](super::model::Hub)).
@@ -128,5 +131,59 @@ impl Panes {
     pub fn slots(&self) -> impl Iterator<Item = (PaneId, &Rc<RefCell<Slot>>)> {
         self.iter()
             .filter_map(|(pane, record)| Some((pane, record.slot.as_ref()?)))
+    }
+}
+
+/// What is kept of a pane that is not live: one closed in a tab that may be reopened, or one
+/// about to start again (restored at launch). The pane takes it as it opens; it is dropped
+/// whole when the pane can no longer come back ([`Hub::forget_pane`](super::model::Hub)).
+#[derive(Default)]
+pub(super) struct Remembered {
+    /// Its scrollback, shown again when it reopens.
+    pub screen: Option<Snapshot>,
+    /// Its shell's state: the new shell is given its variables.
+    pub checkpoint: Option<Checkpoint>,
+    /// The host it was a session on: it reopens as a session on the same one.
+    pub host: Option<HostAlias>,
+}
+
+impl Remembered {
+    fn is_empty(&self) -> bool {
+        self.screen.is_none() && self.checkpoint.is_none() && self.host.is_none()
+    }
+}
+
+/// What is kept of the panes that are not live.
+#[derive(Default)]
+pub(super) struct Memory(BTreeMap<PaneId, Remembered>);
+
+impl Memory {
+    /// What is kept of `pane`, made empty if nothing is yet.
+    pub fn of(&mut self, pane: PaneId) -> &mut Remembered {
+        self.0.entry(pane).or_default()
+    }
+
+    /// What is kept of `pane`, to read.
+    pub fn get(&self, pane: PaneId) -> Option<&Remembered> {
+        self.0.get(&pane)
+    }
+
+    /// Takes `part` of what is kept of `pane`; nothing kept is left behind empty.
+    pub fn take<T>(
+        &mut self,
+        pane: PaneId,
+        part: impl FnOnce(&mut Remembered) -> Option<T>,
+    ) -> Option<T> {
+        let remembered = self.0.get_mut(&pane)?;
+        let taken = part(remembered);
+        if remembered.is_empty() {
+            self.0.remove(&pane);
+        }
+        taken
+    }
+
+    /// Drops everything kept of `pane`.
+    pub fn forget(&mut self, pane: PaneId) {
+        self.0.remove(&pane);
     }
 }

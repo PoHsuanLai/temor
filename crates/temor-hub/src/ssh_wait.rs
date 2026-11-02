@@ -77,13 +77,13 @@ impl Hub {
             .iter()
             .any(|closed| closed.tab.tree.contains(pane));
         if in_closed_tab {
-            self.ssh.closed.insert(pane, host);
+            self.memory.of(pane).host = Some(host);
         }
     }
 
     /// The host a pane coming back from the closed tabs was a session on.
     pub(super) fn ssh_reclaim(&mut self, pane: PaneId) -> Option<HostAlias> {
-        self.ssh.closed.remove(&pane)
+        self.memory.take(pane, |kept| kept.host.take())
     }
 
     /// A host pane wants to be seen (a link to confirm, a question): its tab is marked unread

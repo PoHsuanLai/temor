@@ -2,7 +2,6 @@
 //! and the channel every pane's events arrive on.
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -13,7 +12,6 @@ use temor_client::model::workspace::Workspace;
 use temor_panes::notify::NoopNotifier;
 use temor_panes::pane::PaneEvent;
 use temor_panes::render::Palette;
-use temor_panes::vt::Snapshot;
 use temor_panes::{Heard, Hearing};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -43,11 +41,8 @@ pub struct Hub {
     pub(super) keep: SpaceKeep,
     /// What is kept of each live pane, dropped whole when it closes.
     pub(super) panes: super::panes::Panes,
-    /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
-    pub(super) recent: BTreeMap<PaneId, Snapshot>,
-    /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
-    /// the new shell is given its variables.
-    pub(super) carried: BTreeMap<PaneId, temor_client::model::session::Checkpoint>,
+    /// What is kept of each pane that is not live but may come back.
+    pub(super) memory: super::panes::Memory,
     /// The panes' kept files (the client's), and what each holds now.
     pub(super) files: temor_client::keep::PaneFiles,
     /// Where the panes' events go: the client's thread that hears them (`Hearing`).
@@ -138,8 +133,7 @@ impl Hub {
             book: temor_client::spaces::Book::new(),
             keep: SpaceKeep::default(),
             panes: Default::default(),
-            recent: BTreeMap::new(),
-            carried: BTreeMap::new(),
+            memory: Default::default(),
             files: Default::default(),
             events,
             hearing,
