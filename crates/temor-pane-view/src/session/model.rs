@@ -109,7 +109,7 @@ pub struct Session {
     pub(super) blink: super::blink::Blink,
     /// Until when the bell's visual mark stays up.
     pub(super) bell_until: Option<Stamp>,
-    /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
+    /// A tab or split request a key made, for the window to carry out (see `Session::said`).
     pub(super) asked: Option<temor_panes::pane::keys::Action>,
     /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
     pub(super) view_ask: Option<super::ViewAsk>,

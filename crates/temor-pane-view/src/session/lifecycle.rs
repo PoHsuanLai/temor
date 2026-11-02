@@ -7,9 +7,11 @@ use temor_panes::render::{self, Palette, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Notice};
+use super::viewer::ViewAsk;
 use crate::error::ViewError;
 use crate::paint::PaintView;
 use temor_panes::pane::PaneEvent;
+use temor_panes::pane::keys::Action;
 use temor_panes::vt::Snapshot;
 use temor_panes::{Heard, PaneEffect};
 
@@ -35,9 +37,16 @@ impl Session {
         self.core().end_hold(generation)
     }
 
-    /// A message for the person from the last action, if one is waiting; taking it clears it.
-    pub fn take_notice(&mut self) -> Option<String> {
-        self.notice.take()
+    /// Runs `call`, and what it left for the window (PLAN §4c: the session answers what is to
+    /// be done; the window does it). Every call the window makes goes through here.
+    pub fn said<R>(&mut self, call: impl FnOnce(&mut Self) -> R) -> (R, Left) {
+        let answer = call(self);
+        let left = Left {
+            notice: self.notice.take(),
+            asked: self.asked.take(),
+            view: self.view_ask.take(),
+        };
+        (answer, left)
     }
 
     /// The window's title as the program last set it.
@@ -216,3 +225,14 @@ impl Session {
 }
 
 pub use temor_panes::{SNAPSHOT_LIMIT, sanitise_title};
+
+/// What a call on a session left for the window to do.
+#[derive(Debug, Default, PartialEq)]
+pub struct Left {
+    /// A message for the person.
+    pub notice: Option<String>,
+    /// The tab or split action a key asked for: the window's or the workspace's.
+    pub asked: Option<Action>,
+    /// The file a ⌘-click or View asked to see.
+    pub view: Option<ViewAsk>,
+}

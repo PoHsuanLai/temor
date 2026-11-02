@@ -1,7 +1,6 @@
 //! The terminal region's key wiring (PLAN §6): every key the region hears goes to the peek, the
 //! input method and the session, and a chord the program does not take is the window's.
 
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use dioxus::prelude::{Key, Modifiers};
@@ -13,24 +12,24 @@ use ds::host::measure::RectProbe;
 use temor_client::model::vocab::ids::PaneId;
 
 use super::ime::ImeGlue;
-use super::window_help::{place_cursor, take_notice};
-use temor_hub::{Desk, Origin};
+use super::pane_link::{PaneLink, Redraw};
+use super::window_help::place_cursor;
 use temor_pane_view::error::ViewError;
 use temor_pane_view::input::stroke;
-use temor_pane_view::session::HistoryStep;
-use temor_ui_base::slot::{Slot, repaint};
+use temor_pane_view::session::{HistoryStep, Session};
 
 /// A key the region hears, or the composer's field hands on, while the list shows the
 /// composer: a typed key is the composer's (its text, Enter, Backspace, the arrows through the
 /// history), and the caret goes to its field for the rest, but for Enter. A chord runs what the
 /// keymap binds it to. Whether the composer took it: then the shell hears nothing.
 fn to_composer(
-    slot: &RefCell<Slot>,
+    session: &mut Session,
     raw: &RawKey,
     focus: FocusRequest,
 ) -> Option<Result<(), ViewError>> {
-    let mut slot = slot.borrow_mut();
-    let session = slot.session.as_mut().filter(|s| s.composer_shown())?;
+    if !session.composer_shown() {
+        return None;
+    }
     if raw.phase == KeyPhase::Release {
         return Some(Ok(()));
     }
@@ -79,21 +78,17 @@ impl std::fmt::Debug for KeyRegion {
 /// Every key the region hears (a press, a repeat, a release) as quire's raw key. `peek_key` is the
 /// peek's ear for it; `apply` takes what a finished composition types.
 pub fn key_handler(
-    slot: Rc<RefCell<Slot>>,
+    link: PaneLink,
     ime: ImeGlue,
     apply: impl Fn(EditInput) + Clone + 'static,
-    desk: Desk,
     peek_key: Rc<dyn Fn(&RawKey)>,
     region: KeyRegion,
 ) -> impl FnMut(RawKey) + 'static {
-    let KeyRegion {
-        pane,
-        rect,
-        composer,
-    } = region;
+    let KeyRegion { rect, composer, .. } = region;
     move |raw: RawKey| {
         peek_key(&raw);
-        let outcome = match to_composer(&slot, &raw, composer) {
+        let (to_composer, mut left) = link.said(|s| to_composer(s, &raw, composer));
+        let outcome = match to_composer.flatten() {
             Some(outcome) => Some(outcome),
             None => {
                 let composing = match ime.composing.get() {
@@ -107,36 +102,21 @@ pub fn key_handler(
                     return;
                 }
                 // An unidentified key is ignored; the rest go to the session.
-                match stroke(&raw, composing) {
-                    Some(stroke) => slot.borrow_mut().session.as_mut().map(|s| s.key(stroke)),
-                    None => None,
-                }
+                let (outcome, keyed) =
+                    link.said(|s| stroke(&raw, composing).map(|stroke| s.key(stroke)));
+                left = keyed;
+                outcome.flatten()
             }
         };
         if let Some(Err(err)) = outcome {
-            desk.say(err.to_string());
-        }
-        if let Some(message) = take_notice(&slot) {
-            desk.say(message);
+            link.desk.say(err.to_string());
         }
         // A chord that is not the program's is the window's or the workspace's, which the
-        // desk sorts out; the quick terminal has no tabs or splits of its own.
-        let asked = slot
-            .borrow_mut()
-            .session
-            .as_mut()
-            .and_then(|s| s.take_asked());
-        if let Some(action) = asked {
-            let from = if desk.hub.is_quick(pane) {
-                Origin::Quick
-            } else {
-                Origin::Terminal
-            };
-            desk.run_action(action, from);
+        // desk sorts out.
+        if link.carry_out(left) {
             return;
         }
-        desk.bump();
-        repaint(&slot);
-        place_cursor(ime.clone(), Rc::clone(&slot), rect);
+        link.redraw(Redraw::WithGrid);
+        place_cursor(ime.clone(), Rc::clone(&link.slot), rect);
     }
 }

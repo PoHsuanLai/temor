@@ -673,11 +673,9 @@ fn a_paste_over_the_limit_is_refused_with_a_notice_and_never_cut() {
     }
     let mut f = ready("session-paste-limit");
     *f.clipboard.0.borrow_mut() = "x".repeat(temor_pane_view::session::PASTE_LIMIT + 1);
-    f.session.run(Action::Paste).expect("paste");
-    let notice = f
-        .session
-        .take_notice()
-        .expect("a notice explains the refusal");
+    let (pasted, left) = f.session.said(|s| s.run(Action::Paste));
+    pasted.expect("paste");
+    let notice = left.notice.expect("a notice explains the refusal");
     assert!(notice.contains("not pasted"), "{notice}");
     assert!(
         f.session.pending_paste().is_none(),
@@ -853,10 +851,11 @@ fn dropped_files_are_typed_into_the_prompt_quoted_for_the_shell() {
     ));
 
     // A name with a line break is never typed.
-    f.session
-        .drop_files(&[std::path::PathBuf::from("/tmp/x\ny")]);
+    let (_, left) = f
+        .session
+        .said(|s| s.drop_files(&[std::path::PathBuf::from("/tmp/x\ny")]));
     assert_eq!(
-        f.session.take_notice().as_deref(),
+        left.notice.as_deref(),
         Some("That file's name can't be typed into a terminal")
     );
 }
@@ -891,7 +890,7 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
         );
         assert_eq!(f.session.refresh_link(), redraw, "column {col}");
     }
-    assert!(f.session.take_notice().is_none());
+    assert!(f.session.said(|_| ()).1.notice.is_none());
 }
 
 fn copy_event(text: &str) -> PaneEvent {
@@ -1087,4 +1086,20 @@ fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
     f.session
         .set_cursor_style(CursorStyle::Bar)
         .expect("the terminal takes the cursor");
+}
+
+#[test]
+fn what_a_call_leaves_for_the_window_comes_back_with_it_and_is_not_left_behind() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-said");
+    let (ran, left) = f.session.said(|s| s.run(Action::SplitRight));
+    ran.expect("run");
+    assert_eq!(
+        left.asked,
+        Some(Action::SplitRight),
+        "the window's to carry out"
+    );
+    assert_eq!(f.session.said(|_| ()).1, Default::default());
 }

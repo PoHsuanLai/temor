@@ -32,6 +32,7 @@ pub mod palette;
 pub mod pane_focus;
 pub mod pane_footer;
 pub mod pane_keys;
+pub mod pane_link;
 pub mod pane_pointer;
 pub mod pane_view;
 pub mod peek;

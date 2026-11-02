@@ -142,15 +142,13 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_compo
         Some("ls\nrm -rf /tmp/never"),
         "the lines are kept, for the card and Copy"
     );
-    live.session.rerun(ids[0]);
     assert_eq!(
-        live.session.take_notice().as_deref(),
+        live.session.said(|s| s.rerun(ids[0])).1.notice.as_deref(),
         Some("This command cannot be typed again.")
     );
     // The composer holds lines and sends nothing until Return: there it goes in whole.
     drawn_as_list(&mut live, Default::default(), true);
-    live.session.rerun(ids[0]);
-    assert_eq!(live.session.take_notice(), None);
+    assert_eq!(live.session.said(|s| s.rerun(ids[0])).1.notice, None);
     assert_eq!(live.session.composer_text(), "ls\nrm -rf /tmp/never");
     live.session.set_composer_text(String::new());
     live.session.set_list_view(None);
@@ -159,8 +157,11 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_compo
         live.session.block_command(ids[1]).as_deref(),
         Some("echo typed-not-run")
     );
-    live.session.rerun(ids[1]);
-    assert_eq!(live.session.take_notice(), None, "a safe command is typed");
+    assert_eq!(
+        live.session.said(|s| s.rerun(ids[1])).1.notice,
+        None,
+        "a safe command is typed"
+    );
     // The shell echoes what reached it, and nothing presses Enter: the command never runs.
     pump(&mut live, "the typed command", |s| {
         s.screen_text().contains("echo typed-not-run")

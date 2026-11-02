@@ -87,13 +87,15 @@ impl Hub {
         let Some(slot) = self.keyboard_pane().and_then(|pane| self.panes.slot(pane)) else {
             return;
         };
-        let mut said = Vec::new();
-        if let Some(session) = slot.borrow_mut().session.as_mut() {
-            if let Err(err) = session.run(action) {
-                said.push(err.to_string());
-            }
-            said.extend(session.take_notice());
-        }
-        self.notices.extend(said);
+        let Some((ran, left)) = slot
+            .borrow_mut()
+            .session
+            .as_mut()
+            .map(|session| session.said(|session| session.run(action)))
+        else {
+            return;
+        };
+        self.notices.extend(ran.err().map(|err| err.to_string()));
+        self.notices.extend(left.notice);
     }
 }

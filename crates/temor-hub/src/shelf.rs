@@ -289,8 +289,7 @@ impl Hub {
         let pane = self.terminal_pane();
         let said = pane.and_then(|pane| {
             self.live_mut(pane, |session| {
-                session.copy_path(&text);
-                session.take_notice()
+                session.said(|session| session.copy_path(&text)).1.notice
             })
         });
         match said {
@@ -317,8 +316,7 @@ impl Hub {
         let said = self.panes.slot(pane).and_then(|slot| {
             let mut slot = slot.borrow_mut();
             let session = slot.session.as_mut()?;
-            session.drop_files(paths);
-            session.take_notice()
+            session.said(|session| session.drop_files(paths)).1.notice
         });
         said.into_iter().collect()
     }

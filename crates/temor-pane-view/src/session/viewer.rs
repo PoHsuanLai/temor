@@ -52,11 +52,6 @@ fn is_file(path: &Path) -> bool {
 }
 
 impl Session {
-    /// The file the last ⌘-click or View asked for, if one is waiting; taking it clears it.
-    pub fn take_view_ask(&mut self) -> Option<ViewAsk> {
-        self.view_ask.take()
-    }
-
     /// ⌘-click at `cell`: the word there, if it names a file or a folder here, is asked for. On a
     /// pane on another computer the word is taken as a path there (the window fetches it).
     pub(super) fn view_path_at(&mut self, cell: CellPos) -> Result<(), ViewError> {

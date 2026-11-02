@@ -43,7 +43,7 @@ impl Session {
     }
 
     /// A chord typed while the composer has the keys: the action the keymap binds it to runs
-    /// (the window's own reach the window through [`Session::take_asked`]), Ctrl+C empties the
+    /// (the window's own reach the window through [`Session::said`]), Ctrl+C empties the
     /// composer, and any other chord does nothing: the shell's own line editor, which the
     /// composer stands for, never hears it.
     pub fn composer_chord(&mut self, stroke: Stroke) -> Result<(), ViewError> {
@@ -164,10 +164,5 @@ impl Session {
                 Ok(())
             }
         }
-    }
-
-    /// The tab or split action the last key asked for, if one is waiting; taking it clears it.
-    pub fn take_asked(&mut self) -> Option<Action> {
-        self.asked.take()
     }
 }
