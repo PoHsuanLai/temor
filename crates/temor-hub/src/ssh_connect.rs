@@ -118,7 +118,7 @@ impl Hub {
         self.ssh.intent = Some(alias);
         match input {
             WorkspaceIn::NewTab { .. } => WorkspaceIn::NewTab {
-                cwd: self.book.ws.cwds.get(&pane).cloned(),
+                cwd: self.book.ws().cwds.get(&pane).cloned(),
             },
             other => other,
         }
@@ -219,9 +219,9 @@ impl Hub {
     pub(super) fn ssh_start_shown(&mut self) {
         let front = self
             .book
-            .ws
+            .ws()
             .front()
-            .and_then(|tab| self.book.ws.tabs.tab(tab))
+            .and_then(|tab| self.book.ws().tabs.tab(tab))
             .map(|tab| tab.tree.panes())
             .unwrap_or_default();
         let shown: Vec<PaneId> = self
@@ -293,7 +293,7 @@ impl Hub {
     pub(super) fn ssh_restart(&mut self, pane: PaneId) -> bool {
         let dir = self
             .book
-            .ws
+            .ws()
             .cwds
             .get(&pane)
             .and_then(|cwd| RemoteFilePath::new(cwd.as_str()).ok());

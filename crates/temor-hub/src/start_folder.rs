@@ -19,10 +19,10 @@ impl Hub {
         }
         let front = self
             .book
-            .ws
+            .ws()
             .front()
-            .and_then(|tab| self.book.ws.focus_of(tab));
-        match front.and_then(|pane| self.book.ws.cwds.get(&pane)) {
+            .and_then(|tab| self.book.ws().focus_of(tab));
+        match front.and_then(|pane| self.book.ws().cwds.get(&pane)) {
             Some(cwd) => WorkspaceIn::NewTab {
                 cwd: Some(cwd.clone()),
             },
@@ -41,7 +41,7 @@ impl Hub {
 
     /// `spawn` without the folder it inherited, so its shell starts where a new shell does.
     pub(super) fn starting_at_home(&mut self, mut spawn: Spawn) -> Spawn {
-        self.book.ws.cwds.remove(&spawn.pane);
+        self.book.edit(|ws| ws.cwds.remove(&spawn.pane));
         spawn.cwd = None;
         spawn
     }

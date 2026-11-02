@@ -42,9 +42,9 @@ impl Hub {
     fn front_columns(&self) -> Option<Columns> {
         let pane = self
             .book
-            .ws
+            .ws()
             .front()
-            .and_then(|tab| self.book.ws.focus_of(tab))?;
+            .and_then(|tab| self.book.ws().focus_of(tab))?;
         self.columns_of(pane)
     }
 

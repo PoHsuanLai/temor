@@ -72,7 +72,7 @@ impl Hub {
     pub(super) fn ssh_note_closed(&mut self, pane: PaneId, host: HostAlias) {
         let in_closed_tab = self
             .book
-            .ws
+            .ws()
             .closed
             .tabs
             .iter()

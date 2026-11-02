@@ -71,7 +71,7 @@ impl Hub {
             .and_then(|slot| slot.borrow().session.as_ref().and_then(|s| s.cwd()))
             .or_else(|| {
                 self.book
-                    .ws
+                    .ws()
                     .cwds
                     .get(&pane)
                     .map(|cwd| cwd.as_str().to_owned())

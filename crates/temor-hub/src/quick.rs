@@ -35,7 +35,7 @@ impl Hub {
     /// or hide it and keep the shell.
     pub fn quick_toggle(&mut self) {
         let pane = match self.quick {
-            QuickState::Closed => match self.mint_pane() {
+            QuickState::Closed => match self.book.mint_pane() {
                 Some(pane) => pane,
                 None => {
                     self.notices
@@ -48,7 +48,7 @@ impl Hub {
         };
         let cwd = self
             .keyboard_pane()
-            .and_then(|front| self.book.ws.cwds.get(&front).cloned());
+            .and_then(|front| self.book.ws().cwds.get(&front).cloned());
         self.quick_input(QuickIn::Toggle { pane, cwd });
     }
 
@@ -74,14 +74,6 @@ impl Hub {
         if asked {
             self.refresh_probe();
         }
-    }
-
-    /// The next pane id, from the counter every pane takes its id from.
-    fn mint_pane(&mut self) -> Option<PaneId> {
-        let next = self.book.ws.next_pane.checked_add(1)?;
-        let pane = PaneId(self.book.ws.next_pane);
-        self.book.ws.next_pane = next;
-        Some(pane)
     }
 
     /// Gives the running quick pane to `space` as a tab of its own.

@@ -59,7 +59,7 @@ fn every_space_kept_comes_back_with_its_panes_to_start() {
         .collect();
     assert_eq!(panes, vec![(SpaceId(0), 2), (SpaceId(1), 1)]);
     assert_eq!(back.spaces().count(), 2);
-    assert_eq!(back.ws.tabs.panes(), book.ws.tabs.panes());
+    assert_eq!(back.ws().tabs.panes(), book.ws().tabs.panes());
     assert_eq!(back.owner_of(starting[1].panes[0].pane), Some(SpaceId(1)));
     assert!(kept.take_notices().is_empty());
 }
@@ -70,7 +70,7 @@ fn a_space_sharing_a_pane_with_one_brought_back_is_left_out_and_said() {
     let client = client(&dir);
     let book = two_spaces();
     lay(&mut Kept::default(), &client, &book);
-    let first = encode(&book.ws).expect("encoded");
+    let first = encode(book.ws()).expect("encoded");
     client
         .store()
         .keep("space/1", &first, Topics::LAYOUT)
@@ -104,7 +104,7 @@ fn an_older_temors_files_are_read_in_once() {
     let client = client(&dir);
     let book = two_spaces();
     older::save_spaces(&state, &book.for_keeping()).expect("spaces");
-    older::save(&state, &book.ws).expect("session");
+    older::save(&state, book.ws()).expect("session");
 
     let mut kept = Kept::default();
     kept.import(&client, &state);

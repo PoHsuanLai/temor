@@ -36,7 +36,7 @@ impl Hub {
             Target::Folder(folder) => {
                 let first = self
                     .book
-                    .ws
+                    .ws()
                     .tabs
                     .place
                     .tabs

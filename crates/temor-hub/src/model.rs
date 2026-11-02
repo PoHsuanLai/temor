@@ -36,7 +36,7 @@ pub(super) const SAVE_EVERY: std::time::Duration = std::time::Duration::from_sec
 
 /// Everything the window keeps about its panes. Lives on the window's thread.
 pub struct Hub {
-    /// Every Space's workspace, the one on screen in `book.ws` (the client's).
+    /// Every Space's workspace, the one on screen in `book.ws()` (the client's).
     pub(super) book: temor_client::spaces::Book,
     /// Each Space's key agent and the account store its credentials come from.
     pub(super) keep: SpaceKeep,
@@ -177,7 +177,7 @@ impl Hub {
 
     /// The workspace, for reading.
     pub fn workspace(&self) -> &Workspace {
-        &self.book.ws
+        self.book.ws()
     }
 
     /// The pane that has the keyboard: the quick terminal's while it is shown, else the focused
@@ -185,9 +185,9 @@ impl Hub {
     pub fn keyboard_pane(&self) -> Option<PaneId> {
         self.quick_shown().or_else(|| {
             self.book
-                .ws
+                .ws()
                 .front()
-                .and_then(|tab| self.book.ws.focus_of(tab))
+                .and_then(|tab| self.book.ws().focus_of(tab))
         })
     }
 
@@ -227,13 +227,13 @@ impl HubRef {
     /// The tab in front with its panes and the one that has the keys.
     pub fn front(&self) -> Option<(TabId, SplitTree, PaneId)> {
         let hub = self.0.borrow();
-        let tab = hub.book.ws.front()?;
-        let tree = hub.book.ws.tabs.tab(tab)?.tree.clone();
-        Some((tab, tree, hub.book.ws.focus_of(tab)?))
+        let tab = hub.book.ws().front()?;
+        let tree = hub.book.ws().tabs.tab(tab)?.tree.clone();
+        Some((tab, tree, hub.book.ws().focus_of(tab)?))
     }
 
     /// The pane with the keys in `tab`.
     pub fn focus_pane_of(&self, tab: TabId) -> Option<PaneId> {
-        self.0.borrow().book.ws.focus_of(tab)
+        self.0.borrow().book.ws().focus_of(tab)
     }
 }

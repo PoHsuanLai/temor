@@ -43,7 +43,7 @@ impl Hub {
         self.agents_after_act();
         self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
-        if self.book.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }
@@ -51,10 +51,10 @@ impl Hub {
     /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
     /// there before. A request the workspace refuses opens none.
     pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
-        let before: BTreeSet<PaneId> = self.book.ws.tabs.panes().into_iter().collect();
+        let before: BTreeSet<PaneId> = self.book.ws().tabs.panes().into_iter().collect();
         self.act(input);
         self.book
-            .ws
+            .ws()
             .tabs
             .panes()
             .into_iter()
@@ -227,7 +227,7 @@ impl Hub {
         self.drop_pane(pane);
         let in_closed_tab = self
             .book
-            .ws
+            .ws()
             .closed
             .tabs
             .iter()
@@ -280,7 +280,7 @@ impl Hub {
             return;
         }
         let start = self.space_start();
-        let cwd = self.book.ws.cwds.get(&pane).cloned().or(start.cwd);
+        let cwd = self.book.ws().cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
         self.run_restarted(pane);

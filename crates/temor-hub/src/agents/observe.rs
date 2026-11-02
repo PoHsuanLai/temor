@@ -111,7 +111,7 @@ impl Hub {
             self.notices.push("No agent is waiting for you".to_owned());
             return;
         };
-        let Some(tab) = self.book.ws.tab_of(pane) else {
+        let Some(tab) = self.book.ws().tab_of(pane) else {
             return;
         };
         self.act(select_tab(tab));
@@ -122,7 +122,7 @@ impl Hub {
     pub fn agent_state_of_tab(&self, tab: TabId) -> AgentState {
         let panes = self
             .book
-            .ws
+            .ws()
             .tabs
             .tab(tab)
             .map(|t| t.tree.panes())

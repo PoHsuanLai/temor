@@ -12,7 +12,7 @@ use super::support::Rig;
 fn folder(rig: &Rig, pane: PaneId) -> Option<String> {
     rig.hub
         .book
-        .ws
+        .ws()
         .cwds
         .get(&pane)
         .map(|cwd| cwd.as_str().to_owned())

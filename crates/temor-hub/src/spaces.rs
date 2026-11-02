@@ -72,7 +72,7 @@ impl Hub {
 
     /// A Space with no tab gets one, as a window closing its last tab does.
     pub(super) fn fill_empty(&mut self) {
-        if self.book.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }

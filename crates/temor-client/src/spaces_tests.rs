@@ -18,7 +18,7 @@ fn book_of(n: usize) -> Book {
 }
 
 fn panes(book: &Book) -> Vec<PaneId> {
-    book.ws.tabs.panes()
+    book.ws().tabs.panes()
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn a_request_about_a_parked_pane_names_the_space_that_has_it() {
 fn a_tab_carried_to_another_space_leaves_this_one() {
     let mut book = book_of(2);
     book.step(WorkspaceIn::NewTab { cwd: None });
-    let tab = book.ws.front().expect("a tab in front");
+    let tab = book.ws().front().expect("a tab in front");
     let before = panes(&book);
     assert_eq!(
         book.carry(tab, SpaceId(0)),
@@ -116,4 +116,27 @@ fn the_kept_spaces_recall_where_each_space_is() {
     let kept = book.for_keeping();
     assert_eq!(kept.recall().of(SpaceId(0)).tabs.len(), 1);
     assert!(kept.recall().of(SpaceId(1)).tabs.is_empty());
+}
+
+#[test]
+fn a_pane_minted_in_a_space_never_opened_takes_an_id_past_every_space() {
+    let mut book = book_of(2);
+    book.step(WorkspaceIn::NewTab { cwd: None });
+    let held = panes(&book);
+    book.swap_to(SpaceId(1));
+    let minted = book.mint_pane().expect("an id");
+    assert!(!held.contains(&minted), "{minted:?} is held by {held:?}");
+    let opened = {
+        book.step(WorkspaceIn::NewTab { cwd: None });
+        panes(&book)
+    };
+    assert!(!opened.contains(&minted), "{minted:?} was handed out again");
+}
+
+#[test]
+fn a_workspace_changed_in_place_still_counts_towards_every_spaces_ids() {
+    let mut book = book_of(2);
+    book.edit(|ws| ws.next_pane = 40);
+    book.swap_to(SpaceId(1));
+    assert_eq!(book.mint_pane(), Some(PaneId(40)));
 }

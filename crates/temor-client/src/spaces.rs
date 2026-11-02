@@ -38,7 +38,7 @@ pub fn recall_of(ws: &Workspace) -> Place {
 #[derive(Debug)]
 pub struct Book {
     /// The workspace of the Space on screen.
-    pub ws: Workspace,
+    ws: Workspace,
     /// The Spaces as the kit last made them final.
     spaces: TemorSpaces,
     /// The Space whose workspace is `ws`.
@@ -66,6 +66,28 @@ impl Book {
             parked: BTreeMap::new(),
             floor: 1,
         }
+    }
+
+    /// The workspace of the Space on screen.
+    pub fn ws(&self) -> &Workspace {
+        &self.ws
+    }
+
+    /// Changes the workspace on screen in place, outside its step (a test setting it up, a
+    /// folder forgotten); what it hands out still counts towards every Space's pane ids.
+    pub fn edit<T>(&mut self, change: impl FnOnce(&mut Workspace) -> T) -> T {
+        let out = change(&mut self.ws);
+        self.note_ws();
+        out
+    }
+
+    /// A pane id no Space holds, taken for a pane outside every workspace (the quick
+    /// terminal's). `None` when the ids have run out.
+    pub fn mint_pane(&mut self) -> Option<PaneId> {
+        let pane = self.ws.next_pane.max(self.floor);
+        self.ws.next_pane = pane.checked_add(1)?;
+        self.note_ws();
+        Some(PaneId(pane))
     }
 
     /// The Space on screen.

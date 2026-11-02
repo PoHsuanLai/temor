@@ -25,7 +25,9 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
     hub.set_run_ends(RunEnds::new(ends));
     let ticket = RunTicket(4);
     // The Space's only tab is a run tab; the Space is put away, then deleted.
-    let parked = std::mem::replace(&mut hub.book.ws, temor_client::spaces::empty_workspace());
+    let parked = hub
+        .book
+        .edit(|ws| std::mem::replace(ws, temor_client::spaces::empty_workspace()));
     let pane = parked.tabs.panes()[0];
     hub.run.panes.insert(pane, run_tab(ticket));
     hub.book.place(SpaceId(7), parked);
@@ -49,7 +51,7 @@ fn a_pane_that_goes_while_its_offer_shows_leaves_no_offer_behind() {
     use temor_client::model::vocab::ids::BlockId;
 
     let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
-    let pane = hub.book.ws.tabs.panes()[0];
+    let pane = hub.book.ws().tabs.panes()[0];
     let asking = OfferState::Asking {
         block: BlockId(1),
         program: Program("python".to_owned()),

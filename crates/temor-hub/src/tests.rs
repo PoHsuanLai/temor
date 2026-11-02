@@ -55,13 +55,13 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
 pub(super) fn hub_after(steps: Vec<WorkspaceIn>) -> Hub {
     let mut hub = Hub::new(launch());
     for step in steps {
-        let (ws, outs) = workspace_step(hub.book.ws.clone(), step);
+        let (ws, outs) = workspace_step(hub.book.ws().clone(), step);
         // The step only describes panes; starting them is the edge's, and these tests have none.
         assert!(
             outs.iter().all(|o| !matches!(o, WorkspaceOut::Refused(_))),
             "{outs:?}"
         );
-        hub.book.ws = ws;
+        hub.book.place(hub.book.active(), ws);
     }
     hub
 }
@@ -302,8 +302,8 @@ mod spaces {
 /// A hub with one tab and a pane slot for it (no program runs in it), living in `home`.
 fn hub_with_pane(home: &std::path::Path) -> Hub {
     let mut hub = Hub::new(launch_in(home.to_path_buf()));
-    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::NewTab { cwd: None });
-    hub.book.ws = ws;
+    let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::NewTab { cwd: None });
+    hub.book.place(hub.book.active(), ws);
     hub.slots.insert(
         PaneId(1),
         std::rc::Rc::new(std::cell::RefCell::new(temor_ui_base::slot::Slot::default())),
