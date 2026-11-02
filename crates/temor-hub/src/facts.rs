@@ -3,7 +3,6 @@
 //! (`temor_client::facts`).
 //! The window's thread only steps the rule and stores results; it never waits for git.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use temor_client::model::facts::{Facts, FactsIn, FactsOut, FactsState, facts_step};
@@ -23,26 +22,24 @@ pub struct Ready {
     facts: Option<Facts>,
 }
 
-/// One pane's rule state and what was last read.
+/// One pane's rule state and what was last read, kept in its record.
 #[derive(Debug, Default)]
-struct PaneFacts {
+pub(super) struct PaneFacts {
     state: FactsState,
     facts: Facts,
 }
 
-/// The window's facts: what the panes last read, and the way back to the window.
+/// The way the panes' facts are read and come back to the window. What each pane last read is
+/// in its record ([`PaneFacts`]).
 pub struct FactsHub {
     env: FactsEnv,
-    panes: BTreeMap<PaneId, PaneFacts>,
     done: UnboundedSender<Ready>,
     inbox: Option<UnboundedReceiver<Ready>>,
 }
 
 impl std::fmt::Debug for FactsHub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FactsHub")
-            .field("panes", &self.panes.len())
-            .finish_non_exhaustive()
+        f.debug_struct("FactsHub").finish_non_exhaustive()
     }
 }
 
@@ -54,7 +51,6 @@ impl FactsHub {
         let (done, inbox) = unbounded_channel();
         FactsHub {
             env: FactsEnv { virtual_env },
-            panes: BTreeMap::new(),
             done,
             inbox: Some(inbox),
         }
@@ -91,7 +87,10 @@ impl FactsHub {
 impl Hub {
     /// Tells the rule what happened in `pane` and starts a read if it says to.
     pub(super) fn facts_in(&mut self, pane: PaneId, input: FactsIn) {
-        let entry = self.facts.panes.entry(pane).or_default();
+        let Some(record) = self.panes.get_mut(pane) else {
+            return;
+        };
+        let entry = &mut record.facts;
         let (state, out) = facts_step(entry.state, input);
         entry.state = state;
         if out == FactsOut::Run {
@@ -141,11 +140,10 @@ impl Hub {
     /// True when it changed what the window shows.
     pub(super) fn facts_ready(&mut self, ready: Ready) -> bool {
         let Ready { pane, facts } = ready;
-        if !self.panes.slot(pane).is_some() {
-            self.facts.panes.remove(&pane);
+        let Some(record) = self.panes.get_mut(pane) else {
             return false;
-        }
-        let entry = self.facts.panes.entry(pane).or_default();
+        };
+        let entry = &mut record.facts;
         let changed = match facts {
             Some(facts) => {
                 let changed = entry.facts != facts;
@@ -160,10 +158,9 @@ impl Hub {
 
     /// The facts last read for the pane (empty before the first read).
     pub fn facts_of(&self, pane: PaneId) -> Facts {
-        self.facts
-            .panes
-            .get(&pane)
-            .map(|p| p.facts.clone())
+        self.panes
+            .get(pane)
+            .map(|record| record.facts.facts.clone())
             .unwrap_or_default()
     }
 

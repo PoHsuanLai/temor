@@ -8,6 +8,7 @@ use std::rc::Rc;
 use temor_client::model::vocab::ids::PaneId;
 use temor_ui_base::slot::Slot;
 
+use super::facts::PaneFacts;
 use super::history::PaneHistory;
 use super::offer::PaneOffer;
 use super::remote::{PaneRemote, RemotePane};
@@ -37,6 +38,8 @@ pub(super) struct PaneRecord {
     pub host: Option<HostPane>,
     /// Its session on a helper, or in this computer's own daemon.
     pub remote: PaneRemote,
+    /// What was last read of its folder, and the rule that says when to read it again.
+    pub facts: PaneFacts,
 }
 
 /// The live panes' records.
