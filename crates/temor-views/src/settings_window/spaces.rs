@@ -43,9 +43,11 @@ pub fn SpacesPage() -> Element {
             async move {
                 let Some(board) = board else { return };
                 let mut heard = board.heard_rows();
-                rows.set(board.rows());
-                while heard.changed().await.is_ok() {
-                    rows.set(board.rows());
+                loop {
+                    rows.set(heard.borrow_and_update().clone());
+                    if heard.changed().await.is_err() {
+                        break;
+                    }
                 }
             }
         }
