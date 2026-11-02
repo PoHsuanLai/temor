@@ -177,7 +177,10 @@ pub fn spawn_event_loop(desk: Desk) {
             while let Ok(more) = inbox.try_recv() {
                 batch.push(more);
             }
-            let delivery = desk.hub.0.borrow_mut().deliver(batch);
+            let (delivery, said) = desk.hub.0.borrow_mut().said(|hub| hub.deliver(batch));
+            for text in said {
+                desk.say(text);
+            }
             let Delivery {
                 paint,
                 chrome,
@@ -216,7 +219,9 @@ pub fn spawn_event_loop(desk: Desk) {
                 }
             }
             for input in quick {
-                desk.hub.0.borrow_mut().quick_input(input);
+                for text in desk.hub.said(|hub| hub.quick_input(input)) {
+                    desk.say(text);
+                }
             }
             if redraw {
                 desk.bump();

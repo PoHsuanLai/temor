@@ -4,7 +4,6 @@
 //! store its credentials come from.
 
 use ds::components::app::spaces::SpaceId;
-use temor_client::model::pane::PaneFocus;
 use temor_client::model::space::{Place, TemorSpaces};
 use temor_client::model::workspace::WorkspaceIn;
 
@@ -61,12 +60,8 @@ impl Hub {
         if to == self.book.active() {
             return;
         }
-        if let Some(pane) = self.keyboard_pane() {
-            self.set_pane_focus(pane, PaneFocus::Unfocused);
-        }
         self.swap_to(to);
         self.fill_empty();
-        self.refresh_probe();
     }
 
     /// A Space with no tab gets one, as a window closing its last tab does.

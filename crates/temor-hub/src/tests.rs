@@ -596,3 +596,40 @@ fn what_is_kept_is_written_when_it_differs_from_what_was_written_and_otherwise_r
     assert_eq!(hub.poll_save(start + SAVE_EVERY), None);
     assert!(!owed(&mut hub), "written once its turn came");
 }
+
+#[test]
+fn a_request_that_moves_the_keyboard_moves_the_probe_and_the_radar_with_it() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use temor_ui_base::probe::Probe;
+    use temor_ui_base::slot::Slot;
+
+    let mut hub = hub_after(vec![
+        WorkspaceIn::NewTab { cwd: None },
+        WorkspaceIn::Split {
+            towards: Direction::Right,
+        },
+    ]);
+    hub.launch.probe = Some(Probe::new());
+    for pane in [PaneId(1), PaneId(2)] {
+        hub.panes.record(pane).slot = Some(Rc::new(RefCell::new(Slot::default())));
+    }
+    let probed = |hub: &Hub| {
+        [PaneId(1), PaneId(2)]
+            .into_iter()
+            .filter(|pane| hub.slot(*pane).unwrap().borrow().probe.is_some())
+            .collect::<Vec<_>>()
+    };
+
+    hub.said(|_| {});
+    assert_eq!(probed(&hub), vec![PaneId(2)]);
+    hub.pane_focused(PaneId(2));
+
+    hub.said(|hub| hub.act(WorkspaceIn::Focus(PaneId(1))));
+    assert_eq!(probed(&hub), vec![PaneId(1)]);
+    assert_eq!(
+        hub.agents.radar.focused(),
+        None,
+        "the radar let go of the pane"
+    );
+}

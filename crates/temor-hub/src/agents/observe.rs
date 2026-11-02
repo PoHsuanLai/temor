@@ -60,17 +60,6 @@ impl Hub {
         }
     }
 
-    /// After a workspace change: a pane that is no longer the keyboard pane is not focused.
-    pub(crate) fn agents_after_act(&mut self) {
-        let keyboard = self.keyboard_pane();
-        if let Some(held) = self.agents.radar.focused()
-            && keyboard != Some(held)
-        {
-            let now = self.agents.now();
-            self.agents.radar.set_focus(now, None);
-        }
-    }
-
     /// A pane's program ended and the pane is gone.
     pub(crate) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);

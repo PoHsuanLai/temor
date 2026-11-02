@@ -155,7 +155,7 @@ fn a_pane_an_agent_opens_is_unfocused_in_the_radar_and_waits_for_the_person() {
     ] {
         let (ws, _) = workspace_step(hub.book.ws().clone(), step);
         hub.book.place(hub.book.active(), ws);
-        hub.agents_after_act();
+        hub.sync_focus();
         assert_ne!(hub.agents.radar.focused(), Some(PaneId(2)));
     }
 

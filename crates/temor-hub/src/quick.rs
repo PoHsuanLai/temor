@@ -61,7 +61,6 @@ impl Hub {
     pub(super) fn quick_input(&mut self, input: QuickIn) {
         let (state, outs) = quick_step(std::mem::take(&mut self.quick), input);
         self.quick = state;
-        let asked = !outs.is_empty();
         for out in outs {
             match out {
                 QuickOut::Spawn { pane, cwd } => {
@@ -72,9 +71,6 @@ impl Hub {
                 // The overlay follows `quick_shown`; the shell is not touched.
                 QuickOut::Show(_) | QuickOut::Hidden => {}
             }
-        }
-        if asked {
-            self.refresh_probe();
         }
     }
 

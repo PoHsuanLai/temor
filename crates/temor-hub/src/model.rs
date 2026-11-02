@@ -57,6 +57,9 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: temor_client::keep::SavePace,
     pub(super) notices: Vec<String>,
+    /// The pane the probe, the radar and the sessions were last told has the keyboard
+    /// ([`Hub::sync_focus`]).
+    pub(super) keyboard: Option<PaneId>,
     /// Actions picked in the command bar, which the desk runs once the pick has settled: the
     /// window runs all of them one way (`Desk::run_action`).
     pub(super) bar_actions: Vec<temor_panes::pane::keys::Action>,
@@ -149,6 +152,7 @@ impl Hub {
             palette: Palette::default(),
             pace: temor_client::keep::SavePace::new(SAVE_EVERY),
             notices,
+            keyboard: None,
             bar_actions: Vec::new(),
             shelf,
             agents,
@@ -190,9 +194,11 @@ impl Hub {
     }
 
     /// Runs `change`, and what it left to tell the person (PLAN §4c: the hub says things as it
-    /// goes, and whoever asked for the change shows them). Every request is run through here.
+    /// goes, and whoever asked for the change shows them). Every request is run through here,
+    /// and the keyboard is followed once it is done.
     pub fn said<R>(&mut self, change: impl FnOnce(&mut Self) -> R) -> (R, Vec<String>) {
         let answer = change(self);
+        self.sync_focus();
         (answer, std::mem::take(&mut self.notices))
     }
 

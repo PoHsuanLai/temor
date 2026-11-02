@@ -47,7 +47,7 @@ impl Hub {
             self.run_in_tab(run);
         }
         self.fill_empty();
-        self.refresh_probe();
+        self.sync_focus();
     }
 
     /// Starts the panes and viewers of a Space brought back, each pane with the screen and the

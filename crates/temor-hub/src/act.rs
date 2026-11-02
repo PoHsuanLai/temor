@@ -66,7 +66,6 @@ impl Hub {
         for out in self.book.step(input) {
             self.carry_out(out, &mut ctx);
         }
-        self.agents_after_act();
         // Closing the last tab leaves the window with a fresh one, as a browser does.
         if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
@@ -138,7 +137,8 @@ impl Hub {
                     self.forget_pane(pane);
                 }
             }
-            WorkspaceOut::Focused(_) => self.refresh_probe(),
+            // The keyboard is followed once the request is done (`Hub::sync_focus`).
+            WorkspaceOut::Focused(_) => {}
             WorkspaceOut::Tab(_) => {}
             WorkspaceOut::Refused(why) => self.notices.push(refusal_text(&why)),
             // What is kept follows from the book (`Hub::poll_save`).
@@ -369,17 +369,34 @@ impl Hub {
         }
     }
 
-    /// Only the pane that has the keyboard publishes its screen to the probe; it publishes at once.
-    pub(super) fn refresh_probe(&mut self) {
-        let keyboard = self.keyboard_pane();
-        for (pane, slot) in self.panes.slots() {
-            slot.borrow_mut().probe = match Some(pane) == keyboard {
-                true => self.launch.probe.clone(),
-                false => None,
-            };
+    /// Follows the keyboard once a request is done, from where it was then to where it is now:
+    /// the radar's focus does not stay on a pane that lost it, a pane that lost it (to another
+    /// Space, the quick terminal or a pane beside it) counts as in the background, and only the
+    /// pane that has it publishes its screen to the probe, at once.
+    pub(super) fn sync_focus(&mut self) {
+        let now = self.keyboard_pane();
+        if let Some(held) = self.agents.radar.focused()
+            && now != Some(held)
+        {
+            let at = self.agents.now();
+            self.agents.radar.set_focus(at, None);
         }
-        if let Some(slot) = keyboard.and_then(|pane| self.panes.slot(pane)) {
-            repaint(slot);
+        let before = std::mem::replace(&mut self.keyboard, now);
+        if let Some(pane) = before.filter(|_| before != now) {
+            self.set_pane_focus(pane, PaneFocus::Unfocused);
+            if let Some(slot) = self.panes.slot(pane) {
+                slot.borrow_mut().probe = None;
+            }
+        }
+        if let Some(slot) = now.and_then(|pane| self.panes.slot(pane)) {
+            // A slot made for the pane since (a restart, a host's) has no probe yet.
+            let given = slot.borrow().probe.is_none() && self.launch.probe.is_some();
+            if given {
+                slot.borrow_mut().probe = self.launch.probe.clone();
+            }
+            if given || before != now {
+                repaint(slot);
+            }
         }
     }
 
