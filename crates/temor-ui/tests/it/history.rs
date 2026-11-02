@@ -347,7 +347,7 @@ fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
     while ended(&db).is_none() {
         h.advance(Duration::from_millis(50));
         assert!(
-            start.elapsed() < Duration::from_secs(10),
+            start.elapsed() < super::drive::LIMIT,
             "the command not kept"
         );
     }
@@ -357,7 +357,7 @@ fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
     let start = Instant::now();
     while !screen.is_file() {
         h.advance(Duration::from_millis(50));
-        assert!(start.elapsed() < Duration::from_secs(10), "no screen kept");
+        assert!(start.elapsed() < super::drive::LIMIT, "no screen kept");
     }
     let primary: &[ShortcutKey] = &[ShortcutKey::Super, ShortcutKey::Alt, ShortcutKey::Shift];
     chord_with(&mut h, primary, 'y');
@@ -369,14 +369,18 @@ fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
     let mut reopened = false;
     for row in rows {
         h.send(ds_harness::Input::click(row.centre()));
-        h.advance(Duration::from_millis(300));
+        wait_html(&mut h, "a session's page", |html| {
+            html.contains("class=\"temor-history-head\"")
+        });
         if h.html().contains(">Reopen<") || h.html().contains("\"Reopen\"") {
             press(&mut h, ".temor-history-head .ds-button");
             reopened = true;
             break;
         }
         chord_with(&mut h, &[ShortcutKey::Super], '[');
-        h.advance(Duration::from_millis(300));
+        wait_html(&mut h, "the sessions again", |html| {
+            !html.contains("class=\"temor-history-head\"")
+        });
     }
     assert!(reopened, "no page with Reopen:\n{}", h.html());
     let start = Instant::now();
@@ -384,7 +388,7 @@ fn a_closed_tabs_session_is_reopened_from_its_last_screen() {
     while !(probe.screen().contains("shown-42-then") && cards(&h) == 0) {
         h.advance(Duration::from_millis(50));
         assert!(
-            start.elapsed() < Duration::from_secs(10),
+            start.elapsed() < super::drive::LIMIT,
             "not its screen: {}\n{}",
             probe.screen(),
             h.html()

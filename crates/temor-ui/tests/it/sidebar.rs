@@ -351,7 +351,19 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
         let start = Instant::now();
         while !ok(h) {
             h.advance(Duration::from_millis(50));
-            assert!(start.elapsed() < drive::LIMIT, "{what}");
+            assert!(
+                start.elapsed() < drive::LIMIT,
+                "{what}: edge host {}, sides {:?}",
+                found(h, ".temor-edge-host"),
+                h.html()
+                    .match_indices("data-side=\"")
+                    .map(|(at, _)| h.html()[at + 11..]
+                        .split('"')
+                        .next()
+                        .unwrap_or("")
+                        .to_owned())
+                    .collect::<Vec<_>>()
+            );
         }
     };
     h.send(Input::chord(
@@ -372,6 +384,15 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
     h.send(Input::pointer_move(at(900.0, 400.0)));
     wait(&mut h, "gone again", &|h| {
         found(h, ".temor-edge-host .ds-side[data-side=hidden]")
+    });
+    // As a person does: the edge peeks it under the pointer, and a click there pins it. The
+    // click waits for the sidebar to come to rest: sliding in, it passes over the strip, and a
+    // press there lands on the sidebar.
+    h.send(Input::pointer_move(at(3.0, 400.0)));
+    wait(&mut h, "the edge peeks it again, at rest", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=peek]")
+            && h.html().contains("--present-p:1.000")
+            && h.hits(at(3.0, 400.0), ".ds-edge")
     });
     h.send(Input::click(at(3.0, 400.0)));
     wait(&mut h, "pinned in its column, with no edge host", &|h| {
