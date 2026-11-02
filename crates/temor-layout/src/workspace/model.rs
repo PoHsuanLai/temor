@@ -15,8 +15,6 @@ use temor_core::vocab::text::{Cwd, TabTitle, ViewerRef};
 pub struct Workspace {
     /// The tab list.
     pub tabs: TabsState,
-    /// The pane that has keys in each tab.
-    pub focus: BTreeMap<TabId, PaneId>,
     /// Each pane's working folder, as far as it is known (OSC 7). A closed tab keeps its panes'
     /// folders until they are forgotten, so a reopen can start in them.
     pub cwds: BTreeMap<PaneId, Cwd>,
@@ -36,7 +34,6 @@ impl Workspace {
     pub fn new(closed: ClosedState) -> Workspace {
         Workspace {
             tabs: TabsState::default(),
-            focus: BTreeMap::new(),
             cwds: BTreeMap::new(),
             viewers: BTreeMap::new(),
             closed,
@@ -62,12 +59,12 @@ impl Workspace {
 
     /// The pane with keys in `tab`: the recorded one, else the tab's first pane.
     pub fn focus_of(&self, tab: TabId) -> Option<PaneId> {
-        let t = self.tabs.tab(tab)?;
-        self.focus
-            .get(&tab)
-            .copied()
-            .filter(|pane| t.tree.contains(*pane))
-            .or_else(|| t.tree.panes().first().copied())
+        self.tabs.tab(tab)?.focus()
+    }
+
+    /// The tab with `id`, to change.
+    pub(crate) fn tab_mut(&mut self, id: TabId) -> Option<&mut Tab> {
+        self.tabs.place.tabs.iter_mut().find(|tab| tab.id == id)
     }
 
     /// Runs one step on the tab list and keeps the list it gives back; what the step said.
@@ -82,28 +79,25 @@ impl Workspace {
         self.tabs_do(TabsIn::Select(TabSel::Id(tab)));
     }
 
-    /// Puts `tab` at the end of the list, with `focus` the pane that has keys in it, and brings
-    /// it to the front. The caller has minted the ids and tells the window.
-    pub(crate) fn open_tab(&mut self, tab: Tab, focus: PaneId) {
+    /// Puts `tab` at the end of the list and brings it to the front. The caller has minted the
+    /// ids and tells the window.
+    pub(crate) fn open_tab(&mut self, tab: Tab) {
         let id = tab.id;
         self.tabs.place.tabs.push(tab);
-        self.focus.insert(id, focus);
         self.bring_forward(id);
     }
 
     /// A new loose tab `id` named "Shell" around `pane`, in front, with the folder the pane
     /// starts in when it has one.
     pub(crate) fn open_shell_tab(&mut self, id: TabId, pane: PaneId, cwd: Option<Cwd>) {
-        self.open_tab(
-            Tab {
-                id,
-                title: TabTitle("Shell".to_owned()),
-                pin: Pin::Loose,
-                folder: None,
-                tree: SplitTree::single(pane),
-            },
-            pane,
-        );
+        self.open_tab(Tab {
+            id,
+            title: TabTitle("Shell".to_owned()),
+            pin: Pin::Loose,
+            folder: None,
+            tree: SplitTree::single(pane),
+            focus: Some(pane),
+        });
         if let Some(cwd) = cwd {
             self.cwds.insert(pane, cwd);
         }

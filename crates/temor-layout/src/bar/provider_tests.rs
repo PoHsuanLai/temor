@@ -59,6 +59,7 @@ fn tab(id: u64, title: &str) -> Tab {
         pin: Pin::Loose,
         folder: None,
         tree: SplitTree::single(PaneId(id)),
+        focus: None,
     }
 }
 

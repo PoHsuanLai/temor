@@ -35,13 +35,11 @@ impl Default for KeepClosed {
     }
 }
 
-/// A tab that was closed, with the pane that had focus.
+/// A tab that was closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClosedTab {
-    /// The tab as it was.
+    /// The tab as it was, with the pane that had focus.
     pub tab: Tab,
-    /// The pane that had focus in it.
-    pub focus: PaneId,
     /// The order it was closed in.
     pub seq: Seq,
 }
@@ -71,13 +69,8 @@ impl ClosedState {
 /// What the recently closed list is asked to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClosedIn {
-    /// A tab was closed.
-    Push {
-        /// The tab as it was.
-        tab: Tab,
-        /// The pane that had focus.
-        focus: PaneId,
-    },
+    /// A tab was closed: the tab as it was.
+    Push(Tab),
     /// Take the newest closed tab back.
     Reopen,
 }
@@ -96,10 +89,10 @@ pub enum ClosedOut {
 /// The recently closed list after `input`.
 pub fn closed_step(mut state: ClosedState, input: ClosedIn) -> (ClosedState, Vec<ClosedOut>) {
     let out = match input {
-        ClosedIn::Push { tab, focus } => {
+        ClosedIn::Push(tab) => {
             let seq = Seq(state.next_seq);
             state.next_seq = state.next_seq.saturating_add(1);
-            state.tabs.push(ClosedTab { tab, focus, seq });
+            state.tabs.push(ClosedTab { tab, seq });
             let mut evicted = Vec::new();
             while state.tabs.len() > state.keep.get() {
                 let gone = state.tabs.remove(0);

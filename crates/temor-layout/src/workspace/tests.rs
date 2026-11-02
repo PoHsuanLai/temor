@@ -14,6 +14,7 @@ fn tab(id: u64, pin: Pin, folder: Option<u64>) -> Tab {
         pin,
         folder: folder.map(FolderId),
         tree: SplitTree::single(PaneId(id)),
+        focus: None,
     }
 }
 

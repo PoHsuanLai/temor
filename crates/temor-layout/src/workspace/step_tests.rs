@@ -161,7 +161,7 @@ fn the_oldest_closed_tab_is_forgotten_past_the_limit() {
     let (ws, out) = run(ws, vec![WorkspaceIn::CloseTab(TabId(2))]);
     assert!(out.contains(&WorkspaceOut::Forgotten(vec![first])));
     assert_eq!(ws.closed.tabs.len(), 1);
-    assert_eq!(ws.closed.tabs[0].focus, second_pane);
+    assert_eq!(ws.closed.tabs[0].tab.focus, Some(second_pane));
 }
 
 #[test]

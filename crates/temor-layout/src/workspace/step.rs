@@ -115,20 +115,14 @@ pub(super) fn front_pane(ws: &Workspace) -> Option<PaneId> {
 
 /// The tree and focus of `tab`.
 pub(super) fn tree_state(ws: &Workspace, tab: TabId) -> Option<TreeState> {
-    let focus = ws.focus_of(tab)?;
-    let t = ws.tabs.tab(tab)?;
-    Some(TreeState {
-        tree: t.tree.clone(),
-        focus,
-    })
+    ws.tabs.tab(tab)?.state()
 }
 
 /// Stores a tab's tree and focus.
 pub(super) fn store_tree_state(ws: &mut Workspace, tab: TabId, state: TreeState) {
-    if let Some(t) = ws.tabs.place.tabs.iter_mut().find(|t| t.id == tab) {
-        t.tree = state.tree;
+    if let Some(t) = ws.tab_mut(tab) {
+        t.set_state(state);
     }
-    ws.focus.insert(tab, state.focus);
 }
 
 /// The next pane id, or none when the counter has no id left to hand out after it.

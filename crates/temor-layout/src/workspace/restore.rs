@@ -98,11 +98,15 @@ pub fn encode(ws: &Workspace) -> Result<String, CoreError> {
         version: VERSION,
         place: &ws.tabs.place,
         focus: ws
-            .focus
+            .tabs
+            .place
+            .tabs
             .iter()
-            .map(|(tab, pane)| FocusRec {
-                tab: *tab,
-                pane: *pane,
+            .filter_map(|tab| {
+                Some(FocusRec {
+                    tab: tab.id,
+                    pane: tab.focus?,
+                })
             })
             .collect(),
         cwds: ws
@@ -205,12 +209,13 @@ fn rebuild(read: ReadV1, keep: KeepClosed) -> Option<Workspace> {
     if tabs.place.focused.is_none() {
         tabs.place.focused = order(&tabs).first().copied();
     }
-    ws.focus = read
-        .focus
-        .iter()
-        .filter(|rec| tabs.tab(rec.tab).is_some_and(|t| t.tree.contains(rec.pane)))
-        .map(|rec| (rec.tab, rec.pane))
-        .collect();
+    for rec in &read.focus {
+        if let Some(tab) = tabs.place.tabs.iter_mut().find(|t| t.id == rec.tab)
+            && tab.tree.contains(rec.pane)
+        {
+            tab.focus = Some(rec.pane);
+        }
+    }
     // The folders a Spaces-file place carries: the session's own record of a pane wins.
     ws.cwds = recalled_cwds
         .into_iter()
