@@ -13,8 +13,9 @@ use temor_client::ssh::{ControlLayout, HostAlias};
 use super::model::Hub;
 use super::remote::{Busy, RemotePane, Shown, Tier};
 use super::remote_retry::{Begin, begin_plan};
-use super::ssh::{Check, Phase};
+use super::ssh::Phase;
 use super::ssh_check::RawCheck;
+use super::ssh_pane::HostIn;
 use temor_client::remote::session::session_tier;
 use temor_panes::remote::link::{RemoteLink, Target, lock};
 use temor_panes::remote::relay::relay;
@@ -95,13 +96,10 @@ impl Hub {
 
     /// The shared connection is up: the pane becomes a session on the helper.
     pub(super) fn remote_begin(&mut self, pane: PaneId) {
-        let Some(host) = self.panes.host_mut(pane) else {
+        let Some(alias) = self.alias_of(pane) else {
             return;
         };
-        host.phase = Phase::Up;
-        host.scan = None;
-        host.check = Check::Nothing;
-        let alias = host.alias.clone();
+        self.host_in(pane, HostIn::HelperOpened);
         // A pane that had a session when the link was lost asks for the same one.
         let before = self.panes.remote(pane).map(|old| {
             let target = lock(&old.target);
@@ -174,9 +172,7 @@ impl Hub {
         if let Some(record) = self.panes.get_mut(pane) {
             record.remote.saved = None;
         }
-        if let Some(host) = self.panes.host_mut(pane) {
-            host.tier = Tier::Plain;
-        }
+        self.host_in(pane, HostIn::Plain);
         self.start_session(&alias, pane, OpenAs::Join);
     }
 

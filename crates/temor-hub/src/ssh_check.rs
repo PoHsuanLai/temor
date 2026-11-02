@@ -12,6 +12,7 @@ use temor_panes::pane::ByteTap;
 
 use super::model::Hub;
 use super::ssh::Check;
+use super::ssh_pane::HostIn;
 
 /// What the pane's output has said about a check, read from the bytes `ssh` wrote (a link that
 /// wraps on a narrow screen is still one link there).
@@ -79,28 +80,20 @@ impl Hub {
     /// The scan is fed the raw bytes `ssh` wrote, on the pane's thread; here the newest link it
     /// found is shown, and a redraw of it is reported once.
     pub(super) fn ssh_scan(&mut self, painted: &BTreeSet<PaneId>) {
-        let mut news = Vec::new();
-        for pane in painted {
-            let Some(host) = self.panes.host_mut(*pane) else {
-                continue;
-            };
-            let Some(url) = host.scan.as_ref().and_then(|raw| raw.take()) else {
-                continue;
-            };
-            if host.check == Check::Nothing {
-                news.push(*pane);
+        for &pane in painted {
+            let found = self
+                .panes
+                .host(pane)
+                .and_then(|host| host.scan.as_ref()?.take());
+            if let Some(url) = found {
+                self.host_in(pane, HostIn::CheckFound(url));
             }
-            host.check = Check::Shown(url);
         }
-        self.host_attention(news);
     }
 
     /// The shell started (its first folder report): the check, if any, is over.
     pub(super) fn ssh_shell_started(&mut self, pane: PaneId) {
-        if let Some(host) = self.panes.host_mut(pane) {
-            host.scan = None;
-            host.check = Check::Nothing;
-        }
+        self.host_in(pane, HostIn::ShellStarted);
     }
 
     /// The person pressed Open on the check row.

@@ -15,9 +15,10 @@ use temor_client::ssh::{
 
 use super::model::Hub;
 use super::remote::Tier;
-use super::ssh::{Check, Phase};
+use super::ssh::Phase;
 use super::ssh_check::RawCheck;
 use super::ssh_connect::session_args;
+use super::ssh_pane::HostIn;
 use temor_pane_view::session::Session;
 use temor_ui_base::error::UiError;
 use temor_ui_base::launch::{Program, open_session_with};
@@ -41,9 +42,8 @@ impl Hub {
                 && other != pane
                 && !matches!(host.phase, Phase::Failed | Phase::Offline)
         });
-        let line = self.ssh.lines.entry(alias.clone()).or_default();
-        if line.master == Master::Up && !busy {
-            line.master = Master::Down;
+        if !busy {
+            self.feed_master(alias, MasterIn::Revalidate);
         }
         self.feed_master(alias, MasterIn::Wanted(pane));
     }
@@ -151,10 +151,7 @@ impl Hub {
                 if let Some(slot) = self.panes.slot(pane) {
                     slot.borrow_mut().session = Some(session);
                 }
-                if let Some(host) = self.panes.host_mut(pane) {
-                    host.phase = phase;
-                    host.scan = scan;
-                }
+                self.host_in(pane, HostIn::Opened { phase, scan });
             }
             Err(err) => {
                 self.feed_master(alias, MasterIn::Failed(pane));
@@ -178,13 +175,7 @@ impl Hub {
     /// The first session of a host is connected: the host's key was verified.
     pub(super) fn established(&mut self, alias: &HostAlias) {
         for pane in self.panes.on_host(alias) {
-            if let Some(host) = self.panes.host_mut(pane) {
-                if host.phase == Phase::Connecting {
-                    host.phase = Phase::Up;
-                }
-                host.scan = None;
-                host.check = Check::Nothing;
-            }
+            self.host_in(pane, HostIn::Established);
         }
         self.feed_master(alias, MasterIn::Established);
         let list = self.ssh.env.host_list();

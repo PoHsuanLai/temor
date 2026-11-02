@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use temor_client::model::host::consent::{ConsentIn, Gate, RunMode, Who, consent_step, gate};
-use temor_client::model::host::master::MasterIn;
 use temor_client::model::remote::Grant;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::{Spawn, WorkspaceIn};
@@ -20,6 +19,7 @@ use temor_panes::pty::ChildExit;
 use super::model::Hub;
 use super::remote::Tier;
 use super::ssh::{Check, HostPane, Phase};
+use super::ssh_pane::HostIn;
 use temor_ui_base::slot::Slot;
 
 /// The arguments of the host session: plain `ssh`, or `ssh` running the bootstrap that opens in
@@ -167,9 +167,7 @@ impl Hub {
         self.pace.changed();
         if offline {
             // Say why before dialling a computer the tailnet cannot reach.
-            if let Some(host) = self.panes.host_mut(spawn.pane) {
-                host.phase = Phase::Offline;
-            }
+            self.host_in(spawn.pane, HostIn::Offline);
             return;
         }
         self.gate_host(spawn.pane);
@@ -177,9 +175,7 @@ impl Hub {
 
     /// The person pressed "Try anyway" on a computer shown offline.
     pub fn try_offline(&mut self, pane: PaneId) {
-        if self.panes.host(pane).map(|host| host.phase) == Some(Phase::Offline) {
-            self.gate_host(pane);
-        }
+        self.host_in(pane, HostIn::TryAnyway);
     }
 
     pub(super) fn who_of(&self, alias: &HostAlias) -> Who {
@@ -196,22 +192,11 @@ impl Hub {
         };
         let verdict = gate(&self.ssh.book, &self.who_of(&alias));
         let tier = self.remote_tier(&alias);
-        let Some(host) = self.panes.host_mut(pane) else {
-            return;
+        let input = match verdict {
+            Gate::Ask(action) => HostIn::Asked(action),
+            Gate::Run(mode) => HostIn::Cleared { mode, tier },
         };
-        let hidden = host.deferred;
-        match verdict {
-            Gate::Ask(action) => host.phase = Phase::Asking(action),
-            Gate::Run(mode) => {
-                host.mode = Some(mode);
-                host.tier = tier;
-                host.phase = Phase::Waiting;
-                // A restored pane connects when its tab is first in front (`ssh_start_shown`).
-                if !hidden {
-                    self.want_session(&alias, pane);
-                }
-            }
-        }
+        self.host_in(pane, input);
     }
 
     /// Connects the restored panes whose tab is now in front.
@@ -230,10 +215,7 @@ impl Hub {
             .map(|(pane, _)| pane)
             .collect();
         for pane in shown {
-            if let Some(host) = self.panes.host_mut(pane) {
-                host.deferred = false;
-            }
-            self.gate_host(pane);
+            self.host_in(pane, HostIn::Shown);
         }
     }
 
@@ -261,31 +243,12 @@ impl Hub {
 
     pub(super) fn fail_host(&mut self, pane: PaneId, why: String) {
         self.notices.push(why);
-        if let Some(host) = self.panes.host_mut(pane) {
-            host.phase = Phase::Failed;
-        }
+        self.host_in(pane, HostIn::Failed);
     }
 
     /// A host pane's program ended.
     pub(super) fn ssh_ended(&mut self, pane: PaneId, exit: Option<ChildExit>) {
-        let Some(host) = self.panes.host_mut(pane) else {
-            return;
-        };
-        let (alias, was, tier) = (host.alias.clone(), host.phase, host.tier);
-        host.phase = Phase::Failed;
-        host.scan = None;
-        host.check = Check::Nothing;
-        match (was, exit) {
-            (Phase::Connecting | Phase::Waiting, _) => {
-                self.feed_master(&alias, MasterIn::Failed(pane))
-            }
-            // ssh itself failed on a connection that was up: the master is gone.
-            // (A helper session's own exit code says nothing of the connection.)
-            (Phase::Up, Some(ChildExit::Exited(255))) if tier == Tier::Plain => {
-                self.feed_master(&alias, MasterIn::Lost)
-            }
-            _ => {}
-        }
+        self.host_in(pane, HostIn::Ended(exit));
     }
 
     /// Starts a host pane's session again (its program ended), in the folder it was last in.
@@ -296,27 +259,20 @@ impl Hub {
             .cwds
             .get(&pane)
             .and_then(|cwd| RemoteFilePath::new(cwd.as_str()).ok());
-        let Some(host) = self.panes.host_mut(pane) else {
-            return false;
-        };
-        host.phase = Phase::Waiting;
-        host.start_dir = dir;
-        self.gate_host(pane);
-        true
+        self.host_in(pane, HostIn::Restart { dir })
     }
 
     /// A host pane was closed.
     pub(super) fn ssh_forget(&mut self, pane: PaneId) {
         self.remote_forget(pane);
-        if let Some(host) = self
+        if let Some(mut host) = self
             .panes
             .get_mut(pane)
             .and_then(|record| record.host.take())
         {
             self.ssh_note_closed(pane, host.alias.clone());
-            if matches!(host.phase, Phase::Connecting | Phase::Waiting) {
-                self.feed_master(&host.alias, MasterIn::Failed(pane));
-            }
+            let outs = host.step(HostIn::Closed);
+            self.host_outs(pane, &host.alias, outs);
             self.pace.changed();
         }
     }
