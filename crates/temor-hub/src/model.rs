@@ -192,11 +192,8 @@ impl Hub {
     }
 
     /// The next message for the person, if one is waiting; taking it clears it.
-    pub fn take_notice(&mut self) -> Option<String> {
-        match self.notices.is_empty() {
-            true => None,
-            false => Some(self.notices.remove(0)),
-        }
+    pub fn take_notices(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.notices)
     }
 }
 

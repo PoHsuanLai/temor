@@ -15,6 +15,7 @@ use temor_panes::vt::MouseButton as VtButton;
 
 use super::convert::{device_point, scale_of, vt_button, vt_mods, wheel_lines};
 use super::window_help::device_at;
+use temor_ui_base::notices::Notices;
 use temor_ui_base::slot::{Slot, repaint};
 
 /// The pane's pointer handlers: the capture for drags, and the press, release and wheel.
@@ -46,7 +47,7 @@ pub fn use_pane_mouse(
     slot: Rc<RefCell<Slot>>,
     rect: RectProbe,
     signals: Option<HostSignals>,
-    notice: Signal<Option<String>>,
+    notice: Notices,
     started: Instant,
     released: Rc<dyn Fn()>,
 ) -> PaneMouse {
@@ -55,7 +56,7 @@ pub fn use_pane_mouse(
     // is released through the element (PLAN §6). Exactly one of them reports.
     let owner = Rc::new(Cell::new(ReleaseOwner::Element));
     let capture = {
-        let (slot, signals, mut notice, owner, released) = (
+        let (slot, signals, notice, owner, released) = (
             Rc::clone(&slot),
             signals,
             notice,
@@ -86,7 +87,7 @@ pub fn use_pane_mouse(
                     PointerPhase::Release | PointerPhase::Press => Ok(()),
                 });
             if let Some(Err(err)) = result {
-                notice.set(Some(err.to_string()));
+                notice.say(err.to_string());
             }
             repaint(&slot);
             // After the capture has let go: what the press asked for may change the layout.
@@ -117,8 +118,7 @@ pub fn use_pane_mouse(
                 .as_mut()
                 .map(|s| s.press(at, button, vt_mods(event.modifiers()), started.elapsed()));
             if let Some(Err(err)) = result {
-                let mut notice = notice;
-                notice.set(Some(err.to_string()));
+                notice.say(err.to_string());
             }
             repaint(&slot);
         }
@@ -141,14 +141,13 @@ pub fn use_pane_mouse(
                 return;
             }
             let at = device_at(event.client_coordinates(), &rect, signals);
-            let mut notice = notice;
             let result = slot
                 .borrow_mut()
                 .session
                 .as_mut()
                 .map(|s| s.release(at, button, vt_mods(event.modifiers())));
             if let Some(Err(err)) = result {
-                notice.set(Some(err.to_string()));
+                notice.say(err.to_string());
             }
             repaint(&slot);
             released();

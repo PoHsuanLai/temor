@@ -13,6 +13,7 @@ use super::block_menu::BlockMenuAt;
 use super::handlers::{block_menu_opened, grid_pressed, pointer_over};
 use super::peek::PeekHandles;
 use temor_pane_view::session::Session;
+use temor_ui_base::notices::Notices;
 use temor_ui_base::slot::Slot;
 
 /// What the grid element is given.
@@ -35,7 +36,7 @@ impl std::fmt::Debug for GridPointer {
 pub struct GridState {
     /// Bumped to draw the pane again.
     pub ui: Signal<u32>,
-    pub notice: Signal<Option<String>>,
+    pub notice: Notices,
     /// Where the block menu is open.
     pub menu: Signal<Option<BlockMenuAt>>,
     /// The pane's region, which pointer events are placed against.

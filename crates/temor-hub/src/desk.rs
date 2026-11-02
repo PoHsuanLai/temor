@@ -23,7 +23,7 @@ pub struct Desk {
     /// Bumped to draw the window again; views read it to follow the hub.
     pub ui: Signal<u32>,
     /// The message the person sees above the panes.
-    pub notice: Signal<Option<String>>,
+    pub notice: temor_ui_base::notices::Notices,
     /// The Spaces: the kit's handle, which switches, edits and writes them.
     pub spaces: SpacesOf,
     /// The Space the ⌘T bar asked for, until the desk switches to it.
@@ -79,8 +79,7 @@ impl Desk {
 
     /// Shows `text` to the person.
     pub fn say(&self, text: String) {
-        let mut notice = self.notice;
-        notice.set(Some(text));
+        self.notice.say(text);
     }
 
     /// Makes a folder, at the top or in `parent`, with `tab` in it when one is given, and names

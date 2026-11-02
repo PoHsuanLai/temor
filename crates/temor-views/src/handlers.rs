@@ -21,6 +21,7 @@ use super::ime::ImeGlue;
 use super::window_help::{device_at, run_query_later};
 use temor_hub::Desk;
 use temor_pane_view::session::{HistoryStep, Session};
+use temor_ui_base::notices::Notices;
 use temor_ui_base::slot::{Slot, repaint};
 
 /// The find bar's query, run once typing pauses.
@@ -82,7 +83,7 @@ pub fn grid_pressed(
     slot: Rc<RefCell<Slot>>,
     (rect, signals): (RectProbe, Option<HostSignals>),
     mut ui: Signal<u32>,
-    mut notice: Signal<Option<String>>,
+    notice: Notices,
     mouse_down: Rc<dyn Fn(PointerEvent)>,
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
@@ -99,7 +100,7 @@ pub fn grid_pressed(
                     return;
                 }
                 Ok(None) => {}
-                Err(err) => notice.set(Some(err.to_string())),
+                Err(err) => notice.say(err.to_string()),
             }
         }
         mouse_down(e);

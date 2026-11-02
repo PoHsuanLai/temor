@@ -43,6 +43,7 @@ use temor_hub::{
 use temor_ui_base::desktop::Desktop;
 use temor_ui_base::edge::{Credentials, VaultCredentials};
 use temor_ui_base::launch::Launch;
+use temor_ui_base::notices::use_notices;
 use temor_ui_base::sidebar_room::SidebarRoom;
 use temor_ui_base::theme::use_window_look;
 use temor_ui_base::title::window_title;
@@ -81,9 +82,9 @@ pub fn App() -> Element {
     let board = use_hook(try_consume_context::<temor_hub::settings_link::board::SpaceBoard>);
     let published = board.clone();
     let ui = use_signal(|| 0u32);
-    let mut notice = use_signal({
+    let notice = use_notices({
         let hub = hub.clone();
-        move || hub.0.borrow_mut().take_notice()
+        move || hub.0.borrow_mut().take_notices()
     });
     let spaces = use_window_spaces(&hub, ui, notice);
     // The Space on screen decides the look: the frame, the sidebar's ink and the terminal's colours.
@@ -308,11 +309,11 @@ pub fn App() -> Element {
                     Column {
                         gap: ColumnGap::None,
                         extent: ColumnExtent::Fill,
-                        if let Some(text) = notice() {
+                        if let Some(text) = notice.shown() {
                             InlineBanner {
                                 severity: Severity::Warn,
                                 text,
-                                onclose: move |_| notice.set(None),
+                                onclose: move |_| notice.close(),
                             }
                         }
                         TransferAsk { desk: desk.clone() }

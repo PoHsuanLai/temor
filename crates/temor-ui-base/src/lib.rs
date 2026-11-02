@@ -9,6 +9,7 @@ pub mod desktop;
 pub mod edge;
 pub mod error;
 pub mod launch;
+pub mod notices;
 pub mod pop_out;
 pub mod probe;
 pub mod remote_launch;

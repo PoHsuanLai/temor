@@ -483,11 +483,11 @@ fn the_first_window_says_what_the_settings_need_and_the_next_says_nothing() {
     ]);
     let mut first = Hub::new(launch.clone());
     assert_eq!(
-        first.take_notice().as_deref(),
-        Some("Your settings couldn't be read. Two shortcuts couldn't be used.")
+        first.take_notices(),
+        vec!["Your settings couldn't be read. Two shortcuts couldn't be used.".to_owned()]
     );
     let mut next = Hub::new(launch);
-    assert_eq!(next.take_notice(), None);
+    assert!(next.take_notices().is_empty());
 }
 
 #[test]
