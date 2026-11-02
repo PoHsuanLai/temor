@@ -46,8 +46,6 @@ pub(super) struct HostCopies {
     events: UnboundedSender<CopyEvent>,
     pub(super) inbox: Option<UnboundedReceiver<CopyEvent>>,
     wanted: BTreeMap<CopyId, Wanted>,
-    /// The copy each viewer pane shows, removed when the pane ends.
-    shown: BTreeMap<PaneId, PathBuf>,
 }
 
 impl Default for HostCopies {
@@ -58,7 +56,6 @@ impl Default for HostCopies {
             events,
             inbox: Some(inbox),
             wanted: BTreeMap::new(),
-            shown: BTreeMap::new(),
         }
     }
 }
@@ -92,20 +89,6 @@ impl Hub {
     /// Whether `file` is one of this window's copies of a host's files.
     pub(super) fn is_host_copy(&self, file: &Path) -> bool {
         file.starts_with(self.copies_dir())
-    }
-
-    /// The viewer pane `pane` shows the copy `file`: it is removed when the pane ends.
-    pub(super) fn host_copy_shown(&mut self, pane: PaneId, file: &Path) {
-        if self.is_host_copy(file) {
-            self.viewers.host.shown.insert(pane, file.to_path_buf());
-        }
-    }
-
-    /// A viewer pane ended: its copy of a host's file goes.
-    pub(super) fn host_copy_ended(&mut self, pane: PaneId) {
-        if let Some(copy) = self.viewers.host.shown.remove(&pane) {
-            forget_copy(&copy);
-        }
     }
 
     /// Fetches `path` of the host `from` is a session on, and opens it in a viewer beside `from`.

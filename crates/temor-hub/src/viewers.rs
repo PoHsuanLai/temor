@@ -5,7 +5,6 @@
 //! the pane's: anyview's one remembering policy writes it to the store.
 
 use std::cell::OnceCell;
-use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -20,28 +19,21 @@ use super::model::{Hub, HubRef};
 use temor_pane_view::session::ViewAsk;
 use temor_ui_base::edge::viewer_workers::ViewerWorkers;
 
-/// What the hub keeps for the viewer panes.
+/// What the viewer panes share. What each keeps of its own is in its record ([`PaneViewer`]).
 #[derive(Default)]
 pub(super) struct ViewerHub {
     /// The pool and seams every viewer shares; made when the first viewer is drawn.
     edge: OnceCell<PaneEdge>,
     /// The files around the one being opened, for the viewer the workspace is about to announce.
     pending: Option<ViewAsk>,
-    seats: BTreeMap<PaneId, Seat>,
-    handles: BTreeMap<PaneId, PaneHandle>,
-    /// The viewers whose file has no stage to show it (a kind the viewer only describes).
-    describes_only: BTreeSet<PaneId>,
-    /// The viewers whose file could not be opened (anyview's failure card is up), with that file,
-    /// which another app may still open. A later open of any file clears it.
-    not_opened: BTreeMap<PaneId, anyview_pane::FilePath>,
     /// Whether the bar that is about to open starts as a search of the viewer's file (⌘F).
     find_wanted: bool,
     /// The files fetched from other computers, and the copies the viewers show.
     pub(super) host: super::viewer_host::HostCopies,
 }
 
-/// One viewer pane's own state.
-struct Seat {
+/// One viewer pane's own state, kept in its record.
+pub(super) struct PaneViewer {
     /// The file the pane was opened on. A different file replaces the pane's, so it stays put
     /// while the person walks the files around it.
     file: PathBuf,
@@ -49,6 +41,25 @@ struct Seat {
     origin: Option<PaneId>,
     /// The files printed around `file`.
     around: Vec<PathBuf>,
+    /// Its palette handle, while its view is drawn.
+    handle: Option<PaneHandle>,
+    /// How its last open went.
+    opened: Opened,
+    /// The copy of a host's file it shows, removed when it ends.
+    host_copy: Option<PathBuf>,
+}
+
+/// How a viewer's last open went.
+#[derive(Debug, Clone, Default)]
+enum Opened {
+    /// It shows its file (or has not said yet).
+    #[default]
+    Shows,
+    /// Its file has no stage to show it: a kind the viewer only describes.
+    DescribesOnly,
+    /// Its file could not be opened (anyview's failure card is up); another app may still open
+    /// it. A later open of any file clears it.
+    Failed(FilePath),
 }
 
 /// What a viewer pane's view is given.
@@ -106,20 +117,32 @@ impl Hub {
     /// The workspace announced a viewer pane: it has no program, only a seat.
     pub(super) fn viewer_opened(&mut self, open: ViewerOpen) {
         let file = PathBuf::from(open.file.as_str());
-        self.host_copy_shown(open.pane, &file);
         let around = match self.viewers.pending.take() {
             Some(ask) if ask.file == file => ask.around,
             _ => Vec::new(),
         };
         self.stage_opened(open.tab, open.pane, file.clone());
-        self.viewers.seats.insert(
-            open.pane,
-            Seat {
-                file,
-                origin: open.from,
-                around,
-            },
-        );
+        let host_copy = self.is_host_copy(&file).then(|| file.clone());
+        let record = self.panes.record(open.pane);
+        // A tab's viewer shows the next file in place: its view, and so its handle, stay.
+        let before = record.viewer.take();
+        let (handle, opened) = before.as_ref().map_or((None, Opened::Shows), |before| {
+            (before.handle, before.opened.clone())
+        });
+        record.viewer = Some(PaneViewer {
+            file,
+            origin: open.from,
+            around,
+            handle,
+            opened,
+            host_copy,
+        });
+        // The copy it showed before goes, unless it shows it still.
+        if let Some(copy) = before.and_then(|before| before.host_copy)
+            && record.viewer.as_ref().and_then(|v| v.host_copy.as_ref()) != Some(&copy)
+        {
+            super::ssh_edit::forget_copy(&copy);
+        }
     }
 
     /// A saved viewer pane comes back if its file is still there; if not, the pane is closed.
@@ -150,14 +173,26 @@ impl Hub {
         }
     }
 
-    /// A viewer pane ended: its seat and handle go.
+    /// A viewer pane ended: what it kept goes, and the copy of a host's file it showed.
     pub(super) fn viewer_ended(&mut self, pane: PaneId) {
         self.stage_closed(pane);
-        self.viewers.seats.remove(&pane);
-        self.viewers.handles.remove(&pane);
-        self.viewers.describes_only.remove(&pane);
-        self.viewers.not_opened.remove(&pane);
-        self.host_copy_ended(pane);
+        let ended = self
+            .panes
+            .get_mut(pane)
+            .and_then(|record| record.viewer.take());
+        if let Some(copy) = ended.and_then(|viewer| viewer.host_copy) {
+            super::ssh_edit::forget_copy(&copy);
+        }
+    }
+
+    /// What the viewer `pane` keeps, while it is one.
+    fn viewer(&self, pane: PaneId) -> Option<&PaneViewer> {
+        self.panes.get(pane)?.viewer.as_ref()
+    }
+
+    /// What the viewer `pane` keeps, to change, while it is one.
+    fn viewer_mut(&mut self, pane: PaneId) -> Option<&mut PaneViewer> {
+        self.panes.get_mut(pane)?.viewer.as_mut()
     }
 
     /// The request that gives the keyboard back from the viewer `pane`: to the terminal it came
@@ -165,10 +200,8 @@ impl Hub {
     pub fn viewer_unfocus(&self, pane: PaneId) -> Option<WorkspaceIn> {
         let tab = self.book.ws().tab_of(pane)?;
         let origin = self
-            .viewers
-            .seats
-            .get(&pane)
-            .and_then(|seat| seat.origin)
+            .viewer(pane)
+            .and_then(|viewer| viewer.origin)
             .filter(|origin| self.book.ws().tab_of(*origin) == Some(tab));
         let other = || {
             self.book
@@ -193,27 +226,33 @@ impl Hub {
 
     /// The viewer `pane` opened a file, and whether the viewer can show it or only describe it.
     pub fn viewer_family(&mut self, pane: PaneId, family: StageFamily) {
-        self.viewers.not_opened.remove(&pane);
-        match family {
-            StageFamily::PeekOnly => self.viewers.describes_only.insert(pane),
-            _ => self.viewers.describes_only.remove(&pane),
-        };
+        if let Some(viewer) = self.viewer_mut(pane) {
+            viewer.opened = match family {
+                StageFamily::PeekOnly => Opened::DescribesOnly,
+                _ => Opened::Shows,
+            };
+        }
     }
 
     /// Whether the viewer `pane` can only describe its file, which another app may open.
     pub fn viewer_describes_only(&self, pane: PaneId) -> bool {
-        self.viewers.describes_only.contains(&pane)
+        self.viewer(pane)
+            .is_some_and(|viewer| matches!(viewer.opened, Opened::DescribesOnly))
     }
 
     /// The viewer `pane` could not open `file`.
     pub fn viewer_not_opened(&mut self, pane: PaneId, file: anyview_pane::FilePath) {
-        self.viewers.describes_only.remove(&pane);
-        self.viewers.not_opened.insert(pane, file);
+        if let Some(viewer) = self.viewer_mut(pane) {
+            viewer.opened = Opened::Failed(file);
+        }
     }
 
     /// The file the viewer `pane` could not open, if its last open failed.
     pub fn viewer_failed_file(&self, pane: PaneId) -> Option<&anyview_pane::FilePath> {
-        self.viewers.not_opened.get(&pane)
+        match &self.viewer(pane)?.opened {
+            Opened::Failed(file) => Some(file),
+            Opened::Shows | Opened::DescribesOnly => None,
+        }
     }
 
     /// Whether `pane` is a viewer.
@@ -224,9 +263,9 @@ impl Hub {
     /// What the view of the viewer `pane` is given; none for a pane that is not one, or whose
     /// file has no absolute path.
     pub fn viewer_show(&self, pane: PaneId) -> Option<ViewerShow> {
-        let seat = self.viewers.seats.get(&pane)?;
-        let file = FilePath::new(&seat.file).ok()?;
-        let entries: Vec<FilePath> = seat
+        let viewer = self.viewer(pane)?;
+        let file = FilePath::new(&viewer.file).ok()?;
+        let entries: Vec<FilePath> = viewer
             .around
             .iter()
             .filter_map(|path| FilePath::new(path).ok())
@@ -243,7 +282,7 @@ impl Hub {
     /// The viewer with the keyboard's palette handle, while there is one.
     pub fn keyboard_viewer(&self) -> Option<PaneHandle> {
         let pane = self.keyboard_pane()?;
-        self.viewers.handles.get(&pane).copied()
+        self.viewer(pane)?.handle
     }
 
     /// The name a viewer pane is shown by: its file's name.
@@ -323,11 +362,15 @@ impl HubRef {
 
     /// The viewer's view hands over its palette handle while it is drawn.
     pub fn viewer_handle(&self, pane: PaneId, handle: PaneHandle) {
-        self.0.borrow_mut().viewers.handles.insert(pane, handle);
+        if let Some(viewer) = self.0.borrow_mut().viewer_mut(pane) {
+            viewer.handle = Some(handle);
+        }
     }
 
     /// The viewer's view is going: its handle is no longer good.
     pub fn viewer_handle_gone(&self, pane: PaneId) {
-        self.0.borrow_mut().viewers.handles.remove(&pane);
+        if let Some(viewer) = self.0.borrow_mut().viewer_mut(pane) {
+            viewer.handle = None;
+        }
     }
 }
