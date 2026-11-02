@@ -1,11 +1,9 @@
 //! A tab's close button, the tab selection's wash, and the room around the terminal.
 
-use std::time::Duration;
-
 use ds_harness::Input;
 use temor_ui_base::probe::Probe;
 
-use super::drive::{chord, rect, rects, started, type_line, wait_until};
+use super::drive::{chord, rect, rects, started, type_line, wait_html, wait_keyboard, wait_until};
 
 const ROWS: &str = ".temor-side .temor-tab-box";
 
@@ -21,9 +19,11 @@ fn a_tabs_close_button_closes_that_tab_and_the_others_stay() {
     assert_eq!(rects(&h, ROWS).len(), 3, "three tabs");
     let second = rects(&h, ".temor-tab-close")[1].centre();
     h.send(Input::click(second));
-    h.advance(Duration::from_millis(400));
-    assert_eq!(rects(&h, ROWS).len(), 2, "the second tab is gone");
+    wait_html(&mut h, "the second tab gone", |html| {
+        html.matches("class=\"temor-tab-box\"").count() == 2
+    });
     wait_until(&mut h, &probe, "a prompt", |s| s.contains('$'));
+    wait_keyboard(&mut h);
     type_line(&mut h, "echo alive$((40+2))");
     wait_until(&mut h, &probe, "alive42", |s| s.contains("alive42"));
 }

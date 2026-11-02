@@ -346,43 +346,37 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
     let found = |h: &Harness, selector: &str| {
         h.with_doc(|doc| doc.query_selector(selector).ok().flatten().is_some())
     };
+    // Each state is waited for, not timed: a loaded machine draws it later.
+    let wait = |h: &mut Harness, what: &str, ok: &dyn Fn(&Harness) -> bool| {
+        let start = Instant::now();
+        while !ok(h) {
+            h.advance(Duration::from_millis(50));
+            assert!(start.elapsed() < drive::LIMIT, "{what}");
+        }
+    };
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Super],
         ShortcutKey::Char('s'),
     ));
-    h.advance(Duration::from_millis(600));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
-        "hidden at the edge"
-    );
+    wait(&mut h, "hidden at the edge", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=hidden]")
+    });
     h.send(Input::pointer_move(at(3.0, 400.0)));
-    h.advance(Duration::from_millis(900));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=peek]"),
-        "the edge peeks it"
-    );
-    let side = rects(&h, ".temor-edge-host .ds-side");
-    assert!(
-        side[0].right - side[0].left > 200.0,
-        "it floats at its width"
-    );
+    wait(&mut h, "the edge peeks it, floating at its width", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=peek]")
+            && rects(h, ".temor-edge-host .ds-side")
+                .first()
+                .is_some_and(|side| side.right - side.left > 200.0)
+    });
     // Away from it, it slides back out; a click on the edge pins it.
     h.send(Input::pointer_move(at(900.0, 400.0)));
-    h.advance(Duration::from_millis(900));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
-        "gone again"
-    );
+    wait(&mut h, "gone again", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=hidden]")
+    });
     h.send(Input::click(at(3.0, 400.0)));
-    // The pin is waited for, not timed: a loaded machine draws it later.
-    let start = Instant::now();
-    while found(&h, ".temor-edge-host") || !found(&h, ".ds-side[data-side=shown]") {
-        h.advance(Duration::from_millis(100));
-        assert!(
-            start.elapsed() < Duration::from_secs(10),
-            "pinned in its column, with no edge host"
-        );
-    }
+    wait(&mut h, "pinned in its column, with no edge host", &|h| {
+        !found(h, ".temor-edge-host") && found(h, ".ds-side[data-side=shown]")
+    });
 }
 
 /// A split of three panes is squeezed as Arc's is: the pane with the keys keeps its name, the

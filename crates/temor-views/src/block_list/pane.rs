@@ -3,7 +3,7 @@
 //! block's live rows, and the shell's prompt, are shown from the pane's own picture as the
 //! terminal draws them. The list follows its bottom until the person scrolls back.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -59,6 +59,26 @@ pub struct ComposerView {
 /// takes the prompt's place.
 fn composing(items: &[Item]) -> bool {
     matches!(items.last(), Some(Item::Composer { rows }) if !rows.is_empty())
+}
+
+/// Hands the session what the list shows (`None`: the pane is one grid again). A new ground
+/// paints the pane again; the composer coming or going draws the window again, as what takes the
+/// keyboard follows it (the pane's caret effect reads it on a redraw).
+pub(crate) fn hand_list_view(slot: &RefCell<Slot>, desk: &Desk, view: Option<ListView>) {
+    let changed = slot.borrow_mut().session.as_mut().map(|session| {
+        let composing = session.composer_shown();
+        let reground = session.set_list_view(view);
+        (reground, composing != session.composer_shown())
+    });
+    let Some((reground, composer)) = changed else {
+        return;
+    };
+    if reground {
+        repaint(slot);
+    }
+    if composer {
+        desk.bump();
+    }
 }
 
 /// How far around the view segments are mounted, in logical pixels.
@@ -317,17 +337,9 @@ pub fn BlockPane(
         composing,
     };
     // What the list shows goes to the session once it is drawn, and only when it changed.
-    let shown_to = Rc::clone(&slot);
+    let (shown_to, shown_desk) = (Rc::clone(&slot), desk.clone());
     use_effect(use_reactive!(|shown| {
-        let slot = &shown_to;
-        let reground = slot
-            .borrow_mut()
-            .session
-            .as_mut()
-            .is_some_and(|session| session.set_list_view(Some(shown)));
-        if reground {
-            repaint(slot);
-        }
+        hand_list_view(&shown_to, &shown_desk, Some(shown))
     }));
     {
         let mut s = slot.borrow_mut();

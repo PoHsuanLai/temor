@@ -26,7 +26,7 @@ use temor_client::model::remote::Grant;
 use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::edit_on_this_computer;
-use super::block_list::pane::lens_request;
+use super::block_list::pane::{hand_list_view, lens_request};
 use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, ComposerView};
 use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn};
 use super::blocks::{Chrome, chrome_of};
@@ -55,7 +55,7 @@ use super::window_help::device_pixels;
 use temor_client::model::menu::{BlockFacts, Item};
 use temor_hub::Desk;
 use temor_panes::pane::keys::Action;
-use temor_ui_base::slot::{Slot, layout, repaint};
+use temor_ui_base::slot::{Slot, layout};
 
 /// Puts the pane on screen: it paints into `texture` from now on.
 fn show(slot: &RefCell<Slot>, texture: ds_blitz::TextureHandle) {
@@ -366,17 +366,10 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let block_items = slot.borrow().session.as_ref().and_then(|s| s.block_list());
     let listed = block_items.is_some();
     // A pane that stops being a list says so once it is drawn (the list says what it shows).
-    let unlisted = Rc::clone(&slot);
+    let (unlisted, unlisted_desk) = (Rc::clone(&slot), desk.clone());
     use_effect(use_reactive!(|listed| {
-        let slot = &unlisted;
-        let reground = !listed
-            && slot
-                .borrow_mut()
-                .session
-                .as_mut()
-                .is_some_and(|s| s.set_list_view(None));
-        if reground {
-            repaint(slot);
+        if !listed {
+            hand_list_view(&unlisted, &unlisted_desk, None);
         }
     }));
     let picked_block = slot

@@ -11,7 +11,7 @@ use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
 use temor_ui_base::probe::Probe;
 
-use super::drive::{Rect, rects, started, type_line, wait_html, wait_until};
+use super::drive::{Rect, rects, started, still_rects, type_line, wait_html, wait_until};
 use super::window::harness_building;
 
 /// The heads of the cards, oldest first.
@@ -45,10 +45,10 @@ fn a_click_on_a_card_picks_it_and_a_drag_across_cards_selects_their_text() {
             s.lines().any(|l| l.trim_end() == word)
         });
     }
-    wait_html(&mut h, "three cards", |html| {
-        html.matches("temor-blk-head").count() >= 3
+    wait_html(&mut h, "three cards and the prompt back", |html| {
+        html.matches("temor-blk-head").count() >= 3 && html.contains("temor-blk-composer")
     });
-    let found = heads(&h);
+    let found = still_rects(&mut h, ".temor-blk-head");
     let beta = found[found.len() - 2];
     h.send(Input::click(left_of(beta, 120.0)));
     h.advance(Duration::from_millis(300));
@@ -60,7 +60,7 @@ fn a_click_on_a_card_picks_it_and_a_drag_across_cards_selects_their_text() {
         "the picked head is beta's"
     );
     // From the start of beta's output to the end of gamma's: a selection, so no pick.
-    let rows = rects(&h, ".temor-blk-rows");
+    let rows = still_rects(&mut h, ".temor-blk-rows");
     let (from, to) = (rows[rows.len() - 2], rows[rows.len() - 1]);
     h.send(Input::drag(left_of(from, 10.0), left_of(to, 60.0), 12));
     h.advance(Duration::from_millis(300));
@@ -252,13 +252,11 @@ fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_h
     wait_html(&mut h, "the composer", |html| {
         html.contains("temor-blk-composer")
     });
+    super::drive::wait_keyboard(&mut h);
     super::drive::type_text(&mut h, "echo one");
-    h.advance(Duration::from_millis(200));
-    assert_eq!(
-        composer_value(&h.html()).as_deref(),
-        Some("echo one"),
-        "typed into the composer"
-    );
+    wait_html(&mut h, "the typing in the composer", |html| {
+        composer_value(html).as_deref() == Some("echo one")
+    });
     // Nothing reached the shell's own line yet: the prompt's rows hold no command.
     assert!(
         !probe.screen().contains("echo one"),
@@ -280,19 +278,18 @@ fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_h
         composer_value(html).as_deref() == Some("")
     });
     h.send(Input::key(ShortcutKey::Up));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo two"));
+    wait_html(&mut h, "the newest command", |html| {
+        composer_value(html).as_deref() == Some("echo two")
+    });
     h.send(Input::key(ShortcutKey::Up));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo one"));
+    wait_html(&mut h, "the one before", |html| {
+        composer_value(html).as_deref() == Some("echo one")
+    });
     h.send(Input::key(ShortcutKey::Down));
     h.send(Input::key(ShortcutKey::Down));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(
-        composer_value(&h.html()).as_deref(),
-        Some(""),
-        "back to what was typed"
-    );
+    wait_html(&mut h, "back to what was typed", |html| {
+        composer_value(html).as_deref() == Some("")
+    });
 }
 
 #[test]

@@ -79,7 +79,12 @@ pub fn TabRowView(row: TabRow, pinned: bool, desk: Desk, dnd: Dnd) -> Element {
                 propagation: Propagation::Stop,
                 label: "Close tab",
                 tip: "Close this tab",
-                onclick: move |()| closing.act(WorkspaceIn::CloseTab(id)),
+                // The press took the keyboard to the sidebar: it goes back to the pane that
+                // has it, which closing a tab behind it does not change.
+                onclick: move |()| {
+                    closing.act(WorkspaceIn::CloseTab(id));
+                    closing.keyboard_back();
+                },
             }
         }
     };
