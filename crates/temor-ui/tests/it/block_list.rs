@@ -416,3 +416,39 @@ fn the_wheel_over_a_program_that_asked_for_the_mouse_goes_to_it() {
         s.contains("033   [   <   6   4   ;")
     });
 }
+
+#[test]
+fn a_press_released_outside_the_pane_after_the_window_drew_again_reaches_the_program() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("pointer-release-outside", &probe);
+    // A program that asks for the mouse (SGR reports) and shows what it hears.
+    type_line(&mut h, "printf '\\033[?1000h\\033[?1006h'; cat -v");
+    h.advance(Duration::from_millis(500));
+    let pane = super::drive::rect(&h, "[aria-label=\"Terminal\"]");
+    let inside = pane.centre();
+    h.send(Input::button_down(inside, PointerButton::Primary));
+    wait_until(&mut h, &probe, "the press reported", |s| {
+        s.contains("^[[<0;")
+    });
+    // The window draws again while the button is held, as it does when anything changes.
+    let size = h.window_size();
+    h.resize_window(Extent::new(size.width - 40, size.height));
+    h.advance(Duration::from_millis(200));
+    let outside = Point {
+        x: Px(4.0),
+        y: inside.y,
+    };
+    h.send(Input::button_up(outside, PointerButton::Primary));
+    wait_until(&mut h, &probe, "the release reported", |s| {
+        s.split("^[[<0;").skip(1).any(released)
+    });
+}
+
+/// Whether an SGR mouse report's text after `^[[<0;` ends as a release: `col;row` then `m`.
+fn released(report: &str) -> bool {
+    let end = report.find(|c: char| !(c.is_ascii_digit() || c == ';'));
+    end.is_some_and(|at| report[at..].starts_with('m'))
+}

@@ -53,8 +53,9 @@ pub fn use_pane_mouse(
 ) -> PaneMouse {
     // Who reports the release of the press in progress. The host's capture only follows a primary
     // press, so a primary press it captures is released through the capture, and every other press
-    // is released through the element (PLAN §6). Exactly one of them reports.
-    let owner = Rc::new(Cell::new(ReleaseOwner::Element));
+    // is released through the element (PLAN §6). Exactly one of them reports. Kept across
+    // renders: the window drawing again while the button is held must not forget who reports.
+    let owner: Rc<Cell<ReleaseOwner>> = use_hook(|| Rc::new(Cell::new(ReleaseOwner::Element)));
     let capture = {
         let (slot, signals, notice, owner, released) = (
             Rc::clone(&slot),
