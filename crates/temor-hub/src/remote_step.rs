@@ -83,7 +83,7 @@ impl Hub {
 
     /// The person answered the question a helper pane asks.
     pub fn remote_answer(&mut self, pane: PaneId, grant: Grant) {
-        let Some(alias) = self.remote.panes.get(&pane).map(|p| p.alias.clone()) else {
+        let Some(alias) = self.panes.remote(pane).map(|p| p.alias.clone()) else {
             return;
         };
         let asking = self
@@ -234,10 +234,13 @@ impl Hub {
         let home = line.login.home().map(str::to_owned);
         let (generation, router) = (line.generation, line.router.clone());
         for pane in waiting {
-            let Some(remote) = self.remote.panes.get(&pane) else {
+            let Some(record) = self.panes.get(pane) else {
                 continue;
             };
-            let (cwd, env, shell) = match self.remote.local.get(&pane) {
+            let Some(remote) = record.remote.live.as_ref() else {
+                continue;
+            };
+            let (cwd, env, shell) = match &record.remote.local {
                 Some(own) => (own.cwd.clone(), own.env.clone(), own.shell.clone()),
                 None => (
                     self.panes
@@ -251,7 +254,7 @@ impl Hub {
                 ),
             };
             // A session the pane had when temor last quit is asked for before a new one.
-            let wanted = match self.remote.saved.get(&pane) {
+            let wanted = match record.remote.saved.as_ref() {
                 Some(session) => Wanted::Resume {
                     session: *session,
                     cwd,

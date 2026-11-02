@@ -67,9 +67,9 @@ impl Hub {
     /// The shared connection is up again: dial the helper and reattach every session of `host`.
     pub(super) fn remote_rejoin(&mut self, host: &HostAlias) {
         let sessions: Vec<RemoteSessionId> = self
-            .remote
             .panes
-            .values()
+            .remotes()
+            .map(|(_, pane)| pane)
             .filter(|p| p.alias == *host)
             .filter_map(|p| p.session)
             .collect();

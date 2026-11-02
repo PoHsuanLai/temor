@@ -132,7 +132,7 @@ impl Hub {
             let saved = self.ssh.restored.remove(at);
             if let Some(session) = saved.session {
                 let session = temor_client::remote::ids::RemoteSessionId(session.0);
-                self.remote.saved.insert(spawn.pane, session);
+                self.panes.record(spawn.pane).remote.saved = Some(session);
             }
             return HostAlias::new(&saved.alias).ok().map(|alias| (alias, true));
         }

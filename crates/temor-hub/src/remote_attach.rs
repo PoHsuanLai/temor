@@ -24,7 +24,7 @@ impl Hub {
         };
         let (generation, router) = (line.generation, line.router.clone());
         let palette = wire_palette(&self.palette);
-        for (pane, remote) in &self.remote.panes {
+        for (pane, remote) in self.panes.remotes() {
             let Some(session) = remote.session.filter(|s| sessions.contains(s)) else {
                 continue;
             };
@@ -32,7 +32,7 @@ impl Hub {
                 continue;
             }
             let ticket = Ticket {
-                pane: *pane,
+                pane,
                 palette,
                 target: Arc::clone(&remote.target),
                 feeder: remote.feeder.clone(),
@@ -57,11 +57,13 @@ impl Hub {
         if !self.current(host, generation) {
             return;
         }
-        if let Some(remote) = self.remote.panes.get_mut(&pane) {
-            remote.session = Some(session);
-            remote.shown = Shown::Attached;
+        if let Some(record) = self.panes.get_mut(pane) {
+            if let Some(remote) = record.remote.live.as_mut() {
+                remote.session = Some(session);
+                remote.shown = Shown::Attached;
+            }
+            record.remote.saved = None;
         }
-        self.remote.saved.remove(&pane);
         self.tell_sessions(host);
     }
 
@@ -77,13 +79,15 @@ impl Hub {
         }
         match fault {
             AttachFault::Gone => {
-                if let Some(remote) = self.remote.panes.get_mut(&pane) {
-                    remote.shown = Shown::Gone;
-                    remote.session = None;
-                    // The pane says its program ended, with "Try again" beside it.
-                    remote.feeder.end(None);
+                if let Some(record) = self.panes.get_mut(pane) {
+                    if let Some(remote) = record.remote.live.as_mut() {
+                        remote.shown = Shown::Gone;
+                        remote.session = None;
+                        // The pane says its program ended, with "Try again" beside it.
+                        remote.feeder.end(None);
+                    }
+                    record.remote.saved = None;
                 }
-                self.remote.saved.remove(&pane);
                 self.notices
                     .push(format!("{} no longer has that session", host.as_str()));
                 self.tell_sessions(host);

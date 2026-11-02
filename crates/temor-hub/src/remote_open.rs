@@ -103,7 +103,7 @@ impl Hub {
         host.check = Check::Nothing;
         let alias = host.alias.clone();
         // A pane that had a session when the link was lost asks for the same one.
-        let before = self.remote.panes.get(&pane).map(|old| {
+        let before = self.panes.remote(pane).map(|old| {
             let target = lock(&old.target);
             (old.session, old.shown, target.size, target.cell)
         });
@@ -128,19 +128,16 @@ impl Hub {
         if let Some(slot) = self.panes.slot(pane) {
             slot.borrow_mut().session = Some(session);
         }
-        self.remote.panes.insert(
-            pane,
-            RemotePane {
-                alias: alias.clone(),
-                target,
-                feeder,
-                session: match begin {
-                    Begin::Fresh => None,
-                    Begin::Rejoin(session) => Some(session),
-                },
-                shown: Shown::Opening,
+        self.panes.record(pane).remote.live = Some(RemotePane {
+            alias: alias.clone(),
+            target,
+            feeder,
+            session: match begin {
+                Begin::Fresh => None,
+                Begin::Rejoin(session) => Some(session),
             },
-        );
+            shown: Shown::Opening,
+        });
         match begin {
             Begin::Fresh => {
                 self.remote
@@ -157,7 +154,7 @@ impl Hub {
 
     /// Forgets what a pane held on a helper (a restarted pane starts over).
     fn remote_drop_pane(&mut self, pane: PaneId) {
-        let Some(old) = self.remote.panes.remove(&pane) else {
+        let Some(old) = self.panes.get_mut(pane).and_then(|r| r.remote.live.take()) else {
             return;
         };
         if let Some(line) = self.remote.lines.get_mut(&old.alias) {
@@ -174,7 +171,9 @@ impl Hub {
             return;
         };
         self.remote_drop_pane(pane);
-        self.remote.saved.remove(&pane);
+        if let Some(record) = self.panes.get_mut(pane) {
+            record.remote.saved = None;
+        }
         if let Some(host) = self.panes.host_mut(pane) {
             host.tier = Tier::Plain;
         }
@@ -187,11 +186,10 @@ impl Hub {
             line.busy = Busy::Idle;
         }
         let waiting: Vec<PaneId> = self
-            .remote
             .panes
-            .iter()
+            .remotes()
             .filter(|(_, pane)| pane.alias == *alias && pane.shown == Shown::Opening)
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect();
         for pane in waiting {
             self.remote_fallback(pane);
@@ -200,9 +198,10 @@ impl Hub {
 
     /// A host pane was closed: its session on the host ends.
     pub(super) fn remote_forget(&mut self, pane: PaneId) {
-        self.remote.saved.remove(&pane);
-        self.remote.local.remove(&pane);
-        let Some(old) = self.remote.panes.remove(&pane) else {
+        let Some(record) = self.panes.get_mut(pane) else {
+            return;
+        };
+        let Some(old) = std::mem::take(&mut record.remote).live else {
             return;
         };
         let Some(line) = self.remote.lines.get_mut(&old.alias) else {

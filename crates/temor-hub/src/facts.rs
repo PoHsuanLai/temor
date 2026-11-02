@@ -103,7 +103,7 @@ impl Hub {
     /// attached. A host without the helper (Tier A) has no chips: nothing there can read its
     /// folder but the shell.
     fn helper_facts_source(&self, pane: PaneId) -> Option<(Arc<Conn>, RemoteSessionId)> {
-        let remote = self.remote.panes.get(&pane)?;
+        let remote = self.panes.remote(pane)?;
         let session = remote.session?;
         Some((self.remote.helper_conn(&remote.alias)?, session))
     }

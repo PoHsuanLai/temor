@@ -12,7 +12,7 @@ use temor_panes::remote::link::lock;
 impl Hub {
     /// What to show for `pane`, when it is a session on a helper.
     pub fn remote_view(&self, pane: PaneId) -> Option<RemoteView> {
-        let remote = self.remote.panes.get(&pane)?;
+        let remote = self.panes.remote(pane)?;
         let line = self.remote.lines.get(&remote.alias)?;
         let stage = stage_of(&line.helper, remote.shown, link_shown(&line.link));
         let reach = match self

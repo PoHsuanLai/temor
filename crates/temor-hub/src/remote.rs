@@ -63,6 +63,17 @@ pub(super) struct LocalStart {
     pub report_key: temor_panes::shell::report::ReportKey,
 }
 
+/// What one pane keeps of its session on a helper, in its record.
+#[derive(Default)]
+pub(super) struct PaneRemote {
+    /// Its session on the helper, once it is opened.
+    pub live: Option<RemotePane>,
+    /// The session it was saved with, until it has it again or is told the host lost it.
+    pub saved: Option<RemoteSessionId>,
+    /// How it starts, when it is a session in this computer's own daemon.
+    pub local: Option<LocalStart>,
+}
+
 /// One pane that is a session on a helper.
 pub(super) struct RemotePane {
     pub alias: HostAlias,
@@ -118,12 +129,6 @@ pub(super) struct RemoteHub {
     /// book by `Hub::remote_carry_over`; the file is never written again.
     pub legacy: BTreeMap<String, Grant>,
     pub lines: BTreeMap<HostAlias, RemoteLine>,
-    pub panes: BTreeMap<PaneId, RemotePane>,
-    /// The sessions panes were saved with, until each pane has its session again or is told the
-    /// host lost it.
-    pub saved: BTreeMap<PaneId, RemoteSessionId>,
-    /// Panes that are sessions in this computer's own daemon, and how each starts.
-    pub local: BTreeMap<PaneId, LocalStart>,
     /// The helper builds this temor carries, one per kind of processor.
     pub builds: HelperBuilds,
     started: Instant,
@@ -138,9 +143,6 @@ impl RemoteHub {
             inbox: Some(inbox),
             legacy,
             lines: BTreeMap::new(),
-            panes: BTreeMap::new(),
-            saved: BTreeMap::new(),
-            local: BTreeMap::new(),
             builds: HelperBuilds::new(
                 arch_of(std::env::consts::ARCH),
                 ambient.env.get("TEMOR_REMOTE_HELPER"),

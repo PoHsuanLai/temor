@@ -16,7 +16,7 @@ use temor_panes::pane::settings::ShellChoice;
 use temor_panes::shell::report::{KEY_VAR, ReportKey};
 
 use super::model::Hub;
-use super::remote::{Busy, LOCAL, LocalStart, RemotePane, Shown};
+use super::remote::{Busy, LOCAL, LocalStart, PaneRemote, RemotePane, Shown};
 use temor_client::keep::replay::fresh_key;
 use temor_client::remote::install::blob_path;
 use temor_panes::remote::link::{RemoteLink, Target};
@@ -164,20 +164,17 @@ impl Hub {
         };
         self.panes.record(spawn.pane).slot = Some(std::rc::Rc::new(std::cell::RefCell::new(slot)));
         let host = local_alias();
-        self.remote.panes.insert(
-            spawn.pane,
-            RemotePane {
+        self.panes.record(spawn.pane).remote = PaneRemote {
+            live: Some(RemotePane {
                 alias: host.clone(),
                 target,
                 feeder,
                 session: None,
                 shown: Shown::Opening,
-            },
-        );
-        if let Some(session) = own.resume {
-            self.remote.saved.insert(spawn.pane, session);
-        }
-        self.remote.local.insert(spawn.pane, own);
+            }),
+            saved: own.resume,
+            local: Some(own),
+        };
         self.remote
             .lines
             .entry(host.clone())
@@ -214,9 +211,12 @@ impl Hub {
             .map(|line| std::mem::take(&mut line.waiting))
             .unwrap_or_default();
         for pane in waiting {
-            self.remote.panes.remove(&pane);
-            self.remote.saved.remove(&pane);
-            if let Some(own) = self.remote.local.remove(&pane) {
+            let remote = self
+                .panes
+                .get_mut(pane)
+                .map(|record| std::mem::take(&mut record.remote))
+                .unwrap_or_default();
+            if let Some(own) = remote.local {
                 self.local_plain(own);
             }
         }
@@ -235,10 +235,10 @@ impl Hub {
         &self,
         pane: temor_client::model::vocab::ids::PaneId,
     ) -> Option<u64> {
-        self.remote.local.contains_key(&pane).then_some(())?;
-        let live = self.remote.panes.get(&pane).and_then(|p| p.session);
-        live.or_else(|| self.remote.saved.get(&pane).copied())
-            .map(|session| session.0)
+        let remote = &self.panes.get(pane)?.remote;
+        remote.local.as_ref()?;
+        let live = remote.live.as_ref().and_then(|p| p.session);
+        live.or(remote.saved).map(|session| session.0)
     }
 
     /// Notes in `kept` what the next launch needs to find `pane`'s daemon session again: the
@@ -247,7 +247,7 @@ impl Hub {
         kept.daemon_session = self.local_session(pane);
         kept.report_key = kept
             .daemon_session
-            .and(self.remote.local.get(&pane))
+            .and(self.panes.get(pane).and_then(|r| r.remote.local.as_ref()))
             .map(|own| own.report_key.as_str().to_owned());
     }
 

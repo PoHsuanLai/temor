@@ -10,6 +10,7 @@ use temor_ui_base::slot::Slot;
 
 use super::history::PaneHistory;
 use super::offer::PaneOffer;
+use super::remote::{PaneRemote, RemotePane};
 use super::run::Found;
 use super::ssh::HostPane;
 use super::viewers::PaneViewer;
@@ -34,6 +35,8 @@ pub(super) struct PaneRecord {
     pub plugins: PanePlugins,
     /// What it keeps while it is a session on another computer.
     pub host: Option<HostPane>,
+    /// Its session on a helper, or in this computer's own daemon.
+    pub remote: PaneRemote,
 }
 
 /// The live panes' records.
@@ -98,6 +101,24 @@ impl Panes {
             .filter(|(_, host)| &host.alias == alias)
             .map(|(pane, _)| pane)
             .collect()
+    }
+
+    /// `pane`'s session on a helper, while it has one.
+    pub fn remote(&self, pane: PaneId) -> Option<&RemotePane> {
+        self.get(pane)?.remote.live.as_ref()
+    }
+
+    /// Every pane's session on a helper.
+    pub fn remotes(&self) -> impl Iterator<Item = (PaneId, &RemotePane)> {
+        self.iter()
+            .filter_map(|(pane, record)| Some((pane, record.remote.live.as_ref()?)))
+    }
+
+    /// Every pane's session on a helper, to change.
+    pub fn remotes_mut(&mut self) -> impl Iterator<Item = (PaneId, &mut RemotePane)> {
+        self.0
+            .iter_mut()
+            .filter_map(|(pane, record)| Some((*pane, record.remote.live.as_mut()?)))
     }
 
     /// Every live terminal, with its pane.

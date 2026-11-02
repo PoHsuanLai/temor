@@ -53,9 +53,9 @@ impl Hub {
     /// The sessions the host holds for this window's panes, for the machine to reattach.
     pub(super) fn tell_sessions(&mut self, host: &HostAlias) {
         let sessions: Vec<RemoteSessionId> = self
-            .remote
             .panes
-            .values()
+            .remotes()
+            .map(|(_, pane)| pane)
             .filter(|pane| pane.alias == *host)
             .filter_map(|pane| pane.session)
             .collect();
@@ -136,11 +136,11 @@ impl Hub {
             return;
         }
         let mut ended = Vec::new();
-        for (pane, remote) in &mut self.remote.panes {
+        for (pane, remote) in self.panes.remotes_mut() {
             if remote.alias == *host && remote.session == Some(session) {
                 remote.session = None;
                 remote.shown = Shown::Gone;
-                ended.push(*pane);
+                ended.push(pane);
             }
         }
         self.tell_sessions(host);
@@ -157,7 +157,7 @@ impl Hub {
             line.ports.clear();
             line.busy = Busy::Idle;
         }
-        for remote in self.remote.panes.values().filter(|p| p.alias == *host) {
+        for (_, remote) in self.panes.remotes().filter(|(_, p)| p.alias == *host) {
             lock(&remote.target).conn = None;
         }
         self.step_link(host, LinkEvent::Lost { at });

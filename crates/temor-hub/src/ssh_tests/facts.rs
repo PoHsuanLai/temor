@@ -106,16 +106,13 @@ fn a_host_panes_folder_and_versions_come_from_its_helper() {
         link,
     )
     .expect("a fed session");
-    rig.hub.remote.panes.insert(
-        pane,
-        RemotePane {
-            alias: alias.clone(),
-            target,
-            feeder,
-            session: Some(session),
-            shown: Shown::Attached,
-        },
-    );
+    rig.hub.panes.record(pane).remote.live = Some(RemotePane {
+        alias: alias.clone(),
+        target,
+        feeder,
+        session: Some(session),
+        shown: Shown::Attached,
+    });
     rig.hub.remote.lines.entry(alias).or_default().conn = Some(conn);
 
     // The first prompt asks for a read; the window's loop would carry the result in.
