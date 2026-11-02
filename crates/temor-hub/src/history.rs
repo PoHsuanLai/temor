@@ -27,19 +27,53 @@ use temor_panes::vt::Snapshot;
 #[derive(Debug, Default)]
 pub(super) struct History {
     client: Option<Client>,
-    /// Each pane's session, once its shell has said where it is.
-    sessions: BTreeMap<PaneId, Begun>,
-    /// The sessions the panes brought back at launch had, until their shells say where they are.
-    carried: BTreeMap<PaneId, SessionId>,
-    /// Commands an older temor kept for a pane brought back with no session, until its shell says
-    /// where it is and they start its session.
-    imported: BTreeMap<PaneId, Vec<CommandRecord>>,
     /// The screen a reopened session's tab starts from, until its pane takes it.
     pub(super) screen: Option<Snapshot>,
 }
 
+/// Where one pane's session stands, kept in its record.
+#[derive(Debug)]
+pub(super) enum PaneHistory {
+    /// Its shell has not said where it is yet.
+    Waiting {
+        /// The session it goes on with: it was brought back at launch, or reopened.
+        carried: Option<SessionId>,
+        /// Commands an older temor kept for it, which start its session when it has none.
+        imported: Vec<CommandRecord>,
+    },
+    /// Its shell said where it is, and its session began.
+    Begun(Begun),
+}
+
+impl Default for PaneHistory {
+    fn default() -> PaneHistory {
+        PaneHistory::Waiting {
+            carried: None,
+            imported: Vec::new(),
+        }
+    }
+}
+
+impl PaneHistory {
+    /// The session it has begun, or goes on with once it begins.
+    fn session(&self) -> Option<SessionId> {
+        match self {
+            PaneHistory::Waiting { carried, .. } => *carried,
+            PaneHistory::Begun(begun) => Some(begun.id),
+        }
+    }
+
+    /// The session it has begun.
+    fn begun(&self) -> Option<&Begun> {
+        match self {
+            PaneHistory::Begun(begun) => Some(begun),
+            PaneHistory::Waiting { .. } => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-struct Begun {
+pub(super) struct Begun {
     id: SessionId,
     /// What is added to the pane's block numbers in history: past the commands a session kept
     /// before this launch, whose numbers the pane counts again from the start.
@@ -59,45 +93,53 @@ impl Hub {
 
     /// The sessions the panes brought back at launch go on with.
     pub(super) fn carry_sessions(&mut self, carried: BTreeMap<PaneId, SessionId>) {
-        self.history.carried = carried;
+        for (pane, id) in carried {
+            self.panes.record(pane).history = PaneHistory::Waiting {
+                carried: Some(id),
+                imported: Vec::new(),
+            };
+        }
     }
 
     /// The session `pane` was brought back to go on with, if any.
     pub(super) fn history_carried(&self, pane: PaneId) -> Option<SessionId> {
-        self.history.carried.get(&pane).copied()
+        match &self.panes.get(pane)?.history {
+            PaneHistory::Waiting { carried, .. } => *carried,
+            PaneHistory::Begun(_) => None,
+        }
     }
 
     /// `commands`, kept for `pane` by an older temor, start the session it begins.
     pub(super) fn history_import(&mut self, pane: PaneId, commands: &[CommandRecord]) {
-        if !commands.is_empty() && self.history.client.is_some() {
-            self.history.imported.insert(pane, commands.to_vec());
+        if !commands.is_empty()
+            && self.history.client.is_some()
+            && let PaneHistory::Waiting { imported, .. } = &mut self.panes.record(pane).history
+        {
+            *imported = commands.to_vec();
         }
     }
 
     /// Each pane's session, for the next launch to go on with.
     pub(super) fn sessions_to_carry(&self) -> BTreeMap<PaneId, SessionId> {
-        self.history
-            .sessions
+        self.panes
             .iter()
-            .map(|(pane, begun)| (*pane, begun.id))
-            .chain(self.history.carried.iter().map(|(pane, id)| (*pane, *id)))
-            .filter(|(pane, _)| self.panes.slot(*pane).is_some())
+            .filter(|(_, record)| record.slot.is_some())
+            .filter_map(|(pane, record)| Some((pane, record.history.session()?)))
             .collect()
     }
 
     /// The session of `pane`, as history knows it.
     pub fn session_id(&self, pane: PaneId) -> Option<SessionId> {
-        self.history.sessions.get(&pane).map(|begun| begun.id)
+        Some(self.panes.get(pane)?.history.begun()?.id)
     }
 
     /// The tab the live session `id` is in.
     pub fn tab_of_session(&self, id: SessionId) -> Option<temor_client::model::vocab::ids::TabId> {
         let (pane, _) = self
-            .history
-            .sessions
+            .panes
             .iter()
-            .find(|(_, begun)| begun.id == id)?;
-        self.book.ws().tab_of(*pane)
+            .find(|(_, record)| record.history.begun().is_some_and(|begun| begun.id == id))?;
+        self.book.ws().tab_of(pane)
     }
 
     /// The session of the pane with the keys in `tab`, or of its first that has one.
@@ -112,10 +154,9 @@ impl Hub {
 
     /// The sessions still running in this window.
     pub fn running_sessions(&self) -> std::collections::BTreeSet<SessionId> {
-        self.history
-            .sessions
-            .values()
-            .map(|begun| begun.id)
+        self.panes
+            .iter()
+            .filter_map(|(_, record)| Some(record.history.begun()?.id))
             .collect()
     }
 
@@ -128,19 +169,10 @@ impl Hub {
         };
         // Once is enough: a tab that goes on with it already is brought to the front.
         let going_on = self
-            .history
-            .sessions
+            .panes
             .iter()
-            .filter(|(_, begun)| begun.id == id)
-            .map(|(pane, _)| *pane)
-            .chain(
-                self.history
-                    .carried
-                    .iter()
-                    .filter(|(_, carried)| **carried == id)
-                    .map(|(pane, _)| *pane),
-            )
-            .find_map(|pane| self.book.ws().tab_of(pane));
+            .filter(|(_, record)| record.history.session() == Some(id))
+            .find_map(|(pane, _)| self.book.ws().tab_of(pane));
         if let Some(tab) = going_on {
             return self.act(super::select_tab(tab));
         }
@@ -162,7 +194,10 @@ impl Hub {
         let Some(pane) = opened else {
             return;
         };
-        self.history.carried.insert(pane, id);
+        self.panes.record(pane).history = PaneHistory::Waiting {
+            carried: Some(id),
+            imported: Vec::new(),
+        };
         if shown {
             return;
         }
@@ -179,20 +214,20 @@ impl Hub {
             return;
         };
         match notice {
-            Notice::Cwd(folder) if !self.history.sessions.contains_key(&pane) => {
+            Notice::Cwd(folder) if self.session_id(pane).is_none() => {
+                let PaneHistory::Waiting { carried, imported } =
+                    std::mem::take(&mut self.panes.record(pane).history)
+                else {
+                    return;
+                };
                 // A pane brought back goes on with its session, if history still has it.
-                let before = self
-                    .history
-                    .carried
-                    .remove(&pane)
-                    .and_then(|id| client.session(id).ok().flatten());
+                let before = carried.and_then(|id| client.session(id).ok().flatten());
                 // Commands an older temor kept for it start a session that is new.
-                let imported = self
-                    .history
-                    .imported
-                    .remove(&pane)
-                    .filter(|_| before.is_none())
-                    .unwrap_or_default();
+                let imported = if before.is_none() {
+                    imported
+                } else {
+                    Vec::new()
+                };
                 let base = before.as_ref().map_or(imported.len() as u64, |kept| {
                     client
                         .commands_of(kept.id)
@@ -226,10 +261,14 @@ impl Hub {
                 }
                 // Commands that finished before the shell said where it is (a restored screen's)
                 // were heard before the session began, and are not its.
-                self.history.sessions.insert(pane, Begun { id, base });
+                self.panes.record(pane).history = PaneHistory::Begun(Begun { id, base });
             }
             Notice::Finished(finished) => {
-                let Some(begun) = self.history.sessions.get(&pane) else {
+                let Some(begun) = self
+                    .panes
+                    .get(pane)
+                    .and_then(|record| record.history.begun())
+                else {
                     return;
                 };
                 let folder = session.cwd().unwrap_or_default().to_owned();
@@ -239,7 +278,14 @@ impl Hub {
                 }
             }
             Notice::Ended(_) => {
-                if let Some(begun) = self.history.sessions.remove(&pane) {
+                let begun = self
+                    .panes
+                    .get_mut(pane)
+                    .and_then(|record| match record.history {
+                        PaneHistory::Begun(_) => Some(std::mem::take(&mut record.history)),
+                        PaneHistory::Waiting { .. } => None,
+                    });
+                if let Some(PaneHistory::Begun(begun)) = begun {
                     client.act(Command::End {
                         session: begun.id,
                         at: client.local_time().now(),

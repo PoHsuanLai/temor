@@ -8,6 +8,7 @@ use std::rc::Rc;
 use temor_client::model::vocab::ids::PaneId;
 use temor_ui_base::slot::Slot;
 
+use super::history::PaneHistory;
 use super::run::Found;
 
 /// What the hub keeps of one live pane. Made by the first part of the hub that hears of the pane,
@@ -18,6 +19,9 @@ pub(super) struct PaneRecord {
     pub slot: Option<Rc<RefCell<Slot>>>,
     /// The program it runs in place of the shell (`temor -e`), kept for Restart.
     pub run: Option<Found>,
+    /// Its session in history: the one it goes on with until its shell says where it is, then
+    /// the one it began.
+    pub history: PaneHistory,
 }
 
 /// The live panes' records.

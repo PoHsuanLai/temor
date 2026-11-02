@@ -66,3 +66,19 @@ fn a_pane_that_goes_while_its_offer_shows_leaves_no_offer_behind() {
     assert!(hub.offer.lines.is_empty());
     assert!(hub.offer.screens.is_empty());
 }
+
+#[test]
+fn a_pane_that_goes_before_its_shell_says_where_it_is_leaves_no_session_waiting() {
+    use std::collections::BTreeMap;
+    use temor_schema::session::SessionId;
+
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
+    let pane = hub.book.ws().tabs.panes()[0];
+    hub.carry_sessions(BTreeMap::from([(pane, SessionId::from_bits(9))]));
+    assert_eq!(hub.history_carried(pane), Some(SessionId::from_bits(9)));
+
+    hub.drop_pane(pane);
+
+    assert_eq!(hub.history_carried(pane), None);
+    assert_eq!(hub.panes.len(), 0);
+}
