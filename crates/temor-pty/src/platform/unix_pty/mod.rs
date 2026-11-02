@@ -6,6 +6,6 @@ mod leader;
 mod process;
 mod spawn;
 
-pub use io::PtyIo;
+pub use io::{PtyIo, Wake, Waker};
 pub use leader::run_session_leader;
 pub use spawn::Pty;

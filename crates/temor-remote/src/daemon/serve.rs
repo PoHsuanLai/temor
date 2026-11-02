@@ -12,6 +12,7 @@ use super::core::Daemon;
 use super::dispatch::Done;
 use super::files_worker::{FileWorker, Job, is_file_request};
 use super::link::{Link, LinkId, Outgoing, QUEUE, run_writer};
+use super::session::Command;
 use crate::error::Error;
 use crate::protocol::{DAEMON_CAPS, hello};
 use crate::sync::lock;
@@ -142,7 +143,7 @@ impl Daemon {
     fn drop_link(&self, link: &Arc<Link>) {
         self.lock_links().retain(|held| held.id != link.id);
         for session in self.registry.all() {
-            session.detach(Some(link.id));
+            session.send(Command::Detach(link.id));
         }
         link.hang_up();
     }

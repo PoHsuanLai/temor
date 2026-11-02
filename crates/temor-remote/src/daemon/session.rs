@@ -1,86 +1,119 @@
-//! One session: a program on a terminal, and the screen state libghostty keeps for it.
+//! One session: a program on a terminal, and the screen state libghostty keeps for it. Its pump
+//! thread owns all of it ([`Pump`]); everyone else holds a [`Session`] and sends it
+//! [`Command`]s.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
+use std::sync::Arc;
+use std::sync::mpsc::{Sender, channel};
 
-use temor_pty::{ChildExit, Pty, PtyIo};
+use temor_pty::{Pty, Wake, Waker};
 use temor_vt::{Terminal, TerminalConfig};
 use temor_wire::ids::{RemoteSessionId, RequestId};
-use temor_wire::link::Monotonic;
 use temor_wire::message::{
-    Event, Message, OpenSession, Palette, RemotePath, Reply, SessionInfo, SessionState,
+    IdleLimit, Message, OpenSession, Palette, RemoteError, Reply, SessionInfo,
 };
 use temor_wire::units::{CellPx as CellSize, Size};
 
 use super::colours::apply_palette;
 use super::config::DaemonConfig;
-use super::exit::exit_status;
 use super::input::Input;
 use super::launch::spawn_spec;
 use super::link::{Link, LinkId};
+use super::pump::Pump;
+use super::session_core::SessionCore;
 use super::sinks::{CwdSink, Replies};
 use super::sizes::{check, pty_size, screen_cell, screen_size, usable};
-use crate::clock::Clock;
 use crate::error::Error;
-use crate::sync::lock;
 
-/// How long a program may take to leave after its terminal hangs up, and how often that is polled.
-const GRACE: Duration = Duration::from_millis(500);
-/// How long a killed program is polled (its output drained) before the wait blocks.
-const KILLED: Duration = Duration::from_secs(2);
-const POLL: Duration = Duration::from_millis(20);
-
-/// What reaping does next, `waited` after the hang-up.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Reap {
-    /// Give the program its grace period.
-    Wait,
-    /// The grace is over: kill the whole process group, and wait for it to go.
-    KillGroup,
-    /// It still has not gone: kill the program and take what status there is.
-    Kill,
+/// What a session is sent. Its pump takes them in order.
+pub(super) enum Command {
+    /// Answer with the screen's snapshot, then send the live output too.
+    Attach(Answer),
+    Detach(LinkId),
+    /// The person's input.
+    Input(Vec<u8>),
+    /// The screen's answer to a query the program made.
+    Reply(Vec<u8>),
+    /// The folder the program said it is in.
+    Cwd(String),
+    Resize {
+        size: Size,
+        cell: CellSize,
+        answer: Answer,
+    },
+    Palette {
+        palette: Palette,
+        answer: Answer,
+    },
+    /// Close it for a client: the program is hung up and reaped, even if it missed the hang-up.
+    Close,
+    /// Hang the program up, as closing a terminal window would.
+    HangUp,
+    Idle(IdleLimit),
+    /// Time passed: a session detached too long ends.
+    Tick,
+    Info(Sender<SessionInfo>),
 }
 
-fn reap_step(waited: Duration) -> Reap {
-    match waited {
-        w if w >= GRACE + KILLED => Reap::Kill,
-        w if w >= GRACE => Reap::KillGroup,
-        _ => Reap::Wait,
+/// A request a session answers itself. One dropped unanswered (the session ended first) answers
+/// that there is no such session.
+pub(super) struct Answer {
+    to: Option<(Arc<Link>, RequestId)>,
+    session: RemoteSessionId,
+}
+
+impl Answer {
+    pub(super) fn new(link: &Arc<Link>, request: RequestId, session: RemoteSessionId) -> Self {
+        Self {
+            to: Some((Arc::clone(link), request)),
+            session,
+        }
+    }
+
+    pub(super) fn link(&self) -> Option<&Arc<Link>> {
+        self.to.as_ref().map(|(link, _)| link)
+    }
+
+    pub(super) fn give(
+        mut self,
+        outcome: Result<Reply, RemoteError>,
+        payload: Option<&[u8]>,
+    ) -> Result<(), Error> {
+        match self.to.take() {
+            Some((link, id)) => link.send(&Message::Response { id, outcome }, payload),
+            None => Ok(()),
+        }
     }
 }
 
-/// A session. `Send` and `Sync`: the pump thread and the connections share it.
+impl Drop for Answer {
+    fn drop(&mut self) {
+        if let Some((link, id)) = self.to.take() {
+            let session = self.session;
+            let outcome = Err(RemoteError::NoSuchSession { session });
+            // A client that has gone cannot be told.
+            let _ = link.send(&Message::Response { id, outcome }, None);
+        }
+    }
+}
+
+/// A session as the daemon holds it. `Send` and `Sync`.
 #[derive(Debug)]
 pub(super) struct Session {
     pub(super) id: RemoteSessionId,
-    shared: Mutex<Shared>,
-    pty: Mutex<Pty>,
-    input: Arc<Input>,
-    cwd: Arc<Mutex<String>>,
-    clock: Arc<dyn Clock>,
-}
-
-#[derive(Debug)]
-struct Shared {
-    screen: Terminal,
-    size: Size,
-    /// Every client attached: each gets the output, so several windows can show one session.
-    subscribers: Vec<Arc<Link>>,
-    detached_at: Option<Monotonic>,
-    /// A client asked to close the session. A hang-up alone can be lost (a program that has
-    /// not yet made its own process group misses it), so the pump also ends on this and reaps.
-    close_asked: bool,
+    pid: u32,
+    commands: Sender<Command>,
+    waker: Waker,
 }
 
 impl Session {
-    /// Starts the program and its screen. The session begins detached. The terminal's read end is
-    /// returned for the pump thread.
+    /// Starts the program and its screen, and the pump that is to own them. The session begins
+    /// detached.
     pub(super) fn start(
         id: RemoteSessionId,
         request: &OpenSession,
         config: &DaemonConfig,
-    ) -> Result<(Arc<Self>, PtyIo), Error> {
+    ) -> Result<(Self, Pump), Error> {
         let size = check(request.size)?;
         let cell = usable(request.cell);
         let program = request.shell.as_ref().map_or_else(
@@ -95,219 +128,58 @@ impl Session {
             pty_size(size, cell),
         )?;
         let pty = Pty::spawn(&spec, &config.launcher)?;
-        let reader = pty.io()?;
-        let input = Arc::new(Input::new(pty.io()?));
-        let cwd = Arc::new(Mutex::new(request.cwd.0.clone()));
+        let io = pty.io()?;
+        let input = Input::new(pty.io()?);
+        let (commands, inbox) = channel();
         let mut screen_config = TerminalConfig::new(screen_size(size));
         screen_config.cell_px = screen_cell(cell);
         let mut screen = Terminal::new(
             screen_config,
-            Box::new(CwdSink(Arc::clone(&cwd))),
-            Box::new(Replies(Arc::clone(&input))),
+            Box::new(CwdSink(commands.clone())),
+            Box::new(Replies(commands.clone())),
         )?;
         if let Some(palette) = &request.palette {
             apply_palette(&mut screen, palette)?;
         }
-        let session = Arc::new(Self {
+        let wake = Wake::new()?;
+        let session = Self {
             id,
-            shared: Mutex::new(Shared {
-                screen,
-                size,
-                subscribers: Vec::new(),
-                detached_at: Some(config.clock.now()),
-                close_asked: false,
-            }),
-            pty: Mutex::new(pty),
-            input,
-            cwd,
-            clock: Arc::clone(&config.clock),
-        });
-        Ok((session, reader))
-    }
-
-    /// Feeds program output to the screen and on to every attached client.
-    pub(super) fn output(&self, bytes: &[u8]) {
-        let mut shared = self.lock();
-        shared.screen.write(bytes);
-        if shared.subscribers.is_empty() {
-            return;
-        }
-        let event = Message::Event(Event::Output { session: self.id });
-        // A client that is gone or too slow is dropped; it reattaches for a snapshot.
-        shared
-            .subscribers
-            .retain(|link| link.try_send(&event, Some(bytes)).is_ok());
-        if shared.subscribers.is_empty() {
-            shared.detached_at = Some(self.clock.now());
-        }
-    }
-
-    pub(super) fn flush_input(&self) -> bool {
-        self.input.flush()
-    }
-
-    pub(super) fn backlog(&self) -> bool {
-        self.input.backlog()
-    }
-
-    pub(super) fn send_input(&self, bytes: &[u8]) {
-        self.input.send(bytes);
-    }
-
-    /// Answers an attach request with the screen's snapshot, and from then on sends the live
-    /// output to `link` too: the clients already attached stay. Both happen under the session's
-    /// lock, so no output falls between them. A link that attaches again is counted once.
-    pub(super) fn attach(&self, link: &Arc<Link>, request: RequestId) -> Result<(), Error> {
-        let mut shared = self.lock();
-        let snapshot = shared.screen.snapshot()?;
-        let reply = Message::Response {
-            id: request,
-            outcome: Ok(Reply::Attached {
-                session: self.id,
-                size: shared.size,
-            }),
+            pid: u32::try_from(pty.pid().0).unwrap_or(0),
+            commands,
+            waker: wake.waker(),
         };
-        link.send(&reply, Some(snapshot.as_bytes()))?;
-        shared.subscribers.retain(|attached| attached.id != link.id);
-        shared.subscribers.push(Arc::clone(link));
-        shared.detached_at = None;
-        Ok(())
+        let core = SessionCore::new(size, request.cwd.0.clone(), config.idle, config.clock.now());
+        let pump = Pump {
+            id,
+            core,
+            screen,
+            pty,
+            io,
+            input,
+            inbox,
+            wake,
+            clock: Arc::clone(&config.clock),
+        };
+        Ok((session, pump))
     }
 
-    /// Detaches `from` (every client when `from` is `None`); the others stay attached.
-    pub(super) fn detach(&self, from: Option<LinkId>) {
-        let mut shared = self.lock();
-        let before = shared.subscribers.len();
-        shared
-            .subscribers
-            .retain(|link| from.is_some_and(|id| link.id != id));
-        if before > 0 && shared.subscribers.is_empty() {
-            shared.detached_at = Some(self.clock.now());
+    /// Sends `command` to the session. One sent after the session ended is dropped (an
+    /// [`Answer`] in it says so).
+    pub(super) fn send(&self, command: Command) {
+        if self.commands.send(command).is_ok() {
+            self.waker.wake();
         }
     }
 
-    /// Changes the size of the screen and the program's terminal together.
-    pub(super) fn resize(&self, size: Size, cell: CellSize) -> Result<(), Error> {
-        let size = check(size)?;
-        let cell = usable(cell);
-        let mut shared = self.lock();
-        shared.screen.resize(screen_size(size), screen_cell(cell))?;
-        self.input.resize(pty_size(size, cell))?;
-        shared.size = size;
-        Ok(())
-    }
-
-    /// Sets the colours the screen answers colour queries with.
-    pub(super) fn set_palette(&self, palette: &Palette) -> Result<(), Error> {
-        apply_palette(&mut self.lock().screen, palette)
-    }
-
-    /// Closes the session for a client: hangs the program up, and has the pump end and reap it
-    /// (hang-up, grace period, kill) even if the hang-up was missed.
-    pub(super) fn close(&self) {
-        self.lock().close_asked = true;
-        self.hang_up();
-    }
-
-    /// Whether a client asked to close the session.
-    pub(super) fn close_asked(&self) -> bool {
-        self.lock().close_asked
-    }
-
-    /// Hangs up the program, as closing a terminal window would. The pump thread reaps it.
-    pub(super) fn hang_up(&self) {
-        // Already gone is fine.
-        let _ = self.pty().hang_up();
-    }
-
-    pub(super) fn info(&self) -> SessionInfo {
-        let shared = self.lock();
-        let cwd = lock(&self.cwd).clone();
-        SessionInfo {
-            session: self.id,
-            cwd: RemotePath(cwd),
-            size: shared.size,
-            state: if !shared.subscribers.is_empty() {
-                SessionState::Attached
-            } else {
-                SessionState::Detached
-            },
-        }
+    /// Where it is and who is attached; `None` once it has ended.
+    pub(super) fn info(&self) -> Option<SessionInfo> {
+        let (tx, rx) = channel();
+        self.send(Command::Info(tx));
+        rx.recv().ok()
     }
 
     /// The program's process id.
     pub(super) fn pid(&self) -> u32 {
-        u32::try_from(self.pty().pid().0).unwrap_or(0)
-    }
-
-    /// When the last client left, if none is attached.
-    pub(super) fn detached_since(&self) -> Option<Monotonic> {
-        self.lock().detached_at
-    }
-
-    /// Waits for the program to leave after its terminal closed: hangs it up, gives it the grace
-    /// period, then kills it. `None` when its status is no longer known.
-    ///
-    /// `drain` runs on every poll, after the kill too: a program exiting on a terminal nobody
-    /// reads can stall in its own exit (macOS holds the process there until the output is taken),
-    /// so a blocking wait could wait for ever, holding the terminal's lock.
-    pub(super) fn reap(&self, mut drain: impl FnMut()) -> Option<ChildExit> {
-        self.hang_up();
-        let mut waited = Duration::ZERO;
-        loop {
-            {
-                let mut pty = self.pty();
-                if let Ok(Some(exit)) = pty.try_exit() {
-                    return Some(exit);
-                }
-                match reap_step(waited) {
-                    Reap::Kill => return pty.kill().ok(),
-                    Reap::KillGroup => {
-                        let _ = pty.signal_group(temor_pty::SignalKind::Kill);
-                    }
-                    Reap::Wait => {}
-                }
-            }
-            drain();
-            std::thread::sleep(POLL);
-            waited += POLL;
-        }
-    }
-
-    /// Tells every attached client the program ended.
-    pub(super) fn exited(&self, exit: Option<ChildExit>) {
-        let links = std::mem::take(&mut self.lock().subscribers);
-        let event = Message::Event(Event::Exited {
-            session: self.id,
-            status: exit_status(exit),
-        });
-        for link in links {
-            // A client that cannot take it has gone; there is no one to tell.
-            let _ = link.try_send(&event, None);
-        }
-    }
-
-    fn lock(&self) -> MutexGuard<'_, Shared> {
-        lock(&self.shared)
-    }
-
-    fn pty(&self) -> MutexGuard<'_, Pty> {
-        lock(&self.pty)
-    }
-}
-
-#[cfg(test)]
-mod reap_tests {
-    use super::{GRACE, KILLED, Reap, reap_step};
-    use std::time::Duration;
-
-    #[test]
-    fn a_hung_up_program_has_its_grace_then_its_group_then_itself_killed() {
-        let ms = Duration::from_millis;
-        assert_eq!(reap_step(Duration::ZERO), Reap::Wait);
-        assert_eq!(reap_step(GRACE - ms(1)), Reap::Wait);
-        assert_eq!(reap_step(GRACE), Reap::KillGroup);
-        assert_eq!(reap_step(GRACE + KILLED - ms(1)), Reap::KillGroup);
-        assert_eq!(reap_step(GRACE + KILLED), Reap::Kill);
+        self.pid
     }
 }
