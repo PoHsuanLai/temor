@@ -12,8 +12,8 @@ use temor_client::ssh::work::SshEvent;
 const PROBE_EVERY: u32 = 3;
 
 impl Hub {
-    /// Carries out what a job found, and returns the messages it left for the person.
-    pub fn ssh_event(&mut self, event: SshEvent) -> Vec<String> {
+    /// Carries out what a job found.
+    pub fn ssh_event(&mut self, event: SshEvent) {
         match event {
             SshEvent::Probed { host, probe } => self.on_probed(host, probe),
             SshEvent::Identified { host, fingerprint } => self.on_identified(host, fingerprint),
@@ -30,12 +30,11 @@ impl Hub {
                 fault,
             } => self.feed_forwards(&host, ForwardIn::Failed { remote, fault }),
         }
-        std::mem::take(&mut self.notices)
     }
 
     /// One tick: polls the local copies, and asks after a connection still being made. Returns
-    /// whether the window must be drawn again, and what the person should be told.
-    pub(super) fn ssh_tick(&mut self) -> (bool, Vec<String>) {
+    /// whether the window must be drawn again.
+    pub(super) fn ssh_tick(&mut self) -> bool {
         self.ssh.ticks = self.ssh.ticks.wrapping_add(1);
         self.ssh_start_shown();
         self.poll_waiting_edits();
@@ -62,7 +61,7 @@ impl Hub {
                 Ask::Wait => {}
             }
         }
-        (redraw, std::mem::take(&mut self.notices))
+        redraw
     }
 }
 

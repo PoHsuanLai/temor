@@ -399,16 +399,12 @@ impl Hub {
 impl HubRef {
     /// Runs one request and reports the notices it left.
     pub fn act(&self, input: WorkspaceIn) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.act(input);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.act(input))
     }
 
     /// Restarts the shell of an ended pane.
     pub fn restart(&self, pane: PaneId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.restart(pane);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.restart(pane))
     }
 
     /// Makes `palette` the grid's colours in every pane.

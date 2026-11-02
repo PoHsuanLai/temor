@@ -356,9 +356,7 @@ impl HubRef {
 
     /// The person's answer to the question in front; what the person should be told comes back.
     pub fn answer_ask(&self, consent: Consent) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.answer_ask(consent);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.answer_ask(consent))
     }
 
     /// Files were dropped on a pane; what the person should be told comes back. On a pane that

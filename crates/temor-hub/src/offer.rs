@@ -127,8 +127,8 @@ impl Hub {
 
     /// One timer tick: panes whose listed command has run a while may now get the offer, and
     /// panes that were asked which shell they run may have answered. Returns whether the window
-    /// must be drawn again, and what the person should be told.
-    pub(super) fn offer_tick(&mut self) -> (bool, Vec<String>) {
+    /// must be drawn again.
+    pub(super) fn offer_tick(&mut self) -> bool {
         let waiting: Vec<PaneId> = self
             .panes
             .iter()
@@ -141,7 +141,6 @@ impl Hub {
             .map(|(pane, _)| pane)
             .collect();
         let mut redraw = false;
-        let mut notes = Vec::new();
         for pane in waiting {
             let Some(record) = self.panes.get_mut(pane) else {
                 continue;
@@ -181,9 +180,10 @@ impl Hub {
             };
             let (seen, outs) = self.offer_feed(pane, input);
             redraw |= seen;
-            notes.extend(self.offer_outs(pane, outs));
+            let said = self.offer_outs(pane, outs);
+            self.notices.extend(said);
         }
-        (redraw, notes)
+        redraw
     }
 
     pub(super) fn offer_feed(&mut self, pane: PaneId, input: OfferIn) -> (bool, Vec<OfferOut>) {

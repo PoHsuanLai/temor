@@ -12,68 +12,57 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use super::desk::Desk;
 use super::model::Hub;
 
-/// What the hub says back after a message or a tick, for the window to show.
-pub trait Said {
-    fn show(self, desk: &Desk);
+/// Whether the hub asks for the window to be drawn again after a message or a tick.
+pub trait Redraw {
+    fn redraw(self) -> bool;
 }
 
-/// Nothing to show.
-impl Said for () {
-    fn show(self, _: &Desk) {}
-}
-
-/// Whether to draw the window again.
-impl Said for bool {
-    fn show(self, desk: &Desk) {
-        if self {
-            desk.bump();
-        }
+/// Not unless something was said.
+impl Redraw for () {
+    fn redraw(self) -> bool {
+        false
     }
 }
 
-/// Words for the person; the window is drawn again.
-impl Said for Vec<String> {
-    fn show(self, desk: &Desk) {
-        desk.tell(self);
+impl Redraw for bool {
+    fn redraw(self) -> bool {
+        self
     }
 }
 
-/// Whether to draw again, and words for the person (which draw it again too).
-impl Said for (bool, Vec<String>) {
-    fn show(self, desk: &Desk) {
-        let (redraw, notes) = self;
-        if redraw || !notes.is_empty() {
-            desk.tell(notes);
-        }
+/// Runs `heard` on the hub and shows what it said; words for the person draw the window again
+/// too.
+fn settle<R: Redraw>(desk: &Desk, heard: impl FnOnce(&mut Hub) -> R) {
+    let (redraw, notes) = desk.hub.0.borrow_mut().said(heard);
+    if redraw.redraw() || !notes.is_empty() {
+        desk.tell(notes);
     }
 }
 
 impl Desk {
     /// Hands each message `inbox` brings to `heard`, while the window lives. No inbox (it was
     /// taken already) starts nothing.
-    fn hear<E: 'static, S: Said>(
+    fn hear<E: 'static, R: Redraw>(
         &self,
         inbox: Option<UnboundedReceiver<E>>,
-        mut heard: impl FnMut(&mut Hub, E) -> S + 'static,
+        mut heard: impl FnMut(&mut Hub, E) -> R + 'static,
     ) {
         let Some(mut inbox) = inbox else { return };
         let desk = self.clone();
         spawn(async move {
             while let Some(message) = inbox.recv().await {
-                let said = heard(&mut desk.hub.0.borrow_mut(), message);
-                said.show(&desk);
+                settle(&desk, |hub| heard(hub, message));
             }
         });
     }
 
     /// Runs `run` every `tick`, while the window lives.
-    fn every<S: Said>(&self, tick: Duration, mut run: impl FnMut(&mut Hub) -> S + 'static) {
+    fn every<R: Redraw>(&self, tick: Duration, mut run: impl FnMut(&mut Hub) -> R + 'static) {
         let desk = self.clone();
         spawn(async move {
             loop {
                 sleep(tick).await;
-                let said = run(&mut desk.hub.0.borrow_mut());
-                said.show(&desk);
+                settle(&desk, &mut run);
             }
         });
     }
@@ -97,10 +86,7 @@ pub fn spawn_loops(desk: &Desk) {
     desk.hear(remote, Hub::remote_event);
     desk.hear(viewers, Hub::host_copy_done);
     desk.hear(facts, Hub::facts_ready);
-    desk.hear(plugins, |hub, done| {
-        hub.plugin_done(done);
-        std::mem::take(&mut hub.notices)
-    });
+    desk.hear(plugins, Hub::plugin_done);
     // A look-up is done: the rows draw again with its icon.
     desk.hear(icons, |_, ()| true);
     desk.every(Duration::from_millis(300), Hub::ssh_tick);

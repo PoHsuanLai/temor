@@ -90,16 +90,12 @@ impl Hub {
 impl HubRef {
     /// The kit switched Space: bring its workspace to the front. Returns the notices left.
     pub fn arrive(&self, to: SpaceId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.arrive(to);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.arrive(to))
     }
 
     /// The Spaces changed for good. Returns the notices left.
     pub fn spaces_changed(&self, all: &TemorSpaces) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.spaces_changed(all);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.spaces_changed(all))
     }
 
     /// The Spaces as the Settings window shows them: each one's name and project.

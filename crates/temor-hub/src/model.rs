@@ -189,7 +189,15 @@ impl Hub {
         })
     }
 
-    /// The next message for the person, if one is waiting; taking it clears it.
+    /// Runs `change`, and what it left to tell the person (PLAN §4c: the hub says things as it
+    /// goes, and whoever asked for the change shows them). Every request is run through here.
+    pub fn said<R>(&mut self, change: impl FnOnce(&mut Self) -> R) -> (R, Vec<String>) {
+        let answer = change(self);
+        (answer, std::mem::take(&mut self.notices))
+    }
+
+    /// What was said outside any request (a write that failed in the background); taking it
+    /// clears it.
     pub fn take_notices(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notices)
     }
@@ -198,6 +206,13 @@ impl Hub {
 /// A shared hub, as the views hold it. Two are equal when they are the same hub.
 #[derive(Clone)]
 pub struct HubRef(pub Rc<RefCell<Hub>>);
+
+impl HubRef {
+    /// [`Hub::said`] of `change`: what it left to tell the person.
+    pub fn said(&self, change: impl FnOnce(&mut Hub)) -> Vec<String> {
+        self.0.borrow_mut().said(change).1
+    }
+}
 
 impl PartialEq for HubRef {
     fn eq(&self, other: &Self) -> bool {

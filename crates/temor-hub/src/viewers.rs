@@ -301,9 +301,7 @@ impl Hub {
 impl HubRef {
     /// See [`Hub::open_viewer`].
     pub fn open_viewer(&self, from: PaneId, ask: ViewAsk) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.open_viewer(from, ask);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.open_viewer(from, ask))
     }
 
     /// See [`Hub::viewer_show`].

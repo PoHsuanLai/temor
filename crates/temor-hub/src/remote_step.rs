@@ -18,9 +18,8 @@ use temor_client::remote::install::Found;
 use temor_panes::remote::event::{RemoteEvent, Wanted};
 
 impl Hub {
-    /// Carries out what a job or a connection reported, and returns the messages it left for the
-    /// person.
-    pub fn remote_event(&mut self, event: RemoteEvent) -> Vec<String> {
+    /// Carries out what a job or a connection reported.
+    pub fn remote_event(&mut self, event: RemoteEvent) {
         match event {
             RemoteEvent::Probed { host, found } => self.remote_probed(&host, found),
             RemoteEvent::Installed { host, hash } => self.remote_installed(&host, hash),
@@ -55,7 +54,6 @@ impl Hub {
             RemoteEvent::Stalled { host, generation } => self.remote_stalled(&host, generation),
             RemoteEvent::Connected { pane } => self.remote_begin(pane),
         }
-        std::mem::take(&mut self.notices)
     }
 
     fn remote_probed(&mut self, host: &HostAlias, found: Option<Found>) {

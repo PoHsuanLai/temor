@@ -215,15 +215,7 @@ impl HubRef {
 impl Desk {
     /// Runs `change` on the hub, shows the notices it left, and draws the window again.
     pub(super) fn settle(&self, change: impl FnOnce(&mut Hub)) {
-        let notes = {
-            let mut hub = self.hub.0.borrow_mut();
-            change(&mut hub);
-            std::mem::take(&mut hub.notices)
-        };
-        for text in notes {
-            self.say(text);
-        }
-        self.bump();
+        self.tell(self.hub.said(change));
     }
 
     /// ⌘T.

@@ -22,8 +22,8 @@ use temor_ui_base::edge::Clock;
 const MOST_NAMES: u32 = 10_000;
 
 impl Hub {
-    /// Reads a batch of transfer events from the panes. Returns what the person should be told.
-    pub fn transfers(&mut self, events: Vec<(PaneId, TransferEvent)>) -> Vec<String> {
+    /// Reads a batch of transfer events from the panes.
+    pub fn transfers(&mut self, events: Vec<(PaneId, TransferEvent)>) {
         for (pane, event) in events {
             match event {
                 TransferEvent::Offered { offer, kind } => self.offered(pane, offer, &kind),
@@ -58,7 +58,6 @@ impl Hub {
                 _ => {}
             }
         }
-        std::mem::take(&mut self.notices)
     }
 
     /// Where a pane's files come from. A pane on a host (SSH, PLAN §9b) will say so here.

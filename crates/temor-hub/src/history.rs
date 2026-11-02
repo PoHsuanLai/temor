@@ -314,9 +314,7 @@ impl Hub {
 impl HubRef {
     /// See [`Hub::reopen_session`]; answers the notices it left.
     pub fn reopen_session(&self, id: SessionId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.reopen_session(id);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.reopen_session(id))
     }
 
     /// See [`Hub::tab_of_session`].

@@ -188,8 +188,7 @@ pub fn spawn_event_loop(desk: Desk) {
                 transfers,
             } = delivery;
             let heard = !transfers.is_empty();
-            let said = desk.hub.0.borrow_mut().transfers(transfers);
-            for text in said {
+            for text in desk.hub.said(|hub| hub.transfers(transfers)) {
                 desk.say(text);
             }
             for (slot, generation) in holds {

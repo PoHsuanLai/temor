@@ -173,9 +173,9 @@ impl Hub {
 
     /// A fetch finished: the viewer opens on the copy. A path that is not a file, or is not
     /// there, says nothing when it was only a click on a word; a comparison says so.
-    pub(super) fn host_copy_done(&mut self, event: CopyEvent) -> Vec<String> {
+    pub(super) fn host_copy_done(&mut self, event: CopyEvent) {
         let Some(want) = self.viewers.host.wanted.remove(&event.id) else {
-            return Vec::new();
+            return;
         };
         let open = self.book.ws().tab_of(want.from).is_some();
         match (event.outcome, &want.then) {
@@ -205,7 +205,6 @@ impl Hub {
             // Not a file, gone, or the pane closed meanwhile.
             _ => forget_copy(&want.local),
         }
-        std::mem::take(&mut self.notices)
     }
 
     pub(super) fn show_file(&mut self, from: PaneId, file: PathBuf) {
@@ -223,8 +222,6 @@ impl Hub {
 impl HubRef {
     /// See [`Hub::open_host_viewer`].
     pub fn open_host_viewer(&self, from: PaneId, path: &str) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.open_host_viewer(from, path);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.open_host_viewer(from, path))
     }
 }

@@ -76,9 +76,7 @@ impl Hub {
 impl HubRef {
     /// Moves `tab` of the Space on screen to the Space `to`; returns the notices left.
     pub fn move_tab_to_space(&self, tab: TabId, to: SpaceId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.move_tab_to_space(tab, to);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.move_tab_to_space(tab, to))
     }
 
     /// See [`Hub::adopt_into_space`].

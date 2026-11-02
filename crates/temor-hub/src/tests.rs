@@ -556,3 +556,19 @@ fn an_ask_for_one_file_says_its_size_the_way_the_shelf_does() {
         );
     }
 }
+
+#[test]
+fn a_change_hands_back_what_it_said_in_order_and_leaves_nothing_said() {
+    let mut hub = Hub::new(launch());
+    let _ = hub.take_notices();
+    let (answer, said) = hub.said(|hub| {
+        hub.notices.push("first".to_owned());
+        hub.notices.push("second".to_owned());
+        7
+    });
+    assert_eq!(
+        (answer, said),
+        (7, vec!["first".to_owned(), "second".to_owned()])
+    );
+    assert!(hub.take_notices().is_empty());
+}
