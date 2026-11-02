@@ -76,6 +76,14 @@ impl OfferHub {
             settings: launch.ambient.settings_store(),
         }
     }
+
+    /// Forgets everything the offer keeps of `pane`, which has gone.
+    pub(super) fn forget(&mut self, pane: PaneId) {
+        self.states.remove(&pane);
+        self.lines.remove(&pane);
+        self.shells.remove(&pane);
+        self.screens.remove(&pane);
+    }
 }
 
 impl Hub {

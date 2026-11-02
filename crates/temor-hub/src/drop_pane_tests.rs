@@ -42,3 +42,25 @@ fn deleting_a_space_ends_the_launch_waiting_on_its_run_tab_as_hung_up() {
     assert!(hub.run.panes.is_empty());
     assert_eq!(hub.book.parked().count(), 0);
 }
+
+#[test]
+fn a_pane_that_goes_while_its_offer_shows_leaves_no_offer_behind() {
+    use temor_client::model::offer::{OfferState, Program};
+    use temor_client::model::vocab::ids::BlockId;
+
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
+    let pane = hub.book.ws.tabs.panes()[0];
+    let asking = OfferState::Asking {
+        block: BlockId(1),
+        program: Program("python".to_owned()),
+    };
+    hub.offer.states.insert(pane, asking);
+    hub.offer.lines.insert(pane, 1);
+    hub.offer.screens.insert(pane, 2);
+
+    hub.drop_pane(pane);
+
+    assert!(hub.offer.states.is_empty());
+    assert!(hub.offer.lines.is_empty());
+    assert!(hub.offer.screens.is_empty());
+}
