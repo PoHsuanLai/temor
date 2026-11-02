@@ -7,14 +7,6 @@ use temor_core::vocab::ids::{FolderId, Seq, TabId};
 use temor_core::vocab::text::{CommandText, Cwd, HostAlias, PluginId};
 use temor_pane::keys::Action;
 
-/// Finds a program on the person's `PATH`. The Run row exists only when this says the first
-/// word is there: a lookup, not a guess. The real one lives with the process code; tests pass
-/// a fixed table.
-pub trait PathResolver {
-    /// Whether `program` is a command the shell would find.
-    fn resolves(&self, program: &str) -> bool;
-}
-
 /// How often and how lately a folder was used: larger comes first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Frecency(pub u32);

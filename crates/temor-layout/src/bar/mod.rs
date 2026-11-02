@@ -13,8 +13,7 @@ mod tests;
 
 pub use frecency::{Recency, UnixSecs, Visits};
 pub use model::{
-    BarAction, BarRow, Candidate, Frecency, LayoutName, PathResolver, PluginRow, RowGroup, RowKey,
-    Target,
+    BarAction, BarRow, Candidate, Frecency, LayoutName, PluginRow, RowGroup, RowKey, Target,
 };
 pub use providers::{DirectoryUse, Sources, SpaceEntry, candidates, space_entries};
 pub use rank::rank;

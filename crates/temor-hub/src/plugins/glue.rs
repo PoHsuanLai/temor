@@ -181,7 +181,8 @@ impl Hub {
         }
         self.plugins.offers.add(plugin, items);
         let rows = self.plugins.offers.plugin_rows();
-        self.bar_apply(|model, cx| model.provider_rows(query, rows, cx));
+        let ranked = query.clone();
+        self.bar_apply(&ranked, |model, cx| model.provider_rows(query, rows, cx));
     }
 
     /// The person chose a plugin's row: the plugin says what that does, and the bar's own

@@ -2,7 +2,18 @@
 
 use std::ffi::OsString;
 
-use temor_client::model::bar::PathResolver;
+/// Finds a program on the person's `PATH`: the bar's Run row exists only when this says the
+/// first word is there. The real one looks; tests pass a fixed table.
+pub trait PathResolver {
+    /// Whether `program` is a command the shell would find.
+    fn resolves(&self, program: &str) -> bool;
+
+    /// The first word of `query`, when the shell would find it.
+    fn runnable<'q>(&self, query: &'q str) -> Option<&'q str> {
+        let program = query.split_whitespace().next()?;
+        self.resolves(program).then_some(program)
+    }
+}
 
 /// Finds programs on a `PATH`-style list, as the shell would for a bare name.
 #[derive(Debug, Clone, PartialEq, Eq)]

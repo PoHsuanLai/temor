@@ -114,12 +114,17 @@ impl Hub {
         out
     }
 
-    /// Runs `step` on the bar with the context of now.
-    pub(super) fn bar_apply(&mut self, step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel) {
+    /// Runs `step`, which ranks `query`, on the bar with the context of now.
+    pub(super) fn bar_apply(
+        &mut self,
+        query: &str,
+        step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel,
+    ) {
         let candidates = self.bar_candidates();
+        let paths = std::rc::Rc::clone(&self.bar.seams.paths);
         let cx = BarContext {
             candidates: &candidates,
-            resolver: &*self.bar.seams.paths,
+            runnable: paths.runnable(query),
             ai: self.bar.seams.model.available(),
         };
         let model = std::mem::take(&mut self.bar.model);
@@ -129,19 +134,19 @@ impl Hub {
     /// ⌘T.
     pub fn bar_toggle(&mut self) {
         self.plugins_stop();
-        self.bar_apply(|model, cx| model.toggled(cx));
+        self.bar_apply("", |model, cx| model.toggled(cx));
     }
 
     /// Escape, or a click outside the bar.
     pub fn bar_close(&mut self) {
         self.plugins_stop();
-        self.bar_apply(|model, cx| model.closed(cx));
+        self.bar_apply("", |model, cx| model.closed(cx));
     }
 
     /// The field changed.
     pub fn bar_typed(&mut self, text: String) {
         let asked = text.clone();
-        self.bar_apply(|model, cx| model.typed(text, cx));
+        self.bar_apply(&asked, |model, cx| model.typed(text, cx));
         self.plugins_ask(&asked);
     }
 
@@ -160,9 +165,10 @@ impl Hub {
     /// The row `key` was run (Enter, or a click): the bar closes and the row is carried out.
     pub fn bar_pick(&mut self, key: &RowKey) {
         let candidates = self.bar_candidates();
+        let query = self.bar.model.query().to_owned();
         let cx = BarContext {
             candidates: &candidates,
-            resolver: &*self.bar.seams.paths,
+            runnable: self.bar.seams.paths.runnable(&query),
             ai: self.bar.seams.model.available(),
         };
         let model = std::mem::take(&mut self.bar.model);

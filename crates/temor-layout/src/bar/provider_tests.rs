@@ -1,6 +1,6 @@
 //! Frecency scores and the providers' candidates, ranked.
 
-use super::{DirectoryUse, PathResolver, Sources, SpaceEntry, UnixSecs, Visits, candidates, rank};
+use super::{DirectoryUse, Sources, SpaceEntry, UnixSecs, Visits, candidates, rank};
 use crate::bar::{BarAction, LayoutName, RowGroup, Target};
 use crate::space::{Folder, Pin, Tab};
 use crate::split::SplitTree;
@@ -12,13 +12,6 @@ use temor_pane::keys::Action;
 
 const DAY: u64 = 24 * 60 * 60;
 const NOW: u64 = 1_000_000_000;
-
-struct NoPath;
-impl PathResolver for NoPath {
-    fn resolves(&self, _: &str) -> bool {
-        false
-    }
-}
 
 fn ago(count: u32, seconds: u64) -> Visits {
     Visits {
@@ -116,7 +109,7 @@ fn providers_rank_by_section_then_by_frecency_and_drop_what_cannot_be_matched() 
         9,
         "an empty name and an untypable command are left out"
     );
-    let rows = rank("src", &all, &[], &NoPath, AiSwitch::Off);
+    let rows = rank("src", &all, &[], None, AiSwitch::Off);
     let keys: Vec<&str> = rows.iter().map(|r| r.key.0.as_str()).collect();
     assert_eq!(
         keys,
@@ -131,7 +124,7 @@ fn providers_rank_by_section_then_by_frecency_and_drop_what_cannot_be_matched() 
         ]
     );
     assert!(rows.iter().all(|r| r.group == RowGroup::Match));
-    let ops = rank("ops", &all, &[], &NoPath, AiSwitch::Off);
+    let ops = rank("ops", &all, &[], None, AiSwitch::Off);
     assert_eq!(ops.len(), 1);
     assert_eq!(ops[0].action, BarAction::Go(Target::Space(SpaceId(1))));
 }
