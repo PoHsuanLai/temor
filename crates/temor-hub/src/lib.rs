@@ -105,7 +105,7 @@ pub use agents::{Agents, Alert, WaitingCount};
 pub use bar::BarData;
 pub use bar_action::select_tab;
 pub use blink_tick::spawn_blink_loop;
-pub use desk::{Desk, HostOf, NEW_FOLDER};
+pub use desk::{Desk, HostOf, NEW_FOLDER, use_hub};
 pub use desktop::spawn_desktop_loop;
 pub use dispatch::Origin;
 pub use events::spawn_event_loop;

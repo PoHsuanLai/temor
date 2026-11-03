@@ -11,18 +11,20 @@ use temor_panes::pane::keys::Action;
 use temor_schema::url::TemorUrl;
 
 use super::tool_button::ToolButton;
-use temor_hub::{Address, Desk, temor_page_name};
+use temor_hub::{Address, Desk, temor_page_name, use_hub};
 
 /// Back and Forward through the pages the row in front has shown.
 #[component]
 #[allow(non_snake_case)]
 pub fn WalkButtons(desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let view = desk
-        .hub
-        .front()
-        .map(|(tab, ..)| desk.hub.stage_view(tab))
-        .unwrap_or_default();
+    let (view, back_tip, forward_tip) = use_hub(&desk, (), |hub, ()| {
+        let view = hub
+            .front()
+            .map(|(tab, ..)| hub.stage_view(tab))
+            .unwrap_or_default();
+        let tip = |action: Action| hub.tooltip(action.label(), action);
+        (view, tip(Action::Back), tip(Action::Forward))
+    })();
     let can = |yes: bool| match yes {
         true => Availability::Enabled,
         false => Availability::Disabled,
@@ -34,7 +36,7 @@ pub fn WalkButtons(desk: Desk) -> Element {
                 icon: Icon::ChevronLeft,
                 size: ControlSize::Small,
                 label: Action::Back.label(),
-                tip: desk.hub.tooltip(Action::Back.label(), Action::Back),
+                tip: back_tip,
                 availability: can(view.can_go_back),
                 onclick: move |()| back.go_back(),
             }
@@ -42,7 +44,7 @@ pub fn WalkButtons(desk: Desk) -> Element {
                 icon: Icon::ChevronRight,
                 size: ControlSize::Small,
                 label: Action::Forward.label(),
-                tip: desk.hub.tooltip(Action::Forward.label(), Action::Forward),
+                tip: forward_tip,
                 availability: can(view.can_go_forward),
                 onclick: move |()| forward.go_forward(),
             }
@@ -54,8 +56,7 @@ pub fn WalkButtons(desk: Desk) -> Element {
 #[component]
 #[allow(non_snake_case)]
 pub fn AddressBar(desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let address = desk.hub.address();
+    let address = use_hub(&desk, (), |hub, ()| hub.address())();
     let (segments, paths): (Vec<PathSegment>, Vec<Option<String>>) = match &address {
         Address::None => return rsx! {},
         Address::Page(page) => {

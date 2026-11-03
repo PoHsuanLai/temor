@@ -23,7 +23,7 @@ use temor_client::model::shelf::{
 use super::menu::{Pick, menu_items};
 use super::names::named;
 use super::tool_button::ToolButton;
-use temor_hub::Desk;
+use temor_hub::{Desk, use_hub};
 use temor_panes::pane::keys::Action;
 use temor_ui_base::shelf_words::{
     ActWords, EMPTY, REMOVE_FROM_LIST, act_words, detail as row_detail, failure, upload_detail,
@@ -33,14 +33,17 @@ use temor_ui_base::shelf_words::{
 #[component]
 #[allow(non_snake_case)]
 pub fn ShelfButton(desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let view = desk.hub.shelf_view();
-    let going = !desk.hub.uploads().is_empty()
-        || view
-            .rows
-            .iter()
-            .any(|row| !matches!(row.state, Arriving::Ready));
-    let dot = match (going, view.unseen) {
+    let (going, unseen, tip) = use_hub(&desk, (), |hub, ()| {
+        let view = hub.shelf_view();
+        let going = !hub.uploads().is_empty()
+            || view
+                .rows
+                .iter()
+                .any(|row| !matches!(row.state, Arriving::Ready));
+        let tip = hub.tooltip(Action::ShowDownloads.label(), Action::ShowDownloads);
+        (going, view.unseen, tip)
+    })();
+    let dot = match (going, unseen) {
         (true, _) => Some("temor-dl-dot going"),
         (false, 0) => None,
         (false, _) => Some("temor-dl-dot"),
@@ -51,7 +54,7 @@ pub fn ShelfButton(desk: Desk) -> Element {
             ToolButton {
                 icon: Icon::Download,
                 label: Action::ShowDownloads.label(),
-                tip: desk.hub.tooltip(Action::ShowDownloads.label(), Action::ShowDownloads),
+                tip,
                 onclick: move |()| opening.open_downloads(),
             }
             if let Some(class) = dot {
@@ -65,9 +68,7 @@ pub fn ShelfButton(desk: Desk) -> Element {
 #[component]
 #[allow(non_snake_case)]
 pub fn DownloadsPage(desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let view = desk.hub.shelf_view();
-    let uploads = desk.hub.uploads();
+    let (view, uploads) = use_hub(&desk, (), |hub, ()| (hub.shelf_view(), hub.uploads()))();
     rsx! {
         div { class: "temor-downloads", role: "list", "aria-label": "Downloads",
             if view.rows.is_empty() && uploads.is_empty() {

@@ -29,7 +29,7 @@ use super::shelf::DownloadsPage;
 use super::tool_button::ToolButton;
 use super::tree_view::TreeView;
 use super::viewer_pane::{PageKeys, ViewerView};
-use temor_hub::{Desk, page_path, temor_page, temor_page_name};
+use temor_hub::{Desk, page_path, temor_page, temor_page_name, use_hub};
 
 /// The page's share of the row when it first shows beside the console.
 const STAGE_SHARE: f32 = 0.62;
@@ -44,12 +44,12 @@ pub fn RowView(
     desk: Desk,
     started: Instant,
 ) -> Element {
-    // The layout is the hub's, not a prop: a change to it alone redraws the row.
-    let _ = (desk.ui)();
-    let page = tree
-        .panes()
-        .into_iter()
-        .find(|pane| desk.hub.is_viewer(*pane));
+    // Which pane is a page, and the layout, are the hub's, not props: a change to them alone
+    // redraws the row.
+    let (page, staged) = use_hub(&desk, (tab, tree.clone()), |hub, (tab, tree)| {
+        let page = tree.panes().into_iter().find(|pane| hub.is_viewer(*pane));
+        (page, hub.stage_view(*tab).layout)
+    })();
     let Some(page) = page.filter(|_| tree.zoomed().is_none()) else {
         return rsx! {
             TreeView { tree, focus, desk, started }
@@ -60,7 +60,7 @@ pub fn RowView(
         _ => None,
     };
     let layout = match console {
-        Some(_) => desk.hub.stage_view(tab).layout,
+        Some(_) => staged,
         // A page with no terminal beside it is all there is to show.
         None => Layout::Stage,
     };
@@ -90,25 +90,26 @@ pub fn RowView(
 #[component]
 #[allow(non_snake_case)]
 fn Stage(page: PaneId, layout: Layout, desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let shown = desk.hub.page_file(page);
+    let (shown, home, console_tip, pop_tip) =
+        use_hub(&desk, (page, layout), |hub, &(page, layout)| {
+            let console = match layout.shows_console() {
+                true => "Hide the console",
+                false => "Show the console",
+            };
+            (
+                hub.page_file(page),
+                hub.home(),
+                hub.tooltip(console, Action::ShowStageAndConsole),
+                hub.tooltip(Action::PopOut.menu_title(), Action::PopOut),
+            )
+        })();
     let own = shown.as_deref().and_then(temor_page);
     let (name, folder) = match &own {
-        Some(own) => (temor_page_name(own), page_scope(own, &desk.hub.home())),
+        Some(own) => (temor_page_name(own), page_scope(own, &home)),
         None => shown.as_deref().map(name_and_folder).unwrap_or_default(),
     };
-    let console_tip = desk.hub.tooltip(
-        match layout.shows_console() {
-            true => "Hide the console",
-            false => "Show the console",
-        },
-        Action::ShowStageAndConsole,
-    );
     let (toggling, closing, acting, popping) =
         (desk.clone(), desk.clone(), desk.clone(), desk.clone());
-    let pop_tip = desk
-        .hub
-        .tooltip(Action::PopOut.menu_title(), Action::PopOut);
     let more = use_rect();
     let mut menu = use_signal(|| Shown::Hidden);
     rsx! {

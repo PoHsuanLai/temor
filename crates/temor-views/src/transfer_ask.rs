@@ -8,14 +8,14 @@ use ds::prelude::*;
 use ds::style::tokens::control_size::ControlSize;
 use temor_client::shelf::transfer::Consent;
 
-use temor_hub::Desk;
+use temor_hub::{Desk, use_hub};
 
 /// The question in front, if there is one.
 #[component]
 #[allow(non_snake_case)]
 pub fn TransferAsk(desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let Some(ask) = desk.hub.front_ask() else {
+    let front = use_hub(&desk, (), |hub, ()| hub.front_ask());
+    let Some(ask) = front() else {
         return rsx! {};
     };
     let view = ask.view();

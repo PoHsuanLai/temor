@@ -17,7 +17,7 @@ use super::host_words::{
 };
 use super::remote::RemoteBanners;
 use temor_client::ssh::work::EditId;
-use temor_hub::{Desk, EditLine, EditStatus, ForwardLine, HostView, Stage};
+use temor_hub::{Desk, EditLine, EditStatus, ForwardLine, HostView, Stage, use_hub};
 
 /// The host banners of `pane`.
 #[component]
@@ -25,8 +25,8 @@ use temor_hub::{Desk, EditLine, EditStatus, ForwardLine, HostView, Stage};
 pub fn HostBanners(pane: PaneId, desk: Desk) -> Element {
     let port = use_signal(String::new);
     let file = use_signal(String::new);
-    let _ = (desk.ui)();
-    let Some(view) = desk.hub.host_view(pane) else {
+    let shown = use_hub(&desk, pane, |hub, &pane| hub.host_view(pane));
+    let Some(view) = shown() else {
         return rsx! {};
     };
     let host = view.host.clone();

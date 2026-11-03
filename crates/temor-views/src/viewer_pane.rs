@@ -19,7 +19,7 @@ use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::pane::keys::Action;
 
 use super::focus_edge::use_focus_edge;
-use temor_hub::{Desk, Origin};
+use temor_hub::{Desk, Origin, use_hub};
 use temor_pane_view::input::{Routed, stroke};
 
 /// One viewer pane.
@@ -62,11 +62,14 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
             }
         }
     };
-    let _ = (desk.ui)();
-    let shown = desk.hub.viewer_show(pane);
+    let (shown, describes_only, not_opened) = use_hub(&desk, pane, |hub, &pane| {
+        (
+            hub.viewer_show(pane),
+            hub.viewer_describes_only(pane),
+            hub.viewer_not_opened(pane),
+        )
+    })();
     let answer = desk.clone();
-    let describes_only = desk.hub.viewer_describes_only(pane);
-    let not_opened = desk.hub.viewer_not_opened(pane);
     let in_app = desk.clone();
     rsx! {
         div { class: "temor-pane",

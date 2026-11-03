@@ -65,6 +65,21 @@ impl std::fmt::Debug for Desk {
     }
 }
 
+/// The part of the hub `read` takes for `given` (the props it depends on), as a memo: it follows
+/// each change to the hub and to `given`, and what reads it draws again only when that part
+/// changed.
+pub fn use_hub<D: PartialEq + Clone + 'static, T: PartialEq + 'static>(
+    desk: &Desk,
+    given: D,
+    read: impl Fn(&HubRef, &D) -> T + 'static,
+) -> Memo<T> {
+    let desk = desk.clone();
+    use_memo(use_reactive((&given,), move |(given,)| {
+        let _ = (desk.ui)();
+        read(&desk.hub, &given)
+    }))
+}
+
 impl Desk {
     /// Draws the window again.
     pub fn bump(&self) {
