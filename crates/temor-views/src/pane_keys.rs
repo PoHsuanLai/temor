@@ -18,10 +18,41 @@ use temor_pane_view::error::ViewError;
 use temor_pane_view::input::stroke;
 use temor_pane_view::session::{HistoryStep, Session};
 
-/// A key the region hears, or the composer's field hands on, while the list shows the
-/// composer: a typed key is the composer's (its text, Enter, Backspace, the arrows through the
-/// history), and the caret goes to its field for the rest, but for Enter. A chord runs what the
-/// keymap binds it to. Whether the composer took it: then the shell hears nothing.
+/// What a key does while the list shows the composer: a typed key is the composer's (its text,
+/// Enter, Backspace, the arrows through the history), and a chord runs what the keymap binds it
+/// to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ComposerKey {
+    /// A key coming up: nothing.
+    Release,
+    /// A chord (Super, Meta or Ctrl held): the keymap's.
+    Chord,
+    /// Enter: the command runs and the composer goes; the keys stay the terminal's.
+    Submit,
+    Backspace,
+    History(HistoryStep),
+    Type(String),
+    /// Anything else: nothing but the caret going to the field.
+    Other,
+}
+
+fn composer_key(raw: &RawKey) -> ComposerKey {
+    let chord = Modifiers::SUPER | Modifiers::META | Modifiers::CONTROL;
+    match (raw.phase, &raw.key, &raw.text) {
+        (KeyPhase::Release, ..) => ComposerKey::Release,
+        _ if raw.modifiers.intersects(chord) => ComposerKey::Chord,
+        (_, Key::Enter, _) => ComposerKey::Submit,
+        (_, Key::Backspace, _) => ComposerKey::Backspace,
+        (_, Key::ArrowUp, _) => ComposerKey::History(HistoryStep::Older),
+        (_, Key::ArrowDown, _) => ComposerKey::History(HistoryStep::Newer),
+        (_, _, Some(text)) => ComposerKey::Type(text.clone()),
+        _ => ComposerKey::Other,
+    }
+}
+
+/// A key the region hears, or the composer's field hands on, while the list shows the composer
+/// (see [`composer_key`]). Typing puts the caret in the composer's field. Whether the composer
+/// took it: then the shell hears nothing.
 fn to_composer(
     session: &mut Session,
     raw: &RawKey,
@@ -30,31 +61,29 @@ fn to_composer(
     if !session.composer_shown() {
         return None;
     }
-    if raw.phase == KeyPhase::Release {
-        return Some(Ok(()));
-    }
-    if raw
-        .modifiers
-        .intersects(Modifiers::SUPER | Modifiers::META | Modifiers::CONTROL)
-    {
-        return Some(match stroke(raw, false) {
-            Some(stroke) => session.composer_chord(stroke),
-            None => Ok(()),
-        });
-    }
-    match (&raw.key, &raw.text) {
-        // The command runs and the composer goes: the keys stay the terminal's.
-        (Key::Enter, _) => {
-            session.composer_submit();
-            return Some(Ok(()));
+    let key = composer_key(raw);
+    let typing = matches!(
+        key,
+        ComposerKey::Backspace
+            | ComposerKey::History(_)
+            | ComposerKey::Type(_)
+            | ComposerKey::Other
+    );
+    match key {
+        ComposerKey::Chord => {
+            return Some(
+                stroke(raw, false).map_or(Ok(()), |stroke| session.composer_chord(stroke)),
+            );
         }
-        (Key::Backspace, _) => session.composer_backspace(),
-        (Key::ArrowUp, _) => session.composer_history(HistoryStep::Older),
-        (Key::ArrowDown, _) => session.composer_history(HistoryStep::Newer),
-        (_, Some(text)) => session.composer_append(text),
-        _ => {}
+        ComposerKey::Submit => session.composer_submit(),
+        ComposerKey::Backspace => session.composer_backspace(),
+        ComposerKey::History(step) => session.composer_history(step),
+        ComposerKey::Type(text) => session.composer_append(&text),
+        ComposerKey::Release | ComposerKey::Other => {}
     }
-    focus.request();
+    if typing {
+        focus.request();
+    }
     Some(Ok(()))
 }
 
@@ -118,5 +147,74 @@ pub fn key_handler(
         }
         link.redraw(Redraw::WithGrid);
         place_cursor(ime.clone(), Rc::clone(&link.slot), rect);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use dioxus::html::{Code, Location};
+    use dioxus::prelude::{Key, Modifiers};
+    use ds::edit::raw_key::{KeyPhase, RawKey};
+    use temor_pane_view::session::HistoryStep;
+
+    use super::{ComposerKey, composer_key};
+
+    fn raw(phase: KeyPhase, key: Key, modifiers: Modifiers, text: Option<&str>) -> RawKey {
+        RawKey {
+            phase,
+            key,
+            code: Code::Unidentified,
+            modifiers,
+            location: Location::Standard,
+            text: text.map(str::to_owned),
+        }
+    }
+
+    #[test]
+    fn the_composer_takes_typing_and_leaves_chords_to_the_keymap() {
+        use KeyPhase::{Press, Release, Repeat};
+        let none = Modifiers::empty();
+        let a = || Key::Character("a".to_owned());
+        // (the key, what it does)
+        let cases = [
+            (
+                raw(Press, a(), none, Some("a")),
+                ComposerKey::Type("a".to_owned()),
+            ),
+            (
+                raw(Repeat, a(), none, Some("a")),
+                ComposerKey::Type("a".to_owned()),
+            ),
+            (raw(Release, a(), none, None), ComposerKey::Release),
+            (raw(Release, Key::Enter, none, None), ComposerKey::Release),
+            (
+                raw(Press, a(), Modifiers::CONTROL, None),
+                ComposerKey::Chord,
+            ),
+            (
+                raw(Press, Key::Enter, Modifiers::SUPER, None),
+                ComposerKey::Chord,
+            ),
+            (
+                raw(Press, Key::Enter, none, Some("\r")),
+                ComposerKey::Submit,
+            ),
+            (
+                raw(Press, Key::Backspace, none, None),
+                ComposerKey::Backspace,
+            ),
+            (
+                raw(Press, Key::ArrowUp, none, None),
+                ComposerKey::History(HistoryStep::Older),
+            ),
+            (
+                raw(Press, Key::ArrowDown, Modifiers::SHIFT, None),
+                ComposerKey::History(HistoryStep::Newer),
+            ),
+            (raw(Press, Key::Escape, none, None), ComposerKey::Other),
+        ];
+        for (key, want) in cases {
+            assert_eq!(composer_key(&key), want, "{key:?}");
+        }
     }
 }

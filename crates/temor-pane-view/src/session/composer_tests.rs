@@ -215,3 +215,167 @@ fn sources_that_all_say_nothing_leave_the_line_and_end_the_request() {
     assert_eq!(composer.text, "zzz");
     assert!(composer.asked.is_none() && composer.choices.is_none());
 }
+
+fn ready_shell(text: &str) -> Composer {
+    Composer {
+        text: text.to_owned(),
+        shell_ready: true,
+        ..Composer::default()
+    }
+}
+
+fn complete(shown: bool, mode: PasteMode, ready: &[SourceId]) -> ComposerIn {
+    ComposerIn::Complete {
+        shown,
+        mode,
+        ready: ready.to_vec(),
+    }
+}
+
+#[test]
+fn tab_asks_what_can_answer_and_nothing_while_answers_are_awaited() {
+    use PasteMode::{Bracketed, Plain};
+    let paste = |text: &str, mode| ComposerOut::Send(paste::encode(text, mode));
+    let key = ComposerOut::Send(REQUEST_KEY.to_vec());
+    let ask = |line: &str, sources: &[SourceId]| ComposerOut::Ask {
+        request: 1,
+        line: line.to_owned(),
+        sources: sources.to_vec(),
+    };
+    // (what, the composer, the input, what is asked)
+    let cases: Vec<(&str, Composer, ComposerIn, Vec<ComposerOut>)> = vec![
+        (
+            "the shell: the line as a paste, then the key",
+            ready_shell("git ch"),
+            complete(true, Plain, &[]),
+            vec![paste("git ch", Plain), key.clone()],
+        ),
+        (
+            "an empty line: the key alone",
+            ready_shell(""),
+            complete(true, Plain, &[]),
+            vec![key.clone()],
+        ),
+        (
+            "the shell and a source of its own",
+            ready_shell("ls"),
+            complete(true, Bracketed, &[SLOW]),
+            vec![paste("ls", Bracketed), key.clone(), ask("ls", &[SLOW])],
+        ),
+        (
+            "a line break the shell would run: the source alone",
+            ready_shell("a\nb"),
+            complete(true, Plain, &[SLOW]),
+            vec![ask("a\nb", &[SLOW])],
+        ),
+        (
+            "a shell that has not said it answers, and no source",
+            Composer::default(),
+            complete(true, Plain, &[]),
+            vec![],
+        ),
+        (
+            "the composer not shown",
+            ready_shell("ls"),
+            complete(false, Plain, &[SLOW]),
+            vec![],
+        ),
+        (
+            "answers awaited",
+            asking("ls"),
+            complete(true, Plain, &[SLOW]),
+            vec![],
+        ),
+    ];
+    for (what, mut composer, input, want) in cases {
+        let before = composer.asked.clone();
+        assert_eq!(composer.step(input), want, "{what}");
+        if want.is_empty() {
+            assert_eq!(composer.asked, before, "{what}: nothing more awaited");
+        }
+    }
+}
+
+#[test]
+fn enter_sends_the_text_and_a_return_and_empties_the_composer() {
+    let mut composer = ready_shell("echo hi");
+    let out = composer.step(ComposerIn::Submit {
+        mode: PasteMode::Plain,
+    });
+    assert_eq!(
+        out,
+        [
+            ComposerOut::Send(paste::encode("echo hi", PasteMode::Plain)),
+            ComposerOut::Send(b"\r".to_vec()),
+            ComposerOut::Sent(Some("echo hi".to_owned())),
+        ]
+    );
+    assert_eq!(
+        composer,
+        Composer::default(),
+        "empty, and the shell asked again"
+    );
+    let out = composer.step(ComposerIn::Submit {
+        mode: PasteMode::Plain,
+    });
+    assert_eq!(
+        out,
+        [ComposerOut::Send(b"\r".to_vec()), ComposerOut::Sent(None)]
+    );
+}
+
+#[test]
+fn the_arrows_step_through_the_commands_and_typing_starts_again_from_the_text() {
+    let commands: Vec<String> = ["ls", "make"].map(str::to_owned).to_vec();
+    let mut composer = Composer::default();
+    let step = |composer: &mut Composer, step| {
+        composer.step(ComposerIn::History {
+            step,
+            commands: commands.clone(),
+        });
+        composer.text.clone()
+    };
+    composer.step(ComposerIn::Append("ec".to_owned()));
+    assert_eq!(step(&mut composer, HistoryStep::Older), "make");
+    assert_eq!(step(&mut composer, HistoryStep::Older), "ls");
+    assert_eq!(step(&mut composer, HistoryStep::Newer), "make");
+    assert_eq!(
+        step(&mut composer, HistoryStep::Newer),
+        "ec",
+        "what was typed"
+    );
+    composer.step(ComposerIn::Append("ho".to_owned()));
+    composer.step(ComposerIn::Backspace);
+    assert_eq!(composer.text, "ech");
+    assert_eq!(step(&mut composer, HistoryStep::Older), "make");
+    composer.step(ComposerIn::Edit("pwd".to_owned()));
+    assert_eq!(
+        step(&mut composer, HistoryStep::Newer),
+        "pwd",
+        "an edit starts the steps again from it"
+    );
+}
+
+#[test]
+fn a_command_starting_puts_the_words_away_and_the_shell_answers_no_tab() {
+    let mut composer = asking("git ch");
+    composer.shell_ready = true;
+    composer.step(ComposerIn::Shell(Answer::Completed(answer(
+        4,
+        &["checkout", "cherry-pick"],
+    ))));
+    assert!(
+        composer.choices.is_some(),
+        "offered from the shell's answer"
+    );
+    composer.step(ComposerIn::Pick(HistoryStep::Older));
+    assert_eq!(
+        composer.choices.as_ref().map(Choices::picked),
+        Some(1),
+        "round the top"
+    );
+    composer.step(ComposerIn::Started);
+    assert!(!composer.shell_ready && composer.asked.is_none() && composer.choices.is_none());
+    composer.step(ComposerIn::Shell(Answer::Ready));
+    assert!(composer.shell_ready);
+}
