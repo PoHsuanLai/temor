@@ -135,12 +135,9 @@ pub fn App() -> Element {
     // A window narrower than the breakpoint starts without the sidebar, and one that crosses it
     // starts over from what its width suggests. The show/hide action overrides in between.
     let shell = use_rect();
-    let mut room = use_signal(|| None::<SidebarRoom>);
+    let room = use_memo(move || shell.rect().map(|rect| SidebarRoom::of(rect.size.width)));
     use_effect(move || {
-        let Some(rect) = shell.rect() else { return };
-        let now = SidebarRoom::of(rect.size.width);
-        if *room.peek() != Some(now) {
-            room.set(Some(now));
+        if let Some(now) = room() {
             sidebar.set(now.shown());
         }
     });

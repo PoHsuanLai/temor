@@ -36,20 +36,13 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
         let desk = desk.clone();
         move || desk.hub.viewer_handle_gone(pane)
     });
-    let mut focused = use_signal({
+    let focused = use_memo({
         let desk = desk.clone();
-        move || has_keyboard(&desk, pane)
-    });
-    {
-        let desk = desk.clone();
-        use_effect(move || {
+        move || {
             let _ = (desk.ui)();
-            let has = has_keyboard(&desk, pane);
-            if *focused.peek() != has {
-                focused.set(has);
-            }
-        });
-    }
+            has_keyboard(&desk, pane)
+        }
+    });
     let on_key = {
         let desk = desk.clone();
         move |raw: RawKey| {

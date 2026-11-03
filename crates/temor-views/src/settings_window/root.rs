@@ -15,6 +15,7 @@ use temor_panes::pane::keys::SettingsPane;
 use super::edit::current;
 use super::style::SETTINGS_CSS;
 use super::view::SettingsView;
+use crate::watched::use_watch;
 use temor_hub::settings_link::SettingsAsked;
 use temor_ui_base::launch::Launch;
 use temor_ui_base::settings::TerminalDoc;
@@ -48,20 +49,10 @@ fn SettingsShell(follow: Follow) -> Element {
     let env = use_window_look(&launch.appearance, spawner.clone());
 
     let asked = try_consume_context::<SettingsAsked>();
-    let first = asked.as_ref().map(SettingsAsked::at).unwrap_or_default();
-    let mut page = use_signal(move || first);
-    use_future(move || {
-        let asked = asked.clone();
-        async move {
-            let Some(asked) = asked else { return };
-            let mut heard = asked.heard();
-            heard.mark_unchanged();
-            while heard.changed().await.is_ok() {
-                let at: SettingsPane = *heard.borrow_and_update();
-                page.set(at);
-            }
-        }
-    });
+    let page = use_watch(
+        || asked.as_ref().map(SettingsAsked::heard),
+        SettingsPane::default,
+    );
 
     let mut doc = use_signal({
         let ambient = launch.ambient.clone();

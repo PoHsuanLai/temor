@@ -16,6 +16,7 @@ use temor_client::model::vocab::text::{KeyPath, ProjectRoot, RelPath};
 use super::space_fields::{AddRoute, RouteRow, SpaceText};
 use super::space_profile::{AddCredential, AddVariable, CredentialRow, NO_THREAD, VariableRow};
 use super::space_secrets;
+use crate::watched::use_watch;
 use temor_hub::settings_link::board::{SpaceBoard, SpaceEdit, SpaceRow};
 use temor_hub::settings_link::space_edit::{
     SpaceChange, dotenv_warning, env_renamed, env_valued, env_with, env_without, optional,
@@ -32,26 +33,7 @@ type Sent = (SpaceId, SpaceChange);
 #[allow(non_snake_case)]
 pub fn SpacesPage() -> Element {
     let board = use_hook(try_consume_context::<SpaceBoard>);
-    let mut rows = use_signal({
-        let board = board.clone();
-        move || board.as_ref().map(SpaceBoard::rows).unwrap_or_default()
-    });
-    use_future({
-        let board = board.clone();
-        move || {
-            let board = board.clone();
-            async move {
-                let Some(board) = board else { return };
-                let mut heard = board.heard_rows();
-                loop {
-                    rows.set(heard.borrow_and_update().clone());
-                    if heard.changed().await.is_err() {
-                        break;
-                    }
-                }
-            }
-        }
-    });
+    let rows = use_watch(|| board.as_ref().map(SpaceBoard::heard_rows), Vec::new);
     let Some(board) = board else {
         return rsx! {
             Form {

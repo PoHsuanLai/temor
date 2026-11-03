@@ -60,6 +60,7 @@ pub mod transfer_ask;
 pub mod tree_view;
 pub mod viewer_open;
 pub mod viewer_pane;
+pub mod watched;
 pub mod when_words;
 pub mod window;
 pub mod window_help;
