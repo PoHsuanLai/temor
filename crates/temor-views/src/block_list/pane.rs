@@ -3,7 +3,7 @@
 //! block's live rows, and the shell's prompt, are shown from the pane's own picture as the
 //! terminal draws them. The list follows its bottom until the person scrolls back.
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -18,7 +18,6 @@ use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds::style::tokens::control_size::ControlSize;
 use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
-use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
 use temor_client::model::block::{Outcome, format_elapsed};
 use temor_client::model::session::list::{Item, KeptCard, ListBlock};
@@ -27,6 +26,7 @@ use temor_panes::render::Palette;
 use temor_panes::vt::Rgb;
 
 use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_height};
+use super::follow::{Drawn, Follow, FollowIn, FollowOut};
 use crate::tool_button::ToolButton;
 use temor_hub::Desk;
 use temor_hub::plugins::lens::LensPicture;
@@ -86,8 +86,6 @@ const MOUNT_MARGIN: f32 = 600.0;
 /// How far the offset moves before the list is laid out again, in logical pixels: well inside
 /// the mount margin.
 const BAND: f32 = 200.0;
-/// The room a revealed find match keeps above it, for the find bar over the list's top.
-const FIND_ROOM: f32 = 64.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
 
@@ -102,35 +100,13 @@ pub struct CardActions {
     pub put: EventHandler<u32>,
 }
 
-/// Keeps the list to its bottom while it follows it, and in range when it shrinks. `total` is
-/// the list's height; `seen` the offset and bottom last seen. When the offset moves the list
-/// follows only from its bottom: a wheel back stops it, a wheel down to the end, or the list's
-/// own move there, starts it again.
-fn keep_bottom(
-    scroll: Scroll,
-    total: f32,
-    follow: &Cell<bool>,
-    seen: &Cell<Option<(f32, f32)>>,
-    scroller: ScrollerRef,
-) {
-    if scroll.viewport.0 <= 0.0 {
-        return;
-    }
-    let offset = scroll.offset.0;
-    // The scroller's own bottom, from the content it measured: it can be reached.
-    let reach = scroll.max_offset().0;
-    // The list's own bottom: the scroller's measure lags a layout behind it.
-    let bottom = (total - scroll.viewport.0).max(0.0);
-    let (was, was_bottom) = seen.get().unwrap_or((offset, bottom));
-    seen.set(Some((offset, bottom)));
-    if (offset - was).abs() > 0.5 {
-        follow.set(offset >= reach.min(bottom) - 1.0);
-    }
-    // A list that shrank (a fold) under an offset past its new end goes to that end.
-    if bottom < was_bottom - 0.5 && offset > bottom + 0.5 {
-        scroller.scroll_to(Px(bottom));
-    } else if follow.get() && offset < reach - 0.5 {
-        scroller.scroll_to(Px(reach));
+/// Carries out where [`Follow`] says to scroll.
+fn scroll_by(scroller: ScrollerRef, outs: Vec<FollowOut>) {
+    for out in outs {
+        match out {
+            FollowOut::To(offset) => scroller.scroll_to(Px(offset)),
+            FollowOut::Reveal(span) => scroller.reveal(span),
+        }
     }
 }
 
@@ -211,13 +187,9 @@ pub fn BlockPane(
     let scroller = use_scroller();
     // The block under the pointer: its "…" shows.
     let mut hovered = use_signal(|| None::<BlockId>);
-    // Whether the list keeps to its bottom as it grows: until the person scrolls back. The
-    // window's scroll engine takes the wheel, so the list knows only that its offset moved.
-    let follow = use_hook(|| Rc::new(Cell::new(true)));
-    // The offset, and the list's own bottom, as last seen.
-    let seen = use_hook(|| Rc::new(Cell::new(None::<(f32, f32)>)));
-    // The list's height as last laid out, for the scroll's effect.
-    let total_now = use_hook(|| Rc::new(Cell::new(0.0_f32)));
+    // Where the list scrolls by itself (the window's scroll engine takes the wheel, so the list
+    // knows only that its offset moved).
+    let follow = use_hook(|| Rc::new(RefCell::new(Follow::default())));
     let band = use_memo(move || {
         let scroll = scroller.scroll()();
         (
@@ -226,15 +198,11 @@ pub fn BlockPane(
         )
     });
     {
-        let (follow, seen, total_now, slot) = (
-            Rc::clone(&follow),
-            Rc::clone(&seen),
-            Rc::clone(&total_now),
-            Rc::clone(&slot),
-        );
+        let (follow, slot) = (Rc::clone(&follow), Rc::clone(&slot));
         use_effect(move || {
             let scroll = scroller.scroll()();
-            keep_bottom(scroll, total_now.get(), &follow, &seen, scroller);
+            let outs = follow.borrow_mut().step(FollowIn::Moved(scroll));
+            scroll_by(scroller, outs);
             if let Some(session) = slot.borrow_mut().session.as_mut() {
                 session.set_list_offset(scroll.offset.0);
             }
@@ -286,40 +254,21 @@ pub fn BlockPane(
     // the view by more than a band.
     let _ = band();
     let scroll = *scroller.scroll().peek();
-    // A new command (the list's last block changed) takes the list back to its bottom.
     let newest = items.iter().rev().find_map(|item| match item {
         Item::Done(block) | Item::Running { block, .. } => Some(block.id),
         _ => None,
     });
-    let seen_newest = use_hook(|| Rc::new(Cell::new(None::<BlockId>)));
-    if seen_newest.get() != newest {
-        seen_newest.set(newest);
-        follow.set(true);
-    }
-    // A block picked from the keyboard is scrolled to, once: the list stops following its bottom.
-    let revealed = use_hook(|| Rc::new(Cell::new(None::<BlockId>)));
-    if revealed.get() != reveal {
-        revealed.set(reveal);
-        if let Some((top, bottom)) = reveal.and_then(|id| card_span(&placed, id)) {
-            follow.set(false);
-            let length = (bottom - top).min(scroll.viewport.0.max(1.0));
-            scroller.reveal(ScrollSpan { start: top, length });
-        }
-    }
-    // The find bar's match, when it moves, is scrolled to, clear of the bar over the list's top.
-    let seen_found = use_hook(|| Rc::new(Cell::new(None::<u32>)));
-    if seen_found.get() != found {
-        seen_found.set(found);
-        if let Some(top) = found.and_then(|r| row_top(&placed, r, row)) {
-            follow.set(false);
-            scroller.reveal(ScrollSpan {
-                start: top - FIND_ROOM,
-                length: FIND_ROOM + row * 2.0,
-            });
-        }
-    }
-    keep_bottom(scroll, total, &follow, &seen, scroller);
-    total_now.set(total);
+    let outs = follow.borrow_mut().step(FollowIn::Drawn(Drawn {
+        scroll,
+        total,
+        newest,
+        reveal,
+        reveal_span: reveal.and_then(|id| card_span(&placed, id)),
+        found,
+        found_top: found.and_then(|r| row_top(&placed, r, row)),
+        row,
+    }));
+    scroll_by(scroller, outs);
     let viewport = match scroll.viewport.0 > 0.0 {
         true => scroll.viewport.0,
         false => total,
