@@ -15,6 +15,7 @@ pub mod convert;
 pub mod dnd;
 pub mod favourites;
 pub mod find_bar;
+pub mod focus_edge;
 pub mod folder_page;
 pub mod folder_row;
 pub mod handlers;

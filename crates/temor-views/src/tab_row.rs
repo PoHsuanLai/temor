@@ -27,6 +27,7 @@ use temor_client::model::vocab::text::Cwd;
 use temor_client::model::workspace::WorkspaceIn;
 
 use super::dnd::{Dnd, Target};
+use super::focus_edge::Edge;
 use super::row_menu::RowMenu;
 use super::row_tip::RowTip;
 use super::split_row::SplitSegments;
@@ -204,15 +205,14 @@ fn hover_words(folder: Option<&str>, about: Option<&str>, title: &str) -> String
 /// the tab in front is never left below the sidebar's edge (a new tab's, or one ⌘9 chose).
 fn use_reveal_when(front: bool) -> Signal<Option<Rc<MountedData>>> {
     let element = use_signal(|| None::<Rc<MountedData>>);
-    let was = use_hook(|| Rc::new(Cell::new(false)));
-    match (front, element()) {
-        (true, Some(row)) if !was.get() => {
-            was.set(true);
+    let edge = use_hook(|| Rc::new(Cell::new(Edge::default())));
+    use_effect(use_reactive!(|front| {
+        let (next, act) = edge.get().step(front && element().is_some(), 0);
+        edge.set(next);
+        if let (true, Some(row)) = (act, element.peek().clone()) {
             spawn(reveal_in_sidebar(row));
         }
-        (false, _) => was.set(false),
-        _ => {}
-    }
+    }));
     element
 }
 

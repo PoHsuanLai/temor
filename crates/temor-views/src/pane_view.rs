@@ -34,6 +34,7 @@ use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::console_bar::ConsoleTools;
 use super::convert::scale_of;
 use super::find_bar::FindBar;
+use super::focus_edge::use_focus_edge;
 use super::handlers::{
     composer_close, composer_complete, composer_history, composer_input, composer_pick,
     composer_submit, composer_take, find_close, find_query, find_step, list_fold, list_put,
@@ -156,23 +157,20 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     // and again when a menu's pick gives the keyboard back.
     {
         let (slot, desk) = (Rc::clone(&slot), desk.clone());
-        let wanted = use_hook(|| Rc::new(std::cell::Cell::new(false)));
-        let regained = use_hook(|| Rc::new(std::cell::Cell::new(0)));
-        use_effect(move || {
-            let _ = (desk.ui)();
-            let regain = (desk.regain)();
-            let s = slot.borrow();
-            let want = desk.hub.keyboard_pane() == Some(pane)
-                && !desk.hub.bar_is_open()
-                && s.session
-                    .as_ref()
-                    .is_some_and(|s| s.composer_shown() && s.finder().is_none());
-            let asked = regained.replace(regain) != regain;
-            if want && (!wanted.replace(want) || asked) {
-                composer_focus.request();
-            }
-            wanted.set(want);
-        });
+        use_focus_edge(
+            move || {
+                let _ = (desk.ui)();
+                let want = desk.hub.keyboard_pane() == Some(pane)
+                    && !desk.hub.bar_is_open()
+                    && slot
+                        .borrow()
+                        .session
+                        .as_ref()
+                        .is_some_and(|s| s.composer_shown() && s.finder().is_none());
+                (want, (desk.regain)())
+            },
+            move || composer_focus.request(),
+        );
     }
     // A chord typed in the composer's field is the terminal's, as if typed in the region.
     let composer_chord = key_handler(

@@ -5,7 +5,6 @@
 //! The pane asks the window for what it cannot do itself (close, give the keyboard back, open a
 //! file in another program); `Desk::viewer_request` answers.
 
-use std::cell::Cell;
 use std::rc::Rc;
 
 use anyview_pane::{PaneRequest, ViewerPane, use_pane_handle};
@@ -19,6 +18,7 @@ use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::WorkspaceIn;
 use temor_panes::pane::keys::Action;
 
+use super::focus_edge::use_focus_edge;
 use temor_hub::{Desk, Origin};
 use temor_pane_view::input::{Routed, stroke};
 
@@ -142,20 +142,19 @@ pub fn ViewerView(pane: PaneId, desk: Desk) -> Element {
 #[allow(non_snake_case)]
 pub fn PageKeys(pane: PaneId, desk: Desk, label: String, children: Element) -> Element {
     let mut element = use_signal(|| None::<Rc<MountedData>>);
-    let had = use_hook(|| Rc::new(Cell::new(false)));
     {
         let desk = desk.clone();
-        use_effect(move || {
-            let _ = (desk.ui)();
-            match (has_keyboard(&desk, pane), element()) {
-                (true, Some(element)) if !had.get() => {
-                    had.set(true);
+        use_focus_edge(
+            move || {
+                let _ = (desk.ui)();
+                (has_keyboard(&desk, pane) && element().is_some(), 0)
+            },
+            move || {
+                if let Some(element) = element.peek().clone() {
                     focus_soon_told(element, Select::None, EventHandler::new(|()| {}));
                 }
-                (false, _) => had.set(false),
-                _ => {}
-            }
-        });
+            },
+        );
     }
     // A plain block, not a `RawKeySurface`: that one takes every key, and the page's own fields
     // (History's search) would get no typing. Only the window's chords are taken here.

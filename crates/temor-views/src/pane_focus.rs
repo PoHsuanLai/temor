@@ -2,7 +2,7 @@
 //! keyboard pane taking the keyboard on the page, and the region's element hearing the input
 //! method. The hooks run in the order the pane's component calls this.
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use dioxus::prelude::*;
@@ -14,6 +14,7 @@ use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::workspace::WorkspaceIn;
 
+use super::focus_edge::use_focus_edge;
 use super::ime::{ImeGlue, focus_handler};
 use super::window_help::{focus_in, set_focus};
 use temor_hub::Desk;
@@ -45,9 +46,6 @@ pub fn use_pane_focus(
     apply: impl Fn(EditInput) + Clone + 'static,
     heard: EventHandler<ImeEvent>,
 ) -> FocusWiring {
-    // Whether this pane had the keyboard the last time it was drawn.
-    let had_keyboard = use_hook(|| Rc::new(Cell::new(false)));
-
     // The region has the keyboard: the workspace and the session know, and the input method is on
     // and placed.
     let gained = {
@@ -61,15 +59,36 @@ pub fn use_pane_focus(
             focus_in(ime.clone(), Rc::clone(&slot), rect);
         }
     };
+    // The pane that becomes the keyboard pane (a chord moved focus, a tile was pressed) takes the
+    // keyboard on the page too; not while the bar's field, the find bar's or the composer's has
+    // it, and back when the bar closes, the composer goes (a command runs) or a menu's pick gives
+    // it back.
+    let edge = {
+        let (desk, slot) = (desk.clone(), Rc::clone(slot));
+        let (ime, gained) = (ime.clone(), gained.clone());
+        use_focus_edge(
+            move || {
+                let _ = (desk.ui)();
+                let has = desk.hub.keyboard_pane() == Some(pane)
+                    && !desk.hub.bar_is_open()
+                    && !find_is_open(&slot)
+                    && !composing(&slot);
+                (has, (desk.regain)())
+            },
+            move || {
+                let gained = gained.clone();
+                ime.take_focus(EventHandler::new(move |()| gained()));
+            },
+        )
+    };
     let on_focus = {
         let mut inner = focus_handler(Rc::clone(slot), ime.clone(), apply, gained.clone());
-        let had = Rc::clone(&had_keyboard);
         let desk = desk.clone();
         move |focus: EditFocus| {
             // The keyboard left the page region (the sidebar took it, say): the pane takes it
             // back the next time the window is told it is the keyboard pane.
             if matches!(focus, EditFocus::Out) {
-                had.set(false);
+                edge.set(edge.get().dropped());
                 desk.pane_blurred(pane);
             }
             inner(focus);
@@ -79,36 +98,6 @@ pub fn use_pane_focus(
         let gained = gained.clone();
         move |()| gained()
     });
-
-    // The pane that becomes the keyboard pane (a chord moved focus, a tile was pressed) takes the
-    // keyboard on the page too; not while the bar's field or the composer's has it, and back when
-    // the bar closes, the composer goes (a command runs) or a menu's pick gives it back.
-    {
-        let (ime, gained, desk, had, slot) = (
-            ime.clone(),
-            gained.clone(),
-            desk.clone(),
-            Rc::clone(&had_keyboard),
-            Rc::clone(slot),
-        );
-        let regained = use_hook(|| Rc::new(Cell::new(0)));
-        use_effect(move || {
-            let _ = (desk.ui)();
-            let regain = (desk.regain)();
-            let asked = regained.replace(regain) != regain;
-            // Not while the bar's or the find bar's field has it (Escape in the find hands it back).
-            let finding = find_is_open(&slot);
-            let has = desk.hub.keyboard_pane() == Some(pane)
-                && !desk.hub.bar_is_open()
-                && !finding
-                && !composing(&slot);
-            let before = had.replace(has);
-            if has && (!before || asked) {
-                let gained = gained.clone();
-                ime.take_focus(EventHandler::new(move |()| gained()));
-            }
-        });
-    }
 
     // The region's element: rect and input method hear it. The first layout gives the pane that
     // has the keyboard the keyboard, as a person's click would.
