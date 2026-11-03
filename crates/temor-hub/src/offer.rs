@@ -223,10 +223,6 @@ impl HubRef {
 impl Desk {
     /// The person's answer to the offer in `pane`.
     pub fn offer_answer(&self, pane: PaneId, reply: Reply) {
-        let notes = self.hub.0.borrow_mut().offer_reply(pane, reply);
-        for note in notes {
-            self.say(note);
-        }
-        self.bump();
+        self.tell(self.hub.edit(|hub| hub.offer_reply(pane, reply)));
     }
 }

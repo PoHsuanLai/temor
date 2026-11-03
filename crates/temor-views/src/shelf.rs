@@ -237,7 +237,6 @@ fn UploadRow(upload: Upload, desk: Desk) -> Element {
             REMOVE_FROM_LIST,
             EventHandler::new(move |_: Press| {
                 desk.hub.clear_upload(id);
-                desk.bump();
             }),
         )
     });

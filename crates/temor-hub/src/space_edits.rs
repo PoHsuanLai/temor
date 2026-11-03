@@ -16,7 +16,6 @@ pub fn spawn_space_edits(desk: Desk, board: SpaceBoard) {
                 desk.spaces
                     .apply(edit.space, |space| edit.change.apply_to(&mut space.payload));
             }
-            desk.bump();
             if heard.changed().await.is_err() {
                 break;
             }

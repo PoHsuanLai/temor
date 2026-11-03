@@ -360,7 +360,7 @@ impl HubRef {
     /// Files were dropped on a pane; what the person should be told comes back. On a pane that
     /// runs on another computer they are sent there; anywhere else their paths are typed.
     pub fn drop_files(&self, pane: PaneId, paths: Vec<PathBuf>) -> Vec<String> {
-        self.0.borrow_mut().drop_on(pane, &paths)
+        self.edit(|hub| hub.drop_on(pane, &paths))
     }
 
     /// Where Use in pane would send a file now.
@@ -380,6 +380,6 @@ impl HubRef {
 
     /// The person took an upload off the list.
     pub fn clear_upload(&self, id: temor_client::model::shelf::UploadId) {
-        self.0.borrow_mut().clear_upload(id);
+        self.edit(|hub| hub.clear_upload(id));
     }
 }

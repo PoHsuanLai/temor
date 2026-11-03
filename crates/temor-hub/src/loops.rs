@@ -30,12 +30,13 @@ impl Redraw for bool {
     }
 }
 
-/// Runs `heard` on the hub and shows what it said; words for the person draw the window again
-/// too.
+/// Runs `heard` on the hub and shows what it said; the window is drawn again only when `heard`
+/// says the hub changed (a tick mostly changes nothing).
 fn settle<R: Redraw>(desk: &Desk, heard: impl FnOnce(&mut Hub) -> R) {
     let (redraw, notes) = desk.hub.0.borrow_mut().said(heard);
-    if redraw.redraw() || !notes.is_empty() {
-        desk.tell(notes);
+    desk.tell(notes);
+    if redraw.redraw() {
+        desk.hub.changed();
     }
 }
 

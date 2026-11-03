@@ -204,10 +204,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
     let dropper = use_file_drop({
         let desk = desk.clone();
         move |files: FileDrop| {
-            for text in desk.hub.drop_files(pane, files.paths) {
-                desk.say(text);
-            }
-            desk.bump();
+            desk.tell(desk.hub.drop_files(pane, files.paths));
         }
     });
 

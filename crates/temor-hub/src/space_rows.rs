@@ -69,7 +69,6 @@ impl Desk {
         if space != self.spaces.current() && self.spaces.switch(space).is_none() {
             self.say(FINISH_FIRST.to_owned());
         }
-        self.bump();
     }
 
     /// Switches to the Space with number `number` (1 to 9), as the Space chords count them. A
@@ -80,7 +79,6 @@ impl Desk {
         };
         if self.spaces.editing().is_some() {
             self.say(FINISH_FIRST.to_owned());
-            self.bump();
             return;
         }
         let _ = self.spaces.switch_index(index);

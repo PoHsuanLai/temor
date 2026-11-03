@@ -190,9 +190,8 @@ pub fn spawn_event_loop(desk: Desk) {
                 quick,
                 transfers,
             } = delivery;
-            let heard = !transfers.is_empty();
-            for text in desk.hub.said(|hub| hub.transfers(transfers)) {
-                desk.say(text);
+            if !transfers.is_empty() {
+                desk.tell(desk.hub.said(|hub| hub.transfers(transfers)));
             }
             for (slot, generation) in holds {
                 release_hold_later(slot, generation);
@@ -206,13 +205,8 @@ pub fn spawn_event_loop(desk: Desk) {
             }
             // A list of blocks grows with the output: it is drawn again for every paint.
             let listed = !paint.is_empty();
-            let redraw = moved
-                || listed
-                || heard
-                || !chrome.is_empty()
-                || !bell.is_empty()
-                || !asks.is_empty()
-                || !quick.is_empty();
+            // What asks and quick input change, the hub hears; what the panes said, it is told.
+            let redraw = moved || listed || !chrome.is_empty() || !bell.is_empty();
             for ask in asks {
                 for text in desk.hub.act(ask) {
                     desk.say(text);
@@ -224,14 +218,14 @@ pub fn spawn_event_loop(desk: Desk) {
                 }
             }
             if redraw {
-                desk.bump();
+                desk.hub.changed();
             }
             if !bell.is_empty() {
                 // The bell's mark goes away on its own: a timer redraws once it has passed.
                 let desk = desk.clone();
                 spawn(async move {
                     sleep(BELL_MARK).await;
-                    desk.bump();
+                    desk.hub.changed();
                 });
             }
         }

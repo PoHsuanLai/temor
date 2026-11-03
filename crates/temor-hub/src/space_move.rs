@@ -74,10 +74,7 @@ impl Desk {
     /// Moves the tab in front to `space`.
     pub fn move_front_tab_to(&self, space: SpaceId) {
         if let Some((tab, _, _)) = self.hub.front() {
-            for text in self.hub.move_tab_to_space(tab, space) {
-                self.say(text);
-            }
+            self.tell(self.hub.move_tab_to_space(tab, space));
         }
-        self.bump();
     }
 }

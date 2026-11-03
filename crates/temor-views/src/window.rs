@@ -4,7 +4,6 @@
 //! `pane_view`, the tab's tree is `tree_view`, the sidebar is `tab_sidebar`.
 
 use super::favourites::folder_url;
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
@@ -75,18 +74,28 @@ pub fn App() -> Element {
                 hub.set_run_ends(desktop.run_ends.clone());
             }
             hub.start();
-            HubRef(Rc::new(RefCell::new(hub)))
+            HubRef::new(hub)
         }
     });
     crate::settings_window::use_settings_opened();
     let board = use_hook(try_consume_context::<temor_hub::settings_link::board::SpaceBoard>);
     let published = board.clone();
     let ui = use_signal(|| 0u32);
+    // Each change to the hub draws the window again.
+    use_hook({
+        let hub = hub.clone();
+        move || {
+            hub.on_change(move || {
+                let mut ui = ui;
+                ui += 1;
+            })
+        }
+    });
     let notice = use_notices({
         let hub = hub.clone();
         move || hub.0.borrow_mut().take_notices()
     });
-    let spaces = use_window_spaces(&hub, ui, notice);
+    let spaces = use_window_spaces(&hub, notice);
     // The Space on screen decides the look: the frame, the sidebar's ink and the terminal's colours.
     let look = spaces.look();
     let picked_space = use_hook(PendingSwitch::default);

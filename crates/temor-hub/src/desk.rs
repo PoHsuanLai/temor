@@ -20,7 +20,8 @@ pub const NEW_FOLDER: &str = "New Folder";
 #[derive(Clone, PartialEq)]
 pub struct Desk {
     pub hub: HubRef,
-    /// Bumped to draw the window again; views read it to follow the hub.
+    /// Bumped to draw the window again, as the hub changes (it is told of each change) and as a
+    /// pane's own view state does; views read it to follow the hub.
     pub ui: Signal<u32>,
     /// The message the person sees above the panes.
     pub notice: temor_ui_base::notices::Notices,
@@ -99,15 +100,14 @@ impl Desk {
         naming.set(Some(folder));
     }
 
-    /// Shows `notes` to the person, and draws the window again.
+    /// Shows `notes` to the person.
     pub fn tell(&self, notes: impl IntoIterator<Item = String>) {
         for text in notes {
             self.say(text);
         }
-        self.bump();
     }
 
-    /// Runs a workspace request, shows what it has to say, and draws the window again.
+    /// Runs a workspace request and shows what it has to say; the hub draws the window again.
     pub fn act(&self, input: WorkspaceIn) {
         self.tell(self.hub.act(input));
     }

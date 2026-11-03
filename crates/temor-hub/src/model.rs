@@ -209,14 +209,47 @@ impl Hub {
     }
 }
 
-/// A shared hub, as the views hold it. Two are equal when they are the same hub.
+/// A shared hub, as the views hold it, and who hears that it changed (the window, which draws
+/// again). Two are equal when they are the same hub.
 #[derive(Clone)]
-pub struct HubRef(pub Rc<RefCell<Hub>>);
+pub struct HubRef(pub Rc<RefCell<Hub>>, Changed);
+
+/// Who hears that the hub changed; no one until the window says.
+#[derive(Clone, Default)]
+struct Changed(Rc<RefCell<Option<Listener>>>);
+
+type Listener = Rc<dyn Fn()>;
 
 impl HubRef {
-    /// [`Hub::said`] of `change`: what it left to tell the person.
+    pub fn new(hub: Hub) -> Self {
+        Self(Rc::new(RefCell::new(hub)), Changed::default())
+    }
+
+    /// `heard` hears each change to the hub from now on.
+    pub fn on_change(&self, heard: impl Fn() + 'static) {
+        *self.1.0.borrow_mut() = Some(Rc::new(heard));
+    }
+
+    /// The hub changed: whoever hears it is told.
+    pub fn changed(&self) {
+        let heard = self.1.0.borrow().clone();
+        if let Some(heard) = heard {
+            heard();
+        }
+    }
+
+    /// [`Hub::said`] of `change`: what it left to tell the person. The change is heard.
     pub fn said(&self, change: impl FnOnce(&mut Hub)) -> Vec<String> {
-        self.0.borrow_mut().said(change).1
+        let said = self.0.borrow_mut().said(change).1;
+        self.changed();
+        said
+    }
+
+    /// Runs `change` on the hub, and the change is heard.
+    pub fn edit<R>(&self, change: impl FnOnce(&mut Hub) -> R) -> R {
+        let answer = change(&mut self.0.borrow_mut());
+        self.changed();
+        answer
     }
 }
 

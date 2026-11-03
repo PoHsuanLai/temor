@@ -633,3 +633,22 @@ fn a_request_that_moves_the_keyboard_moves_the_probe_and_the_radar_with_it() {
         "the radar let go of the pane"
     );
 }
+
+#[test]
+fn a_change_to_the_shared_hub_is_heard_and_a_read_is_not() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    let hub = super::model::HubRef::new(hub_after(vec![WorkspaceIn::NewTab { cwd: None }]));
+    let heard = Rc::new(Cell::new(0));
+    hub.on_change({
+        let heard = Rc::clone(&heard);
+        move || heard.set(heard.get() + 1)
+    });
+    let _ = (hub.keyboard_pane(), hub.front());
+    assert_eq!(heard.get(), 0, "reads are not changes");
+    hub.act(WorkspaceIn::NewTab { cwd: None });
+    assert_eq!(heard.get(), 1, "a request through said");
+    hub.edit(|_| ());
+    assert_eq!(heard.get(), 2, "an edit");
+}

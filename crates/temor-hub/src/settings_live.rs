@@ -63,7 +63,7 @@ pub fn spawn_settings_loop(desk: Desk, spawner: Arc<dyn Spawner>) {
     spawn(async move {
         let mut watch = store.watch::<TerminalDoc>(&*spawner);
         while let Some(loaded) = watch.changed().await {
-            let mut said = desk.hub.0.borrow_mut().apply_settings(&loaded.value);
+            let mut said = desk.hub.edit(|hub| hub.apply_settings(&loaded.value));
             said.extend(
                 loaded
                     .diagnostics(TerminalDoc::FILE)
@@ -73,7 +73,6 @@ pub fn spawn_settings_loop(desk: Desk, spawner: Arc<dyn Spawner>) {
             if let Some(first) = said.into_iter().next() {
                 desk.say(first);
             }
-            desk.bump();
         }
     });
 }

@@ -51,8 +51,5 @@ pub fn TransferAsk(desk: Desk) -> Element {
 }
 
 fn answer(desk: &Desk, consent: Consent) {
-    for text in desk.hub.answer_ask(consent) {
-        desk.say(text);
-    }
-    desk.bump();
+    desk.tell(desk.hub.answer_ask(consent));
 }
