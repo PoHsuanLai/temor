@@ -292,6 +292,16 @@ _temor_prompt() {
     # are put back before every prompt.
     # Every expansion has a default, so this stays quiet under `set -u`.
     [[ ${PS1-} == *'\e]133;B'* ]] || PS1="${PS1-}"'\[\e]133;B\e\\\]'
+    # readline draws PS1's last line again (after a resize, Ctrl+L) without the A printed above,
+    # so each line starts with a mark of its own, as Ghostty's integration does: the text drawn
+    # again stays prompt, not the input after B. The first line's is the prompt's start (on A's
+    # row it changes nothing); a later line's is kind s, a further line of the same prompt.
+    if [[ ${PS1-} != *'133;P;k=i'* ]]; then
+        local further='\[\e]133;P;k=s\e\\\]' nl='\n' lf=$'\n'
+        PS1='\[\e]133;P;k=i\e\\\]'${PS1-}
+        PS1=${PS1//"$nl"/"$nl$further"}
+        PS1=${PS1//"$lf"/"$lf$further"}
+    fi
     if [[ -n ${_temor_debug_trap-} ]]; then
         _temor_ready=1
     else

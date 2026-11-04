@@ -533,7 +533,8 @@ fn a_shell_that_ends_before_its_first_prompt_keeps_its_tab_and_the_banner() {
 }
 
 /// A screen kept at quit comes back with its commands as cards, a failed one still saying how it
-/// ended: the marks are found again from the screen and the kept commands.
+/// ended: the marks are found again from the screen and the kept commands. Each card is named by
+/// its command alone, though bash drew the first prompt again when the pane took its size.
 #[test]
 fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
     if !super::support::tools_present() {
@@ -587,4 +588,17 @@ fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
                 .join("\n---\n")
         );
     }
+    let html = h.html();
+    let titles: Vec<&str> = html
+        .split("temor-blk-title\">")
+        .skip(1)
+        .filter_map(|title| title.split('<').next())
+        .collect();
+    for command in ["echo kept-one", "echo kept-two; (exit 4)"] {
+        assert!(titles.contains(&command), "{command}: {titles:?}");
+    }
+    assert!(
+        titles.iter().all(|title| !title.starts_with('$')),
+        "no prompt in a command: {titles:?}"
+    );
 }
