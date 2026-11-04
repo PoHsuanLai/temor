@@ -129,6 +129,28 @@ fn fish_marks_true_and_false() {
     marks_around_true_and_false(fish, |_| {});
 }
 
+/// fish 4.1 and newer can have their own marks turned off (`set -Ua fish_features
+/// no-mark-prompt`); temor's then draws them all, as for fish 3. Older fish know no such flag.
+#[test]
+fn fish_with_its_own_marks_turned_off_is_marked_by_temor() {
+    let test = "fish_with_its_own_marks_turned_off_is_marked_by_temor";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(fish) = program_or_skip("fish", test) else {
+        return;
+    };
+    marks_around_true_and_false(fish, |scratch| {
+        let dir = scratch.home.join(".config/fish");
+        std::fs::create_dir_all(&dir).expect("fish config");
+        std::fs::write(
+            dir.join("fish_variables"),
+            "# VERSION: 3.0\nSETUVAR fish_features:no\\x2dmark\\x2dprompt\n",
+        )
+        .expect("fish_variables");
+    });
+}
+
 /// Why: joining with "; " turned `history -a;` into `history -a;; _temor_prompt`, a syntax
 /// error at every prompt. Also runs the integration under `set -u`.
 #[test]
