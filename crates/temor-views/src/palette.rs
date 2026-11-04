@@ -8,23 +8,19 @@ use ds::prelude::use_space_look;
 use ds_settings::Environment;
 
 use temor_hub::HubRef;
+use temor_ui_base::notices::Notices;
 use temor_ui_base::theme::resolved_palette;
 
 /// The palette follower: a child of the `Ds` root that draws nothing.
 #[component]
 #[allow(non_snake_case)]
-pub fn PaletteFollow(
-    hub: HubRef,
-    env: ReadSignal<Environment>,
-    notice: Signal<Option<String>>,
-) -> Element {
+pub fn PaletteFollow(hub: HubRef, env: ReadSignal<Environment>, notice: Notices) -> Element {
     let look = use_space_look();
-    let mut notice = notice;
     use_effect(use_reactive!(|look| {
         let now = env();
         let palette = resolved_palette(now.settings.appearance.appearance(), &look, now.system);
         if let Some(text) = hub.set_palette(palette) {
-            notice.set(Some(text));
+            notice.say(text);
         }
     }));
     rsx! {}

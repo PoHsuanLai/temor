@@ -1,6 +1,6 @@
 use super::*;
-use crate::font::AtlasFormat;
 use crate::frame::CellText;
+use crate::testing::fonts;
 use temor_vt::{CellStyle, Col};
 
 const WIDTH: u32 = 8;
@@ -12,9 +12,8 @@ fn pixel(data: &[u8], x: u32, y: u32) -> [u8; 4] {
 
 #[test]
 fn a_neighbours_glyph_shows_inside_the_band_and_nothing_else_of_it() {
-    let mut alpha = Atlas::new(AtlasFormat::Alpha, 16, 16, 16);
-    let color = Atlas::new(AtlasFormat::Color, 16, 16, 16);
-    let slot = alpha.put(4, 8, &[255; 32]).expect("room");
+    let mut glyphs = GlyphCache::new(fonts(14.0), crate::metrics::Scale::default());
+    let glyph = glyphs.keep_mask(4, 8);
     let white = Premul([255; 4]);
     // The row above spans y 80..100; its glyph reaches down to y 104, and its rule and a
     // background-coloured stripe lie along its own row.
@@ -26,7 +25,10 @@ fn a_neighbours_glyph_shows_inside_the_band_and_nothing_else_of_it() {
                 y: 96,
                 w: 4,
                 h: 8,
-                paint: QuadPaint::Mask { slot, color: white },
+                paint: QuadPaint::Mask {
+                    glyph,
+                    color: white,
+                },
             },
             Quad {
                 x: 4,
@@ -44,7 +46,7 @@ fn a_neighbours_glyph_shows_inside_the_band_and_nothing_else_of_it() {
         height: 130,
         band: (100, 120),
     };
-    draw_glyphs(&mut target, &alpha, &color, &neighbour);
+    draw_glyphs(&mut target, &glyphs, &neighbour);
     // (x, y, drawn): the glyph's lower part is in the band; its upper part is in the row above,
     // which is not this call's to touch; below the glyph, a rule, and a background are not drawn.
     for (x, y, drawn) in [
@@ -113,7 +115,8 @@ fn only_the_neighbours_that_may_overhang_are_taken() {
         ),
     ];
     for (name, at, above, below, want) in cases {
-        let got = neighbour_cells(&rows, at, Sides { above, below }).map(|c| c.map(Vec::len));
+        let got = neighbour_cells(&rows, at, Sides { above, below })
+            .map(|c| c.map(|(_, cells)| cells.len()));
         assert_eq!(got, want, "{name}");
     }
 }
@@ -123,9 +126,8 @@ fn only_the_neighbours_that_may_overhang_are_taken() {
 /// font keeps every glyph inside its cell, so the overhang is a mask placed by hand.
 #[test]
 fn the_edge_rows_draw_their_glyphs_into_the_outer_padding() {
-    let mut alpha = Atlas::new(AtlasFormat::Alpha, 16, 16, 16);
-    let color = Atlas::new(AtlasFormat::Color, 16, 16, 16);
-    let slot = alpha.put(4, 8, &[255; 32]).expect("room");
+    let mut glyphs = GlyphCache::new(fonts(14.0), crate::metrics::Scale::default());
+    let glyph = glyphs.keep_mask(4, 8);
     let white = Premul([255; 4]);
     // Three rows of 20 below 6 of padding: the grid spans y 6..66 in a pane 72 high.
     let (top, ch, rows, height) = (6, 20, 3, 72);
@@ -143,7 +145,10 @@ fn the_edge_rows_draw_their_glyphs_into_the_outer_padding() {
                 y,
                 w: 4,
                 h: 8,
-                paint: QuadPaint::Mask { slot, color: white },
+                paint: QuadPaint::Mask {
+                    glyph,
+                    color: white,
+                },
             }],
         };
         let mut data = vec![0; (WIDTH * height * 4) as usize];
@@ -153,7 +158,7 @@ fn the_edge_rows_draw_their_glyphs_into_the_outer_padding() {
             height,
             band: band_of(Row(row), rows, top, ch, height as i32),
         };
-        draw_glyphs(&mut target, &alpha, &color, &glyph);
+        draw_glyphs(&mut target, &glyphs, &glyph);
         let a = pixel(&data, 1, probe)[3];
         assert_eq!(a == 255, drawn, "{name}: pixel (1, {probe}) has alpha {a}");
     }

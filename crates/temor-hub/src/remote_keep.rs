@@ -7,7 +7,7 @@ use temor_client::remote::ids::RemoteSessionId;
 use temor_client::remote::link::LinkEvent;
 
 use super::model::Hub;
-use super::remote::RemoteHub;
+use super::panes::Panes;
 use temor_panes::remote::event::Generation;
 use temor_panes::remote::link::lock;
 use temor_panes::remote::palette::wire_palette;
@@ -21,13 +21,14 @@ pub(super) fn session_to_save(
     live.or(waiting).map(|session| HostSession(session.0))
 }
 
-impl RemoteHub {
-    /// Puts each helper pane's session number in `hosts`.
-    pub(super) fn note_sessions(&self, hosts: &mut HostsFile) {
-        for saved in &mut hosts.panes {
-            let live = self.panes.get(&saved.pane).and_then(|pane| pane.session);
-            saved.session = session_to_save(live, self.saved.get(&saved.pane).copied());
-        }
+/// Puts each helper pane's session number in `hosts`.
+fn note_sessions(panes: &Panes, hosts: &mut HostsFile) {
+    for saved in &mut hosts.panes {
+        let Some(remote) = panes.get(saved.pane).map(|record| &record.remote) else {
+            continue;
+        };
+        let live = remote.live.as_ref().and_then(|pane| pane.session);
+        saved.session = session_to_save(live, remote.saved);
     }
 }
 
@@ -35,8 +36,8 @@ impl Hub {
     /// What the session file keeps about hosts: the answers, which panes are on which host, and
     /// the helper session each of those panes has.
     pub(super) fn hosts_file(&self) -> HostsFile {
-        let mut hosts = self.ssh.hosts_file();
-        self.remote.note_sessions(&mut hosts);
+        let mut hosts = self.ssh.hosts_file(&self.panes);
+        note_sessions(&self.panes, &mut hosts);
         hosts
     }
 
@@ -63,7 +64,7 @@ impl Hub {
             }
             line.ports.clear();
         }
-        for remote in self.remote.panes.values().filter(|p| p.alias == *host) {
+        for (_, remote) in self.panes.remotes().filter(|(_, p)| p.alias == *host) {
             lock(&remote.target).conn = None;
         }
     }
@@ -76,9 +77,9 @@ impl Hub {
                 continue;
             };
             let sessions: Vec<RemoteSessionId> = self
-                .remote
                 .panes
-                .values()
+                .remotes()
+                .map(|(_, pane)| pane)
                 .filter(|pane| pane.alias == *host)
                 .filter_map(|pane| pane.session)
                 .collect();
@@ -96,7 +97,7 @@ impl Hub {
                 conn.drop_link();
             }
         }
-        for remote in self.remote.panes.values() {
+        for (_, remote) in self.panes.remotes() {
             lock(&remote.target).conn = None;
         }
     }

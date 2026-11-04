@@ -13,6 +13,6 @@ pub mod replay;
 pub mod screens;
 pub mod sidecar;
 
-pub use kept::{Kept, Laying, Starting, Through};
+pub use kept::{Kept, Lay, Laying, Starting, lay_plan};
 pub use pace::{Pace, SavePace};
 pub use panes::{KeptPane, PaneFiles};

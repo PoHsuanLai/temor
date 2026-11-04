@@ -11,7 +11,7 @@ use super::ssh::{Check, Phase};
 impl Hub {
     /// What to show for `pane`, when it is a session on a host.
     pub fn host_view(&self, pane: PaneId) -> Option<HostView> {
-        let host = self.ssh.panes.get(&pane)?;
+        let host = self.panes.host(pane)?;
         let line = self.ssh.lines.get(&host.alias);
         let stage = match host.phase {
             Phase::Asking(action) => Stage::Asking(action),
@@ -43,7 +43,7 @@ impl Hub {
             .map(|(id, edit)| EditLine {
                 id: *id,
                 name: format!("{}:{}", edit.host.as_str(), edit.path.as_str()),
-                status: status_of(edit.state, edit.asking),
+                status: status_of(edit.state),
             })
             .collect();
         Some(HostView {
@@ -57,21 +57,21 @@ impl Hub {
     }
 
     fn has_session(&self, pane: PaneId) -> bool {
-        self.slots
-            .get(&pane)
+        self.panes
+            .slot(pane)
             .is_some_and(|slot| slot.borrow().session.is_some())
     }
 
     /// The title of a host pane: `host:folder`, the folder as the pane's shell last reported it.
     pub(super) fn ssh_title(&self, pane: PaneId) -> Option<String> {
-        let host = self.ssh.panes.get(&pane)?;
+        let host = self.panes.host(pane)?;
         let reported = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(|s| s.cwd()))
             .or_else(|| {
                 self.book
-                    .ws
+                    .ws()
                     .cwds
                     .get(&pane)
                     .map(|cwd| cwd.as_str().to_owned())

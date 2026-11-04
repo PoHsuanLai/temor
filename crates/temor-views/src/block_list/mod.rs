@@ -3,6 +3,7 @@
 //! screen is drawn whole instead.
 
 pub mod composer;
+mod follow;
 pub mod pane;
 
 pub use composer::{ChoicesView, ComposerActions};

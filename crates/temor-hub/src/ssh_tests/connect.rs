@@ -103,7 +103,7 @@ fn each_question_is_asked_alone_and_the_answers_decide_how_ssh_starts() {
             false => assert_eq!(tail, ["--", "fake"], "{name}: plain ssh has no command"),
         }
         // What was answered is kept for the machine, so the session file can hold it.
-        let book = rig.hub.ssh.hosts_file().book;
+        let book = rig.hub.ssh.hosts_file(&rig.hub.panes).book;
         assert_eq!(book.records().len(), 1, "{name}");
         assert_eq!(book.records()[0].aliases, ["fake"], "{name}");
         assert_eq!(book.records()[0].grants.integrate, integrate, "{name}");
@@ -332,7 +332,7 @@ fn a_restored_host_tab_connects_when_it_is_first_in_front_not_at_launch() {
     // The last session had a host tab; it starts hidden behind a plain tab.
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     let plain = rig.front();
-    let saved = temor_client::model::vocab::ids::PaneId(rig.hub.book.ws.next_pane);
+    let saved = temor_client::model::vocab::ids::PaneId(rig.hub.book.ws().next_pane.0);
     rig.hub.ssh.restored = vec![PaneHost {
         pane: saved,
         alias: "fake".to_owned(),
@@ -369,7 +369,7 @@ fn a_new_host_pane_is_remote_from_its_first_frame() {
     let dir = rig.dir.clone();
     rig.pump("the session to start", |_| dir.join("session-1").exists());
     // No prompt or folder report has come, so no read of the pane's facts has been asked for.
-    let slot = rig.hub.slots.get(&pane).expect("the pane's slot");
+    let slot = rig.hub.panes.slot(pane).expect("the pane's slot");
     let site = slot.borrow().session.as_ref().map(|s| s.site());
     assert_eq!(site, Some(PaneSite::Remote));
 }

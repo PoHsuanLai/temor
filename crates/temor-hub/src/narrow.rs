@@ -42,15 +42,15 @@ impl Hub {
     fn front_columns(&self) -> Option<Columns> {
         let pane = self
             .book
-            .ws
+            .ws()
             .front()
-            .and_then(|tab| self.book.ws.focus_of(tab))?;
+            .and_then(|tab| self.book.ws().focus_of(tab))?;
         self.columns_of(pane)
     }
 
     /// The width in columns of `pane`, once it has been laid out.
     fn columns_of(&self, pane: PaneId) -> Option<Columns> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let fit = slot.borrow().session.as_ref()?.fit()?;
         Some(Columns(u32::from(fit.grid.cols.0)))
     }

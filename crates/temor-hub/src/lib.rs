@@ -37,6 +37,7 @@ mod offer;
 mod offer_reply;
 #[cfg(test)]
 mod open_tab_tests;
+mod panes;
 mod peek;
 pub mod peek_step;
 pub mod plugins;
@@ -77,6 +78,7 @@ mod ssh_edit;
 mod ssh_events;
 mod ssh_forward;
 mod ssh_master;
+mod ssh_pane;
 mod ssh_permits;
 #[cfg(test)]
 mod ssh_tests;
@@ -103,7 +105,7 @@ pub use agents::{Agents, Alert, WaitingCount};
 pub use bar::BarData;
 pub use bar_action::select_tab;
 pub use blink_tick::spawn_blink_loop;
-pub use desk::{Desk, HostOf, NEW_FOLDER};
+pub use desk::{Desk, HostOf, NEW_FOLDER, use_hub};
 pub use desktop::spawn_desktop_loop;
 pub use dispatch::Origin;
 pub use events::spawn_event_loop;

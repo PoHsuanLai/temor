@@ -68,7 +68,7 @@ impl Hub {
             .collect();
         let recent = recent_commands(self.block_commands());
         let now = (seams.now)();
-        let directories = directory_uses(&self.bar.visits, self.book.ws.cwds.values(), now);
+        let directories = directory_uses(&self.bar.visits, self.book.ws().cwds.values(), now);
         // Pin Tab or Unpin Tab, whichever the tab in front can take.
         let pinned = self.front_pinned();
         let actions: Vec<Action> = BAR_ACTIONS
@@ -83,8 +83,8 @@ impl Hub {
         let sources = Sources {
             actions: &actions,
             spaces: &spaces,
-            tabs: &self.book.ws.tabs.place.tabs,
-            folders: &self.book.ws.tabs.place.folders,
+            tabs: &self.book.ws().tabs.place.tabs,
+            folders: &self.book.ws().tabs.place.folders,
             hosts: &hosts,
             layouts: &[],
             recent: &recent,
@@ -92,7 +92,7 @@ impl Hub {
             now,
         };
         let mut all = candidates(&sources);
-        all.extend(closed_candidate(&self.book.ws.closed));
+        all.extend(closed_candidate(&self.book.ws().closed));
         all.extend(self.local_tab_candidate());
         all
     }
@@ -100,7 +100,7 @@ impl Hub {
     /// The commands every pane's blocks ran, newest first within a pane.
     fn block_commands(&self) -> Vec<CommandText> {
         let mut out = Vec::new();
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let slot = slot.borrow();
             let Some(session) = slot.session.as_ref() else {
                 continue;
@@ -114,12 +114,17 @@ impl Hub {
         out
     }
 
-    /// Runs `step` on the bar with the context of now.
-    pub(super) fn bar_apply(&mut self, step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel) {
+    /// Runs `step`, which ranks `query`, on the bar with the context of now.
+    pub(super) fn bar_apply(
+        &mut self,
+        query: &str,
+        step: impl FnOnce(BarModel, BarContext<'_>) -> BarModel,
+    ) {
         let candidates = self.bar_candidates();
+        let paths = std::rc::Rc::clone(&self.bar.seams.paths);
         let cx = BarContext {
             candidates: &candidates,
-            resolver: &*self.bar.seams.paths,
+            runnable: paths.runnable(query),
             ai: self.bar.seams.model.available(),
         };
         let model = std::mem::take(&mut self.bar.model);
@@ -129,19 +134,19 @@ impl Hub {
     /// ⌘T.
     pub fn bar_toggle(&mut self) {
         self.plugins_stop();
-        self.bar_apply(|model, cx| model.toggled(cx));
+        self.bar_apply("", |model, cx| model.toggled(cx));
     }
 
     /// Escape, or a click outside the bar.
     pub fn bar_close(&mut self) {
         self.plugins_stop();
-        self.bar_apply(|model, cx| model.closed(cx));
+        self.bar_apply("", |model, cx| model.closed(cx));
     }
 
     /// The field changed.
     pub fn bar_typed(&mut self, text: String) {
         let asked = text.clone();
-        self.bar_apply(|model, cx| model.typed(text, cx));
+        self.bar_apply(&asked, |model, cx| model.typed(text, cx));
         self.plugins_ask(&asked);
     }
 
@@ -160,9 +165,10 @@ impl Hub {
     /// The row `key` was run (Enter, or a click): the bar closes and the row is carried out.
     pub fn bar_pick(&mut self, key: &RowKey) {
         let candidates = self.bar_candidates();
+        let query = self.bar.model.query().to_owned();
         let cx = BarContext {
             candidates: &candidates,
-            resolver: &*self.bar.seams.paths,
+            runnable: self.bar.seams.paths.runnable(&query),
             ai: self.bar.seams.model.available(),
         };
         let model = std::mem::take(&mut self.bar.model);
@@ -209,15 +215,7 @@ impl HubRef {
 impl Desk {
     /// Runs `change` on the hub, shows the notices it left, and draws the window again.
     pub(super) fn settle(&self, change: impl FnOnce(&mut Hub)) {
-        let notes = {
-            let mut hub = self.hub.0.borrow_mut();
-            change(&mut hub);
-            std::mem::take(&mut hub.notices)
-        };
-        for text in notes {
-            self.say(text);
-        }
-        self.bump();
+        self.tell(self.hub.said(change));
     }
 
     /// ⌘T.

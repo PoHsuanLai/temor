@@ -15,7 +15,7 @@ impl Hub {
     /// host (anywhere else a plain new tab is already this computer's).
     pub(super) fn local_tab_candidate(&self) -> Option<Candidate> {
         let pane = self.keyboard_pane()?;
-        if !self.ssh.panes.contains_key(&pane) {
+        if !self.panes.host(pane).is_some() {
             return None;
         }
         Some(Candidate {

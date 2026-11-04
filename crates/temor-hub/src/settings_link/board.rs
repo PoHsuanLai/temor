@@ -4,7 +4,7 @@
 //! applying them through the handle the way a Space menu's edits go. A root context both windows
 //! are given.
 
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::Arc;
 
 use ds::components::app::spaces::SpaceId;
 use temor_client::model::space::Project;
@@ -28,12 +28,10 @@ pub struct SpaceEdit {
 }
 
 struct Inner {
-    rows: Mutex<Vec<SpaceRow>>,
-    edits: Mutex<Vec<SpaceEdit>>,
-    /// Counts publishes that changed something; the Settings window listens.
-    shown: watch::Sender<u64>,
-    /// Counts edits sent; the main window listens.
-    sent: watch::Sender<u64>,
+    /// The Spaces as last published; the Settings window listens.
+    rows: watch::Sender<Vec<SpaceRow>>,
+    /// The edits sent and not yet taken; the main window listens.
+    edits: watch::Sender<Vec<SpaceEdit>>,
 }
 
 /// The shared board.
@@ -43,10 +41,8 @@ pub struct SpaceBoard(Arc<Inner>);
 impl Default for SpaceBoard {
     fn default() -> Self {
         SpaceBoard(Arc::new(Inner {
-            rows: Mutex::new(Vec::new()),
-            edits: Mutex::new(Vec::new()),
-            shown: watch::channel(0).0,
-            sent: watch::channel(0).0,
+            rows: watch::channel(Vec::new()).0,
+            edits: watch::channel(Vec::new()).0,
         }))
     }
 }
@@ -60,45 +56,43 @@ impl std::fmt::Debug for SpaceBoard {
 impl SpaceBoard {
     /// The main window's Spaces as they are now. Listeners hear only a change.
     pub fn publish(&self, rows: Vec<SpaceRow>) {
-        let mut held = self.0.rows.lock().unwrap_or_else(PoisonError::into_inner);
-        if *held != rows {
-            *held = rows;
-            self.0.shown.send_modify(|count| *count += 1);
-        }
+        self.0.rows.send_if_modified(|held| {
+            let changed = *held != rows;
+            if changed {
+                *held = rows;
+            }
+            changed
+        });
     }
 
     /// The Spaces as last published.
     pub fn rows(&self) -> Vec<SpaceRow> {
-        self.0
-            .rows
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clone()
+        self.0.rows.borrow().clone()
     }
 
-    /// What the Settings window hears a publish through.
-    pub fn heard_rows(&self) -> watch::Receiver<u64> {
-        self.0.shown.subscribe()
+    /// The Spaces, as the Settings window hears them published.
+    pub fn heard_rows(&self) -> watch::Receiver<Vec<SpaceRow>> {
+        self.0.rows.subscribe()
     }
 
     /// The Settings window's change, for the main window to apply.
     pub fn send(&self, edit: SpaceEdit) {
-        self.0
-            .edits
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push(edit);
-        self.0.sent.send_modify(|count| *count += 1);
+        self.0.edits.send_modify(|edits| edits.push(edit));
     }
 
     /// What the main window hears a send through.
-    pub fn heard_edits(&self) -> watch::Receiver<u64> {
-        self.0.sent.subscribe()
+    pub fn heard_edits(&self) -> watch::Receiver<Vec<SpaceEdit>> {
+        self.0.edits.subscribe()
     }
 
-    /// The changes sent and not yet taken, oldest first.
+    /// The changes sent and not yet taken, oldest first. Taking them is not heard as a send.
     pub fn take_edits(&self) -> Vec<SpaceEdit> {
-        std::mem::take(&mut *self.0.edits.lock().unwrap_or_else(PoisonError::into_inner))
+        let mut taken = Vec::new();
+        self.0.edits.send_if_modified(|edits| {
+            taken = std::mem::take(edits);
+            false
+        });
+        taken
     }
 }
 
@@ -115,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn a_publish_is_heard_only_when_it_changes_something_and_edits_come_in_order() {
+    fn a_publish_is_heard_only_when_it_changes_something_and_edits_come_in_order_once() {
         let board = SpaceBoard::default();
         let mut heard = board.heard_rows();
         board.publish(vec![row(1, "Home")]);
@@ -126,6 +120,7 @@ mod tests {
         board.publish(vec![row(1, "Ops")]);
         assert_eq!(board.rows()[0].name, "Ops");
 
+        let mut sent = board.heard_edits();
         for root in ["/a", "/b"] {
             board.send(SpaceEdit {
                 space: SpaceId(1),
@@ -134,8 +129,11 @@ mod tests {
                 ))),
             });
         }
+        assert!(sent.has_changed().expect("open"));
+        sent.mark_unchanged();
         let taken = board.take_edits();
         assert_eq!(taken.len(), 2);
+        assert!(!sent.has_changed().expect("open"), "a take is not a send");
         assert!(board.take_edits().is_empty());
     }
 }

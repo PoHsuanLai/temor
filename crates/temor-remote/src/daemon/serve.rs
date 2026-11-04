@@ -12,10 +12,40 @@ use super::core::Daemon;
 use super::dispatch::Done;
 use super::files_worker::{FileWorker, Job, is_file_request};
 use super::link::{Link, LinkId, Outgoing, QUEUE, run_writer};
+use super::session::Command;
 use crate::error::Error;
 use crate::protocol::{DAEMON_CAPS, hello};
 use crate::sync::lock;
 use crate::transport::{FrameReader, greet};
+
+/// Where one frame from a client goes.
+#[derive(Debug)]
+enum Route {
+    /// To the connection's file worker, so a slow file never holds up the rest.
+    Files(Job),
+    /// Answered on the reader thread.
+    Here(Job),
+    /// Answered with this refusal.
+    Refuse(Message),
+    Nowhere,
+}
+
+fn route_request(incoming: Incoming) -> Route {
+    match incoming {
+        Incoming::Frame(Frame {
+            message: Message::Request { id, body },
+            payload,
+        }) => match is_file_request(&body) {
+            true => Route::Files(Job { id, body, payload }),
+            false => Route::Here(Job { id, body, payload }),
+        },
+        Incoming::UnknownRequest { id } => Route::Refuse(Message::unknown_request(id)),
+        Incoming::UnreadableRequest { id } => Route::Refuse(Message::unreadable_request(id)),
+        // Greetings, answers and events from a client, and kinds this build does not know,
+        // change nothing.
+        _ => Route::Nowhere,
+    }
+}
 
 impl Daemon {
     /// Serves one connection until it ends. `reader` and `writer` are the two directions of an
@@ -60,28 +90,15 @@ impl Daemon {
     ) -> Result<(), Error> {
         self.tell_ports(link)?;
         let files = FileWorker::start(self, link)?;
-        loop {
-            match reader.next_frame()? {
-                None => return Ok(()),
-                Some(Incoming::Frame(Frame {
-                    message: Message::Request { id, body },
-                    payload,
-                })) if is_file_request(&body) => files.submit(Job { id, body, payload })?,
-                Some(Incoming::Frame(Frame {
-                    message: Message::Request { id, body },
-                    payload,
-                })) => self.answer(link, id, body, payload)?,
-                Some(Incoming::UnknownRequest { id }) => {
-                    link.send(&Message::unknown_request(id), None)?;
-                }
-                Some(Incoming::UnreadableRequest { id }) => {
-                    link.send(&Message::unreadable_request(id), None)?;
-                }
-                // Greetings, answers and events from a client, and kinds this build does not
-                // know, change nothing.
-                Some(_) => {}
+        while let Some(incoming) = reader.next_frame()? {
+            match route_request(incoming) {
+                Route::Files(job) => files.submit(job)?,
+                Route::Here(job) => self.answer(link, job.id, job.body, job.payload)?,
+                Route::Refuse(refusal) => link.send(&refusal, None)?,
+                Route::Nowhere => {}
             }
         }
+        Ok(())
     }
 
     /// The ports known now go to a new connection that can use them, so it need not wait for the
@@ -142,8 +159,46 @@ impl Daemon {
     fn drop_link(&self, link: &Arc<Link>) {
         self.lock_links().retain(|held| held.id != link.id);
         for session in self.registry.all() {
-            session.detach(Some(link.id));
+            session.send(Command::Detach(link.id));
         }
         link.hang_up();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use temor_wire::message::RemotePath;
+
+    fn request(body: Request) -> Incoming {
+        Incoming::Frame(Frame {
+            message: Message::Request {
+                id: RequestId(1),
+                body,
+            },
+            payload: None,
+        })
+    }
+
+    #[test]
+    fn file_requests_go_to_the_worker_the_rest_are_answered_here_and_unknown_ones_refused() {
+        let path = RemotePath("/tmp/a".into());
+        assert!(matches!(
+            route_request(request(Request::Stat { path })),
+            Route::Files(_)
+        ));
+        assert!(matches!(
+            route_request(request(Request::Ping)),
+            Route::Here(_)
+        ));
+        assert!(matches!(
+            route_request(Incoming::UnknownRequest { id: RequestId(2) }),
+            Route::Refuse(refusal) if refusal == Message::unknown_request(RequestId(2))
+        ));
+        assert!(matches!(
+            route_request(Incoming::UnreadableRequest { id: RequestId(3) }),
+            Route::Refuse(refusal) if refusal == Message::unreadable_request(RequestId(3))
+        ));
+        assert!(matches!(route_request(Incoming::Ignored), Route::Nowhere));
     }
 }

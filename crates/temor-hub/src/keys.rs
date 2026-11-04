@@ -64,7 +64,7 @@ impl Hub {
     /// Routes keys by `keymap` from now on, in the window and in every pane that is open, and
     /// remembers the person's changes it was built from.
     fn rekey(&mut self, overrides: Overrides, keymap: Keymap) {
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             if let Some(session) = slot.borrow_mut().session.as_mut() {
                 session.keymap = keymap.clone();
             }
@@ -119,14 +119,13 @@ pub fn spawn_keys_loop(desk: Desk) {
         // Kept for as long as the window listens; dropping them stops the watchers.
         let _watches = watches.await;
         while let Some((overrides, keymap, issues)) = inbox.recv().await {
-            desk.hub.0.borrow_mut().rekey(overrides, keymap);
+            desk.hub.edit(|hub| hub.rekey(overrides, keymap));
             for (line, issue) in issues {
                 match line {
                     0 => desk.say(format!("Shortcuts: {issue}")),
                     line => desk.say(format!("Shortcuts, line {line}: {issue}")),
                 }
             }
-            desk.bump();
         }
     });
 }

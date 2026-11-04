@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use temor_wire::frame::FrameLimit;
 use temor_wire::hello::{Agreement, Hello};
+use temor_wire::ids::RequestId;
 use temor_wire::message::{Frame, Incoming, Message};
 
 use super::events::ClientEvent;
@@ -76,31 +77,92 @@ impl Client {
     }
 }
 
+/// Where one frame from the helper goes.
+#[derive(Debug)]
+enum Route {
+    /// The answer to the call `RequestId`.
+    Answer(RequestId, Result<Answer, Error>),
+    /// To the window, as something the helper said unasked.
+    Event(ClientEvent),
+    Nowhere,
+}
+
+fn route(incoming: Incoming) -> Route {
+    match incoming {
+        Incoming::Frame(Frame {
+            message: Message::Response { id, outcome },
+            payload,
+        }) => Route::Answer(id, Ok(Answer { outcome, payload })),
+        Incoming::Frame(Frame {
+            message: Message::Event(event),
+            payload,
+        }) => ClientEvent::from_wire(event, payload).map_or(Route::Nowhere, Route::Event),
+        Incoming::UnknownResponse { id } => Route::Answer(id, Err(Error::UnexpectedReply)),
+        Incoming::UnreadableEvent { kind } => Route::Event(ClientEvent::Unreadable { kind }),
+        // Requests, greetings and kinds this build does not know.
+        _ => Route::Nowhere,
+    }
+}
+
 fn read_loop<R: Read>(mut reader: FrameReader<R>, pending: &Pending, events: &Sender<ClientEvent>) {
-    loop {
-        match reader.next_frame() {
-            Ok(Some(Incoming::Frame(Frame { message, payload }))) => match message {
-                Message::Response { id, outcome } => {
-                    pending.complete(id, Ok(Answer { outcome, payload }));
-                }
-                Message::Event(event) => {
-                    if let Some(event) = ClientEvent::from_wire(event, payload) {
-                        // Nobody listening any more is the window having closed the link.
-                        let _ = events.send(event);
-                    }
-                }
-                _ => {}
-            },
-            Ok(Some(Incoming::UnknownResponse { id })) => {
-                pending.complete(id, Err(Error::UnexpectedReply));
-            }
-            Ok(Some(Incoming::UnreadableEvent { kind })) => {
-                let _ = events.send(ClientEvent::Unreadable { kind });
-            }
-            Ok(Some(_)) => {}
-            Ok(None) | Err(_) => break,
+    while let Ok(Some(incoming)) = reader.next_frame() {
+        match route(incoming) {
+            Route::Answer(id, answer) => pending.complete(id, answer),
+            // Nobody listening any more is the window having closed the link.
+            Route::Event(event) => drop(events.send(event)),
+            Route::Nowhere => {}
         }
     }
     pending.close();
     let _ = events.send(ClientEvent::Closed);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use temor_wire::ids::RemoteSessionId;
+    use temor_wire::message::{Event, Reply, Request};
+
+    #[test]
+    fn answers_go_to_their_calls_events_to_the_window_and_the_rest_nowhere() {
+        let frame = |message| {
+            Incoming::Frame(Frame {
+                message,
+                payload: Some(b"x".to_vec()),
+            })
+        };
+        let id = RequestId(7);
+        let session = RemoteSessionId(3);
+        match route(frame(Message::Response {
+            id,
+            outcome: Ok(Reply::Ack),
+        })) {
+            Route::Answer(to, Ok(answer)) => {
+                assert_eq!((to, answer.payload), (id, Some(b"x".to_vec())));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            route(Incoming::UnknownResponse { id }),
+            Route::Answer(to, Err(Error::UnexpectedReply)) if to == id
+        ));
+        assert!(matches!(
+            route(frame(Message::Event(Event::Output { session }))),
+            Route::Event(ClientEvent::Output { bytes, .. }) if bytes == b"x"
+        ));
+        assert!(matches!(
+            route(Incoming::UnreadableEvent {
+                kind: "Exited".into()
+            }),
+            Route::Event(ClientEvent::Unreadable { .. })
+        ));
+        assert!(matches!(
+            route(frame(Message::Request {
+                id,
+                body: Request::Ping
+            })),
+            Route::Nowhere
+        ));
+        assert!(matches!(route(Incoming::Ignored), Route::Nowhere));
+    }
 }

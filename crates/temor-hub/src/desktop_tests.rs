@@ -41,7 +41,7 @@ fn the_snapshot_lists_panes_in_tab_order_and_counts_waiting_agents_for_the_dock(
         },
     ]);
     // An unread tab is not the dock's business; two agents waiting (and one working) are.
-    hub.book.ws.tabs.unread.insert(TabId(1));
+    hub.book.edit(|ws| ws.tabs.unread.insert(TabId(1)));
     for (pane, state) in [
         (1, ProgramState::Blocked),
         (2, ProgramState::Blocked),
@@ -153,9 +153,9 @@ fn a_pane_an_agent_opens_is_unfocused_in_the_radar_and_waits_for_the_person() {
         },
         WorkspaceIn::Focus(PaneId(1)),
     ] {
-        let (ws, _) = workspace_step(hub.book.ws.clone(), step);
-        hub.book.ws = ws;
-        hub.agents_after_act();
+        let (ws, _) = workspace_step(hub.book.ws().clone(), step);
+        hub.book.place(hub.book.active(), ws);
+        hub.sync_focus();
         assert_ne!(hub.agents.radar.focused(), Some(PaneId(2)));
     }
 

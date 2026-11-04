@@ -7,14 +7,14 @@ use ds::style::tokens::control_size::ControlSize;
 use temor_client::model::offer::Reply;
 use temor_client::model::vocab::ids::PaneId;
 
-use temor_hub::Desk;
+use temor_hub::{Desk, use_hub};
 
 /// The question for `pane`, while there is one.
 #[component]
 #[allow(non_snake_case)]
 pub fn OfferBar(pane: PaneId, desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let Some(program) = desk.hub.offer_asking(pane) else {
+    let asking = use_hub(&desk, pane, |hub, &pane| hub.offer_asking(pane));
+    let Some(program) = asking() else {
         return rsx! {};
     };
     let (yes, later, never) = (desk.clone(), desk.clone(), desk);

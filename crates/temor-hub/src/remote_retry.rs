@@ -55,7 +55,7 @@ impl Hub {
         let Some(host) = self.alias_of(pane) else {
             return;
         };
-        let phase = self.ssh.panes.get(&pane).map(|p| p.phase);
+        let phase = self.panes.host(pane).map(|p| p.phase);
         let Some(line) = self.remote.lines.get(&host) else {
             return;
         };
@@ -67,9 +67,9 @@ impl Hub {
     /// The shared connection is up again: dial the helper and reattach every session of `host`.
     pub(super) fn remote_rejoin(&mut self, host: &HostAlias) {
         let sessions: Vec<RemoteSessionId> = self
-            .remote
             .panes
-            .values()
+            .remotes()
+            .map(|(_, pane)| pane)
             .filter(|p| p.alias == *host)
             .filter_map(|p| p.session)
             .collect();

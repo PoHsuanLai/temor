@@ -17,19 +17,18 @@ use temor_client::query::Folder;
 
 use super::live::{use_client, use_live};
 use super::tab_glyph::row_leading;
-use temor_hub::{Desk, TabRow, folder_url, select_tab};
+use temor_hub::{Desk, HubRef, TabRow, folder_url, select_tab, use_hub};
 
 /// The page of `folder`, an absolute path ending in `/`.
 #[component]
 #[allow(non_snake_case)]
 pub fn FolderPage(folder: String, desk: Desk) -> Element {
-    let _ = (desk.ui)();
     // Read once each time the page is shown, off the window's thread: a folder is not watched.
     let read = use_live({
         let folder = folder.clone();
         move || Folder(PathBuf::from(&folder))
     });
-    let here = tabs_in(&desk, &folder);
+    let here = use_hub(&desk, folder.clone(), |hub, folder| tabs_in(hub, folder))();
     let time = use_client().local_time().clone();
     let now = time.now();
     let zone = time.zone_at(now);
@@ -90,9 +89,9 @@ pub fn FolderPage(folder: String, desk: Desk) -> Element {
 }
 
 /// The tabs whose shell is in `folder`.
-fn tabs_in(desk: &Desk, folder: &str) -> Vec<TabRow> {
+fn tabs_in(hub: &HubRef, folder: &str) -> Vec<TabRow> {
     let folder = folder.trim_end_matches('/');
-    let rows = desk.hub.sidebar();
+    let rows = hub.sidebar();
     rows.every()
         .filter(|row| {
             row.place

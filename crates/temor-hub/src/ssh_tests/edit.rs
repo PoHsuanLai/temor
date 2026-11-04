@@ -104,6 +104,7 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
     let uploading = Edit::Uploading {
         base: stat,
         queued: false,
+        closing: false,
     };
     let set = |rig: &mut Rig, state: Edit| {
         if let Some(edit) = rig.hub.ssh.edits.get_mut(&id) {
@@ -119,7 +120,10 @@ fn a_saved_copy_is_written_back_and_a_change_on_the_host_asks_first() {
         "a save that did not get there keeps the copy"
     );
     assert_eq!(
-        rig.hub.ssh.edits.get(&id).map(|edit| edit.done),
+        rig.hub.ssh.edits.get(&id).map(|edit| matches!(
+            edit.state,
+            Edit::Checking { closing: true, .. } | Edit::Uploading { closing: true, .. }
+        )),
         Some(false),
         "the earlier Done does not carry over"
     );
@@ -189,7 +193,7 @@ fn a_reopened_tab_is_a_session_on_the_same_host() {
         return;
     };
     assert_eq!(rig.hub.host_of(pane), Some("fake"));
-    let tab = rig.hub.book.ws.tabs.place.tabs[0].id;
+    let tab = rig.hub.book.ws().tabs.place.tabs[0].id;
     // A second tab keeps the window from starting a fresh one in place of the closed tab.
     rig.hub.act(WorkspaceIn::NewTab { cwd: None });
     rig.hub.act(WorkspaceIn::CloseTab(tab));

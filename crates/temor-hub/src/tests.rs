@@ -12,7 +12,7 @@ use temor_panes::pane::keys::Action;
 use temor_panes::pane::{OfferId, OfferKind, TransferEnd, TransferEvent};
 
 use super::keys::workspace_input;
-use super::model::Hub;
+use super::model::{Hub, SAVE_EVERY};
 use super::rows::tidy;
 use super::shelf::{Ask, AskKind};
 use temor_ui_base::edge::Ambient;
@@ -55,13 +55,13 @@ fn launch_in(home: std::path::PathBuf) -> Launch {
 pub(super) fn hub_after(steps: Vec<WorkspaceIn>) -> Hub {
     let mut hub = Hub::new(launch());
     for step in steps {
-        let (ws, outs) = workspace_step(hub.book.ws.clone(), step);
+        let (ws, outs) = workspace_step(hub.book.ws().clone(), step);
         // The step only describes panes; starting them is the edge's, and these tests have none.
         assert!(
             outs.iter().all(|o| !matches!(o, WorkspaceOut::Refused(_))),
             "{outs:?}"
         );
-        hub.book.ws = ws;
+        hub.book.place(hub.book.active(), ws);
     }
     hub
 }
@@ -253,6 +253,46 @@ mod spaces {
     }
 
     #[test]
+    fn a_tab_of_a_host_pane_in_a_project_space_is_on_that_host_not_in_the_project_folder() {
+        use crate::act::ActCtx;
+        use crate::ssh::{Check, HostPane, Phase};
+        use temor_client::ssh::HostAlias;
+
+        let mut hub = Hub::new(launch());
+        hub.book.begin(Spaces::first_run(
+            [project(Some("/srv/app"), &[])],
+            Project::default,
+        ));
+        hub.act(WorkspaceIn::NewTab { cwd: None });
+        let pane = hub.keyboard_pane().expect("the new tab's pane");
+        hub.book
+            .edit(|ws| ws.cwds.insert(pane, Cwd("/home/me/src".to_owned())));
+        let alias = HostAlias::new("box").expect("an alias");
+        hub.panes.record(pane).host = Some(HostPane {
+            alias: alias.clone(),
+            phase: Phase::Up,
+            mode: None,
+            start_dir: None,
+            scan: None,
+            check: Check::Nothing,
+            tier: crate::remote::Tier::Plain,
+            deferred: false,
+        });
+        let tab = |cwd: Option<&str>| WorkspaceIn::NewTab {
+            cwd: cwd.map(|c| Cwd(c.to_owned())),
+        };
+
+        // ⌘T in the host pane: a session on the same host, in its folder there.
+        let (input, ctx) = hub.prepare(tab(None), ActCtx::default());
+        assert_eq!(input, tab(Some("/home/me/src")));
+        assert_eq!(ctx.host, Some(alias.clone()));
+        // A host tab opened from the list starts in the host's home, not the project's folder.
+        let (input, ctx) = hub.prepare(tab(None), ActCtx::on_host(alias.clone(), false));
+        assert_eq!(input, tab(None));
+        assert_eq!(ctx.host, Some(alias));
+    }
+
+    #[test]
     fn a_root_written_with_a_tilde_is_the_home_folder_for_the_shell_and_its_variables_file() {
         use temor_client::model::space::Profile;
         use temor_client::model::vocab::text::{ProjectRoot, RelPath};
@@ -302,12 +342,11 @@ mod spaces {
 /// A hub with one tab and a pane slot for it (no program runs in it), living in `home`.
 fn hub_with_pane(home: &std::path::Path) -> Hub {
     let mut hub = Hub::new(launch_in(home.to_path_buf()));
-    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::NewTab { cwd: None });
-    hub.book.ws = ws;
-    hub.slots.insert(
-        PaneId(1),
-        std::rc::Rc::new(std::cell::RefCell::new(temor_ui_base::slot::Slot::default())),
-    );
+    let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::NewTab { cwd: None });
+    hub.book.place(hub.book.active(), ws);
+    hub.panes.record(PaneId(1)).slot = Some(std::rc::Rc::new(std::cell::RefCell::new(
+        temor_ui_base::slot::Slot::default(),
+    )));
     hub
 }
 
@@ -483,11 +522,11 @@ fn the_first_window_says_what_the_settings_need_and_the_next_says_nothing() {
     ]);
     let mut first = Hub::new(launch.clone());
     assert_eq!(
-        first.take_notice().as_deref(),
-        Some("Your settings couldn't be read. Two shortcuts couldn't be used.")
+        first.take_notices(),
+        vec!["Your settings couldn't be read. Two shortcuts couldn't be used.".to_owned()]
     );
     let mut next = Hub::new(launch);
-    assert_eq!(next.take_notice(), None);
+    assert!(next.take_notices().is_empty());
 }
 
 #[test]
@@ -516,4 +555,100 @@ fn an_ask_for_one_file_says_its_size_the_way_the_shelf_does() {
             ask.view()
         );
     }
+}
+
+#[test]
+fn a_change_hands_back_what_it_said_in_order_and_leaves_nothing_said() {
+    let mut hub = Hub::new(launch());
+    let _ = hub.take_notices();
+    let (answer, said) = hub.said(|hub| {
+        hub.notices.push("first".to_owned());
+        hub.notices.push("second".to_owned());
+        7
+    });
+    assert_eq!(
+        (answer, said),
+        (7, vec!["first".to_owned(), "second".to_owned()])
+    );
+    assert!(hub.take_notices().is_empty());
+}
+
+#[test]
+fn what_is_kept_is_written_when_it_differs_from_what_was_written_and_otherwise_rests() {
+    use std::time::{Duration, Instant};
+    let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
+    hub.set_client(temor_client::Client::in_memory());
+    let owed = |hub: &mut Hub| hub.laid(|kept, laying| kept.owed(&laying));
+    let start = Instant::now();
+    assert!(owed(&mut hub), "the first tab was never written");
+    assert_eq!(hub.poll_save(start), None);
+    assert!(!owed(&mut hub), "written");
+    assert_eq!(hub.poll_save(start + Duration::from_millis(100)), None);
+
+    let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::NewTab { cwd: None });
+    hub.book.place(hub.book.active(), ws);
+    assert!(owed(&mut hub), "a second tab");
+    let soon = start + Duration::from_millis(100);
+    assert_eq!(
+        hub.poll_save(soon),
+        Some(SAVE_EVERY - Duration::from_millis(100))
+    );
+    assert_eq!(hub.poll_save(start + SAVE_EVERY), None);
+    assert!(!owed(&mut hub), "written once its turn came");
+}
+
+#[test]
+fn a_request_that_moves_the_keyboard_moves_the_probe_and_the_radar_with_it() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use temor_ui_base::probe::Probe;
+    use temor_ui_base::slot::Slot;
+
+    let mut hub = hub_after(vec![
+        WorkspaceIn::NewTab { cwd: None },
+        WorkspaceIn::Split {
+            towards: Direction::Right,
+        },
+    ]);
+    hub.launch.probe = Some(Probe::new());
+    for pane in [PaneId(1), PaneId(2)] {
+        hub.panes.record(pane).slot = Some(Rc::new(RefCell::new(Slot::default())));
+    }
+    let probed = |hub: &Hub| {
+        [PaneId(1), PaneId(2)]
+            .into_iter()
+            .filter(|pane| hub.slot(*pane).unwrap().borrow().probe.is_some())
+            .collect::<Vec<_>>()
+    };
+
+    hub.said(|_| {});
+    assert_eq!(probed(&hub), vec![PaneId(2)]);
+    hub.pane_focused(PaneId(2));
+
+    hub.said(|hub| hub.act(WorkspaceIn::Focus(PaneId(1))));
+    assert_eq!(probed(&hub), vec![PaneId(1)]);
+    assert_eq!(
+        hub.agents.radar.focused(),
+        None,
+        "the radar let go of the pane"
+    );
+}
+
+#[test]
+fn a_change_to_the_shared_hub_is_heard_and_a_read_is_not() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    let hub = super::model::HubRef::new(hub_after(vec![WorkspaceIn::NewTab { cwd: None }]));
+    let heard = Rc::new(Cell::new(0));
+    hub.on_change({
+        let heard = Rc::clone(&heard);
+        move || heard.set(heard.get() + 1)
+    });
+    let _ = (hub.keyboard_pane(), hub.front());
+    assert_eq!(heard.get(), 0, "reads are not changes");
+    hub.act(WorkspaceIn::NewTab { cwd: None });
+    assert_eq!(heard.get(), 1, "a request through said");
+    hub.edit(|_| ());
+    assert_eq!(heard.get(), 2, "an edit");
 }

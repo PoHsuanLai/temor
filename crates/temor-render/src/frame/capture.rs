@@ -14,7 +14,7 @@ use crate::error::RenderError;
 /// ```ignore
 /// let captured = capture.begin(&mut term.lock())?; // under the pane's lock
 /// captured.finish(&mut frame)?;                    // after releasing it
-/// renderer.render(&mut frame, &view)?;
+/// renderer.render(&frame, &view)?;
 /// ```
 #[derive(Debug)]
 pub struct FrameCapture {

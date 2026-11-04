@@ -23,19 +23,16 @@ pub fn carry_tab(
         .cloned()
         .ok_or(CoreError::UnknownTab(tab.0))?;
     let panes = moved.tree.panes();
-    let focus = from.focus_of(tab);
     let mut src = from.clone();
     let mut dst = to.clone();
 
-    let id = TabId(dst.next_tab);
-    dst.next_tab = dst.next_tab.checked_add(1).ok_or(CoreError::IdsExhausted)?;
-    for pane in &panes {
-        let past = pane.0.checked_add(1).ok_or(CoreError::IdsExhausted)?;
-        dst.next_pane = dst.next_pane.max(past);
-    }
+    let id = TabId(dst.next_tab.take().ok_or(CoreError::IdsExhausted)?);
+    dst.next_pane = dst
+        .next_pane
+        .past_all(panes.iter().map(|pane| pane.0))
+        .ok_or(CoreError::IdsExhausted)?;
 
     src.tabs_do(TabsIn::Remove(tab));
-    src.focus.remove(&tab);
     for pane in &panes {
         if let Some(cwd) = src.cwds.remove(pane) {
             dst.cwds.insert(*pane, cwd);
@@ -51,10 +48,8 @@ pub fn carry_tab(
         pin: moved.pin,
         folder: None,
         tree: moved.tree,
+        focus: moved.focus,
     });
-    if let Some(pane) = focus {
-        dst.focus.insert(id, pane);
-    }
     if dst.tabs.place.focused.is_none() {
         dst.tabs.place.focused = Some(id);
     }

@@ -3,7 +3,7 @@
 //! block's live rows, and the shell's prompt, are shown from the pane's own picture as the
 //! terminal draws them. The list follows its bottom until the person scrolls back.
 
-use std::cell::Cell;
+use std::cell::RefCell;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -18,7 +18,6 @@ use ds::prelude::*;
 use ds::root::pass_through::ExtraClass;
 use ds::style::tokens::control_size::ControlSize;
 use ds_blitz::{Sampling, TexelRect, TextureFit, TextureHandle, TextureLayer, use_gpu};
-use ds_core::geometry::scroll::{Scroll, ScrollSpan};
 use ds_core::geometry::units::Px;
 use temor_client::model::block::{Outcome, format_elapsed};
 use temor_client::model::session::list::{Item, KeptCard, ListBlock};
@@ -27,10 +26,11 @@ use temor_panes::render::Palette;
 use temor_panes::vt::Rgb;
 
 use super::composer::{ChoicesView, ComposerActions, ComposerCard, composer_height};
+use super::follow::{Drawn, Follow, FollowIn, FollowOut};
 use crate::tool_button::ToolButton;
 use temor_hub::Desk;
 use temor_hub::plugins::lens::LensPicture;
-use temor_pane_view::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, Session};
+use temor_pane_view::session::{CARD_MARGIN, INSET, LENS_MOST_ROWS, ListView, Session};
 use temor_ui_base::segments::{
     CardPlace, Picture, Placed, Seg, Sizes, Standing, card_places, card_span, lay_out, list_map,
     near_view, picture_size, row_top, sticky_head,
@@ -61,13 +61,31 @@ fn composing(items: &[Item]) -> bool {
     matches!(items.last(), Some(Item::Composer { rows }) if !rows.is_empty())
 }
 
+/// Hands the session what the list shows (`None`: the pane is one grid again). A new ground
+/// paints the pane again; the composer coming or going draws the window again, as what takes the
+/// keyboard follows it (the pane's caret effect reads it on a redraw).
+pub(crate) fn hand_list_view(slot: &RefCell<Slot>, desk: &Desk, view: Option<ListView>) {
+    let changed = slot.borrow_mut().session.as_mut().map(|session| {
+        let composing = session.composer_shown();
+        let reground = session.set_list_view(view);
+        (reground, composing != session.composer_shown())
+    });
+    let Some((reground, composer)) = changed else {
+        return;
+    };
+    if reground {
+        repaint(slot);
+    }
+    if composer {
+        desk.bump();
+    }
+}
+
 /// How far around the view segments are mounted, in logical pixels.
 const MOUNT_MARGIN: f32 = 600.0;
 /// How far the offset moves before the list is laid out again, in logical pixels: well inside
 /// the mount margin.
 const BAND: f32 = 200.0;
-/// The room a revealed find match keeps above it, for the find bar over the list's top.
-const FIND_ROOM: f32 = 64.0;
 /// The most rows one tile of output holds.
 const TILE_ROWS: u32 = 48;
 
@@ -82,35 +100,13 @@ pub struct CardActions {
     pub put: EventHandler<u32>,
 }
 
-/// Keeps the list to its bottom while it follows it, and in range when it shrinks. `total` is
-/// the list's height; `seen` the offset and bottom last seen. When the offset moves the list
-/// follows only from its bottom: a wheel back stops it, a wheel down to the end, or the list's
-/// own move there, starts it again.
-fn keep_bottom(
-    scroll: Scroll,
-    total: f32,
-    follow: &Cell<bool>,
-    seen: &Cell<Option<(f32, f32)>>,
-    scroller: ScrollerRef,
-) {
-    if scroll.viewport.0 <= 0.0 {
-        return;
-    }
-    let offset = scroll.offset.0;
-    // The scroller's own bottom, from the content it measured: it can be reached.
-    let reach = scroll.max_offset().0;
-    // The list's own bottom: the scroller's measure lags a layout behind it.
-    let bottom = (total - scroll.viewport.0).max(0.0);
-    let (was, was_bottom) = seen.get().unwrap_or((offset, bottom));
-    seen.set(Some((offset, bottom)));
-    if (offset - was).abs() > 0.5 {
-        follow.set(offset >= reach.min(bottom) - 1.0);
-    }
-    // A list that shrank (a fold) under an offset past its new end goes to that end.
-    if bottom < was_bottom - 0.5 && offset > bottom + 0.5 {
-        scroller.scroll_to(Px(bottom));
-    } else if follow.get() && offset < reach - 0.5 {
-        scroller.scroll_to(Px(reach));
+/// Carries out where [`Follow`] says to scroll.
+fn scroll_by(scroller: ScrollerRef, outs: Vec<FollowOut>) {
+    for out in outs {
+        match out {
+            FollowOut::To(offset) => scroller.scroll_to(Px(offset)),
+            FollowOut::Reveal(span) => scroller.reveal(span),
+        }
     }
 }
 
@@ -187,17 +183,16 @@ pub fn BlockPane(
     actions: CardActions,
 ) -> Element {
     let slot = use_hook(|| desk.hub.slot(pane).unwrap_or_default());
+    // The list is the session's picture: it reads the session as it draws (its live rows, its
+    // tiles, whether a program has the mouse), so it draws again on each change the window hears.
+    let _ = (desk.ui)();
     let gpu = use_gpu();
     let scroller = use_scroller();
     // The block under the pointer: its "…" shows.
     let mut hovered = use_signal(|| None::<BlockId>);
-    // Whether the list keeps to its bottom as it grows: until the person scrolls back. The
-    // window's scroll engine takes the wheel, so the list knows only that its offset moved.
-    let follow = use_hook(|| Rc::new(Cell::new(true)));
-    // The offset, and the list's own bottom, as last seen.
-    let seen = use_hook(|| Rc::new(Cell::new(None::<(f32, f32)>)));
-    // The list's height as last laid out, for the scroll's effect.
-    let total_now = use_hook(|| Rc::new(Cell::new(0.0_f32)));
+    // Where the list scrolls by itself (the window's scroll engine takes the wheel, so the list
+    // knows only that its offset moved).
+    let follow = use_hook(|| Rc::new(RefCell::new(Follow::default())));
     let band = use_memo(move || {
         let scroll = scroller.scroll()();
         (
@@ -206,15 +201,11 @@ pub fn BlockPane(
         )
     });
     {
-        let (follow, seen, total_now, slot) = (
-            Rc::clone(&follow),
-            Rc::clone(&seen),
-            Rc::clone(&total_now),
-            Rc::clone(&slot),
-        );
+        let (follow, slot) = (Rc::clone(&follow), Rc::clone(&slot));
         use_effect(move || {
             let scroll = scroller.scroll()();
-            keep_bottom(scroll, total_now.get(), &follow, &seen, scroller);
+            let outs = follow.borrow_mut().step(FollowIn::Moved(scroll));
+            scroll_by(scroller, outs);
             if let Some(session) = slot.borrow_mut().session.as_mut() {
                 session.set_list_offset(scroll.offset.0);
             }
@@ -266,40 +257,21 @@ pub fn BlockPane(
     // the view by more than a band.
     let _ = band();
     let scroll = *scroller.scroll().peek();
-    // A new command (the list's last block changed) takes the list back to its bottom.
     let newest = items.iter().rev().find_map(|item| match item {
         Item::Done(block) | Item::Running { block, .. } => Some(block.id),
         _ => None,
     });
-    let seen_newest = use_hook(|| Rc::new(Cell::new(None::<BlockId>)));
-    if seen_newest.get() != newest {
-        seen_newest.set(newest);
-        follow.set(true);
-    }
-    // A block picked from the keyboard is scrolled to, once: the list stops following its bottom.
-    let revealed = use_hook(|| Rc::new(Cell::new(None::<BlockId>)));
-    if revealed.get() != reveal {
-        revealed.set(reveal);
-        if let Some((top, bottom)) = reveal.and_then(|id| card_span(&placed, id)) {
-            follow.set(false);
-            let length = (bottom - top).min(scroll.viewport.0.max(1.0));
-            scroller.reveal(ScrollSpan { start: top, length });
-        }
-    }
-    // The find bar's match, when it moves, is scrolled to, clear of the bar over the list's top.
-    let seen_found = use_hook(|| Rc::new(Cell::new(None::<u32>)));
-    if seen_found.get() != found {
-        seen_found.set(found);
-        if let Some(top) = found.and_then(|r| row_top(&placed, r, row)) {
-            follow.set(false);
-            scroller.reveal(ScrollSpan {
-                start: top - FIND_ROOM,
-                length: FIND_ROOM + row * 2.0,
-            });
-        }
-    }
-    keep_bottom(scroll, total, &follow, &seen, scroller);
-    total_now.set(total);
+    let outs = follow.borrow_mut().step(FollowIn::Drawn(Drawn {
+        scroll,
+        total,
+        newest,
+        reveal,
+        reveal_span: reveal.and_then(|id| card_span(&placed, id)),
+        found,
+        found_top: found.and_then(|r| row_top(&placed, r, row)),
+        row,
+    }));
+    scroll_by(scroller, outs);
     let viewport = match scroll.viewport.0 > 0.0 {
         true => scroll.viewport.0,
         false => total,
@@ -311,19 +283,22 @@ pub fn BlockPane(
         Item::Running { block, .. } => block.picked,
         _ => false,
     });
-    let live_ground = ground_of(&palette, Standing::Running, live_picked);
-    let reground = {
+    let shown = ListView {
+        map: list_map(&placed, scroll.offset.0),
+        ground: ground_of(&palette, Standing::Running, live_picked),
+        composing,
+    };
+    // What the list shows goes to the session once it is drawn, and only when it changed.
+    let (shown_to, shown_desk) = (Rc::clone(&slot), desk.clone());
+    use_effect(use_reactive!(|shown| {
+        hand_list_view(&shown_to, &shown_desk, Some(shown))
+    }));
+    {
         let mut s = slot.borrow_mut();
         let Slot { session, tiles, .. } = &mut *s;
-        session.as_mut().is_some_and(|session| {
-            session.set_list_map(Some(list_map(&placed, scroll.offset.0)));
-            session.set_composer_shown(composing);
+        if let Some(session) = session.as_mut() {
             tiles.draw(session, &mounted, &palette, || gpu.handle());
-            session.set_live_ground(Some(live_ground))
-        })
-    };
-    if reground {
-        repaint(&slot);
+        }
     }
     // Where live rows are in the pane's picture.
     let live_rect = |rows: &Range<u32>| {

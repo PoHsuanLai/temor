@@ -12,15 +12,14 @@ use temor_client::remote::link::{Attempt, LinkState};
 use temor_client::ssh::HostAlias;
 
 use super::model::Hub;
-use super::remote::Busy;
+use super::remote::{Busy, RemoteLine};
 use temor_client::remote::builds::no_build_words;
 use temor_client::remote::install::Found;
 use temor_panes::remote::event::{RemoteEvent, Wanted};
 
 impl Hub {
-    /// Carries out what a job or a connection reported, and returns the messages it left for the
-    /// person.
-    pub fn remote_event(&mut self, event: RemoteEvent) -> Vec<String> {
+    /// Carries out what a job or a connection reported.
+    pub fn remote_event(&mut self, event: RemoteEvent) {
         match event {
             RemoteEvent::Probed { host, found } => self.remote_probed(&host, found),
             RemoteEvent::Installed { host, hash } => self.remote_installed(&host, hash),
@@ -55,7 +54,6 @@ impl Hub {
             RemoteEvent::Stalled { host, generation } => self.remote_stalled(&host, generation),
             RemoteEvent::Connected { pane } => self.remote_begin(pane),
         }
-        std::mem::take(&mut self.notices)
     }
 
     fn remote_probed(&mut self, host: &HostAlias, found: Option<Found>) {
@@ -83,7 +81,7 @@ impl Hub {
 
     /// The person answered the question a helper pane asks.
     pub fn remote_answer(&mut self, pane: PaneId, grant: Grant) {
-        let Some(alias) = self.remote.panes.get(&pane).map(|p| p.alias.clone()) else {
+        let Some(alias) = self.panes.remote(pane).map(|p| p.alias.clone()) else {
             return;
         };
         let asking = self
@@ -154,26 +152,17 @@ impl Hub {
 
     /// Looks at a host with panes waiting, or opens their sessions when the connection is up.
     pub(super) fn remote_advance(&mut self, host: &HostAlias) {
-        if !self.remote.builds.any() {
-            return self.remote_fallback_all(host);
-        }
-        let ours = self.remote.builds.names();
         let line = self.remote.lines.entry(host.clone()).or_default();
-        let up = line.conn.is_some() && matches!(line.link, LinkState::Connected { .. });
-        if up {
-            return self.remote_open_waiting(host);
-        }
-        if line.busy != Busy::Idle {
-            return;
-        }
-        match line.helper {
-            HelperState::Ready(_) => self.remote_dial_first(host),
-            HelperState::Absent => {
+        match advance(self.remote.builds.any(), line) {
+            Advance::Plain => self.remote_fallback_all(host),
+            Advance::Open => self.remote_open_waiting(host),
+            Advance::Wait => {}
+            Advance::Dial => self.remote_dial_first(host),
+            Advance::Probe => {
                 line.busy = Busy::Probing;
+                let ours = self.remote.builds.names();
                 self.remote.work.probe(&self.ssh.env, host.clone(), ours);
             }
-            HelperState::Offered | HelperState::Uploading => {}
-            HelperState::Refused | HelperState::Unsupported => self.remote_fallback_all(host),
         }
     }
 
@@ -234,15 +223,17 @@ impl Hub {
         let home = line.login.home().map(str::to_owned);
         let (generation, router) = (line.generation, line.router.clone());
         for pane in waiting {
-            let Some(remote) = self.remote.panes.get(&pane) else {
+            let Some(record) = self.panes.get(pane) else {
                 continue;
             };
-            let (cwd, env, shell) = match self.remote.local.get(&pane) {
+            let Some(remote) = record.remote.live.as_ref() else {
+                continue;
+            };
+            let (cwd, env, shell) = match &record.remote.local {
                 Some(own) => (own.cwd.clone(), own.env.clone(), own.shell.clone()),
                 None => (
-                    self.ssh
-                        .panes
-                        .get(&pane)
+                    self.panes
+                        .host(pane)
                         .and_then(|host| host.start_dir.as_ref())
                         .map(|dir| dir.as_str().to_owned())
                         .or_else(|| home.clone())
@@ -252,7 +243,7 @@ impl Hub {
                 ),
             };
             // A session the pane had when temor last quit is asked for before a new one.
-            let wanted = match self.remote.saved.get(&pane) {
+            let wanted = match record.remote.saved.as_ref() {
                 Some(session) => Wanted::Resume {
                     session: *session,
                     cwd,
@@ -274,6 +265,67 @@ impl Hub {
                 (host.clone(), generation),
                 ticket,
             );
+        }
+    }
+}
+
+/// What a host with panes waiting on its helper does next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Advance {
+    /// Its panes become plain `ssh` sessions: no helper can run there.
+    Plain,
+    /// The connection is up: open their sessions.
+    Open,
+    /// Something is under way (a probe, a dial, a question, an upload).
+    Wait,
+    /// The helper is on the host: connect to it.
+    Dial,
+    /// Nothing is known of the host yet: look at it.
+    Probe,
+}
+
+/// What `line` does next, with `builds` saying whether this temor carries any helper build.
+fn advance(builds: bool, line: &RemoteLine) -> Advance {
+    let up = line.conn.is_some() && matches!(line.link, LinkState::Connected { .. });
+    match (builds, up, line.busy, &line.helper) {
+        (false, ..) => Advance::Plain,
+        (_, true, ..) => Advance::Open,
+        (_, _, busy, _) if busy != Busy::Idle => Advance::Wait,
+        (.., HelperState::Ready(_)) => Advance::Dial,
+        (.., HelperState::Absent) => Advance::Probe,
+        (.., HelperState::Offered | HelperState::Uploading) => Advance::Wait,
+        (.., HelperState::Refused | HelperState::Unsupported) => Advance::Plain,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Advance, advance};
+    use crate::remote::{Busy, RemoteLine};
+    use temor_client::model::remote::HelperState;
+
+    #[test]
+    fn a_waiting_host_probes_dials_waits_or_goes_plain_by_what_its_helper_is() {
+        let line = |busy, helper| RemoteLine {
+            busy,
+            helper,
+            ..RemoteLine::default()
+        };
+        let ready = HelperState::Ready(temor_client::model::vocab::text::HelperHash("ab".into()));
+        // builds carried, busy, helper, what is done
+        let table = [
+            (false, Busy::Idle, HelperState::Absent, Advance::Plain),
+            (true, Busy::Idle, HelperState::Absent, Advance::Probe),
+            (true, Busy::Probing, HelperState::Absent, Advance::Wait),
+            (true, Busy::Idle, ready, Advance::Dial),
+            (true, Busy::Idle, HelperState::Offered, Advance::Wait),
+            (true, Busy::Idle, HelperState::Uploading, Advance::Wait),
+            (true, Busy::Idle, HelperState::Refused, Advance::Plain),
+            (true, Busy::Idle, HelperState::Unsupported, Advance::Plain),
+        ];
+        for (builds, busy, helper, want) in table {
+            let at = line(busy, helper.clone());
+            assert_eq!(advance(builds, &at), want, "{builds} {busy:?} {helper:?}");
         }
     }
 }

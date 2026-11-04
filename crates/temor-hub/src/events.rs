@@ -49,7 +49,11 @@ impl Hub {
         // What the facts rule is told once the sessions are let go: it looks at the panes.
         let mut facts = Vec::new();
         for (pane, heard) in batch {
-            let Some(slot) = self.slots.get(&pane).cloned() else {
+            if let Heard::Refused(why) = heard {
+                self.notices.push(why);
+                continue;
+            }
+            let Some(slot) = self.panes.slot(pane).cloned() else {
                 continue;
             };
             let mut guard = slot.borrow_mut();
@@ -124,7 +128,7 @@ impl Hub {
                     out.bell.insert(pane);
                 }
                 Notice::Transfer(event) => out.transfers.push((pane, event)),
-                Notice::Quiet => {}
+                Notice::Finished(_) | Notice::Quiet => {}
             }
         }
         self.ssh_scan(&out.paint);
@@ -140,7 +144,7 @@ impl Hub {
     /// why), a host session that never came up or whose connection dropped (Restart connects
     /// again), and the quick terminal (it closes itself).
     fn keeps_ended_pane(&self, pane: PaneId, exit: Option<ChildExit>, prompted: bool) -> bool {
-        let host = self.ssh.panes.get(&pane).map(|host| host.phase);
+        let host = self.panes.host(pane).map(|host| host.phase);
         let dropped = host == Some(super::ssh::Phase::Up) && exit == Some(ChildExit::Exited(255));
         self.run_name(pane).is_some()
             || self.is_quick(pane)
@@ -151,9 +155,9 @@ impl Hub {
 
     /// The tab's title follows the program's title in the pane that has the keys in it.
     fn rename_for(&self, pane: PaneId, title: &str) -> Option<WorkspaceIn> {
-        let tab = self.book.ws.tab_of(pane)?;
-        let current = self.book.ws.tabs.tab(tab)?;
-        (self.book.ws.focus_of(tab) == Some(pane)
+        let tab = self.book.ws().tab_of(pane)?;
+        let current = self.book.ws().tabs.tab(tab)?;
+        (self.book.ws().focus_of(tab) == Some(pane)
             && !title.is_empty()
             && current.title.as_str() != title)
             .then(|| {
@@ -177,7 +181,10 @@ pub fn spawn_event_loop(desk: Desk) {
             while let Ok(more) = inbox.try_recv() {
                 batch.push(more);
             }
-            let delivery = desk.hub.0.borrow_mut().deliver(batch);
+            let (delivery, said) = desk.hub.0.borrow_mut().said(|hub| hub.deliver(batch));
+            for text in said {
+                desk.say(text);
+            }
             let Delivery {
                 paint,
                 chrome,
@@ -187,10 +194,8 @@ pub fn spawn_event_loop(desk: Desk) {
                 quick,
                 transfers,
             } = delivery;
-            let heard = !transfers.is_empty();
-            let said = desk.hub.0.borrow_mut().transfers(transfers);
-            for text in said {
-                desk.say(text);
+            if !transfers.is_empty() {
+                desk.tell(desk.hub.said(|hub| hub.transfers(transfers)));
             }
             for (slot, generation) in holds {
                 release_hold_later(slot, generation);
@@ -204,30 +209,27 @@ pub fn spawn_event_loop(desk: Desk) {
             }
             // A list of blocks grows with the output: it is drawn again for every paint.
             let listed = !paint.is_empty();
-            let redraw = moved
-                || listed
-                || heard
-                || !chrome.is_empty()
-                || !bell.is_empty()
-                || !asks.is_empty()
-                || !quick.is_empty();
+            // What asks and quick input change, the hub hears; what the panes said, it is told.
+            let redraw = moved || listed || !chrome.is_empty() || !bell.is_empty();
             for ask in asks {
                 for text in desk.hub.act(ask) {
                     desk.say(text);
                 }
             }
             for input in quick {
-                desk.hub.0.borrow_mut().quick_input(input);
+                for text in desk.hub.said(|hub| hub.quick_input(input)) {
+                    desk.say(text);
+                }
             }
             if redraw {
-                desk.bump();
+                desk.hub.changed();
             }
             if !bell.is_empty() {
                 // The bell's mark goes away on its own: a timer redraws once it has passed.
                 let desk = desk.clone();
                 spawn(async move {
                     sleep(BELL_MARK).await;
-                    desk.bump();
+                    desk.hub.changed();
                 });
             }
         }

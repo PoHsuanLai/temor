@@ -33,6 +33,16 @@ fn span(offset: u64) -> ByteRange {
     }
 }
 
+/// The reads that cover a file of `total` bytes from `start`: [`CHUNK`]s, the last short.
+fn spans(start: u64, total: u64) -> impl Iterator<Item = ByteRange> {
+    (start..total)
+        .step_by(CHUNK as usize)
+        .map(move |offset| ByteRange {
+            offset: ByteOffset(offset),
+            len: ByteCount(CHUNK.min(total - offset)),
+        })
+}
+
 impl Client {
     /// Copies a remote file to `rel` under `root`, a chunk at a time. If the remote file changes
     /// while it is copied, or anything fails, nothing is left behind. The stamp of what was
@@ -82,39 +92,47 @@ impl Client {
         each: &mut dyn FnMut(&[u8]) -> Result<(), Error>,
     ) -> Result<(), Error> {
         let (stamp, total) = (first.stamp, first.total.0);
-        let mut next = first.bytes.len() as u64;
-        if next == 0 && total > 0 {
+        let start = first.bytes.len() as u64;
+        if start == 0 && total > 0 {
             return Err(Error::ChangedWhileCopying);
         }
-        let mut queue: VecDeque<(InFlight, u64)> = VecDeque::new();
-        let result = 'reading: loop {
-            while queue.len() < WINDOW && next < total {
-                let len = CHUNK.min(total - next);
-                let range = ByteRange {
-                    offset: ByteOffset(next),
-                    len: ByteCount(len),
-                };
-                match self.send_read(remote, range) {
-                    Ok(sent) => queue.push_back((sent, len)),
-                    Err(error) => break 'reading Err(error),
-                }
-                next += len;
+        let reads = spans(start, total).map(|range| {
+            let sent = self.send_read(remote, range)?;
+            Ok((sent, range.len.0))
+        });
+        self.windowed(reads, |sent, len| {
+            let chunk = self.read_answer(sent)?;
+            if chunk.stamp != stamp || chunk.bytes.len() as u64 != len {
+                return Err(Error::ChangedWhileCopying);
             }
-            let Some((sent, len)) = queue.pop_front() else {
+            each(&chunk.bytes)
+        })
+    }
+
+    /// Puts the requests `sends` makes on the line, [`WINDOW`] at a time, and hands each answer
+    /// to `answer` in the order they were sent. On the first failure the rest are forgotten.
+    fn windowed<T>(
+        &self,
+        mut sends: impl Iterator<Item = Result<(InFlight, T), Error>>,
+        mut answer: impl FnMut(InFlight, T) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let mut line: VecDeque<(InFlight, T)> = VecDeque::new();
+        let result = loop {
+            let room = WINDOW - line.len();
+            if let Err(error) = sends.by_ref().take(room).try_for_each(|sent| {
+                line.push_back(sent?);
+                Ok::<_, Error>(())
+            }) {
+                break Err(error);
+            }
+            let Some((sent, with)) = line.pop_front() else {
                 break Ok(());
             };
-            let chunk = match self.read_answer(sent) {
-                Ok(chunk) => chunk,
-                Err(error) => break Err(error),
-            };
-            if chunk.stamp != stamp || chunk.bytes.len() as u64 != len {
-                break Err(Error::ChangedWhileCopying);
-            }
-            if let Err(error) = each(&chunk.bytes) {
+            if let Err(error) = answer(sent, with) {
                 break Err(error);
             }
         };
-        for (sent, _) in queue {
+        for (sent, _) in line {
             sent.forget(self);
         }
         result
@@ -188,53 +206,42 @@ impl Client {
     ) -> Result<FileStamp, Error> {
         let fail = |error| Error::io(format!("reading {}", local.display()), error);
         let mut file = File::open(local).map_err(fail)?;
-        let mut part = fill(&mut file, PART).map_err(fail)?;
+        let part = fill(&mut file, PART).map_err(fail)?;
         if part.len() < PART {
             let stamp = self.write_file(remote, check, &part)?;
             sent(part.len() as u64);
             return Ok(stamp);
         }
-        // Up to WINDOW parts are on the line at once; the host takes a connection's parts in
-        // the order they were sent.
+        // The host takes a connection's parts in the order they were sent.
         let mut offset = 0u64;
-        let mut queue: VecDeque<(InFlight, PartEnd, u64)> = VecDeque::new();
-        let mut last_sent = false;
-        let result = 'sending: loop {
-            while queue.len() < WINDOW && !last_sent {
-                // Read ahead, so the part being sent knows whether it is the last.
-                let next = match fill(&mut file, PART) {
-                    Ok(next) => next,
-                    Err(error) => break 'sending Err(fail(error)),
-                };
-                let end = if next.is_empty() {
-                    PartEnd::Last
-                } else {
-                    PartEnd::More
-                };
-                match self.send_part(remote, check, ByteOffset(offset), end, &part) {
-                    Ok(on_line) => queue.push_back((on_line, end, part.len() as u64)),
-                    Err(error) => break 'sending Err(error),
-                }
-                offset += part.len() as u64;
-                part = next;
-                last_sent = end == PartEnd::Last;
-            }
-            let Some((on_line, end, len)) = queue.pop_front() else {
-                break Err(Error::UnexpectedReply);
+        let mut ahead = Some(part);
+        let parts = std::iter::from_fn(|| {
+            let part = ahead.take()?;
+            // Read ahead, so the part being sent knows whether it is the last.
+            let next = match fill(&mut file, PART) {
+                Ok(next) => next,
+                Err(error) => return Some(Err(fail(error))),
             };
-            match self.part_answer(on_line, end) {
-                Ok(Some(stamp)) => {
-                    sent(len);
-                    break Ok(stamp);
-                }
-                Ok(None) => sent(len),
-                Err(error) => break Err(error),
+            let end = match next.is_empty() {
+                true => PartEnd::Last,
+                false => PartEnd::More,
+            };
+            let on_line = self.send_part(remote, check, ByteOffset(offset), end, &part);
+            offset += part.len() as u64;
+            if end == PartEnd::More {
+                ahead = Some(next);
             }
-        };
+            Some(on_line.map(|on_line| (on_line, (end, part.len() as u64))))
+        });
+        let mut stamp = None;
+        let result = self
+            .windowed(parts, |on_line, (end, len)| {
+                stamp = self.part_answer(on_line, end)?;
+                sent(len);
+                Ok(())
+            })
+            .and_then(|()| stamp.ok_or(Error::UnexpectedReply));
         if result.is_err() {
-            for (on_line, ..) in queue {
-                on_line.forget(self);
-            }
             self.abort_upload(remote, offset);
         }
         result
@@ -258,4 +265,28 @@ fn fill(file: &mut File, size: usize) -> std::io::Result<Vec<u8>> {
     let mut bytes = Vec::with_capacity(size);
     file.take(size as u64).read_to_end(&mut bytes)?;
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_reads_cover_the_rest_of_the_file_in_chunks_the_last_short() {
+        let ranges = |start, total| -> Vec<(u64, u64)> {
+            spans(start, total)
+                .map(|range| (range.offset.0, range.len.0))
+                .collect()
+        };
+        assert_eq!(ranges(CHUNK, CHUNK), vec![]);
+        assert_eq!(ranges(CHUNK, CHUNK + 1), vec![(CHUNK, 1)]);
+        assert_eq!(
+            ranges(CHUNK, 3 * CHUNK),
+            vec![(CHUNK, CHUNK), (2 * CHUNK, CHUNK)]
+        );
+        assert_eq!(
+            ranges(10, 10 + CHUNK + 5),
+            vec![(10, CHUNK), (10 + CHUNK, 5)]
+        );
+    }
 }

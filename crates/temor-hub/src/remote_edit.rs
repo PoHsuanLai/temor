@@ -16,7 +16,10 @@ use temor_client::ssh::work::EditId;
 pub(super) enum Job {
     Fetch,
     Check,
-    Store,
+    /// `overwrite`: write over the host's file even though it changed (the person chose to).
+    Store {
+        overwrite: bool,
+    },
 }
 
 impl Hub {
@@ -33,17 +36,13 @@ impl Hub {
         };
         let (host, path, local) = (edit.host.clone(), edit.path.clone(), edit.local.clone());
         let (tier, seen) = (edit.tier, edit.seen);
-        // The choice to overwrite is for one write.
-        let overwrite = std::mem::replace(&mut edit.overwrite, false);
         match tier {
             EditTier::Scp => match job {
                 Job::Fetch => self.ssh.work.fetch(id, host, path, local),
                 Job::Check => self.ssh.work.check(id, host, path),
-                Job::Store => self.ssh.work.store(id, host, local, path),
+                Job::Store { .. } => self.ssh.work.store(id, host, local, path),
             },
-            EditTier::Helper => {
-                self.start_helper_job(id, job, (host, path, local), (seen, overwrite))
-            }
+            EditTier::Helper => self.start_helper_job(id, job, (host, path, local), seen),
         }
     }
 
@@ -52,7 +51,7 @@ impl Hub {
         id: EditId,
         job: Job,
         (host, path, local): (HostAlias, RemoteFilePath, std::path::PathBuf),
-        (seen, overwrite): (Option<FileStamp>, bool),
+        seen: Option<FileStamp>,
     ) {
         let Some(conn) = self.remote.helper_conn(&host) else {
             self.on_edit(id, EditIn::Failed(EditFault::NoConnection));
@@ -63,7 +62,7 @@ impl Hub {
         match job {
             Job::Fetch => jobs.fetch(id, conn, remote, local),
             Job::Check => jobs.check(id, conn, remote),
-            Job::Store => match write_check(seen, overwrite) {
+            Job::Store { overwrite } => match write_check(seen, overwrite) {
                 Some(check) => jobs.store(id, conn, (remote, local), check),
                 None => self.on_edit(id, EditIn::Failed(EditFault::Refused)),
             },

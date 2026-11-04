@@ -14,22 +14,15 @@ use temor_client::model::space::{Place, Project, TemorSpaces};
 use super::address_bar::{AddressBar, WalkButtons};
 use super::shelf::ShelfButton;
 use temor_hub::{Desk, HubRef};
+use temor_ui_base::notices::Notices;
 use temor_ui_base::space_handle::SpacesOf;
 
-/// The hub's Spaces as the kit's handle for the window. `ui` and `notice` are the window's
-/// redraw signal and message bar.
-pub fn use_window_spaces(
-    hub: &HubRef,
-    ui: Signal<u32>,
-    notice: Signal<Option<String>>,
-) -> SpacesOf {
+/// The hub's Spaces as the kit's handle for the window. `notice` is the window's message bar.
+pub fn use_window_spaces(hub: &HubRef, notice: Notices) -> SpacesOf {
     let tell = move |texts: Vec<String>| {
-        let mut notice = notice;
-        if let Some(text) = texts.into_iter().last() {
-            notice.set(Some(text));
+        for text in texts {
+            notice.say(text);
         }
-        let mut ui = ui;
-        ui += 1;
     };
     let (booted, kept, here, arrived) = (hub.clone(), hub.clone(), hub.clone(), hub.clone());
     use_spaces(

@@ -1,4 +1,7 @@
-//! `GlyphCache`: graphemes to positioned atlas glyphs, cached per style and width, at one scale.
+//! `GlyphCache`: graphemes to placed glyphs, cached per style and width, at one scale. A glyph
+//! is named by what it is drawn from ([`GlyphKey`]), never by where it sits in an atlas, so a run
+//! handed out stays good: its images are kept here, and drawn again if they were let go. Where a
+//! glyph sits in an atlas is the atlas's business (`Atlases::resolve`).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -6,9 +9,6 @@ use std::sync::Arc;
 use swash::scale::ScaleContext;
 use swash::shape::ShapeContext;
 
-#[cfg(feature = "gpu")]
-use super::atlas::AtlasCopy;
-use super::atlas::{Atlas, AtlasFormat, Slot};
 use super::config::FaceStyle;
 use super::decor::Decoration;
 use super::face::{FaceId, Synth};
@@ -26,110 +26,141 @@ pub(crate) enum GlyphKind {
     Color,
 }
 
+impl GlyphKind {
+    pub fn bytes_per_texel(self) -> u32 {
+        match self {
+            Self::Mask => 1,
+            Self::Color => 4,
+        }
+    }
+}
+
+/// What a glyph is drawn from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum GlyphKey {
+    /// A face's glyph as a coverage mask, thickened or slanted as asked.
+    Mask {
+        face: FaceId,
+        glyph: u16,
+        synth: Synth,
+    },
+    /// A face's colour glyph, fitted to a box (so the box is part of what it is).
+    Color {
+        face: FaceId,
+        glyph: u16,
+        size: (u32, u32),
+    },
+    /// A box-drawing character or an underline, drawn here.
+    Special(Special),
+}
+
+impl GlyphKey {
+    pub fn kind(self) -> GlyphKind {
+        match self {
+            Self::Color { .. } => GlyphKind::Color,
+            Self::Mask { .. } | Self::Special(_) => GlyphKind::Mask,
+        }
+    }
+}
+
+/// Glyphs drawn here rather than from a font.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Special {
+    Box(char),
+    Decor(Decoration),
+}
+
+/// A glyph's texels, rows packed: one coverage byte each for a mask, premultiplied RGBA for a
+/// colour glyph.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GlyphImage {
+    pub width: u32,
+    pub height: u32,
+    pub kind: GlyphKind,
+    pub data: Vec<u8>,
+}
+
+impl GlyphImage {
+    /// Texel row `row`.
+    pub fn row(&self, row: u32) -> &[u8] {
+        let line = (self.width * self.kind.bytes_per_texel()) as usize;
+        let start = row as usize * line;
+        self.data.get(start..start + line).unwrap_or_default()
+    }
+}
+
+/// A glyph drawn, and where it sits from the cell's top-left corner, in device pixels.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Placed {
+    pub at: (i32, i32),
+    pub image: GlyphImage,
+}
+
 /// A glyph placed in a cell: `dx`, `dy` from the cell's top-left corner, in device pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct RunGlyph {
     pub dx: i32,
     pub dy: i32,
-    pub slot: Slot,
-    pub kind: GlyphKind,
-}
-
-/// The rasterised glyphs a cache key stands for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct RasterKey {
-    pub face: FaceId,
-    pub glyph: u16,
-    pub synth: Synth,
-    /// Colour glyphs are fitted to their box, so its size is part of the key.
-    pub color_box: (u32, u32),
-}
-
-/// Glyphs drawn here rather than from a font.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum Special {
-    Box(char),
-    Decor(Decoration),
+    pub w: u32,
+    pub h: u32,
+    pub key: GlyphKey,
 }
 
 /// Cached runs of one style and width, by grapheme.
 type RunsByText = HashMap<Box<str>, Arc<[RunGlyph]>>;
 
-/// Graphemes to atlas glyphs. Everything cached is valid for one [`GlyphCache::epoch`]: when an
-/// atlas fills up it is cleared and the epoch moves on, and glyphs handed out before must be
-/// fetched again.
+/// How many bytes of glyph images are kept before they are let go (at the start of a frame).
+const KEPT_BYTES: usize = 32 << 20;
+
+/// Graphemes to placed glyphs, and the glyphs' images.
 pub(crate) struct GlyphCache {
     pub(super) fonts: FontSet,
     pub(super) px: f32,
     scale: Scale,
     pub(super) metrics: CellMetrics,
-    pub alpha: Atlas,
-    pub color: Atlas,
     pub(super) scaler: ScaleContext,
     pub(super) shaper: ShapeContext,
     pub(super) bitmaps: SystemBitmapEmoji,
-    pub(super) rasters: HashMap<RasterKey, Option<RunGlyph>>,
-    pub(super) specials: HashMap<Special, Option<RunGlyph>>,
+    /// Each glyph drawn; `None` for one with nothing to draw.
+    drawn: HashMap<GlyphKey, Option<Placed>>,
+    /// The bytes of the images in `drawn`.
+    held: usize,
     runs: HashMap<(FaceStyle, u8), RunsByText>,
-    epoch: u64,
-    /// While `Some`, the atlases as they stood just before each clear a full atlas forced.
-    #[cfg(feature = "gpu")]
-    spilled: Option<Vec<(AtlasCopy, AtlasCopy)>>,
 }
 
 impl std::fmt::Debug for GlyphCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GlyphCache")
             .field("metrics", &self.metrics)
-            .field("epoch", &self.epoch)
+            .field("held", &self.held)
             .finish_non_exhaustive()
     }
 }
 
-/// Atlas sizes: start small, grow to the cap, then clear.
-const ALPHA_ATLAS: (u32, u32, u32) = (1024, 256, 4096);
-const COLOR_ATLAS: (u32, u32, u32) = (1024, 256, 2048);
-
-/// How many times a glyph run, row or frame is built again when an atlas clears while it is
-/// built (its glyphs would point at cleared texels). A build that still clears after that many
-/// tries is abandoned, so the work is bounded even when the glyphs cannot fit the atlas.
-pub(crate) const BUILD_ATTEMPTS: usize = 3;
+/// The cell `fonts` make at `scale`.
+fn metrics_at(fonts: &FontSet, scale: Scale) -> CellMetrics {
+    cell_metrics(
+        fonts.face(fonts.primary(FaceStyle::REGULAR)),
+        fonts.size().device(scale),
+        fonts.line_height(),
+    )
+}
 
 impl GlyphCache {
     pub fn new(fonts: FontSet, scale: Scale) -> Self {
-        Self::with_max_heights(fonts, scale, ALPHA_ATLAS.2, COLOR_ATLAS.2)
-    }
-
-    /// As [`GlyphCache::new`], with the atlases capped at the given heights (texel rows). The
-    /// caps are the only knob tests need to force atlas clears.
-    pub(crate) fn with_max_heights(
-        fonts: FontSet,
-        scale: Scale,
-        alpha_max: u32,
-        color_max: u32,
-    ) -> Self {
         let px = fonts.size().device(scale);
-        let metrics = cell_metrics(
-            fonts.face(fonts.primary(FaceStyle::REGULAR)),
-            px,
-            fonts.line_height(),
-        );
+        let metrics = metrics_at(&fonts, scale);
         Self {
             fonts,
             px,
             scale,
             metrics,
-            alpha: Atlas::new(AtlasFormat::Alpha, ALPHA_ATLAS.0, ALPHA_ATLAS.1, alpha_max),
-            color: Atlas::new(AtlasFormat::Color, COLOR_ATLAS.0, COLOR_ATLAS.1, color_max),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
             bitmaps: SystemBitmapEmoji::new(),
-            rasters: HashMap::new(),
-            specials: HashMap::new(),
+            drawn: HashMap::new(),
+            held: 0,
             runs: HashMap::new(),
-            epoch: 0,
-            #[cfg(feature = "gpu")]
-            spilled: None,
         }
     }
 
@@ -137,32 +168,36 @@ impl GlyphCache {
         self.metrics
     }
 
-    /// Moves to `scale`; everything cached is dropped when it changes. Returns whether it did.
+    /// The cell at `scale`, whatever scale the cache is at: nothing cached changes.
+    pub fn metrics_at(&self, scale: Scale) -> CellMetrics {
+        metrics_at(&self.fonts, scale)
+    }
+
+    /// Moves to `scale`; everything cached is dropped when it changes, and the same keys draw
+    /// other images from then on. Returns whether it did.
     pub fn set_scale(&mut self, scale: Scale) -> bool {
         if scale == self.scale {
             return false;
         }
         self.scale = scale;
         self.px = self.fonts.size().device(scale);
-        self.metrics = cell_metrics(
-            self.fonts.face(self.fonts.primary(FaceStyle::REGULAR)),
-            self.px,
-            self.fonts.line_height(),
-        );
-        self.reset();
+        self.metrics = metrics_at(&self.fonts, scale);
+        self.forget();
         true
     }
 
-    /// Drops the record of atlas regions written, for a renderer that reads the atlases from
-    /// memory and never uploads them.
-    pub fn forget_uploads(&mut self) {
-        self.alpha.take_dirty();
-        self.color.take_dirty();
+    /// Lets the glyphs go when their images hold more than [`KEPT_BYTES`]; called between
+    /// frames, so the images a frame's quads name are there while it draws.
+    pub fn trim(&mut self) {
+        if self.held > KEPT_BYTES {
+            self.forget();
+        }
     }
 
-    /// Changes whenever glyphs handed out before became invalid.
-    pub fn epoch(&self) -> u64 {
-        self.epoch
+    fn forget(&mut self) {
+        self.drawn.clear();
+        self.runs.clear();
+        self.held = 0;
     }
 
     /// The glyphs for one grapheme cluster `span` cells wide.
@@ -170,93 +205,73 @@ impl GlyphCache {
         if let Some(run) = self.runs.get(&(style, span)).and_then(|m| m.get(text)) {
             return run.clone();
         }
-        // An atlas can fill up part-way through a run; the glyphs placed before the clear are
-        // then gone, so the run is built again into the emptied atlases. A run that still
-        // clears after `BUILD_ATTEMPTS` is handed out uncached: the caller sees the epoch move
-        // and builds its row again.
-        let mut glyphs: Arc<[RunGlyph]> = Arc::from(Vec::new());
-        for _ in 0..BUILD_ATTEMPTS {
-            let epoch = self.epoch;
-            glyphs = self.build_run(text, style, span).into();
-            if self.epoch == epoch {
-                self.runs
-                    .entry((style, span))
-                    .or_default()
-                    .insert(text.into(), glyphs.clone());
-                return glyphs;
-            }
-        }
+        let glyphs: Arc<[RunGlyph]> = self.build_run(text, style, span).into();
+        self.runs
+            .entry((style, span))
+            .or_default()
+            .insert(text.into(), glyphs.clone());
         glyphs
     }
 
     /// The mask for an underline style, one cell wide.
     pub fn decoration(&mut self, decoration: Decoration) -> Option<RunGlyph> {
-        self.special(Special::Decor(decoration))
+        let key = GlyphKey::Special(Special::Decor(decoration));
+        self.placed(key)
+            .map(|placed| run_glyph(key, placed, (0, 0)))
     }
 
-    /// Drops every glyph and empties both atlases.
-    pub(super) fn reset(&mut self) {
-        self.alpha.clear();
-        self.color.clear();
-        self.rasters.clear();
-        self.specials.clear();
-        self.runs.clear();
-        self.epoch += 1;
+    /// The image of `key`, drawn now if it is not kept.
+    #[cfg(any(feature = "gpu", test))]
+    pub fn image_of(&mut self, key: GlyphKey) -> Option<&GlyphImage> {
+        self.placed(key).map(|placed| &placed.image)
     }
 
-    /// Puts a mask or colour image in its atlas, clearing everything once if it is full.
-    pub(super) fn store(&mut self, kind: GlyphKind, w: u32, h: u32, data: &[u8]) -> Option<Slot> {
-        if let Ok(slot) = self.atlas(kind).put(w, h, data) {
-            return Some(slot);
+    /// The image of `key` as kept: every key a run handed out since the last [`trim`] is.
+    ///
+    /// [`trim`]: GlyphCache::trim
+    pub fn image(&self, key: GlyphKey) -> Option<&GlyphImage> {
+        self.drawn.get(&key)?.as_ref().map(|placed| &placed.image)
+    }
+
+    /// `key` drawn and placed, from what is kept or drawn now.
+    pub(super) fn placed(&mut self, key: GlyphKey) -> Option<&Placed> {
+        if !self.drawn.contains_key(&key) {
+            let placed = self.draw(key);
+            self.held += placed.as_ref().map_or(0, |p| p.image.data.len());
+            self.drawn.insert(key, placed);
         }
-        self.spill();
-        self.reset();
-        self.atlas(kind).put(w, h, data).ok()
+        self.drawn.get(&key)?.as_ref()
     }
+}
 
-    /// Keeps a copy of both atlases, when asked to (see [`GlyphCache::begin_spill`]).
-    #[cfg(feature = "gpu")]
-    fn spill(&mut self) {
-        if let Some(copies) = self.spilled.as_mut() {
-            copies.push((self.alpha.copy(), self.color.copy()));
-        }
+#[cfg(test)]
+impl GlyphCache {
+    /// A glyph a test places by hand: a mask `w` by `h`, fully covered, under a name of its
+    /// own.
+    pub(crate) fn keep_mask(&mut self, w: u32, h: u32) -> GlyphKey {
+        let key = TEST_GLYPH;
+        let image = GlyphImage {
+            width: w,
+            height: h,
+            kind: GlyphKind::Mask,
+            data: vec![255; (w * h) as usize],
+        };
+        self.drawn.insert(key, Some(Placed { at: (0, 0), image }));
+        key
     }
+}
 
-    #[cfg(not(feature = "gpu"))]
-    fn spill(&mut self) {}
+/// The name [`GlyphCache::keep_mask`] keeps its glyph under.
+#[cfg(test)]
+pub(crate) const TEST_GLYPH: GlyphKey = GlyphKey::Special(Special::Box('\u{2588}'));
 
-    /// Starts keeping a copy of both atlases before each clear a full atlas forces, so a frame
-    /// whose glyphs outgrow them can still draw the rows built before the clear.
-    #[cfg(feature = "gpu")]
-    pub(crate) fn begin_spill(&mut self) {
-        self.spilled = Some(Vec::new());
-    }
-
-    /// The copies kept since the last call, oldest first.
-    #[cfg(feature = "gpu")]
-    pub(crate) fn take_spilled(&mut self) -> Vec<(AtlasCopy, AtlasCopy)> {
-        self.spilled
-            .as_mut()
-            .map(std::mem::take)
-            .unwrap_or_default()
-    }
-
-    /// Stops keeping copies.
-    #[cfg(feature = "gpu")]
-    pub(crate) fn end_spill(&mut self) {
-        self.spilled = None;
-    }
-
-    /// Empties both atlases and drops every cached glyph, on purpose.
-    #[cfg(feature = "gpu")]
-    pub(crate) fn restart(&mut self) {
-        self.reset();
-    }
-
-    fn atlas(&mut self, kind: GlyphKind) -> &mut Atlas {
-        match kind {
-            GlyphKind::Mask => &mut self.alpha,
-            GlyphKind::Color => &mut self.color,
-        }
+/// `placed` as a run's glyph, moved by `by`.
+pub(super) fn run_glyph(key: GlyphKey, placed: &Placed, by: (i32, i32)) -> RunGlyph {
+    RunGlyph {
+        dx: placed.at.0 + by.0,
+        dy: placed.at.1 + by.1,
+        w: placed.image.width,
+        h: placed.image.height,
+        key,
     }
 }

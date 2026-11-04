@@ -20,7 +20,7 @@ impl Hub {
         read: impl FnOnce(&Session) -> Result<T, PortRefusal>,
     ) -> Result<T, PortRefusal> {
         let id = self.known_pane(pane)?;
-        let slot = self.slots.get(&id).ok_or(PortRefusal::NoSuchPane)?;
+        let slot = self.panes.slot(id).ok_or(PortRefusal::NoSuchPane)?;
         let slot = slot.borrow();
         let session = slot
             .session

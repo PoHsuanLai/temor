@@ -126,7 +126,7 @@ const MINIATURE: u32 = 1000;
 impl Hub {
     /// The sidebar's rows now.
     pub fn sidebar(&self) -> SidebarData {
-        let plan = sidebar_plan(&self.book.ws.tabs);
+        let plan = sidebar_plan(&self.book.ws().tabs);
         let take =
             |ids: &[TabId]| -> Vec<TabRow> { ids.iter().filter_map(|id| self.row(*id)).collect() };
         let pinned = take(&plan.pinned);
@@ -151,8 +151,8 @@ impl Hub {
     }
 
     pub(super) fn row(&self, id: TabId) -> Option<TabRow> {
-        let tab = self.book.ws.tabs.tab(id)?;
-        let focus = self.book.ws.focus_of(id)?;
+        let tab = self.book.ws().tabs.tab(id)?;
+        let focus = self.book.ws().focus_of(id)?;
         // A page with the keys names the row, as a browser tab is named by its page; the folder
         // is still its terminal's.
         let page_name = self.viewer_name(focus);
@@ -171,16 +171,22 @@ impl Hub {
         let place = self
             .live(pane, |s| s.cwd())
             .flatten()
-            .or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()))
+            .or_else(|| {
+                self.book
+                    .ws()
+                    .cwds
+                    .get(&pane)
+                    .map(|c| c.as_str().to_owned())
+            })
             .filter(|_| !on_host);
         let cwd = place
             .as_deref()
             .map(|path| tidy(path, &self.launch.ambient.home));
         let agent = self.agent_state_of_tab(id);
         // News, or an agent that waits or has a result the person has not looked at.
-        let news = self.book.ws.tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
+        let news = self.book.ws().tabs.unread.contains(&id) || attention(agent) == Emphasis::Strong;
         let unread = news;
-        let selection = match self.book.ws.front() == Some(id) {
+        let selection = match self.book.ws().front() == Some(id) {
             true => Selection::Selected,
             false => Selection::Unselected,
         };
@@ -221,7 +227,13 @@ impl Hub {
         if let Some(host_title) = self.ssh_title(pane) {
             return host_title;
         }
-        let cwd = live_cwd.or_else(|| self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()));
+        let cwd = live_cwd.or_else(|| {
+            self.book
+                .ws()
+                .cwds
+                .get(&pane)
+                .map(|c| c.as_str().to_owned())
+        });
         tab_title(NameIn {
             running: running.as_ref().map(|run| run.command.as_str()),
             title: &title,
@@ -284,7 +296,7 @@ impl Hub {
     }
 
     fn tiles(&self, id: TabId, focus: PaneId) -> Vec<Tile> {
-        let Some(tab) = self.book.ws.tabs.tab(id) else {
+        let Some(tab) = self.book.ws().tabs.tab(id) else {
             return Vec::new();
         };
         let whole = MINIATURE as f32;
@@ -339,7 +351,7 @@ impl Hub {
             return title;
         }
         self.book
-            .ws
+            .ws()
             .cwds
             .get(&pane)
             .and_then(|c| c.as_str().rsplit('/').find(|part| !part.is_empty()))
@@ -348,7 +360,7 @@ impl Hub {
 
     /// The host `pane` is a session on, if it is one.
     pub(super) fn alias_of(&self, pane: PaneId) -> Option<HostAlias> {
-        self.ssh.panes.get(&pane).map(|host| host.alias.clone())
+        self.panes.host(pane).map(|host| host.alias.clone())
     }
 
     /// Changes the pane's session, if it has one. The mutable twin of [`Hub::live`].
@@ -357,7 +369,7 @@ impl Hub {
         pane: PaneId,
         change: impl FnOnce(&mut temor_pane_view::session::Session) -> T,
     ) -> Option<T> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let mut slot = slot.borrow_mut();
         slot.session.as_mut().map(change)
     }
@@ -368,7 +380,7 @@ impl Hub {
         pane: PaneId,
         read: impl FnOnce(&temor_pane_view::session::Session) -> T,
     ) -> Option<T> {
-        let slot = self.slots.get(&pane)?;
+        let slot = self.panes.slot(pane)?;
         let slot = slot.borrow();
         slot.session.as_ref().map(read)
     }
@@ -416,24 +428,24 @@ impl HubRef {
 
     /// The id the next folder made in the Space on screen gets.
     pub fn next_folder(&self) -> FolderId {
-        FolderId(self.0.borrow().book.ws.tabs.next_folder)
+        FolderId(self.0.borrow().book.ws().tabs.next_folder.0)
     }
 
     /// Whether the Space on screen has `folder`.
     pub fn has_folder(&self, folder: FolderId) -> bool {
-        self.0.borrow().book.ws.tabs.folder(folder).is_some()
+        self.0.borrow().book.ws().tabs.folder(folder).is_some()
     }
 
     /// The row a console's terminal `pane` is in, for its bar's menu: none for the quick
     /// terminal, which is in no row.
     pub fn console_row(&self, pane: PaneId) -> Option<ConsoleRow> {
         let hub = self.0.borrow();
-        let tab = hub.book.ws.tab_of(pane)?;
+        let tab = hub.book.ws().tab_of(pane)?;
         let sidebar = hub.sidebar();
         let row = sidebar.row(tab)?;
         let terminals = hub
             .book
-            .ws
+            .ws()
             .tabs
             .tab(tab)?
             .tree

@@ -6,7 +6,7 @@ mod model;
 mod shell;
 mod user;
 
-pub use crate::platform::{Pty, PtyIo, run_session_leader};
+pub use crate::platform::{Pty, PtyIo, Wake, Waker, run_session_leader};
 // A process's command line is data, kept in temor-schema with the rest (PLAN §2b).
 pub use launcher::{SessionLauncher, find_program};
 pub use model::{

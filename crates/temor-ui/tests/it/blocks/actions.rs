@@ -37,11 +37,9 @@ fn save_output_places_the_output_in_downloads_under_its_command() {
             .is_some_and(|b| b.1 != Outcome::Running)
     });
     let id = live.session.block_outcomes()[0].0;
-    live.session.save_output(id).expect("save");
-    assert_eq!(
-        live.session.take_notice().as_deref(),
-        Some("Saved to Downloads.")
-    );
+    let (saved, left) = live.session.said(|s| s.save_output(id));
+    saved.expect("save");
+    assert_eq!(left.notice.as_deref(), Some("Saved to Downloads."));
     let saved = live.shelf.join("echo saved-out output.txt");
     assert_eq!(
         std::fs::read_to_string(&saved).expect("saved file"),

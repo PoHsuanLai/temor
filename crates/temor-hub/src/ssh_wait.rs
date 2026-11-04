@@ -26,7 +26,7 @@ impl Hub {
     /// opens `path` as soon as the connection is up.
     pub(super) fn edit_when_up(&mut self, host: HostAlias, path: RemoteFilePath) {
         let name = host.as_str().to_owned();
-        if self.ssh.panes_on(&host).is_empty() {
+        if self.panes.on_host(&host).is_empty() {
             self.open_host_named(&name);
         }
         self.notices.push(format!(
@@ -60,11 +60,10 @@ impl Hub {
 
     /// Whether a pane of `host` has not given up.
     fn host_is_trying(&self, host: &HostAlias) -> bool {
-        self.ssh
-            .panes_on(host)
-            .iter()
-            .filter_map(|pane| self.ssh.panes.get(pane))
-            .any(|pane| !matches!(pane.phase, Phase::Failed | Phase::Offline))
+        self.panes
+            .hosts()
+            .filter(|(_, pane)| &pane.alias == host)
+            .any(|(_, pane)| !matches!(pane.phase, Phase::Failed | Phase::Offline))
     }
 
     /// A pane of `pane`'s host that closed inside a tab kept for reopening is remembered, so
@@ -72,19 +71,19 @@ impl Hub {
     pub(super) fn ssh_note_closed(&mut self, pane: PaneId, host: HostAlias) {
         let in_closed_tab = self
             .book
-            .ws
+            .ws()
             .closed
             .tabs
             .iter()
             .any(|closed| closed.tab.tree.contains(pane));
         if in_closed_tab {
-            self.ssh.closed.insert(pane, host);
+            self.memory.of(pane).host = Some(host);
         }
     }
 
     /// The host a pane coming back from the closed tabs was a session on.
     pub(super) fn ssh_reclaim(&mut self, pane: PaneId) -> Option<HostAlias> {
-        self.ssh.closed.remove(&pane)
+        self.memory.take(pane, |kept| kept.host.take())
     }
 
     /// A host pane wants to be seen (a link to confirm, a question): its tab is marked unread

@@ -1,17 +1,10 @@
 //! The bar on the palette: the rows go in, the highlight is the palette's, a pick comes out.
 
-use temor_client::model::bar::{BarAction, BarContext, Candidate, PathResolver, RowKey, Target};
+use temor_client::model::bar::{BarAction, BarContext, Candidate, RowKey, Target};
 use temor_client::model::vocab::ai::AiSwitch;
 use temor_client::model::vocab::ids::TabId;
 
 use super::BarModel;
-
-struct OnPath;
-impl PathResolver for OnPath {
-    fn resolves(&self, program: &str) -> bool {
-        program == "htop"
-    }
-}
 
 fn tabs() -> Vec<Candidate> {
     (1..=3)
@@ -31,7 +24,7 @@ fn typing_filters_in_the_fixed_order_and_the_palette_owns_the_highlight() {
     let candidates = tabs();
     let cx = BarContext {
         candidates: &candidates,
-        resolver: &OnPath,
+        runnable: Some("htop"),
         ai: AiSwitch::Off,
     };
     let model = BarModel::default().toggled(cx);
@@ -66,7 +59,7 @@ fn a_picked_row_comes_back_once_and_closes_the_bar() {
     let candidates = tabs();
     let cx = BarContext {
         candidates: &candidates,
-        resolver: &OnPath,
+        runnable: Some("htop"),
         ai: AiSwitch::Off,
     };
     let model = BarModel::default().toggled(cx).typed("logs".to_owned(), cx);
@@ -87,7 +80,7 @@ fn closing_and_opening_again_starts_empty() {
     let candidates = tabs();
     let cx = BarContext {
         candidates: &candidates,
-        resolver: &OnPath,
+        runnable: Some("htop"),
         ai: AiSwitch::Off,
     };
     let model = BarModel::default()

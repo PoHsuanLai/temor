@@ -14,14 +14,14 @@ use super::host_words::{REMEMBER_TIP, TRY_AGAIN};
 use super::remote_words::{
     ASK_DETAIL, HELPER_ASK, ask_line, port_action_words, port_line, stage_line, typing_line,
 };
-use temor_hub::{Desk, PortRow, RemoteStage};
+use temor_hub::{Desk, PortRow, RemoteStage, use_hub};
 
 /// The helper banners of `pane`; nothing for a pane that is not on a helper.
 #[component]
 #[allow(non_snake_case)]
 pub fn RemoteBanners(pane: PaneId, desk: Desk) -> Element {
-    let _ = (desk.ui)();
-    let Some(view) = desk.hub.remote_view(pane) else {
+    let shown = use_hub(&desk, pane, |hub, &pane| hub.remote_view(pane));
+    let Some(view) = shown() else {
         return rsx! {};
     };
     let host = view.host.clone();

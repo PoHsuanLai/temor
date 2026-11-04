@@ -56,7 +56,13 @@ impl Pty {
     /// kill cannot be ignored).
     pub fn kill(&mut self) -> Result<ChildExit, PtyError> {
         match self.signal_group(SignalKind::Kill) {
-            Ok(()) | Err(PtyError::Reaped) => self.wait_exit(),
+            Ok(()) | Err(PtyError::Reaped) => {
+                // A program started through a launcher makes its own group only once it runs;
+                // killed before that, its group is empty and only the program itself is hit.
+                // Without this the wait below never ends.
+                let _ = self.child.kill();
+                self.wait_exit()
+            }
             Err(error) => Err(error),
         }
     }

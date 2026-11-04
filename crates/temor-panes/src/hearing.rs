@@ -1,7 +1,8 @@
 //! Hearing the panes on a thread of the client's (PLAN §2b, P24c). Every pane's events arrive on
 //! one channel tagged with its id; the `temor-hear` thread gives each to its pane's core
-//! ([`PaneCore::hear`]) and sends the window what is left ([`Heard`]). The window never parses a
-//! mark or reads a command's text; it only shows what the core says.
+//! ([`PaneCore::hear`]), shows the desktop notices it asks for, and sends the window what is left
+//! ([`Heard`]), commands that finished first. The window never parses a mark or reads a
+//! command's text; it only shows what the core says.
 //!
 //! A pane's core is shared with the window ([`Shared`]): the window paints from it and types into
 //! it, each under the core's lock. Locks are taken in one order, the panes' table before a core
@@ -19,7 +20,8 @@ use temor_core::vocab::ids::PaneId;
 use temor_pane::PaneEvent;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use super::{Heard, PaneCore};
+use super::notify::Notifier;
+use super::{Heard, PaneCore, PaneEffect};
 
 /// A pane's core, as the window and the client's thread both hold it.
 pub type Shared = Arc<Mutex<PaneCore>>;
@@ -48,7 +50,36 @@ struct Panes {
 pub struct Hearing {
     events: UnboundedSender<(PaneId, PaneEvent)>,
     panes: Arc<Mutex<Panes>>,
+    edges: Edges,
+}
+
+/// Where what a core leaves goes: the window, and the desktop's notices.
+#[derive(Clone)]
+struct Edges {
     window: UnboundedSender<(PaneId, Heard)>,
+    notifier: Arc<Mutex<Box<dyn Notifier>>>,
+}
+
+impl Edges {
+    /// Hears `event` in `core` and carries out what that asks, after the core is let go.
+    fn hear(&self, pane: PaneId, core: &Shared, event: PaneEvent) {
+        let (heard, effects) = core.lock().hear(event);
+        let mut finished = Vec::new();
+        for effect in effects {
+            match effect {
+                PaneEffect::Notify(note) => {
+                    if let Err(err) = self.notifier.lock().notify(&note) {
+                        let _ = self.window.send((pane, Heard::Refused(err.to_string())));
+                    }
+                }
+                PaneEffect::Finished(done) => finished.push(done),
+            }
+        }
+        if !finished.is_empty() {
+            let _ = self.window.send((pane, Heard::Finished(finished)));
+        }
+        let _ = self.window.send((pane, heard));
+    }
 }
 
 impl std::fmt::Debug for Hearing {
@@ -58,16 +89,22 @@ impl std::fmt::Debug for Hearing {
 }
 
 impl Hearing {
-    /// Starts the thread. What each pane's core leaves for the window comes out of the receiver.
-    pub fn start() -> std::io::Result<(Self, UnboundedReceiver<(PaneId, Heard)>)> {
+    /// Starts the thread, showing desktop notices through `notifier`. What each pane's core
+    /// leaves for the window comes out of the receiver.
+    pub fn start(
+        notifier: Box<dyn Notifier>,
+    ) -> std::io::Result<(Self, UnboundedReceiver<(PaneId, Heard)>)> {
         let (events, mut inbox) = unbounded_channel::<(PaneId, PaneEvent)>();
         let (window, heard) = unbounded_channel();
         let hearing = Self {
             events,
             panes: Arc::default(),
-            window,
+            edges: Edges {
+                window,
+                notifier: Arc::new(Mutex::new(notifier)),
+            },
         };
-        let (panes, onward) = (Arc::clone(&hearing.panes), hearing.window.clone());
+        let (panes, onward) = (Arc::clone(&hearing.panes), hearing.edges.clone());
         std::thread::Builder::new()
             .name("temor-hear".to_owned())
             .spawn(move || {
@@ -92,8 +129,7 @@ impl Hearing {
         let mut panes = self.panes.lock();
         panes.cores.insert(pane, Arc::downgrade(core));
         for event in panes.waiting.remove(&pane).unwrap_or_default() {
-            let heard = core.lock().hear(event);
-            let _ = self.window.send((pane, heard));
+            self.edges.hear(pane, core, event);
         }
     }
 }
@@ -101,17 +137,10 @@ impl Hearing {
 /// Gives one event to its pane's core. A pane whose core is gone hears nothing more (its entry
 /// stays, so a late event is not taken for a new pane's); one not registered yet keeps the event
 /// for when it is.
-fn hear(
-    panes: &mut Panes,
-    window: &UnboundedSender<(PaneId, Heard)>,
-    (pane, event): (PaneId, PaneEvent),
-) {
+fn hear(panes: &mut Panes, edges: &Edges, (pane, event): (PaneId, PaneEvent)) {
     let core = panes.cores.get(&pane).map(Weak::upgrade);
     match core {
-        Some(Some(core)) => {
-            let heard = core.lock().hear(event);
-            let _ = window.send((pane, heard));
-        }
+        Some(Some(core)) => edges.hear(pane, &core, event),
         Some(None) => {}
         None => {
             let waiting = panes.waiting.entry(pane).or_default();

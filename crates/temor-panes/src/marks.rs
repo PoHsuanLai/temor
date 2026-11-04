@@ -35,6 +35,18 @@ pub struct Finished {
     pub ran_ms: u64,
 }
 
+impl Finished {
+    /// `block` as history keeps it; none while it has no end.
+    pub(super) fn of(block: &Block) -> Option<Finished> {
+        Some(Finished {
+            id: block.id,
+            command: block.command.0.clone(),
+            exit: block.exit.map(|code| code.0),
+            ran_ms: block.elapsed_ms()?,
+        })
+    }
+}
+
 /// What a mark's event says, for the log.
 fn kind_of(event: PromptEvent) -> MarkKind {
     match event {
@@ -162,7 +174,7 @@ impl PaneCore {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
                 MarkOut::Finished(block) => {
                     self.keep_note(&block);
-                    self.notify_finished(&block);
+                    self.command_finished(&block);
                 }
                 _ => {}
             }
@@ -382,24 +394,6 @@ impl PaneCore {
             .store()
             .iter()
             .map(|block| (block.id, block.outcome()))
-            .collect()
-    }
-
-    /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
-    /// them: the command, how it exited, and how long it ran.
-    pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
-        self.blocks
-            .store()
-            .iter()
-            .filter(|block| after.is_none_or(|after| block.id > after))
-            .filter_map(|block| {
-                Some(Finished {
-                    id: block.id,
-                    command: block.command.0.clone(),
-                    exit: block.exit.map(|code| code.0),
-                    ran_ms: block.elapsed_ms()?,
-                })
-            })
             .collect()
     }
 

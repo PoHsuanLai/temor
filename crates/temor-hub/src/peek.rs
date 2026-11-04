@@ -18,7 +18,7 @@ use super::ssh_edit::local_name;
 use temor_client::viewer_host::{Cap, CopyDone, CopyOutcome, copy_from_helper};
 use temor_pane_view::platform::ensure_private_dir;
 use temor_ui_base::edge::peek_look::{Landing, PeekLook};
-use temor_ui_base::edge::peek_mail::{Taken, Ticket};
+use temor_ui_base::edge::peek_mail::Ticket;
 
 /// The biggest file of another computer that is fetched whole for a card.
 const PEEK_CAP: u64 = 8 * 1024 * 1024;
@@ -112,12 +112,13 @@ impl HubRef {
         self.0.borrow_mut().peek_ask_for(pane, file)
     }
 
-    /// The card for `ticket`, once it is made.
-    pub fn peek_take(&self, ticket: Ticket) -> Taken<Arc<AnyPeeked>> {
-        match self.0.borrow().peek.look.get() {
-            Some(look) => look.take(ticket),
-            None => Taken::Stale,
-        }
+    /// The card for `ticket` once it is made; none once another ask or a cancel came after it.
+    pub fn peek_answer(
+        &self,
+        ticket: Ticket,
+    ) -> impl Future<Output = Option<Arc<AnyPeeked>>> + 'static {
+        let look = self.0.borrow().peek.look.get().cloned();
+        async move { look?.answer(ticket).await }
     }
 
     /// The card is no longer wanted.

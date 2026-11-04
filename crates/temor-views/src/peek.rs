@@ -5,10 +5,8 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
 
 use dioxus::prelude::*;
-use ds::base::time::clock::sleep;
 use ds::edit::raw_key::RawKey;
 use ds::host::measure::{RectProbe, use_rect};
 use ds::host::signals::HostSignals;
@@ -21,13 +19,7 @@ use super::window_help::{device_at, pane_logical};
 use temor_hub::Desk;
 use temor_hub::peek_step::{Command, Peek, PeekEffect, PeekEvent, Under, step};
 use temor_pane_view::input::vt_mods;
-use temor_ui_base::edge::peek_mail::Taken;
 use temor_ui_base::slot::Slot;
-
-/// How often the window looks for the card the worker is making.
-const POLL: Duration = Duration::from_millis(40);
-/// How many looks before giving up on a card (about five seconds, past the worker's own limit).
-const POLLS: u32 = 125;
 
 /// What the pane's view wires in.
 #[derive(Clone)]
@@ -122,21 +114,14 @@ impl Feeder {
         let Some(ticket) = self.desk.hub.peek_ask(self.pane, &under.file) else {
             return;
         };
-        let (hub, mut card) = (self.desk.hub.clone(), self.card);
+        let (answer, mut card) = (self.desk.hub.peek_answer(ticket), self.card);
         spawn(async move {
-            for _ in 0..POLLS {
-                match hub.peek_take(ticket) {
-                    Taken::Ready(peeked) => {
-                        card.set(Some(PeekCard {
-                            peeked,
-                            pointer: (under.x, under.y),
-                            room,
-                        }));
-                        return;
-                    }
-                    Taken::Stale => return,
-                    Taken::Waiting => sleep(POLL).await,
-                }
+            if let Some(peeked) = answer.await {
+                card.set(Some(PeekCard {
+                    peeked,
+                    pointer: (under.x, under.y),
+                    room,
+                }));
             }
         });
     }

@@ -16,13 +16,13 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
     let mut hub = hub_after(vec![WorkspaceIn::NewTab { cwd: None }]);
     let shell = PaneId(1);
     let (ws, outs) = workspace_step(
-        hub.book.ws.clone(),
+        hub.book.ws().clone(),
         WorkspaceIn::OpenViewer {
             file: ViewerRef(file.to_owned()),
             from: Some(shell),
         },
     );
-    hub.book.ws = ws;
+    hub.book.place(hub.book.active(), ws);
     let open = outs
         .into_iter()
         .find_map(|out| match out {
@@ -36,7 +36,7 @@ fn with_viewer(file: &str, around: &[&str]) -> (Hub, PaneId, PaneId) {
         around: around.iter().map(PathBuf::from).collect(),
         site: temor_client::model::shelf::PaneSite::Local,
     });
-    hub.viewer_opened(open);
+    hub.viewer_opened(open, false);
     (hub, shell, pane)
 }
 
@@ -81,14 +81,14 @@ fn escape_goes_back_to_the_terminal_the_file_came_from() {
 fn escape_goes_to_another_terminal_when_the_origin_is_gone() {
     let (mut hub, shell, viewer) = with_viewer("/w/a.txt", &[]);
     let (ws, _) = workspace_step(
-        hub.book.ws.clone(),
+        hub.book.ws().clone(),
         WorkspaceIn::Split {
             towards: temor_client::model::split::Direction::Down,
         },
     );
-    hub.book.ws = ws;
-    let (ws, _) = workspace_step(hub.book.ws.clone(), WorkspaceIn::ClosePane(Some(shell)));
-    hub.book.ws = ws;
+    hub.book.place(hub.book.active(), ws);
+    let (ws, _) = workspace_step(hub.book.ws().clone(), WorkspaceIn::ClosePane(Some(shell)));
+    hub.book.place(hub.book.active(), ws);
     let back = hub.viewer_unfocus(viewer);
     assert!(
         matches!(back, Some(WorkspaceIn::Focus(pane)) if pane != viewer && pane != shell),
@@ -105,7 +105,7 @@ fn a_restored_viewer_whose_file_is_gone_is_closed_with_a_word_to_the_person() {
         file: ViewerRef("/nowhere/at/all/a.txt".to_owned()),
         from: None,
     });
-    assert!(hub.book.ws.viewers.is_empty());
+    assert!(hub.book.ws().viewers.is_empty());
     assert!(
         hub.notices.iter().any(|n| n.contains("gone")),
         "{:?}",
@@ -128,10 +128,22 @@ fn a_viewer_of_a_host_file_takes_its_copy_away_with_it_and_never_a_file_of_the_p
         .expect("runtime")
         .join("theirs.txt");
     std::fs::write(&theirs, "mine").expect("a local file");
-    hub.host_copy_shown(viewer, &theirs);
+    let tab = hub.book.ws().tab_of(viewer).expect("the viewer's tab");
+    let shows = |hub: &mut Hub, file: &std::path::Path| {
+        hub.viewer_opened(
+            ViewerOpen {
+                pane: viewer,
+                tab,
+                file: ViewerRef(file.to_string_lossy().into_owned()),
+                from: None,
+            },
+            false,
+        );
+    };
+    shows(&mut hub, &theirs);
     hub.viewer_ended(viewer);
     assert!(theirs.exists(), "a file that is not a copy is left alone");
-    hub.host_copy_shown(viewer, &copy);
+    shows(&mut hub, &copy);
     hub.viewer_ended(viewer);
     assert!(
         !copy.exists() && !folder.exists(),
@@ -172,14 +184,35 @@ fn a_file_that_could_not_be_opened_is_offered_to_another_app_until_an_open_succe
 
 #[test]
 fn find_in_a_file_is_asked_only_when_a_viewer_has_the_keyboard() {
-    use std::{cell::RefCell, rc::Rc};
-
     use super::model::HubRef;
 
     // A terminal has the keyboard: ⌘F there is the terminal's own find, so the bar opens plain.
-    let hub = HubRef(Rc::new(RefCell::new(hub_after(vec![
-        WorkspaceIn::NewTab { cwd: None },
-    ]))));
+    let hub = HubRef::new(hub_after(vec![WorkspaceIn::NewTab { cwd: None }]));
     hub.want_find_in_viewer();
     assert!(!hub.take_finding_wanted());
+}
+
+#[test]
+fn a_viewer_that_shows_the_next_file_in_place_lets_the_copy_it_showed_go() {
+    let (mut hub, shell, viewer) = with_viewer("/w/a.txt", &[]);
+    let scratch = tempfile::tempdir().expect("scratch");
+    hub.launch.ambient.runtime_dir = scratch.path().join("runtime");
+    let folder = hub.copies_dir().join("7");
+    std::fs::create_dir_all(&folder).expect("copy folder");
+    let copy = folder.join("a.txt");
+    std::fs::write(&copy, "from the host").expect("copy");
+    let tab = hub.book.ws().tab_of(viewer).expect("the viewer's tab");
+    for file in [copy.to_string_lossy().into_owned(), "/w/b.txt".to_owned()] {
+        hub.viewer_opened(
+            ViewerOpen {
+                pane: viewer,
+                tab,
+                file: ViewerRef(file),
+                from: Some(shell),
+            },
+            false,
+        );
+    }
+    assert!(!copy.exists(), "the copy no pane shows goes");
+    assert!(hub.viewer_show(viewer).is_some(), "the viewer stays");
 }

@@ -4,7 +4,6 @@
 //! integration line into the pane. A host pane opened from temor's own list is never offered:
 //! it already has the integration.
 
-use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use ds_settings::Store;
@@ -49,18 +48,10 @@ fn line_hash(text: &str) -> u64 {
     hasher.finish()
 }
 
-/// The offer's state for every pane, and the list it matches against.
+/// The list the offer matches against, and where the choices about it are kept. What it keeps
+/// of each pane is in the pane's record ([`PaneOffer`]).
 pub(super) struct OfferHub {
     pub(super) list: OfferList,
-    pub(super) states: BTreeMap<PaneId, OfferState>,
-    /// A hash of the last line on each watched pane's screen: output counts only when that
-    /// line changes, so a repaint or a resize (the offer's own bar shrinks the grid) is not output.
-    pub(super) lines: BTreeMap<PaneId, u64>,
-    /// The shell each probed pane named, kept from the tick that heard it to the load.
-    pub(super) shells: BTreeMap<PaneId, InnerShell>,
-    /// A hash of each probed pane's whole screen at the last tick: the integration is typed
-    /// once the shell's next prompt is on a screen that did not change between two ticks.
-    pub(super) screens: BTreeMap<PaneId, u64>,
     /// Where the "never for" choice is kept (`settings.toml`).
     pub(super) settings: Store,
 }
@@ -69,12 +60,32 @@ impl OfferHub {
     pub(super) fn new(launch: &Launch) -> Self {
         Self {
             list: OfferList::new(&launch.settings.offer_add, &launch.settings.offer_remove),
-            states: BTreeMap::new(),
-            lines: BTreeMap::new(),
-            shells: BTreeMap::new(),
-            screens: BTreeMap::new(),
             settings: launch.ambient.settings_store(),
         }
+    }
+}
+
+/// The offer in one pane, kept in its record.
+#[derive(Debug, Default)]
+pub(super) struct PaneOffer {
+    pub(super) state: OfferState,
+    /// A hash of the last line on the screen while it is watched: output counts only when that
+    /// line changes, so a repaint or a resize (the offer's own bar shrinks the grid) is not output.
+    line: Option<u64>,
+    /// The shell the pane named, kept from the tick that heard it to the load.
+    pub(super) shell: Option<InnerShell>,
+    /// A hash of the whole screen at the last tick while it is probed: the integration is typed
+    /// once the shell's next prompt is on a screen that did not change between two ticks.
+    screen: Option<u64>,
+}
+
+impl PaneOffer {
+    /// Whether output on the screen counts: the offer waits on it or shows.
+    fn watched(&self) -> bool {
+        matches!(
+            self.state,
+            OfferState::Watching { .. } | OfferState::Asking { .. }
+        )
     }
 }
 
@@ -85,20 +96,17 @@ impl Hub {
         if self.host_of(pane).is_some() {
             return false;
         }
+        let Some(record) = self.panes.get_mut(pane) else {
+            return false;
+        };
         let at = session.now();
         let input = match heard {
             Heard::Output => {
-                let watched = self.offer.states.get(&pane).is_some_and(|state| {
-                    matches!(
-                        state,
-                        OfferState::Watching { .. } | OfferState::Asking { .. }
-                    )
-                });
-                if !watched {
+                if !record.offer.watched() {
                     return false;
                 }
                 let line = line_hash(&session.last_line());
-                if self.offer.lines.insert(pane, line) == Some(line) {
+                if record.offer.line.replace(line) == Some(line) {
                     return false;
                 }
                 OfferIn::Output { at }
@@ -111,49 +119,46 @@ impl Hub {
         };
         let started = matches!(input, OfferIn::Running { now: Some(_), .. });
         let redraw = self.offer_feed(pane, input).0;
-        if started {
-            self.offer
-                .lines
-                .insert(pane, line_hash(&session.last_line()));
+        if started && let Some(record) = self.panes.get_mut(pane) {
+            record.offer.line = Some(line_hash(&session.last_line()));
         }
         redraw
     }
 
     /// One timer tick: panes whose listed command has run a while may now get the offer, and
     /// panes that were asked which shell they run may have answered. Returns whether the window
-    /// must be drawn again, and what the person should be told.
-    pub(super) fn offer_tick(&mut self) -> (bool, Vec<String>) {
+    /// must be drawn again.
+    pub(super) fn offer_tick(&mut self) -> bool {
         let waiting: Vec<PaneId> = self
-            .offer
-            .states
+            .panes
             .iter()
-            .filter(|(_, state)| {
+            .filter(|(_, record)| {
                 matches!(
-                    state,
+                    record.offer.state,
                     OfferState::Watching { .. } | OfferState::Probing { .. }
                 )
             })
-            .map(|(pane, _)| *pane)
+            .map(|(pane, _)| pane)
             .collect();
         let mut redraw = false;
-        let mut notes = Vec::new();
         for pane in waiting {
-            let Some(slot) = self.slots.get(&pane).cloned() else {
+            let Some(record) = self.panes.get_mut(pane) else {
                 continue;
             };
-            let probing = matches!(
-                self.offer.states.get(&pane),
-                Some(OfferState::Probing { .. })
-            );
+            let Some(slot) = record.slot.clone() else {
+                continue;
+            };
+            let offer = &mut record.offer;
+            let probing = matches!(offer.state, OfferState::Probing { .. });
             let input = match slot.borrow().session.as_ref() {
                 Some(session) if probing => {
                     let screen = session.screen_text();
                     let hash = line_hash(&screen);
-                    let still = self.offer.screens.insert(pane, hash) == Some(hash);
+                    let still = offer.screen.replace(hash) == Some(hash);
                     let answer = match read_probe(&screen) {
                         ProbeReading::Silent => Answer::Silent,
                         ProbeReading::Known(shell) => {
-                            self.offer.shells.insert(pane, shell);
+                            offer.shell = Some(shell);
                             match still && prompt_after_answer(&screen) {
                                 true => Answer::Known,
                                 false => Answer::Named,
@@ -175,34 +180,35 @@ impl Hub {
             };
             let (seen, outs) = self.offer_feed(pane, input);
             redraw |= seen;
-            notes.extend(self.offer_outs(pane, outs));
+            let said = self.offer_outs(pane, outs);
+            self.notices.extend(said);
         }
-        (redraw, notes)
+        redraw
     }
 
     pub(super) fn offer_feed(&mut self, pane: PaneId, input: OfferIn) -> (bool, Vec<OfferOut>) {
-        let state = self.offer.states.remove(&pane).unwrap_or_default();
-        let (next, outs) = offer_step(state, input);
+        let Some(record) = self.panes.get_mut(pane) else {
+            return (false, Vec::new());
+        };
+        let offer = &mut record.offer;
+        let (next, outs) = offer_step(std::mem::take(&mut offer.state), input);
         if !matches!(next, OfferState::Probing { .. }) {
-            self.offer.screens.remove(&pane);
+            offer.screen = None;
         }
-        match next {
-            OfferState::Idle => {
-                self.offer.lines.remove(&pane);
-            }
-            next => {
-                self.offer.states.insert(pane, next);
-            }
+        if next == OfferState::Idle {
+            offer.line = None;
         }
+        offer.state = next;
         (outs.contains(&OfferOut::Redraw), outs)
     }
 
     /// The listed command being offered in `pane`, while its offer shows.
     pub fn offer_asking(&self, pane: PaneId) -> Option<String> {
-        self.offer
-            .states
-            .get(&pane)
-            .and_then(OfferState::asking)
+        self.panes
+            .get(pane)?
+            .offer
+            .state
+            .asking()
             .map(Program::to_string)
     }
 }
@@ -217,10 +223,6 @@ impl HubRef {
 impl Desk {
     /// The person's answer to the offer in `pane`.
     pub fn offer_answer(&self, pane: PaneId, reply: Reply) {
-        let notes = self.hub.0.borrow_mut().offer_reply(pane, reply);
-        for note in notes {
-            self.say(note);
-        }
-        self.bump();
+        self.tell(self.hub.edit(|hub| hub.offer_reply(pane, reply)));
     }
 }

@@ -28,16 +28,6 @@ pub(super) struct Registry {
     last: AtomicU64,
 }
 
-impl Default for Registry {
-    /// Numbers from now (see [`id_base`]).
-    fn default() -> Self {
-        let secs = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |since| since.as_secs());
-        Self::from(id_base(secs))
-    }
-}
-
 impl From<u64> for Registry {
     /// A registry whose first id is `base + 1`.
     fn from(base: u64) -> Self {
@@ -91,9 +81,5 @@ mod tests {
         assert_eq!(last.0, first.0 + 1000);
         let later = Registry::from(id_base(1_700_000_001));
         assert!(later.next_id() > last, "a restart a second later");
-        assert!(
-            Registry::default().next_id().0 > id_base(1_700_000_000),
-            "now is later"
-        );
     }
 }

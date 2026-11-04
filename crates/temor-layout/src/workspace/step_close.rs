@@ -34,7 +34,6 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
     let Some(closing) = ws.tabs.tab(tab).cloned() else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::NoSuchTab(tab)));
     };
-    let focus = ws.focus_of(tab).unwrap_or(PaneId(0));
     let panes = closing.tree.panes();
     for pane in &panes {
         out.push(WorkspaceOut::Snapshot(*pane));
@@ -43,7 +42,6 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
         out.push(WorkspaceOut::End(*pane));
     }
     let tab_outs = ws.tabs_do(TabsIn::Remove(tab));
-    ws.focus.remove(&tab);
     for t in tab_outs {
         match t {
             TabsOut::Focused(next) => {
@@ -57,13 +55,7 @@ pub(super) fn close_tab(ws: &mut Workspace, tab: TabId, out: &mut Vec<WorkspaceO
         }
     }
     let closed = take_closed(ws);
-    let (closed, closed_outs) = closed_step(
-        closed,
-        ClosedIn::Push {
-            tab: closing,
-            focus,
-        },
-    );
+    let (closed, closed_outs) = closed_step(closed, ClosedIn::Push(closing));
     ws.closed = closed;
     for c in closed_outs {
         if let ClosedOut::Evicted(gone) = c {
@@ -85,10 +77,10 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
     let (closed, closed_outs) = closed_step(closed, ClosedIn::Reopen);
     ws.closed = closed;
     match closed_outs.into_iter().next() {
-        Some(ClosedOut::Reopened(ClosedTab { tab, focus, .. })) => {
-            let id = tab.id;
+        Some(ClosedOut::Reopened(ClosedTab { tab, .. })) => {
+            let (id, focus) = (tab.id, tab.focus());
             let panes = tab.tree.panes();
-            ws.open_tab(tab, focus);
+            ws.open_tab(tab);
             for pane in &panes {
                 if let Some(file) = ws.viewers.get(pane) {
                     out.push(WorkspaceOut::Viewer(ViewerOpen {
@@ -108,7 +100,7 @@ pub(super) fn reopen(ws: &mut Workspace, out: &mut Vec<WorkspaceOut>) {
                     start: Start::Scrollback(*pane),
                 }));
             }
-            out.push(WorkspaceOut::Focused(focus));
+            out.extend(focus.map(WorkspaceOut::Focused));
         }
         _ => out.push(WorkspaceOut::Refused(RefuseWhy::NothingClosed)),
     }
@@ -130,7 +122,6 @@ pub fn leave_out(ws: &Workspace, panes: &BTreeSet<PaneId>) -> Workspace {
             TreeAfter::Open(next) => store_tree_state(&mut kept, tab, next),
             TreeAfter::Emptied => {
                 kept.tabs_do(TabsIn::Remove(tab));
-                kept.focus.remove(&tab);
             }
         }
         kept.forget_pane(pane);

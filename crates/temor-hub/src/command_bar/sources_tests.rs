@@ -19,15 +19,9 @@ fn closed_with(titles: &[&str]) -> ClosedState {
                 pin: Pin::Loose,
                 folder: None,
                 tree: SplitTree::single(PaneId(n as u64 + 1)),
+                focus: None,
             };
-            closed_step(
-                state,
-                ClosedIn::Push {
-                    tab,
-                    focus: PaneId(n as u64 + 1),
-                },
-            )
-            .0
+            closed_step(state, ClosedIn::Push(tab)).0
         },
     )
 }

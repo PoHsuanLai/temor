@@ -37,21 +37,9 @@ pub enum Command {
 pub(crate) fn apply(store: &SqliteStore, command: Command) -> Result<(), StoreError> {
     match command {
         Command::Keep { shelf, place, at } => {
-            let mut places = store.shelf(shelf)?;
-            places.retain(|kept| *kept != place);
-            let at = at.unwrap_or(places.len()).min(places.len());
-            places.insert(at, place);
-            store.set_shelf(shelf, &places)
+            store.edit_shelf(shelf, |places| kept_at(places, place, at))
         }
-        Command::Let { shelf, place } => {
-            let mut places = store.shelf(shelf)?;
-            let before = places.len();
-            places.retain(|kept| *kept != place);
-            match places.len() == before {
-                true => Ok(()),
-                false => store.set_shelf(shelf, &places),
-            }
-        }
+        Command::Let { shelf, place } => store.edit_shelf(shelf, |places| let_go(places, &place)),
         Command::Begin(session) => store.save_session(&session),
         Command::End { session, at } => store.end_session(session, at),
         Command::Ran(ran) => store.record_command(&ran),
@@ -61,6 +49,21 @@ pub(crate) fn apply(store: &SqliteStore, command: Command) -> Result<(), StoreEr
             None => store.unkeep(&key, Topics::LAYOUT),
         },
     }
+}
+
+/// `places` with `place` at `at` (the end when `None`, or when `at` is past it); a place
+/// already there moves.
+fn kept_at(mut places: Vec<TemorUrl>, place: TemorUrl, at: Option<usize>) -> Vec<TemorUrl> {
+    places.retain(|kept| *kept != place);
+    let at = at.unwrap_or(places.len()).min(places.len());
+    places.insert(at, place);
+    places
+}
+
+/// `places` without `place`.
+fn let_go(mut places: Vec<TemorUrl>, place: &TemorUrl) -> Vec<TemorUrl> {
+    places.retain(|kept| kept != place);
+    places
 }
 
 #[cfg(test)]

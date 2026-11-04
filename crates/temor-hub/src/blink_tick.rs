@@ -21,8 +21,9 @@ pub fn spawn_blink_loop(desk: Desk) {
                 .hub
                 .0
                 .borrow()
-                .slots
-                .values()
+                .panes
+                .slots()
+                .map(|(_, slot)| slot)
                 .filter(|slot| {
                     slot.borrow()
                         .session

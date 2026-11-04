@@ -10,7 +10,7 @@ use temor_client::ssh::view::Stage;
 
 /// Types `text` into the pane.
 fn type_into(rig: &Rig, pane: temor_client::model::vocab::ids::PaneId, text: &str) {
-    if let Some(slot) = rig.hub.slots.get(&pane)
+    if let Some(slot) = rig.hub.panes.slot(pane)
         && let Some(session) = slot.borrow().session.as_ref()
     {
         session.pane().send(text.as_bytes());
@@ -66,8 +66,8 @@ fn screen_has(
     pane: temor_client::model::vocab::ids::PaneId,
     text: &str,
 ) -> bool {
-    hub.slots
-        .get(&pane)
+    hub.panes
+        .slot(pane)
         .and_then(|slot| slot.borrow().session.as_ref().map(|s| s.screen_text()))
         .is_some_and(|screen| screen.contains(text))
 }

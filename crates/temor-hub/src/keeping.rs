@@ -6,7 +6,7 @@
 use std::collections::BTreeSet;
 use std::time::Instant;
 
-use temor_client::keep::{KeptPane, Laying, Pace, PaneFiles, Starting, Through, screens};
+use temor_client::keep::{Kept, KeptPane, Laying, Pace, PaneFiles, Starting, screens};
 use temor_client::model::pane::PaneFocus;
 use temor_client::model::vocab::ids::PaneId;
 
@@ -47,7 +47,7 @@ impl Hub {
             self.run_in_tab(run);
         }
         self.fill_empty();
-        self.refresh_probe();
+        self.sync_focus();
     }
 
     /// Starts the panes and viewers of a Space brought back, each pane with the screen and the
@@ -69,9 +69,13 @@ impl Hub {
                     if session.is_none() {
                         hub.history_import(spawn.pane, &kept.history);
                     }
-                    hub.carried.insert(spawn.pane, kept);
+                    hub.memory.of(spawn.pane).checkpoint = Some(kept);
                 }
-                hub.open_pane(&spawn, screen.map(temor_panes::vt::Snapshot::from_bytes));
+                hub.open_pane(
+                    &spawn,
+                    screen.map(temor_panes::vt::Snapshot::from_bytes),
+                    &mut Default::default(),
+                );
             }
             for open in starting.viewers {
                 hub.restore_viewer(open);
@@ -91,18 +95,19 @@ impl Hub {
         }
     }
 
-    /// Writes what is kept if a change is waiting and the pace allows it. Returns how long to
-    /// wait before asking again, when a write is waiting for its turn.
+    /// Writes what is kept if it differs from what was written and the pace allows it. Returns
+    /// how long to wait before asking again, when a write is waiting for its turn.
     pub fn poll_save(&mut self, now: Instant) -> Option<std::time::Duration> {
         if let Some(dir) = self.state_dir.clone() {
             let panes = self.kept_panes(false);
             self.files.keep_changed(&dir, panes);
         }
-        match self.pace.poll(now) {
+        let owed = self.client().is_some() && self.laid(|kept, laying| kept.owed(&laying));
+        match self.pace.poll(now, owed) {
             Pace::Idle => None,
             Pace::WaitFor(wait) => Some(wait),
             Pace::WriteNow => {
-                self.lay_all(Through::Client);
+                self.lay_all(Kept::lay_all);
                 // Quitting from the system's menu ends the process without dropping the hub,
                 // so what a next launch needs from each pane is kept now.
                 if let Some(dir) = &self.state_dir {
@@ -114,13 +119,24 @@ impl Hub {
         }
     }
 
-    /// Hands the client the layout of every Space, the hosts and the panes' sessions.
-    fn lay_all(&mut self, through: Through) {
+    /// Hands the client the layout of every Space, the hosts and the panes' sessions, by `lay`
+    /// ([`Kept::lay_all`], or [`Kept::lay_at_quit`] to wait for it to be written).
+    fn lay_all(&mut self, lay: fn(&mut Kept, &temor_client::Client, Laying<'_>)) {
         let Some(client) = self.client().cloned() else {
             return;
         };
+        self.laid(|kept, laying| lay(kept, &client, laying));
+    }
+
+    /// `then` of what is kept and the layout to keep: every Space, the hosts and the panes'
+    /// sessions.
+    pub(super) fn laid<R>(&mut self, then: impl FnOnce(&mut Kept, Laying<'_>) -> R) -> R {
         // A tab that ran a program (`temor -e`) is not brought back: it was that launch's.
-        let leave: BTreeSet<PaneId> = self.run.panes.keys().copied().collect();
+        let leave: BTreeSet<PaneId> = self
+            .panes
+            .iter()
+            .filter_map(|(pane, record)| record.run.as_ref().map(|_| pane))
+            .collect();
         let hosts = self.hosts_file();
         let sessions = self.sessions_to_carry();
         let laying = Laying {
@@ -129,7 +145,7 @@ impl Hub {
             hosts: &hosts,
             sessions: &sessions,
         };
-        self.kept.lay_all(&client, laying, through);
+        then(&mut self.kept, laying)
     }
 
     /// What is kept of each pane that outlives the window: its checkpoint (with the daemon
@@ -137,16 +153,16 @@ impl Hub {
     /// while temor runs and never saved; nor is a run tab.
     fn kept_panes(&self, screens: bool) -> Vec<KeptPane> {
         let sessions = self.sessions_to_carry();
-        self.slots
-            .iter()
-            .filter(|(pane, _)| !self.is_quick(**pane) && !self.run.panes.contains_key(pane))
+        self.panes
+            .slots()
+            .filter(|(pane, _)| !self.is_quick(*pane) && self.run_of(*pane).is_none())
             .filter_map(|(pane, slot)| {
                 let slot = slot.borrow();
                 let session = slot.session.as_ref()?;
                 let mut checkpoint = session.checkpoint();
-                self.keep_local(*pane, &mut checkpoint);
+                self.keep_local(pane, &mut checkpoint);
                 Some(KeptPane {
-                    pane: *pane,
+                    pane,
                     checkpoint,
                     screen: screens
                         .then(|| {
@@ -155,7 +171,7 @@ impl Hub {
                                 .map(temor_panes::vt::Snapshot::into_bytes)
                         })
                         .flatten(),
-                    session: sessions.get(pane).copied(),
+                    session: sessions.get(&pane).copied(),
                 })
             })
             .collect()
@@ -164,7 +180,7 @@ impl Hub {
 
 impl Drop for Hub {
     fn drop(&mut self) {
-        self.lay_all(Through::Now);
+        self.lay_all(Kept::lay_at_quit);
         let Some(dir) = self.state_dir.clone() else {
             return;
         };

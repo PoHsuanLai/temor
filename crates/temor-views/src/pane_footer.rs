@@ -1,12 +1,8 @@
 //! What a pane shows under its terminal (PLAN §6): the host banners, the offer, the progress edge,
 //! the paste question and the "shell has ended" banner.
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use dioxus::prelude::*;
 use ds::prelude::*;
-use temor_client::model::vocab::ids::PaneId;
 use temor_panes::pane::paste::UnsafeReason;
 
 use super::blocks::Chrome;
@@ -14,9 +10,8 @@ use super::confirm::PasteConfirm;
 use super::handlers::{paste_cancel, paste_confirm, restart_pane};
 use super::host_banners::HostBanners;
 use super::offer::OfferBar;
+use super::pane_link::PaneLink;
 use super::status::PaneEdge;
-use temor_hub::Desk;
-use temor_ui_base::slot::Slot;
 
 /// Whether the pane's shell is still there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,18 +20,18 @@ pub enum Shell {
     Ended,
 }
 
-/// The pane's lower part. `pending` is the paste waiting for an answer.
+/// The pane's lower part. `pending` is the paste waiting for an answer; `run_name` the program a
+/// tab runs in place of the shell.
 pub fn pane_footer(
-    pane: PaneId,
-    desk: &Desk,
-    slot: &Rc<RefCell<Slot>>,
-    ui: Signal<u32>,
+    link: &PaneLink,
     chrome: &Chrome,
     pending: Option<UnsafeReason>,
     shell: Shell,
+    run_name: Option<&str>,
 ) -> Element {
+    let (pane, desk) = (link.pane, &link.desk);
     // A tab that runs a program in place of the shell names it, and Restart runs it again.
-    let ended = match desk.hub.0.borrow().run_name(pane) {
+    let ended = match run_name {
         Some(name) => (format!("{name} has ended."), format!("Run {name} again")),
         None => (
             "The shell has ended.".to_owned(),
@@ -50,8 +45,8 @@ pub fn pane_footer(
         if let Some(reason) = pending {
             PasteConfirm {
                 reason,
-                on_paste:paste_confirm(Rc::clone(slot), ui),
-                on_cancel:paste_cancel(Rc::clone(slot), ui),
+                on_paste:paste_confirm(link.clone()),
+                on_cancel:paste_cancel(link.clone()),
             }
         }
         if shell == Shell::Ended {

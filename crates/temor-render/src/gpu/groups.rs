@@ -1,95 +1,75 @@
-//! A frame whose own glyphs outgrow the atlases: its rows are built in groups that each fit,
-//! and each group keeps the atlases as they stood when its last row was built, to be drawn from
-//! in a pass of its own (see `record`).
+//! Putting a frame's glyphs in the atlases: all at once when they fit, after emptying the
+//! atlases when what earlier frames left is in the way, else in groups of rows that each fit,
+//! each group keeping the atlases as they stood for it, to be drawn from in a pass of its own
+//! (see `record`).
 
 use std::ops::Range;
 
-use temor_vt::Row;
-
 use super::GpuRenderer;
 use super::device::bind;
-use super::frame::inst;
-use super::pipeline::{Pipeline, texture};
+use super::frame::insts;
+use super::pipeline::{Inst, Pipeline, texture};
 use crate::error::RenderError;
-use crate::font::{AtlasCopy, AtlasFormat};
-use crate::frame::PaneFrame;
-use crate::scene::{SceneInput, build_row};
+use crate::font::{AtlasCopy, AtlasFormat, Overflow};
 
-/// Consecutive grid rows whose glyphs fit the atlases together, and those atlases.
+/// The text's instances of consecutive grid rows whose glyphs fit the atlases together, and
+/// those atlases.
 #[derive(Debug)]
 pub(super) struct Group {
-    pub rows: Range<usize>,
+    pub fg: Vec<Inst>,
     pub alpha: AtlasCopy,
     pub color: AtlasCopy,
 }
 
 impl GpuRenderer {
-    /// Stores the instances of the row just built into `self.scene`.
-    pub(super) fn keep_row(&mut self, row: Row) {
-        if let Some(slot) = self.rows.get_mut(usize::from(row.0)) {
-            slot.0 = self.scene.bg.iter().map(inst).collect();
-            slot.1 = self.scene.fg.iter().map(inst).collect();
+    /// Puts every glyph of the frame's rows in the atlases, emptying them first when they do
+    /// not fit beside what is there. Fails when they do not fit together at all.
+    pub(super) fn place(&mut self) -> Result<(), Overflow> {
+        let rows = &self.rows;
+        let glyphs = || rows.iter().flat_map(|row| row.glyphs());
+        if self.atlas.resolve(glyphs(), &mut self.glyphs).is_ok() {
+            return Ok(());
         }
+        self.atlas.clear();
+        self.atlas.resolve(glyphs(), &mut self.glyphs)
     }
 
-    /// Builds every row of `frame` into `self.rows`, in groups. Fails when a single row's glyphs
-    /// do not fit the atlases on their own.
-    pub(super) fn build_groups(
-        &mut self,
-        frame: &PaneFrame,
-        input: &SceneInput<'_>,
-    ) -> Result<Vec<Group>, RenderError> {
-        self.rows = vec![(Vec::new(), Vec::new()); usize::from(frame.size.rows.0)];
-        self.glyphs.restart();
-        self.glyphs.begin_spill();
-        let groups = self.group_rows(frame, input);
-        self.glyphs.end_spill();
-        // What the device holds is not what is in memory now; the cached rows point into
-        // atlases that are gone.
-        self.glyphs.forget_uploads();
-        self.epoch = u64::MAX;
-        groups
-    }
-
-    fn group_rows(
-        &mut self,
-        frame: &PaneFrame,
-        input: &SceneInput<'_>,
-    ) -> Result<Vec<Group>, RenderError> {
-        let total = frame.size.rows.0;
+    /// The frame's rows in groups whose glyphs fit the atlases. Fails when a single row's
+    /// glyphs do not fit on their own.
+    pub(super) fn build_groups(&mut self) -> Result<Vec<Group>, RenderError> {
         let mut groups = Vec::new();
-        let (mut start, mut at) = (0u16, 0u16);
-        while at < total {
-            let epoch = self.glyphs.epoch();
-            let cells = frame.rows.get(usize::from(at)).map_or(&[][..], |c| c);
-            build_row(input, Row(at), cells, &mut self.glyphs, &mut self.scene);
-            if self.glyphs.epoch() == epoch {
-                self.keep_row(Row(at));
-                at += 1;
+        let mut start = 0;
+        self.atlas.clear();
+        for at in 0..self.rows.len() {
+            let glyphs = || self.rows[at].glyphs();
+            if self.atlas.resolve(glyphs(), &mut self.glyphs).is_ok() {
                 continue;
             }
-            // An atlas filled up part-way through this row: the rows before it were built into
-            // the atlases as they stood just before the clear, and this row starts a group.
-            let mut copies = self.glyphs.take_spilled();
-            if at == start || copies.len() != 1 {
+            // This row's glyphs do not fit beside the group's: the group ends before it, and
+            // the row starts the next in emptied atlases.
+            if at == start {
                 return Err(RenderError::GlyphsDoNotFit);
             }
-            let (alpha, color) = copies.remove(0);
-            groups.push(Group {
-                rows: usize::from(start)..usize::from(at),
-                alpha,
-                color,
-            });
+            groups.push(self.group(start..at));
             start = at;
-            // The failed build left glyphs of this row in the emptied atlases: begin again.
-            self.glyphs.restart();
+            self.atlas.clear();
+            if self.atlas.resolve(glyphs(), &mut self.glyphs).is_err() {
+                return Err(RenderError::GlyphsDoNotFit);
+            }
         }
-        groups.push(Group {
-            rows: usize::from(start)..usize::from(total),
-            alpha: self.glyphs.alpha.copy(),
-            color: self.glyphs.color.copy(),
-        });
+        groups.push(self.group(start..self.rows.len()));
         Ok(groups)
+    }
+
+    /// `rows` as a group, with the atlases as they are now.
+    fn group(&self, rows: Range<usize>) -> Group {
+        let quads = self.rows[rows.clone()].iter().flat_map(|row| &row.fg);
+        let (alpha, color) = self.atlas.copy();
+        Group {
+            fg: insts(quads, &self.atlas).collect(),
+            alpha,
+            color,
+        }
     }
 }
 

@@ -195,15 +195,12 @@ impl Rig {
             }
             while let Ok(event) = self.jobs.try_recv() {
                 // What the window would show the person stays on the hub for the test to read.
-                let said = self.hub.ssh_event(event);
-                self.hub.notices.extend(said);
+                self.hub.ssh_event(event);
             }
             while let Ok(event) = self.remote.try_recv() {
-                let said = self.hub.remote_event(event);
-                self.hub.notices.extend(said);
+                self.hub.remote_event(event);
             }
-            let (_, said) = self.hub.ssh_tick();
-            self.hub.notices.extend(said);
+            self.hub.ssh_tick();
             assert!(
                 start.elapsed() < Duration::from_secs(20),
                 "timed out waiting for {what}"

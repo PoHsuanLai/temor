@@ -49,7 +49,7 @@ fn item_for(path: &Path, folder: &str) -> Result<Item, String> {
 impl Hub {
     /// Whether `pane` is a session on another computer.
     pub(super) fn is_host_pane(&self, pane: PaneId) -> bool {
-        self.ssh.panes.contains_key(&pane)
+        self.panes.host(pane).is_some()
     }
 
     /// Sends the dropped files to the folder of the host pane `pane`. What the person should be
@@ -58,7 +58,13 @@ impl Hub {
         let Some(host) = self.alias_of(pane) else {
             return Vec::new();
         };
-        let Some(folder) = self.book.ws.cwds.get(&pane).map(|c| c.as_str().to_owned()) else {
+        let Some(folder) = self
+            .book
+            .ws()
+            .cwds
+            .get(&pane)
+            .map(|c| c.as_str().to_owned())
+        else {
             return vec!["temor doesn't know this pane's folder yet".to_owned()];
         };
         let tier = match self.edit_tier(&host) {

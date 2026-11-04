@@ -20,8 +20,6 @@ use temor_ui_base::pop_out::PoppedOut;
 #[derive(Default)]
 pub(super) struct Stages {
     rows: BTreeMap<TabId, Stage>,
-    /// Set while Back or Forward opens a page, so opening it is not a step of its own.
-    walking: bool,
 }
 
 #[derive(Default)]
@@ -130,8 +128,14 @@ impl Hub {
     }
 
     /// A page opened in `viewer`, on the stage of `tab`: a step Back can return from, and shown.
-    pub(super) fn stage_opened(&mut self, tab: TabId, viewer: PaneId, file: PathBuf) {
-        let walking = self.stages.walking;
+    /// `walking`: Back or Forward opened it, so it is not a step of its own.
+    pub(super) fn stage_opened(
+        &mut self,
+        tab: TabId,
+        viewer: PaneId,
+        file: PathBuf,
+        walking: bool,
+    ) {
         let own_page = temor_page(&file.to_string_lossy()).is_some();
         let stage = self.stages.rows.entry(tab).or_default();
         stage.viewer = Some(viewer);
@@ -149,8 +153,7 @@ impl Hub {
 
     /// The viewer pane `viewer` ended: its row's stage is empty, and Back opens its page again
     /// (unless Back itself closed it, for the console).
-    pub(super) fn stage_closed(&mut self, viewer: PaneId) {
-        let walking = self.stages.walking;
+    pub(super) fn stage_closed(&mut self, viewer: PaneId, walking: bool) {
         if let Some(stage) = self
             .stages
             .rows
@@ -185,7 +188,7 @@ impl Hub {
 
     /// The address of the row in front: the page on its stage, or else its terminal's folder.
     pub fn address(&self) -> Address {
-        let Some(tab) = self.book.ws.front() else {
+        let Some(tab) = self.book.ws().front() else {
             return Address::None;
         };
         let home = self.launch.ambient.home.to_string_lossy();
@@ -195,7 +198,7 @@ impl Hub {
             .get(&tab)
             .filter(|stage| stage.layout.shows_stage())
             .and_then(|stage| stage.viewer)
-            .and_then(|viewer| self.book.ws.viewers.get(&viewer));
+            .and_then(|viewer| self.book.ws().viewers.get(&viewer));
         if let Some(file) = page {
             let file = file.as_str();
             return match temor_page(file) {
@@ -211,7 +214,7 @@ impl Hub {
 
     /// Show `layout` on the row in front. Without a page there is only the console.
     pub(super) fn set_layout(&mut self, layout: Layout) {
-        let Some(tab) = self.book.ws.front() else {
+        let Some(tab) = self.book.ws().front() else {
             return;
         };
         let Some(stage) = self.stages.rows.get_mut(&tab) else {
@@ -244,9 +247,9 @@ impl Hub {
     /// Pop Out on the row in front: its page, when it is a file, leaves the stage (Back brings it
     /// back) for a window of its own. Answers the file. temor's own pages stay.
     pub(super) fn pop_out(&mut self) -> Option<PathBuf> {
-        let tab = self.book.ws.front()?;
+        let tab = self.book.ws().front()?;
         let viewer = self.stages.rows.get(&tab)?.viewer?;
-        let file = self.book.ws.viewers.get(&viewer)?.as_str().to_owned();
+        let file = self.book.ws().viewers.get(&viewer)?.as_str().to_owned();
         if temor_page(&file).is_some() {
             return None;
         }
@@ -257,7 +260,7 @@ impl Hub {
     /// Back (`back`) or Forward on the row in front: its page before or after this one opens, or,
     /// Back from its first page, the page closes for the console.
     pub(super) fn walk_pages(&mut self, back: bool) {
-        let Some(tab) = self.book.ws.front() else {
+        let Some(tab) = self.book.ws().front() else {
             return;
         };
         let Some(stage) = self.stages.rows.get_mut(&tab) else {
@@ -270,9 +273,7 @@ impl Hub {
         let viewer = stage.viewer;
         let Some(page) = page else {
             if let Some(viewer) = viewer.filter(|_| back) {
-                self.stages.walking = true;
-                self.act(WorkspaceIn::ClosePane(Some(viewer)));
-                self.stages.walking = false;
+                self.act_with(WorkspaceIn::ClosePane(Some(viewer)), walk());
             }
             return;
         };
@@ -280,15 +281,16 @@ impl Hub {
         let from = viewer
             .and_then(|viewer| self.viewer_unfocus_to(viewer))
             .or_else(|| {
-                let panes = self.book.ws.tabs.tab(tab)?.tree.panes();
+                let panes = self.book.ws().tabs.tab(tab)?.tree.panes();
                 panes.into_iter().find(|pane| !self.is_viewer(*pane))
             });
-        self.stages.walking = true;
-        self.act(WorkspaceIn::OpenViewer {
-            file: ViewerRef(page.to_string_lossy().into_owned()),
-            from,
-        });
-        self.stages.walking = false;
+        self.act_with(
+            WorkspaceIn::OpenViewer {
+                file: ViewerRef(page.to_string_lossy().into_owned()),
+                from,
+            },
+            walk(),
+        );
     }
 }
 
@@ -307,7 +309,7 @@ impl HubRef {
     pub fn page_file(&self, pane: PaneId) -> Option<String> {
         let hub = self.0.borrow();
         hub.book
-            .ws
+            .ws()
             .viewers
             .get(&pane)
             .map(|file| file.as_str().to_owned())
@@ -351,7 +353,7 @@ impl Desk {
         self.settle(|hub| {
             let now = hub
                 .book
-                .ws
+                .ws()
                 .front()
                 .map(|tab| hub.stage_view(tab).layout)
                 .unwrap_or_default();
@@ -379,5 +381,13 @@ impl Desk {
     /// Forward on the row in front.
     pub fn go_forward(&self) {
         self.settle(|hub| hub.walk_pages(false));
+    }
+}
+
+/// What a request made by Back or Forward is asked with.
+fn walk() -> super::act::ActCtx {
+    super::act::ActCtx {
+        walking: true,
+        ..Default::default()
     }
 }

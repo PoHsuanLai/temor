@@ -39,7 +39,6 @@ pub fn edit_on_this_computer(
         Ok(text) => desk.host_edit(pane, &text),
         Err(words) => desk.say(words.to_owned()),
     }
-    desk.bump();
 }
 
 #[cfg(test)]

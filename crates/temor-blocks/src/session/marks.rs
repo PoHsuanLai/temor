@@ -8,12 +8,12 @@
 //! Everything the edge reads (the clock, whether the anchor resolved, the typed text) comes in
 //! on the input; everything it must do (give anchors back, announce a finished block) comes out.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ds_core::time::stamp::Stamp;
 
 use crate::block::{Author, Block, BlockIn, BlockOut, BlockState, BlockStore, block_step};
-use temor_core::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};
+use temor_core::vocab::ids::{BlockId, Counter, ExitCode, GridRow, GridSpan};
 use temor_core::vocab::text::CommandText;
 
 /// One tracked reference to a cell of the terminal, as the edge numbers them. Ids are never
@@ -62,17 +62,15 @@ pub struct MarkLog {
     machine: BlockState,
     store: BlockStore,
     anchors: BTreeMap<BlockId, BlockAnchors>,
-    /// The number of the mark in progress.
-    pending_seq: Option<u64>,
-    /// The mark's own event, waiting for its anchor.
-    pending: Option<MarkKind>,
+    /// The mark in progress, waiting for its anchor.
+    pending: Pending,
     /// The cursor where the person last pressed Enter: the end of the typed command.
     enter: Option<Anchor>,
     /// The prompt and typed-command anchors of the block being typed, before its id exists.
     prompt: Option<Anchor>,
     input: Option<Anchor>,
     /// The id the next command will get.
-    next_id: u64,
+    next_id: Counter,
     /// How many primary prompts the shell has marked.
     prompts: usize,
     /// How many commands have finished.
@@ -85,12 +83,11 @@ impl Default for MarkLog {
             machine: BlockState::Idle,
             store: BlockStore::default(),
             anchors: BTreeMap::new(),
-            pending_seq: None,
-            pending: None,
+            pending: Pending::None,
             enter: None,
             prompt: None,
             input: None,
-            next_id: 1,
+            next_id: Counter::FROM_ONE,
             prompts: 0,
             finished: 0,
         }
@@ -130,12 +127,22 @@ impl MarkLog {
 
     /// What the mark in progress is, once its event has come.
     pub fn pending(&self) -> Option<&MarkKind> {
-        self.pending.as_ref()
+        match &self.pending {
+            Pending::Heard(_, kind) => Some(kind),
+            Pending::None | Pending::Begun(_) => None,
+        }
+    }
+
+    /// Every anchor the log holds: the blocks', and those of the prompt being typed at.
+    fn held(&self) -> BTreeSet<Anchor> {
+        let typing = [self.prompt, self.input, self.enter].into_iter().flatten();
+        let blocks = self.anchors.values().flat_map(|held| held.all());
+        typing.chain(blocks).collect()
     }
 
     /// The id the next command will get.
     pub fn next_id(&self) -> BlockId {
-        BlockId(self.next_id)
+        BlockId(self.next_id.0)
     }
 
     /// How many primary prompts the shell has marked.
@@ -147,6 +154,15 @@ impl MarkLog {
     pub fn finished(&self) -> usize {
         self.finished
     }
+}
+
+/// The mark in progress: none, one begun whose event has not come, or one whose event came and
+/// waits for its anchor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Pending {
+    None,
+    Begun(u64),
+    Heard(u64, MarkKind),
 }
 
 /// A finished block found again on a restored screen, with its anchors (see `found`).
@@ -207,17 +223,19 @@ pub enum MarkOut {
     Dropped(Vec<BlockId>),
 }
 
-/// The log after `input`, and what to do about it.
+/// The log after `input`, and what to do about it. Every anchor the log held before, or was
+/// given, and does not hold after is given back: no step releases one by hand.
 pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
+    let mut held = log.held();
+    if let MarkIn::Anchored { anchor, .. } = &input {
+        held.insert(*anchor);
+    }
     let mut outs = Vec::new();
     match input {
-        MarkIn::Begin { seq } => {
-            log.pending = None;
-            log.pending_seq = Some(seq);
-        }
+        MarkIn::Begin { seq } => log.pending = Pending::Begun(seq),
         MarkIn::Event(kind) => {
-            if log.pending_seq.is_some() {
-                log.pending = Some(kind);
+            if let Pending::Begun(seq) | Pending::Heard(seq, _) = log.pending {
+                log.pending = Pending::Heard(seq, kind);
             }
         }
         MarkIn::Anchored {
@@ -227,10 +245,7 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
             at,
             typed,
         } => log.anchored(seq, anchor, row, at, typed, &mut outs),
-        MarkIn::Entered { anchor } => {
-            log.clear_enter(&mut outs);
-            log.enter = anchor;
-        }
+        MarkIn::Entered { anchor } => log.enter = anchor,
         MarkIn::ShellGone { at } => {
             log.run(BlockIn::ShellExited { at }, &mut outs);
         }
@@ -243,8 +258,11 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
         }
         MarkIn::Restored { blocks, at } => {
             for kept in blocks {
-                let id = BlockId(log.next_id);
-                log.next_id += 1;
+                let Some(id) = log.next_id.take().map(BlockId) else {
+                    // No id is left to give it: its anchors are given back.
+                    outs.extend(kept.anchors.all().map(MarkOut::Release));
+                    continue;
+                };
                 let took = kept.took_ms.unwrap_or(0);
                 let block = Block {
                     id,
@@ -264,22 +282,17 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
             }
         }
     }
+    let kept = log.held();
+    let released = held.into_iter().filter(|anchor| !kept.contains(anchor));
+    outs.splice(0..0, released.map(MarkOut::Release));
     (log, outs)
 }
 
 impl MarkLog {
-    fn clear_enter(&mut self, outs: &mut Vec<MarkOut>) {
-        if let Some(old) = self.enter.take() {
-            outs.push(MarkOut::Release(old));
-        }
-    }
-
-    /// Gives back the anchors of blocks that left the store, and says so.
+    /// Forgets the anchors of blocks that left the store, and says so.
     fn forget(&mut self, gone: Vec<BlockId>, outs: &mut Vec<MarkOut>) {
         for id in &gone {
-            if let Some(held) = self.anchors.remove(id) {
-                outs.extend(held.all().map(MarkOut::Release));
-            }
+            self.anchors.remove(id);
         }
         if !gone.is_empty() {
             outs.push(MarkOut::Dropped(gone));
@@ -314,36 +327,26 @@ impl MarkLog {
         typed: Option<String>,
         outs: &mut Vec<MarkOut>,
     ) {
-        let current = self.pending_seq.take();
-        let mark = self.pending.take();
-        let (Some(current), Some(mark)) = (current, mark) else {
-            return outs.push(MarkOut::Release(anchor));
+        // An anchor this does not keep is given back by `mark_step`.
+        let Pending::Heard(current, mark) = std::mem::replace(&mut self.pending, Pending::None)
+        else {
+            return;
         };
         let Some(row) = row.filter(|_| current == seq) else {
-            return outs.push(MarkOut::Release(anchor));
+            return;
         };
         match mark {
             MarkKind::PromptStart { primary: true } => {
                 if self.run(BlockIn::PromptStart { row, at }, outs) {
                     self.prompts += 1;
-                    if let Some(old) = self.prompt.replace(anchor) {
-                        outs.push(MarkOut::Release(old));
-                    }
-                    if let Some(old) = self.input.take() {
-                        outs.push(MarkOut::Release(old));
-                    }
-                    self.clear_enter(outs);
-                } else {
-                    outs.push(MarkOut::Release(anchor));
+                    self.prompt = Some(anchor);
+                    self.input = None;
+                    self.enter = None;
                 }
             }
             MarkKind::InputStart => {
                 if self.run(BlockIn::CommandStart { row }, outs) {
-                    if let Some(old) = self.input.replace(anchor) {
-                        outs.push(MarkOut::Release(old));
-                    }
-                } else {
-                    outs.push(MarkOut::Release(anchor));
+                    self.input = Some(anchor);
                 }
             }
             MarkKind::OutputStart { command } => {
@@ -355,17 +358,12 @@ impl MarkLog {
                     _ => None,
                 };
                 let taken = self.run(BlockIn::Finished { row, exit, at }, outs);
-                match (taken, running) {
-                    (true, Some(block)) => {
-                        self.anchors.entry(block).or_default().end = Some(anchor)
-                    }
-                    _ => outs.push(MarkOut::Release(anchor)),
+                if let (true, Some(block)) = (taken, running) {
+                    self.anchors.entry(block).or_default().end = Some(anchor);
                 }
             }
             // A secondary prompt, or a mark this build does not know.
-            MarkKind::PromptStart { primary: false } | MarkKind::Other => {
-                outs.push(MarkOut::Release(anchor))
-            }
+            MarkKind::PromptStart { primary: false } | MarkKind::Other => {}
         }
     }
 
@@ -380,14 +378,15 @@ impl MarkLog {
         outs: &mut Vec<MarkOut>,
     ) {
         let input = self.input.take();
-        if let Some(enter) = self.enter.take() {
-            outs.push(MarkOut::Release(enter));
-        }
+        self.enter = None;
         let text = match command.is_empty() {
             true => typed.unwrap_or_default(),
             false => command.to_owned(),
         };
-        let block = BlockId(self.next_id);
+        let Some((block, after)) = self.next_id.mint() else {
+            return;
+        };
+        let block = BlockId(block);
         let accepted = self.run(
             BlockIn::OutputStart {
                 id: block,
@@ -399,7 +398,7 @@ impl MarkLog {
             outs,
         );
         if accepted {
-            self.next_id += 1;
+            self.next_id = after;
             // The input anchor stays: the card's command rows (drawn bold) run from it to the
             // output anchor.
             self.anchors.insert(
@@ -413,9 +412,7 @@ impl MarkLog {
             );
         } else {
             // An ignored command keeps nothing: its anchors go back to the terminal.
-            outs.push(MarkOut::Release(anchor));
-            outs.extend(self.prompt.take().map(MarkOut::Release));
-            outs.extend(input.map(MarkOut::Release));
+            self.prompt = None;
         }
     }
 }

@@ -85,7 +85,6 @@ mod tests {
         frame
             .apply(update(4, 2), vec![Ok((Row(0), vec![cell('a')]))])
             .expect("first capture");
-        let _ = frame.take_dirty();
         let before = frame.clone();
 
         // The grid grew, and the second row could not be read.
@@ -99,12 +98,13 @@ mod tests {
         assert!(failed.is_err());
         assert_eq!(frame, before, "nothing of the failed capture was applied");
 
-        // A retry at the new size applies in full, and every row is dirty because the size moved.
+        // A retry at the new size applies in full, every row written anew.
         frame
             .apply(update(6, 3), vec![Ok((Row(0), vec![cell('b')]))])
             .expect("retry");
         assert_eq!(frame.size(), GridSize::new(6, 3));
-        assert!(frame.dirty.iter().all(|d| *d));
+        assert!(frame.written.iter().all(|w| !before.written.contains(w)));
+        assert_eq!(frame.written.len(), 3);
     }
 
     #[test]

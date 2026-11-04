@@ -5,7 +5,7 @@ use super::step::{mint_tab, tree_state};
 use super::step_types::{RefuseWhy, WorkspaceOut};
 use super::tabs::TabsIn;
 use crate::space::{Pin, Tab};
-use crate::split::Direction;
+use crate::split::{Direction, TreeState};
 use temor_core::error::CoreError;
 use temor_core::vocab::ids::{PaneId, TabId};
 
@@ -37,20 +37,20 @@ pub(super) fn tear(ws: &mut Workspace, pane: PaneId, out: &mut Vec<WorkspaceOut>
     let Some(new_id) = mint_tab(ws) else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::IdsExhausted));
     };
-    if let Some(t) = ws.tabs.place.tabs.iter_mut().find(|t| t.id == tab) {
-        t.tree = rest;
+    if let Some(t) = ws.tab_mut(tab) {
+        t.set_state(TreeState {
+            tree: rest,
+            focus: rest_focus,
+        });
     }
-    ws.focus.insert(tab, rest_focus);
-    ws.open_tab(
-        Tab {
-            id: new_id,
-            title: source.title,
-            pin: Pin::Loose,
-            folder: source.folder,
-            tree: alone,
-        },
-        pane,
-    );
+    ws.open_tab(Tab {
+        id: new_id,
+        title: source.title,
+        pin: Pin::Loose,
+        folder: source.folder,
+        tree: alone,
+        focus: Some(pane),
+    });
     out.push(WorkspaceOut::Focused(pane));
 }
 
@@ -84,11 +84,12 @@ pub(super) fn drop_tab(
         return out.push(WorkspaceOut::Refused(RefuseWhy::TabFull));
     };
     let focus = dragged.focus;
-    if let Some(t) = ws.tabs.place.tabs.iter_mut().find(|t| t.id == target) {
-        t.tree = merged;
+    if let Some(t) = ws.tab_mut(target) {
+        t.set_state(TreeState {
+            tree: merged,
+            focus,
+        });
     }
-    ws.focus.insert(target, focus);
-    ws.focus.remove(&from);
     ws.tabs_do(TabsIn::Remove(from));
     ws.bring_forward(target);
     out.push(WorkspaceOut::Focused(focus));

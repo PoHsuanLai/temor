@@ -4,7 +4,6 @@
 //! store its credentials come from.
 
 use ds::components::app::spaces::SpaceId;
-use temor_client::model::pane::PaneFocus;
 use temor_client::model::space::{Place, TemorSpaces};
 use temor_client::model::workspace::WorkspaceIn;
 
@@ -61,18 +60,13 @@ impl Hub {
         if to == self.book.active() {
             return;
         }
-        if let Some(pane) = self.keyboard_pane() {
-            self.set_pane_focus(pane, PaneFocus::Unfocused);
-        }
         self.swap_to(to);
         self.fill_empty();
-        self.refresh_probe();
-        self.pace.changed();
     }
 
     /// A Space with no tab gets one, as a window closing its last tab does.
     pub(super) fn fill_empty(&mut self) {
-        if self.book.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
     }
@@ -83,23 +77,18 @@ impl Hub {
         for id in self.book.follow(all) {
             self.forget_space(id);
         }
-        self.pace.changed();
     }
 }
 
 impl HubRef {
     /// The kit switched Space: bring its workspace to the front. Returns the notices left.
     pub fn arrive(&self, to: SpaceId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.arrive(to);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.arrive(to))
     }
 
     /// The Spaces changed for good. Returns the notices left.
     pub fn spaces_changed(&self, all: &TemorSpaces) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.spaces_changed(all);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.spaces_changed(all))
     }
 
     /// The Spaces as the Settings window shows them: each one's name and project.

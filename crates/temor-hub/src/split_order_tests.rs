@@ -28,7 +28,7 @@ fn the_sidebar_lists_a_splits_panes_in_the_order_next_pane_steps_through_them() 
     assert_eq!(
         listed,
         hub.book
-            .ws
+            .ws()
             .tabs
             .tab(tab)
             .expect("the tab")
@@ -37,13 +37,16 @@ fn the_sidebar_lists_a_splits_panes_in_the_order_next_pane_steps_through_them() 
     );
 
     let step = |hub: &mut super::model::Hub, input| {
-        hub.book.ws = workspace_step(hub.book.ws.clone(), input).0;
+        hub.book.place(
+            hub.book.active(),
+            workspace_step(hub.book.ws().clone(), input).0,
+        );
     };
     step(&mut hub, WorkspaceIn::Focus(listed[0]));
-    let mut walked = vec![hub.book.ws.focus_of(tab).expect("focus")];
+    let mut walked = vec![hub.book.ws().focus_of(tab).expect("focus")];
     for _ in 1..listed.len() {
         step(&mut hub, WorkspaceIn::Goto(Goto::Next));
-        walked.push(hub.book.ws.focus_of(tab).expect("focus"));
+        walked.push(hub.book.ws().focus_of(tab).expect("focus"));
     }
     assert_eq!(walked, listed);
 }

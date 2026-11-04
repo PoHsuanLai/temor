@@ -20,7 +20,7 @@ use temor_schema::url::{HistoryScope, TemorUrl};
 
 use super::live::{use_client, use_live};
 use super::tab_glyph::prompt_glyph;
-use temor_hub::{Desk, select_tab};
+use temor_hub::{Desk, select_tab, use_hub};
 
 /// How many sessions or commands the page lists.
 const LISTED: usize = 300;
@@ -48,7 +48,7 @@ pub fn HistoryPage(scope: HistoryScope, desk: Desk) -> Element {
 #[allow(non_snake_case)]
 fn SessionsPage(folder: Option<String>, desk: Desk) -> Element {
     // Which sessions run is the hub's: a session that ends redraws the page.
-    let _ = (desk.ui)();
+    let (home, running) = use_hub(&desk, (), |hub, ()| (hub.home(), hub.running_sessions()))();
     let mut text = use_signal(String::new);
     let within = folder.clone();
     let sessions = use_live(move || Sessions {
@@ -67,7 +67,6 @@ fn SessionsPage(folder: Option<String>, desk: Desk) -> Element {
     let now = time.now();
     let zone = time.zone_at(now);
     let today = zone.day_of(now);
-    let home = desk.hub.home();
     let tokens = folder
         .as_deref()
         .map(|folder| vec![format!("in {}", tidy(folder, &home))])
@@ -80,7 +79,6 @@ fn SessionsPage(folder: Option<String>, desk: Desk) -> Element {
                 .value()
                 .map(|all| all.as_ref().clone())
                 .unwrap_or_default();
-            let running = desk.hub.running_sessions();
             let days = by_day(listed, |session| session.started, zone)
                 .into_iter()
                 .map(|(day, run)| (day_heading(day, today), run));
@@ -173,14 +171,13 @@ fn SessionRow(session: Session, running: bool, zone: Zone, home: String, desk: D
 #[component]
 #[allow(non_snake_case)]
 fn SessionPage(id: SessionId, desk: Desk) -> Element {
-    let _ = (desk.ui)();
+    let (home, tab) = use_hub(&desk, id, |hub, &id| (hub.home(), hub.tab_of_session(id)))();
     let mut text = use_signal(String::new);
     let kept = use_live(move || Commands(id));
     let time = use_client().local_time().clone();
     let now = time.now();
     let zone = time.zone_at(now);
     let today = zone.day_of(now);
-    let home = desk.hub.home();
     let Some((session, commands)) = kept.read().value().and_then(|kept| kept.as_ref().clone())
     else {
         return rsx! {
@@ -189,7 +186,6 @@ fn SessionPage(id: SessionId, desk: Desk) -> Element {
             }
         };
     };
-    let tab = desk.hub.tab_of_session(id);
     let running = tab.is_some();
     let typed = text().to_lowercase();
     let shown: Vec<RanCommand> = commands

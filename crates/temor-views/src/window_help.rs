@@ -76,14 +76,6 @@ pub(super) fn cursor_rect(slot: &RefCell<Slot>, rect: RectProbe) -> Rect {
     }
 }
 
-/// The message the session has for the person, if any; taking it clears it.
-pub(super) fn take_notice(slot: &RefCell<Slot>) -> Option<String> {
-    slot.borrow_mut()
-        .session
-        .as_mut()
-        .and_then(|s| s.take_notice())
-}
-
 /// Runs the find query once the person has paused typing for [`QUERY_DEBOUNCE`].
 pub(super) fn run_query_later(slot: Rc<RefCell<Slot>>, started: Instant, mut ui: Signal<u32>) {
     spawn(async move {

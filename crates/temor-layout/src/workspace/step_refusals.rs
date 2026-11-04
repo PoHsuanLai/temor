@@ -75,12 +75,12 @@ fn ids_at_the_top_of_the_range_refuse_instead_of_overflowing() {
     };
     #[rustfmt::skip]
     let cases: Vec<(&str, Workspace, WorkspaceIn, WorkspaceOut)> = vec![
-        ("a new tab with no pane id left", with(|ws| ws.next_pane = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
-        ("a new tab with no tab id left", with(|ws| ws.next_tab = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
-        ("a split with no pane id left", with(|ws| ws.next_pane = u64::MAX), WorkspaceIn::Split { towards: Direction::Down }, refused(RefuseWhy::IdsExhausted)),
+        ("a new tab with no pane id left", with(|ws| ws.next_pane.0 = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
+        ("a new tab with no tab id left", with(|ws| ws.next_tab.0 = u64::MAX), WorkspaceIn::NewTab { cwd: None }, refused(RefuseWhy::IdsExhausted)),
+        ("a split with no pane id left", with(|ws| ws.next_pane.0 = u64::MAX), WorkspaceIn::Split { towards: Direction::Down }, refused(RefuseWhy::IdsExhausted)),
         ("a side-by-side split of a pane under 80 columns", with(|_| {}), WorkspaceIn::SplitIn { towards: Direction::Right, width: Columns(79) }, refused(RefuseWhy::TooNarrow)),
-        ("a tear with no tab id left", with(|ws| ws.next_tab = u64::MAX), WorkspaceIn::Tear(torn), refused(RefuseWhy::IdsExhausted)),
-        ("a folder with no id left", with(|ws| ws.tabs.next_folder = u64::MAX), WorkspaceIn::Tabs(TabsIn::NewFolder { title: TabTitle("f".into()), parent: None }), WorkspaceOut::Tab(TabsOut::Refused(TabRefusal::IdsExhausted))),
+        ("a tear with no tab id left", with(|ws| ws.next_tab.0 = u64::MAX), WorkspaceIn::Tear(torn), refused(RefuseWhy::IdsExhausted)),
+        ("a folder with no id left", with(|ws| ws.tabs.next_folder.0 = u64::MAX), WorkspaceIn::Tabs(TabsIn::NewFolder { title: TabTitle("f".into()), parent: None }), WorkspaceOut::Tab(TabsOut::Refused(TabRefusal::IdsExhausted))),
     ];
     for (name, start, input, want) in cases {
         let (after, out) = workspace_step(start.clone(), input);

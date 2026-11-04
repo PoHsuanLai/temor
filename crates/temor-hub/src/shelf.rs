@@ -172,8 +172,8 @@ impl Hub {
     /// The question in front, if a program is waiting on the person. Questions of panes that
     /// have gone are dropped first.
     pub fn front_ask(&mut self) -> Option<Ask> {
-        let slots = &self.slots;
-        self.shelf.asks.retain(|ask| slots.contains_key(&ask.pane));
+        let panes = &self.panes;
+        self.shelf.asks.retain(|ask| panes.slot(ask.pane).is_some());
         self.shelf.asks.front().cloned()
     }
 
@@ -289,8 +289,7 @@ impl Hub {
         let pane = self.terminal_pane();
         let said = pane.and_then(|pane| {
             self.live_mut(pane, |session| {
-                session.copy_path(&text);
-                session.take_notice()
+                session.said(|session| session.copy_path(&text)).1.notice
             })
         });
         match said {
@@ -314,11 +313,10 @@ impl Hub {
         if self.is_host_pane(pane) {
             return self.upload_drop(pane, paths);
         }
-        let said = self.slots.get(&pane).and_then(|slot| {
+        let said = self.panes.slot(pane).and_then(|slot| {
             let mut slot = slot.borrow_mut();
             let session = slot.session.as_mut()?;
-            session.drop_files(paths);
-            session.take_notice()
+            session.said(|session| session.drop_files(paths)).1.notice
         });
         said.into_iter().collect()
     }
@@ -356,15 +354,13 @@ impl HubRef {
 
     /// The person's answer to the question in front; what the person should be told comes back.
     pub fn answer_ask(&self, consent: Consent) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.answer_ask(consent);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.answer_ask(consent))
     }
 
     /// Files were dropped on a pane; what the person should be told comes back. On a pane that
     /// runs on another computer they are sent there; anywhere else their paths are typed.
     pub fn drop_files(&self, pane: PaneId, paths: Vec<PathBuf>) -> Vec<String> {
-        self.0.borrow_mut().drop_on(pane, &paths)
+        self.edit(|hub| hub.drop_on(pane, &paths))
     }
 
     /// Where Use in pane would send a file now.
@@ -384,6 +380,6 @@ impl HubRef {
 
     /// The person took an upload off the list.
     pub fn clear_upload(&self, id: temor_client::model::shelf::UploadId) {
-        self.0.borrow_mut().clear_upload(id);
+        self.edit(|hub| hub.clear_upload(id));
     }
 }

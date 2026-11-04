@@ -35,7 +35,7 @@ impl Hub {
     /// or hide it and keep the shell.
     pub fn quick_toggle(&mut self) {
         let pane = match self.quick {
-            QuickState::Closed => match self.mint_pane() {
+            QuickState::Closed => match self.book.mint_pane() {
                 Some(pane) => pane,
                 None => {
                     self.notices
@@ -48,7 +48,7 @@ impl Hub {
         };
         let cwd = self
             .keyboard_pane()
-            .and_then(|front| self.book.ws.cwds.get(&front).cloned());
+            .and_then(|front| self.book.ws().cwds.get(&front).cloned());
         self.quick_input(QuickIn::Toggle { pane, cwd });
     }
 
@@ -61,27 +61,17 @@ impl Hub {
     pub(super) fn quick_input(&mut self, input: QuickIn) {
         let (state, outs) = quick_step(std::mem::take(&mut self.quick), input);
         self.quick = state;
-        let asked = !outs.is_empty();
         for out in outs {
             match out {
-                QuickOut::Spawn { pane, cwd } => self.open_pane(&quick_spawn(pane, cwd), None),
+                QuickOut::Spawn { pane, cwd } => {
+                    self.open_pane(&quick_spawn(pane, cwd), None, &mut Default::default())
+                }
                 QuickOut::End(pane) => self.end_pane(pane),
                 QuickOut::Promote { pane, space, cwd } => self.adopt_quick_pane(space, pane, cwd),
                 // The overlay follows `quick_shown`; the shell is not touched.
                 QuickOut::Show(_) | QuickOut::Hidden => {}
             }
         }
-        if asked {
-            self.refresh_probe();
-        }
-    }
-
-    /// The next pane id, from the counter every pane takes its id from.
-    fn mint_pane(&mut self) -> Option<PaneId> {
-        let next = self.book.ws.next_pane.checked_add(1)?;
-        let pane = PaneId(self.book.ws.next_pane);
-        self.book.ws.next_pane = next;
-        Some(pane)
     }
 
     /// Gives the running quick pane to `space` as a tab of its own.

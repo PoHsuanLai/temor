@@ -9,7 +9,8 @@ use temor_wire::message::{RemoteError, Reply, Request, WriteMode};
 
 use super::core::Daemon;
 use super::link::Link;
-use super::session::Session;
+use super::session::{Answer, Command, Session};
+use super::sizes::{check, usable};
 use crate::error::Error;
 use crate::sync::lock;
 
@@ -19,7 +20,7 @@ pub(super) enum Done {
     Reply(Reply),
     /// With this reply and its payload.
     Payload(Reply, Vec<u8>),
-    /// Already sent (an attach answers under the session's lock).
+    /// The session answers it itself.
     Sent,
 }
 
@@ -59,15 +60,16 @@ impl Daemon {
                 Ok(Done::Reply(Reply::Opened { session }))
             }
             Request::AttachSession { session } => {
-                self.session(session)?.attach(link, id).map_err(wire)?;
+                let answer = Answer::new(link, id, session);
+                self.session(session)?.send(Command::Attach(answer));
                 Ok(Done::Sent)
             }
             Request::DetachSession { session } => {
-                self.session(session)?.detach(Some(link.id));
+                self.session(session)?.send(Command::Detach(link.id));
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::Close { session } => {
-                self.session(session)?.close();
+                self.session(session)?.send(Command::Close);
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::ResizeSession {
@@ -75,23 +77,36 @@ impl Daemon {
                 size,
                 cell,
             } => {
-                self.session(session)?.resize(size, cell).map_err(wire)?;
-                Ok(Done::Reply(Reply::Ack))
+                let size = check(size).map_err(wire)?;
+                let answer = Answer::new(link, id, session);
+                self.session(session)?.send(Command::Resize {
+                    size,
+                    cell: usable(cell),
+                    answer,
+                });
+                Ok(Done::Sent)
             }
             Request::SetPalette { session, palette } => {
-                self.session(session)?.set_palette(&palette).map_err(wire)?;
-                Ok(Done::Reply(Reply::Ack))
+                let answer = Answer::new(link, id, session);
+                self.session(session)?
+                    .send(Command::Palette { palette, answer });
+                Ok(Done::Sent)
             }
             // Answered here on the reader thread, ahead of any file request still running, so a
             // slow download never looks like a dead link.
             Request::Ping => Ok(Done::Reply(Reply::Pong)),
             Request::SendInput { session } => {
-                self.session(session)?
-                    .send_input(payload.unwrap_or_default());
+                let bytes = payload.unwrap_or_default().to_vec();
+                self.session(session)?.send(Command::Input(bytes));
                 Ok(Done::Reply(Reply::Ack))
             }
             Request::ListSessions => {
-                let sessions = self.registry.all().iter().map(|s| s.info()).collect();
+                let sessions = self
+                    .registry
+                    .all()
+                    .iter()
+                    .filter_map(|s| s.info())
+                    .collect();
                 Ok(Done::Reply(Reply::Sessions(sessions)))
             }
             Request::SetIdleLimit { limit } => {
@@ -148,7 +163,11 @@ impl Daemon {
             }
             Request::Facts { session } => {
                 // A session's folder is the client's to ask about: it opened the session there.
-                let cwd = self.session(session)?.info().cwd;
+                let cwd = self
+                    .session(session)?
+                    .info()
+                    .ok_or(RemoteError::NoSuchSession { session })?
+                    .cwd;
                 let facts = crate::facts::read_folder(
                     std::path::Path::new(&cwd.0),
                     self.config.home.as_deref(),

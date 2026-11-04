@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use temor_vt::{Generation, ImageId};
 
 use super::pipeline::{Pipeline, texture};
-use crate::font::{Atlas, AtlasFormat, GlyphCache};
+use crate::font::{Atlas, AtlasFormat, Atlases};
 use crate::frame::ImagePlacement;
 
 /// The two atlases on the device and the bind group that reads them.
@@ -96,9 +96,9 @@ fn write(
 }
 
 impl DeviceAtlases {
-    pub fn new(device: &wgpu::Device, pipe: &Pipeline, glyphs: &GlyphCache) -> Self {
-        let alpha = atlas_texture(device, &glyphs.alpha);
-        let color = atlas_texture(device, &glyphs.color);
+    pub fn new(device: &wgpu::Device, pipe: &Pipeline, atlases: &Atlases) -> Self {
+        let alpha = atlas_texture(device, &atlases.alpha);
+        let color = atlas_texture(device, &atlases.color);
         let bind = bind(device, pipe, &alpha, &color);
         Self {
             alpha,
@@ -115,13 +115,13 @@ impl DeviceAtlases {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         pipe: &Pipeline,
-        glyphs: &mut GlyphCache,
+        atlases: &mut Atlases,
     ) -> u64 {
         let mut bytes = 0;
         let mut rebind = false;
         for (atlas, tex, generation) in [
-            (&mut glyphs.alpha, &mut self.alpha, &mut self.generations.0),
-            (&mut glyphs.color, &mut self.color, &mut self.generations.1),
+            (&mut atlases.alpha, &mut self.alpha, &mut self.generations.0),
+            (&mut atlases.color, &mut self.color, &mut self.generations.1),
         ] {
             let dirty = atlas.take_dirty();
             if *generation != atlas.generation {

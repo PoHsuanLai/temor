@@ -25,9 +25,11 @@ fn the_shelf_row_of_an_upload_moves_as_parts_arrive() {
     assert_eq!(id, UploadId(1));
     let mut seen = Vec::new();
     for sent in [4_000_000, 8_000_000] {
-        let said = rig.hub.ssh_event(SshEvent::UploadProgress {
-            id,
-            sent: Bytes(sent),
+        let ((), said) = rig.hub.said(|hub| {
+            hub.ssh_event(SshEvent::UploadProgress {
+                id,
+                sent: Bytes(sent),
+            })
         });
         assert!(said.is_empty(), "progress tells the person nothing");
         seen.push(rig.hub.shelf.uploads.items()[0].sent.0);

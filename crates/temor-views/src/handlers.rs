@@ -1,6 +1,6 @@
 //! The window's event handlers, as functions that return the closure a component hands to its
-//! element or control. Each takes the session's slot and the window's signals, and does the
-//! session call, then asks the window to draw again.
+//! element or control. Each sends its session call through the pane's [`PaneLink`], which carries
+//! out what the call left and draws the window again.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,59 +18,43 @@ use temor_panes::pane::keys::Action;
 use super::block_menu::BlockMenuAt;
 use super::find_bar::StepDirection;
 use super::ime::ImeGlue;
+use super::pane_link::{PaneLink, Redraw};
 use super::window_help::{device_at, run_query_later};
 use temor_hub::Desk;
 use temor_pane_view::session::{HistoryStep, Session};
-use temor_ui_base::slot::{Slot, repaint};
+use temor_ui_base::slot::Slot;
 
 /// The find bar's query, run once typing pauses.
-pub fn find_query(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
-    started: Instant,
-) -> impl FnMut(String) + 'static {
+pub fn find_query(link: PaneLink, started: Instant) -> impl FnMut(String) + 'static {
     move |text: String| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            s.queue_query(&text, started.elapsed());
-        }
+        link.send(Redraw::WindowOnly, |s| {
+            s.queue_query(&text, started.elapsed())
+        });
         // The search runs once typing pauses (see `run_query_later`).
-        run_query_later(Rc::clone(&slot), started, ui);
-        ui += 1;
+        run_query_later(Rc::clone(&link.slot), started, link.desk.ui);
     }
 }
 
 /// The find bar's next or previous match.
-pub fn find_step(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
-) -> impl FnMut(StepDirection) + 'static {
+pub fn find_step(link: PaneLink) -> impl FnMut(StepDirection) + 'static {
     move |direction: StepDirection| {
         let action = match direction {
             StepDirection::Forward => Action::FindNext,
             StepDirection::Backward => Action::FindPrevious,
         };
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            let _ = s.run(action);
-        }
-        ui += 1;
-        repaint(&slot);
+        link.send(Redraw::WithGrid, |s| s.run(action));
     }
 }
 
 /// The find bar's close. Its field leaves the page with it, so the keyboard goes back to the
 /// terminal region (`regain`, the same focus the region takes on a click).
 pub fn find_close(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
+    link: PaneLink,
     ime: ImeGlue,
     regain: EventHandler<()>,
 ) -> impl FnMut(()) + 'static {
     move |_: ()| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            let _ = s.run(Action::CloseFind);
-        }
-        ui += 1;
-        repaint(&slot);
+        link.send(Redraw::WithGrid, |s| s.run(Action::CloseFind));
         ime.take_focus(regain);
     }
 }
@@ -79,27 +63,22 @@ pub fn find_close(
 /// `contextmenu` that follows the release, see [`block_menu_opened`]); anything else is the
 /// grid's.
 pub fn grid_pressed(
-    slot: Rc<RefCell<Slot>>,
+    link: PaneLink,
     (rect, signals): (RectProbe, Option<HostSignals>),
-    mut ui: Signal<u32>,
-    mut notice: Signal<Option<String>>,
     mouse_down: Rc<dyn Fn(PointerEvent)>,
 ) -> impl FnMut(PointerEvent) + 'static {
     move |e: PointerEvent| {
         if e.trigger_button() == Some(dioxus::html::input_data::MouseButton::Secondary) {
             let at = device_at(e.client_coordinates(), &rect, signals);
-            let block = match slot.borrow_mut().session.as_mut() {
-                Some(s) => s.block_menu_press(at),
-                None => Ok(None),
-            };
+            let (block, left) = link.said(|s| s.block_menu_press(at));
+            link.carry_out(left);
             match block {
-                Ok(Some(_)) => {
-                    ui += 1;
-                    repaint(&slot);
+                Some(Ok(Some(_))) => {
+                    link.redraw(Redraw::WithGrid);
                     return;
                 }
-                Ok(None) => {}
-                Err(err) => notice.set(Some(err.to_string())),
+                Some(Err(err)) => link.desk.say(err.to_string()),
+                Some(Ok(None)) | None => {}
             }
         }
         mouse_down(e);
@@ -110,19 +89,15 @@ pub fn grid_pressed(
 /// block menu opens at the pointer. Opening on the release's event, not the press, keeps the
 /// release from landing outside a menu that has just opened, and closing it.
 pub fn block_menu_opened(
-    slot: Rc<RefCell<Slot>>,
+    link: PaneLink,
     (rect, signals): (RectProbe, Option<HostSignals>),
-    mut ui: Signal<u32>,
     mut menu: Signal<Option<BlockMenuAt>>,
 ) -> impl FnMut(MouseEvent) + 'static {
     move |e: MouseEvent| {
         let at = device_at(e.client_coordinates(), &rect, signals);
-        let block = slot
-            .borrow_mut()
-            .session
-            .as_mut()
-            .and_then(|s| s.block_menu_press(at).ok().flatten());
-        if block.is_some() {
+        let (block, left) = link.said(|s| s.block_menu_press(at));
+        link.carry_out(left);
+        if let Some(Ok(Some(_))) = block {
             let c = e.client_coordinates();
             menu.set(Some(BlockMenuAt {
                 point: Point {
@@ -130,8 +105,7 @@ pub fn block_menu_opened(
                     y: Px(c.y as f32),
                 },
             }));
-            ui += 1;
-            repaint(&slot);
+            link.redraw(Redraw::WithGrid);
         }
     }
 }
@@ -158,96 +132,64 @@ pub fn pointer_gone(slot: Rc<RefCell<Slot>>) -> impl FnMut(PointerEvent) + 'stat
     }
 }
 
-/// Whether a session call changes what the grid shows. A copy does not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Redraw {
-    /// The window is drawn again; the grid is as it was.
-    WindowOnly,
-    /// The grid is painted again too.
-    WithGrid,
-}
-
-/// The handler for a press that calls `call` on the pane's session with the press's value, then
-/// asks for the window (and, with `redraw`, the grid) to be drawn again.
+/// The handler for a press that sends `call` with the press's value to the pane's session.
 fn on_session<T: 'static>(
-    slot: Rc<RefCell<Slot>>,
-    mut ui: Signal<u32>,
+    link: PaneLink,
     redraw: Redraw,
     call: impl Fn(&mut Session, T) + 'static,
 ) -> impl FnMut(T) + 'static {
     move |value: T| {
-        if let Some(s) = slot.borrow_mut().session.as_mut() {
-            call(s, value);
-        }
-        ui += 1;
-        if redraw == Redraw::WithGrid {
-            repaint(&slot);
-        }
+        link.send(redraw, |s| call(s, value));
     }
 }
 
 /// A card's chevron in the block list: folds its output away or brings it back.
-pub fn list_fold(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(BlockId) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
+pub fn list_fold(link: PaneLink) -> impl FnMut(BlockId) + 'static {
+    on_session(link, Redraw::WithGrid, |s, id| s.toggle_fold_of(id))
 }
 
 /// A kept command's Put in Prompt in the block list.
-pub fn list_put(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(u32) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, n| s.put_kept(n))
+pub fn list_put(link: PaneLink) -> impl FnMut(u32) + 'static {
+    on_session(link, Redraw::WithGrid, |s, n| s.put_kept(n))
 }
 
 /// The composer's text as the person edits it.
-pub fn composer_input(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(String) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, text| {
+pub fn composer_input(link: PaneLink) -> impl FnMut(String) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, text| {
         s.set_composer_text(text)
     })
 }
 
 /// The composer's Enter: its text goes to the shell.
-pub fn composer_submit(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.composer_submit())
+pub fn composer_submit(link: PaneLink) -> impl FnMut(()) + 'static {
+    on_session(link, Redraw::WithGrid, |s, ()| s.composer_submit())
 }
 
 /// The composer's arrows through the pane's commands.
-pub fn composer_history(
-    slot: Rc<RefCell<Slot>>,
-    ui: Signal<u32>,
-) -> impl FnMut(HistoryStep) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
-        s.composer_history(step)
-    })
+pub fn composer_history(link: PaneLink) -> impl FnMut(HistoryStep) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, step| s.composer_history(step))
 }
 
 /// The composer's Tab: the shell is asked to complete the line.
-pub fn composer_complete(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, ()| s.composer_complete())
+pub fn composer_complete(link: PaneLink) -> impl FnMut(()) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, ()| s.composer_complete())
 }
 
 /// The pick among the words the shell offered moves.
-pub fn composer_pick(
-    slot: Rc<RefCell<Slot>>,
-    ui: Signal<u32>,
-) -> impl FnMut(HistoryStep) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, step| {
-        s.composer_pick(step)
-    })
+pub fn composer_pick(link: PaneLink) -> impl FnMut(HistoryStep) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, step| s.composer_pick(step))
 }
 
 /// A word the shell offered goes into the line: the picked one, or the one pressed.
-pub fn composer_take(
-    slot: Rc<RefCell<Slot>>,
-    ui: Signal<u32>,
-) -> impl FnMut(Option<usize>) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, index| {
+pub fn composer_take(link: PaneLink) -> impl FnMut(Option<usize>) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, index| {
         s.composer_take_choice(index)
     })
 }
 
 /// The words the shell offered are put away.
-pub fn composer_close(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, ()| {
-        s.composer_close_choices()
-    })
+pub fn composer_close(link: PaneLink) -> impl FnMut(()) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, ()| s.composer_close_choices())
 }
 
 /// A header or toolbar press, then the keyboard back to the terminal: the button the person
@@ -264,13 +206,13 @@ pub fn then_regain<T: 'static>(
 }
 
 /// The paste confirmation's paste.
-pub fn paste_confirm(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WithGrid, |s, ()| s.confirm_paste())
+pub fn paste_confirm(link: PaneLink) -> impl FnMut(()) + 'static {
+    on_session(link, Redraw::WithGrid, |s, ()| s.confirm_paste())
 }
 
 /// The paste confirmation's cancel.
-pub fn paste_cancel(slot: Rc<RefCell<Slot>>, ui: Signal<u32>) -> impl FnMut(()) + 'static {
-    on_session(slot, ui, Redraw::WindowOnly, |s, ()| s.cancel_paste())
+pub fn paste_cancel(link: PaneLink) -> impl FnMut(()) + 'static {
+    on_session(link, Redraw::WindowOnly, |s, ()| s.cancel_paste())
 }
 
 /// The ended shell's restart. The new shell starts a frame after the press: the button the

@@ -30,6 +30,7 @@ pub(super) fn is_file_request(body: &Request) -> bool {
 }
 
 /// A request waiting for the worker.
+#[derive(Debug)]
 pub(super) struct Job {
     pub(super) id: RequestId,
     pub(super) body: Request,

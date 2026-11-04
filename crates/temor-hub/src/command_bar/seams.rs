@@ -5,10 +5,10 @@
 use std::rc::Rc;
 
 use ds::style::space::list::SpaceId;
-use temor_client::model::bar::{BarAction, PathResolver, SpaceEntry, UnixSecs};
+use temor_client::model::bar::{BarAction, SpaceEntry, UnixSecs};
 use temor_client::model::vocab::ai::AiSwitch;
 
-use super::resolver::PathLookup;
+use super::resolver::{PathLookup, PathResolver};
 use temor_ui_base::edge::unix_now;
 use temor_ui_base::launch::Launch;
 

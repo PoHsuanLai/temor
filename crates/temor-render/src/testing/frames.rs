@@ -67,5 +67,6 @@ pub fn view(size: PixelSize, palette: &Palette) -> PaneView<'_> {
         blink: BlinkPhase::On,
         selection: None,
         lower: 0,
+        ground: None,
     }
 }

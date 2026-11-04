@@ -46,8 +46,6 @@ pub(super) struct HostCopies {
     events: UnboundedSender<CopyEvent>,
     pub(super) inbox: Option<UnboundedReceiver<CopyEvent>>,
     wanted: BTreeMap<CopyId, Wanted>,
-    /// The copy each viewer pane shows, removed when the pane ends.
-    shown: BTreeMap<PaneId, PathBuf>,
 }
 
 impl Default for HostCopies {
@@ -58,7 +56,6 @@ impl Default for HostCopies {
             events,
             inbox: Some(inbox),
             wanted: BTreeMap::new(),
-            shown: BTreeMap::new(),
         }
     }
 }
@@ -92,20 +89,6 @@ impl Hub {
     /// Whether `file` is one of this window's copies of a host's files.
     pub(super) fn is_host_copy(&self, file: &Path) -> bool {
         file.starts_with(self.copies_dir())
-    }
-
-    /// The viewer pane `pane` shows the copy `file`: it is removed when the pane ends.
-    pub(super) fn host_copy_shown(&mut self, pane: PaneId, file: &Path) {
-        if self.is_host_copy(file) {
-            self.viewers.host.shown.insert(pane, file.to_path_buf());
-        }
-    }
-
-    /// A viewer pane ended: its copy of a host's file goes.
-    pub(super) fn host_copy_ended(&mut self, pane: PaneId) {
-        if let Some(copy) = self.viewers.host.shown.remove(&pane) {
-            forget_copy(&copy);
-        }
     }
 
     /// Fetches `path` of the host `from` is a session on, and opens it in a viewer beside `from`.
@@ -190,11 +173,11 @@ impl Hub {
 
     /// A fetch finished: the viewer opens on the copy. A path that is not a file, or is not
     /// there, says nothing when it was only a click on a word; a comparison says so.
-    pub(super) fn host_copy_done(&mut self, event: CopyEvent) -> Vec<String> {
+    pub(super) fn host_copy_done(&mut self, event: CopyEvent) {
         let Some(want) = self.viewers.host.wanted.remove(&event.id) else {
-            return Vec::new();
+            return;
         };
-        let open = self.book.ws.tab_of(want.from).is_some();
+        let open = self.book.ws().tab_of(want.from).is_some();
         match (event.outcome, &want.then) {
             (CopyOutcome::Whole, Then::View) if open => {
                 let file = want.local.clone();
@@ -222,7 +205,6 @@ impl Hub {
             // Not a file, gone, or the pane closed meanwhile.
             _ => forget_copy(&want.local),
         }
-        std::mem::take(&mut self.notices)
     }
 
     pub(super) fn show_file(&mut self, from: PaneId, file: PathBuf) {
@@ -240,8 +222,6 @@ impl Hub {
 impl HubRef {
     /// See [`Hub::open_host_viewer`].
     pub fn open_host_viewer(&self, from: PaneId, path: &str) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.open_host_viewer(from, path);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.open_host_viewer(from, path))
     }
 }

@@ -2,7 +2,7 @@
 //! shelf lists them under the downloads: each is "sending", then "sent" or says why not. Pure;
 //! the window starts the copy, tells this how many bytes have gone, and when it ends.
 
-use temor_core::vocab::ids::Bytes;
+use temor_core::vocab::ids::{Bytes, Counter};
 
 /// One upload, numbered in the order the drops arrived.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -71,7 +71,7 @@ pub enum UploadIn {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Uploads {
     items: Vec<Upload>,
-    next: u64,
+    next: Counter,
 }
 
 impl Uploads {
@@ -82,7 +82,7 @@ impl Uploads {
 
     /// The id the next `Started` gets.
     pub fn next_id(&self) -> UploadId {
-        UploadId(self.next.saturating_add(1))
+        UploadId(self.next.0)
     }
 }
 
@@ -96,7 +96,8 @@ pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
             size,
         } => {
             let id = list.next_id();
-            list.next = id.0;
+            // With no id left the last one is given again, as a saturating count would.
+            let _ = list.next.take();
             list.items.insert(
                 0,
                 Upload {

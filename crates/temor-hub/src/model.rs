@@ -2,7 +2,6 @@
 //! and the channel every pane's events arrive on.
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -10,9 +9,9 @@ use temor_client::model::quick::QuickState;
 use temor_client::model::split::SplitTree;
 use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::workspace::Workspace;
+use temor_panes::notify::NoopNotifier;
 use temor_panes::pane::PaneEvent;
 use temor_panes::render::Palette;
-use temor_panes::vt::Snapshot;
 use temor_panes::{Heard, Hearing};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -36,16 +35,14 @@ pub(super) const SAVE_EVERY: std::time::Duration = std::time::Duration::from_sec
 
 /// Everything the window keeps about its panes. Lives on the window's thread.
 pub struct Hub {
-    /// Every Space's workspace, the one on screen in `book.ws` (the client's).
+    /// Every Space's workspace, the one on screen in `book.ws()` (the client's).
     pub(super) book: temor_client::spaces::Book,
     /// Each Space's key agent and the account store its credentials come from.
     pub(super) keep: SpaceKeep,
-    pub(super) slots: BTreeMap<PaneId, Rc<RefCell<Slot>>>,
-    /// The scrollback of panes in recently closed tabs, kept until the tab is forgotten.
-    pub(super) recent: BTreeMap<PaneId, Snapshot>,
-    /// The kept shell state of panes about to start again (after a restore, or a reopened tab):
-    /// the new shell is given its variables.
-    pub(super) carried: BTreeMap<PaneId, temor_client::model::session::Checkpoint>,
+    /// What is kept of each live pane, dropped whole when it closes.
+    pub(super) panes: super::panes::Panes,
+    /// What is kept of each pane that is not live but may come back.
+    pub(super) memory: super::panes::Memory,
     /// The panes' kept files (the client's), and what each holds now.
     pub(super) files: temor_client::keep::PaneFiles,
     /// Where the panes' events go: the client's thread that hears them (`Hearing`).
@@ -60,6 +57,9 @@ pub struct Hub {
     pub(super) palette: Palette,
     pub(super) pace: temor_client::keep::SavePace,
     pub(super) notices: Vec<String>,
+    /// The pane the probe, the radar and the sessions were last told has the keyboard
+    /// ([`Hub::sync_focus`]).
+    pub(super) keyboard: Option<PaneId>,
     /// Actions picked in the command bar, which the desk runs once the pick has settled: the
     /// window runs all of them one way (`Desk::run_action`).
     pub(super) bar_actions: Vec<temor_panes::pane::keys::Action>,
@@ -95,7 +95,7 @@ pub struct Hub {
 impl std::fmt::Debug for Hub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Hub")
-            .field("panes", &self.slots.len())
+            .field("panes", &self.panes.len())
             .finish_non_exhaustive()
     }
 }
@@ -112,7 +112,9 @@ impl Hub {
     /// A hub with no panes yet; [`Hub::start`] restores the last session or opens a first tab.
     pub fn new(launch: Launch) -> Hub {
         let (hearing, inbox) =
-            Hearing::start().expect("the thread that hears the panes could not start");
+            // TODO(quire-desktop): the desktop's notification service (see `NoopNotifier`).
+            Hearing::start(Box::new(NoopNotifier))
+                .expect("the thread that hears the panes could not start");
         let events = hearing.events();
         let (shelf, trouble) = ShelfHub::open(&launch);
         let ambient = &launch.ambient;
@@ -133,9 +135,8 @@ impl Hub {
         Hub {
             book: temor_client::spaces::Book::new(),
             keep: SpaceKeep::default(),
-            slots: BTreeMap::new(),
-            recent: BTreeMap::new(),
-            carried: BTreeMap::new(),
+            panes: Default::default(),
+            memory: Default::default(),
             files: Default::default(),
             events,
             hearing,
@@ -151,6 +152,7 @@ impl Hub {
             palette: Palette::default(),
             pace: temor_client::keep::SavePace::new(SAVE_EVERY),
             notices,
+            keyboard: None,
             bar_actions: Vec::new(),
             shelf,
             agents,
@@ -172,12 +174,12 @@ impl Hub {
 
     /// The slot of `pane`, if it has one.
     pub fn slot(&self, pane: PaneId) -> Option<Rc<RefCell<Slot>>> {
-        self.slots.get(&pane).cloned()
+        self.panes.slot(pane).cloned()
     }
 
     /// The workspace, for reading.
     pub fn workspace(&self) -> &Workspace {
-        &self.book.ws
+        self.book.ws()
     }
 
     /// The pane that has the keyboard: the quick terminal's while it is shown, else the focused
@@ -185,24 +187,71 @@ impl Hub {
     pub fn keyboard_pane(&self) -> Option<PaneId> {
         self.quick_shown().or_else(|| {
             self.book
-                .ws
+                .ws()
                 .front()
-                .and_then(|tab| self.book.ws.focus_of(tab))
+                .and_then(|tab| self.book.ws().focus_of(tab))
         })
     }
 
-    /// The next message for the person, if one is waiting; taking it clears it.
-    pub fn take_notice(&mut self) -> Option<String> {
-        match self.notices.is_empty() {
-            true => None,
-            false => Some(self.notices.remove(0)),
-        }
+    /// Runs `change`, and what it left to tell the person (PLAN §4c: the hub says things as it
+    /// goes, and whoever asked for the change shows them). Every request is run through here,
+    /// and the keyboard is followed once it is done.
+    pub fn said<R>(&mut self, change: impl FnOnce(&mut Self) -> R) -> (R, Vec<String>) {
+        let answer = change(self);
+        self.sync_focus();
+        (answer, std::mem::take(&mut self.notices))
+    }
+
+    /// What was said outside any request (a write that failed in the background); taking it
+    /// clears it.
+    pub fn take_notices(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.notices)
     }
 }
 
-/// A shared hub, as the views hold it. Two are equal when they are the same hub.
+/// A shared hub, as the views hold it, and who hears that it changed (the window, which draws
+/// again). Two are equal when they are the same hub.
 #[derive(Clone)]
-pub struct HubRef(pub Rc<RefCell<Hub>>);
+pub struct HubRef(pub Rc<RefCell<Hub>>, Changed);
+
+/// Who hears that the hub changed; no one until the window says.
+#[derive(Clone, Default)]
+struct Changed(Rc<RefCell<Option<Listener>>>);
+
+type Listener = Rc<dyn Fn()>;
+
+impl HubRef {
+    pub fn new(hub: Hub) -> Self {
+        Self(Rc::new(RefCell::new(hub)), Changed::default())
+    }
+
+    /// `heard` hears each change to the hub from now on.
+    pub fn on_change(&self, heard: impl Fn() + 'static) {
+        *self.1.0.borrow_mut() = Some(Rc::new(heard));
+    }
+
+    /// The hub changed: whoever hears it is told.
+    pub fn changed(&self) {
+        let heard = self.1.0.borrow().clone();
+        if let Some(heard) = heard {
+            heard();
+        }
+    }
+
+    /// [`Hub::said`] of `change`: what it left to tell the person. The change is heard.
+    pub fn said(&self, change: impl FnOnce(&mut Hub)) -> Vec<String> {
+        let said = self.0.borrow_mut().said(change).1;
+        self.changed();
+        said
+    }
+
+    /// Runs `change` on the hub, and the change is heard.
+    pub fn edit<R>(&self, change: impl FnOnce(&mut Hub) -> R) -> R {
+        let answer = change(&mut self.0.borrow_mut());
+        self.changed();
+        answer
+    }
+}
 
 impl PartialEq for HubRef {
     fn eq(&self, other: &Self) -> bool {
@@ -230,13 +279,13 @@ impl HubRef {
     /// The tab in front with its panes and the one that has the keys.
     pub fn front(&self) -> Option<(TabId, SplitTree, PaneId)> {
         let hub = self.0.borrow();
-        let tab = hub.book.ws.front()?;
-        let tree = hub.book.ws.tabs.tab(tab)?.tree.clone();
-        Some((tab, tree, hub.book.ws.focus_of(tab)?))
+        let tab = hub.book.ws().front()?;
+        let tree = hub.book.ws().tabs.tab(tab)?.tree.clone();
+        Some((tab, tree, hub.book.ws().focus_of(tab)?))
     }
 
     /// The pane with the keys in `tab`.
     pub fn focus_pane_of(&self, tab: TabId) -> Option<PaneId> {
-        self.0.borrow().book.ws.focus_of(tab)
+        self.0.borrow().book.ws().focus_of(tab)
     }
 }

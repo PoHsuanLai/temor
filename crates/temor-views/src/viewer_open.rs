@@ -1,51 +1,13 @@
 //! Opening a viewer from a terminal pane (PLAN §10): after a ⌘-click or the block toolbar's View,
-//! the session holds the file it found; this hands it to the window, which splits the pane.
+//! the session answers the file it found, and the pane's link opens it (see `PaneLink::carry_out`).
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use temor_client::model::vocab::ids::BlockId;
 
-use temor_client::model::shelf::PaneSite;
-use temor_client::model::vocab::ids::{BlockId, PaneId};
-
-use super::window_help::take_notice;
-use temor_hub::Desk;
-use temor_pane_view::session::Session;
-use temor_ui_base::slot::Slot;
-
-/// Opens the viewer the pane's session asked for, if it asked for one.
-pub fn view_if_asked(slot: &RefCell<Slot>, desk: &Desk, pane: PaneId) {
-    let ask = slot
-        .borrow_mut()
-        .session
-        .as_mut()
-        .and_then(Session::take_view_ask);
-    if let Some(ask) = ask {
-        // A file on another computer is fetched first; the viewer opens when it has arrived.
-        let notes = match ask.site {
-            PaneSite::Local => desk.hub.open_viewer(pane, ask),
-            PaneSite::Remote => desk.hub.open_host_viewer(pane, &ask.file.to_string_lossy()),
-        };
-        for text in notes {
-            desk.say(text);
-        }
-        desk.bump();
-    }
-}
+use super::pane_link::{PaneLink, Redraw};
 
 /// The block toolbar's View: the files the block's output lists open beside the pane.
-pub fn bar_view(
-    slot: Rc<RefCell<Slot>>,
-    desk: Desk,
-    pane: PaneId,
-) -> impl FnMut(BlockId) + 'static {
+pub fn bar_view(link: PaneLink) -> impl FnMut(BlockId) + 'static {
     move |id: BlockId| {
-        if let Some(session) = slot.borrow_mut().session.as_mut() {
-            session.view_block(id);
-        }
-        if let Some(text) = take_notice(&slot) {
-            desk.say(text);
-        }
-        view_if_asked(&slot, &desk, pane);
-        desk.bump();
+        link.send(Redraw::WindowOnly, |s| s.view_block(id));
     }
 }

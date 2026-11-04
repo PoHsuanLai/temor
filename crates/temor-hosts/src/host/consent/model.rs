@@ -80,6 +80,16 @@ impl BootstrapGrants {
         self
     }
 
+    /// These answers with `permit` set to `grant`.
+    pub fn with_permit(mut self, permit: Permit, grant: Grant) -> Self {
+        match permit {
+            Permit::Clipboard => self.clipboard = grant,
+            Permit::Transfers => self.transfers = grant,
+            Permit::Notifications => self.notifications = grant,
+        }
+        self
+    }
+
     /// These answers with every question still open filled from `other`.
     pub(super) fn filled_from(self, other: BootstrapGrants) -> Self {
         let pick = |mine: Grant, theirs: Grant| match mine {
@@ -160,88 +170,72 @@ impl ConsentBook {
     /// identity yet, or when the caller has none: if the machine behind an alias turned out to
     /// be a different one, its predecessor's answers do not carry over.
     pub fn grants(&self, who: &Who) -> BootstrapGrants {
-        self.matching(who)
-            .into_iter()
-            .fold(BootstrapGrants::default(), |acc, i| {
-                acc.filled_from(self.records[i].grants)
+        self.records
+            .iter()
+            .filter(|r| names(who, r))
+            .fold(BootstrapGrants::default(), |acc, r| {
+                acc.filled_from(r.grants)
             })
     }
 
-    /// Indexes of the records that are the machine `who` names, in book order.
-    pub(super) fn matching(&self, who: &Who) -> Vec<usize> {
-        let hit = |r: &HostRecord| match (&who.key, r.key()) {
-            (Some(mine), Some(theirs)) => mine.same_machine(&theirs),
-            _ => r.known_by(&who.alias),
+    /// Whether any record names the machine `who` names.
+    pub(super) fn knows(&self, who: &Who) -> bool {
+        self.records.iter().any(|r| names(who, r))
+    }
+
+    /// The book with the records naming `who` folded into one that knows `who` (keys, aliases
+    /// and answers merged, the earliest answered record winning each question), where the first
+    /// of them was, its answers passed through `edit`. A new record at the end when none does.
+    pub(super) fn with_host(
+        self,
+        who: &Who,
+        edit: impl FnOnce(BootstrapGrants) -> BootstrapGrants,
+    ) -> ConsentBook {
+        // Every record before the first that names `who` is one of the rest, so it goes back at
+        // the same place.
+        let at = self.records.iter().position(|r| names(who, r));
+        let (theirs, mut records): (Vec<_>, Vec<_>) =
+            self.records.into_iter().partition(|r| names(who, r));
+        let mut merged = merged(&theirs, who);
+        merged.grants = edit(merged.grants);
+        records.insert(at.unwrap_or(records.len()), merged);
+        ConsentBook { records }
+    }
+}
+
+/// Whether `record` is the machine `who` names.
+fn names(who: &Who, record: &HostRecord) -> bool {
+    match (&who.key, record.key()) {
+        (Some(mine), Some(theirs)) => mine.same_machine(&theirs),
+        _ => record.known_by(&who.alias),
+    }
+}
+
+/// `records` as one record that knows `who`.
+fn merged(records: &[HostRecord], who: &Who) -> HostRecord {
+    let mut merged = HostRecord::default();
+    let mut key: Option<HostKey> = None;
+    for record in records {
+        key = match (key, record.key()) {
+            (Some(k), Some(r)) => Some(k.merged(&r)),
+            (k, r) => k.or(r),
         };
-        (0..self.records.len())
-            .filter(|&i| hit(&self.records[i]))
-            .collect()
-    }
-
-    /// Folds the records at `indexes` into one that knows `who`, merging keys, aliases and
-    /// answers (the earliest answered record wins each question), and returns its index. A new
-    /// record when `indexes` is empty.
-    pub(super) fn fold(&mut self, indexes: &[usize], who: &Who) -> usize {
-        let mut merged = HostRecord::default();
-        let mut key: Option<HostKey> = None;
-        for &i in indexes {
-            let record = &self.records[i];
-            key = match (key, record.key()) {
-                (Some(k), Some(r)) => Some(k.merged(&r)),
-                (k, r) => k.or(r),
-            };
-            for alias in &record.aliases {
-                if !merged.known_by(alias) {
-                    merged.aliases.push(alias.clone());
-                }
-            }
-            merged.grants = merged.grants.filled_from(record.grants);
-        }
-        if let Some(mine) = &who.key {
-            // The key the connection just verified wins over an older one (a rotated host key).
-            key = Some(key.map_or_else(|| mine.clone(), |k| mine.merged(&k)));
-        }
-        if let Some(key) = &key {
-            merged.set_key(key);
-        }
-        if !merged.known_by(&who.alias) {
-            merged.aliases.push(who.alias.clone());
-        }
-        let at = indexes.first().copied().unwrap_or(self.records.len());
-        let mut kept = Vec::with_capacity(self.records.len() + 1);
-        for (i, record) in self.records.drain(..).enumerate() {
-            match (i == at, indexes.contains(&i)) {
-                (true, _) => kept.push(merged.clone()),
-                (false, true) => {}
-                (false, false) => kept.push(record),
+        for alias in &record.aliases {
+            if !merged.known_by(alias) {
+                merged.aliases.push(alias.clone());
             }
         }
-        if at == kept.len() {
-            kept.push(merged);
-        }
-        self.records = kept;
-        indexes.first().map_or(self.records.len() - 1, |&i| i)
+        merged.grants = merged.grants.filled_from(record.grants);
     }
-
-    pub(super) fn set_helper(&mut self, index: usize, grant: Grant) {
-        if let Some(record) = self.records.get_mut(index) {
-            record.grants.helper = grant;
-        }
+    if let Some(mine) = &who.key {
+        // The key the connection just verified wins over an older one (a rotated host key).
+        key = Some(key.map_or_else(|| mine.clone(), |k| mine.merged(&k)));
     }
-
-    pub(super) fn set_permit(&mut self, index: usize, permit: Permit, grant: Grant) {
-        if let Some(record) = self.records.get_mut(index) {
-            match permit {
-                Permit::Clipboard => record.grants.clipboard = grant,
-                Permit::Transfers => record.grants.transfers = grant,
-                Permit::Notifications => record.grants.notifications = grant,
-            }
-        }
+    if let Some(key) = &key {
+        merged.set_key(key);
     }
-
-    pub(super) fn set_grant(&mut self, index: usize, action: BootstrapAction, grant: Grant) {
-        if let Some(record) = self.records.get_mut(index) {
-            record.grants = record.grants.with(action, grant);
-        }
+    if !merged.known_by(&who.alias) {
+        merged.aliases.push(who.alias.clone());
     }
+    merged
 }

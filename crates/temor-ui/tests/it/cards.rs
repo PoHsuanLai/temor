@@ -3,14 +3,16 @@
 //! whole, and its menu acts on it. In ds-harness: events dispatched to the window, the DOM and the
 //! clipboard read back, never pixels.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use ds::base::press::PointerButton;
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
 use temor_ui_base::probe::Probe;
 
-use super::drive::{Rect, chord, rects, started, type_line, wait_html, wait_until};
+use super::drive::{
+    LIMIT, Rect, chord, rects, started, still_rects, type_line, wait_html, wait_until,
+};
 use super::support::window_tools_present;
 
 /// A card head's opening tag: the stylesheet names the class too.
@@ -56,6 +58,26 @@ fn items(h: &Harness) -> Vec<Point> {
             y: Px((r.y + r.h / 2.0) as f32),
         })
         .collect()
+}
+
+/// Picks the open menu's item `index` once the menu has come to rest: a press while it is still
+/// moving in can land beside the item, which closes the menu and picks nothing.
+fn pick(h: &mut Harness, index: usize) {
+    still_rects(h, ".ds-menu-item");
+    let start = Instant::now();
+    loop {
+        let at = items(h).get(index).copied();
+        if let Some(at) = at.filter(|at| h.hits(*at, ".ds-menu-list")) {
+            h.send(Input::click(at));
+            return;
+        }
+        assert!(
+            start.elapsed() < LIMIT,
+            "no item {index} to press:\n{}",
+            h.html()
+        );
+        h.advance(Duration::from_millis(50));
+    }
 }
 
 /// One right-click: the move, the press and the release, which Blitz delivers as `contextmenu`.
@@ -205,7 +227,7 @@ fn a_right_click_on_a_card_opens_its_menu_and_the_menu_acts_on_the_block() {
     );
     let found = items(&h);
     assert_eq!(found.len(), 6, "the menu's items:\n{html}");
-    h.send(Input::click(found[0]));
+    pick(&mut h, 0);
     h.advance(Duration::from_millis(300));
     assert!(items(&h).is_empty(), "the menu closed after the pick");
     wait_html(&mut h, "the command back in the prompt", |html| {
@@ -217,7 +239,7 @@ fn a_right_click_on_a_card_opens_its_menu_and_the_menu_acts_on_the_block() {
         "a star before"
     );
     right_click(&mut h, second);
-    h.send(Input::click(items(&h)[1]));
+    pick(&mut h, 1);
     h.advance(Duration::from_millis(300));
     wait_html(&mut h, "the star", |html| {
         html.matches("class=\"temor-blk-mark\"").count() == 1

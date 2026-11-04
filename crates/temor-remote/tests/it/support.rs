@@ -56,6 +56,7 @@ impl Rig {
             proc_root: PathBuf::from("/proc"),
             idle: DEFAULT_IDLE,
             clock: Arc::clone(&clock) as Arc<dyn temor_remote::Clock>,
+            started: temor_remote::unix_secs_now(),
         };
         Self {
             daemon: Daemon::new(config),

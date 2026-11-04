@@ -27,11 +27,11 @@ mod running;
 mod viewer;
 
 pub use blink::{BLINK_MS, blink_phase};
-pub use block_list::{CARD_MARGIN, LiveRows};
+pub use block_list::{CARD_MARGIN, ListView, LiveRows};
 pub use clip::{PASTE_LIMIT, PendingPaste};
 pub use clipboard::{Clipboard, ClipboardFailed};
 pub use find::{FindStep, QUERY_DEBOUNCE};
-pub use lifecycle::{BELL_MARK, SNAPSHOT_LIMIT, sanitise_title};
+pub use lifecycle::{BELL_MARK, Left, SNAPSHOT_LIMIT, sanitise_title};
 pub use links::LinkTipSpot;
 pub use list_hit::{ListMap, ListSpan, Toward};
 pub use marks::Finished;

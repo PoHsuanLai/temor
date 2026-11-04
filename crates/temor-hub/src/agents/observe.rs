@@ -60,21 +60,10 @@ impl Hub {
         }
     }
 
-    /// After a workspace change: a pane that is no longer the keyboard pane is not focused.
-    pub(crate) fn agents_after_act(&mut self) {
-        let keyboard = self.keyboard_pane();
-        if let Some(held) = self.agents.radar.focused()
-            && keyboard != Some(held)
-        {
-            let now = self.agents.now();
-            self.agents.radar.set_focus(now, None);
-        }
-    }
-
     /// A pane's program ended and the pane is gone.
     pub(crate) fn agent_pane_ended(&mut self, pane: PaneId) {
         self.agents.radar.forget(pane);
-        self.plugins.forget_pane(pane);
+        self.plugin_adapter_stop(pane);
         if let Some(sockets) = &self.agents.sockets {
             sockets.close(pane);
         }
@@ -111,7 +100,7 @@ impl Hub {
             self.notices.push("No agent is waiting for you".to_owned());
             return;
         };
-        let Some(tab) = self.book.ws.tab_of(pane) else {
+        let Some(tab) = self.book.ws().tab_of(pane) else {
             return;
         };
         self.act(select_tab(tab));
@@ -122,7 +111,7 @@ impl Hub {
     pub fn agent_state_of_tab(&self, tab: TabId) -> AgentState {
         let panes = self
             .book
-            .ws
+            .ws()
             .tabs
             .tab(tab)
             .map(|t| t.tree.panes())

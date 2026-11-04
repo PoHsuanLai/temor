@@ -4,7 +4,6 @@
 //! `pane_view`, the tab's tree is `tree_view`, the sidebar is `tab_sidebar`.
 
 use super::favourites::folder_url;
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
@@ -38,11 +37,12 @@ use super::window_style::WINDOW_CSS;
 use temor_hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_blink_loop,
     spawn_desktop_loop, spawn_event_loop, spawn_keys_loop, spawn_loops, spawn_settings_loop,
-    spawn_space_edits,
+    spawn_space_edits, use_hub,
 };
 use temor_ui_base::desktop::Desktop;
 use temor_ui_base::edge::{Credentials, VaultCredentials};
 use temor_ui_base::launch::Launch;
+use temor_ui_base::notices::use_notices;
 use temor_ui_base::sidebar_room::SidebarRoom;
 use temor_ui_base::theme::use_window_look;
 use temor_ui_base::title::window_title;
@@ -74,18 +74,28 @@ pub fn App() -> Element {
                 hub.set_run_ends(desktop.run_ends.clone());
             }
             hub.start();
-            HubRef(Rc::new(RefCell::new(hub)))
+            HubRef::new(hub)
         }
     });
     crate::settings_window::use_settings_opened();
     let board = use_hook(try_consume_context::<temor_hub::settings_link::board::SpaceBoard>);
     let published = board.clone();
     let ui = use_signal(|| 0u32);
-    let mut notice = use_signal({
+    // Each change to the hub draws the window again.
+    use_hook({
         let hub = hub.clone();
-        move || hub.0.borrow_mut().take_notice()
+        move || {
+            hub.on_change(move || {
+                let mut ui = ui;
+                ui += 1;
+            })
+        }
     });
-    let spaces = use_window_spaces(&hub, ui, notice);
+    let notice = use_notices({
+        let hub = hub.clone();
+        move || hub.0.borrow_mut().take_notices()
+    });
+    let spaces = use_window_spaces(&hub, notice);
     // The Space on screen decides the look: the frame, the sidebar's ink and the terminal's colours.
     let look = spaces.look();
     let picked_space = use_hook(PendingSwitch::default);
@@ -134,12 +144,9 @@ pub fn App() -> Element {
     // A window narrower than the breakpoint starts without the sidebar, and one that crosses it
     // starts over from what its width suggests. The show/hide action overrides in between.
     let shell = use_rect();
-    let mut room = use_signal(|| None::<SidebarRoom>);
+    let room = use_memo(move || shell.rect().map(|rect| SidebarRoom::of(rect.size.width)));
     use_effect(move || {
-        let Some(rect) = shell.rect() else { return };
-        let now = SidebarRoom::of(rect.size.width);
-        if *room.peek() != Some(now) {
-            room.set(Some(now));
+        if let Some(now) = room() {
             sidebar.set(now.shown());
         }
     });
@@ -238,18 +245,31 @@ pub fn App() -> Element {
         }
     };
 
-    let _ = ui();
-    if let Some(board) = &published {
-        board.publish(hub.space_rows());
-    }
-    if let Some(link) = &desktop.link {
-        hub.publish_to(link);
-    }
-    let data = hub.sidebar();
-    let front = hub.front();
-    let bar = hub.bar_data();
-    let quick = hub.quick_shown().map(|pane| (pane, hub.bar_spaces()));
-    let (title, cwd) = hub.window_parts();
+    // What the Settings window and the desktop are shown is read here and handed to them once
+    // the window is drawn, when it changed.
+    let shown = (published.is_some(), desktop.link.is_some());
+    let (rows, snapshot) = use_hub(&desk, shown, |hub, &(board, link)| {
+        (
+            board.then(|| hub.space_rows()),
+            link.then(|| hub.0.borrow().desktop_snapshot()),
+        )
+    })();
+    use_effect(use_reactive!(|rows, snapshot| {
+        if let (Some(board), Some(rows)) = (&published, rows) {
+            board.publish(rows);
+        }
+        if let (Some(link), Some((snapshot, count))) = (&desktop.link, snapshot) {
+            link.publish(snapshot, count);
+        }
+    }));
+    let (data, front, space) = use_hub(&desk, (), |hub, ()| {
+        (hub.sidebar(), hub.front(), hub.active_space())
+    })();
+    let (bar, quick) = use_hub(&desk, (), |hub, ()| {
+        let quick = hub.quick_shown().map(|pane| (pane, hub.bar_spaces()));
+        (hub.bar_data(), quick)
+    })();
+    let (title, cwd) = use_hub(&desk, (), |hub, ()| hub.window_parts())();
     use_window_title(window_title(&title, cwd.as_deref()));
     let ghost = match dnd.drag.phase() {
         DragPhase::Live { key, at, .. } => Some((ghost_text(&data, key), at)),
@@ -257,10 +277,11 @@ pub fn App() -> Element {
     };
     let now = env();
     // One monospace in the window: the terminal's.
-    let code_font = hub
-        .grid_font()
-        .map(|font| font.code_css())
-        .unwrap_or_default();
+    let code_font = use_hub(&desk, (), |hub, ()| {
+        hub.grid_font()
+            .map(|font| font.code_css())
+            .unwrap_or_default()
+    })();
     // Pinned, the sidebar is the pane's body; hidden, it moves out of the pane (which clips what
     // floats over it) into a zero-width host at the window's edge, where it peeks.
     let side_box = |pinned: Shown| {
@@ -280,8 +301,6 @@ pub fn App() -> Element {
         Ds {
             appearance: now.settings.appearance.appearance(),
             system: now.system,
-            tint_alpha: Some(now.tint_alpha()),
-            stack: Some(now.material_stack()),
             typeface: Some(now.settings.appearance.typeface()),
             look: look.clone(),
             material: Material::Window,
@@ -308,11 +327,11 @@ pub fn App() -> Element {
                     Column {
                         gap: ColumnGap::None,
                         extent: ColumnExtent::Fill,
-                        if let Some(text) = notice() {
+                        if let Some(text) = notice.shown() {
                             InlineBanner {
                                 severity: Severity::Warn,
                                 text,
-                                onclose: move |_| notice.set(None),
+                                onclose: move |_| notice.close(),
                             }
                         }
                         TransferAsk { desk: desk.clone() }
@@ -329,7 +348,7 @@ pub fn App() -> Element {
                             },
                             if let Some((tab, tree, focus)) = front {
                                 RowView {
-                                    key: "{desk.hub.active_space().0}-{tab.0}",
+                                    key: "{space.0}-{tab.0}",
                                     tab,
                                     tree,
                                     focus,

@@ -11,7 +11,22 @@ use temor_client::model::vocab::text::EnvKey;
 use temor_hub::settings_link::space_edit::{
     account_for, credentials_with, credentials_without, variable_name,
 };
-use temor_ui_base::edge::CredentialSource;
+use temor_ui_base::edge::{CredentialSource, Credentials};
+
+/// What the person is told when the secret store could not be asked at all.
+pub const NO_THREAD: &str = "The password store can't be reached right now.";
+
+/// `job` asked of the store off the window's thread (`Credentials::ask`); a store that could not
+/// be asked at all is an error like any other.
+pub async fn asked<T: Send + 'static>(
+    store: Credentials,
+    job: impl FnOnce(&dyn CredentialSource) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    store
+        .ask(job)
+        .await
+        .unwrap_or_else(|| Err(NO_THREAD.to_owned()))
+}
 
 /// Whether the store holds the secret of `account`. A store that cannot answer reads as not set.
 pub fn held(store: &dyn CredentialSource, account: &AccountRef) -> bool {

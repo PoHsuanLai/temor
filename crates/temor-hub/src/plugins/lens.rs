@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use ds::prelude::ImageSource;
 
-use temor_client::model::vocab::ids::{BlockId, PaneId};
+use temor_client::model::vocab::ids::BlockId;
 use temor_client::plugins::{Drawing, Plugin};
 
 /// A lens the block menu offers.
@@ -67,35 +67,35 @@ fn png_of(drawing: &Drawing) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// The pictures drawn for blocks, by pane and block, and the ones still being drawn.
+/// The pictures drawn for one pane's blocks, and the ones still being drawn.
 #[derive(Debug, Clone, Default)]
 pub struct LensBook {
-    images: BTreeMap<(PaneId, BlockId), LensImage>,
-    asked: BTreeSet<(PaneId, BlockId)>,
+    images: BTreeMap<BlockId, LensImage>,
+    asked: BTreeSet<BlockId>,
 }
 
 impl LensBook {
     /// A lens was asked to draw the block.
-    pub fn want(&mut self, pane: PaneId, block: BlockId) {
-        self.asked.insert((pane, block));
+    pub fn want(&mut self, block: BlockId) {
+        self.asked.insert(block);
     }
 
     /// A picture for the block arrived (or its lens failed): whether it was waited for. Nobody
-    /// waits for one whose pane went away, or one that came twice.
-    pub fn arrived(&mut self, pane: PaneId, block: BlockId) -> bool {
-        self.asked.remove(&(pane, block))
+    /// waits for one that came twice.
+    pub fn arrived(&mut self, block: BlockId) -> bool {
+        self.asked.remove(&block)
     }
 
     /// Keeps the picture `plugin` drew for the block; a later one replaces it. A picture that
     /// can't be turned into a PNG is not kept.
-    pub fn put(&mut self, pane: PaneId, block: BlockId, plugin: String, drawing: Drawing) {
+    pub fn put(&mut self, block: BlockId, plugin: String, drawing: Drawing) {
         let Some(bytes) = png_of(&drawing) else {
-            self.images.remove(&(pane, block));
+            self.images.remove(&block);
             return;
         };
         let source = Arc::from(ImageSource::png(&bytes).0);
         self.images.insert(
-            (pane, block),
+            block,
             LensImage {
                 plugin,
                 drawing,
@@ -104,12 +104,11 @@ impl LensBook {
         );
     }
 
-    /// The pictures of a pane, for drawing.
-    pub fn pictures(&self, pane: PaneId) -> Vec<LensPicture> {
+    /// The pictures, for drawing.
+    pub fn pictures(&self) -> Vec<LensPicture> {
         self.images
             .iter()
-            .filter(|((owner, _), _)| *owner == pane)
-            .map(|((_, block), image)| LensPicture {
+            .map(|(block, image)| LensPicture {
                 block: *block,
                 width: image.drawing.width(),
                 height: image.drawing.height(),
@@ -119,19 +118,13 @@ impl LensBook {
     }
 
     /// The picture for the block.
-    pub fn image(&self, pane: PaneId, block: BlockId) -> Option<&LensImage> {
-        self.images.get(&(pane, block))
+    pub fn image(&self, block: BlockId) -> Option<&LensImage> {
+        self.images.get(&block)
     }
 
     /// Takes the block's picture away (the person hid it).
-    pub fn remove(&mut self, pane: PaneId, block: BlockId) {
-        self.images.remove(&(pane, block));
-    }
-
-    /// Forgets every picture of a pane that is gone.
-    pub fn forget_pane(&mut self, pane: PaneId) {
-        self.images.retain(|(owner, _), _| *owner != pane);
-        self.asked.retain(|(owner, _)| *owner != pane);
+    pub fn remove(&mut self, block: BlockId) {
+        self.images.remove(&block);
     }
 }
 
@@ -144,29 +137,17 @@ mod tests {
     }
 
     #[test]
-    fn pictures_are_kept_by_block_and_dropped_with_their_pane() {
-        let (p1, p2) = (PaneId(1), PaneId(2));
+    fn pictures_are_kept_by_block_and_a_later_one_replaces_the_last() {
         let mut book = LensBook::default();
-        book.put(p1, BlockId(1), "a".to_owned(), picture());
-        book.put(p1, BlockId(2), "a".to_owned(), picture());
-        book.put(p2, BlockId(1), "b".to_owned(), picture());
-        book.put(p1, BlockId(1), "c".to_owned(), picture());
-        assert_eq!(
-            book.image(p1, BlockId(1)).map(|i| i.plugin.as_str()),
-            Some("c")
-        );
-        book.remove(p1, BlockId(2));
-        assert!(book.image(p1, BlockId(2)).is_none());
-        book.want(p1, BlockId(3));
-        book.forget_pane(p1);
-        assert!(book.image(p1, BlockId(1)).is_none());
-        assert!(!book.arrived(p1, BlockId(3)), "the pane went away");
-        assert_eq!(
-            book.image(p2, BlockId(1)).map(|i| i.plugin.as_str()),
-            Some("b")
-        );
-        book.want(p2, BlockId(2));
-        assert!(book.arrived(p2, BlockId(2)));
-        assert!(!book.arrived(p2, BlockId(2)), "only once");
+        book.put(BlockId(1), "a".to_owned(), picture());
+        book.put(BlockId(2), "a".to_owned(), picture());
+        book.put(BlockId(1), "c".to_owned(), picture());
+        assert_eq!(book.image(BlockId(1)).map(|i| i.plugin.as_str()), Some("c"));
+        book.remove(BlockId(2));
+        assert!(book.image(BlockId(2)).is_none());
+        assert_eq!(book.pictures().len(), 1);
+        book.want(BlockId(2));
+        assert!(book.arrived(BlockId(2)));
+        assert!(!book.arrived(BlockId(2)), "only once");
     }
 }

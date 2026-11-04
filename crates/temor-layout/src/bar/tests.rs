@@ -1,17 +1,10 @@
 use super::{
-    BarAction, BarContext, BarIn, BarOut, BarState, Candidate, OpenBar, PathResolver, PluginRow,
-    RowKey, Target, bar_step,
+    BarAction, BarContext, BarIn, BarOut, BarState, Candidate, OpenBar, PluginRow, RowKey, Target,
+    bar_step,
 };
 use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::PluginId;
-
-struct Nothing;
-impl PathResolver for Nothing {
-    fn resolves(&self, _: &str) -> bool {
-        false
-    }
-}
 
 fn candidates() -> Vec<Candidate> {
     (1..=3)
@@ -26,7 +19,7 @@ fn step(state: BarState, input: BarIn) -> (BarState, Vec<BarOut>) {
     let candidates = candidates();
     let cx = BarContext {
         candidates: &candidates,
-        resolver: &Nothing,
+        runnable: None,
         ai: AiSwitch::Off,
     };
     bar_step(state, input, cx)
@@ -124,18 +117,11 @@ fn provider_rows_for_an_old_query_are_dropped() {
     );
 }
 
-struct Xclip;
-impl PathResolver for Xclip {
-    fn resolves(&self, program: &str) -> bool {
-        program == "xclip"
-    }
-}
-
 #[test]
 fn the_run_row_leads_when_the_command_is_on_path_and_ai_rows_follow() {
     let cx = BarContext {
         candidates: &[],
-        resolver: &Xclip,
+        runnable: Some("xclip"),
         ai: AiSwitch::On,
     };
     let (state, _) = bar_step(BarState::Closed, BarIn::Toggle, cx);

@@ -28,18 +28,11 @@ impl BarModel {
 
 #[cfg(test)]
 mod tests {
-    use temor_client::model::bar::{BarAction, BarContext, PathResolver, PluginRow};
+    use temor_client::model::bar::{BarAction, BarContext, PluginRow};
     use temor_client::model::vocab::ai::AiSwitch;
     use temor_client::model::vocab::text::PluginId;
 
     use super::BarModel;
-
-    struct Nothing;
-    impl PathResolver for Nothing {
-        fn resolves(&self, _: &str) -> bool {
-            false
-        }
-    }
 
     fn row(item: &str) -> PluginRow {
         PluginRow {
@@ -54,7 +47,7 @@ mod tests {
     fn plugin_rows_show_for_the_text_they_answered_and_for_nothing_else() {
         let cx = BarContext {
             candidates: &[],
-            resolver: &Nothing,
+            runnable: None,
             ai: AiSwitch::Off,
         };
         let model = BarModel::default()

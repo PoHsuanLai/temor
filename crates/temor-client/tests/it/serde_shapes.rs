@@ -61,6 +61,7 @@ fn place() -> Place {
             },
             folder: Some(FolderId(1)),
             tree: tree(),
+            focus: None,
         }],
         folders: vec![],
         focused: Some(TabId(3)),

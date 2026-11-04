@@ -40,7 +40,6 @@ fn a_workspace_survives_a_round_trip() {
     let ws = built();
     let back = loaded(&encode(&ws).unwrap());
     assert_eq!(back.tabs, ws.tabs);
-    assert_eq!(back.focus, ws.focus);
     assert_eq!(back.cwds, ws.cwds);
     assert_eq!(back.next_tab, ws.next_tab);
     assert_eq!(back.next_pane, ws.next_pane);
@@ -88,7 +87,6 @@ fn a_duplicate_tab_is_dropped_and_stale_references_are_ignored() {
         vec![TabId(1), TabId(2)],
         "the duplicate tab is dropped"
     );
-    assert!(!ws.focus.contains_key(&TabId(99)));
     assert_eq!(ws.tabs.tab(TabId(2)).unwrap().folder, None);
 }
 
@@ -99,8 +97,8 @@ fn the_id_counters_move_past_every_id_in_use() {
     value["next_tab"] = serde_json::json!(0);
     value["next_pane"] = serde_json::json!(1);
     let ws = loaded(&value.to_string());
-    assert_eq!(ws.next_tab, 3);
-    assert_eq!(ws.next_pane, 4);
+    assert_eq!(ws.next_tab.0, 3);
+    assert_eq!(ws.next_pane.0, 4);
 }
 
 #[test]
@@ -111,7 +109,6 @@ fn a_malformed_tab_is_dropped_alone() {
     let ws = loaded(&value.to_string());
     let ids: Vec<TabId> = ws.tabs.place.tabs.iter().map(|t| t.id).collect();
     assert_eq!(ids, vec![TabId(1)]);
-    assert_eq!(ws.focus.keys().copied().collect::<Vec<_>>(), vec![TabId(1)]);
 }
 
 #[test]

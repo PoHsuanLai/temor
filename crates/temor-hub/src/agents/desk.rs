@@ -1,5 +1,5 @@
 //! What the views ask of the window about agents: ⌘⇧U, and where the keyboard is. Each runs the
-//! request, shows the notices it left and draws the window again.
+//! request and shows the notices it left; the hub draws the window again.
 
 use crate::Desk;
 
@@ -11,8 +11,7 @@ impl Desk {
 
     /// The pane has the keyboard on the page.
     pub fn pane_focused(&self, pane: temor_client::model::vocab::ids::PaneId) {
-        self.hub.0.borrow_mut().pane_focused(pane);
-        self.bump();
+        self.hub.edit(|hub| hub.pane_focused(pane));
     }
 
     /// The keyboard left the pane.

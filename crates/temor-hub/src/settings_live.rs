@@ -25,7 +25,7 @@ impl Hub {
             .map(|problem| format!("Settings: {problem}"))
             .collect();
         let change = live_changes(&self.launch.settings, &new);
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let mut slot = slot.borrow_mut();
             let Some(session) = slot.session.as_mut() else {
                 continue;
@@ -63,7 +63,7 @@ pub fn spawn_settings_loop(desk: Desk, spawner: Arc<dyn Spawner>) {
     spawn(async move {
         let mut watch = store.watch::<TerminalDoc>(&*spawner);
         while let Some(loaded) = watch.changed().await {
-            let mut said = desk.hub.0.borrow_mut().apply_settings(&loaded.value);
+            let mut said = desk.hub.edit(|hub| hub.apply_settings(&loaded.value));
             said.extend(
                 loaded
                     .diagnostics(TerminalDoc::FILE)
@@ -73,7 +73,6 @@ pub fn spawn_settings_loop(desk: Desk, spawner: Arc<dyn Spawner>) {
             if let Some(first) = said.into_iter().next() {
                 desk.say(first);
             }
-            desk.bump();
         }
     });
 }
@@ -83,7 +82,7 @@ impl super::model::HubRef {
     /// (a page's text, a peek), so the window has one monospace.
     pub fn grid_font(&self) -> Option<temor_pane_view::paint::GridFont> {
         let hub = self.0.borrow();
-        hub.slots.values().find_map(|slot| {
+        hub.panes.slots().map(|(_, slot)| slot).find_map(|slot| {
             let slot = slot.borrow();
             slot.session
                 .as_ref()

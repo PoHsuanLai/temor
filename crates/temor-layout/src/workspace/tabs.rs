@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use super::sidebar::order;
 use crate::space::{Folder, Pin, Place, Tab};
-use temor_core::vocab::ids::{FolderId, PaneId, TabId};
+use temor_core::vocab::ids::{Counter, FolderId, PaneId, TabId};
 use temor_core::vocab::text::{Relaunch, TabTitle};
 
 /// The tab list as a Space keeps it, plus what the sidebar shows beside it.
@@ -16,7 +16,7 @@ pub struct TabsState {
     /// Tabs that got news while they were not in front.
     pub unread: BTreeSet<TabId>,
     /// The id the next folder takes.
-    pub next_folder: u64,
+    pub next_folder: Counter,
 }
 
 impl Default for TabsState {
@@ -28,14 +28,11 @@ impl Default for TabsState {
 impl TabsState {
     /// A state over `place`, with the next folder id after the ones it holds.
     pub fn from_place(place: Place) -> TabsState {
-        let next_folder = place
-            .folders
-            .iter()
-            // A folder id at the top of the range leaves no id after it: the next `NewFolder` is
-            // refused rather than reusing one.
-            .map(|folder| folder.id.0.saturating_add(1))
-            .max()
-            .unwrap_or(1);
+        // A folder id at the top of the range leaves no id after it: the next `NewFolder` is
+        // refused rather than reusing one.
+        let next_folder = Counter::FROM_ONE
+            .past_all(place.folders.iter().map(|folder| folder.id.0))
+            .unwrap_or(Counter(u64::MAX));
         TabsState {
             place,
             unread: BTreeSet::new(),
@@ -244,11 +241,9 @@ fn new_folder(state: &mut TabsState, title: TabTitle, parent: Option<FolderId>) 
     if let Some(wanted) = parent.filter(|wanted| state.folder(*wanted).is_none()) {
         return refuse(TabRefusal::NoSuchFolder(wanted));
     }
-    let Some(next) = state.next_folder.checked_add(1) else {
+    let Some(id) = state.next_folder.take().map(FolderId) else {
         return refuse(TabRefusal::IdsExhausted);
     };
-    let id = FolderId(state.next_folder);
-    state.next_folder = next;
     state.place.folders.push(Folder::new(id, title, parent));
     vec![TabsOut::Created(id)]
 }

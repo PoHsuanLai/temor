@@ -32,7 +32,7 @@ fn a_tab_keeps_its_panes_and_folders_and_takes_a_new_id_in_the_other_workspace()
     ]);
     let mut home = built(vec![tab_in("/home/x")]);
     // Pane ids are the window's to keep apart; Home's counters are already past Work's panes.
-    home.next_pane = 10;
+    home.next_pane.0 = 10;
     let (work_after, home_after) = carry_tab(&work, TabId(2), &home).expect("moved");
 
     assert_eq!(work_after.tabs.place.tabs.len(), 1);
@@ -54,7 +54,7 @@ fn a_tab_keeps_its_panes_and_folders_and_takes_a_new_id_in_the_other_workspace()
         "Home's front stays"
     );
     assert_eq!(
-        (home_after.next_tab, home_after.next_pane),
+        (home_after.next_tab.0, home_after.next_pane.0),
         (3, 10),
         "counters stay ahead of what is in use"
     );
@@ -67,7 +67,7 @@ fn an_empty_workspace_shows_the_tab_it_is_given_and_a_missing_tab_is_refused() {
     let (work_after, got) = carry_tab(&work, TabId(1), &empty).expect("moved");
     assert!(work_after.tabs.place.tabs.is_empty());
     assert_eq!(got.tabs.place.focused, Some(TabId(1)));
-    assert_eq!(got.next_pane, 2);
+    assert_eq!(got.next_pane.0, 2);
 
     assert_eq!(
         carry_tab(&work, TabId(9), &empty),

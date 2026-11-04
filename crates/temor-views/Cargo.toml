@@ -28,6 +28,7 @@ tempfile = { workspace = true }
 toml = { workspace = true }
 temor-ui-base = { workspace = true }
 temor-hub = { workspace = true }
+tokio = { workspace = true }
 
 [lints]
 workspace = true

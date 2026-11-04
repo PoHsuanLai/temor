@@ -5,7 +5,6 @@ use ds::components::app::spaces::SpaceId;
 use temor_client::model::error::CoreError;
 use temor_client::model::vocab::ids::{PaneId, TabId};
 use temor_client::model::vocab::text::Cwd;
-use temor_client::model::workspace::WorkspaceOut;
 
 use super::desk::Desk;
 use super::model::{Hub, HubRef};
@@ -20,8 +19,6 @@ impl Hub {
             Ok(true) => {
                 // The Space it left may have been left with nothing.
                 self.fill_empty();
-                self.refresh_probe();
-                self.pace.changed();
             }
             Err(err) => self.notices.push(err.to_string()),
         }
@@ -30,21 +27,14 @@ impl Hub {
     /// Gives the running pane `pane` (already in the hub's slots) to the Space `space` as a tab
     /// of its own, in front there, started in `cwd`. For the quick terminal's "Move to Space";
     /// the Space shown does not change. Refused when the Space is gone or the pane is a tab's.
-    pub fn adopt_into_space(
+    pub(super) fn adopt_into_space(
         &mut self,
         space: SpaceId,
         pane: PaneId,
         cwd: Option<Cwd>,
     ) -> Result<(), CoreError> {
-        let current = space == self.book.active();
-        for out in self.book.adopt(space, pane, cwd)? {
-            match out {
-                WorkspaceOut::Focused(_) if current => self.refresh_probe(),
-                WorkspaceOut::Changed => self.pace.changed(),
-                _ => {}
-            }
-        }
-        Ok(())
+        // What the step answers is the focus, which `Hub::sync_focus` follows.
+        self.book.adopt(space, pane, cwd).map(drop)
     }
 
     /// The Space whose tabs hold `pane`.
@@ -76,19 +66,7 @@ impl Hub {
 impl HubRef {
     /// Moves `tab` of the Space on screen to the Space `to`; returns the notices left.
     pub fn move_tab_to_space(&self, tab: TabId, to: SpaceId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.move_tab_to_space(tab, to);
-        std::mem::take(&mut hub.notices)
-    }
-
-    /// See [`Hub::adopt_into_space`].
-    pub fn adopt_into_space(
-        &self,
-        space: SpaceId,
-        pane: PaneId,
-        cwd: Option<Cwd>,
-    ) -> Result<(), CoreError> {
-        self.0.borrow_mut().adopt_into_space(space, pane, cwd)
+        self.said(|hub| hub.move_tab_to_space(tab, to))
     }
 }
 
@@ -96,10 +74,7 @@ impl Desk {
     /// Moves the tab in front to `space`.
     pub fn move_front_tab_to(&self, space: SpaceId) {
         if let Some((tab, _, _)) = self.hub.front() {
-            for text in self.hub.move_tab_to_space(tab, space) {
-                self.say(text);
-            }
+            self.tell(self.hub.move_tab_to_space(tab, space));
         }
-        self.bump();
     }
 }

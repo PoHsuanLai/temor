@@ -11,6 +11,7 @@ use temor_client::model::space::{Origin, spawn_plan};
 use temor_client::model::vocab::ids::PaneId;
 use temor_client::model::vocab::text::{CommandText, Cwd};
 use temor_client::model::workspace::{Spawn, Start, WorkspaceIn, WorkspaceOut};
+use temor_client::ssh::HostAlias;
 use temor_panes::vt::Snapshot;
 
 use super::model::{Hub, HubRef};
@@ -20,45 +21,95 @@ use temor_pane_view::session::Session;
 use temor_ui_base::launch::open_session_with;
 use temor_ui_base::slot::{Slot, repaint};
 
+/// What a request is asked with, beyond the request itself: decided before the workspace step
+/// ([`Hub::prepare`]) and handed down to what carries out its answers, in place of fields set
+/// on the hub around the call.
+#[derive(Default)]
+pub(super) struct ActCtx {
+    /// The host the pane it starts is a session on.
+    pub host: Option<HostAlias>,
+    /// That host is shown offline: its pane waits for "Try anyway".
+    pub offline: bool,
+    /// Back or Forward walks the stage's pages: the page opened or closed is not a step.
+    pub walking: bool,
+    /// The screen the pane it starts shows (a reopened session's last); taken by the pane that
+    /// shows it.
+    pub screen: Option<Snapshot>,
+    /// The pane it starts belongs in the home folder, not where it came from.
+    pub at_home: bool,
+}
+
+impl ActCtx {
+    /// A request that starts a session on `host`.
+    pub(super) fn on_host(host: HostAlias, offline: bool) -> ActCtx {
+        ActCtx {
+            host: Some(host),
+            offline,
+            ..ActCtx::default()
+        }
+    }
+}
+
 impl Hub {
     /// Runs one request through the workspace step and carries out what it answers.
     pub fn act(&mut self, input: WorkspaceIn) {
+        self.act_with(input, ActCtx::default());
+    }
+
+    /// [`Hub::act`] with what the request is asked with; answers what is left of it (the screen
+    /// no pane took).
+    pub(super) fn act_with(&mut self, input: WorkspaceIn, ctx: ActCtx) -> ActCtx {
         if let Some(space) = self.book.parked_owner_of(&input) {
-            return self.with_space(space, |hub| hub.act(input));
+            return self.with_space(space, |hub| hub.act_with(input, ctx));
         }
-        let input = self.in_project(input);
-        let input = self.ssh_prepare(input);
-        let input = self.start_prepared(input);
-        let input = self.measured(input);
-        let at_home = self.split_starts_at_home(&input);
+        let (input, mut ctx) = self.prepare(input, ctx);
         for out in self.book.step(input) {
-            match out {
-                WorkspaceOut::Spawn(spawn) if at_home => {
-                    let spawn = self.starting_at_home(spawn);
-                    self.carry_out(WorkspaceOut::Spawn(spawn));
-                }
-                other => self.carry_out(other),
-            }
+            self.carry_out(out, &mut ctx);
         }
-        self.agents_after_act();
-        self.ssh.intent = None;
         // Closing the last tab leaves the window with a fresh one, as a browser does.
-        if self.book.ws.tabs.place.tabs.is_empty() {
+        if self.book.ws().tabs.place.tabs.is_empty() {
             self.act(WorkspaceIn::NewTab { cwd: None });
         }
+        ctx
+    }
+
+    /// The request as the workspace is to take it, and what it is asked with. The host comes
+    /// first: a tab or split of a host pane is on that host, in its folder, so neither the
+    /// Space's project folder nor the folder in front is put in for it.
+    pub(super) fn prepare(&self, input: WorkspaceIn, ctx: ActCtx) -> (WorkspaceIn, ActCtx) {
+        let (input, mut ctx) = self.ssh_prepare(input, ctx);
+        let on_host = ctx.host.is_some();
+        let input = match on_host {
+            true => input,
+            false => self.start_prepared(self.in_project(input)),
+        };
+        let input = self.measured(input);
+        ctx.at_home = self.split_starts_at_home(&input);
+        (input, ctx)
     }
 
     /// Runs `input` and answers the pane it opened, if it opened one: the pane that was not
     /// there before. A request the workspace refuses opens none.
     pub(super) fn act_for_new_pane(&mut self, input: WorkspaceIn) -> Option<PaneId> {
-        let before: BTreeSet<PaneId> = self.book.ws.tabs.panes().into_iter().collect();
-        self.act(input);
-        self.book
-            .ws
+        self.act_for_new_pane_with(input, ActCtx::default()).0
+    }
+
+    /// [`Hub::act_for_new_pane`] with what the request is asked with, and what is left of it.
+    pub(super) fn act_for_new_pane_with(
+        &mut self,
+        input: WorkspaceIn,
+        ctx: ActCtx,
+    ) -> (Option<PaneId>, ActCtx) {
+        let before: BTreeSet<PaneId> = self.book.ws().tabs.panes().into_iter().collect();
+        let left = self.act_with(input, ctx);
+        let opened = self
+            .book
+            .ws()
             .tabs
             .panes()
             .into_iter()
-            .find(|pane| !before.contains(pane))
+            .find(|pane| !before.contains(pane));
+        (opened, left)
     }
 
     /// Opens a tab in `cwd` (the default folder with `None`) and answers its pane.
@@ -66,21 +117,32 @@ impl Hub {
         self.act_for_new_pane(WorkspaceIn::NewTab { cwd })
     }
 
-    pub(super) fn carry_out(&mut self, out: WorkspaceOut) {
+    pub(super) fn carry_out(&mut self, out: WorkspaceOut, ctx: &mut ActCtx) {
         match out {
-            WorkspaceOut::Spawn(spawn) => self.open_pane(&spawn, None),
-            WorkspaceOut::Viewer(open) => self.viewer_opened(open),
+            WorkspaceOut::Spawn(spawn) => {
+                let spawn = match ctx.at_home {
+                    true => self.starting_at_home(spawn),
+                    false => spawn,
+                };
+                self.open_pane(&spawn, None, ctx);
+            }
+            WorkspaceOut::Viewer(open) => self.viewer_opened(open, ctx.walking),
             WorkspaceOut::Snapshot(pane) => self.keep_scrollback(pane),
-            WorkspaceOut::End(pane) => self.end_pane(pane),
+            WorkspaceOut::End(pane) => {
+                self.stage_closed(pane, ctx.walking);
+                self.end_pane(pane);
+            }
             WorkspaceOut::Forgotten(panes) => {
                 for pane in panes {
                     self.forget_pane(pane);
                 }
             }
-            WorkspaceOut::Focused(_) => self.refresh_probe(),
+            // The keyboard is followed once the request is done (`Hub::sync_focus`).
+            WorkspaceOut::Focused(_) => {}
             WorkspaceOut::Tab(_) => {}
             WorkspaceOut::Refused(why) => self.notices.push(refusal_text(&why)),
-            WorkspaceOut::Changed => self.pace.changed(),
+            // What is kept follows from the book (`Hub::poll_save`).
+            WorkspaceOut::Changed => {}
             // An output a later core adds has nothing for the window to do yet.
             _ => {}
         }
@@ -89,32 +151,36 @@ impl Hub {
     /// Starts the program of `spawn` in a slot of its own. `restored` is a snapshot read from
     /// disk; otherwise a pane that is coming back from the recently closed list takes its own.
     /// A pane that cannot start still gets a slot (empty), and the reason is for the person.
-    pub(super) fn open_pane(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        if let Some(alias) = self.ssh_claims(spawn) {
-            return self.begin_host(spawn, alias);
+    /// `ctx` says what the request that started it was asked with.
+    pub(super) fn open_pane(
+        &mut self,
+        spawn: &Spawn,
+        restored: Option<Snapshot>,
+        ctx: &mut ActCtx,
+    ) {
+        if let Some(claim) = self.ssh_claims(spawn, ctx.host.take()) {
+            return self.begin_host(spawn, claim, ctx.offline);
         }
         if self.local_wanted(spawn) {
             let resume = self
-                .carried
-                .get(&spawn.pane)
-                .and_then(|kept| kept.daemon_session)
+                .memory
+                .get(spawn.pane)
+                .and_then(|kept| kept.checkpoint.as_ref()?.daemon_session)
                 .map(temor_client::remote::ids::RemoteSessionId);
             return self.begin_local(spawn, resume);
         }
+        let restored = restored.or_else(|| ctx.screen.take());
         self.open_plain(spawn, restored);
     }
 
     /// Starts the program of `spawn` as a child of this window.
     pub(super) fn open_plain(&mut self, spawn: &Spawn, restored: Option<Snapshot>) {
-        let snapshot =
-            restored
-                .or_else(|| self.history.screen.take())
-                .or_else(|| match spawn.start {
-                    Start::Scrollback(pane) => self.recent.remove(&pane),
-                    Start::Fresh => None,
-                });
+        let snapshot = restored.or_else(|| match spawn.start {
+            Start::Scrollback(pane) => self.memory.take(pane, |kept| kept.screen.take()),
+            Start::Fresh => None,
+        });
         let mut start = self.space_start();
-        let kept = self.carried.remove(&spawn.pane);
+        let kept = self.memory.take(spawn.pane, |kept| kept.checkpoint.take());
         let cwd = spawn
             .cwd
             .clone()
@@ -162,7 +228,7 @@ impl Hub {
             }
             Err(err) => self.notices.push(err.to_string()),
         }
-        self.slots.insert(spawn.pane, Rc::new(RefCell::new(slot)));
+        self.panes.record(spawn.pane).slot = Some(Rc::new(RefCell::new(slot)));
     }
 
     /// Gives a new shell what the person had set in the one it replaces: the variables that differ
@@ -203,22 +269,22 @@ impl Hub {
     /// Takes the scrollback of a pane that is about to end, for a reopen.
     fn keep_scrollback(&mut self, pane: PaneId) {
         let snapshot = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().and_then(Session::snapshot));
         if let Some(snapshot) = snapshot {
             // Kept under its session too, for the session's history page to reopen it from.
             if let (Some(dir), Some(id)) = (&self.state_dir, self.session_id(pane)) {
                 let _ = temor_client::keep::screens::write(dir, id, snapshot.as_bytes());
             }
-            self.recent.insert(pane, snapshot);
+            self.memory.of(pane).screen = Some(snapshot);
         }
         let kept = self
-            .slots
-            .get(&pane)
+            .panes
+            .slot(pane)
             .and_then(|slot| slot.borrow().session.as_ref().map(Session::checkpoint));
         if let Some(kept) = kept {
-            self.carried.insert(pane, kept);
+            self.memory.of(pane).checkpoint = Some(kept);
         }
     }
 
@@ -227,13 +293,13 @@ impl Hub {
         self.drop_pane(pane);
         let in_closed_tab = self
             .book
-            .ws
+            .ws()
             .closed
             .tabs
             .iter()
             .any(|closed| closed.tab.tree.contains(pane));
         if !in_closed_tab {
-            self.recent.remove(&pane);
+            self.memory.take(pane, |kept| kept.screen.take());
         }
     }
 
@@ -241,11 +307,12 @@ impl Hub {
     /// viewer, agent sockets and host state go, and so does its session. The one path for a pane
     /// that closes and for a pane whose Space is deleted. Its scrollback is the caller's.
     pub(super) fn drop_pane(&mut self, pane: PaneId) {
-        self.run_closed(pane);
+        let found = self.panes.get_mut(pane).and_then(|r| r.run.take());
+        self.run_closed(found);
         self.viewer_ended(pane);
         self.agent_pane_ended(pane);
         self.ssh_forget(pane);
-        if let Some(slot) = self.slots.remove(&pane) {
+        if let Some(slot) = self.panes.remove(pane).and_then(|record| record.slot) {
             // The view may still hold the slot for a frame; the program ends now.
             slot.borrow_mut().session = None;
         }
@@ -254,10 +321,8 @@ impl Hub {
     /// What is kept of a pane that can no longer come back: its scrollback, its place in the
     /// closed list of hosts, and its sidecar file.
     pub(super) fn forget_pane(&mut self, pane: PaneId) {
-        self.recent.remove(&pane);
-        self.ssh.closed.remove(&pane);
+        self.memory.forget(pane);
         self.files.forget(self.state_dir.as_deref(), pane);
-        self.carried.remove(&pane);
     }
 
     /// Tells `pane`'s session whether it has the keyboard, if it has a session.
@@ -279,11 +344,11 @@ impl Hub {
             return;
         }
         let start = self.space_start();
-        let cwd = self.book.ws.cwds.get(&pane).cloned().or(start.cwd);
+        let cwd = self.book.ws().cwds.get(&pane).cloned().or(start.cwd);
         let socket = self.open_socket(pane);
         // A tab that ran a program runs it again.
         self.run_restarted(pane);
-        let run = self.run.panes.get(&pane).cloned();
+        let run = self.run_of(pane).cloned();
         match open_session_with(
             &self.launch,
             self.palette,
@@ -296,7 +361,7 @@ impl Hub {
             Ok(mut session) => {
                 session.set_focus(self.focus_of(pane));
                 self.hear(pane, &session);
-                if let Some(slot) = self.slots.get(&pane) {
+                if let Some(slot) = self.panes.slot(pane) {
                     slot.borrow_mut().session = Some(session);
                 }
             }
@@ -304,17 +369,34 @@ impl Hub {
         }
     }
 
-    /// Only the pane that has the keyboard publishes its screen to the probe; it publishes at once.
-    pub(super) fn refresh_probe(&mut self) {
-        let keyboard = self.keyboard_pane();
-        for (pane, slot) in &self.slots {
-            slot.borrow_mut().probe = match Some(*pane) == keyboard {
-                true => self.launch.probe.clone(),
-                false => None,
-            };
+    /// Follows the keyboard once a request is done, from where it was then to where it is now:
+    /// the radar's focus does not stay on a pane that lost it, a pane that lost it (to another
+    /// Space, the quick terminal or a pane beside it) counts as in the background, and only the
+    /// pane that has it publishes its screen to the probe, at once.
+    pub(super) fn sync_focus(&mut self) {
+        let now = self.keyboard_pane();
+        if let Some(held) = self.agents.radar.focused()
+            && now != Some(held)
+        {
+            let at = self.agents.now();
+            self.agents.radar.set_focus(at, None);
         }
-        if let Some(slot) = keyboard.and_then(|pane| self.slots.get(&pane)) {
-            repaint(slot);
+        let before = std::mem::replace(&mut self.keyboard, now);
+        if let Some(pane) = before.filter(|_| before != now) {
+            self.set_pane_focus(pane, PaneFocus::Unfocused);
+            if let Some(slot) = self.panes.slot(pane) {
+                slot.borrow_mut().probe = None;
+            }
+        }
+        if let Some(slot) = now.and_then(|pane| self.panes.slot(pane)) {
+            // A slot made for the pane since (a restart, a host's) has no probe yet.
+            let given = slot.borrow().probe.is_none() && self.launch.probe.is_some();
+            if given {
+                slot.borrow_mut().probe = self.launch.probe.clone();
+            }
+            if given || before != now {
+                repaint(slot);
+            }
         }
     }
 
@@ -323,7 +405,7 @@ impl Hub {
         self.palette = palette;
         self.remote_palette();
         let mut failure = None;
-        for slot in self.slots.values() {
+        for slot in self.panes.slots().map(|(_, slot)| slot) {
             let said = slot.borrow_mut().set_palette(palette);
             failure = failure.or(said);
             repaint(slot);
@@ -335,16 +417,12 @@ impl Hub {
 impl HubRef {
     /// Runs one request and reports the notices it left.
     pub fn act(&self, input: WorkspaceIn) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.act(input);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.act(input))
     }
 
     /// Restarts the shell of an ended pane.
     pub fn restart(&self, pane: PaneId) -> Vec<String> {
-        let mut hub = self.0.borrow_mut();
-        hub.restart(pane);
-        std::mem::take(&mut hub.notices)
+        self.said(|hub| hub.restart(pane))
     }
 
     /// Makes `palette` the grid's colours in every pane.
