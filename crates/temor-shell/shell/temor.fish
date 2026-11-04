@@ -4,7 +4,8 @@
 # D;<status> command finished) and reports the working directory with OSC 7. fish finds this
 # in vendor_conf.d through temor's XDG_DATA_DIRS entry; it never edits your files.
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
-# there this file adds no marks of its own, but the prompt's end before fish 4.3.
+# there this file adds no marks of its own, but the prompt's end and the folder at every prompt
+# before fish 4.3.
 #
 # It also draws temor's own prompt in place of fish's, whatever fish_prompt your config or theme
 # defines: a blank line, the folder and the git branch, then an empty line to type on, with no
@@ -183,13 +184,15 @@ function _temor_state --on-event fish_prompt
 end
 
 if string match -qr '^4\.[0-2]\.' -- $version
-    # fish 4.0 to 4.2 draw the marks themselves but the prompt's end (4.3 draws that too), so
-    # the end mark is put after the prompt, once, when the first prompt is about to be drawn.
+    # fish 4.0 to 4.2 draw the marks themselves but the prompt's end, and say the folder only
+    # when it changes (4.3 does both at every prompt), so the folder is said and the end mark put
+    # after the prompt, wrapped around it when the first prompt is about to be drawn.
     function _temor_first_prompt --on-event fish_prompt
         functions -e _temor_first_prompt
         _temor_install_prompt
         functions -c fish_prompt _temor_original_prompt
         function fish_prompt
+            printf '\e]7;file://%s%s\e\\\\' $hostname (string escape --style=url -- $PWD)
             _temor_original_prompt
             printf '\e]133;B\e\\\\'
         end
