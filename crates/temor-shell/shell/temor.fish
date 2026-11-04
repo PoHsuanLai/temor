@@ -5,7 +5,7 @@
 # in vendor_conf.d through temor's XDG_DATA_DIRS entry; it never edits your files.
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
 # there this file adds no marks of its own, but the prompt's end and the folder at every prompt
-# before fish 4.3.
+# before fish 4.3, and all of them when fish's own are turned off (no-mark-prompt).
 #
 # It also draws temor's own prompt in place of fish's, whatever fish_prompt your config or theme
 # defines: a blank line, the folder and the git branch, then an empty line to type on, with no
@@ -183,30 +183,36 @@ function _temor_state --on-event fish_prompt
     printf '\e]7504;v1;ready\e\\\\'
 end
 
-if string match -qr '^4\.[0-2]\.' -- $version
-    # fish 4.0 to 4.2 draw the marks themselves but the prompt's end, and say the folder only
-    # when it changes (4.3 does both at every prompt), so the folder is said and the end mark put
-    # after the prompt, wrapped around it when the first prompt is about to be drawn.
-    function _temor_first_prompt --on-event fish_prompt
-        functions -e _temor_first_prompt
-        _temor_install_prompt
-        functions -c fish_prompt _temor_original_prompt
-        function fish_prompt
-            printf '\e]7;file://%s%s\e\\\\' $hostname (string escape --style=url -- $PWD)
-            _temor_original_prompt
-            printf '\e]133;B\e\\\\'
+# fish 4 and newer draw the marks themselves, unless they were turned off (`set -Ua
+# fish_features no-mark-prompt`, fish 4.1 and newer): then they are drawn here as for fish 3.
+status test-feature mark-prompt 2>/dev/null
+set -l _temor_fish_marks $status
+if not string match -qr '^[0-3]\.' -- $version; and test $_temor_fish_marks -ne 1
+    if string match -qr '^4\.[0-2]\.' -- $version
+        # fish 4.0 to 4.2 draw the marks but the prompt's end, and say the folder only when it
+        # changes (4.3 does both at every prompt), so the folder is said and the end mark put
+        # after the prompt, wrapped around it when the first prompt is about to be drawn.
+        function _temor_first_prompt --on-event fish_prompt
+            functions -e _temor_first_prompt
+            _temor_install_prompt
+            functions -c fish_prompt _temor_original_prompt
+            function fish_prompt
+                printf '\e]7;file://%s%s\e\\\\' $hostname (string escape --style=url -- $PWD)
+                _temor_original_prompt
+                printf '\e]133;B\e\\\\'
+            end
+        end
+    else
+        # Only the prompt is installed, once, when the first prompt is about to be drawn (after
+        # config.fish has had its say).
+        function _temor_first_prompt --on-event fish_prompt
+            functions -e _temor_first_prompt
+            _temor_install_prompt
         end
     end
     exit 0
-else if not string match -qr '^[0-3]\.' -- $version
-    # fish 4.3 and newer draw the marks themselves; only the prompt is installed, once, when the
-    # first prompt is about to be drawn (after config.fish has had its say).
-    function _temor_first_prompt --on-event fish_prompt
-        functions -e _temor_first_prompt
-        _temor_install_prompt
-    end
-    exit 0
 end
+set -e _temor_fish_marks
 
 
 function _temor_prompt_start --on-event fish_prompt

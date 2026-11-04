@@ -468,16 +468,21 @@ fn a_row_dropped_on_a_pinned_row_pins_and_a_pinned_row_dropped_on_a_loose_one_un
     let pin = super::drive::menu_item(&mut h, "Pin Tab");
     h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
+    // The rows move to their places: they are counted once they hold still.
+    super::drive::still_rects(&mut h, ".temor-side .temor-tab-box");
     assert_eq!(counts(&h), (2, 1), "pinned from the menu");
     // A loose row onto the pinned one: pinned too.
     let (row, pin) = (centre(&loose(&h)[0]), centre(&pinned(&h)[0]));
     h.send(Input::drag(row, pin, 12));
     h.advance(Duration::from_millis(400));
+    // The rows move to their places: they are counted once they hold still.
+    super::drive::still_rects(&mut h, ".temor-side .temor-tab-box");
     assert_eq!(counts(&h), (1, 2), "a row dropped on a pinned row");
     // A pinned row onto the loose one: unpinned.
     let (pin, row) = (centre(&pinned(&h)[0]), centre(&loose(&h)[0]));
     h.send(Input::drag(pin, row, 12));
     h.advance(Duration::from_millis(400));
+    super::drive::still_rects(&mut h, ".temor-side .temor-tab-box");
     assert_eq!(counts(&h), (2, 1), "a pinned row dropped on a loose one");
 }
 
