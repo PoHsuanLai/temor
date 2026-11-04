@@ -1124,13 +1124,21 @@ fn a_list_panes_paint_composes_only_the_rows_that_changed() {
     wait_until("the output", || {
         has_line(&f.session.screen_text(), "listed")
     });
-    f.session.paint(|_, _| {}).expect("paint");
-    f.session.paint(|_, _| {}).expect("paint");
-    assert_eq!(
-        f.session.rows_composed(),
-        0,
-        "nothing new, nothing composed"
-    );
+    // Once the shell is quiet (and between the cursor's blinks) a paint composes nothing: with
+    // the ground in the frame, every paint composed every row.
+    let start = Instant::now();
+    loop {
+        f.session.paint(|_, _| {}).expect("paint");
+        if f.session.rows_composed() == 0 {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "a paint with nothing new still composed {} rows",
+            f.session.rows_composed()
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
 
     type_text(&mut f.session, "x");
     wait_until("the typed letter", || {
