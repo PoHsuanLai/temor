@@ -4,8 +4,8 @@ use temor_vt_sys as sys;
 
 use super::convert::{check, rgb};
 use crate::{
-    CellStyle, CellView, CellWidth, Col, ColorRef, Hyperlink, Rgb, Row, RowDirty, RowId, Selected,
-    SemanticMark, StyleFlags, Underline, VtError,
+    CellStyle, CellView, CellWidth, Col, ColorRef, Rgb, Row, RowId, SemanticMark, StyleFlags,
+    Underline, VtError,
 };
 
 /// One row of a [`crate::Frame`], valid during the row walk.
@@ -54,7 +54,7 @@ impl<'a> RowView<'a> {
     }
 
     /// Whether the row changed since the frame was last marked drawn.
-    pub fn dirty(&self) -> RowDirty {
+    pub fn dirty(&self) -> bool {
         let mut dirty = true;
         // SAFETY: DIRTY writes a `bool`.
         unsafe {
@@ -64,11 +64,7 @@ impl<'a> RowView<'a> {
                 (&raw mut dirty).cast(),
             )
         };
-        if dirty {
-            RowDirty::Dirty
-        } else {
-            RowDirty::Clean
-        }
+        dirty
     }
 
     /// The row's identity across frames.
@@ -153,17 +149,9 @@ fn read_cell<'t>(
         fg: has_fg.then(|| rgb(fg)),
         bg: has_bg.then(|| rgb(bg)),
         style: cell_style(&style, palette),
-        hyperlink: if cell_flag(raw, sys::CellData::HAS_HYPERLINK) {
-            Hyperlink::Linked
-        } else {
-            Hyperlink::None
-        },
+        linked: cell_flag(raw, sys::CellData::HAS_HYPERLINK),
         semantic: semantic(raw),
-        selected: if selected {
-            Selected::Yes
-        } else {
-            Selected::No
-        },
+        selected,
     })
 }
 
@@ -195,7 +183,7 @@ fn read_text(cells: sys::RenderStateRowCells, text: &mut Vec<u8>) -> Result<(), 
     }
 }
 
-fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
+pub(super) fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
     let mut out = T::default();
     // SAFETY: `ghostty_cell_get` decodes the packed value; callers pass the type documented for
     // `data`.
@@ -203,11 +191,11 @@ fn cell_get<T: Default>(raw: sys::Cell, data: sys::CellData::Type) -> T {
     out
 }
 
-fn cell_flag(raw: sys::Cell, data: sys::CellData::Type) -> bool {
+pub(super) fn cell_flag(raw: sys::Cell, data: sys::CellData::Type) -> bool {
     cell_get::<bool>(raw, data)
 }
 
-fn cell_width(raw: sys::Cell) -> CellWidth {
+pub(super) fn cell_width(raw: sys::Cell) -> CellWidth {
     match cell_get::<sys::CellWide::Type>(raw, sys::CellData::WIDE) {
         sys::CellWide::WIDE => CellWidth::Wide,
         sys::CellWide::SPACER_TAIL => CellWidth::SpacerTail,
@@ -216,7 +204,7 @@ fn cell_width(raw: sys::Cell) -> CellWidth {
     }
 }
 
-fn semantic(raw: sys::Cell) -> SemanticMark {
+pub(super) fn semantic(raw: sys::Cell) -> SemanticMark {
     match cell_get::<sys::CellSemanticContent::Type>(raw, sys::CellData::SEMANTIC_CONTENT) {
         sys::CellSemanticContent::INPUT => SemanticMark::Input,
         sys::CellSemanticContent::PROMPT => SemanticMark::Prompt,
@@ -224,7 +212,7 @@ fn semantic(raw: sys::Cell) -> SemanticMark {
     }
 }
 
-fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
+pub(super) fn cell_style(s: &sys::Style, palette: &[Rgb]) -> CellStyle {
     let flags = [
         (s.bold, StyleFlags::BOLD),
         (s.italic, StyleFlags::ITALIC),

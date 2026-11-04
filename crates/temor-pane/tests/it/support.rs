@@ -36,10 +36,7 @@ pub fn bash_spec(home: &Path, grid: GridSize, cell: CellPx) -> PaneSpec {
             .collect(),
         cwd: home.to_path_buf(),
         env,
-        size: temor_pty::GridSize::cells(
-            temor_pty::Cols(grid.cols.0),
-            temor_pty::Rows(grid.rows.0),
-        ),
+        size: temor_pty::GridSize::cells(grid.cols, grid.rows),
     };
     let setsid = find_program("setsid", std::ffi::OsStr::new("/usr/bin:/bin"))
         .expect("util-linux setsid is installed");

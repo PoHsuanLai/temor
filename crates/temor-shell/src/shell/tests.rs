@@ -124,20 +124,6 @@ fn resolve_prefers_passwd_then_shell_var_then_sh() {
     assert_eq!(missing.kind, ShellKind::Fish);
 }
 
-#[test]
-fn passwd_lookup_finds_the_users_shell() {
-    let text = "root:x:0:0:root:/root:/bin/bash\nme:x:1000:1000::/home/me:/usr/bin/zsh\nbad line\n";
-    assert_eq!(
-        passwd_login_shell(text, UserId(1000)),
-        Some("/usr/bin/zsh".into())
-    );
-    assert_eq!(
-        passwd_login_shell(text, UserId(0)),
-        Some("/bin/bash".into())
-    );
-    assert_eq!(passwd_login_shell(text, UserId(42)), None);
-}
-
 fn args(plan: &IntegrationPlan) -> Vec<OsString> {
     plan.args.clone()
 }
@@ -220,8 +206,8 @@ fn only_a_shell_whose_script_reports_is_given_the_report_key() {
     let cases = [
         ("/bin/bash", vec![(key, "k")], true),
         ("/usr/bin/zsh", vec![(key, "k")], true),
-        ("/usr/bin/fish", vec![(key, "k")], false),
-        ("/usr/bin/nu", vec![(key, "k")], false),
+        ("/usr/bin/fish", vec![(key, "k")], true),
+        ("/usr/bin/nu", vec![(key, "k")], true),
         ("/bin/sh", vec![(key, "k")], false),
         (
             "/bin/bash",

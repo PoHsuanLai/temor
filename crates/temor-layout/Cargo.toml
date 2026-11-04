@@ -1,0 +1,27 @@
+[package]
+name = "temor-layout"
+description = "temor's window layout (sans I/O): the workspace of tabs and their split trees, Spaces, the quick terminal, the command bar's ranking and a row's stage."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+temor-core = { workspace = true }
+temor-schema = { workspace = true }
+temor-blocks = { workspace = true }
+temor-shell = { workspace = true }
+temor-pane = { workspace = true, default-features = false }
+ds-core = { workspace = true }
+ds-style = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+temor-testkit = { workspace = true }
+ds-core = { workspace = true, features = ["testing"] }
+proptest = { workspace = true }
+
+[lints]
+workspace = true

@@ -28,7 +28,7 @@ pub mod tidy;
 pub mod trigger;
 pub mod waits;
 
-pub use cancel::{Cancel, Generations};
+pub use cancel::Generations;
 pub use capability::{Cap, FOLDER_TABLE, Fault, Provision};
 pub use catalog::{APP, Catalog, DataDirs, PROTOCOL, Plugin, Routed};
 pub use drawing::{BadDrawing, Drawing, MOST_DRAWING_BYTES, MOST_OUTPUT_BYTES, lens_block};

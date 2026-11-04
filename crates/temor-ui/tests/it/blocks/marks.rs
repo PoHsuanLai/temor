@@ -2,13 +2,13 @@
 //! pairing with the next mark, the anchors of ignored marks, a payload that tries to submit, and
 //! the gutter while a full-screen program runs. The shell is real; the marks are written here.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::PaneEvent;
 use temor_vt::{ExitCode, ExitStatus, PromptEvent, PromptKind};
 
 use super::super::support::tools_present;
-use super::support::{Live, marks_of, pump, settle, shell_path, start};
+use super::support::{Live, drawn_as_list, marks_of, pump, settle, shell_path, start};
 use std::time::Duration;
 
 /// Sends one whole mark: its number, its event, and its anchor at the cursor.
@@ -16,7 +16,11 @@ fn mark(live: &mut Live, seq: u64, event: PromptEvent) {
     live.session.absorb(PaneEvent::MarkBegin { seq });
     live.session.absorb(PaneEvent::Prompt(event));
     if let Some(anchor) = live.session.pane().with_term(|term| term.anchor_cursor()) {
-        live.session.absorb(PaneEvent::Anchor { seq, anchor });
+        live.session.absorb(PaneEvent::Anchor {
+            seq,
+            anchor,
+            at: std::time::Instant::now(),
+        });
     }
 }
 
@@ -115,7 +119,7 @@ fn command_block(live: &mut Live, seq: u64, command: &str) {
 }
 
 #[test]
-fn a_command_payload_with_a_line_break_is_refused_on_rerun_and_others_are_cleaned() {
+fn a_command_payload_with_a_line_break_is_refused_on_rerun_but_held_by_the_composer() {
     let Some(mut live) = at_prompt("blocks-payload") else {
         return;
     };
@@ -134,22 +138,30 @@ fn a_command_payload_with_a_line_break_is_refused_on_rerun_and_others_are_cleane
     assert_eq!(ids.len(), 2, "both commands were accepted");
 
     assert_eq!(
-        live.session.block_command(ids[0]),
-        Some(""),
-        "a line break refuses the text"
+        live.session.block_command(ids[0]).as_deref(),
+        Some("ls\nrm -rf /tmp/never"),
+        "the lines are kept, for the card and Copy"
     );
-    live.session.rerun(ids[0]);
     assert_eq!(
-        live.session.take_notice().as_deref(),
+        live.session.said(|s| s.rerun(ids[0])).1.notice.as_deref(),
         Some("This command cannot be typed again.")
     );
+    // The composer holds lines and sends nothing until Return: there it goes in whole.
+    drawn_as_list(&mut live, Default::default(), true);
+    assert_eq!(live.session.said(|s| s.rerun(ids[0])).1.notice, None);
+    assert_eq!(live.session.composer_text(), "ls\nrm -rf /tmp/never");
+    live.session.set_composer_text(String::new());
+    live.session.set_list_view(None);
 
     assert_eq!(
-        live.session.block_command(ids[1]),
+        live.session.block_command(ids[1]).as_deref(),
         Some("echo typed-not-run")
     );
-    live.session.rerun(ids[1]);
-    assert_eq!(live.session.take_notice(), None, "a safe command is typed");
+    assert_eq!(
+        live.session.said(|s| s.rerun(ids[1])).1.notice,
+        None,
+        "a safe command is typed"
+    );
     // The shell echoes what reached it, and nothing presses Enter: the command never runs.
     pump(&mut live, "the typed command", |s| {
         s.screen_text().contains("echo typed-not-run")
@@ -195,8 +207,8 @@ fn a_full_screen_program_hides_the_gutter_and_its_hits() {
         "no marks on the alternate screen"
     );
     assert!(
-        live.session.block_meta(id).is_some(),
-        "the header's words still read while hidden"
+        live.session.block_finished(id),
+        "the block is still known while hidden"
     );
     live.session
         .pane()

@@ -4,9 +4,7 @@ use crate::base64;
 use crate::error::{Malformed, TransferError};
 use crate::units::{Bytes, Limits};
 
-use super::model::{
-    Completeness, Delivery, FileHeader, FileOffer, InlineImage, Osc1337Command, ReceivedFile,
-};
+use super::model::{Delivery, FileHeader, FileOffer, InlineImage, Osc1337Command, ReceivedFile};
 use super::parse::parse_command;
 
 /// Where a multipart file is: nothing open, or a header waiting for its parts.
@@ -38,10 +36,10 @@ impl Osc1337Reader {
     pub fn feed(
         &mut self,
         payload: &[u8],
-        completeness: Completeness,
+        cut: bool,
     ) -> Result<Option<ReceivedFile>, TransferError> {
         let state = std::mem::replace(&mut self.state, Assembly::Idle);
-        let (next, file) = parse_command(payload, completeness, self.limits)
+        let (next, file) = parse_command(payload, cut, self.limits)
             .and_then(|command| step(state, command, self.limits))?;
         self.state = next;
         Ok(file)

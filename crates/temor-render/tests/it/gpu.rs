@@ -27,10 +27,10 @@ fn gpu_and_cpu_draw_the_same_frame() {
         focus: PaneFocus::Focused,
         blink: temor_render::BlinkPhase::On,
         selection: None,
-        bands: &[],
         lower: 0,
+        ground: None,
     };
-    let out = gpu.render(&mut pane.frame, &view).expect("gpu render");
+    let out = gpu.render(&pane.frame, &view).expect("gpu render");
     assert_eq!(out.stats.rows_composed, 4);
     queue.submit([out.commands]);
     let pixels = read_back(&device, &queue, out.texture);

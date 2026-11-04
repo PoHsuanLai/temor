@@ -5,19 +5,13 @@ use std::path::PathBuf;
 
 use temor_transfer::osc1337::{Consented, ReceivedFile};
 use temor_transfer::{Consent, RelPath, Root, TransferError};
-use temor_vt::Truncation;
 
 use super::event::{OfferId, OfferKind, TransferEnd, TransferEvent};
-use super::state::{Reaction, Transfers, completeness, ended};
+use super::state::{Reaction, Transfers, ended};
 
 impl Transfers {
-    pub(super) fn inline_file(
-        &mut self,
-        payload: &[u8],
-        truncation: Truncation,
-        out: &mut Reaction,
-    ) {
-        let found = self.reader.feed(payload, completeness(truncation));
+    pub(super) fn inline_file(&mut self, payload: &[u8], truncated: bool, out: &mut Reaction) {
+        let found = self.reader.feed(payload, truncated);
         match found {
             Ok(Some(ReceivedFile::NeedsConsent(offer))) => {
                 if self.busy() {

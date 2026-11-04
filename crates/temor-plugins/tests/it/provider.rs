@@ -2,8 +2,8 @@
 
 use std::cell::{Cell, RefCell};
 
+use temor_plugins::PluginError;
 use temor_plugins::message::{Activation, Batch, Choice, Icon, Item};
-use temor_plugins::{Cancel, PluginError};
 
 use crate::support::{ALL, Host, launcher};
 
@@ -26,7 +26,7 @@ fn a_query_streams_the_rows_of_its_generation_best_first() {
     ];
     for (text, generation, want) in table {
         let got = RefCell::new(Vec::new());
-        let done = launcher().query(&plugin, text, generation, &|| Cancel::Go, &mut |batch| {
+        let done = launcher().query(&plugin, text, generation, &|| false, &mut |batch| {
             got.borrow_mut().push(batch)
         });
         assert_eq!(done, Ok(()), "{text}");
@@ -40,16 +40,9 @@ fn the_next_keystroke_cancels_a_query_that_is_still_streaming() {
     host.install("p", &[], ALL);
     let plugin = host.plugin("p");
     let seen = Cell::new(0_u32);
-    let done = launcher().query(
-        &plugin,
-        "slow",
-        1,
-        &|| match seen.get() >= 2 {
-            true => Cancel::Stop,
-            false => Cancel::Go,
-        },
-        &mut |_| seen.set(seen.get() + 1),
-    );
+    let done = launcher().query(&plugin, "slow", 1, &|| seen.get() >= 2, &mut |_| {
+        seen.set(seen.get() + 1)
+    });
     assert!(
         matches!(done, Err(PluginError::Cancelled { .. })),
         "{done:?}"

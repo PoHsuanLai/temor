@@ -1,6 +1,8 @@
 //! `PtyIo`: nonblocking reads and writes on the master side, driven by the caller's thread.
 
+use std::io::{PipeReader, PipeWriter, Read, Write};
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::sync::Arc;
 use std::time::Duration;
 
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
@@ -70,12 +72,37 @@ impl PtyIo {
         interest: Interest,
         timeout: Option<Duration>,
     ) -> Result<Readiness, PtyError> {
+        self.wait_on(interest, None, timeout)
+    }
+
+    /// [`wait`](Self::wait), ending early too when `wake` is woken (from another thread, by one
+    /// of its [`Waker`]s). The wakes it took are used up.
+    pub fn wait_or(
+        &self,
+        interest: Interest,
+        wake: &Wake,
+        timeout: Option<Duration>,
+    ) -> Result<Readiness, PtyError> {
+        let readiness = self.wait_on(interest, Some(wake.read.as_fd()), timeout)?;
+        wake.take();
+        Ok(readiness)
+    }
+
+    fn wait_on(
+        &self,
+        interest: Interest,
+        also: Option<BorrowedFd<'_>>,
+        timeout: Option<Duration>,
+    ) -> Result<Readiness, PtyError> {
         let events = match interest {
             Interest::Read => PollFlags::IN,
             Interest::Write => PollFlags::OUT,
             Interest::ReadWrite => PollFlags::IN | PollFlags::OUT,
         };
-        let mut fds = [PollFd::new(&self.fd, events)];
+        let mut fds = vec![PollFd::new(&self.fd, events)];
+        if let Some(fd) = &also {
+            fds.push(PollFd::new(fd, PollFlags::IN));
+        }
         let timeout = timeout.map(timespec);
         match poll(&mut fds, timeout.as_ref()) {
             Ok(_) | Err(Errno::INTR) => {}
@@ -91,6 +118,48 @@ impl PtyIo {
             // A hangup makes the next write report `Closed` rather than block.
             write: ready(revents, PollFlags::OUT | PollFlags::HUP | PollFlags::ERR),
         })
+    }
+}
+
+/// What ends a [`PtyIo::wait_or`] early: a pipe whose writing end its [`Waker`]s share.
+#[derive(Debug)]
+pub struct Wake {
+    read: PipeReader,
+    write: Arc<PipeWriter>,
+}
+
+/// Wakes the thread waiting on its [`Wake`]. `Send`, `Sync` and cheap to clone.
+#[derive(Debug, Clone)]
+pub struct Waker(Arc<PipeWriter>);
+
+impl Wake {
+    pub fn new() -> Result<Self, PtyError> {
+        let (read, write) = std::io::pipe().map_err(PtyError::Io)?;
+        for fd in [read.as_fd(), write.as_fd()] {
+            let flags = fcntl_getfl(fd).map_err(|e| PtyError::Io(e.into()))?;
+            fcntl_setfl(fd, flags | OFlags::NONBLOCK).map_err(|e| PtyError::Io(e.into()))?;
+        }
+        Ok(Self {
+            read,
+            write: Arc::new(write),
+        })
+    }
+
+    pub fn waker(&self) -> Waker {
+        Waker(Arc::clone(&self.write))
+    }
+
+    /// Empties the pipe, so the next wait blocks until the next wake.
+    fn take(&self) {
+        let mut buf = [0u8; 64];
+        while matches!((&self.read).read(&mut buf), Ok(n) if n > 0) {}
+    }
+}
+
+impl Waker {
+    pub fn wake(&self) {
+        // A full pipe already wakes the waiter.
+        let _ = (&*self.0).write(&[1]);
     }
 }
 

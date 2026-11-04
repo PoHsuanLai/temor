@@ -2,15 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Terminal columns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Cols(pub u16);
-
-/// Terminal rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Rows(pub u16);
+pub use temor_schema::units::{Cols, Rows};
 
 /// A terminal's size in cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -50,10 +42,7 @@ impl Default for CellPx {
     }
 }
 
-/// A count of bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ByteCount(pub u64);
+pub use temor_schema::units::ByteCount;
 
 /// A position in a file, in bytes from its start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -69,10 +58,8 @@ pub struct ByteRange {
     pub len: ByteCount,
 }
 
-/// A point in time: milliseconds since the Unix epoch, as the host's clock reads it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct UnixMillis(pub i64);
+/// A point in time, as the host's clock reads it.
+pub use temor_schema::time::UnixMillis;
 
 /// A length of time, in whole seconds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]

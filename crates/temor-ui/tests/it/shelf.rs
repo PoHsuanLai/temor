@@ -1,6 +1,6 @@
 //! Transfers and the Downloads shelf in the window, end to end in ds-harness: a program in the
 //! shell prints a file through the terminal, the window asks, and only after "Allow" does the
-//! file reach the Downloads folder and the shelf (event dispatch only, never OS input).
+//! file reach the Downloads folder and the Downloads page (event dispatch only, never OS input).
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use ds::base::press::PointerButton;
 use ds::prelude::Point;
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{focus_pane, type_line, wait_html, wait_until};
 use super::window::harness;
@@ -86,37 +86,40 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         html.contains("class=\"temor-dl-dot\"") && !html.contains("to your Downloads folder")
     });
 
-    // Opening the shelf shows the file as a row.
+    // The button opens the Downloads page on the row's stage, the file a row on it.
     let trigger = h
         .centre(".temor-dl-hold .ds-button")
         .unwrap_or_else(|| panic!("no Downloads button:\n{}", h.html()));
     h.send(Input::click(trigger));
-    wait_html(&mut h, "the shelf's rows", |html| {
-        html.contains("temor-dl") && html.contains("note.txt") && html.contains("Show in Folder")
+    wait_html(&mut h, "the Downloads page", |html| {
+        html.contains("class=\"temor-downloads\"")
+            && html.contains("note.txt")
+            && html.contains("Show in Folder")
     });
 
-    // Paste path types the quoted path into the terminal the person was using and puts the list
-    // away; nothing runs.
+    // Paste Path types the quoted path into the composer of the terminal the person was using
+    // and shows that terminal again; nothing runs.
     let paste = settled_centre(
         &mut h,
         ".temor-dl-actions .ds-button[aria-description=\"Type the file's path into the terminal you were using\"]",
     );
     h.send(Input::click(paste));
-    wait_until(&mut h, &probe, "the pasted path", |s| {
-        s.replace('\n', "").contains("Downloads/note.txt")
+    wait_html(&mut h, "the pasted path", |html| {
+        html.find("temor-blk-composer")
+            .is_some_and(|at| html[at..].contains("Downloads/note.txt"))
     });
     assert!(
-        !h.html().contains("Show in Folder"),
-        "the list is put away:\n{}",
+        !h.html().contains("class=\"temor-downloads\""),
+        "the terminal is shown in the page's place:\n{}",
         h.html()
     );
 
-    // A secondary press on the row opens every action as a menu.
+    // A secondary press on the row opens the one menu.
     let trigger = h
         .centre(".temor-dl-hold .ds-button")
         .expect("Downloads button");
     h.send(Input::click(trigger));
-    wait_html(&mut h, "the shelf's rows", |html| {
+    wait_html(&mut h, "the Downloads page", |html| {
         html.contains("Show in Folder")
     });
     let row = settled_centre(&mut h, ".temor-dl");
@@ -125,13 +128,8 @@ fn a_file_a_program_prints_waits_for_allow_then_lands_in_downloads_and_on_the_sh
         html.contains("ds-menu-item")
     });
     let html = h.html();
-    for item in [
-        "Open",
-        "Show in Folder",
-        "Paste Path",
-        "Copy Path",
-        "Remove from List",
-    ] {
+    for item in ["Open", "Show in Folder", "Paste Path", "Remove from List"] {
         assert!(html.contains(item), "the menu has {item}:\n{html}");
     }
+    assert!(!html.contains("Copy Path"), "no Copy items:\n{html}");
 }

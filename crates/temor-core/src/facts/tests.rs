@@ -2,49 +2,6 @@
 
 use super::*;
 
-fn stat(files: u32, added: u32, removed: u32) -> Option<DiffStat> {
-    Some(DiffStat {
-        files,
-        added,
-        removed,
-    })
-}
-
-#[test]
-fn shortstat_lines() {
-    #[rustfmt::skip]
-    let cases: Vec<(&str, &str, Option<DiffStat>)> = vec![
-        ("both counts", " 3 files changed, 10 insertions(+), 2 deletions(-)\n", stat(3, 10, 2)),
-        ("one file, singular words", " 1 file changed, 1 insertion(+), 1 deletion(-)\n", stat(1, 1, 1)),
-        ("only insertions", " 2 files changed, 7 insertions(+)\n", stat(2, 7, 0)),
-        ("only deletions", " 1 file changed, 4 deletions(-)\n", stat(1, 0, 4)),
-        ("no changes", "", stat(0, 0, 0)),
-        ("blank lines only", "\n\n", stat(0, 0, 0)),
-        ("not a stat line", "fatal: not a git repository\n", None),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(parse_shortstat(output), want, "{name}");
-    }
-}
-
-#[test]
-fn branch_lines() {
-    #[rustfmt::skip]
-    let cases: Vec<(&str, &str, Option<&str>)> = vec![
-        ("plain", "main\n", Some("main")),
-        ("slashes", "feature/chips\n", Some("feature/chips")),
-        ("detached", "HEAD\n", None),
-        ("empty", "", None),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(
-            parse_branch(output).as_ref().map(BranchName::as_str),
-            want,
-            "{name}"
-        );
-    }
-}
-
 #[test]
 fn venv_names() {
     #[rustfmt::skip]
@@ -145,51 +102,6 @@ fn tool_version_files() {
         Some("v22.1.0"),
         ".node-version reads like .nvmrc"
     );
-}
-
-#[test]
-fn untracked_counts() {
-    let many: String = (0..1500).map(|n| format!("?? f{n}\n")).collect();
-    #[rustfmt::skip]
-    let cases: Vec<(&str, String, u32)> = vec![
-        ("none", String::new(), 0),
-        ("only tracked changes", " M a.txt\nA  b.txt\n".to_owned(), 0),
-        ("mixed", " M a.txt\n?? new.txt\n?? dir/x\n".to_owned(), 2),
-        ("a name that starts with ??", "?? ?? odd\n".to_owned(), 1),
-        ("capped past the most", many, MOST_UNTRACKED + 1),
-    ];
-    for (name, output, want) in cases {
-        assert_eq!(parse_untracked(&output), Untracked(want), "{name}");
-    }
-}
-
-#[test]
-fn chips_stop_where_the_typing_reaches() {
-    // Ten-pixel cells on an 800-pixel pane with 10 pixels of padding. Chips of 4, 6 and 8
-    // characters are 60, 80 and 100 pixels wide with 10-pixel gaps. All three start at 530,
-    // the first two at 640, the first alone at 730; the cursor needs one cell (10) of room.
-    let row = ChipRow {
-        pane_width: 800.0,
-        inset: 10.0,
-        cell_width: 10.0,
-    };
-    let chars = [4, 6, 8];
-    #[rustfmt::skip]
-    let cases: Vec<(&str, Option<f32>, usize)> = vec![
-        ("cursor on another row", None, 3),
-        ("short typing", Some(100.0), 3),
-        ("just clear of all three", Some(520.0), 3),
-        ("one pixel in the way drops the last chip", Some(521.0), 2),
-        ("just clear of two", Some(630.0), 2),
-        ("two in the way leaves one", Some(631.0), 1),
-        ("just clear of the first", Some(720.0), 1),
-        ("under the first chip too", Some(721.0), 0),
-        ("past the right edge", Some(900.0), 0),
-    ];
-    for (name, cursor, want) in cases {
-        assert_eq!(chips_that_fit(&chars, row, cursor), want, "{name}");
-    }
-    assert_eq!(chips_that_fit(&[], row, Some(5.0)), 0, "no chips");
 }
 
 fn state(flight: Flight, prompted: bool) -> FactsState {

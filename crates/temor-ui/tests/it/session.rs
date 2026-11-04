@@ -12,14 +12,14 @@ use temor_pane::keys::Action;
 use temor_pane::paste::UnsafeReason;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
+use temor_pane_view::input::{Routed, Stroke, route};
+use temor_pane_view::platform::{OpenError, Opener};
+use temor_pane_view::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_pty::SessionLauncher;
 use temor_render::CellPos as PaintCell;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane;
-use temor_ui::edge::{Ambient, keymap_for};
-use temor_ui::input::{FindBar, Routed, Stroke, route};
-use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
+use temor_ui_base::edge::{Ambient, keymap_for};
 use temor_vt::{KeyAction, KeyCode, KeyInput, Modifiers, SurfacePoint};
 
 use super::support::scratch;
@@ -113,8 +113,8 @@ fn fixture(name: &str) -> Fixture {
                 opener: Box::new(NoOpener),
                 notify_after: TerminalSettings::default().notify_after,
                 cursor_blink: TerminalSettings::default().cursor_blink,
-                notifier: Box::new(temor_ui::edge::NoopNotifier),
-                clock: Box::new(temor_ui::edge::SystemClock::new()),
+                notifier: Box::new(temor_ui_base::edge::NoopNotifier),
+                clock: Box::new(temor_ui_base::edge::SystemClock::new()),
                 shelf_dir: home.join("shelf"),
             },
         },
@@ -396,11 +396,7 @@ fn a_paste_is_framed_and_an_unsafe_one_waits_for_the_person() {
     f.session.cancel_paste();
     assert!(f.session.pending_paste().is_none());
     // A plain paste (no bracketed paste) with a line break waits too.
-    let plain = temor_pane::paste::check(
-        "a\nb",
-        temor_pane::paste::PasteMode::Plain,
-        temor_pane::paste::VtVerdict::Clean,
-    );
+    let plain = temor_pane::paste::check("a\nb", temor_pane::paste::PasteMode::Plain, false);
     assert_eq!(
         plain,
         temor_pane::paste::PasteCheck::NeedsConfirmation(UnsafeReason::Newline)
@@ -483,10 +479,10 @@ fn the_find_keys_belong_to_the_bar_only_while_it_is_open() {
             mods: Modifiers::CTRL.with(Modifiers::SHIFT),
             text: String::new(),
             unshifted: Some('g'),
-            ime: temor_vt::Ime::Idle,
+            composing: false,
         },
     };
-    assert_eq!(route(stroke, &keymap, FindBar::Closed), Routed::Ignored);
+    assert_eq!(route(stroke, &keymap, false), Routed::Ignored);
 }
 
 /// A key press as the window routes it: the press as chordkit reads it (when it has one) and
@@ -615,7 +611,7 @@ fn a_theme_change_repaints_the_grid_in_the_new_ground() {
         return;
     }
     use ds::prelude::{Accent, Scheme};
-    use temor_ui::view::theme::palette_of;
+    use temor_ui_base::theme::palette_of;
     let mut f = ready("session-theme");
     let dark = palette_of(Scheme::Dark, Accent::default());
     let light = palette_of(Scheme::Light, Accent::default());
@@ -676,12 +672,10 @@ fn a_paste_over_the_limit_is_refused_with_a_notice_and_never_cut() {
         return;
     }
     let mut f = ready("session-paste-limit");
-    *f.clipboard.0.borrow_mut() = "x".repeat(temor_ui::session::PASTE_LIMIT + 1);
-    f.session.run(Action::Paste).expect("paste");
-    let notice = f
-        .session
-        .take_notice()
-        .expect("a notice explains the refusal");
+    *f.clipboard.0.borrow_mut() = "x".repeat(temor_pane_view::session::PASTE_LIMIT + 1);
+    let (pasted, left) = f.session.said(|s| s.run(Action::Paste));
+    pasted.expect("paste");
+    let notice = left.notice.expect("a notice explains the refusal");
     assert!(notice.contains("not pasted"), "{notice}");
     assert!(
         f.session.pending_paste().is_none(),
@@ -857,10 +851,11 @@ fn dropped_files_are_typed_into_the_prompt_quoted_for_the_shell() {
     ));
 
     // A name with a line break is never typed.
-    f.session
-        .drop_files(&[std::path::PathBuf::from("/tmp/x\ny")]);
+    let (_, left) = f
+        .session
+        .said(|s| s.drop_files(&[std::path::PathBuf::from("/tmp/x\ny")]));
     assert_eq!(
-        f.session.take_notice().as_deref(),
+        left.notice.as_deref(),
         Some("That file's name can't be typed into a terminal")
     );
 }
@@ -877,17 +872,9 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
     });
     // (column, the target shown, whether the tooltip must be drawn again)
     let table = [
-        (
-            1,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Changed,
-        ),
-        (
-            2,
-            Some("https://example.com/a?b=1"),
-            temor_ui::session::LinkHover::Same,
-        ),
-        (20, None, temor_ui::session::LinkHover::Changed),
+        (1, Some("https://example.com/a?b=1"), true),
+        (2, Some("https://example.com/a?b=1"), false),
+        (20, None, true),
     ];
     for (col, want, redraw) in table {
         f.session.pointer_moved(point_at(&f.session, 0, col));
@@ -903,7 +890,7 @@ fn hovering_a_link_shows_its_target_and_never_opens_it() {
         );
         assert_eq!(f.session.refresh_link(), redraw, "column {col}");
     }
-    assert!(f.session.take_notice().is_none());
+    assert!(f.session.said(|_| ()).1.notice.is_none());
 }
 
 fn copy_event(text: &str) -> PaneEvent {
@@ -918,14 +905,14 @@ fn copy_to(location: temor_vt::ClipboardLocation, text: &str) -> PaneEvent {
             data: text.as_bytes().to_vec(),
         }],
         program: "tool".to_owned(),
-        grant: temor_vt::ClipboardGrant::Ask,
+        granted: false,
     })
 }
 
 #[test]
 fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     if !super::support::tools_present() {
         return;
     }
@@ -937,10 +924,11 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
     f.session.absorb(copy_event("there"));
     assert_eq!(*f.clipboard.0.borrow(), "here", "waits for the person");
     assert_eq!(
-        f.session
-            .clipboard_ask()
-            .map(|a| (a.kind, a.program.as_str())),
-        Some((temor_ui::session::ClipboardUse::Copy, "tool"))
+        f.session.clipboard_ask().map(|a| (a.kind, a.program)),
+        Some((
+            temor_pane_view::session::ClipboardUse::Copy,
+            "tool".to_owned()
+        ))
     );
     f.session.answer_clipboard(Grant::Allowed);
     assert_eq!(*f.clipboard.0.borrow(), "there");
@@ -958,8 +946,8 @@ fn a_program_copies_freely_here_and_asks_once_on_another_computer() {
 /// alone, with the same question on another computer.
 #[test]
 fn a_program_copies_to_the_primary_selection_when_it_names_it() {
-    use temor_core::remote::Grant;
-    use temor_core::shelf::PaneSite;
+    use temor_client::model::remote::Grant;
+    use temor_client::model::shelf::PaneSite;
     use temor_vt::ClipboardLocation::{Primary, Selection};
     if !super::support::tools_present() {
         return;
@@ -986,7 +974,7 @@ fn a_program_copies_to_the_primary_selection_when_it_names_it() {
 
 #[test]
 fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
-    use temor_core::remote::Grant;
+    use temor_client::model::remote::Grant;
     use temor_vt::VtEvent;
     if !super::support::tools_present() {
         return;
@@ -1006,7 +994,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
     f.session.absorb(PaneEvent::ClipboardRead(read));
     assert_eq!(
         f.session.clipboard_ask().map(|a| a.kind),
-        Some(temor_ui::session::ClipboardUse::Read)
+        Some(temor_pane_view::session::ClipboardUse::Read)
     );
     f.session.answer_clipboard(Grant::Allowed);
     let out = f.session.pane().with_term(|t| t.write(query));
@@ -1020,7 +1008,7 @@ fn a_program_reads_the_clipboard_only_after_the_person_allows_it() {
 
 #[test]
 fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
-    use temor_core::notify::Focus;
+    use temor_client::model::pane::PaneFocus;
     if !super::support::tools_present() {
         return;
     }
@@ -1032,8 +1020,8 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
             .expect("paint");
         pixels
     };
-    // Focus starts the blink over: the first paint draws the cursor.
-    f.session.set_focus(Focus::Focused);
+    // PaneFocus starts the blink over: the first paint draws the cursor.
+    f.session.set_focus(PaneFocus::Focused);
     let on = shot(&mut f.session);
     assert!(!f.session.blink_due(), "nothing turned yet");
     wait_until("the cursor's off half", || f.session.blink_due());
@@ -1045,9 +1033,11 @@ fn the_cursor_blinks_in_the_focused_pane_and_shows_solid_after_a_key() {
     let typed = shot(&mut f.session);
     assert_ne!(typed, off, "the cursor is back after the key");
     // An unfocused pane's hollow cursor never blinks.
-    f.session.set_focus(Focus::Unfocused);
+    f.session.set_focus(PaneFocus::Unfocused);
     shot(&mut f.session);
-    std::thread::sleep(Duration::from_millis(2 * temor_ui::session::BLINK_MS));
+    std::thread::sleep(Duration::from_millis(
+        2 * temor_pane_view::session::BLINK_MS,
+    ));
     assert!(!f.session.blink_due(), "an unfocused pane does not blink");
 }
 
@@ -1057,7 +1047,7 @@ fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
         return;
     }
     use temor_pane::settings::{CursorStyle, FontChoice, FontPoints, LinePercent};
-    use temor_ui::view::launch::load_fonts;
+    use temor_ui_base::launch::load_fonts;
 
     let mut f = ready("session-font-size");
     let before = f.session.fit().expect("fitted");
@@ -1096,4 +1086,20 @@ fn a_new_font_size_reaches_an_open_pane_and_the_program_sees_the_new_grid() {
     f.session
         .set_cursor_style(CursorStyle::Bar)
         .expect("the terminal takes the cursor");
+}
+
+#[test]
+fn what_a_call_leaves_for_the_window_comes_back_with_it_and_is_not_left_behind() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let mut f = ready("session-said");
+    let (ran, left) = f.session.said(|s| s.run(Action::SplitRight));
+    ran.expect("run");
+    assert_eq!(
+        left.asked,
+        Some(Action::SplitRight),
+        "the window's to carry out"
+    );
+    assert_eq!(f.session.said(|_| ()).1, Default::default());
 }

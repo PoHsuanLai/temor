@@ -1,11 +1,12 @@
 //! `PaneFrame`: the renderer's own copy of a terminal's viewport, updated row by row.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use super::placeholder::PlaceholderCell;
+use super::placeholder::{PLACEHOLDER, PlaceholderCell};
 use temor_vt::{
-    CellStyle, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px, Rgb, Row, RowDirty,
-    Selected,
+    CellStyle, CellView, CellWidth, Col, CursorView, Generation, GridSize, ImageId, KittyLayer, Px,
+    Rgb, Row, StyleFlags, StyledCell, Underline,
 };
 
 /// A cell's grapheme cluster.
@@ -59,7 +60,8 @@ pub(crate) struct CellDraw {
     pub fg: Option<Rgb>,
     pub bg: Option<Rgb>,
     pub style: CellStyle,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
 }
 
 /// The terminal's current default colours: the host's (see [`crate::Palette::apply`]) unless the
@@ -97,13 +99,24 @@ pub(crate) struct ImagePlacement {
     pub source: [u32; 4],
 }
 
-/// The renderer's copy of a terminal's viewport. [`crate::FrameCapture`] keeps it up to date and
-/// marks the rows that changed; a [`crate::Renderer`] draws those rows and clears the marks.
+/// The number of a write to a frame's row, unique in the process: a renderer drawing several
+/// frames in turn tells their rows apart.
+static WRITES: AtomicU64 = AtomicU64::new(1);
+
+/// `n` new write numbers.
+fn fresh(n: usize) -> Vec<u64> {
+    let first = WRITES.fetch_add(n as u64, Ordering::Relaxed);
+    (first..).take(n).collect()
+}
+
+/// The renderer's copy of a terminal's viewport. [`crate::FrameCapture`] keeps it up to date,
+/// numbering each row it writes; a [`crate::Renderer`] draws the rows written since its last draw.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PaneFrame {
     pub(crate) size: GridSize,
     pub(crate) rows: Vec<Vec<CellDraw>>,
-    pub(crate) dirty: Vec<RowDirty>,
+    /// When each row was last written.
+    pub(crate) written: Vec<u64>,
     pub(crate) cursor: Option<CursorView>,
     pub(crate) colors: TermColors,
     /// Each row's kitty unicode-placeholder cells, which draw no text of their own.
@@ -123,10 +136,30 @@ impl PaneFrame {
         Self {
             size: GridSize::new(0, 0),
             rows: Vec::new(),
-            dirty: Vec::new(),
+            written: Vec::new(),
             cursor: None,
             colors: TermColors::default(),
             placeholders: Vec::new(),
+            images: Vec::new(),
+        }
+    }
+
+    /// A frame of `rows` read from anywhere in the screen (a finished block's output), `cols`
+    /// wide, in the default colours `like` has: nothing changes in it, it has no cursor and no
+    /// images, and every row is new.
+    pub fn still(cols: u16, rows: &[Vec<StyledCell>], like: &PaneFrame) -> Self {
+        let height = u16::try_from(rows.len()).unwrap_or(u16::MAX);
+        Self {
+            size: GridSize::new(cols, height),
+            rows: rows
+                .iter()
+                .take(usize::from(height))
+                .map(|row| row.iter().filter_map(|c| drawable(&c.view())).collect())
+                .collect(),
+            written: fresh(usize::from(height)),
+            cursor: None,
+            colors: like.colors,
+            placeholders: vec![Vec::new(); usize::from(height)],
             images: Vec::new(),
         }
     }
@@ -140,9 +173,7 @@ impl PaneFrame {
 
     /// Whether the cursor is shown and the terminal asks for it to blink.
     pub fn cursor_blinks(&self) -> bool {
-        self.cursor
-            .as_ref()
-            .is_some_and(|c| c.blink == temor_vt::CursorBlink::Blinking)
+        self.cursor.as_ref().is_some_and(|c| c.blinking)
     }
 
     /// How many rows at the bottom of the screen are empty below everything drawn and below the
@@ -170,32 +201,22 @@ impl PaneFrame {
         self.size
     }
 
-    /// The rows changed since they were last drawn.
-    pub fn dirty_rows(&self) -> Vec<Row> {
-        self.dirty
-            .iter()
-            .enumerate()
-            .filter(|(_, d)| **d == RowDirty::Dirty)
-            .map(|(y, _)| Row(y as u16))
-            .collect()
-    }
-
     #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn resize(&mut self, size: GridSize) {
         if size != self.size {
             self.size = size;
             self.rows = vec![Vec::new(); usize::from(size.rows.0)];
             self.placeholders = vec![Vec::new(); usize::from(size.rows.0)];
-            self.dirty = vec![RowDirty::Dirty; usize::from(size.rows.0)];
+            self.written = fresh(usize::from(size.rows.0));
         }
     }
 
     #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn set_row(&mut self, row: Row, cells: Vec<CellDraw>) {
         let y = usize::from(row.0);
-        if let (Some(slot), Some(dirty)) = (self.rows.get_mut(y), self.dirty.get_mut(y)) {
+        if let (Some(slot), Some(written)) = (self.rows.get_mut(y), self.written.get_mut(y)) {
             *slot = cells;
-            *dirty = RowDirty::Dirty;
+            *written = fresh(1)[0];
         }
         if let Some(slot) = self.placeholders.get_mut(y) {
             slot.clear();
@@ -210,23 +231,43 @@ impl PaneFrame {
         }
     }
 
-    #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
-    pub(crate) fn mark_all_dirty(&mut self) {
-        self.dirty.fill(RowDirty::Dirty);
-    }
-
+    /// The colours change every row; a renderer sees that in its view and draws them all.
     #[cfg_attr(not(feature = "ghostty"), allow(dead_code))]
     pub(crate) fn set_colors(&mut self, colors: TermColors) {
-        if colors != self.colors {
-            self.colors = colors;
-            self.mark_all_dirty();
-        }
+        self.colors = colors;
     }
+}
 
-    /// Clears the marks; returns the rows that were marked.
-    pub(crate) fn take_dirty(&mut self) -> Vec<Row> {
-        let rows = self.dirty_rows();
-        self.dirty.fill(RowDirty::Clean);
-        rows
+/// The cell as the renderer keeps it, or `None` for spacers, kitty placeholders (kept apart as
+/// [`PlaceholderCell`]) and blank narrow default cells. Blank wide cells are kept, so a cursor
+/// on one spans both columns.
+pub(crate) fn drawable(c: &CellView<'_>) -> Option<CellDraw> {
+    let span = match c.width {
+        CellWidth::Narrow => 1,
+        CellWidth::Wide => 2,
+        CellWidth::SpacerTail | CellWidth::SpacerHead => return None,
+    };
+    if c.text.starts_with(PLACEHOLDER) {
+        return None;
     }
+    let text = CellText::new(c.text);
+    let flags = c.style.flags;
+    let marked = c.bg.is_some()
+        || c.selected
+        || c.style.underline != Underline::None
+        || flags.contains(StyleFlags::INVERSE)
+        || flags.contains(StyleFlags::STRIKETHROUGH)
+        || flags.contains(StyleFlags::OVERLINE);
+    if text.is_blank() && !marked && span == 1 {
+        return None;
+    }
+    Some(CellDraw {
+        col: c.col,
+        span,
+        text,
+        fg: c.fg,
+        bg: c.bg,
+        style: c.style,
+        selected: c.selected,
+    })
 }

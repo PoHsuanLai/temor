@@ -5,9 +5,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
-use temor_pty::{Cols, Pty, Px as PtyPx, Rows, SessionLauncher, SpawnSpec};
+use temor_pty::{Pty, SessionLauncher, SpawnSpec};
 use temor_render::Palette;
-use temor_vt::{CellPx, GridSize, LineCount, Snapshot};
+use temor_vt::{CellPx, GridSize, LineCount, Px, Snapshot};
 
 use super::event::PaneEvent;
 use super::handle::PaneHandle;
@@ -44,15 +44,11 @@ pub struct PaneSpec {
 /// The pseudo-terminal's size for a grid of cells, in pixels too (for programs that draw).
 pub(crate) fn pty_size(grid: GridSize, cell: CellPx) -> temor_pty::GridSize {
     temor_pty::GridSize {
-        cols: Cols(grid.cols.0),
-        rows: Rows(grid.rows.0),
-        width: PtyPx(saturate(u32::from(grid.cols.0) * cell.width.0)),
-        height: PtyPx(saturate(u32::from(grid.rows.0) * cell.height.0)),
+        cols: grid.cols,
+        rows: grid.rows,
+        width: Px(u32::from(grid.cols.0).saturating_mul(cell.width.0)),
+        height: Px(u32::from(grid.rows.0).saturating_mul(cell.height.0)),
     }
-}
-
-fn saturate(value: u32) -> u16 {
-    u16::try_from(value).unwrap_or(u16::MAX)
 }
 
 /// Starts the program and its I/O loop. Events for the window go to `events`. The loop is
@@ -84,13 +80,19 @@ fn start_from(
     let pty = Pty::spawn(&spawn, &spec.launcher)?;
     let port = pty.io()?;
     let term = match snapshot {
-        Some(snapshot) => Term::restored(
-            snapshot,
-            spec.cell,
-            spec.scrollback,
-            spec.cursor,
-            &spec.palette,
-        )?,
+        // The new shell draws its own prompt: the one the snapshot was taken at goes. Its output
+        // is read only once the runner runs, so it cannot have drawn one yet.
+        Some(snapshot) => {
+            let mut term = Term::restored(
+                snapshot,
+                spec.cell,
+                spec.scrollback,
+                spec.cursor,
+                &spec.palette,
+            )?;
+            term.take_open_prompt_off();
+            term
+        }
         None => Term::new(
             spec.grid,
             spec.cell,

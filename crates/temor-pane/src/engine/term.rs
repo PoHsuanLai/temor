@@ -123,12 +123,15 @@ impl Term {
         self.clipboard.clone()
     }
 
-    /// The whole terminal encoded, to start a pane from later, without the prompt being typed at
-    /// (the program that starts from it draws its own). The terminal is changed: it is for a pane
-    /// that is going away.
-    pub fn snapshot(&mut self) -> Result<Snapshot, PaneError> {
-        self.terminal.take_prompt_off();
+    /// The whole terminal encoded, to start a pane from later.
+    pub fn snapshot(&self) -> Result<Snapshot, PaneError> {
         Ok(self.terminal.snapshot()?)
+    }
+
+    /// Takes the prompt left open at the bottom off a restored screen, for a new program that
+    /// draws its own (see `Terminal::take_open_prompt_off`).
+    pub fn take_open_prompt_off(&mut self) {
+        self.terminal.take_open_prompt_off();
     }
 
     /// Feeds program output and collects what it caused.
@@ -235,6 +238,15 @@ impl Term {
         })
     }
 
+    /// Screen rows `rows`, styled cell by cell, as a frame would draw them: a finished block's
+    /// output, wherever it is now.
+    pub fn styled_rows(
+        &self,
+        rows: std::ops::Range<u32>,
+    ) -> Result<Vec<Vec<temor_vt::StyledCell>>, PaneError> {
+        Ok(self.terminal.styled_rows(rows)?)
+    }
+
     /// The viewport's place: its first screen row, and the rows it shows.
     pub fn viewport(&self) -> Result<(u32, u32), PaneError> {
         let bar = self.terminal.scrollbar()?;
@@ -280,6 +292,17 @@ impl Term {
     /// Anchors the cursor's cell now (a command's end, for example).
     pub fn anchor_cursor(&mut self) -> Option<AnchorId> {
         self.terminal.anchor_cursor()
+    }
+
+    /// Anchors the cell at `at`.
+    pub fn anchor_at(&mut self, at: GridPoint) -> Option<AnchorId> {
+        self.terminal.anchor_at(at)
+    }
+
+    /// Where each kind of shell-marked text starts, top of the scrollback down (see
+    /// `Terminal::semantic_starts`). Empty when the terminal will not say.
+    pub fn semantic_starts(&self) -> Vec<(GridPoint, temor_vt::SemanticMark)> {
+        self.terminal.semantic_starts().unwrap_or_default()
     }
 
     /// How many anchors are live.

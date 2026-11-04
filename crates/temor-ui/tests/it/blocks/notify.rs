@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use temor_core::block::Outcome;
-use temor_core::notify::Focus;
+use temor_client::model::block::Outcome;
+use temor_client::model::pane::PaneFocus;
 use temor_pane::PaneEvent;
 use temor_vt::Notification;
 
@@ -17,7 +17,7 @@ fn a_long_command_notifies_once_when_the_pane_is_unfocused() {
     }
     let shell = shell_path("bash").expect("bash");
     let mut live = start("blocks-notify", &shell);
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     hold(&live);
     pump(&mut live, "the command to start", |s| {
         s.block_outcomes()
@@ -49,7 +49,7 @@ fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
     }
     let shell = shell_path("bash").expect("bash");
     let mut live = start("blocks-quiet", &shell);
-    live.session.set_focus(Focus::Focused);
+    live.session.set_focus(PaneFocus::Focused);
     hold(&live);
     pump(&mut live, "the focused command to start", |s| {
         s.block_outcomes()
@@ -63,7 +63,7 @@ fn a_long_command_while_focused_and_a_short_one_while_unfocused_stay_quiet() {
             .first()
             .is_some_and(|b| b.1 != Outcome::Running)
     });
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     hold(&live);
     pump(&mut live, "the short command to start", |s| {
         s.block_outcomes()
@@ -87,7 +87,7 @@ fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
         return;
     }
     let mut live = start("blocks-program", &shell);
-    live.session.set_focus(Focus::Unfocused);
+    live.session.set_focus(PaneFocus::Unfocused);
     let note = |body: &str| {
         PaneEvent::Notification(Notification {
             title: String::new(),
@@ -108,4 +108,24 @@ fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
     assert!(live.session.bell_showing(), "the bell's mark is up");
     live.clock.advance(1_000);
     assert!(!live.session.bell_showing(), "and goes down on its own");
+}
+
+#[test]
+fn a_notice_the_desktop_refuses_is_told_to_the_person() {
+    let shell = shell_path("bash").unwrap_or_else(|| PathBuf::from("/usr/bin/bash"));
+    if !tools_present() {
+        return;
+    }
+    let mut live = start("blocks-refused", &shell);
+    live.session.set_focus(PaneFocus::Unfocused);
+    live.notifier.refuse("no permission");
+    live.session.absorb(PaneEvent::Notification(Notification {
+        title: String::new(),
+        body: "done".to_owned(),
+    }));
+    let (_, left) = live.session.said(|_| ());
+    assert_eq!(
+        left.notice.as_deref(),
+        Some("the notification could not be shown: no permission")
+    );
 }

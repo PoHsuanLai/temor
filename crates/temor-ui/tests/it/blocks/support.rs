@@ -7,17 +7,17 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use chordkit::{Desktop, Overrides, Platform};
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 use temor_pane::PaneEvent;
 use temor_pane::settings::NotifyAfter;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
+use temor_pane_view::platform::{OpenError, Opener};
+use temor_pane_view::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
 use temor_pty::SessionLauncher;
 use temor_render::{FontConfig, FontFamily, FontSet, FontSize, FontSource, PixelSize, Scale};
 use temor_ui::app::shell_pane_with_socket;
-use temor_ui::edge::{Ambient, FakeClock, RecordingNotifier};
-use temor_ui::platform::{OpenError, Opener};
-use temor_ui::session::{Clipboard, ClipboardFailed, Session, SessionKit, SessionParts};
+use temor_ui_base::edge::{Ambient, FakeClock, RecordingNotifier};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::super::support::scratch;
@@ -144,7 +144,7 @@ pub(super) fn start_with(
             spec,
             fonts,
             kit: SessionKit {
-                keymap: temor_ui::edge::keymap_for(
+                keymap: temor_ui_base::edge::keymap_for(
                     Platform::Linux {
                         desktop: Desktop::Ours,
                     },
@@ -154,7 +154,7 @@ pub(super) fn start_with(
                 clipboard: Box::new(clipboard.clone()),
                 opener: Box::new(NoOpener),
                 notify_after: NotifyAfter::DEFAULT,
-                cursor_blink: temor_pane::settings::CursorBlinking::default(),
+                cursor_blink: true,
                 notifier: Box::new(notifier.clone()),
                 clock: Box::new(clock.clone()),
                 shelf_dir: home.join("shelf"),
@@ -266,14 +266,24 @@ pub(super) fn shells() -> Vec<(&'static str, PathBuf)> {
 
 /// The gutter's marks for the blocks whose prompts are on screen; none on a full-screen
 /// program's screen.
-pub(super) fn marks_of(session: &Session) -> Vec<temor_core::session::frame::BlockMark> {
+pub(super) fn marks_of(session: &Session) -> Vec<temor_client::model::session::frame::BlockMark> {
     session
         .frame()
         .map(|frame| frame.marks())
         .unwrap_or_default()
 }
 
-/// The viewport row of a block's last row.
-pub(super) fn last_row_of(session: &Session, id: temor_core::vocab::ids::BlockId) -> Option<i64> {
-    session.frame()?.last_row(id)
+/// The session drawn as a list laid out as `map`, the composer shown or not, as the list view
+/// hands it over.
+pub(super) fn drawn_as_list(
+    live: &mut Live,
+    map: temor_pane_view::session::ListMap,
+    composing: bool,
+) {
+    live.session
+        .set_list_view(Some(temor_pane_view::session::ListView {
+            map,
+            ground: temor_vt::Rgb { r: 0, g: 0, b: 0 },
+            composing,
+        }));
 }

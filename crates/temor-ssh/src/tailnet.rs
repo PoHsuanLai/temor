@@ -11,22 +11,6 @@ use crate::identity::NodeId;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct UnixSeconds(pub u64);
 
-/// Whether the tailnet currently sees the machine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Presence {
-    Online,
-    Offline,
-}
-
-/// Whether Tailscale's own SSH is switched on for the machine (no keys needed).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum TailscaleSsh {
-    On,
-    Off,
-}
-
 /// Whose machine it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -50,9 +34,11 @@ pub struct TailnetHost {
     pub dns: String,
     /// The tailnet addresses (`100.x.y.z`, `fd7a:…`).
     pub addresses: Vec<IpAddr>,
-    pub online: Presence,
+    /// The tailnet sees the machine now.
+    pub online: bool,
     pub last_seen: Option<UnixSeconds>,
-    pub ssh: TailscaleSsh,
+    /// Tailscale's own SSH is on for the machine (no keys needed).
+    pub tailscale_ssh: bool,
     pub owner: TailnetOwner,
 }
 
@@ -91,7 +77,7 @@ impl TailnetHost {
     /// Where its ports can be opened directly: the MagicDNS name, else the first IPv4 address,
     /// else the first address. `None` when the machine is offline or has no usable name.
     pub fn direct_host(&self) -> Option<DirectHost> {
-        if self.online == Presence::Offline {
+        if !self.online {
             return None;
         }
         let dns = self.dns.trim_end_matches('.');

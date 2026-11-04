@@ -1,7 +1,7 @@
 //! A cell's final colours: the terminal's defaults, inverse, selection, faint and the block
 //! cursor.
 
-use temor_vt::{Rgb, Selected, StyleFlags};
+use temor_vt::{Rgb, StyleFlags};
 
 use crate::frame::{CellDraw, TermColors};
 use crate::metrics::CellPos;
@@ -47,7 +47,7 @@ pub(crate) fn cell_colors(
     } else {
         (fg, bg)
     };
-    let selected = cell.selected == Selected::Yes || selection.is_some_and(|s| s.contains(pos));
+    let selected = cell.selected || selection.is_some_and(|s| s.contains(pos));
     if selected {
         bg = Some(palette.selection);
     }

@@ -1,6 +1,6 @@
 //! Pixel operations on a premultiplied RGBA8 buffer, clipped to a horizontal band.
 
-use crate::font::Atlas;
+use crate::font::GlyphCache;
 use crate::frame::ImagePlacement;
 use crate::scene::{Premul, Quad, QuadPaint};
 
@@ -59,7 +59,8 @@ impl Target<'_> {
         }
     }
 
-    pub fn quad(&mut self, q: &Quad, alpha: &Atlas, color: &Atlas) {
+    /// Draws `q`, a glyph's texels from `glyphs` (a glyph it does not hold is not drawn).
+    pub fn quad(&mut self, q: &Quad, glyphs: &GlyphCache) {
         let Some((x0, y0, x1, y1)) = self.clip(q.x, q.y, q.w, q.h) else {
             return;
         };
@@ -75,9 +76,12 @@ impl Target<'_> {
                     }
                 }
             }
-            QuadPaint::Mask { slot, color: c } => {
+            QuadPaint::Mask { glyph, color: c } => {
+                let Some(image) = glyphs.image(glyph) else {
+                    return;
+                };
                 for y in y0..y1 {
-                    let src = alpha.row(slot, (y - q.y) as u32);
+                    let src = image.row((y - q.y) as u32);
                     for x in x0..x1 {
                         let cov = u32::from(src[(x - q.x) as usize]);
                         if cov != 0 {
@@ -86,9 +90,12 @@ impl Target<'_> {
                     }
                 }
             }
-            QuadPaint::Color { slot } => {
+            QuadPaint::Color { glyph } => {
+                let Some(image) = glyphs.image(glyph) else {
+                    return;
+                };
                 for y in y0..y1 {
-                    let src = color.row(slot, (y - q.y) as u32);
+                    let src = image.row((y - q.y) as u32);
                     for x in x0..x1 {
                         let i = ((x - q.x) * 4) as usize;
                         let p = [src[i], src[i + 1], src[i + 2], src[i + 3]];

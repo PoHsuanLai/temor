@@ -11,11 +11,11 @@ use fontique::{
 use quire_emoji::{EmojiChoice, Fonts, prefer_colour};
 
 use super::config::{FaceStyle, FontConfig, FontFamily, FontSource, Slant, Weight};
-use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
+use super::face::{ColorFormat, Face, FaceId, FaceRole, Synth};
 use super::fallback::{Presentation, needs, presentation, script_of};
 use crate::error::RenderError;
 use crate::metrics::{FontSize, LineHeight};
-use crate::platform::MONOSPACE_FIRST;
+use crate::platform::{MONOSPACE_FIRST, SYMBOLS};
 
 /// Most entries the per-grapheme face cache keeps before it starts again (text is unbounded).
 const CHOSEN_CAP: usize = 4096;
@@ -162,10 +162,17 @@ impl FontSet {
         if let Some(&id) = self.chosen.get(&key) {
             return id;
         }
-        let found = self
+        let covering: Vec<FaceId> = self
             .candidates(text, wanted, style)
             .into_iter()
-            .find(|&id| self.covers(id, text))
+            .filter(|&id| self.covers(id, text))
+            .collect();
+        // Text asks for a text face first: a colour face only when no other has the character.
+        let found = covering
+            .iter()
+            .copied()
+            .find(|&id| wanted == Presentation::Emoji || self.face(id).color == ColorFormat::None)
+            .or(covering.first().copied())
             .unwrap_or(own);
         if self.chosen.len() >= CHOSEN_CAP {
             self.chosen.clear();
@@ -180,7 +187,12 @@ impl FontSet {
     }
 
     /// Faces to try, best first.
-    fn candidates(&mut self, text: &str, wanted: Presentation, style: FaceStyle) -> Vec<FaceId> {
+    pub(super) fn candidates(
+        &mut self,
+        text: &str,
+        wanted: Presentation,
+        style: FaceStyle,
+    ) -> Vec<FaceId> {
         let mut families: Vec<FamilyId> = Vec::new();
         let emoji: Vec<FamilyId> = match self.lookup {
             Lookup::System => self
@@ -202,6 +214,9 @@ impl FontSet {
         }
         if self.lookup == Lookup::System {
             families.extend(self.collection.generic_families(GenericFamily::Monospace));
+            for name in SYMBOLS {
+                families.extend(self.collection.family_id(name));
+            }
         }
         families.extend(self.bundled.iter().copied());
         families.extend(&emoji);
@@ -257,15 +272,9 @@ impl FontSet {
         let synthesis = info.synthesis(FontWidth::NORMAL, font_style, weight);
         let blob = info.load(Some(&mut self.cache))?;
         let mut face = Face::load(blob, info.index(), FaceRole::Primary)?;
-        face.embolden = if synthesis.embolden() {
-            Embolden::Yes
-        } else {
-            Embolden::No
-        };
-        face.skew = if synthesis.skew().is_some() {
-            Skew::Yes
-        } else {
-            Skew::No
+        face.synth = Synth {
+            embolden: synthesis.embolden(),
+            skew: synthesis.skew().is_some(),
         };
         face.variations = synthesis
             .variation_settings()

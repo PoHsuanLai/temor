@@ -20,13 +20,6 @@ pub enum RowFilter {
     Dirty,
 }
 
-/// Whether a row changed since the frame was last marked drawn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RowDirty {
-    Dirty,
-    Clean,
-}
-
 /// A row's identity across frames: the same id with a clean row means a cached row can be reused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RowId(pub [u64; 2]);
@@ -49,21 +42,6 @@ pub enum SemanticMark {
     Output,
     Input,
     Prompt,
-}
-
-/// Whether a cell is part of an OSC 8 hyperlink. The address is read with
-/// `Terminal::hyperlink_at`, because libghostty keeps link targets per page, not per cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Hyperlink {
-    None,
-    Linked,
-}
-
-/// Whether a cell is inside the selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Selected {
-    No,
-    Yes,
 }
 
 /// Underline shapes (SGR 4:x).
@@ -138,9 +116,51 @@ pub struct CellView<'a> {
     /// Resolved background; `None` means the terminal's default background.
     pub bg: Option<Rgb>,
     pub style: CellStyle,
-    pub hyperlink: Hyperlink,
+    /// The cell is part of an OSC 8 hyperlink. The address is read with
+    /// `Terminal::hyperlink_at`, because libghostty keeps link targets per page, not per cell.
+    pub linked: bool,
     pub semantic: SemanticMark,
-    pub selected: Selected,
+    /// The cell is inside the selection.
+    pub selected: bool,
+}
+
+/// One cell of any screen row, scrollback included, owned: what a frame's [`CellView`] says of
+/// a viewport cell, read for a row the viewport need not show. It is read unselected; whoever
+/// draws it marks what its own selection covers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyledCell {
+    pub col: Col,
+    /// The full grapheme cluster; empty for a blank cell.
+    pub text: String,
+    pub width: CellWidth,
+    /// Resolved foreground; `None` means the terminal's default foreground.
+    pub fg: Option<Rgb>,
+    /// Resolved background; `None` means the terminal's default background.
+    pub bg: Option<Rgb>,
+    pub style: CellStyle,
+    /// The cell is part of an OSC 8 hyperlink. The address is read with
+    /// `Terminal::hyperlink_at`, because libghostty keeps link targets per page, not per cell.
+    pub linked: bool,
+    pub semantic: SemanticMark,
+    /// The cell is inside the selection.
+    pub selected: bool,
+}
+
+impl StyledCell {
+    /// The cell as a frame's walk would hand it over.
+    pub fn view(&self) -> CellView<'_> {
+        CellView {
+            col: self.col,
+            text: &self.text,
+            width: self.width,
+            fg: self.fg,
+            bg: self.bg,
+            style: self.style,
+            linked: self.linked,
+            semantic: self.semantic,
+            selected: self.selected,
+        }
+    }
 }
 
 /// The cursor's shape.
@@ -152,28 +172,16 @@ pub enum CursorShape {
     BlockHollow,
 }
 
-/// Whether the cursor blinks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CursorBlink {
-    Steady,
-    Blinking,
-}
-
-/// Whether the cursor sits on the right half of a wide cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CursorCell {
-    Normal,
-    WideTail,
-}
-
 /// The cursor as the frame shows it; absent when hidden or outside the viewport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CursorView {
     pub col: Col,
     pub row: Row,
     pub shape: CursorShape,
-    pub blink: CursorBlink,
-    pub cell: CursorCell,
+    /// The cursor blinks.
+    pub blinking: bool,
+    /// The cursor sits on the right half of a wide cell.
+    pub wide_tail: bool,
 }
 
 /// The frame's colours: defaults and the 256-colour palette.

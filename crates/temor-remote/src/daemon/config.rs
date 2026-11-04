@@ -1,5 +1,5 @@
-//! What a daemon is made with. Nothing ambient is read: the clock, the shell, the launcher and
-//! the `/proc` root are all handed in.
+//! What a daemon is made with. Nothing ambient is read: the clock, the start time, the shell,
+//! the launcher and the `/proc` root are all handed in.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,4 +32,7 @@ pub struct DaemonConfig {
     pub idle: IdleLimit,
     /// The time source.
     pub clock: Arc<dyn Clock>,
+    /// When the daemon started, in seconds since the Unix epoch: its session ids number from
+    /// there, past every id an earlier daemon on the host handed out.
+    pub started: u64,
 }

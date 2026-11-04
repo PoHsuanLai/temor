@@ -3,6 +3,7 @@
 //! [`crate::Daemon`], and this only wires it to the machine.
 
 mod command;
+#[cfg(feature = "ghostty")]
 mod daemon_main;
 mod env;
 mod identity;
@@ -12,6 +13,7 @@ mod socket;
 mod stdio_main;
 
 pub use command::{DAEMON, LEADER, LOCAL, STDIO, VERSION};
+#[cfg(feature = "ghostty")]
 pub use daemon_main::run_daemon;
 pub use env::HostEnv;
 pub use identity::hash_executable;

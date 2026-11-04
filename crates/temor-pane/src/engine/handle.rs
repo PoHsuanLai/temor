@@ -6,15 +6,17 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
 use temor_vt::{CellPx, GridSize, KeyInput};
 
 use super::event::PaneEvent;
-use super::io::{Command, map_event};
+use super::io::Command;
 use super::outbox::Outbox;
 use super::poison::lock;
+use super::route::map_event;
 use super::sink::EventSink;
 use super::term::Term;
 use super::xfer::OfferId;
@@ -93,7 +95,8 @@ impl PaneHandle {
         for reply in output.replies {
             let _ = self.outbox.push_reply(&reply);
         }
-        for event in output.events.into_iter().filter_map(map_event) {
+        let read = Instant::now();
+        for event in output.events.into_iter().filter_map(|e| map_event(e, read)) {
             self.events.send(event);
         }
         self.request_repaint();

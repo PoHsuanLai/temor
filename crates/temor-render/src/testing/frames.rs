@@ -1,8 +1,7 @@
 //! A frame of box-drawing characters and the view that draws it.
 
-use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row, Selected};
+use temor_vt::{CellStyle, Col, GridSize, Px, Rgb, Row};
 
-use crate::bands::RowBand;
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
 use crate::metrics::{Padding, PixelSize, Scale};
 use crate::palette::Palette;
@@ -39,7 +38,7 @@ pub fn glyph_frame(first: u32, count: usize) -> PaneFrame {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    selected: Selected::No,
+                    selected: false,
                 }
             })
             .collect();
@@ -57,8 +56,8 @@ pub fn size_for(renderer: &mut impl Renderer) -> PixelSize {
     )
 }
 
-/// A focused view of `size` at scale 1 with [`GLYPH_PAD`] padding and `bands` laid over it.
-pub fn view<'a>(size: PixelSize, palette: &'a Palette, bands: &'a [RowBand]) -> PaneView<'a> {
+/// A focused view of `size` at scale 1 with [`GLYPH_PAD`] padding.
+pub fn view(size: PixelSize, palette: &Palette) -> PaneView<'_> {
     PaneView {
         size,
         scale: Scale::new(1.0),
@@ -67,7 +66,7 @@ pub fn view<'a>(size: PixelSize, palette: &'a Palette, bands: &'a [RowBand]) -> 
         focus: PaneFocus::Focused,
         blink: BlinkPhase::On,
         selection: None,
-        bands,
         lower: 0,
+        ground: None,
     }
 }

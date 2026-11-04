@@ -4,7 +4,8 @@
 # D;<status> command finished) and reports the working directory with OSC 7. fish finds this
 # in vendor_conf.d through temor's XDG_DATA_DIRS entry; it never edits your files.
 # TEMOR_SHELL_INTEGRATION=0 turns it off. fish 4 and newer emit these marks themselves, so
-# there this file adds no marks of its own.
+# there this file adds no marks of its own, but the prompt's end and the folder at every prompt
+# before fish 4.3.
 #
 # It also draws temor's own prompt in place of fish's, whatever fish_prompt your config or theme
 # defines: a blank line, the folder and the git branch, then an empty line to type on, with no
@@ -112,8 +113,93 @@ function _temor_command_seen --on-event fish_preexec
     set -g _temor_seen 1
 end
 
-if not string match -qr '^[0-3]\.' -- $version
-    # fish 4 and newer draw the marks themselves; only the prompt is installed, once, when the
+# Tells temor the shell's exported variables and aliases (OSC 7503, see temor-shell's report
+# module), but only when they differ from what it last said. An alias is the function `alias`
+# made, known by the description it gives it. A variable fish keeps as a list is joined as fish
+# exports it: with ':' for a *PATH, else with spaces. Too large a report is not sent. The report
+# key temor gave this shell is moved out of the environment at load, so no program sees it, and
+# signs each report; a shell without it (one started inside the pane) says nothing.
+set -g _temor_reported
+set -g _temor_key $TEMOR_REPORT_KEY
+set -e TEMOR_REPORT_KEY
+function _temor_report
+    test -n "$_temor_key"; or return 0
+    set -l raw
+    set -l out "v2;k=$_temor_key"
+    for name in (set -xn)
+        contains -- $name _ PWD OLDPWD SHLVL; and continue
+        set -l value (string join ' ' -- $$name)
+        string match -q '*PATH' -- $name; and set value (string join : -- $$name)
+        set -a raw "e=$name=$value"
+        set out "$out;e="(string escape --style=url -- $name)"="(string escape --style=url -- $value)
+    end
+    for name in (functions -n)
+        set -l described (functions -Dv -- $name)[5]
+        string match -q -- "alias $name=*" $described; or continue
+        set -l value (string replace -- "alias $name=" '' $described)
+        set -a raw "a=$name=$value"
+        set out "$out;a="(string escape --style=url -- $name)"="(string escape --style=url -- $value)
+    end
+    test "$raw" = "$_temor_reported"; and return 0
+    set -g _temor_reported $raw
+    test (string length -- $out) -gt 60000; and return 0
+    printf '\e]7503;%s\e\\\\' $out
+end
+
+# Tab in temor's composer (temor-shell's complete module): temor types the composer's line into
+# fish's and presses U+E000, a character no keyboard types, bound to this. It answers with what the
+# line's last token can become (OSC 7504), as fish's own completion offers it, and empties fish's
+# line again, so nothing of it runs.
+function _temor_complete
+    set -l line (commandline)
+    set -l token (commandline -ct)
+    set -l at (math (string length -- "$line") - (string length -- "$token"))
+    set -l out "v1;at=$at"
+    set -l n 0
+    for found in (complete -C -- "$line")
+        set -l word (string split -m 1 \t -- $found)[1]
+        set out "$out;c="(string escape --style=url -- $word)
+        set n (math $n + 1)
+        if test $n -ge 500; or test (string length -- "$out") -gt 60000
+            break
+        end
+    end
+    commandline -r ''
+    printf '\e]7504;%s\e\\\\' $out
+end
+
+# The aliases of the shell this one replaces, defined once after the person's own config, and
+# then what this shell holds, before every prompt.
+function _temor_state --on-event fish_prompt
+    if set -q TEMOR_REPLAY
+        test -r "$TEMOR_REPLAY"; and source "$TEMOR_REPLAY"
+        command rm -f -- "$TEMOR_REPLAY"
+        set -e TEMOR_REPLAY
+    end
+    _temor_report
+    # Bound again at every prompt: the person's own bindings may have replaced it.
+    bind \ue000 _temor_complete
+    bind -M insert \ue000 _temor_complete 2>/dev/null
+    printf '\e]7504;v1;ready\e\\\\'
+end
+
+if string match -qr '^4\.[0-2]\.' -- $version
+    # fish 4.0 to 4.2 draw the marks themselves but the prompt's end, and say the folder only
+    # when it changes (4.3 does both at every prompt), so the folder is said and the end mark put
+    # after the prompt, wrapped around it when the first prompt is about to be drawn.
+    function _temor_first_prompt --on-event fish_prompt
+        functions -e _temor_first_prompt
+        _temor_install_prompt
+        functions -c fish_prompt _temor_original_prompt
+        function fish_prompt
+            printf '\e]7;file://%s%s\e\\\\' $hostname (string escape --style=url -- $PWD)
+            _temor_original_prompt
+            printf '\e]133;B\e\\\\'
+        end
+    end
+    exit 0
+else if not string match -qr '^[0-3]\.' -- $version
+    # fish 4.3 and newer draw the marks themselves; only the prompt is installed, once, when the
     # first prompt is about to be drawn (after config.fish has had its say).
     function _temor_first_prompt --on-event fish_prompt
         functions -e _temor_first_prompt
@@ -138,9 +224,17 @@ function _temor_prompt_start --on-event fish_prompt
     end
 end
 
+# The output mark carries the command line (percent-encoded, as cmdline_url), so the card names
+# the command even when Enter came before its text was echoed. A very long one is left to the
+# screen: the mark must stay short enough to be read whole.
 function _temor_preexec --on-event fish_preexec
     set -g _temor_executing 1
-    printf '\e]133;C\e\\\\'
+    set -l line (string escape --style=url -- "$argv[1]")
+    if test (string length -- "$line") -le 1024
+        printf '\e]133;C;cmdline_url=%s\e\\\\' "$line"
+    else
+        printf '\e]133;C\e\\\\'
+    end
 end
 
 function _temor_postexec --on-event fish_postexec

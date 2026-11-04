@@ -44,7 +44,6 @@ mod daemon;
 mod error;
 pub mod facts;
 pub mod files;
-#[cfg(feature = "ghostty")]
 pub mod host;
 mod idle;
 mod platform;
@@ -54,7 +53,7 @@ mod sync;
 mod transport;
 
 pub use client::{Attached, Client, ClientEvent, HostReach, PortAction, ReadChunk, port_actions};
-pub use clock::{Clock, ManualClock, SystemClock};
+pub use clock::{Clock, ManualClock, SystemClock, unix_secs_now};
 #[cfg(feature = "ghostty")]
 pub use daemon::{Daemon, DaemonConfig, Outgoing};
 pub use error::Error;

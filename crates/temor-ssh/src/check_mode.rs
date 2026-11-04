@@ -36,14 +36,6 @@ impl CheckUrl {
     }
 }
 
-/// What the pre-shell output said.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum PreShellEvent {
-    /// The host wants the person to confirm in a browser first.
-    ConfirmInBrowser(CheckUrl),
-}
-
 /// Scans a connection's output until the shell starts, a chunk at a time (a link may be split
 /// across chunks). Stop feeding it at the first prompt mark or working-directory report.
 /// A scan belongs to one thread; the caller drives it.
@@ -59,9 +51,10 @@ impl CheckScan {
         Self::default()
     }
 
-    /// Adds output bytes and returns the events completed by them. The same link repeated
-    /// right after itself (a redraw) is reported once.
-    pub fn feed(&mut self, bytes: &[u8]) -> Vec<PreShellEvent> {
+    /// Adds output bytes and returns the links the lines they completed hold: the host wants the
+    /// person to confirm in a browser first. The same link repeated right after itself (a redraw)
+    /// is reported once.
+    pub fn feed(&mut self, bytes: &[u8]) -> Vec<CheckUrl> {
         self.pending.push_str(&String::from_utf8_lossy(bytes));
         let Some(end) = self.pending.rfind(['\n', '\r']) else {
             if self.pending.len() > MAX_PENDING_BYTES {
@@ -71,18 +64,18 @@ impl CheckScan {
         };
         let rest = self.pending.split_off(end + 1);
         let complete = std::mem::replace(&mut self.pending, rest);
-        let mut events = Vec::new();
+        let mut urls = Vec::new();
         for url in complete.lines().filter_map(url_in_line) {
             if self.last.as_ref() != Some(&url) {
                 self.last = Some(url.clone());
-                events.push(PreShellEvent::ConfirmInBrowser(url));
+                urls.push(url);
             }
         }
-        events
+        urls
     }
 
     /// Reports a link on a last line the host never ended with a newline, then resets.
-    pub fn finish(&mut self) -> Vec<PreShellEvent> {
+    pub fn finish(&mut self) -> Vec<CheckUrl> {
         let mut line = std::mem::take(&mut self.pending);
         line.push('\n');
         self.feed(line.as_bytes())
@@ -137,13 +130,10 @@ fn strip_escapes(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{CheckScan, CheckUrl, PreShellEvent};
+    use super::{CheckScan, CheckUrl};
 
-    fn urls(events: Vec<PreShellEvent>) -> Vec<String> {
-        events
-            .into_iter()
-            .map(|PreShellEvent::ConfirmInBrowser(u)| u.as_str().to_owned())
-            .collect()
+    fn urls(found: Vec<CheckUrl>) -> Vec<String> {
+        found.into_iter().map(|u| u.as_str().to_owned()).collect()
     }
 
     #[test]

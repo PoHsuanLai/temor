@@ -90,6 +90,7 @@ pub fn helper_daemon(
         proc_root: "/proc".into(),
         idle: DEFAULT_IDLE,
         clock: std::sync::Arc::new(ManualClock::new()) as std::sync::Arc<dyn Clock>,
+        started: temor_remote::unix_secs_now(),
     })
 }
 

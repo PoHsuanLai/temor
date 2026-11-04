@@ -9,7 +9,7 @@ use crate::support::limits;
 
 pub fn origin() -> Origin {
     Origin::Host {
-        host: HostName::new("prod-1"),
+        host: HostName("prod-1".into()),
     }
 }
 

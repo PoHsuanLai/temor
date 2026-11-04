@@ -1,0 +1,93 @@
+//! The key tables' rows and how one is routed: through the stroke and the router, with the
+//! keymap a platform's conventions give.
+
+use chordkit::{Desktop, Keymap, Overrides, Platform};
+use dioxus::html::{Code, Key, Location, Modifiers as Held};
+use ds::edit::raw_key::{KeyPhase, RawKey};
+use temor_panes::pane::keys::Action;
+
+use super::super::keys::stroke;
+use super::super::route::{Routed, route_with};
+use chordkit::{ConventionSource, KeymapSource};
+use temor_panes::pane::keys::build_keymap;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Went {
+    Action(Action),
+    Program,
+    Dropped,
+}
+
+/// One key event and where it goes.
+pub(super) struct Row {
+    pub(super) name: &'static str,
+    pub(super) key: Key,
+    pub(super) code: Code,
+    pub(super) held: Held,
+    pub(super) text: &'static str,
+    pub(super) want: Went,
+}
+
+pub(super) fn ch(text: &str) -> Key {
+    Key::Character(text.into())
+}
+
+pub(super) fn row(name: &'static str, key: Key, code: Code, held: Held, want: Went) -> Row {
+    Row {
+        name,
+        key,
+        code,
+        held,
+        text: "",
+        want,
+    }
+}
+
+pub(super) fn went(keymap: &Keymap, row: &Row, find: bool) -> Went {
+    went_with(keymap, row, find, false)
+}
+
+pub(super) fn went_with(keymap: &Keymap, row: &Row, find: bool, kitty: bool) -> Went {
+    let raw = RawKey {
+        phase: KeyPhase::Press,
+        key: row.key.clone(),
+        code: row.code,
+        modifiers: row.held,
+        location: Location::Standard,
+        text: (!row.text.is_empty()).then(|| row.text.to_owned()),
+    };
+    let stroke = stroke(&raw, false).unwrap_or_else(|| panic!("{}: no stroke", row.name));
+    match route_with(stroke, keymap, find, kitty) {
+        Routed::Action(action) => Went::Action(action),
+        Routed::Shell(_) => Went::Program,
+        Routed::Ignored => Went::Dropped,
+    }
+}
+
+pub(super) fn keymap_of(platform: Platform) -> Keymap {
+    build_keymap(
+        &ConventionSource as &dyn KeymapSource,
+        platform,
+        &Overrides::default(),
+    )
+    .0
+}
+
+pub(super) fn check(platform: Platform, find: bool, rows: &[Row]) {
+    let keymap = keymap_of(platform);
+    for row in rows {
+        assert_eq!(
+            went(&keymap, row, find),
+            row.want,
+            "{platform:?}: {}",
+            row.name
+        );
+    }
+}
+
+pub(super) const OURS: Platform = Platform::Linux {
+    desktop: Desktop::Ours,
+};
+pub(super) const KDE: Platform = Platform::Linux {
+    desktop: Desktop::Kde,
+};

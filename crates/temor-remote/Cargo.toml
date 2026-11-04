@@ -16,7 +16,7 @@ ghostty = ["dep:temor-vt", "temor-vt/ghostty"]
 [dependencies]
 temor-wire = { workspace = true }
 temor-pty = { workspace = true }
-temor-shell = { workspace = true }
+temor-shell = { workspace = true, features = ["io"] }
 temor-transfer = { workspace = true }
 temor-vt = { workspace = true, optional = true }
 sha2 = { workspace = true }

@@ -1,10 +1,12 @@
 //! Real shells mark their commands: one block per command, with its output and exit status.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 
 use super::super::support::tools_present;
-use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
-use temor_ui::input::Stroke;
+use super::support::{
+    blocks, drawn_as_list, marks_of, pump, run_line, shell_path, shells, start, start_with,
+};
+use temor_pane_view::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 #[test]
@@ -75,7 +77,10 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
             .is_some_and(|b| b.1 != Outcome::Running)
     });
     let id = live.session.block_outcomes()[0].0;
-    assert_eq!(live.session.block_command(id), Some("echo rp-test"));
+    assert_eq!(
+        live.session.block_command(id).as_deref(),
+        Some("echo rp-test")
+    );
     assert_eq!(live.session.block_output(id).as_deref(), Some("rp-test"));
 }
 
@@ -174,4 +179,99 @@ fn the_shells_screen_clear_takes_the_blocks_it_blanked_and_the_next_command_is_w
     assert_eq!(live.session.block_output(id).as_deref(), Some("after"));
     let marks = marks_of(&live.session);
     assert_eq!(marks.first().map(|m| m.row), Some(0), "{marks:?}");
+}
+
+#[test]
+fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
+    if !tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("blocks-lines-{name}"), &shell);
+        // The prompt, and the shell reading pastes: a line break sent before fish turns
+        // bracketed paste on is an Enter, and the first line runs alone.
+        pump(&mut live, "the prompt", |s| {
+            s.block_list().is_some_and(|l| !l.is_empty())
+                && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
+        });
+        live.session
+            .set_composer_text("echo first\necho second".to_owned());
+        live.session.composer_submit();
+        pump(&mut live, "the block", |s| {
+            s.block_outcomes()
+                .first()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let id = live.session.block_outcomes()[0].0;
+        assert_eq!(
+            live.session.block_command(id).as_deref(),
+            Some("echo first\necho second"),
+            "{name}: both lines"
+        );
+        let listed = live.session.block_list().unwrap_or_default();
+        assert!(
+            listed
+                .iter()
+                .any(|item| matches!(item, temor_client::model::session::list::Item::Done(b) if b.id == id)),
+            "{name}: the block is in the list: {listed:?}"
+        );
+    }
+}
+
+/// Tab in the composer: bash, zsh and fish complete the line with their own completion, and
+/// nushell with the source that asks it from outside; each completes a command name and a folder
+/// (left open for what is in it).
+#[test]
+fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
+    if !tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("blocks-tab-{name}"), &shell);
+        pump(&mut live, "the prompt", |s| {
+            s.block_list().is_some_and(|l| !l.is_empty())
+                && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
+        });
+        drawn_as_list(&mut live, Default::default(), true);
+        // Nushell is asked from outside, so it answers without saying so; the others say so.
+        pump(&mut live, "something answering Tab", |s| {
+            s.composer_completes()
+        });
+        // (the line, what it becomes or starts with)
+        for (line, want) in [("ech", "echo"), ("ls /us", "ls /usr/")] {
+            live.session.set_composer_text(line.to_owned());
+            live.session.composer_complete();
+            pump(&mut live, &format!("{name}: {line} completed"), |s| {
+                s.composer_text() != line || s.composer_choices().is_some()
+            });
+            let text = live.session.composer_text().to_owned();
+            assert!(text.starts_with(want), "{name}: {line:?} became {text:?}");
+            if let Some(choices) = live.session.composer_choices() {
+                assert!(
+                    choices
+                        .words()
+                        .iter()
+                        .all(|w| w.starts_with(&want[line.rfind(' ').map_or(0, |i| i + 1)..])),
+                    "{name}: {:?}",
+                    choices.words()
+                );
+            }
+        }
+        // Nothing was left in the shell's own line: a command sent now runs as typed.
+        live.session.set_composer_text("echo after-tab".to_owned());
+        live.session.composer_submit();
+        pump(&mut live, &format!("{name}: the command after Tab"), |s| {
+            s.block_outcomes()
+                .last()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let id = live.session.block_outcomes().last().expect("a block").0;
+        assert_eq!(
+            live.session.block_output(id).as_deref(),
+            Some("after-tab"),
+            "{name}"
+        );
+    }
 }

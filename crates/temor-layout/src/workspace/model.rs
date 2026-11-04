@@ -1,0 +1,111 @@
+//! The workspace's state: the tab list, each tab's focused pane, every pane's working folder,
+//! the recently closed tabs, and the next ids to hand out.
+
+use std::collections::BTreeMap;
+
+use super::closed::ClosedState;
+use super::tabs::{TabSel, TabsIn, TabsOut, TabsState, tabs_step};
+use crate::space::{Pin, Tab};
+use crate::split::SplitTree;
+use temor_core::vocab::ids::{Counter, PaneId, TabId};
+use temor_core::vocab::text::{Cwd, TabTitle, ViewerRef};
+
+/// Everything the window shows that is not inside a pane.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Workspace {
+    /// The tab list.
+    pub tabs: TabsState,
+    /// Each pane's working folder, as far as it is known (OSC 7). A closed tab keeps its panes'
+    /// folders until they are forgotten, so a reopen can start in them.
+    pub cwds: BTreeMap<PaneId, Cwd>,
+    /// The panes that show a file instead of a program, and which file. A closed tab keeps its
+    /// viewers until it is forgotten, so a reopen can show them again.
+    pub viewers: BTreeMap<PaneId, ViewerRef>,
+    /// The recently closed tabs.
+    pub closed: ClosedState,
+    /// The id the next tab takes.
+    pub next_tab: Counter,
+    /// The id the next pane takes.
+    pub next_pane: Counter,
+}
+
+impl Workspace {
+    /// An empty workspace: no tabs, ids from 1.
+    pub fn new(closed: ClosedState) -> Workspace {
+        Workspace {
+            tabs: TabsState::default(),
+            cwds: BTreeMap::new(),
+            viewers: BTreeMap::new(),
+            closed,
+            next_tab: Counter::FROM_ONE,
+            next_pane: Counter::FROM_ONE,
+        }
+    }
+
+    /// The tab that holds `pane`, if any.
+    pub fn tab_of(&self, pane: PaneId) -> Option<TabId> {
+        self.tabs
+            .place
+            .tabs
+            .iter()
+            .find(|tab| tab.tree.contains(pane))
+            .map(|tab| tab.id)
+    }
+
+    /// The tab in front.
+    pub fn front(&self) -> Option<TabId> {
+        self.tabs.place.focused
+    }
+
+    /// The pane with keys in `tab`: the recorded one, else the tab's first pane.
+    pub fn focus_of(&self, tab: TabId) -> Option<PaneId> {
+        self.tabs.tab(tab)?.focus()
+    }
+
+    /// The tab with `id`, to change.
+    pub(crate) fn tab_mut(&mut self, id: TabId) -> Option<&mut Tab> {
+        self.tabs.place.tabs.iter_mut().find(|tab| tab.id == id)
+    }
+
+    /// Runs one step on the tab list and keeps the list it gives back; what the step said.
+    pub(crate) fn tabs_do(&mut self, input: TabsIn) -> Vec<TabsOut> {
+        let (tabs, outs) = tabs_step(std::mem::take(&mut self.tabs), input);
+        self.tabs = tabs;
+        outs
+    }
+
+    /// Brings `tab` to the front.
+    pub(crate) fn bring_forward(&mut self, tab: TabId) {
+        self.tabs_do(TabsIn::Select(TabSel::Id(tab)));
+    }
+
+    /// Puts `tab` at the end of the list and brings it to the front. The caller has minted the
+    /// ids and tells the window.
+    pub(crate) fn open_tab(&mut self, tab: Tab) {
+        let id = tab.id;
+        self.tabs.place.tabs.push(tab);
+        self.bring_forward(id);
+    }
+
+    /// A new loose tab `id` named "Shell" around `pane`, in front, with the folder the pane
+    /// starts in when it has one.
+    pub(crate) fn open_shell_tab(&mut self, id: TabId, pane: PaneId, cwd: Option<Cwd>) {
+        self.open_tab(Tab {
+            id,
+            title: TabTitle("Shell".to_owned()),
+            pin: Pin::Loose,
+            folder: None,
+            tree: SplitTree::single(pane),
+            focus: Some(pane),
+        });
+        if let Some(cwd) = cwd {
+            self.cwds.insert(pane, cwd);
+        }
+    }
+
+    /// Forgets the folder and the file recorded for `pane`.
+    pub(crate) fn forget_pane(&mut self, pane: PaneId) {
+        self.cwds.remove(&pane);
+        self.viewers.remove(&pane);
+    }
+}

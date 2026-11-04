@@ -3,15 +3,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// What a running request is told between messages.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Cancel {
-    /// Carry on.
-    Go,
-    /// Stop now.
-    Stop,
-}
-
 /// The newest keystroke. Cloning shares the count, so a worker started for one keystroke can see
 /// that a newer one has come.
 #[derive(Debug, Clone, Default)]
@@ -34,11 +25,8 @@ impl Generations {
     }
 
     /// Whether a request started at `mine` should stop.
-    pub fn check(&self, mine: u64) -> Cancel {
-        match self.newest() == mine {
-            true => Cancel::Go,
-            false => Cancel::Stop,
-        }
+    pub fn check(&self, mine: u64) -> bool {
+        self.newest() != mine
     }
 }
 
@@ -51,10 +39,10 @@ mod tests {
         let keys = Generations::new();
         let first = keys.begin();
         let shared = keys.clone();
-        assert_eq!(keys.check(first), Cancel::Go);
+        assert!(!keys.check(first));
         let second = shared.begin();
         assert_eq!((first, second), (1, 2));
-        assert_eq!(keys.check(first), Cancel::Stop);
-        assert_eq!(keys.check(second), Cancel::Go);
+        assert!(keys.check(first));
+        assert!(!keys.check(second));
     }
 }

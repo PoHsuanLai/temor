@@ -8,9 +8,9 @@
 //!    its own (the bell's mark is a timer of the window's own, asked of quire, see FOLLOWUPS).
 
 use ds_lint::{LintConfig, Profile, Rule, assert_clean, markup};
-use temor_ui::settings_window::SETTINGS_CSS;
-use temor_ui::view::probe::Probe;
-use temor_ui::view::window_style::WINDOW_CSS;
+use temor_ui_base::probe::Probe;
+use temor_views::settings_window::SETTINGS_CSS;
+use temor_views::window_style::WINDOW_CSS;
 
 use super::support::tools_present;
 use super::window::harness;

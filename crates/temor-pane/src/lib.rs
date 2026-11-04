@@ -26,19 +26,20 @@ pub mod text;
 #[cfg(feature = "ghostty")]
 mod engine;
 mod error;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "engine"))]
 mod platform;
 #[cfg(feature = "ghostty")]
 mod shell;
 
 #[cfg(feature = "ghostty")]
 pub use engine::{
-    ByteTap, ClipboardMirror, EventSink, FedSpec, Feeder, Hold, OfferId, OfferKind, Output,
-    PaintSource, PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, SeenForeground,
+    ByteTap, ClipboardMirror, EventSink, FedSpec, Feeder, OfferId, OfferKind, Output, PaintSource,
+    PaneEvent, PaneHandle, PaneLink, PaneRunner, PaneSpec, ReadPolicy, RenderHold, SeenForeground,
     Term, TransferEnd, TransferEvent, TransferSetup, start, start_fed, start_restored,
 };
 pub use error::{PaneError, SettingsError};
 #[cfg(feature = "ghostty")]
 pub use shell::{ShellPaneInput, cursor_shape, shell_pane};
-// The command line of a foreground process; the hub and temor-core name it through here.
+// The command line of a foreground process, as the engine's events carry it.
+#[cfg(feature = "engine")]
 pub use temor_pty::CommandLine;

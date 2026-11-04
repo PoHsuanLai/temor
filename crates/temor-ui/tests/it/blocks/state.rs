@@ -1,8 +1,8 @@
 //! Shell state reports: each shell says what its script is able to say (its adapter's `caps`),
 //! and the session's `ShellState` follows what the person does in it.
 
-use temor_core::block::Outcome;
-use temor_core::session::EnvEntry;
+use temor_client::model::block::Outcome;
+use temor_client::model::session::EnvEntry;
 use temor_shell::{ShellKind, adapter_for};
 
 use super::super::support::window_tools_present as tools_present;
@@ -33,10 +33,13 @@ fn shells_report_what_their_adapters_say_they_can() {
             continue;
         }
         let mut live = start(&format!("state-{name}"), &shell);
-        run_line(
-            &live,
-            "export TEMOR_CASE_VAR=kept-value MY_API_TOKEN=top-secret; alias tzz='echo zz'; cd /",
-        );
+        let line = match name {
+            "nu" => "$env.TEMOR_CASE_VAR = 'kept-value'; $env.MY_API_TOKEN = 'top-secret'; cd /",
+            _ => {
+                "export TEMOR_CASE_VAR=kept-value MY_API_TOKEN=top-secret; alias tzz='echo zz'; cd /"
+            }
+        };
+        run_line(&live, line);
         pump(&mut live, "the command", |s| {
             s.block_outcomes()
                 .first()
@@ -177,5 +180,31 @@ fn only_the_shell_temor_started_reports() {
             "{name}: the nested shell"
         );
         assert!(!state.aliases().contains_key("forged_alias"), "{name}");
+    }
+}
+
+/// A command that prints nothing has no line under its title: the next prompt's folder line is
+/// not its output.
+#[test]
+fn a_cd_prints_nothing_and_its_card_says_nothing_under_the_command() {
+    if !window_tools_present() {
+        return;
+    }
+    let _alone = super::super::support::heavy();
+    for (name, shell) in shells() {
+        let mut live = start(&format!("state-cd-{name}"), &shell);
+        run_line(&live, "cd /");
+        pump(&mut live, "the cd", |s| {
+            s.block_outcomes()
+                .first()
+                .is_some_and(|b| b.1 != Outcome::Running)
+        });
+        let (id, _) = live.session.block_outcomes()[0];
+        assert_eq!(
+            live.session.block_output(id).as_deref().map(str::trim),
+            Some(""),
+            "{name}"
+        );
+        assert_eq!(live.session.block_note(id), None, "{name}");
     }
 }

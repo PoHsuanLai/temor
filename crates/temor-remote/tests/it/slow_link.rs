@@ -5,14 +5,14 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use temor_remote::Client;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{RemotePath, WriteCheck};
 
 use crate::pipes::Line;
 use crate::support::{Conn, Rig, files_present};
 
 /// How long a typed line takes to come back on the screen.
-fn echo_after(conn: &mut Conn, id: SessionId, n: u32) -> Duration {
+fn echo_after(conn: &mut Conn, id: RemoteSessionId, n: u32) -> Duration {
     let start = Instant::now();
     conn.client
         .send_input(id, format!("echo mark{n}\n").as_bytes())
@@ -25,7 +25,7 @@ fn echo_after(conn: &mut Conn, id: SessionId, n: u32) -> Duration {
 /// Times three echoes while `work` runs on the same connection, and how long `work` took.
 fn echoes_during(
     conn: &mut Conn,
-    id: SessionId,
+    id: RemoteSessionId,
     first: u32,
     work: impl FnOnce(&Client) + Send,
 ) -> (Vec<Duration>, Duration) {

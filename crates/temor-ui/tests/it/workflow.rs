@@ -26,7 +26,7 @@ use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
 use temor_testkit::git;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive;
 use super::drive::{chord, rows, type_line, type_text};
@@ -266,10 +266,9 @@ fn wait_for(h: &mut Harness, what: &str, mut ok: impl FnMut(&mut Harness) -> boo
         h.advance(Duration::from_millis(25));
         assert!(
             start.elapsed() < WAIT,
-            "timed out waiting for {what}; cards {:?}; presence working={} waiting={}; screen: {}",
+            "timed out waiting for {what}; cards {:?}; dots {}; screen: {}",
             metas(h),
-            presence(h, "working"),
-            presence(h, "waiting"),
+            needs(h),
             screen_tail()
         );
     }
@@ -293,33 +292,41 @@ fn first_pane(h: &Harness) -> ds::prelude::Rect {
         .unwrap_or_else(|| panic!("no terminal pane in the page"))
 }
 
-/// The finished command cards in the panes in front: their meta texts ("4 ms", "exit 1 · 4 ms").
+/// The finished command cards in the panes in front, each as its state and the status it says
+/// ("done", "failed exit 1"). A card still running is left out, and so is the copy of a head
+/// that sticks to the top of a list scrolled into its card (drawn after the list).
 fn metas(h: &Harness) -> Vec<String> {
     let html = h.html();
-    html.split("class=\"temor-card-meta\"")
+    let list = html
+        .split("class=\"temor-blk-sticky\"")
+        .next()
+        .unwrap_or_default();
+    list.split("class=\"temor-bseg temor-blk-head\"")
         .skip(1)
-        .map(|part| {
-            let body = part.split_once('>').map_or("", |(_, rest)| rest);
-            let mut text = String::new();
-            let mut tag = false;
-            let body = body.split("</div>").next().unwrap_or("");
-            for c in body.chars() {
-                match c {
-                    '<' => tag = true,
-                    '>' => tag = false,
-                    c if !tag => text.push(c),
-                    _ => {}
-                }
+        .filter_map(|part| {
+            let state = part
+                .split_once("data-state=\"")
+                .and_then(|(_, rest)| rest.split_once('"'))
+                .map(|(state, _)| state)?;
+            if state == "running" {
+                return None;
             }
-            text.split_whitespace().collect::<Vec<_>>().join(" ")
+            let status = part
+                .split_once("class=\"temor-blk-meta\">")
+                .and_then(|(_, rest)| rest.split_once('<'))
+                .map(|(text, _)| text.split(" \u{b7} ").next().unwrap_or(text).trim())
+                .filter(|_| state == "failed");
+            Some(match status {
+                Some(status) => format!("{state} {status}"),
+                None => state.to_owned(),
+            })
         })
         .collect()
 }
 
-fn presence(h: &Harness, which: &str) -> usize {
-    h.html()
-        .matches(&format!("data-presence=\"{which}\""))
-        .count()
+/// How many tab rows show the dot that says the tab needs the person.
+fn needs(h: &Harness) -> usize {
+    h.html().matches("class=\"temor-tab-needs\"").count()
 }
 
 /// The label of each button in the first inline banner under `scope`.
@@ -353,17 +360,18 @@ fn drag_files(h: &mut Harness, at: Point, files: Vec<PathBuf>) {
     h.advance(Duration::from_millis(300));
 }
 
-/// Opens the Downloads popover, returns its text, and closes it again.
+/// Opens the Downloads page, returns its text, and closes it again.
 fn shelf_text(h: &mut Harness) -> String {
     let trigger = h
         .centre(".temor-dl-hold .ds-button")
         .unwrap_or_else(|| panic!("no Downloads button in the head"));
     click(h, trigger);
     h.advance(Duration::from_millis(200));
-    let text = h.text_of(".temor-dl-list").unwrap_or_default();
+    let text = h.text_of(".temor-downloads").unwrap_or_default();
     let rows = h.count(".temor-dl");
-    if let Some(again) = h.centre(".temor-dl-hold .ds-button") {
-        click(h, again);
+    if let Some(close) = h.centre(".temor-page-bar [aria-label=\"Close Page\"]") {
+        click(h, close);
+        h.advance(Duration::from_millis(200));
     }
     format!("[{rows} rows] {}", one_line(&text))
 }
@@ -455,20 +463,7 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
             m.iter().all(|t| !t.contains("exit")),
             "a card failed: {m:?}"
         );
-        let html = h.html();
-        let chips = html
-            .split("class=\"temor-fact-chips")
-            .nth(1)
-            .map(|c| c[..c.len().min(3000)].to_owned())
-            .unwrap_or_default();
-        for kind in ["folder", "branch"] {
-            assert!(
-                chips.contains(&format!("data-kind=\"{kind}\"")),
-                "no {kind} chip: {chips}"
-            );
-        }
-        assert!(chips.contains(">main<"), "the branch chip lacks main");
-        format!("2 cards {m:?}, no exit; chips folder+branch(main)")
+        format!("2 cards {m:?}, no exit")
     });
 
     steps.run("W2", || {
@@ -500,21 +495,20 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
         wait_screen(&mut h, &probe, "the agent working", |s| {
             s.contains("FAKE-AGENT-WORKING")
         });
-        let worked = presence(&h, "working");
         let start = Instant::now();
-        while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+        while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
             h.advance(Duration::from_millis(50));
         }
-        if presence(&h, "waiting") == 0 {
+        if needs(&h) == 0 {
             // Control: the same script under a name that is not an agent's.
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             h.advance(Duration::from_millis(300));
             type_line(&mut h, "cp \"$(command -v claude)\" ./fakeagent && ./fakeagent");
             let start = Instant::now();
-            while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+            while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
                 h.advance(Duration::from_millis(50));
             }
-            let renamed = (presence(&h, "waiting"), presence(&h, "working"));
+            let renamed = needs(&h);
             // Second control: the other pane of the same split, the shell line agents_window uses.
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             let left = first_pane(&h);
@@ -524,18 +518,16 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
                 "printf '\\033]7501;state=blocked:kind=permission:app=claude\\007'; read answer",
             );
             let start = Instant::now();
-            while presence(&h, "waiting") == 0 && start.elapsed() < Duration::from_secs(10) {
+            while needs(&h) == 0 && start.elapsed() < Duration::from_secs(10) {
                 h.advance(Duration::from_millis(50));
             }
-            let first = presence(&h, "waiting");
+            let first = needs(&h);
             h.send(Input::chord(&[ShortcutKey::Ctrl], ShortcutKey::Char('c')));
             h.advance(Duration::from_millis(300));
             panic!(
-                "no orb for the `claude` script's OSC 7501 working/blocked in the split (working \
-                 orbs {worked}; a split tab's row draws no orb, see agents_window's \
-                 a_waiting_program_in_a_split_tab_still_shows_its_orb); same script named fakeagent: waiting={} working={}; the \
-                 agents_window shell line in the left pane: waiting={first}",
-                renamed.0, renamed.1
+                "no dot for the `claude` script's OSC 7501 blocked in the split (see agents_window's \
+                 a_waiting_program_in_a_split_tab_still_shows_its_dot); same script named \
+                 fakeagent: {renamed}; the agents_window shell line in the left pane: {first}"
             );
         }
         // The keyboard to the other pane, then the chord brings it back to the agent.
@@ -552,7 +544,7 @@ fn a_working_session_across_a_local_project_a_real_host_an_agent_and_the_shelf()
         wait_screen(&mut h, &probe, "the agent pane to have the keys", |s| {
             s.contains("FAKE-AGENT-WAITING")
         });
-        format!("working orbs seen {worked}, then waiting=1; ⌘⇧U moved the keys to the agent pane")
+        "the waiting dot; ⌘⇧U moved the keys to the agent pane".to_owned()
     });
 
     steps.run("W3", || {

@@ -28,6 +28,8 @@ pub struct Pane {
     pub size: PixelSize,
     pub scale: Scale,
     pub palette: Palette,
+    /// The window's ground under the pane, where the terminal's own background is not drawn.
+    pub ground: Option<temor_vt::Rgb>,
 }
 
 pub const PADDING: u32 = 4;
@@ -43,7 +45,7 @@ pub struct Shot {
 impl Pane {
     pub fn new(cols: u16, rows: u16, scale: f32, font_px: f32) -> Self {
         let scale = Scale::new(scale);
-        let mut renderer = CpuRenderer::new(fonts(font_px));
+        let renderer = CpuRenderer::new(fonts(font_px));
         let m = renderer.cell_metrics(scale);
         let pad = Padding::uniform(Px(PADDING)).left.0 * 2;
         let size = PixelSize::new(
@@ -66,6 +68,7 @@ impl Pane {
             size,
             scale,
             palette,
+            ground: None,
         }
     }
 
@@ -88,13 +91,10 @@ impl Pane {
             focus,
             blink: temor_render::BlinkPhase::On,
             selection: None,
-            bands: &[],
             lower: 0,
+            ground: self.ground,
         };
-        let out = self
-            .renderer
-            .render(&mut self.frame, &view)
-            .expect("render");
+        let out = self.renderer.render(&self.frame, &view).expect("render");
         Shot {
             rgba: out.pixels.to_vec(),
             size: out.size,

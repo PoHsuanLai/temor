@@ -21,9 +21,10 @@
 //! root `Cargo.toml`. `scripts/fork-patches.sh print` in quire prints it.
 //!
 //! Fonts come from fontique ([`FontSet`]): the system `monospace` family by default, or a named
-//! one, at a logical size. swash shapes and rasterises into glyph atlases; COLRv1 emoji are
-//! painted through vello_cpu (skrifa's colour painter) into the colour atlas; box drawing, block
-//! elements and Powerline arrows are drawn procedurally. [`CellMetrics`] and [`GridFit`] size the
+//! one, at a logical size. swash shapes and rasterises into a glyph cache that names each glyph by
+//! what it is drawn from; COLRv1 emoji are painted through vello_cpu (skrifa's colour painter);
+//! box drawing, block elements and Powerline arrows are drawn procedurally. The CPU path draws
+//! glyphs from the cache, the GPU path from atlases a frame puts its glyphs in. [`CellMetrics`] and [`GridFit`] size the
 //! grid in whole device pixels and map pixels to cells. [`RowLayout`] shows the drawn grid in
 //! slices with room between rows (a picture under a command's output) without redrawing it.
 //!
@@ -48,7 +49,6 @@
 //! assert_eq!(fit.grid.rows.0, 24);
 //! ```
 
-mod bands;
 mod error;
 mod font;
 mod frame;
@@ -65,7 +65,6 @@ mod gpu;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-pub use bands::{Alpha, Cut, RowBand, RowSpan, RowWeight, STRIPE_LOGICAL, Tint};
 pub use cpu::{CpuFrame, CpuRenderer};
 pub use error::RenderError;
 pub use font::{
@@ -77,11 +76,11 @@ pub use frame::{CapturedFrame, FrameCapture};
 #[cfg(feature = "gpu")]
 pub use gpu::{GpuFrame, GpuRenderer};
 pub use metrics::{
-    CellHit, CellMetrics, CellPos, CellSide, Fold, FontSize, Gap, GridFit, GridHit, HitRegion,
-    Insert, LayoutParams, LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice,
-    fit_grid,
+    CellHit, CellMetrics, CellPos, CellSide, Fold, FontSize, GridFit, HitRegion, LayoutParams,
+    LineHeight, Padding, Pin, PixelSize, RowLayout, Scale, Screen, Slice, fit_grid,
 };
 pub use palette::Palette;
+pub use platform::SYMBOLS as SYMBOL_FAMILIES;
 pub use renderer::{
     BlinkPhase, DamageRect, PaneFocus, PaneView, RenderStats, Renderer, SelectionOverlay,
     SelectionShape,

@@ -70,35 +70,37 @@ fn corrupt_snapshot_is_rejected() {
     assert_eq!(got.err(), Some(VtError::SnapshotRejected));
 }
 
+fn restored(snap: &Snapshot) -> Terminal {
+    Terminal::restore(
+        &Snapshot::from_bytes(snap.as_bytes().to_vec()),
+        TerminalConfig::new(GridSize::new(1, 1)),
+        Box::new(mpsc::channel::<VtEvent>().0),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
+    )
+    .expect("restore")
+}
+
 #[test]
-fn the_prompt_being_typed_at_is_left_out_of_a_snapshot_but_a_running_commands_screen_is_kept() {
+fn a_restored_screens_open_prompt_comes_off_but_a_running_commands_screen_stays() {
     let (mut t, _rx) = term(40, 10);
     // A finished command, then an idle prompt: a blank line, the folder line, the typing line.
     t.write(b"\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07$ ls\r\n\x1b]133;C\x07out\r\n");
     t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07\r\n~/work\r\n\x1b]133;B\x07");
-    let snap = t.snapshot().expect("encode");
     let text = |t: &Terminal| export(t, TextFormat::Plain);
-    let restored = |snap: &Snapshot| {
-        Terminal::restore(
-            &Snapshot::from_bytes(snap.as_bytes().to_vec()),
-            TerminalConfig::new(GridSize::new(1, 1)),
-            Box::new(mpsc::channel::<VtEvent>().0),
-            Box::new(mpsc::channel::<Vec<u8>>().0),
-        )
-        .expect("restore")
-    };
-    // The plain snapshot keeps both prompts.
-    assert_eq!(text(&restored(&snap)).matches("~/work").count(), 2);
-    t.take_prompt_off();
     let snap = t.snapshot().expect("encode");
-    let kept = text(&restored(&snap));
+    // The snapshot keeps both prompts; the restore takes the open one off, its blank line too.
+    let mut back = restored(&snap);
+    assert_eq!(text(&back).matches("~/work").count(), 2);
+    back.take_open_prompt_off();
+    let kept = text(&back);
     assert_eq!(kept.matches("~/work").count(), 1, "{kept:?}");
-    assert!(kept.contains("out"), "{kept:?}");
+    assert!(kept.trim_end().ends_with("out"), "{kept:?}");
     // With a command running there is no prompt to take off.
     t.write(b"$ sleep\r\n\x1b]133;C\x07running\r\n");
-    let before = text(&t);
-    t.take_prompt_off();
-    assert_eq!(text(&t), before);
+    let mut back = restored(&t.snapshot().expect("encode"));
+    let before = text(&back);
+    back.take_open_prompt_off();
+    assert_eq!(text(&back), before);
 }
 
 #[test]
@@ -107,8 +109,9 @@ fn a_one_line_prompt_comes_off_and_the_output_above_it_stays() {
     // A one-line prompt (bash's default): the mark is on the cursor's own row.
     t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07ls\r\n\x1b]133;C\x07first\r\nlast\r\n");
     t.write(b"\x1b]133;D;0\x07\x1b]133;A\x07$ \x1b]133;B\x07");
-    t.take_prompt_off();
-    let kept = export(&t, TextFormat::Plain);
+    let mut back = restored(&t.snapshot().expect("encode"));
+    back.take_open_prompt_off();
+    let kept = export(&back, TextFormat::Plain);
     assert!(
         kept.contains("last"),
         "the output's last line stays: {kept:?}"
@@ -118,4 +121,45 @@ fn a_one_line_prompt_comes_off_and_the_output_above_it_stays() {
         1,
         "only the idle prompt comes off: {kept:?}"
     );
+}
+
+/// A restored screen keeps which text was prompt, typed command and output, so its blocks can be
+/// found again although its marks never arrive as events.
+#[test]
+fn a_restored_screen_says_where_prompts_commands_and_output_start() {
+    let (mut t, _rx) = term(40, 6);
+    for n in 0..2 {
+        t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07");
+        t.write(format!("echo {n}\r\n\x1b]133;C\x07{n}\r\n\x1b]133;D;0\x07").as_bytes());
+    }
+    t.write(b"\x1b]133;A\x07$ \x1b]133;B\x07");
+    let stored = Snapshot::from_bytes(t.snapshot().expect("encode").as_bytes().to_vec());
+    let back = Terminal::restore(
+        &stored,
+        TerminalConfig::new(GridSize::new(1, 1)),
+        Box::new(mpsc::channel::<VtEvent>().0),
+        Box::new(mpsc::channel::<Vec<u8>>().0),
+    )
+    .expect("restore");
+    let starts: Vec<_> = back
+        .semantic_starts()
+        .expect("starts")
+        .into_iter()
+        .map(|(at, kind)| (at.row, at.col.0, kind))
+        .collect();
+    use temor_vt::SemanticMark::{Input, Output, Prompt};
+    assert_eq!(
+        starts,
+        [
+            (0, 0, Prompt),
+            (0, 2, Input),
+            (1, 0, Output),
+            (2, 0, Prompt),
+            (2, 2, Input),
+            (3, 0, Output),
+            (4, 0, Prompt),
+        ],
+        "{starts:?}"
+    );
+    assert_eq!(back.semantic_starts(), t.semantic_starts());
 }

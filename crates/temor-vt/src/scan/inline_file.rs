@@ -3,7 +3,7 @@
 //! itself and drops all four as unimplemented, so all four are taken out here.
 
 use super::controls::{BEL, ESC, ends_osc};
-use crate::{ByteCount, Truncation};
+use crate::ByteCount;
 
 /// The introducers the scanner looks for. None is a prefix of another.
 const INTRODUCERS: &[&[u8]] = &[
@@ -21,10 +21,7 @@ pub(crate) enum Scanned<'a> {
     /// Bytes for libghostty.
     Bytes(&'a [u8]),
     /// One whole inline-file sequence: `1337;File=...` without introducer or terminator.
-    File {
-        payload: Vec<u8>,
-        truncation: Truncation,
-    },
+    File { payload: Vec<u8>, truncated: bool },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +46,7 @@ pub(crate) struct InlineFileScanner {
     /// Payload bytes kept past the introducer's own length.
     head: usize,
     max: ByteCount,
-    truncation: Truncation,
+    truncated: bool,
 }
 
 impl InlineFileScanner {
@@ -61,7 +58,7 @@ impl InlineFileScanner {
             payload: Vec::new(),
             head: 0,
             max,
-            truncation: Truncation::Complete,
+            truncated: false,
         }
     }
 
@@ -171,13 +168,13 @@ impl InlineFileScanner {
         self.payload.extend_from_slice(&self.held[OSC_HEAD..]);
         self.head = self.payload.len();
         self.held.clear();
-        self.truncation = Truncation::Complete;
+        self.truncated = false;
     }
 
     fn push(&mut self, bytes: &[u8]) {
         let room = (self.max.0 + self.head).saturating_sub(self.payload.len());
         if bytes.len() > room {
-            self.truncation = Truncation::Truncated;
+            self.truncated = true;
         }
         self.payload
             .extend_from_slice(&bytes[..bytes.len().min(room)]);
@@ -186,7 +183,7 @@ impl InlineFileScanner {
     fn finish(&mut self) -> Scanned<'static> {
         Scanned::File {
             payload: std::mem::take(&mut self.payload),
-            truncation: self.truncation,
+            truncated: self.truncated,
         }
     }
 }

@@ -5,11 +5,10 @@ use std::ffi::c_void;
 
 use temor_vt_sys as sys;
 
-use super::callbacks::{TitleChange, guarded};
+use super::callbacks::guarded;
 use super::convert::{bytes, string};
 use crate::{
-    ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardWrite, ColorScheme, RenderHold,
-    Truncation, UnknownKind, VtEvent,
+    ClipboardItem, ClipboardLocation, ClipboardWrite, ColorScheme, RenderHold, UnknownKind, VtEvent,
 };
 
 pub(super) unsafe extern "C" fn on_write_pty(
@@ -36,7 +35,7 @@ pub(super) unsafe extern "C" fn on_bell(_t: sys::Terminal, ud: *mut c_void) {
 
 pub(super) unsafe extern "C" fn on_title(_t: sys::Terminal, ud: *mut c_void) {
     // SAFETY: `ud` is ours. The title is read after `vt_write` returns, as libghostty requires.
-    unsafe { guarded(ud, (), |cb| cb.title.set(TitleChange::Changed)) }
+    unsafe { guarded(ud, (), |cb| cb.title.set(true)) }
 }
 
 pub(super) unsafe extern "C" fn on_pwd(t: sys::Terminal, ud: *mut c_void) {
@@ -59,7 +58,7 @@ pub(super) unsafe extern "C" fn on_reset(_t: sys::Terminal, ud: *mut c_void) {
     // seen earlier in this write is stale.
     unsafe {
         guarded(ud, (), |cb| {
-            cb.title.set(TitleChange::Unchanged);
+            cb.title.set(false);
             cb.send(VtEvent::Reset);
         })
     }
@@ -95,18 +94,13 @@ pub(super) unsafe extern "C" fn on_clipboard(
                 sys::ClipboardLocation::PRIMARY => ClipboardLocation::Primary,
                 _ => ClipboardLocation::Standard,
             };
-            let grant = if w.granted {
-                ClipboardGrant::Granted
-            } else {
-                ClipboardGrant::Ask
-            };
             let program = string(w.name);
             cb.send(VtEvent::Clipboard {
                 write: ClipboardWrite {
                     location,
                     items,
                     program,
-                    grant,
+                    granted: w.granted,
                 },
             });
             // Not replying denies the write; the host decides later, so the program is told it
@@ -202,15 +196,10 @@ pub(super) unsafe extern "C" fn on_unknown(
                 }
                 _ => return,
             };
-            let truncation = if truncated {
-                Truncation::Truncated
-            } else {
-                Truncation::Complete
-            };
             cb.send(VtEvent::Unknown {
                 kind,
                 payload: bytes(&content).to_vec(),
-                truncation,
+                truncated,
             });
         })
     }

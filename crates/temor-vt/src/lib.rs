@@ -1,7 +1,7 @@
 //! temor's terminal core. `Terminal` wraps libghostty-vt (feature `ghostty`, on by default):
 //! bytes in, a typed [`VtEvent`] stream out through a caller-supplied [`EventSink`], and a
-//! two-phase [`RenderView`] for the renderer. [`Vt`] is the seam other crates test through, with
-//! [`FakeVt`] (feature `testing`) standing in when Zig is not available.
+//! two-phase [`RenderView`] for the renderer. Without `ghostty` the crate is the terminal's
+//! vocabulary alone (sizes, cells, keys, events), which builds without Zig.
 //!
 //! The only `unsafe` in this crate is in the `ffi` module.
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use std::sync::mpsc::channel;
-//! use temor_vt::{GridSize, Terminal, TerminalConfig, Vt, VtError};
+//! use temor_vt::{GridSize, Terminal, TerminalConfig, VtError};
 //!
 //! # fn main() -> Result<(), VtError> {
 //! let (events, _event_rx) = channel();
@@ -32,12 +32,8 @@ mod error;
 mod event;
 mod input;
 mod model;
-#[cfg(any(feature = "ghostty", feature = "testing"))]
+#[cfg(feature = "ghostty")]
 mod scan;
-mod vt;
-
-#[cfg(feature = "testing")]
-mod fake;
 
 #[cfg(feature = "ghostty")]
 #[allow(unsafe_code)]
@@ -45,28 +41,23 @@ mod ffi;
 
 pub use error::VtError;
 pub use event::{
-    ClipboardAnswer, ClipboardGrant, ClipboardItem, ClipboardLocation, ClipboardRead,
-    ClipboardSource, ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent,
-    ProgramState, ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind,
-    RenderHold, ReplySink, Truncation, UnknownKind, VtEvent,
+    ClipboardAnswer, ClipboardItem, ClipboardLocation, ClipboardRead, ClipboardSource,
+    ClipboardWrite, EventSink, ExitCode, ExitStatus, Notification, Percent, ProgramState,
+    ProgramStatus, ProgramWait, Progress, ProgressState, PromptEvent, PromptKind, RenderHold,
+    ReplySink, UnknownKind, VtEvent,
 };
 pub use input::{
-    Ime, KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton,
-    MouseFormat, MouseInput, MouseSurface, OptionAsAlt, SurfacePoint,
+    KeyAction, KeyCode, KeyInput, KittyKeyFlags, Modifiers, MouseAction, MouseButton, MouseFormat,
+    MouseInput, MouseSurface, OptionAsAlt, SurfacePoint,
 };
 pub use model::{
     AnchorId, ByteCount, CellPx, CellStyle, CellView, CellWidth, Col, ColorRef, ColorScheme, Cols,
-    CursorBlink, CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, Generation,
-    GridPoint, GridSize, Hyperlink, ImageId, KittyLayer, KittyPixelFormat, LineCount, ModeState,
-    PlacementId, PlacementIdFrom, PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row,
-    RowCount, RowDelta, RowDirty, RowFilter, RowId, Rows, Scrollbar, Selected, SelectionShape,
-    SemanticMark, StyleFlags, TerminalConfig, TerminalMode, TextFormat, TextSelection, TextSpan,
-    Underline, ViewportScroll, Visibility, Wrap, ZIndex,
+    CursorShape, CursorView, FrameColors, FrameDirty, Generation, GridPoint, GridSize, ImageId,
+    KittyLayer, KittyPixelFormat, LineCount, ModeState, PlacementId, PlacementIdFrom,
+    PlacementKind, PlacementRender, PointSpace, Px, Rgb, Row, RowCount, RowDelta, RowFilter, RowId,
+    Rows, Scrollbar, SelectionShape, SemanticMark, StyleFlags, StyledCell, TerminalConfig,
+    TerminalMode, TextFormat, TextSelection, TextSpan, Underline, ViewportScroll, Wrap, ZIndex,
 };
-pub use vt::Vt;
-
-#[cfg(feature = "testing")]
-pub use fake::FakeVt;
 
 #[cfg(feature = "ghostty")]
 pub use ffi::{

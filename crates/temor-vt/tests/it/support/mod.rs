@@ -3,8 +3,8 @@
 use std::sync::mpsc;
 
 use temor_vt::{
-    CellStyle, CellWidth, GridSize, Hyperlink, RenderView, Rgb, Row, RowFilter, SemanticMark,
-    Terminal, TerminalConfig, VtEvent,
+    CellStyle, CellWidth, GridSize, RenderView, Rgb, Row, RowFilter, SemanticMark, Terminal,
+    TerminalConfig, VtEvent,
 };
 
 /// A `cols` x `rows` terminal and the receiving end of its events (replies are discarded).
@@ -44,7 +44,7 @@ pub struct Cell {
     pub fg: Option<Rgb>,
     pub bg: Option<Rgb>,
     pub style: CellStyle,
-    pub hyperlink: Hyperlink,
+    pub linked: bool,
     pub semantic: SemanticMark,
 }
 
@@ -63,7 +63,7 @@ pub fn row_cells(term: &mut Terminal, row: u16) -> Vec<Cell> {
                         fg: c.fg,
                         bg: c.bg,
                         style: c.style,
-                        hyperlink: c.hyperlink,
+                        linked: c.linked,
                         semantic: c.semantic,
                     })
                 })

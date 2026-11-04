@@ -7,4 +7,4 @@ mod links;
 mod model;
 mod step;
 
-pub use model::{Effect, EndWhy, Input, LinkPolicy, ReceiveSession, SavedFile, WriteOp};
+pub use model::{Effect, Input, LinkPolicy, ReceiveSession, SavedFile, TransferEnd, WriteOp};

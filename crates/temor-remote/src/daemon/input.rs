@@ -3,61 +3,43 @@
 //! are capped, so a program that never reads cannot grow the queue without bound.
 
 use std::collections::VecDeque;
-use std::sync::{Mutex, MutexGuard};
 
-use crate::sync::lock;
 use temor_pty::{PtyError, PtyIo, WriteOutcome};
 
 /// The most reply bytes that may wait (1 MiB).
 const REPLY_CAP: usize = 1 << 20;
 
-/// Whether bytes are still waiting for the terminal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Backlog {
-    Empty,
-    Waiting,
-}
-
-/// A session's input queue and the terminal's writing end. `Send` and `Sync`.
+/// A session's input queue and the terminal's writing end, owned by its pump.
 #[derive(Debug)]
 pub(super) struct Input {
     io: PtyIo,
-    queue: Mutex<VecDeque<u8>>,
+    queue: VecDeque<u8>,
 }
 
 impl Input {
     pub(super) fn new(io: PtyIo) -> Self {
         Self {
             io,
-            queue: Mutex::new(VecDeque::new()),
+            queue: VecDeque::new(),
         }
     }
 
     /// Queues the person's input and writes what the terminal takes.
-    pub(super) fn send(&self, bytes: &[u8]) {
-        let mut queue = self.lock();
-        queue.extend(bytes);
-        self.drain(&mut queue);
+    pub(super) fn send(&mut self, bytes: &[u8]) {
+        self.queue.extend(bytes);
+        self.flush();
     }
 
     /// Queues a reply from the screen state; dropped when too many are waiting.
-    pub(super) fn reply(&self, bytes: &[u8]) {
-        let mut queue = self.lock();
-        if queue.len() + bytes.len() <= REPLY_CAP {
-            queue.extend(bytes);
-            self.drain(&mut queue);
+    pub(super) fn reply(&mut self, bytes: &[u8]) {
+        if self.queue.len() + bytes.len() <= REPLY_CAP {
+            self.send(bytes);
         }
     }
 
-    /// Writes what the terminal takes now.
-    pub(super) fn flush(&self) -> Backlog {
-        let mut queue = self.lock();
-        self.drain(&mut queue);
-        backlog(&queue)
-    }
-
-    pub(super) fn backlog(&self) -> Backlog {
-        backlog(&self.lock())
+    /// Whether bytes are waiting for the terminal to take them.
+    pub(super) fn backlog(&self) -> bool {
+        !self.queue.is_empty()
     }
 
     /// Tells the program its new size.
@@ -65,31 +47,20 @@ impl Input {
         self.io.resize(size)
     }
 
-    fn drain(&self, queue: &mut VecDeque<u8>) {
-        while !queue.is_empty() {
-            match self.io.write(queue.make_contiguous()) {
+    /// Writes what the terminal takes now.
+    pub(super) fn flush(&mut self) {
+        while !self.queue.is_empty() {
+            match self.io.write(self.queue.make_contiguous()) {
                 Ok(WriteOutcome::Wrote(written)) => {
-                    queue.drain(..written);
+                    self.queue.drain(..written);
                 }
                 Ok(WriteOutcome::WouldBlock) => return,
                 // The program is gone; its pump notices on the read side.
                 Ok(WriteOutcome::Closed) | Err(_) => {
-                    queue.clear();
+                    self.queue.clear();
                     return;
                 }
             }
         }
-    }
-
-    fn lock(&self) -> MutexGuard<'_, VecDeque<u8>> {
-        lock(&self.queue)
-    }
-}
-
-fn backlog(queue: &VecDeque<u8>) -> Backlog {
-    if queue.is_empty() {
-        Backlog::Empty
-    } else {
-        Backlog::Waiting
     }
 }

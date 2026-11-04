@@ -12,14 +12,14 @@ use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Harness, HarnessConfig, Viewport, WindowHosting};
 use temor_desktop::RunEnds;
+use temor_hub::Run;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::app::desktop::Desktop;
-use temor_ui::edge::Ambient;
-use temor_ui::hub::Run;
-use temor_ui::view::App;
-use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, TakeOnce};
+use temor_ui_base::desktop::Desktop;
+use temor_ui_base::edge::Ambient;
+use temor_ui_base::probe::Probe;
+use temor_views::App;
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, wait_until};
 use super::support::scratch;
@@ -160,7 +160,7 @@ fn harness_at(
         },
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
         // Our desktop: ⌘ is Super, or the Ctrl+Shift form the harness chords send.
-        keymap: temor_ui::edge::keymap_for(
+        keymap: temor_ui_base::edge::keymap_for(
             chordkit::Platform::Linux {
                 desktop: chordkit::Desktop::Ours,
             },
@@ -411,9 +411,11 @@ fn a_saved_session_is_restored_on_launch() {
     if !super::support::window_tools_present() {
         return;
     }
-    use temor_core::split::Direction;
+    use temor_client::model::split::Direction;
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     // The window's own scratch folder is emptied when it opens, so the session lives beside it.
     let state = scratch("window-restore-state").join("state");
     let here = Cwd(state.parent().expect("a parent").display().to_string());
@@ -431,11 +433,62 @@ fn a_saved_session_is_restored_on_launch() {
         Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
         |ws, step| workspace_step(ws, step).0,
     );
-    temor_ui::edge::save_session(&state, &ws).expect("saved");
+    temor_client::keep::older::save(&state, &ws).expect("saved");
     let probe = Probe::new();
     let mut h = harness_in("window-restore", &probe, Some(state));
     wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
     assert_eq!(rows(&h), 2, "{}", h.html());
+}
+
+/// The rows are kept in the store: a session file an older temor left is read in once, and what
+/// the window keeps after that is what comes back, not the file.
+#[test]
+fn the_rows_are_kept_in_the_store_after_the_old_file_is_read_in_once() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
+    use temor_core::vocab::text::Cwd;
+    let state = scratch("window-layout-state").join("state");
+    let here = Cwd(state.parent().expect("a parent").display().to_string());
+    let ws = [
+        WorkspaceIn::NewTab {
+            cwd: Some(here.clone()),
+        },
+        WorkspaceIn::NewTab { cwd: Some(here) },
+    ]
+    .into_iter()
+    .fold(
+        Workspace::new(ClosedState::new(KeepClosed::DEFAULT)),
+        |ws, step| workspace_step(ws, step).0,
+    );
+    temor_client::keep::older::save(&state, &ws).expect("saved");
+    let probe = Probe::new();
+    let mut h = harness_in("window-layout", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    assert_eq!(rows(&h), 2, "the old file's tabs: {}", h.html());
+    focus_pane(&mut h);
+    chord(&mut h, 'w');
+    let start = Instant::now();
+    while rows(&h) != 1 {
+        h.advance(Duration::from_millis(25));
+        assert!(start.elapsed() < Duration::from_secs(10), "{}", h.html());
+    }
+    drop(h);
+    assert!(
+        state.join("session.json").is_file(),
+        "the old file is left where it was"
+    );
+
+    let probe = Probe::new();
+    let mut h = harness_in("window-layout-again", &probe, Some(state));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    for _ in 0..20 {
+        h.advance(Duration::from_millis(25));
+    }
+    assert_eq!(rows(&h), 1, "what was kept, not the file: {}", h.html());
 }
 
 #[test]
@@ -477,4 +530,55 @@ fn a_shell_that_ends_before_its_first_prompt_keeps_its_tab_and_the_banner() {
     }
     assert_eq!(rows(&h), 1, "the tab stays");
     assert!(h.html().contains("The shell has ended."));
+}
+
+/// A screen kept at quit comes back with its commands as cards, a failed one still saying how it
+/// ended: the marks are found again from the screen and the kept commands.
+#[test]
+fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
+    if !super::support::tools_present() {
+        return;
+    }
+    let state = scratch("window-restore-cards-state").join("state");
+    let probe = Probe::new();
+    let mut h = harness_in("window-restore-cards", &probe, Some(state.clone()));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    focus_pane(&mut h);
+    type_line(&mut h, "echo kept-one");
+    wait_until(&mut h, &probe, "the output", |s| {
+        s.lines().any(|l| l.trim_end() == "kept-one")
+    });
+    type_line(&mut h, "echo kept-two; (exit 4)");
+    let start = Instant::now();
+    while !h.html().contains(">exit 4") {
+        h.advance(Duration::from_millis(25));
+        assert!(start.elapsed() < Duration::from_secs(10), "{}", h.html());
+    }
+    let before = h
+        .html()
+        .matches("class=\"temor-bseg temor-blk-head\"")
+        .count();
+    drop(h);
+
+    let probe = Probe::new();
+    let mut h = harness_in("window-restore-cards-again", &probe, Some(state));
+    let start = Instant::now();
+    loop {
+        let html = h.html();
+        let cards = html.matches("class=\"temor-bseg temor-blk-head\"").count();
+        if cards >= before && html.contains(">exit 4") {
+            break;
+        }
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "{cards} cards after the restart, {before} before:\n{}\n{}",
+            probe.screen(),
+            html.split("class=\"temor-bseg temor-blk-head")
+                .skip(1)
+                .map(|c| c.chars().take(400).collect::<String>())
+                .collect::<Vec<_>>()
+                .join("\n---\n")
+        );
+    }
 }

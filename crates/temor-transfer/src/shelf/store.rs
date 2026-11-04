@@ -51,7 +51,7 @@ impl ShelfStore {
 
     /// Renames a corrupt index to a name no existing file holds.
     fn set_aside(&self, path: &Path, clock: &impl Clock) -> Result<(), TransferError> {
-        let stamp = clock.now().get();
+        let stamp = clock.now().0;
         let mut n = 0;
         loop {
             let name = match n {
@@ -109,6 +109,12 @@ impl ShelfStore {
     /// `Consented` can be passed here, so an offer nobody allowed is never written.
     pub fn place_consented(&self, offer: &Consented) -> Result<PathBuf, TransferError> {
         self.claim(offer.name(), |dest| dest.write_all(offer.data()))
+    }
+
+    /// Writes `text` temor made itself (a block's output) into the folder under `name`, or the
+    /// next free name, and returns the final path.
+    pub fn place_text(&self, text: &str, name: &FileName) -> Result<PathBuf, TransferError> {
+        self.claim(name, |dest| dest.write_all(text.as_bytes()))
     }
 
     /// Creates the first free name for `name` and fills it with `write`, syncing the file. A

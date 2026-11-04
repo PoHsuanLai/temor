@@ -110,6 +110,68 @@ _temor_report() {
     _temor_unsent=
 }
 
+# Tab in temor's composer (temor-shell's complete module): temor types the composer's line into
+# readline's and presses U+E000, a character no keyboard types, bound to this. It answers with what
+# the line's last word can become (OSC 7504), from the command's own completion when it has one, and
+# empties readline's line again, so nothing of it runs. `bind -x` with READLINE_LINE needs bash 4.
+_temor_complete() {
+    local line=$READLINE_LINE cur= cmd= prev= func= spec= dirs= hit n=0
+    local -a words=() hits=()
+    read -ra words <<<"$line"
+    [[ -z $line || $line == *[[:space:]] ]] && words[${#words[@]}]=
+    local cword=$((${#words[@]} - 1))
+    cur=${words[cword]}
+    if ((cword == 0)); then
+        mapfile -t hits < <(compgen -A alias -A builtin -A command -A function -A keyword -- "$cur" 2>/dev/null | LC_ALL=C sort -u)
+    else
+        cmd=${words[0]}
+        prev=${words[cword - 1]}
+        spec=$(complete -p -- "$cmd" 2>/dev/null)
+        if [[ -z $spec ]] && declare -F _completion_loader >/dev/null; then
+            _completion_loader "$cmd" >/dev/null 2>&1
+            spec=$(complete -p -- "$cmd" 2>/dev/null)
+        fi
+        if [[ $spec == *' -F '* ]]; then
+            func=${spec#* -F }
+            func=${func%% *}
+            local COMP_LINE=$line COMP_POINT=${#line} COMP_CWORD=$cword COMP_TYPE=9 COMP_KEY=9
+            local -a COMP_WORDS=("${words[@]}")
+            COMPREPLY=()
+            # A function that completes files says so with `compopt -o filenames` (bash-completion's
+            # _filedir), which fails outside a real completion: this one hears it instead.
+            compopt() {
+                local a o=
+                for a; do
+                    [[ $o == -o && ($a == filenames || $a == dirnames) ]] && dirs=1
+                    o=$a
+                done
+                return 0
+            }
+            "$func" "$cmd" "$cur" "$prev" >/dev/null 2>&1
+            unset -f compopt
+            hits=("${COMPREPLY[@]}")
+        elif [[ -n $spec ]]; then
+            spec=${spec#complete }
+            mapfile -t hits < <(eval "compgen ${spec% *} -- \"\$cur\"" 2>/dev/null)
+        fi
+        if ((${#hits[@]} == 0)) && [[ -z $spec || $spec == *'-o default'* || $spec == *'-o bashdefault'* ]]; then
+            mapfile -t hits < <(compgen -f -- "$cur" 2>/dev/null)
+            dirs=1
+        fi
+        [[ $spec == *'-o filenames'* || $spec == *'-o dirnames'* ]] && dirs=1
+    fi
+    local out="v1;at=$((${#line} - ${#cur}))"
+    for hit in "${hits[@]}"; do
+        [[ -n $dirs && $hit != */ && -d $hit ]] && hit+=/
+        _temor_encode "$hit"
+        out+=";c=$REPLY"
+        ((++n >= 500 || ${#out} > 60000)) && break
+    done
+    READLINE_LINE=
+    READLINE_POINT=0
+    printf '\e]7504;%s\e\\' "$out"
+}
+
 # Sets _temor_branch to "  <name>" (magenta) when $PWD is inside a git checkout, else empty.
 # Reads .git/HEAD directly; no git process. A .git file (a worktree) names the real directory.
 _temor_find_branch() {
@@ -172,6 +234,12 @@ _temor_prompt() {
         unset TEMOR_REPLAY
     fi
     _temor_report
+    if ((BASH_VERSINFO[0] >= 4)); then
+        # Bound again at every prompt: the person's own bindings may have replaced it.
+        bind -x '"\356\200\200": _temor_complete' 2>/dev/null
+        bind -m vi-insert -x '"\356\200\200": _temor_complete' 2>/dev/null
+        printf '\e]7504;v1;ready\e\\'
+    fi
     printf '\e]133;A\e\\'
     if _temor_prompt_is_ours; then
         _temor_blank=${_temor_seen:+$'\n'}

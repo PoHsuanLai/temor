@@ -6,9 +6,9 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum CoreError {
-    /// An environment key was empty or held `=` or NUL; the profile entry is dropped.
-    #[error("not an environment variable name: {0:?}")]
-    BadEnvKey(String),
+    /// A schema value refused its text (an environment key with `=`, a URL that is not one).
+    #[error(transparent)]
+    Schema(#[from] temor_schema::error::SchemaError),
     /// A stored split tree did not describe one tree over distinct panes; the tab opens with a
     /// fresh single pane.
     #[error("the stored split layout is damaged: {0}")]
@@ -54,39 +54,4 @@ pub enum CoreError {
     /// The session could not be written as text (a value the format cannot hold).
     #[error("the session could not be written: {0}")]
     SessionEncode(String),
-    /// git could not be started (the binary path is wrong or not executable).
-    #[error("git could not be run: {0}")]
-    GitNotRun(String),
-    /// git ran and refused. `what` is the command's first words; `stderr` its message, cut short.
-    #[error("git {what} failed: {stderr}")]
-    GitFailed { what: String, stderr: String },
-    /// git printed something this code does not know how to read.
-    #[error("unexpected output from git {what}")]
-    GitOutput { what: String },
-    /// A ref or object id did not name a commit in the repository.
-    #[error("not a commit: {0}")]
-    NotACommit(String),
-    /// A worktree name was empty after cleaning, or a path would leave temor's folder.
-    #[error("not a usable worktree name: {0:?}")]
-    BadWorktreeName(String),
-}
-
-/// How much of git's message is kept in an error.
-const STDERR_KEEP: usize = 300;
-/// How much of a rejected ref or id is kept in an error.
-const REV_KEEP: usize = 80;
-
-impl CoreError {
-    /// git ran `what` and refused with `stderr`, cut short.
-    pub fn git_failed(what: impl Into<String>, stderr: &str) -> Self {
-        Self::GitFailed {
-            what: what.into(),
-            stderr: stderr.chars().take(STDERR_KEEP).collect(),
-        }
-    }
-
-    /// `text` did not name a commit; the first of it is kept.
-    pub fn not_a_commit(text: &str) -> Self {
-        Self::NotACommit(text.chars().take(REV_KEEP).collect())
-    }
 }
