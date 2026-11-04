@@ -14,6 +14,7 @@
 [[ -n ${_temor_integrated-} ]] && return 0
 _temor_integrated=1
 _temor_executing=
+_temor_hist=
 _temor_status=0
 _temor_cwd=
 _temor_cwd_url=
@@ -208,6 +209,43 @@ _temor_prompt_is_ours() {
     [[ ${TEMOR_PROMPT-} != shell ]]
 }
 
+# The output mark (OSC 133 C), naming the command line when $1 is history's entry for it, as
+# `history 1` prints it: bash hands the line it read to nothing else, where zsh gives it to
+# preexec. Without it the card names the screen's text up to where Enter was pressed, which
+# misses what the shell had not echoed yet. A very long line is left to the screen, as zsh's is:
+# the mark must stay short enough to be read whole.
+_temor_mark_output() {
+    local text=${1-} REPLY
+    text=${text#"${text%%[0-9]*}"}
+    text=${text#"${text%%[!0-9]*}"}
+    text=${text#  }
+    if [[ -n $text ]] && ((${#text} <= 1024)); then
+        _temor_encode "$text"
+        printf '\e]133;C;cmdline_url=%s\e\\' "$REPLY"
+    else
+        printf '\e]133;C\e\\'
+    fi
+}
+
+# PS0's part, in the subshell PS0's `$(…)` runs: history's newest entry is this line only when
+# HISTCMD moved past where the prompt left it. A line kept out of history (HISTCONTROL,
+# HISTIGNORE, `set +o history`) leaves it where it was, and its command is named from the screen.
+_temor_ps0_mark() {
+    if ((${HISTCMD:-0} > ${_temor_hist:-0})); then
+        _temor_mark_output "$(HISTTIMEFORMAT= builtin history 1 2>/dev/null)"
+    else
+        _temor_mark_output
+    fi
+}
+
+# Sets _temor_entry to history's newest entry as `history 1` prints it, and _temor_entry_number to
+# its number. bash 3.2's HISTCMD does not move, so a DEBUG trap compares these numbers instead.
+_temor_newest() {
+    _temor_entry=$(HISTTIMEFORMAT= builtin history 1 2>/dev/null)
+    _temor_entry_number=${_temor_entry#"${_temor_entry%%[0-9]*}"}
+    _temor_entry_number=${_temor_entry_number%%[!0-9]*}
+}
+
 _temor_save_status() {
     _temor_status=$?
     return "$_temor_status"
@@ -258,7 +296,8 @@ _temor_prompt() {
         _temor_ready=1
     else
         [[ ${PS0-} == *'_temor_executing=1'* ]] ||
-            PS0="${PS0-}"'${_temor_mark[_temor_executing=1]-}\e]133;C\e\\'
+            PS0="${PS0-}"'${_temor_mark[_temor_executing=1]-}$(_temor_ps0_mark)'
+        _temor_hist=${HISTCMD-}
     fi
     return "$_temor_status"
 }
@@ -272,7 +311,13 @@ _temor_preexec() {
     _temor_ready=
     [[ $BASH_COMMAND == _temor_save_status ]] && return 0
     _temor_executing=1
-    printf '\e]133;C\e\\'
+    _temor_newest
+    if [[ $_temor_entry_number != "${_temor_hist-}" ]]; then
+        _temor_hist=$_temor_entry_number
+        _temor_mark_output "$_temor_entry"
+    else
+        _temor_mark_output
+    fi
 }
 
 # The trap is installed by the first prompt, from PROMPT_COMMAND, and not here: bash 3.2 hides the
@@ -280,6 +325,8 @@ _temor_preexec() {
 # A DEBUG trap set before then (in the person's startup files) keeps running, first, so it sees
 # the command's own $? and $_. One set later replaces temor's, as with any other DEBUG trap.
 _temor_install_debug='[[ -n ${_temor_debug_trap-} ]] || {
+_temor_newest
+_temor_hist=$_temor_entry_number
 _temor_debug_trap=$(trap -p DEBUG)
 if [[ -n $_temor_debug_trap ]]; then
 _temor_debug_trap=${_temor_debug_trap#"trap -- "}

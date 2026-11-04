@@ -139,6 +139,18 @@ fn the_command_the_shell_sent_wins_over_what_was_typed() {
             "ls",
         ),
         ("neither", "", None, ""),
+        (
+            "the typed lines when the shell named only the first (bash's history)",
+            "echo first",
+            Some("echo first\necho second"),
+            "echo first\necho second",
+        ),
+        (
+            "the shell's text when the typed lines start with another",
+            "echo second",
+            Some("echo first\necho second"),
+            "echo second",
+        ),
     ] {
         assert_eq!(build(sent, read), want, "{what}");
     }

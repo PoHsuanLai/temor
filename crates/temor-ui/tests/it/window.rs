@@ -548,6 +548,12 @@ fn a_restored_screen_shows_its_commands_as_cards_with_their_status() {
     wait_until(&mut h, &probe, "the output", |s| {
         s.lines().any(|l| l.trim_end() == "kept-one")
     });
+    // The composer back, so the next line goes to it whole: a key pressed while the command
+    // still runs goes to the shell.
+    super::drive::wait_html(&mut h, "the card and the composer", |html| {
+        html.contains("echo kept-one")
+            && super::block_list::composer_value(html).as_deref() == Some("")
+    });
     type_line(&mut h, "echo kept-two; (exit 4)");
     let start = Instant::now();
     while !h.html().contains(">exit 4") {

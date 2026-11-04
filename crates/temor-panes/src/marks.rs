@@ -93,11 +93,9 @@ impl PaneCore {
     pub fn anchored(&mut self, seq: u64, id: AnchorId, read: Instant) -> bool {
         let finished_before = self.blocks.marks.finished();
         // The composer's text is the command as sent, lines and all, where the screen's rows
-        // are only how the shell drew it; a command the shell names keeps its own name.
-        let sent = match self.starts_command() {
-            Some(unnamed) => self.sent.take().filter(|_| unnamed),
-            None => None,
-        };
+        // are only how the shell drew it; the step keeps the shell's own name unless this text
+        // says more.
+        let sent = self.starts_command().and_then(|_| self.sent.take());
         let row = self.screen_row(id).map(|row| GridRow(u64::from(row)));
         // When the pane read the mark, not when the window got to it: a command's start and end
         // taken in one go would otherwise be 0 ms apart.
