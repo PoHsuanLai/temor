@@ -1,6 +1,5 @@
-//! With glyph atlases too small for the frame, the atlases clear while rows are built. The
-//! picture must still match one drawn with room to spare: no glyph may be read from a cleared
-//! atlas.
+//! The CPU renderer: rows composed again draw what a whole frame draws, glyphs reaching into
+//! their neighbours' rows included; a still leaves the live frame alone.
 
 use temor_vt::{CellStyle, Col, GridSize, Rgb, Row};
 
@@ -8,31 +7,10 @@ use super::CpuRenderer;
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
 use crate::palette::Palette;
 use crate::renderer::Renderer;
-use crate::testing::{GLYPH_COLS, GLYPH_ROWS, fonts, glyph_frame, size_for, view};
+use crate::testing::{GLYPH_COLS, GLYPH_ROWS, fonts, size_for, view};
 
 const COLS: u16 = GLYPH_COLS;
 const ROWS: u16 = GLYPH_ROWS;
-
-/// One frame drawn by `renderer`: its pixels and how many atlas clears it took.
-fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
-    let size = size_for(&mut renderer);
-    let palette = Palette::default();
-    let f = glyph_frame(0, 160);
-    let out = renderer.render(&f, &view(size, &palette)).expect("render");
-    (out.pixels.to_vec(), out.stats.atlas_resets)
-}
-
-#[test]
-fn a_frame_drawn_through_atlas_clears_matches_one_drawn_with_room() {
-    let (roomy, roomy_resets) = draw(CpuRenderer::new(fonts(60.0)));
-    let (tight, tight_resets) = draw(CpuRenderer::with_atlas_caps(fonts(60.0), 256, 256));
-    assert_eq!(roomy_resets, 0, "the default atlas holds the whole frame");
-    assert!(
-        tight_resets > 0,
-        "the small atlas must clear for this test to mean anything"
-    );
-    assert!(roomy == tight, "a glyph was read from a cleared atlas");
-}
 
 /// Rows of text whose accents, descenders and wide characters reach for the rows around them.
 fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {

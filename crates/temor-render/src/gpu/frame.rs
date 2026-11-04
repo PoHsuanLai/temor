@@ -1,41 +1,51 @@
-//! `GpuRenderer`'s render: rebuild the instances of composed rows, sync the atlases, record
-//! the pass.
+//! `GpuRenderer`'s render: build the composed rows' quads, put the glyphs the frame shows in
+//! the atlases (clearing them, or drawing in groups, when they do not fit), record the pass.
 
 use temor_vt::Row;
 
 use super::pipeline::{ALPHA, COLOR, IMAGE, Inst, SOLID, texture};
 use super::{GpuFrame, GpuRenderer};
 use crate::error::RenderError;
-use crate::font::BUILD_ATTEMPTS;
+use crate::font::{Atlases, Overflow};
 use crate::frame::{ImagePlacement, PaneFrame};
 use crate::metrics::{CellMetrics, Scale, fit_grid};
 use crate::renderer::{PaneView, RenderStats, Renderer};
-use crate::scene::{Quad, QuadPaint, SceneInput, build_row, resolve_cursor, spans};
-use crate::track::{Compose, Drawn, Reach, ViewKey, damage, plan};
+use crate::scene::{Quad, QuadPaint, RowScene, SceneInput, build_row, resolve_cursor, spans};
+use crate::track::{Compose, Drawn, ViewKey, damage, plan};
 
-pub(super) fn inst(q: &Quad) -> Inst {
+/// `q`'s instance, its glyph where `atlas` has put it; none for a glyph it has not.
+pub(super) fn inst(q: &Quad, atlas: &Atlases) -> Option<Inst> {
     let rect = [q.x as f32, q.y as f32, q.w as f32, q.h as f32];
     let f = |c: [u8; 4]| c.map(|v| f32::from(v) / 255.0);
-    let uv = |s: crate::font::Slot| {
-        [
+    let uv = |glyph| {
+        let s = atlas.slot(glyph)?;
+        Some([
             s.x as f32,
             s.y as f32,
             (s.x + s.w) as f32,
             (s.y + s.h) as f32,
-        ]
+        ])
     };
     let (uv, color, kind) = match q.paint {
         QuadPaint::Solid(c) => ([0.0; 4], f(c.0), SOLID),
-        QuadPaint::Mask { slot, color } => (uv(slot), f(color.0), ALPHA),
-        QuadPaint::Color { slot } => (uv(slot), [1.0; 4], COLOR),
+        QuadPaint::Mask { glyph, color } => (uv(glyph)?, f(color.0), ALPHA),
+        QuadPaint::Color { glyph } => (uv(glyph)?, [1.0; 4], COLOR),
     };
-    Inst {
+    Some(Inst {
         rect,
         uv,
         color,
         kind,
         _pad: [0; 3],
-    }
+    })
+}
+
+/// The instances of `quads`, their glyphs where `atlas` has put them.
+pub(super) fn insts<'q>(
+    quads: impl IntoIterator<Item = &'q Quad>,
+    atlas: &Atlases,
+) -> impl Iterator<Item = Inst> {
+    quads.into_iter().filter_map(|q| inst(q, atlas))
 }
 
 pub(super) fn image_inst(p: &ImagePlacement, origin: (i32, i32), m: &CellMetrics) -> Inst {
@@ -75,7 +85,8 @@ impl Renderer for GpuRenderer {
                 height: h,
             });
         }
-        let resets = self.glyphs.epoch();
+        let clears = self.atlas.clears();
+        self.glyphs.trim();
         let metrics = self.metrics(view.scale);
         let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
         let colors = view.colors(frame);
@@ -121,8 +132,8 @@ impl Renderer for GpuRenderer {
             Compose::All => all.clone(),
             Compose::Rows(rows) => rows,
         };
-        if self.rows.len() != all.len() || self.epoch != self.glyphs.epoch() {
-            self.rows = vec![(Vec::new(), Vec::new()); all.len()];
+        if self.rows.len() != all.len() {
+            self.rows = vec![RowScene::default(); all.len()];
             rows.clone_from(&all);
         }
         let input = SceneInput {
@@ -134,33 +145,19 @@ impl Renderer for GpuRenderer {
             cursor,
             selection: view.selection,
         };
-        // An atlas clear while building invalidates the glyphs of rows built before it: build
-        // again, every row this time, until a build finishes without a clear.
-        let mut settled = false;
-        for attempt in 0..BUILD_ATTEMPTS {
-            let before = self.glyphs.epoch();
-            let todo = if attempt == 0 { &rows } else { &all };
-            for &row in todo {
-                let cells = frame.rows.get(usize::from(row.0)).map_or(&[][..], |c| c);
-                build_row(&input, row, cells, &mut self.glyphs, &mut self.scene);
-                self.keep_row(row);
-            }
-            if self.glyphs.epoch() == before {
-                self.epoch = before;
-                settled = true;
-                break;
+        for &row in &rows {
+            let at = usize::from(row.0);
+            let cells = frame.rows.get(at).map_or(&[][..], |c| c);
+            if let Some(scene) = self.rows.get_mut(at) {
+                build_row(&input, row, cells, &mut self.glyphs, scene);
             }
         }
-        // The frame's glyphs do not fit the atlases together: draw it in groups of rows that do,
-        // all of it, since nothing cached survives.
-        let groups = match settled {
-            true => None,
+        // The frame's glyphs do not fit the atlases together: it is drawn in groups of rows that
+        // do, each with the atlases as they were for it.
+        let groups = match self.place() {
+            Ok(()) => None,
             // A failed draw leaves the last one standing: the next plans from it again.
-            false => Some(self.build_groups(frame, &input)?),
-        };
-        let (reach, rows) = match groups {
-            Some(_) => (Reach::Pane, all),
-            None => (reach, rows),
+            Err(Overflow) => Some(self.build_groups()?),
         };
         let (commands, images_skipped) = self.record(frame, &input, groups.as_deref())?;
         self.drawn = Some(now);
@@ -173,7 +170,7 @@ impl Renderer for GpuRenderer {
             fit,
             stats: RenderStats {
                 rows_composed: rows.len() as u32,
-                atlas_resets: (self.glyphs.epoch() - resets) as u32,
+                atlas_resets: (self.atlas.clears() - clears) as u32,
                 images_skipped,
             },
         })

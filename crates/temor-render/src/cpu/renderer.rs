@@ -74,18 +74,6 @@ impl CpuRenderer {
             still_overhangs: Overhangs::default(),
         }
     }
-
-    /// A renderer whose glyph atlases stop growing at the given heights, so tests can force
-    /// atlas clears.
-    #[cfg(test)]
-    pub(crate) fn with_atlas_caps(fonts: FontSet, alpha_max: u32, color_max: u32) -> Self {
-        Self::from_glyphs(GlyphCache::with_max_heights(
-            fonts,
-            Scale::default(),
-            alpha_max,
-            color_max,
-        ))
-    }
 }
 
 impl CpuRenderer {
@@ -99,7 +87,7 @@ impl CpuRenderer {
         view: &PaneView<'_>,
     ) -> Result<CpuFrame<'_>, RenderError> {
         let (w, h) = drawable(view.size)?;
-        let resets = self.glyphs.epoch();
+        self.glyphs.trim();
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
         let fit = fit_grid(view.size, &metrics, view.padding);
@@ -132,8 +120,7 @@ impl CpuRenderer {
             &mut self.still_overhangs,
             &mut self.glyphs,
             &mut self.scene,
-        )?;
-        self.glyphs.forget_uploads();
+        );
         Ok(CpuFrame {
             pixels: &self.still,
             size: view.size,
@@ -141,7 +128,7 @@ impl CpuRenderer {
             fit,
             stats: RenderStats {
                 rows_composed: composed.len() as u32,
-                atlas_resets: (self.glyphs.epoch() - resets) as u32,
+                atlas_resets: 0,
                 images_skipped: 0,
             },
         })
@@ -161,7 +148,7 @@ impl Renderer for CpuRenderer {
         view: &PaneView<'_>,
     ) -> Result<CpuFrame<'_>, RenderError> {
         let (w, h) = drawable(view.size)?;
-        let resets = self.glyphs.epoch();
+        self.glyphs.trim();
         self.glyphs.set_scale(view.scale);
         let metrics = self.glyphs.metrics();
         let fit = fit_grid(view.size, &metrics, view.padding).lowered(view.lower);
@@ -213,7 +200,6 @@ impl Renderer for CpuRenderer {
             }
             Compose::Rows(rows) => rows,
         };
-        // A failed draw leaves the last one standing: the next plans from it again.
         let rows = compose_rows(
             &mut target,
             &input,
@@ -223,9 +209,8 @@ impl Renderer for CpuRenderer {
             &mut self.overhangs,
             &mut self.glyphs,
             &mut self.scene,
-        )?;
+        );
         self.drawn = Some(now);
-        self.glyphs.forget_uploads();
         self.damage = damage(reach, &rows, &metrics, &fit, frame.size.rows.0);
         Ok(CpuFrame {
             pixels: &self.buf,
@@ -234,7 +219,7 @@ impl Renderer for CpuRenderer {
             fit,
             stats: RenderStats {
                 rows_composed: rows.len() as u32,
-                atlas_resets: (self.glyphs.epoch() - resets) as u32,
+                atlas_resets: 0,
                 images_skipped: 0,
             },
         })

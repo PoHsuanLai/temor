@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use temor_vt::ImageId;
 
 use super::device::{DeviceAtlases, DeviceImage};
-use super::pipeline::{self, Inst, Pipeline};
-use crate::font::{FontSet, GlyphCache};
+use super::pipeline::{self, Pipeline};
+use crate::font::{Atlases, FontSet, GlyphCache};
 use crate::metrics::{CellMetrics, GridFit, PixelSize, Scale};
 use crate::renderer::{DamageRect, RenderStats};
 use crate::scene::RowScene;
@@ -19,17 +19,17 @@ pub struct GpuRenderer {
     pub(super) queue: wgpu::Queue,
     pub(super) pipe: Pipeline,
     pub(super) glyphs: GlyphCache,
-    pub(super) atlases: DeviceAtlases,
+    /// Where the glyphs the frame shows are, in memory.
+    pub(super) atlas: Atlases,
+    /// The atlases on the device.
+    pub(super) on_device: DeviceAtlases,
     pub(super) blank: wgpu::BindGroup,
     pub(super) target: Option<wgpu::Texture>,
     pub(super) size: PixelSize,
-    /// Per grid row: background and foreground instances, rebuilt only for composed rows.
-    pub(super) rows: Vec<(Vec<Inst>, Vec<Inst>)>,
-    /// The glyph-cache epoch the cached rows were built in.
-    pub(super) epoch: u64,
+    /// Per grid row: its quads, rebuilt only for composed rows.
+    pub(super) rows: Vec<RowScene>,
     /// What the last draw that succeeded showed.
     pub(super) drawn: Option<Drawn>,
-    pub(super) scene: RowScene,
     pub(super) instances: Option<wgpu::Buffer>,
     pub(super) images: HashMap<ImageId, DeviceImage>,
     pub(super) damage: Vec<DamageRect>,
@@ -49,11 +49,12 @@ pub struct GpuFrame<'a> {
 impl GpuRenderer {
     /// A renderer on `device`, drawing with `fonts`.
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, fonts: FontSet) -> Self {
-        Self::from_glyphs(device, queue, GlyphCache::new(fonts, Scale::default()))
+        let glyphs = GlyphCache::new(fonts, Scale::default());
+        Self::from_parts(device, queue, glyphs, Atlases::default())
     }
 
-    /// A renderer whose glyph atlases stop growing at these heights, so a test can make them
-    /// clear mid-frame.
+    /// A renderer whose glyph atlases stop growing at these heights, so a test can make a
+    /// frame's glyphs outgrow them.
     #[cfg(test)]
     pub(crate) fn with_atlas_caps(
         device: &wgpu::Device,
@@ -62,13 +63,23 @@ impl GpuRenderer {
         alpha_max: u32,
         color_max: u32,
     ) -> Self {
-        let glyphs = GlyphCache::with_max_heights(fonts, Scale::default(), alpha_max, color_max);
-        Self::from_glyphs(device, queue, glyphs)
+        let glyphs = GlyphCache::new(fonts, Scale::default());
+        Self::from_parts(
+            device,
+            queue,
+            glyphs,
+            Atlases::with_caps(alpha_max, color_max),
+        )
     }
 
-    fn from_glyphs(device: &wgpu::Device, queue: &wgpu::Queue, glyphs: GlyphCache) -> Self {
+    fn from_parts(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        glyphs: GlyphCache,
+        atlas: Atlases,
+    ) -> Self {
         let pipe = Pipeline::new(device);
-        let atlases = DeviceAtlases::new(device, &pipe, &glyphs);
+        let on_device = DeviceAtlases::new(device, &pipe, &atlas);
         let blank_tex = pipeline::texture(
             device,
             "temor blank",
@@ -91,22 +102,25 @@ impl GpuRenderer {
             queue: queue.clone(),
             pipe,
             glyphs,
-            atlases,
+            atlas,
+            on_device,
             blank,
             target: None,
             size: PixelSize::new(0, 0),
             rows: Vec::new(),
-            epoch: 0,
             drawn: None,
-            scene: RowScene::default(),
             instances: None,
             images: HashMap::new(),
             damage: Vec::new(),
         }
     }
 
+    /// The cell at `scale`, the glyphs moved to it: the atlases held the glyphs of another
+    /// scale under the same names, and are emptied.
     pub(super) fn metrics(&mut self, scale: Scale) -> CellMetrics {
-        self.glyphs.set_scale(scale);
+        if self.glyphs.set_scale(scale) {
+            self.atlas.clear();
+        }
         self.glyphs.metrics()
     }
 }

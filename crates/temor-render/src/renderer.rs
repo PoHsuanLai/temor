@@ -119,7 +119,8 @@ pub struct DamageRect {
 pub struct RenderStats {
     /// Grid rows composed this frame.
     pub rows_composed: u32,
-    /// Glyph-atlas clears this frame (the atlas filled up).
+    /// Glyph-atlas clears this frame: the frame's glyphs did not fit beside what was there
+    /// (the GPU path; the CPU path draws from the glyph cache and has no atlas).
     pub atlas_resets: u32,
     /// Kitty images not drawn this frame: empty, or larger than the device's texture limit
     /// (GPU only; the CPU path has no such limit).
