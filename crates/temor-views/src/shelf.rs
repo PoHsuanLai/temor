@@ -94,8 +94,11 @@ pub fn DownloadsPage(desk: Desk) -> Element {
 fn DownloadRow(row: Download, desk: Desk) -> Element {
     let id = row.id;
     let can = |want: Act| row.actions.contains(&want);
-    // The tab it came from, unless that is the tab in front.
-    let front = desk.hub.front().map(|(tab, ..)| tab);
+    // Where Use in pane would send it, and the tab in front: the tab it came from is offered
+    // unless it is that one.
+    let (target, front) = use_hub(&desk, (), |hub, ()| {
+        (hub.shelf_target(), hub.front().map(|(tab, ..)| tab))
+    })();
     let tab = row
         .actions
         .iter()
@@ -125,7 +128,6 @@ fn DownloadRow(row: Download, desk: Desk) -> Element {
             }
         })
     });
-    let target = desk.hub.shelf_target();
     let words = |action: Act| act_words(action, &target);
     let give = can(Act::UseInPane).then(|| words(Act::UseInPane)).flatten();
     let mut menu = use_signal(|| None::<Point>);

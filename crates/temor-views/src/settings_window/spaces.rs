@@ -14,7 +14,7 @@ use ds::prelude::*;
 use temor_client::model::vocab::text::{KeyPath, ProjectRoot, RelPath};
 
 use super::space_fields::{AddRoute, RouteRow, SpaceText};
-use super::space_profile::{AddCredential, AddVariable, CredentialRow, NO_THREAD, VariableRow};
+use super::space_profile::{AddCredential, AddVariable, CredentialRow, VariableRow};
 use super::space_secrets;
 use crate::watched::use_watch;
 use temor_hub::settings_link::board::{SpaceBoard, SpaceEdit, SpaceRow};
@@ -184,10 +184,8 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>
                         move |()| {
                             let (store, list, env) = (store.clone(), list.clone(), env.clone());
                             spawn(async move {
-                                let done = store
-                                    .ask(move |store| space_secrets::remove(store, list, &env))
-                                    .await;
-                                try_credentials(done.unwrap_or_else(|| Err(NO_THREAD.to_owned())));
+                                let done = space_secrets::asked(store, move |store| space_secrets::remove(store, list, &env));
+                                try_credentials(done.await);
                             });
                         }
                     },
@@ -199,10 +197,8 @@ fn SpaceSection(row: SpaceRow, onchange: Callback<Sent>, onsay: Callback<String>
                     move |(name, secret): (String, String)| {
                         let (store, list) = (store.clone(), list.clone());
                         spawn(async move {
-                            let done = store
-                                .ask(move |store| space_secrets::add(store, id, list, &name, &secret))
-                                .await;
-                            try_credentials(done.unwrap_or_else(|| Err(NO_THREAD.to_owned())));
+                            let done = space_secrets::asked(store, move |store| space_secrets::add(store, id, list, &name, &secret));
+                            try_credentials(done.await);
                         });
                     }
                 },

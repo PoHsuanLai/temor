@@ -89,12 +89,10 @@ pub fn CredentialRow(
 ) -> Element {
     let store = use_context::<Credentials>();
     let mut draft = use_signal(String::new);
-    // One more each time the secret is set, so whether it is held is asked again.
-    let mut set = use_signal(|| 0u32);
-    let held = use_resource({
+    // Asked again each time the secret is set.
+    let mut held = use_resource({
         let (store, account) = (store.clone(), credential.account.clone());
         move || {
-            let _ = set();
             let (store, account) = (store.clone(), account.clone());
             async move {
                 store
@@ -103,8 +101,7 @@ pub fn CredentialRow(
             }
         }
     });
-    let held = held.read().flatten();
-    let (state, act) = match held {
+    let (state, act) = match held.read().flatten() {
         Some(true) => ("Set", "Replace"),
         Some(false) => ("Not set", "Set"),
         None => ("\u{2026}", "Set"),
@@ -116,13 +113,12 @@ pub fn CredentialRow(
         draft.set(String::new());
         let (store, account) = (store.clone(), account.clone());
         spawn(async move {
-            let done = store
-                .ask(move |store| space_secrets::replace(store, &account, &secret))
-                .await;
-            match done {
-                Some(Ok(())) => set += 1,
-                Some(Err(why)) => onsay.call(why),
-                None => onsay.call(NO_THREAD.to_owned()),
+            let done = space_secrets::asked(store, move |store| {
+                space_secrets::replace(store, &account, &secret)
+            });
+            match done.await {
+                Ok(()) => held.restart(),
+                Err(why) => onsay.call(why),
             }
         });
     });
@@ -153,9 +149,6 @@ pub fn CredentialRow(
         }
     }
 }
-
-/// What the person is told when the secret store could not be asked at all.
-pub const NO_THREAD: &str = "The password store can't be reached right now.";
 
 /// The row that adds a credential: the variable it fills and its secret.
 #[component]
