@@ -86,6 +86,11 @@ impl Session {
         Ok(())
     }
 
+    /// How many grid rows the last paint composed: the rows that changed since the one before.
+    pub fn rows_composed(&self) -> u32 {
+        self.painter.rows_composed()
+    }
+
     /// Draws the pane when it has a size, handing its pixels to `show`, and lays its rows out
     /// around the room under blocks with pictures. True when the rows moved.
     pub fn paint(&mut self, show: impl FnOnce(&[u8], PixelSize)) -> Result<bool, ViewError> {

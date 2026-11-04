@@ -4,6 +4,7 @@
 use std::path::Path;
 use std::time::Duration;
 
+use ds::base::vocab::ShortcutKey;
 use ds::components::app::spaces::{SpaceId, Spaces};
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
@@ -261,4 +262,61 @@ fn the_bar_switches_spaces_from_the_keyboard() {
         "the Space row switched:\n{}",
         h.html()
     );
+}
+
+/// The quick terminal opened in one Space takes a pane no other Space holds: the tabs of the
+/// Space left behind keep their own shells. Before the Book gave out every pane id, the quick
+/// terminal took the next id of the Space on screen, which a parked Space's tab could hold.
+#[test]
+fn the_quick_terminal_in_one_space_leaves_another_spaces_tabs_their_own_shells() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let state = scratch("spaces-quick-state").join("state");
+    let mut spaces = Spaces::first_run([Project::default(), Project::default()], Project::default);
+    spaces.rename(SpaceId(0), "Home");
+    spaces.rename(SpaceId(1), "Work");
+    save_spaces(&state, &spaces).expect("spaces saved");
+    let quick = |h: &mut Harness| {
+        h.send(Input::chord(
+            &[ShortcutKey::Super, ShortcutKey::Shift],
+            ShortcutKey::Char('y'),
+        ));
+        h.advance(Duration::from_millis(300));
+    };
+    let probe = Probe::new();
+    let mut h = harness_in("spaces-quick", &probe, Some(state));
+    wait_until(&mut h, &probe, "the first prompt", |s| s.contains('$'));
+    // Work opens first, then Home makes a pane after it: Work's next id is one Home has given
+    // out since.
+    go_to(&mut h, "Work");
+    wait_until(&mut h, &probe, "Work's prompt", |s| s.contains('$'));
+    go_to(&mut h, "Home");
+    chord(&mut h, 'n');
+    assert_eq!(rows(&h), 2, "Home's two tabs:\n{}", h.html());
+    focus_terminal(&mut h);
+    type_line(&mut h, "export WHO=home; echo set-$WHO");
+    wait_until(&mut h, &probe, "Home's tab has its variable", |s| {
+        s.lines().any(|l| l.trim_end() == "set-home")
+    });
+
+    go_to(&mut h, "Work");
+    assert_eq!(rows(&h), 1, "Work's own tab:\n{}", h.html());
+    quick(&mut h);
+    wait_until(&mut h, &probe, "the quick terminal's prompt", |s| {
+        s.contains('$')
+    });
+    type_line(&mut h, "export WHO=quick; echo set-$WHO");
+    wait_until(&mut h, &probe, "the quick terminal has its variable", |s| {
+        s.lines().any(|l| l.trim_end() == "set-quick")
+    });
+    quick(&mut h);
+
+    go_to(&mut h, "Home");
+    assert_eq!(rows(&h), 2, "Home kept its tabs:\n{}", h.html());
+    focus_terminal(&mut h);
+    type_line(&mut h, "echo is-$WHO");
+    wait_until(&mut h, &probe, "Home's tab is still Home's shell", |s| {
+        s.lines().any(|l| l.trim_end() == "is-home")
+    });
 }

@@ -131,6 +131,8 @@ pub struct Painter {
     /// How many rows the last paint drew the grid lower than its fit: the shell's screen sits on
     /// the pane's bottom while the rows under it are empty, as Warp keeps its input at the bottom.
     lower: u16,
+    /// How many grid rows the last paint composed.
+    composed: u32,
 }
 
 impl Painter {
@@ -145,6 +147,7 @@ impl Painter {
             showing: Showing::Live,
             seen_captures: 0,
             lower: 0,
+            composed: 0,
         })
     }
 
@@ -252,6 +255,7 @@ impl Painter {
             showing,
             seen_captures,
             lower,
+            composed,
         } = self;
         // Decided and begun under one hold of the pane's lock, so a frame is never begun in the
         // middle of a hold: while the program holds the screen the captured frame is drawn.
@@ -304,10 +308,19 @@ impl Painter {
         let drawn = match source {
             Some(Showing::Live) => renderer.render(frame, &pane_view)?,
             Some(Showing::Held) => renderer.render(held, &pane_view)?,
-            None => return Ok(()),
+            None => {
+                *composed = 0;
+                return Ok(());
+            }
         };
+        *composed = drawn.stats.rows_composed;
         show(drawn.pixels, drawn.size);
         Ok(())
+    }
+
+    /// How many grid rows the last paint composed: the rows that changed since the one before.
+    pub fn rows_composed(&self) -> u32 {
+        self.composed
     }
 }
 

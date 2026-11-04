@@ -229,8 +229,16 @@ pub(super) fn rect(h: &Harness, selector: &str) -> Rect {
     found[0]
 }
 
-/// The box of the open menu's item that says `title`; panics, with the page, if none does.
-pub(super) fn menu_item(h: &Harness, title: &str) -> Rect {
+/// The box of the open menu's item that says `title`, once the open menus have come to rest: a
+/// press while a menu is still moving in can land beside the item, which closes the menu and
+/// picks nothing. Panics, with the page, if no item says `title`.
+pub(super) fn menu_item(h: &mut Harness, title: &str) -> Rect {
+    still_rects(h, ".ds-menu-item");
+    menu_item_now(h, title)
+}
+
+/// The box of the open menu's item that says `title` as it is now.
+fn menu_item_now(h: &Harness, title: &str) -> Rect {
     let found = h.with_doc(|doc| {
         doc.query_selector_all(".ds-menu-item")
             .map(|found| found.into_iter().collect::<Vec<_>>())
