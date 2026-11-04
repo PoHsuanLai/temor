@@ -4,14 +4,14 @@ use super::intents::load_manifest;
 use super::perform::{class_of, pane_of_token, pane_token};
 use super::tailnet::host_of;
 use crate::{
-    APP_BUS_NAME, Attention, Badge, BadgeCount, Focus, Network, PaneInfo, PaneKind, PaneRef,
-    Progress, SpaceRef, WindowContext,
+    APP_BUS_NAME, Badge, BadgeCount, Focus, PaneInfo, PaneKind, PaneRef, Progress, SpaceRef,
+    WindowContext,
 };
 use docket_core::{Here, Selection};
 use porter_client::Machine;
 use porter_core::AppName;
 use prov::{Effect, Integrity};
-use temor_ssh::{Presence, TailnetOwner, TailscaleSsh, UnixSeconds};
+use temor_ssh::{TailnetOwner, UnixSeconds};
 use zbus::zvariant::Value;
 
 #[test]
@@ -43,8 +43,8 @@ fn the_shipped_manifest_validates_and_matches_the_plan_table() {
 
 #[test]
 fn a_sandboxed_run_is_classified_by_its_network() {
-    assert_eq!(class_of(Network::Closed), Effect::UndoableWrite);
-    assert_eq!(class_of(Network::Open), Effect::Outbound);
+    assert_eq!(class_of(false), Effect::UndoableWrite);
+    assert_eq!(class_of(true), Effect::Outbound);
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn the_dock_update_writes_every_key_so_a_clear_clears() {
     let shown = Badge {
         count: Some(BadgeCount(3)),
         progress: Some(Progress::percent(250)),
-        attention: Attention::Needed,
+        wants_attention: true,
     };
     let cases = [
         (
@@ -112,8 +112,8 @@ fn a_machine_maps_to_a_plain_host() {
         vec!["100.64.0.7".parse::<std::net::IpAddr>().unwrap()]
     );
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
-        (Presence::Online, None, TailscaleSsh::On, TailnetOwner::Mine)
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
+        (true, None, true, TailnetOwner::Mine)
     );
 
     let away = machine(serde_json::json!({
@@ -123,11 +123,11 @@ fn a_machine_maps_to_a_plain_host() {
     }));
     let host = host_of(&away).expect("a usable node id");
     assert_eq!(
-        (host.online, host.last_seen, host.ssh, host.owner),
+        (host.online, host.last_seen, host.tailscale_ssh, host.owner),
         (
-            Presence::Offline,
+            false,
             Some(UnixSeconds(1_700_000_000)),
-            TailscaleSsh::Off,
+            false,
             TailnetOwner::Tagged
         )
     );
@@ -172,103 +172,4 @@ fn the_context_carries_program_text_as_untrusted() {
     let snapshot = snapshot_of(&app, &empty);
     assert!(matches!(snapshot.here, Here::Nowhere));
     assert!(matches!(snapshot.selection, Selection::Nothing));
-}
-
-#[test]
-fn dockets_list_becomes_the_windows_rows_and_a_restore_names_its_plan() {
-    use super::checkpoints::{fault_of, list_of, refusal_fault, restore_call};
-    use crate::{
-        DesktopError, NotSavedWhy, PlanDigest, PointFault, PointId, PointRow, PointState,
-        SessionKey, TurnNo,
-    };
-    use docket_core::{
-        CheckpointFault, CheckpointId, CheckpointRow, DenyCode, SavedState, SkipReason, TurnId,
-        Value,
-    };
-    use temor_ssh::UnixSeconds as Secs;
-
-    let at = porter_core::UnixSeconds(1_790_000_000);
-    let rows = [
-        CheckpointRow::Saved {
-            id: CheckpointId(1),
-            turn: TurnId(4),
-            at,
-            state: SavedState::Available,
-        },
-        CheckpointRow::Saved {
-            id: CheckpointId(2),
-            turn: TurnId(5),
-            at,
-            state: SavedState::Gone,
-        },
-        CheckpointRow::NotSaved {
-            turn: TurnId(6),
-            at,
-            why: SkipReason::NoHistory,
-        },
-        CheckpointRow::RestoredTo {
-            id: CheckpointId(1),
-            at,
-        },
-    ];
-    let secs = Secs(1_790_000_000);
-    assert_eq!(
-        list_of(&rows).rows,
-        [
-            PointRow::Saved {
-                id: PointId(1),
-                turn: TurnNo(4),
-                at: secs,
-                state: PointState::Available
-            },
-            PointRow::Saved {
-                id: PointId(2),
-                turn: TurnNo(5),
-                at: secs,
-                state: PointState::Gone
-            },
-            PointRow::NotSaved {
-                turn: TurnNo(6),
-                at: secs,
-                why: NotSavedWhy::NoHistory
-            },
-            PointRow::RestoredTo {
-                id: PointId(1),
-                at: secs
-            },
-        ]
-    );
-
-    let session = SessionKey::new("s-7").unwrap();
-    let call = restore_call(&session, PointId(3), &PlanDigest("abc123".to_owned())).unwrap();
-    assert_eq!(call.action.app.as_str(), "org.quire.Checkpoints");
-    assert_eq!(call.action.name.as_str(), "checkpoints.restore");
-    let args: Vec<(&str, &Value)> = call
-        .args
-        .iter()
-        .map(|(name, arg)| (name.as_str(), &arg.value))
-        .collect();
-    assert_eq!(
-        args,
-        [
-            ("plan", &Value::Text("abc123".to_owned())),
-            ("point", &Value::Integer(3)),
-            ("session", &Value::Text("s-7".to_owned())),
-        ]
-    );
-
-    let fault = |error: DesktopError| match error {
-        DesktopError::Checkpoint(fault) => Some(fault),
-        _ => None,
-    };
-    assert_eq!(
-        fault(fault_of(CheckpointFault::PlanStale)),
-        Some(PointFault::PlanStale)
-    );
-    assert_eq!(
-        fault(refusal_fault(docket_core::CallRefusal::Denied(
-            DenyCode::NotAllowed
-        ))),
-        Some(PointFault::Denied)
-    );
 }

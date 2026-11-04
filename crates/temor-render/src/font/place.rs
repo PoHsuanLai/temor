@@ -1,10 +1,11 @@
-//! Building a cluster's glyphs: choose the face, shape, rasterise, pack and position.
+//! Building a cluster's glyphs: choose the face, shape, and name and place each glyph; and
+//! drawing a glyph from its name.
 
 use super::boxdraw;
-use super::cache::{GlyphCache, GlyphKind, RasterKey, RunGlyph, Special};
+use super::cache::{GlyphCache, GlyphImage, GlyphKey, Placed, RunGlyph, Special, run_glyph};
 use super::config::{FaceStyle, Slant, Weight};
 use super::decor::decoration_mask;
-use super::face::{ColorFormat, Embolden, Face, FaceId, FaceRole, Skew};
+use super::face::{ColorFormat, Face, FaceRole, Synth};
 use super::raster::{colr, fit_bitmap, outline};
 use crate::platform::BitmapEmojiSource;
 
@@ -16,7 +17,8 @@ impl GlyphCache {
         if let (Some(c), None) = (chars.next(), chars.next())
             && boxdraw::is_procedural(c)
         {
-            return self.special(Special::Box(c)).into_iter().collect();
+            let key = GlyphKey::Special(Special::Box(c));
+            return self.glyph(key, (0, 0)).into_iter().collect();
         }
         let id = self.fonts.face_for(text, style);
         let face = self.fonts.face(id).clone();
@@ -26,9 +28,12 @@ impl GlyphCache {
             let each = box_w / placed.len().max(1) as u32;
             let mut x = 0;
             for &(glyph, _) in &placed {
-                if let Some(g) = self.color_glyph(id, &face, glyph, each, box_h) {
-                    out.push(RunGlyph { dx: x, ..g });
-                }
+                let key = GlyphKey::Color {
+                    face: id,
+                    glyph,
+                    size: (each, box_h),
+                };
+                out.extend(self.glyph(key, (x, 0)));
                 x += each as i32;
             }
             if !out.is_empty() {
@@ -36,17 +41,11 @@ impl GlyphCache {
             }
         }
         let synth = match face.role {
-            FaceRole::Primary => (face.embolden, face.skew),
-            FaceRole::Fallback => (
-                match style.weight {
-                    Weight::Bold => Embolden::Yes,
-                    Weight::Regular => Embolden::No,
-                },
-                match style.slant {
-                    Slant::Italic => Skew::Yes,
-                    Slant::Upright => Skew::No,
-                },
-            ),
+            FaceRole::Primary => face.synth,
+            FaceRole::Fallback => Synth {
+                embolden: style.weight == Weight::Bold,
+                skew: style.slant == Slant::Italic,
+            },
         };
         // A fallback face's glyphs are centred in the cells they span.
         let shift = match face.role {
@@ -54,14 +53,19 @@ impl GlyphCache {
             FaceRole::Fallback => ((box_w as f32 - advance) / 2.0).round() as i32,
         };
         for (glyph, x) in placed {
-            if let Some(g) = self.mask_glyph(id, &face, glyph, synth) {
-                out.push(RunGlyph {
-                    dx: g.dx + x.round() as i32 + shift,
-                    ..g
-                });
-            }
+            let key = GlyphKey::Mask {
+                face: id,
+                glyph,
+                synth,
+            };
+            out.extend(self.glyph(key, (x.round() as i32 + shift, 0)));
         }
         out
+    }
+
+    /// `key` as a run's glyph, moved by `by`; none when it draws nothing.
+    fn glyph(&mut self, key: GlyphKey, by: (i32, i32)) -> Option<RunGlyph> {
+        self.placed(key).map(|placed| run_glyph(key, placed, by))
     }
 
     /// The glyph ids of `text` in `face` with their pen positions, and the total advance.
@@ -91,98 +95,53 @@ impl GlyphCache {
         (placed, x)
     }
 
-    fn mask_glyph(
-        &mut self,
-        face_id: FaceId,
-        face: &Face,
-        glyph: u16,
-        synth: (Embolden, Skew),
-    ) -> Option<RunGlyph> {
-        let key = RasterKey {
-            face: face_id,
-            glyph,
-            synth,
-            color_box: (0, 0),
-        };
-        if let Some(known) = self.rasters.get(&key) {
-            return *known;
-        }
-        let baseline = self.metrics.baseline.0 as i32;
-        let placed = outline(&mut self.scaler, face, glyph, self.px, synth).and_then(|img| {
-            let slot = self.store(GlyphKind::Mask, img.width, img.height, &img.data)?;
-            Some(RunGlyph {
-                dx: img.left,
-                dy: baseline - img.top,
-                slot,
-                kind: GlyphKind::Mask,
-            })
-        });
-        self.rasters.insert(key, placed);
-        placed
-    }
-
-    fn color_glyph(
-        &mut self,
-        face_id: FaceId,
-        face: &Face,
-        glyph: u16,
-        w: u32,
-        h: u32,
-    ) -> Option<RunGlyph> {
-        let key = RasterKey {
-            face: face_id,
-            glyph,
-            synth: (Embolden::No, Skew::No),
-            color_box: (w, h),
-        };
-        if let Some(known) = self.rasters.get(&key) {
-            return *known;
-        }
-        let image = match face.color {
-            ColorFormat::Colr => colr(face, glyph, self.px, w, h),
-            ColorFormat::Bitmap => self
-                .bitmaps
-                .glyph(face.font(), glyph, self.px)
-                .map(|b| fit_bitmap(&b, w, h)),
-            ColorFormat::None => None,
-        };
-        let placed = image.and_then(|img| {
-            let slot = self.store(GlyphKind::Color, img.width, img.height, &img.rgba)?;
-            Some(RunGlyph {
-                dx: 0,
-                dy: 0,
-                slot,
-                kind: GlyphKind::Color,
-            })
-        });
-        self.rasters.insert(key, placed);
-        placed
-    }
-
-    pub(super) fn special(&mut self, special: Special) -> Option<RunGlyph> {
-        if let Some(known) = self.specials.get(&special) {
-            return *known;
-        }
+    /// Draws `key` at the cache's scale; none when it has nothing to draw.
+    pub(super) fn draw(&mut self, key: GlyphKey) -> Option<Placed> {
         let m = self.metrics;
-        let (w, h, top, data) = match special {
-            Special::Box(c) => {
-                let data = boxdraw::draw(c, m.width(), m.height(), m.thickness.0)?;
-                (m.width(), m.height(), 0, data)
+        let kind = key.kind();
+        let placed = |at: (i32, i32), width: u32, height: u32, data: Vec<u8>| Placed {
+            at,
+            image: GlyphImage {
+                width,
+                height,
+                kind,
+                data,
+            },
+        };
+        let drawn = match key {
+            GlyphKey::Mask { face, glyph, synth } => {
+                let face = self.fonts.face(face).clone();
+                let img = outline(&mut self.scaler, &face, glyph, self.px, synth)?;
+                let at = (img.left, m.baseline.0 as i32 - img.top);
+                placed(at, img.width, img.height, img.data)
             }
-            Special::Decor(d) => {
+            GlyphKey::Color {
+                face,
+                glyph,
+                size: (w, h),
+            } => {
+                let face = self.fonts.face(face).clone();
+                let img = match face.color {
+                    ColorFormat::Colr => colr(&face, glyph, self.px, w, h),
+                    ColorFormat::Bitmap => self
+                        .bitmaps
+                        .glyph(face.font(), glyph, self.px)
+                        .map(|b| fit_bitmap(&b, w, h)),
+                    ColorFormat::None => None,
+                }?;
+                placed((0, 0), img.width, img.height, img.rgba)
+            }
+            GlyphKey::Special(Special::Box(c)) => {
+                let data = boxdraw::draw(c, m.width(), m.height(), m.thickness.0)?;
+                placed((0, 0), m.width(), m.height(), data)
+            }
+            GlyphKey::Special(Special::Decor(d)) => {
                 let mask = decoration_mask(d, &m);
-                (mask.width, mask.height, mask.top, mask.data)
+                placed((0, mask.top as i32), mask.width, mask.height, mask.data)
             }
         };
-        let placed = self
-            .store(GlyphKind::Mask, w, h, &data)
-            .map(|slot| RunGlyph {
-                dx: 0,
-                dy: top as i32,
-                slot,
-                kind: GlyphKind::Mask,
-            });
-        self.specials.insert(special, placed);
-        placed
+        let texels = (drawn.image.width * drawn.image.height * kind.bytes_per_texel()) as usize;
+        let inked = drawn.image.width > 0 && drawn.image.height > 0;
+        (inked && drawn.image.data.len() >= texels).then_some(drawn)
     }
 }

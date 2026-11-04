@@ -57,13 +57,6 @@ pub enum PlacementKind {
     Virtual,
 }
 
-/// Whether any part of a placement is in the viewport.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Visibility {
-    Visible,
-    Hidden,
-}
-
 /// Where and how big to draw a placement, already resolved by libghostty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlacementRender {
@@ -79,7 +72,8 @@ pub struct PlacementRender {
     /// Pixel offset of the image inside its top-left cell (`X=`, `Y=`).
     pub x_offset: u32,
     pub y_offset: u32,
-    pub visibility: Visibility,
+    /// Some part of the placement is in the viewport.
+    pub visible: bool,
     /// The source rectangle in image pixels.
     pub source_x: u32,
     pub source_y: u32,

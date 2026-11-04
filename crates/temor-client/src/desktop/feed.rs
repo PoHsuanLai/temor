@@ -57,7 +57,7 @@ pub fn group_of(read: Result<Vec<TailnetHost>, DesktopError>) -> Vec<TailnetHost
 #[cfg(test)]
 mod tests {
     use super::*;
-    use temor_ssh::{NodeId, Presence, TailnetOwner, TailscaleSsh};
+    use temor_ssh::{NodeId, TailnetOwner};
 
     fn host() -> TailnetHost {
         TailnetHost {
@@ -65,9 +65,9 @@ mod tests {
             name: "box".to_owned(),
             dns: "box.tail1.ts.net".to_owned(),
             addresses: Vec::new(),
-            online: Presence::Online,
+            online: true,
             last_seen: None,
-            ssh: TailscaleSsh::On,
+            tailscale_ssh: true,
             owner: TailnetOwner::Mine,
         }
     }

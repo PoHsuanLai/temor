@@ -2,7 +2,7 @@
 //! aborts and failed writes.
 
 use temor_transfer::kitty::{
-    Action, Effect, EndWhy, ErrorCode, FileType, Input, Message, ReceiveSession, ReplyStatus,
+    Action, Effect, ErrorCode, FileType, Input, Message, ReceiveSession, ReplyStatus, TransferEnd,
     Transmission, WriteKind, WriteOp,
 };
 use temor_transfer::{Bytes, Consent, Count, Limits, RelPath};
@@ -41,7 +41,7 @@ fn data_past_the_limit_fails_the_session_and_discards_partial_files() {
         writes(&effects),
         vec![WriteOp::Discard(RelPath::parse("p").expect("p"))]
     );
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     // A finished session takes nothing more.
     let (_, after) = s.step(file("q", "2", FileType::Regular, Some(1)));
     assert!(after.is_empty());
@@ -56,7 +56,7 @@ fn a_size_that_does_not_match_the_announcement_fails_the_file() {
         data: b"abc".to_vec(),
         ..msg(Action::EndData)
     }));
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     assert_eq!(
         writes(&effects),
         vec![WriteOp::Discard(RelPath::parse("s").expect("p"))]
@@ -72,7 +72,7 @@ fn cancel_discards_open_files_and_says_so() {
         writes(&effects),
         vec![WriteOp::Discard(RelPath::parse("c").expect("p"))]
     );
-    assert!(effects.contains(&Effect::Ended(EndWhy::Cancelled)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Cancelled)));
     assert_eq!(replies(&effects), vec![ReplyStatus::Cancelled]);
 }
 
@@ -143,7 +143,7 @@ fn going_over_the_entry_cap_replies_and_discards_open_files() {
         status,
         ReplyStatus::Failed { code, .. } if code.code() == "EFBIG"
     )));
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     let discarded = writes(&effects);
     assert!(discarded.contains(&WriteOp::Discard(RelPath::parse("a").expect("p"))));
     assert!(discarded.contains(&WriteOp::Discard(RelPath::parse("b").expect("p"))));
@@ -167,7 +167,7 @@ fn too_many_files_open_at_once_ends_the_transfer() {
         3,
         "the three open files are discarded"
     );
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn only_the_simple_transmission_type_is_offered_to_the_person() {
     };
     let (_, effects) = ReceiveSession::new(origin(), limits(1024)).step(Input::Frame(rsync));
     assert!(!effects.iter().any(|e| matches!(e, Effect::AskConsent(_))));
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     assert!(replies(&effects).iter().any(|status| matches!(
         status,
         ReplyStatus::Failed { code, .. } if code.code() == "EPERM"
@@ -203,7 +203,7 @@ fn an_aborted_stream_discards_open_files_and_ends_quietly() {
         writes(&effects),
         vec![WriteOp::Discard(RelPath::parse("x").expect("p"))]
     );
-    assert_eq!(effects.last(), Some(&Effect::Ended(EndWhy::Aborted)));
+    assert_eq!(effects.last(), Some(&Effect::Ended(TransferEnd::Aborted)));
     assert!(replies(&effects).is_empty());
     let (_, later) = after.step(file("y", "2", FileType::Regular, Some(1)));
     assert!(later.is_empty());
@@ -235,5 +235,5 @@ fn a_failed_write_for_no_open_file_ends_the_transfer() {
         op: WriteKind::Append,
         error: ErrorCode::Enoent,
     });
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
 }

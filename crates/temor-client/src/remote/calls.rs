@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use temor_remote::{Attached, Client, Error};
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{EnvVar, ListeningPort, OpenSession, Palette, RemotePath};
 use temor_wire::units::{CellPx, Cols, Pixels, Rows, Size};
 
@@ -37,7 +37,7 @@ pub fn open(
     (cwd, env, shell): (&str, &[(String, String)], Option<&str>),
     (size, cell): (Size, CellPx),
     palette: Palette,
-) -> Result<SessionId, Error> {
+) -> Result<RemoteSessionId, Error> {
     client.open_session(OpenSession {
         shell: shell.map(|shell| RemotePath(shell.to_owned())),
         cwd: RemotePath(cwd.to_owned()),
@@ -54,19 +54,23 @@ pub fn open(
     })
 }
 
-pub fn attach(client: &Client, session: SessionId) -> Result<Attached, Error> {
+pub fn attach(client: &Client, session: RemoteSessionId) -> Result<Attached, Error> {
     client.attach(session)
 }
 
 pub fn resize(
     client: &Client,
-    session: SessionId,
+    session: RemoteSessionId,
     (size, cell): (Size, CellPx),
 ) -> Result<(), Error> {
     client.resize(session, size, cell)
 }
 
-pub fn set_palette(client: &Client, session: SessionId, palette: Palette) -> Result<(), Error> {
+pub fn set_palette(
+    client: &Client,
+    session: RemoteSessionId,
+    palette: Palette,
+) -> Result<(), Error> {
     client.set_palette(session, palette)
 }
 
@@ -76,7 +80,7 @@ pub fn ping(client: &Client, within: Duration) -> Result<(), Error> {
 }
 
 /// The sessions the host holds.
-pub fn sessions(client: &Client) -> Result<Vec<SessionId>, Error> {
+pub fn sessions(client: &Client) -> Result<Vec<RemoteSessionId>, Error> {
     Ok(client
         .list_sessions()?
         .into_iter()
@@ -84,11 +88,11 @@ pub fn sessions(client: &Client) -> Result<Vec<SessionId>, Error> {
         .collect())
 }
 
-pub fn input(client: &Client, session: SessionId, bytes: &[u8]) -> Result<(), Error> {
+pub fn input(client: &Client, session: RemoteSessionId, bytes: &[u8]) -> Result<(), Error> {
     client.send_input(session, bytes)
 }
 
-pub fn close(client: &Client, session: SessionId) -> Result<(), Error> {
+pub fn close(client: &Client, session: RemoteSessionId) -> Result<(), Error> {
     client.close_session(session)
 }
 

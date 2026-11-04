@@ -1,6 +1,6 @@
-//! When the session is written (PLAN §4b: never in the render path). A change marks the state
-//! dirty; the window polls on its own timer and writes at most once per interval, and once more
-//! on quit. Time is passed in, so the rule is testable without a clock.
+//! When the session is written (PLAN §4b: never in the render path). The window polls on its own
+//! timer, saying whether what is kept differs from what was written, and writes at most once per
+//! interval, and once more on quit. Time is passed in, so the rule is testable without a clock.
 
 use std::time::{Duration, Instant};
 
@@ -20,7 +20,6 @@ pub enum Pace {
 pub struct SavePace {
     interval: Duration,
     last_write: Option<Instant>,
-    dirty: bool,
 }
 
 impl SavePace {
@@ -29,18 +28,12 @@ impl SavePace {
         SavePace {
             interval,
             last_write: None,
-            dirty: false,
         }
     }
 
-    /// The state changed.
-    pub fn changed(&mut self) {
-        self.dirty = true;
-    }
-
-    /// What to do at `now`.
-    pub fn poll(&self, now: Instant) -> Pace {
-        if !self.dirty {
+    /// What to do at `now`, when what is kept differs from what was written (`owed`).
+    pub fn poll(&self, now: Instant, owed: bool) -> Pace {
+        if !owed {
             return Pace::Idle;
         }
         match self.last_write {
@@ -58,12 +51,27 @@ impl SavePace {
 
     /// A write happened at `now`.
     pub fn wrote(&mut self, now: Instant) {
-        self.dirty = false;
         self.last_write = Some(now);
     }
+}
 
-    /// Whether a write is owed at quit (a change not yet written).
-    pub fn owed(&self) -> bool {
-        self.dirty
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_change_is_written_at_once_then_at_most_once_per_interval() {
+        let start = Instant::now();
+        let at = |ms| start + Duration::from_millis(ms);
+        let mut pace = SavePace::new(Duration::from_millis(2000));
+        assert_eq!(pace.poll(at(0), false), Pace::Idle);
+        assert_eq!(pace.poll(at(0), true), Pace::WriteNow);
+        pace.wrote(at(0));
+        assert_eq!(pace.poll(at(500), false), Pace::Idle);
+        assert_eq!(
+            pace.poll(at(500), true),
+            Pace::WaitFor(Duration::from_millis(1500))
+        );
+        assert_eq!(pace.poll(at(2000), true), Pace::WriteNow);
     }
 }

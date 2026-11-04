@@ -6,8 +6,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use temor_core::shelf::{UploadFault, UploadId};
 use temor_core::vocab::ids::Bytes;
+use temor_hosts::shelf::{UploadFault, UploadId};
 use temor_ssh::{HostAlias, RemoteFilePath, RemoteFiles, RemoteState, SshRemoteFiles};
 use temor_wire::message::{RemotePath, WriteCheck};
 use tokio::sync::mpsc::UnboundedSender;
@@ -16,7 +16,7 @@ use crate::remote::conn::Conn;
 use crate::remote::edit::{conflict_of, fault_of};
 use crate::ssh::SshEnv;
 use crate::ssh::work::{SshEvent, edit_fault};
-use temor_core::host::edit::EditFault;
+use temor_hosts::host::edit::EditFault;
 
 /// Starts uploads. Cloning shares the channel.
 #[derive(Debug, Clone)]

@@ -1,8 +1,8 @@
 //! Shell state reports: each shell says what its script is able to say (its adapter's `caps`),
 //! and the session's `ShellState` follows what the person does in it.
 
-use temor_core::block::Outcome;
-use temor_core::session::EnvEntry;
+use temor_client::model::block::Outcome;
+use temor_client::model::session::EnvEntry;
 use temor_shell::{ShellKind, adapter_for};
 
 use super::super::support::window_tools_present as tools_present;

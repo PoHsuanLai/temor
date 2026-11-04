@@ -7,7 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use temor_schema::ids::BlockId;
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::{Host, Location, TemorUrl};
 use temor_store::{Shelf, SqliteStore};
 
@@ -61,7 +62,7 @@ fn session(bits: u64, folder: &str, started: i64) -> Session {
         host: Host::Local,
         folder: folder.to_owned(),
         program: None,
-        started: At(started),
+        started: UnixMillis(started),
         ended: None,
     }
 }
@@ -346,8 +347,8 @@ fn history_and_a_sessions_commands_follow_what_is_recorded() {
         command: "cargo build".to_owned(),
         folder: "/w".to_owned(),
         exit: Some(0),
-        started: At(1),
-        ended: Some(At(2)),
+        started: UnixMillis(1),
+        ended: Some(UnixMillis(2)),
     };
     store.record_command(&ran).expect("record");
     client.settle();

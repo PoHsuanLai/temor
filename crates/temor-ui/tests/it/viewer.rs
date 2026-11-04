@@ -10,7 +10,7 @@ use ds::base::press::PointerButton;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input, PointerAction, PointerInput};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, focus_pane, type_line, wait_until};
 use super::support::{scratch_path, tools_present};
@@ -253,7 +253,7 @@ fn a_folder_in_the_address_opens_its_page_and_back_returns() {
 #[derive(Default)]
 struct PoppedOut(std::sync::Mutex<Vec<std::path::PathBuf>>);
 
-impl temor_ui::view::pop_out::OpenPopOut for PoppedOut {
+impl temor_ui_base::pop_out::OpenPopOut for PoppedOut {
     fn open(&self, file: &std::path::Path) {
         self.0.lock().expect("the list").push(file.to_owned());
     }
@@ -278,7 +278,7 @@ fn pop_out_moves_the_page_to_a_window_of_its_own() {
         ds_harness::WindowHosting::Absent,
         {
             let popped = popped.clone();
-            move |config| config.with_context(temor_ui::view::pop_out::PopOutWindows(popped))
+            move |config| config.with_context(temor_ui_base::pop_out::PopOutWindows(popped))
         },
     );
     let mut h = list_in(h, name, &probe);

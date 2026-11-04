@@ -20,10 +20,9 @@ use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use zbus::fdo::DBusProxy;
 use zbus::message::Header;
 use zbus::names::OwnedUniqueName;
@@ -35,8 +34,14 @@ const OBJECT_PATH: &str = "/org/quire/Temor1";
 /// The signal a waiting launch hears when its tab closed: `(ticket t, status i)`.
 const RUN_ENDED: &str = "RunEnded";
 
-/// The launches waiting on their tab, by ticket: where to send `RunEnded`.
-type Waiting = Arc<Mutex<HashMap<RunTicket, OwnedUniqueName>>>;
+/// What the served object tells [`tell_waiting`], which alone keeps who waits on which ticket.
+#[derive(Debug)]
+enum Launch {
+    /// `OwnedUniqueName` waits for `RunEnded` with this ticket.
+    Waits(RunTicket, OwnedUniqueName),
+    /// The run never reached the window: nobody waits on it.
+    Dropped(RunTicket),
+}
 
 /// The programs that may ask a running temor to run something: temor as the desktop installs it
 /// (root-owned all the way up). A row with no unit is known by its image alone, so `Exe` is the
@@ -160,11 +165,11 @@ impl SystemInstance {
         token: Option<&str>,
     ) -> Result<Claim, DesktopError> {
         let (sender, requests) = unbounded_channel();
-        let waiting = Waiting::default();
+        let (launches, launched) = unbounded_channel();
         let service = Service {
             sender,
             peers: Arc::clone(&self.peers),
-            waiting: Arc::clone(&waiting),
+            launches,
             next: AtomicU64::new(1),
         };
         let built = session_builder(&self.env)?
@@ -194,7 +199,7 @@ impl SystemInstance {
                 let peers = BusPeers::new(asking, table, manager).with_offload(Offload::Tokio);
                 let _ = self.peers.set(peers);
                 let (ends, heard) = unbounded_channel();
-                tokio::spawn(tell_waiting(connection.clone(), waiting, heard));
+                tokio::spawn(tell_waiting(connection.clone(), launched, heard));
                 let primary = Primary::new(requests, Box::new(connection));
                 Ok(Claim::Primary(primary.with_run_ends(RunEnds::new(ends))))
             }
@@ -259,30 +264,71 @@ async fn forward_on(
 }
 
 /// Sends `RunEnded` to each launch whose tab closed, until the window can say no more (every
-/// [`RunEnds`] is gone, so this holds the connection no longer than the primary does).
+/// [`RunEnds`] is gone, so this holds the connection no longer than the primary does). It keeps
+/// who waits on which ticket: a launch is told to it before its run is handed to the window, and
+/// it hears launches first, so an end never comes before the launch waiting on it.
 async fn tell_waiting(
     connection: zbus::Connection,
-    waiting: Waiting,
-    mut heard: tokio::sync::mpsc::UnboundedReceiver<RunEnd>,
+    mut launches: UnboundedReceiver<Launch>,
+    mut heard: UnboundedReceiver<RunEnd>,
 ) {
-    while let Some(end) = heard.recv().await {
-        let launch = waiting
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remove(&end.ticket);
-        if let Some(launch) = launch {
-            // Only the launch that waits hears it.
-            let _ = connection
-                .emit_signal(
-                    Some(&launch),
-                    OBJECT_PATH,
-                    INSTANCE_BUS_NAME,
-                    RUN_ENDED,
-                    &(end.ticket.0, end.status),
-                )
-                .await;
+    let mut waiting: HashMap<RunTicket, OwnedUniqueName> = HashMap::new();
+    loop {
+        tokio::select! {
+            biased;
+            Some(launch) = launches.recv() => match launch {
+                Launch::Waits(ticket, caller) => drop(waiting.insert(ticket, caller)),
+                Launch::Dropped(ticket) => drop(waiting.remove(&ticket)),
+            },
+            end = heard.recv() => {
+                let Some(end) = end else {
+                    return;
+                };
+                if let Some(launch) = waiting.remove(&end.ticket) {
+                    // Only the launch that waits hears it.
+                    let _ = connection
+                        .emit_signal(
+                            Some(&launch),
+                            OBJECT_PATH,
+                            INSTANCE_BUS_NAME,
+                            RUN_ENDED,
+                            &(end.ticket.0, end.status),
+                        )
+                        .await;
+                }
+            }
         }
     }
+}
+
+/// The status a `RunEnded` signal gives the launch waiting on `ticket`: only one from the temor
+/// that answered it, for its own ticket, counts.
+fn heard_end(ticket: u64, from_owner: bool, said: Option<(u64, i32)>) -> Option<i32> {
+    match said {
+        Some((heard, status)) if from_owner && heard == ticket => Some(status),
+        _ => None,
+    }
+}
+
+/// The run a `Run` call asks for, in the caller's bytes; `None` when it names no program.
+fn run_request(
+    argv: Vec<Vec<u8>>,
+    cwd: Vec<u8>,
+    env: Vec<(Vec<u8>, Vec<u8>)>,
+    ticket: RunTicket,
+) -> Option<RunRequest> {
+    if argv.first().is_none_or(Vec::is_empty) {
+        return None;
+    }
+    Some(RunRequest {
+        argv: argv.into_iter().map(OsString::from_vec).collect(),
+        cwd: (!cwd.is_empty()).then(|| PathBuf::from(OsStr::from_bytes(&cwd))),
+        env: env
+            .into_iter()
+            .map(|(key, value)| (OsString::from_vec(key), OsString::from_vec(value)))
+            .collect(),
+        ticket: Some(ticket),
+    })
 }
 
 /// Asks the running temor to run `run` on `connection` and waits for its tab to close.
@@ -325,10 +371,8 @@ async fn wait_on(
                     return Ok(CLOSED_WHILE_RUNNING);
                 };
                 let from_owner = message.header().sender().is_some_and(|s| *s == *owner);
-                if let (true, Ok((heard, status))) =
-                    (from_owner, message.body().deserialize::<(u64, i32)>())
-                    && heard == ticket
-                {
+                let said = message.body().deserialize::<(u64, i32)>().ok();
+                if let Some(status) = heard_end(ticket, from_owner, said) {
                     return Ok(status);
                 }
             }
@@ -379,7 +423,7 @@ async fn call_run(
 struct Service {
     sender: UnboundedSender<Handover>,
     peers: Peers,
-    waiting: Waiting,
+    launches: UnboundedSender<Launch>,
     next: AtomicU64,
 }
 
@@ -425,32 +469,50 @@ impl Service {
         peers
             .require_or_deny(header.sender().map(|name| name.as_str()), &run_callers())
             .await?;
-        if argv.first().is_none_or(Vec::is_empty) {
-            return Err(fdo::Error::InvalidArgs("no program to run".to_owned()));
-        }
         let Some(caller) = header.sender().map(|name| name.to_owned()) else {
             return Err(fdo::Error::AccessDenied("no caller".to_owned()));
         };
         let ticket = RunTicket(self.next.fetch_add(1, Ordering::Relaxed));
-        let run = RunRequest {
-            argv: argv.into_iter().map(OsString::from_vec).collect(),
-            cwd: (!cwd.is_empty()).then(|| PathBuf::from(OsStr::from_bytes(&cwd))),
-            env: env
-                .into_iter()
-                .map(|(key, value)| (OsString::from_vec(key), OsString::from_vec(value)))
-                .collect(),
-            ticket: Some(ticket),
+        let Some(run) = run_request(argv, cwd, env, ticket) else {
+            return Err(fdo::Error::InvalidArgs("no program to run".to_owned()));
         };
-        self.waiting
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(ticket, caller.into());
+        // Gone only with the primary, which then answers nobody's run.
+        let _ = self.launches.send(Launch::Waits(ticket, caller.into()));
         self.hand_over(Request::Run(run), token).inspect_err(|_| {
-            self.waiting
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .remove(&ticket);
+            let _ = self.launches.send(Launch::Dropped(ticket));
         })?;
         Ok(ticket.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_launch_hears_only_its_own_end_from_the_temor_that_answered() {
+        assert_eq!(heard_end(4, true, Some((4, 3))), Some(3));
+        assert_eq!(heard_end(4, true, Some((5, 3))), None, "another ticket");
+        assert_eq!(heard_end(4, false, Some((4, 3))), None, "another temor");
+        assert_eq!(heard_end(4, true, None), None, "unreadable");
+    }
+
+    #[test]
+    fn a_run_names_its_program_and_empty_bytes_mean_the_defaults() {
+        assert!(run_request(vec![], vec![], vec![], RunTicket(1)).is_none());
+        assert!(run_request(vec![vec![]], vec![], vec![], RunTicket(1)).is_none());
+        let run = run_request(
+            vec![b"vim".to_vec(), b"a b".to_vec()],
+            vec![],
+            vec![(b"K".to_vec(), b"v".to_vec())],
+            RunTicket(2),
+        )
+        .expect("a run");
+        assert_eq!(run.argv, vec![OsString::from("vim"), OsString::from("a b")]);
+        assert_eq!(run.cwd, None);
+        assert_eq!(run.env, vec![(OsString::from("K"), OsString::from("v"))]);
+        assert_eq!(run.ticket, Some(RunTicket(2)));
+        let there = run_request(vec![b"sh".to_vec()], b"/tmp".to_vec(), vec![], RunTicket(3));
+        assert_eq!(there.and_then(|run| run.cwd), Some(PathBuf::from("/tmp")));
     }
 }

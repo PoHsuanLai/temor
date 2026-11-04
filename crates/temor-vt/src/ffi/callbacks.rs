@@ -21,14 +21,6 @@ use crate::{
     VtEvent,
 };
 
-/// Whether the title changed during the current write; libghostty only lets the title be read
-/// after its callback returns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum TitleChange {
-    Unchanged,
-    Changed,
-}
-
 /// The state callbacks see through `userdata`. Owned by the terminal (boxed, so its address is
 /// stable) and only touched by the thread that holds the terminal.
 pub(super) struct Callbacks {
@@ -36,7 +28,7 @@ pub(super) struct Callbacks {
     pub(super) replies: Box<dyn ReplySink>,
     pub(super) color_scheme: Cell<ColorScheme>,
     pub(super) size: Cell<(GridSize, CellPx)>,
-    pub(super) title: Cell<TitleChange>,
+    pub(super) title: Cell<bool>,
     /// Whether the program holds the screen right now.
     pub(super) hold: Cell<RenderHold>,
     /// Answers clipboard reads; none refuses them all. Set before output is written.

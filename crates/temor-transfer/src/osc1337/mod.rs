@@ -10,6 +10,6 @@ mod parse;
 pub use assemble::Osc1337Reader;
 pub use encode::encode_file;
 pub use model::{
-    Aspect, Completeness, Consented, Delivery, Dimension, FileHeader, FileOffer, InlineImage,
-    MimeType, ReceivedFile,
+    Aspect, Consented, Delivery, Dimension, FileHeader, FileOffer, InlineImage, MimeType,
+    ReceivedFile,
 };

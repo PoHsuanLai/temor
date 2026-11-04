@@ -121,3 +121,74 @@ impl GridSpan {
         }
     }
 }
+
+/// Hands out ids in order, each once: it holds the id it gives next. It never gives `u64::MAX`,
+/// so the counter after any id it gave can be held, and a refusal leaves it as it was.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Counter(pub u64);
+
+impl Default for Counter {
+    fn default() -> Self {
+        Counter::FROM_ONE
+    }
+}
+
+impl Counter {
+    /// A counter that starts at 1, leaving 0 for "none".
+    pub const FROM_ONE: Counter = Counter(1);
+
+    /// The id it gives next and the counter after it; none when no id is left.
+    pub fn mint(self) -> Option<(u64, Counter)> {
+        let after = self.0.checked_add(1)?;
+        Some((self.0, Counter(after)))
+    }
+
+    /// Takes the id it gives next; none, and the counter unchanged, when no id is left.
+    pub fn take(&mut self) -> Option<u64> {
+        let (id, after) = self.mint()?;
+        *self = after;
+        Some(id)
+    }
+
+    /// The counter that gives nothing at or below `id`; none when no id is left after it.
+    pub fn past(self, id: u64) -> Option<Counter> {
+        Some(Counter(self.0.max(id.checked_add(1)?)))
+    }
+
+    /// The counter that gives nothing any of `ids` holds.
+    pub fn past_all(self, ids: impl IntoIterator<Item = u64>) -> Option<Counter> {
+        ids.into_iter().try_fold(self, Counter::past)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Counter;
+
+    #[test]
+    fn a_counter_gives_each_id_once_in_order() {
+        let mut c = Counter::FROM_ONE;
+        assert_eq!((c.take(), c.take()), (Some(1), Some(2)));
+        assert_eq!(c, Counter(3));
+    }
+
+    #[test]
+    fn a_counter_with_no_id_left_refuses_and_stays() {
+        let mut c = Counter(u64::MAX);
+        assert_eq!(c.take(), None);
+        assert_eq!(c, Counter(u64::MAX));
+        assert_eq!(
+            Counter(u64::MAX - 1).mint(),
+            Some((u64::MAX - 1, Counter(u64::MAX)))
+        );
+    }
+
+    #[test]
+    fn past_moves_only_forward_and_refuses_the_last_id() {
+        assert_eq!(Counter(5).past(2), Some(Counter(5)));
+        assert_eq!(Counter(5).past(9), Some(Counter(10)));
+        assert_eq!(Counter(5).past_all([3, 7, 4]), Some(Counter(8)));
+        assert_eq!(Counter(5).past(u64::MAX), None);
+    }
+}

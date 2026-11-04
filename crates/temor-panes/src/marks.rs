@@ -10,9 +10,9 @@
 
 use std::time::Instant;
 
-use temor_core::block::{Block, Note, Outcome, summarize};
-use temor_core::session::found::{At, Kind, find_blocks, match_history};
-use temor_core::session::{
+use temor_blocks::block::{Block, Note, Outcome, summarize};
+use temor_blocks::session::found::{Kind, ScreenPoint, find_blocks, match_history};
+use temor_blocks::session::{
     BlockAnchors, CommandRecord, KeptBlock, MarkIn, MarkKind, MarkOut, mark_step,
 };
 use temor_core::vocab::ids::{BlockId, ExitCode, GridRow, GridSpan};
@@ -33,6 +33,18 @@ pub struct Finished {
     pub command: String,
     pub exit: Option<i32>,
     pub ran_ms: u64,
+}
+
+impl Finished {
+    /// `block` as history keeps it; none while it has no end.
+    pub(super) fn of(block: &Block) -> Option<Finished> {
+        Some(Finished {
+            id: block.id,
+            command: block.command.0.clone(),
+            exit: block.exit.map(|code| code.0),
+            ran_ms: block.elapsed_ms()?,
+        })
+    }
 }
 
 /// What a mark's event says, for the log.
@@ -162,7 +174,7 @@ impl PaneCore {
                 MarkOut::Release(anchor) => self.drop_anchor(anchor_id(anchor)),
                 MarkOut::Finished(block) => {
                     self.keep_note(&block);
-                    self.notify_finished(&block);
+                    self.command_finished(&block);
                 }
                 _ => {}
             }
@@ -250,7 +262,7 @@ impl PaneCore {
         if !self.blocks.marks.store().is_empty() {
             return;
         }
-        let starts: Vec<(At, Kind)> = self
+        let starts: Vec<(ScreenPoint, Kind)> = self
             .pane
             .with_term(|term| term.semantic_starts())
             .into_iter()
@@ -261,7 +273,7 @@ impl PaneCore {
                     SemanticMark::Output => Kind::Output,
                 };
                 (
-                    At {
+                    ScreenPoint {
                         row: u64::from(at.row),
                         col: at.col.0,
                     },
@@ -338,14 +350,14 @@ impl PaneCore {
         }
     }
 
-    fn anchor_found(&self, at: At) -> Option<AnchorId> {
+    fn anchor_found(&self, at: ScreenPoint) -> Option<AnchorId> {
         let row = u32::try_from(at.row).ok()?;
         self.pane
             .with_term(|term| term.anchor_at(GridPoint::new(PointSpace::Screen, at.col, row)))
     }
 
     /// One mark the shell sent before the snapshot was taken, given to the log as if it came now.
-    fn found_mark(&mut self, kind: MarkKind, at: At) {
+    fn found_mark(&mut self, kind: MarkKind, at: ScreenPoint) {
         let Some(anchor) = self.anchor_found(at) else {
             return;
         };
@@ -382,24 +394,6 @@ impl PaneCore {
             .store()
             .iter()
             .map(|block| (block.id, block.outcome()))
-            .collect()
-    }
-
-    /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
-    /// them: the command, how it exited, and how long it ran.
-    pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
-        self.blocks
-            .store()
-            .iter()
-            .filter(|block| after.is_none_or(|after| block.id > after))
-            .filter_map(|block| {
-                Some(Finished {
-                    id: block.id,
-                    command: block.command.0.clone(),
-                    exit: block.exit.map(|code| code.0),
-                    ran_ms: block.elapsed_ms()?,
-                })
-            })
             .collect()
     }
 

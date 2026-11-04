@@ -3,7 +3,7 @@
 use proptest::prelude::*;
 use temor_wire::digest::ContentHash;
 use temor_wire::hello::{Capability, HelperVersion, ProtocolVersion};
-use temor_wire::ids::{RequestId, SessionId, TerminalId, WatchId};
+use temor_wire::ids::{RemoteSessionId, RequestId, TerminalId, WatchId};
 use temor_wire::message::{
     ChangeKind, EntryKind, EnvVar, ErrorLine, ExitStatus, FileChange, FileChanges, FileMeta,
     FileStamp, IdleLimit, ListeningPort, Palette, PartEnd, Refusal, RelPath, RemotePath, Rgb,
@@ -22,8 +22,8 @@ pub fn request_id() -> impl Strategy<Value = RequestId> {
     any::<u64>().prop_map(RequestId)
 }
 
-pub fn session_id() -> impl Strategy<Value = SessionId> {
-    any::<u64>().prop_map(SessionId)
+pub fn session_id() -> impl Strategy<Value = RemoteSessionId> {
+    any::<u64>().prop_map(RemoteSessionId)
 }
 
 pub fn watch_id() -> impl Strategy<Value = WatchId> {

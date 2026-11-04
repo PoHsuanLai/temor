@@ -1,0 +1,92 @@
+//! The root of the Settings window. quire gives this VirtualDom the same root contexts as the
+//! first window (`Launch`, `Desktop`, the board); what the window keeps for itself is made here
+//! again: its look, which page is shown and the settings it draws. It opens on the page the
+//! main window asked for last ([`SettingsAsked`]) and turns to each page asked for while it is
+//! open.
+
+use std::sync::Arc;
+
+use dioxus::prelude::*;
+use ds::base::spawner::Spawner;
+use ds::prelude::*;
+use ds_blitz::TokioSpawner;
+use temor_panes::pane::keys::SettingsPane;
+
+use super::edit::current;
+use super::style::SETTINGS_CSS;
+use super::view::SettingsView;
+use crate::watched::use_watch;
+use temor_hub::settings_link::SettingsAsked;
+use temor_ui_base::launch::Launch;
+use temor_ui_base::settings::TerminalDoc;
+use temor_ui_base::theme::use_window_look;
+
+/// Whether the window follows `settings.toml` while it is open.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Follow {
+    /// A change made elsewhere (another window, an editor) is shown at once.
+    File,
+    /// The window shows the file as it was read: a test's.
+    Fixed,
+}
+
+/// The window as quire opens it.
+pub fn settings_window() -> Element {
+    rsx! { SettingsShell { follow: Follow::File } }
+}
+
+/// The window as a test drives it: without the watch on the settings folder.
+pub fn settings_root() -> Element {
+    rsx! { SettingsShell { follow: Follow::Fixed } }
+}
+
+#[component]
+#[allow(non_snake_case)]
+fn SettingsShell(follow: Follow) -> Element {
+    let launch = use_hook(consume_context::<Launch>);
+    let spawner = use_hook(|| Arc::new(TokioSpawner::current()) as Arc<dyn Spawner>);
+    // The person's look and the desktop's preferences, as the first window follows them.
+    let env = use_window_look(&launch.appearance, spawner.clone());
+
+    let asked = try_consume_context::<SettingsAsked>();
+    let page = use_watch(
+        || asked.as_ref().map(SettingsAsked::heard),
+        SettingsPane::default,
+    );
+
+    let mut doc = use_signal({
+        let ambient = launch.ambient.clone();
+        move || current(&ambient)
+    });
+    use_context_provider(|| doc);
+    use_future({
+        let store = launch.ambient.settings_store();
+        move || {
+            let (store, spawner) = (store.clone(), spawner.clone());
+            async move {
+                if follow == Follow::Fixed {
+                    return;
+                }
+                let mut watch = store.watch::<TerminalDoc>(&*spawner);
+                while let Some(loaded) = watch.changed().await {
+                    if *doc.peek() != loaded.value {
+                        doc.set(loaded.value);
+                    }
+                }
+            }
+        }
+    });
+
+    let now = env();
+    rsx! {
+        Ds {
+            appearance: now.settings.appearance.appearance(),
+            system: now.system,
+            typeface: Some(now.settings.appearance.typeface()),
+            material: Material::Window,
+            extent: RootExtent::Window,
+            style { {SETTINGS_CSS} }
+            SettingsView { page }
+        }
+    }
+}

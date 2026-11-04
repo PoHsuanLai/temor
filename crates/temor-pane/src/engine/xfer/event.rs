@@ -28,17 +28,7 @@ pub enum OfferKind {
     Inline { name: String, size: u64 },
 }
 
-/// How a transfer ended.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum TransferEnd {
-    Finished,
-    Refused,
-    Cancelled,
-    Failed,
-    /// The program ended or the pane closed first.
-    Aborted,
-}
+pub use temor_transfer::kitty::TransferEnd;
 
 /// One thing a transfer did. `file` names a file within its offer (its path in the transfer).
 #[derive(Debug, Clone, PartialEq, Eq)]

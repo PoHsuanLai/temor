@@ -26,7 +26,7 @@ use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
 use temor_testkit::git;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive;
 use super::drive::{chord, rows, type_line, type_text};

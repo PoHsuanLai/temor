@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use temor_vt::{
     ImageId, KittyImage, KittyLayer, KittyPixelFormat, KittyPixels, PlacementKind, Terminal,
-    Visibility,
 };
 
 use super::model::{ImagePixels, ImagePlacement};
@@ -50,7 +49,7 @@ impl ImageCache {
             for p in placements {
                 // Libghostty calls a virtual placement hidden: it has no position of its own.
                 let is_virtual = p.kind == PlacementKind::Virtual;
-                if !is_virtual && p.render.visibility == Visibility::Hidden {
+                if !is_virtual && !p.render.visible {
                     continue;
                 }
                 let Some(image) = self.pixels(&p.image) else {

@@ -1,7 +1,7 @@
 //! A pane saved with the session it had on a host (PLAN §9b, D18): after a restart it asks for
 //! that session again, if the host still holds it.
 
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 
 /// What a restored pane does about the session it was saved with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,7 +13,7 @@ pub enum Adoption {
 }
 
 /// Whether `saved` is among the sessions the host `held` just now.
-pub fn adoption(saved: SessionId, held: &[SessionId]) -> Adoption {
+pub fn adoption(saved: RemoteSessionId, held: &[RemoteSessionId]) -> Adoption {
     match held.contains(&saved) {
         true => Adoption::Adopt,
         false => Adoption::OpenNew,
@@ -26,11 +26,11 @@ mod tests {
 
     #[test]
     fn a_saved_session_is_adopted_only_while_the_host_still_has_it() {
-        let held = [SessionId(2), SessionId(5)];
+        let held = [RemoteSessionId(2), RemoteSessionId(5)];
         let cases = [
-            (SessionId(5), &held[..], Adoption::Adopt),
-            (SessionId(3), &held[..], Adoption::OpenNew),
-            (SessionId(5), &[][..], Adoption::OpenNew),
+            (RemoteSessionId(5), &held[..], Adoption::Adopt),
+            (RemoteSessionId(3), &held[..], Adoption::OpenNew),
+            (RemoteSessionId(5), &[][..], Adoption::OpenNew),
         ];
         for (saved, held, want) in cases {
             assert_eq!(adoption(saved, held), want, "{saved:?} among {held:?}");

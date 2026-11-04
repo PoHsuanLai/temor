@@ -6,9 +6,13 @@
 mod argv;
 mod edge;
 mod path;
+#[cfg(feature = "io")]
+mod run;
 #[cfg(test)]
 mod tests;
 
 pub use argv::{FileTools, fetch_argv, stat_argv, store_argv};
-pub use edge::{CommandOutput, CommandRunner, RemoteFiles, SshRemoteFiles, StdRunner};
+pub use edge::{CommandOutput, CommandRunner, RemoteFiles, SshRemoteFiles};
 pub use path::{ByteCount, RemoteFilePath, RemoteStat, RemoteState, parse_stat};
+#[cfg(feature = "io")]
+pub use run::StdRunner;

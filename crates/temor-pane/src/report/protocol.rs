@@ -17,6 +17,10 @@
 //! ignored so a later version can add some. A refusal is `err <code>`; a bad version or a line
 //! over the limit also ends the connection.
 
+// The server's half (reading requests) is the engine's; without it only the words a client
+// sends and reads are used.
+#![cfg_attr(not(feature = "engine"), allow(dead_code))]
+
 use std::fmt;
 use std::str::FromStr;
 

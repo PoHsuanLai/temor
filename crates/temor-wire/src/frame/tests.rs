@@ -1,6 +1,6 @@
 use super::*;
 use crate::WireError;
-use crate::ids::{RequestId, SessionId};
+use crate::ids::{RemoteSessionId, RequestId};
 use crate::message::{Incoming, Message, Reply, Request};
 use crate::units::{ByteCount, ByteOffset, ByteRange};
 
@@ -15,7 +15,7 @@ fn input(id: u64) -> Message {
     Message::Request {
         id: RequestId(id),
         body: Request::SendInput {
-            session: SessionId(1),
+            session: RemoteSessionId(1),
         },
     }
 }

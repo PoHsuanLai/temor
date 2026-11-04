@@ -18,4 +18,10 @@ pub mod upload;
 
 pub use temor_wire::{digest, hello, ids, link, message, units};
 // A host's reach and the ports it listens on, as its client reports them.
-pub use temor_remote::{HostReach, PortAction, host, port_actions};
+pub use temor_remote::{HostReach, PortAction, port_actions};
+
+/// What the window knows of the computer temor runs on, for a pane started there: not the
+/// helper's own dialing and serving.
+pub mod host {
+    pub use temor_remote::host::HostEnv;
+}

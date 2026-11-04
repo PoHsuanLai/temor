@@ -13,25 +13,19 @@ use std::time::{Duration, Instant};
 use temor_pty::{ChildExit, Pty, ReadOutcome, Ready};
 use temor_transfer::Consent;
 use temor_transfer::kitty::Offered;
-use temor_vt::{RenderHold, Snapshot, Truncation, UnknownKind, VtEvent};
+use temor_vt::Snapshot;
 
 use super::event::PaneEvent;
 use super::fed_io::{FedSetup, pump_fed};
 use super::outbox::Outbox;
 use super::poison::lock;
 use super::reap::{GRACE, POLL, ReapStep, reap_step};
+use super::route::{Route, route};
 use super::sink::EventSink;
 use super::tap::ByteTap;
 use super::term::Term;
 use super::watch::ForegroundWatch;
 use super::xfer::{OfferId, Reaction, Transfers};
-
-/// What the payload of a shell state report starts with (`temor_shell::report::OSC_NUMBER`).
-const REPORT_HEAD: &[u8] = b"7503;";
-
-/// What the payload of a shell's completion answer starts with
-/// (`temor_shell::complete::OSC_NUMBER`).
-const COMPLETE_HEAD: &[u8] = b"7504;";
 
 /// What the window asks of the I/O thread.
 #[derive(Debug)]
@@ -135,7 +129,7 @@ fn pump(mut io: Io) {
             carry_out(&mut io, reaction);
         }
         if let Some(pty) = io.pty.as_ref()
-            && let Some(event) = io.watch.poll(pty)
+            && let Some(event) = io.watch.poll(pty, Instant::now())
         {
             send(&io, event);
         }
@@ -202,49 +196,24 @@ pub(super) fn deliver(io: &mut Io, bytes: &[u8]) {
         let _ = io.outbox.push_reply(&reply);
     }
     for event in output.events {
-        if let VtEvent::Unknown {
-            kind: UnknownKind::Osc,
-            payload,
-            truncation: Truncation::Complete,
-        } = &event
-            && let Some(report) = payload.strip_prefix(REPORT_HEAD)
-        {
-            if let Ok(report) = std::str::from_utf8(report) {
-                send(io, PaneEvent::ShellReport(report.to_owned()));
-            }
-            continue;
-        }
-        if let VtEvent::Unknown {
-            kind: UnknownKind::Osc,
-            payload,
-            truncation: Truncation::Complete,
-        } = &event
-            && let Some(answer) = payload.strip_prefix(COMPLETE_HEAD)
-        {
-            if let Ok(answer) = std::str::from_utf8(answer) {
-                send(io, PaneEvent::Completions(answer.to_owned()));
-            }
-            continue;
-        }
-        if let VtEvent::Unknown {
-            kind,
-            payload,
-            truncation,
-        } = &event
-            && let Some(transfers) = io.transfers.as_mut()
-        {
-            let reaction = transfers.on_unknown(*kind, payload, *truncation);
-            carry_out(io, Some(reaction));
-            continue;
-        }
-        if let Some(event) = map_event(event, read) {
-            if let PaneEvent::Title(title) = &event {
-                if io.last_title.as_deref() == Some(title.as_str()) {
-                    continue;
-                }
+        match route(event, read, io.last_title.as_deref()) {
+            Route::Send(event) => send(io, event),
+            Route::Title(title) => {
                 io.last_title = Some(title.clone());
+                send(io, PaneEvent::Title(title));
             }
-            send(io, event);
+            Route::Unknown {
+                kind,
+                payload,
+                truncated,
+            } => {
+                let reaction = io
+                    .transfers
+                    .as_mut()
+                    .map(|t| t.on_unknown(kind, &payload, truncated));
+                carry_out(io, reaction);
+            }
+            Route::Drop => {}
         }
     }
     signal_dirty(io);
@@ -268,36 +237,6 @@ pub(super) fn signal_dirty(io: &Io) {
     if !io.dirty.swap(true, Ordering::AcqRel) {
         io.events.send(PaneEvent::Dirty);
     }
-}
-
-/// The window's view of a terminal event, read at `read`; events the window does not use yet are
-/// dropped.
-pub(super) fn map_event(event: VtEvent, read: Instant) -> Option<PaneEvent> {
-    Some(match event {
-        VtEvent::Title(title) => PaneEvent::Title(title),
-        VtEvent::Bell => PaneEvent::Bell,
-        VtEvent::Cwd(url) => PaneEvent::Cwd(url),
-        VtEvent::Clipboard { write } => PaneEvent::Clipboard(write),
-        VtEvent::ClipboardRead { read } => PaneEvent::ClipboardRead(read),
-        VtEvent::Notification(note) => PaneEvent::Notification(note),
-        VtEvent::MarkBegin { seq } => PaneEvent::MarkBegin { seq },
-        VtEvent::Prompt(mark) => PaneEvent::Prompt(mark),
-        VtEvent::Anchor { seq, anchor } => PaneEvent::Anchor {
-            seq,
-            anchor,
-            at: read,
-        },
-        VtEvent::Progress(progress) => PaneEvent::Progress(progress),
-        VtEvent::Reset => PaneEvent::Reset,
-        VtEvent::RenderHold(RenderHold::Held) => PaneEvent::RenderHold(super::event::Hold::Held),
-        VtEvent::RenderHold(RenderHold::Released) => {
-            PaneEvent::RenderHold(super::event::Hold::Released)
-        }
-        VtEvent::ProgramStatus(status) => PaneEvent::Program(status),
-        // Colour-scheme queries and unknown sequences have no UI yet
-        // (PLAN §4b, §9); they are dropped here, in one place.
-        _ => return None,
-    })
 }
 
 /// Ends the program: hangs up its process group, polls for the exit for the grace period, then

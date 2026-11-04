@@ -12,14 +12,14 @@ use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Harness, HarnessConfig, Viewport, WindowHosting};
 use temor_desktop::RunEnds;
+use temor_hub::Run;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::app::desktop::Desktop;
-use temor_ui::edge::Ambient;
-use temor_ui::hub::Run;
-use temor_ui::view::App;
-use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, TakeOnce};
+use temor_ui_base::desktop::Desktop;
+use temor_ui_base::edge::Ambient;
+use temor_ui_base::probe::Probe;
+use temor_views::App;
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, wait_until};
 use super::support::scratch;
@@ -160,7 +160,7 @@ fn harness_at(
         },
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
         // Our desktop: ⌘ is Super, or the Ctrl+Shift form the harness chords send.
-        keymap: temor_ui::edge::keymap_for(
+        keymap: temor_ui_base::edge::keymap_for(
             chordkit::Platform::Linux {
                 desktop: chordkit::Desktop::Ours,
             },
@@ -411,9 +411,11 @@ fn a_saved_session_is_restored_on_launch() {
     if !super::support::window_tools_present() {
         return;
     }
-    use temor_core::split::Direction;
+    use temor_client::model::split::Direction;
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     // The window's own scratch folder is emptied when it opens, so the session lives beside it.
     let state = scratch("window-restore-state").join("state");
     let here = Cwd(state.parent().expect("a parent").display().to_string());
@@ -445,8 +447,10 @@ fn the_rows_are_kept_in_the_store_after_the_old_file_is_read_in_once() {
     if !super::support::window_tools_present() {
         return;
     }
+    use temor_client::model::workspace::{
+        ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step,
+    };
     use temor_core::vocab::text::Cwd;
-    use temor_core::workspace::{ClosedState, KeepClosed, Workspace, WorkspaceIn, workspace_step};
     let state = scratch("window-layout-state").join("state");
     let here = Cwd(state.parent().expect("a parent").display().to_string());
     let ws = [

@@ -15,6 +15,7 @@ mod opt_out;
 mod prompt;
 mod resize;
 mod support;
+mod wake;
 
 #[test]
 fn every_module_in_this_directory_is_declared() {

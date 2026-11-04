@@ -1,0 +1,43 @@
+//! Everything the window keeps about agents: the radar and the pane sockets. Lives in the hub, on
+//! the window's thread.
+
+use temor_client::model::agent::radar::{Monotonic, RadarParams};
+use temor_client::model::vocab::ids::PaneId;
+use temor_panes::pane::PaneEvent;
+use tokio::sync::mpsc::UnboundedSender;
+
+use super::radar::Radar;
+use temor_ui_base::edge::{Clock, SocketHost, SystemClock};
+use temor_ui_base::launch::Launch;
+
+/// The window's agent state.
+pub struct Agents {
+    pub(super) clock: Box<dyn Clock>,
+    pub radar: Radar,
+    pub(super) sockets: Option<SocketHost>,
+    pub(super) socket_told: bool,
+}
+
+impl std::fmt::Debug for Agents {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Agents").finish_non_exhaustive()
+    }
+}
+
+impl Agents {
+    /// The agent state for a window started from `launch`. Pane sockets send their reports to
+    /// `events`.
+    pub fn new(launch: &Launch, events: UnboundedSender<(PaneId, PaneEvent)>) -> Agents {
+        Agents {
+            clock: Box::new(SystemClock::new()),
+            radar: Radar::new(RadarParams::default()),
+            sockets: SocketHost::start(launch.ambient.runtime_dir.clone(), events).ok(),
+            socket_told: false,
+        }
+    }
+
+    /// The window's clock, for the radar's timing.
+    pub fn now(&self) -> Monotonic {
+        Monotonic(self.clock.now().0)
+    }
+}

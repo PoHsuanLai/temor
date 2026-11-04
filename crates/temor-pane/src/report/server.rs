@@ -53,17 +53,12 @@ impl Default for SocketLimits {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Greeting {
-    Waiting,
-    Done,
-}
-
 #[derive(Debug)]
 struct Client {
     stream: UnixStream,
     buf: Vec<u8>,
-    greeting: Greeting,
+    /// The client has said hello.
+    greeted: bool,
 }
 
 /// What reading a client ended with.
@@ -158,7 +153,7 @@ impl PaneSocket {
             self.clients.push(Client {
                 stream,
                 buf: Vec::new(),
-                greeting: Greeting::Waiting,
+                greeted: false,
             });
         }
     }
@@ -224,16 +219,16 @@ fn drain(
 }
 
 fn handle(client: &mut Client, request: Request, reports: &mut Vec<StatusLine>) -> Fate {
-    match (client.greeting, request) {
-        (Greeting::Waiting, Request::Hello(VERSION)) => {
-            client.greeting = Greeting::Done;
+    match (client.greeted, request) {
+        (false, Request::Hello(VERSION)) => {
+            client.greeted = true;
             answer(client, &format!("ok {VERSION}\n"))
         }
-        (Greeting::Waiting, Request::Hello(_)) => refuse(client, ReportRefusal::Version),
-        (Greeting::Waiting, _) => refuse(client, ReportRefusal::NeedHello),
-        (Greeting::Done, Request::Hello(_)) => refuse(client, ReportRefusal::Syntax),
-        (Greeting::Done, Request::Ping) => answer(client, "pong\n"),
-        (Greeting::Done, Request::Status(line)) => {
+        (false, Request::Hello(_)) => refuse(client, ReportRefusal::Version),
+        (false, _) => refuse(client, ReportRefusal::NeedHello),
+        (true, Request::Hello(_)) => refuse(client, ReportRefusal::Syntax),
+        (true, Request::Ping) => answer(client, "pong\n"),
+        (true, Request::Status(line)) => {
             let seq = line.seq;
             reports.push(line);
             answer(client, &format!("ok {seq}\n"))

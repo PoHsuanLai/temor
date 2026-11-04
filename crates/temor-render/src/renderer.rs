@@ -3,7 +3,7 @@
 use temor_vt::{Col, Px, Row};
 
 use crate::error::RenderError;
-use crate::frame::PaneFrame;
+use crate::frame::{PaneFrame, TermColors};
 use crate::metrics::{CellMetrics, CellPos, Padding, PixelSize, Scale};
 use crate::palette::Palette;
 
@@ -23,14 +23,7 @@ pub enum BlinkPhase {
     Off,
 }
 
-/// How a selection covers cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SelectionShape {
-    /// Reading order from `start` to `end`.
-    Linear,
-    /// The rectangle with `start` and `end` as corners.
-    Block,
-}
+pub use temor_vt::SelectionShape;
 
 /// A selection the UI holds, drawn over the cells (both ends included). Cells libghostty marks
 /// selected are drawn the same way.
@@ -97,6 +90,19 @@ pub struct PaneView<'a> {
     /// How many rows the grid is drawn lower than its fit, so its last drawn row meets the
     /// pane's bottom while the screen below it is empty (see [`PaneFrame::blank_rows_below`]).
     pub lower: u16,
+    /// The window's ground, drawn where a cell has no colour of its own in place of the
+    /// terminal's background (a block list's pane, a still set on a card).
+    pub ground: Option<temor_vt::Rgb>,
+}
+
+impl PaneView<'_> {
+    /// The frame's colours as this view draws them: on its ground, when it has one.
+    pub(crate) fn colors(&self, frame: &PaneFrame) -> TermColors {
+        TermColors {
+            background: self.ground.unwrap_or(frame.colors.background),
+            ..frame.colors
+        }
+    }
 }
 
 /// A changed rectangle of the output, in device pixels from its top-left.
@@ -113,7 +119,8 @@ pub struct DamageRect {
 pub struct RenderStats {
     /// Grid rows composed this frame.
     pub rows_composed: u32,
-    /// Glyph-atlas clears this frame (the atlas filled up).
+    /// Glyph-atlas clears this frame: the frame's glyphs did not fit beside what was there
+    /// (the GPU path; the CPU path draws from the glyph cache and has no atlas).
     pub atlas_resets: u32,
     /// Kitty images not drawn this frame: empty, or larger than the device's texture limit
     /// (GPU only; the CPU path has no such limit).
@@ -130,13 +137,13 @@ pub trait Renderer {
         Self: 'a;
 
     /// The cell at `scale`, for sizing the terminal (`Terminal::resize`) before drawing.
-    fn cell_metrics(&mut self, scale: Scale) -> CellMetrics;
+    fn cell_metrics(&self, scale: Scale) -> CellMetrics;
 
-    /// Draws what changed in `frame` since the last render (everything when the view's size,
-    /// scale or colours changed) and clears the frame's dirty marks.
+    /// Draws what changed in `frame` since the last render that succeeded (everything when the
+    /// view's size, scale or colours changed).
     fn render(
         &mut self,
-        frame: &mut PaneFrame,
+        frame: &PaneFrame,
         view: &PaneView<'_>,
     ) -> Result<Self::Output<'_>, RenderError>;
 }

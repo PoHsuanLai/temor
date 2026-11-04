@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use temor_core::host::edit::{EditFault, EditIn, Found};
+use temor_hosts::host::edit::{EditFault, EditIn, Found};
 use temor_remote::Error;
 use temor_ssh::{ByteCount, RemoteStat, RemoteState, UnixSeconds};
 use temor_wire::message::{EntryKind, FileStamp, RemotePath, WriteCheck};

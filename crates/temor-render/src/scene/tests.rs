@@ -1,4 +1,4 @@
-use temor_vt::{CellStyle, Col, Rgb, Row, Selected, StyleFlags, Underline};
+use temor_vt::{CellStyle, Col, Rgb, Row, StyleFlags, Underline};
 
 use super::SceneInput;
 use super::build::build_row;
@@ -23,7 +23,7 @@ fn cell(col: u16, text: &str, flags: StyleFlags) -> CellDraw {
             flags,
             ..CellStyle::default()
         },
-        selected: Selected::No,
+        selected: false,
     }
 }
 
@@ -137,13 +137,13 @@ fn every_cursor_style_draws() {
 
 #[test]
 fn a_cursor_on_a_wide_blank_cell_spans_both_columns() {
-    use temor_vt::{CursorBlink, CursorCell, CursorShape, CursorView};
+    use temor_vt::{CursorShape, CursorView};
     let view = CursorView {
         col: Col(3),
         row: Row(0),
         shape: CursorShape::Block,
-        blink: CursorBlink::Steady,
-        cell: CursorCell::Normal,
+        blinking: false,
+        wide_tail: false,
     };
     // The row's spans as the frame holds them: a narrow cell, then a blank wide one.
     let cursor = resolve_cursor(
@@ -158,45 +158,45 @@ fn a_cursor_on_a_wide_blank_cell_spans_both_columns() {
 
 #[test]
 fn a_blinking_cursor_is_left_out_only_in_its_off_half_and_only_when_focused() {
-    use temor_vt::{CursorBlink, CursorCell, CursorShape, CursorView};
+    use temor_vt::{CursorShape, CursorView};
     // (what, the cursor's blink, focus, blink half, drawn)
     let rows = [
         (
             "blinking, on half",
-            CursorBlink::Blinking,
+            true,
             PaneFocus::Focused,
             BlinkPhase::On,
             true,
         ),
         (
             "blinking, off half",
-            CursorBlink::Blinking,
+            true,
             PaneFocus::Focused,
             BlinkPhase::Off,
             false,
         ),
         (
             "steady, off half",
-            CursorBlink::Steady,
+            false,
             PaneFocus::Focused,
             BlinkPhase::Off,
             true,
         ),
         (
             "unfocused never blinks",
-            CursorBlink::Blinking,
+            true,
             PaneFocus::Unfocused,
             BlinkPhase::Off,
             true,
         ),
     ];
-    for (what, blink, focus, phase, drawn) in rows {
+    for (what, blinking, focus, phase, drawn) in rows {
         let view = CursorView {
             col: Col(0),
             row: Row(0),
             shape: CursorShape::Block,
-            blink,
-            cell: CursorCell::Normal,
+            blinking,
+            wide_tail: false,
         };
         let cursor = resolve_cursor(
             Some(view),

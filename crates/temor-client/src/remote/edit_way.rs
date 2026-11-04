@@ -14,41 +14,27 @@ pub enum EditTier {
     Helper,
 }
 
-/// Whether the host's helper is connected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HelperUp {
-    Yes,
-    No,
-}
-
-/// Whether the next write goes over a changed file because the person said so.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Overwrite {
-    Yes,
-    No,
-}
-
 /// There is no way to reach the host's files: no helper, and no shared connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NoWay;
 
 /// The way to reach a host's files: the helper when it is connected, else `scp` on a shared
 /// connection that is up.
-pub fn pick_tier(helper: HelperUp, master: Option<&Master>) -> Result<EditTier, NoWay> {
+pub fn pick_tier(helper: bool, master: Option<&Master>) -> Result<EditTier, NoWay> {
     match (helper, master) {
-        (HelperUp::Yes, _) => Ok(EditTier::Helper),
-        (HelperUp::No, Some(Master::Up)) => Ok(EditTier::Scp),
-        (HelperUp::No, _) => Err(NoWay),
+        (true, _) => Ok(EditTier::Helper),
+        (false, Some(Master::Up)) => Ok(EditTier::Scp),
+        (false, _) => Err(NoWay),
     }
 }
 
 /// What a write-back must find on the host. The stamp read last, unless the person chose to
 /// overwrite; `None` when there is no stamp to hold the write to (it is never written blind).
-pub fn write_check(seen: Option<FileStamp>, overwrite: Overwrite) -> Option<WriteCheck> {
+pub fn write_check(seen: Option<FileStamp>, overwrite: bool) -> Option<WriteCheck> {
     match (overwrite, seen) {
-        (Overwrite::Yes, _) => Some(WriteCheck::Overwrite),
-        (Overwrite::No, Some(stamp)) => Some(WriteCheck::Unchanged(stamp)),
-        (Overwrite::No, None) => None,
+        (true, _) => Some(WriteCheck::Overwrite),
+        (false, Some(stamp)) => Some(WriteCheck::Unchanged(stamp)),
+        (false, None) => None,
     }
 }
 
@@ -63,26 +49,26 @@ mod tests {
         let cases = [
             (
                 "helper, no shared connection",
-                HelperUp::Yes,
+                true,
                 None,
                 Ok(EditTier::Helper),
             ),
             (
                 "helper and shared connection",
-                HelperUp::Yes,
+                true,
                 Some(Master::Up),
                 Ok(EditTier::Helper),
             ),
             (
                 "no helper, connection up",
-                HelperUp::No,
+                false,
                 Some(Master::Up),
                 Ok(EditTier::Scp),
             ),
-            ("no helper, no connection", HelperUp::No, None, Err(NoWay)),
+            ("no helper, no connection", false, None, Err(NoWay)),
             (
                 "no helper, connection not up",
-                HelperUp::No,
+                false,
                 Some(Master::Down),
                 Err(NoWay),
             ),
@@ -102,23 +88,23 @@ mod tests {
             (
                 "read, not overwriting",
                 Some(seen),
-                Overwrite::No,
+                false,
                 Some(WriteCheck::Unchanged(seen)),
             ),
             (
                 "read, overwriting",
                 Some(seen),
-                Overwrite::Yes,
+                true,
                 Some(WriteCheck::Overwrite),
             ),
             (
                 "overwriting without a stamp",
                 None,
-                Overwrite::Yes,
+                true,
                 Some(WriteCheck::Overwrite),
             ),
             // Never written blind.
-            ("nothing read", None, Overwrite::No, None),
+            ("nothing read", None, false, None),
         ];
         for (why, seen, overwrite, want) in cases {
             assert_eq!(write_check(seen, overwrite), want, "{why}");

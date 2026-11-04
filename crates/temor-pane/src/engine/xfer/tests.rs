@@ -7,7 +7,7 @@ use temor_transfer::kitty::{
 };
 use temor_transfer::osc1337::{Delivery, encode_file};
 use temor_transfer::{Bytes, Consent, Count, Limits};
-use temor_vt::{Truncation, UnknownKind};
+use temor_vt::UnknownKind;
 
 use super::event::{OfferId, OfferKind, TransferEnd, TransferEvent, TransferSetup};
 use super::state::{Reaction, Transfers};
@@ -29,11 +29,7 @@ fn payload(sequence: &[u8]) -> Vec<u8> {
 }
 
 fn kitty(t: &mut Transfers, message: &Message) -> Reaction {
-    t.on_unknown(
-        UnknownKind::Osc,
-        &payload(&encode_message(message)),
-        Truncation::Complete,
-    )
+    t.on_unknown(UnknownKind::Osc, &payload(&encode_message(message)), false)
 }
 
 fn id() -> KittyId {
@@ -165,11 +161,7 @@ fn an_iterm_file_is_kept_back_until_yes_and_not_at_all_after_no() {
     let mut t = transfers(dir.path());
     let sequence = encode_file("note.txt", b"inline body", Delivery::Offer);
     let offer_of = |t: &mut Transfers| {
-        let reaction = t.on_unknown(
-            UnknownKind::Osc1337File,
-            &payload(&sequence),
-            Truncation::Complete,
-        );
+        let reaction = t.on_unknown(UnknownKind::Osc1337File, &payload(&sequence), false);
         match reaction.events.as_slice() {
             [
                 TransferEvent::Offered {
@@ -202,11 +194,7 @@ fn a_cut_iterm_file_is_unreadable_and_asks_nothing() {
     let dir = tempfile::tempdir().expect("scratch");
     let mut t = transfers(dir.path());
     let sequence = encode_file("big.bin", b"abc", Delivery::Offer);
-    let reaction = t.on_unknown(
-        UnknownKind::Osc1337File,
-        &payload(&sequence),
-        Truncation::Truncated,
-    );
+    let reaction = t.on_unknown(UnknownKind::Osc1337File, &payload(&sequence), true);
     assert!(matches!(
         reaction.events.as_slice(),
         [TransferEvent::Unreadable { .. }]

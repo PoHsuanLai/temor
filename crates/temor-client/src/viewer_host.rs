@@ -7,7 +7,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use temor_core::host::edit::EditFault;
+use temor_hosts::host::edit::EditFault;
 use temor_remote::{Client, Error};
 use temor_ssh::{HostAlias, RemoteFilePath, RemoteFiles, SshRemoteFiles};
 use temor_wire::message::{EntryKind, RemotePath};
@@ -49,6 +49,8 @@ pub enum CopyOutcome {
     Gone,
     /// The copy could not be made.
     Failed(EditFault),
+    /// The whole file was compared with the person's copy ([`crate::changes::Compare`]).
+    Compared(crate::changes::Compared),
 }
 
 /// A copy finished.

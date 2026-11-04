@@ -4,14 +4,6 @@ use crate::consent::Consent;
 use crate::name::FileName;
 use crate::units::Bytes;
 
-/// Whether the terminal's own limit cut the sequence short. The app maps temor-vt's truncation
-/// onto this when it hands a payload over.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Completeness {
-    Whole,
-    Cut,
-}
-
 /// `inline=0` (the default) asks to save the file; `inline=1` asks to show it in the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Delivery {

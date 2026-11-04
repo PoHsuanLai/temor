@@ -1,5 +1,5 @@
 //! A Space's own ssh-agent (PLAN §7): started on the Space's first new shell, holding only the
-//! Space's key, listening at the socket `temor_core::space::agent_plan` chose
+//! Space's key, listening at the socket `temor_layout::space::agent_plan` chose
 //! (`<runtime>/temor/agent-<id>.sock`, in a folder only this user can use). The agent runs in
 //! the foreground as temor's child and ends, with its socket, when it is dropped.
 // TODO(platform:windows): the agent is a named pipe there; this edge does not start one.
@@ -10,8 +10,8 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use ds_style::space::list::SpaceId;
-use temor_core::space::AgentPlan;
 use temor_core::vocab::home::expand_home;
+use temor_layout::space::AgentPlan;
 
 use crate::keep::private::ensure_private_dir;
 

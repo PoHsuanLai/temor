@@ -13,6 +13,14 @@ pub trait Clock: Send + Sync + fmt::Debug {
     fn now(&self) -> Monotonic;
 }
 
+/// Seconds since the Unix epoch now, read once where a daemon is made (see
+/// [`DaemonConfig::started`](crate::DaemonConfig)); 0 when the system clock is before it.
+pub fn unix_secs_now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_secs())
+}
+
 /// The real clock: milliseconds since it was made.
 #[derive(Debug, Clone, Copy)]
 pub struct SystemClock {

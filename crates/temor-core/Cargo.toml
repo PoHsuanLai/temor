@@ -11,23 +11,14 @@ publish = false
 # The data as types (L0): ids and named text live there and are re-exported from `vocab`.
 temor-schema = { workspace = true }
 temor-pane = { workspace = true, default-features = false }
-# Host identity, forwards and remote file signatures (L0, pure data).
-temor-ssh = { workspace = true }
-# The socket path limit and POSIX quoting (L0).
-temor-shell = { workspace = true }
 ds-core = { workspace = true }
-# Only the Spaces kit's plain data (`Spaces<P, R>`, `SpaceId`); the `dioxus` feature stays off.
-ds-style = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-temor-testkit = { workspace = true }
 ds-core = { workspace = true, features = ["testing"] }
-icu_properties = { workspace = true }
 proptest = { workspace = true }
-tempfile = { workspace = true }
 
 [lints]
 workspace = true

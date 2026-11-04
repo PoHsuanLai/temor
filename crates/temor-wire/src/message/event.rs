@@ -3,7 +3,7 @@
 use super::files::{RemotePath, WatchChange};
 use super::ports::ListeningPort;
 use super::session::ExitStatus;
-use crate::ids::{SessionId, WatchId};
+use crate::ids::{RemoteSessionId, WatchId};
 use serde::{Deserialize, Serialize};
 
 /// Something the helper reports unasked.
@@ -13,12 +13,12 @@ pub enum Event {
     /// Output for an attached session. The payload is the bytes.
     Output {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// A session's program ended.
     Exited {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// How it ended.
         status: ExitStatus,
     },

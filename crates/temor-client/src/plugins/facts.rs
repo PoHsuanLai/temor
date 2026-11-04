@@ -27,11 +27,6 @@ pub fn from_plugin(plugin: &str, facts: Vec<Fact>) -> Vec<PluginFact> {
         .collect()
 }
 
-/// The chip's words for a fact: the label in the chip's colour, then the value.
-pub fn chip_words(fact: &PluginFact) -> (&str, &str) {
-    (&fact.label, &fact.value)
-}
-
 /// The facts on one line (`cluster prod · region eu`), none when there are none.
 pub fn summary(facts: &[PluginFact]) -> Option<String> {
     let parts: Vec<String> = facts
@@ -80,6 +75,5 @@ mod tests {
                 value: "prod".to_owned(),
             }]
         );
-        assert_eq!(chip_words(&facts[0]), ("cluster", "prod"));
     }
 }

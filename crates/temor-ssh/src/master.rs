@@ -10,6 +10,7 @@ use crate::argv::{ControlLayout, check_argv};
 use crate::config::HostAlias;
 use crate::error::SshError;
 use crate::files::{CommandRunner, FileTools};
+#[cfg(feature = "io")]
 use crate::private_dir::ensure_private_dir;
 
 /// Whether a host's master is running.
@@ -44,6 +45,7 @@ impl MasterProbe {
 /// Makes the private runtime directory and the socket directory under it, both owned by this
 /// user with mode 0700, as ssh needs before it can make a master. The runtime directory's
 /// parent (`$XDG_RUNTIME_DIR`) must exist. Safe to call before every connection.
+#[cfg(feature = "io")]
 pub fn prepare_control_dirs(layout: &ControlLayout) -> Result<(), SshError> {
     ensure_private_dir(layout.runtime_dir())?;
     ensure_private_dir(&layout.socket_dir())

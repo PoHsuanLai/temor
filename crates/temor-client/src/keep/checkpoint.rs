@@ -8,7 +8,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use temor_core::session::Checkpoint;
+use temor_blocks::session::Checkpoint;
 use temor_core::vocab::ids::PaneId;
 
 use super::private::{ensure_private_dir, write_private_file};
@@ -66,7 +66,7 @@ pub fn clear(state_dir: &Path) {
 
 #[cfg(test)]
 mod tests {
-    use temor_core::session::Checkpoint;
+    use temor_blocks::session::Checkpoint;
     use temor_core::vocab::ids::PaneId;
 
     use super::{clear, remove, take, write};

@@ -10,11 +10,11 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use ds::components::app::spaces::{SpaceId, Spaces};
 use temor_client::keep::older::save_spaces;
-use temor_core::space::Project;
+use temor_client::model::space::Project;
 
 use super::drive;
 use super::drive::{chord, wait_until};
@@ -346,43 +346,58 @@ fn a_hidden_sidebar_peeks_from_the_edge_and_a_click_pins_it() {
     let found = |h: &Harness, selector: &str| {
         h.with_doc(|doc| doc.query_selector(selector).ok().flatten().is_some())
     };
+    // Each state is waited for, not timed: a loaded machine draws it later.
+    let wait = |h: &mut Harness, what: &str, ok: &dyn Fn(&Harness) -> bool| {
+        let start = Instant::now();
+        while !ok(h) {
+            h.advance(Duration::from_millis(50));
+            assert!(
+                start.elapsed() < drive::LIMIT,
+                "{what}: edge host {}, sides {:?}",
+                found(h, ".temor-edge-host"),
+                h.html()
+                    .match_indices("data-side=\"")
+                    .map(|(at, _)| h.html()[at + 11..]
+                        .split('"')
+                        .next()
+                        .unwrap_or("")
+                        .to_owned())
+                    .collect::<Vec<_>>()
+            );
+        }
+    };
     h.send(Input::chord(
         &[ShortcutKey::Ctrl, ShortcutKey::Super],
         ShortcutKey::Char('s'),
     ));
-    h.advance(Duration::from_millis(600));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
-        "hidden at the edge"
-    );
+    wait(&mut h, "hidden at the edge", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=hidden]")
+    });
     h.send(Input::pointer_move(at(3.0, 400.0)));
-    h.advance(Duration::from_millis(900));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=peek]"),
-        "the edge peeks it"
-    );
-    let side = rects(&h, ".temor-edge-host .ds-side");
-    assert!(
-        side[0].right - side[0].left > 200.0,
-        "it floats at its width"
-    );
+    wait(&mut h, "the edge peeks it, floating at its width", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=peek]")
+            && rects(h, ".temor-edge-host .ds-side")
+                .first()
+                .is_some_and(|side| side.right - side.left > 200.0)
+    });
     // Away from it, it slides back out; a click on the edge pins it.
     h.send(Input::pointer_move(at(900.0, 400.0)));
-    h.advance(Duration::from_millis(900));
-    assert!(
-        found(&h, ".temor-edge-host .ds-side[data-side=hidden]"),
-        "gone again"
-    );
+    wait(&mut h, "gone again", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=hidden]")
+    });
+    // As a person does: the edge peeks it under the pointer, and a click there pins it. The
+    // click waits for the sidebar to come to rest: sliding in, it passes over the strip, and a
+    // press there lands on the sidebar.
+    h.send(Input::pointer_move(at(3.0, 400.0)));
+    wait(&mut h, "the edge peeks it again, at rest", &|h| {
+        found(h, ".temor-edge-host .ds-side[data-side=peek]")
+            && h.html().contains("--present-p:1.000")
+            && h.hits(at(3.0, 400.0), ".ds-edge")
+    });
     h.send(Input::click(at(3.0, 400.0)));
-    // The pin is waited for, not timed: a loaded machine draws it later.
-    let start = Instant::now();
-    while found(&h, ".temor-edge-host") || !found(&h, ".ds-side[data-side=shown]") {
-        h.advance(Duration::from_millis(100));
-        assert!(
-            start.elapsed() < Duration::from_secs(10),
-            "pinned in its column, with no edge host"
-        );
-    }
+    wait(&mut h, "pinned in its column, with no edge host", &|h| {
+        !found(h, ".temor-edge-host") && found(h, ".ds-side[data-side=shown]")
+    });
 }
 
 /// A split of three panes is squeezed as Arc's is: the pane with the keys keeps its name, the
@@ -606,6 +621,29 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
             h.html()
         );
     }
+    // The tile has the menu too, and Remove from Favourites lets it go.
+    h.advance(Duration::from_millis(300));
+    let tile = &rects(&h, ".temor-side .temor-fav")[0];
+    let at = Point {
+        x: Px(((tile.left + tile.right) / 2.0) as f32),
+        y: Px(((tile.top + tile.bottom) / 2.0) as f32),
+    };
+    // Its tip is up first: the pointer rests on it.
+    h.send(Input::pointer_move(at));
+    h.advance(Duration::from_millis(1500));
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let remove = drive::menu_item(&h, "Remove from Favourites");
+    h.send(Input::click(remove.centre()));
+    let start = Instant::now();
+    while !rects(&h, ".temor-side .temor-fav").is_empty() {
+        h.advance(Duration::from_millis(25));
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "the tile stays:\n{}",
+            h.html()
+        );
+    }
 }
 
 /// A row is led by what runs in its tab: the letter tile of its folder at the prompt, and a
@@ -723,4 +761,112 @@ fn fork_holding(icns: &[u8]) -> Vec<u8> {
     fork.extend_from_slice(&body);
     fork.extend_from_slice(&map);
     fork
+}
+
+/// A new tab's row is brought into view when the sidebar holds more rows than fit, as the row of
+/// the tab in front always is. Found by the UI hunt: the 25th row is made below the window's
+/// bottom edge and stays there.
+#[test]
+fn the_row_in_front_is_scrolled_into_view() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-scroll-to-row", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    for _ in 0..24 {
+        drive::chord_with(&mut h, &[ShortcutKey::Super], 'n');
+    }
+    assert_eq!(drive::rows(&h), 25, "25 rows");
+    // The row is revealed once laid out and again once the list has settled (300 ms on).
+    let in_front = |h: &Harness| {
+        let side = rects(h, ".temor-side").swap_remove(0);
+        let front = rects(h, ".temor-side [aria-selected=\"true\"]");
+        let row = front
+            .into_iter()
+            .find(|r| r.bottom > r.top)
+            .expect("the row in front");
+        (side, row)
+    };
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let (side, row) = loop {
+        let (side, row) = in_front(&h);
+        let inside = row.top >= side.top && row.bottom <= side.bottom;
+        if inside || Instant::now() > deadline {
+            break (side, row);
+        }
+        h.advance(Duration::from_millis(100));
+    };
+    assert!(
+        row.top >= side.top && row.bottom <= side.bottom,
+        "the row in front ({}..{}) is inside the sidebar ({}..{})",
+        row.top,
+        row.bottom,
+        side.top,
+        side.bottom
+    );
+}
+
+/// A row's tooltip goes with its row: once the window is too narrow for the sidebar and the
+/// pointer is elsewhere, no tooltip is left over the pane. Found by the UI hunt: a row's "~" tip
+/// stays floating over the terminal where the hidden row was.
+#[test]
+fn a_rows_tooltip_goes_when_its_row_is_hidden() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-tip-hidden", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    chord(&mut h, 'n');
+    let row = &rects(&h, ".temor-side .temor-tab-box")[1];
+    let at = Point {
+        x: Px(((row.left + row.right) / 2.0) as f32),
+        y: Px(((row.top + row.bottom) / 2.0) as f32),
+    };
+    h.send(Input::press(at, PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    h.send(Input::key(ShortcutKey::Escape));
+    h.advance(Duration::from_millis(300));
+    h.resize_window(Extent::new(600, 400));
+    h.advance(Duration::from_millis(400));
+    h.send(Input::press(
+        Point {
+            x: Px(590.0),
+            y: Px(390.0),
+        },
+        PointerButton::Secondary,
+    ));
+    h.advance(Duration::from_millis(1500));
+    let tips: Vec<String> = rects(&h, "[role=tooltip]")
+        .into_iter()
+        .filter(|r| r.right - r.left > 0.5)
+        .map(|r| format!("{:?} at {},{}", r.what, r.left, r.top))
+        .collect();
+    assert!(tips.is_empty(), "no tooltip left: {tips:?}");
+}
+
+/// A pick in a row's menu gives the keyboard back to the pane: the next line typed runs (the
+/// click on the item used to leave the focus nowhere).
+#[test]
+fn typing_goes_on_after_a_pick_in_a_rows_menu() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = harness("sidebar-menu-keys", &probe);
+    h.resize_window(Extent::new(1280, 800));
+    wait_until(&mut h, &probe, "the prompt", |s| s.contains('$'));
+    let row = drive::rect(&h, ".temor-side .temor-tab-box");
+    h.send(Input::press(row.centre(), PointerButton::Secondary));
+    h.advance(Duration::from_millis(300));
+    let pin = drive::menu_item(&h, "Pin Tab");
+    h.send(Input::click(pin.centre()));
+    h.advance(Duration::from_millis(400));
+    drive::type_line(&mut h, "echo after-the-menu");
+    drive::wait_html(&mut h, "the line run", |html| {
+        html.contains("after-the-menu")
+    });
 }

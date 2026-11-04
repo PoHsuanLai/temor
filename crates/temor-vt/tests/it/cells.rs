@@ -1,7 +1,7 @@
 //! Cells of a screen row: wide characters take two columns, with a spacer cell after them, and
 //! the default cursor shape can be set.
 
-use temor_vt::{CellWidth, CursorBlink, CursorShape};
+use temor_vt::{CellWidth, CursorShape};
 
 use crate::support::term;
 
@@ -58,28 +58,20 @@ fn the_default_cursor_blink_applies_at_a_style_reset_and_programs_can_change_it(
     let mut view = temor_vt::RenderView::new().expect("view");
     let mut blink = |t: &mut temor_vt::Terminal| {
         let frame = view.begin(t).expect("begin").end().expect("end");
-        let blink = frame.cursor().map(|c| c.blink);
+        let blink = frame.cursor().map(|c| c.blinking);
         frame.mark_drawn().expect("drawn");
         blink
     };
-    assert_eq!(
-        blink(&mut t),
-        Some(CursorBlink::Steady),
-        "libghostty's own default"
-    );
+    assert_eq!(blink(&mut t), Some(false), "libghostty's own default");
     t.set_default_cursor_blink(Some(true)).expect("blink");
     t.write(b"\x1b[0 q");
-    assert_eq!(
-        blink(&mut t),
-        Some(CursorBlink::Blinking),
-        "the default, applied"
-    );
+    assert_eq!(blink(&mut t), Some(true), "the default, applied");
     // (what the program sends, the cursor after it)
     for (seq, want) in [
-        (&b"\x1b[2 q"[..], CursorBlink::Steady),
-        (b"\x1b[5 q", CursorBlink::Blinking),
-        (b"\x1b[?12l", CursorBlink::Steady),
-        (b"\x1b[0 q", CursorBlink::Blinking),
+        (&b"\x1b[2 q"[..], false),
+        (b"\x1b[5 q", true),
+        (b"\x1b[?12l", false),
+        (b"\x1b[0 q", true),
     ] {
         t.write(seq);
         assert_eq!(

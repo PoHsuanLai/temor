@@ -16,6 +16,33 @@ use crate::pty::{
 };
 use crate::size::GridSize;
 
+/// Ends a wait early; never constructed on this platform.
+#[derive(Debug)]
+pub struct Wake {
+    never: Infallible,
+}
+
+/// Wakes a waiting thread; never constructed on this platform.
+#[derive(Debug, Clone)]
+pub struct Waker {
+    never: Infallible,
+}
+
+impl Wake {
+    pub fn new() -> Result<Self, PtyError> {
+        Err(PtyError::Unsupported)
+    }
+    pub fn waker(&self) -> Waker {
+        match self.never {}
+    }
+}
+
+impl Waker {
+    pub fn wake(&self) {
+        match self.never {}
+    }
+}
+
 /// A pseudo-terminal; never constructed on this platform.
 #[derive(Debug)]
 pub struct Pty {
@@ -75,6 +102,14 @@ impl PtyIo {
     pub fn wait(
         &self,
         _interest: Interest,
+        _timeout: Option<Duration>,
+    ) -> Result<Readiness, PtyError> {
+        match self.never {}
+    }
+    pub fn wait_or(
+        &self,
+        _interest: Interest,
+        _wake: &Wake,
         _timeout: Option<Duration>,
     ) -> Result<Readiness, PtyError> {
         match self.never {}

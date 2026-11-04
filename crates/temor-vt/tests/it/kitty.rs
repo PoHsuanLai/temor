@@ -1,9 +1,7 @@
 //! `kitty_png.bin` (f=100, decoded by temor's PNG decoder) and `kitty_rgba.bin` (f=32): both
 //! place a 2x2 image whose pixels read back exactly.
 
-use temor_vt::{
-    ImageId, KittyLayer, KittyPixelFormat, KittyPixels, PlacementId, PlacementIdFrom, Visibility,
-};
+use temor_vt::{ImageId, KittyLayer, KittyPixelFormat, KittyPixels, PlacementId, PlacementIdFrom};
 
 use crate::support::{fixture, term};
 
@@ -32,7 +30,7 @@ fn placed(name: &str, id: u32) {
         (2, 2, KittyPixelFormat::Rgba)
     );
     assert_eq!(p.image.pixels, KittyPixels::Ready(&PIXELS), "{name}");
-    assert_eq!(p.render.visibility, Visibility::Visible);
+    assert!(p.render.visible);
     assert_eq!((p.render.viewport_col, p.render.viewport_row), (0, 0));
     assert_eq!((p.render.source_width, p.render.source_height), (2, 2));
     assert!(p.image.generation.0 > 0);

@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use temor_vt::{HoldHook, RenderHold, Terminal, Vt};
+use temor_vt::{HoldHook, RenderHold, Terminal};
 
 use crate::support::term;
 

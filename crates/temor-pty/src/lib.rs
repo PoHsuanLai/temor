@@ -131,8 +131,8 @@ pub use env::{
 pub use error::PtyError;
 pub use pty::{
     ChildExit, CommandLine, Foreground, Interest, ProcRoot, ProcessId, Pty, PtyIo, ReadOutcome,
-    Readiness, Ready, SessionLauncher, SignalKind, SpawnSpec, WriteOutcome, find_program,
-    run_session_leader,
+    Readiness, Ready, SessionLauncher, SignalKind, SpawnSpec, Wake, Waker, WriteOutcome,
+    find_program, run_session_leader,
 };
 pub use pty::{current_user, login_shell, prepare_shell};
 pub use size::{Cols, GridSize, Px, Rows};

@@ -2,6 +2,10 @@
 //! `*_KEY`, `*PASSWORD*`, credentials), a value that looks like one (a URL with a password in it,
 //! a well-known token), and a line of shell that sets or holds one. A shell's state keeps such a
 //! variable's name only, and history never keeps such a command.
+//!
+//! These are rules, not shapes, and live in the schema all the same: temor-store (L1) refuses to
+//! write a command [`kept_in_history`] turns down, so the rule must sit below the store, and the
+//! shell-state code above it uses the same table.
 
 /// Whether a command may be kept in history: not one typed with a space first (the shells' way to
 /// keep a command out of history), and not one that sets a secret or holds something that looks

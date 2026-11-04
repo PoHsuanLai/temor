@@ -7,7 +7,9 @@ use std::fmt;
 use std::io::Read;
 use std::sync::Arc;
 
-use temor_core::space::AccountRef;
+use temor_layout::space::AccountRef;
+
+use crate::serial::Serial;
 
 /// The most of a dotenv file that is read; a larger file is not a dotenv file.
 const DOTENV_LIMIT: u64 = 64 * 1024;
@@ -32,14 +34,6 @@ impl fmt::Display for CredentialFault {
 
 impl std::error::Error for CredentialFault {}
 
-/// Whether the store holds a secret for an account. Asked instead of the secret itself wherever
-/// only "is it set" is shown.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Held {
-    Set,
-    NotSet,
-}
-
 /// Where a Space's secrets come from: the account store. `Send + Sync` so it can be handed to
 /// the window as a root context.
 pub trait CredentialSource: Send + Sync {
@@ -47,11 +41,8 @@ pub trait CredentialSource: Send + Sync {
     fn secret(&self, account: &AccountRef) -> Result<Option<String>, CredentialFault>;
 
     /// Whether the store has a secret for `account`.
-    fn holds(&self, account: &AccountRef) -> Result<Held, CredentialFault> {
-        Ok(match self.secret(account)? {
-            Some(_) => Held::Set,
-            None => Held::NotSet,
-        })
+    fn holds(&self, account: &AccountRef) -> Result<bool, CredentialFault> {
+        Ok(self.secret(account)?.is_some())
     }
 
     /// Keeps `secret` as the secret of `account`, replacing one that is there. The Settings
@@ -89,6 +80,20 @@ pub struct Credentials(pub Arc<dyn CredentialSource>);
 impl Default for Credentials {
     fn default() -> Self {
         Credentials(Arc::new(NoCredentials))
+    }
+}
+
+impl Credentials {
+    /// `job` run with the store on the credentials' own thread, after every job asked before
+    /// it, for a caller that must not wait on it: the macOS keychain and the Secret Service
+    /// answer over IPC, and may ask the person first. `None` when no thread could start.
+    pub async fn ask<T: Send + 'static>(
+        &self,
+        job: impl FnOnce(&dyn CredentialSource) -> T + Send + 'static,
+    ) -> Option<T> {
+        static LINE: Serial = Serial::new("temor-credentials");
+        let store = self.0.clone();
+        LINE.run(move || job(&*store)).await
     }
 }
 

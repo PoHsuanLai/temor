@@ -20,16 +20,6 @@ impl Progress {
     }
 }
 
-/// Whether the icon should ask for the person's eye.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Attention {
-    /// No.
-    #[default]
-    Calm,
-    /// Yes: an agent is waiting for an answer.
-    Needed,
-}
-
 /// Everything the dock shows. The default shows nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Badge {
@@ -38,5 +28,5 @@ pub struct Badge {
     /// A progress bar, or none.
     pub progress: Option<Progress>,
     /// Whether to ask for attention.
-    pub attention: Attention,
+    pub wants_attention: bool,
 }

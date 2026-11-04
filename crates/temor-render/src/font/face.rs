@@ -7,20 +7,6 @@ use swash::{CacheKey, FontRef, tag_from_bytes};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct FaceId(pub u16);
 
-/// Whether glyphs are thickened because the family has no bold cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum Embolden {
-    No,
-    Yes,
-}
-
-/// Whether glyphs are slanted because the family has no italic cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum Skew {
-    No,
-    Yes,
-}
-
 /// How a face draws colour glyphs, if it does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ColorFormat {
@@ -39,6 +25,13 @@ pub(crate) enum FaceRole {
     Fallback,
 }
 
+/// What a glyph's outline needs that its face lacks: a bolder stroke, a slant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub(crate) struct Synth {
+    pub embolden: bool,
+    pub skew: bool,
+}
+
 /// A face ready for swash and vello.
 #[derive(Debug, Clone)]
 pub(crate) struct Face {
@@ -46,8 +39,8 @@ pub(crate) struct Face {
     index: u32,
     offset: u32,
     key: CacheKey,
-    pub embolden: Embolden,
-    pub skew: Skew,
+    /// What this cut has to synthesise (a family with no bold or italic of its own).
+    pub synth: Synth,
     pub color: ColorFormat,
     pub role: FaceRole,
     /// Variation-axis settings (tag, value) for a variable family's bold or italic.
@@ -72,8 +65,7 @@ impl Face {
             index,
             offset,
             key,
-            embolden: Embolden::No,
-            skew: Skew::No,
+            synth: Synth::default(),
             color,
             role,
             variations: Vec::new(),

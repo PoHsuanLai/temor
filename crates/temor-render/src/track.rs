@@ -1,9 +1,9 @@
-//! Which rows a render must compose: the frame's dirty rows, plus the rows a moved cursor or a
-//! changed image touches, or everything when the view itself changed.
+//! Which rows a render must compose: each row has a key (when its cells were written, and the
+//! cursor, selection and images on it), and the rows whose key differs from the last draw's are
+//! composed again, or everything when the view itself changed. The last draw is kept by the
+//! renderer once the draw succeeded, so a failed one is planned again in full next time.
 
-use std::collections::BTreeSet;
-
-use temor_vt::{Generation, GridSize, ImageId, KittyLayer, Px, Row};
+use temor_vt::{Col, Generation, GridSize, ImageId, KittyLayer, Px, Row};
 
 use crate::frame::{ImagePlacement, TermColors};
 use crate::metrics::{CellMetrics, GridFit, Padding, PixelSize, Scale};
@@ -60,74 +60,68 @@ impl Compose {
     }
 }
 
-/// What was drawn last time, to tell what changed.
-#[derive(Debug, Default)]
-pub(crate) struct ChangeTracker {
-    view: Option<ViewKey>,
+/// What decides how one row looks, apart from the view.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RowKey {
+    /// When its cells were last written ([`crate::PaneFrame`] numbers every write).
+    written: u64,
     cursor: Option<CursorDraw>,
-    selection: Option<SelectionOverlay>,
+    selected: Option<(Col, Col)>,
     images: Vec<ImageKey>,
 }
 
-impl ChangeTracker {
-    /// Forgets everything: the next plan is `All`.
-    pub fn invalidate(&mut self) {
-        self.view = None;
-    }
+/// What a draw showed: its view and each row's key.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Drawn {
+    view: ViewKey,
+    rows: Vec<RowKey>,
+}
 
-    pub fn plan(
-        &mut self,
+impl Drawn {
+    /// The rows of a frame whose rows were written at `written`, in `view`.
+    pub fn of(
         view: ViewKey,
-        dirty: Vec<Row>,
+        written: &[u64],
         cursor: Option<CursorDraw>,
         selection: Option<SelectionOverlay>,
         images: &[ImagePlacement],
-    ) -> Compose {
+    ) -> Self {
         let ch = view.metrics.height().max(1) as i32;
-        let keys: Vec<ImageKey> = images.iter().map(|p| image_key(p, ch)).collect();
-        let full = self.view != Some(view);
-        let old_cursor = std::mem::replace(&mut self.cursor, cursor);
-        let old_selection = std::mem::replace(&mut self.selection, selection);
-        let old_images = std::mem::replace(&mut self.images, keys);
-        self.view = Some(view);
-        if full {
-            return Compose::All;
-        }
-        let rows = i32::from(view.grid.rows.0);
-        let mut set: BTreeSet<u16> = dirty.into_iter().map(|r| r.0).collect();
-        if old_cursor != cursor {
-            set.extend(old_cursor.iter().chain(cursor.iter()).map(|c| c.row.0));
-        }
-        set.extend(selection_rows(old_selection, selection, view.grid));
-        let changed = old_images
-            .iter()
-            .filter(|k| !self.images.contains(k))
-            .chain(self.images.iter().filter(|k| !old_images.contains(k)));
-        for k in changed {
-            for r in k.first_row.max(0)..=k.last_row.min(rows - 1) {
-                set.insert(r as u16);
-            }
-        }
-        set.retain(|&r| i32::from(r) < rows);
-        Compose::Rows(set.into_iter().map(Row).collect())
+        let images: Vec<ImageKey> = images.iter().map(|p| image_key(p, ch)).collect();
+        let cols = view.grid.cols.0;
+        let rows = (0..view.grid.rows.0)
+            .map(|r| {
+                let row = Row(r);
+                let at = i32::from(r);
+                RowKey {
+                    written: written.get(usize::from(r)).copied().unwrap_or(0),
+                    cursor: cursor.filter(|c| c.row == row),
+                    selected: selection.and_then(|s| s.cols_on(row, cols)),
+                    images: images
+                        .iter()
+                        .filter(|k| (k.first_row..=k.last_row).contains(&at))
+                        .copied()
+                        .collect(),
+                }
+            })
+            .collect();
+        Self { view, rows }
     }
 }
 
-/// The grid rows where the selected columns differ between two selections, so a selection
-/// that grows by a line recomposes that line and not the pane.
-fn selection_rows(
-    old: Option<SelectionOverlay>,
-    new: Option<SelectionOverlay>,
-    grid: GridSize,
-) -> Vec<u16> {
-    if old == new {
-        return Vec::new();
+/// The rows to compose to go from `before` (`None`: nothing is drawn) to `now`.
+pub(crate) fn plan(before: Option<&Drawn>, now: &Drawn) -> Compose {
+    match before {
+        Some(before) if before.view == now.view && before.rows.len() == now.rows.len() => {
+            Compose::Rows(
+                (0..now.view.grid.rows.0)
+                    .map(Row)
+                    .filter(|r| before.rows[usize::from(r.0)] != now.rows[usize::from(r.0)])
+                    .collect(),
+            )
+        }
+        _ => Compose::All,
     }
-    let cols = grid.cols.0;
-    let span = |s: Option<SelectionOverlay>, r: u16| s.and_then(|s| s.cols_on(Row(r), cols));
-    (0..grid.rows.0)
-        .filter(|&r| span(old, r) != span(new, r))
-        .collect()
 }
 
 fn image_key(p: &ImagePlacement, ch: i32) -> ImageKey {

@@ -8,8 +8,8 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use temor_core::remote::HostArch;
 use temor_core::vocab::text::HelperHash;
+use temor_hosts::remote::HostArch;
 
 use crate::remote::install::{HelperBlob, blob_path, read_blob};
 

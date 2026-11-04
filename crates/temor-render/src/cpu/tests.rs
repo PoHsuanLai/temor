@@ -1,40 +1,16 @@
-//! With glyph atlases too small for the frame, the atlases clear while rows are built. The
-//! picture must still match one drawn with room to spare: no glyph may be read from a cleared
-//! atlas.
+//! The CPU renderer: rows composed again draw what a whole frame draws, glyphs reaching into
+//! their neighbours' rows included; a still leaves the live frame alone.
 
-use temor_vt::{CellStyle, Col, GridSize, Rgb, Row, Selected};
+use temor_vt::{CellStyle, Col, GridSize, Rgb, Row};
 
 use super::CpuRenderer;
 use crate::frame::{CellDraw, CellText, PaneFrame, TermColors};
 use crate::palette::Palette;
 use crate::renderer::Renderer;
-use crate::testing::{GLYPH_COLS, GLYPH_ROWS, fonts, glyph_frame, size_for, view};
+use crate::testing::{GLYPH_COLS, GLYPH_ROWS, fonts, size_for, view};
 
 const COLS: u16 = GLYPH_COLS;
 const ROWS: u16 = GLYPH_ROWS;
-
-/// One frame drawn by `renderer`: its pixels and how many atlas clears it took.
-fn draw(mut renderer: CpuRenderer) -> (Vec<u8>, u32) {
-    let size = size_for(&mut renderer);
-    let palette = Palette::default();
-    let mut f = glyph_frame(0, 160);
-    let out = renderer
-        .render(&mut f, &view(size, &palette))
-        .expect("render");
-    (out.pixels.to_vec(), out.stats.atlas_resets)
-}
-
-#[test]
-fn a_frame_drawn_through_atlas_clears_matches_one_drawn_with_room() {
-    let (roomy, roomy_resets) = draw(CpuRenderer::new(fonts(60.0)));
-    let (tight, tight_resets) = draw(CpuRenderer::with_atlas_caps(fonts(60.0), 256, 256));
-    assert_eq!(roomy_resets, 0, "the default atlas holds the whole frame");
-    assert!(
-        tight_resets > 0,
-        "the small atlas must clear for this test to mean anything"
-    );
-    assert!(roomy == tight, "a glyph was read from a cleared atlas");
-}
 
 /// Rows of text whose accents, descenders and wide characters reach for the rows around them.
 fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {
@@ -56,7 +32,7 @@ fn lines(texts: [&str; ROWS as usize]) -> PaneFrame {
                 fg: None,
                 bg: None,
                 style: CellStyle::default(),
-                selected: Selected::No,
+                selected: false,
             })
             .collect();
         f.set_row(Row(r as u16), cells);
@@ -91,20 +67,20 @@ fn recomposing_rows_draws_what_a_full_compose_draws() {
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&frame, &view(size, &palette))
         .expect("first render");
     // Row 3 changes alone; the rows beside it are composed too only if its glyphs reach them.
     let next = lines(after);
     frame.set_row(Row(3), next.rows[3].clone());
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&frame, &view(size, &palette))
         .expect("second render")
         .pixels
         .to_vec();
     let mut fresh = CpuRenderer::new(fonts(14.0));
-    let mut whole = lines(after);
+    let whole = lines(after);
     let full = fresh
-        .render(&mut whole, &view(size, &palette))
+        .render(&whole, &view(size, &palette))
         .expect("fresh render")
         .pixels
         .to_vec();
@@ -125,20 +101,20 @@ fn a_neighbour_that_gains_an_overhang_in_the_same_frame_is_still_drawn_whole() {
     let palette = Palette::default();
     let mut frame = lines(before);
     renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&frame, &view(size, &palette))
         .expect("first render");
     let next = lines(after);
     for r in [2, 3] {
         frame.set_row(Row(r), next.rows[usize::from(r)].clone());
     }
     let incremental = renderer
-        .render(&mut frame, &view(size, &palette))
+        .render(&frame, &view(size, &palette))
         .expect("second render")
         .pixels
         .to_vec();
-    let mut whole = lines(after);
+    let whole = lines(after);
     let full = CpuRenderer::new(fonts(14.0))
-        .render(&mut whole, &view(size, &palette))
+        .render(&whole, &view(size, &palette))
         .expect("fresh render")
         .pixels
         .to_vec();
@@ -162,9 +138,9 @@ fn styled(texts: &[&str]) -> Vec<Vec<temor_vt::StyledCell>> {
                     fg: None,
                     bg: None,
                     style: CellStyle::default(),
-                    hyperlink: temor_vt::Hyperlink::None,
+                    linked: false,
                     semantic: temor_vt::SemanticMark::Output,
-                    selected: temor_vt::Selected::No,
+                    selected: false,
                 })
                 .collect()
         })
@@ -186,9 +162,9 @@ fn a_still_draws_its_rows_as_the_live_frame_does_and_leaves_the_live_frame_alone
     let mut renderer = CpuRenderer::new(fonts(14.0));
     let size = size_for(&mut renderer);
     let palette = Palette::default();
-    let mut live = lines(texts);
+    let live = lines(texts);
     let first = renderer
-        .render(&mut live, &view(size, &palette))
+        .render(&live, &view(size, &palette))
         .expect("live")
         .pixels
         .to_vec();
@@ -202,7 +178,7 @@ fn a_still_draws_its_rows_as_the_live_frame_does_and_leaves_the_live_frame_alone
         "the still differs from the live frame"
     );
     let again = renderer
-        .render(&mut live, &view(size, &palette))
+        .render(&live, &view(size, &palette))
         .expect("live again");
     assert!(
         again.damage.is_empty(),
@@ -212,4 +188,54 @@ fn a_still_draws_its_rows_as_the_live_frame_does_and_leaves_the_live_frame_alone
         again.pixels == first.as_slice(),
         "the still drew into the live frame"
     );
+}
+
+#[test]
+fn a_renderer_drawing_two_frames_in_turn_draws_each_whole() {
+    // A pane shows its live frame, then a held one, then the live one again: none of the frames
+    // is newer than the last draw by its own marks, yet each must be drawn as it is.
+    let live_texts = ["ÅÄÖ", "gjpqy", "x", "", "", "", "", ""];
+    let held_texts = ["held", "", "", "", "", "", "", "Ç"];
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let size = size_for(&mut renderer);
+    let palette = Palette::default();
+    let (live, held) = (lines(live_texts), lines(held_texts));
+    let fresh = |frame: &PaneFrame| {
+        CpuRenderer::new(fonts(14.0))
+            .render(frame, &view(size, &palette))
+            .expect("fresh render")
+            .pixels
+            .to_vec()
+    };
+    for (frame, name) in [(&live, "live"), (&held, "held"), (&live, "live again")] {
+        let drawn = renderer
+            .render(frame, &view(size, &palette))
+            .expect("render")
+            .pixels
+            .to_vec();
+        assert!(
+            drawn == fresh(frame),
+            "the {name} frame drew what another left"
+        );
+    }
+}
+
+#[test]
+fn asking_the_cell_at_another_scale_changes_nothing_drawn() {
+    let mut renderer = CpuRenderer::new(fonts(14.0));
+    let size = size_for(&mut renderer);
+    let palette = Palette::default();
+    let frame = lines(["ÅÄÖ", "gjpqy", "", "", "", "", "", ""]);
+    renderer
+        .render(&frame, &view(size, &palette))
+        .expect("first render");
+    let double = crate::metrics::Scale::new(2.0);
+    let asked = renderer.cell_metrics(double);
+    let one = renderer.cell_metrics(crate::metrics::Scale::new(1.0));
+    assert!(asked.height() > one.height(), "the cell at that scale");
+    let again = renderer
+        .render(&frame, &view(size, &palette))
+        .expect("second render");
+    assert_eq!(again.stats.rows_composed, 0);
+    assert_eq!(again.stats.atlas_resets, 0);
 }

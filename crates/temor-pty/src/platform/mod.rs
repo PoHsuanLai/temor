@@ -26,9 +26,9 @@ pub(crate) use windows::Windows as Current;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix_pty;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub use unix_pty::{Pty, PtyIo, run_session_leader};
+pub use unix_pty::{Pty, PtyIo, Wake, Waker, run_session_leader};
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod unsupported;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub use unsupported::{Pty, PtyIo, run_session_leader};
+pub use unsupported::{Pty, PtyIo, Wake, Waker, run_session_leader};

@@ -6,8 +6,7 @@ use super::convert::{check, rgb};
 use super::render::RenderView;
 use super::row::RowView;
 use crate::{
-    Col, CursorBlink, CursorCell, CursorShape, CursorView, FrameColors, FrameDirty, GridSize, Row,
-    RowFilter, VtError,
+    Col, CursorShape, CursorView, FrameColors, FrameDirty, GridSize, Row, RowFilter, VtError,
 };
 
 /// A finished update, ready to draw.
@@ -90,16 +89,8 @@ impl<'v> Frame<'v> {
             col: Col(c.viewport_x),
             row: Row(c.viewport_y),
             shape,
-            blink: if c.blinking {
-                CursorBlink::Blinking
-            } else {
-                CursorBlink::Steady
-            },
-            cell: if c.wide_tail {
-                CursorCell::WideTail
-            } else {
-                CursorCell::Normal
-            },
+            blinking: c.blinking,
+            wide_tail: c.wide_tail,
         })
     }
 
@@ -138,7 +129,7 @@ impl<'v> Frame<'v> {
         // SAFETY: the iterator was just populated from a state that is not updated while it lives.
         while unsafe { sys::ghostty_render_state_row_iterator_next(iter) } {
             let mut row = RowView::new(iter, view.cells.as_ptr(), &mut view.text, &view.palette);
-            if filter == RowFilter::Dirty && row.dirty() == crate::RowDirty::Clean {
+            if filter == RowFilter::Dirty && !row.dirty() {
                 continue;
             }
             f(&mut row);

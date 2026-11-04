@@ -7,8 +7,15 @@
 #   - the quire-desktop boundary (PLAN §2, D15): only temor-desktop names zbus, docket or porter
 #     crates, and there each such dependency is optional and listed in its `quire-desktop` feature,
 #     so `--no-default-features` builds with none of them;
-#   - the fence (PLAN §2b): temor-ui depends on no temor crate but temor-client, temor-panes and
-#     temor-schema (its tests may name more, as dev-dependencies).
+#   - the fence (PLAN §2b): the window's crates (temor-ui-base, temor-hub, temor-views, temor-ui)
+#     depend on no temor crate but temor-client, temor-panes, temor-pane-view, temor-schema and
+#     each other, downwards in that order (their tests may name more, as dev-dependencies);
+#   - L2 does no I/O (PLAN §2): an L2 crate names no temor-pty, temor-transfer or temor-vt, and
+#     names temor-shell, temor-ssh and temor-pane without their default features (`io`,
+#     `engine`), so it links their vocabulary and none of their process or socket code;
+#   - no crate re-exports a temor crate whole or by glob: what crosses the fence is listed;
+#   - the model crates are rules only (PLAN §4c): outside their tests they read no clock,
+#     environment or file, start no thread and hold no interior mutability.
 # Dev-dependencies count too, except a crate's own dev-dep on itself (its `testing` feature).
 # Third-party crates are not restricted by layer. Prints each violation as
 # `crate -> dep (rule)` and exits 1 when there is any.
@@ -32,12 +39,20 @@ temor-render 1
 temor-pane 1
 temor-plugins 1
 temor-core 2
+temor-blocks 2
+temor-hosts 2
+temor-agent 2
+temor-layout 2
 temor-client 3
 temor-panes 3
 temor-desktop 3
 temor-remote 3
-temor-ui 4
-temor 4
+temor-pane-view 4
+temor-ui-base 5
+temor-hub 6
+temor-views 7
+temor-ui 8
+temor 8
 '
 
 metadata=$(cd "$root" && cargo metadata --format-version 1 --no-deps)
@@ -54,9 +69,11 @@ for line in sys.stdin.read().split("\n"):
 banned = re.compile(r"^(ds-.*|dioxus.*|docket.*|zbus.*|tokio.*)$")
 desktop_only = re.compile(r"^(docket.*|zbus.*|porter.*|prov)$")
 DESKTOP = "temor-desktop"
-WINDOW = "temor-ui"
-FENCE = {"temor-client", "temor-panes", "temor-schema"}
+WINDOW = {"temor-ui-base", "temor-hub", "temor-views", "temor-ui"}
+FENCE = {"temor-client", "temor-panes", "temor-schema", "temor-pane-view"} | WINDOW
 FEATURE = "quire-desktop"
+IO_CRATES = {"temor-pty", "temor-transfer", "temor-vt"}
+IO_FEATURES = {"temor-shell", "temor-ssh", "temor-pane"}
 meta = json.loads(sys.argv[1])
 violations = []
 seen = set()
@@ -87,12 +104,17 @@ for pkg in meta["packages"]:
             elif not dep.get("optional") or dname not in gated:
                 violations.append(f"{name} -> {dname} (must be optional and in feature {FEATURE})")
         if (
-            name == WINDOW
+            name in WINDOW
             and dname.startswith("temor")
             and dname not in FENCE
             and dep.get("kind") != "dev"
         ):
-            violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes and temor-schema)")
+            violations.append(f"{name} -> {dname} (the window names only temor-client, temor-panes, temor-pane-view, temor-schema and its own crates)")
+        if layer == 2 and dep.get("kind") != "dev":
+            if dname in IO_CRATES:
+                violations.append(f"{name} -> {dname} (L2 does no I/O)")
+            elif dname in IO_FEATURES and (dep["uses_default_features"] or dep["features"]):
+                violations.append(f"{name} -> {dname} (L2 names it without default features or io)")
         if layer <= 1 and banned.match(dname):
             violations.append(f"{name} -> {dname} (L{layer} never depends on quire, dioxus, docket or zbus)")
             continue
@@ -103,6 +125,48 @@ for v in violations:
     print(v)
 sys.exit(1 if violations else 0)
 ' "$metadata"; then
+  layers_ok=1
+else
+  layers_ok=0
+fi
+
+# No crate hands on a temor crate whole (`pub use temor_x;`, `pub use temor_x as y;`) or by glob
+# (`pub use temor_x::*;`): what goes through the fence is listed item by item, where a review sees
+# it (PLAN §2b).
+whole=$(grep -rnE 'pub use temor_[a-z_]+( as [a-z_]+)?;|pub use temor_[a-z_:]+::\*;' \
+  "$root"/crates/*/src || true)
+if [ -n "$whole" ]; then
+  printf '%s (re-exports a temor crate whole or by glob)\n' "$whole"
+  layers_ok=0
+fi
+
+# The model crates are rules only (PLAN §4c): what a step needs of a clock, the environment or a
+# file comes in as a value. A line that must do otherwise is marked `// pure-ok: <why>`.
+if ! python3 -I -c '
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+crates = ["temor-schema", "temor-core", "temor-blocks", "temor-layout", "temor-hosts", "temor-agent"]
+bad = re.compile(r"\b(Instant::now|SystemTime::now|std::env::|env::var|std::fs::|fs::read|fs::write|thread::spawn|static mut|thread_local!|RefCell|Cell<|Mutex|RwLock|OnceLock|rand::)")
+tests = re.compile(r"(^|/)(tests?|[a-z_]*_tests|[a-z_]*_props|testing)\.rs$|/tests/")
+hits = []
+for crate in crates:
+    for f in sorted((root / "crates" / crate / "src").rglob("*.rs")):
+        rel = f.relative_to(root).as_posix()
+        if tests.search(rel):
+            continue
+        for n, line in enumerate(f.read_text().splitlines(), 1):
+            if line.strip().startswith("#[cfg(test)]"):
+                break
+            if bad.search(line.split("//")[0]) and "pure-ok:" not in line:
+                hits.append(f"{rel}:{n}: {line.strip()} (a model crate reads no clock, environment or file, and holds no shared state)")
+for hit in hits:
+    print(hit)
+sys.exit(1 if hits else 0)
+' "$root"; then
+  layers_ok=0
+fi
+
+if [ "$layers_ok" = 1 ]; then
   echo "check-layers: ok"
   exit 0
 fi

@@ -4,7 +4,7 @@
 use std::time::{Duration, Instant};
 
 use ds_harness::{Harness, Input, WindowHosting};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{type_line, wait_until};
 use super::window::harness_hosting;

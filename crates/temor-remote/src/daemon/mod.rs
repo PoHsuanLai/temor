@@ -19,6 +19,7 @@ mod pump;
 mod registry;
 mod serve;
 mod session;
+mod session_core;
 mod sinks;
 mod sizes;
 mod tick;

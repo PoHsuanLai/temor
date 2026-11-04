@@ -6,8 +6,8 @@
 use std::net::TcpListener;
 use std::path::PathBuf;
 
-use temor_core::host::edit::{EditFault, EditIn};
-use temor_core::host::forward::ForwardFault;
+use temor_hosts::host::edit::{EditFault, EditIn};
+use temor_hosts::host::forward::ForwardFault;
 use temor_ssh::{
     CommandRunner, ControlLayout, Fingerprint, Forward, HostAlias, KnownName, MasterProbe, Port,
     RemoteFilePath, RemoteFiles, RemoteState, SshError, SshRemoteFiles, cancel_forward_argv,
@@ -40,12 +40,12 @@ pub enum SshEvent {
     EditSeen { id: EditId, stamp: FileStamp },
     /// A dropped file reached the host, or did not.
     Upload {
-        id: temor_core::shelf::UploadId,
-        result: Result<(), temor_core::shelf::UploadFault>,
+        id: temor_hosts::shelf::UploadId,
+        result: Result<(), temor_hosts::shelf::UploadFault>,
     },
     /// So many bytes of a dropped file have reached the host.
     UploadProgress {
-        id: temor_core::shelf::UploadId,
+        id: temor_hosts::shelf::UploadId,
         sent: temor_core::vocab::ids::Bytes,
     },
     /// The forward of the host's `remote` port is up.
