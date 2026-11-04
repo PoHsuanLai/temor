@@ -69,7 +69,7 @@ impl Edges {
             match effect {
                 PaneEffect::Notify(note) => {
                     if let Err(err) = self.notifier.lock().notify(&note) {
-                        eprintln!("temor: {err}");
+                        let _ = self.window.send((pane, Heard::Refused(err.to_string())));
                     }
                 }
                 PaneEffect::Finished(done) => finished.push(done),

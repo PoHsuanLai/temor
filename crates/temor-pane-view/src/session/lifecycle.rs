@@ -122,7 +122,7 @@ impl Session {
             if let PaneEffect::Notify(note) = effect
                 && let Err(err) = self.notifier.notify(&note)
             {
-                eprintln!("temor: {err}");
+                self.notice = Some(err.to_string());
             }
         }
         self.take(heard)
@@ -146,6 +146,10 @@ impl Session {
             }
             Heard::CommandDone => Notice::CommandDone,
             Heard::Finished(done) => Notice::Finished(done),
+            Heard::Refused(why) => {
+                self.notice = Some(why);
+                Notice::Quiet
+            }
             Heard::Ended(exit) => Notice::Ended(exit),
             Heard::Quiet | Heard::PromptShown | Heard::Notified { .. } => Notice::Quiet,
             Heard::Window(event) => match event {
@@ -235,4 +239,51 @@ pub struct Left {
     pub asked: Option<Action>,
     /// The file a ⌘-click or View asked to see.
     pub view: Option<ViewAsk>,
+}
+
+impl Left {
+    /// What two calls left, `later` after `self`: the later call's where both left one.
+    pub fn then(self, later: Left) -> Left {
+        Left {
+            notice: later.notice.or(self.notice),
+            asked: later.asked.or(self.asked),
+            view: later.view.or(self.view),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use temor_client::model::shelf::PaneSite;
+
+    use super::{Action, Left, ViewAsk};
+
+    #[test]
+    fn a_later_call_keeps_what_an_earlier_one_left_unless_it_left_its_own() {
+        let ask = ViewAsk {
+            file: PathBuf::from("/tmp/a"),
+            around: Vec::new(),
+            site: PaneSite::Local,
+        };
+        let first = Left {
+            notice: Some("first".to_owned()),
+            asked: None,
+            view: Some(ask.clone()),
+        };
+        let later = Left {
+            notice: Some("later".to_owned()),
+            asked: Some(Action::NewTab),
+            view: None,
+        };
+        assert_eq!(
+            first.then(later),
+            Left {
+                notice: Some("later".to_owned()),
+                asked: Some(Action::NewTab),
+                view: Some(ask),
+            }
+        );
+    }
 }

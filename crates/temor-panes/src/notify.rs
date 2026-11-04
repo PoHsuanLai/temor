@@ -41,6 +41,8 @@ impl Notifier for NoopNotifier {
 #[derive(Debug, Default, Clone)]
 pub struct RecordingNotifier {
     sent: Arc<Mutex<Vec<DesktopNote>>>,
+    /// Why it refuses notices from now on, once it does.
+    refused: Arc<Mutex<Option<String>>>,
 }
 
 impl RecordingNotifier {
@@ -48,10 +50,18 @@ impl RecordingNotifier {
     pub fn sent(&self) -> Vec<DesktopNote> {
         self.sent.lock().clone()
     }
+
+    /// Refuses every notice from now on, saying `why`.
+    pub fn refuse(&self, why: &str) {
+        *self.refused.lock() = Some(why.to_owned());
+    }
 }
 
 impl Notifier for RecordingNotifier {
     fn notify(&self, note: &DesktopNote) -> Result<(), NotifyFailed> {
+        if let Some(why) = self.refused.lock().clone() {
+            return Err(NotifyFailed(why));
+        }
         self.sent.lock().push(note.clone());
         Ok(())
     }

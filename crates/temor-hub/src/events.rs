@@ -49,6 +49,10 @@ impl Hub {
         // What the facts rule is told once the sessions are let go: it looks at the panes.
         let mut facts = Vec::new();
         for (pane, heard) in batch {
+            if let Heard::Refused(why) = heard {
+                self.notices.push(why);
+                continue;
+            }
             let Some(slot) = self.panes.slot(pane).cloned() else {
                 continue;
             };

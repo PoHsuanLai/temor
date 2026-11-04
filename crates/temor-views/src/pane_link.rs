@@ -5,9 +5,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use temor_client::model::shelf::PaneSite;
 use temor_client::model::vocab::ids::PaneId;
-use temor_hub::{Desk, Origin};
+use temor_hub::Desk;
 use temor_pane_view::session::{Left, Session};
 use temor_ui_base::slot::{Slot, repaint};
 
@@ -60,41 +59,10 @@ impl PaneLink {
         }
     }
 
-    /// Says the message, opens the file and runs the action a call left. Whether an action ran:
-    /// the workspace draws what it changes, and the keyboard may have left the pane.
+    /// Carries out what a call left (see [`Desk::carry_out`]). Whether an action ran: the
+    /// workspace draws what it changes, and the keyboard may have left the pane.
     pub fn carry_out(&self, left: Left) -> bool {
-        let Left {
-            notice,
-            asked,
-            view,
-        } = left;
-        if let Some(text) = notice {
-            self.desk.say(text);
-        }
-        if let Some(ask) = view {
-            // A file on another computer is fetched first; the viewer opens when it has arrived.
-            let notes = match ask.site {
-                PaneSite::Local => self.desk.hub.open_viewer(self.pane, ask),
-                PaneSite::Remote => self
-                    .desk
-                    .hub
-                    .open_host_viewer(self.pane, &ask.file.to_string_lossy()),
-            };
-            for text in notes {
-                self.desk.say(text);
-            }
-            self.desk.bump();
-        }
-        // The quick terminal has no tabs or splits of its own.
-        let Some(action) = asked else {
-            return false;
-        };
-        let from = match self.desk.hub.is_quick(self.pane) {
-            true => Origin::Quick,
-            false => Origin::Terminal,
-        };
-        self.desk.run_action(action, from);
-        true
+        self.desk.carry_out(self.pane, left)
     }
 
     /// Carries out what the session's own handlers left: a ⌘-click's file once the press is

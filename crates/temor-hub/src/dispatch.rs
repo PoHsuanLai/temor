@@ -3,6 +3,9 @@
 //! is: the pane's own, the workspace's, or the window's. A route differs only in what it knows
 //! about where the action came from, which is [`Origin`].
 
+use temor_client::model::shelf::PaneSite;
+use temor_client::model::vocab::ids::PaneId;
+use temor_pane_view::session::Left;
 use temor_panes::pane::keys::{Action, Owner};
 
 use super::desk::Desk;
@@ -52,13 +55,50 @@ impl Desk {
                 Owner::Workspace => self.run_workspace_action(action, from),
                 Owner::Pane => match from {
                     Origin::Bar | Origin::Menu => {
-                        self.settle(|hub| hub.run_in_keyboard_pane(action))
+                        let mut ran = None;
+                        self.settle(|hub| ran = hub.run_in_keyboard_pane(action));
+                        if let Some((pane, left)) = ran {
+                            self.carry_out(pane, left);
+                        }
                     }
                     // A terminal ran its own already; a viewer has none.
                     Origin::Terminal | Origin::Quick | Origin::Viewer => {}
                 },
             },
         }
+    }
+
+    /// Says the message, opens the file and runs the action a call on `pane`'s session left.
+    /// Whether an action ran: the workspace draws what it changes, and the keyboard may have
+    /// left the pane.
+    pub fn carry_out(&self, pane: PaneId, left: Left) -> bool {
+        let Left {
+            notice,
+            asked,
+            view,
+        } = left;
+        if let Some(text) = notice {
+            self.say(text);
+        }
+        if let Some(ask) = view {
+            // A file on another computer is fetched first; the viewer opens when it has arrived.
+            let notes = match ask.site {
+                PaneSite::Local => self.hub.open_viewer(pane, ask),
+                PaneSite::Remote => self.hub.open_host_viewer(pane, &ask.file.to_string_lossy()),
+            };
+            self.tell(notes);
+            self.bump();
+        }
+        // The quick terminal has no tabs or splits of its own.
+        let Some(action) = asked else {
+            return false;
+        };
+        let from = match self.hub.is_quick(pane) {
+            true => Origin::Quick,
+            false => Origin::Terminal,
+        };
+        self.run_action(action, from);
+        true
     }
 
     fn find_in_viewer(&self) {
@@ -81,21 +121,14 @@ impl Desk {
 }
 
 impl Hub {
-    /// Has the pane with the keyboard run its own `action`. Whatever it says, or fails with,
-    /// is left for the person in the notices, as a key would show it.
-    pub(super) fn run_in_keyboard_pane(&mut self, action: Action) {
-        let Some(slot) = self.keyboard_pane().and_then(|pane| self.panes.slot(pane)) else {
-            return;
-        };
-        let Some((ran, left)) = slot
-            .borrow_mut()
-            .session
-            .as_mut()
-            .map(|session| session.said(|session| session.run(action)))
-        else {
-            return;
-        };
+    /// Has the pane with the keyboard run its own `action`: what it fails with is left for the
+    /// person in the notices, and what its session left is the pane's, to be carried out.
+    pub(super) fn run_in_keyboard_pane(&mut self, action: Action) -> Option<(PaneId, Left)> {
+        let pane = self.keyboard_pane()?;
+        let slot = self.panes.slot(pane)?;
+        let mut slot = slot.borrow_mut();
+        let (ran, left) = slot.session.as_mut()?.said(|session| session.run(action));
         self.notices.extend(ran.err().map(|err| err.to_string()));
-        self.notices.extend(left.notice);
+        Some((pane, left))
     }
 }

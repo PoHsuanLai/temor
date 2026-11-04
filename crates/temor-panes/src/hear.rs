@@ -45,6 +45,8 @@ pub enum Heard {
     Window(PaneEvent),
     /// Commands that finished, as history is told of them; sent before the event's own.
     Finished(Vec<Finished>),
+    /// The desktop refused a notice: why, for the person.
+    Refused(String),
     /// Nothing for the window.
     Quiet,
 }

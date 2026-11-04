@@ -128,12 +128,13 @@ pub fn key_handler(
                     ime.settle(&apply);
                 }
                 if composing {
+                    link.carry_out(left);
                     return;
                 }
                 // An unidentified key is ignored; the rest go to the session.
                 let (outcome, keyed) =
                     link.said(|s| stroke(&raw, composing).map(|stroke| s.key(stroke)));
-                left = keyed;
+                left = left.then(keyed);
                 outcome.flatten()
             }
         };
