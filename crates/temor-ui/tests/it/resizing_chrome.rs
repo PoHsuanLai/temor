@@ -93,7 +93,7 @@ fn a_tab_menu_open_while_the_window_is_resized_stays_inside_it_and_takes_clicks(
         h.send(Input::press(row, PointerButton::Secondary));
         h.advance(Duration::from_millis(300));
     }
-    let pin = super::drive::menu_item(&h, "Pin Tab");
+    let pin = super::drive::menu_item(&mut h, "Pin Tab");
     h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
     assert_eq!(

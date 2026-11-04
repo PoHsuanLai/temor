@@ -143,7 +143,7 @@ fn a_rows_show_history_opens_its_sessions_commands() {
         ds::base::press::PointerButton::Secondary,
     ));
     h.advance(Duration::from_millis(300));
-    let item = super::drive::menu_item(&h, "Show History");
+    let item = super::drive::menu_item(&mut h, "Show History");
     h.send(ds_harness::Input::click(item.centre()));
     wait_html(&mut h, "the session's commands", |html| {
         html.contains("echo from-this-row") && html.contains("Go to Tab")
