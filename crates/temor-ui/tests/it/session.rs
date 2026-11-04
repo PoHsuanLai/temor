@@ -1103,3 +1103,46 @@ fn what_a_call_leaves_for_the_window_comes_back_with_it_and_is_not_left_behind()
     );
     assert_eq!(f.session.said(|_| ()).1, Default::default());
 }
+
+/// A pane drawn as a list of blocks composes only the rows that changed: the running card's
+/// ground is the view's, so a paint with nothing new composes none. Found by the pipeline audit:
+/// the painter wrote the ground into the captured frame, and every paint composed every row.
+#[test]
+fn a_list_panes_paint_composes_only_the_rows_that_changed() {
+    if !super::support::tools_present() {
+        return;
+    }
+    use temor_pane_view::session::{ListMap, ListView};
+    let mut f = ready("session-list-rows");
+    f.session.set_list_view(Some(ListView {
+        map: ListMap::default(),
+        ground: temor_vt::Rgb::new(30, 32, 40),
+        composing: false,
+    }));
+    type_text(&mut f.session, "echo listed");
+    press_enter(&mut f.session);
+    wait_until("the output", || {
+        has_line(&f.session.screen_text(), "listed")
+    });
+    f.session.paint(|_, _| {}).expect("paint");
+    f.session.paint(|_, _| {}).expect("paint");
+    assert_eq!(
+        f.session.rows_composed(),
+        0,
+        "nothing new, nothing composed"
+    );
+
+    type_text(&mut f.session, "x");
+    wait_until("the typed letter", || {
+        f.session
+            .screen_text()
+            .lines()
+            .any(|line| line.trim_end().ends_with('x'))
+    });
+    f.session.paint(|_, _| {}).expect("paint");
+    let composed = f.session.rows_composed();
+    assert!(
+        (1..=2).contains(&composed),
+        "the prompt's row (and the cursor's old one), not the pane: {composed}"
+    );
+}

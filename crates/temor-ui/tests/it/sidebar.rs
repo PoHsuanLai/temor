@@ -281,7 +281,7 @@ fn a_split_pane_closes_from_its_menu() {
         "the segment's menu:\n{}",
         h.html()
     );
-    let close = super::drive::menu_item(&h, "Close Pane").centre();
+    let close = super::drive::menu_item(&mut h, "Close Pane").centre();
     h.send(Input::click(close));
     h.advance(Duration::from_millis(400));
     assert!(
@@ -465,7 +465,7 @@ fn a_row_dropped_on_a_pinned_row_pins_and_a_pinned_row_dropped_on_a_loose_one_un
     let first = centre(&loose(&h)[0]);
     h.send(Input::press(first, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-    let pin = super::drive::menu_item(&h, "Pin Tab");
+    let pin = super::drive::menu_item(&mut h, "Pin Tab");
     h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
     assert_eq!(counts(&h), (2, 1), "pinned from the menu");
@@ -532,7 +532,7 @@ fn a_row_dropped_on_the_favourites_keeps_its_folder_there() {
         PointerButton::Secondary,
     ));
     h.advance(Duration::from_millis(300));
-    let remove = super::drive::menu_item(&h, "Remove from Favourites");
+    let remove = super::drive::menu_item(&mut h, "Remove from Favourites");
     h.send(Input::click(remove.centre()));
     h.advance(Duration::from_millis(400));
     assert!(tiles(&h).is_empty(), "let go:\n{}", h.html());
@@ -610,7 +610,7 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
             "Close Tab"
         ]
     );
-    let keep = drive::menu_item(&h, "Add to Favourites");
+    let keep = drive::menu_item(&mut h, "Add to Favourites");
     h.send(Input::click(keep.centre()));
     let start = Instant::now();
     while rects(&h, ".temor-side .temor-fav").is_empty() {
@@ -633,7 +633,7 @@ fn a_rows_menu_is_the_one_menu_and_keeps_its_folder_among_the_favourites() {
     h.advance(Duration::from_millis(1500));
     h.send(Input::press(at, PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-    let remove = drive::menu_item(&h, "Remove from Favourites");
+    let remove = drive::menu_item(&mut h, "Remove from Favourites");
     h.send(Input::click(remove.centre()));
     let start = Instant::now();
     while !rects(&h, ".temor-side .temor-fav").is_empty() {
@@ -862,7 +862,7 @@ fn typing_goes_on_after_a_pick_in_a_rows_menu() {
     let row = drive::rect(&h, ".temor-side .temor-tab-box");
     h.send(Input::press(row.centre(), PointerButton::Secondary));
     h.advance(Duration::from_millis(300));
-    let pin = drive::menu_item(&h, "Pin Tab");
+    let pin = drive::menu_item(&mut h, "Pin Tab");
     h.send(Input::click(pin.centre()));
     h.advance(Duration::from_millis(400));
     drive::type_line(&mut h, "echo after-the-menu");
