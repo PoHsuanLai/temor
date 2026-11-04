@@ -379,9 +379,16 @@ impl MarkLog {
     ) {
         let input = self.input.take();
         self.enter = None;
-        let text = match command.is_empty() {
-            true => typed.unwrap_or_default(),
-            false => command.to_owned(),
+        // The shell's name, unless what the person typed says more: bash names a command of
+        // several lines by its first, all its history holds when the command starts.
+        let text = match typed {
+            Some(typed)
+                if command.is_empty()
+                    || typed.lines().next().map(str::trim) == Some(command.trim()) =>
+            {
+                typed
+            }
+            _ => command.to_owned(),
         };
         let Some((block, after)) = self.next_id.mint() else {
             return;

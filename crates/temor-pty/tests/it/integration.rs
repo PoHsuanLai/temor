@@ -171,6 +171,77 @@ fn bash_keeps_a_prompt_command_ending_in_a_semicolon() {
     });
 }
 
+/// Runs three lines in `bash` and checks each output mark: one history takes is named in it, one
+/// it keeps out (a leading space, under `HISTCONTROL=ignorespace`) is not, since history's newest
+/// entry is then the line before, and the line after is named again.
+fn bash_names_the_lines_history_takes(bash: PathBuf) {
+    let scratch = Scratch::new();
+    std::fs::write(scratch.home.join(".bashrc"), "HISTCONTROL=ignorespace\n").expect(".bashrc");
+    let spec = prepare_shell(
+        &Shell::at(bash),
+        ShellStart::Interactive,
+        scratch.contract_env(&ChildEnv::new()),
+        &scratch.runtime,
+        scratch.cwd.clone(),
+        size(),
+    )
+    .expect("prepare shell");
+    let mut term = Term::spawn(&spec, &setsid());
+    assert!(term.read_until_has(0, PROMPT_END), "{:?}", term.text());
+    for (line, mark) in [
+        (
+            "echo 'a b'",
+            "\x1b]133;C;cmdline_url=echo%20%27a%20b%27\x1b\\",
+        ),
+        (" echo hidden", "\x1b]133;C\x1b\\"),
+        ("echo again", "\x1b]133;C;cmdline_url=echo%20again\x1b\\"),
+    ] {
+        let start = term.out.len();
+        term.send(&format!("{line}\r"));
+        assert!(
+            term.read_until(|out| {
+                find(&out[start..], b"\x1b]133;D")
+                    .is_some_and(|d| find(&out[start + d..], PROMPT_END.as_bytes()).is_some())
+            }),
+            "{line}: no D and prompt: {:?}",
+            term.text()
+        );
+        let out = &term.out[start..];
+        let c = find(out, OUTPUT_START.as_bytes()).expect("C");
+        assert!(
+            out[c..].starts_with(mark.as_bytes()),
+            "{line}: {:?}",
+            String::from_utf8_lossy(&out[c..])
+        );
+    }
+}
+
+#[test]
+fn bash_names_the_command_line_in_its_output_mark() {
+    let test = "bash_names_the_command_line_in_its_output_mark";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some(bash) = program_or_skip("bash", test) else {
+        return;
+    };
+    bash_names_the_lines_history_takes(bash);
+}
+
+/// bash 3.2's mark comes from a DEBUG trap, where HISTCMD does not move: the entry's own number
+/// tells a new line from one history kept out.
+#[test]
+fn bash_3_2_names_the_command_line_in_its_output_mark() {
+    let test = "bash_3_2_names_the_command_line_in_its_output_mark";
+    if crate::support::pty_unsupported(test) {
+        return;
+    }
+    let Some((_dir, bash)) = renamed("bash32", "bash", test) else {
+        return;
+    };
+    bash_names_the_lines_history_takes(bash);
+}
+
 /// Why: themes rebuild PS1 in their own precmd hook, after ours, and dropped the B mark.
 #[test]
 fn zsh_keeps_the_mark_under_a_theme_that_rebuilds_ps1() {
