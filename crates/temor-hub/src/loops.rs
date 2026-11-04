@@ -17,10 +17,11 @@ pub trait Redraw {
     fn redraw(self) -> bool;
 }
 
-/// Not unless something was said.
+/// A message that answers nothing still changed the hub (a host connected, a picture came):
+/// the window draws again.
 impl Redraw for () {
     fn redraw(self) -> bool {
-        false
+        true
     }
 }
 
@@ -31,11 +32,12 @@ impl Redraw for bool {
 }
 
 /// Runs `heard` on the hub and shows what it said; the window is drawn again only when `heard`
-/// says the hub changed (a tick mostly changes nothing).
+/// says the hub changed or it had something to say (a tick mostly changes nothing).
 fn settle<R: Redraw>(desk: &Desk, heard: impl FnOnce(&mut Hub) -> R) {
     let (redraw, notes) = desk.hub.0.borrow_mut().said(heard);
+    let redraw = redraw.redraw() || !notes.is_empty();
     desk.tell(notes);
-    if redraw.redraw() {
+    if redraw {
         desk.hub.changed();
     }
 }
@@ -97,5 +99,6 @@ pub fn spawn_loops(desk: &Desk) {
     // Whether a change waits to be written; never in the render path.
     desk.every(Duration::from_millis(500), |hub| {
         hub.poll_save(Instant::now());
+        false
     });
 }
