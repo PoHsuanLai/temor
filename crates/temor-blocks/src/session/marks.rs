@@ -259,7 +259,9 @@ pub fn mark_step(mut log: MarkLog, input: MarkIn) -> (MarkLog, Vec<MarkOut>) {
         MarkIn::Restored { blocks, at } => {
             for kept in blocks {
                 let Some(id) = log.next_id.take().map(BlockId) else {
-                    break;
+                    // No id is left to give it: its anchors are given back.
+                    outs.extend(kept.anchors.all().map(MarkOut::Release));
+                    continue;
                 };
                 let took = kept.took_ms.unwrap_or(0);
                 let block = Block {
