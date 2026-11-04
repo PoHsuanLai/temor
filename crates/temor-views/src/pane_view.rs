@@ -27,9 +27,8 @@ use temor_client::model::vocab::ids::{BlockId, PaneId};
 
 use super::block_edit::edit_on_this_computer;
 use super::block_list::pane::{hand_list_view, lens_request};
-use super::block_list::{BlockPane, CardActions, ChoicesView, ComposerActions, ComposerView};
-use super::block_menu::{BlockMenu, BlockMenuAt, BlockMenuState, BlockOwn};
-use super::blocks::{Chrome, chrome_of};
+use super::block_list::{BlockPane, CardActions, ComposerActions, ComposerView};
+use super::block_menu::{BlockMenu, BlockMenuAt, BlockOwn};
 use super::clipboard_ask::{ClipboardConfirm, clipboard_answer};
 use super::console_bar::ConsoleTools;
 use super::convert::scale_of;
@@ -48,12 +47,13 @@ use super::pane_footer::{Shell, pane_footer};
 use super::pane_keys::{KeyRegion, key_handler};
 use super::pane_link::{PaneLink, Redraw};
 use super::pane_pointer::{GridPointer, GridState, grid_pointer};
+use super::pane_shown::{PaneShown, use_pane_shown};
 use super::peek::use_peek;
 use super::peek_card::peek_card;
 use super::pointer::use_pane_mouse;
 use super::viewer_open::bar_view;
 use super::window_help::device_pixels;
-use temor_client::model::menu::{BlockFacts, Item};
+use temor_client::model::menu::Item;
 use temor_hub::Desk;
 use temor_panes::pane::keys::Action;
 use temor_ui_base::slot::{Slot, layout};
@@ -108,7 +108,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             ime.release();
         });
     }
-    let ui = desk.ui;
     let link = PaneLink {
         slot: Rc::clone(&slot),
         desk: desk.clone(),
@@ -230,32 +229,30 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         },
         mouse.down.clone(),
     );
-    let _ = ui();
-    let view = slot.borrow().session.as_ref().map(|s| {
-        (
-            s.finder().map(|f| (s.find_text().to_owned(), f.position())),
-            s.pending_paste().map(|p| p.reason),
-            s.ended(),
-        )
-    });
-    let (find, pending, ended) = view.unwrap_or((None, None, false));
+    let PaneShown {
+        find,
+        pending,
+        ended,
+        chrome,
+        clip_ask,
+        console_row,
+        link_tip,
+        menu: menu_state,
+        card_font,
+        items: block_items,
+        picked: picked_block,
+        found,
+        pictures,
+        composer_text,
+        selection,
+        choices,
+        take,
+        tips: (previous_tip, next_tip),
+    } = use_pane_shown(&slot, &desk, pane, move || block_menu().is_some())();
     let shell = match ended {
         true => Shell::Ended,
         false => Shell::Running,
     };
-    let chrome = slot
-        .borrow()
-        .session
-        .as_ref()
-        .map_or_else(Chrome::default, chrome_of);
-    let clip_ask = slot
-        .borrow()
-        .session
-        .as_ref()
-        .and_then(|s| s.clipboard_ask());
-    let on_host = desk.hub.is_host_pane(pane);
-    // A row's terminal has the console's bar; the quick terminal is in no row.
-    let console_row = desk.hub.console_row(pane);
     let find_toggle = {
         let link = link.clone();
         let open = find.is_some();
@@ -267,38 +264,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             }
         }
     };
-    let link_tip = slot.borrow().session.as_ref().and_then(|s| s.link_tip());
-    // The block menu speaks of what is picked now.
-    let menu_block = match block_menu() {
-        Some(_) => slot
-            .borrow()
-            .session
-            .as_ref()
-            .and_then(|s| s.selected_block()),
-        None => None,
-    };
-    let (lenses, picture) = match menu_block {
-        Some(block) => (
-            desk.hub.block_lenses(pane, block),
-            desk.hub.lens_shown(pane, block),
-        ),
-        None => (Vec::new(), false),
-    };
-    let menu_state = slot.borrow().session.as_ref().map(|s| {
-        let running = menu_block.is_some_and(|block| !s.block_finished(block));
-        BlockMenuState {
-            facts: BlockFacts {
-                picked: s.picked_blocks().len(),
-                running,
-                has_output: menu_block.is_some_and(|block| s.block_foldable(block)),
-                bookmarked: s.picks_bookmarked(),
-                folded: s.picks_folded(),
-                on_host,
-            },
-            lenses,
-            picture,
-        }
-    });
     let menu_pick = {
         let (link, mut menu) = (link.clone(), block_menu);
         move |pick: Pick<BlockOwn>| {
@@ -350,15 +315,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             link.redraw(Redraw::WithGrid);
         }
     };
-    // Cards and headers are set in the grid's own family, so a command reads as it was typed.
-    let card_font = slot
-        .borrow()
-        .session
-        .as_ref()
-        .map(|s| s.grid_font().family_css())
-        .unwrap_or_default();
-    // The pane as a list of blocks, but for a full-screen program's screen.
-    let block_items = slot.borrow().session.as_ref().and_then(|s| s.block_list());
     let listed = block_items.is_some();
     // A pane that stops being a list says so once it is drawn (the list says what it shows).
     let (unlisted, unlisted_desk) = (Rc::clone(&slot), desk.clone());
@@ -367,11 +323,6 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
             hand_list_view(&unlisted, &unlisted_desk, None);
         }
     }));
-    let picked_block = slot
-        .borrow()
-        .session
-        .as_ref()
-        .and_then(|s| s.selected_block());
     let wheel_slot = Rc::clone(&slot);
     rsx! {
         div { class: "temor-pane",
@@ -384,8 +335,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             position,
                             on_query: find_query(link.clone(), started),
                             on_step: find_step(link.clone()),
-                            previous_tip: desk.hub.tooltip("Previous match", Action::FindPrevious),
-                            next_tip: desk.hub.tooltip("Next match", Action::FindNext),
+                            previous_tip: previous_tip.clone(),
+                            next_tip: next_tip.clone(),
                             on_close: find_close(link.clone(), ime.clone(), regain),
                             inline: true,
                         }
@@ -436,14 +387,14 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                             texture: texture.clone(),
                             font: card_font.clone(),
                             reveal: picked_block,
-                            found: slot.borrow().session.as_ref().and_then(|s| s.found_row()),
-                            pictures: desk.hub.lens_pictures(pane),
+                            found,
+                            pictures,
                             composer: ComposerView {
-                                text: slot.borrow().session.as_ref().map(|s| s.composer_text().to_owned()).unwrap_or_default(),
+                                text: composer_text,
                                 font: card_font.clone(),
-                                selection: slot.borrow().session.as_ref().is_some_and(|s| s.has_selection()),
+                                selection,
                                 focus: composer_focus,
-                                take: desk.hub.keyboard_pane() == Some(pane) && !desk.hub.bar_is_open() && find.is_none(),
+                                take,
                                 actions: ComposerActions {
                                     input: EventHandler::new(composer_input(link.clone())),
                                     submit: EventHandler::new(then_regain(composer_submit(link.clone()), ime.clone(), regain)),
@@ -456,11 +407,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                                     take: EventHandler::new(composer_take(link.clone())),
                                     close: EventHandler::new(composer_close(link.clone())),
                                 },
-                                choices: slot.borrow().session.as_ref().and_then(|s| s.composer_choices()).map(|c| ChoicesView {
-                                    words: c.words().into_iter().map(str::to_owned).collect(),
-                                    details: c.details().into_iter().map(|d| d.map(str::to_owned)).collect(),
-                                    picked: c.picked(),
-                                }),
+                                choices,
                             },
                             actions: CardActions {
                                 fold: EventHandler::new(then_regain(list_fold(link.clone()), ime.clone(), regain)),
@@ -506,8 +453,8 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     position,
                     on_query:find_query(link.clone(), started),
                     on_step:find_step(link.clone()),
-                    previous_tip: desk.hub.tooltip("Previous match", Action::FindPrevious),
-                    next_tip: desk.hub.tooltip("Next match", Action::FindNext),
+                    previous_tip,
+                    next_tip,
                     on_close:find_close(link.clone(), ime.clone(), regain),
                 }
             }

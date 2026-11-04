@@ -37,7 +37,7 @@ use super::window_style::WINDOW_CSS;
 use temor_hub::{
     Desk, DragKey, HostOf, Hub, HubRef, KitSpaces, PendingSwitch, SidebarData, spawn_blink_loop,
     spawn_desktop_loop, spawn_event_loop, spawn_keys_loop, spawn_loops, spawn_settings_loop,
-    spawn_space_edits,
+    spawn_space_edits, use_hub,
 };
 use temor_ui_base::desktop::Desktop;
 use temor_ui_base::edge::{Credentials, VaultCredentials};
@@ -245,14 +245,15 @@ pub fn App() -> Element {
         }
     };
 
-    let _ = ui();
     // What the Settings window and the desktop are shown is read here and handed to them once
     // the window is drawn, when it changed.
-    let rows = published.as_ref().map(|_| hub.space_rows());
-    let snapshot = desktop
-        .link
-        .as_ref()
-        .map(|_| hub.0.borrow().desktop_snapshot());
+    let shown = (published.is_some(), desktop.link.is_some());
+    let (rows, snapshot) = use_hub(&desk, shown, |hub, &(board, link)| {
+        (
+            board.then(|| hub.space_rows()),
+            link.then(|| hub.0.borrow().desktop_snapshot()),
+        )
+    })();
     use_effect(use_reactive!(|rows, snapshot| {
         if let (Some(board), Some(rows)) = (&published, rows) {
             board.publish(rows);
@@ -261,11 +262,14 @@ pub fn App() -> Element {
             link.publish(snapshot, count);
         }
     }));
-    let data = hub.sidebar();
-    let front = hub.front();
-    let bar = hub.bar_data();
-    let quick = hub.quick_shown().map(|pane| (pane, hub.bar_spaces()));
-    let (title, cwd) = hub.window_parts();
+    let (data, front, space) = use_hub(&desk, (), |hub, ()| {
+        (hub.sidebar(), hub.front(), hub.active_space())
+    })();
+    let (bar, quick) = use_hub(&desk, (), |hub, ()| {
+        let quick = hub.quick_shown().map(|pane| (pane, hub.bar_spaces()));
+        (hub.bar_data(), quick)
+    })();
+    let (title, cwd) = use_hub(&desk, (), |hub, ()| hub.window_parts())();
     use_window_title(window_title(&title, cwd.as_deref()));
     let ghost = match dnd.drag.phase() {
         DragPhase::Live { key, at, .. } => Some((ghost_text(&data, key), at)),
@@ -273,10 +277,11 @@ pub fn App() -> Element {
     };
     let now = env();
     // One monospace in the window: the terminal's.
-    let code_font = hub
-        .grid_font()
-        .map(|font| font.code_css())
-        .unwrap_or_default();
+    let code_font = use_hub(&desk, (), |hub, ()| {
+        hub.grid_font()
+            .map(|font| font.code_css())
+            .unwrap_or_default()
+    })();
     // Pinned, the sidebar is the pane's body; hidden, it moves out of the pane (which clips what
     // floats over it) into a zero-width host at the window's edge, where it peeks.
     let side_box = |pinned: Shown| {
@@ -345,7 +350,7 @@ pub fn App() -> Element {
                             },
                             if let Some((tab, tree, focus)) = front {
                                 RowView {
-                                    key: "{desk.hub.active_space().0}-{tab.0}",
+                                    key: "{space.0}-{tab.0}",
                                     tab,
                                     tree,
                                     focus,
