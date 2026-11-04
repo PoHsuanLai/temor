@@ -779,12 +779,25 @@ fn the_row_in_front_is_scrolled_into_view() {
         drive::chord_with(&mut h, &[ShortcutKey::Super], 'n');
     }
     assert_eq!(drive::rows(&h), 25, "25 rows");
-    let side = &rects(&h, ".temor-side")[0];
-    let front = rects(&h, ".temor-side [aria-selected=\"true\"]");
-    let row = front
-        .iter()
-        .find(|r| r.bottom > r.top)
-        .expect("the row in front");
+    // The row is revealed once laid out and again once the list has settled (300 ms on).
+    let in_front = |h: &Harness| {
+        let side = rects(h, ".temor-side").swap_remove(0);
+        let front = rects(h, ".temor-side [aria-selected=\"true\"]");
+        let row = front
+            .into_iter()
+            .find(|r| r.bottom > r.top)
+            .expect("the row in front");
+        (side, row)
+    };
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let (side, row) = loop {
+        let (side, row) = in_front(&h);
+        let inside = row.top >= side.top && row.bottom <= side.bottom;
+        if inside || Instant::now() > deadline {
+            break (side, row);
+        }
+        h.advance(Duration::from_millis(100));
+    };
     assert!(
         row.top >= side.top && row.bottom <= side.bottom,
         "the row in front ({}..{}) is inside the sidebar ({}..{})",

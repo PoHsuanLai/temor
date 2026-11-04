@@ -19,7 +19,6 @@ fn a_wake_ends_a_wait_on_a_quiet_terminal_and_is_used_up() {
     let woke = std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(100));
         waker.wake();
-        waker.wake();
     });
 
     let start = Instant::now();
@@ -31,7 +30,12 @@ fn a_wake_ends_a_wait_on_a_quiet_terminal_and_is_used_up() {
     );
     woke.join().expect("waker");
 
-    // Both wakes were taken by the one wait: the next waits out its time.
+    // Two wakes before a wait are both taken by it: the next waits out its time.
+    let waker = wake.waker();
+    waker.wake();
+    waker.wake();
+    io.wait_or(Interest::Read, &wake, Some(Duration::from_secs(20)))
+        .expect("wait");
     let start = Instant::now();
     io.wait_or(Interest::Read, &wake, Some(Duration::from_millis(200)))
         .expect("wait");
