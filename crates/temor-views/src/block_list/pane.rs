@@ -183,6 +183,9 @@ pub fn BlockPane(
     actions: CardActions,
 ) -> Element {
     let slot = use_hook(|| desk.hub.slot(pane).unwrap_or_default());
+    // The list is the session's picture: it reads the session as it draws (its live rows, its
+    // tiles, whether a program has the mouse), so it draws again on each change the window hears.
+    let _ = (desk.ui)();
     let gpu = use_gpu();
     let scroller = use_scroller();
     // The block under the pointer: its "…" shows.

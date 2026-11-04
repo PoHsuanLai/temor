@@ -26,6 +26,8 @@ pub struct PaneShown {
     pub find: Option<(String, Option<(usize, usize)>)>,
     pub pending: Option<UnsafeReason>,
     pub ended: bool,
+    /// The program a tab runs in place of the shell: Restart runs it again.
+    pub run_name: Option<String>,
     pub chrome: Chrome,
     pub clip_ask: Option<ClipboardAsk>,
     /// A row's terminal has the console's bar; the quick terminal is in no row.
@@ -82,6 +84,7 @@ pub fn pane_shown(
         find,
         pending: session.and_then(|s| s.pending_paste().map(|p| p.reason)),
         ended: session.is_some_and(Session::ended),
+        run_name: hub.0.borrow().run_name(pane).map(str::to_owned),
         chrome: session.map_or_else(Chrome::default, chrome_of),
         clip_ask: session.and_then(Session::clipboard_ask),
         console_row: hub.console_row(pane),

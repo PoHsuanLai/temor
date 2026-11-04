@@ -20,16 +20,18 @@ pub enum Shell {
     Ended,
 }
 
-/// The pane's lower part. `pending` is the paste waiting for an answer.
+/// The pane's lower part. `pending` is the paste waiting for an answer; `run_name` the program a
+/// tab runs in place of the shell.
 pub fn pane_footer(
     link: &PaneLink,
     chrome: &Chrome,
     pending: Option<UnsafeReason>,
     shell: Shell,
+    run_name: Option<&str>,
 ) -> Element {
     let (pane, desk) = (link.pane, &link.desk);
     // A tab that runs a program in place of the shell names it, and Restart runs it again.
-    let ended = match desk.hub.0.borrow().run_name(pane) {
+    let ended = match run_name {
         Some(name) => (format!("{name} has ended."), format!("Run {name} again")),
         None => (
             "The shell has ended.".to_owned(),

@@ -233,6 +233,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
         find,
         pending,
         ended,
+        run_name,
         chrome,
         clip_ask,
         console_row,
@@ -465,7 +466,7 @@ pub fn PaneView(pane: PaneId, desk: Desk, started: Instant) -> Element {
                     on_refuse:clipboard_answer(link.clone(), Grant::Refused, { let hub = desk.hub.clone(); move |g| hub.clipboard_answered(pane, g) }),
                 }
             }
-            {pane_footer(&link, &chrome, pending, shell)}
+            {pane_footer(&link, &chrome, pending, shell, run_name.as_deref())}
         }
     }
 }
