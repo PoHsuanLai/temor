@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use ds_style::space::list::{SpaceId, Spaces};
 use temor_core::error::CoreError;
-use temor_core::vocab::ids::{PaneId, TabId};
+use temor_core::vocab::ids::{Counter, PaneId, TabId};
 use temor_core::vocab::text::Cwd;
 use temor_layout::quick::adopt;
 use temor_layout::space::{Place, Project, TemorSpaces, carry_tab};
@@ -38,7 +38,7 @@ pub fn recall_of(ws: &Workspace) -> Place {
 #[derive(Debug)]
 pub struct Book {
     /// The workspace of the Space on screen.
-    pub ws: Workspace,
+    ws: Workspace,
     /// The Spaces as the kit last made them final.
     spaces: TemorSpaces,
     /// The Space whose workspace is `ws`.
@@ -46,7 +46,7 @@ pub struct Book {
     /// The workspaces of the other Spaces.
     parked: BTreeMap<SpaceId, Workspace>,
     /// Every pane id below this is taken by some Space.
-    floor: u64,
+    floor: Counter,
 }
 
 impl Default for Book {
@@ -64,8 +64,31 @@ impl Book {
             active: spaces.current().id,
             spaces,
             parked: BTreeMap::new(),
-            floor: 1,
+            floor: Counter::FROM_ONE,
         }
+    }
+
+    /// The workspace of the Space on screen.
+    pub fn ws(&self) -> &Workspace {
+        &self.ws
+    }
+
+    /// Changes the workspace on screen in place, outside its step (a test setting it up, a
+    /// folder forgotten); what it hands out still counts towards every Space's pane ids.
+    pub fn edit<T>(&mut self, change: impl FnOnce(&mut Workspace) -> T) -> T {
+        let out = change(&mut self.ws);
+        self.note_ws();
+        out
+    }
+
+    /// A pane id no Space holds, taken for a pane outside every workspace (the quick
+    /// terminal's). `None` when the ids have run out.
+    pub fn mint_pane(&mut self) -> Option<PaneId> {
+        let mut next = self.ws.next_pane.max(self.floor);
+        let pane = next.take()?;
+        self.ws.next_pane = next;
+        self.note_ws();
+        Some(PaneId(pane))
     }
 
     /// The Space on screen.

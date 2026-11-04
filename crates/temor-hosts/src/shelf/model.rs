@@ -4,7 +4,7 @@ use super::naming::candidate_name;
 use crate::transfer::Origin;
 use ds_core::time::stamp::Stamp;
 use serde::{Deserialize, Serialize};
-use temor_core::vocab::ids::{Bytes, DownloadId};
+use temor_core::vocab::ids::{Bytes, Counter, DownloadId};
 use temor_core::vocab::text::ShelfPath;
 
 /// How an item reached the shelf.
@@ -102,7 +102,7 @@ pub enum Clear {
 pub struct Shelf {
     pub(super) dir: ShelfPath,
     pub(super) items: Vec<ShelfItem>,
-    pub(super) next: u64,
+    pub(super) next: Counter,
 }
 
 impl Shelf {
@@ -111,7 +111,7 @@ impl Shelf {
         Self {
             dir,
             items: Vec::new(),
-            next: 1,
+            next: Counter::FROM_ONE,
         }
     }
 
@@ -148,8 +148,8 @@ impl Shelf {
     }
 
     pub(super) fn id_and_next(self) -> (DownloadId, Self) {
-        let id = DownloadId(self.next);
-        let next = self.next.saturating_add(1);
-        (id, Self { next, ..self })
+        // With no id left the last one is given again, as a saturating count would.
+        let (id, next) = self.next.mint().unwrap_or((u64::MAX, self.next));
+        (DownloadId(id), Self { next, ..self })
     }
 }

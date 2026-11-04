@@ -42,7 +42,10 @@ pub(super) async fn perform<W: WindowPort>(
         }
         PANE_READ => {
             let pane = args.pane(front())?;
-            let text = window.read_pane(pane, args.range()?).map_err(refusal)?;
+            let text = window
+                .read_pane(pane, args.range()?)
+                .await
+                .map_err(refusal)?;
             Ok(shape.read(text))
         }
         COMMAND_LIST => {
@@ -52,6 +55,7 @@ pub(super) async fn perform<W: WindowPort>(
         COMMAND_READ => {
             let text = window
                 .read_command(args.pane(front())?, args.command()?)
+                .await
                 .map_err(refusal)?;
             Ok(shape.read(text))
         }
@@ -62,7 +66,7 @@ pub(super) async fn perform<W: WindowPort>(
                 placement: args.placement()?,
                 cwd: args.cwd()?,
             };
-            let pane = window.open_pane(open).map_err(refusal)?;
+            let pane = window.open_pane(open).await.map_err(refusal)?;
             Ok(shape.opened(pane, kind))
         }
         COMMAND_RUN_SANDBOXED => {
@@ -87,6 +91,7 @@ pub(super) async fn perform<W: WindowPort>(
             let pane = args.pane(front())?;
             window
                 .run_in_pane(pane, args.need_text("line")?)
+                .await
                 .map_err(refusal)?;
             Ok(shape.said("Typed the command into the pane", None))
         }

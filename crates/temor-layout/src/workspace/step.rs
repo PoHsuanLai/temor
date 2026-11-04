@@ -115,36 +115,24 @@ pub(super) fn front_pane(ws: &Workspace) -> Option<PaneId> {
 
 /// The tree and focus of `tab`.
 pub(super) fn tree_state(ws: &Workspace, tab: TabId) -> Option<TreeState> {
-    let focus = ws.focus_of(tab)?;
-    let t = ws.tabs.tab(tab)?;
-    Some(TreeState {
-        tree: t.tree.clone(),
-        focus,
-    })
+    ws.tabs.tab(tab)?.state()
 }
 
 /// Stores a tab's tree and focus.
 pub(super) fn store_tree_state(ws: &mut Workspace, tab: TabId, state: TreeState) {
-    if let Some(t) = ws.tabs.place.tabs.iter_mut().find(|t| t.id == tab) {
-        t.tree = state.tree;
+    if let Some(t) = ws.tab_mut(tab) {
+        t.set_state(state);
     }
-    ws.focus.insert(tab, state.focus);
 }
 
 /// The next pane id, or none when the counter has no id left to hand out after it.
 pub(super) fn mint_pane(ws: &mut Workspace) -> Option<PaneId> {
-    let next = ws.next_pane.checked_add(1)?;
-    let pane = PaneId(ws.next_pane);
-    ws.next_pane = next;
-    Some(pane)
+    ws.next_pane.take().map(PaneId)
 }
 
 /// The next tab id, or none when the counter has no id left to hand out after it.
 pub(super) fn mint_tab(ws: &mut Workspace) -> Option<TabId> {
-    let next = ws.next_tab.checked_add(1)?;
-    let tab = TabId(ws.next_tab);
-    ws.next_tab = next;
-    Some(tab)
+    ws.next_tab.take().map(TabId)
 }
 
 /// The relaunch command for a pane: a pinned tab's first pane runs its command again.
@@ -176,7 +164,7 @@ pub(super) fn spawn_fresh(
 
 fn new_tab(ws: &mut Workspace, cwd: Option<Cwd>, out: &mut Vec<WorkspaceOut>) {
     // Both counters are checked before either moves, so a refusal changes nothing.
-    if ws.next_tab.checked_add(1).is_none() || ws.next_pane.checked_add(1).is_none() {
+    if ws.next_tab.mint().is_none() || ws.next_pane.mint().is_none() {
         return out.push(WorkspaceOut::Refused(RefuseWhy::IdsExhausted));
     }
     let (Some(tab_id), Some(pane)) = (mint_tab(ws), mint_pane(ws)) else {
@@ -202,10 +190,10 @@ fn split(
     let Some(state) = tree_state(ws, tab) else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::NoFront));
     };
-    let Some(next_pane) = ws.next_pane.checked_add(1) else {
+    let Some((new, next_pane)) = ws.next_pane.mint() else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::IdsExhausted));
     };
-    let new = PaneId(ws.next_pane);
+    let new = PaneId(new);
     let origin = state.focus;
     let (after, outs) = tree_step(state, TreeIn::Split { towards, new });
     if outs.contains(&TreeOut::SplitRefused) {

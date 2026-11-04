@@ -5,19 +5,9 @@ use temor_core::vocab::ai::AiSwitch;
 use temor_core::vocab::ids::TabId;
 use temor_core::vocab::text::{CommandText, Cwd, HostAlias, PluginId};
 use temor_layout::bar::{
-    BarAction, BarRow, Candidate, Frecency, PathResolver, PluginRow, RowGroup, Section, Target,
-    rank,
+    BarAction, BarRow, Candidate, Frecency, PluginRow, RowGroup, Section, Target, rank,
 };
 use temor_pane::keys::Action;
-
-/// A `PATH` with a fixed set of programs.
-struct OnPath(&'static [&'static str]);
-
-impl PathResolver for OnPath {
-    fn resolves(&self, program: &str) -> bool {
-        self.0.contains(&program)
-    }
-}
 
 fn candidates() -> Vec<Candidate> {
     let c = |title: &str, target| Candidate {
@@ -65,7 +55,7 @@ fn groups(rows: &[BarRow]) -> Vec<RowGroup> {
 
 #[test]
 fn matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_section() {
-    let rows = rank("top", &candidates(), &[], &OnPath(&[]), AiSwitch::Off);
+    let rows = rank("top", &candidates(), &[], None, AiSwitch::Off);
     assert_eq!(
         titles(&rows),
         vec![
@@ -78,7 +68,7 @@ fn matches_rank_whole_then_prefix_then_word_start_then_inside_then_by_section() 
         ]
     );
     assert!(rows.iter().all(|row| row.group == RowGroup::Match));
-    let none = rank("nothing", &candidates(), &[], &OnPath(&[]), AiSwitch::Off);
+    let none = rank("nothing", &candidates(), &[], None, AiSwitch::Off);
     assert!(none.is_empty());
 }
 
@@ -92,34 +82,22 @@ fn equally_good_folders_rank_by_frecency() {
         },
     };
     let folders = [dir("~/a/web", 1), dir("~/b/web", 7), dir("~/c/web", 3)];
-    let rows = rank("web", &folders, &[], &OnPath(&[]), AiSwitch::Off);
+    let rows = rank("web", &folders, &[], None, AiSwitch::Off);
     assert_eq!(titles(&rows), vec!["~/b/web", "~/c/web", "~/a/web"]);
 }
 
 #[test]
 fn a_run_row_tops_the_list_only_when_the_first_word_is_on_path() {
-    let on = rank(
-        "top -d 2",
-        &candidates(),
-        &[],
-        &OnPath(&["top"]),
-        AiSwitch::Off,
-    );
+    let on = rank("top -d 2", &candidates(), &[], Some("top"), AiSwitch::Off);
     assert_eq!(on[0].title, "Run `top -d 2` in a new tab");
     assert_eq!(on[0].action, BarAction::Run(CommandText("top -d 2".into())));
     assert_eq!(
         groups(&on).iter().filter(|g| **g == RowGroup::Run).count(),
         1
     );
-    let off = rank(
-        "top -d 2",
-        &candidates(),
-        &[],
-        &OnPath(&["htop"]),
-        AiSwitch::Off,
-    );
+    let off = rank("top -d 2", &candidates(), &[], Some("htop"), AiSwitch::Off);
     assert!(off.iter().all(|row| row.group != RowGroup::Run));
-    let blank = rank("   ", &candidates(), &[], &OnPath(&[""]), AiSwitch::Off);
+    let blank = rank("   ", &candidates(), &[], None, AiSwitch::Off);
     assert!(
         blank
             .iter()
@@ -135,7 +113,7 @@ fn plugin_rows_follow_local_matches_in_their_own_order() {
         "top",
         &candidates(),
         &plugin_rows(),
-        &OnPath(&["top"]),
+        Some("top"),
         AiSwitch::Off,
     );
     let g = groups(&rows);
@@ -151,7 +129,7 @@ fn ai_rows_are_always_last_and_absent_when_ai_is_off() {
         "top",
         &candidates(),
         &plugin_rows(),
-        &OnPath(&["top"]),
+        Some("top"),
         AiSwitch::On,
     );
     let g = groups(&rows);
@@ -165,7 +143,7 @@ fn ai_rows_are_always_last_and_absent_when_ai_is_off() {
             "Ask about this tab: top",
         ]
     );
-    let none = rank("zzz", &[], &[], &OnPath(&[]), AiSwitch::On);
+    let none = rank("zzz", &[], &[], None, AiSwitch::On);
     assert_eq!(
         groups(&none),
         vec![RowGroup::Ai; 3],
@@ -175,12 +153,12 @@ fn ai_rows_are_always_last_and_absent_when_ai_is_off() {
         "top",
         &candidates(),
         &plugin_rows(),
-        &OnPath(&["top"]),
+        Some("top"),
         AiSwitch::Off,
     );
     assert!(off.iter().all(|row| row.group != RowGroup::Ai));
     assert_eq!(
-        titles(&rank("", &[], &[], &OnPath(&[]), AiSwitch::On)),
+        titles(&rank("", &[], &[], None, AiSwitch::On)),
         vec!["New tab"],
         "no AI rows for no query, only the plain new tab"
     );
@@ -201,7 +179,7 @@ fn window_actions_are_rows_and_a_sections_rows_sit_together() {
         c("spl-box", Target::Host(HostAlias("spl-box".into()))),
         c("Split view", Target::Tab(TabId(2))),
     ];
-    let rows = rank("spl", &all, &[], &OnPath(&[]), AiSwitch::Off);
+    let rows = rank("spl", &all, &[], None, AiSwitch::Off);
     assert_eq!(
         titles(&rows),
         vec![
@@ -224,7 +202,7 @@ fn window_actions_are_rows_and_a_sections_rows_sit_together() {
         ]
     );
     // The plain new tab is one row on the empty bar, whichever way it is offered.
-    let empty = rank("", &all, &[], &OnPath(&[]), AiSwitch::Off);
+    let empty = rank("", &all, &[], None, AiSwitch::Off);
     let new_tabs = empty.iter().filter(|r| r.key.0 == "new-tab").count();
     assert_eq!((new_tabs, empty[0].action.clone()), (1, BarAction::NewTab));
 }
@@ -244,7 +222,7 @@ fn each_plugin_gets_its_own_section_after_the_built_in_ones_ordered_by_name() {
         row("a-id", "Zebra", "z2"),
         row("z-id", "Apple", "a2"),
     ];
-    let rows = rank("top", &candidates(), &offered, &OnPath(&[]), AiSwitch::On);
+    let rows = rank("top", &candidates(), &offered, None, AiSwitch::On);
     let tail: Vec<(Section, &str)> = rows
         .iter()
         .skip_while(|row| row.group != RowGroup::Plugin)

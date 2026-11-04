@@ -7,11 +7,13 @@ use temor_panes::render::{self, Palette, PixelSize, Scale};
 
 use super::Session;
 use super::model::{INSET, Notice};
+use super::viewer::ViewAsk;
 use crate::error::ViewError;
 use crate::paint::PaintView;
-use temor_panes::Heard;
 use temor_panes::pane::PaneEvent;
+use temor_panes::pane::keys::Action;
 use temor_panes::vt::Snapshot;
+use temor_panes::{Heard, PaneEffect};
 
 /// How long the bell's visual mark stays up.
 pub const BELL_MARK: std::time::Duration = std::time::Duration::from_millis(400);
@@ -35,9 +37,16 @@ impl Session {
         self.core().end_hold(generation)
     }
 
-    /// A message for the person from the last action, if one is waiting; taking it clears it.
-    pub fn take_notice(&mut self) -> Option<String> {
-        self.notice.take().or_else(|| self.core().said.take())
+    /// Runs `call`, and what it left for the window (PLAN §4c: the session answers what is to
+    /// be done; the window does it). Every call the window makes goes through here.
+    pub fn said<R>(&mut self, call: impl FnOnce(&mut Self) -> R) -> (R, Left) {
+        let answer = call(self);
+        let left = Left {
+            notice: self.notice.take(),
+            asked: self.asked.take(),
+            view: self.view_ask.take(),
+        };
+        (answer, left)
     }
 
     /// The window's title as the program last set it.
@@ -95,7 +104,7 @@ impl Session {
             },
             blink,
             selection: None,
-            ground: self.live_ground,
+            ground: self.live_ground(),
         };
         // While the program holds the screen the painter draws the frame captured where the
         // hold began (see `temor_panes::pane::PaintSource`).
@@ -103,16 +112,20 @@ impl Session {
         Ok(self.relayout())
     }
 
-    /// What one event from the pane means for the window. Output is never blocked on it. The
-    /// pane's core takes it first (`PaneCore::hear`); the window does the rest ([`Session::take`]).
+    /// What one event from the pane means for the window, for a session that hears its pane
+    /// itself rather than on the client's thread. Output is never blocked on it. The pane's core
+    /// takes it first (`PaneCore::hear`), the session shows the notices it asks for, and the
+    /// window does the rest ([`Session::take`]); finished commands are not recorded.
     pub fn absorb(&mut self, event: PaneEvent) -> Notice {
-        let heard = self.core().hear(event);
+        let (heard, effects) = self.core().hear(event);
+        for effect in effects {
+            if let PaneEffect::Notify(note) = effect
+                && let Err(err) = self.notifier.notify(&note)
+            {
+                self.notice = Some(err.to_string());
+            }
+        }
         self.take(heard)
-    }
-
-    /// The pane's core takes one event; what is left is for [`Session::take`].
-    pub fn hear(&mut self, event: PaneEvent) -> Heard {
-        self.core().hear(event)
     }
 
     /// What is left of an event for the window once the pane's core has taken it.
@@ -132,6 +145,11 @@ impl Session {
                 Notice::Quiet
             }
             Heard::CommandDone => Notice::CommandDone,
+            Heard::Finished(done) => Notice::Finished(done),
+            Heard::Refused(why) => {
+                self.notice = Some(why);
+                Notice::Quiet
+            }
             Heard::Ended(exit) => Notice::Ended(exit),
             Heard::Quiet | Heard::PromptShown | Heard::Notified { .. } => Notice::Quiet,
             Heard::Window(event) => match event {
@@ -201,7 +219,7 @@ impl Session {
 
     /// The working directory the shell reported, if any.
     pub fn cwd(&self) -> Option<String> {
-        self.core().cwd.clone()
+        self.core().cwd()
     }
 
     /// The progress the program reported (OSC 9;4), while it is shown.
@@ -211,3 +229,61 @@ impl Session {
 }
 
 pub use temor_panes::{SNAPSHOT_LIMIT, sanitise_title};
+
+/// What a call on a session left for the window to do.
+#[derive(Debug, Default, PartialEq)]
+pub struct Left {
+    /// A message for the person.
+    pub notice: Option<String>,
+    /// The tab or split action a key asked for: the window's or the workspace's.
+    pub asked: Option<Action>,
+    /// The file a ⌘-click or View asked to see.
+    pub view: Option<ViewAsk>,
+}
+
+impl Left {
+    /// What two calls left, `later` after `self`: the later call's where both left one.
+    pub fn then(self, later: Left) -> Left {
+        Left {
+            notice: later.notice.or(self.notice),
+            asked: later.asked.or(self.asked),
+            view: later.view.or(self.view),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use temor_client::model::shelf::PaneSite;
+
+    use super::{Action, Left, ViewAsk};
+
+    #[test]
+    fn a_later_call_keeps_what_an_earlier_one_left_unless_it_left_its_own() {
+        let ask = ViewAsk {
+            file: PathBuf::from("/tmp/a"),
+            around: Vec::new(),
+            site: PaneSite::Local,
+        };
+        let first = Left {
+            notice: Some("first".to_owned()),
+            asked: None,
+            view: Some(ask.clone()),
+        };
+        let later = Left {
+            notice: Some("later".to_owned()),
+            asked: Some(Action::NewTab),
+            view: None,
+        };
+        assert_eq!(
+            first.then(later),
+            Left {
+                notice: Some("later".to_owned()),
+                asked: Some(Action::NewTab),
+                view: Some(ask),
+            }
+        );
+    }
+}

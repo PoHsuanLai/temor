@@ -2,9 +2,7 @@
 //! tab when nothing is typed), then local
 //! matches, then plugin rows, then AI rows, always last.
 
-use super::model::{
-    BarAction, BarRow, Candidate, PathResolver, PluginRow, RowGroup, RowKey, Target,
-};
+use super::model::{BarAction, BarRow, Candidate, PluginRow, RowGroup, RowKey, Target};
 use super::section::{Section, section_of_target};
 use std::collections::BTreeSet;
 use temor_core::vocab::ai::AiSwitch;
@@ -29,13 +27,13 @@ pub fn rank(
     query: &str,
     candidates: &[Candidate],
     plugins: &[PluginRow],
-    resolver: &dyn PathResolver,
+    runnable: Option<&str>,
     ai: AiSwitch,
 ) -> Vec<BarRow> {
     let query = query.trim();
     let mut rows = Vec::new();
     rows.extend(new_tab_row(query));
-    rows.extend(run_row(query, resolver));
+    rows.extend(run_row(query, runnable));
     rows.extend(matches(query, candidates));
     // Each plugin's rows sit together under its name; within a plugin they keep the order given.
     let mut offered: Vec<&PluginRow> = plugins.iter().collect();
@@ -62,9 +60,11 @@ fn new_tab_row(query: &str) -> Option<BarRow> {
     })
 }
 
-fn run_row(query: &str, resolver: &dyn PathResolver) -> Option<BarRow> {
+/// The Run row, when the query's first word is the program the edge found on `PATH` for it: a
+/// lookup, not a guess.
+fn run_row(query: &str, runnable: Option<&str>) -> Option<BarRow> {
     let program = query.split_whitespace().next()?;
-    resolver.resolves(program).then(|| BarRow {
+    (runnable == Some(program)).then(|| BarRow {
         key: RowKey("run".to_string()),
         group: RowGroup::Run,
         title: format!("Run `{query}` in a new tab"),

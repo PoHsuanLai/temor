@@ -46,7 +46,7 @@ proptest! {
     fn random_kitty_frames_never_escape_the_receive_machine(
         names in proptest::collection::vec(".{0,40}", 1..6),
     ) {
-        let origin = Origin::Host { host: HostName::new("h") };
+        let origin = Origin::Host { host: HostName("h".into()) };
         let mut session = ReceiveSession::new(origin, limits(1024));
         let send = "5113;ac=send;id=t";
         let (next, _) = session.step(Input::Frame(parse_message(send.as_bytes(), limits(64)).expect("send")));

@@ -60,15 +60,17 @@ impl PaneCore {
     /// The shell said its folder (OSC 7). Returns the folder as shown, if the address was one.
     pub fn moved_to(&mut self, url: &str) -> Option<String> {
         let path = cwd_from_url(url);
-        // The path is shown, so it is cleaned and bounded first (it came from the shell).
-        self.cwd = path
-            .as_deref()
-            .map(|path| display_text(path, CWD_MAX_CHARS));
         self.folder = path.as_deref().map(std::path::PathBuf::from);
         if let Some(path) = path {
             self.shell_state.apply(ShellIn::Cwd(path));
         }
-        self.cwd.clone()
+        self.cwd()
+    }
+
+    /// The pane's folder as shown: cleaned and bounded first, since it came from the shell.
+    pub fn cwd(&self) -> Option<String> {
+        let folder = self.folder.as_deref()?.to_str()?;
+        Some(display_text(folder, CWD_MAX_CHARS))
     }
 
     /// The shell reported its state. Anything printed in the pane can look like a report; only

@@ -5,7 +5,7 @@
 //! the palette as its params, sends it `Refreshed` on [`BarOut::Refreshed`], and gives back the
 //! row the palette ran as [`BarIn::Pick`].
 
-use super::model::{BarRow, Candidate, PathResolver, PluginRow, RowKey};
+use super::model::{BarRow, Candidate, PluginRow, RowKey};
 use super::rank::rank;
 use temor_core::vocab::ai::AiSwitch;
 
@@ -64,24 +64,17 @@ pub enum BarOut {
     Closed,
 }
 
-/// What a step reads but does not own: the local candidates, the `PATH` lookup and the AI switch.
-#[derive(Clone, Copy)]
+/// What a step reads but does not own: the local candidates, what the edge found on `PATH` and
+/// the AI switch.
+#[derive(Debug, Clone, Copy)]
 pub struct BarContext<'a> {
     /// Spaces, tabs, folders, hosts, layouts, recent commands and folders.
     pub candidates: &'a [Candidate],
-    /// The `PATH` lookup.
-    pub resolver: &'a dyn PathResolver,
+    /// The first word of the query the step ranks, when the edge found it on the person's
+    /// `PATH`: the Run row shows only then.
+    pub runnable: Option<&'a str>,
     /// Whether AI rows may show.
     pub ai: AiSwitch,
-}
-
-impl std::fmt::Debug for BarContext<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BarContext")
-            .field("candidates", &self.candidates)
-            .field("ai", &self.ai)
-            .finish_non_exhaustive()
-    }
 }
 
 /// The bar after `input`.
@@ -123,7 +116,7 @@ pub fn bar_step(state: BarState, input: BarIn, cx: BarContext<'_>) -> (BarState,
 
 /// `bar` with its rows ranked afresh.
 fn reranked(bar: OpenBar, cx: BarContext<'_>) -> OpenBar {
-    let rows = rank(&bar.query, cx.candidates, &bar.plugins, cx.resolver, cx.ai);
+    let rows = rank(&bar.query, cx.candidates, &bar.plugins, cx.runnable, cx.ai);
     OpenBar { rows, ..bar }
 }
 

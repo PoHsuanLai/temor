@@ -4,7 +4,7 @@
 use super::support::{any_message, any_payload, payload_for};
 use proptest::prelude::*;
 use temor_wire::frame::{Decoder, FrameLimit, encode};
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{Event, Frame, Incoming, Message};
 
 fn decode_all(decoder: &mut Decoder) -> Vec<Incoming> {
@@ -18,7 +18,7 @@ fn decode_all(decoder: &mut Decoder) -> Vec<Incoming> {
 #[test]
 fn one_byte_at_a_time_yields_each_frame_only_when_its_last_byte_arrives() {
     let message = Message::Event(Event::Output {
-        session: SessionId(4),
+        session: RemoteSessionId(4),
     });
     let wire = encode(&message, Some(b"hello"), FrameLimit::DEFAULT).unwrap();
     let want = Incoming::Frame(Frame {

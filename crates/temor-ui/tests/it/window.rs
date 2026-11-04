@@ -12,14 +12,14 @@ use ds::prelude::{Point, Px};
 use ds_harness::Input;
 use ds_harness::{Harness, HarnessConfig, Viewport, WindowHosting};
 use temor_desktop::RunEnds;
+use temor_hub::Run;
 use temor_pane::settings::ShellChoice;
 use temor_pane::settings::TerminalSettings;
-use temor_ui::app::desktop::Desktop;
-use temor_ui::edge::Ambient;
-use temor_ui::hub::Run;
-use temor_ui::view::App;
-use temor_ui::view::probe::Probe;
 use temor_ui::{AppearanceSource, Launch, TakeOnce};
+use temor_ui_base::desktop::Desktop;
+use temor_ui_base::edge::Ambient;
+use temor_ui_base::probe::Probe;
+use temor_views::App;
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, wait_until};
 use super::support::scratch;
@@ -160,7 +160,7 @@ fn harness_at(
         },
         appearance: AppearanceSource::scratch(home.join("config"), SystemPrefs::default()),
         // Our desktop: ⌘ is Super, or the Ctrl+Shift form the harness chords send.
-        keymap: temor_ui::edge::keymap_for(
+        keymap: temor_ui_base::edge::keymap_for(
             chordkit::Platform::Linux {
                 desktop: chordkit::Desktop::Ours,
             },

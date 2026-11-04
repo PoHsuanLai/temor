@@ -30,6 +30,9 @@ pub enum MasterIn {
     Failed(PaneId),
     /// The master is gone: its socket is dead or its process ended.
     Lost,
+    /// No session uses the master now, so it may have timed out since it was last seen: the next
+    /// request asks the system again.
+    Revalidate,
 }
 
 /// How a pane's session starts.
@@ -128,6 +131,7 @@ pub fn master_step(state: Master, input: MasterIn) -> (Master, Vec<MasterOut>) {
         // A join that failed may mean the master died; probe again on the next request.
         (M::Up, I::Failed(_)) => (M::Down, vec![]),
         (M::Up, I::Lost) => (M::Down, vec![MasterOut::ConnectionEnded]),
+        (M::Up, I::Revalidate) => (M::Down, vec![]),
         (state, _) => (state, vec![]),
     }
 }

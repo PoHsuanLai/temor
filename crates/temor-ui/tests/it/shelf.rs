@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use ds::base::press::PointerButton;
 use ds::prelude::Point;
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{focus_pane, type_line, wait_html, wait_until};
 use super::window::harness;

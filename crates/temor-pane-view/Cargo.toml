@@ -14,7 +14,6 @@ ds = { workspace = true }
 ds-core = { workspace = true }
 temor-client = { workspace = true }
 temor-panes = { workspace = true }
-tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
 

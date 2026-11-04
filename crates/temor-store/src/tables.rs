@@ -1,9 +1,11 @@
 //! What the store keeps, table by table: sessions and their commands (history), the pins and the
 //! favourites, and the window's own values.
 
-use rusqlite::{OptionalExtension, Row, params};
+use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 use temor_schema::ids::BlockId;
-use temor_schema::session::{At, RanCommand, Session, SessionId};
+use temor_schema::secret::kept_in_history;
+use temor_schema::session::{RanCommand, Session, SessionId};
+use temor_schema::time::UnixMillis;
 use temor_schema::url::{Host, TemorUrl};
 
 use crate::{SqliteStore, StoreError, Topics};
@@ -41,7 +43,7 @@ pub struct Found<'a> {
     /// Only commands run in this folder or under it (an absolute path).
     pub folder: Option<&'a str>,
     /// Only commands started before this, for the next page.
-    pub before: Option<At>,
+    pub before: Option<UnixMillis>,
     /// At most this many.
     pub limit: usize,
 }
@@ -94,8 +96,8 @@ fn session_of(
         host,
         folder,
         program,
-        started: At(started),
-        ended: ended.map(At),
+        started: UnixMillis(started),
+        ended: ended.map(UnixMillis),
     })
 }
 
@@ -106,8 +108,8 @@ fn command_of(row: &Row<'_>) -> rusqlite::Result<RanCommand> {
         command: row.get(2)?,
         folder: row.get(3)?,
         exit: row.get(4)?,
-        started: At(row.get(5)?),
-        ended: row.get::<_, Option<i64>>(6)?.map(At),
+        started: UnixMillis(row.get(5)?),
+        ended: row.get::<_, Option<i64>>(6)?.map(UnixMillis),
     })
 }
 
@@ -140,7 +142,7 @@ impl SqliteStore {
     }
 
     /// The session ended at `at`.
-    pub fn end_session(&self, id: SessionId, at: At) -> Result<(), StoreError> {
+    pub fn end_session(&self, id: SessionId, at: UnixMillis) -> Result<(), StoreError> {
         self.touch(Topics::SESSIONS).execute(
             "UPDATE sessions SET ended = ?2 WHERE id = ?1",
             params![id_bits(id), at.0],
@@ -165,7 +167,7 @@ impl SqliteStore {
     pub fn sessions(
         &self,
         folder: Option<&str>,
-        before: Option<At>,
+        before: Option<UnixMillis>,
         limit: usize,
     ) -> Result<Vec<Session>, StoreError> {
         let db = self.reader();
@@ -184,8 +186,12 @@ impl SqliteStore {
         rows.into_iter().map(session_of).collect()
     }
 
-    /// Keep one command a session ran, or what more is known of it (how it ended).
+    /// Keep one command a session ran, or what more is known of it (how it ended). One history
+    /// may not keep (typed after a space, or holding a secret) is not written, whoever asks.
     pub fn record_command(&self, command: &RanCommand) -> Result<(), StoreError> {
+        if !kept_in_history(&command.command) {
+            return Ok(());
+        }
         self.touch(Topics::BLOCKS).execute(
             "INSERT INTO commands (session, block, command, folder, exit, started, ended)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
@@ -248,7 +254,7 @@ impl SqliteStore {
     /// Forget what happened before `at`: every command started before it, and every session that
     /// ended before it and has no command left. Returns how many sessions were forgotten. A
     /// session that never said it ended is kept: the client ends those it finds not running.
-    pub fn forget_before(&self, at: At) -> Result<usize, StoreError> {
+    pub fn forget_before(&self, at: UnixMillis) -> Result<usize, StoreError> {
         let db = self.touch(Topics::SESSIONS | Topics::BLOCKS);
         let tx = db.unchecked_transaction()?;
         tx.execute("DELETE FROM commands WHERE started < ?1", [at.0])?;
@@ -270,21 +276,7 @@ impl SqliteStore {
 
     /// The places on `shelf`, in order.
     pub fn shelf(&self, shelf: Shelf) -> Result<Vec<TemorUrl>, StoreError> {
-        let db = self.reader();
-        let mut stmt =
-            db.prepare_cached(&format!("SELECT url FROM {} ORDER BY place", shelf.table()))?;
-        let urls = stmt
-            .query_map([], |row| row.get::<_, String>(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-        urls.iter()
-            .map(|url| {
-                url.parse()
-                    .map_err(|e: temor_schema::error::SchemaError| StoreError::Decode {
-                        what: "a kept URL",
-                        why: e.to_string(),
-                    })
-            })
-            .collect()
+        read_shelf(&self.reader(), shelf)
     }
 
     /// Put `places` on `shelf`, in this order, in place of what was there. A place named twice is
@@ -292,15 +284,25 @@ impl SqliteStore {
     pub fn set_shelf(&self, shelf: Shelf, places: &[TemorUrl]) -> Result<(), StoreError> {
         let db = self.touch(shelf.topic());
         let tx = db.unchecked_transaction()?;
-        tx.execute(&format!("DELETE FROM {}", shelf.table()), [])?;
-        {
-            let mut insert = tx.prepare_cached(&format!(
-                "INSERT OR IGNORE INTO {} (place, url) VALUES (?1, ?2)",
-                shelf.table()
-            ))?;
-            for (place, url) in places.iter().enumerate() {
-                insert.execute(params![limit_of(place), url.to_string()])?;
-            }
+        write_shelf(&tx, shelf, places)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Changes `shelf` to what `edit` makes of it, in one write: `edit` is given the shelf as the
+    /// writer holds it, so what another process wrote between a read and this write is not lost.
+    /// Nothing is written when `edit` changes nothing.
+    pub fn edit_shelf(
+        &self,
+        shelf: Shelf,
+        edit: impl FnOnce(Vec<TemorUrl>) -> Vec<TemorUrl>,
+    ) -> Result<(), StoreError> {
+        let db = self.touch(shelf.topic());
+        let tx = Transaction::new_unchecked(&db, TransactionBehavior::Immediate)?;
+        let before = read_shelf(&tx, shelf)?;
+        let after = edit(before.clone());
+        if after != before {
+            write_shelf(&tx, shelf, &after)?;
         }
         tx.commit()?;
         Ok(())
@@ -342,3 +344,34 @@ fn limit_of(n: usize) -> i64 {
 #[cfg(test)]
 #[path = "tables_tests.rs"]
 mod tests;
+
+/// The places on `shelf`, in order, as `db` sees them.
+fn read_shelf(db: &Connection, shelf: Shelf) -> Result<Vec<TemorUrl>, StoreError> {
+    let mut stmt =
+        db.prepare_cached(&format!("SELECT url FROM {} ORDER BY place", shelf.table()))?;
+    let urls = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    urls.iter()
+        .map(|url| {
+            url.parse()
+                .map_err(|e: temor_schema::error::SchemaError| StoreError::Decode {
+                    what: "a kept URL",
+                    why: e.to_string(),
+                })
+        })
+        .collect()
+}
+
+/// Puts `places` on `shelf` in place of what was there, inside the caller's transaction.
+fn write_shelf(db: &Connection, shelf: Shelf, places: &[TemorUrl]) -> Result<(), StoreError> {
+    db.execute(&format!("DELETE FROM {}", shelf.table()), [])?;
+    let mut insert = db.prepare_cached(&format!(
+        "INSERT OR IGNORE INTO {} (place, url) VALUES (?1, ?2)",
+        shelf.table()
+    ))?;
+    for (place, url) in places.iter().enumerate() {
+        insert.execute(params![limit_of(place), url.to_string()])?;
+    }
+    Ok(())
+}

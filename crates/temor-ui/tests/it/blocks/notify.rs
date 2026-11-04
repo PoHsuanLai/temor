@@ -109,3 +109,23 @@ fn program_notifications_and_the_bell_reach_the_edge_rate_limited() {
     live.clock.advance(1_000);
     assert!(!live.session.bell_showing(), "and goes down on its own");
 }
+
+#[test]
+fn a_notice_the_desktop_refuses_is_told_to_the_person() {
+    let shell = shell_path("bash").unwrap_or_else(|| PathBuf::from("/usr/bin/bash"));
+    if !tools_present() {
+        return;
+    }
+    let mut live = start("blocks-refused", &shell);
+    live.session.set_focus(PaneFocus::Unfocused);
+    live.notifier.refuse("no permission");
+    live.session.absorb(PaneEvent::Notification(Notification {
+        title: String::new(),
+        body: "done".to_owned(),
+    }));
+    let (_, left) = live.session.said(|_| ());
+    assert_eq!(
+        left.notice.as_deref(),
+        Some("the notification could not be shown: no permission")
+    );
+}

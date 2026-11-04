@@ -31,7 +31,7 @@ fn run(focus: PaneFocus, steps: Vec<(u64, RadarIn)>) -> Vec<AgentState> {
     let mut state = RadarState::new(focus);
     let mut shown = Vec::new();
     for (secs, input) in steps {
-        state = radar_step(state, Millis(secs * 1000), input, &params).0;
+        state = radar_step(state, Monotonic(secs * 1000), input, &params).0;
         shown.push(state.state());
     }
     shown
@@ -93,10 +93,10 @@ fn the_sources_follow_their_rules_over_time() {
 fn a_blocked_program_gives_one_notification() {
     let params = RadarParams::default();
     let state = RadarState::new(Unfocused);
-    let (state, _) = radar_step(state, Millis(0), fact("", ProgramKind::Working), &params);
+    let (state, _) = radar_step(state, Monotonic(0), fact("", ProgramKind::Working), &params);
     let (_, out) = radar_step(
         state,
-        Millis(1000),
+        Monotonic(1000),
         fact("", ProgramKind::Blocked(Some(WaitKind::Permission))),
         &params,
     );

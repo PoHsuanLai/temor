@@ -9,19 +9,35 @@ publish = false
 
 [features]
 default = ["ghostty"]
+# What runs: a program on a pty, the files it sends, and each pane's status socket. Without it the
+# crate is the pure key, settings, text and paste rules and the status protocol, for the model
+# crates that name them (PLAN §2: L2 does no I/O).
+engine = [
+    "dep:temor-pty",
+    "dep:temor-transfer",
+    "dep:rustix",
+    "dep:nix",
+    "temor-shell/io",
+]
 # The engine and the shell pane: they run libghostty (through temor-vt) and draw with temor-render's
-# palette. Without it the pure key, settings, text and paste rules still build.
-ghostty = ["dep:temor-vt", "dep:temor-render", "temor-vt/ghostty", "temor-render/ghostty"]
+# palette.
+ghostty = [
+    "engine",
+    "dep:temor-vt",
+    "dep:temor-render",
+    "temor-vt/ghostty",
+    "temor-render/ghostty",
+]
 
 [dependencies]
 chordkit = { workspace = true }
 percent-encoding = { workspace = true }
-temor-pty = { workspace = true }
+temor-pty = { workspace = true, optional = true }
 temor-shell = { workspace = true }
 # Files the program sends (OSC 1337, OSC 5113): decoded and staged here, shelved by the window.
-temor-transfer = { workspace = true }
+temor-transfer = { workspace = true, optional = true }
 # `SO_PEERCRED` for the status socket (the `net` feature joins the workspace set here).
-rustix = { workspace = true, features = ["net"] }
+rustix = { workspace = true, features = ["net"], optional = true }
 temor-render = { workspace = true, optional = true }
 temor-vt = { workspace = true, optional = true }
 thiserror = { workspace = true }
@@ -30,7 +46,7 @@ serde = { workspace = true }
 
 # `LOCAL_PEERCRED` for the status socket on macOS (`SO_PEERCRED` is Linux's).
 [target.'cfg(target_os = "macos")'.dependencies]
-nix = { workspace = true }
+nix = { workspace = true, optional = true }
 
 [dev-dependencies]
 temor-testkit = { workspace = true }

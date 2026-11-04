@@ -26,7 +26,7 @@ pub mod text;
 #[cfg(feature = "ghostty")]
 mod engine;
 mod error;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "engine"))]
 mod platform;
 #[cfg(feature = "ghostty")]
 mod shell;
@@ -40,5 +40,6 @@ pub use engine::{
 pub use error::{PaneError, SettingsError};
 #[cfg(feature = "ghostty")]
 pub use shell::{ShellPaneInput, cursor_shape, shell_pane};
-// The command line of a foreground process; the hub and temor-core name it through here.
+// The command line of a foreground process, as the engine's events carry it.
+#[cfg(feature = "engine")]
 pub use temor_pty::CommandLine;

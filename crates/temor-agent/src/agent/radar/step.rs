@@ -16,13 +16,13 @@
 use std::collections::BTreeMap;
 
 use super::hint::title_hint;
-use super::model::{Millis, ProcessFact, RadarIn, RadarParams};
+use super::model::{Monotonic, ProcessFact, RadarIn, RadarParams};
 use super::records::Records;
 use crate::presence::{
     AgentState, PaneFocus, PresenceIn, PresenceOut, PresenceState, StatusReport, StatusSource,
     WaitKind, presence_step,
 };
-use temor_core::vocab::ids::Seq;
+use temor_core::vocab::ids::{Counter, Seq};
 
 /// One pane's radar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,13 +30,34 @@ pub struct RadarState {
     /// The lower-level machine: state, focus, per-source sequence numbers.
     pub presence: PresenceState,
     records: Records,
-    fresh: BTreeMap<StatusSource, Millis>,
+    fresh: BTreeMap<StatusSource, Monotonic>,
     /// Who set the state now shown, and when it last spoke.
-    via: Option<(StatusSource, Millis)>,
-    /// Whether a known agent program runs in the pane.
-    agent_running: bool,
-    title_busy_until: Option<Millis>,
-    next_seq: u64,
+    via: Option<(StatusSource, Monotonic)>,
+    /// Whether a known agent program runs in the pane, and whether its title says it works.
+    title: TitleWork,
+    next_seq: Counter,
+}
+
+/// What the pane's title can say: nothing while no known agent runs; with one, whether its
+/// title said it works, until when.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TitleWork {
+    /// No known agent program runs in the pane.
+    NoAgent,
+    /// An agent runs and its title says nothing now.
+    Agent,
+    /// An agent runs and its title said it works, held until `until`.
+    Busy { until: Monotonic },
+}
+
+impl TitleWork {
+    /// The same, with no title-driven work held.
+    fn idle(self) -> TitleWork {
+        match self {
+            TitleWork::Busy { .. } => TitleWork::Agent,
+            other => other,
+        }
+    }
 }
 
 impl RadarState {
@@ -47,9 +68,8 @@ impl RadarState {
             records: Records::default(),
             fresh: BTreeMap::new(),
             via: None,
-            agent_running: false,
-            title_busy_until: None,
-            next_seq: 1,
+            title: TitleWork::NoAgent,
+            next_seq: Counter::FROM_ONE,
         }
     }
 
@@ -63,7 +83,7 @@ impl RadarState {
 /// or notify.
 pub fn radar_step(
     state: RadarState,
-    now: Millis,
+    now: Monotonic,
     input: RadarIn,
     params: &RadarParams,
 ) -> (RadarState, Vec<PresenceOut>) {
@@ -96,16 +116,19 @@ pub fn radar_step(
             }
         }
         RadarIn::Title(title) => title_step(&mut state, now, params, &title, &mut presence_in),
-        RadarIn::Process(ProcessFact::AgentRunning) => state.agent_running = true,
+        RadarIn::Process(ProcessFact::AgentRunning) => {
+            if state.title == TitleWork::NoAgent {
+                state.title = TitleWork::Agent;
+            }
+        }
         RadarIn::Process(ProcessFact::Exited(code)) => {
-            state.agent_running = false;
+            state.title = TitleWork::NoAgent;
             state.records.prompt_shown();
-            state.title_busy_until = None;
             presence_in.push(PresenceIn::ProcessExited(code));
         }
         RadarIn::PromptShown => {
             state.records.prompt_shown();
-            state.title_busy_until = None;
+            state.title = state.title.idle();
             presence_in.push(PresenceIn::PromptShown);
         }
         RadarIn::Focus(focus) => {
@@ -142,12 +165,12 @@ pub fn radar_step(
 fn report(
     state: &mut RadarState,
     source: StatusSource,
-    now: Millis,
+    now: Monotonic,
     shown: AgentState,
     note: Option<temor_core::vocab::text::Note>,
 ) -> PresenceIn {
-    let seq = Seq(state.next_seq);
-    state.next_seq += 1;
+    // With no number left the report keeps the last one: it is still the newest.
+    let seq = Seq(state.next_seq.take().unwrap_or(u64::MAX));
     state.fresh.insert(source.clone(), now);
     state.via = Some((source.clone(), now));
     PresenceIn::Report(StatusReport {
@@ -161,7 +184,12 @@ fn report(
 }
 
 /// Whether a stronger source reported within the hold.
-fn outranked(state: &RadarState, source: &StatusSource, now: Millis, params: &RadarParams) -> bool {
+fn outranked(
+    state: &RadarState,
+    source: &StatusSource,
+    now: Monotonic,
+    params: &RadarParams,
+) -> bool {
     state.fresh.iter().any(|(other, at)| {
         strength(other) < strength(source) && now.since(*at) < params.precedence_hold.0
     })
@@ -179,20 +207,22 @@ fn strength(source: &StatusSource) -> u8 {
 
 fn title_step(
     state: &mut RadarState,
-    now: Millis,
+    now: Monotonic,
     params: &RadarParams,
     title: &str,
     out: &mut Vec<PresenceIn>,
 ) {
     let weak = StatusSource::Notification;
-    if !state.agent_running || outranked(state, &weak, now, params) {
+    if state.title == TitleWork::NoAgent || outranked(state, &weak, now, params) {
         return;
     }
     if !title_hint(title) {
         stop_title_work(state, now, out);
         return;
     }
-    state.title_busy_until = Some(Millis(now.0 + params.title_hold.0));
+    state.title = TitleWork::Busy {
+        until: Monotonic(now.0 + params.title_hold.0),
+    };
     if let Some((StatusSource::Notification, at)) = &mut state.via {
         *at = now;
     }
@@ -202,12 +232,11 @@ fn title_step(
 }
 
 /// A title-driven Working ends; one a stronger source set is left alone.
-fn stop_title_work(state: &mut RadarState, now: Millis, out: &mut Vec<PresenceIn>) {
+fn stop_title_work(state: &mut RadarState, now: Monotonic, out: &mut Vec<PresenceIn>) {
     let by_title = matches!(&state.via, Some((StatusSource::Notification, _)));
-    if state.title_busy_until.take().is_some()
-        && by_title
-        && state.presence.state == AgentState::Working
-    {
+    let was_busy = matches!(state.title, TitleWork::Busy { .. });
+    state.title = state.title.idle();
+    if was_busy && by_title && state.presence.state == AgentState::Working {
         out.push(report(
             state,
             StatusSource::Notification,
@@ -218,8 +247,13 @@ fn stop_title_work(state: &mut RadarState, now: Millis, out: &mut Vec<PresenceIn
     }
 }
 
-fn tick_step(state: &mut RadarState, now: Millis, params: &RadarParams, out: &mut Vec<PresenceIn>) {
-    if state.title_busy_until.is_some_and(|until| now >= until) {
+fn tick_step(
+    state: &mut RadarState,
+    now: Monotonic,
+    params: &RadarParams,
+    out: &mut Vec<PresenceIn>,
+) {
+    if matches!(state.title, TitleWork::Busy { until } if now >= until) {
         stop_title_work(state, now, out);
     }
     let silent = state

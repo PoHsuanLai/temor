@@ -191,25 +191,41 @@ pub enum PortRefusal {
 
 /// What the window offers the desktop services. Methods are called from the bus task, not the
 /// window's thread, so an implementation keeps its answers in shared state (a snapshot behind a
-/// lock, or a channel into the window) and returns quickly; only [`WindowPort::run_sandboxed`]
-/// may take long.
+/// lock) and returns quickly. What only the window's thread can answer (a pane's text, opening,
+/// closing and typing into a pane) is a future: the bus task awaits it and never blocks its
+/// worker.
 pub trait WindowPort: Send + Sync + 'static {
     /// What the person is looking at now.
     fn context(&self) -> WindowContext;
     /// Every pane, in tab order.
     fn panes(&self) -> Vec<PaneInfo>;
     /// A run of a pane's text.
-    fn read_pane(&self, pane: PaneRef, range: LineRange) -> Result<String, PortRefusal>;
+    fn read_pane(
+        &self,
+        pane: PaneRef,
+        range: LineRange,
+    ) -> impl Future<Output = Result<String, PortRefusal>> + Send;
     /// A pane's commands, oldest first.
     fn commands(&self, pane: PaneRef) -> Result<Vec<CommandInfo>, PortRefusal>;
     /// One command's output.
-    fn read_command(&self, pane: PaneRef, command: CommandRef) -> Result<String, PortRefusal>;
+    fn read_command(
+        &self,
+        pane: PaneRef,
+        command: CommandRef,
+    ) -> impl Future<Output = Result<String, PortRefusal>> + Send;
     /// Open a pane; the answer is the new pane.
-    fn open_pane(&self, open: PaneOpen) -> Result<PaneRef, PortRefusal>;
+    fn open_pane(
+        &self,
+        open: PaneOpen,
+    ) -> impl Future<Output = Result<PaneRef, PortRefusal>> + Send;
     /// Close a pane an agent opened (its undo).
-    fn close_pane(&self, pane: PaneRef) -> Result<(), PortRefusal>;
+    fn close_pane(&self, pane: PaneRef) -> impl Future<Output = Result<(), PortRefusal>> + Send;
     /// Type `line` and Enter into a pane, as the person would.
-    fn run_in_pane(&self, pane: PaneRef, line: &str) -> Result<(), PortRefusal>;
+    fn run_in_pane(
+        &self,
+        pane: PaneRef,
+        line: &str,
+    ) -> impl Future<Output = Result<(), PortRefusal>> + Send;
     /// Run a command in a sandbox.
     fn run_sandboxed(
         &self,

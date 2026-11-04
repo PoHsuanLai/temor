@@ -175,12 +175,20 @@ pub(crate) struct Entry<Q: Query> {
 
 struct State<T> {
     snapshot: Snapshot<T>,
+    phase: Phase,
+}
+
+/// Where a value is in being read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    /// Up to date as far as anyone has said.
+    Idle,
     /// In the queue, not yet taken.
-    queued: bool,
+    Queued,
     /// Being read now.
-    running: bool,
+    Reading,
     /// Went stale while being read: read again as soon as this reading ends.
-    again: bool,
+    ReadingStale,
 }
 
 impl<Q: Query> Entry<Q> {
@@ -190,9 +198,7 @@ impl<Q: Query> Entry<Q> {
             query,
             state: Mutex::new(State {
                 snapshot: Snapshot::Loading { last: None },
-                queued: true,
-                running: false,
-                again: false,
+                phase: Phase::Queued,
             }),
             tell: tokio::sync::watch::Sender::new(0),
         })
@@ -220,23 +226,17 @@ impl<Q: Query> Job for Entry<Q> {
 
     fn stale(&self) -> bool {
         let mut state = self.state.lock();
-        if state.running {
-            state.again = true;
-            return false;
-        }
-        if state.queued {
-            return false;
-        }
-        state.queued = true;
-        true
+        let (phase, queue) = match state.phase {
+            Phase::Idle => (Phase::Queued, true),
+            Phase::Reading | Phase::ReadingStale => (Phase::ReadingStale, false),
+            Phase::Queued => (Phase::Queued, false),
+        };
+        state.phase = phase;
+        queue
     }
 
     fn run(&self, store: &SqliteStore) -> bool {
-        {
-            let mut state = self.state.lock();
-            state.queued = false;
-            state.running = true;
-        }
+        self.state.lock().phase = Phase::Reading;
         // Before the reading begins, so every commit up to it is one the reading sees.
         let as_of = store.generation();
         let answer = store
@@ -244,7 +244,6 @@ impl<Q: Query> Job for Entry<Q> {
             .map_err(ClientError::from)
             .and_then(|answer| answer);
         let mut state = self.state.lock();
-        state.running = false;
         let last = state.snapshot.value().cloned();
         let (next, news) = match answer {
             // The same answer again is not news, but it is newer: a front end waiting for its
@@ -268,10 +267,8 @@ impl<Q: Query> Job for Entry<Q> {
             }
         };
         state.snapshot = next;
-        let again = std::mem::take(&mut state.again);
-        if again {
-            state.queued = true;
-        }
+        let again = state.phase == Phase::ReadingStale;
+        state.phase = if again { Phase::Queued } else { Phase::Idle };
         drop(state);
         if news {
             self.tell.send_modify(|told| *told += 1);

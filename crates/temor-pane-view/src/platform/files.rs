@@ -1,9 +1,10 @@
 //! The one file opener (PLAN §9): opening a file (a saved download, a local copy of a host's file
 //! the person asked to edit) and showing it in the file manager. The path is one temor made.
-//! What differs by system lives here; Linux hands the path to the desktop's opener, other
-//! systems have a stub.
+//! What differs by system is temor-desktop's (`SystemOpen`).
 
 use std::path::Path;
+
+use temor_client::desktop::SystemOpen;
 
 use super::opener::OpenError;
 
@@ -15,120 +16,21 @@ pub trait FileShell {
     fn reveal(&self, path: &Path) -> Result<(), OpenError>;
 }
 
-#[cfg(target_os = "linux")]
-mod linux {
-    use std::path::Path;
-    use std::process::{Command, Stdio};
+/// The desktop's opener (`temor_client::desktop::SystemOpen`).
+#[derive(Debug, Default)]
+pub struct DesktopFiles;
 
-    use super::{FileShell, OpenError};
-
-    /// `xdg-open`, for the file and for its folder.
-    #[derive(Debug, Default)]
-    pub struct XdgFiles;
-
-    impl XdgFiles {
-        fn run(path: &Path) -> Result<(), OpenError> {
-            let mut child = Command::new("xdg-open")
-                .arg(path)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .map_err(OpenError::Failed)?;
-            // The opener is the edge's own child: wait for it off the window's thread.
-            std::thread::spawn(move || {
-                let _ = child.wait();
-            });
-            Ok(())
-        }
+impl FileShell for DesktopFiles {
+    fn open(&self, path: &Path) -> Result<(), OpenError> {
+        SystemOpen::open(path).map_err(OpenError::from_io)
     }
 
-    impl FileShell for XdgFiles {
-        fn open(&self, path: &Path) -> Result<(), OpenError> {
-            Self::run(path)
-        }
-
-        // TODO(platform:linux): org.freedesktop.FileManager1.ShowItems selects the file; the
-        // folder is the fallback every desktop has.
-        fn reveal(&self, path: &Path) -> Result<(), OpenError> {
-            Self::run(path.parent().unwrap_or(path))
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-mod macos {
-    use std::path::Path;
-    use std::process::{Command, Stdio};
-
-    use super::{FileShell, OpenError};
-
-    /// The system's `open`: a file in its default app, `open -R` to select it in Finder.
-    #[derive(Debug, Default)]
-    pub struct Finder;
-
-    impl Finder {
-        fn run(args: &[&std::ffi::OsStr]) -> Result<(), OpenError> {
-            let mut child = Command::new("/usr/bin/open")
-                .args(args)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .map_err(OpenError::Failed)?;
-            // The opener is the edge's own child: wait for it off the window's thread.
-            std::thread::spawn(move || {
-                let _ = child.wait();
-            });
-            Ok(())
-        }
-    }
-
-    impl FileShell for Finder {
-        fn open(&self, path: &Path) -> Result<(), OpenError> {
-            Self::run(&["--".as_ref(), path.as_os_str()])
-        }
-
-        fn reveal(&self, path: &Path) -> Result<(), OpenError> {
-            Self::run(&["-R".as_ref(), "--".as_ref(), path.as_os_str()])
-        }
-    }
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-mod other {
-    use std::path::Path;
-
-    use super::{FileShell, OpenError};
-
-    /// Stub until the platform's file opener is written.
-    // TODO(platform:windows): ShellExecute and `explorer /select`.
-    #[derive(Debug, Default)]
-    pub struct Unsupported;
-
-    impl FileShell for Unsupported {
-        fn open(&self, _path: &Path) -> Result<(), OpenError> {
-            Err(OpenError::Unsupported)
-        }
-
-        fn reveal(&self, _path: &Path) -> Result<(), OpenError> {
-            Err(OpenError::Unsupported)
-        }
+    fn reveal(&self, path: &Path) -> Result<(), OpenError> {
+        SystemOpen::reveal(path).map_err(OpenError::from_io)
     }
 }
 
 /// The platform's file opener.
 pub fn default_file_shell() -> Box<dyn FileShell> {
-    #[cfg(target_os = "linux")]
-    {
-        Box::new(linux::XdgFiles)
-    }
-    #[cfg(target_os = "macos")]
-    {
-        Box::new(macos::Finder)
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    {
-        Box::new(other::Unsupported)
-    }
+    Box::new(DesktopFiles)
 }

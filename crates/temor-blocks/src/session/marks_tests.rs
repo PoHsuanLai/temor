@@ -355,3 +355,65 @@ fn restored_blocks_join_the_log_finished_with_their_anchors_and_nothing_is_annou
     );
     assert_eq!(log.next_id(), BlockId(3));
 }
+
+/// One input of a random run: anchors are numbered as they are given, so each is new.
+fn arbitrary_input(kind: u8, seq: u64, row: u64, next: &mut u64) -> MarkIn {
+    let mut fresh = || {
+        *next += 1;
+        Anchor(*next)
+    };
+    match kind % 12 {
+        0 => MarkIn::Begin { seq },
+        1 => MarkIn::Event(MarkKind::PromptStart { primary: true }),
+        2 => MarkIn::Event(MarkKind::PromptStart { primary: false }),
+        3 => MarkIn::Event(MarkKind::InputStart),
+        4 => MarkIn::Event(MarkKind::OutputStart {
+            command: "ls".to_owned(),
+        }),
+        5 => MarkIn::Event(MarkKind::CommandEnd {
+            exit: Some(ExitCode(0)),
+        }),
+        6 | 7 => MarkIn::Anchored {
+            seq,
+            anchor: fresh(),
+            row: (!row.is_multiple_of(5)).then_some(GridRow(row)),
+            at: Stamp(row),
+            typed: None,
+        },
+        8 => MarkIn::Entered {
+            anchor: (!row.is_multiple_of(3)).then(fresh),
+        },
+        9 => MarkIn::ShellGone { at: Stamp(row) },
+        10 => MarkIn::Reset { at: Stamp(row) },
+        _ => MarkIn::Gone {
+            ids: vec![BlockId(row % 4)],
+        },
+    }
+}
+
+proptest::proptest! {
+    /// Whatever arrives, every anchor the log is given is either still held or given back, and
+    /// none is given back twice or given back while still held.
+    #[test]
+    fn every_anchor_is_held_or_given_back_exactly_once(
+        steps in proptest::collection::vec((0u8..12, 0u64..3, 0u64..40), 0..80)
+    ) {
+        let mut log = MarkLog::default();
+        let mut next = 0;
+        let mut released = std::collections::BTreeSet::new();
+        for (kind, seq, row) in steps {
+            let (after, outs) = mark_step(log, arbitrary_input(kind, seq, row, &mut next));
+            log = after;
+            for out in outs {
+                if let MarkOut::Release(anchor) = out {
+                    proptest::prop_assert!(released.insert(anchor), "{anchor:?} given back twice");
+                }
+            }
+        }
+        let held = log.held();
+        proptest::prop_assert!(held.is_disjoint(&released), "given back but held: {held:?}");
+        let given: std::collections::BTreeSet<Anchor> = (1..=next).map(Anchor).collect();
+        let accounted: std::collections::BTreeSet<Anchor> = held.union(&released).copied().collect();
+        proptest::prop_assert_eq!(accounted, given);
+    }
+}

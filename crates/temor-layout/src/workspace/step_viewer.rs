@@ -46,10 +46,10 @@ pub(super) fn open_viewer(
     };
     // The split is of the pane the file came from, whichever pane has the keys.
     state.focus = origin;
-    let Some(next_pane) = ws.next_pane.checked_add(1) else {
+    let Some((new, next_pane)) = ws.next_pane.mint() else {
         return out.push(WorkspaceOut::Refused(RefuseWhy::IdsExhausted));
     };
-    let new = PaneId(ws.next_pane);
+    let new = PaneId(new);
     let (after, outs) = tree_step(
         state,
         TreeIn::Split {

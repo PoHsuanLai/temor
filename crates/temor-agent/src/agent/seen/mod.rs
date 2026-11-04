@@ -10,4 +10,4 @@ mod wrapper;
 mod wrapper_tests;
 
 pub use agent::{AgentName, Sighting, agent_of, is_known_agent};
-pub use temor_pane::CommandLine;
+pub use temor_schema::process::CommandLine;

@@ -99,6 +99,7 @@ temor/
     temor-vt-sys/     bindgen output (checked in) plus a build.rs that builds the pinned Ghostty with Zig
     temor-vt/         the only libghostty-vt user: Terminal, RenderState, encoders, callbacks
                       → typed events
+    temor-schema/     the shared vocabulary: ids, sessions, URLs, the store's rows, `CommandLine`
     temor-pty/        openpty and spawn, shell resolution, the child env contract
     temor-shell/      the shell integration scripts (bash, zsh, fish, nu) and their injection plan;
                       used by temor-pty locally and temor-ssh remotely
@@ -122,8 +123,14 @@ temor/
                       LauncherEntry badge, anyview D-Bus fallback, checkpoint and trial callers
     temor-remote/     Tier B helper binary (static, Linux x86_64 and aarch64 musl): session
                       daemon on temor-pane, ports, files, trial, agent relay
-    # L4: app (Dioxus views)
-    temor-ui/         Dioxus views: window, sidebar, panes, blocks, command bar, pages
+    # L4 and up: the window, four crates, each naming only those below it
+    temor-pane-view/  how a pane is shown: its input, painting and words
+    temor-ui-base/    what the window is launched with, the settings file, the edges, a pane's
+                      slot of window state, the look, the shared words
+    temor-hub/        the window's state: the hub, the command bar's and plugins' glue, what the
+                      Settings window shares; no components
+    temor-views/      Dioxus views: window, sidebar, panes, blocks, command bar, pages, Settings
+    temor-ui/         joins them and opens the window
     temor/            lib + thin main; dist/ (desktop file `org.quire.Temor.desktop`, D-Bus service,
                       systemd unit `org.quire.Temor.service`, intents manifest, skills)
 ```
@@ -132,7 +139,10 @@ temor/
 `check-portable.sh`):
 - A crate depends only on crates in its own or lower layers. L0 and L1 never depend on quire
   (`ds-*`), Dioxus or docket; only L4 names Dioxus views.
-- `temor-core` has no I/O, no Dioxus, and no FFI.
+- `temor-core` has no I/O, no Dioxus, and no FFI. No L2 crate links I/O: they name no
+  temor-pty, temor-transfer or temor-vt, and name temor-shell, temor-ssh and temor-pane without
+  their default features (`io`, and `engine` for temor-pane), which hold the process, file and
+  socket code. A crate that runs things opts in with `features = ["io"]`.
 - Only `temor-vt` names libghostty (through `temor-vt-sys`). `unsafe` is allowed only in `temor-vt-sys`
   and in `temor-vt`'s `ffi` module; the rest of the workspace keeps `unsafe_code = "deny"`.
 - Only `temor-desktop` names zbus or docket. Nothing in the core reaches `desktop/`.
@@ -149,7 +159,9 @@ temor-store    where the data is kept: SQLite (rusqlite, bundled, FTS5), WAL, on
 temor-client   every operation on the data, on threads of its own; no Dioxus, no quire widgets
 temor-panes    the running terminals, beside the client: each pane's engine, marks, blocks,
                shell state and notices; knows no store (decided 2026-10-28)
-temor-ui       views only; reaches the rest through temor-client and temor-panes
+temor-ui-base, temor-hub, temor-views, temor-ui
+               the window: its base, its state, its views and its launch, in that order; reaches
+               the rest through temor-client and temor-panes
 temor          the binary: makes one Client per process and launches the window
 ```
 
@@ -198,9 +210,12 @@ imports `session.json` and `checkpoints/` and leaves them in place.
 - `Client::builder(store).inline()` (feature `testing`) answers on subscribe, synchronously, so
   SSR tests see data on the first frame; `client.idle()` says nothing is running.
 
-**temor-ui**: views, input, texture upload, the settings window, words. `use_client()` and
-`use_live(key)` are its only way to data; `Cargo.toml` names `temor-client`, `temor-panes` and
-`temor-schema` and no other temor crate, so a store, a pty or a socket is not something a view can name. That
+**The window** (`temor-ui-base`, `temor-hub`, `temor-views`, `temor-ui`; split 2026-11-01 so a
+component's change rebuilds no hub and the hub names no component): views, input, texture
+upload, the settings window, words. `use_client()` and `use_live(key)` are its only way to data;
+each of its crates names `temor-client`, `temor-panes`, `temor-pane-view`, `temor-schema` and the
+window's crates under it, and no other temor crate, so a store, a pty or a socket is not
+something a view can name. That
 is the fence, kept by the compiler and by `scripts/check-layers.sh`; there is no allowlist. The
 terminal engine (temor-pane, temor-vt, temor-render, temor-pty, temor-shell) comes through
 `temor-panes`, temor-core's rules through `temor_client::model`, and a service's own vocabulary
@@ -315,6 +330,34 @@ shell would get.
 - **Workers** (tokio, injected through quire's `Spawner`) handle the model calls, trial runs, plugin
   processes, transfers and peeks. Library crates never spawn threads themselves.
 
+## 4c. Data flow (decided 2026-11-02, P25)
+
+temor is a functional core in a thin imperative shell: what happens is decided by functions of
+values, and only the edges touch a pty, a socket, a file, the store or the window.
+
+1. **A machine is a step:** `fn x_step(state, XIn) -> (state, Vec<XOut>)`, or a `&mut self` method
+   that makes one transition and returns what it says to do. What it says is data, never a
+   callback. A refusal is an output and leaves the state as it was.
+2. **What a step needs comes in as a value.** Time, the environment, the folder, the filesystem
+   and id bases are read at the edge and passed in. A step takes no port that does I/O; a query
+   may read through a read-only `*Source`.
+3. **Each piece of state has one owner.** Other threads send it messages. `Arc<Mutex>` holds only
+   memo caches, resources and counters that only grow.
+4. **Derive, don't store.** What can be worked out from another value is worked out; what belongs
+   together is kept together. A test that only checks two fields agree means they are one field.
+5. **A state is one enum,** not Options or bools whose combinations are not all valid.
+6. **An edge only interprets:** it turns what it hears into an input, calls the step and carries
+   out what comes back. No decision sits there that a table test cannot reach.
+7. **A view never writes during render.** It reads through memos and sends messages.
+8. **Imperative where Rust does it best:** the pty and FFI, pixel blending and atlas packing, GPU
+   textures, slots, pointer capture and IME, the sqlite connections, memo caches, flat trees and
+   character tokenizers. A step mutates through `&mut` and returns effects; big state is never
+   cloned per step.
+
+`scripts/check-layers.sh` holds the model crates (schema, core, blocks, layout, hosts, agent) to
+rule 2: outside their tests they read no clock, environment or file, start no thread and hold no
+interior mutability.
+
 ## 5. Rendering (temor-render)
 
 Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each in its own
@@ -322,13 +365,16 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
 
 - **Two renderers behind one `Renderer` trait:**
   - **CPU (the default until quire's render hook lands):**
-    - swash glyphs go into an in-memory atlas
+    - swash glyphs are kept by name in the glyph cache, and drawn straight from it
     - only dirty rows are composed into a premultiplied RGBA buffer, then `TextureLayer` uploads it
     - measured p50 2–3 ms per pane per frame and about 0.1 ms from a key to a ready texture
     - costs 35–49% of one core while both panes scroll at 60 Hz
   - **GPU (the target):**
     - one instanced WGSL pass over glyph atlases, with images by z-layer, into a texture registered
       on the window's device (`use_gpu`, `handle.replace`/`register`, `redraw`)
+    - a frame puts the glyphs it shows in the atlases by name (`Atlases::resolve`); when they do not
+      fit beside the last frame's it empties them, and when they do not fit at all it draws in groups
+      of rows that do
     - 13–22% CPU, and 82–408 KB uploaded per frame instead of about 5 MB
     - **Never `queue.submit` from a pane thread:** it stalls up to one refresh against the window's
       present. It turns on when quire ships a render hook that encodes into the layer's texture on the
@@ -338,7 +384,7 @@ Spike P0(b): two libghostty panes plus kitty images plus an anyview peek, each i
     code-face token (Space Mono has no box drawing, CJK or emoji, and a line height of about 1.5).
   - Box drawing and block elements are drawn procedurally.
   - **Colour emoji:** Fedora's Noto Color Emoji is COLRv1 only, which swash can't draw. Rasterise
-    COLRv1 through skrifa's colour paint with vello_cpu (already in quire's tree) into the colour atlas.
+    COLRv1 through skrifa's colour paint with vello_cpu (already in quire's tree) into a colour glyph.
     Fall back to monochrome.
 - **Kitty images:**
   - read `placement_render_info` in the locked begin phase, since it needs `&Terminal`
@@ -838,6 +884,7 @@ The ranking rules:
 | **P22 Tab icons** (open: the app, the pack with `icons.toml` and the letter tile are in, the app's icon drawn as it is; a folder's own icon at the prompt (Finder's, a KDE `.directory`'s, GNOME's metadata) and a Linux app's (its `.desktop` file's, from the icon theme) are in, each looked up once on the client's `temor-icons` thread; the program's `icon` slot waits on P11) | A tab's icon is the first of: what the program says (an `icon` slot on the provider escape, so a tool or a project can name its own); the icon of the Mac app the foreground executable belongs to (its real path inside a `.app`, asked of the system: `code`, `cursor`, `zed`, `docker`, `ollama` and anything else installed that way, with no list); an icon pack, an editable provider that maps a program name or argv to a glyph and a brand colour (agent CLIs such as `claude`, `codex`, `gemini`, `copilot`, `cursor-agent`, `aider`, `opencode`; runtimes and build tools; git, containers, clouds, databases, editors), drawn as a white glyph on the brand colour, from Simple Icons (CC0) where it has the brand; the runtime when argv names one (`python train.py` takes Python's); and else the letter tile coloured from the name. A shell at its prompt shows its folder's own icon when the folder has one set, else the letter tile; a project-type icon (Cargo.toml, pyproject) is an extension's to add, not temor's. Open: whether an app's full-colour icon is drawn as it is (as the Dock does) or redrawn as a tile from its main colour | P11 |
 | **P23 History store** (open: the schema's `SessionId`, `Session`, `RanCommand` and `TemorUrl`, `temor-store` with its tables, and the window writing each session and finished command through the client as it happens (the secret rule in the client, 90 days kept) are in; and the page (⌥⇧⌘Y, on the row's stage: sessions by day, a folder's, one session's commands with Go to Tab or Reopen, search) are in; Show History in a row's and a Favourite's menu are in; `temor://downloads` (the shelf as a page, opened by the head's button and its chord, a file's menu the one menu) is in; a folder's page (`temor://local/<path>/`: ⌘-click a folder, Tabs Here then its files, folders walk in with Back) is in; a closed session's Reopen goes on as that session in a new tab in its folder, its commands above the shell as cards (no output kept) with Put in Prompt; a session's last screen is kept under it (`screens/<session>.bin`, when its tab closes and at quit, for as long as history has it, the newest 200), so a pane brought back starts from it and a closed session reopens from it (its commands as cards only where no screen was kept, or in the daemon); the commands an older temor's checkpoints kept start the session of the pane brought back with them, once; still open: the daemon's session ids stay in the pane's checkpoint, not in `sessions`, as nothing but the pane that goes on reads them) | `temor-schema` and `temor-store` (§2b). Sessions get a `SessionId` that lasts; every session and every finished block is written as it happens (not at quit), with FTS5 on commands and folders. `temor://history` is a page of its own, opened with ⌘Y or a tab's or folder's Show History: every session by day, searchable, narrowed to a folder (`?in=`) or to one session (`/<id>`, its commands). A live session in it goes to its tab; a closed one opens read-only and reopens a shell at its folder with its blocks above. Snapshots are kept by session, so they outlive the next launch. Retention, and never writing a secret, as §2b says. Imports `session.json` and `checkpoints/` once | P22 |
 | **P24 The client** (open: a's crate, `Live`, the registry, the read and change threads, the external watch, the queries `Sessions`, `Commands`, `History` and `OnShelf`, and the window's `use_live` are in; the sidebar's Favourites read through it; b's first part is in: the window's rows, Spaces and hosts are kept in the store's `layout` through `Command::Lay`, the old `session*.json` and `spaces.json` read in once and left in place; a pane brought back at launch goes on with its history session, its new commands numbered after the kept ones; checkpoints and screens are still files, keyed by pane, good for the next launch; c's first part is in: what a pane is apart from how the window shows it (`PaneCore`: its engine, title, commands, shell state, completion sources, clipboard question, notices) is `temor-panes`, with its rules: opening the pane, hearing its events (`PaneCore::hear`: marks, commands, title, folder, shell reports, desktop notices) and what is kept of it; the window's `Session` shares the core under a lock and the client's `temor-hear` thread hears every pane's events, handing the window only what is left (`Heard`); every Space's workspace is the client's (`spaces::Book`: the one on screen and the parked ones, pane ids kept apart across them, a step, a switch, a tab carried to another Space, a pane adopted, deleted Spaces answered), each answered at once on the window's thread, which carries out what it says; what is kept between launches is the client's (`keep`: the layout in the store, the older files read in once, each pane's checkpoint and screen files, the save pace, and which Spaces and panes a launch brings back), the window starting the panes and handing over their state; d's first part and e are in: the services are a layer (L3: client, panes, desktop, remote; the window and the binary L4), their I/O the client's (`ssh`, `remote`, `viewer_host`, `desktop`, `space`, `facts`, `shelf`, `plugins`) and what feeds a pane from a helper, with the pane report sockets, temor-panes'; `temor-ui` names only `temor-client`, `temor-panes` and `temor-schema` (`check-layers.sh` says so; its tests may name more), the terminal engine through temor-panes and temor-core's rules through `temor_client::model` (decided 2026-10-28); the client's modules name what the window uses of the crates under them, and what a host pane is for the person (which session it gets, how its link and session read, which way an edit goes, the host and helper views) is the client's (`remote::session`, `remote::edit_way`, `ssh::view`); the hub, `Desk` and `HubRef` stay the window's, as they hold the running panes and the window's signals (the client builds no terminal, decided 2026-10-28); the window's loops stay what they are, each a drain of one of the client's channels into the hub, as they carry events and ticks and no store query, which is what `Live` is for; and a session going on reads its start and last block from the store on the window's thread, once as its pane starts, which moving to the act thread would trade for state kept there (decided 2026-10-29)) | `temor-client` between the store and the window (§2b), in stages, each leaving the app working: **a.** the crate, `Live`, the registry, the read workers, store publishing, tests; queries `Sessions`, `History`, `Pins`, `Favourites`; the history page and the sidebar read through it. **b.** commands through `act` (open, spawn, close, reopen, pin, favourite); the window keeps undo and toasts. **c.** panes: the hub, the pane sessions and the edge move in; `PaneFeed` and `PaneInput`; the console reads `Blocks`. **d.** the rest: facts, completions, ssh and remote, transfers, viewers, the desktop port. **e.** the fence: `temor-ui` names only `temor-client` and `temor-schema`, and `check-layers.sh` says so. Follows mailo's `mail-client`, so the two apps share one shape | P23 |
+| **P25 Pipeline** (steps 0–7 are in, 4e as pieces (decided 2026-11-03): what the hub says is handed back by `Hub::said`, whether the session file is owed a write follows from what it keeps, the keyboard is followed once per request (`sync_focus`), and the Space board is watch channels; the one `apply` with a model and an edge was dropped. 4a left the radar and the shelf's downloads whole: the radar answers across panes and forgets one on close, and a download outlives its pane. 4d left `with_space`'s swap around a run in another Space, and `starting_at_home` still sets the cwd outside the step: through the step it is a field on every split input. 5 reads the hub through `use_hub` memos, the hub saying when it changed (no view bumps the window), and a pane through one `PaneShown`; a block list still draws on each change the window hears, as it reads the session as it draws, and draws its tiles then (a cache of pixels that same draw shows). Step 7 is in: the glyph cache names glyphs by what they are drawn from, the CPU path draws from it with no atlas, and the GPU path resolves a frame's glyphs into the atlases once, with no epoch or retries) | §4c's rules applied where the code still keeps state by hand, each step leaving the app working: **0.** the rules and the check; **1.** the bugs that hand-kept state caused (a block-list pane redrawn whole on every paint, a closed pane's offer state kept, only the last of several notices shown, a drag released outside the pane kept, the quick terminal reusing a pane id, the shelf losing an update between processes); **2.** the model crates: one id counter, focus kept in its tab, the bar's step reading no files, the marks' anchors released by what is held, states as enums; **3.** a pane's core answers with effects (desktop notices, finished commands, anchors) and history is recorded from them; one way to write to the store; **4.** the hub: one record per pane, a step for a host pane, an edit's state in its step, what an action is asked with passed in, one `apply` giving effects; **5.** the views write nothing while drawing and send messages (the composer, the list's scroll and the pane's events as steps); **6.** the daemon's sessions as one owner each with a step; **7.** the renderer's rows keyed by what they show, its glyphs apart from the atlas | P24 |
 
 **Status (2026-10-11):** every phase not blocked on another project has landed. Open: P8 (bulkhead), P11 (bayonet), P12 (companion), the docket-side parts of P7 and P14, and the follow-ups in FOLLOWUPS.md "Open now". P3 to P5 can run alongside P6 and P9 once P2 lands. P14's window side (Tier B sessions in the window, plus the temor-wire revision: WriteFile offset/append, Ping, cell size and Palette) runs with P16 to P18 as Batch 3. Version pins arrive in account-wide batches (Batch 13: porter's `Machine.link` / `Machine.ssh`) and are applied when the full set comes.
 

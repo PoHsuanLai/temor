@@ -3,8 +3,10 @@
 use temor_client::model::block::Outcome;
 
 use super::super::support::tools_present;
-use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
-use temor_ui::input::Stroke;
+use super::support::{
+    blocks, drawn_as_list, marks_of, pump, run_line, shell_path, shells, start, start_with,
+};
+use temor_pane_view::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 #[test]
@@ -232,7 +234,7 @@ fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
             s.block_list().is_some_and(|l| !l.is_empty())
                 && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
         });
-        live.session.set_composer_shown(true);
+        drawn_as_list(&mut live, Default::default(), true);
         // Nushell is asked from outside, so it answers without saying so; the others say so.
         pump(&mut live, "something answering Tab", |s| {
             s.composer_completes()

@@ -15,7 +15,6 @@ use temor_vt::Snapshot;
 
 use super::blocks::BlockLog;
 use super::clock::Clock;
-use super::notify::Notifier;
 use super::sources::Sources;
 use super::{Lifetime, PaneCore};
 
@@ -23,7 +22,6 @@ use super::{Lifetime, PaneCore};
 pub struct PaneKit {
     /// When a finished command is worth a notice.
     pub notify_after: NotifyAfter,
-    pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     /// Where "Save output" places files (the downloads shelf).
     pub shelf_dir: PathBuf,
@@ -115,11 +113,9 @@ impl PaneCore {
             report_key: None,
             sources: Sources::default(),
             folder: None,
-            cwd: None,
             progress: None,
             notify_after: kit.notify_after,
             limiter: Limiter::default(),
-            notifier: kit.notifier,
             clock: kit.clock,
             shelf_dir: kit.shelf_dir,
             quoting: temor_hosts::shelf::Quoting::Posix,
@@ -129,7 +125,7 @@ impl PaneCore {
             clip_pending: None,
             focus: PaneFocus::Focused,
             sent: None,
-            said: None,
+            effects: Vec::new(),
         }
     }
 }

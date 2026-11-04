@@ -13,7 +13,7 @@ pub use temor_desktop::{
 // the system's intents and password store, the Tailscale computers.
 pub use temor_desktop::{
     Badge, BusRoute, Claim, DesktopEnv, DesktopError, NoSecrets, Primary, SecretVault, SystemDock,
-    SystemInstance, SystemIntents, SystemLinks, SystemSecrets, SystemTailnet,
+    SystemInstance, SystemIntents, SystemLinks, SystemOpen, SystemSecrets, SystemTailnet,
 };
 // A program run for another (`temor run`): its ticket and how it ended.
 pub use temor_desktop::{CLOSED_WHILE_RUNNING, NOT_FOUND, RunEnds, RunRequest, RunTicket};

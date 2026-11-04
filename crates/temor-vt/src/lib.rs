@@ -1,7 +1,7 @@
 //! temor's terminal core. `Terminal` wraps libghostty-vt (feature `ghostty`, on by default):
 //! bytes in, a typed [`VtEvent`] stream out through a caller-supplied [`EventSink`], and a
-//! two-phase [`RenderView`] for the renderer. [`Vt`] is the seam other crates test through, with
-//! [`FakeVt`] (feature `testing`) standing in when Zig is not available.
+//! two-phase [`RenderView`] for the renderer. Without `ghostty` the crate is the terminal's
+//! vocabulary alone (sizes, cells, keys, events), which builds without Zig.
 //!
 //! The only `unsafe` in this crate is in the `ffi` module.
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use std::sync::mpsc::channel;
-//! use temor_vt::{GridSize, Terminal, TerminalConfig, Vt, VtError};
+//! use temor_vt::{GridSize, Terminal, TerminalConfig, VtError};
 //!
 //! # fn main() -> Result<(), VtError> {
 //! let (events, _event_rx) = channel();
@@ -32,12 +32,8 @@ mod error;
 mod event;
 mod input;
 mod model;
-#[cfg(any(feature = "ghostty", feature = "testing"))]
+#[cfg(feature = "ghostty")]
 mod scan;
-mod vt;
-
-#[cfg(feature = "testing")]
-mod fake;
 
 #[cfg(feature = "ghostty")]
 #[allow(unsafe_code)]
@@ -62,10 +58,6 @@ pub use model::{
     Rows, Scrollbar, SelectionShape, SemanticMark, StyleFlags, StyledCell, TerminalConfig,
     TerminalMode, TextFormat, TextSelection, TextSpan, Underline, ViewportScroll, Wrap, ZIndex,
 };
-pub use vt::Vt;
-
-#[cfg(feature = "testing")]
-pub use fake::FakeVt;
 
 #[cfg(feature = "ghostty")]
 pub use ffi::{

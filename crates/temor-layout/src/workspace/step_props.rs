@@ -180,10 +180,6 @@ fn check(ws: &Workspace, seen: &mut Seen) -> Result<(), TestCaseError> {
             tab.id
         );
     }
-    for (tab, pane) in &ws.focus {
-        let inside = ws.tabs.tab(*tab).is_some_and(|t| t.tree.contains(*pane));
-        prop_assert!(inside, "a recorded focus names a live tab and its pane");
-    }
     match ws.front() {
         Some(front) => prop_assert!(tab_ids.contains(&front), "the front tab is in the list"),
         None => prop_assert!(tabs.is_empty(), "with tabs open, one is in front"),
@@ -206,10 +202,13 @@ fn check(ws: &Workspace, seen: &mut Seen) -> Result<(), TestCaseError> {
         "folders are kept only for live or recently closed panes"
     );
     prop_assert!(
-        ws.next_pane > seen.pane,
+        ws.next_pane.0 > seen.pane,
         "pane ids are never handed out twice"
     );
-    prop_assert!(ws.next_tab > seen.tab, "tab ids are never handed out twice");
+    prop_assert!(
+        ws.next_tab.0 > seen.tab,
+        "tab ids are never handed out twice"
+    );
     Ok(())
 }
 

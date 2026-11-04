@@ -8,6 +8,7 @@ use temor_blocks::notify::{Notice as Desk, bell_notice, finished_notice, program
 use temor_pane::PaneEvent;
 use temor_pty::ChildExit;
 
+use super::marks::Finished;
 use super::notify::DesktopNote;
 use super::{Lifetime, PaneCore, sanitise_title};
 
@@ -42,13 +43,32 @@ pub enum Heard {
     /// An event only the window acts on (the composer's completions, the clipboard, a hold on
     /// the screen, a transfer, an agent's report), handed on as it came.
     Window(PaneEvent),
+    /// Commands that finished, as history is told of them; sent before the event's own.
+    Finished(Vec<Finished>),
+    /// The desktop refused a notice: why, for the person.
+    Refused(String),
     /// Nothing for the window.
     Quiet,
 }
 
+/// What hearing an event asks of the edges, besides what it leaves for the window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaneEffect {
+    /// Show this notice on the desktop (the rate limit already let it through).
+    Notify(DesktopNote),
+    /// A command finished.
+    Finished(Finished),
+}
+
 impl PaneCore {
-    /// Takes one event from the pane. Output is never blocked on it.
-    pub fn hear(&mut self, event: PaneEvent) -> Heard {
+    /// Takes one event from the pane: what it leaves for the window, and what the edges are to
+    /// do (desktop notices, finished commands), in order. Output is never blocked on it.
+    pub fn hear(&mut self, event: PaneEvent) -> (Heard, Vec<PaneEffect>) {
+        let heard = self.take_event(event);
+        (heard, std::mem::take(&mut self.effects))
+    }
+
+    fn take_event(&mut self, event: PaneEvent) -> Heard {
         match event {
             PaneEvent::Dirty => {
                 // Cleared first: output that arrives while the window paints signals again.
@@ -114,23 +134,22 @@ impl PaneCore {
         }
     }
 
-    /// A block finished: notifies when it ran long enough while the pane was unfocused.
-    pub(super) fn notify_finished(&mut self, block: &Block) {
+    /// A block finished: history is told, and the desktop when it ran long enough while the
+    /// pane was unfocused.
+    pub(super) fn command_finished(&mut self, block: &Block) {
+        if let Some(done) = Finished::of(block) {
+            self.effects.push(PaneEffect::Finished(done));
+        }
         if let Some(note) = finished_notice(block, self.notify_after, self.focus) {
             self.announce(note);
         }
     }
 
-    /// Makes a desktop notice of a core notice, when the limiter lets one through. A notice the
-    /// desktop refused is left for the person in [`PaneCore::said`].
+    /// A desktop notice of a core notice, when the limiter lets one through.
     fn announce(&mut self, notice: Desk) {
         let now = self.clock.now();
-        if !self.limiter.allow(now) {
-            return;
-        }
-        let note = desktop_note(&notice);
-        if let Err(err) = self.notifier.notify(&note) {
-            self.said = Some(err.to_string());
+        if self.limiter.allow(now) {
+            self.effects.push(PaneEffect::Notify(desktop_note(&notice)));
         }
     }
 }

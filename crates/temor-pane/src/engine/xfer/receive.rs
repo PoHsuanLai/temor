@@ -41,7 +41,7 @@ impl Transfers {
         let offer = self.fresh_offer();
         // Only a label: the window decides who the offer is from.
         let origin = Origin::Host {
-            host: HostName::new(""),
+            host: HostName("".into()),
         };
         let id = message.id.clone();
         let mut receive = Receive {

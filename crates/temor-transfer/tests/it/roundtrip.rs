@@ -48,7 +48,7 @@ struct Fixed;
 
 impl Clock for Fixed {
     fn now(&self) -> UnixMillis {
-        UnixMillis::new(5_000)
+        UnixMillis(5_000)
     }
 }
 
@@ -59,7 +59,7 @@ const WAITS: Waits = Waits {
 
 fn host() -> Origin {
     Origin::Host {
-        host: HostName::new("prod-1"),
+        host: HostName("prod-1".into()),
     }
 }
 

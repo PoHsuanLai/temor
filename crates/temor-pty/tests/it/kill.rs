@@ -56,3 +56,30 @@ fn exit_status_is_reported() {
     assert!(term.read_to_close());
     assert_eq!(term.pty.wait_exit().expect("wait"), ChildExit::Exited(7));
 }
+
+#[test]
+fn kill_ends_a_program_that_has_not_made_its_own_group_yet() {
+    if crate::support::pty_unsupported("kill_ends_a_program_that_has_not_made_its_own_group_yet") {
+        return;
+    }
+    let scratch = Scratch::new();
+    // A launcher that never gets to making the group: the program stays in this test's.
+    let late = temor_pty::SessionLauncher::Trampoline {
+        program: "/bin/sh".into(),
+        args: vec!["-c".into(), "exec \"$@\"".into(), "sh".into()],
+    };
+    let mut term = Term::spawn(&bash(&scratch, &["-c", "echo up.; sleep 100"]), &late);
+    assert!(term.read_until_has(0, "up."), "{:?}", term.text());
+    let leader = term.pty.pid().0;
+
+    let (done, killed) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = done.send(term.pty.kill());
+    });
+    let exit = killed
+        .recv_timeout(Duration::from_secs(10))
+        .expect("kill returns")
+        .expect("kill");
+    assert_eq!(exit, ChildExit::Signaled(9));
+    assert!(!proc_alive(leader), "leader {leader} is still alive");
+}

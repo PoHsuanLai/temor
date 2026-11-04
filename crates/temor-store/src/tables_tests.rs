@@ -15,7 +15,7 @@ fn session(bits: u64, folder: &str, started: i64) -> Session {
         host: Host::Local,
         folder: folder.to_owned(),
         program: None,
-        started: At(started),
+        started: UnixMillis(started),
         ended: None,
     }
 }
@@ -27,7 +27,7 @@ fn ran(bits: u64, block: u64, command: &str, folder: &str, started: i64) -> RanC
         command: command.to_owned(),
         folder: folder.to_owned(),
         exit: None,
-        started: At(started),
+        started: UnixMillis(started),
         ended: None,
     }
 }
@@ -52,10 +52,10 @@ fn a_session_reads_back_as_kept_and_its_high_bits_survive() {
     kept.program = Some("claude".to_owned());
     store.save_session(&kept).expect("save");
     assert_eq!(store.session(kept.id).expect("read"), Some(kept.clone()));
-    store.end_session(kept.id, At(20)).expect("end");
+    store.end_session(kept.id, UnixMillis(20)).expect("end");
     assert_eq!(
         store.session(kept.id).expect("read").and_then(|s| s.ended),
-        Some(At(20))
+        Some(UnixMillis(20))
     );
 }
 
@@ -80,7 +80,7 @@ fn sessions_are_newest_first_narrowed_to_a_folder_and_paged() {
         [3, 2, 1]
     );
     assert_eq!(
-        ids(store.sessions(None, Some(At(30)), 1).expect("page")),
+        ids(store.sessions(None, Some(UnixMillis(30)), 1).expect("page")),
         [2]
     );
 }
@@ -94,13 +94,31 @@ fn a_command_is_kept_once_and_then_told_how_it_ended() {
         .expect("record");
     let mut done = ran(1, 1, "ls", ML, 5);
     done.exit = Some(0);
-    done.ended = Some(At(6));
+    done.ended = Some(UnixMillis(6));
     store.record_command(&done).expect("again");
     store
         .record_command(&ran(1, 2, "pwd", ML, 7))
         .expect("record");
     let kept = store.commands_of(SessionId::from_bits(1)).expect("read");
     assert_eq!(kept, [done, ran(1, 2, "pwd", ML, 7)]);
+}
+
+/// A command history may not keep is not written, by whoever writes to the store.
+#[test]
+fn a_secret_or_a_command_typed_after_a_space_is_never_written() {
+    let store = store();
+    store.save_session(&session(1, ML, 0)).expect("save");
+    for (block, line) in [
+        (1, " curl -u me:hunter2 example.com"),
+        (2, "export GITHUB_TOKEN=ghp_0123456789abcdefghijklmn"),
+        (3, "ls"),
+    ] {
+        store
+            .record_command(&ran(1, block, line, ML, 1))
+            .expect("record");
+    }
+    let kept = store.commands_of(SessionId::from_bits(1)).expect("read");
+    assert_eq!(commands(&kept), ["ls"]);
 }
 
 #[test]
@@ -182,7 +200,7 @@ fn search_pages_by_start() {
         .search(&Found {
             text: Some("make"),
             folder: None,
-            before: Some(At(4)),
+            before: Some(UnixMillis(4)),
             limit: 2,
         })
         .expect("page");
@@ -193,7 +211,7 @@ fn search_pages_by_start() {
 fn old_history_is_forgotten_and_a_running_session_is_not() {
     let store = store();
     let mut old = session(1, ML, 0);
-    old.ended = Some(At(5));
+    old.ended = Some(UnixMillis(5));
     store.save_session(&old).expect("save");
     store
         .record_command(&ran(1, 1, "ls", ML, 1))
@@ -205,7 +223,7 @@ fn old_history_is_forgotten_and_a_running_session_is_not() {
     store
         .record_command(&ran(2, 2, "new", ML, 200))
         .expect("record");
-    assert_eq!(store.forget_before(At(100)).expect("forget"), 1);
+    assert_eq!(store.forget_before(UnixMillis(100)).expect("forget"), 1);
     assert_eq!(store.session(old.id).expect("read"), None);
     assert_eq!(
         commands(&store.commands_of(SessionId::from_bits(2)).expect("read")),
@@ -262,7 +280,7 @@ fn each_write_says_what_it_touched_once_it_is_committed() {
         .expect("set");
     // Ending a session that is not kept changes no row, and is not said.
     store
-        .end_session(SessionId::from_bits(9), At(1))
+        .end_session(SessionId::from_bits(9), UnixMillis(1))
         .expect("end");
     store.keep("hosts", "[]", Topics::HOSTS).expect("keep");
     let said: Vec<Committed> = heard.try_iter().collect();
@@ -306,4 +324,35 @@ fn a_file_store_is_private_read_beside_its_writer_and_seen_by_another() {
         .expect("pinned");
     assert_eq!(pinned, (1, 1), "one read, one moment");
     assert_eq!(one.sessions(None, None, 10).expect("after").len(), 2);
+}
+
+#[test]
+fn a_shelf_edited_while_another_process_writes_it_loses_neither_change() {
+    let dir = tempfile::tempdir().expect("dir");
+    let file = dir.path().join("temor.db");
+    let here = SqliteStore::open(&file).expect("store");
+    let other = SqliteStore::open(&file).expect("the other process's store");
+    here.set_shelf(Shelf::Pins, &[place("/a/")]).expect("set");
+    let (wrote, written) = std::sync::mpsc::channel();
+    let edited = std::thread::scope(|s| {
+        here.edit_shelf(Shelf::Pins, |mut places| {
+            // The other process adds its pin while this edit is under way.
+            s.spawn(|| {
+                other
+                    .edit_shelf(Shelf::Pins, |mut places| {
+                        places.push(place("/other/"));
+                        places
+                    })
+                    .expect("the other edit");
+                wrote.send(()).expect("told");
+            });
+            let _ = written.recv_timeout(std::time::Duration::from_millis(300));
+            places.push(place("/here/"));
+            places
+        })
+    });
+    edited.expect("this edit");
+    let pins = here.shelf(Shelf::Pins).expect("read");
+    assert!(pins.contains(&place("/here/")), "{pins:?}");
+    assert!(pins.contains(&place("/other/")), "{pins:?}");
 }

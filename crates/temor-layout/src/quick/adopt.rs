@@ -19,13 +19,10 @@ pub fn adopt(
     if ws.tab_of(pane).is_some() {
         return Err(CoreError::DuplicatePane(pane.0));
     }
-    let next_tab = ws.next_tab.checked_add(1).ok_or(CoreError::IdsExhausted)?;
-    let next_pane = ws
-        .next_pane
-        .max(pane.0.checked_add(1).ok_or(CoreError::IdsExhausted)?);
-    let id = TabId(ws.next_tab);
+    let (id, next_tab) = ws.next_tab.mint().ok_or(CoreError::IdsExhausted)?;
+    ws.next_pane = ws.next_pane.past(pane.0).ok_or(CoreError::IdsExhausted)?;
     ws.next_tab = next_tab;
-    ws.next_pane = next_pane;
+    let id = TabId(id);
     ws.open_shell_tab(id, pane, cwd);
     Ok((ws, vec![WorkspaceOut::Focused(pane), WorkspaceOut::Changed]))
 }

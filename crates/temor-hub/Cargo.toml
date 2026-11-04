@@ -1,0 +1,42 @@
+[package]
+name = "temor-hub"
+description = "temor's window, its state: the hub of panes, sessions, hosts and Spaces, the command bar's and the plugins' glue, and what the Settings window shares. Draws no components."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyview-peek = { workspace = true, features = ["pane"] }
+anyview-machines = { workspace = true }
+anyview-pane = { workspace = true }
+chordkit = { workspace = true }
+dioxus = { workspace = true }
+ds = { workspace = true }
+ds-blitz = { workspace = true }
+ds-core = { workspace = true }
+ds-settings = { workspace = true, features = ["dioxus"] }
+png = { workspace = true }
+# temor, as the window may name it (PLAN §2b, the fence): its data and services through the
+# client, the running terminals and their engine through temor-panes, how a pane is shown
+# (temor-pane-view), the data's types.
+temor-client = { workspace = true }
+temor-panes = { workspace = true }
+temor-pane-view = { workspace = true }
+temor-schema = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
+temor-ui-base = { workspace = true }
+
+[dev-dependencies]
+# The hub's own tests drive it against real desktop ports, helpers, ssh and plugins.
+temor-desktop = { workspace = true }
+temor-remote = { workspace = true, features = ["ghostty"] }
+temor-ssh = { workspace = true, features = ["io"] }
+temor-plugins = { workspace = true }
+temor-testkit = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
+
+[lints]
+workspace = true

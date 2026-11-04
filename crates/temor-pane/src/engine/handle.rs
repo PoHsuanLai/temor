@@ -13,9 +13,10 @@ use temor_transfer::kitty::Offered;
 use temor_vt::{CellPx, GridSize, KeyInput};
 
 use super::event::PaneEvent;
-use super::io::{Command, map_event};
+use super::io::Command;
 use super::outbox::Outbox;
 use super::poison::lock;
+use super::route::map_event;
 use super::sink::EventSink;
 use super::term::Term;
 use super::xfer::OfferId;

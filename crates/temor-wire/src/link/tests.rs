@@ -1,5 +1,5 @@
 use super::*;
-use crate::ids::SessionId;
+use crate::ids::RemoteSessionId;
 
 const POLICY: RetryPolicy = RetryPolicy {
     base: Millis(100),
@@ -7,8 +7,8 @@ const POLICY: RetryPolicy = RetryPolicy {
     attempts: Attempt(4),
 };
 
-fn sessions() -> Vec<SessionId> {
-    vec![SessionId(1), SessionId(2)]
+fn sessions() -> Vec<RemoteSessionId> {
+    vec![RemoteSessionId(1), RemoteSessionId(2)]
 }
 
 fn at(ms: u64) -> Monotonic {
@@ -193,10 +193,10 @@ fn the_transition_table() {
             "a session change while connected is recorded",
             connected(),
             SessionsChanged {
-                sessions: vec![SessionId(3)],
+                sessions: vec![RemoteSessionId(3)],
             },
             LinkState::Connected {
-                sessions: vec![SessionId(3)],
+                sessions: vec![RemoteSessionId(3)],
             },
             Vec::new(),
         ),
@@ -204,10 +204,10 @@ fn the_transition_table() {
             "a session change while dialing is recorded for the attach",
             reattaching(1),
             SessionsChanged {
-                sessions: vec![SessionId(3)],
+                sessions: vec![RemoteSessionId(3)],
             },
             LinkState::Reattaching {
-                sessions: vec![SessionId(3)],
+                sessions: vec![RemoteSessionId(3)],
                 attempt: Attempt(1),
             },
             Vec::new(),

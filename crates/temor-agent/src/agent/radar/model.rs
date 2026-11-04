@@ -4,16 +4,8 @@ use crate::presence::{PaneFocus, StatusReport, WaitKind};
 use temor_core::vocab::ids::ExitCode;
 use temor_core::vocab::text::Note;
 
-/// A time from the caller's clock, in milliseconds. Only differences matter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Millis(pub u64);
-
-impl Millis {
-    /// Milliseconds from `earlier` to `self`; zero if the clock stepped back.
-    pub fn since(self, earlier: Millis) -> u64 {
-        self.0.saturating_sub(earlier.0)
-    }
-}
+/// A time from the caller's clock; only differences matter.
+pub use temor_schema::time::{Millis, Monotonic};
 
 /// What a program says it is doing (OSC 7501, already parsed).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -9,9 +9,9 @@ use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_blitz::Extent;
 use ds_harness::{Clock, Input, WindowHosting};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
-use super::drive::{Rect, rects, started, type_line, wait_html, wait_until};
+use super::drive::{Rect, rects, started, still_rects, type_line, wait_html, wait_until};
 use super::window::harness_building;
 
 /// The heads of the cards, oldest first.
@@ -45,10 +45,10 @@ fn a_click_on_a_card_picks_it_and_a_drag_across_cards_selects_their_text() {
             s.lines().any(|l| l.trim_end() == word)
         });
     }
-    wait_html(&mut h, "three cards", |html| {
-        html.matches("temor-blk-head").count() >= 3
+    wait_html(&mut h, "three cards and the prompt back", |html| {
+        html.matches("temor-blk-head").count() >= 3 && html.contains("temor-blk-composer")
     });
-    let found = heads(&h);
+    let found = still_rects(&mut h, ".temor-blk-head");
     let beta = found[found.len() - 2];
     h.send(Input::click(left_of(beta, 120.0)));
     h.advance(Duration::from_millis(300));
@@ -60,7 +60,7 @@ fn a_click_on_a_card_picks_it_and_a_drag_across_cards_selects_their_text() {
         "the picked head is beta's"
     );
     // From the start of beta's output to the end of gamma's: a selection, so no pick.
-    let rows = rects(&h, ".temor-blk-rows");
+    let rows = still_rects(&mut h, ".temor-blk-rows");
     let (from, to) = (rows[rows.len() - 2], rows[rows.len() - 1]);
     h.send(Input::drag(left_of(from, 10.0), left_of(to, 60.0), 12));
     h.advance(Duration::from_millis(300));
@@ -252,13 +252,11 @@ fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_h
     wait_html(&mut h, "the composer", |html| {
         html.contains("temor-blk-composer")
     });
+    super::drive::wait_keyboard(&mut h);
     super::drive::type_text(&mut h, "echo one");
-    h.advance(Duration::from_millis(200));
-    assert_eq!(
-        composer_value(&h.html()).as_deref(),
-        Some("echo one"),
-        "typed into the composer"
-    );
+    wait_html(&mut h, "the typing in the composer", |html| {
+        composer_value(html).as_deref() == Some("echo one")
+    });
     // Nothing reached the shell's own line yet: the prompt's rows hold no command.
     assert!(
         !probe.screen().contains("echo one"),
@@ -280,19 +278,18 @@ fn the_composer_takes_the_command_sends_it_on_enter_and_steps_back_through_the_h
         composer_value(html).as_deref() == Some("")
     });
     h.send(Input::key(ShortcutKey::Up));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo two"));
+    wait_html(&mut h, "the newest command", |html| {
+        composer_value(html).as_deref() == Some("echo two")
+    });
     h.send(Input::key(ShortcutKey::Up));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(composer_value(&h.html()).as_deref(), Some("echo one"));
+    wait_html(&mut h, "the one before", |html| {
+        composer_value(html).as_deref() == Some("echo one")
+    });
     h.send(Input::key(ShortcutKey::Down));
     h.send(Input::key(ShortcutKey::Down));
-    h.advance(Duration::from_millis(200));
-    assert_eq!(
-        composer_value(&h.html()).as_deref(),
-        Some(""),
-        "back to what was typed"
-    );
+    wait_html(&mut h, "back to what was typed", |html| {
+        composer_value(html).as_deref() == Some("")
+    });
 }
 
 #[test]
@@ -415,4 +412,40 @@ fn the_wheel_over_a_program_that_asked_for_the_mouse_goes_to_it() {
     wait_until(&mut h, &probe, "the report", |s| {
         s.contains("033   [   <   6   4   ;")
     });
+}
+
+#[test]
+fn a_press_released_outside_the_pane_after_the_window_drew_again_reaches_the_program() {
+    if !super::support::window_tools_present() {
+        return;
+    }
+    let probe = Probe::new();
+    let mut h = started("pointer-release-outside", &probe);
+    // A program that asks for the mouse (SGR reports) and shows what it hears.
+    type_line(&mut h, "printf '\\033[?1000h\\033[?1006h'; cat -v");
+    h.advance(Duration::from_millis(500));
+    let pane = super::drive::rect(&h, "[aria-label=\"Terminal\"]");
+    let inside = pane.centre();
+    h.send(Input::button_down(inside, PointerButton::Primary));
+    wait_until(&mut h, &probe, "the press reported", |s| {
+        s.contains("^[[<0;")
+    });
+    // The window draws again while the button is held, as it does when anything changes.
+    let size = h.window_size();
+    h.resize_window(Extent::new(size.width - 40, size.height));
+    h.advance(Duration::from_millis(200));
+    let outside = Point {
+        x: Px(4.0),
+        y: inside.y,
+    };
+    h.send(Input::button_up(outside, PointerButton::Primary));
+    wait_until(&mut h, &probe, "the release reported", |s| {
+        s.split("^[[<0;").skip(1).any(released)
+    });
+}
+
+/// Whether an SGR mouse report's text after `^[[<0;` ends as a release: `col;row` then `m`.
+fn released(report: &str) -> bool {
+    let end = report.find(|c: char| !(c.is_ascii_digit() || c == ';'));
+    end.is_some_and(|at| report[at..].starts_with('m'))
 }

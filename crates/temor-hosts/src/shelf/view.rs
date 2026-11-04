@@ -1,5 +1,5 @@
-//! What the shelf shows, as data: rows with plain-language text and the actions each allows.
-//! The view draws it; nothing here knows about the screen.
+//! What the shelf shows, as data: rows, how far each got and the actions each allows. The view
+//! draws it and words it; nothing here knows about the screen or its language.
 
 use super::model::{FailWhy, ItemState, Seen, Shelf, ShelfItem};
 use crate::transfer::Origin;
@@ -33,7 +33,7 @@ pub enum RowState {
     },
     Ready,
     Failed {
-        message: String,
+        why: FailWhy,
     },
 }
 
@@ -43,8 +43,11 @@ pub struct Row {
     pub id: DownloadId,
     /// The file name as saved.
     pub title: String,
-    /// Size and origin, such as `1.2 MB, from prod`.
-    pub detail: String,
+    /// Its size: the whole file's when known, else what came so far; none while it waits or
+    /// after it failed.
+    pub size: Option<Bytes>,
+    /// Where it came from.
+    pub origin: Origin,
     pub state: RowState,
     pub actions: Vec<RowAction>,
     /// Where the file is, for the thumbnail and drag-out.
@@ -58,8 +61,6 @@ pub struct ShelfView {
     pub rows: Vec<Row>,
     /// Files that are saved and not yet opened: the badge on the shelf button.
     pub unseen: usize,
-    /// The words shown when there are no rows.
-    pub empty: &'static str,
 }
 
 /// The view of `shelf`.
@@ -70,11 +71,7 @@ pub fn shelf_view(shelf: &Shelf) -> ShelfView {
         .iter()
         .filter(|item| matches!(item.state, ItemState::Ready { .. }) && item.seen == Seen::New)
         .count();
-    ShelfView {
-        rows,
-        unseen,
-        empty: "Files you save or receive appear here",
-    }
+    ShelfView { rows, unseen }
 }
 
 fn row(item: &ShelfItem) -> Row {
@@ -87,12 +84,7 @@ fn row(item: &ShelfItem) -> Row {
             total.or(Some(received)),
         ),
         ItemState::Ready { size } => (RowState::Ready, Some(size)),
-        ItemState::Failed { why } => (
-            RowState::Failed {
-                message: failure(why).to_owned(),
-            },
-            None,
-        ),
+        ItemState::Failed { why } => (RowState::Failed { why }, None),
     };
     let mut actions = Vec::new();
     if matches!(item.state, ItemState::Ready { .. }) {
@@ -110,7 +102,8 @@ fn row(item: &ShelfItem) -> Row {
     Row {
         id: item.id,
         title: item.name_as_saved(),
-        detail: detail(size, &item.origin),
+        size,
+        origin: item.origin.clone(),
         state,
         actions,
         path: item.path.clone(),
@@ -142,44 +135,4 @@ fn percent(received: Bytes, total: Bytes) -> Option<u8> {
     }
     let scaled = u128::from(received.0).saturating_mul(100) / u128::from(total.0);
     Some(u8::try_from(scaled.min(100)).unwrap_or(100))
-}
-
-fn failure(why: FailWhy) -> &'static str {
-    match why {
-        FailWhy::Refused => "You said no",
-        FailWhy::Broken => "The transfer stopped before it finished",
-        FailWhy::TooBig => "The file is too big",
-        FailWhy::Unwritable => "temor could not save it in your Downloads folder",
-    }
-}
-
-fn detail(size: Option<Bytes>, origin: &Origin) -> String {
-    let from = match origin {
-        Origin::Remote { host, .. } => format!("from {}", host.as_str()),
-        Origin::LocalStream { .. } => "from a program in this tab".to_owned(),
-        Origin::Local { .. } => "saved here".to_owned(),
-        Origin::Pipe => "from a pipe".to_owned(),
-    };
-    match size {
-        Some(size) => format!("{}, {from}", human_size(size)),
-        None => from,
-    }
-}
-
-/// `999 bytes`, `1.0 KB`, `12.3 MB`: powers of 1000, one decimal above bytes.
-pub fn human_size(size: Bytes) -> String {
-    const UNITS: [&str; 4] = ["KB", "MB", "GB", "TB"];
-    if size.0 < 1000 {
-        return match size.0 {
-            1 => "1 byte".to_owned(),
-            n => format!("{n} bytes"),
-        };
-    }
-    let mut tenths = size.0 / 100; // tenths of a KB
-    let mut unit = 0;
-    while tenths >= 10_000 && unit + 1 < UNITS.len() {
-        tenths /= 1000;
-        unit += 1;
-    }
-    format!("{}.{} {}", tenths / 10, tenths % 10, UNITS[unit])
 }

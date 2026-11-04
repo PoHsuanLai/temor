@@ -21,9 +21,10 @@
 //! root `Cargo.toml`. `scripts/fork-patches.sh print` in quire prints it.
 //!
 //! Fonts come from fontique ([`FontSet`]): the system `monospace` family by default, or a named
-//! one, at a logical size. swash shapes and rasterises into glyph atlases; COLRv1 emoji are
-//! painted through vello_cpu (skrifa's colour painter) into the colour atlas; box drawing, block
-//! elements and Powerline arrows are drawn procedurally. [`CellMetrics`] and [`GridFit`] size the
+//! one, at a logical size. swash shapes and rasterises into a glyph cache that names each glyph by
+//! what it is drawn from; COLRv1 emoji are painted through vello_cpu (skrifa's colour painter);
+//! box drawing, block elements and Powerline arrows are drawn procedurally. The CPU path draws
+//! glyphs from the cache, the GPU path from atlases a frame puts its glyphs in. [`CellMetrics`] and [`GridFit`] size the
 //! grid in whole device pixels and map pixels to cells. [`RowLayout`] shows the drawn grid in
 //! slices with room between rows (a picture under a command's output) without redrawing it.
 //!

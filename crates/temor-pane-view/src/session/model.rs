@@ -39,6 +39,8 @@ pub enum Notice {
     Cwd(String),
     /// A command finished (a block ended).
     CommandDone,
+    /// Commands that finished, as history keeps them.
+    Finished(Vec<temor_panes::marks::Finished>),
     /// The program ended; the pane is finished.
     Ended(Option<ChildExit>),
     /// The program is holding (or released) the screen.
@@ -78,6 +80,8 @@ pub struct Session {
     pub keymap: Keymap,
     pub(super) clipboard: Box<dyn Clipboard>,
     pub(super) opener: Box<dyn Opener>,
+    /// Shows the desktop notices of events the session hears itself ([`Session::absorb`]).
+    pub(super) notifier: Box<dyn Notifier>,
     pub(super) fit: Option<GridFit>,
     pub(super) scale: Scale,
     pub(super) pixels: PixelSize,
@@ -97,16 +101,15 @@ pub struct Session {
     /// The link under the pointer as last drawn in its tooltip.
     pub(super) link_hover: Option<String>,
     /// The block list as its view last laid it out, while the pane is drawn as one: where a
-    /// point over it lands. `None` while the pane is one grid.
-    pub(super) list_map: Option<super::list_hit::ListMap>,
-    /// The ground the live screen is drawn on while the pane is a list (the running card's).
-    pub(super) live_ground: Option<temor_panes::vt::Rgb>,
+    /// point over it lands, the live rows' ground, whether the composer shows. `None` while the
+    /// pane is one grid.
+    pub(super) list: Option<super::block_list::ListView>,
     /// Where the next command is typed while the list shows it.
     pub(super) composer: super::composer::Composer,
     pub(super) blink: super::blink::Blink,
     /// Until when the bell's visual mark stays up.
     pub(super) bell_until: Option<Stamp>,
-    /// A tab or split request a key made, for the window to carry out (see `Session::take_asked`).
+    /// A tab or split request a key made, for the window to carry out (see `Session::said`).
     pub(super) asked: Option<temor_panes::pane::keys::Action>,
     /// A file the person asked to see (⌘-click on a path, the View button), for the window to take.
     pub(super) view_ask: Option<super::ViewAsk>,
@@ -183,6 +186,7 @@ pub(super) struct WindowKit {
     pub keymap: Keymap,
     pub clipboard: Box<dyn Clipboard>,
     pub opener: Box<dyn Opener>,
+    pub notifier: Box<dyn Notifier>,
     pub cursor_blink: bool,
 }
 
@@ -202,7 +206,6 @@ impl SessionKit {
         (
             temor_panes::PaneKit {
                 notify_after,
-                notifier,
                 clock,
                 shelf_dir,
             },
@@ -210,6 +213,7 @@ impl SessionKit {
                 keymap,
                 clipboard,
                 opener,
+                notifier,
                 cursor_blink,
             },
         )

@@ -37,14 +37,24 @@ pub enum Resolution {
 /// One remote file open for editing. `base` is the host's file as last fetched or written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Edit {
-    /// Fetching the file.
-    Opening,
+    /// Fetching the file. `shown`: the copy is already open in the editor (the host's file is
+    /// fetched again over it), so it is not opened again.
+    Opening { shown: bool },
     /// The local copy is open; nothing waiting.
     Open { base: RemoteStat },
-    /// A save was seen; asking the host whether the file changed.
-    Checking { base: RemoteStat, queued: bool },
+    /// A save was seen; asking the host whether the file changed. `queued`: another save came
+    /// meanwhile. `closing`: Done was pressed, and the edit closes once the save is on the host.
+    Checking {
+        base: RemoteStat,
+        queued: bool,
+        closing: bool,
+    },
     /// The file is unchanged on the host; writing it back.
-    Uploading { base: RemoteStat, queued: bool },
+    Uploading {
+        base: RemoteStat,
+        queued: bool,
+        closing: bool,
+    },
     /// The file changed on the host (or was removed); waiting for the person to choose.
     Conflict { base: RemoteStat, found: Found },
     /// A call failed. A save or a retry tries again from `base`.
@@ -79,8 +89,8 @@ pub enum EditIn {
     Failed(EditFault),
     /// Try again after a failure.
     Retry,
-    /// The person closed the editor.
-    Closed,
+    /// The person is done with the edit.
+    Done,
 }
 
 /// What an edit asks the app to do.
@@ -94,8 +104,9 @@ pub enum EditOut {
     OpenLocal,
     /// Read the host file's modified time and size, then send `Checked`.
     Check,
-    /// Copy the local file over the host's, read its new stat, then send `Stored`.
-    Store,
+    /// Copy the local file over the host's, read its new stat, then send `Stored`. `overwrite`:
+    /// the person chose to write over the host's changed file, so the write does not check it.
+    Store { overwrite: bool },
     /// Ask the person what to do about this conflict.
     AskConflict(Found),
     /// The host has the latest save: say so.
@@ -104,4 +115,10 @@ pub enum EditOut {
     Report(EditFault),
     /// Stop watching the local copy.
     StopWatching,
+    /// The edit is over: forget it and remove its local copy.
+    Discard,
+    /// Done was pressed while a choice is open: say to choose first.
+    ChooseFirst,
+    /// Done was waiting on a save that did not reach the host: say the copy is kept.
+    Kept,
 }

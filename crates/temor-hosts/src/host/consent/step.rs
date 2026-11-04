@@ -1,7 +1,7 @@
 //! `gate`: what to do for the next connection to a host. `consent_step`: remember an answer, or
 //! tie an alias to the machine a connection proved it reaches.
 
-use super::model::{BootstrapAction, ConsentBook, Permit, Who};
+use super::model::{BootstrapAction, BootstrapGrants, ConsentBook, Permit, Who};
 use crate::remote::Grant;
 use temor_ssh::TerminfoPolicy;
 
@@ -60,32 +60,19 @@ pub enum ConsentIn {
     Identified { who: Who },
 }
 
-/// The book after `input`, and whether it changed (so the session file is written again).
-pub fn consent_step(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
-    let mut next = book.clone();
+/// The book after `input`.
+pub fn consent_step(book: ConsentBook, input: ConsentIn) -> ConsentBook {
     match input {
         ConsentIn::Answered { who, action, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_grant(index, action, grant);
+            book.with_host(&who, |g| g.with(action, grant))
         }
         ConsentIn::HelperAnswered { who, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_helper(index, grant);
+            book.with_host(&who, |g| BootstrapGrants { helper: grant, ..g })
         }
         ConsentIn::PermitAnswered { who, permit, grant } => {
-            let at = next.matching(&who);
-            let index = next.fold(&at, &who);
-            next.set_permit(index, permit, grant);
+            book.with_host(&who, |g| g.with_permit(permit, grant))
         }
-        ConsentIn::Identified { who } => {
-            let at = next.matching(&who);
-            if !at.is_empty() {
-                next.fold(&at, &who);
-            }
-        }
+        ConsentIn::Identified { who } if book.knows(&who) => book.with_host(&who, |g| g),
+        ConsentIn::Identified { .. } => book,
     }
-    let changed = next != book;
-    (next, changed)
 }

@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use super::model::{Millis, ProgramFact, ProgramKind};
+use super::model::{Monotonic, ProgramFact, ProgramKind};
 use crate::presence::{AgentState, Seen, WaitKind};
 use temor_core::vocab::text::Note;
 
@@ -14,7 +14,7 @@ const MAX_RECORDS: usize = 256;
 struct Record {
     kind: ProgramKind,
     message: Option<Note>,
-    updated: Millis,
+    updated: Monotonic,
 }
 
 /// A pane's records.
@@ -23,7 +23,7 @@ pub(super) struct Records(BTreeMap<String, Record>);
 
 impl Records {
     /// Applies one report.
-    pub(super) fn apply(&mut self, fact: ProgramFact, now: Millis) {
+    pub(super) fn apply(&mut self, fact: ProgramFact, now: Monotonic) {
         if fact.kind == ProgramKind::Clear {
             let id = fact.record;
             self.0.retain(|key, _| {

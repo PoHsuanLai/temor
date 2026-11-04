@@ -2,11 +2,9 @@
 //! Nothing here is drawn; the views decide how to show it.
 
 use temor_client::model::block::Outcome;
-use temor_client::model::session::AnnotateIn;
 use temor_client::model::vocab::ids::BlockId;
 
 use super::super::Session;
-use super::Finished;
 
 impl Session {
     /// How many rows the terminal has.
@@ -29,20 +27,9 @@ impl Session {
         self.core().block_outcomes()
     }
 
-    /// The finished blocks after `after` (every one when `None`), oldest first, as history keeps
-    /// them: the command, how it exited, and how long it ran.
-    pub fn finished_after(&self, after: Option<BlockId>) -> Vec<Finished> {
-        self.core().finished_after(after)
-    }
-
     /// Whether a block's command has finished (its output is complete).
     pub fn block_finished(&self, id: BlockId) -> bool {
         self.core().block_finished(id)
-    }
-
-    /// Picks no block.
-    pub fn clear_block_selection(&mut self) {
-        self.annotate(AnnotateIn::ClearPicks);
     }
 
     /// The picked block the arrows move (the last one clicked), if any.

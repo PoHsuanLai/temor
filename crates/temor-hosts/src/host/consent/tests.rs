@@ -1,8 +1,8 @@
 use super::{
     BootstrapAction as Action, BootstrapGrants, ConsentBook, ConsentIn, Gate, Permit, RunMode, Who,
-    carry_host_consent, consent_step, gate,
+    consent_step, gate,
 };
-use crate::remote::{Grant, HostConsent};
+use crate::remote::Grant;
 use temor_ssh::{HostKey, TerminfoPolicy};
 
 const FP: &str = "SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s";
@@ -15,17 +15,24 @@ fn who(alias: &str, fp: Option<&str>, node: Option<&str>) -> Who {
     }
 }
 
+/// The book after `input`, and whether it changed.
+fn stepped(book: ConsentBook, input: ConsentIn) -> (ConsentBook, bool) {
+    let next = consent_step(book.clone(), input);
+    let changed = next != book;
+    (next, changed)
+}
+
 fn answer(book: ConsentBook, who: &Who, action: Action, grant: Grant) -> ConsentBook {
     let input = ConsentIn::Answered {
         who: who.clone(),
         action,
         grant,
     };
-    consent_step(book, input).0
+    stepped(book, input).0
 }
 
 fn identify(book: ConsentBook, who: &Who) -> ConsentBook {
-    consent_step(book, ConsentIn::Identified { who: who.clone() }).0
+    stepped(book, ConsentIn::Identified { who: who.clone() }).0
 }
 
 const INSTALL: Gate = Gate::Run(RunMode::Bootstrap(TerminfoPolicy::Install));
@@ -93,7 +100,7 @@ fn answers_given_by_alias_join_the_machine_once_a_connection_proves_it() {
     assert_eq!(gate(&book, &typed), INSTALL);
 
     let proven = who("prod", Some(FP), None);
-    let (book, changed) = consent_step(
+    let (book, changed) = stepped(
         book,
         ConsentIn::Identified {
             who: proven.clone(),
@@ -103,7 +110,7 @@ fn answers_given_by_alias_join_the_machine_once_a_connection_proves_it() {
     // Reached by another name later (a rename in ssh_config), it is the same machine.
     assert_eq!(gate(&book, &who("renamed", Some(FP), None)), INSTALL);
     // Identifying again changes nothing and asks for no save.
-    let (again, changed) = consent_step(book.clone(), ConsentIn::Identified { who: proven });
+    let (again, changed) = stepped(book.clone(), ConsentIn::Identified { who: proven });
     assert_eq!((again, changed), (book, false));
 }
 
@@ -198,7 +205,7 @@ fn the_helper_answer_is_kept_per_machine_beside_the_others_and_stays_out_of_the_
     );
     assert_eq!(book.grants(&prod).helper, Grant::Ask);
     let helper = |book, who: &Who, grant| {
-        consent_step(
+        stepped(
             book,
             ConsentIn::HelperAnswered {
                 who: who.clone(),
@@ -234,7 +241,7 @@ fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() 
     let prod = who("prod", Some(FP), Some("n1"));
     let alias_only = who("prod", None, None);
     let permit = |book, who: &Who, permit, grant| {
-        consent_step(
+        stepped(
             book,
             ConsentIn::PermitAnswered {
                 who: who.clone(),
@@ -268,40 +275,4 @@ fn what_a_host_may_do_here_is_kept_per_machine_and_out_of_the_file_while_open() 
     );
     let (same, changed) = permit(book.clone(), &prod, Permit::Transfers, Grant::Allowed);
     assert!(!changed && same == book);
-}
-
-#[test]
-fn the_old_per_host_answers_carry_over_once_and_never_over_the_books_own() {
-    let prod = who("prod", None, None);
-    let old = HostConsent {
-        clipboard: Grant::Refused,
-        transfers: Grant::Allowed,
-        notifications: Grant::Ask,
-        helper: Grant::Allowed,
-    };
-    let held = consent_step(
-        ConsentBook::default(),
-        ConsentIn::PermitAnswered {
-            who: prod.clone(),
-            permit: Permit::Transfers,
-            grant: Grant::Refused,
-        },
-    )
-    .0;
-    let got = carry_host_consent(held, &prod, &old);
-    let grants = got.grants(&prod);
-    // Name, what the book holds after, why.
-    for (name, have, want) in [
-        ("clipboard", grants.clipboard, Grant::Refused),
-        ("transfers", grants.transfers, Grant::Refused),
-        ("notifications", grants.notifications, Grant::Ask),
-        ("helper", grants.helper, Grant::Allowed),
-    ] {
-        assert_eq!(have, want, "{name}");
-    }
-    assert_eq!(carry_host_consent(got.clone(), &prod, &old), got);
-    assert_eq!(
-        carry_host_consent(ConsentBook::default(), &prod, &HostConsent::default()),
-        ConsentBook::default()
-    );
 }

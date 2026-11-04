@@ -29,12 +29,14 @@ fn reads_return_the_last_snapshot_and_an_unknown_pane_is_refused() {
     assert_eq!(port.commands(PaneRef(9)), Err(PortRefusal::NoSuchPane));
 }
 
-#[test]
-fn an_action_is_answered_by_the_window_thread_and_refused_once_it_is_gone() {
+#[tokio::test(flavor = "current_thread")]
+async fn an_action_is_answered_by_the_window_and_refused_once_it_is_gone() {
     let (port, link, _count) = desktop_pair();
     let mut asks = link.take_asks().expect("the asks");
-    let window = std::thread::spawn(move || {
-        let Some(Ask::Act(act, reply)) = asks.blocking_recv() else {
+    // The window answers on the bus task's own thread: an ask that blocked its worker would
+    // never let it, and would end refused as busy.
+    let window = tokio::spawn(async move {
+        let Some(Ask::Act(act, reply)) = asks.recv().await else {
             return;
         };
         let answer = match act {
@@ -48,9 +50,9 @@ fn an_action_is_answered_by_the_window_thread_and_refused_once_it_is_gone() {
         placement: Placement::Tab,
         cwd: None,
     };
-    assert_eq!(port.open_pane(open), Ok(PaneRef(7)));
-    window.join().expect("the window thread");
-    assert_eq!(port.close_pane(PaneRef(7)), Err(PortRefusal::Busy));
+    assert_eq!(port.open_pane(open).await, Ok(PaneRef(7)));
+    window.await.expect("the window task");
+    assert_eq!(port.close_pane(PaneRef(7)).await, Err(PortRefusal::Busy));
 }
 
 #[test]

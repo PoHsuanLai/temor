@@ -7,11 +7,11 @@ use std::time::Duration;
 use temor_client::model::block::Outcome;
 use temor_core::vocab::ids::BlockId;
 use temor_pane::keys::Action;
-use temor_ui::view::block_list::segments::{Placed, SegKey, Sizes, lay_out, list_map};
+use temor_ui_base::segments::{Placed, SegKey, Sizes, lay_out, list_map};
 use temor_vt::{Modifiers, MouseButton, SurfacePoint};
 
 use super::super::support::tools_present;
-use super::support::{Live, pump, run_line, shell_path, start};
+use super::support::{Live, drawn_as_list, pump, run_line, shell_path, start};
 
 /// A bash with three finished blocks, `echo a`, `echo b` and `echo c`, oldest first, and the
 /// list laid out over it, scrolled to its top.
@@ -48,7 +48,7 @@ fn listed(name: &str) -> Option<(Live, [BlockId; 3], Vec<Placed>)> {
     };
     let items = live.session.block_list().expect("a list");
     let (placed, _) = lay_out(&items, &sizes, &[]);
-    live.session.set_list_map(Some(list_map(&placed, 0.0)));
+    drawn_as_list(&mut live, list_map(&placed, 0.0), false);
     Some((live, [ids[0], ids[1], ids[2]], placed))
 }
 

@@ -1,9 +1,8 @@
-//! Linux and macOS: the controlling terminal at `/dev/tty` in raw mode, and `xdg-open` or `open`.
+//! Linux and macOS: the controlling terminal at `/dev/tty` in raw mode, and the desktop's opener.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::time::Duration;
 
 #[cfg(target_os = "linux")]
@@ -124,25 +123,14 @@ impl Link for Tty {
     }
 }
 
-#[cfg(target_os = "linux")]
-const OPENER: &str = "xdg-open";
-#[cfg(target_os = "macos")]
-const OPENER: &str = "/usr/bin/open";
-
-/// Opens files with `xdg-open`, or `open` on macOS.
+/// Opens files with the desktop's opener (`xdg-open`, or `open` on macOS).
 #[derive(Debug, Clone, Copy)]
 pub struct SystemOpener;
 
 impl Opener for SystemOpener {
     fn open(&self, path: &Path) -> Result<(), CliError> {
-        let started = Command::new(OPENER)
-            .arg(path)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn();
-        match started {
-            Ok(_child) => Ok(()),
+        match temor_desktop::SystemOpen::open(path) {
+            Ok(()) => Ok(()),
             Err(err) if err.kind() == io::ErrorKind::NotFound => {
                 Err(SystemError::NoOpener(path.to_path_buf()).into())
             }

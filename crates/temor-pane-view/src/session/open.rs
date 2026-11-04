@@ -60,6 +60,7 @@ impl Session {
             keymap: kit.keymap,
             clipboard: kit.clipboard,
             opener: kit.opener,
+            notifier: kit.notifier,
             fit: None,
             layout: None,
             scale: Scale::new(1.0),
@@ -75,8 +76,7 @@ impl Session {
             ann: temor_client::model::session::Annotations::default(),
             pointer_over: None,
             link_hover: None,
-            list_map: None,
-            live_ground: None,
+            list: None,
             composer: Default::default(),
             blink: super::blink::Blink {
                 setting: kit.cursor_blink,

@@ -4,7 +4,7 @@ use std::convert::Infallible;
 const BEYOND: bool = true;
 const WITHIN: bool = false;
 use super::*;
-use crate::font::Slot;
+use crate::font::TEST_GLYPH;
 use crate::scene::{Premul, Quad};
 
 fn rows(of: &[u16]) -> Vec<Row> {
@@ -113,9 +113,9 @@ fn quad(y: i32, h: u32, paint: QuadPaint) -> Quad {
 
 #[test]
 fn only_glyphs_that_leave_the_row_overhang() {
-    let slot = Slot::default();
+    let glyph = TEST_GLYPH;
     let mask = QuadPaint::Mask {
-        slot,
+        glyph,
         color: Premul([255; 4]),
     };
     let solid = QuadPaint::Solid(Premul([255; 4]));
@@ -127,7 +127,7 @@ fn only_glyphs_that_leave_the_row_overhang() {
         ("below", quad(112, 10, mask), BEYOND),
         (
             "a colour glyph below",
-            quad(112, 10, QuadPaint::Color { slot }),
+            quad(112, 10, QuadPaint::Color { glyph }),
             BEYOND,
         ),
         ("a rule is not a glyph", quad(90, 40, solid), WITHIN),

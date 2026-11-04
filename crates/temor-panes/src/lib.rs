@@ -16,6 +16,7 @@ mod open;
 pub mod remote;
 pub mod report_socket;
 pub mod sources;
+pub mod start;
 
 use std::path::PathBuf;
 
@@ -28,19 +29,60 @@ use temor_vt::Progress;
 use blocks::BlockLog;
 use clipboard::PendingClipboard;
 use clock::Clock;
-use notify::Notifier;
 use sources::Sources;
 
 // The terminal engine, for the window that draws and types into the panes: the pane engine, the
 // terminal, its renderer, the pseudo-terminal and the shell integration. The window names them
-// through here and no other way (PLAN §2b, the fence; decided 2026-10-28).
-pub use temor_pane as pane;
-pub use temor_pty as pty;
-pub use temor_render as render;
-pub use temor_shell as shell;
-pub use temor_vt as vt;
+// through here and no other way (PLAN §2b, the fence; decided 2026-10-28), and only what is
+// listed: a new item the window needs is added here, where it is seen, never a whole crate.
 
-pub use hear::{Heard, desktop_note};
+/// The pane engine: a pane's handle and events, its text, keys, settings and paste rules.
+pub mod pane {
+    pub use temor_pane::{
+        ByteTap, CommandLine, EventSink, FedSpec, Feeder, OfferId, OfferKind, PaintSource,
+        PaneError, PaneEvent, PaneHandle, PaneLink, PaneSpec, ReadPolicy, RenderHold,
+        SeenForeground, SettingsError, ShellPaneInput, Term, TransferEnd, TransferEvent,
+        TransferSetup, cursor_shape, keys, paste, report, settings, shell_pane, text,
+    };
+}
+
+/// The pseudo-terminal: how a pane's program is started and how it ended.
+pub mod pty {
+    pub use temor_pty::{
+        ChildExit, ProgramVersion, PtyError, SessionLauncher, base_env, find_program, login_shell,
+    };
+}
+
+/// The renderer: fonts, the palette, the grid's fit and the frame a pane is painted into.
+pub mod render {
+    pub use temor_render::{
+        BlinkPhase, CapturedFrame, CellHit, CellMetrics, CellPos, CpuRenderer, Fold, FontConfig,
+        FontFamily, FontSet, FontSize, FontSource, FrameCapture, GridFit, HitRegion, LayoutParams,
+        LineHeight, Padding, Palette, PaneFocus, PaneFrame, PaneView, Pin, PixelSize, RenderError,
+        Renderer, RowLayout, SYMBOL_FAMILIES, Scale, Screen, SelectionOverlay, fit_grid,
+        font_catalog, warm_font_catalog,
+    };
+}
+
+/// The shell integration: a pane's environment, the scripts, completion and reports.
+pub mod shell {
+    pub use temor_shell::{
+        ChildEnv, ShellKind, alias_script, complete, integration_scripts, report, suggest,
+    };
+}
+
+/// The terminal: its grid's units, keys and mouse, selection, progress and snapshots.
+pub mod vt {
+    pub use temor_vt::{
+        AnchorId, CellPx, ClipboardLocation, ClipboardRead, ClipboardWrite, Col, GridPoint,
+        GridSize, KeyAction, KeyCode, KeyInput, KittyKeyFlags, LineCount, Modifiers, MouseAction,
+        MouseButton, MouseInput, PointSpace, ProgramState, ProgramStatus, ProgramWait, Progress,
+        ProgressState, Px, Rgb, Row, RowCount, RowDelta, SelectionShape, Snapshot, StyledCell,
+        SurfacePoint, TextSelection, ViewportScroll, paste_is_safe,
+    };
+}
+
+pub use hear::{Heard, PaneEffect, desktop_note};
 pub use heard::sanitise_title;
 pub use hearing::{Hearing, Locked, Shared, share};
 pub use open::{OpenError, PaneKit};
@@ -71,11 +113,9 @@ pub struct PaneCore {
     pub sources: Sources,
     /// The pane's folder as the shell last said it, to run a completion in.
     pub folder: Option<std::path::PathBuf>,
-    pub cwd: Option<String>,
     pub progress: Option<Progress>,
     pub notify_after: NotifyAfter,
     pub limiter: Limiter,
-    pub notifier: Box<dyn Notifier>,
     pub clock: Box<dyn Clock>,
     pub shelf_dir: PathBuf,
     /// How the pane's shell quotes a word, for pasting dropped paths.
@@ -94,9 +134,9 @@ pub struct PaneCore {
     /// that does not say what it runs (nushell) shows a command of several lines on rows the
     /// screen cannot give back.
     pub sent: Option<String>,
-    /// A message for the person from the pane (a notice the desktop refused), until the window
-    /// takes it.
-    pub said: Option<String>,
+    /// What the pane's steps have asked of the edges since the last event was heard, handed out
+    /// by [`PaneCore::hear`].
+    effects: Vec<PaneEffect>,
 }
 
 /// Whether the program is still running, and how it ended if not.
@@ -111,7 +151,7 @@ impl std::fmt::Debug for PaneCore {
         f.debug_struct("PaneCore")
             .field("title", &self.title)
             .field("lifetime", &self.lifetime)
-            .field("cwd", &self.cwd)
+            .field("folder", &self.folder)
             .finish_non_exhaustive()
     }
 }

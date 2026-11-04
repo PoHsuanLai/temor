@@ -25,7 +25,7 @@ fn run(from: Edit, inputs: &[EditIn]) -> (Edit, Vec<EditOut>) {
 fn a_save_is_checked_against_the_host_then_written_back() {
     let v2 = stat(200, 12);
     let (state, outs) = run(
-        Edit::Opening,
+        Edit::Opening { shown: false },
         &[
             EditIn::Fetched { stat: V1 },
             EditIn::LocalSaved,
@@ -39,7 +39,7 @@ fn a_save_is_checked_against_the_host_then_written_back() {
         vec![
             EditOut::OpenLocal,
             EditOut::Check,
-            EditOut::Store,
+            EditOut::Store { overwrite: false },
             EditOut::Saved
         ]
     );
@@ -62,14 +62,15 @@ fn saves_made_during_a_write_back_are_written_in_turn() {
         state,
         Edit::Checking {
             base: v2,
-            queued: false
+            queued: false,
+            closing: false,
         }
     );
     assert_eq!(
         outs,
         vec![
             EditOut::Check,
-            EditOut::Store,
+            EditOut::Store { overwrite: false },
             EditOut::Saved,
             EditOut::Check
         ]
@@ -119,13 +120,14 @@ fn a_conflict_waits_for_the_person_and_each_choice_does_what_it_says() {
             Edit::Uploading {
                 base: V1,
                 queued: false,
+                closing: false,
             },
-            vec![EditOut::Store],
+            vec![EditOut::Store { overwrite: true }],
         ),
         (
             "take the host's",
             Resolution::TakeRemote,
-            Edit::Opening,
+            Edit::Opening { shown: true },
             vec![EditOut::Fetch],
         ),
         ("later", Resolution::Later, Edit::Open { base: V1 }, vec![]),
@@ -151,6 +153,7 @@ fn a_write_the_host_refuses_as_changed_asks_the_person_and_never_lands() {
     let uploading = Edit::Uploading {
         base: V1,
         queued: true,
+        closing: false,
     };
     let cases = [
         (
@@ -201,6 +204,7 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
             Edit::Checking {
                 base: V1,
                 queued: false,
+                closing: false,
             },
         ),
         (
@@ -208,6 +212,7 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
             Edit::Uploading {
                 base: V1,
                 queued: true,
+                closing: false,
             },
         ),
     ] {
@@ -224,7 +229,8 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
                 (
                     Edit::Checking {
                         base: V1,
-                        queued: false
+                        queued: false,
+                        closing: false,
                     },
                     vec![EditOut::Check]
                 ),
@@ -232,24 +238,144 @@ fn a_failed_call_stalls_the_edit_and_a_save_or_retry_starts_over() {
             );
         }
     }
-    let (broken, outs) = edit_step(Edit::Opening, EditIn::FetchGone);
+    let (broken, outs) = edit_step(Edit::Opening { shown: false }, EditIn::FetchGone);
     assert_eq!(broken, Edit::Broken(EditFault::Gone));
     assert_eq!(outs, vec![EditOut::Report(EditFault::Gone)]);
 }
 
 #[test]
-fn closing_stops_the_watch_and_late_replies_are_ignored() {
-    let (closed, outs) = edit_step(
-        Edit::Uploading {
-            base: V1,
-            queued: false,
-        },
-        EditIn::Closed,
+fn done_closes_at_once_waits_for_a_save_on_its_way_and_never_drops_a_conflict() {
+    let v2 = stat(200, 12);
+    let uploading = |queued| Edit::Uploading {
+        base: V1,
+        queued,
+        closing: false,
+    };
+    let closed = vec![EditOut::StopWatching, EditOut::Discard];
+    // Name, the edit, the inputs from Done on, the state after, every output.
+    let cases = [
+        (
+            "nothing on its way",
+            Edit::Open { base: V1 },
+            vec![EditIn::Done],
+            Edit::Closed,
+            closed.clone(),
+        ),
+        (
+            "a save that gets there",
+            uploading(false),
+            vec![EditIn::Done, EditIn::Stored { stat: v2 }],
+            Edit::Closed,
+            [vec![EditOut::Saved], closed.clone()].concat(),
+        ),
+        (
+            "a save with another queued: both go first",
+            uploading(true),
+            vec![
+                EditIn::Done,
+                EditIn::Stored { stat: v2 },
+                EditIn::Checked(RemoteState::Present(v2)),
+                EditIn::Stored { stat: V1 },
+            ],
+            Edit::Closed,
+            [
+                vec![
+                    EditOut::Saved,
+                    EditOut::Check,
+                    EditOut::Store { overwrite: false },
+                    EditOut::Saved,
+                ],
+                closed.clone(),
+            ]
+            .concat(),
+        ),
+        (
+            "a save that fails keeps the copy",
+            uploading(false),
+            vec![EditIn::Done, EditIn::Failed(EditFault::NoConnection)],
+            Edit::Stalled { base: V1 },
+            vec![EditOut::Report(EditFault::NoConnection), EditOut::Kept],
+        ),
+        (
+            "a save the host refuses keeps the copy and asks",
+            uploading(false),
+            vec![EditIn::Done, EditIn::Conflicted(Found::Deleted)],
+            Edit::Conflict {
+                base: V1,
+                found: Found::Deleted,
+            },
+            vec![EditOut::AskConflict(Found::Deleted), EditOut::Kept],
+        ),
+        (
+            "a choice that is open",
+            Edit::Conflict {
+                base: V1,
+                found: Found::Deleted,
+            },
+            vec![EditIn::Done],
+            Edit::Conflict {
+                base: V1,
+                found: Found::Deleted,
+            },
+            vec![EditOut::ChooseFirst],
+        ),
+        (
+            "a late reply after closing",
+            Edit::Closed,
+            vec![EditIn::Stored { stat: v2 }],
+            Edit::Closed,
+            vec![],
+        ),
+    ];
+    for (name, from, inputs, want, outs) in cases {
+        assert_eq!(run(from, &inputs), (want, outs), "{name}");
+    }
+    // A Done that was waiting is over once the save did not get there: the next save does not
+    // close the edit.
+    let (stalled, _) = run(
+        uploading(false),
+        &[EditIn::Done, EditIn::Failed(EditFault::NoConnection)],
     );
-    assert_eq!((closed, outs), (Edit::Closed, vec![EditOut::StopWatching]));
+    let (state, _) = run(
+        stalled,
+        &[
+            EditIn::Retry,
+            EditIn::Checked(RemoteState::Present(V1)),
+            EditIn::Stored { stat: v2 },
+        ],
+    );
+    assert_eq!(state, Edit::Open { base: v2 });
+}
+
+#[test]
+fn the_copy_is_opened_once_and_taking_the_hosts_file_replaces_it_in_place() {
+    let changed = Found::Changed(stat(150, 10));
+    let (state, outs) = run(
+        Edit::Opening { shown: false },
+        &[
+            EditIn::Fetched { stat: V1 },
+            EditIn::LocalSaved,
+            EditIn::Checked(RemoteState::Present(stat(150, 10))),
+            EditIn::Resolved(Resolution::TakeRemote),
+            EditIn::Fetched {
+                stat: stat(150, 10),
+            },
+        ],
+    );
     assert_eq!(
-        edit_step(closed, EditIn::Stored { stat: stat(1, 1) }),
-        (Edit::Closed, vec![])
+        state,
+        Edit::Open {
+            base: stat(150, 10)
+        }
+    );
+    assert_eq!(
+        outs,
+        vec![
+            EditOut::OpenLocal,
+            EditOut::Check,
+            EditOut::AskConflict(changed),
+            EditOut::Fetch
+        ]
     );
 }
 

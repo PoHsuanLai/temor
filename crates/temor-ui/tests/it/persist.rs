@@ -1,13 +1,11 @@
 //! The session file and its save pacing, in scratch folders. Nothing touches the real state dir.
 
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 use temor_client::keep::older::{
     Startup, load as load_session, load_hosts, resolve_state_dir, save as save_session,
     save_with_hosts,
 };
-use temor_client::keep::{Pace, SavePace};
 use temor_client::model::host::consent::{ConsentBook, HostRecord};
 use temor_client::model::host::store::{HostsFile, PaneHost};
 use temor_client::model::split::Direction;
@@ -145,31 +143,6 @@ fn a_newer_file_is_left_alone_even_when_saving() {
         std::fs::read_to_string(dir.path().join("session.json")).unwrap(),
         text
     );
-}
-
-#[test]
-fn saves_are_paced_to_one_per_interval_and_owed_at_quit() {
-    let t0 = Instant::now();
-    let s = Duration::from_secs;
-    let mut pace = SavePace::new(s(1));
-    assert_eq!(pace.poll(t0), Pace::Idle);
-    pace.changed();
-    assert_eq!(
-        pace.poll(t0),
-        Pace::WriteNow,
-        "the first change writes at once"
-    );
-    pace.wrote(t0);
-    pace.changed();
-    assert_eq!(
-        pace.poll(t0 + Duration::from_millis(400)),
-        Pace::WaitFor(Duration::from_millis(600))
-    );
-    assert_eq!(pace.poll(t0 + s(1)), Pace::WriteNow);
-    pace.wrote(t0 + s(1));
-    assert!(!pace.owed());
-    pace.changed();
-    assert!(pace.owed(), "a change not yet written is owed at quit");
 }
 
 #[test]

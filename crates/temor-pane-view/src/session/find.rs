@@ -123,7 +123,7 @@ impl Session {
         self.selection = Some(selection);
         self.mirror_selection()?;
         let (top, len) = self.pane.with_term(|term| term.viewport())?;
-        if self.list_map.is_none() && (found.row < top || found.row >= top.saturating_add(len)) {
+        if self.list.is_none() && (found.row < top || found.row >= top.saturating_add(len)) {
             self.pane.with_term(|term| {
                 term.scroll(temor_panes::vt::ViewportScroll::Row(
                     temor_panes::vt::RowCount(u64::from(found.row)),

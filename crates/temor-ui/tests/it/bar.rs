@@ -9,7 +9,7 @@ use ds::base::vocab::ShortcutKey;
 
 use ds::window::vocab::PageZoom;
 use ds_harness::{FocusState, Harness, Input, WindowHosting};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, focus_pane, panes, rows, started, type_line, type_text, wait_until};
 use super::window::harness_hosting;

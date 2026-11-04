@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::SchemaError;
 use crate::ids::BlockId;
+use crate::time::UnixMillis;
 use crate::url::Host;
 
 /// A session's lasting id: 64 bits the store draws at random, written as 16 lowercase hex digits.
@@ -60,13 +61,6 @@ impl TryFrom<String> for SessionId {
     }
 }
 
-/// A moment on the wall clock, in milliseconds since the Unix epoch.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
-)]
-#[serde(transparent)]
-pub struct At(pub i64);
-
 /// One session as history keeps it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Session {
@@ -77,9 +71,9 @@ pub struct Session {
     pub folder: String,
     /// The program it was started to run; none for the person's shell.
     pub program: Option<String>,
-    pub started: At,
+    pub started: UnixMillis,
     /// When it ended; none while it runs, or if temor stopped before it said.
-    pub ended: Option<At>,
+    pub ended: Option<UnixMillis>,
 }
 
 /// One command a session ran, as history keeps it: what was typed and where, how it ended and
@@ -95,8 +89,8 @@ pub struct RanCommand {
     pub folder: String,
     /// Its exit status; none while it runs, or when the shell did not say.
     pub exit: Option<i32>,
-    pub started: At,
-    pub ended: Option<At>,
+    pub started: UnixMillis,
+    pub ended: Option<UnixMillis>,
 }
 
 #[cfg(test)]

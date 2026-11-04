@@ -107,14 +107,14 @@ fn glyph_quad(g: &RunGlyph, at: (i32, i32), color: Premul) -> Quad {
     Quad {
         x: at.0 + g.dx,
         y: at.1 + g.dy,
-        w: g.slot.w,
-        h: g.slot.h,
-        paint: match g.kind {
+        w: g.w,
+        h: g.h,
+        paint: match g.key.kind() {
             GlyphKind::Mask => QuadPaint::Mask {
-                slot: g.slot,
+                glyph: g.key,
                 color,
             },
-            GlyphKind::Color => QuadPaint::Color { slot: g.slot },
+            GlyphKind::Color => QuadPaint::Color { glyph: g.key },
         },
     }
 }

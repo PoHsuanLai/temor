@@ -1,16 +1,10 @@
 //! The machine's states, events and effects.
 
 use super::policy::Attempt;
-use crate::ids::SessionId;
+use crate::ids::RemoteSessionId;
 
-/// A point on the caller's monotonic clock, in milliseconds since whatever origin the caller
-/// picked. The step never reads a clock itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Monotonic(pub u64);
-
-/// A length of time in milliseconds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Millis(pub u64);
+/// The step never reads a clock itself: it is handed the caller's.
+pub use temor_schema::time::{Millis, Monotonic};
 
 /// Where the link is.
 ///
@@ -21,12 +15,12 @@ pub enum LinkState {
     /// Connected, with these sessions on the host.
     Connected {
         /// The sessions to reattach if the link drops.
-        sessions: Vec<SessionId>,
+        sessions: Vec<RemoteSessionId>,
     },
     /// Waiting to dial again.
     Backoff {
         /// The sessions to reattach.
-        sessions: Vec<SessionId>,
+        sessions: Vec<RemoteSessionId>,
         /// The attempt this wait leads to.
         attempt: Attempt,
         /// How long the wait is.
@@ -37,7 +31,7 @@ pub enum LinkState {
     /// Dialing, through the helper's handshake and session reattach.
     Reattaching {
         /// The sessions to reattach.
-        sessions: Vec<SessionId>,
+        sessions: Vec<RemoteSessionId>,
         /// The attempt in progress.
         attempt: Attempt,
     },
@@ -95,7 +89,7 @@ pub enum LinkEvent {
     /// The sessions the host holds changed while the link was up or down.
     SessionsChanged {
         /// The sessions now.
-        sessions: Vec<SessionId>,
+        sessions: Vec<RemoteSessionId>,
     },
     /// The person closed the connection.
     Close,
@@ -120,6 +114,6 @@ pub enum LinkEffect {
     /// Reattach these sessions on the new link, in this order.
     Attach {
         /// The sessions.
-        sessions: Vec<SessionId>,
+        sessions: Vec<RemoteSessionId>,
     },
 }

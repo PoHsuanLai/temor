@@ -7,7 +7,7 @@ use temor_core::vocab::ids::PaneId;
 use temor_core::vocab::text::HelperHash;
 use temor_pane::Feeder;
 use temor_ssh::HostAlias;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{ListeningPort, Palette};
 
 use crate::remote::link::SharedTarget;
@@ -57,7 +57,7 @@ pub enum RemoteEvent {
         host: HostAlias,
         generation: Generation,
         pane: PaneId,
-        session: SessionId,
+        session: RemoteSessionId,
     },
     AttachFailed {
         host: HostAlias,
@@ -75,7 +75,7 @@ pub enum RemoteEvent {
     Exited {
         host: HostAlias,
         generation: Generation,
-        session: SessionId,
+        session: RemoteSessionId,
     },
     /// The connection ended.
     Closed {
@@ -103,11 +103,11 @@ pub enum Wanted {
         shell: Option<String>,
     },
     /// The session the pane had before the link dropped.
-    Again(SessionId),
+    Again(RemoteSessionId),
     /// The session the pane had when temor was last quit: adopted if the host still holds it,
     /// else a new one in `cwd` with `env`.
     Resume {
-        session: SessionId,
+        session: RemoteSessionId,
         cwd: String,
         env: Vec<(String, String)>,
         shell: Option<String>,

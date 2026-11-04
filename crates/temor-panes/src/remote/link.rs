@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_pane::PaneLink;
 use temor_vt::{CellPx, GridSize};
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::units::{CellPx as WireCell, Size};
 
 use temor_client::remote::calls::{grid_size, input, resize, wire_cell};
@@ -20,7 +20,7 @@ use temor_client::remote::hold::Hold;
 #[derive(Debug)]
 pub struct Target {
     pub conn: Option<Arc<Conn>>,
-    pub session: Option<SessionId>,
+    pub session: Option<RemoteSessionId>,
     pub size: Size,
     pub cell: WireCell,
     pub held: Hold,

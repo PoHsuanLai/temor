@@ -114,3 +114,25 @@ fn a_lost_master_ends_the_connection_and_the_next_pane_probes_again() {
         (Master::Down, vec![])
     );
 }
+
+#[test]
+fn a_master_nobody_uses_is_probed_again_before_the_next_pane_joins_it() {
+    let (state, outs) = run(Master::Up, &[MasterIn::Revalidate, wanted(5)]);
+    assert_eq!(
+        state,
+        Master::Probing {
+            first: PaneId(5),
+            waiting: vec![]
+        }
+    );
+    assert_eq!(outs, vec![MasterOut::Probe]);
+    // Only an Up master is asked about again: one being made is left alone.
+    let connecting = Master::Connecting {
+        first: PaneId(1),
+        waiting: vec![],
+    };
+    assert_eq!(
+        run(connecting.clone(), &[MasterIn::Revalidate]).0,
+        connecting
+    );
+}

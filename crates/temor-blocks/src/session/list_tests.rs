@@ -36,8 +36,8 @@ fn read(top: u32, len: u32, cursor: Option<u32>, blocks: Vec<BlockRead>) -> Read
     }
 }
 
-fn plain(_: BlockId) -> BlockFacts {
-    BlockFacts::default()
+fn plain(_: BlockId) -> BlockMarks {
+    BlockMarks::default()
 }
 
 fn outputs(items: &[Item]) -> Vec<(ItemKey, Range<u32>)> {
@@ -119,7 +119,7 @@ fn a_running_block_wholly_in_view_is_live_from_its_first_row() {
 fn a_folded_block_shows_no_rows_and_a_failed_one_keeps_its_outcome() {
     let mut b = done(1, 0, 6);
     b.outcome = Outcome::Failed(ExitCode(2));
-    let items = list_of(&read(0, 24, None, vec![b]), |_| BlockFacts {
+    let items = list_of(&read(0, 24, None, vec![b]), |_| BlockMarks {
         folded: true,
         bookmarked: true,
     });
@@ -154,15 +154,16 @@ fn the_composer_holds_the_prompt_rows_through_the_cursor() {
 
 #[test]
 fn a_sessions_kept_commands_become_cards_with_how_each_went() {
-    use temor_schema::session::{At, RanCommand, SessionId};
+    use temor_schema::session::{RanCommand, SessionId};
+    use temor_schema::time::UnixMillis;
     let ran = |block, command: &str, exit, ended: Option<i64>| RanCommand {
         session: SessionId::from_bits(7),
         block: BlockId(block),
         command: command.to_owned(),
         folder: "/w".to_owned(),
         exit,
-        started: At(1_000),
-        ended: ended.map(At),
+        started: UnixMillis(1_000),
+        ended: ended.map(UnixMillis),
     };
     let cards = kept_cards(&[
         ran(4, "ls", Some(0), Some(1_250)),

@@ -9,4 +9,4 @@ mod tests;
 pub use helper::{
     CacheDir, HelperIn, HelperOut, HelperState, HostArch, HostOs, Probe, helper_step,
 };
-pub use model::{Grant, Host, HostConsent, RemoteSession, RemoteTier};
+pub use model::Grant;

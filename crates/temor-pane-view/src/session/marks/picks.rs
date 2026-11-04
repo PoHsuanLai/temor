@@ -32,11 +32,6 @@ impl Session {
         self.ann.picked_in(&self.pick_order())
     }
 
-    /// Whether `id` is picked.
-    pub fn block_picked(&self, id: BlockId) -> bool {
-        self.ann.is_picked(id)
-    }
-
     /// Changes the picks, folds and bookmarks by `input`, and does what the step asks for.
     pub(in crate::session) fn annotate(&mut self, input: AnnotateIn) {
         let (ann, outs) = annotate_step(std::mem::take(&mut self.ann), input);

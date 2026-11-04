@@ -1,6 +1,8 @@
 //! Fonts: discovery (fontique), shaping and rasterising (swash, vello_cpu for COLR), the glyph
-//! atlases, and the procedural box drawing.
+//! cache, the GPU's glyph atlases, and the procedural box drawing.
 
+#[cfg(any(feature = "gpu", test))]
+#[cfg_attr(not(feature = "gpu"), allow(dead_code))]
 mod atlas;
 mod boxdraw;
 mod cache;
@@ -16,11 +18,12 @@ mod set;
 #[cfg(test)]
 mod tests;
 #[cfg(feature = "gpu")]
-pub(crate) use atlas::AtlasCopy;
-#[cfg(any(feature = "gpu", test))]
-pub(crate) use atlas::AtlasFormat;
-pub(crate) use atlas::{Atlas, Slot};
-pub(crate) use cache::{BUILD_ATTEMPTS, GlyphCache, GlyphKind, RunGlyph};
+pub(crate) use atlas::Atlases;
+#[cfg(feature = "gpu")]
+pub(crate) use atlas::{Atlas, AtlasCopy, AtlasFormat, Overflow};
+#[cfg(test)]
+pub(crate) use cache::TEST_GLYPH;
+pub(crate) use cache::{GlyphCache, GlyphKey, GlyphKind, RunGlyph};
 pub use catalog::{FontCatalog, font_catalog, warm_font_catalog};
 pub(crate) use config::{FaceStyle, Slant, Weight};
 pub use config::{FontConfig, FontFamily, FontSource};

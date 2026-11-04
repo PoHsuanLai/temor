@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use temor_remote::Error;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::RemoteError;
 
 use crate::remote::event::{AttachFault, Ticket, Wanted};
@@ -21,7 +21,7 @@ pub fn attach_pane(
     conn: &Arc<Conn>,
     router: &Router,
     ticket: Ticket,
-) -> Result<SessionId, AttachFault> {
+) -> Result<RemoteSessionId, AttachFault> {
     let client = conn.client();
     let (size, cell) = {
         let target = lock(&ticket.target);
@@ -73,7 +73,7 @@ pub fn attach_pane(
 /// Points the pane's input at `session`. What was typed while there was no link goes first, in
 /// order; the target is published only once nothing more is held, so a key typed meanwhile
 /// cannot overtake it.
-fn publish(target: &SharedTarget, conn: &Arc<Conn>, session: SessionId) {
+fn publish(target: &SharedTarget, conn: &Arc<Conn>, session: RemoteSessionId) {
     loop {
         let held = {
             let mut target = lock(target);

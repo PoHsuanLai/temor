@@ -2,14 +2,13 @@
 //! shelf lists them under the downloads: each is "sending", then "sent" or says why not. Pure;
 //! the window starts the copy, tells this how many bytes have gone, and when it ends.
 
-use super::view::human_size;
-use temor_core::vocab::ids::Bytes;
+use temor_core::vocab::ids::{Bytes, Counter};
 
 /// One upload, numbered in the order the drops arrived.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct UploadId(pub u64);
 
-/// Why a file did not get there. Each reads as a plain sentence.
+/// Why a file did not get there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UploadFault {
     /// A file of that name is already in the folder; nothing was replaced.
@@ -72,7 +71,7 @@ pub enum UploadIn {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Uploads {
     items: Vec<Upload>,
-    next: u64,
+    next: Counter,
 }
 
 impl Uploads {
@@ -83,7 +82,7 @@ impl Uploads {
 
     /// The id the next `Started` gets.
     pub fn next_id(&self) -> UploadId {
-        UploadId(self.next.saturating_add(1))
+        UploadId(self.next.0)
     }
 }
 
@@ -97,7 +96,8 @@ pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
             size,
         } => {
             let id = list.next_id();
-            list.next = id.0;
+            // With no id left the last one is given again, as a saturating count would.
+            let _ = list.next.take();
             list.items.insert(
                 0,
                 Upload {
@@ -135,32 +135,6 @@ pub fn upload_step(mut list: Uploads, input: UploadIn) -> Uploads {
     list
 }
 
-/// What a row says about the upload, in plain words.
-pub fn upload_detail(upload: &Upload) -> String {
-    let (host, folder) = (&upload.host, &upload.folder);
-    match upload.state {
-        UploadState::Sending if upload.sent.0 > 0 => format!(
-            "Sending to {host}, {folder}: {} of {}",
-            human_size(upload.sent),
-            human_size(upload.size)
-        ),
-        UploadState::Sending => format!("Sending to {host}, {folder}"),
-        UploadState::Sent => format!("Sent to {host}, {folder}"),
-        UploadState::Failed(UploadFault::Exists) => {
-            format!("{host} already has a file with this name in {folder}")
-        }
-        UploadState::Failed(UploadFault::NoConnection) => {
-            format!("The connection to {host} isn't running")
-        }
-        UploadState::Failed(UploadFault::Refused) => {
-            format!("{host} wouldn't take the file into {folder}")
-        }
-        UploadState::Failed(UploadFault::Unreadable) => {
-            "temor could not read the file here".to_owned()
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -189,10 +163,6 @@ mod tests {
             );
             assert_eq!(list.items()[0].sent, Bytes(shown), "after {sent}");
         }
-        assert_eq!(
-            upload_detail(&list.items()[0]),
-            "Sending to prod, /srv: 4.0 KB of 10.0 KB"
-        );
         list = upload_step(
             list,
             UploadIn::Progress {
@@ -263,21 +233,5 @@ mod tests {
         }
         let left: Vec<_> = list.items().iter().map(|u| u.id.0).collect();
         assert_eq!(left, [3], "one still sending stays");
-    }
-
-    #[test]
-    fn a_failure_says_what_to_do_about_it() {
-        let mut list = upload_step(Uploads::default(), started("a"));
-        list = upload_step(
-            list,
-            UploadIn::Ended {
-                id: UploadId(1),
-                result: Err(UploadFault::NoConnection),
-            },
-        );
-        assert_eq!(
-            upload_detail(&list.items()[0]),
-            "The connection to prod isn't running"
-        );
     }
 }

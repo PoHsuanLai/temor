@@ -1,7 +1,7 @@
 //! What a Space recalls (the `R` of `Spaces<P, R>`): its tabs, their folders and trees, and
 //! which tab was in front.
 
-use crate::split::SplitTree;
+use crate::split::{SplitTree, TreeState};
 use serde::{Deserialize, Deserializer, Serialize};
 use temor_core::vocab::ids::{FolderId, PaneId, TabId};
 use temor_core::vocab::text::{Cwd, Relaunch, TabTitle, ViewerRef};
@@ -124,6 +124,33 @@ pub struct Tab {
     pub folder: Option<FolderId>,
     /// Its panes.
     pub tree: SplitTree,
+    /// The pane with keys in it, when one was chosen; else its first pane (`focus`). Not part of
+    /// the stored tab: the session file keeps it in its own list.
+    #[serde(skip)]
+    pub focus: Option<PaneId>,
+}
+
+impl Tab {
+    /// The pane with keys in it: the chosen one while it is in the tree, else the first pane.
+    pub fn focus(&self) -> Option<PaneId> {
+        self.focus
+            .filter(|pane| self.tree.contains(*pane))
+            .or_else(|| self.tree.panes().first().copied())
+    }
+
+    /// Its panes and the one with keys, for a split step.
+    pub fn state(&self) -> Option<TreeState> {
+        Some(TreeState {
+            tree: self.tree.clone(),
+            focus: self.focus()?,
+        })
+    }
+
+    /// The tab with the panes and focus a split step left.
+    pub fn set_state(&mut self, state: TreeState) {
+        self.tree = state.tree;
+        self.focus = Some(state.focus);
+    }
 }
 
 /// A named group of tabs in the sidebar, Arc's: it may sit in another folder, and it is open

@@ -5,7 +5,7 @@ use temor_wire::hello::Capability;
 use temor_wire::message::{Event, Message};
 
 use super::core::Daemon;
-use crate::idle::{IdleVerdict, idle_step};
+use super::session::Command;
 use crate::sync::lock;
 
 impl Daemon {
@@ -25,18 +25,12 @@ impl Daemon {
             && self.accepted.load(std::sync::atomic::Ordering::SeqCst) == 0
     }
 
+    /// Each session looks at how long it has been detached; one kept too long is closed, not
+    /// only hung up, so its pump reaps it and kills what ignores the hangup (macOS's bash does,
+    /// idle at its prompt).
     fn sweep_idle(&self) {
-        let limit = *lock(&self.idle);
-        let now = self.config.clock.now();
         for session in self.registry.all() {
-            let Some(since) = session.detached_since() else {
-                continue;
-            };
-            if idle_step(limit, since, now) == IdleVerdict::End {
-                // Closed, not only hung up: the pump then reaps it and kills what ignores the hangup
-                // (macOS's bash does, idle at its prompt).
-                session.close();
-            }
+            session.send(Command::Tick);
         }
     }
 

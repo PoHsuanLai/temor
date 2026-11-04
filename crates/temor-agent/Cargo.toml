@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 temor-core = { workspace = true }
-temor-pane = { workspace = true, default-features = false }
+temor-schema = { workspace = true }
 ds-core = { workspace = true }
 serde = { workspace = true }
 
