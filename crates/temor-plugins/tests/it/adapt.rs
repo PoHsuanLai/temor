@@ -2,8 +2,8 @@
 
 use std::cell::{Cell, RefCell};
 
+use temor_plugins::PluginError;
 use temor_plugins::message::Phase;
-use temor_plugins::{Cancel, PluginError};
 
 use crate::support::{ALL, Host, launcher};
 
@@ -16,7 +16,7 @@ fn an_adapter_that_finishes_reports_its_states_in_order() {
         &host.plugin("a"),
         "claude",
         "/finish",
-        &|| Cancel::Go,
+        &|| false,
         &mut |phase, text| events.borrow_mut().push((phase, text)),
     );
     assert_eq!(done, Ok(()));
@@ -33,7 +33,7 @@ fn an_adapter_that_finishes_reports_its_states_in_order() {
 fn cancelling_stops_an_adapter_that_would_go_on() {
     let host = Host::new();
     host.install("a", &[], ALL);
-    let stop = Cell::new(Cancel::Go);
+    let stop = Cell::new(false);
     let done = launcher().adapt(
         &host.plugin("a"),
         "claude",
@@ -41,7 +41,7 @@ fn cancelling_stops_an_adapter_that_would_go_on() {
         &|| stop.get(),
         &mut |phase, _| {
             if phase == Phase::WaitingPermission {
-                stop.set(Cancel::Stop);
+                stop.set(true);
             }
         },
     );

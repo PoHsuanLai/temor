@@ -5,7 +5,7 @@
 //! the IME is the way in.
 
 use ds_harness::Input;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::drive::{chord, started, type_line, type_text, wait_until};
 

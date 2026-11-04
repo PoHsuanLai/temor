@@ -1,7 +1,7 @@
 //! `inline_file.bin`: two OSC 1337 `File=` sequences (BEL and ST terminated) are taken out before
 //! libghostty and reported, however the bytes are split across writes.
 
-use temor_vt::{Truncation, UnknownKind, VtEvent};
+use temor_vt::{UnknownKind, VtEvent};
 
 use crate::support::{drain, fixture, term};
 
@@ -16,7 +16,7 @@ fn run(chunk: usize) -> (Vec<Vec<u8>>, String) {
             VtEvent::Unknown {
                 kind: UnknownKind::Osc1337File,
                 payload,
-                truncation: Truncation::Complete,
+                truncated: false,
             } => payload,
             other => panic!("unexpected event {other:?}"),
         })

@@ -1,0 +1,112 @@
+//! Carrying out the row the person picked in the bar (PLAN §7, D6). Every row is the person's
+//! own pick. A command typed for them is sent with Enter only on the Run row, which says it
+//! will run; anything else waits at the prompt for their Enter.
+
+use temor_client::model::bar::{BarAction, BarRow, Target, Visits};
+use temor_client::model::vocab::text::{CommandText, Cwd};
+use temor_client::model::workspace::WorkspaceIn;
+
+use super::bar_action::select_tab;
+use super::hosts::HostRows;
+use super::model::Hub;
+use super::typing::{Submit, type_command};
+
+impl Hub {
+    /// Does what `row` says.
+    pub(super) fn run_bar_row(&mut self, row: BarRow) {
+        match row.action {
+            BarAction::NewTab => self.act(WorkspaceIn::NewTab { cwd: None }),
+            BarAction::Run(command) => self.command_in_new_tab(&command, Submit::Enter),
+            BarAction::Go(target) => self.go_to(target),
+            BarAction::Plugin { plugin, item } => self.plugin_pick(plugin, item),
+            ask @ (BarAction::Suggest(_) | BarAction::AskAgent(_) | BarAction::AskAbout(_)) => {
+                if let Err(why) = self.bar.seams.model.ask(&ask) {
+                    self.notices.push(why);
+                }
+            }
+        }
+    }
+
+    fn go_to(&mut self, target: Target) {
+        match target {
+            Target::Tab(tab) => self.act(select_tab(tab)),
+            Target::Closed(_) => self.act(WorkspaceIn::Reopen),
+            // The desk runs it once the bar's pick is over: an action needs the window.
+            Target::Action(action) => self.bar_actions.push(action),
+            Target::Folder(folder) => {
+                let first = self
+                    .book
+                    .ws()
+                    .tabs
+                    .place
+                    .tabs
+                    .iter()
+                    .find(|tab| tab.folder == Some(folder))
+                    .map(|tab| tab.id);
+                if let Some(tab) = first {
+                    self.act(select_tab(tab));
+                }
+            }
+            Target::Space(space) => {
+                if let Err(why) = self.bar.seams.spaces.go_to(space) {
+                    self.notices.push(why);
+                }
+            }
+            Target::Host(host) => {
+                let row = self.host_rows().into_iter().find(|row| {
+                    row.destination()
+                        .is_some_and(|d| d.as_str() == host.as_str())
+                });
+                match row {
+                    Some(row) => self.open_host(&row),
+                    None => self.open_host_named(host.as_str()),
+                }
+            }
+            Target::RecentCommand(command) => self.command_in_new_tab(&command, Submit::Wait),
+            Target::Directory { cwd, .. } => {
+                self.note_visit(&cwd);
+                self.act(WorkspaceIn::NewTab { cwd: Some(cwd) });
+            }
+            // A tab given a folder is never taken to the host: this computer's shell, at home.
+            Target::LocalTab => {
+                let home = self.launch.ambient.home.to_string_lossy().into_owned();
+                self.act(WorkspaceIn::NewTab {
+                    cwd: Some(Cwd(home)),
+                });
+            }
+            // Saved layouts are not stored anywhere yet, so none is offered.
+            Target::Layout(_) => {}
+        }
+    }
+
+    /// One more visit to `cwd`, at now.
+    fn note_visit(&mut self, cwd: &Cwd) {
+        let now = (self.bar.seams.now)();
+        let before = self
+            .bar
+            .visits
+            .get(cwd.as_str())
+            .copied()
+            .unwrap_or(Visits {
+                count: 0,
+                last: now,
+            });
+        self.bar
+            .visits
+            .insert(cwd.as_str().to_owned(), before.visited(now));
+    }
+
+    /// Opens a tab and types `command` into its shell. The tab's own pane gets it, whatever
+    /// has the keyboard (the bar can be open over the quick terminal). A tab that is not a shell
+    /// yet (a host still connecting) has no session to type into.
+    fn command_in_new_tab(&mut self, command: &CommandText, submit: Submit) {
+        let Some(pane) = self.open_tab(None) else {
+            return;
+        };
+        if let Some(slot) = self.panes.slot(pane)
+            && let Some(session) = slot.borrow().session.as_ref()
+        {
+            type_command(session, command, submit);
+        }
+    }
+}

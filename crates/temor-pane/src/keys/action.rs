@@ -89,14 +89,24 @@ pub enum Action {
     /// Open the list of downloaded files, or close it. No default chord: the command bar lists
     /// it, and the sidebar's head has its button.
     ShowDownloads,
-    /// Move the focused pane's running program to a pane of its own, and give this pane a new
-    /// shell with the same folder and variables. Only for a pane in the local daemon. No default
-    /// chord: the command bar lists it.
-    DetachProgram,
     /// Open the Settings window, or raise it (the standard "settings", ⌘,).
     Settings,
     /// Open the Settings window on this page. No chord: the command bar lists one row for each.
     SettingsAt(SettingsPane),
+    /// Open the page the row showed before this one, as a browser's Back does.
+    Back,
+    /// Open the page Back left, as a browser's Forward does.
+    Forward,
+    /// Open the history page (`temor://history`) on the row's stage, as a browser's ⌘Y does (⌥⇧⌘Y: ⌘Y is Quick Look's).
+    History,
+    /// Move the row's page out to a small window of its own, as Arc's Little Arc does.
+    PopOut,
+    /// Show the row's page alone.
+    ShowStage,
+    /// Show the row's terminal alone.
+    ShowConsole,
+    /// Show the row's page and its terminal side by side.
+    ShowStageAndConsole,
     /// Select the tab at this sidebar position, 1 to 9.
     SelectTab(u8),
     /// Switch to the Space at this position, 1 to 9 (the standard "switch to Space n"). It has
@@ -131,7 +141,13 @@ const APP_SLUGS: &[(Action, &str)] = &[
     (Action::PinTab, "pin-tab"),
     (Action::UnpinTab, "unpin-tab"),
     (Action::ShowDownloads, "show-downloads"),
-    (Action::DetachProgram, "detach-program"),
+    (Action::Back, "back"),
+    (Action::Forward, "forward"),
+    (Action::History, "history"),
+    (Action::PopOut, "pop-out"),
+    (Action::ShowStage, "show-stage"),
+    (Action::ShowConsole, "show-console"),
+    (Action::ShowStageAndConsole, "show-stage-and-console"),
 ];
 
 /// The actions that are chordkit's standard ones.
@@ -194,9 +210,15 @@ impl Action {
             Self::PinTab => "Pin tab",
             Self::UnpinTab => "Unpin tab",
             Self::ShowDownloads => "Downloads",
-            Self::DetachProgram => "Detach running program",
             Self::Settings => "Settings",
             Self::SettingsAt(pane) => pane.row_label(),
+            Self::Back => "Back",
+            Self::Forward => "Forward",
+            Self::History => "History",
+            Self::PopOut => "Pop out page",
+            Self::ShowStage => "Show page only",
+            Self::ShowConsole => "Show console only",
+            Self::ShowStageAndConsole => "Show page and console",
             Self::SelectTab(_) => "Select tab",
             Self::SelectSpace(_) => "Select Space",
         }

@@ -1,0 +1,34 @@
+[package]
+name = "temor-ui-base"
+description = "temor's window, its base: how it is launched and what it is given, the settings file, the edges it reads the system through, a pane's slot of window state, the look and the shared words."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyview-core = { workspace = true }
+anyview-fs = { workspace = true }
+anyview-peek = { workspace = true, features = ["pane"] }
+anyview-pane = { workspace = true }
+chordkit = { workspace = true }
+dioxus = { workspace = true }
+ds = { workspace = true }
+ds-blitz = { workspace = true }
+ds-core = { workspace = true }
+ds-settings = { workspace = true, features = ["dioxus"] }
+serde = { workspace = true }
+# temor, as the window may name it (PLAN §2b, the fence): its data and services through the
+# client, the running terminals and their engine through temor-panes, how a pane is shown
+# (temor-pane-view), the data's types.
+temor-client = { workspace = true }
+temor-panes = { workspace = true }
+temor-pane-view = { workspace = true }
+tempfile = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
+
+[lints]
+workspace = true

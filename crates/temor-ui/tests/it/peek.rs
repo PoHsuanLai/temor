@@ -8,7 +8,7 @@ use dioxus::html::Modifiers;
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input, PointerAction, PointerInput};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::block_list::composer_value;
 use super::support::tools_present;

@@ -82,14 +82,14 @@ pub struct SavedFile {
     pub size: Bytes,
 }
 
-/// How a session ended.
+/// How a transfer ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum EndWhy {
+pub enum TransferEnd {
     Finished,
     Refused,
     Cancelled,
     Failed,
+    /// The program ended or the pane closed first.
     Aborted,
 }
 
@@ -103,7 +103,7 @@ pub enum Effect {
     Reply(Reply),
     Write(WriteOp),
     Saved(SavedFile),
-    Ended(EndWhy),
+    Ended(TransferEnd),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,6 +1,7 @@
 //! The loop of a pane fed from elsewhere: the far end's output arrives as commands, nothing is
 //! polled (see `fed`).
 
+use std::ops::ControlFlow;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 
@@ -22,12 +23,6 @@ pub(super) struct FedSetup {
     pub palette: Palette,
 }
 
-/// Whether a fed pane's loop goes on.
-enum Flow {
-    Go,
-    Stop,
-}
-
 /// How long a fed pane waits for a command before looking at its transfers again.
 const FED_POLL: Duration = Duration::from_millis(100);
 
@@ -41,7 +36,7 @@ pub(super) fn pump_fed(mut io: Io) {
         };
         match io.commands.recv_timeout(wait) {
             Ok(command) => {
-                if let Flow::Stop = fed_command(&mut io, command) {
+                if fed_command(&mut io, command).is_break() {
                     return;
                 }
             }
@@ -50,7 +45,7 @@ pub(super) fn pump_fed(mut io: Io) {
             Err(RecvTimeoutError::Disconnected) => return abort_transfers(&mut io),
         }
         while let Ok(command) = io.commands.try_recv() {
-            if let Flow::Stop = fed_command(&mut io, command) {
+            if fed_command(&mut io, command).is_break() {
                 return;
             }
         }
@@ -61,11 +56,11 @@ pub(super) fn pump_fed(mut io: Io) {
     }
 }
 
-fn fed_command(io: &mut Io, command: Command) -> Flow {
+fn fed_command(io: &mut Io, command: Command) -> ControlFlow<()> {
     match command {
         Command::Shutdown => {
             abort_transfers(io);
-            return Flow::Stop;
+            return ControlFlow::Break(());
         }
         Command::Decide(offer, consent) => decide(io, offer, consent),
         Command::Serve(offer, consent, shelf) => serve(io, offer, consent, &shelf),
@@ -74,10 +69,10 @@ fn fed_command(io: &mut Io, command: Command) -> Flow {
         Command::End(exit) => {
             abort_transfers(io);
             send(io, PaneEvent::Exited(exit));
-            return Flow::Stop;
+            return ControlFlow::Break(());
         }
     }
-    Flow::Go
+    ControlFlow::Continue(())
 }
 
 fn abort_transfers(io: &mut Io) {

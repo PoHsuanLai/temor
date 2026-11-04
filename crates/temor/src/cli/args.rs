@@ -52,15 +52,15 @@ pub fn parse(args: &[OsString]) -> Option<Result<Command, UsageError>> {
 
 /// The words after the subcommand with options taken out (`--` ends options), and whether help
 /// was asked for.
-fn operands(rest: &[OsString]) -> Result<(Vec<&OsString>, Help), UsageError> {
+fn operands(rest: &[OsString]) -> Result<(Vec<&OsString>, bool), UsageError> {
     let mut out = Vec::new();
-    let mut help = Help::No;
+    let mut help = false;
     let mut options_over = false;
     for arg in rest {
         let text = arg.to_str();
         match (options_over, text) {
             (false, Some("--")) => options_over = true,
-            (false, Some("-h" | "--help")) => help = Help::Yes,
+            (false, Some("-h" | "--help")) => help = true,
             (false, Some(option)) if option.starts_with('-') && option != "-" => {
                 return Err(UsageError::UnknownOption(option.to_owned()));
             }
@@ -70,15 +70,9 @@ fn operands(rest: &[OsString]) -> Result<(Vec<&OsString>, Help), UsageError> {
     Ok((out, help))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Help {
-    Yes,
-    No,
-}
-
 fn save(rest: &[OsString]) -> Result<Command, UsageError> {
     let (files, help) = operands(rest)?;
-    if help == Help::Yes {
+    if help {
         return Ok(Command::Help);
     }
     if files.is_empty() {
@@ -91,7 +85,7 @@ fn save(rest: &[OsString]) -> Result<Command, UsageError> {
 
 fn get(rest: &[OsString]) -> Result<Command, UsageError> {
     let (names, help) = operands(rest)?;
-    if help == Help::Yes {
+    if help {
         return Ok(Command::Help);
     }
     match names.as_slice() {
@@ -108,7 +102,7 @@ fn get(rest: &[OsString]) -> Result<Command, UsageError> {
 
 fn view(rest: &[OsString]) -> Result<Command, UsageError> {
     let (files, help) = operands(rest)?;
-    if help == Help::Yes {
+    if help {
         return Ok(Command::Help);
     }
     match files.as_slice() {

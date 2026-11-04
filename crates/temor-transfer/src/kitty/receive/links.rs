@@ -6,18 +6,12 @@
 
 use super::helpers::{refuse, reply};
 use super::model::{Effect, OpenLink, ReceiveSession, WriteOp};
+use crate::kitty::ChunkEnd;
 use crate::kitty::model::{ErrorCode, FileId, KittyId, Message, ReplyStatus};
 use crate::name::RelPath;
 
 /// The longest link target kept, in bytes.
 const MAX_TARGET: usize = 4096;
-
-/// Whether a data frame carries the last of a link's target.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Last {
-    No,
-    Yes,
-}
 
 /// A link's header: its target follows as data.
 pub(super) fn open_link(
@@ -46,7 +40,7 @@ pub(super) fn on_link_data(
     id: &KittyId,
     file_id: FileId,
     message: Message,
-    last: Last,
+    chunk: ChunkEnd,
 ) -> (ReceiveSession, Vec<Effect>) {
     let mut next = session;
     let Some(mut link) = next.open_links.remove(&file_id) else {
@@ -68,7 +62,7 @@ pub(super) fn on_link_data(
         );
     }
     link.target.extend_from_slice(&message.data);
-    if last == Last::No {
+    if chunk == ChunkEnd::More {
         next.open_links.insert(file_id, link);
         return (next, Vec::new());
     }

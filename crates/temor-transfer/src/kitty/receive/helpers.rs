@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use super::model::{Effect, EndWhy, Phase, ReceiveSession, WriteOp};
+use super::model::{Effect, Phase, ReceiveSession, TransferEnd, WriteOp};
 use crate::kitty::model::{ErrorCode, FileId, KittyId, Reply, ReplyStatus};
 
 /// Answers with a failure for one entry and keeps the session going.
@@ -30,7 +30,7 @@ pub(super) fn close(
     session: ReceiveSession,
     id: &KittyId,
     status: ReplyStatus,
-    why: EndWhy,
+    why: TransferEnd,
 ) -> (ReceiveSession, Vec<Effect>) {
     let mut effects = discards(&session);
     effects.push(reply(id, None, status));

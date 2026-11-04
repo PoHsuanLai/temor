@@ -8,12 +8,12 @@ use temor_vt::{ImageId, KittyLayer};
 
 use super::GpuRenderer;
 use super::device::ensure_image;
-use super::frame::image_inst;
+use super::frame::{image_inst, insts};
 use super::groups::{Group, bind_group};
 use super::pipeline::Inst;
 use crate::error::RenderError;
 use crate::frame::PaneFrame;
-use crate::metrics::CellMetrics;
+use crate::scene::SceneInput;
 
 /// A kitty image to draw: its layer, id and instance index.
 type Draw = (KittyLayer, ImageId, u32);
@@ -33,23 +33,29 @@ impl GpuRenderer {
     pub(super) fn record(
         &mut self,
         frame: &PaneFrame,
-        origin: (i32, i32),
-        m: &CellMetrics,
+        input: &SceneInput<'_>,
         groups: Option<&[Group]>,
     ) -> Result<(wgpu::CommandBuffer, u32), RenderError> {
-        let spans: Vec<Range<usize>> = match groups {
-            Some(groups) => groups.iter().map(|g| g.rows.clone()).collect(),
-            None => std::iter::once(0..self.rows.len()).collect(),
-        };
-        let mut all: Vec<Inst> = self.rows.iter().flat_map(|r| r.0.iter().copied()).collect();
+        let (origin, m) = (input.origin, &input.metrics);
+        let mut all: Vec<Inst> =
+            insts(self.rows.iter().flat_map(|row| &row.bg), &self.atlas).collect();
         let bg = 0..all.len() as u32;
         let mut fg = Vec::new();
-        for span in spans {
+        let mut text = |all: &mut Vec<Inst>, insts: &mut dyn Iterator<Item = Inst>| {
             let from = all.len() as u32;
-            for row in self.rows.get(span).unwrap_or_default() {
-                all.extend(row.1.iter().copied());
-            }
+            all.extend(insts);
             fg.push(from..all.len() as u32);
+        };
+        match groups {
+            Some(groups) => {
+                for group in groups {
+                    text(&mut all, &mut group.fg.iter().copied());
+                }
+            }
+            None => {
+                let quads = self.rows.iter().flat_map(|row| &row.fg);
+                text(&mut all, &mut insts(quads, &self.atlas));
+            }
         }
         let mut draws: Vec<Draw> = Vec::new();
         let mut images_skipped = 0;
@@ -73,11 +79,11 @@ impl GpuRenderer {
         }
         self.images
             .retain(|id, _| frame.images.iter().any(|p| p.image.id == *id));
-        self.atlases
-            .sync(&self.device, &self.queue, &self.pipe, &mut self.glyphs);
+        self.on_device
+            .sync(&self.device, &self.queue, &self.pipe, &mut self.atlas);
         self.upload_instances(&all)?;
         let layout = Layout { draws, bg, fg };
-        let commands = self.encode(frame, &layout, groups)?;
+        let commands = self.encode(input.colors.background, &layout, groups)?;
         Ok((commands, images_skipped))
     }
 
@@ -103,7 +109,7 @@ impl GpuRenderer {
 
     fn encode(
         &self,
-        frame: &PaneFrame,
+        bg: temor_vt::Rgb,
         layout: &Layout,
         groups: Option<&[Group]>,
     ) -> Result<wgpu::CommandBuffer, RenderError> {
@@ -112,7 +118,6 @@ impl GpuRenderer {
         };
         let view = target.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());
-        let bg = frame.colors.background;
         let c = |v: u8| f64::from(v) / 255.0;
         let clear = wgpu::LoadOp::Clear(wgpu::Color {
             r: c(bg.r),
@@ -136,7 +141,7 @@ impl GpuRenderer {
         };
         let under_text = |pass: &mut wgpu::RenderPass<'_>| {
             pass.set_pipeline(&self.pipe.pipeline);
-            pass.set_bind_group(0, &self.atlases.bind, &[]);
+            pass.set_bind_group(0, &self.on_device.bind, &[]);
             pass.set_vertex_buffer(0, buf.slice(..));
             draw(pass, KittyLayer::BelowBackground);
             text(pass, &layout.bg);
@@ -163,7 +168,7 @@ impl GpuRenderer {
                 }
                 let mut pass = begin(&mut enc, &view, wgpu::LoadOp::Load);
                 pass.set_pipeline(&self.pipe.pipeline);
-                pass.set_bind_group(0, &self.atlases.bind, &[]);
+                pass.set_bind_group(0, &self.on_device.bind, &[]);
                 pass.set_vertex_buffer(0, buf.slice(..));
                 draw(&mut pass, KittyLayer::AboveText);
             }

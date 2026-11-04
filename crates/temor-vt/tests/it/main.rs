@@ -1,8 +1,6 @@
 //! temor-vt conformance: recorded byte streams in `tests/fixtures/*.bin`, each module pairing its
 //! fixtures with the outcomes libghostty must produce. A Ghostty pin bump must pass these.
 
-mod fake;
-
 #[cfg(feature = "ghostty")]
 mod support;
 
@@ -10,6 +8,7 @@ mod support;
 mod anchors;
 #[cfg(feature = "ghostty")]
 mod cells;
+#[cfg(feature = "ghostty")]
 mod colors;
 #[cfg(feature = "ghostty")]
 mod erases;

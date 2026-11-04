@@ -2,7 +2,7 @@
 
 use temor_vt::Rgb;
 
-use crate::font::Slot;
+use crate::font::GlyphKey;
 
 /// A premultiplied RGBA8 colour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -18,15 +18,26 @@ impl Premul {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum QuadPaint {
     Solid(Premul),
-    /// Coverage from the alpha atlas, times `color`.
+    /// A glyph's coverage, times `color`.
     Mask {
-        slot: Slot,
+        glyph: GlyphKey,
         color: Premul,
     },
-    /// Premultiplied texels from the colour atlas.
+    /// A colour glyph's premultiplied texels.
     Color {
-        slot: Slot,
+        glyph: GlyphKey,
     },
+}
+
+impl QuadPaint {
+    /// The glyph it draws, if any.
+    #[cfg(feature = "gpu")]
+    pub fn glyph(&self) -> Option<GlyphKey> {
+        match *self {
+            Self::Solid(_) => None,
+            Self::Mask { glyph, .. } | Self::Color { glyph } => Some(glyph),
+        }
+    }
 }
 
 /// A rectangle in device pixels from the pane's top-left.
@@ -63,5 +74,14 @@ impl RowScene {
     pub fn clear(&mut self) {
         self.bg.clear();
         self.fg.clear();
+    }
+
+    /// The glyphs its quads draw.
+    #[cfg(feature = "gpu")]
+    pub fn glyphs(&self) -> impl Iterator<Item = GlyphKey> + '_ {
+        self.bg
+            .iter()
+            .chain(&self.fg)
+            .filter_map(|q| q.paint.glyph())
     }
 }

@@ -102,3 +102,17 @@ fn a_program_background_change_redraws_the_padding_too() {
 fn rgb(c: temor_vt::Rgb) -> [u8; 3] {
     [c.r, c.g, c.b]
 }
+
+#[test]
+fn a_pane_on_a_ground_of_its_own_recomposes_only_what_changed() {
+    let mut pane = Pane::new(20, 6, 1.0, 14.0);
+    pane.ground = Some(temor_vt::Rgb::new(30, 32, 40));
+    pane.write(b"one\r\ntwo");
+    let first = pane.render(PaneFocus::Focused);
+    assert_eq!(first.stats.rows_composed, 6);
+    let idle = pane.render(PaneFocus::Focused);
+    assert_eq!(idle.stats.rows_composed, 0, "the ground is not a change");
+    pane.write(b"!");
+    let typed = pane.render(PaneFocus::Focused);
+    assert_eq!(typed.stats.rows_composed, 1);
+}

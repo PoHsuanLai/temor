@@ -2,7 +2,7 @@
 //! (type, range, options); this reads them into temor's own types and refuses what a window
 //! cannot hold.
 
-use crate::{LineRange, Network, PaneKind, PaneRef, Placement, PortRefusal};
+use crate::{LineRange, PaneKind, PaneRef, Placement, PortRefusal};
 use docket_core::{AppRefusal, Args, FailText, ParamName, Value};
 use std::path::PathBuf;
 
@@ -124,10 +124,10 @@ impl<'a> Reader<'a> {
     }
 
     /// The network a call asks for. Anything but `closed` reads as open, the cautious way.
-    pub(super) fn network(&self) -> Result<Network, AppRefusal> {
+    pub(super) fn network(&self) -> Result<bool, AppRefusal> {
         match self.choice("network")? {
-            None | Some("closed") => Ok(Network::Closed),
-            Some(_) => Ok(Network::Open),
+            None | Some("closed") => Ok(false),
+            Some(_) => Ok(true),
         }
     }
 

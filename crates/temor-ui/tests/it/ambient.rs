@@ -4,7 +4,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use temor_ui::edge::Ambient;
+use temor_ui_base::edge::Ambient;
 
 fn vars(pairs: &[(&str, &str)]) -> Vec<(OsString, OsString)> {
     pairs

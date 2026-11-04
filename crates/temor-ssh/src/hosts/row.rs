@@ -2,7 +2,7 @@
 
 use crate::config::{HostAlias, HostEntry};
 use crate::identity::{HostKey, NodeId};
-use crate::tailnet::{DirectHost, Presence, TailnetHost};
+use crate::tailnet::{DirectHost, TailnetHost};
 
 /// Which group of the list a row belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -85,7 +85,7 @@ impl HostRow {
 
     /// Whether the tailnet sees the machine; `None` for a host that is not a tailnet machine.
     /// The list shows offline machines dimmed.
-    pub fn presence(&self) -> Option<Presence> {
+    pub fn online(&self) -> Option<bool> {
         self.machine().map(|m| m.online)
     }
 

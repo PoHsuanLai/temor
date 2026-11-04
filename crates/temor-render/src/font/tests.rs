@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::atlas::{Atlases, Overflow};
 use super::face::{ColorFormat, FaceRole};
 use super::{FaceStyle, GlyphCache, GlyphKind, Slant, Weight};
 use crate::metrics::Scale;
@@ -22,12 +23,8 @@ fn the_named_family_gives_four_cuts_with_synthetic_italic() {
     let italic = set.face(set.primary(ITALIC));
     assert_eq!(regular.role, FaceRole::Primary);
     assert_ne!(set.primary(FaceStyle::REGULAR), set.primary(BOLD));
-    assert_eq!(bold.embolden, super::face::Embolden::No, "a real bold cut");
-    assert_eq!(
-        italic.skew,
-        super::face::Skew::Yes,
-        "Noto Sans Mono has no italic"
-    );
+    assert!(!bold.synth.embolden, "a real bold cut");
+    assert!(italic.synth.skew, "Noto Sans Mono has no italic");
 }
 
 #[test]
@@ -61,32 +58,69 @@ fn runs_are_cached_and_emoji_are_colour() {
     let mut cache = GlyphCache::new(fonts(14.0), Scale::new(1.0));
     let a = cache.run("a", FaceStyle::REGULAR, 1);
     assert_eq!(a.len(), 1);
-    assert_eq!(a[0].kind, GlyphKind::Mask);
+    assert_eq!(a[0].key.kind(), GlyphKind::Mask);
     assert!(Arc::ptr_eq(&a, &cache.run("a", FaceStyle::REGULAR, 1)));
     let smile = cache.run("😀", FaceStyle::REGULAR, 2);
     assert_eq!(smile.len(), 1);
-    assert_eq!(smile[0].kind, GlyphKind::Color);
-    assert_eq!(smile[0].slot.w, cache.metrics().width() * 2);
+    assert_eq!(smile[0].key.kind(), GlyphKind::Color);
+    assert_eq!(smile[0].w, cache.metrics().width() * 2);
     let tone = cache.run("👍\u{1f3fd}", FaceStyle::REGULAR, 2);
     assert_eq!(tone.len(), 1, "skin tone composes into one glyph");
     let space = cache.run("─", FaceStyle::REGULAR, 1);
     assert_eq!(
-        (space[0].slot.w, space[0].slot.h),
+        (space[0].w, space[0].h),
         (cache.metrics().width(), cache.metrics().height())
     );
 }
 
+/// A glyph is named by what it is drawn from, so a name handed out stays good: a cache that let
+/// its images go draws the same image from it again.
 #[test]
-fn a_full_atlas_clears_and_moves_the_epoch() {
-    let mut cache = GlyphCache::new(fonts(120.0), Scale::new(2.0));
-    let start = cache.epoch();
-    let text: Vec<String> = ('!'..='~').map(String::from).collect();
-    for t in text.iter().cycle().take(400) {
-        cache.run(t, FaceStyle::REGULAR, 1);
-        cache.run(t, BOLD, 1);
+fn a_glyphs_name_draws_the_same_image_after_the_cache_let_it_go() {
+    let mut cache = GlyphCache::new(fonts(14.0), Scale::new(1.0));
+    let mut kept = Vec::new();
+    for text in ["a", "😀", "─", "日"] {
+        for g in cache.run(text, FaceStyle::REGULAR, 2).iter() {
+            let image = cache.image(g.key).cloned();
+            assert!(image.is_some(), "{text}: a run's glyphs are kept");
+            kept.push((text, g.key, image));
+        }
     }
-    assert!(cache.epoch() > start);
-    assert!(!cache.run("A", FaceStyle::REGULAR, 1).is_empty());
+    // Away and back: everything kept at the first scale is let go.
+    cache.set_scale(Scale::new(2.0));
+    cache.set_scale(Scale::new(1.0));
+    for (text, key, image) in kept {
+        assert!(cache.image(key).is_none(), "{text}: let go");
+        assert_eq!(cache.image_of(key).cloned(), image, "{text}");
+    }
+}
+
+/// The atlases take the glyphs asked for until they are full, say so, and take them again once
+/// emptied; a glyph already in is not put in twice.
+#[test]
+fn the_atlases_take_glyphs_until_full_and_again_once_emptied() {
+    let mut cache = GlyphCache::new(fonts(120.0), Scale::new(2.0));
+    let mut atlases = Atlases::with_caps(256, 256);
+    let keys: Vec<_> = ('!'..='~')
+        .flat_map(|c| cache.run(&c.to_string(), FaceStyle::REGULAR, 1).to_vec())
+        .map(|g| g.key)
+        .collect();
+    let few = &keys[..4];
+    assert_eq!(atlases.resolve(few.iter().copied(), &mut cache), Ok(()));
+    let slots: Vec<_> = few.iter().map(|&k| atlases.slot(k)).collect();
+    assert!(slots.iter().all(Option::is_some));
+    assert_eq!(atlases.resolve(few.iter().copied(), &mut cache), Ok(()));
+    let again: Vec<_> = few.iter().map(|&k| atlases.slot(k)).collect();
+    assert_eq!(slots, again, "a glyph already in stays where it is");
+    assert_eq!(
+        atlases.resolve(keys.iter().copied(), &mut cache),
+        Err(Overflow),
+        "every printable glyph at 240 px does not fit 256 texel rows"
+    );
+    atlases.clear();
+    assert_eq!(atlases.clears(), 1);
+    assert!(few.iter().all(|&k| atlases.slot(k).is_none()));
+    assert_eq!(atlases.resolve(few.iter().copied(), &mut cache), Ok(()));
 }
 
 /// The line height scales the cell's height and leaves its width alone, at every scale, and the

@@ -3,7 +3,7 @@
 use proptest::prelude::*;
 use temor_transfer::Consent;
 use temor_transfer::kitty::{Input, ReceiveSession, parse_message};
-use temor_transfer::osc1337::{Completeness, Osc1337Reader};
+use temor_transfer::osc1337::Osc1337Reader;
 use temor_transfer::{FileName, HostName, Origin, RelPath};
 
 use crate::support::limits;
@@ -14,7 +14,7 @@ proptest! {
     #[test]
     fn random_bytes_never_panic_the_osc1337_reader(payload in proptest::collection::vec(any::<u8>(), 0..512)) {
         let mut reader = Osc1337Reader::new(limits(256));
-        let _ = reader.feed(&payload, Completeness::Whole);
+        let _ = reader.feed(&payload, false);
     }
 
     #[test]
@@ -30,8 +30,8 @@ proptest! {
         let mut payload = prefix.as_bytes().to_vec();
         payload.extend_from_slice(&tail);
         let mut reader = Osc1337Reader::new(limits(256));
-        let _ = reader.feed(&payload, Completeness::Whole);
-        let _ = reader.feed(&payload, Completeness::Cut);
+        let _ = reader.feed(&payload, false);
+        let _ = reader.feed(&payload, true);
     }
 
     #[test]
@@ -46,7 +46,7 @@ proptest! {
     fn random_kitty_frames_never_escape_the_receive_machine(
         names in proptest::collection::vec(".{0,40}", 1..6),
     ) {
-        let origin = Origin::Host { host: HostName::new("h") };
+        let origin = Origin::Host { host: HostName("h".into()) };
         let mut session = ReceiveSession::new(origin, limits(1024));
         let send = "5113;ac=send;id=t";
         let (next, _) = session.step(Input::Frame(parse_message(send.as_bytes(), limits(64)).expect("send")));

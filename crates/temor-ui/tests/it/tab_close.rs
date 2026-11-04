@@ -1,11 +1,9 @@
 //! A tab's close button, the tab selection's wash, and the room around the terminal.
 
-use std::time::Duration;
-
 use ds_harness::Input;
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
-use super::drive::{chord, rect, rects, started, type_line, wait_until};
+use super::drive::{chord, rect, rects, started, type_line, wait_html, wait_keyboard, wait_until};
 
 const ROWS: &str = ".temor-side .temor-tab-box";
 
@@ -21,9 +19,11 @@ fn a_tabs_close_button_closes_that_tab_and_the_others_stay() {
     assert_eq!(rects(&h, ROWS).len(), 3, "three tabs");
     let second = rects(&h, ".temor-tab-close")[1].centre();
     h.send(Input::click(second));
-    h.advance(Duration::from_millis(400));
-    assert_eq!(rects(&h, ROWS).len(), 2, "the second tab is gone");
+    wait_html(&mut h, "the second tab gone", |html| {
+        html.matches("class=\"temor-tab-box\"").count() == 2
+    });
     wait_until(&mut h, &probe, "a prompt", |s| s.contains('$'));
+    wait_keyboard(&mut h);
     type_line(&mut h, "echo alive$((40+2))");
     wait_until(&mut h, &probe, "alive42", |s| s.contains("alive42"));
 }
@@ -56,13 +56,19 @@ fn the_terminal_has_room_around_it_in_the_sidebars_measure() {
     let h = started("pane-room", &probe);
     let pane = rect(&h, ".temor-pane");
     let keys = rect(&h, ".temor-keys");
+    // The console's bar heads the pane, the terminal under it.
+    let bar = rect(&h, ".temor-console-bar");
     assert!(
         (keys.x - pane.x - 10.0).abs() < 1.0,
         "left room: {pane:?} {keys:?}"
     );
     assert!(
-        (keys.y - pane.y - 8.0).abs() < 1.0,
-        "top room: {pane:?} {keys:?}"
+        (bar.y - pane.y - 8.0).abs() < 1.0,
+        "top room: {pane:?} {bar:?}"
+    );
+    assert!(
+        (keys.y - (bar.y + bar.h) - 4.0).abs() < 1.0,
+        "room under the bar: {bar:?} {keys:?}"
     );
     assert!(
         (pane.x + pane.w - (keys.x + keys.w) - 10.0).abs() < 1.0,

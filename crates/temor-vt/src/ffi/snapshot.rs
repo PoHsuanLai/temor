@@ -29,6 +29,11 @@ impl Snapshot {
         &self.0
     }
 
+    /// The encoded bytes, handed over to be stored.
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+
     /// Decodes into a fresh terminal handle with no callbacks installed.
     pub(super) fn decode(&self) -> Result<sys::Terminal, VtError> {
         let mut decoder: sys::SnapshotDecoder = std::ptr::null_mut();

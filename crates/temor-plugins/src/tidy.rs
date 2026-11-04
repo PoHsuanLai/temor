@@ -1,6 +1,8 @@
 //! What a plugin says is shown to a person, so it is bounded and cleaned before it goes anywhere:
 //! no control characters, no walls of text, no thousand rows.
 
+use temor_schema::text::is_bidi_control;
+
 use crate::message::{Action, Batch, Fact, Item};
 
 /// The longest a fact's label is shown.
@@ -15,15 +17,6 @@ pub const ROW_CHARS: usize = 200;
 pub const MOST_ROWS: usize = 50;
 /// The most secondary actions a row keeps.
 pub const MOST_ACTIONS: usize = 8;
-
-/// The Unicode Bidi_Control characters: they reorder what is shown, so they are dropped. The same
-/// set as temor-core's `is_bidi_control` (this crate does not depend on core).
-fn is_bidi_control(c: char) -> bool {
-    matches!(
-        c,
-        '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
-    )
-}
 
 /// `text` on one line: every control character (a newline included) becomes a space, runs of
 /// blanks become one, bidirectional controls are dropped, and the ends are trimmed. Cut to `most`

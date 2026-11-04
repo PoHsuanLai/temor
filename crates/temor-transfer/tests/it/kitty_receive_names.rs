@@ -2,7 +2,8 @@
 //! may discard, saving only after Finish, and frames that did not parse.
 
 use temor_transfer::kitty::{
-    Action, Effect, EndWhy, ErrorCode, FileType, Input, Message, ReplyStatus, WriteKind, WriteOp,
+    Action, Effect, ErrorCode, FileType, Input, Message, ReplyStatus, TransferEnd, WriteKind,
+    WriteOp,
 };
 use temor_transfer::{Bytes, RelPath};
 
@@ -147,7 +148,7 @@ fn a_frame_that_did_not_parse_is_answered_while_asking_and_ends_a_live_transfer(
     // Receiving, with no file open: the transfer ends with the error, not only a reply.
     let (_, effects) = allowed(1024).step(Input::Malformed { id: id() });
     assert_eq!(codes(&effects), vec!["EINVAL".to_owned()]);
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
 }
 
 #[test]
@@ -168,7 +169,7 @@ fn an_unknown_transmission_type_is_refused_with_a_reply() {
     )
     .step(Input::Frame(message));
     assert!(!effects.iter().any(|e| matches!(e, Effect::AskConsent(_))));
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     assert_eq!(codes(&effects), vec!["EPERM".to_owned()]);
 }
 
@@ -189,7 +190,7 @@ fn a_malformed_middle_chunk_leaves_no_saved_file() {
         vec![WriteOp::Discard(RelPath::parse("m.bin").expect("p"))]
     );
     assert_eq!(codes(&effects), vec!["EINVAL".to_owned()]);
-    assert!(effects.contains(&Effect::Ended(EndWhy::Failed)));
+    assert!(effects.contains(&Effect::Ended(TransferEnd::Failed)));
     assert!(!saved(&effects));
     // The rest of the file arrives, but the transfer is over: nothing is saved.
     let (s, rest) = s.step(Input::Frame(Message {

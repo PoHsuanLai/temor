@@ -1,10 +1,12 @@
 //! Real shells mark their commands: one block per command, with its output and exit status.
 
-use temor_core::block::Outcome;
+use temor_client::model::block::Outcome;
 
 use super::super::support::tools_present;
-use super::support::{blocks, marks_of, pump, run_line, shell_path, shells, start, start_with};
-use temor_ui::input::Stroke;
+use super::support::{
+    blocks, drawn_as_list, marks_of, pump, run_line, shell_path, shells, start, start_with,
+};
+use temor_pane_view::input::Stroke;
 use temor_vt::{KeyCode, KeyInput, Modifiers};
 
 #[test]
@@ -75,7 +77,10 @@ fn zsh_right_prompt_is_not_part_of_the_command() {
             .is_some_and(|b| b.1 != Outcome::Running)
     });
     let id = live.session.block_outcomes()[0].0;
-    assert_eq!(live.session.block_command(id), Some("echo rp-test"));
+    assert_eq!(
+        live.session.block_command(id).as_deref(),
+        Some("echo rp-test")
+    );
     assert_eq!(live.session.block_output(id).as_deref(), Some("rp-test"));
 }
 
@@ -200,7 +205,7 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
         });
         let id = live.session.block_outcomes()[0].0;
         assert_eq!(
-            live.session.block_command(id),
+            live.session.block_command(id).as_deref(),
             Some("echo first\necho second"),
             "{name}: both lines"
         );
@@ -208,15 +213,15 @@ fn a_command_of_two_lines_from_the_composer_is_one_block_in_the_list() {
         assert!(
             listed
                 .iter()
-                .any(|item| matches!(item, temor_core::session::list::Item::Done(b) if b.id == id)),
+                .any(|item| matches!(item, temor_client::model::session::list::Item::Done(b) if b.id == id)),
             "{name}: the block is in the list: {listed:?}"
         );
     }
 }
 
-/// Tab in the composer: bash, zsh and fish complete the line with their own completion, a command
-/// name and a folder (left open for what is in it); nushell does not say it answers, so nothing is
-/// asked of it and the line stays as typed.
+/// Tab in the composer: bash, zsh and fish complete the line with their own completion, and
+/// nushell with the source that asks it from outside; each completes a command name and a folder
+/// (left open for what is in it).
 #[test]
 fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
     if !tools_present() {
@@ -229,15 +234,9 @@ fn tab_in_the_composer_completes_the_line_with_the_shells_own_completion() {
             s.block_list().is_some_and(|l| !l.is_empty())
                 && s.pane().with_term(|t| t.paste_mode()) == temor_pane::paste::PasteMode::Bracketed
         });
-        live.session.set_composer_shown(true);
-        if name == "nu" {
-            live.session.set_composer_text("ech".to_owned());
-            live.session.composer_complete();
-            assert!(!live.session.composer_completes(), "nu: says it answers");
-            assert_eq!(live.session.composer_text(), "ech", "nu: the line stays");
-            continue;
-        }
-        pump(&mut live, "the shell saying it answers Tab", |s| {
+        drawn_as_list(&mut live, Default::default(), true);
+        // Nushell is asked from outside, so it answers without saying so; the others say so.
+        pump(&mut live, "something answering Tab", |s| {
             s.composer_completes()
         });
         // (the line, what it becomes or starts with)

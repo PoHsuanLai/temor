@@ -3,8 +3,8 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::command::CommandLine;
 use crate::size::GridSize;
+use temor_schema::process::CommandLine;
 use temor_shell::ChildEnv;
 
 /// What to start on a new terminal: an explicit program, arguments, directory and the complete

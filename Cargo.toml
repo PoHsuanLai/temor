@@ -48,13 +48,32 @@ wgpu = "29"
 bytemuck = { version = "1", features = ["derive"] }
 pollster = "0.4"
 temor-render = { path = "crates/temor-render", default-features = false }
-temor-ssh = { path = "crates/temor-ssh" }
+temor-ssh = { path = "crates/temor-ssh", default-features = false }
 # temor's app crates (lane app): the pure core, the pseudo-terminal, and the window.
 temor-core = { path = "crates/temor-core" }
+temor-blocks = { path = "crates/temor-blocks" }
+temor-layout = { path = "crates/temor-layout" }
+temor-hosts = { path = "crates/temor-hosts" }
+temor-agent = { path = "crates/temor-agent" }
+temor-schema = { path = "crates/temor-schema" }
+temor-store = { path = "crates/temor-store" }
+temor-client = { path = "crates/temor-client" }
+temor-panes = { path = "crates/temor-panes" }
+# temor-store: SQLite, built in (FTS5 included), with the commit hook that says a write is visible.
+rusqlite = { version = "0.40", features = ["bundled", "hooks"] }
+bitflags = "2"
+parking_lot = "0.12"
+# temor-client: another process's commits are heard by watching the store's file. The version
+# quire's ds-settings already locks.
+notify = "8.2"
 temor-pty = { path = "crates/temor-pty" }
-temor-shell = { path = "crates/temor-shell" }
+temor-shell = { path = "crates/temor-shell", default-features = false }
 temor-pane = { path = "crates/temor-pane", default-features = false }
 temor-ui = { path = "crates/temor-ui" }
+temor-ui-base = { path = "crates/temor-ui-base" }
+temor-hub = { path = "crates/temor-hub" }
+temor-views = { path = "crates/temor-views" }
+temor-pane-view = { path = "crates/temor-pane-view" }
 # temor-plugins (lane plugins): P11 on bayonet. A plugin is run, never linked.
 bayonet = { git = "https://github.com/PoHsuanLai/bayonet.git", rev = "d66e243188033c1b7c74e636cb5f548f75caecb8" }
 temor-plugins = { path = "crates/temor-plugins" }
@@ -66,7 +85,7 @@ tokio = { version = "1", default-features = false, features = ["sync"] }
 # temor-remote (lane remote): the wire protocol it speaks, and SHA-256 for file stamps and the helper's identity.
 temor-wire = { path = "crates/temor-wire" }
 # temor-ui (lane remote): the helper's client, for Tier B sessions in the window.
-temor-remote = { path = "crates/temor-remote" }
+temor-remote = { path = "crates/temor-remote", default-features = false }
 sha2 = "0.10"
 # anyview's viewer pane and peeks (PLAN §10, D13). Same quire as above.
 anyview-core = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c07359a6ec459a6e9649989616456a8882558" }
@@ -78,7 +97,7 @@ anyview-pane = { git = "https://github.com/PoHsuanLai/anyview.git", rev = "849c0
 chordkit = { git = "https://github.com/PoHsuanLai/chordkit.git", rev = "99eec9ddd03ee345b669fcc7954ed44590724290" }
 
 # temor-desktop (lane desktop): the only crate that names zbus, docket or porter-client (PLAN §2).
-# docket 41ddb1c7 locks porter dcc16ada (as anyview 373afbbc does), so docket and porter-client share
+# docket 41ddb1c7 locks porter dcc16ada (as anyview 849c0735 does), so docket and porter-client share
 # one porter-core. porter-client is feature `dbus` only: no inference, no stoker.
 temor-desktop = { path = "crates/temor-desktop", default-features = false }
 docket-client = { git = "https://github.com/PoHsuanLai/docket.git", rev = "41ddb1c7fe4b234d638e67628f6700dba67bfa07", default-features = false, features = ["dbus"] }
@@ -113,6 +132,7 @@ tempfile = "3"
 base64 = "0.22"
 percent-encoding = "2"
 # The plain line diff of an edit conflict (MIT/Apache-2.0; no dependencies without its optional features).
+jiff = "0.2"
 similar = { version = "2", default-features = false, features = ["text"] }
 
 # Release binaries carry no symbol table (a third of temor's size, never loaded; a panic still

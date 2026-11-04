@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use temor_transfer::osc1337::{Completeness, Osc1337Reader, ReceivedFile};
+use temor_transfer::osc1337::{Osc1337Reader, ReceivedFile};
 use temor_transfer::shelf::{
     Clock, Shelf, ShelfId, ShelfItem, ShelfStore, SystemClock, UnixMillis, candidate_name,
 };
@@ -10,7 +10,7 @@ struct FixedClock(i64);
 
 impl Clock for FixedClock {
     fn now(&self) -> UnixMillis {
-        UnixMillis::new(self.0)
+        UnixMillis(self.0)
     }
 }
 
@@ -21,7 +21,7 @@ fn item(shelf: &Shelf, name: &str, at: i64, path: PathBuf) -> ShelfItem {
         path,
         size: Bytes::new(3),
         origin: Origin::Host {
-            host: HostName::new("prod-1"),
+            host: HostName("prod-1".into()),
         },
         received_at: FixedClock(at).now(),
     }
@@ -105,7 +105,7 @@ fn placing_a_file_never_overwrites_and_moves_the_source() {
 
 #[test]
 fn the_system_clock_reads_a_plausible_time() {
-    assert!(SystemClock.now().get() > 1_700_000_000_000);
+    assert!(SystemClock.now().0 > 1_700_000_000_000);
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn a_consented_offer_is_placed_and_never_overwrites() {
     let payload = b"1337;File=name=cmVwb3J0LnBkZg==:aGVsbG8=";
     let mut reader =
         Osc1337Reader::new(Limits::new(Bytes::new(1024), Count::new(1), Count::new(1)));
-    let offer = match reader.feed(payload, Completeness::Whole).expect("decodes") {
+    let offer = match reader.feed(payload, false).expect("decodes") {
         Some(ReceivedFile::NeedsConsent(offer)) => offer,
         other => panic!("expected an offer, got {other:?}"),
     };

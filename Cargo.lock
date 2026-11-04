@@ -2585,7 +2585,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2639,6 +2639,18 @@ dependencies = [
  "smallvec",
  "zune-inflate",
 ]
+
+[[package]]
+name = "fallible-iterator"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
+
+[[package]]
+name = "fallible-streaming-iterator"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
 name = "fancy-regex"
@@ -3133,6 +3145,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "foldhash 0.2.0",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
+dependencies = [
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
@@ -4135,6 +4156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsqlite3-sys"
+version = "0.38.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4982,7 +5014,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.45.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6248,6 +6280,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsqlite-vfs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c51c9ae4df8a7fba42103df5c621fa3c37eccf3a3c650879e90fc48b11cc192c"
+dependencies = [
+ "hashbrown 0.16.1",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "rusqlite"
+version = "0.40.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23f2a97da3e3873c73cb2a2e71b35c40ff95e0b1eefa8d72d8499a6928c3b5b3"
+dependencies = [
+ "bitflags 2.13.2",
+ "fallible-iterator",
+ "fallible-streaming-iterator",
+ "hashlink",
+ "libsqlite3-sys",
+ "smallvec",
+ "sqlite-wasm-rs",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6278,7 +6335,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6719,7 +6776,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6729,6 +6786,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9571ea910ebd84c86af4b3ed27f9dbdc6ad06f17c5f96146b2b671e2976744f"
 dependencies = [
  "bitflags 2.13.2",
+]
+
+[[package]]
+name = "sqlite-wasm-rs"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc3efc0da82635d7e1ced0053bbbfa8c7ab9645d0bf36ceb4f7127bb85315d75"
+dependencies = [
+ "cc",
+ "js-sys",
+ "rsqlite-vfs",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -7119,20 +7188,77 @@ dependencies = [
 ]
 
 [[package]]
-name = "temor-core"
+name = "temor-agent"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "serde",
+ "temor-core",
+ "temor-schema",
+]
+
+[[package]]
+name = "temor-blocks"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "proptest",
+ "serde",
+ "serde_json",
+ "temor-core",
+ "temor-pane",
+ "temor-schema",
+ "temor-shell",
+ "temor-testkit",
+]
+
+[[package]]
+name = "temor-client"
 version = "0.1.1"
 dependencies = [
  "ds-core",
  "ds-style",
- "icu_properties",
+ "jiff",
+ "notify",
+ "parking_lot",
+ "rustix",
+ "serde",
+ "serde_json",
+ "similar",
+ "temor-agent",
+ "temor-blocks",
+ "temor-client",
+ "temor-core",
+ "temor-desktop",
+ "temor-hosts",
+ "temor-layout",
+ "temor-pane",
+ "temor-plugins",
+ "temor-pty",
+ "temor-remote",
+ "temor-schema",
+ "temor-shell",
+ "temor-ssh",
+ "temor-store",
+ "temor-testkit",
+ "temor-transfer",
+ "temor-wire",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "temor-core"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
  "proptest",
  "serde",
  "serde_json",
  "temor-pane",
- "temor-shell",
- "temor-ssh",
- "temor-testkit",
- "tempfile",
+ "temor-schema",
  "thiserror 2.0.21",
 ]
 
@@ -7169,6 +7295,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-hosts"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "serde",
+ "serde_json",
+ "temor-core",
+ "temor-schema",
+ "temor-shell",
+ "temor-ssh",
+ "temor-testkit",
+]
+
+[[package]]
+name = "temor-hub"
+version = "0.1.1"
+dependencies = [
+ "anyview-machines",
+ "anyview-pane",
+ "anyview-peek",
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-blitz",
+ "ds-core",
+ "ds-settings",
+ "png",
+ "temor-client",
+ "temor-desktop",
+ "temor-pane-view",
+ "temor-panes",
+ "temor-plugins",
+ "temor-remote",
+ "temor-schema",
+ "temor-ssh",
+ "temor-testkit",
+ "temor-ui-base",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "temor-layout"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "ds-style",
+ "proptest",
+ "serde",
+ "serde_json",
+ "temor-blocks",
+ "temor-core",
+ "temor-pane",
+ "temor-schema",
+ "temor-shell",
+ "temor-testkit",
+]
+
+[[package]]
 name = "temor-pane"
 version = "0.1.1"
 dependencies = [
@@ -7176,6 +7361,7 @@ dependencies = [
  "nix",
  "percent-encoding",
  "rustix",
+ "serde",
  "temor-pty",
  "temor-render",
  "temor-shell",
@@ -7187,12 +7373,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-pane-view"
+version = "0.1.1"
+dependencies = [
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-core",
+ "temor-client",
+ "temor-panes",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "temor-panes"
+version = "0.1.1"
+dependencies = [
+ "ds-core",
+ "parking_lot",
+ "temor-blocks",
+ "temor-client",
+ "temor-core",
+ "temor-hosts",
+ "temor-pane",
+ "temor-pty",
+ "temor-remote",
+ "temor-render",
+ "temor-shell",
+ "temor-ssh",
+ "temor-vt",
+ "temor-wire",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "temor-plugins"
 version = "0.1.1"
 dependencies = [
  "bayonet",
  "serde",
  "temor-plugins",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
@@ -7205,6 +7429,7 @@ dependencies = [
  "libproc",
  "nix",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
@@ -7247,12 +7472,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "temor-schema"
+version = "0.1.1"
+dependencies = [
+ "percent-encoding",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "temor-shell"
 version = "0.1.1"
 dependencies = [
  "percent-encoding",
  "proptest",
  "rustix",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7263,9 +7500,22 @@ version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "rustix",
+ "temor-schema",
  "temor-shell",
  "temor-ssh",
  "temor-testkit",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "temor-store"
+version = "0.1.1"
+dependencies = [
+ "bitflags 2.13.2",
+ "parking_lot",
+ "rusqlite",
+ "temor-schema",
  "tempfile",
  "thiserror 2.0.21",
 ]
@@ -7286,6 +7536,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "tempfile",
  "thiserror 2.0.21",
@@ -7295,9 +7546,44 @@ dependencies = [
 name = "temor-ui"
 version = "0.1.1"
 dependencies = [
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-blitz",
+ "ds-harness",
+ "ds-lint",
+ "png",
+ "serde_json",
+ "temor-client",
+ "temor-core",
+ "temor-desktop",
+ "temor-hub",
+ "temor-pane",
+ "temor-pane-view",
+ "temor-panes",
+ "temor-pty",
+ "temor-remote",
+ "temor-render",
+ "temor-schema",
+ "temor-shell",
+ "temor-ssh",
+ "temor-store",
+ "temor-testkit",
+ "temor-ui-base",
+ "temor-views",
+ "temor-vt",
+ "temor-wire",
+ "tempfile",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "temor-ui-base"
+version = "0.1.1"
+dependencies = [
  "anyview-core",
  "anyview-fs",
- "anyview-machines",
  "anyview-pane",
  "anyview-peek",
  "chordkit",
@@ -7305,43 +7591,48 @@ dependencies = [
  "ds",
  "ds-blitz",
  "ds-core",
- "ds-harness",
- "ds-lint",
  "ds-settings",
- "ds-settings-page",
- "png",
- "rustix",
  "serde",
- "serde_json",
- "similar",
- "temor-core",
- "temor-desktop",
- "temor-pane",
- "temor-plugins",
- "temor-pty",
- "temor-remote",
- "temor-render",
- "temor-shell",
- "temor-ssh",
- "temor-testkit",
- "temor-transfer",
- "temor-vt",
- "temor-wire",
+ "temor-client",
+ "temor-pane-view",
+ "temor-panes",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "toml",
- "unicode-width",
+]
+
+[[package]]
+name = "temor-views"
+version = "0.1.1"
+dependencies = [
+ "anyview-pane",
+ "anyview-peek",
+ "chordkit",
+ "dioxus",
+ "ds",
+ "ds-blitz",
+ "ds-core",
+ "ds-settings",
+ "ds-settings-page",
+ "temor-client",
+ "temor-hub",
+ "temor-pane-view",
+ "temor-panes",
+ "temor-schema",
+ "temor-ui-base",
+ "tempfile",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
 name = "temor-vt"
 version = "0.1.1"
 dependencies = [
- "base64 0.22.1",
  "png",
+ "temor-schema",
  "temor-testkit",
- "temor-vt",
  "temor-vt-sys",
  "thiserror 2.0.21",
 ]
@@ -7357,6 +7648,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "temor-schema",
  "temor-testkit",
  "thiserror 2.0.21",
 ]
@@ -7371,7 +7663,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7389,7 +7681,7 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8c27177b12a6399ffc08b98f76f7c9a1f4fe9fc967c784c5a071fa8d93cf7e1"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7695,7 +7987,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7847,6 +8139,12 @@ dependencies = [
  "num-traits",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "vello_common"
@@ -8520,7 +8818,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

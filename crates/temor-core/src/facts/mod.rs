@@ -1,6 +1,6 @@
-//! Where a block ran (PLAN P16): the facts about a pane's folder (git branch, uncommitted changes,
-//! Python virtualenv, Node version), when to compute them again, and the parsers for what the
-//! edge reads. Pure: the edge runs git and reads the files.
+//! The facts about a pane's folder (PLAN P16): the Python virtualenv and the runtime versions a
+//! project asks for, when to compute them again, and the rules for what the edge reads. Pure: the
+//! edge reads the files. temor reads no git: what a repository says is a plugin's to tell.
 
 mod model;
 mod node;
@@ -12,11 +12,9 @@ mod step;
 mod tests;
 mod versions;
 
-pub use model::{
-    BranchName, DiffStat, EnvName, Facts, MOST_UNTRACKED, NodeVersion, ToolVersion, Untracked,
-};
+pub use model::{EnvName, Facts, NodeVersion, ToolVersion};
 pub use node::{node_from_engines, node_from_nvmrc, node_from_version_file};
-pub use parse::{parse_branch, parse_shortstat, parse_untracked, venv_name};
+pub use parse::venv_name;
 pub use python::{python_from_pyproject, python_from_version_file};
 pub use runtimes::{FolderSource, Runtimes, runtimes_in};
 pub use step::{FactsIn, FactsOut, FactsState, Flight, facts_step};

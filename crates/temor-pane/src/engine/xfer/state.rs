@@ -12,8 +12,8 @@ use temor_transfer::kitty::{
     Action, ErrorCode, KittyId, Message, Offered, Reply, ReplyStatus, encode_reply, parse_message,
     parse_reply, readable_header,
 };
-use temor_transfer::osc1337::{Completeness, FileOffer, Osc1337Reader};
-use temor_vt::{Truncation, UnknownKind};
+use temor_transfer::osc1337::{FileOffer, Osc1337Reader};
+use temor_vt::UnknownKind;
 
 use super::event::{OfferId, TransferEvent, TransferSetup};
 use super::receive::Receive;
@@ -104,12 +104,7 @@ impl Transfers {
 
     /// A sequence libghostty did not take (or the scanner took out first). Anything that is not a
     /// transfer is ignored.
-    pub fn on_unknown(
-        &mut self,
-        kind: UnknownKind,
-        payload: &[u8],
-        truncation: Truncation,
-    ) -> Reaction {
+    pub fn on_unknown(&mut self, kind: UnknownKind, payload: &[u8], truncation: bool) -> Reaction {
         let mut out = Reaction::default();
         match kind {
             UnknownKind::Osc1337File => self.inline_file(payload, truncation, &mut out),
@@ -124,9 +119,9 @@ impl Transfers {
         out
     }
 
-    fn kitty_frame(&mut self, payload: &[u8], truncation: Truncation, out: &mut Reaction) {
+    fn kitty_frame(&mut self, payload: &[u8], truncation: bool, out: &mut Reaction) {
         let limits = self.setup.limits;
-        let whole = truncation == Truncation::Complete;
+        let whole = !truncation;
         if whole && let Ok(reply) = parse_reply(payload, limits) {
             self.on_status(reply, out);
             return;
@@ -223,12 +218,4 @@ fn is_multipart(payload: &[u8]) -> bool {
     payload.starts_with(b"1337;MultipartFile=")
         || payload.starts_with(b"1337;FilePart=")
         || payload == b"1337;FileEnd"
-}
-
-/// How temor-vt's truncation reads to the OSC 1337 reader.
-pub(super) fn completeness(truncation: Truncation) -> Completeness {
-    match truncation {
-        Truncation::Complete => Completeness::Whole,
-        _ => Completeness::Cut,
-    }
 }

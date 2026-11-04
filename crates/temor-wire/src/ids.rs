@@ -13,7 +13,7 @@ pub struct RequestId(pub u64);
 /// One remote session: a shell (or other program) on the host with its own screen state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct SessionId(pub u64);
+pub struct RemoteSessionId(pub u64);
 
 /// One file watch, named by the helper when it is set up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -5,15 +5,14 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use temor_wire::hello::Capability;
-use temor_wire::ids::SessionId;
+use temor_wire::ids::RemoteSessionId;
 use temor_wire::message::{IdleLimit, ListeningPort, Message, OpenSession};
 use temor_wire::units::UnixMillis;
 
 use super::config::DaemonConfig;
 use super::link::Link;
-use super::pump;
-use super::registry::Registry;
-use super::session::Session;
+use super::registry::{Registry, id_base};
+use super::session::{Command, Session};
 use crate::error::Error;
 use crate::files::{FileService, STALE_AFTER, Scope};
 use crate::platform;
@@ -50,8 +49,8 @@ impl Daemon {
         Arc::new(Self {
             files: FileService::new(Scope::new(config.file_roots.clone())),
             idle: Mutex::new(config.idle),
+            registry: Registry::from(id_base(config.started)),
             config,
-            registry: Registry::default(),
             links: Mutex::new(Vec::new()),
             ports: Mutex::new(Vec::new()),
             next_link: AtomicU64::new(0),
@@ -70,17 +69,20 @@ impl Daemon {
     pub(super) fn open_session(
         self: &Arc<Self>,
         request: &OpenSession,
-    ) -> Result<SessionId, Error> {
+    ) -> Result<RemoteSessionId, Error> {
         let id = self.registry.next_id();
-        let (session, reader) = Session::start(id, request, &self.config)?;
+        let (session, pump) = Session::start(id, request, &self.config)?;
         // The session's folder is something the client asked for, so its files are reachable.
         // A folder that cannot be granted (not absolute) only leaves the files out of reach.
         let _ = self.files.grant(Path::new(&request.cwd.0));
+        let session = Arc::new(session);
         self.registry.insert(Arc::clone(&session));
+        // Read once it is in the registry: a limit set from here on is sent to it there.
+        session.send(Command::Idle(*lock(&self.idle)));
         let daemon = Arc::clone(self);
         let spawned = std::thread::Builder::new()
             .name(format!("temor-remote-session-{}", id.0))
-            .spawn(move || pump::run(daemon, session, reader));
+            .spawn(move || pump.run(&daemon));
         if let Err(error) = spawned {
             self.remove_session(id);
             return Err(Error::io("starting a session's thread", error));
@@ -99,11 +101,11 @@ impl Daemon {
     /// on purpose; connections dropping never does this.
     pub fn shutdown(&self) {
         for session in self.registry.all() {
-            session.hang_up();
+            session.send(Command::HangUp);
         }
     }
 
-    pub(super) fn remove_session(&self, id: SessionId) {
+    pub(super) fn remove_session(&self, id: RemoteSessionId) {
         self.registry.remove(id);
     }
 

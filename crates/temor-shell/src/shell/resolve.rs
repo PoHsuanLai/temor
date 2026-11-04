@@ -113,15 +113,3 @@ fn usable(path: &Path) -> bool {
 /// A numeric user id, as passwd lists it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UserId(pub u32);
-
-/// The login shell of user `uid` in passwd-format `text` (`name:pw:uid:gid:gecos:home:shell`),
-/// for callers that read `/etc/passwd` or `getent passwd` output at their edge.
-pub fn passwd_login_shell(text: &str, uid: UserId) -> Option<PathBuf> {
-    let uid = uid.0.to_string();
-    text.lines()
-        .map(|line| line.split(':').collect::<Vec<_>>())
-        .find(|fields| fields.len() == 7 && fields[2] == uid)
-        .map(|fields| fields[6])
-        .filter(|shell| !shell.is_empty())
-        .map(PathBuf::from)
-}

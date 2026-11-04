@@ -22,19 +22,8 @@ impl ShelfId {
     }
 }
 
-/// A point in time, in milliseconds since the UNIX epoch. Supplied by the caller's clock.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct UnixMillis(i64);
-
-impl UnixMillis {
-    pub const fn new(millis: i64) -> Self {
-        Self(millis)
-    }
-
-    pub const fn get(self) -> i64 {
-        self.0
-    }
-}
+/// A point in time, supplied by the caller's clock.
+pub use temor_schema::time::UnixMillis;
 
 /// One received file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

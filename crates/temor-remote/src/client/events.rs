@@ -1,6 +1,6 @@
 //! What the helper tells the client unasked.
 
-use temor_wire::ids::{SessionId, WatchId};
+use temor_wire::ids::{RemoteSessionId, WatchId};
 use temor_wire::message::{Event, ExitStatus, ListeningPort, RemotePath, WatchChange};
 
 /// Something the helper reported, or the end of the link.
@@ -10,14 +10,14 @@ pub enum ClientEvent {
     /// Output for an attached session: feed it to that session's terminal.
     Output {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// The bytes.
         bytes: Vec<u8>,
     },
     /// A session's program ended.
     Exited {
         /// The session.
-        session: SessionId,
+        session: RemoteSessionId,
         /// How it ended.
         status: ExitStatus,
     },

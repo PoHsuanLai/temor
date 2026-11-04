@@ -5,4 +5,4 @@ mod rules;
 #[cfg(test)]
 mod tests;
 
-pub use rules::{PasteCheck, PasteMode, UnsafeReason, VtVerdict, check, encode};
+pub use rules::{PasteCheck, PasteMode, UnsafeReason, check, encode};

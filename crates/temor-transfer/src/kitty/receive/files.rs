@@ -2,19 +2,13 @@
 //! checked against the announced size.
 
 use super::helpers::{close, failed, refuse, refuse_with, reply};
-use super::links::{Last, on_link_data, open_link};
-use super::model::{Effect, EndWhy, LinkPolicy, OpenFile, ReceiveSession, WriteOp};
+use super::links::{on_link_data, open_link};
+use super::model::{Effect, LinkPolicy, OpenFile, ReceiveSession, TransferEnd, WriteOp};
+use crate::kitty::ChunkEnd;
 use crate::kitty::model::{
     Compression, ErrorCode, FileId, FileType, KittyId, Message, ReplyStatus,
 };
 use crate::name::RelPath;
-
-/// Whether a data frame carries the last chunk of its file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Chunk {
-    More,
-    Last,
-}
 
 pub(super) fn on_file(
     session: ReceiveSession,
@@ -41,7 +35,7 @@ pub(super) fn on_file(
             ErrorCode::Efbig,
             "the transfer has more files and folders than the limit",
         );
-        return close(session, id, status, EndWhy::Failed);
+        return close(session, id, status, TransferEnd::Failed);
     }
     if message.compression == Some(Compression::Zlib) {
         return refuse(
@@ -129,7 +123,7 @@ pub(super) fn open_regular(
             ErrorCode::Efbig,
             "more files would be open at once than the limit",
         );
-        return close(session, id, status, EndWhy::Failed);
+        return close(session, id, status, TransferEnd::Failed);
     }
     if let Some(size) = message.size
         && session.received + size.get() > session.limits.max_bytes().get()
@@ -161,7 +155,7 @@ pub(super) fn on_data(
     session: ReceiveSession,
     id: &KittyId,
     message: Message,
-    chunk: Chunk,
+    chunk: ChunkEnd,
 ) -> (ReceiveSession, Vec<Effect>) {
     let Some(file_id) = message.file.clone() else {
         return refuse(
@@ -173,11 +167,7 @@ pub(super) fn on_data(
         );
     };
     if session.open_links.contains_key(&file_id) {
-        let last = match chunk {
-            Chunk::More => Last::No,
-            Chunk::Last => Last::Yes,
-        };
-        return on_link_data(session, id, file_id, message, last);
+        return on_link_data(session, id, file_id, message, chunk);
     }
     let Some(open) = session.open.get(&file_id).cloned() else {
         return refuse(
@@ -192,7 +182,7 @@ pub(super) fn on_data(
     let total = session.received + len;
     if total > session.limits.max_bytes().get() {
         let too_big = failed(ErrorCode::Efbig, "the transfer is larger than the limit");
-        return close(session, id, too_big, EndWhy::Failed);
+        return close(session, id, too_big, TransferEnd::Failed);
     }
     let written = open.written + len;
     if open
@@ -200,7 +190,7 @@ pub(super) fn on_data(
         .is_some_and(|expected| written > expected.get())
     {
         let extra = failed(ErrorCode::Eio, "more data arrived than announced");
-        return close(session, id, extra, EndWhy::Failed);
+        return close(session, id, extra, TransferEnd::Failed);
     }
     let mut next = session;
     next.received = total;
@@ -211,7 +201,7 @@ pub(super) fn on_data(
             data: message.data,
         }));
     }
-    if chunk == Chunk::More {
+    if chunk == ChunkEnd::More {
         if let Some(file) = next.open.get_mut(&file_id) {
             file.written = written;
         }
@@ -222,7 +212,7 @@ pub(super) fn on_data(
         .is_some_and(|expected| expected.get() != written)
     {
         let short = failed(ErrorCode::Eio, "the size does not match the announced size");
-        return close(next, id, short, EndWhy::Failed);
+        return close(next, id, short, TransferEnd::Failed);
     }
     // The file is saved only when its Finish succeeds; the edge feeds that back as `WriteDone`.
     next.open.remove(&file_id);

@@ -6,9 +6,7 @@ use crate::fields::{MAX_NAME_TEXT, ascii, pairs, parse_value};
 use crate::name::FileName;
 use crate::units::{Bytes, Limits};
 
-use super::model::{
-    Aspect, Completeness, Delivery, Dimension, FileHeader, MimeType, Osc1337Command,
-};
+use super::model::{Aspect, Delivery, Dimension, FileHeader, MimeType, Osc1337Command};
 
 const PREFIX: &[u8] = b"1337;";
 
@@ -16,10 +14,10 @@ const PREFIX: &[u8] = b"1337;";
 /// can be trusted.
 pub(crate) fn parse_command(
     payload: &[u8],
-    completeness: Completeness,
+    cut: bool,
     limits: Limits,
 ) -> Result<Osc1337Command, TransferError> {
-    if completeness == Completeness::Cut {
+    if cut {
         return Err(TransferError::Cut);
     }
     if payload.len() as u64 > limits.max_raw().get() {

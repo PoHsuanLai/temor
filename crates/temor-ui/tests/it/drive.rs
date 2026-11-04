@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use ds::base::vocab::ShortcutKey;
 use ds::prelude::{Point, Px};
 use ds_harness::{Harness, Input};
-use temor_ui::view::probe::Probe;
+use temor_ui_base::probe::Probe;
 
 use super::window::harness;
 
@@ -46,11 +46,22 @@ pub(super) fn chord(h: &mut Harness, key: char) {
     chord_with(h, &[ShortcutKey::Ctrl, ShortcutKey::Shift], key);
 }
 
-/// Clicks the middle of the element `selector` names; panics, with the page, if there is none.
+/// Clicks the middle of the element `selector` names, once there is one; panics, with the page,
+/// if none comes.
 pub(super) fn press(h: &mut Harness, selector: &str) {
-    let at = h
-        .centre(selector)
-        .unwrap_or_else(|| panic!("nothing matches {selector}:\n{}", h.html()));
+    // What is pressed may be drawn a little after what the test waited for.
+    let start = Instant::now();
+    let at = loop {
+        if let Some(at) = h.centre(selector) {
+            break at;
+        }
+        h.advance(STEP);
+        assert!(
+            start.elapsed() < LIMIT,
+            "nothing matches {selector}:\n{}",
+            h.html()
+        );
+    };
     h.send(Input::click(at));
     h.advance(CLICK_SETTLE);
 }
@@ -77,6 +88,58 @@ pub(super) fn wait_html(h: &mut Harness, what: &str, ok: impl Fn(&str) -> bool) 
     }
 }
 
+/// Whether the keyboard is in a terminal: its region, or its composer's field.
+fn keyboard_in_pane(h: &Harness) -> bool {
+    h.with_doc(|doc| {
+        let mut at = doc.get_focussed_node_id();
+        while let Some(id) = at {
+            let node = doc.get_node(id)?;
+            let class = node
+                .element_data()
+                .and_then(|el| el.attrs().iter().find(|a| &*a.name.local == "class"))
+                .map(|a| a.value.clone())
+                .unwrap_or_default();
+            if class
+                .split_whitespace()
+                .any(|c| c == "temor-keys" || c == "temor-blk-composer")
+            {
+                return Some(());
+            }
+            at = node.parent;
+        }
+        None
+    })
+    .is_some()
+}
+
+/// The element with the keyboard: its tag and classes.
+fn focused(h: &Harness) -> Option<String> {
+    h.with_doc(|doc| {
+        let el = doc.get_node(doc.get_focussed_node_id()?)?.element_data()?;
+        let class = el.attrs().iter().find(|a| &*a.name.local == "class");
+        Some(format!(
+            "{} {:?}",
+            &*el.name.local,
+            class.map(|a| a.value.clone())
+        ))
+    })
+}
+
+/// Steps the window until a terminal has the keyboard (a click elsewhere took it, and the
+/// window gives it back a little later), or panics with the page.
+pub(super) fn wait_keyboard(h: &mut Harness) {
+    let start = Instant::now();
+    while !keyboard_in_pane(h) {
+        h.advance(STEP);
+        assert!(
+            start.elapsed() < LIMIT,
+            "timed out waiting for the keyboard in a terminal; it is in {:?}:\n{}",
+            focused(h),
+            h.html()
+        );
+    }
+}
+
 /// Steps the window until `ok` holds for the terminal's text, or panics with it.
 pub(super) fn wait_until(h: &mut Harness, probe: &Probe, what: &str, ok: impl Fn(&str) -> bool) {
     wait_screen(h, probe, LIMIT, what, ok);
@@ -95,8 +158,9 @@ pub(super) fn wait_screen(
         h.advance(STEP);
         assert!(
             start.elapsed() < limit,
-            "timed out waiting for {what}:\n{}",
-            probe.screen()
+            "timed out waiting for {what}:\n{}\n{}",
+            probe.screen(),
+            h.html()
         );
     }
 }
@@ -110,8 +174,7 @@ pub(super) fn started(name: &str, probe: &Probe) -> Harness {
 
 /// How many tab rows the sidebar shows.
 pub(super) fn rows(h: &Harness) -> usize {
-    let html = h.html();
-    html.matches("class=\"temor-tab-box\"").count() + html.matches("class=\"temor-pin\"").count()
+    h.html().matches("class=\"temor-tab-box\"").count()
 }
 
 /// How many terminal panes the tab in front shows.
@@ -120,7 +183,7 @@ pub(super) fn panes(h: &Harness) -> usize {
 }
 
 /// A box: left, top, width, height.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct Rect {
     pub(super) x: f64,
     pub(super) y: f64,
@@ -164,4 +227,67 @@ pub(super) fn rect(h: &Harness, selector: &str) -> Rect {
     let found = rects(h, selector);
     assert_eq!(found.len(), 1, "one {selector}: {found:?}");
     found[0]
+}
+
+/// The box of the open menu's item that says `title`; panics, with the page, if none does.
+pub(super) fn menu_item(h: &Harness, title: &str) -> Rect {
+    let found = h.with_doc(|doc| {
+        doc.query_selector_all(".ds-menu-item")
+            .map(|found| found.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .find(|id| {
+                doc.get_node(*id)
+                    .is_some_and(|node| node.text_content().trim() == title)
+            })
+            .and_then(|id| doc.get_client_bounding_rect(id))
+            .map(|r| Rect {
+                x: r.x,
+                y: r.y,
+                w: r.width,
+                h: r.height,
+            })
+    });
+    found.unwrap_or_else(|| panic!("no menu item {title:?}:\n{}", h.html()))
+}
+
+/// The boxes of `selector` once they have held still for a few steps (a list still laying out
+/// or easing its scroll moves them under a click), or panics.
+pub(super) fn still_rects(h: &mut Harness, selector: &str) -> Vec<Rect> {
+    let start = Instant::now();
+    let mut last = rects(h, selector);
+    let mut held = 0;
+    while held < 4 {
+        h.advance(STEP);
+        let now = rects(h, selector);
+        held = if now == last { held + 1 } else { 0 };
+        last = now;
+        assert!(start.elapsed() < LIMIT, "{selector} never held still");
+    }
+    last
+}
+
+/// Steps the window until the field `selector` names has the keyboard with all its text
+/// selected, as a field that asks for its old text selected has once it is laid out (a key typed
+/// before then is selected and typed over), or panics with the page.
+pub(super) fn wait_selected_all(h: &mut Harness, selector: &str) {
+    let start = Instant::now();
+    loop {
+        let ready = h.focus_of(selector) == ds_harness::FocusState::Focused
+            && h.with_doc(|doc| {
+                let id = doc.query_selector(selector).ok().flatten()?;
+                let input = doc.get_node(id)?.element_data()?.text_input_data()?;
+                let text = input.editor.raw_text();
+                Some(!text.is_empty() && input.editor.selected_text() == Some(text))
+            }) == Some(true);
+        if ready {
+            return;
+        }
+        h.advance(STEP);
+        assert!(
+            start.elapsed() < LIMIT,
+            "timed out waiting for {selector} to select its text:\n{}",
+            h.html()
+        );
+    }
 }
